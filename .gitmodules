@@ -1,0 +1,18 @@
+[submodule "External/Vulkan-Hpp"]
+	path = External/Vulkan-Hpp
+	url = https://github.com/KhronosGroup/Vulkan-Hpp.git
+	ignore = dirty
+[submodule "External/SPIRV-Headers"]
+	path = External/SPIRV-Headers
+	url = https://github.com/KhronosGroup/SPIRV-Headers.git
+[submodule "External/SPIRV-Tools"]
+	path = External/SPIRV-Tools
+	url = https://github.com/KhronosGroup/SPIRV-Tools.git
+	ignore = dirty
+[submodule "External/glslang"]
+	path = External/glslang
+	url = https://github.com/KhronosGroup/glslang.git
+	ignore = dirty
+[submodule "External/SPIRV-Cross"]
+	path = External/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross.git

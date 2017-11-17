@@ -1,0 +1,268 @@
+/*
+ * MVKQueue.h
+ *
+ * Copyright (c) 2014-2017 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#pragma once
+
+#include "MVKDevice.h"
+#include "MVKCommandBuffer.h"
+#include "MVKCommandEncodingPool.h"
+#include "MVKImage.h"
+#include "MVKSync.h"
+#include <vector>
+#include <mutex>
+
+#import <Metal/Metal.h>
+
+class MVKQueue;
+class MVKQueueSubmission;
+
+
+#pragma mark -
+#pragma mark MVKQueueFamily
+
+/** Represents a Vulkan queue family. */
+class MVKQueueFamily : public MVKBaseDeviceObject {
+
+public:
+
+	/** Returns the index of this queue family. */
+	inline uint32_t getIndex() { return _queueFamilyIndex; }
+
+	/** Returns the number of queues allocated for this family. */
+	inline uint32_t getQueueCount() { return uint32_t(_queues.size()); }
+
+	/** Returns the queue at the specified index. */
+	inline MVKQueue* getQueue(uint32_t queueIndex) { return _queues[queueIndex]; }
+
+	/** Constructs an instance with the specified number of queues for the specified device. */
+	MVKQueueFamily(MVKDevice* device,
+				   const VkDeviceQueueCreateInfo* pCreateInfo,
+				   const VkQueueFamilyProperties* pProperties);
+
+	~MVKQueueFamily() override;
+
+protected:
+    uint32_t _queueFamilyIndex;
+	VkQueueFamilyProperties _properties;
+	std::vector<MVKQueue*> _queues;
+	std::mutex _lock;
+};
+
+
+#pragma mark -
+#pragma mark MVKQueue
+
+/** Represents a Vulkan queue. */
+class MVKQueue : public MVKBaseDeviceObject {
+
+public:
+
+#pragma mark Queue submissions
+
+	/** Submits the specified command buffers to the queue. */
+	VkResult submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
+                    VkFence fence, MVKCommandUse cmdBuffUse);
+
+	/** Submits the specified presentation command to the queue. */
+	VkResult submitPresentKHR(const VkPresentInfoKHR* pPresentInfo);
+
+	/** Block the current thread until this queue is idle. */
+	VkResult waitIdle(MVKCommandUse cmdBuffUse);
+
+	/**
+	 * Retrieves a MTLCommandBuffer instance from the contained MTLCommandQueue, adds a 
+	 * completion handler to it so that the mtlCommandBufferHasCompleted() function will 
+	 * be called when the MTLCommandBuffer completes, and returns the MTLCommandBuffer.
+	 */
+	id<MTLCommandBuffer> getNextMTLCommandBuffer(NSString* mtlCmdBuffLabel,
+                                                 MVKCommandBuffer* mvkCmdBuff = nullptr);
+
+	/** Called automatically when the specified MTLCommandBuffer with the specified ID has completed. */
+	void mtlCommandBufferHasCompleted(id<MTLCommandBuffer> mtlCmdBuff,
+                                      MVKMTLCommandBufferID mtlCmdBuffID,
+                                      MVKCommandBuffer* mvkCmdBuff);
+
+	/**
+	 * Registers the specified countdown object. This function sets the count value
+	 * of the countdown object to the current number of incomplete MTLCommandBuffers,
+	 * and marks the countdown object with the ID of the most recently registered
+	 * MTLCommandBuffer. The countdown object will be decremented each time any
+	 * MTLCommandBuffer with an ID less than the ID of the most recent MTLCommandBuffer
+	 * at the time the countdown object was registered.
+	 *
+	 * If the current number of incomplete MTLCommandBuffers is zero, the countdown
+	 * object will indicate that it is already completed, and will not be registered.
+	 */
+	void registerMTLCommandBufferCountdown(MVKMTLCommandBufferCountdown* countdown);
+
+    /** Returns the command encoding pool. */
+    inline MVKCommandEncodingPool* getCommandEncodingPool() { return &_commandEncodingPool; }
+
+
+#pragma mark Metal
+
+	/** Returns the Metal queue underlying this queue. */
+	inline id<MTLCommandQueue> getMTLCommandQueue() { return _mtlQueue; }
+
+#pragma mark Construction
+	
+	/** Constructs an instance for the device and queue family. */
+	MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority);
+
+	~MVKQueue() override;
+
+protected:
+	friend class MVKQueueSubmission;
+
+	void initExecQueue();
+	void initMTLCommandQueue();
+	void destroyExecQueue();
+	void submit(MVKQueueSubmission* qSubmit);
+
+	MVKQueueFamily* _queueFamily;
+	uint32_t _index;
+	float _priority;
+	dispatch_queue_t _execQueue;
+	id<MTLCommandQueue> _mtlQueue;
+	std::vector<MVKMTLCommandBufferCountdown*> _completionCountdowns;
+	std::mutex _completionLock;
+	uint32_t _activeMTLCommandBufferCount;
+	MVKMTLCommandBufferID _nextMTLCmdBuffID;
+    MVKCommandEncodingPool _commandEncodingPool;
+};
+
+
+#pragma mark -
+#pragma mark MVKQueueSubmission
+
+/** This is an abstract class for an operation that can be submitted to an MVKQueue. */
+class MVKQueueSubmission : public MVKBaseDeviceObject {
+
+public:
+
+	/** 
+	 * Executes this action on the queue and then disposes of this instance.
+	 *
+	 * Upon completion of this function, no further calls should be made to this instance.
+	 */
+	virtual void execute() = 0;
+
+	MVKQueueSubmission(MVKDevice* device, MVKQueue* queue);
+
+protected:
+	friend class MVKQueue;
+
+   void recordResult(VkResult vkResult);
+
+	MVKQueue* _queue;
+	MVKQueueSubmission* _prev;
+	MVKQueueSubmission* _next;
+	VkResult _submissionResult;
+};
+
+
+#pragma mark -
+#pragma mark MVKQueueCommandBufferSubmissionCountdown
+
+/** Counts down MTLCommandBuffers on behalf of an MVKQueueCommandBufferSubmission instance. */
+class MVKQueueCommandBufferSubmissionCountdown : public MVKMTLCommandBufferCountdown {
+
+public:
+
+	/** Constructs an instance. */
+	MVKQueueCommandBufferSubmissionCountdown(MVKQueueCommandBufferSubmission* qSub);
+
+protected:
+
+	/** Performs the action to take when the count has reached zero. */
+	virtual void finish();
+
+	MVKQueueCommandBufferSubmission* _qSub;
+};
+
+
+#pragma mark -
+#pragma mark MVKQueueCommandBufferSubmission
+
+/** Submits the commands in a set of command buffers to the queue. */
+class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
+
+public:
+
+	/**
+	 * Executes this action on the queue and then disposes of this instance.
+	 *
+	 * Upon completion of this function, no further calls should be made to this instance.
+	 */
+	virtual void execute();
+
+	/** Automatically called once all the MTLCommandBuffers have completed execution. */
+	void finish();
+
+	/** 
+     * Constructs an instance for the device and queue.
+     * pSubmit may be VK_NULL_HANDLE to create an instance that triggers a fence without submitting any actual command buffers.
+     */
+	MVKQueueCommandBufferSubmission(MVKDevice* device,
+									MVKQueue* queue,
+									const VkSubmitInfo* pSubmit,
+									VkFence fence,
+                                    MVKCommandUse cmdBuffUse);
+
+    /** Constructs an instance for the device and queue, with a fence, but without actual command buffers. */
+    MVKQueueCommandBufferSubmission(MVKDevice* device, MVKQueue* queue, VkFence fence);
+
+protected:
+	friend MVKCommandEncoder;
+
+    NSString* getMTLCommandBufferName();
+
+	MVKQueueCommandBufferSubmissionCountdown _cmdBuffCountdown;
+	std::vector<MVKCommandBuffer*> _cmdBuffers;
+	std::vector<MVKSemaphore*> _waitSemaphores;
+	std::vector<MVKSemaphore*> _signalSemaphores;
+	MVKFence* _fence;
+    MVKCommandUse _cmdBuffUse;
+};
+
+
+#pragma mark -
+#pragma mark MVKQueuePresentSurfaceSubmission
+
+/** Presents a swapchain surface image to the OS. */
+class MVKQueuePresentSurfaceSubmission : public MVKQueueSubmission {
+
+public:
+
+	/**
+	 * Executes this action on the queue and then disposes of this instance.
+	 *
+	 * Upon completion of this function, no further calls should be made to this instance.
+	 */
+	virtual void execute();
+
+	/** Constructs an instance for the device and queue. */
+	MVKQueuePresentSurfaceSubmission(MVKDevice* device,
+									 MVKQueue* queue,
+									 const VkPresentInfoKHR* pPresentInfo);
+
+protected:
+	std::vector<MVKSemaphore*> _waitSemaphores;
+	std::vector<MVKSwapchainImage*> _surfaceImages;
+};
+

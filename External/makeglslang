@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+#
+# Copyright (c) 2016-2017 The Brenwill Workshop Ltd.
+#
+# makeglslang - build glslangValidator for (used by SPIRV-Cross regression tests)
+#
+# macOS usage: ./makeglslang
+
+# Build glslang
+rm -rf glslang/build
+mkdir glslang/build
+cd glslang/build
+cmake ..
+make
+cd -

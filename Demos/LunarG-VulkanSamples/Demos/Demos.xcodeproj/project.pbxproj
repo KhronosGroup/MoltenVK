@@ -1,0 +1,516 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 48;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A904B5711C9A08C90008C013 /* cube-frag.spv in Resources */ = {isa = PBXBuildFile; fileRef = A904B52E1C9A08C90008C013 /* cube-frag.spv */; };
+		A904B5721C9A08C90008C013 /* cube-frag.spv in Resources */ = {isa = PBXBuildFile; fileRef = A904B52E1C9A08C90008C013 /* cube-frag.spv */; };
+		A904B5751C9A08C90008C013 /* cube-vert.spv in Resources */ = {isa = PBXBuildFile; fileRef = A904B52F1C9A08C90008C013 /* cube-vert.spv */; };
+		A904B5761C9A08C90008C013 /* cube-vert.spv in Resources */ = {isa = PBXBuildFile; fileRef = A904B52F1C9A08C90008C013 /* cube-vert.spv */; };
+		A904B5891C9A08C90008C013 /* lunarg.ppm in Resources */ = {isa = PBXBuildFile; fileRef = A904B5351C9A08C90008C013 /* lunarg.ppm */; };
+		A904B58A1C9A08C90008C013 /* lunarg.ppm in Resources */ = {isa = PBXBuildFile; fileRef = A904B5351C9A08C90008C013 /* lunarg.ppm */; };
+		A9096E511F7EF11A00DFBEA6 /* IOSurface.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9096E501F7EF11A00DFBEA6 /* IOSurface.framework */; };
+		A91F43A01EDDD46B00733D01 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A91F439F1EDDD46B00733D01 /* libMoltenVK.dylib */; };
+		A91F43A51EDDD5CF00733D01 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A91F43A41EDDD5CF00733D01 /* libc++.tbd */; };
+		A91F43A61EDDD61100733D01 /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = A91F439F1EDDD46B00733D01 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A91F43A71EDDD61D00733D01 /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = A9B2A5551D7E4FB300F66656 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A9A262E91CF0C60F00A87A75 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A9A262E71CF0C60500A87A75 /* libc++.tbd */; };
+		A9B2A5561D7E4FB300F66656 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A9B2A5551D7E4FB300F66656 /* libMoltenVK.dylib */; };
+		A9B53B151C3AC0BE00ABC6F6 /* macOS.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */; };
+		A9B53B161C3AC0BE00ABC6F6 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B8A1C3AAEA200373FFD /* Main.storyboard */; };
+		A9B53B181C3AC0BE00ABC6F6 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B831C3AAEA200373FFD /* AppDelegate.m */; };
+		A9B53B191C3AC0BE00ABC6F6 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B871C3AAEA200373FFD /* main.m */; };
+		A9B53B1A1C3AC0BE00ABC6F6 /* DemoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B851C3AAEA200373FFD /* DemoViewController.m */; };
+		A9B53B2F1C3AC15200ABC6F6 /* Icon.png in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B761C3AAE9800373FFD /* Icon.png */; };
+		A9B53B301C3AC15200ABC6F6 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B771C3AAE9800373FFD /* Main.storyboard */; };
+		A9B53B311C3AC15200ABC6F6 /* Default~ipad.png in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B751C3AAE9800373FFD /* Default~ipad.png */; };
+		A9B53B321C3AC15200ABC6F6 /* Default-568h@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B741C3AAE9800373FFD /* Default-568h@2x.png */; };
+		A9B53B341C3AC15200ABC6F6 /* DemoViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B6F1C3AAE9800373FFD /* DemoViewController.m */; };
+		A9B53B351C3AC15200ABC6F6 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B6C1C3AAE9800373FFD /* AppDelegate.m */; };
+		A9B53B361C3AC15200ABC6F6 /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B711C3AAE9800373FFD /* main.m */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A91F43A11EDDD48800733D01 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				A91F43A61EDDD61100733D01 /* libMoltenVK.dylib in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A9B2A5571D7E4FC400F66656 /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 6;
+			files = (
+				A91F43A71EDDD61D00733D01 /* libMoltenVK.dylib in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		A904B4641C99B5950008C013 /* Demos.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Demos.h; sourceTree = "<group>"; };
+		A904B52E1C9A08C90008C013 /* cube-frag.spv */ = {isa = PBXFileReference; lastKnownFileType = file; path = "cube-frag.spv"; sourceTree = "<group>"; };
+		A904B52F1C9A08C90008C013 /* cube-vert.spv */ = {isa = PBXFileReference; lastKnownFileType = file; path = "cube-vert.spv"; sourceTree = "<group>"; };
+		A904B5301C9A08C90008C013 /* cube.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; path = cube.c; sourceTree = "<group>"; };
+		A904B5311C9A08C90008C013 /* cube.frag */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = cube.frag; sourceTree = "<group>"; };
+		A904B5331C9A08C90008C013 /* cube.vert */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = cube.vert; sourceTree = "<group>"; };
+		A904B5351C9A08C90008C013 /* lunarg.ppm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = lunarg.ppm; sourceTree = "<group>"; };
+		A9096E501F7EF11A00DFBEA6 /* IOSurface.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOSurface.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS11.0.sdk/System/Library/Frameworks/IOSurface.framework; sourceTree = DEVELOPER_DIR; };
+		A91F439F1EDDD46B00733D01 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../MoltenVK/iOS/libMoltenVK.dylib; sourceTree = "<group>"; };
+		A91F43A41EDDD5CF00733D01 /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS10.3.sdk/usr/lib/libc++.tbd"; sourceTree = DEVELOPER_DIR; };
+		A9A262E71CF0C60500A87A75 /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
+		A9B2A5551D7E4FB300F66656 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../MoltenVK/macOS/libMoltenVK.dylib; sourceTree = "<group>"; };
+		A9B53B271C3AC0BE00ABC6F6 /* Cube.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cube.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9B53B431C3AC15200ABC6F6 /* Cube.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cube.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9B67B6B1C3AAE9800373FFD /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		A9B67B6C1C3AAE9800373FFD /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		A9B67B6E1C3AAE9800373FFD /* DemoViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DemoViewController.h; sourceTree = "<group>"; };
+		A9B67B6F1C3AAE9800373FFD /* DemoViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DemoViewController.m; sourceTree = "<group>"; };
+		A9B67B701C3AAE9800373FFD /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A9B67B711C3AAE9800373FFD /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		A9B67B721C3AAE9800373FFD /* Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Prefix.pch; sourceTree = "<group>"; };
+		A9B67B741C3AAE9800373FFD /* Default-568h@2x.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default-568h@2x.png"; sourceTree = "<group>"; };
+		A9B67B751C3AAE9800373FFD /* Default~ipad.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = "Default~ipad.png"; sourceTree = "<group>"; };
+		A9B67B761C3AAE9800373FFD /* Icon.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; path = Icon.png; sourceTree = "<group>"; };
+		A9B67B771C3AAE9800373FFD /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
+		A9B67B821C3AAEA200373FFD /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
+		A9B67B831C3AAEA200373FFD /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
+		A9B67B841C3AAEA200373FFD /* DemoViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DemoViewController.h; sourceTree = "<group>"; };
+		A9B67B851C3AAEA200373FFD /* DemoViewController.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = DemoViewController.m; sourceTree = "<group>"; };
+		A9B67B861C3AAEA200373FFD /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		A9B67B871C3AAEA200373FFD /* main.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
+		A9B67B881C3AAEA200373FFD /* Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Prefix.pch; sourceTree = "<group>"; };
+		A9B67B8A1C3AAEA200373FFD /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
+		A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = macOS.xcassets; sourceTree = "<group>"; };
+		A9E34B841CECF28700E40A7F /* MoltenVK.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVK.framework; path = ../../../iOS/MoltenVK.framework; sourceTree = "<group>"; };
+		A9E34B871CECF29800E40A7F /* MoltenVK.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVK.framework; path = ../../../macOS/MoltenVK.framework; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A9B53B1B1C3AC0BE00ABC6F6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A9B2A5561D7E4FB300F66656 /* libMoltenVK.dylib in Frameworks */,
+				A9A262E91CF0C60F00A87A75 /* libc++.tbd in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A9B53B371C3AC15200ABC6F6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A91F43A01EDDD46B00733D01 /* libMoltenVK.dylib in Frameworks */,
+				A9096E511F7EF11A00DFBEA6 /* IOSurface.framework in Frameworks */,
+				A91F43A51EDDD5CF00733D01 /* libc++.tbd in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		19C28FACFE9D520D11CA2CBB /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A9B53B271C3AC0BE00ABC6F6 /* Cube.app */,
+				A9B53B431C3AC15200ABC6F6 /* Cube.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		29B97314FDCFA39411CA2CEA /* CustomTemplate */ = {
+			isa = PBXGroup;
+			children = (
+				A904B4641C99B5950008C013 /* Demos.h */,
+				A904B52C1C9A08C80008C013 /* demos */,
+				A9B67B6A1C3AAE9800373FFD /* iOS */,
+				A9B67B811C3AAEA200373FFD /* macOS */,
+				A9295EAA1CECEF0900EFC483 /* Frameworks */,
+				19C28FACFE9D520D11CA2CBB /* Products */,
+			);
+			name = CustomTemplate;
+			sourceTree = "<group>";
+		};
+		A904B52C1C9A08C80008C013 /* demos */ = {
+			isa = PBXGroup;
+			children = (
+				A904B52E1C9A08C90008C013 /* cube-frag.spv */,
+				A904B52F1C9A08C90008C013 /* cube-vert.spv */,
+				A904B5301C9A08C90008C013 /* cube.c */,
+				A904B5311C9A08C90008C013 /* cube.frag */,
+				A904B5331C9A08C90008C013 /* cube.vert */,
+				A904B5351C9A08C90008C013 /* lunarg.ppm */,
+			);
+			name = demos;
+			path = ../VulkanSamples/demos;
+			sourceTree = "<group>";
+		};
+		A9295EAA1CECEF0900EFC483 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A9096E501F7EF11A00DFBEA6 /* IOSurface.framework */,
+				A91F439F1EDDD46B00733D01 /* libMoltenVK.dylib */,
+				A9B2A5551D7E4FB300F66656 /* libMoltenVK.dylib */,
+				A9E34B841CECF28700E40A7F /* MoltenVK.framework */,
+				A9E34B871CECF29800E40A7F /* MoltenVK.framework */,
+				A9A262E71CF0C60500A87A75 /* libc++.tbd */,
+				A91F43A41EDDD5CF00733D01 /* libc++.tbd */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		A9B67B6A1C3AAE9800373FFD /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				A9B67B6B1C3AAE9800373FFD /* AppDelegate.h */,
+				A9B67B6C1C3AAE9800373FFD /* AppDelegate.m */,
+				A9B67B6E1C3AAE9800373FFD /* DemoViewController.h */,
+				A9B67B6F1C3AAE9800373FFD /* DemoViewController.m */,
+				A9B67B701C3AAE9800373FFD /* Info.plist */,
+				A9B67B711C3AAE9800373FFD /* main.m */,
+				A9B67B721C3AAE9800373FFD /* Prefix.pch */,
+				A9B67B731C3AAE9800373FFD /* Resources */,
+			);
+			path = iOS;
+			sourceTree = "<group>";
+		};
+		A9B67B731C3AAE9800373FFD /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A9B67B741C3AAE9800373FFD /* Default-568h@2x.png */,
+				A9B67B751C3AAE9800373FFD /* Default~ipad.png */,
+				A9B67B761C3AAE9800373FFD /* Icon.png */,
+				A9B67B771C3AAE9800373FFD /* Main.storyboard */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		A9B67B811C3AAEA200373FFD /* macOS */ = {
+			isa = PBXGroup;
+			children = (
+				A9B67B821C3AAEA200373FFD /* AppDelegate.h */,
+				A9B67B831C3AAEA200373FFD /* AppDelegate.m */,
+				A9B67B841C3AAEA200373FFD /* DemoViewController.h */,
+				A9B67B851C3AAEA200373FFD /* DemoViewController.m */,
+				A9B67B861C3AAEA200373FFD /* Info.plist */,
+				A9B67B871C3AAEA200373FFD /* main.m */,
+				A9B67B881C3AAEA200373FFD /* Prefix.pch */,
+				A9B67B891C3AAEA200373FFD /* Resources */,
+			);
+			path = macOS;
+			sourceTree = "<group>";
+		};
+		A9B67B891C3AAEA200373FFD /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				A9B67B8A1C3AAEA200373FFD /* Main.storyboard */,
+				A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A9B53B0F1C3AC0BE00ABC6F6 /* Cube-macOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A9B53B241C3AC0BE00ABC6F6 /* Build configuration list for PBXNativeTarget "Cube-macOS" */;
+			buildPhases = (
+				A9B53B141C3AC0BE00ABC6F6 /* Resources */,
+				A9B53B171C3AC0BE00ABC6F6 /* Sources */,
+				A9B53B1B1C3AC0BE00ABC6F6 /* Frameworks */,
+				A9B2A5571D7E4FC400F66656 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Cube-macOS";
+			productName = foo;
+			productReference = A9B53B271C3AC0BE00ABC6F6 /* Cube.app */;
+			productType = "com.apple.product-type.application";
+		};
+		A9B53B291C3AC15200ABC6F6 /* Cube-iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A9B53B401C3AC15200ABC6F6 /* Build configuration list for PBXNativeTarget "Cube-iOS" */;
+			buildPhases = (
+				A9B53B2E1C3AC15200ABC6F6 /* Resources */,
+				A9B53B331C3AC15200ABC6F6 /* Sources */,
+				A9B53B371C3AC15200ABC6F6 /* Frameworks */,
+				A91F43A11EDDD48800733D01 /* CopyFiles */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "Cube-iOS";
+			productName = foo;
+			productReference = A9B53B431C3AC15200ABC6F6 /* Cube.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		29B97313FDCFA39411CA2CEA /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				LastUpgradeCheck = 0900;
+				TargetAttributes = {
+					A9B53B0F1C3AC0BE00ABC6F6 = {
+						DevelopmentTeam = VU3TCKU48B;
+					};
+					A9B53B291C3AC15200ABC6F6 = {
+						DevelopmentTeam = VU3TCKU48B;
+					};
+				};
+			};
+			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "Demos" */;
+			compatibilityVersion = "Xcode 8.0";
+			developmentRegion = English;
+			hasScannedForEncodings = 1;
+			knownRegions = (
+				English,
+				Japanese,
+				French,
+				German,
+			);
+			mainGroup = 29B97314FDCFA39411CA2CEA /* CustomTemplate */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A9B53B291C3AC15200ABC6F6 /* Cube-iOS */,
+				A9B53B0F1C3AC0BE00ABC6F6 /* Cube-macOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A9B53B141C3AC0BE00ABC6F6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A904B5761C9A08C90008C013 /* cube-vert.spv in Resources */,
+				A904B5721C9A08C90008C013 /* cube-frag.spv in Resources */,
+				A904B58A1C9A08C90008C013 /* lunarg.ppm in Resources */,
+				A9B53B151C3AC0BE00ABC6F6 /* macOS.xcassets in Resources */,
+				A9B53B161C3AC0BE00ABC6F6 /* Main.storyboard in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A9B53B2E1C3AC15200ABC6F6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A904B5751C9A08C90008C013 /* cube-vert.spv in Resources */,
+				A9B53B2F1C3AC15200ABC6F6 /* Icon.png in Resources */,
+				A9B53B301C3AC15200ABC6F6 /* Main.storyboard in Resources */,
+				A904B5891C9A08C90008C013 /* lunarg.ppm in Resources */,
+				A9B53B311C3AC15200ABC6F6 /* Default~ipad.png in Resources */,
+				A9B53B321C3AC15200ABC6F6 /* Default-568h@2x.png in Resources */,
+				A904B5711C9A08C90008C013 /* cube-frag.spv in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A9B53B171C3AC0BE00ABC6F6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A9B53B181C3AC0BE00ABC6F6 /* AppDelegate.m in Sources */,
+				A9B53B191C3AC0BE00ABC6F6 /* main.m in Sources */,
+				A9B53B1A1C3AC0BE00ABC6F6 /* DemoViewController.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A9B53B331C3AC15200ABC6F6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A9B53B341C3AC15200ABC6F6 /* DemoViewController.m in Sources */,
+				A9B53B351C3AC15200ABC6F6 /* AppDelegate.m in Sources */,
+				A9B53B361C3AC15200ABC6F6 /* main.m in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A9B53B251C3AC0BE00ABC6F6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					MVK_SAMP_CUBE,
+				);
+				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				PRODUCT_NAME = Cube;
+				SDKROOT = macosx;
+			};
+			name = Debug;
+		};
+		A9B53B261C3AC0BE00ABC6F6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				COMBINE_HIDPI_IMAGES = YES;
+				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					MVK_SAMP_CUBE,
+				);
+				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS\"";
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
+				PRODUCT_NAME = Cube;
+				SDKROOT = macosx;
+			};
+			name = Release;
+		};
+		A9B53B411C3AC15200ABC6F6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = VU3TCKU48B;
+				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					MVK_SAMP_CUBE,
+				);
+				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS\"";
+				PRODUCT_NAME = Cube;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = Debug;
+		};
+		A9B53B421C3AC15200ABC6F6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = VU3TCKU48B;
+				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					MVK_SAMP_CUBE,
+				);
+				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS\"";
+				PRODUCT_NAME = Cube;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = Release;
+		};
+		C01FCF4F08A954540054247B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = NO;
+				COPY_PHASE_STRIP = NO;
+				ENABLE_BITCODE = NO;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					_DEBUG,
+				);
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/../../../MoltenVK/include\"",
+					"\"$(SRCROOT)/../VulkanSamples/include\"",
+				);
+				ONLY_ACTIVE_ARCH = YES;
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.moltenvk.${PRODUCT_NAME:identifier}";
+			};
+			name = Debug;
+		};
+		C01FCF5008A954540054247B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = NO;
+				ENABLE_BITCODE = NO;
+				ENABLE_NS_ASSERTIONS = NO;
+				GCC_C_LANGUAGE_STANDARD = c99;
+				GCC_PRECOMPILE_PREFIX_HEADER = YES;
+				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
+				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES;
+				HEADER_SEARCH_PATHS = (
+					"\"$(SRCROOT)/../../../MoltenVK/include\"",
+					"\"$(SRCROOT)/../VulkanSamples/include\"",
+				);
+				OTHER_LDFLAGS = "-ObjC";
+				PRODUCT_BUNDLE_IDENTIFIER = "com.moltenvk.${PRODUCT_NAME:identifier}";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A9B53B241C3AC0BE00ABC6F6 /* Build configuration list for PBXNativeTarget "Cube-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A9B53B251C3AC0BE00ABC6F6 /* Debug */,
+				A9B53B261C3AC0BE00ABC6F6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A9B53B401C3AC15200ABC6F6 /* Build configuration list for PBXNativeTarget "Cube-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A9B53B411C3AC15200ABC6F6 /* Debug */,
+				A9B53B421C3AC15200ABC6F6 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		C01FCF4E08A954540054247B /* Build configuration list for PBXProject "Demos" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				C01FCF4F08A954540054247B /* Debug */,
+				C01FCF5008A954540054247B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 29B97313FDCFA39411CA2CEA /* Project object */;
+}
