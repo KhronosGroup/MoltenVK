@@ -218,9 +218,6 @@
 					A958167E1C03D79500792CBF = {
 						DevelopmentTeam = VU3TCKU48B;
 					};
-					A9A7447D1D1198A400ADB0E9 = {
-						DevelopmentTeam = VU3TCKU48B;
-					};
 				};
 			};
 			buildConfigurationList = A95816611C03BC4D00792CBF /* Build configuration list for PBXProject "AsynchronousTimeWarp" */;
@@ -450,7 +447,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = VU3TCKU48B;
+				DEVELOPMENT_TEAM = "";
 				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS\"";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
@@ -473,7 +470,7 @@
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
 				COMBINE_HIDPI_IMAGES = YES;
-				DEVELOPMENT_TEAM = VU3TCKU48B;
+				DEVELOPMENT_TEAM = "";
 				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS\"";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",

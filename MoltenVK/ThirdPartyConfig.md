@@ -50,12 +50,11 @@ Updating the *Vulkan-Hpp* library version
 -----------------------------------------
 
 If you are developing enhancements to **MoltenVK**, you can update the version of `Vulkan-Hpp` 
-used by **MoltenVK**, by re-cloning the library as follows:
+used by **MoltenVK** to the latest version available by re-cloning and re-building the
+`Vulkan-Hpp` submodule using the `getLatestVulkanSpec` script:
 
 	cd External
-	rm -rf Vulkan-Hpp
-	git clone --recursive https://github.com/KhronosGroup/Vulkan-Hpp.git
-	./makeVulkanSpec
+	./getLatestVulkanSpec
 
 The updated version will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
 

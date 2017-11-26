@@ -20,7 +20,8 @@ Table of Contents
 - [About This Document](#about_this)
 - [Introduction](#intro)
 - [Installing **MoltenVK**](#install)
-- [Third-Party Components](#third-party)
+- [Third-Party Libraries](#third-party)
+	- [Updating the Third-Party Library Versions](#update_third-party)
 - [Building **MoltenVK**](#building)
 - [Using **MoltenVK** in Your Application](#using)
 - [Third-Party Credits](#credits)
@@ -86,11 +87,12 @@ and how to work with them within the **MoltenVK** development environment.
 
 
 <a name="third-party"></a>
-Third-Party Components
-----------------------
+Third-Party Libraries
+---------------------
 
 **MoltenVK** makes use of several third-party open-source libraries.
-Development of some of these components is managed separately.
+Development of some of these components is managed separately, and are retrieved into
+**MoltenVK** as submodule repositories.
 
 If you used the `--recursive` option when cloning this repository, as described 
 [above](#install), all third party libraries will have been retrieved.
@@ -103,10 +105,22 @@ the `MoltenVK` repository:
 	cd External
 	./makeAll
 
->***Note:*** Some of these libraries are maintained and updated regularly with new features. 
-> See the documents listed just below here to learn how to update the version of each library as needed.
 
-**MoltenVK** uses the third-party libraries described in the following documents:
+<a name="update_third-party"></a>
+###Updating the Third-Party Library Versions
+
+If you are developing enhancements to **MoltenVK**, you can update the versions of the 
+Third-Party libraries used by **MoltenVK** to the latest versions available by re-cloning 
+and re-building the submodules using the `getLatestAll` script:
+
+	cd External
+	./getLatestAll
+
+The updated versions will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
+
+This procdure updates all of the Third-Party library submodules. To update only a single submodule,
+or for more information about the various Third-Party libraries and submodules used by **MoltenVK**,
+please refer to the following documents:
 
 - [`MoltenVK/ThirdPartyConfig.md`](MoltenVK/ThirdPartyConfig.md)
 - [`MoltenVKShaderConverter/ThirdPartyConfig.md`](MoltenVKShaderConverter/ThirdPartyConfig.md)
@@ -124,14 +138,6 @@ and install the required third-party components.
 >***Note:*** At runtime, **MoltenVK** can run on *iOS 9* and *macOS 11.0* devices, 
 >but it does reference advanced OS frameworks during building. *Xcode 9* 
 >or above is required to build **MoltenVK**, and build and link **MoltenVK** projects.
-
->***Note for Xcode 9 on macOS Sierra (10.12):*** There is currently an issue with *Xcode 9* when building
-**MoltenVK** on *macOS Sierra (10.12)*. When creating the `libMoltenVK.dylib` file for *macOS*, `libtool`
-is unable to link to the file `/usr/lib/system/libsystem_darwin.dylib` that *Xcode 9* indicates is required,
-because that file does not exist on *macOS Sierra (10.12)*. To work around this issue, add the following symlink:
->
-    ln -sfn /usr/lib/system/libsystem_coretls.dylib /usr/local/lib/libsystem_darwin.dylib
-
 
 The `MoltenVKPackaging.xcodeproj` *Xcode* project contains targets and schemes to build 
 and package the entire **MoltenVK** runtime distribution package, or to build individual 
