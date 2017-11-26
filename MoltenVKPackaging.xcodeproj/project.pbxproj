@@ -142,6 +142,11 @@
 		A939A6FE1F547A12006ACA0C /* makeSPIRVTools */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeSPIRVTools; sourceTree = "<group>"; };
 		A939A6FF1F547A12006ACA0C /* makeVulkanSpec */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeVulkanSpec; sourceTree = "<group>"; };
 		A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Runtime_UserGuide.md; path = Docs/MoltenVK_Runtime_UserGuide.md; sourceTree = "<group>"; };
+		A9B732A31FC9C588006721CB /* getLatestglslang */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestglslang; sourceTree = "<group>"; };
+		A9B732A41FC9C588006721CB /* getLatestSPIRVTools */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestSPIRVTools; sourceTree = "<group>"; };
+		A9B732A51FC9C588006721CB /* getLatestSPIRVCross */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestSPIRVCross; sourceTree = "<group>"; };
+		A9B732A61FC9C588006721CB /* getLatestVulkanSpec */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestVulkanSpec; sourceTree = "<group>"; };
+		A9B732A71FCA1D71006721CB /* getLatestAll */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestAll; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -182,6 +187,11 @@
 				A939A6FD1F547A12006ACA0C /* makeglslang */,
 				A939A6FE1F547A12006ACA0C /* makeSPIRVTools */,
 				A939A6FF1F547A12006ACA0C /* makeVulkanSpec */,
+				A9B732A71FCA1D71006721CB /* getLatestAll */,
+				A9B732A31FC9C588006721CB /* getLatestglslang */,
+				A9B732A51FC9C588006721CB /* getLatestSPIRVCross */,
+				A9B732A41FC9C588006721CB /* getLatestSPIRVTools */,
+				A9B732A61FC9C588006721CB /* getLatestVulkanSpec */,
 			);
 			path = External;
 			sourceTree = "<group>";

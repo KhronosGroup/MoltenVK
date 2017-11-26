@@ -48,11 +48,11 @@ Updating the *SPIRV-Cross* library version
 ------------------------------------------
 
 If you are developing enhancements to **MoltenVKShaderConverter**, you can update the version of 
-`SPIRV-Cross` used by **MoltenVKShaderConverter**, as follows:
+`SPIRV-Cross` used by **MoltenVKShaderConverter** to the latest version available by re-cloning 
+and re-building the `SPIRV-Cross` submodule using the `getLatestSPIRVCross` script:
 
 	cd External
-	rm -rf SPIRV-Cross
-	git clone https://github.com/KhronosGroup/SPIRV-Cross.git
+	./getLatestSPIRVCross
 
 The updated version will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
 
@@ -177,17 +177,11 @@ Updating the *SPIRV-Tools* library version
 ------------------------------------------
 
 If you are developing enhancements to **MoltenVKShaderConverter**, you can update the version of 
-`SPIRV-Tools` used by **MoltenVKShaderConverter**, as follows:
+`SPIRV-Tools` used by **MoltenVKShaderConverter** to the latest version available by re-cloning 
+and re-building the `SPIRV-Tools` submodule using the `getLatestSPIRVTools` script:
 
 	cd External
-
-	rm -rf SPIRV-Headers
-	git clone https://github.com/KhronosGroup/SPIRV-Headers.git
-
-	rm -rf SPIRV-Tools
-	git clone https://github.com/KhronosGroup/SPIRV-Tools.git
-	
-	./makeSPIRVTools
+	./getLatestSPIRVTools
 
 The updated version will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
 
@@ -254,15 +248,14 @@ from within the `MoltenVK` repository directory:
 
 <a name="update_glslang"></a>
 Updating the *glslang* library version
-------------------------------------------
+--------------------------------------
 
 If you are developing enhancements to **MoltenVKShaderConverter**, you can update the version of 
-`glslang` used by **MoltenVKShaderConverter**, as follows:
+`glslang` used by **MoltenVKShaderConverter** to the latest version available by re-cloning 
+and re-building the `glslang` submodule using the `getLatestglslang` script:
 
 	cd External
-	rm -rf glslang
-	git clone https://github.com/KhronosGroup/glslang.git
-	./makeglslang
+	./getLatestglslang
 
 The updated version will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
 

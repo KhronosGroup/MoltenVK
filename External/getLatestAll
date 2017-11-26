@@ -1,0 +1,18 @@
+#!/usr/bin/env bash
+#
+# Copyright (c) 2016-2017 The Brenwill Workshop Ltd.
+#
+# getLatestAll - Updates to the latest versions of all submodules.
+#
+# Invokes the following scripts:
+#     getLatestVulkanSpec
+#     getLatestSPIRVTools
+#     getLatestglslang
+#     getLatestSPIRVCross
+#
+# macOS usage: ./getLatestAll
+
+./getLatestVulkanSpec
+./getLatestSPIRVTools
+./getLatestglslang
+./getLatestSPIRVCross
