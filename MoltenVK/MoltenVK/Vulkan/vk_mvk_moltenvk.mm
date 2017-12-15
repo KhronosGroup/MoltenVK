@@ -77,11 +77,11 @@ MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(
     size_t len;
 
     string mvkVer;
-    mvkVer += to_string((MVK_VERSION >> 24) & 0xFF);
+    mvkVer += to_string(MVK_VERSION / 10000);
     mvkVer += ".";
-    mvkVer += to_string((MVK_VERSION >> 16) & 0xFF);
+    mvkVer += to_string((MVK_VERSION % 10000) / 100);
     mvkVer += ".";
-    mvkVer += to_string((MVK_VERSION >> 8) & 0xFF);
+    mvkVer += to_string(MVK_VERSION % 100);
     len = mvkVer.copy(pMoltenVersionStringBuffer, moltenVersionStringBufferLength - 1);
     pMoltenVersionStringBuffer[len] = 0;    // terminator
 

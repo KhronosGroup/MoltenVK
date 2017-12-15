@@ -78,15 +78,15 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
 #define MVK_FMT_NO_FEATS		{ 0, 0, 0 }
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format,
-                                                VkFormatProperties* pFormatProperties) {
+                                            VkFormatProperties* pFormatProperties) {
     if ( !pFormatProperties ) { return; }
-    
+
     *pFormatProperties = mvkVkFormatProperties(format);
-    
+
 #if MVK_MACOS
-    // Special-case certain formats that not all macOS GPU's support
-    MTLPixelFormat mtlPixFmt = mvkMTLPixelFormatFromVkFormat(format);
-    if (mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8 &&
+    // Special-case certain formats that not all macOS GPU's support.
+    // Lookup from Metal to Vulkan to avoid logging error message when going the other way.
+    if (format == mvkVkFormatFromMTLPixelFormat(MTLPixelFormatDepth24Unorm_Stencil8) &&
         !getMTLDevice().isDepth24Stencil8PixelFormatSupported) {
         *pFormatProperties = MVK_FMT_NO_FEATS;
     }
