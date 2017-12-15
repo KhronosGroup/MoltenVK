@@ -107,7 +107,7 @@ the `MoltenVK` repository:
 
 
 <a name="update_third-party"></a>
-###Updating the Third-Party Library Versions
+### Updating the Third-Party Library Versions
 
 If you are developing enhancements to **MoltenVK**, you can update the versions of the 
 Third-Party libraries used by **MoltenVK** to the latest versions available by re-cloning 
