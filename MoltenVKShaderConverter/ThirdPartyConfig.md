@@ -91,7 +91,7 @@ If you make changes to the `SPIRV-Cross` submodule, you can regression test your
 
 4. Run the regression tests:
 
-		./test_shaders.py --msl shaders-msl
+		./test_shaders.sh
 
 5. If your changes result in different expected output for a reference shader, you can update
    the reference shader for a particular regression test:

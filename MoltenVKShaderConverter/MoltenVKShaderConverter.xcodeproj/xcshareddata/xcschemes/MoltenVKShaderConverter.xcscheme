@@ -74,19 +74,19 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-gi"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK/External/SPIRV-Cross/shaders-msl/comp/struct-packing.comp"
-            isEnabled = "YES">
+            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK/External/SPIRV-Cross/shaders-msl/vert/forum_test.vert"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-si"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK/External/SPIRV-Cross/shaders-msl/frag.spv"
-            isEnabled = "NO">
+            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/functions_nested-opt.spv"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-mo"
