@@ -168,27 +168,27 @@ protected:
 #pragma mark Command creation functions
 
 /** Adds a vertex bind command to the specified command buffer. */
-void mvkCmdBindVertexBuffers(VkCommandBuffer cmdBuffer,
+void mvkCmdBindVertexBuffers(MVKCommandBuffer* cmdBuff,
 							 uint32_t startBinding,
 							 uint32_t bindingCount,
 							 const VkBuffer* pBuffers,
 							 const VkDeviceSize* pOffsets);
 
 /** Adds a bind index buffer command to the specified command buffer. */
-void mvkCmdBindIndexBuffer(VkCommandBuffer cmdBuffer,
+void mvkCmdBindIndexBuffer(MVKCommandBuffer* cmdBuff,
 						   VkBuffer buffer,
 						   VkDeviceSize offset,
 						   VkIndexType indexType);
 
 /** Adds a vertex draw command to the specified command buffer. */
-void mvkCmdDraw(VkCommandBuffer cmdBuffer,
+void mvkCmdDraw(MVKCommandBuffer* cmdBuff,
 				uint32_t vertexCount,
 				uint32_t instanceCount,
 				uint32_t firstVertex,
 				uint32_t firstInstance);
 
 /** Adds an indexed draw command to the specified command buffer. */
-void mvkCmdDrawIndexed(VkCommandBuffer cmdBuffer,
+void mvkCmdDrawIndexed(MVKCommandBuffer* cmdBuff,
 					   uint32_t indexCount,
 					   uint32_t instanceCount,
 					   uint32_t firstIndex,
@@ -196,14 +196,14 @@ void mvkCmdDrawIndexed(VkCommandBuffer cmdBuffer,
 					   uint32_t firstInstance);
 
 /** Adds an indirect draw command to the specified command buffer. */
-void mvkCmdDrawIndirect(VkCommandBuffer cmdBuffer,
+void mvkCmdDrawIndirect(MVKCommandBuffer* cmdBuff,
 						VkBuffer buffer,
 						VkDeviceSize offset,
 						uint32_t count,
 						uint32_t stride);
 
 /** Adds an indirect indexed draw command to the specified command buffer. */
-void mvkCmdDrawIndexedIndirect(VkCommandBuffer cmdBuffer,
+void mvkCmdDrawIndexedIndirect(MVKCommandBuffer* cmdBuff,
 							   VkBuffer buffer,
 							   VkDeviceSize offset,
 							   uint32_t count,

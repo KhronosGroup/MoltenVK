@@ -89,7 +89,7 @@ public:
 class MVKCmdExecuteCommands : public MVKCommand {
 
 public:
-	void setContent(uint32_t commandBuffersCount, const VkCommandBuffer* pCmdBuffers);
+	void setContent(uint32_t commandBuffersCount, const VkCommandBuffer* pCommandBuffers);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -278,63 +278,63 @@ private:
 #pragma mark Command creation functions
 
 /** Adds a begin render pass command to the specified command buffer. */
-void mvkCmdBeginRenderPass(VkCommandBuffer commandBuffer,
+void mvkCmdBeginRenderPass(MVKCommandBuffer* cmdBuff,
 						   const VkRenderPassBeginInfo* pRenderPassBegin,
 						   VkSubpassContents contents);
 
 /** Adds a next render pass command to the specified command buffer. */
-void mvkCmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents);
+void mvkCmdNextSubpass(MVKCommandBuffer* cmdBuff, VkSubpassContents contents);
 
 /** Adds an end render pass command to the specified command buffer. */
-void mvkCmdEndRenderPass(VkCommandBuffer commandBuffer);
+void mvkCmdEndRenderPass(MVKCommandBuffer* cmdBuff);
 
 /** Adds an execute commands command to the specified command buffer. */
-void mvkCmdExecuteCommands(VkCommandBuffer commandBuffer,
-						   uint32_t cmdBuffersCount,
-						   const VkCommandBuffer* pCmdBuffers);
+void mvkCmdExecuteCommands(MVKCommandBuffer* cmdBuff,
+						   uint32_t commandBufferCount,
+						   const VkCommandBuffer* pCommandBuffers);
 
 /** Adds a set viewport command to the specified command buffer. */
-void mvkCmdSetViewport(VkCommandBuffer commandBuffer,
+void mvkCmdSetViewport(MVKCommandBuffer* cmdBuff,
 					   uint32_t firstViewport,
 					   uint32_t viewportCount,
 					   const VkViewport* pViewports);
 
 /** Adds a set scissor command to the specified command buffer. */
-void mvkCmdSetScissor(VkCommandBuffer commandBuffer,
+void mvkCmdSetScissor(MVKCommandBuffer* cmdBuff,
 					  uint32_t firstScissor,
 					  uint32_t scissorCount,
 					  const VkRect2D* pScissors);
 
 /** Adds a set line width command to the specified command buffer. */
-void mvkCmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth);
+void mvkCmdSetLineWidth(MVKCommandBuffer* cmdBuff, float lineWidth);
 
 /** Adds a set depth bias command to the specified command buffer. */
-void mvkCmdSetDepthBias(VkCommandBuffer commandBuffer,
+void mvkCmdSetDepthBias(MVKCommandBuffer* cmdBuff,
                         float depthBiasConstantFactor,
                         float depthBiasClamp,
                         float depthBiasSlopeFactor);
 
 /** Adds a set blend constants command to the specified command buffer. */
-void mvkCmdSetBlendConstants(VkCommandBuffer commandBuffer,
+void mvkCmdSetBlendConstants(MVKCommandBuffer* cmdBuff,
                              const float blendConst[4]);
 
 /** Adds a set depth bounds command to the specified command buffer. */
-void mvkCmdSetDepthBounds(VkCommandBuffer commandBuffer,
+void mvkCmdSetDepthBounds(MVKCommandBuffer* cmdBuff,
                           float minDepthBounds,
                           float maxDepthBounds);
 
 /** Adds a set stencil compare mask command to the specified command buffer. */
-void mvkCmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
+void mvkCmdSetStencilCompareMask(MVKCommandBuffer* cmdBuff,
                                  VkStencilFaceFlags faceMask,
                                  uint32_t stencilCompareMask);
 
 /** Adds a set stencil write mask command to the specified command buffer. */
-void mvkCmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
+void mvkCmdSetStencilWriteMask(MVKCommandBuffer* cmdBuff,
                                VkStencilFaceFlags faceMask,
                                uint32_t stencilWriteMask);
 
 /** Adds a set stencil reference value command to the specified command buffer. */
-void mvkCmdSetStencilReference(VkCommandBuffer commandBuffer,
+void mvkCmdSetStencilReference(MVKCommandBuffer* cmdBuff,
                                VkStencilFaceFlags faceMask,
                                uint32_t stencilReference);
 

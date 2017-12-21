@@ -30,7 +30,7 @@ MVK_PUBLIC_SYMBOL void vkGetMoltenVKDeviceConfigurationMVK(
     VkDevice                                    device,
     MVKDeviceConfiguration*                     pConfiguration) {
 
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     if (pConfiguration) { *pConfiguration = mvkDev->_mvkConfig; }
 }
 
@@ -38,7 +38,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKDeviceConfigurationMVK(
     VkDevice                                    device,
     MVKDeviceConfiguration*                     pConfiguration) {
 
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     if (pConfiguration) { *(MVKDeviceConfiguration*)&mvkDev->_mvkConfig = *pConfiguration; }
     return VK_SUCCESS;
 }
@@ -47,7 +47,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMetalFeaturesMVK(
     VkPhysicalDevice                            physicalDevice,
     MVKPhysicalDeviceMetalFeatures*             pMetalFeatures) {
     
-    MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
     mvkPD->getMetalFeatures(pMetalFeatures);
 }
 
@@ -64,7 +64,7 @@ MVK_PUBLIC_SYMBOL void vkGetShaderCompilationPerformanceMVK(
     VkDevice                                    device,
     MVKShaderCompilationPerformance*            pShaderCompPerf) {
 
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->getShaderCompilationPerformanceStatistics(pShaderCompPerf);
 }
 
@@ -99,7 +99,7 @@ MVK_PUBLIC_SYMBOL void vkGetMTLDeviceMVK(
     VkPhysicalDevice                           physicalDevice,
     id<MTLDevice>*                             pMTLDevice) {
 
-    MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
     *pMTLDevice = mvkPD->getMTLDevice();
 }
 

@@ -11,8 +11,13 @@ For best results, use a Markdown reader.*
 Table of Contents
 -----------------
 
-- [Using the *Vulkan-Hpp* Spec Repository with **MoltenVK**](#install_vulkan_spec)
-- [Updating the *Vulkan-Hpp* library version](#update_vulkan_spec)
+- *Vulkan-Hpp*
+	- [Using the *Vulkan-Hpp* Spec Repository with **MoltenVK**](#install_vulkan_spec)
+	- [Updating the *Vulkan-Hpp* library version](#update_vulkan_spec)
+
+- *Vulkan-LoaderAndValidationLayers*
+	- [Using the *Vulkan-LoaderAndValidationLayers* Repository with **MoltenVK**](#install_vulkan_lvl)
+	- [Updating the *Vulkan-LoaderAndValidationLayers* library version](#update_vulkan_lvl)
 
 
 <a name="install_vulkan_spec"></a>
@@ -55,6 +60,37 @@ used by **MoltenVK** to the latest version available by re-cloning and re-buildi
 
 	cd External
 	./getLatestVulkanSpec
+
+The updated version will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
+
+
+
+<a name="install_vulkan_lvl"></a>
+Using the *Vulkan-LoaderAndValidationLayers* Spec Repository with *MoltenVK*
+----------------------------------------------------------------------------
+
+**MoltenVK** uses the *Khronos Vulkan Loader and Validation Layers* repository to allow **MoltenVK** 
+to act as an *Installable Client Driver* to support the *Vulkan Loader API*.
+
+If you used the `--recursive` option when cloning the `MoltenVK` repository, you should already
+have the `Vulkan-LoaderAndValidationLayers` submodule. If you did **_not_** use the `--recursive` 
+option when cloning the `MoltenVK` repository, retrieve the `Vulkan-LoaderAndValidationLayers` 
+submodule into the `External` directory as follows, from within the `MoltenVK` repository directory:
+
+	git submodule update --init External/Vulkan-LoaderAndValidationLayers
+
+
+
+<a name="update_vulkan_lvl"></a>
+Updating the *Vulkan-LoaderAndValidationLayers* library version
+---------------------------------------------------------------
+
+If you are developing enhancements to **MoltenVK**, you can update the version of `Vulkan-LoaderAndValidationLayers` 
+used by **MoltenVK** to the latest version available by re-cloning and re-building the `Vulkan-LoaderAndValidationLayers` 
+submodule using the `getLatestVulkanLVL` script:
+
+	cd External
+	./getLatestVulkanLVL
 
 The updated version will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
 

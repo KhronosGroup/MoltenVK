@@ -183,7 +183,7 @@ MVKCmdPushConstants::MVKCmdPushConstants(MVKCommandTypePool<MVKCmdPushConstants>
 #pragma mark -
 #pragma mark Command creation functions
 
-void mvkCmdPipelineBarrier(VkCommandBuffer commandBuffer,
+void mvkCmdPipelineBarrier(MVKCommandBuffer* cmdBuff,
 						   VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   VkDependencyFlags dependencyFlags,
@@ -193,8 +193,6 @@ void mvkCmdPipelineBarrier(VkCommandBuffer commandBuffer,
 						   const VkBufferMemoryBarrier* pBufferMemoryBarriers,
 						   uint32_t imageMemoryBarrierCount,
 						   const VkImageMemoryBarrier* pImageMemoryBarriers) {
-
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
 	MVKCmdPipelineBarrier* cmd = cmdBuff->_commandPool->_cmdPipelineBarrierPool.acquireObject();
 	cmd->setContent(srcStageMask, dstStageMask, dependencyFlags,
 					memoryBarrierCount, pMemoryBarriers,
@@ -203,17 +201,15 @@ void mvkCmdPipelineBarrier(VkCommandBuffer commandBuffer,
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdBindPipeline(VkCommandBuffer cmdBuffer,
+void mvkCmdBindPipeline(MVKCommandBuffer* cmdBuff,
 						VkPipelineBindPoint pipelineBindPoint,
 						VkPipeline pipeline) {
-
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)cmdBuffer;
 	MVKCmdBindPipeline* cmd = cmdBuff->_commandPool->_cmdBindPipelinePool.acquireObject();
 	cmd->setContent(pipelineBindPoint, pipeline);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdBindDescriptorSets(VkCommandBuffer cmdBuffer,
+void mvkCmdBindDescriptorSets(MVKCommandBuffer* cmdBuff,
 							  VkPipelineBindPoint pipelineBindPoint,
 							  VkPipelineLayout layout,
 							  uint32_t firstSet,
@@ -221,20 +217,17 @@ void mvkCmdBindDescriptorSets(VkCommandBuffer cmdBuffer,
 							  const VkDescriptorSet* pDescriptorSets,
 							  uint32_t dynamicOffsetCount,
 							  const uint32_t* pDynamicOffsets) {
-
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)cmdBuffer;
 	MVKCmdBindDescriptorSets* cmd = cmdBuff->_commandPool->_cmdBindDescriptorSetsPool.acquireObject();
 	cmd->setContent(pipelineBindPoint, layout, firstSet, setCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdPushConstants(VkCommandBuffer cmdBuffer,
+void mvkCmdPushConstants(MVKCommandBuffer* cmdBuff,
 						 VkPipelineLayout layout,
 						 VkShaderStageFlags stageFlags,
 						 uint32_t offset,
 						 uint32_t size,
 						 const void* pValues) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)cmdBuffer;
 	MVKCmdPushConstants* cmd = cmdBuff->_commandPool->_cmdPushConstantsPool.acquireObject();
 	cmd->setContent(layout, stageFlags, offset, size, pValues);
 	cmdBuff->addCommand(cmd);

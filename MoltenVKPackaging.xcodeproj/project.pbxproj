@@ -141,6 +141,7 @@
 		A939A6FD1F547A12006ACA0C /* makeglslang */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeglslang; sourceTree = "<group>"; };
 		A939A6FE1F547A12006ACA0C /* makeSPIRVTools */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeSPIRVTools; sourceTree = "<group>"; };
 		A939A6FF1F547A12006ACA0C /* makeVulkanSpec */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeVulkanSpec; sourceTree = "<group>"; };
+		A94545691FEB1C23000C2CB2 /* getLatestVulkanLVL */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestVulkanLVL; sourceTree = "<group>"; };
 		A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Runtime_UserGuide.md; path = Docs/MoltenVK_Runtime_UserGuide.md; sourceTree = "<group>"; };
 		A9B732A31FC9C588006721CB /* getLatestglslang */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestglslang; sourceTree = "<group>"; };
 		A9B732A41FC9C588006721CB /* getLatestSPIRVTools */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestSPIRVTools; sourceTree = "<group>"; };
@@ -191,6 +192,7 @@
 				A9B732A31FC9C588006721CB /* getLatestglslang */,
 				A9B732A51FC9C588006721CB /* getLatestSPIRVCross */,
 				A9B732A41FC9C588006721CB /* getLatestSPIRVTools */,
+				A94545691FEB1C23000C2CB2 /* getLatestVulkanLVL */,
 				A9B732A61FC9C588006721CB /* getLatestVulkanSpec */,
 			);
 			path = External;
@@ -214,7 +216,7 @@
 		A90B2B1D1A9B6170008EE819 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0910;
+				LastUpgradeCheck = 0920;
 				TargetAttributes = {
 					A9FEADBC1F3517480010240E = {
 						DevelopmentTeam = VU3TCKU48B;

@@ -47,7 +47,7 @@ VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPh
 
 	// Now populate the devices
 	for (uint32_t pdIdx = 0; pdIdx < *pCount; pdIdx++) {
-		pPhysicalDevices[pdIdx] = (VkPhysicalDevice)_physicalDevices[pdIdx];
+		pPhysicalDevices[pdIdx] = _physicalDevices[pdIdx]->getVkPhysicalDevice();
 	}
 
 	return result;

@@ -19,6 +19,7 @@
 #pragma once
 
 #include <vulkan/vulkan.h>
+#include <vulkan/vk_icd.h>
 #include <string>
 
 
@@ -64,4 +65,37 @@ public:
 
 protected:
 	VkResult _configurationResult = VK_SUCCESS;
+};
+
+
+#pragma mark -
+#pragma mark MVKDispatchableObject
+
+/** Abstract class that represents an object that can be used as a Vulkan API dispatchable object. */
+class MVKDispatchableObject : public MVKConfigurableObject {
+
+    typedef struct {
+        VK_LOADER_DATA loaderData;
+        MVKDispatchableObject* mvkObject;
+    } MVKDispatchableObjectICDRef;
+
+public:
+
+    /**
+     * Returns a reference to this object suitable for use as a Vulkan API handle.
+     * This is the compliment of the getDispatchableObject() method.
+     */
+    inline void* getVkHandle() { return &_icdRef; }
+
+    /**
+     * Retrieves the MVKDispatchableObject instance referenced by the dispatchable Vulkan handle.
+     * This is the compliment of the getVkHandle() method.
+     */
+    static inline MVKDispatchableObject* getDispatchableObject(void* vkHandle) {
+        return ((MVKDispatchableObjectICDRef*)vkHandle)->mvkObject;
+    }
+
+protected:
+    MVKDispatchableObjectICDRef _icdRef = { ICD_LOADER_MAGIC, this };
+
 };

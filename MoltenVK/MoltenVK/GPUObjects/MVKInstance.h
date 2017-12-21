@@ -31,7 +31,7 @@ class MVKPhysicalDevice;
 #pragma mark MVKInstance
 
 /** Represents a Vulkan instance. */
-class MVKInstance : public MVKConfigurableObject {
+class MVKInstance : public MVKDispatchableObject {
 
 public:
 
@@ -79,6 +79,20 @@ public:
 	MVKInstance(const VkInstanceCreateInfo* pCreateInfo);
 
 	~MVKInstance() override;
+
+    /**
+     * Returns a reference to this object suitable for use as a Vulkan API handle.
+     * This is the compliment of the getMVKInstance() method.
+     */
+    inline VkInstance getVkInstance() { return (VkInstance)getVkHandle(); }
+
+    /**
+     * Retrieves the MVKInstance instance referenced by the VkInstance handle.
+     * This is the compliment of the getVkInstance() method.
+     */
+    static inline MVKInstance* getMVKInstance(VkInstance vkInstance) {
+        return (MVKInstance*)getDispatchableObject(vkInstance);
+    }
 
 protected:
 	void initProcAddrs();

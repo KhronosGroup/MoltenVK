@@ -192,7 +192,7 @@ void MVKQueue::mtlCommandBufferHasCompleted(id<MTLCommandBuffer> mtlCmdBuff,
 #define MVK_DISPATCH_QUEUE_QOS_CLASS		QOS_CLASS_USER_INITIATED
 
 MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority)
-        : MVKBaseDeviceObject(device), _commandEncodingPool(device) {
+        : MVKDispatchableDeviceObject(device), _commandEncodingPool(device) {
 
 	_queueFamily = queueFamily;
 	_index = index;
@@ -342,7 +342,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
         uint32_t cbCnt = pSubmit->commandBufferCount;
         _cmdBuffers.reserve(cbCnt);
         for (uint32_t i = 0; i < cbCnt; i++) {
-            MVKCommandBuffer* cb = (MVKCommandBuffer*)pSubmit->pCommandBuffers[i];
+            MVKCommandBuffer* cb = MVKCommandBuffer::getMVKCommandBuffer(pSubmit->pCommandBuffers[i]);
             _cmdBuffers.push_back(cb);
             recordResult(cb->getRecordingResult());
         }

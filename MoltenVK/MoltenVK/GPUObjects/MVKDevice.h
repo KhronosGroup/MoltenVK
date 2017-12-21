@@ -72,7 +72,7 @@ class MVKCommandResourceFactory;
 #pragma mark MVKPhysicalDevice
 
 /** Represents a Vulkan physical GPU device. */
-class MVKPhysicalDevice : public MVKConfigurableObject {
+class MVKPhysicalDevice : public MVKDispatchableObject {
 
 public:
 
@@ -207,6 +207,20 @@ public:
 	/** Default destructor. */
 	~MVKPhysicalDevice() override;
 
+    /**
+     * Returns a reference to this object suitable for use as a Vulkan API handle.
+     * This is the compliment of the getMVKPhysicalDevice() method.
+     */
+    inline VkPhysicalDevice getVkPhysicalDevice() { return (VkPhysicalDevice)getVkHandle(); }
+
+    /**
+     * Retrieves the MVKPhysicalDevice instance referenced by the VkPhysicalDevice handle.
+     * This is the compliment of the getVkPhysicalDevice() method.
+     */
+    static inline MVKPhysicalDevice* getMVKPhysicalDevice(VkPhysicalDevice vkPhysicalDevice) {
+        return (MVKPhysicalDevice*)getDispatchableObject(vkPhysicalDevice);
+    }
+
 private:
 	friend class MVKDevice;
 
@@ -236,7 +250,7 @@ private:
 #pragma mark MVKDevice
 
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
-class MVKDevice : public MVKConfigurableObject {
+class MVKDevice : public MVKDispatchableObject {
 
 public:
 
@@ -470,6 +484,20 @@ public:
 
 	~MVKDevice() override;
 
+    /**
+     * Returns a reference to this object suitable for use as a Vulkan API handle.
+     * This is the compliment of the getMVKDevice() method.
+     */
+    inline VkDevice getVkDevice() { return (VkDevice)getVkHandle(); }
+
+    /**
+     * Retrieves the MVKDevice instance referenced by the VkDevice handle.
+     * This is the compliment of the getVkDevice() method.
+     */
+    static inline MVKDevice* getMVKDevice(VkDevice vkDevice) {
+        return (MVKDevice*)getDispatchableObject(vkDevice);
+    }
+
 protected:
 	MVKResource* addResource(MVKResource* rez);
 	MVKResource* removeResource(MVKResource* rez);
@@ -520,6 +548,28 @@ public:
 
 protected:
 	MVKDevice* _device;
+};
+
+
+#pragma mark -
+#pragma mark MVKDispatchableDeviceObject
+
+/** Represents a dispatchable object that is spawned from a Vulkan device, and tracks that device. */
+class MVKDispatchableDeviceObject : public MVKDispatchableObject {
+
+public:
+
+    /** Returns the device for which this object was created. */
+    inline MVKDevice* getDevice() { return _device; }
+
+    /** Returns the underlying Metal device. */
+    inline id<MTLDevice> getMTLDevice() { return _device->getMTLDevice(); }
+
+    /** Constructs an instance for the specified device. */
+    MVKDispatchableDeviceObject(MVKDevice* device) : _device(device) {}
+
+protected:
+    MVKDevice* _device;
 };
 
 
