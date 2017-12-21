@@ -124,7 +124,7 @@ bool MVKCommandBuffer::canExecute() {
 #pragma mark Construction
 
 MVKCommandBuffer::MVKCommandBuffer(MVKDevice* device,
-								   const VkCommandBufferAllocateInfo* pAllocateInfo) : MVKBaseDeviceObject(device) {
+								   const VkCommandBufferAllocateInfo* pAllocateInfo) : MVKDispatchableDeviceObject(device) {
 
 	_commandPool = (MVKCommandPool*)pAllocateInfo->commandPool;
 	_commandPool->addCommandBuffer(this);

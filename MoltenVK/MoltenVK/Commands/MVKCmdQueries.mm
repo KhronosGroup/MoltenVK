@@ -130,46 +130,42 @@ MVKCmdCopyQueryPoolResults::MVKCmdCopyQueryPoolResults(MVKCommandTypePool<MVKCmd
 #pragma mark -
 #pragma mark Command creation functions
 
-void mvkCmdBeginQuery(VkCommandBuffer commandBuffer,
+void mvkCmdBeginQuery(MVKCommandBuffer* cmdBuff,
                       VkQueryPool queryPool,
                       uint32_t query,
                       VkQueryControlFlags flags) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdBeginQuery* cmd = cmdBuff->_commandPool->_cmdBeginQueryPool.acquireObject();
     cmd->setContent(queryPool, query, flags);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdEndQuery(VkCommandBuffer commandBuffer,
+void mvkCmdEndQuery(MVKCommandBuffer* cmdBuff,
                     VkQueryPool queryPool,
                     uint32_t query) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdEndQuery* cmd = cmdBuff->_commandPool->_cmdEndQueryPool.acquireObject();
     cmd->setContent(queryPool, query);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdWriteTimestamp(VkCommandBuffer commandBuffer,
+void mvkCmdWriteTimestamp(MVKCommandBuffer* cmdBuff,
 						  VkPipelineStageFlagBits pipelineStage,
 						  VkQueryPool queryPool,
 						  uint32_t query) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
 	MVKCmdWriteTimestamp* cmd = cmdBuff->_commandPool->_cmdWriteTimestampPool.acquireObject();
 	cmd->setContent(pipelineStage, queryPool, query);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdResetQueryPool(VkCommandBuffer commandBuffer,
+void mvkCmdResetQueryPool(MVKCommandBuffer* cmdBuff,
                           VkQueryPool queryPool,
                           uint32_t firstQuery,
                           uint32_t queryCount) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdResetQueryPool* cmd = cmdBuff->_commandPool->_cmdResetQueryPoolPool.acquireObject();
     cmd->setContent(queryPool, firstQuery, queryCount);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
+void mvkCmdCopyQueryPoolResults(MVKCommandBuffer* cmdBuff,
                                 VkQueryPool queryPool,
                                 uint32_t firstQuery,
                                 uint32_t queryCount,
@@ -177,7 +173,6 @@ void mvkCmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
                                 VkDeviceSize destOffset,
                                 VkDeviceSize destStride,
                                 VkQueryResultFlags flags) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdCopyQueryPoolResults* cmd = cmdBuff->_commandPool->_cmdCopyQueryPoolResultsPool.acquireObject();
     cmd->setContent(queryPool, firstQuery, queryCount, destBuffer, destOffset, destStride, flags);
     cmdBuff->addCommand(cmd);

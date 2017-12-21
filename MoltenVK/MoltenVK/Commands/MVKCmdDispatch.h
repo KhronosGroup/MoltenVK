@@ -68,8 +68,8 @@ protected:
 #pragma mark Command creation functions
 
 /** Adds a compute threadgroup dispatch command to the specified command buffer. */
-void mvkCmdDispatch(VkCommandBuffer commandBuffer, uint32_t x, uint32_t y, uint32_t z);
+void mvkCmdDispatch(MVKCommandBuffer* cmdBuff, uint32_t x, uint32_t y, uint32_t z);
 
 /** Adds an indirect compute threadgroup dispatch command to the specified command buffer. */
-void mvkCmdDispatchIndirect(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize offset);
+void mvkCmdDispatchIndirect(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset);
 

@@ -683,7 +683,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0910;
+				LastUpgradeCheck = 0920;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9B8EE091A98D796009C5A02 = {
@@ -973,6 +973,7 @@
 				GENERATE_MASTER_OBJECT_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
+					"\"$(SRCROOT)/../External/Vulkan-LoaderAndValidationLayers/include\"",
 					"\"$(SRCROOT)/../MoltenVKShaderConverter\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
@@ -1030,6 +1031,7 @@
 				GENERATE_MASTER_OBJECT_FILE = YES;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
+					"\"$(SRCROOT)/../External/Vulkan-LoaderAndValidationLayers/include\"",
 					"\"$(SRCROOT)/../MoltenVKShaderConverter\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;

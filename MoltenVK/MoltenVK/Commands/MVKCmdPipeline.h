@@ -135,7 +135,7 @@ private:
 #pragma mark Command creation functions
 
 /** Adds commands to the specified command buffer that insert the specified pipeline barriers. */
-void mvkCmdPipelineBarrier(VkCommandBuffer commandBuffer,
+void mvkCmdPipelineBarrier(MVKCommandBuffer* cmdBuff,
 						   VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   VkDependencyFlags dependencyFlags,
@@ -147,12 +147,12 @@ void mvkCmdPipelineBarrier(VkCommandBuffer commandBuffer,
 						   const VkImageMemoryBarrier* pImageMemoryBarriers);
 
 /** Adds a command to the specified command buffer that binds the specified pipeline. */
-void mvkCmdBindPipeline(VkCommandBuffer cmdBuffer,
+void mvkCmdBindPipeline(MVKCommandBuffer* cmdBuff,
 						VkPipelineBindPoint pipelineBindPoint,
 						VkPipeline pipeline);
 
 /** Adds commands to the specified command buffer that insert the specified descriptor sets. */
-void mvkCmdBindDescriptorSets(VkCommandBuffer cmdBuffer,
+void mvkCmdBindDescriptorSets(MVKCommandBuffer* cmdBuff,
 							  VkPipelineBindPoint pipelineBindPoint,
 							  VkPipelineLayout layout,
 							  uint32_t firstSet,
@@ -162,7 +162,7 @@ void mvkCmdBindDescriptorSets(VkCommandBuffer cmdBuffer,
 							  const uint32_t* pDynamicOffsets);
 
 /** Adds a vertex bind command to the specified command buffer. */
-void mvkCmdPushConstants(VkCommandBuffer cmdBuffer,
+void mvkCmdPushConstants(MVKCommandBuffer* cmdBuff,
 						 VkPipelineLayout layout,
 						 VkShaderStageFlags stageFlags,
 						 uint32_t offset,

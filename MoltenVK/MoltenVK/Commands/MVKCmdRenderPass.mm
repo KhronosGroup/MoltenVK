@@ -83,12 +83,12 @@ MVKCmdEndRenderPass::MVKCmdEndRenderPass(MVKCommandTypePool<MVKCmdEndRenderPass>
 #pragma mark MVKCmdExecuteCommands
 
 void MVKCmdExecuteCommands::setContent(uint32_t commandBuffersCount,
-									   const VkCommandBuffer* pCmdBuffers) {
+									   const VkCommandBuffer* pCommandBuffers) {
 	// Add clear values
 	_secondaryCommandBuffers.clear();	// Clear for reuse
 	_secondaryCommandBuffers.reserve(commandBuffersCount);
-	for (uint32_t i = 0; i < commandBuffersCount; i++) {
-		_secondaryCommandBuffers.push_back((MVKCommandBuffer*)pCmdBuffers[i]);
+	for (uint32_t cbIdx = 0; cbIdx < commandBuffersCount; cbIdx++) {
+		_secondaryCommandBuffers.push_back(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
 	}
 }
 
@@ -272,118 +272,104 @@ MVKCmdSetStencilReference::MVKCmdSetStencilReference(MVKCommandTypePool<MVKCmdSe
 #pragma mark -
 #pragma mark Command creation functions
 
-void mvkCmdBeginRenderPass(VkCommandBuffer commandBuffer,
+void mvkCmdBeginRenderPass(MVKCommandBuffer* cmdBuff,
 						   const VkRenderPassBeginInfo* pRenderPassBegin,
 						   VkSubpassContents contents) {
-
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
 	MVKCmdBeginRenderPass* cmd = cmdBuff->_commandPool->_cmdBeginRenderPassPool.acquireObject();
 	cmd->setContent(pRenderPassBegin, contents);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdNextSubpass(VkCommandBuffer commandBuffer, VkSubpassContents contents) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
+void mvkCmdNextSubpass(MVKCommandBuffer* cmdBuff, VkSubpassContents contents) {
 	MVKCmdNextSubpass* cmd = cmdBuff->_commandPool->_cmdNextSubpassPool.acquireObject();
 	cmd->setContent(contents);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdEndRenderPass(VkCommandBuffer commandBuffer) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
+void mvkCmdEndRenderPass(MVKCommandBuffer* cmdBuff) {
 	MVKCmdEndRenderPass* cmd = cmdBuff->_commandPool->_cmdEndRenderPassPool.acquireObject();
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdExecuteCommands(VkCommandBuffer commandBuffer,
+void mvkCmdExecuteCommands(MVKCommandBuffer* cmdBuff,
 						   uint32_t commandBuffersCount,
-						   const VkCommandBuffer* pCmdBuffers) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
+						   const VkCommandBuffer* pCommandBuffers) {
 	MVKCmdExecuteCommands* cmd = cmdBuff->_commandPool->_cmdExecuteCommandsPool.acquireObject();
-	cmd->setContent(commandBuffersCount, pCmdBuffers);
+	cmd->setContent(commandBuffersCount, pCommandBuffers);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdSetViewport(VkCommandBuffer commandBuffer,
+void mvkCmdSetViewport(MVKCommandBuffer* cmdBuff,
 					   uint32_t firstViewport,
 					   uint32_t viewportCount,
 					   const VkViewport* pViewports) {
 	if (viewportCount == 0 || firstViewport > 0) { return; }		// Nothing to set
 
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
 	MVKCmdSetViewport* cmd = cmdBuff->_commandPool->_cmdSetViewportPool.acquireObject();
 	cmd->setContent(firstViewport, viewportCount, pViewports);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdSetScissor(VkCommandBuffer commandBuffer,
+void mvkCmdSetScissor(MVKCommandBuffer* cmdBuff,
 					  uint32_t firstScissor,
 					  uint32_t scissorCount,
 					  const VkRect2D* pScissors) {
 	if (scissorCount == 0) { return; }		// Nothing to set
 
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
 	MVKCmdSetScissor* cmd = cmdBuff->_commandPool->_cmdSetScissorPool.acquireObject();
 	cmd->setContent(firstScissor, scissorCount, pScissors);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdSetLineWidth(VkCommandBuffer commandBuffer, float lineWidth) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
+void mvkCmdSetLineWidth(MVKCommandBuffer* cmdBuff, float lineWidth) {
     MVKCmdSetLineWidth* cmd = cmdBuff->_commandPool->_cmdSetLineWidthPool.acquireObject();
     cmd->setContent(lineWidth);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdSetDepthBias(VkCommandBuffer commandBuffer,
+void mvkCmdSetDepthBias(MVKCommandBuffer* cmdBuff,
                         float depthBiasConstantFactor,
                         float depthBiasClamp,
                         float depthBiasSlopeFactor) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdSetDepthBias* cmd = cmdBuff->_commandPool->_cmdSetDepthBiasPool.acquireObject();
     cmd->setContent(depthBiasConstantFactor, depthBiasSlopeFactor, depthBiasClamp);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdSetBlendConstants(VkCommandBuffer commandBuffer,
+void mvkCmdSetBlendConstants(MVKCommandBuffer* cmdBuff,
                              const float blendConst[4]) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdSetBlendConstants* cmd = cmdBuff->_commandPool->_cmdSetBlendConstantsPool.acquireObject();
     cmd->setContent(blendConst);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdSetDepthBounds(VkCommandBuffer commandBuffer,
+void mvkCmdSetDepthBounds(MVKCommandBuffer* cmdBuff,
                           float minDepthBounds,
                           float maxDepthBounds) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdSetDepthBounds* cmd = cmdBuff->_commandPool->_cmdSetDepthBoundsPool.acquireObject();
     cmd->setContent(minDepthBounds, maxDepthBounds);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdSetStencilCompareMask(VkCommandBuffer commandBuffer,
+void mvkCmdSetStencilCompareMask(MVKCommandBuffer* cmdBuff,
                                  VkStencilFaceFlags faceMask,
                                  uint32_t stencilCompareMask) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdSetStencilCompareMask* cmd = cmdBuff->_commandPool->_cmdSetStencilCompareMaskPool.acquireObject();
     cmd->setContent(faceMask, stencilCompareMask);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdSetStencilWriteMask(VkCommandBuffer commandBuffer,
+void mvkCmdSetStencilWriteMask(MVKCommandBuffer* cmdBuff,
                                VkStencilFaceFlags faceMask,
                                uint32_t stencilWriteMask) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdSetStencilWriteMask* cmd = cmdBuff->_commandPool->_cmdSetStencilWriteMaskPool.acquireObject();
     cmd->setContent(faceMask, stencilWriteMask);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdSetStencilReference(VkCommandBuffer commandBuffer,
+void mvkCmdSetStencilReference(MVKCommandBuffer* cmdBuff,
                                VkStencilFaceFlags faceMask,
                                uint32_t stencilReference) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdSetStencilReference* cmd = cmdBuff->_commandPool->_cmdSetStencilReferencePool.acquireObject();
     cmd->setContent(faceMask, stencilReference);
     cmdBuff->addCommand(cmd);

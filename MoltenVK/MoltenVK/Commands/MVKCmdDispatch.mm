@@ -73,15 +73,13 @@ MVKCmdDispatchIndirect::MVKCmdDispatchIndirect(MVKCommandTypePool<MVKCmdDispatch
 #pragma mark -
 #pragma mark Command creation functions
 
-void mvkCmdDispatch(VkCommandBuffer cmdBuffer, uint32_t x, uint32_t y, uint32_t z) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)cmdBuffer;
+void mvkCmdDispatch(MVKCommandBuffer* cmdBuff, uint32_t x, uint32_t y, uint32_t z) {
 	MVKCmdDispatch* cmd = cmdBuff->_commandPool->_cmdDispatchPool.acquireObject();
 	cmd->setContent(x, y, z);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdDispatchIndirect(VkCommandBuffer cmdBuffer, VkBuffer buffer, VkDeviceSize offset) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)cmdBuffer;
+void mvkCmdDispatchIndirect(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
 	MVKCmdDispatchIndirect* cmd = cmdBuff->_commandPool->_cmdDispatchIndirectPool.acquireObject();
 	cmd->setContent(buffer, offset);
 	cmdBuff->addCommand(cmd);

@@ -932,7 +932,7 @@ PFN_vkVoidFunction MVKDevice::getProcAddr(const char* pName) {
 }
 
 VkResult MVKDevice::getDeviceQueue(uint32_t queueFamilyIndex, uint32_t queueIndex, VkQueue* pQueue) {
-	*pQueue = (VkQueue)_queueFamilies[queueFamilyIndex]->getQueue(queueIndex);
+	*pQueue = _queueFamilies[queueFamilyIndex]->getQueue(queueIndex)->getVkQueue();
 	return VK_SUCCESS;
 }
 

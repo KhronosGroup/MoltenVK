@@ -336,7 +336,7 @@ protected:
 #pragma mark Command creation functions
 
 /** Adds a copy image command to the specified command buffer. */
-void mvkCmdCopyImage(VkCommandBuffer commandBuffer,
+void mvkCmdCopyImage(MVKCommandBuffer* cmdBuff,
 					 VkImage srcImage,
 					 VkImageLayout srcImageLayout,
 					 VkImage dstImage,
@@ -345,7 +345,7 @@ void mvkCmdCopyImage(VkCommandBuffer commandBuffer,
 					 const VkImageCopy* pRegions);
 
 /** Adds a BLIT image command to the specified command buffer. */
-void mvkCmdBlitImage(VkCommandBuffer commandBuffer,
+void mvkCmdBlitImage(MVKCommandBuffer* cmdBuff,
 					 VkImage srcImage,
 					 VkImageLayout srcImageLayout,
 					 VkImage dstImage,
@@ -355,7 +355,7 @@ void mvkCmdBlitImage(VkCommandBuffer commandBuffer,
 					 VkFilter filter);
 
 /** Adds a resolve image command to the specified command buffer. */
-void mvkCmdResolveImage(VkCommandBuffer commandBuffer,
+void mvkCmdResolveImage(MVKCommandBuffer* cmdBuff,
                      VkImage srcImage,
                      VkImageLayout srcImageLayout,
                      VkImage dstImage,
@@ -364,14 +364,14 @@ void mvkCmdResolveImage(VkCommandBuffer commandBuffer,
                      const VkImageResolve* pRegions);
 
 /** Adds a copy buffer command to the specified command buffer. */
-void mvkCmdCopyBuffer(VkCommandBuffer commandBuffer,
+void mvkCmdCopyBuffer(MVKCommandBuffer* cmdBuff,
 					  VkBuffer srcBuffer,
 					  VkBuffer dstBuffer,
 					  uint32_t regionCount,
 					  const VkBufferCopy* pRegions);
 
 /** Adds a copy buffer to image command to the specified command buffer. */
-void mvkCmdCopyBufferToImage(VkCommandBuffer commandBuffer,
+void mvkCmdCopyBufferToImage(MVKCommandBuffer* cmdBuff,
                              VkBuffer srcBuffer,
                              VkImage dstImage,
                              VkImageLayout dstImageLayout,
@@ -379,7 +379,7 @@ void mvkCmdCopyBufferToImage(VkCommandBuffer commandBuffer,
                              const VkBufferImageCopy* pRegions);
 
 /** Adds a copy buffer to image command to the specified command buffer. */
-void mvkCmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
+void mvkCmdCopyImageToBuffer(MVKCommandBuffer* cmdBuff,
                              VkImage srcImage,
                              VkImageLayout srcImageLayout,
                              VkBuffer dstBuffer,
@@ -387,14 +387,14 @@ void mvkCmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
                              const VkBufferImageCopy* pRegions);
 
 /** Adds a clear attachments command to the specified command buffer. */
-void mvkCmdClearAttachments(VkCommandBuffer commandBuffer,
+void mvkCmdClearAttachments(MVKCommandBuffer* cmdBuff,
                             uint32_t attachmentCount,
                             const VkClearAttachment* pAttachments,
                             uint32_t rectCount,
                             const VkClearRect* pRects);
 
 /** Adds a clear color image command to the specified command buffer. */
-void mvkCmdClearImage(VkCommandBuffer commandBuffer,
+void mvkCmdClearImage(MVKCommandBuffer* cmdBuff,
                       VkImage image,
                       VkImageLayout imageLayout,
                       const VkClearColorValue* pColor,
@@ -402,7 +402,7 @@ void mvkCmdClearImage(VkCommandBuffer commandBuffer,
                       const VkImageSubresourceRange* pRanges);
 
 /** Adds a clear depth stencil image command to the specified command buffer. */
-void mvkCmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
+void mvkCmdClearDepthStencilImage(MVKCommandBuffer* cmdBuff,
                                   VkImage image,
                                   VkImageLayout imageLayout,
                                   const VkClearDepthStencilValue* pDepthStencil,
@@ -410,14 +410,14 @@ void mvkCmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
                                   const VkImageSubresourceRange* pRanges);
 
 /** Adds a fill buffer command to the specified command buffer. */
-void mvkCmdFillBuffer(VkCommandBuffer commandBuffer,
+void mvkCmdFillBuffer(MVKCommandBuffer* cmdBuff,
                       VkBuffer dstBuffer,
                       VkDeviceSize dstOffset,
                       VkDeviceSize size,
                       uint32_t data);
 
 /** Adds a buffer update command to the specified command buffer. */
-void mvkCmdUpdateBuffer(VkCommandBuffer commandBuffer,
+void mvkCmdUpdateBuffer(MVKCommandBuffer* cmdBuff,
                         VkBuffer dstBuffer,
                         VkDeviceSize dstOffset,
                         VkDeviceSize dataSize,

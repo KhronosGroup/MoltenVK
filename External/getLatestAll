@@ -16,3 +16,4 @@
 ./getLatestSPIRVTools
 ./getLatestglslang
 ./getLatestSPIRVCross
+./getLatestVulkanLVL

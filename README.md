@@ -193,6 +193,7 @@ Third-Party Credits
 
 - [*Vulkan-Hpp*](https://github.com/KhronosGroup/Vulkan-Hpp)
 - [*Vulkan-Docs*](https://github.com/KhronosGroup/Vulkan-Docs)
+- [*Vulkan-LoaderAndValidationLayers*](https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers)
 - [*tinyxml2*](https://github.com/leethomason/tinyxml2)
 
 **MoltenVKShaderConverter** uses technology from the following open-source frameworks:

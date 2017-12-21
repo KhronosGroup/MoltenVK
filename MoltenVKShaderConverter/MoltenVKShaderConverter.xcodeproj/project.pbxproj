@@ -1126,8 +1126,7 @@
 				A9B735B01FCA2450006721CB /* text_handler.cpp */,
 				A9B735B11FCA2450006721CB /* val */,
 			);
-			name = source;
-			path = "source";
+			path = source;
 			sourceTree = "<group>";
 		};
 		A9B734FE1FCA2450006721CB /* util */ = {
@@ -1920,7 +1919,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0910;
+				LastUpgradeCheck = 0920;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9092A8C1A81717B00051823 = {

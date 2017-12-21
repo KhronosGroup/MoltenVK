@@ -49,7 +49,7 @@ VkResult MVKCommandPool::allocateCommandBuffers(const VkCommandBufferAllocateInf
 	uint32_t cbCnt = pAllocateInfo->commandBufferCount;
 	for (uint32_t cbIdx = 0; cbIdx < cbCnt; cbIdx++) {
 		MVKCommandBuffer* mvkCmdBuff = new MVKCommandBuffer(_device, pAllocateInfo);
-		pCmdBuffer[cbIdx] = (VkCommandBuffer)mvkCmdBuff;
+        pCmdBuffer[cbIdx] = mvkCmdBuff->getVkCommandBuffer();
 		if (rslt == VK_SUCCESS) { rslt = mvkCmdBuff->getConfigurationResult(); }
 	}
 	return rslt;
@@ -58,7 +58,7 @@ VkResult MVKCommandPool::allocateCommandBuffers(const VkCommandBufferAllocateInf
 void MVKCommandPool::freeCommandBuffers(uint32_t commandBufferCount,
 										const VkCommandBuffer* pCommandBuffers) {
 	for (uint32_t cbIdx = 0; cbIdx < commandBufferCount; cbIdx++) {
-		MVKCommandBuffer* mvkCmdBuff = (MVKCommandBuffer*)pCommandBuffers[cbIdx];
+        MVKCommandBuffer* mvkCmdBuff = MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]);
 		delete mvkCmdBuff;
 	}
 }

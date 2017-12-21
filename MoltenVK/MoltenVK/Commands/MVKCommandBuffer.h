@@ -53,7 +53,7 @@ typedef struct {
 #pragma mark MVKCommandBuffer
 
 /** Represents a Vulkan command pool. */
-class MVKCommandBuffer : public MVKBaseDeviceObject {
+class MVKCommandBuffer : public MVKDispatchableDeviceObject {
 
 public:
 
@@ -126,6 +126,20 @@ public:
 	MVKCommandBuffer(MVKDevice* device, const VkCommandBufferAllocateInfo* pAllocateInfo);
 
 	~MVKCommandBuffer() override;
+
+    /**
+     * Returns a reference to this object suitable for use as a Vulkan API handle.
+     * This is the compliment of the getMVKCommandBuffer() method.
+     */
+    inline VkCommandBuffer getVkCommandBuffer() { return (VkCommandBuffer)getVkHandle(); }
+
+    /**
+     * Retrieves the MVKCommandBuffer instance referenced by the VkCommandBuffer handle.
+     * This is the compliment of the getVkCommandBuffer() method.
+     */
+    static inline MVKCommandBuffer* getMVKCommandBuffer(VkCommandBuffer vkCommandBuffer) {
+        return (MVKCommandBuffer*)getDispatchableObject(vkCommandBuffer);
+    }
 
 protected:
 	friend class MVKCommandEncoder;

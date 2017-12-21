@@ -143,30 +143,30 @@ protected:
 #pragma mark Command creation functions
 
 /** Adds a begin query command to the specified command buffer. */
-void mvkCmdBeginQuery(VkCommandBuffer commandBuffer,
+void mvkCmdBeginQuery(MVKCommandBuffer* cmdBuff,
                       VkQueryPool queryPool,
                       uint32_t query,
                       VkQueryControlFlags flags);
 
 /** Adds an end query command to the specified command buffer. */
-void mvkCmdEndQuery(VkCommandBuffer commandBuffer,
+void mvkCmdEndQuery(MVKCommandBuffer* cmdBuff,
                     VkQueryPool queryPool,
                     uint32_t query);
 
 /** Adds a write timestamp command to the specified command buffer. */
-void mvkCmdWriteTimestamp(VkCommandBuffer commandBuffer,
+void mvkCmdWriteTimestamp(MVKCommandBuffer* cmdBuff,
 						  VkPipelineStageFlagBits pipelineStage,
 						  VkQueryPool queryPool,
 						  uint32_t query);
 
 /** Adds a reset query pool command to the specified command buffer. */
-void mvkCmdResetQueryPool(VkCommandBuffer commandBuffer,
+void mvkCmdResetQueryPool(MVKCommandBuffer* cmdBuff,
                           VkQueryPool queryPool,
                           uint32_t firstQuery,
                           uint32_t queryCount);
 
 /** Adds a copy query pool results command to the specified command buffer. */
-void mvkCmdCopyQueryPoolResults(VkCommandBuffer commandBuffer,
+void mvkCmdCopyQueryPoolResults(MVKCommandBuffer* cmdBuff,
                                 VkQueryPool queryPool,
                                 uint32_t firstQuery,
                                 uint32_t queryCount,

@@ -52,7 +52,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateInstance(
     VkInstance*                                 pInstance) {
 
 	MVKInstance* mvkInst = new MVKInstance(pCreateInfo);
-	*pInstance = (VkInstance)(mvkInst);
+	*pInstance = mvkInst->getVkInstance();
 	return mvkInst->getConfigurationResult();
 }
 
@@ -60,7 +60,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyInstance(
     VkInstance                                  instance,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKInstance* mvkInst = (MVKInstance*)instance;
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
 	delete mvkInst;
 }
 
@@ -69,7 +69,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDevices(
     uint32_t*                                   pPhysicalDeviceCount,
     VkPhysicalDevice*                           pPhysicalDevices) {
 
-	MVKInstance* mvkInst = (MVKInstance*)instance;
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
 	return mvkInst->getPhysicalDevices(pPhysicalDeviceCount, pPhysicalDevices);
 }
 
@@ -77,7 +77,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceFeatures*                   pFeatures) {
 	
-	MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	mvkPD->getFeatures(pFeatures);
 }
 
@@ -86,7 +86,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFormatProperties(
     VkFormat                                    format,
     VkFormatProperties*                         pFormatProperties) {
 	
-	MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	mvkPD->getFormatProperties(format, pFormatProperties);
 }
 
@@ -99,7 +99,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties(
     VkImageCreateFlags                          flags,
     VkImageFormatProperties*                    pImageFormatProperties) {
 	
-    MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
     return mvkPD->getImageFormatProperties(format, type, tiling, usage, flags, pImageFormatProperties);
 }
 
@@ -107,7 +107,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceProperties*                 pProperties) {
 
-	MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	mvkPD->getProperties(pProperties);
 }
 
@@ -116,7 +116,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties(
 	uint32_t*                                   pCount,
 	VkQueueFamilyProperties*                    pQueueFamilyProperties) {
 	
-	MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	mvkPD->getQueueFamilyProperties(pCount, pQueueFamilyProperties);
 }
 
@@ -124,7 +124,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceMemoryProperties*           pMemoryProperties) {
 
-	MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	mvkPD->getPhysicalDeviceMemoryProperties(pMemoryProperties);
 }
 
@@ -138,7 +138,7 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
 	if (strcmp(pName, "vkEnumerateInstanceExtensionProperties") == 0) { return (PFN_vkVoidFunction)vkEnumerateInstanceExtensionProperties; }
 	if (strcmp(pName, "vkEnumerateInstanceLayerProperties") == 0) { return (PFN_vkVoidFunction)vkEnumerateInstanceLayerProperties; }
 
-	MVKInstance* mvkInst = (MVKInstance*)instance;
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
 	return mvkInst->getProcAddr(pName);
 }
 
@@ -146,7 +146,7 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetDeviceProcAddr(
     VkDevice                                    device,
     const char*                                 pName) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	return mvkDev->getProcAddr(pName);
 }
 
@@ -156,9 +156,9 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDevice(
 	const VkAllocationCallbacks*                pAllocator,
     VkDevice*                                   pDevice) {
 
-	MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	MVKDevice* mvkDev = new MVKDevice(mvkPD, pCreateInfo);
-	*pDevice = (VkDevice)(mvkDev);
+	*pDevice = mvkDev->getVkDevice();
 	return VK_SUCCESS;
 }
 
@@ -166,7 +166,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDevice(
 	VkDevice                                    device,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	delete mvkDev;
 }
 
@@ -184,7 +184,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateDeviceExtensionProperties(
     uint32_t*                                   pCount,
     VkExtensionProperties*                      pProperties) {
 
-	MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	return mvkPD->getLayerManager()->getLayerNamed(pLayerName)->getExtensionProperties(pCount, pProperties);
 }
 
@@ -200,7 +200,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateDeviceLayerProperties(
     uint32_t*                                   pCount,
     VkLayerProperties*                          pProperties) {
 
-	MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	return mvkPD->getLayerManager()->getLayerProperties(pCount, pProperties);
 }
 
@@ -210,7 +210,7 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceQueue(
     uint32_t                                    queueIndex,
     VkQueue*                                    pQueue) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->getDeviceQueue(queueFamilyIndex, queueIndex, pQueue);
 }
 
@@ -220,21 +220,21 @@ MVK_PUBLIC_SYMBOL VkResult vkQueueSubmit(
 	const VkSubmitInfo*                         pSubmits,
 	VkFence                                     fence) {
 
-	MVKQueue* mvkQ = (MVKQueue*)queue;
+	MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
 	return mvkQ->submit(submitCount, pSubmits, fence, kMVKCommandUseQueueSubmit);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkQueueWaitIdle(
     VkQueue                                     queue) {
 	
-	MVKQueue* mvkQ = (MVKQueue*)queue;
+	MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
 	return mvkQ->waitIdle(kMVKCommandUseQueueWaitIdle);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkDeviceWaitIdle(
     VkDevice                                    device) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	return mvkDev->waitIdle();
 }
 
@@ -244,7 +244,7 @@ MVK_PUBLIC_SYMBOL VkResult vkAllocateMemory(
     const VkAllocationCallbacks*                pAllocator,
     VkDeviceMemory*                             pMem) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKDeviceMemory* mvkMem = mvkDev->allocateMemory(pAllocateInfo, pAllocator);
 	VkResult rslt = mvkMem->getConfigurationResult();
 	*pMem = (VkDeviceMemory)((rslt == VK_SUCCESS) ? mvkMem : VK_NULL_HANDLE);
@@ -256,7 +256,7 @@ MVK_PUBLIC_SYMBOL void vkFreeMemory(
 	VkDeviceMemory                              mem,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->freeMemory((MVKDeviceMemory*)mem, pAllocator);
 }
 
@@ -394,7 +394,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateFence(
 	const VkAllocationCallbacks*                pAllocator,
     VkFence*                                    pFence) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKFence* mvkFence = mvkDev->createFence(pCreateInfo, pAllocator);
 	*pFence = (VkFence)mvkFence;
 	return mvkFence->getConfigurationResult();
@@ -405,7 +405,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyFence(
 	VkFence                                     fence,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyFence((MVKFence*)fence, pAllocator);
 }
 
@@ -441,7 +441,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSemaphore(
 	const VkAllocationCallbacks*                pAllocator,
     VkSemaphore*                                pSemaphore) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKSemaphore* mvkSem4 = mvkDev->createSemaphore(pCreateInfo, pAllocator);
 	*pSemaphore = (VkSemaphore)mvkSem4;
 	return mvkSem4->getConfigurationResult();
@@ -452,7 +452,7 @@ MVK_PUBLIC_SYMBOL void vkDestroySemaphore(
 	VkSemaphore                                 semaphore,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroySemaphore((MVKSemaphore*)semaphore, pAllocator);
 }
 
@@ -500,7 +500,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateQueryPool(
 	const VkAllocationCallbacks*                pAllocator,
     VkQueryPool*                                pQueryPool) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKQueryPool* mvkQP = mvkDev->createQueryPool(pCreateInfo, pAllocator);
 	*pQueryPool = (VkQueryPool)mvkQP;
 	return mvkQP->getConfigurationResult();
@@ -511,7 +511,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyQueryPool(
 	VkQueryPool                                 queryPool,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyQueryPool((MVKQueryPool*)queryPool, pAllocator);
 }
 
@@ -535,7 +535,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateBuffer(
 	const VkAllocationCallbacks*                pAllocator,
     VkBuffer*                                   pBuffer) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKBuffer* mvkBuff = mvkDev->createBuffer(pCreateInfo, pAllocator);
 	*pBuffer = (VkBuffer)mvkBuff;
 	return mvkBuff->getConfigurationResult();
@@ -546,7 +546,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyBuffer(
 	VkBuffer                                    buffer,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyBuffer((MVKBuffer*)buffer, pAllocator);
 }
 
@@ -556,7 +556,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateBufferView(
 	const VkAllocationCallbacks*                pAllocator,
     VkBufferView*                               pView) {
 	
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     MVKBufferView* mvkBuffView = mvkDev->createBufferView(pCreateInfo, pAllocator);
     *pView = (VkBufferView)mvkBuffView;
     return mvkBuffView->getConfigurationResult();
@@ -567,7 +567,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyBufferView(
 	VkBufferView                                bufferView,
 	const VkAllocationCallbacks*                pAllocator) {
 
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroyBufferView((MVKBufferView*)bufferView, pAllocator);
 }
 
@@ -577,7 +577,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateImage(
 	const VkAllocationCallbacks*                pAllocator,
     VkImage*                                    pImage) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKImage* mvkImg = mvkDev->createImage(pCreateInfo, pAllocator);
 	*pImage = (VkImage)mvkImg;
 	return mvkImg->getConfigurationResult();
@@ -588,7 +588,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyImage(
 	VkImage                                     image,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyImage((MVKImage*)image, pAllocator);
 }
 
@@ -608,7 +608,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateImageView(
 	const VkAllocationCallbacks*                pAllocator,
     VkImageView*                                pView) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKImageView* mvkImgView = mvkDev->createImageView(pCreateInfo, pAllocator);
 	*pView = (VkImageView)mvkImgView;
 	return mvkImgView->getConfigurationResult();
@@ -619,7 +619,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyImageView(
 	VkImageView                                 imageView,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyImageView((MVKImageView*)imageView, pAllocator);
 }
 
@@ -629,7 +629,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateShaderModule(
 	const VkAllocationCallbacks*                pAllocator,
     VkShaderModule*                             pShaderModule) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKShaderModule* mvkShdrMod = mvkDev->createShaderModule(pCreateInfo, pAllocator);
 	*pShaderModule = (VkShaderModule)mvkShdrMod;
 	return mvkShdrMod->getConfigurationResult();
@@ -640,7 +640,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyShaderModule(
 	VkShaderModule                              shaderModule,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyShaderModule((MVKShaderModule*)shaderModule, pAllocator);
 }
 
@@ -650,7 +650,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreatePipelineCache(
 	const VkAllocationCallbacks*                pAllocator,
     VkPipelineCache*                            pPipelineCache) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKPipelineCache* mvkPLC = mvkDev->createPipelineCache(pCreateInfo, pAllocator);
 	*pPipelineCache = (VkPipelineCache)mvkPLC;
 	return mvkPLC->getConfigurationResult();
@@ -661,7 +661,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipelineCache(
 	VkPipelineCache                             pipelineCache,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyPipelineCache((MVKPipelineCache*)pipelineCache, pAllocator);
 }
 
@@ -693,7 +693,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateGraphicsPipelines(
 	const VkAllocationCallbacks*                pAllocator,
     VkPipeline*                                 pPipelines) {
 	
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	return mvkDev->createPipelines<MVKGraphicsPipeline, VkGraphicsPipelineCreateInfo>(pipelineCache, count, pCreateInfos, pAllocator, pPipelines);
 }
 
@@ -705,7 +705,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateComputePipelines(
 	const VkAllocationCallbacks*                pAllocator,
     VkPipeline*                                 pPipelines) {
 	
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     return mvkDev->createPipelines<MVKComputePipeline, VkComputePipelineCreateInfo>(pipelineCache, count, pCreateInfos, pAllocator, pPipelines);
 }
 
@@ -714,7 +714,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipeline(
 	VkPipeline                                  pipeline,
 	const VkAllocationCallbacks*                pAllocator) {
 
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroyPipeline((MVKPipeline*)pipeline, pAllocator);
 }
 
@@ -724,7 +724,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreatePipelineLayout(
 	const VkAllocationCallbacks*                pAllocator,
     VkPipelineLayout*                           pPipelineLayout) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKPipelineLayout* mvkPLL = mvkDev->createPipelineLayout(pCreateInfo, pAllocator);
 	*pPipelineLayout = (VkPipelineLayout)mvkPLL;
 	return mvkPLL->getConfigurationResult();
@@ -735,7 +735,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipelineLayout(
 	VkPipelineLayout                            pipelineLayout,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyPipelineLayout((MVKPipelineLayout*)pipelineLayout, pAllocator);
 }
 
@@ -745,7 +745,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSampler(
 	const VkAllocationCallbacks*                pAllocator,
     VkSampler*                                  pSampler) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKSampler* mvkSamp = mvkDev->createSampler(pCreateInfo, pAllocator);
 	*pSampler = (VkSampler)mvkSamp;
 	return mvkSamp->getConfigurationResult();
@@ -756,7 +756,7 @@ MVK_PUBLIC_SYMBOL void vkDestroySampler(
 	VkSampler                                   sampler,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroySampler((MVKSampler*)sampler, pAllocator);
 }
 
@@ -766,7 +766,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorSetLayout(
 	const VkAllocationCallbacks*                pAllocator,
 	VkDescriptorSetLayout*                      pSetLayout) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKDescriptorSetLayout* mvkDSL = mvkDev->createDescriptorSetLayout(pCreateInfo, pAllocator);
 	*pSetLayout = (VkDescriptorSetLayout)mvkDSL;
 	return mvkDSL->getConfigurationResult();
@@ -777,7 +777,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorSetLayout(
 	VkDescriptorSetLayout                       descriptorSetLayout,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyDescriptorSetLayout((MVKDescriptorSetLayout*)descriptorSetLayout, pAllocator);
 }
 
@@ -787,7 +787,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorPool(
 	const VkAllocationCallbacks*                pAllocator,
     VkDescriptorPool*                           pDescriptorPool) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKDescriptorPool* mvkDP = mvkDev->createDescriptorPool(pCreateInfo, pAllocator);
 	*pDescriptorPool = (VkDescriptorPool)mvkDP;
 	return mvkDP->getConfigurationResult();
@@ -798,7 +798,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorPool(
 	VkDescriptorPool                            descriptorPool,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyDescriptorPool((MVKDescriptorPool*)descriptorPool, pAllocator);
 }
 
@@ -848,7 +848,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateFramebuffer(
 	const VkAllocationCallbacks*                pAllocator,
     VkFramebuffer*                              pFramebuffer) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKFramebuffer* mvkFB = mvkDev->createFramebuffer(pCreateInfo, pAllocator);
 	*pFramebuffer = (VkFramebuffer)mvkFB;
 	return mvkFB->getConfigurationResult();
@@ -859,7 +859,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyFramebuffer(
 	VkFramebuffer                               framebuffer,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyFramebuffer((MVKFramebuffer*)framebuffer, pAllocator);
 }
 
@@ -869,7 +869,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateRenderPass(
 	const VkAllocationCallbacks*                pAllocator,
     VkRenderPass*                               pRenderPass) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKRenderPass* mvkRendPass = mvkDev->createRenderPass(pCreateInfo, pAllocator);
 	*pRenderPass = (VkRenderPass)mvkRendPass;
 	return mvkRendPass->getConfigurationResult();
@@ -880,7 +880,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyRenderPass(
 	VkRenderPass                                renderPass,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyRenderPass((MVKRenderPass*)renderPass, pAllocator);
 }
 
@@ -901,7 +901,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateCommandPool(
 	const VkAllocationCallbacks*                pAllocator,
     VkCommandPool*                              pCmdPool) {
 	
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	MVKCommandPool* mvkCmdPool = mvkDev->createCommandPool(pCreateInfo, pAllocator);
 	*pCmdPool = (VkCommandPool)mvkCmdPool;
 	return mvkCmdPool->getConfigurationResult();
@@ -912,7 +912,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyCommandPool(
 	VkCommandPool                               commandPool,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = (MVKDevice*)device;
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyCommandPool((MVKCommandPool*)commandPool, pAllocator);
 }
 
@@ -948,14 +948,14 @@ MVK_PUBLIC_SYMBOL VkResult vkBeginCommandBuffer(
     VkCommandBuffer                             commandBuffer,
     const VkCommandBufferBeginInfo*             pBeginInfo) {
 	
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
 	return cmdBuff->begin(pBeginInfo);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkEndCommandBuffer(
     VkCommandBuffer                             commandBuffer) {
 	
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
 	return cmdBuff->end();
 }
 
@@ -963,7 +963,7 @@ MVK_PUBLIC_SYMBOL VkResult vkResetCommandBuffer(
     VkCommandBuffer                             commandBuffer,
     VkCommandBufferResetFlags                   flags) {
 
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
 	return cmdBuff->reset(flags);
 }
 
@@ -972,7 +972,8 @@ MVK_PUBLIC_SYMBOL void vkCmdBindPipeline(
     VkPipelineBindPoint                         pipelineBindPoint,
     VkPipeline                                  pipeline) {
 	
-	mvkCmdBindPipeline(commandBuffer, pipelineBindPoint, pipeline);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdBindPipeline(cmdBuff, pipelineBindPoint, pipeline);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdSetViewport(
@@ -981,7 +982,8 @@ MVK_PUBLIC_SYMBOL void vkCmdSetViewport(
 	uint32_t                                    viewportCount,
 	const VkViewport*                           pViewports) {
 
-	mvkCmdSetViewport(commandBuffer, firstViewport, viewportCount, pViewports);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdSetViewport(cmdBuff, firstViewport, viewportCount, pViewports);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdSetScissor(
@@ -990,14 +992,16 @@ MVK_PUBLIC_SYMBOL void vkCmdSetScissor(
 	uint32_t                                    scissorCount,
 	const VkRect2D*                             pScissors) {
 
-	mvkCmdSetScissor(commandBuffer, firstScissor, scissorCount, pScissors);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdSetScissor(cmdBuff, firstScissor, scissorCount, pScissors);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdSetLineWidth(
 	VkCommandBuffer                             commandBuffer,
 	float                                       lineWidth) {
 
-    mvkCmdSetLineWidth(commandBuffer, lineWidth);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdSetLineWidth(cmdBuff, lineWidth);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdSetDepthBias(
@@ -1006,14 +1010,16 @@ MVK_PUBLIC_SYMBOL void vkCmdSetDepthBias(
 	float                                       depthBiasClamp,
 	float                                       depthBiasSlopeFactor) {
 
-    mvkCmdSetDepthBias(commandBuffer,depthBiasConstantFactor, depthBiasClamp, depthBiasSlopeFactor);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdSetDepthBias(cmdBuff,depthBiasConstantFactor, depthBiasClamp, depthBiasSlopeFactor);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdSetBlendConstants(
 	VkCommandBuffer                             commandBuffer,
 	const float                                 blendConst[4]) {
 
-    mvkCmdSetBlendConstants(commandBuffer, blendConst);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdSetBlendConstants(cmdBuff, blendConst);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdSetDepthBounds(
@@ -1021,7 +1027,8 @@ MVK_PUBLIC_SYMBOL void vkCmdSetDepthBounds(
 	float                                       minDepthBounds,
 	float                                       maxDepthBounds) {
 
-    mvkCmdSetDepthBounds(commandBuffer, minDepthBounds, maxDepthBounds);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdSetDepthBounds(cmdBuff, minDepthBounds, maxDepthBounds);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdSetStencilCompareMask(
@@ -1029,7 +1036,8 @@ MVK_PUBLIC_SYMBOL void vkCmdSetStencilCompareMask(
 	VkStencilFaceFlags                          faceMask,
 	uint32_t                                    stencilCompareMask) {
 
-    mvkCmdSetStencilCompareMask(commandBuffer, faceMask, stencilCompareMask);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdSetStencilCompareMask(cmdBuff, faceMask, stencilCompareMask);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdSetStencilWriteMask(
@@ -1037,7 +1045,8 @@ MVK_PUBLIC_SYMBOL void vkCmdSetStencilWriteMask(
 	VkStencilFaceFlags                          faceMask,
 	uint32_t                                    stencilWriteMask) {
 
-    mvkCmdSetStencilWriteMask(commandBuffer, faceMask, stencilWriteMask);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdSetStencilWriteMask(cmdBuff, faceMask, stencilWriteMask);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdSetStencilReference(
@@ -1045,7 +1054,8 @@ MVK_PUBLIC_SYMBOL void vkCmdSetStencilReference(
 	VkStencilFaceFlags                          faceMask,
 	uint32_t                                    stencilReference) {
 
-    mvkCmdSetStencilReference(commandBuffer, faceMask, stencilReference);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdSetStencilReference(cmdBuff, faceMask, stencilReference);
 }
 
 
@@ -1059,7 +1069,8 @@ MVK_PUBLIC_SYMBOL void vkCmdBindDescriptorSets(
     uint32_t                                    dynamicOffsetCount,
     const uint32_t*                             pDynamicOffsets) {
 	
-	mvkCmdBindDescriptorSets(commandBuffer, pipelineBindPoint, layout, firstSet, setCount,
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdBindDescriptorSets(cmdBuff, pipelineBindPoint, layout, firstSet, setCount,
 							 pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
 }
 
@@ -1069,7 +1080,8 @@ MVK_PUBLIC_SYMBOL void vkCmdBindIndexBuffer(
     VkDeviceSize                                offset,
     VkIndexType                                 indexType) {
 	
-	mvkCmdBindIndexBuffer(commandBuffer, buffer, offset, indexType);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdBindIndexBuffer(cmdBuff, buffer, offset, indexType);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdBindVertexBuffers(
@@ -1079,7 +1091,8 @@ MVK_PUBLIC_SYMBOL void vkCmdBindVertexBuffers(
     const VkBuffer*                             pBuffers,
     const VkDeviceSize*                         pOffsets) {
 	
-	mvkCmdBindVertexBuffers(commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdBindVertexBuffers(cmdBuff, startBinding, bindingCount, pBuffers, pOffsets);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdDraw(
@@ -1089,7 +1102,8 @@ MVK_PUBLIC_SYMBOL void vkCmdDraw(
 	uint32_t                                    firstVertex,
 	uint32_t                                    firstInstance) {
 
-	mvkCmdDraw(commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDraw(cmdBuff, vertexCount, instanceCount, firstVertex, firstInstance);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdDrawIndexed(
@@ -1100,7 +1114,8 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndexed(
 	int32_t                                     vertexOffset,
 	uint32_t                                    firstInstance) {
 
-	mvkCmdDrawIndexed(commandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDrawIndexed(cmdBuff, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdDrawIndirect(
@@ -1110,7 +1125,8 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndirect(
     uint32_t                                    count,
     uint32_t                                    stride) {
 	
-	mvkCmdDrawIndirect(commandBuffer, buffer, offset, count, stride);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDrawIndirect(cmdBuff, buffer, offset, count, stride);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdDrawIndexedIndirect(
@@ -1120,7 +1136,8 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndexedIndirect(
     uint32_t                                    count,
     uint32_t                                    stride) {
 	
-	mvkCmdDrawIndexedIndirect(commandBuffer, buffer, offset, count, stride);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDrawIndexedIndirect(cmdBuff, buffer, offset, count, stride);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdDispatch(
@@ -1129,7 +1146,8 @@ MVK_PUBLIC_SYMBOL void vkCmdDispatch(
     uint32_t                                    y,
     uint32_t                                    z) {
 	
-	mvkCmdDispatch(commandBuffer, x, y, z);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDispatch(cmdBuff, x, y, z);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdDispatchIndirect(
@@ -1137,7 +1155,8 @@ MVK_PUBLIC_SYMBOL void vkCmdDispatchIndirect(
     VkBuffer                                    buffer,
     VkDeviceSize                                offset) {
 	
-    mvkCmdDispatchIndirect(commandBuffer, buffer, offset);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdDispatchIndirect(cmdBuff, buffer, offset);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdCopyBuffer(
@@ -1147,7 +1166,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBuffer(
     uint32_t                                    regionCount,
     const VkBufferCopy*                         pRegions) {
 	
-	mvkCmdCopyBuffer(commandBuffer, srcBuffer, destBuffer, regionCount, pRegions);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdCopyBuffer(cmdBuff, srcBuffer, destBuffer, regionCount, pRegions);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdCopyImage(
@@ -1159,7 +1179,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImage(
     uint32_t                                    regionCount,
     const VkImageCopy*                          pRegions) {
 
-	mvkCmdCopyImage(commandBuffer,
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdCopyImage(cmdBuff,
 					srcImage, srcImageLayout,
 					dstImage, dstImageLayout,
 					regionCount, pRegions);
@@ -1175,7 +1196,8 @@ MVK_PUBLIC_SYMBOL void vkCmdBlitImage(
     const VkImageBlit*                          pRegions,
     VkFilter                                    filter) {
 	
-	mvkCmdBlitImage(commandBuffer,
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdBlitImage(cmdBuff,
 					srcImage, srcImageLayout,
 					dstImage, dstImageLayout,
 					regionCount, pRegions, filter);
@@ -1189,7 +1211,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBufferToImage(
     uint32_t                                    regionCount,
     const VkBufferImageCopy*                    pRegions) {
 	
-    mvkCmdCopyBufferToImage(commandBuffer, srcBuffer, dstImage,
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdCopyBufferToImage(cmdBuff, srcBuffer, dstImage,
                             dstImageLayout, regionCount, pRegions);
 }
 
@@ -1201,7 +1224,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImageToBuffer(
     uint32_t                                    regionCount,
     const VkBufferImageCopy*                    pRegions) {
 	
-    mvkCmdCopyImageToBuffer(commandBuffer, srcImage, srcImageLayout,
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdCopyImageToBuffer(cmdBuff, srcImage, srcImageLayout,
                             dstBuffer, regionCount, pRegions);
 }
 
@@ -1212,7 +1236,8 @@ MVK_PUBLIC_SYMBOL void vkCmdUpdateBuffer(
     VkDeviceSize                                dataSize,
     const void*                                 pData) {
 
-    mvkCmdUpdateBuffer(commandBuffer, dstBuffer, dstOffset, dataSize, pData);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdUpdateBuffer(cmdBuff, dstBuffer, dstOffset, dataSize, pData);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdFillBuffer(
@@ -1222,7 +1247,8 @@ MVK_PUBLIC_SYMBOL void vkCmdFillBuffer(
     VkDeviceSize                                size,
     uint32_t                                    data) {
 
-    mvkCmdFillBuffer(commandBuffer, dstBuffer, dstOffset, size, data);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdFillBuffer(cmdBuff, dstBuffer, dstOffset, size, data);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdClearColorImage(
@@ -1233,7 +1259,8 @@ MVK_PUBLIC_SYMBOL void vkCmdClearColorImage(
     uint32_t                                    rangeCount,
     const VkImageSubresourceRange*              pRanges) {
 	
-	mvkCmdClearImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdClearImage(cmdBuff, image, imageLayout, pColor, rangeCount, pRanges);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdClearDepthStencilImage(
@@ -1244,7 +1271,8 @@ MVK_PUBLIC_SYMBOL void vkCmdClearDepthStencilImage(
     uint32_t                                    rangeCount,
     const VkImageSubresourceRange*              pRanges) {
 
-    mvkCmdClearDepthStencilImage(commandBuffer, image, imageLayout, pDepthStencil, rangeCount, pRanges);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdClearDepthStencilImage(cmdBuff, image, imageLayout, pDepthStencil, rangeCount, pRanges);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdClearAttachments(
@@ -1254,7 +1282,8 @@ MVK_PUBLIC_SYMBOL void vkCmdClearAttachments(
 	uint32_t                                    rectCount,
 	const VkClearRect*                          pRects) {
 
-	mvkCmdClearAttachments(commandBuffer, attachmentCount, pAttachments, rectCount, pRects);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdClearAttachments(cmdBuff, attachmentCount, pAttachments, rectCount, pRects);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdResolveImage(
@@ -1266,7 +1295,8 @@ MVK_PUBLIC_SYMBOL void vkCmdResolveImage(
     uint32_t                                    regionCount,
     const VkImageResolve*                       pRegions) {
 	
-    mvkCmdResolveImage(commandBuffer, srcImage, srcImageLayout,
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdResolveImage(cmdBuff, srcImage, srcImageLayout,
                        dstImage, dstImageLayout, regionCount, pRegions);
 }
 
@@ -1314,7 +1344,8 @@ MVK_PUBLIC_SYMBOL void vkCmdPipelineBarrier(
 	uint32_t                                    imageMemoryBarrierCount,
 	const VkImageMemoryBarrier*                 pImageMemoryBarriers) {
 
-	mvkCmdPipelineBarrier(commandBuffer, srcStageMask, dstStageMask,
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdPipelineBarrier(cmdBuff, srcStageMask, dstStageMask,
 						  dependencyFlags, memoryBarrierCount, pMemoryBarriers,
 						  bufferMemoryBarrierCount, pBufferMemoryBarriers,
 						  imageMemoryBarrierCount, pImageMemoryBarriers);
@@ -1326,7 +1357,8 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginQuery(
     uint32_t                                    query,
     VkQueryControlFlags                         flags) {
 	
-    mvkCmdBeginQuery(commandBuffer, queryPool, query, flags);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdBeginQuery(cmdBuff, queryPool, query, flags);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdEndQuery(
@@ -1334,7 +1366,8 @@ MVK_PUBLIC_SYMBOL void vkCmdEndQuery(
     VkQueryPool                                 queryPool,
     uint32_t                                    query) {
 	
-    mvkCmdEndQuery(commandBuffer, queryPool, query);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdEndQuery(cmdBuff, queryPool, query);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdResetQueryPool(
@@ -1343,7 +1376,8 @@ MVK_PUBLIC_SYMBOL void vkCmdResetQueryPool(
     uint32_t                                    firstQuery,
     uint32_t                                    queryCount) {
 	
-    mvkCmdResetQueryPool(commandBuffer, queryPool, firstQuery, queryCount);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdResetQueryPool(cmdBuff, queryPool, firstQuery, queryCount);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdWriteTimestamp(
@@ -1352,7 +1386,8 @@ MVK_PUBLIC_SYMBOL void vkCmdWriteTimestamp(
 	VkQueryPool                                 queryPool,
 	uint32_t                                    query) {
 
-	mvkCmdWriteTimestamp(commandBuffer, pipelineStage, queryPool, query);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdWriteTimestamp(cmdBuff, pipelineStage, queryPool, query);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdCopyQueryPoolResults(
@@ -1365,7 +1400,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyQueryPoolResults(
     VkDeviceSize                                destStride,
     VkQueryResultFlags                          flags) {
 	
-    mvkCmdCopyQueryPoolResults(commandBuffer, queryPool, firstQuery, queryCount,
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdCopyQueryPoolResults(cmdBuff, queryPool, firstQuery, queryCount,
                                destBuffer, destOffset, destStride, flags);
 }
 
@@ -1377,7 +1413,8 @@ MVK_PUBLIC_SYMBOL void vkCmdPushConstants(
     uint32_t                                    size,
     const void*                                 pValues) {
 	
-	mvkCmdPushConstants(commandBuffer, layout, stageFlags, offset, size, pValues);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdPushConstants(cmdBuff, layout, stageFlags, offset, size, pValues);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
@@ -1385,28 +1422,32 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
     const VkRenderPassBeginInfo*                pRenderPassBegin,
     VkSubpassContents							contents) {
 	
-	mvkCmdBeginRenderPass(commandBuffer,pRenderPassBegin, contents);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdBeginRenderPass(cmdBuff,pRenderPassBegin, contents);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdNextSubpass(
     VkCommandBuffer                             commandBuffer,
     VkSubpassContents							contents) {
 	
-	mvkCmdNextSubpass(commandBuffer, contents);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdNextSubpass(cmdBuff, contents);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdEndRenderPass(
     VkCommandBuffer                             commandBuffer) {
 	
-	mvkCmdEndRenderPass(commandBuffer);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdEndRenderPass(cmdBuff);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    cmdBuffersCount,
-    const VkCommandBuffer*						pCmdBuffers) {
+    const VkCommandBuffer*						pCommandBuffers) {
 	
-	mvkCmdExecuteCommands(commandBuffer, cmdBuffersCount, pCmdBuffers);
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdExecuteCommands(cmdBuff, cmdBuffersCount, pCommandBuffers);
 }
 
 
@@ -1419,7 +1460,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSwapchainKHR(
     const VkAllocationCallbacks*             pAllocator,
     VkSwapchainKHR*                          pSwapchain) {
 
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     MVKSwapchain* mvkSwpChn = mvkDev->createSwapchain(pCreateInfo, pAllocator);
     *pSwapchain = (VkSwapchainKHR)(mvkSwpChn);
     return mvkSwpChn->getConfigurationResult();
@@ -1430,7 +1471,7 @@ MVK_PUBLIC_SYMBOL void vkDestroySwapchainKHR(
     VkSwapchainKHR                           swapchain,
     const VkAllocationCallbacks*             pAllocator) {
 
-    MVKDevice* mvkDev = (MVKDevice*)device;
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroySwapchain((MVKSwapchain*)swapchain, pAllocator);
 }
 
@@ -1460,7 +1501,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueuePresentKHR(
     VkQueue                                      queue,
     const VkPresentInfoKHR*                      pPresentInfo) {
 
-    MVKQueue* mvkQ = (MVKQueue*)queue;
+    MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
     return mvkQ->submitPresentKHR(pPresentInfo);
 }
 
@@ -1473,7 +1514,7 @@ MVK_PUBLIC_SYMBOL void vkDestroySurfaceKHR(
     VkSurfaceKHR                                 surface,
     const VkAllocationCallbacks*                 pAllocator) {
 
-    MVKInstance* mvkInst = (MVKInstance*)instance;
+    MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
     mvkInst->destroySurface((MVKSurface*)surface, pAllocator);
 }
 
@@ -1483,7 +1524,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceSupportKHR(
     VkSurfaceKHR                                surface,
     VkBool32*                                   pSupported) {
 
-    MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
     MVKSurface* mvkSrfc = (MVKSurface*)surface;
     return mvkPD->getSurfaceSupport(queueFamilyIndex, mvkSrfc, pSupported);
 }
@@ -1493,7 +1534,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
     VkSurfaceKHR                                surface,
     VkSurfaceCapabilitiesKHR*                   pSurfaceCapabilities) {
 
-    MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
     MVKSurface* mvkSrfc = (MVKSurface*)surface;
     return mvkPD->getSurfaceCapabilities(mvkSrfc, pSurfaceCapabilities);
 }
@@ -1504,7 +1545,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
     uint32_t*                                   pSurfaceFormatCount,
     VkSurfaceFormatKHR*                         pSurfaceFormats) {
 
-    MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
     MVKSurface* mvkSrfc = (MVKSurface*)surface;
     return mvkPD->getSurfaceFormats(mvkSrfc, pSurfaceFormatCount, pSurfaceFormats);
 }
@@ -1515,7 +1556,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
     uint32_t*                                   pPresentModeCount,
     VkPresentModeKHR*                           pPresentModes) {
 
-    MVKPhysicalDevice* mvkPD = (MVKPhysicalDevice*)physicalDevice;
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
     MVKSurface* mvkSrfc = (MVKSurface*)surface;
     return mvkPD->getSurfacePresentModes(mvkSrfc, pPresentModeCount, pPresentModes);
 }
@@ -1530,7 +1571,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(
     const VkAllocationCallbacks*                pAllocator,
     VkSurfaceKHR*                               pSurface) {
 
-    MVKInstance* mvkInst = (MVKInstance*)instance;
+    MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
     MVKSurface* mvkSrfc = mvkInst->createSurface(pCreateInfo, pAllocator);
     *pSurface = (VkSurfaceKHR)mvkSrfc;
     return mvkSrfc->getConfigurationResult();

@@ -68,7 +68,7 @@ protected:
 #pragma mark MVKQueue
 
 /** Represents a Vulkan queue. */
-class MVKQueue : public MVKBaseDeviceObject {
+class MVKQueue : public MVKDispatchableDeviceObject {
 
 public:
 
@@ -125,6 +125,20 @@ public:
 	MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority);
 
 	~MVKQueue() override;
+
+    /**
+     * Returns a reference to this object suitable for use as a Vulkan API handle.
+     * This is the compliment of the getMVKQueue() method.
+     */
+    inline VkQueue getVkQueue() { return (VkQueue)getVkHandle(); }
+
+    /**
+     * Retrieves the MVKQueue instance referenced by the VkQueue handle.
+     * This is the compliment of the getVkQueue() method.
+     */
+    static inline MVKQueue* getMVKQueue(VkQueue vkQueue) {
+        return (MVKQueue*)getDispatchableObject(vkQueue);
+    }
 
 protected:
 	friend class MVKQueueSubmission;

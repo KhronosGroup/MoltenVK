@@ -1044,20 +1044,19 @@ MVKCmdUpdateBuffer::MVKCmdUpdateBuffer(MVKCommandTypePool<MVKCmdUpdateBuffer>* p
 #pragma mark -
 #pragma mark Command creation functions
 
-void mvkCmdCopyImage(VkCommandBuffer commandBuffer,
+void mvkCmdCopyImage(MVKCommandBuffer* cmdBuff,
 					 VkImage srcImage,
 					 VkImageLayout srcImageLayout,
 					 VkImage dstImage,
 					 VkImageLayout dstImageLayout,
 					 uint32_t regionCount,
 					 const VkImageCopy* pRegions) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
 	MVKCmdCopyImage* cmd = cmdBuff->_commandPool->_cmdCopyImagePool.acquireObject();
 	cmd->setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdBlitImage(VkCommandBuffer commandBuffer,
+void mvkCmdBlitImage(MVKCommandBuffer* cmdBuff,
 					 VkImage srcImage,
 					 VkImageLayout srcImageLayout,
 					 VkImage dstImage,
@@ -1065,78 +1064,71 @@ void mvkCmdBlitImage(VkCommandBuffer commandBuffer,
 					 uint32_t regionCount,
 					 const VkImageBlit* pRegions,
 					 VkFilter filter) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
 	MVKCmdBlitImage* cmd = cmdBuff->_commandPool->_cmdBlitImagePool.acquireObject();
 	cmd->setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdResolveImage(VkCommandBuffer commandBuffer,
+void mvkCmdResolveImage(MVKCommandBuffer* cmdBuff,
                         VkImage srcImage,
                         VkImageLayout srcImageLayout,
                         VkImage dstImage,
                         VkImageLayout dstImageLayout,
                         uint32_t regionCount,
                         const VkImageResolve* pRegions) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdResolveImage* cmd = cmdBuff->_commandPool->_cmdResolveImagePool.acquireObject();
     cmd->setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdCopyBuffer(VkCommandBuffer commandBuffer,
+void mvkCmdCopyBuffer(MVKCommandBuffer* cmdBuff,
 					  VkBuffer srcBuffer,
 					  VkBuffer dstBuffer,
 					  uint32_t regionCount,
 					  const VkBufferCopy* pRegions) {
-	MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
 	MVKCmdCopyBuffer* cmd = cmdBuff->_commandPool->_cmdCopyBufferPool.acquireObject();
 	cmd->setContent(srcBuffer, dstBuffer, regionCount, pRegions);
 	cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdCopyBufferToImage(VkCommandBuffer commandBuffer,
+void mvkCmdCopyBufferToImage(MVKCommandBuffer* cmdBuff,
                              VkBuffer srcBuffer,
                              VkImage dstImage,
                              VkImageLayout dstImageLayout,
                              uint32_t regionCount,
                              const VkBufferImageCopy* pRegions) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdBufferImageCopy* cmd = cmdBuff->_commandPool->_cmdBufferImageCopyPool.acquireObject();
     cmd->setContent(srcBuffer, dstImage, dstImageLayout, regionCount, pRegions, true);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdCopyImageToBuffer(VkCommandBuffer commandBuffer,
+void mvkCmdCopyImageToBuffer(MVKCommandBuffer* cmdBuff,
                              VkImage srcImage,
                              VkImageLayout srcImageLayout,
                              VkBuffer dstBuffer,
                              uint32_t regionCount,
                              const VkBufferImageCopy* pRegions) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdBufferImageCopy* cmd = cmdBuff->_commandPool->_cmdBufferImageCopyPool.acquireObject();
     cmd->setContent(dstBuffer, srcImage, srcImageLayout, regionCount, pRegions, false);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdClearAttachments(VkCommandBuffer commandBuffer,
+void mvkCmdClearAttachments(MVKCommandBuffer* cmdBuff,
                             uint32_t attachmentCount,
                             const VkClearAttachment* pAttachments,
                             uint32_t rectCount,
                             const VkClearRect* pRects) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdClearAttachments* cmd = cmdBuff->_commandPool->_cmdClearAttachmentsPool.acquireObject();
     cmd->setContent(attachmentCount, pAttachments, rectCount, pRects);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdClearImage(VkCommandBuffer commandBuffer,
+void mvkCmdClearImage(MVKCommandBuffer* cmdBuff,
                       VkImage image,
                       VkImageLayout imageLayout,
                       const VkClearColorValue* pColor,
                       uint32_t rangeCount,
                       const VkImageSubresourceRange* pRanges) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdClearImage* cmd = cmdBuff->_commandPool->_cmdClearImagePool.acquireObject();
     VkClearValue clrVal;
     clrVal.color = *pColor;
@@ -1144,13 +1136,12 @@ void mvkCmdClearImage(VkCommandBuffer commandBuffer,
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
+void mvkCmdClearDepthStencilImage(MVKCommandBuffer* cmdBuff,
                                   VkImage image,
                                   VkImageLayout imageLayout,
                                   const VkClearDepthStencilValue* pDepthStencil,
                                   uint32_t rangeCount,
                                   const VkImageSubresourceRange* pRanges) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdClearImage* cmd = cmdBuff->_commandPool->_cmdClearImagePool.acquireObject();
     VkClearValue clrVal;
     clrVal.depthStencil = *pDepthStencil;
@@ -1158,23 +1149,21 @@ void mvkCmdClearDepthStencilImage(VkCommandBuffer commandBuffer,
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdFillBuffer(VkCommandBuffer commandBuffer,
+void mvkCmdFillBuffer(MVKCommandBuffer* cmdBuff,
                       VkBuffer dstBuffer,
                       VkDeviceSize dstOffset,
                       VkDeviceSize size,
                       uint32_t data) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdFillBuffer* cmd = cmdBuff->_commandPool->_cmdFillBufferPool.acquireObject();
     cmd->setContent(dstBuffer, dstOffset, size, data);
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdUpdateBuffer(VkCommandBuffer commandBuffer,
+void mvkCmdUpdateBuffer(MVKCommandBuffer* cmdBuff,
                         VkBuffer dstBuffer,
                         VkDeviceSize dstOffset,
                         VkDeviceSize dataSize,
                         const void* pData) {
-    MVKCommandBuffer* cmdBuff = (MVKCommandBuffer*)commandBuffer;
     MVKCmdUpdateBuffer* cmd = cmdBuff->_commandPool->_cmdUpdateBufferPool.acquireObject();
     cmd->setContent(dstBuffer, dstOffset, dataSize, pData, cmdBuff->getIsReusable());
     cmdBuff->addCommand(cmd);
