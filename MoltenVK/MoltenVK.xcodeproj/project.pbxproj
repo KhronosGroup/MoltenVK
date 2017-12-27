@@ -295,7 +295,6 @@
 		A95870F71C90D29F009EB096 /* MVKCommandResourceFactory.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCommandResourceFactory.mm; sourceTree = "<group>"; };
 		A95B7D671D3EE486003183D3 /* MVKCommandEncoderState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommandEncoderState.h; sourceTree = "<group>"; };
 		A95B7D681D3EE486003183D3 /* MVKCommandEncoderState.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCommandEncoderState.mm; sourceTree = "<group>"; };
-		A97773311F420A21006A3601 /* ThirdPartyConfig.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = ThirdPartyConfig.md; sourceTree = "<group>"; };
 		A98149411FB6A3F7005F00B4 /* MVKBaseObject.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKBaseObject.cpp; sourceTree = "<group>"; };
 		A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKBaseObject.h; sourceTree = "<group>"; };
 		A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKEnvironment.h; sourceTree = "<group>"; };
@@ -513,7 +512,6 @@
 				A9F0429B1FB4CF82009FCCB8 /* Common */,
 				A9AC84381D061E7000E2CA97 /* include */,
 				A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */,
-				A97773311F420A21006A3601 /* ThirdPartyConfig.md */,
 				A9F55D2E198BE6A7004EC31B /* Products */,
 			);
 			sourceTree = "<group>";

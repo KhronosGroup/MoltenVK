@@ -129,15 +129,22 @@ namespace mvk {
 
 	} SPIRVToMSLConverterContext;
 
-    /** Specifies the SPIRV LocalSize, which is the number of threads in a compute shader workgroup. */
+    /**
+     * Describes a SPIRV entry point, including the Metal function name (which may be
+     * different than the Vulkan entry point name if the original name was illegal in Metal),
+     * and the number of threads in each workgroup, if the shader is a compute shader.
+     */
     typedef struct {
-        uint32_t width = 1;
-        uint32_t height = 1;
-        uint32_t depth = 1;
-    } SPIRVLocalSize;
+        std::string mtlFunctionName;
+        struct {
+            uint32_t width = 1;
+            uint32_t height = 1;
+            uint32_t depth = 1;
+        } workgroupSize;
+    } SPIRVEntryPoint;
 
-    /** Holds a map of the LocalSize value for each compute function, indexed by SPIRV entry point name. */
-    typedef std::unordered_map<std::string, SPIRVLocalSize> SPIRVLocalSizesByEntryPointName;
+    /** Holds a map of entry point info, indexed by the SPIRV entry point name. */
+    typedef std::unordered_map<std::string, SPIRVEntryPoint> SPIRVEntryPointsByName;
 
 	/** Special constant used in a MSLResourceBinding descriptorSet element to indicate the bindings for the push constants. */
     static const uint32_t kPushConstDescSet = std::numeric_limits<uint32_t>::max();
@@ -184,19 +191,8 @@ namespace mvk {
 		 */
 		const std::string& getMSL() { return _msl; }
 
-        /**
-         * Returns a mapping between the original entry point name in the SPIR-V and a
-         * possibly modified name as required to bypass restrictions in naming entry
-         * points within MSL. Specifically, the entry point name "main" is illegal in MSL,
-         * and is replaced by "main0" in this mapping.
-         */
-        const std::unordered_map<std::string, std::string>& getEntryPointNameMap() { return _entryPointNameMap; }
-
-        /**
-         * Returns a mapping of the local size of each entry point.
-         * This is only meaningful for compute shaders.
-         */
-        const SPIRVLocalSizesByEntryPointName& getLocalSizes() { return _localSizes; }
+        /** Returns a mapping of entry point info, indexed by SPIR-V entry point name. */
+        const SPIRVEntryPointsByName& getEntryPoints() { return _entryPoints; }
 
 		/**
 		 * Returns whether the most recent conversion was successful.
@@ -212,12 +208,9 @@ namespace mvk {
 		const std::string& getResultLog() { return _resultLog; }
 
         /** Sets MSL source code. This can be used when MSL is supplied directly. */
-        void setMSL(const std::string& msl,
-                    const std::unordered_map<std::string, std::string>& entryPointNameMap,
-                    const SPIRVLocalSizesByEntryPointName& localSizes) {
+        void setMSL(const std::string& msl, const SPIRVEntryPointsByName& entryPoints) {
             _msl = msl;
-            _entryPointNameMap = entryPointNameMap;
-            _localSizes = localSizes;
+            _entryPoints = entryPoints;
         }
 
 	protected:
@@ -230,8 +223,7 @@ namespace mvk {
 		std::vector<uint32_t> _spirv;
 		std::string _msl;
 		std::string _resultLog;
-        std::unordered_map<std::string, std::string> _entryPointNameMap;
-        SPIRVLocalSizesByEntryPointName _localSizes;
+        SPIRVEntryPointsByName _entryPoints;
 		bool _wasConverted = false;
 	};
 

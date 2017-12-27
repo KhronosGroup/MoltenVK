@@ -132,6 +132,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		A9077A4F1FF2D17700BE1757 /* ThirdPartyConfig.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = ThirdPartyConfig.md; path = Docs/ThirdPartyConfig.md; sourceTree = "<group>"; };
 		A92DB3E41CE0F37D00FBC835 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A92DB3E51CE0F37D00FBC835 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		A92DB3E61CE0F37D00FBC835 /* Whats_New.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Whats_New.md; path = Docs/Whats_New.md; sourceTree = "<group>"; };
@@ -167,6 +168,7 @@
 				A92DB3E41CE0F37D00FBC835 /* README.md */,
 				A92DB3E51CE0F37D00FBC835 /* LICENSE */,
 				A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */,
+				A9077A4F1FF2D17700BE1757 /* ThirdPartyConfig.md */,
 				A92DB3E61CE0F37D00FBC835 /* Whats_New.md */,
 			);
 			name = Docs;
