@@ -35,8 +35,8 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkPipelineShaderStageCreat
 
     // Ensure the function name is compatible with Metal (Metal does not allow main()
     // as a function name), and retrieve the unspecialized Metal function with that name.
-    string funcName = cleanMSLFunctionName(pShaderStage->pName);
-    NSString* mtlFuncName = @(funcName.c_str());
+    SPIRVEntryPoint& ep = _entryPoints[pShaderStage->pName];
+    NSString* mtlFuncName = @(ep.mtlFunctionName.c_str());
 
     NSTimeInterval startTime = _device->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
@@ -78,11 +78,10 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkPipelineShaderStageCreat
             }
         }
     } else {
-        mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Shader module does not contain an entry point named '%s'.", funcName.c_str());
+        mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
     }
 
-    SPIRVLocalSize wgSize = _localSizes[funcName];
-    return { mtlFunc, MTLSizeMake(wgSize.width, wgSize.height, wgSize.depth) };
+    return { mtlFunc, MTLSizeMake(ep.workgroupSize.width, ep.workgroupSize.height, ep.workgroupSize.depth) };
 }
 
 // Returns the MTLFunctionConstant with the specified ID from the specified array of function constants.
@@ -90,12 +89,6 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkPipelineShaderStageCreat
 MTLFunctionConstant* MVKShaderLibrary::getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID) {
     for (MTLFunctionConstant* mfc in mtlFCs) { if (mfc.index == mtlFCID) { return mfc; } }
     return nil;
-}
-
-// Cleans the specified shader function name so it can be used as as an MSL function name.
-const std::string MVKShaderLibrary::cleanMSLFunctionName(const std::string& funcName) {
-    string cleanName = _mtlFunctionNameMap[funcName];
-    return cleanName.empty() ? funcName : cleanName;
 }
 
 MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device, SPIRVToMSLConverter& mslConverter) : MVKBaseDeviceObject(device) {
@@ -110,8 +103,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device, SPIRVToMSLConverter& mslCo
     }
     _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.mslCompile, startTime);
 
-    _mtlFunctionNameMap = mslConverter.getEntryPointNameMap();
-    _localSizes = mslConverter.getLocalSizes();
+    _entryPoints = mslConverter.getEntryPoints();
 }
 
 MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device,
@@ -225,9 +217,8 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
             }
             case kMVKMagicNumberMSLSourceCode: {                    // MSL source code
                 uintptr_t pMSLCode = uintptr_t(pCreateInfo->pCode) + sizeof(MVKMSLSPIRVHeader);
-                unordered_map<string, string> entryPointNameMap;
-                SPIRVLocalSizesByEntryPointName localSizes;
-                _converter.setMSL((char*)pMSLCode, entryPointNameMap, localSizes);
+                SPIRVEntryPointsByName entryPoints;
+                _converter.setMSL((char*)pMSLCode, entryPoints);
                 _defaultLibrary = new MVKShaderLibrary(_device, _converter);
                 break;
             }

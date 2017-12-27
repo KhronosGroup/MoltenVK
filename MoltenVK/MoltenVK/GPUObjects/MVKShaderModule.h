@@ -60,11 +60,9 @@ public:
 protected:
     void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
-    const std::string cleanMSLFunctionName(const std::string& name);
 
 	id<MTLLibrary> _mtlLibrary;
-    std::unordered_map<std::string, std::string> _mtlFunctionNameMap;
-    SPIRVLocalSizesByEntryPointName _localSizes;
+    SPIRVEntryPointsByName _entryPoints;
 };
 
 

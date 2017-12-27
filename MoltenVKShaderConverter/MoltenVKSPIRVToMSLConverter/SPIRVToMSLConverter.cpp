@@ -117,9 +117,7 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignUsageWith(SPIRVToMSLConv
 #pragma mark SPIRVToMSLConverter
 
 /** Populates content extracted from the SPRI-V compiler. */
-void populateFromCompiler(spirv_cross::Compiler& compiler,
-                          unordered_map<string, string>& entryPointNameMap,
-                          SPIRVLocalSizesByEntryPointName& localSizes);
+void populateFromCompiler(spirv_cross::Compiler& compiler, SPIRVEntryPointsByName& entryPoints);
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const vector<uint32_t>& spirv) { _spirv = spirv; }
 
@@ -175,6 +173,14 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
     // Establish the MSL options for the compiler
     // This needs to be done in two steps...for CompilerMSL and its superclass.
     auto mslOpts = mslCompiler.get_options();
+
+#if MVK_MACOS
+    mslOpts.platform = spirv_cross::CompilerMSL::Options::macOS;
+#endif
+#if MVK_IOS
+    mslOpts.platform = spirv_cross::CompilerMSL::Options::iOS;
+#endif
+
     mslOpts.msl_version = context.options.mslVersion;
     mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
     mslOpts.resolve_specialized_array_lengths = true;
@@ -198,7 +204,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 	}
 
     // Populate content extracted from the SPRI-V compiler.
-    populateFromCompiler(mslCompiler, _entryPointNameMap, _localSizes);
+    populateFromCompiler(mslCompiler, _entryPoints);
 
     // To check GLSL conversion
     if (shouldLogGLSL) {
@@ -280,24 +286,20 @@ void SPIRVToMSLConverter::logSource(string& src, const char* srcLang, const char
 
 #pragma mark Support functions
 
-void populateFromCompiler(spirv_cross::Compiler& compiler,
-                          unordered_map<string, string>& entryPointNameMap,
-                          SPIRVLocalSizesByEntryPointName& localSizes) {
+void populateFromCompiler(spirv_cross::Compiler& compiler, SPIRVEntryPointsByName& entryPoints) {
 
     uint32_t minDim = 1;
-    entryPointNameMap.clear();
-    localSizes.clear();
+    entryPoints.clear();
     for (string& epOrigName : compiler.get_entry_points()) {
-        auto& ep = compiler.get_entry_point(epOrigName);
+        auto& spvEP = compiler.get_entry_point(epOrigName);
+        auto& wgSize = spvEP.workgroup_size;
 
-        entryPointNameMap[epOrigName] = ep.name;
-
-        auto& wgSize = ep.workgroup_size;
-        SPIRVLocalSize spvLS;
-        spvLS.width = max(wgSize.x, minDim);
-        spvLS.height = max(wgSize.y, minDim);
-        spvLS.depth = max(wgSize.z, minDim);
-        localSizes[epOrigName] = spvLS;
+        SPIRVEntryPoint mvkEP;
+        mvkEP.mtlFunctionName = spvEP.name;
+        mvkEP.workgroupSize.width = max(wgSize.x, minDim);
+        mvkEP.workgroupSize.height = max(wgSize.y, minDim);
+        mvkEP.workgroupSize.depth = max(wgSize.z, minDim);
+        entryPoints[epOrigName] = mvkEP;
     }
 }
 
