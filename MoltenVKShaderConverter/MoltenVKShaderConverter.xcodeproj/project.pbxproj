@@ -23,7 +23,6 @@
 		A91425E41EF9542E00891AFD /* InitializeDll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A91425E11EF9542E00891AFD /* InitializeDll.cpp */; };
 		A91425E51EF9542E00891AFD /* InitializeDll.h in Headers */ = {isa = PBXBuildFile; fileRef = A91425E21EF9542E00891AFD /* InitializeDll.h */; };
 		A91425E61EF9542E00891AFD /* InitializeDll.h in Headers */ = {isa = PBXBuildFile; fileRef = A91425E21EF9542E00891AFD /* InitializeDll.h */; };
-		A925B70C1C7754B2006E7ECD /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		A925B71A1C78DEB2006E7ECD /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A964BD601C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */; };
 		A925B71B1C78DEB2006E7ECD /* MoltenVKSPIRVToMSLConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A93903C71C57E9ED00FE90DC /* MoltenVKSPIRVToMSLConverter.framework */; };
 		A928C9191D0488DC00071B88 /* SPIRVConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A928C9171D0488DC00071B88 /* SPIRVConversion.h */; settings = {ATTRIBUTES = (Public, ); }; };
@@ -458,6 +457,9 @@
 		A92C04471FF2A39A00BAAE59 /* validation_state.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A92C029C1FF2A39A00BAAE59 /* validation_state.cpp */; };
 		A92C04481FF2A39A00BAAE59 /* decoration.h in Headers */ = {isa = PBXBuildFile; fileRef = A92C029D1FF2A39A00BAAE59 /* decoration.h */; };
 		A92C04491FF2A39A00BAAE59 /* decoration.h in Headers */ = {isa = PBXBuildFile; fileRef = A92C029D1FF2A39A00BAAE59 /* decoration.h */; };
+		A95096BB2003D00300F10950 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
+		A95096BC2003D00300F10950 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
+		A95096BF2003D32400F10950 /* DirectorySupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95096BD2003D32400F10950 /* DirectorySupport.mm */; };
 		A95C5F3F1DEA9070000D17B6 /* spirv_cfg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A95C5F3D1DEA9070000D17B6 /* spirv_cfg.cpp */; };
 		A95C5F401DEA9070000D17B6 /* spirv_cfg.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A95C5F3D1DEA9070000D17B6 /* spirv_cfg.cpp */; };
 		A95C5F411DEA9070000D17B6 /* spirv_cfg.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A95C5F3E1DEA9070000D17B6 /* spirv_cfg.hpp */; };
@@ -912,6 +914,8 @@
 		A92C029D1FF2A39A00BAAE59 /* decoration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = decoration.h; sourceTree = "<group>"; };
 		A93903BF1C57E9D700FE90DC /* MoltenVKSPIRVToMSLConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKSPIRVToMSLConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A93903C71C57E9ED00FE90DC /* MoltenVKSPIRVToMSLConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKSPIRVToMSLConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A95096BD2003D32400F10950 /* DirectorySupport.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DirectorySupport.mm; sourceTree = "<group>"; };
+		A95096BE2003D32400F10950 /* DirectorySupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DirectorySupport.h; sourceTree = "<group>"; };
 		A95C5F3D1DEA9070000D17B6 /* spirv_cfg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = spirv_cfg.cpp; path = "SPIRV-Cross/spirv_cfg.cpp"; sourceTree = "<group>"; };
 		A95C5F3E1DEA9070000D17B6 /* spirv_cfg.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = spirv_cfg.hpp; path = "SPIRV-Cross/spirv_cfg.hpp"; sourceTree = "<group>"; };
 		A964BD5F1C57EFBD00D930D8 /* MoltenVKShaderConverter */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MoltenVKShaderConverter; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1037,6 +1041,8 @@
 			children = (
 				A9FE521B1D440E17001DD573 /* SPIRV-Tools */,
 				A9381E5C1CB55F4600287A79 /* SPIRV-Cross */,
+				A925B70B1C7754B2006E7ECD /* FileSupport.h */,
+				A925B70A1C7754B2006E7ECD /* FileSupport.mm */,
 				A928C9171D0488DC00071B88 /* SPIRVConversion.h */,
 				A928C9181D0488DC00071B88 /* SPIRVConversion.mm */,
 				A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */,
@@ -1380,8 +1386,8 @@
 		A97CC73C1C7527F3004A5C7E /* MoltenVKShaderConverterTool */ = {
 			isa = PBXGroup;
 			children = (
-				A925B70A1C7754B2006E7ECD /* FileSupport.mm */,
-				A925B70B1C7754B2006E7ECD /* FileSupport.h */,
+				A95096BE2003D32400F10950 /* DirectorySupport.h */,
+				A95096BD2003D32400F10950 /* DirectorySupport.mm */,
 				A97CC73D1C7527F3004A5C7E /* main.cpp */,
 				A97CC73E1C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp */,
 				A97CC73F1C7527F3004A5C7E /* MoltenVKShaderConverterTool.h */,
@@ -2089,7 +2095,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A97CC7411C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp in Sources */,
-				A925B70C1C7754B2006E7ECD /* FileSupport.mm in Sources */,
+				A95096BF2003D32400F10950 /* DirectorySupport.mm in Sources */,
 				A97CC7401C7527F3004A5C7E /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -2247,6 +2253,7 @@
 				A92C038C1FF2A39A00BAAE59 /* ccp_pass.cpp in Sources */,
 				A92C03061FF2A39A00BAAE59 /* parsed_operand.cpp in Sources */,
 				A92C03681FF2A39A00BAAE59 /* remove_duplicates_pass.cpp in Sources */,
+				A95096BB2003D00300F10950 /* FileSupport.mm in Sources */,
 				A92C02DC1FF2A39A00BAAE59 /* spirv_validator_options.cpp in Sources */,
 				A92C03741FF2A39A00BAAE59 /* type_manager.cpp in Sources */,
 				A92C03161FF2A39A00BAAE59 /* software_version.cpp in Sources */,
@@ -2366,6 +2373,7 @@
 				A92C038D1FF2A39A00BAAE59 /* ccp_pass.cpp in Sources */,
 				A92C03071FF2A39A00BAAE59 /* parsed_operand.cpp in Sources */,
 				A92C03691FF2A39A00BAAE59 /* remove_duplicates_pass.cpp in Sources */,
+				A95096BC2003D00300F10950 /* FileSupport.mm in Sources */,
 				A92C02DD1FF2A39A00BAAE59 /* spirv_validator_options.cpp in Sources */,
 				A92C03751FF2A39A00BAAE59 /* type_manager.cpp in Sources */,
 				A92C03171FF2A39A00BAAE59 /* software_version.cpp in Sources */,

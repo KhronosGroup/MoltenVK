@@ -151,39 +151,24 @@ The updated version will then be "locked in" the next time the `MoltenVK` reposi
 
 ### Regression Testing Your Changes to *SPIRV-Cross*
 
-If you make changes to the `SPIRV-Cross` submodule, you can regression test your changes by building the 
-`spirv-cross` executable and running the `test_shaders.py` regression test script, using the following steps:
+If you make changes to the `SPIRV-Cross` submodule, you can regression test your changes 
+using the following steps:
 
-
-1. If you did not run the `External/makeAll` script, build the `SPIRV-Tools` and `glslangValidator`tools 
-   (you should only need to do this once):
-
-		cd External
-		./makeSPIRVTools
-		./makeglslang
-
-2. Set your `PATH` environment variable so that the `spirv-cross` tool can find the
-   `glslangValidator` and `SPIRV-Tools` tools:
-
-		export PATH=$PATH:"../glslang/build/StandAlone:../SPIRV-Tools/build/tools"
-
-3. Build the `spirv-cross` executable:
+1. Load and build the versions of `SPRIV-Tools` and `glslang` that are used by the `SPIRV-Cross` tests:
 
 		cd External/SPIRV-Cross
-		make
+		./checkout_glslang_spirv_tools.sh
 
-4. Run the regression tests:
+2. Run the regression tests:
 
 		./test_shaders.sh
 
-5. If your changes result in different expected output for a reference shader, you can update
-   the reference shader for a particular regression test:
-	
-	1. Termporarily rename the existing reference shader file in `External/SPIRV-Cross/reference/shaders-msl`.
-	2. Run the regression tests. A new reference shader will be automatically generated.
-	3. Compare the new reference shader to the old one using a tool like *Xcode Version Editor*,
-	   or *Xcode FileMerge*, or equivalent.
-	4. Delete the old copy of the reference shader.
+3. If your changes result in different expected output for a reference shader, and the new results
+   are correct, you can update the reference shader for a particular regression test by deleting
+   that reference shader, in either `External/SPIRV-Cross/reference/shaders-msl` or 
+   `External/SPIRV-Cross/reference/opt/shaders-msl`, and running the test again. The test will
+   replace the deleted reference shader.
+
 
 
 <a name="add_spirv-cross"></a>
