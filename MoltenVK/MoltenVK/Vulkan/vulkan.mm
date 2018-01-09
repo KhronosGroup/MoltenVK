@@ -1576,3 +1576,50 @@ MVK_PUBLIC_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(
     *pSurface = (VkSurfaceKHR)mvkSrfc;
     return mvkSrfc->getConfigurationResult();
 }
+
+
+#pragma mark -
+#pragma mark Loader and Layer ICD interface extension
+
+#ifdef __cplusplus
+extern "C" {
+#endif    //  __cplusplus
+
+	VKAPI_ATTR VkResult VKAPI_CALL vk_icdNegotiateLoaderICDInterfaceVersion(uint32_t* pSupportedVersion);
+	VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetInstanceProcAddr(VkInstance instance, const char* name);
+	VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vk_icdGetPhysicalDeviceProcAddr(VkInstance instance, const char* name);
+
+#ifdef __cplusplus
+}
+#endif    //  __cplusplus
+
+
+MVK_PUBLIC_SYMBOL VkResult vk_icdNegotiateLoaderICDInterfaceVersion(
+	uint32_t*                                   pSupportedVersion) {
+
+	// This ICD expects to be loaded by a loader of at least version 5.
+	if (pSupportedVersion && *pSupportedVersion >= 5) {
+		*pSupportedVersion = 5;
+		return VK_SUCCESS;
+	}
+
+	return VK_ERROR_INCOMPATIBLE_DRIVER;
+}
+
+MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vk_icdGetInstanceProcAddr(
+	VkInstance                                  instance,
+	const char*                                 pName) {
+
+	if (strcmp(pName, "vk_icdNegotiateLoaderICDInterfaceVersion") == 0) { return (PFN_vkVoidFunction)vk_icdNegotiateLoaderICDInterfaceVersion; }
+	if (strcmp(pName, "vk_icdGetPhysicalDeviceProcAddr") == 0) { return (PFN_vkVoidFunction)vk_icdGetPhysicalDeviceProcAddr; }
+
+	return vkGetInstanceProcAddr(instance, pName);
+}
+
+MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vk_icdGetPhysicalDeviceProcAddr(
+	VkInstance                                  instance,
+	const char*                                 pName) {
+
+	return vk_icdGetInstanceProcAddr(instance, pName);
+}
+
