@@ -18,9 +18,9 @@
 
 #include "MoltenVKShaderConverterTool.h"
 #include "FileSupport.h"
+#include "DirectorySupport.h"
 #include "GLSLToSPIRVConverter.h"
 #include "SPIRVToMSLConverter.h"
-#import <CoreFoundation/CFByteOrder.h>
 
 using namespace std;
 using namespace mvk;
@@ -525,34 +525,4 @@ bool mvk::equal(string const& a, string const& b, bool checkCase) {
 	if (a.length() != b.length()) { return false; }
 	return checkCase ? (a == b) : (equal(b.begin(), b.end(), a.begin(), compareIgnoringCase));
 }
-
-void mvk::spirvToBytes(const vector<uint32_t>& spv, vector<char>& bytes) {
-	// Assumes desired endianness.
-	size_t byteCnt = spv.size() * sizeof(uint32_t);
-	char* cBytes = (char*)spv.data();
-	bytes.clear();
-	bytes.insert(bytes.end(), cBytes, cBytes + byteCnt);
-}
-
-void mvk::bytesToSPIRV(const vector<char>& bytes, vector<uint32_t>& spv) {
-	size_t spvCnt = bytes.size() / sizeof(uint32_t);
-	uint32_t* cSPV = (uint32_t*)bytes.data();
-	spv.clear();
-	spv.insert(spv.end(), cSPV, cSPV + spvCnt);
-	ensureSPIRVEndianness(spv);
-}
-
-bool mvk::ensureSPIRVEndianness(vector<uint32_t>& spv) {
-	if (spv.empty()) { return false; }					// Nothing to convert
-
-	uint32_t magNum = spv.front();
-	if (magNum == spv::MagicNumber) { return false; }	// No need to convert
-
-	if (CFSwapInt32(magNum) == spv::MagicNumber) {		// Yep, it's SPIR-V, but wrong endianness
-        for (auto& elem : spv) { elem = CFSwapInt32(elem); }
-		return true;
-	}
-	return false;		// Not SPIR-V, so don't convert
-}
-
 

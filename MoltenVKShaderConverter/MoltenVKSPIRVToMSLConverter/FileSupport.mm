@@ -17,7 +17,6 @@
  */
 
 #include "FileSupport.h"
-#include "MoltenVKShaderConverterTool.h"
 #include <fstream>
 
 #import <Foundation/Foundation.h>
@@ -138,38 +137,4 @@ bool mvk::writeFile(const string& path, const vector<char>& contents, string& er
 	}
 	return true;
 }
-
-template <typename FileProcessor>
-bool mvk::iterateDirectory(const string& dirPath,
-							  FileProcessor& fileProcessor,
-							  bool isRecursive,
-							  string& errMsg) {
-	NSString* nsAbsDirPath = @(absolutePath(dirPath).data());
-	NSFileManager* fileMgr = NSFileManager.defaultManager;
-	BOOL isDir = false;
-	BOOL exists = [fileMgr fileExistsAtPath: nsAbsDirPath isDirectory: &isDir];
-	if ( !exists ) {
-		errMsg = "Could not locate directory: " + absolutePath(dirPath);
-		return false;
-	}
-	if ( !isDir ) {
-		errMsg = absolutePath(dirPath) + " is not a directory.";
-		return false;
-	}
-
-	NSDirectoryEnumerator* dirEnum = [fileMgr enumeratorAtPath: nsAbsDirPath];
-	NSString* filePath;
-	while ((filePath = dirEnum.nextObject)) {
-		if ( !isRecursive ) { [dirEnum skipDescendants]; }
-		NSString* absFilePath = [nsAbsDirPath stringByAppendingPathComponent: filePath];
-		if(fileProcessor.processFile(absFilePath.UTF8String)) { return true; }
-	}
-	return true;
-}
-
-/** Concrete template implementation to allow MoltenVKShaderConverterTool to iterate the files in a directory. */
-template bool mvk::iterateDirectory<MoltenVKShaderConverterTool>(const string& dirPath,
-																  MoltenVKShaderConverterTool& fileProcessor,
-																  bool isRecursive,
-																  string& errMsg);
 

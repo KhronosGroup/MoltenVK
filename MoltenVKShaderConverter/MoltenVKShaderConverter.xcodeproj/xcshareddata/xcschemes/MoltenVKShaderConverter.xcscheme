@@ -77,7 +77,7 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK-bh/External/SPIRV-Cross/shaders-msl/vert/dynamic.flatten.vert"
+            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK-bh/External/SPIRV-Cross/shaders/flatten/rowmajor.flatten.vert"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
@@ -85,7 +85,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/dynamic.flatten.vert.spv"
+            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/Support/Valve/Dota2/OpVectorShuffle_OOM.spv"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

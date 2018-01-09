@@ -19,9 +19,11 @@
 #include "SPIRVToMSLConverter.h"
 #include "MVKCommonEnvironment.h"
 #include "MVKStrings.h"
+#include "FileSupport.h"
 #include "spirv_msl.hpp"
 #include "spirv_glsl.hpp"
 #include <spirv-tools/libspirv.h>
+#import <CoreFoundation/CFByteOrder.h>
 
 using namespace mvk;
 using namespace std;
@@ -261,6 +263,27 @@ void SPIRVToMSLConverter::logSPIRV(const char* opDesc) {
 	_resultLog += " SPIR-V:\n";
 	_resultLog += spvLog;
 	_resultLog += "\nEnd SPIR-V\n\n";
+
+	// Uncomment one or both of the following lines to get additional debugging and tracability capabilities.
+	// The SPIR-V can be written in binary form to a file, and/or logged in human readable form to the console.
+	// These can be helpful if errors occur during conversion of SPIR-V to MSL.
+//	writeSPIRVToFile("spvout.spv");
+//	printf("\n%s\n", getResultLog().c_str());
+}
+
+/**
+ * Writes the SPIR-V code to a file. This can be useful for debugging
+ * when the SPRIR-V did not originally come from a known file
+ */
+void SPIRVToMSLConverter::writeSPIRVToFile(string spvFilepath) {
+	vector<char> fileContents;
+	spirvToBytes(_spirv, fileContents);
+	string errMsg;
+	if (writeFile(spvFilepath, fileContents, errMsg)) {
+		_resultLog += "Saved SPIR-V to file: " + absolutePath(spvFilepath) + "\n\n";
+	} else {
+		_resultLog += "Could not write SPIR-V file. " + errMsg + "\n\n";
+	}
 }
 
 /** Validates that the SPIR-V code will disassemble during logging. */
@@ -321,6 +344,35 @@ MVK_PUBLIC_SYMBOL void mvk::logSPIRV(vector<uint32_t>& spirv, string& spvLog) {
 	}
 	spvLog.append(text->str, text->length);
 	spvTextDestroy(text);
+}
+
+MVK_PUBLIC_SYMBOL void mvk::spirvToBytes(const vector<uint32_t>& spv, vector<char>& bytes) {
+	// Assumes desired endianness.
+	size_t byteCnt = spv.size() * sizeof(uint32_t);
+	char* cBytes = (char*)spv.data();
+	bytes.clear();
+	bytes.insert(bytes.end(), cBytes, cBytes + byteCnt);
+}
+
+MVK_PUBLIC_SYMBOL void mvk::bytesToSPIRV(const vector<char>& bytes, vector<uint32_t>& spv) {
+	size_t spvCnt = bytes.size() / sizeof(uint32_t);
+	uint32_t* cSPV = (uint32_t*)bytes.data();
+	spv.clear();
+	spv.insert(spv.end(), cSPV, cSPV + spvCnt);
+	ensureSPIRVEndianness(spv);
+}
+
+MVK_PUBLIC_SYMBOL bool mvk::ensureSPIRVEndianness(vector<uint32_t>& spv) {
+	if (spv.empty()) { return false; }					// Nothing to convert
+
+	uint32_t magNum = spv.front();
+	if (magNum == spv::MagicNumber) { return false; }	// No need to convert
+
+	if (CFSwapInt32(magNum) == spv::MagicNumber) {		// Yep, it's SPIR-V, but wrong endianness
+		for (auto& elem : spv) { elem = CFSwapInt32(elem); }
+		return true;
+	}
+	return false;		// Not SPIR-V, so don't convert
 }
 
 

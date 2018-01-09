@@ -111,23 +111,4 @@ namespace mvk {
 	/** Compares the specified strings, with or without sensitivity to case. */
 	bool equal(std::string const& a, std::string const& b, bool checkCase = true);
 
-	/** Converts the SPIR-V code to an array of bytes (suitable for writing to a file). */
-	void spirvToBytes(const std::vector<uint32_t>& spv, std::vector<char>& bytes);
-
-	/** Converts an array of bytes (as read from a file) to SPIR-V code. */
-	void bytesToSPIRV(const std::vector<char>& bytes, std::vector<uint32_t>& spv);
-
-	/**
-	 * Ensures that the specified SPIR-V code has the correct endianness for this system,
-	 * and converts it in place if necessary. This can be used after loading SPIR-V code
-	 * from a file that may have been encoded on a system with the opposite endianness.
-	 *
-	 * This function tests for the SPIR-V magic number (in both endian states) to determine
-	 * whether conversion is required. It will not convert arrays of uint32_t values that
-	 * are not SPIR-V code.
-	 *
-	 * Returns whether the endianness was changed.
-	 */
-	bool ensureSPIRVEndianness(std::vector<uint32_t>& spv);
-
 }
