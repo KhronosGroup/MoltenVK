@@ -314,6 +314,7 @@
 		A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKMTLBufferAllocation.h; sourceTree = "<group>"; };
 		A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKMTLBufferAllocation.mm; sourceTree = "<group>"; };
 		A9CBEE011B6299D800E45FDC /* MoltenVK.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVK.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9DE1083200598C500F18F80 /* icd */ = {isa = PBXFileReference; lastKnownFileType = folder; path = icd; sourceTree = "<group>"; };
 		A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKMTLResourceBindings.h; sourceTree = "<group>"; };
 		A9F0429D1FB4CF82009FCCB8 /* MVKCommonEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommonEnvironment.h; sourceTree = "<group>"; };
 		A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKLogging.h; sourceTree = "<group>"; };
@@ -511,6 +512,7 @@
 				A94FB7641C7DFB4800632CA3 /* MoltenVK */,
 				A9F0429B1FB4CF82009FCCB8 /* Common */,
 				A9AC84381D061E7000E2CA97 /* include */,
+				A9DE1083200598C500F18F80 /* icd */,
 				A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */,
 				A9F55D2E198BE6A7004EC31B /* Products */,
 			);
