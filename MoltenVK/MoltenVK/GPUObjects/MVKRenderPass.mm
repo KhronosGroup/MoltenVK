@@ -67,7 +67,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			framebuffer->getAttachment(clrRPAttIdx)->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc);
 			if (clrMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc, this,
                                                                        isRenderingEntireAttachment,
-                                                                       hasResolveAttachment)) {
+                                                                       hasResolveAttachment, false)) {
 				mtlColorAttDesc.clearColor = mvkMTLClearColorFromVkClearValue(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
 			}
 
@@ -86,7 +86,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
                                                                       isRenderingEntireAttachment,
-                                                                      false)) {
+                                                                      false, false)) {
 				mtlDepthAttDesc.clearDepth = mvkMTLClearDepthFromVkClearValue(clearValues[dsRPAttIdx]);
 			}
 		}
@@ -95,7 +95,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
                                                                       isRenderingEntireAttachment,
-                                                                      false)) {
+                                                                      false, true)) {
 				mtlStencilAttDesc.clearStencil = mvkMTLClearStencilFromVkClearValue(clearValues[dsRPAttIdx]);
 			}
 		}
@@ -195,14 +195,16 @@ VkFormat MVKRenderPassAttachment::getFormat() { return _info.format; }
 bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc,
                                                                         MVKRenderSubpass* subpass,
                                                                         bool isRenderingEntireAttachment,
-                                                                        bool hasResolveAttachment) {
+                                                                        bool hasResolveAttachment,
+                                                                        bool isStencil) {
 
     bool willClear = false;		// Assume the attachment won't be cleared
 
     // Only allow clearing of entire attachment if we're actually rendering to the entire
     // attachment AND we're in the first subpass.
     if ( isRenderingEntireAttachment && (subpass->_subpassIndex == _firstUseSubpassIdx) ) {
-        mtlAttDesc.loadAction = mvkMTLLoadActionFromVkAttachmentLoadOp(_info.loadOp);
+        VkAttachmentLoadOp loadOp = isStencil ? _info.stencilLoadOp : _info.loadOp;
+        mtlAttDesc.loadAction = mvkMTLLoadActionFromVkAttachmentLoadOp(loadOp);
         willClear = (_info.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
     } else {
         mtlAttDesc.loadAction = MTLLoadActionLoad;
@@ -214,7 +216,8 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
     if (hasResolveAttachment) {
         mtlAttDesc.storeAction = MTLStoreActionMultisampleResolve;
     } else if ( isRenderingEntireAttachment && (subpass->_subpassIndex == _lastUseSubpassIdx) ) {
-        mtlAttDesc.storeAction = mvkMTLStoreActionFromVkAttachmentStoreOp(_info.storeOp);
+        VkAttachmentStoreOp storeOp = isStencil ? _info.stencilStoreOp : _info.storeOp;
+        mtlAttDesc.storeAction = mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp);
     } else {
         mtlAttDesc.storeAction = MTLStoreActionStore;
     }

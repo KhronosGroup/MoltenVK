@@ -99,7 +99,8 @@ public:
     bool populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc,
                                                    MVKRenderSubpass* subpass,
                                                    bool isRenderingEntireAttachment,
-                                                   bool hasResolveAttachment);
+                                                   bool hasResolveAttachment,
+                                                   bool isStencil);
 
     /** Returns whether this attachment should be cleared in the subpass. */
     bool shouldUseClearAttachment(MVKRenderSubpass* subpass);
