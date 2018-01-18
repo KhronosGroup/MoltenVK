@@ -137,7 +137,7 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 	for (uint32_t i = 0; i < regionCount; i++) {
 		const VkImageBlit* pRegion = &pRegions[i];
 		uint32_t layCnt = pRegion->srcSubresource.layerCount;
-		if ( canCopy(pRegion) ) {
+		if ( canCopy(pRegion) && (_srcImage->getMTLPixelFormat() == _mtlPixFmt) ) {
 			canCopyRegion[i] = true;
 			copyRegionCount += layCnt;
 		} else {
@@ -163,8 +163,8 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 
     // Validate
     clearConfigurationResult();
-    if (_srcImage->getMTLPixelFormat() != _mtlPixFmt) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): The source and destination images must have the same format."));
+    if ((_srcImage->getMTLPixelFormat() != _mtlPixFmt) && mvkMTLPixelFormatIsStencilFormat(_mtlPixFmt)) {
+        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): The source and destination images must have the same format for depth/stencil images."));
     }
     if ( !_mtlTexBlitRenders.empty() && mvkMTLPixelFormatIsStencilFormat(_mtlPixFmt)) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Stencil image formats cannot be scaled or inverted."));
@@ -237,13 +237,13 @@ void MVKCmdBlitImage::populateVertices(MVKVertexPosTex* vertices, const VkImageB
     // Determine the bottom-left and top-right corners of the source and destination
     // texture regions, each as a fraction of the corresponding texture size.
     CGPoint srcBL = CGPointMake((CGFloat)(pSo0->x) / (CGFloat)srcExtent.width,
-                                (CGFloat)(pSo0->y) / (CGFloat)srcExtent.height);
+                                (CGFloat)(srcExtent.height - pSo1->y) / (CGFloat)srcExtent.height);
     CGPoint srcTR = CGPointMake((CGFloat)(pSo1->x) / (CGFloat)srcExtent.width,
-                                (CGFloat)(pSo1->y) / (CGFloat)srcExtent.height);
+                                (CGFloat)(srcExtent.height - pSo0->y) / (CGFloat)srcExtent.height);
     CGPoint dstBL = CGPointMake((CGFloat)(pDo0->x) / (CGFloat)dstExtent.width,
-                                (CGFloat)(pDo0->y) / (CGFloat)dstExtent.height);
+                                (CGFloat)(dstExtent.height - pDo1->y) / (CGFloat)dstExtent.height);
     CGPoint dstTR = CGPointMake((CGFloat)(pDo1->x) / (CGFloat)dstExtent.width,
-                                (CGFloat)(pDo1->y) / (CGFloat)dstExtent.height);
+                                (CGFloat)(dstExtent.height - pDo0->y) / (CGFloat)dstExtent.height);
 
     // The destination region is used for vertex positions,
     // which are bounded by (-1.0 < p < 1.0) in clip-space.
