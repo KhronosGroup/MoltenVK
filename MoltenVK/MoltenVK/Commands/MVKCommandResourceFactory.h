@@ -264,7 +264,7 @@ public:
     id<MTLDepthStencilState> newMTLDepthStencilState(MVKMTLDepthStencilDescriptorData& dsData);
 
     /** Returns an autoreleased MTLStencilDescriptor constructed from the stencil data. */
-    MTLStencilDescriptor* mtlMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData);
+    MTLStencilDescriptor* getMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData);
 
     /**
      * Returns a new MVKImage configured from the specified MTLTexture configuration,

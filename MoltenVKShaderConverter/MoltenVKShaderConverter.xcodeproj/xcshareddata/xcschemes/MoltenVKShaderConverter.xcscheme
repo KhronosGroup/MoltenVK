@@ -85,7 +85,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/Support/Valve/Dota2/OpVectorShuffle_OOM.spv"
+            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/Support/Valve/Dota2/shader-issues/spv_cross_bug/spv_cross_bug.spv"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

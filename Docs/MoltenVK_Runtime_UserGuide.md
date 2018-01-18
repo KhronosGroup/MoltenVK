@@ -423,7 +423,7 @@ and tuning capabilities for apps using *Metal*.
 
 <a name="limitations"></a>
 Known **MoltenVK** Limitations
------------------------------
+------------------------------
 
 This section documents the known limitations in this version of **MoltenVK**.
 
@@ -435,30 +435,30 @@ The following *Vulkan* features have not been implemented in this version of **M
 - Tessellation and Geometry shader stages.
 
 - Events:
-	- vkCreateEvent()
-	- vkDestroyEvent()
-	- vkGetEventStatus()
-	- vkSetEvent()
-	- vkResetEvent()
-	- vkCmdSetEvent()
-	- vkCmdResetEvent()
-	- vkCmdWaitEvents()
+	- `vkCreateEvent()`
+	- `vkDestroyEvent()`
+	- `vkGetEventStatus()`
+	- `vkSetEvent()`
+	- `vkResetEvent()`
+	- `vkCmdSetEvent()`
+	- `vkCmdResetEvent()`
+	- `vkCmdWaitEvents()`
 
 - Application-controlled memory allocations:
-	- VkAllocationCallbacks are ignored
+	- `VkAllocationCallbacks` are ignored
 	 
 - Sparse memory:
-	- vkGetImageSparseMemoryRequirements()
-	- vkGetPhysicalDeviceSparseImageFormatProperties()
-	- vkQueueBindSparse()
+	- `vkGetImageSparseMemoryRequirements()`
+	- `vkGetPhysicalDeviceSparseImageFormatProperties()`
+	- `vkQueueBindSparse()`
 	 
 - Pipeline statistics query pool:
-	- vkCreateQueryPool(VK_QUERY_TYPE_PIPELINE_STATISTICS)
+	- `vkCreateQueryPool(VK_QUERY_TYPE_PIPELINE_STATISTICS)`
 
-- VkImageViewCreateInfo::VkComponentMapping supports only the following per-texture swizzles:
-	- VK_FORMAT_R8_UNORM: VkComponentMapping.r = VK_COMPONENT_SWIZZLE_R
-	- VK_FORMAT_R8G8B8A8_UNORM <->	VK_FORMAT_B8G8R8A8_UNORM
-	- VK_FORMAT_R8G8B8A8_SRGB <->	VK_FORMAT_B8G8R8A8_SRGB
+- `VkImageViewCreateInfo::VkComponentMapping` supports only the following per-texture swizzles:
+	- `VK_FORMAT_R8_UNORM`: `VkComponentMapping.r` = `VK_COMPONENT_SWIZZLE_R`
+	- `VK_FORMAT_R8G8B8A8_UNORM` <->	`VK_FORMAT_B8G8R8A8_UNORM`
+	- `VK_FORMAT_R8G8B8A8_SRGB` <->	`VK_FORMAT_B8G8R8A8_SRGB`
 
 
 
