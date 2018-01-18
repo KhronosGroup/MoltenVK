@@ -274,10 +274,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 
         // Fragment shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_FRAGMENT_BIT)) {
-            // If no color attachments (e.g. depth-only rendering), don't set fragment function.
-            if (mvkRenderSubpass->getColorAttachmentCount() > 0) {
-                plDesc.fragmentFunction = mvkShdrMod->getMTLFunction(pSS, &shaderContext).mtlFunction;
-            }
+			plDesc.fragmentFunction = mvkShdrMod->getMTLFunction(pSS, &shaderContext).mtlFunction;
         }
     }
 
