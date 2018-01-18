@@ -518,14 +518,14 @@ MVKImage::~MVKImage() {
 
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
-    mtlAttDesc.texture = _image->getMTLTexture();           // Use underlying image texture, since RP attachment handles subresource
+    mtlAttDesc.texture = getMTLTexture();           // Use image view, necessary if image view format differs from image format
     mtlAttDesc.level = _subresourceRange.baseMipLevel;
     mtlAttDesc.slice = _subresourceRange.baseArrayLayer;
     mtlAttDesc.depthPlane = 0;
 }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
-    mtlAttDesc.resolveTexture = _image->getMTLTexture();    // Use underlying image texture, since RP attachment handles subresource
+    mtlAttDesc.resolveTexture = getMTLTexture();    // Use image view, necessary if image view format differs from image format
     mtlAttDesc.resolveLevel = _subresourceRange.baseMipLevel;
     mtlAttDesc.resolveSlice = _subresourceRange.baseArrayLayer;
     mtlAttDesc.resolveDepthPlane = 0;
