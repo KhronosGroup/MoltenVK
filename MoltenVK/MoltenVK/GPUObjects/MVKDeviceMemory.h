@@ -115,6 +115,7 @@ protected:
 	void removeResource(MVKResource* rez);
 
 	std::vector<MVKResource*> _resources;
+	std::mutex _rezLock;
     VkDeviceSize _allocationSize;
 	VkDeviceSize _mapOffset;
 	VkDeviceSize _mapSize;

@@ -23,6 +23,8 @@
 #include <cstdlib>
 #include <stdlib.h>
 
+using namespace std;
+
 #pragma mark MVKDeviceMemory
 
 // Metal does not support the concept of mappable device memory separate from individual
@@ -105,7 +107,8 @@ void MVKDeviceMemory::unmap() {
 // Attempts to map the memory defined by the offset and size to a single resource, and returns
 // whether such a mapping was possible. If it was, the mapped region is stored in _pMappedMemory.
 bool MVKDeviceMemory::mapToSingleResource(VkDeviceSize offset, VkDeviceSize size) {
-    for (auto& rez : _resources) {
+	lock_guard<mutex> lock(_rezLock);
+	for (auto& rez : _resources) {
         _pMappedMemory = rez->map(offset, size);
         if (_pMappedMemory) { return true; }
     }
@@ -135,6 +138,7 @@ void* MVKDeviceMemory::allocateMappedMemory(VkDeviceSize offset, VkDeviceSize si
 VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, bool evenIfCoherent) {
 	// Coherent memory is flushed on unmap(), so it is only flushed if forced
 	if (size > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) ) {
+		lock_guard<mutex> lock(_rezLock);
 		VkDeviceSize memSize = adjustMemorySize(size, offset);
         for (auto& rez : _resources) { rez->flushToDevice(offset, memSize); }
 	}
@@ -145,6 +149,7 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset, VkDeviceSize size,
 	// Coherent memory is flushed on unmap(), so it is only flushed if forced
     VkDeviceSize memSize = adjustMemorySize(size, offset);
 	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) ) {
+		lock_guard<mutex> lock(_rezLock);
         for (auto& rez : _resources) { rez->pullFromDevice(offset, memSize); }
 	}
 	return VK_SUCCESS;
@@ -158,9 +163,15 @@ VkDeviceSize MVKDeviceMemory::adjustMemorySize(VkDeviceSize size, VkDeviceSize o
 	return (size == VK_WHOLE_SIZE) ? (_allocationSize - offset) : size;
 }
 
-void MVKDeviceMemory::addResource(MVKResource* rez) { _resources.push_back(rez); }
+void MVKDeviceMemory::addResource(MVKResource* rez) {
+	lock_guard<mutex> lock(_rezLock);
+	_resources.push_back(rez);
+}
 
-void MVKDeviceMemory::removeResource(MVKResource* rez) { mvkRemoveAllOccurances(_resources, rez); }
+void MVKDeviceMemory::removeResource(MVKResource* rez) {
+	lock_guard<mutex> lock(_rezLock);
+	mvkRemoveAllOccurances(_resources, rez);
+}
 
 MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkMemoryAllocateInfo* pAllocateInfo,
