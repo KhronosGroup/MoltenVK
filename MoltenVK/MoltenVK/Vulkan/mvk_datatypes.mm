@@ -351,8 +351,8 @@ static const MVKFormatDesc _formatDescriptions[] {
 
     MVK_MAKE_FMT_STRUCT( VK_FORMAT_X8_D24_UNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatDepth24Unorm_Stencil8, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatDepthStencil, MVK_FMT_ALL_DS_FEATS ),	// Vulkan packed is reversed
 
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_BC1_RGB_UNORM_BLOCK, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 4, 4, 8, MTLVertexFormatInvalid, kMVKFormatNone, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_BC1_RGB_SRGB_BLOCK, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 4, 4, 8, MTLVertexFormatInvalid, kMVKFormatNone, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_BC1_RGB_UNORM_BLOCK, MTLPixelFormatBC1_RGBA, MTLPixelFormatInvalid, kMTLFmtNA, 10.11, 4, 4, 8, MTLVertexFormatInvalid, kMVKFormatNone, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_BC1_RGB_SRGB_BLOCK, MTLPixelFormatBC1_RGBA_sRGB, MTLPixelFormatInvalid, kMTLFmtNA, 10.11, 4, 4, 8, MTLVertexFormatInvalid, kMVKFormatNone, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_BC1_RGBA_UNORM_BLOCK, MTLPixelFormatBC1_RGBA, MTLPixelFormatInvalid, kMTLFmtNA, 10.11, 4, 4, 8, MTLVertexFormatInvalid, kMVKFormatNone, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_BC1_RGBA_SRGB_BLOCK, MTLPixelFormatBC1_RGBA_sRGB, MTLPixelFormatInvalid, kMTLFmtNA, 10.11, 4, 4, 8, MTLVertexFormatInvalid, kMVKFormatNone, MVK_FMT_ALL_CLR_FEATS ),
 
