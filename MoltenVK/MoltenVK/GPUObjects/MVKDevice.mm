@@ -842,13 +842,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 
 	_memoryProperties.memoryHeapCount = 1;
 	_memoryProperties.memoryHeaps[0].flags = (VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
-#if MVK_MACOS
-	_memoryProperties.memoryHeaps[0].size = (VkDeviceSize)[_mtlDevice recommendedMaxWorkingSetSize];
-#else
-	// TODO: determine heap size on iOS where recommenedMaxWorkingSetSize does not exist.
-	_memoryProperties.memoryHeaps[0].size = 0;
-#endif
-
+	_memoryProperties.memoryHeaps[0].size = (VkDeviceSize)mvkRecommendedMaxWorkingSetSize(_mtlDevice);
 	_memoryProperties.memoryTypes[0].heapIndex = 0;
 	_memoryProperties.memoryTypes[0].propertyFlags = MVK_VK_MEMORY_TYPE_METAL_PRIVATE;	// Private storage
 	_memoryProperties.memoryTypes[1].heapIndex = 0;

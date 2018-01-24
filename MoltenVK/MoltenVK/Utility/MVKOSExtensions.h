@@ -99,3 +99,10 @@ MVKOSVersion mvkOSVersion(void);
 @end
 
 
+#pragma mark -
+#pragma mark MTLDevice
+
+/** Returns an approximation of how much memory, in bytes, the device can use with good performance. */
+uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice);
+
+
