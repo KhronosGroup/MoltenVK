@@ -18,6 +18,10 @@
 
 
 #include "MVKOSExtensions.h"
+#include "MVKFoundation.h"
+
+#import <mach/mach.h>
+#import <mach/mach_host.h>
 
 
 static const MVKOSVersion kMVKOSVersionUnknown = 0.0f;
@@ -98,4 +102,33 @@ MVKOSVersion mvkOSVersion() {
 }
 
 @end
+
+
+#pragma mark -
+#pragma mark MTLDevice
+
+uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice) {
+
+#if MVK_MACOS
+	if ( [mtlDevice respondsToSelector: @selector(recommendedMaxWorkingSetSize)]) {
+		return mtlDevice.recommendedMaxWorkingSetSize;
+	}
+#endif
+#if MVK_IOS
+	// GPU and CPU use shared memory. Estimate the current free memory in the system.
+	mach_port_t host_port;
+	mach_msg_type_number_t host_size;
+	vm_size_t pagesize;
+	host_port = mach_host_self();
+	host_size = sizeof(vm_statistics_data_t) / sizeof(integer_t);
+	host_page_size(host_port, &pagesize);
+	vm_statistics_data_t vm_stat;
+	if (host_statistics(host_port, HOST_VM_INFO, (host_info_t)&vm_stat, &host_size) == KERN_SUCCESS ) {
+		return vm_stat.free_count * pagesize;
+	}
+#endif
+
+	return 128 * MEBI;		// Conservative minimum for macOS GPU's & iOS shared memory
+}
+
 
