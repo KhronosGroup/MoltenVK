@@ -275,10 +275,33 @@ void MVKInstance::logVersions() {
     MVKLogInfo("MoltenVK version %s. Vulkan version %s.", mvkVer, vkVer);
 }
 
-/** Returns an autorelease array containing the MTLDevices available on this system. */
+/**
+ * Returns an autoreleased array containing the MTLDevices available on this system,
+ * sorted according to power, with higher power GPU's at the front of the array.
+ * This ensures that a lazy app that simply grabs the first GPU will get a high-power one by default.
+ * If the MVK_FORCE_LOW_POWER_GPU is defined, the returned array will only include low-power devices.
+ */
 static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
 #if MVK_MACOS
-	return [MTLCopyAllDevices() autorelease];
+	NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
+
+#ifdef MVK_FORCE_LOW_POWER_GPU
+	NSMutableArray* lpDevs = [[NSMutableArray new] autorelease];
+	for (id<MTLDevice> md in mtlDevs) {
+		if (md.isLowPower) { [lpDevs addObject: md]; }
+	}
+	return lpDevs;
+#else
+	return [mtlDevs sortedArrayUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
+		BOOL md1IsLP = md1.isLowPower;
+		BOOL md2IsLP = md2.isLowPower;
+
+		if (md1IsLP == md2IsLP) { return NSOrderedSame; }
+
+		return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
+	}];
+#endif	// MVK_MACOS
+
 #endif
 #if MVK_IOS
 	return [NSArray arrayWithObject: MTLCreateSystemDefaultDevice()];
@@ -297,11 +320,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 	NSArray<id<MTLDevice>>* mtlDevices = getAvailableMTLDevices();
 	_physicalDevices.reserve(mtlDevices.count);
 	for (id<MTLDevice> mtlDev in mtlDevices) {
-#if (MVK_MACOS && defined(MVK_FORCE_LOW_POWER_GPU))
-        if (mtlDev.isLowPower) { _physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev)); }
-#else
-        _physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
-#endif
+		_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
 	}
 
 	if (MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <

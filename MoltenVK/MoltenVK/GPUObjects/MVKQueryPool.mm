@@ -136,8 +136,8 @@ void MVKTimestampQueryPool::getResult(uint32_t query, void* pQryData, bool shoul
 
 #pragma mark Construction
 
-MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo)
-	: MVKQueryPool(device, pCreateInfo, 1), _timestamps(pCreateInfo->queryCount) {
+MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device,
+											 const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1), _timestamps(pCreateInfo->queryCount) {
 }
 
 
@@ -233,16 +233,20 @@ MVKOcclusionQueryPool::~MVKOcclusionQueryPool() {
 
 
 #pragma mark -
-#pragma mark MVKUnsupportedQueryPool
+#pragma mark MVKPipelineStatisticsQueryPool
 
-MVKUnsupportedQueryPool::MVKUnsupportedQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo)
-    : MVKQueryPool(device, pCreateInfo, 1) {
-
-        switch (pCreateInfo->queryType) {
-            case VK_QUERY_TYPE_PIPELINE_STATISTICS:
-                setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateQueryPool: VK_QUERY_TYPE_PIPELINE_STATISTICS is not supported."));
-            default:
-                setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "vkCreateQueryPool: Unsupported query pool type: %d.", pCreateInfo->queryType));
-        }
+MVKPipelineStatisticsQueryPool::MVKPipelineStatisticsQueryPool(MVKDevice* device,
+															   const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
+	if ( !_device->_pFeatures->pipelineStatisticsQuery ) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateQueryPool: VK_QUERY_TYPE_PIPELINE_STATISTICS is not supported."));
+	}
 }
 
+
+#pragma mark -
+#pragma mark MVKUnsupportedQueryPool
+
+MVKUnsupportedQueryPool::MVKUnsupportedQueryPool(MVKDevice* device,
+												 const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
+	setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "vkCreateQueryPool: Unsupported query pool type: %d.", pCreateInfo->queryType));
+}
