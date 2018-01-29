@@ -151,13 +151,25 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKPipelineStatisticsQueryPool
+
+/** A Vulkan query pool for a query pool type that tracks pipeline statistics. */
+class MVKPipelineStatisticsQueryPool : public MVKQueryPool {
+
+public:
+    MVKPipelineStatisticsQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
+
+};
+
+
+#pragma mark -
 #pragma mark MVKUnsupportedQueryPool
 
 /** A Vulkan query pool for a query pool type that is unsupported in Metal. */
 class MVKUnsupportedQueryPool : public MVKQueryPool {
 
 public:
-    MVKUnsupportedQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
+	MVKUnsupportedQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
 
 };
 

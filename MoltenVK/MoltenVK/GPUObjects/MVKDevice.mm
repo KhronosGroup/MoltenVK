@@ -1056,6 +1056,8 @@ MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInf
             return new MVKOcclusionQueryPool(this, pCreateInfo);
 		case VK_QUERY_TYPE_TIMESTAMP:
 			return new MVKTimestampQueryPool(this, pCreateInfo);
+		case VK_QUERY_TYPE_PIPELINE_STATISTICS:
+			return new MVKPipelineStatisticsQueryPool(this, pCreateInfo);
 		default:
             return new MVKUnsupportedQueryPool(this, pCreateInfo);
 	}
@@ -1390,6 +1392,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	}
 
     initPerformanceTracking();
+
+	MVKLogInfo("Created VkDevice to run on GPU %s", _pProperties->deviceName);
 }
 
 void MVKDevice::initPerformanceTracking() {
