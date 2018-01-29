@@ -802,11 +802,9 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t caCnt = subpass->getColorAttachmentCount();
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
         VkFormat vkAttFmt = subpass->getColorAttachmentFormat(caIdx);
-        if (_rpsKey.isEnabled(caIdx)) {
-            _rpsKey.attachmentMTLPixelFormats[caIdx] = cmdPool->mtlPixelFormatFromVkFormat(vkAttFmt);
-            MTLClearColor mtlCC = mvkMTLClearColorFromVkClearValue(_vkClearValues[caIdx], vkAttFmt);
-            _clearColors[caIdx] = { (float)mtlCC.red, (float)mtlCC.green, (float)mtlCC.blue, (float)mtlCC.alpha};
-        }
+		_rpsKey.attachmentMTLPixelFormats[caIdx] = cmdPool->mtlPixelFormatFromVkFormat(vkAttFmt);
+		MTLClearColor mtlCC = mvkMTLClearColorFromVkClearValue(_vkClearValues[caIdx], vkAttFmt);
+		_clearColors[caIdx] = { (float)mtlCC.red, (float)mtlCC.green, (float)mtlCC.blue, (float)mtlCC.alpha};
     }
 
     VkFormat vkAttFmt = subpass->getDepthStencilFormat();
