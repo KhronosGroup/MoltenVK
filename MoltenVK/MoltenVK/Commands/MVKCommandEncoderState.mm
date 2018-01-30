@@ -49,26 +49,19 @@ void MVKPipelineCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKViewportCommandEncoderState
 
-void MVKViewportCommandEncoderState::setViewports(vector<MTLViewport> mtlViewports) {
-
-    // If ref values are to be set dynamically, don't set them here.
-    if (_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT) || mtlViewports.size() < 1) { return; }
-
-    _mtlViewport = mtlViewports[0];
-
-    markDirty();
-}
-
 void MVKViewportCommandEncoderState::setViewports(vector<MTLViewport> mtlViewports,
-                                                  uint32_t firstViewport) {
+												  uint32_t firstViewport,
+												  bool isSettingDynamically) {
 
-    if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT) &&
-           (firstViewport < mtlViewports.size()) &&
-           (firstViewport == 0)) ) { return; }
+	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 
-    _mtlViewport = mtlViewports[firstViewport];
+	if ((mustSetDynamically == isSettingDynamically) &&
+		(firstViewport < mtlViewports.size()) &&
+		(firstViewport == 0)) {
 
-    markDirty();
+		_mtlViewport = mtlViewports[firstViewport];
+		markDirty();
+	}
 }
 
 void MVKViewportCommandEncoderState::encodeImpl() {
@@ -83,30 +76,28 @@ void MVKViewportCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKScissorCommandEncoderState
 
-void MVKScissorCommandEncoderState::setScissors(vector<MTLScissorRect> mtlScissors) {
-
-    // If ref values are to be set dynamically, don't set them here.
-    if (_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR) || mtlScissors.size() < 1) { return; }
-
-    _mtlScissor = mtlScissors[0];
-
-    markDirty();
-}
-
 void MVKScissorCommandEncoderState::setScissors(vector<MTLScissorRect> mtlScissors,
-                                                uint32_t firstScissor) {
+                                                uint32_t firstScissor,
+												bool isSettingDynamically) {
 
-    if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR) &&
-           (firstScissor < mtlScissors.size()) &&
-           (firstScissor == 0)) ) { return; }
+	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 
-    _mtlScissor = mtlScissors[firstScissor];
+	if ((mustSetDynamically == isSettingDynamically) &&
+		(firstScissor < mtlScissors.size()) &&
+		(firstScissor == 0)) {
 
-    markDirty();
+		_mtlScissor = mtlScissors[firstScissor];
+		markDirty();
+	}
 }
 
 void MVKScissorCommandEncoderState::encodeImpl() {
-    [_cmdEncoder->_mtlRenderEncoder setScissorRect: _mtlScissor];
+	// In debug mode, avoid Metal validation fails. In release mode, assume Metal validation is disabled.
+	if (_cmdEncoder->getDevice()->_mvkConfig.debugMode) {
+		[_cmdEncoder->_mtlRenderEncoder setScissorRect: _cmdEncoder->clipToRenderArea(_mtlScissor)];
+	} else {
+		[_cmdEncoder->_mtlRenderEncoder setScissorRect: _mtlScissor];
+	}
 }
 
 void MVKScissorCommandEncoderState::resetImpl() {

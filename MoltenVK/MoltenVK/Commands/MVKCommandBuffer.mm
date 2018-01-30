@@ -297,6 +297,21 @@ bool MVKCommandEncoder::supportsDynamicState(VkDynamicState state) {
     return !gpl || gpl->supportsDynamicState(state);
 }
 
+MTLScissorRect MVKCommandEncoder::clipToRenderArea(MTLScissorRect mtlScissor) {
+
+	NSUInteger raLeft = _renderArea.offset.x;
+	NSUInteger raRight = raLeft + _renderArea.extent.width;
+	NSUInteger raBottom = _renderArea.offset.y;
+	NSUInteger raTop = raBottom + _renderArea.extent.height;
+
+	mtlScissor.x		= mvkClamp(mtlScissor.x, raLeft, max(raRight - 1, raLeft));
+	mtlScissor.y		= mvkClamp(mtlScissor.y, raBottom, max(raTop - 1, raBottom));
+	mtlScissor.width	= min(mtlScissor.width, raRight - mtlScissor.x);
+	mtlScissor.height	= min(mtlScissor.height, raTop - mtlScissor.y);
+
+	return mtlScissor;
+}
+
 void MVKCommandEncoder::finalizeDrawState() {
     _graphicsPipelineState.encode();    // Must do first..it sets others
     _graphicsResourcesState.encode();

@@ -113,7 +113,7 @@ void MVKCmdSetViewport::setContent(uint32_t firstViewport, uint32_t viewportCoun
 }
 
 void MVKCmdSetViewport::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_viewportState.setViewports(_mtlViewports, _firstViewport);
+    cmdEncoder->_viewportState.setViewports(_mtlViewports, _firstViewport, true);
 }
 
 MVKCmdSetViewport::MVKCmdSetViewport(MVKCommandTypePool<MVKCmdSetViewport>* pool)
@@ -133,7 +133,7 @@ void MVKCmdSetScissor::setContent(uint32_t firstScissor, uint32_t scissorCount, 
 }
 
 void MVKCmdSetScissor::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_scissorState.setScissors(_mtlScissors, _firstScissor);
+    cmdEncoder->_scissorState.setScissors(_mtlScissors, _firstScissor, true);
 }
 
 MVKCmdSetScissor::MVKCmdSetScissor(MVKCommandTypePool<MVKCmdSetScissor>* pool)

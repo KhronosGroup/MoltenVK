@@ -233,7 +233,7 @@ static inline VkOffset3D mvkVkOffset3DDifference(VkOffset3D minuend, VkOffset3D 
 #pragma mark -
 #pragma mark Template functions
 
-/** Clamps the value between the lower and upper bounds. */
+/** Clamps the value between the lower and upper bounds, inclusive. */
 template<typename T>
 const T& mvkClamp(const T& val, const T& lower, const T& upper) {
     return std::min(upper, std::max(val, lower));
