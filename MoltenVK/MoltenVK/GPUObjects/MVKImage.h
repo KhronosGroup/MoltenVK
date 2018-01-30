@@ -222,6 +222,7 @@ protected:
 	MTLPixelFormat _mtlPixelFormat;
 	MTLTextureType _mtlTextureType;
     id<MTLTexture> _mtlTexture;
+    std::mutex _lock;
     IOSurfaceRef _ioSurface;
     bool _isDepthStencilAttachment;
 	bool _canSupportMTLTextureView;
@@ -279,6 +280,7 @@ protected:
     MVKImage* _image;
     VkImageSubresourceRange _subresourceRange;
 	id<MTLTexture> _mtlTexture;
+	std::mutex _lock;
 	MTLPixelFormat _mtlPixelFormat;
 	MTLTextureType _mtlTextureType;
 	bool _useMTLTextureView;

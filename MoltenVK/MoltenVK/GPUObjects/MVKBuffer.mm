@@ -154,6 +154,13 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 
     if (_mtlBuffer) { return _mtlBuffer; }
 
+    lock_guard<mutex> lock(_lock);
+
+    // Check again in case another thread has created the buffer.
+    if (_mtlBuffer) {
+        return _mtlBuffer;
+    }
+
     id<MTLBuffer> devMemMTLBuff = _deviceMemory->getMTLBuffer();
     if (devMemMTLBuff) { return devMemMTLBuff; }
 
