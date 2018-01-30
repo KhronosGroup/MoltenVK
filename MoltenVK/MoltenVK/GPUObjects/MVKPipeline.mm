@@ -131,8 +131,8 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_blendColorState.setBlendColor(_blendConstants[0], _blendConstants[1],
                                                _blendConstants[2], _blendConstants[3], false);
     cmdEncoder->_depthBiasState.setDepthBias(_rasterInfo);
-    cmdEncoder->_viewportState.setViewports(_mtlViewports);
-    cmdEncoder->_scissorState.setScissors(_mtlScissors);
+    cmdEncoder->_viewportState.setViewports(_mtlViewports, 0, false);
+    cmdEncoder->_scissorState.setScissors(_mtlScissors, 0, false);
     cmdEncoder->_mtlPrimitiveType = _mtlPrimitiveType;
 
     [mtlCmdEnc setCullMode: _mtlCullMode];

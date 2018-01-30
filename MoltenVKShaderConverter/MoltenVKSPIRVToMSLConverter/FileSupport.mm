@@ -17,6 +17,7 @@
  */
 
 #include "FileSupport.h"
+#include "MVKCommonEnvironment.h"
 #include <fstream>
 
 #import <Foundation/Foundation.h>
@@ -25,24 +26,24 @@ using namespace std;
 using namespace mvk;
 
 
-string mvk::absolutePath(const string& path) {
+MVK_PUBLIC_SYMBOL string mvk::absolutePath(const string& path) {
 	NSString* nsPath = @(path.data());
 	if(nsPath.absolutePath) return path;
 	nsPath = [NSFileManager.defaultManager.currentDirectoryPath stringByAppendingPathComponent: nsPath];
 	return nsPath.UTF8String;
 }
 
-string mvk::lastPathComponent(const string& path) {
+MVK_PUBLIC_SYMBOL string mvk::lastPathComponent(const string& path) {
 	NSString* nsPath = @(path.data());
 	return nsPath.lastPathComponent.UTF8String;
 }
 
-string mvk::pathExtension(const string& path) {
+MVK_PUBLIC_SYMBOL string mvk::pathExtension(const string& path) {
 	NSString* nsPath = @(path.data());
 	return nsPath.pathExtension.UTF8String;
 }
 
-string mvk::pathWithExtension(const string& path,
+MVK_PUBLIC_SYMBOL string mvk::pathWithExtension(const string& path,
 									  const string pathExtn,
 									  bool includeOrigPathExtn,
 									  const string origPathExtnSep) {
@@ -57,7 +58,7 @@ string mvk::pathWithExtension(const string& path,
 	return nsPath.UTF8String;
 }
 
-bool mvk::canReadFile(const string& path) {
+MVK_PUBLIC_SYMBOL bool mvk::canReadFile(const string& path) {
 	NSString* nsAbsDirPath = @(absolutePath(path).data());
 	NSFileManager* fileMgr = NSFileManager.defaultManager;
 	BOOL isDir = false;
@@ -65,7 +66,7 @@ bool mvk::canReadFile(const string& path) {
 	return exists && !isDir && [fileMgr isReadableFileAtPath: nsAbsDirPath];
 }
 
-bool mvk::canWriteFile(const string& path) {
+MVK_PUBLIC_SYMBOL bool mvk::canWriteFile(const string& path) {
 	NSString* nsAbsDirPath = @(absolutePath(path).data());
 	NSFileManager* fileMgr = NSFileManager.defaultManager;
 	BOOL isDir = false;
@@ -73,7 +74,7 @@ bool mvk::canWriteFile(const string& path) {
 	return !exists || (!isDir && [fileMgr isWritableFileAtPath: nsAbsDirPath]);
 }
 
-bool mvk::readFile(const string& path, vector<char>& contents, string& errMsg) {
+MVK_PUBLIC_SYMBOL bool mvk::readFile(const string& path, vector<char>& contents, string& errMsg) {
 
 	contents.clear();	// Ensure contents are empty in case we leave early
 	errMsg.clear();		// Assume success, so clear the error message
@@ -111,7 +112,7 @@ bool mvk::readFile(const string& path, vector<char>& contents, string& errMsg) {
 	return true;
 }
 
-bool mvk::writeFile(const string& path, const vector<char>& contents, string& errMsg) {
+MVK_PUBLIC_SYMBOL bool mvk::writeFile(const string& path, const vector<char>& contents, string& errMsg) {
 
 	errMsg.clear();		// Assume success, so clear the error message
 
@@ -137,4 +138,3 @@ bool mvk::writeFile(const string& path, const vector<char>& contents, string& er
 	}
 	return true;
 }
-

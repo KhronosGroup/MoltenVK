@@ -127,11 +127,14 @@ class MVKViewportCommandEncoderState : public MVKCommandEncoderState {
 
 public:
 
-    /** Sets all of the viewports during pipeline binding. */
-    void setViewports(std::vector<MTLViewport> mtlViewports);
-
-    /** Sets one or more of the viewports, starting at the first index. */
-    void setViewports(std::vector<MTLViewport> mtlViewports, uint32_t firstViewport);
+	/**
+	 * Sets one or more of the viewports, starting at the first index.
+	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
+	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
+	 */
+	void setViewports(std::vector<MTLViewport> mtlViewports,
+					  uint32_t firstViewport,
+					  bool isSettingDynamically);
 
     /** Constructs this instance for the specified command encoder. */
     MVKViewportCommandEncoderState(MVKCommandEncoder* cmdEncoder)
@@ -153,11 +156,14 @@ class MVKScissorCommandEncoderState : public MVKCommandEncoderState {
 
 public:
 
-    /** Sets all of the scissors during pipeline binding. */
-    void setScissors(std::vector<MTLScissorRect> mtlScissors);
-
-    /** Sets one or more of the scissors, starting at the first index. */
-    void setScissors(std::vector<MTLScissorRect> mtlScissors, uint32_t firstScissor);
+	/**
+	 * Sets one or more of the scissors, starting at the first index.
+	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
+	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
+	 */
+	void setScissors(std::vector<MTLScissorRect> mtlScissors,
+					 uint32_t firstScissor,
+					 bool isSettingDynamically);
 
     /** Constructs this instance for the specified command encoder. */
     MVKScissorCommandEncoderState(MVKCommandEncoder* cmdEncoder)
