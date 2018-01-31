@@ -120,6 +120,7 @@ protected:
 	VkDeviceSize _mapOffset;
 	VkDeviceSize _mapSize;
 	id<MTLBuffer> _mtlBuffer;
+	std::mutex _lock;
 	MTLResourceOptions _mtlResourceOptions;
 	MTLStorageMode _mtlStorageMode;
 	MTLCPUCacheMode _mtlCPUCacheMode;

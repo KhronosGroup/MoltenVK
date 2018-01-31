@@ -216,11 +216,12 @@ void* MVKImage::map(VkDeviceSize offset, VkDeviceSize size) {
 
 id<MTLTexture> MVKImage::getMTLTexture() {
 	if ( !_mtlTexture && _mtlPixelFormat ) {
+
+		// Lock and check again in case another thread has created the texture.
 		lock_guard<mutex> lock(_lock);
-		// Check again in case another thread has created the texture.
-		if ( !_mtlTexture ) {
-			_mtlTexture = newMTLTexture();   // retained
-		}
+		if (_mtlTexture) { return _mtlTexture; }
+
+		_mtlTexture = newMTLTexture();   // retained
 	}
 	return _mtlTexture;
 }
@@ -544,11 +545,12 @@ id<MTLTexture> MVKImageView::getMTLTexture() {
 	// If we can use a Metal texture view, lazily create it, otherwise use the image texture directly.
 	if (_useMTLTextureView) {
 		if ( !_mtlTexture && _mtlPixelFormat ) {
+
+			// Lock and check again in case another thread created the texture view
 			lock_guard<mutex> lock(_lock);
-			// Check again in case another thread created the texture view
-			if ( !_mtlTexture ) {
-				_mtlTexture = newMTLTexture(); // retained
-			}
+			if (_mtlTexture) { return _mtlTexture; }
+
+			_mtlTexture = newMTLTexture(); // retained
 		}
 		return _mtlTexture;
 	} else {

@@ -80,11 +80,13 @@ const MVKMTLBufferAllocation* MVKMTLBufferAllocator::acquireMTLBufferRegion(NSUI
 
     // Convert max length to the next power-of-two exponent to use as a lookup
     uint32_t p2Exp = mvkPowerOfTwoExponent(length);
-    return _regionPools[p2Exp]->acquireObjectSafely();
+	MVKMTLBufferAllocationPool* pRP = _regionPools[p2Exp];
+	return _makeThreadSafe ? pRP->acquireObjectSafely() : pRP->acquireObject();
 }
 
-MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxAllocationLength) : MVKBaseDeviceObject(device) {
-    _maxAllocationLength = maxAllocationLength;
+MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe) : MVKBaseDeviceObject(device) {
+    _maxAllocationLength = maxRegionLength;
+	_makeThreadSafe = makeThreadSafe;
 
     // Convert max length to the next power-of-two exponent
     uint32_t maxP2Exp = mvkPowerOfTwoExponent(_maxAllocationLength);

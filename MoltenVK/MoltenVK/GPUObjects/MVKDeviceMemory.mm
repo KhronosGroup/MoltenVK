@@ -62,10 +62,15 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
     if ( !mapToSingleResource(offset, mapSize) ) {
         if (isMemoryHostCoherent()) {
             if ( !_mtlBuffer ) {
-                NSUInteger mtlBuffLen = mvkAlignByteOffset(_allocationSize, _device->_pMetalFeatures->mtlBufferAlignment);
-                _mtlBuffer = [getMTLDevice() newBufferWithLength: mtlBuffLen options: _mtlResourceOptions];     // retained
-//                MVKLogDebug("Allocating host mapped memory %p with offset %d and size %d via underlying coherent MTLBuffer %p of size %d.", this, offset, mapSize, _mtlBuffer , _mtlBuffer.length);
-            }
+
+				// Lock and check again in case another thread has created the buffer.
+				lock_guard<mutex> lock(_lock);
+				if ( !_mtlBuffer ) {
+					NSUInteger mtlBuffLen = mvkAlignByteOffset(_allocationSize, _device->_pMetalFeatures->mtlBufferAlignment);
+					_mtlBuffer = [getMTLDevice() newBufferWithLength: mtlBuffLen options: _mtlResourceOptions];     // retained
+//                	MVKLogDebug("Allocating host mapped memory %p with offset %d and size %d via underlying coherent MTLBuffer %p of size %d.", this, offset, mapSize, _mtlBuffer , _mtlBuffer.length);
+				}
+			}
             _pLogicalMappedMemory = _mtlBuffer.contents;
             _pMappedMemory = (void*)((uintptr_t)_pLogicalMappedMemory + offset);
         } else {
