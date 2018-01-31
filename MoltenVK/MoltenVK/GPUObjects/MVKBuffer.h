@@ -122,5 +122,6 @@ protected:
     id<MTLTexture> _mtlTexture;
     VkDeviceSize _byteCount;
     VkExtent2D _textureSize;
+	std::mutex _lock;
 };
 

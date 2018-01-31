@@ -157,12 +157,9 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
     id<MTLBuffer> devMemMTLBuff = _deviceMemory->getMTLBuffer();
     if (devMemMTLBuff) { return devMemMTLBuff; }
 
+	// Lock and check again in case another thread has created the buffer.
     lock_guard<mutex> lock(_lock);
-    
-    // Check again in case another thread has created the buffer.
-    if (_mtlBuffer) {
-        return _mtlBuffer;
-    }
+    if (_mtlBuffer) { return _mtlBuffer; }
     
     NSUInteger mtlBuffLen = mvkAlignByteOffset(_byteCount, _byteAlignment);
     _mtlBuffer = [getMTLDevice() newBufferWithLength: mtlBuffLen
@@ -203,6 +200,11 @@ MVKBuffer::~MVKBuffer() {
 
 id<MTLTexture> MVKBufferView::getMTLTexture() {
     if ( !_mtlTexture && _mtlPixelFormat &&  _device->_pMetalFeatures->texelBuffers) {
+
+		// Lock and check again in case another thread has created the texture.
+		lock_guard<mutex> lock(_lock);
+		if (_mtlTexture) { return _mtlTexture; }
+
         VkDeviceSize byteAlign = _device->_pProperties->limits.minTexelBufferOffsetAlignment;
         NSUInteger mtlByteCnt = mvkAlignByteOffset(_byteCount, byteAlign);
         MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: _mtlPixelFormat

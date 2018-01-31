@@ -130,14 +130,16 @@ public:
      * maximum size. Because MVKMTLBufferRegions are created with a power-of-two size,
      * the largest size of a MVKMTLBufferAllocation dispensed by this instance will be the
      * next power-of-two value that is at least as big as the specified maximum size.
+	 * If makeThreadSafe is true, a lock will be applied when an allocation is acquired.
      */
-    MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength);
+    MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe = false);
 
     ~MVKMTLBufferAllocator() override;
 
 protected:
     std::vector<MVKMTLBufferAllocationPool*> _regionPools;
     NSUInteger _maxAllocationLength;
+	bool _makeThreadSafe;
 
 };
 
