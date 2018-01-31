@@ -219,9 +219,9 @@ id<MTLTexture> MVKImage::getMTLTexture() {
 		lock_guard<mutex> lock(_lock);
 		// Check again in case another thread has created the texture.
 		if ( !_mtlTexture ) {
-			_mtlTexture = newMTLTexture();
+			_mtlTexture = newMTLTexture();   // retained
 		}
-	}   // retained
+	}
 	return _mtlTexture;
 }
 
