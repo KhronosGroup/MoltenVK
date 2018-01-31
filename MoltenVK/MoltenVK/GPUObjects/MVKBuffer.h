@@ -79,6 +79,7 @@ protected:
 						   VkBufferMemoryBarrier* pBufferMemoryBarrier);
 
     id<MTLBuffer> _mtlBuffer;
+    std::mutex _lock;
 };
 
 
