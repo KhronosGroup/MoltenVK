@@ -19,6 +19,7 @@
 #include "MVKCommandEncoderState.h"
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommandBuffer.h"
+#include "MVKRenderPass.h"
 #include "MVKPipeline.h"
 #include "MVKQueryPool.h"
 #include "MVKLogging.h"
@@ -232,7 +233,19 @@ void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags 
 }
 
 void MVKDepthStencilCommandEncoderState::encodeImpl() {
-    id<MTLDepthStencilState> mtlDSS = _cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(_depthStencilData);
+    MVKRenderSubpass *subpass = _cmdEncoder->getSubpass();
+    id<MTLDepthStencilState> mtlDSS = nil;
+    if (subpass->getDepthStencilFormat() != VK_FORMAT_UNDEFINED) {
+        mtlDSS = _cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(_depthStencilData);
+    } else {
+        // If there is no depth attachment but the depth/stencil state contains a non-always depth
+        // test, Metal Validation will give the following error:
+        // "validateDepthStencilState:3657: failed assertion `MTLDepthStencilDescriptor sets
+        //  depth test but MTLRenderPassDescriptor has a nil depthAttachment texture'"
+        // Check the subpass to see if there is a depth/stencil attachment, and if not use
+        // a depth/stencil state with depth test always, depth write disabled, and no stencil state.
+        mtlDSS = _cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(false, false);
+    }
     [_cmdEncoder->_mtlRenderEncoder setDepthStencilState: mtlDSS];
 }
 
