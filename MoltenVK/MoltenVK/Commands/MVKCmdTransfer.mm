@@ -232,7 +232,7 @@ void MVKCmdBlitImage::populateVertices(MVKVertexPosTex* vertices, const VkImageB
 
     // Get the extents of the source and destination textures.
     VkExtent3D srcExtent = _srcImage->getExtent3D(pRegion->srcSubresource.mipLevel);
-    VkExtent3D dstExtent = _srcImage->getExtent3D(pRegion->dstSubresource.mipLevel);
+    VkExtent3D dstExtent = _dstImage->getExtent3D(pRegion->dstSubresource.mipLevel);
 
     // Determine the bottom-left and top-right corners of the source and destination
     // texture regions, each as a fraction of the corresponding texture size.
