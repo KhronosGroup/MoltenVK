@@ -89,13 +89,10 @@ public:
 	 * completion handler to it so that the mtlCommandBufferHasCompleted() function will 
 	 * be called when the MTLCommandBuffer completes, and returns the MTLCommandBuffer.
 	 */
-	id<MTLCommandBuffer> getNextMTLCommandBuffer(NSString* mtlCmdBuffLabel,
-                                                 MVKCommandBuffer* mvkCmdBuff = nullptr);
+	id<MTLCommandBuffer> makeMTLCommandBuffer(NSString* mtlCmdBuffLabel);
 
 	/** Called automatically when the specified MTLCommandBuffer with the specified ID has completed. */
-	void mtlCommandBufferHasCompleted(id<MTLCommandBuffer> mtlCmdBuff,
-                                      MVKMTLCommandBufferID mtlCmdBuffID,
-                                      MVKCommandBuffer* mvkCmdBuff);
+	void mtlCommandBufferHasCompleted(id<MTLCommandBuffer> mtlCmdBuff, MVKMTLCommandBufferID mtlCmdBuffID);
 
 	/**
 	 * Registers the specified countdown object. This function sets the count value
@@ -228,6 +225,12 @@ public:
 	/** Automatically called once all the MTLCommandBuffers have completed execution. */
 	void finish();
 
+	/** Returns the active MTLCommandBuffer instance, lazily retrieving it from the queue if needed. */
+	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
+
+	/** Commits and releases the currently active MTLCommandBuffer. */
+	void commitActiveMTLCommandBuffer();
+
 	/** 
      * Constructs an instance for the device and queue.
      * pSubmit may be VK_NULL_HANDLE to create an instance that triggers a fence without submitting any actual command buffers.
@@ -252,6 +255,7 @@ protected:
 	std::vector<MVKSemaphore*> _signalSemaphores;
 	MVKFence* _fence;
     MVKCommandUse _cmdBuffUse;
+	id<MTLCommandBuffer> _activeMTLCommandBuffer;
 };
 
 

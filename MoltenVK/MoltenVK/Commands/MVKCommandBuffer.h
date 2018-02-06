@@ -91,16 +91,6 @@ public:
     /** Returns whether this command buffer can be submitted to a queue more than once. */
     inline bool getIsReusable() { return _isReusable; }
 
-    /** Called when a MTLCommandBuffer has started for this instance. */
-    inline void mtlCommandBufferHasStarted(id<MTLCommandBuffer> mtlCmdBuff) {
-        _activeMTLCommandBufferCount++;
-    }
-
-    /** Called when a MTLCommandBuffer has completed. */
-    inline void mtlCommandBufferHasCompleted(id<MTLCommandBuffer> mtlCmdBuff) {
-        _activeMTLCommandBufferCount--;
-    }
-
 	/** The command pool that is the source of commands for this buffer. */
 	MVKCommandPool* _commandPool;
 
@@ -150,7 +140,7 @@ protected:
 	MVKCommand* _head;
 	MVKCommand* _tail;
 	uint32_t _commandCount;
-    std::atomic<uint32_t> _activeMTLCommandBufferCount;
+	std::atomic_flag _nonConcurrentIsExecuting;
 	VkResult _recordingResult;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	bool _isSecondary;
@@ -416,18 +406,17 @@ public:
                       const MVKCommandBufferBatchPosition& batchPosition);
 
 protected:
-	void startMTLCommandBuffer();
-	void commitMTLCommandBuffer();
+	void beginEncoding();
+	void endEncoding();
     void addActivatedQuery(MVKQueryPool* pQueryPool, uint32_t query);
     void finishQueries();
 	void setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex);
     void beginMetalRenderPass();
 	void clearRenderArea();
     const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length);
-    NSString* getMTLCommandBufferName();
     NSString* getMTLRenderCommandEncoderName();
 
-	MVKQueue* _queue;
+	MVKQueueCommandBufferSubmission* _queueSubmission;
 	VkSubpassContents _subpassContents;
 	MVKRenderPass* _renderPass;
 	uint32_t _renderSubpassIndex;

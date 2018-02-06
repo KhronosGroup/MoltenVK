@@ -56,14 +56,12 @@ MVKQueueFamily::~MVKQueueFamily() {
 void MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	if ( !qSubmit ) { return; }     // Ignore nils
 	dispatch_async( _execQueue, ^{ qSubmit->execute(); } );
-//    MVKLogDebug("Dispatched MVKQueueSubmission %p on thread '%s'.", qSubmit, [NSThread currentThread].name.UTF8String);
 }
 
 VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
                           VkFence fence, MVKCommandUse cmdBuffUse) {
 	VkResult rslt = VK_SUCCESS;
     for (uint32_t sIdx = 0; sIdx < submitCount; sIdx++) {
-//        MVKLogDebug("Submitting command buffer on thread '%s'. Elapsed time: %.6f ms.", [NSThread currentThread].name.UTF8String, mvkGetElapsedMilliseconds());
         VkFence fenceOrNil = (sIdx == (submitCount - 1)) ? fence : VK_NULL_HANDLE;	// last one gets the fence
         MVKQueueSubmission* qSub = new MVKQueueCommandBufferSubmission(_device, this, &pSubmits[sIdx], fenceOrNil, cmdBuffUse);
         if (rslt == VK_SUCCESS) { rslt = qSub->_submissionResult; }     // Extract result before submission to avoid race condition with early destruction
@@ -72,7 +70,6 @@ VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
 
     // Support fence-only submission
     if (submitCount == 0 && fence) {
-//        MVKLogDebug("Submitting fence-only command buffer. Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
         MVKQueueSubmission* qSub = new MVKQueueCommandBufferSubmission(_device, this, VK_NULL_HANDLE, fence, cmdBuffUse);
         if (rslt == VK_SUCCESS) { rslt = qSub->_submissionResult; }     // Extract result before submission to avoid race condition with early destruction
         submit(qSub);
@@ -122,19 +119,16 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 // registerMTLCommandBufferCountdown() function from multiple threads. It is assumed
 // that this function and the registerMTLCommandBufferCountdown() function are called
 // from a single thread.
-id<MTLCommandBuffer> MVKQueue::getNextMTLCommandBuffer(NSString* mtlCmdBuffLabel,
-                                                       MVKCommandBuffer* mvkCmdBuff) {
+id<MTLCommandBuffer> MVKQueue::makeMTLCommandBuffer(NSString* mtlCmdBuffLabel) {
 
 	// Retrieve a MTLCommandBuffer from the MTLQueue.
 	id<MTLCommandBuffer> mtlCmdBuffer = [_mtlQueue commandBufferWithUnretainedReferences];
     mtlCmdBuffer.label = mtlCmdBuffLabel;
 
-    if (mvkCmdBuff) { mvkCmdBuff->mtlCommandBufferHasStarted(mtlCmdBuffer); }
-
 	// Assign a unique ID to the MTLCommandBuffer, and track when it completes.
     MVKMTLCommandBufferID mtlCmdBuffID = _nextMTLCmdBuffID++;
 	[mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-		this->mtlCommandBufferHasCompleted(mtlCmdBuff, mtlCmdBuffID, mvkCmdBuff);
+		this->mtlCommandBufferHasCompleted(mtlCmdBuff, mtlCmdBuffID);
 	}];
 
     // Keep a running count of the active MTLCommandBuffers.
@@ -142,32 +136,22 @@ id<MTLCommandBuffer> MVKQueue::getNextMTLCommandBuffer(NSString* mtlCmdBuffLabel
     lock_guard<mutex> lock(_completionLock);
 	_activeMTLCommandBufferCount++;
 
-//	MVKLogDebug("MVKQueue %p created MTLCommandBuffer %d with now %d active MTLCommandBuffers.", this, mtlCmdBuffID, _activeMTLCommandBufferCount);
-
 	return mtlCmdBuffer;
 }
 
-// This function must be called after all corresponding calls to getNextMTLCommandBuffer() and from the same thead.
+// This function must be called after all corresponding calls to makeMTLCommandBuffer() and from the same thead.
 void MVKQueue::registerMTLCommandBufferCountdown(MVKMTLCommandBufferCountdown* countdown) {
 	lock_guard<mutex> lock(_completionLock);
 
 	if ( !countdown->setActiveMTLCommandBufferCount(_activeMTLCommandBufferCount, _nextMTLCmdBuffID) ) {
 		_completionCountdowns.push_back(countdown);
 	}
-//	MVKLogDebug("Queue %p adding MTLCommandBufferCountdown for %d active MTLCommandBuffers and MTLCommandBuffer ID's below %d.", this, _activeMTLCommandBufferCount, _nextMTLCmdBuffID);
 }
 
-void MVKQueue::mtlCommandBufferHasCompleted(id<MTLCommandBuffer> mtlCmdBuff,
-                                            MVKMTLCommandBufferID mtlCmdBuffID,
-                                            MVKCommandBuffer* mvkCmdBuff) {
+void MVKQueue::mtlCommandBufferHasCompleted(id<MTLCommandBuffer> mtlCmdBuff, MVKMTLCommandBufferID mtlCmdBuffID) {
 	lock_guard<mutex> lock(_completionLock);
 
 	_activeMTLCommandBufferCount--;
-
-    if (mvkCmdBuff) { mvkCmdBuff->mtlCommandBufferHasCompleted(mtlCmdBuff); }
-
-//	MVKLogDebug("Queue %p completing MTLCommandBuffer %d (%s) with now %d active MTLCommandBuffers. Iterating %d MTLCommandBufferCountdowns. Elapsed time: %.6f ms.",
-//                this, mtlCmdBuffID, mtlCmdBuff.label.UTF8String, _activeMTLCommandBufferCount, _completionCountdowns.size(), mvkGetElapsedMilliseconds());
 
 	// Iterate through the countdowns, letting them know about the completion, and
 	// remove any countdowns that have completed by eliding them out of the array.
@@ -201,8 +185,6 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 	initMTLCommandQueue();
 	_activeMTLCommandBufferCount = 0;
 	_nextMTLCmdBuffID = 1;
-
-//    MVKLogDebug("Queue %p created.", this);
 }
 
 /** Creates and initializes the execution dispatch queue. */
@@ -278,32 +260,40 @@ void MVKQueueCommandBufferSubmissionCountdown::finish() { _qSub->finish(); }
 
 void MVKQueueCommandBufferSubmission::execute() {
 
-//    MVKLogDebug("Executing MVKQueueCommandBufferSubmission %p with %d command buffers, %d wait semaphores, %d signal semaphores, and fence %p on thread '%s'.",
-//                this, _cmdBuffers.size(), _waitSemaphores.size(), _signalSemaphores.size(), _fence, [NSThread currentThread].name.UTF8String);
-
     // Wait on each wait semaphore in turn. It doesn't matter which order they are signalled.
     for (auto& ws : _waitSemaphores) { ws->wait(); }
 
-//    MVKLogDebug("Continuing MVKQueueCommandBufferSubmission %p after waiting for %d wait semaphores on thread '%s'.",
-//                this, _waitSemaphores.size(), [NSThread currentThread].name.UTF8String);
-
-    // Execute each command buffer, or if no real command buffers,
-    // create an empty MTLCommandBuffer to trigger the semaphores and fence if needed.
-    if ( _cmdBuffers.empty() ) {
-        if ( !_fence && _signalSemaphores.empty() ) { return; }     // Nothing to do
-
-        id<MTLCommandBuffer> mtlCmdBuff = _queue->getNextMTLCommandBuffer(getMTLCommandBufferName());
-        [mtlCmdBuff commit];
+    // Execute each command buffer, or if no command buffers, but a fence or semaphores,
+    // create an empty MTLCommandBuffer to trigger the semaphores and fence.
+    if ( !_cmdBuffers.empty() ) {
+		MVKCommandBufferBatchPosition cmdBuffPos = {1, uint32_t(_cmdBuffers.size()), _cmdBuffUse};
+		for (auto& cb : _cmdBuffers) {
+			cb->execute(this, cmdBuffPos);
+			cmdBuffPos.index++;
+		}
     } else {
-        MVKCommandBufferBatchPosition cmdBuffPos = {1, uint32_t(_cmdBuffers.size()), _cmdBuffUse};
-        for (auto& cb : _cmdBuffers) {
-            cb->execute(this, cmdBuffPos);
-            cmdBuffPos.index++;
-        }
+		if (_fence || !_signalSemaphores.empty() ) {
+			getActiveMTLCommandBuffer();
+		}
     }
+
+	commitActiveMTLCommandBuffer();
 
     // Register for callback when MTLCommandBuffers have completed
     _queue->registerMTLCommandBufferCountdown(&_cmdBuffCountdown);
+}
+
+id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer() {
+	if ( !_activeMTLCommandBuffer ) {
+		_activeMTLCommandBuffer = _queue->makeMTLCommandBuffer(getMTLCommandBufferName());
+		[_activeMTLCommandBuffer enqueue];
+	}
+	return _activeMTLCommandBuffer;
+}
+
+void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer() {
+	[_activeMTLCommandBuffer commit];
+	_activeMTLCommandBuffer = nil;			// not retained
 }
 
 // Returns an NSString suitable for use as a label
@@ -318,10 +308,7 @@ NSString* MVKQueueCommandBufferSubmission::getMTLCommandBufferName() {
 
 void MVKQueueCommandBufferSubmission::finish() {
 
-//    MVKLogDebug("Finishing MVKQueueCommandBufferSubmission %p with %d wait semaphores, %d signal semaphores, and fence %p. Elapsed time: %.6f ms.",
-//                this, _waitSemaphores.size(), _signalSemaphores.size(), _fence, mvkGetElapsedMilliseconds());
-
-    // Signal each of the signal semaphores.
+	// Signal each of the signal semaphores.
     for (auto& ss : _signalSemaphores) { ss->signal(); }
 
     // If a fence exists, signal it.
@@ -362,9 +349,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 
 	_fence = (MVKFence*)fence;
     _cmdBuffUse= cmdBuffUse;
-
-//    MVKLogDebug("Adding MVKQueueCommandBufferSubmission %p with %d command buffers, %d wait semaphores, %d signal semaphores, and fence %p. Elapsed time: %.6f ms.",
-//                this, _cmdBuffers.size(), _waitSemaphores.size(), _signalSemaphores.size(), _fence, mvkGetElapsedMilliseconds());
+	_activeMTLCommandBuffer = nil;
 }
 
 
@@ -375,19 +360,20 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 
 void MVKQueuePresentSurfaceSubmission::execute() {
 
-//    MVKLogDebug("Executing MVKQueuePresentSurfaceSubmission %p with %d wait semaphores.", this, _waitSemaphores.size());
-
     // Wait on each of the wait semaphores in turn. It doesn't matter which order they are signalled.
     for (auto& ws : _waitSemaphores) { ws->wait(); }
 
     id<MTLCommandQueue> mtlQ = _queue->getMTLCommandQueue();
-    id<MTLCommandBuffer> mtlCmdBuff = ((_device->_mvkConfig.displayWatermark || MVK_PRESENT_VIA_CMD_BUFFER)
-                                       ? [mtlQ commandBufferWithUnretainedReferences]
-                                       : nil);
-    mtlCmdBuff.label = mvkMTLCommandBufferLabel(kMVKCommandUseQueuePresent);
+	id<MTLCommandBuffer> mtlCmdBuff = nil;
+
+	if (_device->_mvkConfig.displayWatermark || MVK_PRESENT_VIA_CMD_BUFFER) {
+		mtlCmdBuff = [mtlQ commandBufferWithUnretainedReferences];
+		mtlCmdBuff.label = mvkMTLCommandBufferLabel(kMVKCommandUseQueuePresent);
+	}
 
     for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
-    [mtlCmdBuff commit];
+
+	[mtlCmdBuff commit];
 
     // Let Xcode know the frame is done, in case command buffer is not used
     if (_device->_mvkConfig.debugMode) { [mtlQ insertDebugCaptureBoundary]; }
@@ -413,6 +399,5 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKDevice* de
 			_submissionResult = VK_SUBOPTIMAL_KHR;
 		}
 	}
-//    MVKLogDebug("Adding MVKQueuePresentSurfaceSubmission %p with %d wait semaphores.", this, _waitSemaphores.size());
 }
 
