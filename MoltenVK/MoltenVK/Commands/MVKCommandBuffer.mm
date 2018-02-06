@@ -96,10 +96,10 @@ void MVKCommandBuffer::execute(MVKQueueCommandBufferSubmission* cmdBuffSubmit,
                                const MVKCommandBufferBatchPosition& batchPosition) {
 	if ( !canExecute() ) { return; }
 
-//    MVKLogDebug("MVKCommandBuffer %p starting execution.", this);
 	MVKCommandEncoder encoder(this, batchPosition);
 	encoder.encode(cmdBuffSubmit);
-//    MVKLogDebug("MVKCommandBuffer %p ending execution.", this);
+
+	if ( !_supportsConcurrentExecution ) { _nonConcurrentIsExecuting.clear(); }
 }
 
 bool MVKCommandBuffer::canExecute() {
@@ -111,7 +111,9 @@ bool MVKCommandBuffer::canExecute() {
 		recordResult(mvkNotifyErrorWithText(VK_NOT_READY, "Command buffer does not support execution more that once."));
 		return false;
 	}
-	if ( !_supportsConcurrentExecution && _activeMTLCommandBufferCount > 0) {
+
+	// Do this test last so that _isExecution is only set if everthing else passes
+	if ( !_supportsConcurrentExecution && _nonConcurrentIsExecuting.test_and_set()) {
 		recordResult(mvkNotifyErrorWithText(VK_NOT_READY, "Command buffer does not support concurrent execution."));
 		return false;
 	}
@@ -135,7 +137,7 @@ MVKCommandBuffer::MVKCommandBuffer(MVKDevice* device,
 	_isReusable = false;
 	_supportsConcurrentExecution = false;
 	_wasExecuted = false;
-	_activeMTLCommandBufferCount = 0;
+	_nonConcurrentIsExecuting.clear();
 	_recordingResult = VK_NOT_READY;
 	_head = VK_NULL_HANDLE;
 	_tail = VK_NULL_HANDLE;
@@ -148,24 +150,17 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 	_commandPool->removeCommandBuffer(this);
 }
 
-// TODO:
-//	- Opt 1: pool command buffers including non-command state
-//	- Opt 2: pool command buffer content (eg- pool constants)
-
 
 #pragma mark -
 #pragma mark MVKCommandEncoder
 
 void MVKCommandEncoder::encode(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
-//    MVKLogDebug("\tEncoder %s starting.", getMTLCommandBufferName().UTF8String);
-	_queue = cmdBuffSubmit->_queue;
+	_queueSubmission = cmdBuffSubmit;
 	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 	_renderSubpassIndex = 0;
 	_isAwaitingFlush = false;
 
-	startMTLCommandBuffer();
-
-//    MVKLogDebug("\tEncoder %p encoding commands.", this);
+	beginEncoding();
 
     MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
@@ -173,9 +168,7 @@ void MVKCommandEncoder::encode(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
         cmd = cmd->_next;
 	}
 
-	commitMTLCommandBuffer();
-
-//    MVKLogDebug("\tEncoder %s done.", getMTLCommandBufferName().UTF8String);
+	endEncoding();
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
@@ -186,32 +179,15 @@ void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
 	}
 }
 
-// Creates and starts the Metal command buffer.
-void MVKCommandEncoder::startMTLCommandBuffer() {
-//    MVKLogDebug("\tEncoder %p retrieving MTLCommandBuffer.", this);
-	_mtlCmdBuffer = _queue->getNextMTLCommandBuffer(getMTLCommandBufferName(), _cmdBuffer);
-	[_mtlCmdBuffer enqueue];
+// Retrieves and caches the MTLCommandBuffer from the queue submission
+void MVKCommandEncoder::beginEncoding() {
+	_mtlCmdBuffer = _queueSubmission->getActiveMTLCommandBuffer();
 }
 
-// Returns a name for use as a MTLCommandBuffer label
-NSString* MVKCommandEncoder::getMTLCommandBufferName() {
-    if (_flushCount == 0) {
-        return [NSString stringWithFormat: @"%@ %u of %u with %u Vulkan commands",
-                mvkMTLCommandBufferLabel(_batchPosition.use),
-                _batchPosition.index, _batchPosition.count, _cmdBuffer->_commandCount];
-    } else {
-        return [NSString stringWithFormat: @"%@ %u of %u with %u Vulkan commands after %u flushes",
-                mvkMTLCommandBufferLabel(_batchPosition.use), _batchPosition.index,
-                _batchPosition.count, _cmdBuffer->_commandCount, _flushCount];
-    }
-}
-
-// Commits the command buffer.
-void MVKCommandEncoder::commitMTLCommandBuffer() {
+// Finishes the encoding process.
+void MVKCommandEncoder::endEncoding() {
 	endCurrentMetalEncoding();
     finishQueries();
-	[_mtlCmdBuffer commit];
-	_mtlCmdBuffer = nil;			// not retained
 }
 
 void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
@@ -238,7 +214,6 @@ void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t s
 	_renderSubpassIndex = subpassIndex;
 
     beginMetalRenderPass();
-//    MVKLogDebug("Render subpass begin MTLRenderCommandEncoder.");
 }
 
 // Called after the _mtlRenderEncoder is established.
@@ -380,8 +355,9 @@ void MVKCommandEncoder::flush() {
 		// Otherwise, flush immediately by committing the current MTLCommandBuffer and starting a new one.
 		_isAwaitingFlush = false;
         _flushCount++;
-		commitMTLCommandBuffer();
-		startMTLCommandBuffer();
+		endEncoding();
+		_queueSubmission->commitActiveMTLCommandBuffer();
+		beginEncoding();
 	}
 }
 
@@ -451,7 +427,7 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
     }
 }
 
-MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _queue->getCommandEncodingPool(); }
+MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _queueSubmission->_queue->getCommandEncodingPool(); }
 
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {
