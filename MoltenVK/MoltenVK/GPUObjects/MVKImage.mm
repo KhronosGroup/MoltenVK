@@ -145,7 +145,7 @@ bool MVKImage::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 	return ((pImageMemoryBarrier->newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
 			mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(pImageMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
-			_deviceMemory->isMemoryHostAccessible() && !_deviceMemory->isMemoryHostCoherent());
+			_deviceMemory->isMemoryHostAccessible());
 #endif
 }
 
