@@ -326,6 +326,7 @@ void MVKCommandEncoder::clearRenderArea() {
 void MVKCommandEncoder::finalizeDispatchState() {
     _computePipelineState.encode();
     _computeResourcesState.encode();
+    _computePushConstants.encode();
 }
 
 void MVKCommandEncoder::endMetalRenderEncoding() {
