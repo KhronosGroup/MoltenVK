@@ -159,8 +159,7 @@ void MVKCmdPushConstants::setContent(VkPipelineLayout layout,
 	_stageFlags = stageFlags;
 	_offset = offset;
 
-    size_t pcBuffSize = mvkAlignByteOffset(size, getDevice()->_pMetalFeatures->mtlBufferAlignment);
-    mvkEnsureSize(_pushConstants, pcBuffSize);
+    mvkEnsureSize(_pushConstants, size);
 	copy_n((char*)pValues, size, _pushConstants.begin());
 }
 
