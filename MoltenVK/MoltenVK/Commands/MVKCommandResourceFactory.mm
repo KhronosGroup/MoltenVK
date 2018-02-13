@@ -203,13 +203,16 @@ string MVKCommandResourceFactory::getFragFunctionSuffix(MTLPixelFormat mtlPixFmt
     string suffix;
     switch (mvkFormatTypeFromMTLPixelFormat(mtlPixFmt)) {
         case kMVKFormatDepthStencil:
-            suffix += "DS";
+            suffix = "DS";
+            break;
         case kMVKFormatColorUInt:
-            suffix += "U";
+            suffix = "U";
+            break;
         case kMVKFormatColorInt:
-            suffix += "I";
+            suffix = "I";
+            break;
         default:
-            suffix += "F";
+            suffix = "F";
             break;
     }
 
