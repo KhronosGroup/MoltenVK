@@ -322,6 +322,13 @@ void populateFromCompiler(spirv_cross::Compiler& compiler, SPIRVEntryPointsByNam
         mvkEP.workgroupSize.width = max(wgSize.x, minDim);
         mvkEP.workgroupSize.height = max(wgSize.y, minDim);
         mvkEP.workgroupSize.depth = max(wgSize.z, minDim);
+
+        spirv_cross::SpecializationConstant width, height, depth;
+        mvkEP.workgroupSizeId.constant = compiler.get_work_group_size_specialization_constants(width, height, depth);
+        mvkEP.workgroupSizeId.width = width.constant_id;
+        mvkEP.workgroupSizeId.height = height.constant_id;
+        mvkEP.workgroupSizeId.depth = depth.constant_id;
+
         entryPoints[epOrigName] = mvkEP;
     }
 }

@@ -132,7 +132,7 @@ namespace mvk {
     /**
      * Describes a SPIRV entry point, including the Metal function name (which may be
      * different than the Vulkan entry point name if the original name was illegal in Metal),
-     * and the number of threads in each workgroup, if the shader is a compute shader.
+     * and the number of threads in each workgroup or their specialization constant id, if the shader is a compute shader.
      */
     typedef struct {
         std::string mtlFunctionName;
@@ -141,6 +141,10 @@ namespace mvk {
             uint32_t height = 1;
             uint32_t depth = 1;
         } workgroupSize;
+        struct {
+            uint32_t width, height, depth;
+            uint32_t constant = 0;
+        } workgroupSizeId;
     } SPIRVEntryPoint;
 
     /** Holds a map of entry point info, indexed by the SPIRV entry point name. */
