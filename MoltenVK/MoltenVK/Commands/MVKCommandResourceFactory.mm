@@ -200,23 +200,12 @@ MVKImage* MVKCommandResourceFactory::newMVKImage(MVKImageDescriptorData& imgData
 }
 
 string MVKCommandResourceFactory::getFragFunctionSuffix(MTLPixelFormat mtlPixFmt) {
-    string suffix;
     switch (mvkFormatTypeFromMTLPixelFormat(mtlPixFmt)) {
-        case kMVKFormatDepthStencil:
-            suffix = "DS";
-            break;
-        case kMVKFormatColorUInt:
-            suffix = "U";
-            break;
-        case kMVKFormatColorInt:
-            suffix = "I";
-            break;
-        default:
-            suffix = "F";
-            break;
+        case kMVKFormatDepthStencil:	return "DS";
+        case kMVKFormatColorUInt:		return "U";
+        case kMVKFormatColorInt:		return "I";
+        default:						return "F";
     }
-
-    return suffix;
 }
 
 string MVKCommandResourceFactory::getFragFunctionSuffix(MVKRPSKeyClearAtt& attKey) {
