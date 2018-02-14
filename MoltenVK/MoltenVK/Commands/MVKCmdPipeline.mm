@@ -159,7 +159,7 @@ void MVKCmdPushConstants::setContent(VkPipelineLayout layout,
 	_stageFlags = stageFlags;
 	_offset = offset;
 
-    mvkEnsureSize(_pushConstants, size);
+	_pushConstants.resize(size);
 	copy_n((char*)pValues, size, _pushConstants.begin());
 }
 

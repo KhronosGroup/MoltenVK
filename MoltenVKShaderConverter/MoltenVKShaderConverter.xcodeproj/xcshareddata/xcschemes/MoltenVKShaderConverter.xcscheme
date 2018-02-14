@@ -74,19 +74,19 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-gi"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK-bh/External/SPIRV-Cross/shaders-msl/comp/functions.comp"
-            isEnabled = "YES">
+            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK-bh/External/SPIRV-Cross/shaders-msl/vert/pointsize.vert"
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-si"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/Support/Valve/Dota2/shader-issues/spv_cross_bug/spv_cross_bug.spv"
-            isEnabled = "NO">
+            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/Support/Valve/Dota2/shader-issues/sample_mask/sample_mask.spv"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-mo"
