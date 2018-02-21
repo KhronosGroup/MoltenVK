@@ -135,7 +135,7 @@ Building **MoltenVK**
 instructions in the [*Third-Party Components*](#third-party) section above to retrieve 
 and install the required third-party components.
 
->***Note:*** At runtime, **MoltenVK** can run on *iOS 9* and *macOS 11.0* devices, 
+>***Note:*** At runtime, **MoltenVK** can run on *iOS 9* and *macOS 10.11* devices,
 >but it does reference advanced OS frameworks during building. *Xcode 9* 
 >or above is required to build **MoltenVK**, and build and link **MoltenVK** projects.
 

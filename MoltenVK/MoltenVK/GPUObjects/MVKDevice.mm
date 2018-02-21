@@ -288,16 +288,6 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 
 #pragma mark Construction
 
-/** Returns the device type of the specified MTLDevice. */
-static VkPhysicalDeviceType getDeviceType(id<MTLDevice> mtlDevice) {
-#if MVK_IOS
-	return VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
-#endif
-#if MVK_MACOS
-	return (mtlDevice.isLowPower ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU);
-#endif
-}
-
 /** Initializes the Metal-specific physical device features of this instance. */
 void MVKPhysicalDevice::initMetalFeatures() {
 	memset(&_metalFeatures, 0, sizeof(_metalFeatures));	// Start with everything cleared
@@ -472,14 +462,10 @@ void MVKPhysicalDevice::initFeatures() {
 void MVKPhysicalDevice::initProperties() {
 	memset(&_properties, 0, sizeof(_properties));	// Start with everything cleared
 
-	// TODO: determine correct values
 	_properties.apiVersion = MVK_VULKAN_API_VERSION;
 	_properties.driverVersion = MVK_VERSION;
-	_properties.vendorID = 0;
-	_properties.deviceID = 0;
-	_properties.deviceType = getDeviceType(_mtlDevice);
-	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
-	memset(_properties.pipelineCacheUUID, 0, VK_UUID_SIZE);
+
+	mvkPopulateGPUInfo(_properties, _mtlDevice);
 
 	// Limits
 #if MVK_IOS
@@ -865,7 +851,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 }
 
 void MVKPhysicalDevice::logFeatureSets() {
-    string fsMsg = "GPU device %s supports the following Metal Feature Sets:";
+	string fsMsg = "GPU device %s (vendorID: %#06x, deviceID: %#06x, pipelineCacheUUID: %s) supports the following Metal Feature Sets:";
 
 #if MVK_IOS
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) { fsMsg += "\n\tiOS GPU Family 4 v1"; }
@@ -891,7 +877,8 @@ void MVKPhysicalDevice::logFeatureSets() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v1] ) { fsMsg += "\n\tOSX GPU Family 1 v1"; }
 #endif
 
-    MVKLogInfo(fsMsg.c_str(), _properties.deviceName);
+	MVKLogInfo(fsMsg.c_str(), _properties.deviceName, _properties.vendorID, _properties.deviceID,
+			   [[[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID] autorelease].UUIDString.UTF8String);
 }
 
 /** Initializes the queue families supported by this instance. */

@@ -22,6 +22,7 @@
 #pragma once
 
 #include "MVKCommonEnvironment.h"
+#include <vulkan/vulkan.h>
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
@@ -105,4 +106,6 @@ MVKOSVersion mvkOSVersion(void);
 /** Returns an approximation of how much memory, in bytes, the device can use with good performance. */
 uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice);
 
+/** Populate the propertes with info about the GPU represented by the MTLDevice. */
+void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice);
 
