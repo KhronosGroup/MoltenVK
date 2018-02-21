@@ -131,8 +131,13 @@ the *Metal* environment.
    2. Click the **+** button, and (selecting from the list of system libraries) add `libc++.tbd`. 
    3. If you do not have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and
       **Enable Modules (C and Objective-C** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the 
-      **+** button, and (selecting from the list of system frameworks) add `Metal.framework`,
-      `IOSurface.framework`, and `QuartzCore.framework`.
+      **+** button, and (selecting from the list of system frameworks) add the following frameworks:
+		- `Metal.framework`
+		- `IOSurface.framework`
+		- `QuartzCore.framework`
+		- `IOKit.framework` (*macOS*)
+		- `UIKit.framework` (*iOS*)
+		- `Foundation.framework`.
 
 4. When a *Metal* app is running from *Xcode*, the default ***Scheme*** settings reduce
    performance. To improve performance and gain the benefits of *Metal*, perform the 
@@ -185,8 +190,13 @@ follow these instructions:
    2. Click the **+** button, and (selecting from the list of system libraries) add `libc++.tbd`. 
    3. If you do not have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and
       **Enable Modules (C and Objective-C** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the 
-      **+** button, and (selecting from the list of system frameworks) add `Metal.framework`,
-      `IOSurface.framework`, and `QuartzCore.framework`.
+      **+** button, and (selecting from the list of system frameworks) add the following frameworks:
+		- `Metal.framework`
+		- `IOSurface.framework`
+		- `QuartzCore.framework`
+		- `IOKit.framework` (*macOS*)
+		- `UIKit.framework` (*iOS*)
+		- `Foundation.framework`.
 
 4. Arrange to install the `libMoltenVK.dylib` file in your application environment:
 

@@ -29,13 +29,11 @@ const MVKMTLFunction MVKMTLFunctionNull = { nil, MTLSizeMake(1, 1, 1) };
 #pragma mark -
 #pragma mark MVKShaderLibrary
 
-uint32_t getOffsetForConstantId(const VkSpecializationInfo* pSpecInfo, uint32_t constantId)
+static uint32_t getOffsetForConstantId(const VkSpecializationInfo* pSpecInfo, uint32_t constantId)
 {
     for (uint32_t specIdx = 0; specIdx < pSpecInfo->mapEntryCount; specIdx++) {
         const VkSpecializationMapEntry* pMapEntry = &pSpecInfo->pMapEntries[specIdx];
-        if (pMapEntry->constantID == constantId) {
-            return pMapEntry->offset;
-        }
+        if (pMapEntry->constantID == constantId) { return pMapEntry->offset; }
     }
 
     return -1;

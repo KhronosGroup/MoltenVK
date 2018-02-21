@@ -20,9 +20,22 @@
 #include "MVKOSExtensions.h"
 #include "MVKFoundation.h"
 
-#import <mach/mach.h>
-#import <mach/mach_host.h>
+#include <vector>
+#include <mach/mach.h>
+#include <mach/mach_host.h>
+#include <uuid/uuid.h>
 
+#if MVK_MACOS
+#import <CoreFoundation/CFData.h>
+#import <IOKit/IOKitLib.h>
+#import <IOKit/IOKitKeys.h>
+#endif
+
+#if MVK_IOS
+#import <UIKit/UIDevice.h>
+#endif
+
+using namespace std;
 
 static const MVKOSVersion kMVKOSVersionUnknown = 0.0f;
 static MVKOSVersion _mvkOSVersion = kMVKOSVersionUnknown;
@@ -130,5 +143,105 @@ uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice) {
 
 	return 128 * MEBI;		// Conservative minimum for macOS GPU's & iOS shared memory
 }
+
+// Personalize the pipelineCacheUUID by blending in the vendorID and deviceID values into the lower 8 bytes.
+static void mvkBlendUUID(VkPhysicalDeviceProperties& devProps) {
+	uint32_t idOffset = VK_UUID_SIZE;
+
+	idOffset -= sizeof(uint32_t);
+	*(uint32_t*)&devProps.pipelineCacheUUID[idOffset] ^= NSSwapHostIntToBig(devProps.deviceID);
+
+	idOffset -= sizeof(uint32_t);
+	*(uint32_t*)&devProps.pipelineCacheUUID[idOffset] ^= NSSwapHostIntToBig(devProps.vendorID);
+}
+
+#if MVK_MACOS
+
+static uint32_t mvkGetEntryProperty(io_registry_entry_t entry, CFStringRef propertyName) {
+
+	uint32_t value = 0;
+
+	CFTypeRef cfProp = IORegistryEntrySearchCFProperty(entry,
+													   kIOServicePlane,
+													   propertyName,
+													   kCFAllocatorDefault,
+													   kIORegistryIterateRecursively |
+													   kIORegistryIterateParents);
+	if (cfProp) {
+		const uint32_t* pValue = reinterpret_cast<const uint32_t*>(CFDataGetBytePtr((CFDataRef)cfProp));
+		if (pValue) { value = *pValue; }
+		CFRelease(cfProp);
+	}
+
+	return value;
+}
+
+void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice) {
+
+	static const UInt32 kIntelVendorId = 0x8086;
+	bool isFound = false;
+
+	bool isIntegrated = mtlDevice.isLowPower;
+	devProps.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+	strlcpy(devProps.deviceName, mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
+
+	// Iterate all GPU's, looking for a match.
+	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released
+	io_iterator_t entryIterator;
+	if (IOServiceGetMatchingServices(kIOMasterPortDefault,
+									 IOServiceMatching("IOPCIDevice"),
+									 &entryIterator) == kIOReturnSuccess) {
+		io_registry_entry_t entry;
+		while ( !isFound && (entry = IOIteratorNext(entryIterator)) ) {
+			if (mvkGetEntryProperty(entry, CFSTR("class-code")) == 0x30000) {	// 0x30000 : DISPLAY_VGA
+
+				// The Intel GPU will always be marked as integrated.
+				// Return on a match of either Intel && low power, or non-Intel and non-low-power.
+				uint32_t vendorID = mvkGetEntryProperty(entry, CFSTR("vendor-id"));
+				if ( (vendorID == kIntelVendorId) == isIntegrated) {
+					isFound = true;
+					devProps.vendorID = vendorID;
+					devProps.deviceID = mvkGetEntryProperty(entry, CFSTR("device-id"));
+				}
+			}
+		}
+		IOObjectRelease(entryIterator);
+	}
+
+	// Create a pipelineCacheUUID by blending the UUID of the computer with the vendor and device ID's
+	uuid_t uuid = {};
+	timespec ts = { .tv_sec = 0, .tv_nsec = 0 };
+	gethostuuid(uuid, &ts);
+	memcpy(devProps.pipelineCacheUUID, uuid, min(sizeof(uuid_t), (size_t)VK_UUID_SIZE));
+	mvkBlendUUID(devProps);
+}
+
+#endif	//MVK_MACOS
+
+#if MVK_IOS
+
+void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice) {
+	NSUInteger coreCnt = NSProcessInfo.processInfo.processorCount;
+	uint32_t devID = 0xa070;
+	if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1]) {
+		devID = 0xa110;
+	} else if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
+		devID = coreCnt > 2 ? 0xa101 : 0xa100;
+	} else if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1]) {
+		devID = coreCnt > 2 ? 0xa081 : 0xa080;
+	}
+
+	devProps.vendorID = 0x0000106b;	// Apple's PCI ID
+	devProps.deviceID = devID;
+	devProps.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+	strlcpy(devProps.deviceName, mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
+
+	// Create a pipelineCacheUUID by blending the UUID of the computer with the vendor and device ID's
+	uuid_t uuid = {};
+	[UIDevice.currentDevice.identifierForVendor getUUIDBytes:uuid];
+	memcpy(devProps.pipelineCacheUUID, uuid, min(sizeof(uuid_t), (size_t)VK_UUID_SIZE));
+	mvkBlendUUID(devProps);
+}
+#endif	//MVK_IOS
 
 
