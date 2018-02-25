@@ -340,8 +340,8 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
                                                                  MVKCommandUse cmdBuffUse)
         : MVKQueueSubmission(device,
 							 queue,
-							 pSubmit->waitSemaphoreCount,
-							 pSubmit->pWaitSemaphores), _cmdBuffCountdown(this) {
+							 (pSubmit ? pSubmit->waitSemaphoreCount : 0),
+							 (pSubmit ? pSubmit->pWaitSemaphores : nullptr)), _cmdBuffCountdown(this) {
 
     // pSubmit can be null if just tracking the fence alone
     if (pSubmit) {
