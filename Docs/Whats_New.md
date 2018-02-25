@@ -13,10 +13,10 @@ For best results, use a Markdown reader.*
 
 
 
-MoltenVK 0.20.0
+MoltenVK 1.0.0
 ---------------
 
-Released 2017/11/17
+Released 2018/02/26
 
 #### Initial open-source release!
 

@@ -46,8 +46,8 @@ extern "C" {
  *   - 030104    (version 3.1.4)
  *   - 401215    (version 4.12.15)
  */
-#define MVK_VERSION_MAJOR   0
-#define MVK_VERSION_MINOR   20
+#define MVK_VERSION_MAJOR   1
+#define MVK_VERSION_MINOR   0
 #define MVK_VERSION_PATCH   0
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
