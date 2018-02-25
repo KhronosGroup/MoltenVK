@@ -88,17 +88,17 @@ typedef struct {
 
 /** MoltenVK swapchain performance statistics. */
 typedef struct {
-    double lastFrameInterval;           /**< The time interval between this frame and the immediately previous frame, in seconds. */
-    double averageFrameInterval;        /**< The rolling average time interval between frames, in seconds. This value has less volatility than the lastFrameInterval value. The inverse of this value is the rolling average frames per second. */
-    double averageFramesPerSecond;      /**< The rolling average number of frames per second. This is simply the inverse of the averageFrameInterval value. */
+    double lastFrameInterval;           /**< The time interval between this frame and the immediately previous frame, in milliseconds. */
+    double averageFrameInterval;        /**< The rolling average time interval between frames, in miliseconds. This value has less volatility than the lastFrameInterval value. */
+    double averageFramesPerSecond;      /**< The rolling average number of frames per second. This is simply the 1000 divided by the averageFrameInterval value. */
 } MVKSwapchainPerformance;
 
 /** MoltenVK performance of a particular type of shader compilation event. */
 typedef struct {
     uint32_t count;             /**< The number of compilation events of this type. */
-    double averageInterval;     /**< The average time interval consumed by the compilation event, in seconds. */
-    double minimumInterval;     /**< The minimum time interval consumed by the compilation event, in seconds. */
-    double maximumInterval;     /**< The maximum time interval consumed by the compilation event, in seconds. */
+    double averageDuration;     /**< The average duration of the compilation event, in milliseconds. */
+    double minimumDuration;     /**< The minimum duration of the compilation event, in milliseconds. */
+    double maximumDuration;     /**< The maximum duration of the compilation event, in milliseconds. */
 } MVKShaderCompilationEventPerformance;
 
 /** MoltenVK performance of shader compilation events for a VkDevice. */

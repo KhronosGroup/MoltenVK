@@ -239,7 +239,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 
         MTLRenderPipelineDescriptor* plDesc = getMTLRenderPipelineDescriptor(pCreateInfo);
         if (plDesc) {
-            NSTimeInterval startTime = _device->getPerformanceTimestamp();
+            uint64_t startTime = _device->getPerformanceTimestamp();
             NSError* psError = nil;
             _mtlPipelineState = [getMTLDevice() newRenderPipelineStateWithDescriptor: plDesc error: &psError];  // retained
             if (psError) {
@@ -411,7 +411,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
         _mtlPipelineState = nil;
 
         NSError* psError = nil;
-        NSTimeInterval startTime = _device->getPerformanceTimestamp();
+        uint64_t startTime = _device->getPerformanceTimestamp();
         _mtlPipelineState = [getMTLDevice() newComputePipelineStateWithFunction: shaderFunc.mtlFunction error: &psError];  // retained
         if (psError) {
             setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Could not create compute pipeline:\n%s.", psError.description.UTF8String));

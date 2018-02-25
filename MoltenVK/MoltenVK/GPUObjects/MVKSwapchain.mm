@@ -147,21 +147,21 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
 void MVKSwapchain::markFrameInterval() {
     if ( !(_device->_mvkConfig.performanceTracking || _licenseWatermark) ) { return; }
 
-    NSTimeInterval prevFrameTime = _lastFrameTime;
-    _lastFrameTime = [NSDate timeIntervalSinceReferenceDate];
-    _performanceStatistics.lastFrameInterval = _lastFrameTime - prevFrameTime;
+    uint64_t prevFrameTime = _lastFrameTime;
+    _lastFrameTime = mvkGetTimestamp();
+    _performanceStatistics.lastFrameInterval = mvkGetElapsedMilliseconds(prevFrameTime, _lastFrameTime);
 
     // Low pass filter.
     // y[i] := α * x[i] + (1-α) * y[i-1]  OR
     // y[i] := y[i-1] + α * (x[i] - y[i-1])
     _performanceStatistics.averageFrameInterval += _averageFrameIntervalFilterAlpha * (_performanceStatistics.lastFrameInterval - _performanceStatistics.averageFrameInterval);
-    _performanceStatistics.averageFramesPerSecond = 1.0 / _performanceStatistics.averageFrameInterval;
+    _performanceStatistics.averageFramesPerSecond = 1000.0 / _performanceStatistics.averageFrameInterval;
 
     uint32_t perfLogCntLimit = _device->_mvkConfig.performanceLoggingFrameCount;
     if (perfLogCntLimit > 0) {
         _currentPerfLogFrameCount++;
         if (_currentPerfLogFrameCount >= perfLogCntLimit) {
-            MVKLogInfo("Frame interval: %.3f. Avg frame interval: %.3f. FPS: %.3f.",
+            MVKLogInfo("Frame interval: %.2f ms. Avg frame interval: %.2f ms. FPS: %.2f.",
                        _performanceStatistics.lastFrameInterval,
                        _performanceStatistics.averageFrameInterval,
                        _performanceStatistics.averageFramesPerSecond);
@@ -254,7 +254,7 @@ void MVKSwapchain::initFrameIntervalTracking() {
     _performanceStatistics.averageFramesPerSecond = 0;
     _currentPerfLogFrameCount = 0;
 
-    _lastFrameTime = [NSDate timeIntervalSinceReferenceDate];
+	_lastFrameTime = mvkGetTimestamp();
 
     // Establish the alpha parameter of a low-pass filter for averaging frame intervals.
     double RC_over_dt = 10;

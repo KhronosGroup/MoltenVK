@@ -19,6 +19,7 @@
 #include "MVKQueryPool.h"
 #include "MVKBuffer.h"
 #include "MVKCommandBuffer.h"
+#include "MVKOSExtensions.h"
 #include "MVKFoundation.h"
 #include "MVKLogging.h"
 

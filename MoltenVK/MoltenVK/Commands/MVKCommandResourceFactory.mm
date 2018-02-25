@@ -216,14 +216,14 @@ string MVKCommandResourceFactory::getFragFunctionSuffix(MVKRPSKeyClearAtt& attKe
 }
 
 id<MTLFunction> MVKCommandResourceFactory::getFunctionNamed(const char* funcName) {
-    NSTimeInterval startTime = _device->getPerformanceTimestamp();
+    uint64_t startTime = _device->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: @(funcName)] autorelease];
     _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.functionRetrieval, startTime);
     return mtlFunc;
 }
 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc) {
-    NSTimeInterval startTime = _device->getPerformanceTimestamp();
+    uint64_t startTime = _device->getPerformanceTimestamp();
     NSError* err = nil;
     id<MTLRenderPipelineState> rps = [getMTLDevice() newRenderPipelineStateWithDescriptor: plDesc error: &err];    // retained
     MVKAssert( !err, "Could not create %s pipeline state: %s (code %li) %s", plDesc.label.UTF8String, err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
@@ -239,7 +239,7 @@ MVKCommandResourceFactory::MVKCommandResourceFactory(MVKDevice* device) : MVKBas
 
 /** Initializes the Metal shaders used for command activity. */
 void MVKCommandResourceFactory::initMTLLibrary() {
-    NSTimeInterval startTime = _device->getPerformanceTimestamp();
+    uint64_t startTime = _device->getPerformanceTimestamp();
     @autoreleasepool {
         MTLCompileOptions* shdrOpts = [[MTLCompileOptions new] autorelease];
         NSError* err = nil;

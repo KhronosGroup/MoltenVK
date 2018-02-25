@@ -166,6 +166,5 @@ protected:
     float _maxPosition;
     MVKWatermarkPosition _positionVelocity;
     MVKWatermarkPositionMode _positionMode;
-    NSTimeInterval _lastRenderTime;
 };
 

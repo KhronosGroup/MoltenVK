@@ -20,6 +20,7 @@
 #include "MVKSwapchain.h"
 #include "MVKSync.h"
 #include "MVKFoundation.h"
+#include "MVKOSExtensions.h"
 #include "MVKLogging.h"
 
 using namespace std;

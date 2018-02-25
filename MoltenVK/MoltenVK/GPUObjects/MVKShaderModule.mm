@@ -48,7 +48,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkPipelineShaderStageCreat
     SPIRVEntryPoint& ep = _entryPoints[pShaderStage->pName];
     NSString* mtlFuncName = @(ep.mtlFunctionName.c_str());
 
-    NSTimeInterval startTime = _device->getPerformanceTimestamp();
+    uint64_t startTime = _device->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
     _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.functionRetrieval, startTime);
 
@@ -59,7 +59,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkPipelineShaderStageCreat
         if (_device->_pMetalFeatures->shaderSpecialization) {
             NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
             if (mtlFCs.count) {
-                NSTimeInterval startTimeSpec = _device->getPerformanceTimestamp();
+                uint64_t startTimeSpec = _device->getPerformanceTimestamp();
 
                 // The Metal shader contains function constants and expects to be specialized
                 // Populate the Metal function constant values from the Vulkan specialization info.
@@ -123,7 +123,7 @@ MTLFunctionConstant* MVKShaderLibrary::getFunctionConstant(NSArray<MTLFunctionCo
 }
 
 MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device, SPIRVToMSLConverter& mslConverter) : MVKBaseDeviceObject(device) {
-    NSTimeInterval startTime = _device->getPerformanceTimestamp();
+    uint64_t startTime = _device->getPerformanceTimestamp();
     @autoreleasepool {
         MTLCompileOptions* options = [[MTLCompileOptions new] autorelease]; // TODO: what compile options apply?
         NSError* err = nil;
@@ -140,7 +140,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device, SPIRVToMSLConverter& mslCo
 MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device,
                                    const void* mslCompiledCodeData,
                                    size_t mslCompiledCodeLength) : MVKBaseDeviceObject(device) {
-    NSTimeInterval startTime = _device->getPerformanceTimestamp();
+    uint64_t startTime = _device->getPerformanceTimestamp();
     @autoreleasepool {
         dispatch_data_t shdrData = dispatch_data_create(mslCompiledCodeData,
                                                         mslCompiledCodeLength,
@@ -213,7 +213,7 @@ MVKShaderLibrary* MVKShaderModule::addShaderLibrary(SPIRVToMSLConverterContext* 
     MVKShaderLibrary* shLib = nullptr;
     bool shouldLogCode = _device->_mvkConfig.debugMode;
 
-    NSTimeInterval startTime = _device->getPerformanceTimestamp();
+    uint64_t startTime = _device->getPerformanceTimestamp();
     bool wasConverted = _converter.convert(*pContext, shouldLogCode, shouldLogCode, shouldLogCode);
     _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.spirvToMSL, startTime);
 

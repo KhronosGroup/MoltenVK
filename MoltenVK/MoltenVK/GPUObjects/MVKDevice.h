@@ -389,24 +389,31 @@ public:
                             MVKCommandUse cmdUse);
 
     /**
-     * If performance is being tracked, returns a marker indicating the current system time,
-     * otherwise returns zero.
-     *
-     * This marker is not guaranteed to be a meaningful value, but the difference between
-     * two calls to this function will indicate a time interval value measure in seconds.
+	 * If performance is being tracked, returns a monotonic timestamp value for use performance timestamping.
+	 *
+	 * The returned value corresponds to the number of CPU "ticks" since the app was initialized.
+	 *
+	 * Calling this value twice, subtracting the first value from the second, and then multiplying
+	 * the result by the value returned by mvkGetTimestampPeriod() will provide an indication of the
+	 * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
+	 * can be used to perform this calculation.
      */
-    inline NSTimeInterval getPerformanceTimestamp() {
-        return _mvkConfig.performanceTracking ? [NSDate timeIntervalSinceReferenceDate] : 0.0;
-    }
+    inline uint64_t getPerformanceTimestamp() {
+		return _mvkConfig.performanceTracking ? getPerformanceTimestampImpl() : 0;
+	}
 
     /**
      * If performance is being tracked, adds a shader compilation event with a duration
      * interval between the start and end times, to the given performance statistics.
      *
-     * If endTime is zero, the current time is used.
+     * If endTime is zero or not supplied, the current time is used.
      */
-    void addShaderCompilationEventPerformance(MVKShaderCompilationEventPerformance& shaderCompilationEvent,
-                                              NSTimeInterval startTime, NSTimeInterval endTime = 0.0);
+    inline void addShaderCompilationEventPerformance(MVKShaderCompilationEventPerformance& shaderCompilationEvent,
+													 uint64_t startTime, uint64_t endTime = 0) {
+		if (_mvkConfig.performanceTracking) {
+			addShaderCompilationEventPerformanceImpl(shaderCompilationEvent, startTime, endTime);
+		}
+	};
 
     /** Populates the specified statistics structure from the current shader performance statistics. */
     void getShaderCompilationPerformanceStatistics(MVKShaderCompilationPerformance* pShaderCompPerf);
@@ -503,6 +510,9 @@ protected:
 	MVKResource* removeResource(MVKResource* rez);
     void initPerformanceTracking();
     const char* getShaderCompilationEventName(MVKShaderCompilationEventPerformance& shaderCompilationEvent);
+	uint64_t getPerformanceTimestampImpl();
+	void addShaderCompilationEventPerformanceImpl(MVKShaderCompilationEventPerformance& shaderCompilationEvent,
+												  uint64_t startTime, uint64_t endTime);
 
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
@@ -571,29 +581,5 @@ public:
 protected:
     MVKDevice* _device;
 };
-
-
-#pragma mark -
-#pragma mark Functions
-
-/** 
- * Returns a monotonic timestamp value for use in Vulkan timestamping.
- *
- * The returned value corresponds to the number of CPU "ticks" since the app was initialized.
- *
- * Calling this value twice, subtracting the first value from the second, and then multiplying
- * the result by the VkPhysicalDeviceProperties.VkPhysicalDeviceLimits.timestampPeriod value 
- * will provide an indication of the number of nanoseconds between the two calls.
- */
-uint64_t mvkGetTimestamp();
-
-/** 
- * Returns the number of milliseconds since the app was initialized.
- *
- * This is a convenience function for tracking the time required to perform operations.
- * Accuracy may be improved by using the mvkGetTimestamp() function and following the
- * method provided in the notes for that function.
- */
-double mvkGetElapsedMilliseconds();
 
 
