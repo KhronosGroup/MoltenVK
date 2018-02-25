@@ -232,21 +232,6 @@ void MVKQueue::destroyExecQueue() {
 
 
 #pragma mark -
-#pragma mark MVKQueueSubmission
-
-MVKQueueSubmission::MVKQueueSubmission(MVKDevice* device, MVKQueue* queue) : MVKBaseDeviceObject(device) {
-	_queue = queue;
-	_prev = VK_NULL_HANDLE;
-	_next = VK_NULL_HANDLE;
-	_submissionResult = VK_SUCCESS;
-}
-
-void MVKQueueSubmission::recordResult(VkResult vkResult) {
-    if (_submissionResult == VK_SUCCESS) { _submissionResult = vkResult; }
-}
-
-
-#pragma mark -
 #pragma mark MVKQueueCommandBufferSubmissionCountdown
 
 MVKQueueCommandBufferSubmissionCountdown::MVKQueueCommandBufferSubmissionCountdown(MVKQueueCommandBufferSubmission* qSub) {
@@ -257,12 +242,33 @@ void MVKQueueCommandBufferSubmissionCountdown::finish() { _qSub->finish(); }
 
 
 #pragma mark -
+#pragma mark MVKQueueSubmission
+
+MVKQueueSubmission::MVKQueueSubmission(MVKDevice* device,
+									   MVKQueue* queue,
+									   uint32_t waitSemaphoreCount,
+									   const VkSemaphore* pWaitSemaphores) : MVKBaseDeviceObject(device) {
+	_queue = queue;
+	_prev = VK_NULL_HANDLE;
+	_next = VK_NULL_HANDLE;
+	_submissionResult = VK_SUCCESS;
+
+	_isAwaitingSemaphores = waitSemaphoreCount > 0;
+	_waitSemaphores.reserve(waitSemaphoreCount);
+	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
+		_waitSemaphores.push_back((MVKSemaphore*)pWaitSemaphores[i]);
+	}
+}
+
+void MVKQueueSubmission::recordResult(VkResult vkResult) {
+    if (_submissionResult == VK_SUCCESS) { _submissionResult = vkResult; }
+}
+
+
+#pragma mark -
 #pragma mark MVKQueueCommandBufferSubmission
 
 void MVKQueueCommandBufferSubmission::execute() {
-
-    // Wait on each wait semaphore in turn. It doesn't matter which order they are signalled.
-    for (auto& ws : _waitSemaphores) { ws->wait(); }
 
     // Execute each command buffer, or if no command buffers, but a fence or semaphores,
     // create an empty MTLCommandBuffer to trigger the semaphores and fence.
@@ -293,6 +299,15 @@ id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer(
 }
 
 void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer() {
+
+	// Wait on each wait semaphore in turn. It doesn't matter which order they are signalled.
+	// We have delayed this as long as possible to allow as much filling of the MTLCommandBuffer
+	// as possible before forcing a wait. We only wait for each semaphore once per submission.
+	if (_isAwaitingSemaphores) {
+		_isAwaitingSemaphores = false;
+		for (auto& ws : _waitSemaphores) { ws->wait(); }
+	}
+
 	[_activeMTLCommandBuffer commit];
 	_activeMTLCommandBuffer = nil;			// not retained
 }
@@ -323,7 +338,10 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 																 const VkSubmitInfo* pSubmit,
                                                                  VkFence fence,
                                                                  MVKCommandUse cmdBuffUse)
-        : MVKQueueSubmission(device, queue), _cmdBuffCountdown(this) {
+        : MVKQueueSubmission(device,
+							 queue,
+							 pSubmit->waitSemaphoreCount,
+							 pSubmit->pWaitSemaphores), _cmdBuffCountdown(this) {
 
     // pSubmit can be null if just tracking the fence alone
     if (pSubmit) {
@@ -333,12 +351,6 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
             MVKCommandBuffer* cb = MVKCommandBuffer::getMVKCommandBuffer(pSubmit->pCommandBuffers[i]);
             _cmdBuffers.push_back(cb);
             recordResult(cb->getRecordingResult());
-        }
-
-        uint32_t wsCnt = pSubmit->waitSemaphoreCount;
-        _waitSemaphores.reserve(wsCnt);
-        for (uint32_t i = 0; i < wsCnt; i++) {
-            _waitSemaphores.push_back((MVKSemaphore*)pSubmit->pWaitSemaphores[i]);
         }
 
         uint32_t ssCnt = pSubmit->signalSemaphoreCount;
@@ -360,21 +372,24 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 #define MVK_PRESENT_VIA_CMD_BUFFER		0
 
 void MVKQueuePresentSurfaceSubmission::execute() {
-
-    // Wait on each of the wait semaphores in turn. It doesn't matter which order they are signalled.
-    for (auto& ws : _waitSemaphores) { ws->wait(); }
-
     id<MTLCommandQueue> mtlQ = _queue->getMTLCommandQueue();
-	id<MTLCommandBuffer> mtlCmdBuff = nil;
 
-	if (_device->_mvkConfig.displayWatermark || MVK_PRESENT_VIA_CMD_BUFFER) {
-		mtlCmdBuff = [mtlQ commandBufferWithUnretainedReferences];
+	if (_device->_mvkConfig.presentWithCommandBuffer || _device->_mvkConfig.displayWatermark) {
+		// Create a command buffer, present surfaces via the command buffer,
+		// then wait on the semaphores before committing.
+		id<MTLCommandBuffer> mtlCmdBuff = [mtlQ commandBufferWithUnretainedReferences];
 		mtlCmdBuff.label = mvkMTLCommandBufferLabel(kMVKCommandUseQueuePresent);
+		[mtlCmdBuff enqueue];
+
+		for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
+		for (auto& ws : _waitSemaphores) { ws->wait(); }
+
+		[mtlCmdBuff commit];
+	} else {
+		// Wait on semaphores, then present directly.
+		for (auto& ws : _waitSemaphores) { ws->wait(); }
+		for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(nil); }
 	}
-
-    for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
-
-	[mtlCmdBuff commit];
 
     // Let Xcode know the frame is done, in case command buffer is not used
     if (_device->_mvkConfig.debugMode) { [mtlQ insertDebugCaptureBoundary]; }
@@ -384,12 +399,11 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 
 MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKDevice* device,
 																   MVKQueue* queue,
-																   const VkPresentInfoKHR* pPresentInfo) : MVKQueueSubmission(device, queue) {
-	uint32_t wsCnt = pPresentInfo->waitSemaphoreCount;
-	_waitSemaphores.reserve(wsCnt);
-	for (uint32_t i = 0; i < wsCnt; i++) {
-		_waitSemaphores.push_back((MVKSemaphore*)pPresentInfo->pWaitSemaphores[i]);
-	}
+																   const VkPresentInfoKHR* pPresentInfo)
+		: MVKQueueSubmission(device,
+							 queue,
+							 pPresentInfo->waitSemaphoreCount,
+							 pPresentInfo->pWaitSemaphores) {
 
 	// Populate the array of swapchain images, testing each one for a change in surface size
 	_surfaceImages.reserve(pPresentInfo->swapchainCount);

@@ -159,35 +159,6 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKQueueSubmission
-
-/** This is an abstract class for an operation that can be submitted to an MVKQueue. */
-class MVKQueueSubmission : public MVKBaseDeviceObject {
-
-public:
-
-	/** 
-	 * Executes this action on the queue and then disposes of this instance.
-	 *
-	 * Upon completion of this function, no further calls should be made to this instance.
-	 */
-	virtual void execute() = 0;
-
-	MVKQueueSubmission(MVKDevice* device, MVKQueue* queue);
-
-protected:
-	friend class MVKQueue;
-
-   void recordResult(VkResult vkResult);
-
-	MVKQueue* _queue;
-	MVKQueueSubmission* _prev;
-	MVKQueueSubmission* _next;
-	VkResult _submissionResult;
-};
-
-
-#pragma mark -
 #pragma mark MVKQueueCommandBufferSubmissionCountdown
 
 /** Counts down MTLCommandBuffers on behalf of an MVKQueueCommandBufferSubmission instance. */
@@ -204,6 +175,40 @@ protected:
 	virtual void finish();
 
 	MVKQueueCommandBufferSubmission* _qSub;
+};
+
+
+#pragma mark -
+#pragma mark MVKQueueSubmission
+
+/** This is an abstract class for an operation that can be submitted to an MVKQueue. */
+class MVKQueueSubmission : public MVKBaseDeviceObject {
+
+public:
+
+	/** 
+	 * Executes this action on the queue and then disposes of this instance.
+	 *
+	 * Upon completion of this function, no further calls should be made to this instance.
+	 */
+	virtual void execute() = 0;
+
+	MVKQueueSubmission(MVKDevice* device,
+					   MVKQueue* queue,
+					   uint32_t waitSemaphoreCount,
+					   const VkSemaphore* pWaitSemaphores);
+
+protected:
+	friend class MVKQueue;
+
+   void recordResult(VkResult vkResult);
+
+	MVKQueue* _queue;
+	MVKQueueSubmission* _prev;
+	MVKQueueSubmission* _next;
+	VkResult _submissionResult;
+	std::vector<MVKSemaphore*> _waitSemaphores;
+	bool _isAwaitingSemaphores;
 };
 
 
@@ -251,7 +256,6 @@ protected:
 
 	MVKQueueCommandBufferSubmissionCountdown _cmdBuffCountdown;
 	std::vector<MVKCommandBuffer*> _cmdBuffers;
-	std::vector<MVKSemaphore*> _waitSemaphores;
 	std::vector<MVKSemaphore*> _signalSemaphores;
 	MVKFence* _fence;
     MVKCommandUse _cmdBuffUse;
@@ -280,7 +284,6 @@ public:
 									 const VkPresentInfoKHR* pPresentInfo);
 
 protected:
-	std::vector<MVKSemaphore*> _waitSemaphores;
 	std::vector<MVKSwapchainImage*> _surfaceImages;
 };
 

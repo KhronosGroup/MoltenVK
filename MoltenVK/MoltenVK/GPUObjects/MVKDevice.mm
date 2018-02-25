@@ -48,11 +48,18 @@ using namespace std;
 #	define MVKViewClass		NSView
 #endif
 
-// To display the MoltenVK logo watermark by default, define the MVK_WATERMARK build setting.
-#ifdef MVK_WATERMARK
-#   define MVK_DISPLAY_WATERMARK    1
+// To present surface using a command buffer, define the MVK_PRESENT_WITH_COMMAND_BUFFER build setting.
+#ifdef MVK_PRESENT_WITH_COMMAND_BUFFER
+#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    1
 #else
-#   define MVK_DISPLAY_WATERMARK    0
+#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    0
+#endif
+
+// To display the MoltenVK logo watermark by default, define the MVK_DISPLAY_WATERMARK build setting.
+#ifdef MVK_DISPLAY_WATERMARK
+#   define MVK_DISPLAY_WATERMARK_BOOL    1
+#else
+#   define MVK_DISPLAY_WATERMARK_BOOL    0
 #endif
 
 
@@ -1336,7 +1343,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     pCfg->debugMode = MVK_DEBUG;
     pCfg->supportLargeQueryPools = false;
     pCfg->shaderConversionFlipVertexY = true;
-    pCfg->displayWatermark = MVK_DISPLAY_WATERMARK;
+	pCfg->presentWithCommandBuffer = MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL;
+    pCfg->displayWatermark = MVK_DISPLAY_WATERMARK_BOOL;
     pCfg->performanceTracking = MVK_DEBUG;
     pCfg->performanceLoggingFrameCount = MVK_DEBUG ? 300 : 0;
 
