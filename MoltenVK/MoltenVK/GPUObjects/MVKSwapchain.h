@@ -101,7 +101,7 @@ protected:
 	std::atomic<uint64_t> _currentAcquisitionID;
     CGSize _mtlLayerOrigDrawSize;
     MVKSwapchainPerformance _performanceStatistics;
-    double _lastFrameTime;
+    uint64_t _lastFrameTime;
     double _averageFrameIntervalFilterAlpha;
     uint32_t _currentPerfLogFrameCount;
 };

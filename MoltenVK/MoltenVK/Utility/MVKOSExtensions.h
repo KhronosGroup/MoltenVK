@@ -39,6 +39,29 @@ typedef float MVKOSVersion;
  */
 MVKOSVersion mvkOSVersion(void);
 
+/**
+ * Returns a monotonic timestamp value for use in Vulkan and performance timestamping.
+ *
+ * The returned value corresponds to the number of CPU "ticks" since the app was initialized.
+ *
+ * Calling this value twice, subtracting the first value from the second, and then multiplying
+ * the result by the value returned by mvkGetTimestampPeriod() will provide an indication of the
+ * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
+ * can be used to perform this calculation.
+ */
+uint64_t mvkGetTimestamp();
+
+/** Returns the number of nanoseconds between each increment of the value returned by mvkGetTimestamp(). */
+double mvkGetTimestampPeriod();
+
+/**
+ * Returns the number of milliseconds elapsed between startTimestamp and endTimestamp,
+ * each of which should be a value returned by mvkGetTimestamp().
+ * If endTimestamp is zero or not supplied, it is taken to be the current time.
+ * If startTimestamp is zero or not supplied, it is taken to be the time the app was initialized.
+ */
+double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
+
 
 #pragma mark -
 #pragma mark MTLTextureDescriptor

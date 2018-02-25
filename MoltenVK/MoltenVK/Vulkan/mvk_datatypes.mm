@@ -28,19 +28,6 @@
 using namespace std;
 
 
-// Pixel normalization divisors
-#define kMax1	0x1				// = (2^1 - 1) = 1
-#define kMax2	0x3				// = (2^2 - 1) = 3
-#define kMax4	0xF				// = (2^4 - 1) = 15
-#define kMax5	0x1F			// = (2^5 - 1) = 31
-#define kMax6	0x3F			// = (2^6 - 1) = 63
-#define kMax8	0xFF			// = (2^8 - 1) = 255
-#define kMax10	0x3FF			// = (2^10 - 1) = 1023
-#define kMax16	0xFFFF			// = (2^16 - 1) = 32767
-#define kMax24	0xFFFFFF		// = (2^24 - 1) = 16777215
-#define kMax32	0xFFFFFFFF		// = (2^32 - 1) = 4294967295
-
-
 #pragma mark -
 #pragma mark Image properties
 
@@ -583,8 +570,15 @@ MVK_PUBLIC_SYMBOL size_t mvkMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat
 }
 
 MVK_PUBLIC_SYMBOL VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat) {
-    const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
-    return fmtDesc.isSupported() ? fmtDesc.properties : (VkFormatProperties)MVK_FMT_NO_FEATS;
+	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
+	if (fmtDesc.isSupported()) {
+		return fmtDesc.properties;
+	} else {
+		// If texture format is unsupported, vertex buffer format may still be.
+		VkFormatProperties fmtProps = MVK_FMT_NO_FEATS;
+		fmtProps.bufferFeatures |= fmtDesc.properties.bufferFeatures & VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
+		return fmtProps;
+	}
 }
 
 MVK_PUBLIC_SYMBOL const char* mvkVkFormatName(VkFormat vkFormat) {

@@ -46,8 +46,8 @@ extern "C" {
  *   - 030104    (version 3.1.4)
  *   - 401215    (version 4.12.15)
  */
-#define MVK_VERSION_MAJOR   0
-#define MVK_VERSION_MINOR   20
+#define MVK_VERSION_MAJOR   1
+#define MVK_VERSION_MINOR   0
 #define MVK_VERSION_PATCH   0
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
@@ -62,7 +62,8 @@ typedef struct {
     VkBool32 debugMode;                     /**< If enabled, several debugging capabilities will be enabled. Shader code will be logged during Runtime Shader Conversion. Adjusts settings that might trigger Metal validation but are otherwise acceptable to Metal runtime. Improves support for Xcode GPU Frame Capture. Default value is determined at build time by the presence of a DEBUG build setting. By default the DEBUG build setting is defined when MoltenVK is compiled in Debug mode, and not defined when compiled in Release mode. */
     VkBool32 shaderConversionFlipVertexY;   /**< If enabled, MSL vertex shader code created during Runtime Shader Conversion will flip the Y-axis of each vertex, as Vulkan coordinate system is inverse of OpenGL. Default is true. */
     VkBool32 supportLargeQueryPools;        /**< Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK allocates a MTLBuffer for each query pool, allowing each query pool to support 8192 queries, which may slow performance or cause unexpected behaviour if the query pool is not established prior to a Metal renderpass, or if the query pool is changed within a Metal renderpass. If disabled, one MTLBuffer will be shared by all query pools, which improves performance, but limits the total device queries to 8192. Default is false. */
-    VkBool32 displayWatermark;              /**< If enabled, a MoltenVK logo watermark will be rendered on top of the scene. This can be enabled for publicity during demos. Default value is determined at build time by the presence of a MVK_WATERMARK build setting. By default the MVK_WATERMARK build setting is defined when MoltenVK is compiled in Debug mode, and not defined when compiled in Release mode. */
+	VkBool32 presentWithCommandBuffer;      /**< If enabled, each surface presentation is scheduled using a command buffer. Enabling this may improve rendering frame synchronization, but may result in reduced frame rates. Default value is true if the MVK_PRESENT_WITH_COMMAND_BUFFER build setting is defined when MoltenVK is compiled, and false otherwise. By default the MVK_PRESENT_WITH_COMMAND_BUFFER build setting is not defined. */
+    VkBool32 displayWatermark;              /**< If enabled, a MoltenVK logo watermark will be rendered on top of the scene. This can be enabled for publicity during demos. Default value is true if the MVK_DISPLAY_WATERMARK build setting is defined when MoltenVK is compiled, and false otherwise. By default the MVK_DISPLAY_WATERMARK build setting is not defined. */
     VkBool32 performanceTracking;           /**< If enabled, per-frame performance statistics are tracked, optionally logged, and can be retrieved via the vkGetSwapchainPerformanceMVK() function, and various shader compilation performance statistics are tracked, logged, and can be retrieved via the vkGetShaderCompilationPerformanceMVK() function. Default is false. */
     uint32_t performanceLoggingFrameCount;  /**< If non-zero, performance statistics will be periodically logged to the console, on a repeating cycle of this many frames per swapchain. The performanceTracking capability must also be enabled. Default is zero, indicating no logging. */
 } MVKDeviceConfiguration;
@@ -88,17 +89,17 @@ typedef struct {
 
 /** MoltenVK swapchain performance statistics. */
 typedef struct {
-    double lastFrameInterval;           /**< The time interval between this frame and the immediately previous frame, in seconds. */
-    double averageFrameInterval;        /**< The rolling average time interval between frames, in seconds. This value has less volatility than the lastFrameInterval value. The inverse of this value is the rolling average frames per second. */
-    double averageFramesPerSecond;      /**< The rolling average number of frames per second. This is simply the inverse of the averageFrameInterval value. */
+    double lastFrameInterval;           /**< The time interval between this frame and the immediately previous frame, in milliseconds. */
+    double averageFrameInterval;        /**< The rolling average time interval between frames, in miliseconds. This value has less volatility than the lastFrameInterval value. */
+    double averageFramesPerSecond;      /**< The rolling average number of frames per second. This is simply the 1000 divided by the averageFrameInterval value. */
 } MVKSwapchainPerformance;
 
 /** MoltenVK performance of a particular type of shader compilation event. */
 typedef struct {
     uint32_t count;             /**< The number of compilation events of this type. */
-    double averageInterval;     /**< The average time interval consumed by the compilation event, in seconds. */
-    double minimumInterval;     /**< The minimum time interval consumed by the compilation event, in seconds. */
-    double maximumInterval;     /**< The maximum time interval consumed by the compilation event, in seconds. */
+    double averageDuration;     /**< The average duration of the compilation event, in milliseconds. */
+    double minimumDuration;     /**< The minimum duration of the compilation event, in milliseconds. */
+    double maximumDuration;     /**< The maximum duration of the compilation event, in milliseconds. */
 } MVKShaderCompilationEventPerformance;
 
 /** MoltenVK performance of shader compilation events for a VkDevice. */

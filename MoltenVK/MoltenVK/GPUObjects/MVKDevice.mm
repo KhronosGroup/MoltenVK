@@ -35,7 +35,6 @@
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include "mvk_datatypes.h"
 #include "vk_mvk_moltenvk.h"
-#include <mach/mach_time.h>
 
 using namespace std;
 
@@ -49,15 +48,19 @@ using namespace std;
 #	define MVKViewClass		NSView
 #endif
 
-// To display the MoltenVK logo watermark by default, define the MVK_WATERMARK build setting.
-#ifdef MVK_WATERMARK
-#   define MVK_DISPLAY_WATERMARK    1
+// To present surface using a command buffer, define the MVK_PRESENT_WITH_COMMAND_BUFFER build setting.
+#ifdef MVK_PRESENT_WITH_COMMAND_BUFFER
+#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    1
 #else
-#   define MVK_DISPLAY_WATERMARK    0
+#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    0
 #endif
 
-static uint64_t _mvkTimestampBase;
-static double _mvkTimestampPeriod;
+// To display the MoltenVK logo watermark by default, define the MVK_DISPLAY_WATERMARK build setting.
+#ifdef MVK_DISPLAY_WATERMARK
+#   define MVK_DISPLAY_WATERMARK_BOOL    1
+#else
+#   define MVK_DISPLAY_WATERMARK_BOOL    0
+#endif
 
 
 #pragma mark -
@@ -580,7 +583,7 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
-	_properties.limits.timestampPeriod = _mvkTimestampPeriod;
+	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();
 
     _properties.limits.pointSizeRange[0] = 1;
     _properties.limits.pointSizeRange[1] = 511;
@@ -1241,26 +1244,24 @@ void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 	}
 }
 
-#define asMS(V)     ((V) * 1000.0)
-void MVKDevice::addShaderCompilationEventPerformance(MVKShaderCompilationEventPerformance& shaderCompilationEvent,
-                                                     NSTimeInterval startTime, NSTimeInterval endTime) {
+uint64_t MVKDevice::getPerformanceTimestampImpl() { return mvkGetTimestamp(); }
 
-    if ( !_mvkConfig.performanceTracking ) { return; }
-
+void MVKDevice::addShaderCompilationEventPerformanceImpl(MVKShaderCompilationEventPerformance& shaderCompilationEvent,
+														 uint64_t startTime, uint64_t endTime) {
     lock_guard<mutex> lock(_shaderCompPerfLock);
 
-    NSTimeInterval currInterval = (endTime ? endTime : getPerformanceTimestamp()) - startTime;
-    shaderCompilationEvent.minimumInterval = min(currInterval, shaderCompilationEvent.minimumInterval);
-    shaderCompilationEvent.maximumInterval = max(currInterval, shaderCompilationEvent.maximumInterval);
-    double totalInverval = (shaderCompilationEvent.averageInterval * shaderCompilationEvent.count++) + currInterval;
-    shaderCompilationEvent.averageInterval = totalInverval / shaderCompilationEvent.count;
+	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
+    shaderCompilationEvent.minimumDuration = min(currInterval, shaderCompilationEvent.minimumDuration);
+    shaderCompilationEvent.maximumDuration = max(currInterval, shaderCompilationEvent.maximumDuration);
+    double totalInverval = (shaderCompilationEvent.averageDuration * shaderCompilationEvent.count++) + currInterval;
+    shaderCompilationEvent.averageDuration = totalInverval / shaderCompilationEvent.count;
 
     MVKLogInfo("%s performance curr: %.3f ms, avg: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
                getShaderCompilationEventName(shaderCompilationEvent),
-               asMS(currInterval),
-               asMS(shaderCompilationEvent.averageInterval),
-               asMS(shaderCompilationEvent.minimumInterval),
-               asMS(shaderCompilationEvent.maximumInterval),
+               currInterval,
+               shaderCompilationEvent.averageDuration,
+               shaderCompilationEvent.minimumDuration,
+               shaderCompilationEvent.maximumDuration,
                shaderCompilationEvent.count);
 }
 
@@ -1342,7 +1343,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     pCfg->debugMode = MVK_DEBUG;
     pCfg->supportLargeQueryPools = false;
     pCfg->shaderConversionFlipVertexY = true;
-    pCfg->displayWatermark = MVK_DISPLAY_WATERMARK;
+	pCfg->presentWithCommandBuffer = MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL;
+    pCfg->displayWatermark = MVK_DISPLAY_WATERMARK_BOOL;
     pCfg->performanceTracking = MVK_DEBUG;
     pCfg->performanceLoggingFrameCount = MVK_DEBUG ? 300 : 0;
 
@@ -1386,9 +1388,9 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 void MVKDevice::initPerformanceTracking() {
     MVKShaderCompilationEventPerformance initPerf;
     initPerf.count = 0;
-    initPerf.averageInterval = 0.0;
-    initPerf.minimumInterval = numeric_limits<double>::max();
-    initPerf.maximumInterval = 0.0;
+    initPerf.averageDuration = 0.0;
+    initPerf.minimumDuration = numeric_limits<double>::max();
+    initPerf.maximumDuration = 0.0;
 
     _shaderCompilationPerformance.spirvToMSL = initPerf;
     _shaderCompilationPerformance.mslCompile = initPerf;
@@ -1404,35 +1406,4 @@ MVKDevice::~MVKDevice() {
     delete _commandResourceFactory;
 }
 
-
-#pragma mark -
-#pragma mark Functions
-
-/** Initializes the timestamping functionality. */
-static void initTimestamps() {
-	_mvkTimestampBase = mach_absolute_time();
-	mach_timebase_info_data_t timebase;
-	mach_timebase_info(&timebase);
-	_mvkTimestampPeriod = (double)timebase.numer / (double)timebase.denom;
-//	MVKLogDebug("Initializing MoltenVK timestamping. Mach time: %llu. Time period: %d / %d = %.6f.", _mvkTimestampBase, timebase.numer, timebase.denom, _mvkTimestampPeriod);
-}
-
-uint64_t mvkGetTimestamp() { return mach_absolute_time() - _mvkTimestampBase; }
-
-double mvkGetElapsedMilliseconds() { return (double)mvkGetTimestamp() * _mvkTimestampPeriod / 1e6; }
-
-
-#pragma mark Library initialization
-
-/**
- * Called automatically when the framework is loaded and initialized.
- *
- * Initialize various device content.
- */
-static bool _mvkDevicesInitialized = false;
-__attribute__((constructor)) static void MVKInitDataTypes() {
-	if (_mvkDevicesInitialized ) { return; }
-	initTimestamps();
-	_mvkDevicesInitialized = true;
-}
 

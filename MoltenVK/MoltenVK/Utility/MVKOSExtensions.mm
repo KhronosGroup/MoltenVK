@@ -23,6 +23,7 @@
 #include <vector>
 #include <mach/mach.h>
 #include <mach/mach_host.h>
+#include <mach/mach_time.h>
 #include <uuid/uuid.h>
 
 #if MVK_MACOS
@@ -48,6 +49,38 @@ MVKOSVersion mvkOSVersion() {
         _mvkOSVersion = maj + (min / 100.0f) +  + (pat / 10000.0f);
     }
     return _mvkOSVersion;
+}
+
+static uint64_t _mvkTimestampBase;
+static double _mvkTimestampPeriod;
+
+uint64_t mvkGetTimestamp() { return mach_absolute_time() - _mvkTimestampBase; }
+
+double mvkGetTimestampPeriod() { return _mvkTimestampPeriod; }
+
+double mvkGetElapsedMilliseconds(uint64_t startTimestamp, uint64_t endTimestamp) {
+	if (endTimestamp == 0) { endTimestamp = mvkGetTimestamp(); }
+	return (double)(endTimestamp - startTimestamp) * _mvkTimestampPeriod / 1e6;
+}
+
+
+#pragma mark Library initialization
+
+/**
+ * Initialize timestamping capabilities on app startup.
+ * Called automatically when the framework is loaded and initialized.
+ */
+static bool _mvkTimestampsInitialized = false;
+__attribute__((constructor)) static void MVKInitTimestamps() {
+	if (_mvkTimestampsInitialized ) { return; }
+	_mvkTimestampsInitialized = true;
+
+	_mvkTimestampBase = mach_absolute_time();
+	mach_timebase_info_data_t timebase;
+	mach_timebase_info(&timebase);
+	_mvkTimestampPeriod = (double)timebase.numer / (double)timebase.denom;
+	MVKLogDebug("Initializing MoltenVK timestamping. Mach time: %llu. Time period: %d / %d = %.6f.", _mvkTimestampBase, timebase.numer, timebase.denom, _mvkTimestampPeriod);
+
 }
 
 
