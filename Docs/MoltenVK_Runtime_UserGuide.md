@@ -100,7 +100,7 @@ Installing **MoltenVK** in Your *Vulkan* Application
  or above is required to build and link **MoltenVK** projects.
 
 <a name="install_static_lib"></a>
-###Install as Static Library Framework
+### Install as Static Library Framework
 
 Installation of **MoltenVK** is straightforward and easy!
 
@@ -157,7 +157,7 @@ the *Metal* environment.
 
 
 <a name="install_dynamic_lib"></a>
-###Install as Dynamic Library
+### Install as Dynamic Library
 
 For some applications, you may prefer to install **MoltenVK** as a dynamic library.
 This is only recommended for developers who are used to working with dynamic libraries,
@@ -260,7 +260,7 @@ document found in the `MoltenVK/Vulkan` folder of the **MoltenVK** distribution.
 
 
 <a name="moltenvk_extension"></a>
-###MoltenVK Extension
+### MoltenVK Extension
 
 The `VK_MVK_moltenvk` *Vulkan* extension provides functionality beyond the standard *Vulkan*
 API, to support configuration options, license registration, and behaviour that is specific 
@@ -334,7 +334,7 @@ shader source code for the odd *SPIR-V* shader that proves problematic for runti
 
 
 <a name="shader_converter_tool"></a>
-###MoltenVKShaderConverter Shader Converter Tool
+### MoltenVKShaderConverter Shader Converter Tool
 
 The **MoltenVK** distribution package includes the `MoltenVKShaderConverter` command line tool, 
 which allows you to convert your *SPIR-V* shader source code to *MSL* at development time, and 
@@ -358,7 +358,7 @@ line with no arguments.
 
 
 <a name="spv_vs_msl"></a>
-###Troubleshooting Shader Conversion
+### Troubleshooting Shader Conversion
 ---------------------------------
 
 The shader converter technology in **MoltenVK** is quite robust, and most *SPIR-V* shaders 
@@ -404,7 +404,7 @@ This section discusses various options for improving performance when using **Mo
 
 
 <a name="shader_load_time"></a>
-###Shader Loading Time
+### Shader Loading Time
 
 *Metal* supports pre-compiled shaders, which can improve shader loading and set-up performance,
 allowing you to reduce your scene loading time. See the [*Metal Shading Language* Shaders](#shaders) 
@@ -414,7 +414,7 @@ more information about how to use the `MoltenVKShaderConverter` tool to create a
 
 
 <a name="xcode_config"></a>
-###Xcode Configuration
+### Xcode Configuration
 
 When a *Metal* app is running from *Xcode*, the default ***Scheme*** settings reduce performance. 
 Be sure to follow the instructions for configuring your application's ***Scheme*** within *Xcode*,
@@ -422,7 +422,7 @@ found in the  in the [installation](#install) section above.
 
 
 <a name="trace_tool"></a>
-###Metal System Trace Tool
+### Metal System Trace Tool
 
 To help you get the best performance from your graphics app, the *Xcode Instruments* profiling tool 
 includes the *Metal System Trace* template. This template can be used to provide detailed tracing of the
