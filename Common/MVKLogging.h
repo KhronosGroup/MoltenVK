@@ -176,6 +176,7 @@ extern "C" {
  * Combine the specified log level and format string, then log
  * the specified args to one or both of ASL and printf.
  */
+static inline void MVKLogImplV(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, va_list args) __printflike(5, 0);
 static inline void MVKLogImplV(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, va_list args) {
 
 	// Combine the level and format string
@@ -190,6 +191,7 @@ static inline void MVKLogImplV(bool logToPrintf, bool logToASL, int aslLvl, cons
  * Combine the specified log level and format string, then log 
  * the specified args to one or both of ASL and printf.
  */
+static inline void MVKLogImpl(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, ...) __printflike(5, 6);
 static inline void MVKLogImpl(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, ...) {
 	va_list args;
 	va_start(args, format);
