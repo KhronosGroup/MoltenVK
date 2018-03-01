@@ -103,7 +103,7 @@ char* mvkResultName(VkResult vkResult, char* name);
  *
  * - Logs the error code and message to the console
  */
-VkResult mvkNotifyErrorWithText(VkResult vkErr, const char* errFmt, ...);
+VkResult mvkNotifyErrorWithText(VkResult vkErr, const char* errFmt, ...) __printflike(2, 3);
 
 
 #pragma mark -
