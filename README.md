@@ -12,7 +12,7 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 *This document is written in [Markdown](http://en.wikipedia.org/wiki/Markdown) format. 
 For best results, use a Markdown reader.*
 
-
+[![Build Status](https://travis-ci.org/KhronosGroup/MoltenVK.svg?branch=master)](https://travis-ci.org/KhronosGroup/MoltenVK)
 
 Table of Contents
 -----------------
