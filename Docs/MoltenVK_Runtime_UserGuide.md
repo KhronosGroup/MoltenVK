@@ -358,8 +358,7 @@ line with no arguments.
 
 
 <a name="spv_vs_msl"></a>
-Troubleshooting Shader Conversion
----------------------------------
+### Troubleshooting Shader Conversion
 
 The shader converter technology in **MoltenVK** is quite robust, and most *SPIR-V* shaders 
 can be converted to *MSL* without any problems. In the case where a conversion issue arises, 
