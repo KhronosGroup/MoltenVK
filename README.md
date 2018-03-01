@@ -122,8 +122,7 @@ This procdure updates all of the Third-Party library submodules. To update only 
 or for more information about the various Third-Party libraries and submodules used by **MoltenVK**,
 please refer to the following documents:
 
-- [`MoltenVK/ThirdPartyConfig.md`](MoltenVK/ThirdPartyConfig.md)
-- [`MoltenVKShaderConverter/ThirdPartyConfig.md`](MoltenVKShaderConverter/ThirdPartyConfig.md)
+- [`Docs/ThirdPartyConfig.md`](Docs/ThirdPartyConfig.md)
 
 
 
