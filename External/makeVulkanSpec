@@ -12,6 +12,11 @@
 MVK_EXTS="VK_KHR_swapchain VK_KHR_surface VK_MVK_ios_surface VK_MVK_macos_surface VK_IMG_format_pvrtc VK_AMD_negative_viewport_height"
 
 # Generate vulkan.hpp and consolidate all header files
+
+echo
+echo MoltenVK building vulkan.h
+echo
+
 cd Vulkan-Hpp
 cmake .
 make
@@ -20,6 +25,11 @@ cp Vulkan-Docs/src/vulkan/*.h vulkan
 cd -
 
 # Generate the Vulkan Spec document
+
+echo
+echo MoltenVK building Vulkan spec document
+echo
+
 cd Vulkan-Hpp/Vulkan-Docs/doc/specs/vulkan
 make clean_generated
 make EXTENSIONS="$MVK_EXTS" APITITLE="(with extensions supported by MoltenVK)" html

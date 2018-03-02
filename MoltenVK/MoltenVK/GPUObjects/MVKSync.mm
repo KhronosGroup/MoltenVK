@@ -81,7 +81,7 @@ bool MVKSemaphore::wait(uint64_t timeout) {
 //    MVKLogDebug("Waiting on semaphore %p for max timeout %llu. Elapsed time: %.6f ms.", this, timeout, mvkGetElapsedMilliseconds());
 	bool isDone = _blocker.wait(timeout, true);
 //    MVKLogDebug("Done waiting on semaphore %p. Elapsed time: %.6f ms.", this, mvkGetElapsedMilliseconds());
-	if ( !isDone && timeout > 0 ) { mvkNotifyErrorWithText(VK_TIMEOUT, "Vulkan semaphore timeout after %d nanoseconds.", timeout); }
+	if ( !isDone && timeout > 0 ) { mvkNotifyErrorWithText(VK_TIMEOUT, "Vulkan semaphore timeout after %llu nanoseconds.", timeout); }
 	return isDone;
 }
 
@@ -176,7 +176,7 @@ void MVKFenceSitter::wait() { _blocker.wait(); }
 
 bool MVKFenceSitter::wait(uint64_t timeout) {
 	bool isDone = _blocker.wait(timeout);
-	if ( !isDone && timeout > 0 ) { mvkNotifyErrorWithText(VK_TIMEOUT, "Vulkan fence timeout after %d nanoseconds.", timeout); }
+	if ( !isDone && timeout > 0 ) { mvkNotifyErrorWithText(VK_TIMEOUT, "Vulkan fence timeout after %llu nanoseconds.", timeout); }
 	return isDone;
 }
 

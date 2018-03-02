@@ -7,6 +7,11 @@
 # macOS usage: ./makeglslang
 
 # Build glslang
+
+echo
+echo MoltenVK building glslang
+echo
+
 rm -rf glslang/build
 mkdir glslang/build
 cd glslang/build

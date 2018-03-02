@@ -509,7 +509,7 @@ MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat
             errMsg += (fmtDescSubs.vkName) ? fmtDescSubs.vkName : to_string(fmtDescSubs.vk);
             errMsg += " instead.";
         }
-        mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, errMsg.c_str());
+		mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
     }
 
     return mtlPixFmt;

@@ -387,7 +387,7 @@ MVKPushConstantsCommandEncoderState* MVKCommandEncoder::getPushConstants(VkShade
 		case VK_SHADER_STAGE_FRAGMENT_BIT:	return &_fragmentPushConstants;
 		case VK_SHADER_STAGE_COMPUTE_BIT:	return &_computePushConstants;
 		default:
-			MVKAssert(false, "Invalid shader stage: %lu", shaderStage);
+			MVKAssert(false, "Invalid shader stage: %u", shaderStage);
 			return VK_NULL_HANDLE;
 	}
 }

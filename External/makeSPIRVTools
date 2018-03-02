@@ -7,6 +7,11 @@
 # macOS usage: ./makeSPIRVTools
 
 # Build SPIRV-Tools
+
+echo
+echo MoltenVK building SPIRV-Tools
+echo
+
 ln -sfn ../../SPIRV-Headers SPIRV-Tools/external/SPIRV-Headers
 rm -rf SPIRV-Tools/build
 mkdir SPIRV-Tools/build
