@@ -68,16 +68,21 @@ Installing **MoltenVK**
 this `MoltenVK` repository, and then run the `External/makeAll` script to create necessary 
 components within the third-party libraries.
 
-1. Ensure you have `python3` and `asciidoctor` installed:
+1. Ensure you have `python3` installed:
 
 		brew install python3
-		sudo gem install asciidoctor
 
-2. Recursively clone the `MoltenVK` repository:
+2. **_Optional:_** If you want to generate a Vulkan specification document for inclusion 
+   in the final **MoltenVK** distribution package, ensure you have `asciidoctor` installed
+   (you can skip this otherwise):
+
+		brew install asciidoctor
+
+3. Recursively clone the `MoltenVK` repository:
 
 		git clone --recursive https://github.com/KhronosGroup/MoltenVK.git
 
-3. Run the third-party build script:
+4. Run the third-party build script:
 
 		cd MoltenVK/External
 		./makeAll

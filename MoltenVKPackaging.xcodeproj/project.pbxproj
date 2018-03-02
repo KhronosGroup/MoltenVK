@@ -316,7 +316,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\n# Package folder\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\n\n# Copy the docs\ncp -a \"${MVK_WKSPC_PATH}/LICENSE\" \"${MVK_PKG_CONFIG_PATH}\"\ncp -pRLf \"${MVK_WKSPC_PATH}/Docs\" \"${MVK_PKG_CONFIG_PATH}\"\n\n";
+			shellScript = "set -e\n\n# Package folder\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\n\n# Copy the docs. Allow silent fail if a symlinked doc is not built.\ncp -a \"${MVK_WKSPC_PATH}/LICENSE\" \"${MVK_PKG_CONFIG_PATH}\"\ncp -pRLf \"${MVK_WKSPC_PATH}/Docs\" \"${MVK_PKG_CONFIG_PATH}\" 2> /dev/null || true\n\n";
 		};
 		A9FEADD61F3517480010240E /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
