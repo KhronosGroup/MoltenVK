@@ -76,7 +76,7 @@ MVKMTLBufferAllocationPool::~MVKMTLBufferAllocationPool() {
 #pragma mark MVKMTLBufferAllocator
 
 const MVKMTLBufferAllocation* MVKMTLBufferAllocator::acquireMTLBufferRegion(NSUInteger length) {
-    MVKAssert(length <= _maxAllocationLength, "This MVKMTLBufferAllocator has been configured to dispense MVKMTLBufferRegions no larger than %llu bytes.", _maxAllocationLength);
+	MVKAssert(length <= _maxAllocationLength, "This MVKMTLBufferAllocator has been configured to dispense MVKMTLBufferRegions no larger than %lu bytes.", (unsigned long)_maxAllocationLength);
 
     // Convert max length to the next power-of-two exponent to use as a lookup
     uint32_t p2Exp = mvkPowerOfTwoExponent(length);
