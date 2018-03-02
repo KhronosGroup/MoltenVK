@@ -21,6 +21,7 @@ Table of Contents
 - [About **MoltenVK**](#about_moltenvk)
 - [Running the **MoltenVK** Demo Applications](#demos)
 - [Installing **MoltenVK** in Your *Vulkan* Application](#install)
+	- [Build and Runtime Requirements](#requirements)
 	- [Install as Static Library Framework](#install_static_lib)
 	- [Install as Dynamic Library](#install_dynamic_lib)
 - [Interacting with the **MoltenVK** Runtime](#interaction)
@@ -95,9 +96,21 @@ features by modifying *Xcode* build settings. All of this is explained in the
 Installing **MoltenVK** in Your *Vulkan* Application
 ----------------------------------------------------
 
->***Note:*** **MoltenVK** can be run on *iOS 9* and *macOS 11.0* devices, 
- but it does reference advanced OS frameworks during building. *Xcode 9* 
- or above is required to build and link **MoltenVK** projects.
+<a name="requirements"></a>
+### Build and Runtime Requirements
+
+At development time, **MoltenVK** references advanced OS frameworks during building.
+ 
+- *Xcode 9* or above is required to build and link **MoltenVK** projects.
+
+Once built, **MoltenVK** can be run on *iOS* or *macOS* devices that support *Metal*.
+
+- **MoltenVK** requires at least *macOS 10.11* or  *iOS 9*.
+- Information on *macOS* devices that are compatible with *Metal* can be found in 
+  [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
+- Information on compatible *iOS* devices that are compatible with *Metal* can be found in 
+  [this article](https://developer.apple.com/library/content/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/HardwareGPUInformation/HardwareGPUInformation.html).
+
 
 <a name="install_static_lib"></a>
 ### Install as Static Library Framework

@@ -120,9 +120,7 @@ The updated versions will then be "locked in" the next time the `MoltenVK` repos
 
 This procdure updates all of the Third-Party library submodules. To update only a single submodule,
 or for more information about the various Third-Party libraries and submodules used by **MoltenVK**,
-please refer to the following documents:
-
-- [`Docs/ThirdPartyConfig.md`](Docs/ThirdPartyConfig.md)
+please refer to the [`Docs/ThirdPartyConfig.md`](Docs/ThirdPartyConfig.md) document.
 
 
 
@@ -134,9 +132,19 @@ Building **MoltenVK**
 instructions in the [*Third-Party Components*](#third-party) section above to retrieve 
 and install the required third-party components.
 
->***Note:*** At runtime, **MoltenVK** can run on *iOS 9* and *macOS 10.11* devices,
->but it does reference advanced OS frameworks during building. *Xcode 9* 
->or above is required to build **MoltenVK**, and build and link **MoltenVK** projects.
+At development time, **MoltenVK** references advanced OS frameworks during building.
+ 
+- *Xcode 9* or above is required to build and link **MoltenVK** projects.
+
+Once built, **MoltenVK** can be run on *iOS* or *macOS* devices that support *Metal*.
+
+- **MoltenVK** requires at least *macOS 10.11* or  *iOS 9*.
+- Information on *macOS* devices that are compatible with *Metal* can be found in 
+  [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
+- Information on compatible *iOS* devices that are compatible with *Metal* can be found in 
+  [this article](https://developer.apple.com/library/content/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/HardwareGPUInformation/HardwareGPUInformation.html).
+
+
 
 The `MoltenVKPackaging.xcodeproj` *Xcode* project contains targets and schemes to build 
 and package the entire **MoltenVK** runtime distribution package, or to build individual 
