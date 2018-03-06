@@ -16,6 +16,12 @@
 [submodule "External/SPIRV-Cross"]
 	path = External/SPIRV-Cross
 	url = https://github.com/KhronosGroup/SPIRV-Cross.git
+	ignore = dirty
 [submodule "External/Vulkan-LoaderAndValidationLayers"]
 	path = External/Vulkan-LoaderAndValidationLayers
 	url = https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers
+	ignore = dirty
+[submodule "External/VulkanSamples"]
+	path = External/VulkanSamples
+	url = https://github.com/brenwill/VulkanSamples.git
+	ignore = dirty

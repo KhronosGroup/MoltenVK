@@ -19,6 +19,10 @@ Table of Contents
 	- [Using the *Vulkan-LoaderAndValidationLayers* Repository with **MoltenVK**](#install_vulkan_lvl)
 	- [Updating the *Vulkan-LoaderAndValidationLayers* library version](#update_vulkan_lvl)
 
+- *VulkanSamples*
+	- [Using the *VulkanSamples* Repository with **MoltenVK**](#install_vulkan_samples)
+	- [Updating the *VulkanSamples* library version](#update_vulkan_samples)
+
 - *SPIRV-Cross*
 	- [Using the *SPIRV-Cross* library with **MoltenVKShaderConverter**](#install_spirv-cross)
 	- [Updating the *SPIRV-Cross* library version](#update_spirv-cross)
@@ -33,6 +37,7 @@ Table of Contents
 	- [Using the *glslang* library with **MoltenVKShaderConverter**](#install_glslang)
 	- [Updating the *glslang* library version](#update_glslang)
 	- [Adding the *glslang* library to a new *Xcode* project](#add_glslang)
+
 
 
 <a name="install_vulkan_spec"></a>
@@ -106,6 +111,46 @@ submodule using the `getLatestVulkanLVL` script:
 
 	cd External
 	./getLatestVulkanLVL
+
+The updated version will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
+
+
+
+<a name="install_vulkan_samples"></a>
+Using the *VulkanSamples* Repository with *MoltenVK*
+----------------------------------------------------
+
+**MoltenVK** includes several simple demo apps from *LunarG*. These are sourced from
+a modified fork of the *VulkanSamples* repository.
+
+To add the *VulkanSamples* repository to **MoltenVK**, open a *Terminal* session and 
+perform the following command-line steps:
+
+1. If you used the `--recursive` option when cloning the `MoltenVK` repository, you should already 
+   have the `VulkanSamples` submodule, and you can skip to *Step 2* below. If you did **_not_** 
+   use the `--recursive` option when cloning the `MoltenVK` repository, retrieve the `VulkanSamples` 
+   submodule into the `External` directory as follows, from within the `MoltenVK` repository directory:
+
+		git submodule update --init External/VulkanSamples
+
+2. In the `Externals` folder within the `MoltenVK` repository, build the spec and header files 
+   as follows from the main directory of this `MoltenVK` repository:
+
+		cd External
+		./makeVulkanSamples
+
+
+
+<a name="update_vulkan_samples"></a>
+Updating the *VulkanSamples* library version
+--------------------------------------------
+
+If you are developing enhancements to **MoltenVK**, you can update the version of `VulkanSamples` 
+used by **MoltenVK** to the latest version available by re-cloning and re-building the
+`VulkanSamples` submodule using the `getLatestVulkanSamples` script:
+
+	cd External
+	./getLatestVulkanSamples
 
 The updated version will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
 

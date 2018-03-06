@@ -6,9 +6,12 @@
 #     makeVulkanSpec
 #     makeSPIRVTools
 #     makeglslang
-# 
+#     makeVulkanSamples
+#
 # macOS usage: ./makeAll
 
 ./makeVulkanSpec
 ./makeSPIRVTools
 ./makeglslang
+./makeVulkanSamples
+

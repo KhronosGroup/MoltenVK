@@ -23,6 +23,7 @@ Table of Contents
 - [Third-Party Libraries](#third-party)
 	- [Updating the Third-Party Library Versions](#update_third-party)
 - [Building **MoltenVK**](#building)
+- [Running the **MoltenVK** Demo Applications](#demos)
 - [Using **MoltenVK** in Your Application](#using)
 - [Third-Party Credits](#credits)
 
@@ -68,8 +69,9 @@ Installing **MoltenVK**
 this `MoltenVK` repository, and then run the `External/makeAll` script to create necessary 
 components within the third-party libraries.
 
-1. Ensure you have `python3` installed:
+1. Ensure you have `cmake` and `python3` installed:
 
+		brew install cmake
 		brew install python3
 
 2. **_Optional:_** If you want to generate a Vulkan specification document for inclusion 
@@ -182,15 +184,33 @@ included in the **MoltenVK** runtime distribution package, and you can use it to
 
 
 
+<a name="demos"></a>
+Running the **MoltenVK** Demo Applications
+------------------------------------------
+
+Once you have compiled and built the **MoltenVK** runtime distribution package from this **MoltenVK** repository, 
+as described in the [Building **MoltenVK**](#building) section, you can explore how **MoltenVK** provides *Vulkan* 
+support on *iOS* and *macOS* by investigating and running the demo applications that are included in **MoltenVK**.
+
+The **MoltenVK** demo apps are located in the `Demos` folder. Each demo app is available as an *Xcode* project.
+To review and run the included demo apps, open the `Demos/Demos.xcworkspace` workspace in *Xcode*.
+
+Please read the [`Demos/README.md`](Demos/README.md) document for a description of each demo app, and instructions 
+on running the demo apps. Several of the demo apps allow you to explore a variety of *Vulkan* features by modifying
+*Xcode* build settings. Additional demos can be downloaded and built from external repositories, as described in the
+[`Demos/README.md`](Demos/README.md) document
+
+
+
 <a name="using"></a>
 Using **MoltenVK** in Your Application
 --------------------------------------
 
-Once you have compiled and built the **MoltenVK** runtime distribution package from this **MoltenVK** 
-repository, as described in the [previous section](#building), follow the instructions in the installation 
-section of the [**MoltenVK Runtime User Guide**](Docs/MoltenVK_Runtime_UserGuide.md#install) document in the
+Once you have compiled and built the **MoltenVK** runtime distribution package from this **MoltenVK** repository, 
+as described in the [Building **MoltenVK**](#building) section, follow the instructions in the Installation 
+section of the [`MoltenVK_Runtime_UserGuide.md`](Docs/MoltenVK_Runtime_UserGuide.md#install) document in the
 `Docs` directory of the **MoltenVK** runtime distribution package found in the `Package/Latest` directory,
-to link the **MoltenVK** frameworks and libraries in the `Package/Latest` directory to your application.
+to link the **MoltenVK** frameworks and libraries to your application.
 
 The runtime distribution package in the `Package/Latest` directory is a stand-alone package, and you can copy 
 the contents of that directory out of this **MoltenVK** repository into your own application building environment.
@@ -206,10 +226,8 @@ Third-Party Credits
 - [*Vulkan-Hpp*](https://github.com/KhronosGroup/Vulkan-Hpp)
 - [*Vulkan-Docs*](https://github.com/KhronosGroup/Vulkan-Docs)
 - [*Vulkan-LoaderAndValidationLayers*](https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers)
-- [*tinyxml2*](https://github.com/leethomason/tinyxml2)
-
-**MoltenVKShaderConverter** uses technology from the following open-source frameworks:
-
+- [*VulkanSamples*](https://github.com/brenwill/VulkanSamples)
 - [*SPIRV-Cross*](https://github.com/KhronosGroup/SPIRV-Cross)
 - [*SPIRV-Tools*](https://github.com/KhronosGroup/SPIRV-Tools)
 - [*glslang*](https://github.com/KhronosGroup/glslang)
+- [*tinyxml2*](https://github.com/leethomason/tinyxml2)

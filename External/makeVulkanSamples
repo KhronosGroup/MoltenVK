@@ -1,0 +1,11 @@
+#!/usr/bin/env bash
+#
+# Copyright (c) 2016-2018 The Brenwill Workshop Ltd.
+#
+# makeVulkanSamples - Configures VulkanSamples for use in demos.
+#
+# macOS usage: ./makeVulkanSpec
+
+
+../Package/Latest/MoltenVKShaderConverter/Tools/MoltenVKShaderConverter -gi -so -xs "-" -d ./VulkanSamples/demos
+

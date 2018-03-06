@@ -149,6 +149,8 @@
 		A9B732A51FC9C588006721CB /* getLatestSPIRVCross */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestSPIRVCross; sourceTree = "<group>"; };
 		A9B732A61FC9C588006721CB /* getLatestVulkanSpec */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestVulkanSpec; sourceTree = "<group>"; };
 		A9B732A71FCA1D71006721CB /* getLatestAll */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestAll; sourceTree = "<group>"; };
+		A9CE6DAA204DF916005250D7 /* makeVulkanSamples */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeVulkanSamples; sourceTree = "<group>"; };
+		A9CE6DAB204DF924005250D7 /* getLatestVulkanSamples */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestVulkanSamples; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -189,12 +191,14 @@
 				A939A6FC1F547A12006ACA0C /* makeAll */,
 				A939A6FD1F547A12006ACA0C /* makeglslang */,
 				A939A6FE1F547A12006ACA0C /* makeSPIRVTools */,
+				A9CE6DAA204DF916005250D7 /* makeVulkanSamples */,
 				A939A6FF1F547A12006ACA0C /* makeVulkanSpec */,
 				A9B732A71FCA1D71006721CB /* getLatestAll */,
 				A9B732A31FC9C588006721CB /* getLatestglslang */,
 				A9B732A51FC9C588006721CB /* getLatestSPIRVCross */,
 				A9B732A41FC9C588006721CB /* getLatestSPIRVTools */,
 				A94545691FEB1C23000C2CB2 /* getLatestVulkanLVL */,
+				A9CE6DAB204DF924005250D7 /* getLatestVulkanSamples */,
 				A9B732A61FC9C588006721CB /* getLatestVulkanSpec */,
 			);
 			path = External;
@@ -316,7 +320,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\n# Package folder\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\n\n# Copy the docs. Allow silent fail if a symlinked doc is not built.\ncp -a \"${MVK_WKSPC_PATH}/LICENSE\" \"${MVK_PKG_CONFIG_PATH}\"\ncp -pRLf \"${MVK_WKSPC_PATH}/Docs\" \"${MVK_PKG_CONFIG_PATH}\" 2> /dev/null || true\n\n";
+			shellScript = "set -e\n\n# Package folder\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\n\n# Copy the docs. Allow silent fail if a symlinked doc is not built.\ncp -a \"${MVK_WKSPC_PATH}/LICENSE\" \"${MVK_PKG_CONFIG_PATH}\"\ncp -pRLf \"${MVK_WKSPC_PATH}/Docs\" \"${MVK_PKG_CONFIG_PATH}\" 2> /dev/null || true\nrm \"${MVK_PKG_CONFIG_PATH}/Docs/ThirdPartyConfig.md\"\n\n";
 		};
 		A9FEADD61F3517480010240E /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -330,7 +334,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\n# Package folder\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_ICD_NAME=\"${MVK_PROD_NAME}_icd.json\"\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PROD_PROJ_PATH=\"${MVK_WKSPC_PATH}/${MVK_PROD_NAME}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\nexport MVK_PKG_PROD_PATH=\"${MVK_PKG_CONFIG_PATH}/${MVK_PROD_NAME}\"\n\n# Remove the product folder\nrm -rf \"${MVK_PKG_PROD_PATH}\"\n\n# Remove and replace the existing macOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_PROD_PATH}/macOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_PROD_PROJ_PATH}/icd/${MVK_ICD_NAME}\" \"${MVK_OS_PROD_PATH}\"\n\n# Remove and replace the existing iOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_PROD_PATH}/iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}/../${CONFIGURATION}-iphoneos\"\nrm -rf \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/_CodeSignature\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_PROD_PROJ_PATH}/icd/${MVK_ICD_NAME}\" \"${MVK_OS_PROD_PATH}\"\n\n# Remove and replace header include folder\nrm -rf \"${MVK_PKG_PROD_PATH}/include\"\ncp -pRL \"${MVK_PROD_PROJ_PATH}/include\" \"${MVK_PKG_PROD_PATH}\"\n\n# Copy the demo apps to the Configuration package folder\nrm -rf \"${MVK_PKG_CONFIG_PATH}/Demos\"\ncp -af \"${MVK_WKSPC_PATH}/Demos\" \"${MVK_PKG_CONFIG_PATH}\"\n\n# Remove developer user info from demo projects\nexport MVK_PKG_DEMOS_PATH=\"${MVK_PKG_CONFIG_PATH}/Demos\"\nexport MVK_PKG_DEMO_PROJ_PATH=\"${MVK_PKG_DEMOS_PATH}/Demos.xcworkspace\"\nrm -rf \"${MVK_PKG_DEMO_PROJ_PATH}/xcuserdata\"\n\nexport MVK_DEMO_NAME=\"API-Samples\"\nexport MVK_PKG_DEMO_PROJ_PATH=\"${MVK_PKG_DEMOS_PATH}/LunarG-VulkanSamples/${MVK_DEMO_NAME}/${MVK_DEMO_NAME}.xcodeproj\"\nrm -rf \"${MVK_PKG_DEMO_PROJ_PATH}/xcuserdata\"\nrm -rf \"${MVK_PKG_DEMO_PROJ_PATH}/project.xcworkspace\"\n\nexport MVK_DEMO_NAME=\"Demos\"\nexport MVK_PKG_DEMO_PROJ_PATH=\"${MVK_PKG_DEMOS_PATH}/LunarG-VulkanSamples/${MVK_DEMO_NAME}/${MVK_DEMO_NAME}.xcodeproj\"\nrm -rf \"${MVK_PKG_DEMO_PROJ_PATH}/xcuserdata\"\nrm -rf \"${MVK_PKG_DEMO_PROJ_PATH}/project.xcworkspace\"\n\nexport MVK_DEMO_NAME=\"Hologram\"\nexport MVK_PKG_DEMO_PROJ_PATH=\"${MVK_PKG_DEMOS_PATH}/LunarG-VulkanSamples/${MVK_DEMO_NAME}/${MVK_DEMO_NAME}.xcodeproj\"\nrm -rf \"${MVK_PKG_DEMO_PROJ_PATH}/xcuserdata\"\nrm -rf \"${MVK_PKG_DEMO_PROJ_PATH}/project.xcworkspace\"\n\nexport MVK_DEMO_NAME=\"AsynchronousTimeWarp\"\nexport MVK_PKG_DEMO_PROJ_PATH=\"${MVK_PKG_DEMOS_PATH}/Khronos-Vulkan-Samples/${MVK_DEMO_NAME}/${MVK_DEMO_NAME}.xcodeproj\"\nrm -rf \"${MVK_PKG_DEMO_PROJ_PATH}/xcuserdata\"\nrm -rf \"${MVK_PKG_DEMO_PROJ_PATH}/project.xcworkspace\"\n";
+			shellScript = "set -e\n\n# Package folder\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_ICD_NAME=\"${MVK_PROD_NAME}_icd.json\"\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PROD_PROJ_PATH=\"${MVK_WKSPC_PATH}/${MVK_PROD_NAME}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\nexport MVK_PKG_PROD_PATH=\"${MVK_PKG_CONFIG_PATH}/${MVK_PROD_NAME}\"\n\n# Remove the product folder\nrm -rf \"${MVK_PKG_PROD_PATH}\"\n\n# Remove and replace the existing macOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_PROD_PATH}/macOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_PROD_PROJ_PATH}/icd/${MVK_ICD_NAME}\" \"${MVK_OS_PROD_PATH}\"\n\n# Remove and replace the existing iOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_PROD_PATH}/iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}/../${CONFIGURATION}-iphoneos\"\nrm -rf \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/_CodeSignature\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_PROD_PROJ_PATH}/icd/${MVK_ICD_NAME}\" \"${MVK_OS_PROD_PATH}\"\n\n# Remove and replace header include folder\nrm -rf \"${MVK_PKG_PROD_PATH}/include\"\ncp -pRL \"${MVK_PROD_PROJ_PATH}/include\" \"${MVK_PKG_PROD_PATH}\"";
 		};
 		A9FEADD71F3517480010240E /* Package MoltenVKShaderConverter */ = {
 			isa = PBXShellScriptBuildPhase;
