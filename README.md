@@ -25,6 +25,8 @@ Table of Contents
 - [Building **MoltenVK**](#building)
 - [Running the **MoltenVK** Demo Applications](#demos)
 - [Using **MoltenVK** in Your Application](#using)
+- [**MoltenVK** and *Vulkan* Compliance](#compliance)
+- [Contributing to **MoltenVK** Development](#contributing)
 - [Third-Party Credits](#credits)
 
 
@@ -37,7 +39,7 @@ This document describes how to use the **MoltenVK** open-source repository to bu
 runtime distribution package.
 
 To learn how to integrate the **MoltenVK** runtime into a game or application, see the 
-[**MoltenVK Runtime User Guide**](Docs/MoltenVK_Runtime_UserGuide.md) document in the `Docs` directory. 
+[`Docs/MoltenVK_Runtime_UserGuide.md `](Docs/MoltenVK_Runtime_UserGuide.md) document in the `Docs` directory. 
 
 
 
@@ -208,12 +210,80 @@ Using **MoltenVK** in Your Application
 
 Once you have compiled and built the **MoltenVK** runtime distribution package from this **MoltenVK** repository, 
 as described in the [Building **MoltenVK**](#building) section, follow the instructions in the Installation 
-section of the [`MoltenVK_Runtime_UserGuide.md`](Docs/MoltenVK_Runtime_UserGuide.md#install) document in the
-`Docs` directory of the **MoltenVK** runtime distribution package found in the `Package/Latest` directory,
-to link the **MoltenVK** frameworks and libraries to your application.
+section of the [`Docs/MoltenVK_Runtime_UserGuide.md`](Docs/MoltenVK_Runtime_UserGuide.md#install) document in the
+`Docs` directory, to link the **MoltenVK** frameworks and libraries to your application.
 
 The runtime distribution package in the `Package/Latest` directory is a stand-alone package, and you can copy 
 the contents of that directory out of this **MoltenVK** repository into your own application building environment.
+
+
+
+<a name="compliance"></a>
+
+**MoltenVK** and *Vulkan* Compliance
+------------------------------------
+
+**MoltenVK** is designed to be a *Vulkan* driver that runs on *macOS* and *iOS* platforms by mapping *Vulkan*
+capability to native *Metal* capability.
+
+The fundamental design and development goal of **MoltenVK** is to provide this capability in a way that 
+is both maximally compliant with the *Vulkan* specification, and maximally  performant.
+
+Such compliance and performance is inherently affected by the capability available through *Metal*, as the 
+native driver on *macOS* and *iOS* platforms. *Vulkan* compliance may fall into one of the following categories:
+
+- Direct mapping between *Vulkan* capabilities and *Metal* capabilities. Within **MoltenVK**, almost all capability
+  is the result of this type of direct mapping. 
+  
+- Synthesized compliance through alternate implementation. A very small amount of capability is provided using
+  this mechanism, such as via an extra render or compute shader stage.
+
+- Non-compliance. This appears where the capabilities of *Vulkan* and *Metal* are sufficiently different, that
+  there is no practical, or reasonably performant, mechanism to implement a *Vulkan* capability in *Metal*. 
+  Because of design differences between *Vulkan* and *Metal*, a very small amount of capability falls into this 
+  category, and at present **MoltenVK** is **_not_** fully compliant with the *Vulkan* specification. A list of 
+  known limitations is documented in the [`Docs/MoltenVK_Runtime_UserGuide.md`](Docs/MoltenVK_Runtime_UserGuide.md#limitations) 
+  document in the `Docs` directory.
+
+The **MoltenVK** development team welcomes you to [post Issues](https://github.com/KhronosGroup/MoltenVK/issues) 
+of non-compliance, and engage in discussions about how compliance can be improved, and non-compliant features can 
+be implemented or worked around.
+
+**MoltenVK** is a key component of the [*Khronos Vulkan Portability Initiative*](https://www.khronos.org/vulkan/portability-initiative), 
+whose intention is to provide specifications, resources, and tools to allow developers to understand and design 
+their *Vulkan* apps for maximum cross-platform compatibility and portability, including on platforms, such as 
+*macOS* and *iOS*, where a native *Vulkan* driver is not avaialble. 
+
+
+
+<a name="contributing"></a>
+
+Contributing to **MoltenVK** Development
+----------------------------------------
+
+As a public open-source project, **MoltenVK** benefits from code contributions from a wide range of developers, 
+and we encourage you to get involved and contribute code to this **MoltenVK** repository.
+
+To contribute your code, submit a [Pull Request](https://github.com/KhronosGroup/MoltenVK/pulls) 
+to this repository. The first time you do this, you will be asked to agree to the **MoltenVK** 
+[Contributor License Agreement](https://cla-assistant.io/KhronosGroup/MoltenVK).
+
+
+### Licensing
+
+**MoltenVK** is licensed under the Apache 2.0 license. All new source code files should include a 
+copyright header at the top, containing your authorship copyright and the Apache 2.0 licensing stub. 
+You may copy the text from an existing source code file as a template.
+
+The Apache 2.0 license guarantees that code in the **MoltenVK** repository is free of Intellectual Property
+encumbrances. In submitting code to this repository, you are agreeing that the code is free of any Intellectual 
+Property claims.  
+
+
+### Code Formatting
+
+When contirbuting code, please honour the code formatting style found in existing **MoltenVK** source code.
+In future, this will formally be enforced using `clang-format`.
 
 
 
