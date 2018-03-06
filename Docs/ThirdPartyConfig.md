@@ -132,18 +132,12 @@ a modified fork of the *VulkanSamples* repository.
 To add the *VulkanSamples* repository to **MoltenVK**, open a *Terminal* session and 
 perform the following command-line steps:
 
-1. If you used the `--recursive` option when cloning the `MoltenVK` repository, you should already 
-   have the `VulkanSamples` submodule, and you can skip to *Step 2* below. If you did **_not_** 
-   use the `--recursive` option when cloning the `MoltenVK` repository, retrieve the `VulkanSamples` 
-   submodule into the `External` directory as follows, from within the `MoltenVK` repository directory:
+If you used the `--recursive` option when cloning the `MoltenVK` repository, you should already 
+have the `VulkanSamples` submodule. If you did **_not_** use the `--recursive` option when cloning 
+the `MoltenVK` repository, retrieve the `VulkanSamples` submodule into the `External` directory as 
+follows, from within the `MoltenVK` repository directory:
 
 		git submodule update --init External/VulkanSamples
-
-2. In the `Externals` folder within the `MoltenVK` repository, build the spec and header files 
-   as follows from the main directory of this `MoltenVK` repository:
-
-		cd External
-		./makeVulkanSamples
 
 
 

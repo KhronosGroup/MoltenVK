@@ -226,6 +226,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A9B53B241C3AC0BE00ABC6F6 /* Build configuration list for PBXNativeTarget "Cube-macOS" */;
 			buildPhases = (
+				A9BA29C5204F24D400EA6575 /* Generate SPIR-V shaders */,
 				A9B53B141C3AC0BE00ABC6F6 /* Resources */,
 				A9B53B171C3AC0BE00ABC6F6 /* Sources */,
 				A9B53B1B1C3AC0BE00ABC6F6 /* Frameworks */,
@@ -244,6 +245,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A9B53B401C3AC15200ABC6F6 /* Build configuration list for PBXNativeTarget "Cube-iOS" */;
 			buildPhases = (
+				A9BA29C6204F298800EA6575 /* Generate SPIR-V shaders */,
 				A9B53B2E1C3AC15200ABC6F6 /* Resources */,
 				A9B53B331C3AC15200ABC6F6 /* Sources */,
 				A9B53B371C3AC15200ABC6F6 /* Frameworks */,
@@ -319,6 +321,37 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A9BA29C5204F24D400EA6575 /* Generate SPIR-V shaders */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Generate SPIR-V shaders";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n\n\"${PROJECT_DIR}/../../../MoltenVKShaderConverter/Tools/MoltenVKShaderConverter\" -gi -so -xs \"-\" -d \"${PROJECT_DIR}/../VulkanSamples/demos\"\n";
+		};
+		A9BA29C6204F298800EA6575 /* Generate SPIR-V shaders */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Generate SPIR-V shaders";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\n\n\"${PROJECT_DIR}/../../../MoltenVKShaderConverter/Tools/MoltenVKShaderConverter\" -gi -so -xs \"-\" -d \"${PROJECT_DIR}/../VulkanSamples/demos\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A9B53B171C3AC0BE00ABC6F6 /* Sources */ = {

@@ -9,4 +9,3 @@
 rm -rf VulkanSamples
 git clone https://github.com/brenwill/VulkanSamples.git
 
-./makeVulkanSamples

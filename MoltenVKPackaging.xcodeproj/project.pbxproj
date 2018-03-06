@@ -149,7 +149,6 @@
 		A9B732A51FC9C588006721CB /* getLatestSPIRVCross */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestSPIRVCross; sourceTree = "<group>"; };
 		A9B732A61FC9C588006721CB /* getLatestVulkanSpec */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestVulkanSpec; sourceTree = "<group>"; };
 		A9B732A71FCA1D71006721CB /* getLatestAll */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestAll; sourceTree = "<group>"; };
-		A9CE6DAA204DF916005250D7 /* makeVulkanSamples */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeVulkanSamples; sourceTree = "<group>"; };
 		A9CE6DAB204DF924005250D7 /* getLatestVulkanSamples */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestVulkanSamples; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -191,7 +190,6 @@
 				A939A6FC1F547A12006ACA0C /* makeAll */,
 				A939A6FD1F547A12006ACA0C /* makeglslang */,
 				A939A6FE1F547A12006ACA0C /* makeSPIRVTools */,
-				A9CE6DAA204DF916005250D7 /* makeVulkanSamples */,
 				A939A6FF1F547A12006ACA0C /* makeVulkanSpec */,
 				A9B732A71FCA1D71006721CB /* getLatestAll */,
 				A9B732A31FC9C588006721CB /* getLatestglslang */,
