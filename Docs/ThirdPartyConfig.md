@@ -50,19 +50,25 @@ Using the *Vulkan-Hpp* Spec Repository with *MoltenVK*
 To add the *Khronos Vulkan* specification repository to **MoltenVK**, open a *Terminal* 
 session and perform the following command-line steps:
 
-1. Ensure you have `python3` and `asciidoctor` installed:
+
+1. Ensure you have `python3` installed:
 
 		brew install python3
-		sudo gem install asciidoctor
 
-2. If you used the `--recursive` option when cloning the `MoltenVK` repository, you should already 
+2. **_Optional:_** If you want to generate a Vulkan specification document for inclusion 
+   in the final **MoltenVK** distribution package, ensure you have `asciidoctor` installed
+   (you can skip this otherwise):
+
+		brew install asciidoctor
+
+3. If you used the `--recursive` option when cloning the `MoltenVK` repository, you should already 
    have the `Vulkan-Hpp` submodule, and you can skip to *Step 3* below. If you did **_not_** 
    use the `--recursive` option when cloning the `MoltenVK` repository, retrieve the `Vulkan-Hpp` 
    submodule into the `External` directory as follows, from within the `MoltenVK` repository directory:
 
 		git submodule update --init --recursive External/Vulkan-Hpp
 
-3. In the `Externals` folder within the `MoltenVK` repository, build the spec and header files 
+4. In the `Externals` folder within the `MoltenVK` repository, build the spec and header files 
    as follows from the main directory of this `MoltenVK` repository:
 
 		cd External
