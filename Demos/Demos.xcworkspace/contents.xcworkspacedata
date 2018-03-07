@@ -2,7 +2,7 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:README_MoltenVK_Demos.md">
+      location = "group:/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK-bh/Demos/README.md">
    </FileRef>
    <Group
       location = "container:"
@@ -15,13 +15,6 @@
       </FileRef>
       <FileRef
          location = "group:LunarG-VulkanSamples/Hologram/Hologram.xcodeproj">
-      </FileRef>
-   </Group>
-   <Group
-      location = "container:"
-      name = "Khronos-Vulkan-Samples">
-      <FileRef
-         location = "group:Khronos-Vulkan-Samples/AsynchronousTimeWarp/AsynchronousTimeWarp.xcodeproj">
       </FileRef>
    </Group>
 </Workspace>

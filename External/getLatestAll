@@ -9,6 +9,8 @@
 #     getLatestSPIRVTools
 #     getLatestglslang
 #     getLatestSPIRVCross
+#     getLatestVulkanLVL
+#     getLatestVulkanSamples
 #
 # macOS usage: ./getLatestAll
 
@@ -17,3 +19,4 @@
 ./getLatestglslang
 ./getLatestSPIRVCross
 ./getLatestVulkanLVL
+./getLatestVulkanSamples

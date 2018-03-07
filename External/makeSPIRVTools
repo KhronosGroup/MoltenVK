@@ -6,8 +6,6 @@
 #
 # macOS usage: ./makeSPIRVTools
 
-# Build SPIRV-Tools
-
 echo
 echo MoltenVK building SPIRV-Tools
 echo

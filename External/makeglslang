@@ -6,8 +6,6 @@
 #
 # macOS usage: ./makeglslang
 
-# Build glslang
-
 echo
 echo MoltenVK building glslang
 echo

@@ -19,7 +19,6 @@ Table of Contents
 
 - [About This Document](#about_this)
 - [About **MoltenVK**](#about_moltenvk)
-- [Running the **MoltenVK** Demo Applications](#demos)
 - [Installing **MoltenVK** in Your *Vulkan* Application](#install)
 	- [Build and Runtime Requirements](#requirements)
 	- [Install as Static Library Framework](#install_static_lib)
@@ -34,7 +33,6 @@ Table of Contents
 	- [Xcode Configuration](#xcode_config)
 	- [Metal System Trace Tool](#trace_tool)
 - [Known **MoltenVK** Limitations](#limitations)
-- [Third-Party Credits](#credits)
 
 
 
@@ -46,7 +44,7 @@ This document describes how to integrate the **MoltenVK** runtime distribution p
 or application, once **MoltenVK** has been built into a framework or library for *iOS* or *macOS*.
 
 To learn how to use the **MoltenVK** open-source repository to build a **MoltenVK** runtime 
-distribution package, see the main [**README**](../README.md) document in the `MoltenVK` repository.
+distribution package, see the main [`README.md`](../README.md) document in the `MoltenVK` repository.
 
 
 
@@ -68,28 +66,6 @@ your *SPIR-V* shaders to their *MSL* equivalents. This can be performed transpar
 using the **Runtime Shader Conversion** feature of **MoltenVK**, or at development time using the 
 [**MoltenVKShaderConverter**](#shader_converter_tool) tool provided with this **MoltenVK** distribution
 package.
-
-
-
-<a name="demos"></a>
-Running the **MoltenVK** Demo Applications
-------------------------------------------
-
-You can explore how **MoltenVK** provides *Vulkan* support on *iOS* and *macOS* by investigating
-and running the demo applications that are supported with this **MoltenVK** distribution package. 
-
-The **MoltenVK** demo apps are located in the `Demos` folder within the **MoltenVK**
-distribution package. Each demo app is available as an *Xcode* project.
-
-To review and run many of the available demo apps, open the `Demos/Demos.xcworkspace` workspace 
-in *Xcode*.
-
-Please read the [Demos/README_MoltenVK_Demos.md](Demos/README_MoltenVK_Demos.md) document for a 
-description of each demo app, and instructions on downloading and running the demo apps. 
-Many of the **MoltenVK** demos make use of third-party demo examples, which must be downloaded 
-from an external repository. Several of the demo apps allow you to explore a variety of *Vulkan* 
-features by modifying *Xcode* build settings. All of this is explained in the 
-[README_MoltenVK_Demos.md](Demos/README_MoltenVK_Demos.md) document.
 
 
 <a name="install"></a>
@@ -481,22 +457,3 @@ The following *Vulkan* features have not been implemented in this version of **M
 	- `VK_FORMAT_R8_UNORM`: `VkComponentMapping.r` = `VK_COMPONENT_SWIZZLE_R`
 	- `VK_FORMAT_R8G8B8A8_UNORM` <->	`VK_FORMAT_B8G8R8A8_UNORM`
 	- `VK_FORMAT_R8G8B8A8_SRGB` <->	`VK_FORMAT_B8G8R8A8_SRGB`
-
-
-
-
-<a name="credits"></a>
-Third-Party Credits
--------------------
-
-**MoltenVK** uses technology from the following open-source frameworks:
-
-- [*Vulkan-Hpp*](https://github.com/KhronosGroup/Vulkan-Hpp)
-- [*Vulkan-Docs*](https://github.com/KhronosGroup/Vulkan-Docs)
-- [*tinyxml2*](https://github.com/leethomason/tinyxml2)
-
-**MoltenVKShaderConverter** uses technology from the following open-source frameworks:
-
-- [*SPIRV-Cross*](https://github.com/KhronosGroup/SPIRV-Cross)
-- [*SPIRV-Tools*](https://github.com/KhronosGroup/SPIRV-Tools)
-- [*glslang*](https://github.com/KhronosGroup/glslang)
