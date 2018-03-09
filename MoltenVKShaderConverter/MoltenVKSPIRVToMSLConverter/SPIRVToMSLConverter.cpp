@@ -192,9 +192,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
     scOpts.vertex.flip_vert_y = context.options.shouldFlipVertexY;
     mslCompiler.CompilerGLSL::set_options(scOpts);
 
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
+#endif
 		_msl = mslCompiler.compile(&vtxAttrs, &resBindings);
         if (shouldLogMSL) { logSource(_msl, "MSL", "Converted"); }
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	} catch (spirv_cross::CompilerError& ex) {
 		string errMsg("MSL conversion error: ");
 		errMsg += ex.what();
@@ -204,6 +207,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
             logSource(_msl, "MSL", "Partially converted");
         }
 	}
+#endif
 
     // Populate content extracted from the SPRI-V compiler.
     populateFromCompiler(mslCompiler, _entryPoints);
@@ -212,9 +216,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
     if (shouldLogGLSL) {
         spirv_cross::CompilerGLSL glslCompiler(_spirv);
         string glsl;
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
         try {
+#endif
             glsl = glslCompiler.compile();
             logSource(glsl, "GLSL", "Estimated original");
+#ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
         } catch (spirv_cross::CompilerError& ex) {
             string errMsg("Original GLSL extraction error: ");
             errMsg += ex.what();
@@ -222,6 +229,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
             glsl = glslCompiler.get_partial_source();
             logSource(glsl, "GLSL", "Partially converted");
         }
+#endif
     }
 
 	// Copy whether the vertex attributes and resource bindings are used by the shader
