@@ -1,0 +1,126 @@
+#!/usr/bin/env bash
+#
+# Copyright (c) 2016-2018 The Brenwill Workshop Ltd.
+#
+# fetchDependencies - Retrieves the correct versions of all dependencies
+#
+# macOS usage: ./fetchDependencies [-sdk]
+#
+#   -sdk = Load for the LunarG SDK, using symlinks to repos in SDK instead of fetching
+#          Vulkan-LoaderAndValidationLayers and glslang repositories.
+
+
+# ----------------- Functions -------------------
+
+# Clone a repository
+# $1 repo name
+# $2 repo url
+# $3 repo revision (commit SHA)
+clone_repo() {
+	echo "$1 repo: $2"
+	echo "$1 revision: $3"
+
+	rm -rf $1
+	git clone $2 $1
+	cd $1
+	git checkout $3
+	cd -
+}
+
+# Build a repository
+# $1 repo name
+build_repo() {
+	echo "Building $1"
+
+	rm -rf $1/build
+	mkdir $1/build
+	cd $1/build
+	cmake ..
+	make
+	cd -
+}
+
+
+echo
+echo Retrieving MoltenVK dependencies.
+echo
+
+V_LVL_NAME=Vulkan-LoaderAndValidationLayers
+GLSLANG_NAME=glslang
+SPIRV_TOOLS_NAME=SPIRV-Tools
+
+# ----------------- SPIRV-Cross -------------------
+
+REPO_NAME=SPIRV-Cross
+REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+REPO_REV=$(cat "./${REPO_NAME}_repo_revision")
+
+clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+
+# ----------------- VulkanSamples -------------------
+
+REPO_NAME=VulkanSamples
+REPO_URL="https://github.com/brenwill/${REPO_NAME}.git"
+REPO_REV=$(cat "./${REPO_NAME}_repo_revision")
+
+clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+
+# ----------------- SPIRV-Tools -------------------
+
+REPO_NAME=${SPIRV_TOOLS_NAME}
+rm -rf ${REPO_NAME}
+ln -sfn ${GLSLANG_NAME}/External/spirv-tools ${REPO_NAME}
+
+
+# ----------------- SPIRV-Headers -------------------
+
+REPO_NAME=SPIRV-Headers
+rm -rf ${REPO_NAME}
+ln -sfn ${SPIRV_TOOLS_NAME}/external/spirv-headers ${REPO_NAME}
+
+
+# ----------------- Vulkan-LoaderAndValidationLayers, glslang, SPIRV-Tools & SPIRV-Headers -------------------
+
+# When MoltenVK is loaded as a dependency of the LunarG SDK, the LunarG SDK already
+# has Vulkan-LoaderAndValidationLayers & glslang, so create simlinks instead.
+if [ "$1" = "-sdk" ]; then
+
+	REPO_NAME=${V_LVL_NAME}
+	rm -rf ${REPO_NAME}
+	ln -sfn ../../.. ${REPO_NAME}
+
+	REPO_NAME=${GLSLANG_NAME}
+	rm -rf ${REPO_NAME}
+	ln -sfn ../../${REPO_NAME} ${REPO_NAME}
+
+else
+
+	# ----------------- Vulkan-LoaderAndValidationLayers -------------------
+
+	REPO_NAME=${V_LVL_NAME}
+	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+	REPO_REV=$(cat "./${REPO_NAME}_repo_revision")
+
+	clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+
+	# ----------------- glslang, SPIRV-Tools & SPIRV-Headers ---------------
+
+	REPO_NAME=${GLSLANG_NAME}
+	REPO_URL=$(cat "${V_LVL_NAME}/external_revisions/glslang_giturl")
+	REPO_REV=$(cat "${V_LVL_NAME}/external_revisions/glslang_revision")
+
+	clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+	cd ${REPO_NAME}
+	./update_glslang_sources.py
+	cd -
+
+	build_repo ${GLSLANG_NAME}
+
+	build_repo ${SPIRV_TOOLS_NAME}
+
+fi
+

@@ -20,14 +20,11 @@ Table of Contents
 - [About This Document](#about_this)
 - [Introduction](#intro)
 - [Installing **MoltenVK**](#install)
-- [Third-Party Libraries](#third-party)
-	- [Updating the Third-Party Library Versions](#update_third-party)
 - [Building **MoltenVK**](#building)
 - [Running the **MoltenVK** Demo Applications](#demos)
 - [Using **MoltenVK** in Your Application](#using)
 - [**MoltenVK** and *Vulkan* Compliance](#compliance)
 - [Contributing to **MoltenVK** Development](#contributing)
-- [Third-Party Credits](#credits)
 
 
 
@@ -66,80 +63,31 @@ Introduction
 Installing **MoltenVK**
 -----------------------
 
-**MoltenVK** relies on several third-party open-source libraries, which are described in the 
-[next section](#third-party). The easiest way to install **MoltenVK** is to recursively clone 
-this `MoltenVK` repository, and then run the `External/makeAll` script to create necessary 
-components within the third-party libraries.
+To install **MoltenVK**, clone this `MoltenVK` repository, and then run the 
+`External/fetchDependencies` script to retrieve and build several external 
+open-source libraries on which **MoltenVK** relies:
 
 1. Ensure you have `cmake` and `python3` installed:
 
 		brew install cmake
 		brew install python3
 
-2. **_Optional:_** If you want to generate a Vulkan specification document for inclusion 
-   in the final **MoltenVK** distribution package, ensure you have `asciidoctor` installed
-   (you can skip this otherwise):
+2. Clone the `MoltenVK` repository:
 
-		brew install asciidoctor
+		git clone https://github.com/KhronosGroup/MoltenVK.git
 
-3. Recursively clone the `MoltenVK` repository:
-
-		git clone --recursive https://github.com/KhronosGroup/MoltenVK.git
-
-4. Run the third-party build script:
+3. Retrieve and build the external libraries:
 
 		cd MoltenVK/External
-		./makeAll
+		./fetchDependencies
 
-See the [next section](#third-party) for more information about the third-party libraries, 
-and how to work with them within the **MoltenVK** development environment.
-
-
-<a name="third-party"></a>
-Third-Party Libraries
----------------------
-
-**MoltenVK** makes use of several third-party open-source libraries.
-Development of some of these components is managed separately, and are retrieved into
-**MoltenVK** as submodule repositories.
-
-If you used the `--recursive` option when cloning this repository, as described 
-[above](#install), all third party libraries will have been retrieved.
-
-If you did not use the `--recursive` option when cloning this repository, you can retrieve 
-and install these libraries into your `MoltenVK` repository environment as follows from within
-the `MoltenVK` repository:
-
-	git submodule update --init --recursive
-	cd External
-	./makeAll
-
-
-<a name="update_third-party"></a>
-### Updating the Third-Party Library Versions
-
-If you are developing enhancements to **MoltenVK**, you can update the versions of the 
-Third-Party libraries used by **MoltenVK** to the latest versions available by re-cloning 
-and re-building the submodules using the `getLatestAll` script:
-
-	cd External
-	./getLatestAll
-
-The updated versions will then be "locked in" the next time the `MoltenVK` repository is committed to `git`.
-
-This procdure updates all of the Third-Party library submodules. To update only a single submodule,
-or for more information about the various Third-Party libraries and submodules used by **MoltenVK**,
-please refer to the [`Docs/ThirdPartyConfig.md`](Docs/ThirdPartyConfig.md) document.
-
+For more information about the external open-source libraries used by **MoltenVK**,
+see the [`External/README.md`](External/README.md) document.
 
 
 <a name="building"></a>
 Building **MoltenVK**
 -------------------
-
->***Note:*** Before attempting to build **MoltenVK**, be sure you have followed the 
-instructions in the [*Third-Party Components*](#third-party) section above to retrieve 
-and install the required third-party components.
 
 At development time, **MoltenVK** references advanced OS frameworks during building.
  
@@ -178,11 +126,6 @@ or `Package/Debug` directories was most recently updated.
 With this packaging structure, you can follow the [instructions below](#using) to link your application 
 to the **MoltenVK** frameworks in the `Package/Latest` directory, to provide the flexibility to test your 
 app with either a **Debug** build, or a higher-performance **Release** build.
-
-Once you have built the **MoltenVK** runtime distribution package, the **MoltenVK** demo apps can be 
-accessed from the `Demos/Demos.xcworkspace` *Xcode* workspace. This is the same workspace that is 
-included in the **MoltenVK** runtime distribution package, and you can use it to build and run the
-**MoltenVK** demo apps, or to add new demos to this **MoltenVK** repository.
 
 
 
@@ -284,20 +227,3 @@ Property claims.
 
 When contirbuting code, please honour the code formatting style found in existing **MoltenVK** source code.
 In future, this will formally be enforced using `clang-format`.
-
-
-
-<a name="credits"></a>
-Third-Party Credits
--------------------
-
-**MoltenVK** uses technology from the following open-source frameworks:
-
-- [*Vulkan-Hpp*](https://github.com/KhronosGroup/Vulkan-Hpp)
-- [*Vulkan-Docs*](https://github.com/KhronosGroup/Vulkan-Docs)
-- [*Vulkan-LoaderAndValidationLayers*](https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers)
-- [*VulkanSamples*](https://github.com/brenwill/VulkanSamples)
-- [*SPIRV-Cross*](https://github.com/KhronosGroup/SPIRV-Cross)
-- [*SPIRV-Tools*](https://github.com/KhronosGroup/SPIRV-Tools)
-- [*glslang*](https://github.com/KhronosGroup/glslang)
-- [*tinyxml2*](https://github.com/leethomason/tinyxml2)

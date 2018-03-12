@@ -21,7 +21,7 @@
 #include "SPIRVToMSLConverter.h"
 #include "MVKStrings.h"
 #include "GlslangToSpv.h"
-#include "disassemble.h"
+#include "glslang/SPIRV/disassemble.h"
 #include "doc.h"
 #include <sstream>
 

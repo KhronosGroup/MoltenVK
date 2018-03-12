@@ -241,12 +241,6 @@ You can enable each of these extensions by defining the `VK_USE_PLATFORM_IOS_MVK
 `VK_USE_PLATFORM_MACOS_MVK` guard macro in your compiler build settings. See the description
 of the `mvk_vulkan.h` file below for a convenient way to enable these extensions automatically.
 
-The *Vulkan* API, including the `VK_MVK_ios_surface` and `VK_MVK_macos_surface` surface 
-extensions, and other *Vulkan* extensions supported by **MoltenVK** (except `VK_MVK_moltenvk`), 
-is described in the 
-[*Vulkan 1.0 Spec with MoltenVK Extensions*](Vulkan_1.0_Spec_with_MoltenVK_Extensions.html) 
-document found in the `MoltenVK/Vulkan` folder of the **MoltenVK** distribution.
-
 
 <a name="moltenvk_extension"></a>
 ### MoltenVK Extension
