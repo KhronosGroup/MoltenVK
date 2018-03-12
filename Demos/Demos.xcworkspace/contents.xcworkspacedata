@@ -2,7 +2,7 @@
 <Workspace
    version = "1.0">
    <FileRef
-      location = "group:/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK-bh/Demos/README.md">
+      location = "group:README.md">
    </FileRef>
    <Group
       location = "container:"
