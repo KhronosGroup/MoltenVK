@@ -193,6 +193,21 @@ fragment uint4 fragCmdClearAttachments0U(VaryingsPos varyings [[stage_in]],     
                                         constant ClearColorsIn& ccIn [[buffer(0)]]) {                           \n\
     return uint4(ccIn.colors[0]);                                                                               \n\
 };                                                                                                              \n\
+                                                                                                                \n\
+struct CopyInfo                                                                                                 \n\
+{                                                                                                               \n\
+    uint32_t SrcOffset;                                                                                         \n\
+    uint32_t DstOffset;                                                                                         \n\
+    uint32_t CopySize;                                                                                          \n\
+};                                                                                                              \n\
+                                                                                                                \n\
+kernel void compCopyBufferBytes(device uint8_t* src [[ buffer(0) ]],                                            \n\
+                                device uint8_t* dst [[ buffer(1) ]],                                            \n\
+                                constant CopyInfo& info [[ buffer(2) ]]) {                                      \n\
+    for (size_t i = 0; i < info.CopySize; i++) {                                                                \n\
+        dst[i + info.DstOffset] = src[i + info.SrcOffset];                                                      \n\
+    }                                                                                                           \n\
+};                                                                                                              \n\
 ";
 
 

@@ -272,6 +272,12 @@ public:
      * temporary image during image transfers.
      */
     MVKImage* newMVKImage(MVKImageDescriptorData& imgData);
+    
+    /**
+     * Returns a new MTLComputePipelineState dedicated to copying bytes between two buffers
+     * with unaligned copy regions.
+     */
+    id<MTLComputePipelineState> newCopyBytesMTLComputePipelineState();
 
 
 #pragma mark Construction

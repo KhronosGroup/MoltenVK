@@ -30,7 +30,7 @@
 #pragma mark MVKCommandEncodingPool
 
 /** 
- * Represents a pool containing trainsient resources that commands can use during encoding
+ * Represents a pool containing transient resources that commands can use during encoding
  * onto a queue. This is distinct from a command pool, which contains resources that can be 
  * assigned to commands when their content is established.
  *
@@ -93,7 +93,12 @@ public:
      * reused by subsequent transfers in the same encoding run.
      */
     MVKImage* getTransferMVKImage(MVKImageDescriptorData& imgData);
-
+    
+    /**
+     * Returns an MTLComputePipelineState dedicated to copying bytes between two buffers
+     * with unaligned copy regions.
+     */
+    id<MTLComputePipelineState> getCopyBufferBytesComputePipelineState();
 
 #pragma mark Construction
 
@@ -117,5 +122,6 @@ private:
     id<MTLDepthStencilState> _cmdClearStencilOnlyDepthStencilState;
     id<MTLDepthStencilState> _cmdClearDepthAndStencilDepthStencilState;
     id<MTLDepthStencilState> _cmdClearDefaultDepthStencilState;
+    id<MTLComputePipelineState> _mtlCopyBufferBytesComputePipelineState;
 };
 
