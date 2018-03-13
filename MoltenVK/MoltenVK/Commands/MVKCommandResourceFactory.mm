@@ -231,6 +231,17 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(
     return rps;
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCopyBytesMTLComputePipelineState() {
+    MTLComputePipelineDescriptor* plDesc = [[[MTLComputePipelineDescriptor alloc] init] autorelease];
+    plDesc.computeFunction = getFunctionNamed("compCopyBufferBytes");
+    plDesc.buffers[0].mutability = MTLMutabilityMutable;
+    plDesc.buffers[1].mutability = MTLMutabilityMutable;
+    NSError* err = nil;
+    id<MTLComputePipelineState> computePipelineState = [getMTLDevice() newComputePipelineStateWithDescriptor:plDesc options:MTLPipelineOptionNone reflection:nil error:&err];
+    MVKAssert( !err, "Could not create %s pipeline state: %s (code %li) %s", plDesc.label.UTF8String, err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
+    return computePipelineState;
+}
+
 #pragma mark Construction
 
 MVKCommandResourceFactory::MVKCommandResourceFactory(MVKDevice* device) : MVKBaseDeviceObject(device) {

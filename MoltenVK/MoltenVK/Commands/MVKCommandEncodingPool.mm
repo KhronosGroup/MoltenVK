@@ -111,6 +111,12 @@ MVKImage* MVKCommandEncodingPool::getTransferMVKImage(MVKImageDescriptorData& im
     return mvkImg;
 }
 
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCopyBufferBytesComputePipelineState() {
+    if (_mtlCopyBufferBytesComputePipelineState == nil) {
+        _mtlCopyBufferBytesComputePipelineState = _device->getCommandResourceFactory()->newCopyBytesMTLComputePipelineState();
+    }
+    return _mtlCopyBufferBytesComputePipelineState;
+}
 
 #pragma mark Construction
 
@@ -123,6 +129,7 @@ MVKCommandEncodingPool::MVKCommandEncodingPool(MVKDevice* device) : MVKBaseDevic
     _cmdClearDepthOnlyDepthStencilState = nil;
     _cmdClearStencilOnlyDepthStencilState = nil;
     _cmdClearDefaultDepthStencilState = nil;
+    _mtlCopyBufferBytesComputePipelineState = nil;
 
     initTextureDeviceMemory();
 }
@@ -174,5 +181,8 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 
     [_cmdClearDefaultDepthStencilState release];
     _cmdClearDefaultDepthStencilState = nil;
+
+    [_mtlCopyBufferBytesComputePipelineState release];
+    _mtlCopyBufferBytesComputePipelineState = nil;
 }
 
