@@ -137,9 +137,11 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
 	if (strcmp(pName, "vkCreateInstance") == 0) { return (PFN_vkVoidFunction)vkCreateInstance; }
 	if (strcmp(pName, "vkEnumerateInstanceExtensionProperties") == 0) { return (PFN_vkVoidFunction)vkEnumerateInstanceExtensionProperties; }
 	if (strcmp(pName, "vkEnumerateInstanceLayerProperties") == 0) { return (PFN_vkVoidFunction)vkEnumerateInstanceLayerProperties; }
-
-	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-	return mvkInst->getProcAddr(pName);
+    if (instance) {
+        MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+        return mvkInst->getProcAddr(pName);
+    }
+    return NULL;
 }
 
 MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetDeviceProcAddr(
