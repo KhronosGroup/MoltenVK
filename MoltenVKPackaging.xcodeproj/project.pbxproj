@@ -132,24 +132,17 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		A9077A4F1FF2D17700BE1757 /* ThirdPartyConfig.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = ThirdPartyConfig.md; path = Docs/ThirdPartyConfig.md; sourceTree = "<group>"; };
 		A92DB3E41CE0F37D00FBC835 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		A92DB3E51CE0F37D00FBC835 /* LICENSE */ = {isa = PBXFileReference; lastKnownFileType = text; path = LICENSE; sourceTree = "<group>"; };
 		A92DB3E61CE0F37D00FBC835 /* Whats_New.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Whats_New.md; path = Docs/Whats_New.md; sourceTree = "<group>"; };
 		A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVK.xcodeproj; path = MoltenVK/MoltenVK.xcodeproj; sourceTree = "<group>"; };
 		A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVKShaderConverter.xcodeproj; path = MoltenVKShaderConverter/MoltenVKShaderConverter.xcodeproj; sourceTree = "<group>"; };
-		A939A6FC1F547A12006ACA0C /* makeAll */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeAll; sourceTree = "<group>"; };
-		A939A6FD1F547A12006ACA0C /* makeglslang */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeglslang; sourceTree = "<group>"; };
-		A939A6FE1F547A12006ACA0C /* makeSPIRVTools */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeSPIRVTools; sourceTree = "<group>"; };
-		A939A6FF1F547A12006ACA0C /* makeVulkanSpec */ = {isa = PBXFileReference; lastKnownFileType = text; path = makeVulkanSpec; sourceTree = "<group>"; };
-		A94545691FEB1C23000C2CB2 /* getLatestVulkanLVL */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestVulkanLVL; sourceTree = "<group>"; };
+		A943100220546CDD00F5CF87 /* fetchDependencies */ = {isa = PBXFileReference; lastKnownFileType = text; path = fetchDependencies; sourceTree = "<group>"; };
 		A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Runtime_UserGuide.md; path = Docs/MoltenVK_Runtime_UserGuide.md; sourceTree = "<group>"; };
-		A9B732A31FC9C588006721CB /* getLatestglslang */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestglslang; sourceTree = "<group>"; };
-		A9B732A41FC9C588006721CB /* getLatestSPIRVTools */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestSPIRVTools; sourceTree = "<group>"; };
-		A9B732A51FC9C588006721CB /* getLatestSPIRVCross */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestSPIRVCross; sourceTree = "<group>"; };
-		A9B732A61FC9C588006721CB /* getLatestVulkanSpec */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestVulkanSpec; sourceTree = "<group>"; };
-		A9B732A71FCA1D71006721CB /* getLatestAll */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestAll; sourceTree = "<group>"; };
-		A9CE6DAB204DF924005250D7 /* getLatestVulkanSamples */ = {isa = PBXFileReference; lastKnownFileType = text; path = getLatestVulkanSamples; sourceTree = "<group>"; };
+		A9AD67D12054E2D700ED3C08 /* VulkanSamples_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = VulkanSamples_repo_revision; sourceTree = "<group>"; };
+		A9AD67D22054E2D700ED3C08 /* Vulkan-LoaderAndValidationLayers_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Vulkan-LoaderAndValidationLayers_repo_revision"; sourceTree = "<group>"; };
+		A9AD67D32054E2D700ED3C08 /* SPIRV-Cross_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = "SPIRV-Cross_repo_revision"; sourceTree = "<group>"; };
+		A9AD67E92055D8A600ED3C08 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -169,7 +162,6 @@
 				A92DB3E41CE0F37D00FBC835 /* README.md */,
 				A92DB3E51CE0F37D00FBC835 /* LICENSE */,
 				A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */,
-				A9077A4F1FF2D17700BE1757 /* ThirdPartyConfig.md */,
 				A92DB3E61CE0F37D00FBC835 /* Whats_New.md */,
 			);
 			name = Docs;
@@ -187,17 +179,11 @@
 		A939A6FB1F5479D0006ACA0C /* External */ = {
 			isa = PBXGroup;
 			children = (
-				A939A6FC1F547A12006ACA0C /* makeAll */,
-				A939A6FD1F547A12006ACA0C /* makeglslang */,
-				A939A6FE1F547A12006ACA0C /* makeSPIRVTools */,
-				A939A6FF1F547A12006ACA0C /* makeVulkanSpec */,
-				A9B732A71FCA1D71006721CB /* getLatestAll */,
-				A9B732A31FC9C588006721CB /* getLatestglslang */,
-				A9B732A51FC9C588006721CB /* getLatestSPIRVCross */,
-				A9B732A41FC9C588006721CB /* getLatestSPIRVTools */,
-				A94545691FEB1C23000C2CB2 /* getLatestVulkanLVL */,
-				A9CE6DAB204DF924005250D7 /* getLatestVulkanSamples */,
-				A9B732A61FC9C588006721CB /* getLatestVulkanSpec */,
+				A9AD67E92055D8A600ED3C08 /* README.md */,
+				A943100220546CDD00F5CF87 /* fetchDependencies */,
+				A9AD67D32054E2D700ED3C08 /* SPIRV-Cross_repo_revision */,
+				A9AD67D22054E2D700ED3C08 /* Vulkan-LoaderAndValidationLayers_repo_revision */,
+				A9AD67D12054E2D700ED3C08 /* VulkanSamples_repo_revision */,
 			);
 			path = External;
 			sourceTree = "<group>";
@@ -318,7 +304,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\n# Package folder\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\n\n# Copy the docs. Allow silent fail if a symlinked doc is not built.\ncp -a \"${MVK_WKSPC_PATH}/LICENSE\" \"${MVK_PKG_CONFIG_PATH}\"\ncp -pRLf \"${MVK_WKSPC_PATH}/Docs\" \"${MVK_PKG_CONFIG_PATH}\" 2> /dev/null || true\nrm \"${MVK_PKG_CONFIG_PATH}/Docs/ThirdPartyConfig.md\"\n\n";
+			shellScript = "set -e\n\n# Package folder\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\n\n# Copy the docs. Allow silent fail if a symlinked doc is not built.\ncp -a \"${MVK_WKSPC_PATH}/LICENSE\" \"${MVK_PKG_CONFIG_PATH}\"\ncp -pRLf \"${MVK_WKSPC_PATH}/Docs\" \"${MVK_PKG_CONFIG_PATH}\" 2> /dev/null || true\n";
 		};
 		A9FEADD61F3517480010240E /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
