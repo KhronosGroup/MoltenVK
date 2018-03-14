@@ -140,7 +140,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl() {
                                           _mtlBufferIndex);
             break;
         case VK_SHADER_STAGE_COMPUTE_BIT:
-            _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(),
+            _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
                                          _pushConstants.data(),
                                          _pushConstants.size(),
                                          _mtlBufferIndex);
@@ -496,21 +496,21 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl() {
 
     encodeBinding<MVKMTLBufferBinding>(_bufferBindings, _areBufferBindingsDirty,
                                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-                                           [cmdEncoder->getMTLComputeEncoder() setBuffer: b.mtlBuffer
-                                                                                  offset: b.offset
-                                                                                 atIndex: b.index];
+                                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setBuffer: b.mtlBuffer
+																										offset: b.offset
+																									   atIndex: b.index];
                                        });
 
     encodeBinding<MVKMTLTextureBinding>(_textureBindings, _areTextureBindingsDirty,
                                         [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
-                                            [cmdEncoder->getMTLComputeEncoder() setTexture: b.mtlTexture
-                                                                                   atIndex: b.index];
+                                            [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setTexture: b.mtlTexture
+																										 atIndex: b.index];
                                         });
 
     encodeBinding<MVKMTLSamplerStateBinding>(_samplerStateBindings, _areSamplerStateBindingsDirty,
                                              [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
-                                                 [cmdEncoder->getMTLComputeEncoder() setSamplerState: b.mtlSamplerState
-                                                                                             atIndex: b.index];
+                                                 [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setSamplerState: b.mtlSamplerState
+																												   atIndex: b.index];
                                              });
 }
 

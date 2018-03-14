@@ -294,12 +294,13 @@ public:
 	void flush();
 
 	/** 
-	 * The current Metal compute encoder.
+	 * The current Metal compute encoder for the specified use,
+	 * which determines the label assigned to the returned encoder.
 	 *
 	 * If the current encoder is not a compute encoder, this function ends current before 
 	 * beginning compute encoding.
 	 */
-	id<MTLComputeCommandEncoder> getMTLComputeEncoder();
+	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse);
 
 	/**
 	 * The current Metal BLIT encoder for the specified use,
@@ -308,7 +309,7 @@ public:
 	 * If the current encoder is not a BLIT encoder, this function ends 
      * the current encoder before beginning BLIT encoding.
 	 */
-	id<MTLBlitCommandEncoder> getMTLBlitEncoder(MVKCommandUse cmdBlitEncUse);
+	id<MTLBlitCommandEncoder> getMTLBlitEncoder(MVKCommandUse cmdUse);
 
 	/** Returns the push constants associated with the specified shader stage. */
 	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
@@ -424,6 +425,7 @@ protected:
     MVKActivatedQueries* _pActivatedQueries;
 	std::vector<VkClearValue> _clearValues;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
+	MVKCommandUse _mtlComputeEncoderUse;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
     MVKCommandUse _mtlBlitEncoderUse;
 	MVKPushConstantsCommandEncoderState _vertexPushConstants;
@@ -499,11 +501,14 @@ protected:
 #pragma mark Support functions
 
 /** Returns a name, suitable for use as a MTLCommandBuffer label, based on the MVKCommandUse. */
-NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdBuffUse);
+NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLRenderCommandEncoder label, based on the MVKCommandUse. */
-NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdBlitEncUse);
+NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLBlitCommandEncoder label, based on the MVKCommandUse. */
-NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdBlitEncUse);
+NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse);
+
+/** Returns a name, suitable for use as a MTLComputeCommandEncoder label, based on the MVKCommandUse. */
+NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse);
 

@@ -342,6 +342,7 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 
 	[_mtlComputeEncoder endEncoding];
 	_mtlComputeEncoder = nil;       // not retained
+	_mtlComputeEncoderUse = kMVKCommandUseNone;
 
 	[_mtlBlitEncoder endEncoding];
 	_mtlBlitEncoder = nil;          // not retained
@@ -362,22 +363,26 @@ void MVKCommandEncoder::flush() {
 	}
 }
 
-id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder() {
+id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandUse cmdUse) {
 	if ( !_mtlComputeEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];		// not retained
 	}
+	if (_mtlComputeEncoderUse != cmdUse) {
+		_mtlComputeEncoderUse = cmdUse;
+		_mtlComputeEncoder.label = mvkMTLComputeCommandEncoderLabel(cmdUse);
+	}
 	return _mtlComputeEncoder;
 }
 
-id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmdBlitEncUse) {
+id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmdUse) {
 	if ( !_mtlBlitEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlBlitEncoder = [_mtlCmdBuffer blitCommandEncoder];   // not retained
 	}
-    if (_mtlBlitEncoderUse != cmdBlitEncUse) {
-        _mtlBlitEncoderUse = cmdBlitEncUse;
-        _mtlBlitEncoder.label = mvkMTLBlitCommandEncoderLabel(cmdBlitEncUse);
+    if (_mtlBlitEncoderUse != cmdUse) {
+        _mtlBlitEncoderUse = cmdUse;
+        _mtlBlitEncoder.label = mvkMTLBlitCommandEncoderLabel(cmdUse);
     }
 	return _mtlBlitEncoder;
 }
@@ -513,6 +518,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
             _mtlCmdBuffer = nil;
             _mtlRenderEncoder = nil;
             _mtlComputeEncoder = nil;
+			_mtlComputeEncoderUse = kMVKCommandUseNone;
             _mtlBlitEncoder = nil;
             _mtlBlitEncoderUse = kMVKCommandUseNone;
 }
@@ -550,8 +556,8 @@ uint32_t MVKMTLCommandBufferCountdown::getCount() { return _activeMTLCommandBuff
 #pragma mark -
 #pragma mark Support functions
 
-NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdBuffUse) {
-    switch (cmdBuffUse) {
+NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse) {
+    switch (cmdUse) {
         case kMVKCommandUseQueueSubmit:     return @"vkQueueSubmit CommandBuffer";
         case kMVKCommandUseQueuePresent:    return @"vkQueuePresentKHR CommandBuffer";
         case kMVKCommandUseQueueWaitIdle:   return @"vkQueueWaitIdle CommandBuffer";
@@ -560,8 +566,8 @@ NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdBuffUse) {
     }
 }
 
-NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdRendEncUse) {
-    switch (cmdRendEncUse) {
+NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse) {
+    switch (cmdUse) {
         case kMVKCommandUseBeginRenderPass:         return @"vkCmdBeginRenderPass RenderEncoder";
         case kMVKCommandUseNextSubpass:             return @"vkCmdNextSubpass RenderEncoder";
         case kMVKCommandUseBlitImage:               return @"vkCmdBlitImage RenderEncoder";
@@ -573,8 +579,8 @@ NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdRendEncUse) {
     }
 }
 
-NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdBlitEncUse) {
-    switch (cmdBlitEncUse) {
+NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse) {
+    switch (cmdUse) {
         case kMVKCommandUsePipelineBarrier:     return @"vkCmdPipelineBarrier BlitEncoder";
         case kMVKCommandUseCopyImage:           return @"vkCmdCopyImage BlitEncoder";
         case kMVKCommandUseResolveCopyImage:    return @"vkCmdResolveImage (copy stage) RenderEncoder";
@@ -586,5 +592,14 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdBlitEncUse) {
         case kMVKCommandUseResetQueryPool:      return @"vkCmdResetQueryPool BlitEncoder";
         default:                                return @"Unknown Use BlitEncoder";
     }
+}
+
+NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
+	switch (cmdUse) {
+		case kMVKCommandUseDispatch:          	return @"vkCmdDispatch ComputeEncoder";
+		case kMVKCommandUseCopyBuffer:          return @"vkCmdCopyBuffer ComputeEncoder";
+		case kMVKCommandUseFillBuffer:          return @"vkCmdFillBuffer ComputeEncoder";
+		default:                                return @"Unknown Use ComputeEncoder";
+	}
 }
 

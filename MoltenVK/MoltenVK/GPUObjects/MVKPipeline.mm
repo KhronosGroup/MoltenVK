@@ -395,9 +395,7 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 #pragma mark MVKComputePipeline
 
 void MVKComputePipeline::encode(MVKCommandEncoder* cmdEncoder) {
-    id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder();
-    [mtlCmdEnc setComputePipelineState: _mtlPipelineState];
-
+    [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setComputePipelineState: _mtlPipelineState];
     cmdEncoder->_mtlThreadgroupSize = _mtlThreadgroupSize;
 }
 
