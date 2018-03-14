@@ -38,6 +38,9 @@ runtime distribution package.
 To learn how to integrate the **MoltenVK** runtime into a game or application, see the 
 [`Docs/MoltenVK_Runtime_UserGuide.md `](Docs/MoltenVK_Runtime_UserGuide.md) document in the `Docs` directory. 
 
+If you are just looking for a pre-built **MoltenVK** runtime binary, you can download it as part of the 
+[*LunarG SDK*](https://vulkan.lunarg.com).
+
 
 
 <a name="intro"></a>

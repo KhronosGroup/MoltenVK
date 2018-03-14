@@ -84,6 +84,7 @@ typedef struct {
     VkDeviceSize maxMTLBufferSize;              /**< The max size of a MTLBuffer (in bytes). */
     VkDeviceSize mtlBufferAlignment;            /**< The alignment used when allocating memory for MTLBuffers. Must be PoT. */
     VkDeviceSize maxQueryBufferSize;            /**< The maximum size of an occlusion query buffer (in bytes). */
+	VkDeviceSize mtlCopyBufferAlignment;        /**< The alignment required during buffer copy operations (in bytes). */
     VkSampleCountFlags supportedSampleCounts;   /**< A bitmask identifying the sample counts supported by the device. */
 } MVKPhysicalDeviceMetalFeatures;
 

@@ -555,45 +555,41 @@ void MVKCmdCopyBuffer::setContent(VkBuffer srcBuffer,
 }
 
 void MVKCmdCopyBuffer::encode(MVKCommandEncoder* cmdEncoder) {
-    id<MTLBuffer> srcMTLBuff = _srcBuffer->getMTLBuffer();
-    NSUInteger srcMTLBuffOffset = _srcBuffer->getMTLBufferOffset();
+	id<MTLBuffer> srcMTLBuff = _srcBuffer->getMTLBuffer();
+	NSUInteger srcMTLBuffOffset = _srcBuffer->getMTLBufferOffset();
 
-    id<MTLBuffer> dstMTLBuff = _dstBuffer->getMTLBuffer();
-    NSUInteger dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset();
+	id<MTLBuffer> dstMTLBuff = _dstBuffer->getMTLBuffer();
+	NSUInteger dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset();
 
-    for (auto& cpyRgn : _mtlBuffCopyRegions) {
-#if MVK_MACOS
-        const bool useComputeCopy = cpyRgn.srcOffset % 4 != 0
-            || cpyRgn.dstOffset % 4 != 0
-            || cpyRgn.size % 4 != 0;
-#else
-        const bool useComputeCopy = false;
-#endif
-        if (useComputeCopy)
-        {
-            MVKAssert(
-                cpyRgn.srcOffset <= UINT32_MAX || cpyRgn.dstOffset <= UINT32_MAX || cpyRgn.size <= UINT32_MAX,
-                "Compute buffer copy region offsets and size must fit into a 32-bit unsigned integer.");
+	VkDeviceSize buffAlign = getDevice()->_pMetalFeatures->mtlCopyBufferAlignment;
 
-            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder();
-            id<MTLComputePipelineState> pipelineState = cmdEncoder->getCommandEncodingPool()->getCopyBufferBytesComputePipelineState();
-            [mtlComputeEnc setComputePipelineState:pipelineState];
-            [mtlComputeEnc setBuffer:srcMTLBuff offset:srcMTLBuffOffset atIndex:0];
-            [mtlComputeEnc setBuffer:dstMTLBuff offset:dstMTLBuffOffset atIndex:1];
-            uint32_t copyInfo[3] = { (uint32_t)cpyRgn.srcOffset,  (uint32_t)cpyRgn.dstOffset, (uint32_t)cpyRgn.size };
-            [mtlComputeEnc setBytes:copyInfo length:sizeof(copyInfo) atIndex:2];
-            [mtlComputeEnc dispatchThreads:MTLSizeMake(1, 1, 1) threadsPerThreadgroup:MTLSizeMake(1, 1, 1)];
-        }
-        else
-        {
-            id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyBuffer);
-            [mtlBlitEnc copyFromBuffer: srcMTLBuff
-                          sourceOffset: (srcMTLBuffOffset + cpyRgn.srcOffset)
-                              toBuffer: dstMTLBuff
-                     destinationOffset: (dstMTLBuffOffset + cpyRgn.dstOffset)
-                                  size: cpyRgn.size];
-        }
-    }
+	for (auto& cpyRgn : _mtlBuffCopyRegions) {
+		const bool useComputeCopy = buffAlign > 1 && (cpyRgn.srcOffset % buffAlign != 0 ||
+													  cpyRgn.dstOffset % buffAlign != 0 ||
+													  cpyRgn.size      % buffAlign != 0);
+		if (useComputeCopy) {
+			MVKAssert(cpyRgn.srcOffset <= UINT32_MAX || cpyRgn.dstOffset <= UINT32_MAX || cpyRgn.size <= UINT32_MAX,
+					  "Compute buffer copy region offsets and size must fit into a 32-bit unsigned integer.");
+
+			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer);
+			[mtlComputeEnc pushDebugGroup: @"vkCmdCopyBuffer"];
+			id<MTLComputePipelineState> pipelineState = cmdEncoder->getCommandEncodingPool()->getCopyBufferBytesComputePipelineState();
+			[mtlComputeEnc setComputePipelineState:pipelineState];
+			[mtlComputeEnc setBuffer:srcMTLBuff offset:srcMTLBuffOffset atIndex:0];
+			[mtlComputeEnc setBuffer:dstMTLBuff offset:dstMTLBuffOffset atIndex:1];
+			uint32_t copyInfo[3] = { (uint32_t)cpyRgn.srcOffset,  (uint32_t)cpyRgn.dstOffset, (uint32_t)cpyRgn.size };
+			[mtlComputeEnc setBytes:copyInfo length:sizeof(copyInfo) atIndex:2];
+			[mtlComputeEnc dispatchThreads: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
+			[mtlComputeEnc popDebugGroup];
+		} else {
+			id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyBuffer);
+			[mtlBlitEnc copyFromBuffer: srcMTLBuff
+						  sourceOffset: (srcMTLBuffOffset + cpyRgn.srcOffset)
+							  toBuffer: dstMTLBuff
+					 destinationOffset: (dstMTLBuffOffset + cpyRgn.dstOffset)
+								  size: cpyRgn.size];
+		}
+	}
 }
 
 MVKCmdCopyBuffer::MVKCmdCopyBuffer(MVKCommandTypePool<MVKCmdCopyBuffer>* pool)

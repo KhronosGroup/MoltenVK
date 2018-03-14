@@ -88,6 +88,7 @@ typedef enum {
     kMVKCommandUseClearColorImage,          /**< vkCmdClearColorImage. */
     kMVKCommandUseClearDepthStencilImage,   /**< vkCmdClearDepthStencilImage. */
     kMVKCommandUseResetQueryPool,           /**< vkCmdResetQueryPool. */
+	kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
 } MVKCommandUse;
 
 /**

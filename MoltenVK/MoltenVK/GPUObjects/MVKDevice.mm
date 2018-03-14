@@ -306,6 +306,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1);
     _metalFeatures.maxPerStageTextureCount = 31;
     _metalFeatures.mtlBufferAlignment = 64;
+	_metalFeatures.mtlCopyBufferAlignment = 1;
     _metalFeatures.texelBuffers = true;
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
@@ -333,6 +334,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 1);
     _metalFeatures.maxPerStageTextureCount = 128;
     _metalFeatures.mtlBufferAlignment = 256;
+	_metalFeatures.mtlCopyBufferAlignment = 4;
 	_metalFeatures.indirectDrawing = true;
 	_metalFeatures.baseVertexInstanceDrawing = true;
     _metalFeatures.ioSurfaces = true;
