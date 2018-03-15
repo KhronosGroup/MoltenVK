@@ -427,8 +427,9 @@ typedef unordered_map<uint32_t, uint32_t> MVKFormatIndexByVkFormatMap;
 
 // Vulkan core formats have small values and are mapped by simple lookup array.
 // Vulkan extension formats have larger values and are mapped by a map.
+// MVKFormatIndexByVkFormatMap held as global pointer to allow it to be populated during global init functions.
 static uint16_t _fmtDescIndicesByVkFormatsCore[_vkFormatCoreCount];
-static MVKFormatIndexByVkFormatMap _fmtDescIndicesByVkFormatsExt;
+static MVKFormatIndexByVkFormatMap* _pFmtDescIndicesByVkFormatsExt;
 
 // Metal formats have small values and are mapped by simple lookup array.
 static uint16_t _fmtDescIndicesByMTLPixelFormats[_mtlFormatCount];
@@ -449,7 +450,7 @@ static void MVKInitFormatMaps() {
     memset(_fmtDescIndicesByVkFormatsCore, 0, sizeof(_fmtDescIndicesByVkFormatsCore));
     memset(_fmtDescIndicesByMTLPixelFormats, 0, sizeof(_fmtDescIndicesByMTLPixelFormats));
 
-    _fmtDescIndicesByVkFormatsExt = MVKFormatIndexByVkFormatMap();
+	_pFmtDescIndicesByVkFormatsExt = new MVKFormatIndexByVkFormatMap();
 
 	// Iterate through the format descriptions and populate the lookup maps.
 	uint32_t fmtCnt = sizeof(_formatDescriptions) / sizeof(MVKFormatDesc);
@@ -465,7 +466,7 @@ static void MVKInitFormatMaps() {
             if (tfm.vk < _vkFormatCoreCount) {
                 _fmtDescIndicesByVkFormatsCore[tfm.vk] = fmtIdx;
             } else {
-                _fmtDescIndicesByVkFormatsExt[tfm.vk] = fmtIdx;
+				(*_pFmtDescIndicesByVkFormatsExt)[tfm.vk] = fmtIdx;
             }
         }
 
@@ -477,7 +478,7 @@ static void MVKInitFormatMaps() {
 
 // Return a reference to the format description corresponding to the VkFormat.
 inline const MVKFormatDesc& formatDescForVkFormat(VkFormat vkFormat) {
-    uint16_t fmtIdx = (vkFormat < _vkFormatCoreCount) ? _fmtDescIndicesByVkFormatsCore[vkFormat] : _fmtDescIndicesByVkFormatsExt[vkFormat];
+	uint16_t fmtIdx = (vkFormat < _vkFormatCoreCount) ? _fmtDescIndicesByVkFormatsCore[vkFormat] : (*_pFmtDescIndicesByVkFormatsExt)[vkFormat];
     return _formatDescriptions[fmtIdx];
 }
 

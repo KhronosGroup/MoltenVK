@@ -53,10 +53,14 @@ MVKQueueFamily::~MVKQueueFamily() {
 
 #pragma mark Queue submissions
 
-/** Submits the specified submission object to the execution queue. */
+/**
+ * Submits the specified submission object to the execution queue, wrapping each submission
+ * in a dedicated autorelease pool. Relying on the dispatch queue to find time to drain the
+ * autorelease pool can result in significant memory creep under heavy workloads.
+ */
 void MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	if ( !qSubmit ) { return; }     // Ignore nils
-	dispatch_async( _execQueue, ^{ qSubmit->execute(); } );
+	dispatch_async( _execQueue, ^{ @autoreleasepool { qSubmit->execute(); } } );
 }
 
 VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,

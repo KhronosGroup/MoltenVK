@@ -161,10 +161,11 @@ void MVKSwapchain::markFrameInterval() {
     if (perfLogCntLimit > 0) {
         _currentPerfLogFrameCount++;
         if (_currentPerfLogFrameCount >= perfLogCntLimit) {
-            MVKLogInfo("Frame interval: %.2f ms. Avg frame interval: %.2f ms. FPS: %.2f.",
+			MVKLogInfo("Frame interval: %.2f ms. Avg frame interval: %.2f ms. FPS: %.2f. Elapsed time: %.3f seconds.",
                        _performanceStatistics.lastFrameInterval,
                        _performanceStatistics.averageFrameInterval,
-                       _performanceStatistics.averageFramesPerSecond);
+                       _performanceStatistics.averageFramesPerSecond,
+					   mvkGetElapsedMilliseconds() / 1000.0);
             _currentPerfLogFrameCount = 0;
         }
     }
@@ -257,8 +258,8 @@ void MVKSwapchain::initFrameIntervalTracking() {
 	_lastFrameTime = mvkGetTimestamp();
 
     // Establish the alpha parameter of a low-pass filter for averaging frame intervals.
-    double RC_over_dt = 10;
-    _averageFrameIntervalFilterAlpha = 1.0 / (1 + RC_over_dt);
+    double RC_over_dt = 10.0;
+    _averageFrameIntervalFilterAlpha = 1.0 / (1.0 + RC_over_dt);
 }
 
 MVKSwapchain::~MVKSwapchain() {
