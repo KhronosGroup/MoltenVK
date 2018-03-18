@@ -47,7 +47,6 @@ echo
 
 V_LVL_NAME=Vulkan-LoaderAndValidationLayers
 GLSLANG_NAME=glslang
-SPIRV_TOOLS_NAME=SPIRV-Tools
 
 # ----------------- SPIRV-Cross -------------------
 
@@ -65,20 +64,6 @@ REPO_URL="https://github.com/brenwill/${REPO_NAME}.git"
 REPO_REV=$(cat "./${REPO_NAME}_repo_revision")
 
 clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
-
-
-# ----------------- SPIRV-Tools -------------------
-
-REPO_NAME=${SPIRV_TOOLS_NAME}
-rm -rf ${REPO_NAME}
-ln -sfn ${GLSLANG_NAME}/External/spirv-tools ${REPO_NAME}
-
-
-# ----------------- SPIRV-Headers -------------------
-
-REPO_NAME=SPIRV-Headers
-rm -rf ${REPO_NAME}
-ln -sfn ${SPIRV_TOOLS_NAME}/external/spirv-headers ${REPO_NAME}
 
 
 # ----------------- Vulkan-LoaderAndValidationLayers, glslang, SPIRV-Tools & SPIRV-Headers -------------------
@@ -119,8 +104,6 @@ else
 	cd -
 
 	build_repo ${GLSLANG_NAME}
-
-	build_repo ${SPIRV_TOOLS_NAME}
 
 fi
 
