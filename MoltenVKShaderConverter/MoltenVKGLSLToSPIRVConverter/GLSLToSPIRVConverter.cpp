@@ -43,8 +43,8 @@ MVK_PUBLIC_SYMBOL void GLSLToSPIRVConverter::setGLSL(const string& glslSrc) { _g
 MVK_PUBLIC_SYMBOL const string& GLSLToSPIRVConverter::getGLSL() { return _glsl; }
 
 MVK_PUBLIC_SYMBOL bool GLSLToSPIRVConverter::convert(MVKShaderStage shaderStage,
-														bool shouldLogGLSL,
-														bool shouldLogSPIRV) {
+													 bool shouldLogGLSL,
+													 bool shouldLogSPIRV) {
 	_wasConverted = true;
 	_resultLog.clear();
 	_spirv.clear();

@@ -32,6 +32,9 @@ namespace mvk {
 
 	/** Options for converting SPIR-V to Metal Shading Language */
 	typedef struct SPIRVToMSLConverterOptions {
+		std::string entryPointName;
+		spv::ExecutionModel entryPointStage = spv::ExecutionModelMax;
+
         uint32_t mslVersion = makeMSLVersion(2);
 		bool shouldFlipVertexY = true;
 		bool isRenderingPoints = false;
@@ -40,13 +43,17 @@ namespace mvk {
          * Returns whether the specified options match this one.
          * It does if all corresponding elements are equal.
          */
-        bool matches(SPIRVToMSLConverterOptions& other);
+        bool matches(const SPIRVToMSLConverterOptions& other) const;
+
+		bool hasEntryPoint() const {
+			return !entryPointName.empty() && entryPointStage != spv::ExecutionModelMax;
+		}
 
         void setMSLVersion(uint32_t major, uint32_t minor = 0, uint32_t point = 0) {
             mslVersion = makeMSLVersion(major, minor, point);
         }
 
-        bool supportsMSLVersion(uint32_t major, uint32_t minor = 0, uint32_t point = 0) {
+        bool supportsMSLVersion(uint32_t major, uint32_t minor = 0, uint32_t point = 0) const {
             return mslVersion >= makeMSLVersion(major, minor, point);
         }
 
@@ -74,7 +81,7 @@ namespace mvk {
          * Returns whether the specified vertex attribute match this one.
          * It does if all corresponding elements except isUsedByShader are equal.
          */
-        bool matches(MSLVertexAttribute& other);
+        bool matches(const MSLVertexAttribute& other) const;
         
 	} MSLVertexAttribute;
 
@@ -100,7 +107,7 @@ namespace mvk {
          * Returns whether the specified resource binding match this one.
          * It does if all corresponding elements except isUsedByShader are equal.
          */
-        bool matches(MSLResourceBinding& other);
+        bool matches(const MSLResourceBinding& other) const;
 
     } MSLResourceBinding;
 
@@ -111,10 +118,10 @@ namespace mvk {
 		std::vector<MSLResourceBinding> resourceBindings;
 
         /** Returns whether the vertex attribute at the specified location is used by the shader. */
-        bool isVertexAttributeLocationUsed(uint32_t location);
+        bool isVertexAttributeLocationUsed(uint32_t location) const;
 
         /** Returns whether the vertex buffer at the specified Metal binding index is used by the shader. */
-        bool isVertexBufferUsed(uint32_t mslBuffer);
+        bool isVertexBufferUsed(uint32_t mslBuffer) const;
 
         /**
          * Returns whether this context matches the other context. It does if the respective 
@@ -122,10 +129,10 @@ namespace mvk {
          * can be found in the other context. Vertex attributes and resource bindings that are
          * in the other context but are not used by the shader that created this context, are ignored.
          */
-        bool matches(SPIRVToMSLConverterContext& other);
+        bool matches(const SPIRVToMSLConverterContext& other) const;
 
         /** Aligns the usage of this context with that of the source context. */
-        void alignUsageWith(SPIRVToMSLConverterContext& srcContext);
+        void alignUsageWith(const SPIRVToMSLConverterContext& srcContext);
 
 	} SPIRVToMSLConverterContext;
 
@@ -135,20 +142,22 @@ namespace mvk {
      * and the number of threads in each workgroup or their specialization constant id, if the shader is a compute shader.
      */
     typedef struct {
-        std::string mtlFunctionName;
+        std::string mtlFunctionName = "main0";
         struct {
             uint32_t width = 1;
             uint32_t height = 1;
             uint32_t depth = 1;
         } workgroupSize;
         struct {
-            uint32_t width, height, depth;
+			uint32_t width = 1;
+			uint32_t height = 1;
+			uint32_t depth = 1;
             uint32_t constant = 0;
         } workgroupSizeId;
     } SPIRVEntryPoint;
 
     /** Holds a map of entry point info, indexed by the SPIRV entry point name. */
-    typedef std::unordered_map<std::string, SPIRVEntryPoint> SPIRVEntryPointsByName;
+//    typedef std::unordered_map<std::string, SPIRVEntryPoint> SPIRVEntryPointsByName;
 
 	/** Special constant used in a MSLResourceBinding descriptorSet element to indicate the bindings for the push constants. */
     static const uint32_t kPushConstDescSet = std::numeric_limits<uint32_t>::max();
@@ -195,8 +204,11 @@ namespace mvk {
 		 */
 		const std::string& getMSL() { return _msl; }
 
-        /** Returns a mapping of entry point info, indexed by SPIR-V entry point name. */
-        const SPIRVEntryPointsByName& getEntryPoints() { return _entryPoints; }
+        /** Returns information about the shader entry point. */
+        const SPIRVEntryPoint& getEntryPoint() { return _entryPoint; }
+
+		/** Returns a mapping of entry point info, indexed by SPIR-V entry point name. */
+//		const SPIRVEntryPointsByName& getEntryPoints() { return _entryPoints; }
 
 		/**
 		 * Returns whether the most recent conversion was successful.
@@ -212,10 +224,14 @@ namespace mvk {
 		const std::string& getResultLog() { return _resultLog; }
 
         /** Sets MSL source code. This can be used when MSL is supplied directly. */
-        void setMSL(const std::string& msl, const SPIRVEntryPointsByName& entryPoints) {
+        void setMSL(const std::string& msl, const SPIRVEntryPoint* pEntryPoint) {
             _msl = msl;
-            _entryPoints = entryPoints;
+			if (pEntryPoint) { _entryPoint = *pEntryPoint; }
         }
+//        void setMSL(const std::string& msl, const SPIRVEntryPointsByName& entryPoints) {
+//            _msl = msl;
+//            _entryPoints = entryPoints;
+//        }
 
 	protected:
 		void logMsg(const char* logMsg);
@@ -228,7 +244,8 @@ namespace mvk {
 		std::vector<uint32_t> _spirv;
 		std::string _msl;
 		std::string _resultLog;
-        SPIRVEntryPointsByName _entryPoints;
+		SPIRVEntryPoint _entryPoint;
+//        SPIRVEntryPointsByName _entryPoints;
 		bool _wasConverted = false;
 	};
 

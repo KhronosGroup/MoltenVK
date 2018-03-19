@@ -44,8 +44,8 @@ extern const MVKMTLFunction MVKMTLFunctionNull;
 class MVKShaderLibrary : public MVKBaseDeviceObject {
 
 public:
-    /** Returns the Metal shader function used by the specified shader state. */
-    MVKMTLFunction getMTLFunction(const VkPipelineShaderStageCreateInfo* pShaderStage);
+	/** Returns the Metal shader function, possibly specialized. */
+	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo);
 
     /** Constructs an instance from the MSL source code in the specified SPIRVToMSLConverter. */
     MVKShaderLibrary(MVKDevice* device, SPIRVToMSLConverter& mslConverter);
@@ -62,7 +62,7 @@ protected:
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
 
 	id<MTLLibrary> _mtlLibrary;
-    SPIRVEntryPointsByName _entryPoints;
+	SPIRVEntryPoint _entryPoint;
 };
 
 
@@ -73,9 +73,9 @@ protected:
 class MVKShaderModule : public MVKBaseDeviceObject {
 
 public:
-    /** Returns the Metal shader function used by the specified shader state, or nil if it doesn't exist. */
-    MVKMTLFunction getMTLFunction(const VkPipelineShaderStageCreateInfo* pShaderStage,
-                                  SPIRVToMSLConverterContext* pContext);
+	/** Returns the Metal shader function, possibly specialized. */
+	MVKMTLFunction getMTLFunction(SPIRVToMSLConverterContext* pContext,
+								  const VkSpecializationInfo* pSpecializationInfo);
 
 	MVKShaderModule(MVKDevice* device, const VkShaderModuleCreateInfo* pCreateInfo);
 
