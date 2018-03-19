@@ -157,18 +157,22 @@ void MVKSwapchain::markFrameInterval() {
     _performanceStatistics.averageFrameInterval += _averageFrameIntervalFilterAlpha * (_performanceStatistics.lastFrameInterval - _performanceStatistics.averageFrameInterval);
     _performanceStatistics.averageFramesPerSecond = 1000.0 / _performanceStatistics.averageFrameInterval;
 
+// Uncomment for per-frame logging.
+//	MVKLogDebug("Frame interval: %.2f ms. Avg frame interval: %.2f ms. Frame number: %d.",
+//				_performanceStatistics.lastFrameInterval,
+//				_performanceStatistics.averageFrameInterval,
+//				_currentPerfLogFrameCount + 1);
+
     uint32_t perfLogCntLimit = _device->_mvkConfig.performanceLoggingFrameCount;
-    if (perfLogCntLimit > 0) {
-        _currentPerfLogFrameCount++;
-        if (_currentPerfLogFrameCount >= perfLogCntLimit) {
-			MVKLogInfo("Frame interval: %.2f ms. Avg frame interval: %.2f ms. FPS: %.2f. Elapsed time: %.3f seconds.",
-                       _performanceStatistics.lastFrameInterval,
-                       _performanceStatistics.averageFrameInterval,
-                       _performanceStatistics.averageFramesPerSecond,
-					   mvkGetElapsedMilliseconds() / 1000.0);
-            _currentPerfLogFrameCount = 0;
-        }
-    }
+    if ((perfLogCntLimit > 0) && (++_currentPerfLogFrameCount >= perfLogCntLimit)) {
+		_currentPerfLogFrameCount = 0;
+		MVKLogInfo("Frame interval: %.2f ms. Avg frame interval: %.2f ms. Avg FPS: %.2f. Reporting every: %d frames. Elapsed time: %.3f seconds.",
+				   _performanceStatistics.lastFrameInterval,
+				   _performanceStatistics.averageFrameInterval,
+				   _performanceStatistics.averageFramesPerSecond,
+				   perfLogCntLimit,
+				   mvkGetElapsedMilliseconds() / 1000.0);
+	}
 }
 
 void MVKSwapchain::getPerformanceStatistics(MVKSwapchainPerformance* pSwapchainPerf) {

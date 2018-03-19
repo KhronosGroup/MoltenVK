@@ -1,1 +1,1 @@
-SPIRV-Cross/spirv.hpp
+../../External/SPIRV-Cross/spirv.hpp

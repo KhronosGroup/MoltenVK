@@ -756,8 +756,8 @@
 		A93903C71C57E9ED00FE90DC /* MoltenVKSPIRVToMSLConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKSPIRVToMSLConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A95096BD2003D32400F10950 /* DirectorySupport.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DirectorySupport.mm; sourceTree = "<group>"; };
 		A95096BE2003D32400F10950 /* DirectorySupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DirectorySupport.h; sourceTree = "<group>"; };
-		A95C5F3D1DEA9070000D17B6 /* spirv_cfg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = spirv_cfg.cpp; path = "SPIRV-Cross/spirv_cfg.cpp"; sourceTree = "<group>"; };
-		A95C5F3E1DEA9070000D17B6 /* spirv_cfg.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = spirv_cfg.hpp; path = "SPIRV-Cross/spirv_cfg.hpp"; sourceTree = "<group>"; };
+		A95C5F3D1DEA9070000D17B6 /* spirv_cfg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_cfg.cpp; sourceTree = "<group>"; };
+		A95C5F3E1DEA9070000D17B6 /* spirv_cfg.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_cfg.hpp; sourceTree = "<group>"; };
 		A964BD5F1C57EFBD00D930D8 /* MoltenVKShaderConverter */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MoltenVKShaderConverter; sourceTree = BUILT_PRODUCTS_DIR; };
 		A964BD601C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKGLSLToSPIRVConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A964BD611C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKGLSLToSPIRVConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1110,13 +1110,13 @@
 		A9A578282054A0E20072F392 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		A9A578292054A0E20072F392 /* InitializeDll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InitializeDll.h; sourceTree = "<group>"; };
 		A9A5782A2054A0E20072F392 /* InitializeDll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InitializeDll.cpp; sourceTree = "<group>"; };
-		A9AB19901CB5B5A80001E7F9 /* spirv_common.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = spirv_common.hpp; path = "SPIRV-Cross/spirv_common.hpp"; sourceTree = "<group>"; };
-		A9AB19911CB5B5A80001E7F9 /* spirv_cross.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = spirv_cross.cpp; path = "SPIRV-Cross/spirv_cross.cpp"; sourceTree = "<group>"; };
-		A9AB19921CB5B5A80001E7F9 /* spirv_cross.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = spirv_cross.hpp; path = "SPIRV-Cross/spirv_cross.hpp"; sourceTree = "<group>"; };
-		A9AB19931CB5B5A80001E7F9 /* spirv_glsl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = spirv_glsl.cpp; path = "SPIRV-Cross/spirv_glsl.cpp"; sourceTree = "<group>"; };
-		A9AB19941CB5B5A80001E7F9 /* spirv_glsl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = spirv_glsl.hpp; path = "SPIRV-Cross/spirv_glsl.hpp"; sourceTree = "<group>"; };
-		A9AB19951CB5B5A80001E7F9 /* spirv_msl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = spirv_msl.cpp; path = "SPIRV-Cross/spirv_msl.cpp"; sourceTree = "<group>"; };
-		A9AB19961CB5B5A80001E7F9 /* spirv_msl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; name = spirv_msl.hpp; path = "SPIRV-Cross/spirv_msl.hpp"; sourceTree = "<group>"; };
+		A9AB19901CB5B5A80001E7F9 /* spirv_common.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_common.hpp; sourceTree = "<group>"; };
+		A9AB19911CB5B5A80001E7F9 /* spirv_cross.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_cross.cpp; sourceTree = "<group>"; };
+		A9AB19921CB5B5A80001E7F9 /* spirv_cross.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_cross.hpp; sourceTree = "<group>"; };
+		A9AB19931CB5B5A80001E7F9 /* spirv_glsl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_glsl.cpp; sourceTree = "<group>"; };
+		A9AB19941CB5B5A80001E7F9 /* spirv_glsl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_glsl.hpp; sourceTree = "<group>"; };
+		A9AB19951CB5B5A80001E7F9 /* spirv_msl.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_msl.cpp; sourceTree = "<group>"; };
+		A9AB19961CB5B5A80001E7F9 /* spirv_msl.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_msl.hpp; sourceTree = "<group>"; };
 		A9BB09751CEF89B100CCAB22 /* spirv.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv.hpp; sourceTree = "<group>"; };
 		A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommonEnvironment.h; sourceTree = "<group>"; };
 		A9F042AB1FB4D060009FCCB8 /* MVKLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKLogging.h; sourceTree = "<group>"; };
@@ -1177,6 +1177,7 @@
 				A9AB19961CB5B5A80001E7F9 /* spirv_msl.hpp */,
 			);
 			name = "SPIRV-Cross";
+			path = "../../External/SPIRV-Cross";
 			sourceTree = "<group>";
 		};
 		A964B28D1C57EBC400D930D8 /* Products */ = {
@@ -1198,7 +1199,8 @@
 				A9A578272054A0E20072F392 /* OGLCompilersDLL */,
 				A9A577C02054A0E20072F392 /* SPIRV */,
 			);
-			path = glslang;
+			name = glslang;
+			path = ../../External/glslang;
 			sourceTree = "<group>";
 		};
 		A97CC73C1C7527F3004A5C7E /* MoltenVKShaderConverterTool */ = {
@@ -1709,7 +1711,8 @@
 			children = (
 				A9A574D520549F1B0072F392 /* source */,
 			);
-			path = "SPIRV-Tools";
+			name = "SPIRV-Tools";
+			path = "../../External/glslang/External/spirv-tools";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -2739,10 +2742,10 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/include\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/source\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/build\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Headers/include\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/source\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/../External/glslang/build/External/spirv-tools\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				MACH_O_TYPE = staticlib;
@@ -2761,10 +2764,10 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/include\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/source\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/build\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Headers/include\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/source\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/../External/glslang/build/External/spirv-tools\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				MACH_O_TYPE = staticlib;
@@ -2782,10 +2785,10 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/include\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/source\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/build\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Headers/include\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/source\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/../External/glslang/build/External/spirv-tools\"",
 				);
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
@@ -2800,10 +2803,10 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/include\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/source\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/build\"",
-					"\"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Headers/include\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/source\"",
+					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/../External/glslang/build/External/spirv-tools\"",
 				);
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
@@ -2844,7 +2847,6 @@
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
@@ -2892,7 +2894,6 @@
 				GCC_PREPROCESSOR_DEFINITIONS = "SPIRV_CROSS_FLT_FMT=\\\"%.6g\\\"";
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;

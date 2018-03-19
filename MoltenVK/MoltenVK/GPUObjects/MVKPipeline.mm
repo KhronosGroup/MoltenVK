@@ -264,17 +264,20 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     // Add shader stages
     for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
         const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
+		shaderContext.options.entryPointName = pSS->pName;
 
         MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
 
         // Vertex shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_VERTEX_BIT)) {
-            plDesc.vertexFunction = mvkShdrMod->getMTLFunction(pSS, &shaderContext).mtlFunction;
+			shaderContext.options.entryPointStage = spv::ExecutionModelVertex;
+            plDesc.vertexFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo).mtlFunction;
         }
 
         // Fragment shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_FRAGMENT_BIT)) {
-			plDesc.fragmentFunction = mvkShdrMod->getMTLFunction(pSS, &shaderContext).mtlFunction;
+			shaderContext.options.entryPointStage = spv::ExecutionModelFragment;
+			plDesc.fragmentFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo).mtlFunction;
         }
     }
 
@@ -426,13 +429,15 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     if ( !mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_COMPUTE_BIT) ) { return MVKMTLFunctionNull; }
 
     SPIRVToMSLConverterContext shaderContext;
+	shaderContext.options.entryPointName = pCreateInfo->stage.pName;
+	shaderContext.options.entryPointStage = spv::ExecutionModelGLCompute;
     shaderContext.options.mslVersion = _device->_pMetalFeatures->mslVersion;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
 
     MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
-    return mvkShdrMod->getMTLFunction(pSS, &shaderContext);
+    return mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo);
 }
 
 

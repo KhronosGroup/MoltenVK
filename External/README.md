@@ -127,8 +127,7 @@ if you encounter any linking errors, may need to re-add the *SPIRV-Cross* librar
    2. In the *Finder*, right-click your `MoltenVKShaderConverter.xcodeproj` file and select 
       **_Show Package Contents_**.
    3. Open the `project.pbxproj` file in a text editor.
-   4. Replace all occurrences of the `path-to-SPIRV-Cross-repo-folder` with simply 
-      `SPIRV-Cross`.
+   4. Remove all occurrences of `path-to-SPIRV-Cross-repo-folder` from the paths to the files added above.
 
 
 ### Regression Testing Your Changes to *SPIRV-Cross*
@@ -174,10 +173,10 @@ if you encounter any linking errors, may need to re-add the *SPIRV-Tools* librar
    *Build Settings* tab. Locate the build setting entry **Header Search Paths** 
    (`HEADER_SEARCH_PATHS`) and add the following paths:
    
-		"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/include"
-		"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/source"
-		"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Tools/build"
-		"$(SRCROOT)/MoltenVKSPIRVToMSLConverter/SPIRV-Headers/include"
+		"$(SRCROOT)/../External/glslang/External/spirv-tools/include"
+		"$(SRCROOT)/../External/glslang/External/spirv-tools/source"
+		"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include"
+		"$(SRCROOT)/../External/glslang/build/External/spirv-tools"
 
 5. ***(Optional)*** To simplify the paths used within *Xcode* to reference the added files,
    perform the following steps:
@@ -186,7 +185,8 @@ if you encounter any linking errors, may need to re-add the *SPIRV-Tools* librar
    2. In the *Finder*, right-click your `MoltenVKShaderConverter.xcodeproj` file and select 
       **_Show Package Contents_**.
    3. Open the `project.pbxproj` file in a text editor.
-   4. Replace all occurrences of the `path-to-SPIRV-Tools-repo-folder/source` with simply `source`. 
+   4. Remove all occurrences of `path-to-SPIRV-Tools-repo-folder` from the paths to the 
+      `source` directory added above.
 
 
 
@@ -225,6 +225,7 @@ if you encounter any linking errors, may need to re-add the *glslang* library to
    2. In the *Finder*, right-click your `MoltenVKShaderConverter.xcodeproj` file and select 
       **_Show Package Contents_**.
    3. Open the `project.pbxproj` file in a text editor.
-   4. Replace all occurrences of the `path-to-glslang-repo-folder` with simply `glslang `.
+   4. Remove all occurrences of `path-to-glslang-repo-folder` from the paths to the 
+      `glslang`, `OGLCompilersDLL`, and `SPIRV` directories added above.
 
 

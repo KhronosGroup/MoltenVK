@@ -39,14 +39,13 @@ static uint32_t getOffsetForConstantId(const VkSpecializationInfo* pSpecInfo, ui
     return -1;
 }
 
-MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkPipelineShaderStageCreateInfo* pShaderStage) {
+MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpecializationInfo) {
 
     if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
     // Ensure the function name is compatible with Metal (Metal does not allow main()
     // as a function name), and retrieve the unspecialized Metal function with that name.
-    SPIRVEntryPoint& ep = _entryPoints[pShaderStage->pName];
-    NSString* mtlFuncName = @(ep.mtlFunctionName.c_str());
+    NSString* mtlFuncName = @(_entryPoint.mtlFunctionName.c_str());
 
     uint64_t startTime = _device->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
@@ -64,16 +63,15 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkPipelineShaderStageCreat
                 // The Metal shader contains function constants and expects to be specialized
                 // Populate the Metal function constant values from the Vulkan specialization info.
                 MTLFunctionConstantValues* mtlFCVals = [[MTLFunctionConstantValues new] autorelease];
-                const VkSpecializationInfo* pSpecInfo = pShaderStage->pSpecializationInfo;
-                if (pSpecInfo) {
+                if (pSpecializationInfo) {
                     // Iterate through the provided Vulkan specialization entries, and populate the
                     // Metal function constant value that matches the Vulkan specialization constantID.
-                    for (uint32_t specIdx = 0; specIdx < pSpecInfo->mapEntryCount; specIdx++) {
-                        const VkSpecializationMapEntry* pMapEntry = &pSpecInfo->pMapEntries[specIdx];
+                    for (uint32_t specIdx = 0; specIdx < pSpecializationInfo->mapEntryCount; specIdx++) {
+                        const VkSpecializationMapEntry* pMapEntry = &pSpecializationInfo->pMapEntries[specIdx];
                         NSUInteger mtlFCIndex = pMapEntry->constantID;
                         MTLFunctionConstant* mtlFC = getFunctionConstant(mtlFCs, mtlFCIndex);
                         if (mtlFC) {
-                            [mtlFCVals setConstantValue: &(((char*)pSpecInfo->pData)[pMapEntry->offset])
+                            [mtlFCVals setConstantValue: &(((char*)pSpecializationInfo->pData)[pMapEntry->offset])
                                                    type: mtlFC.type
                                                 atIndex: mtlFCIndex];
                         }
@@ -90,29 +88,28 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkPipelineShaderStageCreat
     } else {
         mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
     }
-    
-    const VkSpecializationInfo* pSpecInfo = pShaderStage->pSpecializationInfo;
-    if (pSpecInfo) {
+
+    if (pSpecializationInfo) {
         // Get the specialization constant values for the work group size
-        if (ep.workgroupSizeId.constant != 0) {
-            uint32_t widthOffset = getOffsetForConstantId(pSpecInfo, ep.workgroupSizeId.width);
+        if (_entryPoint.workgroupSizeId.constant != 0) {
+            uint32_t widthOffset = getOffsetForConstantId(pSpecializationInfo, _entryPoint.workgroupSizeId.width);
             if (widthOffset != -1) {
-                ep.workgroupSize.width = *reinterpret_cast<uint32_t*>((uint8_t*)pSpecInfo->pData + widthOffset);
+                _entryPoint.workgroupSize.width = *reinterpret_cast<uint32_t*>((uint8_t*)pSpecializationInfo->pData + widthOffset);
             }
-            
-            uint32_t heightOffset = getOffsetForConstantId(pSpecInfo, ep.workgroupSizeId.height);
+
+            uint32_t heightOffset = getOffsetForConstantId(pSpecializationInfo, _entryPoint.workgroupSizeId.height);
             if (heightOffset != -1) {
-                ep.workgroupSize.height = *reinterpret_cast<uint32_t*>((uint8_t*)pSpecInfo->pData + heightOffset);
+                _entryPoint.workgroupSize.height = *reinterpret_cast<uint32_t*>((uint8_t*)pSpecializationInfo->pData + heightOffset);
             }
-            
-            uint32_t depthOffset = getOffsetForConstantId(pSpecInfo, ep.workgroupSizeId.depth);
+
+            uint32_t depthOffset = getOffsetForConstantId(pSpecializationInfo, _entryPoint.workgroupSizeId.depth);
             if (depthOffset != -1) {
-                ep.workgroupSize.depth = *reinterpret_cast<uint32_t*>((uint8_t*)pSpecInfo->pData + depthOffset);
+                _entryPoint.workgroupSize.depth = *reinterpret_cast<uint32_t*>((uint8_t*)pSpecializationInfo->pData + depthOffset);
             }
         }
     }
 
-    return { mtlFunc, MTLSizeMake(ep.workgroupSize.width, ep.workgroupSize.height, ep.workgroupSize.depth) };
+    return { mtlFunc, MTLSizeMake(_entryPoint.workgroupSize.width, _entryPoint.workgroupSize.height, _entryPoint.workgroupSize.depth) };
 }
 
 // Returns the MTLFunctionConstant with the specified ID from the specified array of function constants.
@@ -134,7 +131,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device, SPIRVToMSLConverter& mslCo
     }
     _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.mslCompile, startTime);
 
-    _entryPoints = mslConverter.getEntryPoints();
+	_entryPoint = mslConverter.getEntryPoint();
 }
 
 MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device,
@@ -179,11 +176,11 @@ MVKShaderLibrary::~MVKShaderLibrary() {
 #pragma mark -
 #pragma mark MVKShaderModule
 
-MVKMTLFunction MVKShaderModule::getMTLFunction(const VkPipelineShaderStageCreateInfo* pShaderStage,
-                                               SPIRVToMSLConverterContext* pContext) {
+MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConverterContext* pContext,
+											   const VkSpecializationInfo* pSpecializationInfo) {
     lock_guard<mutex> lock(_accessLock);
     MVKShaderLibrary* mvkLib = getShaderLibrary(pContext);
-    return mvkLib ? mvkLib->getMTLFunction(pShaderStage) : MVKMTLFunctionNull;
+    return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo) : MVKMTLFunctionNull;
 }
 
 MVKShaderLibrary* MVKShaderModule::getShaderLibrary(SPIRVToMSLConverterContext* pContext) {
@@ -200,7 +197,7 @@ MVKShaderLibrary* MVKShaderModule::getShaderLibrary(SPIRVToMSLConverterContext* 
 MVKShaderLibrary* MVKShaderModule::findShaderLibrary(SPIRVToMSLConverterContext* pContext) {
     for (auto& slPair : _shaderLibraries) {
         if (slPair.first.matches(*pContext)) {
-            (*pContext).alignUsageWith(slPair.first);
+            pContext->alignUsageWith(slPair.first);
             return slPair.second;
         }
     }
@@ -248,8 +245,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
             }
             case kMVKMagicNumberMSLSourceCode: {                    // MSL source code
                 uintptr_t pMSLCode = uintptr_t(pCreateInfo->pCode) + sizeof(MVKMSLSPIRVHeader);
-                SPIRVEntryPointsByName entryPoints;
-                _converter.setMSL((char*)pMSLCode, entryPoints);
+				_converter.setMSL((char*)pMSLCode, nullptr);
                 _defaultLibrary = new MVKShaderLibrary(_device, _converter);
                 break;
             }
