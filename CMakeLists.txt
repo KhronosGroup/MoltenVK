@@ -59,7 +59,7 @@ add_library(MoltenVK ${SOURCES})
 add_custom_target(
     fetchDependencies ALL
     COMMENT "Fetching dependencies"
-    COMMAND ${CMAKE_SOURCE_DIR}/External/fetchDependencies
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/External/fetchDependencies
 )
 
 add_dependencies(MoltenVK fetchDependencies)
