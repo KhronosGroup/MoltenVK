@@ -23,15 +23,30 @@ popd >/dev/null
 # $1 repo name
 # $2 repo url
 # $3 repo revision (commit SHA)
+# $? 0 if current repo revision == $3, else 1
 clone_repo() {
 	echo "$1 repo: $2"
 	echo "$1 revision: $3"
 
-	rm -rf ${script_path}/$1
-	git clone $2 ${script_path}/$1
-	cd ${script_path}/$1
-	git checkout $3
-	cd -
+	if [ -d "${script_path}/$1" ] && git -C "${script_path}/$1" rev-parse HEAD; then
+		current_rev=$(git -C "${script_path}/$1" rev-parse HEAD)
+		if [ $current_rev == $3 ]; then
+			echo "Repo up to date"
+			return 0
+		else
+			echo "Updating existing repo"
+			git -C "${script_path}/$1" fetch --all
+			git -C "${script_path}/$1" checkout $3
+		fi
+	else
+		echo "Cloning repo"
+		rm -rf ${script_path}/$1
+		git clone $2 ${script_path}/$1
+		cd ${script_path}/$1
+		git checkout $3
+		cd -
+	fi
+	return 1
 }
 
 # Build a repository
@@ -103,14 +118,24 @@ else
 	REPO_NAME=${GLSLANG_NAME}
 	REPO_URL=$(cat "${script_path}/${V_LVL_NAME}/external_revisions/glslang_giturl")
 	REPO_REV=$(cat "${script_path}/${V_LVL_NAME}/external_revisions/glslang_revision")
+	GLSLANG_BUILD_PATH="${script_path}/${GLSLANG_NAME}/build"
 
-	clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+	if clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV} \
+		&& [ -f "${GLSLANG_BUILD_PATH}/glslang/libglslang.a" ] \
+		&& [ -f "${GLSLANG_BUILD_PATH}/hlsl/libHLSL.a" ] \
+		&& [ -f "${GLSLANG_BUILD_PATH}/OGLCompilersDLL/libOGLCompiler.a" ] \
+		&& [ -f "${GLSLANG_BUILD_PATH}/SPIRV/libSPIRV.a" ] \
+		&& [ -f "${GLSLANG_BUILD_PATH}/SPIRV/libSPVRemapper.a" ]
+	then
+		echo "glslang up to date"
+	else
+		echo "glslang not up to date"
+		cd ${script_path}/${REPO_NAME}
+		./update_glslang_sources.py
+		cd -
 
-	cd ${script_path}/${REPO_NAME}
-	./update_glslang_sources.py
-	cd -
-
-	build_repo ${GLSLANG_NAME}
+		build_repo ${GLSLANG_NAME}
+	fi
 
 fi
 
