@@ -9,8 +9,6 @@
 #   -sdk = Load for the LunarG SDK, using symlinks to repos in SDK instead of fetching
 #          Vulkan-LoaderAndValidationLayers and glslang repositories.
 
-set -e
-
 # ----------------- Script path -----------------
 
 pushd "$(dirname "${0}")" >/dev/null
