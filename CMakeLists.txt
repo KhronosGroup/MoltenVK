@@ -8,3 +8,9 @@ add_subdirectory(Common)
 add_subdirectory(External)
 add_subdirectory(MoltenVKShaderConverter)
 add_subdirectory(MoltenVK)
+
+set(
+  MVK_INCLUDES
+  ${MVK_INCLUDES}
+  PARENT_SCOPE
+)
