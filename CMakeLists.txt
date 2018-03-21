@@ -2,6 +2,8 @@ project(MoltenVK)
 cmake_minimum_required(VERSION 3.10)
 set(CMAKE_CXX_STANDARD 14)
 
+execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/External/fetchDependencies)
+
 include_directories(MoltenVKShaderConverter)
 
 include_directories(Common)
@@ -56,13 +58,7 @@ set(
 
 add_library(MoltenVK ${SOURCES})
 
-add_custom_target(
-    fetchDependencies ALL
-    COMMENT "Fetching dependencies"
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/External/fetchDependencies
-)
-
-add_dependencies(MoltenVK fetchDependencies)
+# add_dependencies(MoltenVK fetchDependencies)
 
 find_library(FOUNDATION_LIB foundation)
 include_directories(External/glslang/SPIRV)
