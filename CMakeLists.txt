@@ -63,3 +63,83 @@ add_custom_target(
 )
 
 add_dependencies(MoltenVK fetchDependencies)
+
+find_library(FOUNDATION_LIB foundation)
+include_directories(External/glslang/SPIRV)
+include_directories(MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter)
+include_directories(MoltenVKShaderConverter/Tool)
+include_directories(MoltenVKShaderConverter/MoltenVKSPIRVToMSLConverter)
+include_directories(External/SPIRV-Cross)
+include_directories(External/glslang/External/spirv-tools/include)
+
+set(
+  SPIRV_TO_MSL_SOURCES
+  MoltenVKShaderConverter/MoltenVKSPIRVToMSLConverter/FileSupport.mm
+  MoltenVKShaderConverter/MoltenVKSPIRVToMSLConverter/SPIRVConversion.mm
+  MoltenVKShaderConverter/MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.cpp
+  External/SPIRV-Cross/spirv_cfg.cpp
+  External/SPIRV-Cross/spirv_cross.cpp
+  External/SPIRV-Cross/spirv_glsl.cpp
+  External/SPIRV-Cross/spirv_msl.cpp
+)
+
+set(
+  GLSL_TO_SPIRV_SOURCES
+  MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/GLSLConversion.mm
+  MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/GLSLToSPIRVConverter.cpp
+)
+
+set(
+  SHADER_CONVERTER_TOOL_SOURCES
+  MoltenVKShaderConverter/MoltenVKShaderConverterTool/main.cpp
+  MoltenVKShaderConverter/MoltenVKShaderConverterTool/MoltenVKShaderConverterTool.cpp
+  MoltenVKShaderConverter/MoltenVKShaderConverterTool/DirectorySupport.mm
+)
+
+add_library(MoltenVKGLSLToSPIRVConverter ${GLSL_TO_SPIRV_SOURCES})
+
+add_library(MoltenVKSPIRVToMSLConverter ${SPIRV_TO_MSL_SOURCES})
+
+add_library(glslang STATIC IMPORTED)
+set_target_properties(glslang PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/glslang/libglslang.a)
+
+add_library(spirv STATIC IMPORTED)
+set_target_properties(spirv PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/SPIRV/libSPIRV.a)
+
+add_library(spirvremapper STATIC IMPORTED)
+set_target_properties(spirvremapper PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/SPIRV/libSPVRemapper.a)
+
+add_library(oglcompiler STATIC IMPORTED)
+set_target_properties(oglcompiler PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/OGLCompilersDLL/libOGLCompiler.a)
+
+add_library(hlsl STATIC IMPORTED)
+set_target_properties(hlsl PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/hlsl/libHLSL.a)
+
+add_library(osdependent STATIC IMPORTED)
+set_target_properties(osdependent PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/glslang/OSDependent/Unix/libOSDependent.a)
+
+add_library(spirvtools STATIC IMPORTED)
+set_target_properties(spirvtools PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/External/spirv-tools/source/libSPIRV-Tools.a)
+
+add_library(spirvtoolslink STATIC IMPORTED)
+set_target_properties(spirvtoolslink PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/External/spirv-tools/source/link/libSPIRV-Tools-link.a)
+
+add_library(spirvtoolsopt STATIC IMPORTED)
+set_target_properties(spirvtoolsopt PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/External/spirv-tools/source/opt/libSPIRV-Tools-opt.a)
+
+add_executable(MoltenVKShaderConverterTool ${SHADER_CONVERTER_TOOL_SOURCES})
+  target_link_libraries(
+  MoltenVKShaderConverterTool
+  ${FOUNDATION_LIB}
+  MoltenVKSPIRVToMSLConverter
+  MoltenVKGLSLToSPIRVConverter
+  glslang
+  spirv
+  spirvremapper
+  oglcompiler
+  hlsl
+  osdependent
+  spirvtools
+  spirvtoolslink
+  spirvtoolsopt
+)
