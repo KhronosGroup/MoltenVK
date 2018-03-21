@@ -100,31 +100,31 @@ add_library(MoltenVKGLSLToSPIRVConverter ${GLSL_TO_SPIRV_SOURCES})
 
 add_library(MoltenVKSPIRVToMSLConverter ${SPIRV_TO_MSL_SOURCES})
 
-add_library(glslang STATIC IMPORTED)
+add_library(glslang STATIC IMPORTED GLOBAL)
 set_target_properties(glslang PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/glslang/libglslang.a)
 
-add_library(spirv STATIC IMPORTED)
+add_library(spirv STATIC IMPORTED GLOBAL)
 set_target_properties(spirv PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/SPIRV/libSPIRV.a)
 
-add_library(spirvremapper STATIC IMPORTED)
+add_library(spirvremapper STATIC IMPORTED GLOBAL)
 set_target_properties(spirvremapper PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/SPIRV/libSPVRemapper.a)
 
-add_library(oglcompiler STATIC IMPORTED)
+add_library(oglcompiler STATIC IMPORTED GLOBAL)
 set_target_properties(oglcompiler PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/OGLCompilersDLL/libOGLCompiler.a)
 
-add_library(hlsl STATIC IMPORTED)
+add_library(hlsl STATIC IMPORTED GLOBAL)
 set_target_properties(hlsl PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/hlsl/libHLSL.a)
 
-add_library(osdependent STATIC IMPORTED)
+add_library(osdependent STATIC IMPORTED GLOBAL)
 set_target_properties(osdependent PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/glslang/OSDependent/Unix/libOSDependent.a)
 
-add_library(spirvtools STATIC IMPORTED)
+add_library(spirvtools STATIC IMPORTED GLOBAL)
 set_target_properties(spirvtools PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/External/spirv-tools/source/libSPIRV-Tools.a)
 
-add_library(spirvtoolslink STATIC IMPORTED)
+add_library(spirvtoolslink STATIC IMPORTED GLOBAL)
 set_target_properties(spirvtoolslink PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/External/spirv-tools/source/link/libSPIRV-Tools-link.a)
 
-add_library(spirvtoolsopt STATIC IMPORTED)
+add_library(spirvtoolsopt STATIC IMPORTED GLOBAL)
 set_target_properties(spirvtoolsopt PROPERTIES IMPORTED_LOCATION ${CMAKE_CURRENT_SOURCE_DIR}/External/glslang/build/External/spirv-tools/source/opt/libSPIRV-Tools-opt.a)
 
 add_executable(MoltenVKShaderConverterTool ${SHADER_CONVERTER_TOOL_SOURCES})
