@@ -177,17 +177,6 @@ uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice) {
 	return 128 * MEBI;		// Conservative minimum for macOS GPU's & iOS shared memory
 }
 
-// Personalize the pipelineCacheUUID by blending in the vendorID and deviceID values into the lower 8 bytes.
-static void mvkBlendUUID(VkPhysicalDeviceProperties& devProps) {
-	uint32_t idOffset = VK_UUID_SIZE;
-
-	idOffset -= sizeof(uint32_t);
-	*(uint32_t*)&devProps.pipelineCacheUUID[idOffset] ^= NSSwapHostIntToBig(devProps.deviceID);
-
-	idOffset -= sizeof(uint32_t);
-	*(uint32_t*)&devProps.pipelineCacheUUID[idOffset] ^= NSSwapHostIntToBig(devProps.vendorID);
-}
-
 #if MVK_MACOS
 
 static uint32_t mvkGetEntryProperty(io_registry_entry_t entry, CFStringRef propertyName) {
@@ -211,7 +200,7 @@ static uint32_t mvkGetEntryProperty(io_registry_entry_t entry, CFStringRef prope
 
 void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice) {
 
-	static const UInt32 kIntelVendorId = 0x8086;
+	static const uint32_t kIntelVendorId = 0x8086;
 	bool isFound = false;
 
 	bool isIntegrated = mtlDevice.isLowPower;
@@ -240,13 +229,6 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
 		}
 		IOObjectRelease(entryIterator);
 	}
-
-	// Create a pipelineCacheUUID by blending the UUID of the computer with the vendor and device ID's
-	uuid_t uuid = {};
-	timespec ts = { .tv_sec = 0, .tv_nsec = 0 };
-	gethostuuid(uuid, &ts);
-	memcpy(devProps.pipelineCacheUUID, uuid, min(sizeof(uuid_t), (size_t)VK_UUID_SIZE));
-	mvkBlendUUID(devProps);
 }
 
 #endif	//MVK_MACOS
@@ -254,6 +236,8 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
 #if MVK_IOS
 
 void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice) {
+	// For iOS devices, the Device ID is the SoC model (A8, A10X...), in the hex form 0xaMMX, where
+	//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
 	NSUInteger coreCnt = NSProcessInfo.processInfo.processorCount;
 	uint32_t devID = 0xa070;
 	if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1]) {
@@ -268,12 +252,6 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
 	devProps.deviceID = devID;
 	devProps.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 	strlcpy(devProps.deviceName, mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
-
-	// Create a pipelineCacheUUID by blending the UUID of the computer with the vendor and device ID's
-	uuid_t uuid = {};
-	[UIDevice.currentDevice.identifierForVendor getUUIDBytes:uuid];
-	memcpy(devProps.pipelineCacheUUID, uuid, min(sizeof(uuid_t), (size_t)VK_UUID_SIZE));
-	mvkBlendUUID(devProps);
 }
 #endif	//MVK_IOS
 
