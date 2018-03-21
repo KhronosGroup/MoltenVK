@@ -89,10 +89,3 @@ set(
   spirvtoolsopt
   PARENT_SCOPE
 )
-
-add_custom_target(MoltenVK-External)
-
-add_custom_command(
-  TARGET MoltenVK-External
-  COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/fetchDependencies
-)

@@ -7,5 +7,3 @@ set(
   ${CMAKE_CURRENT_SOURCE_DIR}
   PARENT_SCOPE
 )
-
-add_custom_target(MoltenVK-Common)

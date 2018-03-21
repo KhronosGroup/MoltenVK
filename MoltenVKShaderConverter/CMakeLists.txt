@@ -39,29 +39,11 @@ set(
 
 add_library(MoltenVKGLSLToSPIRVConverter ${GLSL_TO_SPIRV_SOURCES})
 add_library(MoltenVKSPIRVToMSLConverter ${SPIRV_TO_MSL_SOURCES})
-
 add_executable(MoltenVKShaderConverterTool ${SHADER_CONVERTER_TOOL_SOURCES})
-  target_link_libraries(
+
+target_link_libraries(
   MoltenVKShaderConverterTool
   MoltenVKSPIRVToMSLConverter
   MoltenVKGLSLToSPIRVConverter
   ${MVK_EXTERNAL_LIBS}
-)
-
-add_dependencies(
-  MoltenVKGLSLToSPIRVConverter
-  MoltenVK-Common
-  MoltenVK-External
-)
-
-add_dependencies(
-  MoltenVKSPIRVToMSLConverter
-  MoltenVK-Common
-  MoltenVK-External
-)
-
-add_dependencies(
-  MoltenVKShaderConverterTool
-  MoltenVK-Common
-  MoltenVK-External
 )

@@ -56,4 +56,8 @@ set(
 )
 
 add_library(MoltenVK ${MVK_SOURCES})
-add_dependencies(MoltenVK MoltenVK-External)
+target_link_libraries(
+  MoltenVK
+  MoltenVKSPIRVToMSLConverter
+  ${MVK_EXTERNAL_LIBS}
+)
