@@ -56,8 +56,16 @@ set(
 )
 
 add_library(MoltenVK ${MVK_SOURCES})
+
 target_link_libraries(
   MoltenVK
   MoltenVKSPIRVToMSLConverter
+  MoltenVKGLSLToSPIRVConverter
   ${MVK_EXTERNAL_LIBS}
+)
+
+set(
+  MVK_INCLUDES
+  ${CMAKE_CURRENT_SOURCE_DIR}/include
+  PARENT_SCOPE
 )
