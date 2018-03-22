@@ -14,14 +14,6 @@ project.xcworkspace/
 build/
 *.[oa]
 
-# Dependencies
-External/Vulkan-LoaderAndValidationLayers
-External/glslang
-External/SPIRV-Tools
-External/SPIRV-Headers
-External/SPIRV-Cross
-External/VulkanSamples
-
 # Other source repository archive directories (protects when importing)
 .hg
 .svn
