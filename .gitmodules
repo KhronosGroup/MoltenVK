@@ -1,0 +1,12 @@
+[submodule "External/SPIRV-Cross"]
+	path = External/SPIRV-Cross
+	url = https://github.com/KhronosGroup/SPIRV-Cross
+[submodule "External/Vulkan-LoaderAndValidationLayers"]
+	path = External/Vulkan-LoaderAndValidationLayers
+	url = https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers
+[submodule "External/VulkanSamples"]
+	path = External/VulkanSamples
+	url = https://github.com/brenwill/VulkanSamples
+[submodule "External/glslang"]
+	path = External/glslang
+	url = https://github.com/KhronosGroup/glslang
