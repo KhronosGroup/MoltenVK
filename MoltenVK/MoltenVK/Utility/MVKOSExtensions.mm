@@ -21,10 +21,8 @@
 #include "MVKFoundation.h"
 
 #include <vector>
-#include <mach/mach.h>
 #include <mach/mach_host.h>
 #include <mach/mach_time.h>
-#include <uuid/uuid.h>
 
 #if MVK_MACOS
 #import <CoreFoundation/CFData.h>

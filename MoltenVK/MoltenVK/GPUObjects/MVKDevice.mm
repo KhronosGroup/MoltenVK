@@ -1325,22 +1325,24 @@ void MVKDevice::addShaderCompilationEventPerformanceImpl(MVKShaderCompilationEve
 	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
     shaderCompilationEvent.minimumDuration = min(currInterval, shaderCompilationEvent.minimumDuration);
     shaderCompilationEvent.maximumDuration = max(currInterval, shaderCompilationEvent.maximumDuration);
-    double totalInverval = (shaderCompilationEvent.averageDuration * shaderCompilationEvent.count++) + currInterval;
-    shaderCompilationEvent.averageDuration = totalInverval / shaderCompilationEvent.count;
+    double totalInterval = (shaderCompilationEvent.averageDuration * shaderCompilationEvent.count++) + currInterval;
+    shaderCompilationEvent.averageDuration = totalInterval / shaderCompilationEvent.count;
 
-    MVKLogInfo("%s performance curr: %.3f ms, avg: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
-               getShaderCompilationEventName(shaderCompilationEvent),
-               currInterval,
-               shaderCompilationEvent.averageDuration,
-               shaderCompilationEvent.minimumDuration,
-               shaderCompilationEvent.maximumDuration,
-               shaderCompilationEvent.count);
+	MVKLogDebug("%s performance curr: %.3f ms, avg: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
+				getShaderCompilationEventName(shaderCompilationEvent),
+				currInterval,
+				shaderCompilationEvent.averageDuration,
+				shaderCompilationEvent.minimumDuration,
+				shaderCompilationEvent.maximumDuration,
+				shaderCompilationEvent.count);
 }
 
 const char* MVKDevice::getShaderCompilationEventName(MVKShaderCompilationEventPerformance& shaderCompilationEvent) {
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.hashShaderCode) { return "Hash shader code"; }
     if (&shaderCompilationEvent == &_shaderCompilationPerformance.spirvToMSL) { return "Convert SPIR-V to MSL source code"; }
     if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslCompile) { return "Compile MSL source code into a MTLLibrary"; }
     if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslLoad) { return "Load pre-compiled MSL code into a MTLLibrary"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.shaderLibraryFromCache) { return "Retrieve shader library from the cache."; }
     if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionRetrieval) { return "Retrieve a MTLFunction from a MTLLibrary"; }
     if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionSpecialization) { return "Specialize a retrieved MTLFunction"; }
     if (&shaderCompilationEvent == &_shaderCompilationPerformance.pipelineCompile) { return "Compile MTLFunctions into a pipeline"; }
@@ -1464,9 +1466,11 @@ void MVKDevice::initPerformanceTracking() {
     initPerf.minimumDuration = numeric_limits<double>::max();
     initPerf.maximumDuration = 0.0;
 
+	_shaderCompilationPerformance.hashShaderCode = initPerf;
     _shaderCompilationPerformance.spirvToMSL = initPerf;
     _shaderCompilationPerformance.mslCompile = initPerf;
     _shaderCompilationPerformance.mslLoad = initPerf;
+	_shaderCompilationPerformance.shaderLibraryFromCache = initPerf;
     _shaderCompilationPerformance.functionRetrieval = initPerf;
     _shaderCompilationPerformance.functionSpecialization = initPerf;
     _shaderCompilationPerformance.pipelineCompile = initPerf;

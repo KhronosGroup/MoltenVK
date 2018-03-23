@@ -25,6 +25,8 @@
 
 #import <Metal/Metal.h>
 
+class MVKPipelineCache;
+
 using namespace mvk;
 
 
@@ -47,8 +49,8 @@ public:
 	/** Returns the Metal shader function, possibly specialized. */
 	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo);
 
-    /** Constructs an instance from the MSL source code in the specified SPIRVToMSLConverter. */
-    MVKShaderLibrary(MVKDevice* device, SPIRVToMSLConverter& mslConverter);
+	/** Constructs an instance from the specified MSL source code. */
+	MVKShaderLibrary(MVKDevice* device, const char* mslSourceCode, const SPIRVEntryPoint& entryPoint);
 
 	/** Constructs an instance from the specified compiled MSL code data. */
 	MVKShaderLibrary(MVKDevice* device,
@@ -67,6 +69,33 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKShaderLibraryCache
+
+/** Represents a cache of shader libraries for one shader module. */
+class MVKShaderLibraryCache : public MVKBaseDeviceObject {
+
+public:
+
+	/** Return a shader library from the specified shader context sourced from the specified shader module. */
+	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConverterContext* pContext, MVKShaderModule* shaderModule);
+
+	MVKShaderLibraryCache(MVKDevice* device) : MVKBaseDeviceObject(device) {};
+
+	~MVKShaderLibraryCache() override;
+
+protected:
+	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConverterContext* pContext);
+	MVKShaderLibrary* addShaderLibrary(SPIRVToMSLConverterContext* pContext,
+									   const char* mslSourceCode,
+									   const SPIRVEntryPoint& entryPoint);
+
+	std::mutex _accessLock;
+	std::size_t _shaderModuleHash;
+	std::vector<std::pair<SPIRVToMSLConverterContext, MVKShaderLibrary*>> _shaderLibraries;
+};
+
+
+#pragma mark -
 #pragma mark MVKShaderModule
 
 /** Represents a Vulkan shader module. */
@@ -75,19 +104,32 @@ class MVKShaderModule : public MVKBaseDeviceObject {
 public:
 	/** Returns the Metal shader function, possibly specialized. */
 	MVKMTLFunction getMTLFunction(SPIRVToMSLConverterContext* pContext,
-								  const VkSpecializationInfo* pSpecializationInfo);
+								  const VkSpecializationInfo* pSpecializationInfo,
+								  MVKPipelineCache* pipelineCache);
+
+	/** Convert the SPIR-V to MSL, using the specified shader conversion context. */
+	bool convert(SPIRVToMSLConverterContext* pContext);
+
+	/**
+	 * Returns the Metal Shading Language source code most recently converted
+	 * by the convert() function, or set directly using the setMSL() function.
+	 */
+	inline const std::string& getMSL() { return _converter.getMSL(); }
+
+	/** Returns information about the shader entry point. */
+	inline const SPIRVEntryPoint& getEntryPoint() { return _converter.getEntryPoint(); }
+
+	/** Returns a key as a means of identifying this shader module in a pipeline cache. */
+	inline std::size_t getKey() { return _key; }
 
 	MVKShaderModule(MVKDevice* device, const VkShaderModuleCreateInfo* pCreateInfo);
 
 	~MVKShaderModule() override;
 
 protected:
-	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConverterContext* pContext);
-	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConverterContext* pContext);
-	MVKShaderLibrary* addShaderLibrary(SPIRVToMSLConverterContext* pContext);
-
+	MVKShaderLibraryCache _shaderLibraryCache;
 	SPIRVToMSLConverter _converter;
 	MVKShaderLibrary* _defaultLibrary;
-	std::vector<std::pair<SPIRVToMSLConverterContext, MVKShaderLibrary*>> _shaderLibraries;
+	std::size_t _key;
     std::mutex _accessLock;
 };

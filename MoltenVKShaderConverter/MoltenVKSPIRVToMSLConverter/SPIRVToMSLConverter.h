@@ -207,9 +207,6 @@ namespace mvk {
         /** Returns information about the shader entry point. */
         const SPIRVEntryPoint& getEntryPoint() { return _entryPoint; }
 
-		/** Returns a mapping of entry point info, indexed by SPIR-V entry point name. */
-//		const SPIRVEntryPointsByName& getEntryPoints() { return _entryPoints; }
-
 		/**
 		 * Returns whether the most recent conversion was successful.
 		 *
@@ -228,10 +225,6 @@ namespace mvk {
             _msl = msl;
 			if (pEntryPoint) { _entryPoint = *pEntryPoint; }
         }
-//        void setMSL(const std::string& msl, const SPIRVEntryPointsByName& entryPoints) {
-//            _msl = msl;
-//            _entryPoints = entryPoints;
-//        }
 
 	protected:
 		void logMsg(const char* logMsg);
@@ -245,7 +238,6 @@ namespace mvk {
 		std::string _msl;
 		std::string _resultLog;
 		SPIRVEntryPoint _entryPoint;
-//        SPIRVEntryPointsByName _entryPoints;
 		bool _wasConverted = false;
 	};
 

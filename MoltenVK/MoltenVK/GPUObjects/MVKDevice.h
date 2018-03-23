@@ -221,7 +221,7 @@ public:
         return (MVKPhysicalDevice*)getDispatchableObject(vkPhysicalDevice);
     }
 
-private:
+protected:
 	friend class MVKDevice;
 
 	MTLFeatureSet getMaximalMTLFeatureSet();

@@ -105,9 +105,11 @@ typedef struct {
 
 /** MoltenVK performance of shader compilation events for a VkDevice. */
 typedef struct {
+	MVKShaderCompilationEventPerformance hashShaderCode;            /** Create a hash from the incoming shader code. */
     MVKShaderCompilationEventPerformance spirvToMSL;                /** Convert SPIR-V to MSL source code. */
     MVKShaderCompilationEventPerformance mslCompile;                /** Compile MSL source code into a MTLLibrary. */
     MVKShaderCompilationEventPerformance mslLoad;                   /** Load pre-compiled MSL code into a MTLLibrary. */
+	MVKShaderCompilationEventPerformance shaderLibraryFromCache;    /** Retrieve a shader library from the cache, lazily creating it if needed. */
     MVKShaderCompilationEventPerformance functionRetrieval;         /** Retrieve a MTLFunction from a MTLLibrary. */
     MVKShaderCompilationEventPerformance functionSpecialization;    /** Specialize a retrieved MTLFunction. */
     MVKShaderCompilationEventPerformance pipelineCompile;           /** Compile MTLFunctions into a pipeline. */

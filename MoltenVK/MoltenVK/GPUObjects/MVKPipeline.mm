@@ -271,13 +271,13 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         // Vertex shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_VERTEX_BIT)) {
 			shaderContext.options.entryPointStage = spv::ExecutionModelVertex;
-            plDesc.vertexFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo).mtlFunction;
+            plDesc.vertexFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
         }
 
         // Fragment shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_FRAGMENT_BIT)) {
 			shaderContext.options.entryPointStage = spv::ExecutionModelFragment;
-			plDesc.fragmentFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo).mtlFunction;
+			plDesc.fragmentFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
         }
     }
 
@@ -437,10 +437,36 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     layout->populateShaderConverterContext(shaderContext);
 
     MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
-    return mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo);
+    return mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache);
 }
 
 
 MVKComputePipeline::~MVKComputePipeline() {
     [_mtlPipelineState release];
 }
+
+
+#pragma mark -
+#pragma mark MVKPipelineCache
+
+/** Return a shader library from the specified shader context sourced from the specified shader module. */
+MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConverterContext* pContext, MVKShaderModule* shaderModule) {
+	lock_guard<mutex> lock(_shaderCacheLock);
+
+	size_t smKey = shaderModule->getKey();
+	MVKShaderLibraryCache* slCache = _shaderCacheByModuleHash[smKey];
+	if ( !slCache ) {
+		slCache = new MVKShaderLibraryCache(_device);
+		_shaderCacheByModuleHash[smKey] = slCache;
+	}
+
+	return slCache->getShaderLibrary(pContext, shaderModule);
+}
+
+
+MVKPipelineCache::~MVKPipelineCache() {
+	for (auto& pair : _shaderCacheByModuleHash) { delete pair.second; }
+	_shaderCacheByModuleHash.clear();
+}
+
+

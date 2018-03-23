@@ -71,7 +71,12 @@ public:
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
 
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
-	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKBaseDeviceObject(device) {}
+	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKBaseDeviceObject(device),
+																						   _pipelineCache(pipelineCache) {}
+
+protected:
+	MVKPipelineCache* _pipelineCache;
+
 };
 
 
@@ -168,6 +173,9 @@ public:
         return VK_SUCCESS;
     }
 
+	/** Return a shader library from the specified shader context sourced from the specified shader module. */
+	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConverterContext* pContext, MVKShaderModule* shaderModule);
+
 	/** Merges the contents of the specified number of pipeline caches into this cache. */
     inline VkResult mergePipelineCaches(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches) { return VK_SUCCESS; }
 
@@ -175,5 +183,11 @@ public:
 
 	/** Constructs an instance for the specified device. */
 	MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {}
+
+	~MVKPipelineCache() override;
+
+protected:
+	std::unordered_map<std::size_t, MVKShaderLibraryCache*> _shaderCacheByModuleHash;
+	std::mutex _shaderCacheLock;
 
 };
