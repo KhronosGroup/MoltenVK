@@ -48,11 +48,11 @@ using namespace std;
 #	define MVKViewClass		NSView
 #endif
 
-// To present surface using a command buffer, define the MVK_PRESENT_WITH_COMMAND_BUFFER build setting.
-#ifdef MVK_PRESENT_WITH_COMMAND_BUFFER
-#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    1
-#else
+// To present surface using a command buffer, define the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting.
+#ifdef MVK_PRESENT_WITHOUT_COMMAND_BUFFER
 #   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    0
+#else
+#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    1
 #endif
 
 // To display the MoltenVK logo watermark by default, define the MVK_DISPLAY_WATERMARK build setting.
