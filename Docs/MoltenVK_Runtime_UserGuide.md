@@ -388,11 +388,33 @@ This section discusses various options for improving performance when using **Mo
 <a name="shader_load_time"></a>
 ### Shader Loading Time
 
-*Metal* supports pre-compiled shaders, which can improve shader loading and set-up performance,
-allowing you to reduce your scene loading time. See the [*Metal Shading Language* Shaders](#shaders) 
-and [MoltenVKShaderConverter Shader Converter Tool](#shader_converter_tool) sections above for 
-more information about how to use the `MoltenVKShaderConverter` tool to create and load pre-compiled 
-*Metal* shaders into **MoltenVK**.
+A number of steps is require to load and compile *SPIR-V* shaders into a form that *Metal* can use. 
+Although the overall process is fast, the slowest step involves converting shaders from *SPIR-V* to
+*MSL* source code format.
+
+If you have a lot of shaders, you can dramatically improve shader loading time by using the standard
+*Vulkan pipeline cache* feature, to serialize shaders and store them in *MSL* form offline.
+Loading *MSL* shaders via the pipeline cache serializing mechanism can be significantly faster than 
+converting from *SPIR-V* to *MSL* each time.
+
+In *Vulkan*, pipeline cache serialization for offline storage is available through the 
+`vkGetPipelineCacheData()` and `vkCreatePipelineCache()` functions. Loading the pipeline cache 
+from offline storage at app start-up time can dramatically improve both shader loading performance, 
+and performance glitches and hiccups during runtime code if shader loading is performed then.
+
+When using pipeline caching, nothing changes about how you load *SPIR-V* shader code. **MoltenVK** 
+automatically detects that the *SPIR-V* was previously converted to *MSL*, and stored offline via 
+the *Vulkan* pipeline cache serialization mechanism, and does not invoke the relatively expensive
+step of converting the *SPIR-V* to *MSL* again.
+
+As a second shader loading performance option, *Metal* also supports pre-compiled shaders, which 
+can improve shader loading and set-up performance, allowing you to reduce your scene loading time. 
+See the [*Metal Shading Language* Shaders](#shaders) and 
+[MoltenVKShaderConverter Shader Converter Tool](#shader_converter_tool) sections above for more 
+information about how to use the `MoltenVKShaderConverter` tool to create and load pre-compiled 
+*Metal* shaders into **MoltenVK**. This behaviour is not standard *Vulkan* behaviour, and does not
+improve performance significantly. Your first choice should be to use offline storage of pipeline
+cache contents as described in the previous paragraphs.
 
 
 <a name="xcode_config"></a>

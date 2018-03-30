@@ -113,6 +113,9 @@ typedef struct {
     MVKShaderCompilationEventPerformance functionRetrieval;         /** Retrieve a MTLFunction from a MTLLibrary. */
     MVKShaderCompilationEventPerformance functionSpecialization;    /** Specialize a retrieved MTLFunction. */
     MVKShaderCompilationEventPerformance pipelineCompile;           /** Compile MTLFunctions into a pipeline. */
+	MVKShaderCompilationEventPerformance sizePipelineCache;         /** Calculate the size of cache data required to write MSL to pipeline cache data stream. */
+	MVKShaderCompilationEventPerformance writePipelineCache;        /** Write MSL to pipeline cache data stream. */
+	MVKShaderCompilationEventPerformance readPipelineCache;         /** Read MSL from pipeline cache data stream. */
 } MVKShaderCompilationPerformance;
 
 

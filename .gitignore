@@ -21,6 +21,7 @@ External/SPIRV-Tools
 External/SPIRV-Headers
 External/SPIRV-Cross
 External/VulkanSamples
+External/cereal
 
 # Other source repository archive directories (protects when importing)
 .hg

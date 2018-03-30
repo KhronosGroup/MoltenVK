@@ -1328,7 +1328,7 @@ void MVKDevice::addShaderCompilationEventPerformanceImpl(MVKShaderCompilationEve
     double totalInterval = (shaderCompilationEvent.averageDuration * shaderCompilationEvent.count++) + currInterval;
     shaderCompilationEvent.averageDuration = totalInterval / shaderCompilationEvent.count;
 
-	MVKLogDebug("%s performance curr: %.3f ms, avg: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
+	MVKLogDebug("Shader building performance to %s curr: %.3f ms, avg: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
 				getShaderCompilationEventName(shaderCompilationEvent),
 				currInterval,
 				shaderCompilationEvent.averageDuration,
@@ -1338,14 +1338,17 @@ void MVKDevice::addShaderCompilationEventPerformanceImpl(MVKShaderCompilationEve
 }
 
 const char* MVKDevice::getShaderCompilationEventName(MVKShaderCompilationEventPerformance& shaderCompilationEvent) {
-	if (&shaderCompilationEvent == &_shaderCompilationPerformance.hashShaderCode) { return "Hash shader code"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.spirvToMSL) { return "Convert SPIR-V to MSL source code"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslCompile) { return "Compile MSL source code into a MTLLibrary"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslLoad) { return "Load pre-compiled MSL code into a MTLLibrary"; }
-	if (&shaderCompilationEvent == &_shaderCompilationPerformance.shaderLibraryFromCache) { return "Retrieve shader library from the cache."; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionRetrieval) { return "Retrieve a MTLFunction from a MTLLibrary"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionSpecialization) { return "Specialize a retrieved MTLFunction"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.pipelineCompile) { return "Compile MTLFunctions into a pipeline"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.hashShaderCode) { return "hash shader code"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.spirvToMSL) { return "convert SPIR-V to MSL source code"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslCompile) { return "compile MSL source code into a MTLLibrary"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslLoad) { return "load pre-compiled MSL code into a MTLLibrary"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.shaderLibraryFromCache) { return "retrieve shader library from the cache."; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionRetrieval) { return "retrieve a MTLFunction from a MTLLibrary"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionSpecialization) { return "specialize a retrieved MTLFunction"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.pipelineCompile) { return "compile MTLFunctions into a pipeline"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.sizePipelineCache) { return "calculate cache size required to write MSL to pipeline cache"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.writePipelineCache) { return "write MSL to pipeline cache"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.readPipelineCache) { return "read MSL from pipeline cache"; }
     return "Unknown shader compile event";
 }
 
@@ -1406,6 +1409,8 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) : _mvkConfig() {
 //	MVKLogDebug("Creating MVKDevice. Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
 
+	initPerformanceTracking();
+
 	_physicalDevice = physicalDevice;
 	_pFeatures = &_physicalDevice->_features;
 	_pMetalFeatures = &_physicalDevice->_metalFeatures;
@@ -1454,8 +1459,6 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 		}
 	}
 
-    initPerformanceTracking();
-
 	MVKLogInfo("Created VkDevice to run on GPU %s", _pProperties->deviceName);
 }
 
@@ -1474,6 +1477,9 @@ void MVKDevice::initPerformanceTracking() {
     _shaderCompilationPerformance.functionRetrieval = initPerf;
     _shaderCompilationPerformance.functionSpecialization = initPerf;
     _shaderCompilationPerformance.pipelineCompile = initPerf;
+	_shaderCompilationPerformance.sizePipelineCache = initPerf;
+	_shaderCompilationPerformance.writePipelineCache = initPerf;
+	_shaderCompilationPerformance.readPipelineCache = initPerf;
 }
 
 MVKDevice::~MVKDevice() {
