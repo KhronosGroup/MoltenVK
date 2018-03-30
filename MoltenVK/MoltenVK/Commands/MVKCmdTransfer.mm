@@ -827,13 +827,16 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     }
 
     VkFormat vkAttFmt = subpass->getDepthStencilFormat();
-    _rpsKey.attachmentMTLPixelFormats[kMVKAttachmentFormatDepthStencilIndex] = cmdPool->mtlPixelFormatFromVkFormat(vkAttFmt);
+	MTLPixelFormat mtlAttFmt = cmdPool->mtlPixelFormatFromVkFormat(vkAttFmt);
+    _rpsKey.attachmentMTLPixelFormats[kMVKAttachmentFormatDepthStencilIndex] = mtlAttFmt;
+	bool isClearingDepth = _isClearingDepth && mvkMTLPixelFormatIsDepthFormat(mtlAttFmt);
+	bool isClearingStencil = _isClearingStencil && mvkMTLPixelFormatIsStencilFormat(mtlAttFmt);
 
     // Render the clear colors to the attachments
     id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
     [mtlRendEnc pushDebugGroup: @"vkCmdClearAttachments"];
     [mtlRendEnc setRenderPipelineState: cmdEncoder->getCommandEncodingPool()->getCmdClearMTLRenderPipelineState(_rpsKey)];
-    [mtlRendEnc setDepthStencilState: cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(_isClearingDepth, _isClearingStencil)];
+    [mtlRendEnc setDepthStencilState: cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(isClearingDepth, isClearingStencil)];
     [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
 
     cmdEncoder->setVertexBytes(mtlRendEnc, _clearColors, sizeof(_clearColors), 0);
