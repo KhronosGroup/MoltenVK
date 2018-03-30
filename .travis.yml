@@ -1,4 +1,4 @@
-language: objective-c
+language: objective-c 
 
 # macOS and Xcode Version
 # Xcode 9.2 running on macOS 10.12
@@ -10,9 +10,9 @@ install:
   - ( cd External && ./fetchDependencies )
 
 # Cache built deps
-cache:
-  directories:
-    - External
+#cache:
+#  directories:
+#    - External
 
 script:
   - xcodebuild -scheme "MoltenVK (Debug)"
