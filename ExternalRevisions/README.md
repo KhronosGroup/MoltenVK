@@ -39,10 +39,9 @@ Fetching External Libraries
 - [*cereal*](https://github.com/USCiLab/cereal)
 
 These external open-source libraries are maintained in the `External` directory.
-To retrieve these libraries from their sources, run the `fetchDependencies` 
-script in that directory:
+To retrieve these libraries from their sources, run the `fetchDependencies`  script
+in the main repository directory:
 
-	cd External
 	./fetchDependencies [-sdk]
 
 The `-sdk` option tells the script that **MoltenVK** is being installed as part of 
@@ -62,13 +61,13 @@ versions of each external library. The version of each external library is
 determined as follows:
 
 - **_SPIRV-Cross_**: a GitHub repository commit identifier found in the
-  `External/SPIRV-Cross_repo_revision` file. 
+  `ExternalRevisions/SPIRV-Cross_repo_revision` file. 
   
 - **_VulkanSamples_**: a GitHub repository commit identifier found in the
-  `External/VulkanSamples_repo_revision` file.
+  `ExternalRevisions/VulkanSamples_repo_revision` file.
   
 - **_Vulkan-LoaderAndValidationLayers_**: a GitHub repository commit identifier found
-  in the `External/Vulkan-LoaderAndValidationLayers_repo_revision` file.
+  in the `ExternalRevisions/Vulkan-LoaderAndValidationLayers_repo_revision` file.
   
 - **_glslang_**: a GitHub repository commit identifier found in the retrieved 
   *Vulkan-LoaderAndValidationLayers* repository.
@@ -78,7 +77,7 @@ determined as follows:
 - **_SPIRV-Headers_**: automatically retrieved by the *glslang* repository.
 
 - **_cereal_**: a GitHub repository commit identifier found in the
-  `External/cereal_repo_revision` file. 
+  `ExternalRevisions/cereal_repo_revision` file. 
   
 You can update which versions of the *SPIRV-Cross*, *VulkanSamples*,
 *Vulkan-LoaderAndValidationLayers*, or *cereal* libraries are retrieved, 

@@ -137,7 +137,7 @@
 		A92DB3E61CE0F37D00FBC835 /* Whats_New.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = Whats_New.md; path = Docs/Whats_New.md; sourceTree = "<group>"; };
 		A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVK.xcodeproj; path = MoltenVK/MoltenVK.xcodeproj; sourceTree = "<group>"; };
 		A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVKShaderConverter.xcodeproj; path = MoltenVKShaderConverter/MoltenVKShaderConverter.xcodeproj; sourceTree = "<group>"; };
-		A943100220546CDD00F5CF87 /* fetchDependencies */ = {isa = PBXFileReference; lastKnownFileType = text; path = fetchDependencies; sourceTree = "<group>"; };
+		A943100220546CDD00F5CF87 /* fetchDependencies */ = {isa = PBXFileReference; lastKnownFileType = text; name = fetchDependencies; path = ../fetchDependencies; sourceTree = "<group>"; };
 		A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Runtime_UserGuide.md; path = Docs/MoltenVK_Runtime_UserGuide.md; sourceTree = "<group>"; };
 		A9AD67D12054E2D700ED3C08 /* VulkanSamples_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = VulkanSamples_repo_revision; sourceTree = "<group>"; };
 		A9AD67D22054E2D700ED3C08 /* Vulkan-LoaderAndValidationLayers_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Vulkan-LoaderAndValidationLayers_repo_revision"; sourceTree = "<group>"; };
@@ -187,7 +187,8 @@
 				A9AD67D22054E2D700ED3C08 /* Vulkan-LoaderAndValidationLayers_repo_revision */,
 				A9AD67D12054E2D700ED3C08 /* VulkanSamples_repo_revision */,
 			);
-			path = External;
+			name = External;
+			path = ExternalRevisions;
 			sourceTree = "<group>";
 		};
 		A98149741FB6B565005F00B4 /* Products */ = {
