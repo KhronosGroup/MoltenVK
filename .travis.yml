@@ -7,12 +7,12 @@ osx_image: xcode9.2
 # Build dependencies
 install:
   - brew install python3
-  - ( cd External && ./fetchDependencies )
+  - ./fetchDependencies
 
 # Cache built deps
-#cache:
-#  directories:
-#    - External
+cache:
+  directories:
+    - External
 
 script:
   - xcodebuild -scheme "MoltenVK (Debug)"

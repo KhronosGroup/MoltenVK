@@ -67,7 +67,7 @@ Installing **MoltenVK**
 -----------------------
 
 To install **MoltenVK**, clone this `MoltenVK` repository, and then run the 
-`External/fetchDependencies` script to retrieve and build several external 
+`fetchDependencies` script to retrieve and build several external 
 open-source libraries on which **MoltenVK** relies:
 
 1. Ensure you have `cmake` and `python3` installed:
@@ -81,11 +81,11 @@ open-source libraries on which **MoltenVK** relies:
 
 3. Retrieve and build the external libraries:
 
-		cd MoltenVK/External
+		cd MoltenVK
 		./fetchDependencies
 
 For more information about the external open-source libraries used by **MoltenVK**,
-see the [`External/README.md`](External/README.md) document.
+see the [`ExternalRevisions/README.md`](ExternalRevisions/README.md) document.
 
 
 <a name="building"></a>

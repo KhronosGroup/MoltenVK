@@ -12,19 +12,26 @@
 
 # ----------------- Functions -------------------
 
-# Clone a repository
+# Update a repository. If it exists, fetch it, if not clone it.
 # $1 repo name
 # $2 repo url
 # $3 repo revision (commit SHA)
-clone_repo() {
+update_repo() {
 	echo "$1 repo: $2"
 	echo "$1 revision: $3"
 
-	rm -rf $1
-	git clone $2 $1
-	cd $1
-	git checkout $3
-	cd -
+	if [ -d $1 -a -d $1/.git ]; then
+		cd $1
+		git fetch --all
+		git checkout --force $3
+		cd -
+	else
+		rm -rf $1
+		git clone $2 $1
+		cd $1
+		git checkout $3
+		cd -
+	fi
 }
 
 # Build a repository
@@ -32,8 +39,7 @@ clone_repo() {
 build_repo() {
 	echo "Building $1"
 
-	rm -rf $1/build
-	mkdir $1/build
+	mkdir -p $1/build
 	cd $1/build
 	cmake ..
 	make
@@ -41,39 +47,46 @@ build_repo() {
 }
 
 
-echo
-echo Retrieving MoltenVK dependencies.
-echo
+# ----------------- Main -------------------
 
+EXT_DIR=External
+EXT_REV_DIR=ExternalRevisions
 V_LVL_NAME=Vulkan-LoaderAndValidationLayers
 GLSLANG_NAME=glslang
+
+echo
+echo Retrieving MoltenVK dependencies into ${EXT_DIR}.
+echo
+
+mkdir -p ${EXT_DIR}
+cd ${EXT_DIR}
 
 
 # ----------------- Cereal -------------------
 
 REPO_NAME=cereal
 REPO_URL="https://github.com/USCiLab/${REPO_NAME}.git"
-REPO_REV=$(cat "./${REPO_NAME}_repo_revision")
+REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
 # ----------------- SPIRV-Cross -------------------
 
 REPO_NAME=SPIRV-Cross
 REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-REPO_REV=$(cat "./${REPO_NAME}_repo_revision")
+REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
 # ----------------- VulkanSamples -------------------
 
 REPO_NAME=VulkanSamples
 REPO_URL="https://github.com/brenwill/${REPO_NAME}.git"
-REPO_REV=$(cat "./${REPO_NAME}_repo_revision")
+REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
 # ----------------- Vulkan-LoaderAndValidationLayers, glslang, SPIRV-Tools & SPIRV-Headers -------------------
@@ -96,9 +109,9 @@ else
 
 	REPO_NAME=${V_LVL_NAME}
 	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-	REPO_REV=$(cat "./${REPO_NAME}_repo_revision")
+	REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-	clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
 	# ----------------- glslang, SPIRV-Tools & SPIRV-Headers ---------------
@@ -107,13 +120,15 @@ else
 	REPO_URL=$(cat "${V_LVL_NAME}/external_revisions/glslang_giturl")
 	REPO_REV=$(cat "${V_LVL_NAME}/external_revisions/glslang_revision")
 
-	clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 	cd ${REPO_NAME}
 	./update_glslang_sources.py
 	cd -
 
-	build_repo ${GLSLANG_NAME}
+	build_repo ${REPO_NAME}
 
 fi
+
+cd ..
 
