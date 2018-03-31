@@ -29,7 +29,6 @@
 #include "MVKCmdQueries.h"
 #include "MVKMTLBufferAllocation.h"
 #include <unordered_set>
-#include <unordered_map>
 #include <list>
 #include <mutex>
 

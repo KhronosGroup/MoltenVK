@@ -221,16 +221,18 @@ public:
         return (MVKPhysicalDevice*)getDispatchableObject(vkPhysicalDevice);
     }
 
-private:
+protected:
 	friend class MVKDevice;
 
 	MTLFeatureSet getMaximalMTLFeatureSet();
     void initMetalFeatures();
 	void initFeatures();
 	void initProperties();
-	void logFeatureSets();
 	void initMemoryProperties();
 	void initQueueFamilies();
+	void initPipelineCacheUUID();
+	MTLFeatureSet getHighestMTLFeatureSet();
+	void logGPUInfo();
 
 	id<MTLDevice> _mtlDevice;
 	MVKInstance* _mvkInstance;

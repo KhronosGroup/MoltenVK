@@ -143,6 +143,7 @@
 		A9AD67D22054E2D700ED3C08 /* Vulkan-LoaderAndValidationLayers_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Vulkan-LoaderAndValidationLayers_repo_revision"; sourceTree = "<group>"; };
 		A9AD67D32054E2D700ED3C08 /* SPIRV-Cross_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = "SPIRV-Cross_repo_revision"; sourceTree = "<group>"; };
 		A9AD67E92055D8A600ED3C08 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		A9EE46412065766C00193200 /* cereal_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = cereal_repo_revision; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -181,6 +182,7 @@
 			children = (
 				A9AD67E92055D8A600ED3C08 /* README.md */,
 				A943100220546CDD00F5CF87 /* fetchDependencies */,
+				A9EE46412065766C00193200 /* cereal_repo_revision */,
 				A9AD67D32054E2D700ED3C08 /* SPIRV-Cross_repo_revision */,
 				A9AD67D22054E2D700ED3C08 /* Vulkan-LoaderAndValidationLayers_repo_revision */,
 				A9AD67D12054E2D700ED3C08 /* VulkanSamples_repo_revision */,
@@ -206,7 +208,7 @@
 		A90B2B1D1A9B6170008EE819 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0920;
+				LastUpgradeCheck = 0930;
 				TargetAttributes = {
 					A9FEADBC1F3517480010240E = {
 						DevelopmentTeam = VU3TCKU48B;

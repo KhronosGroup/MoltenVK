@@ -48,11 +48,11 @@ using namespace std;
 #	define MVKViewClass		NSView
 #endif
 
-// To present surface using a command buffer, define the MVK_PRESENT_WITH_COMMAND_BUFFER build setting.
-#ifdef MVK_PRESENT_WITH_COMMAND_BUFFER
-#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    1
-#else
+// To present surface using a command buffer, define the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting.
+#ifdef MVK_PRESENT_WITHOUT_COMMAND_BUFFER
 #   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    0
+#else
+#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    1
 #endif
 
 // To display the MoltenVK logo watermark by default, define the MVK_DISPLAY_WATERMARK build setting.
@@ -471,6 +471,7 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.driverVersion = MVK_VERSION;
 
 	mvkPopulateGPUInfo(_properties, _mtlDevice);
+	initPipelineCacheUUID();
 
 	// Limits
 #if MVK_IOS
@@ -803,6 +804,50 @@ void MVKPhysicalDevice::initProperties() {
 //	VkBool32                                    residencyNonResidentStrict;
 //} VkPhysicalDeviceSparseProperties;
 
+
+void MVKPhysicalDevice::initPipelineCacheUUID() {
+	size_t uuidSize = sizeof(_properties.pipelineCacheUUID);
+
+	// Clear the UUID
+	memset(&_properties.pipelineCacheUUID, 0, uuidSize);
+
+	uint32_t uuidComponent;
+	size_t uuidComponentSize = sizeof(uint32_t);
+
+	size_t uuidComponentOffset = uuidSize;
+
+	// Lower 4 bytes contains MoltenVK version
+	uuidComponent = MVK_VERSION;
+	uuidComponentOffset -= uuidComponentSize;
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(uuidComponent);
+
+	// Next 4 bytes contains hightest Metal feature set supported by this device
+	uuidComponent = (uint32_t)getHighestMTLFeatureSet();
+	uuidComponentOffset -= uuidComponentSize;
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(uuidComponent);
+}
+
+MTLFeatureSet MVKPhysicalDevice::getHighestMTLFeatureSet() {
+#if MVK_IOS
+	MTLFeatureSet maxFS = MTLFeatureSet_iOS_GPUFamily4_v1;
+	MTLFeatureSet minFS = MTLFeatureSet_iOS_GPUFamily1_v1;
+#endif
+
+#if MVK_MACOS
+	MTLFeatureSet maxFS = MTLFeatureSet_macOS_GPUFamily1_v3;
+	MTLFeatureSet minFS = MTLFeatureSet_macOS_GPUFamily1_v1;
+#endif
+
+	for (NSUInteger fs = maxFS; fs > minFS; fs--) {
+		MTLFeatureSet mtlFS = (MTLFeatureSet)fs;
+		if ( [_mtlDevice supportsFeatureSet: mtlFS] ) {
+			return mtlFS;
+		}
+	}
+
+	return minFS;
+}
+
 /** Initializes the memory properties of this instance. */
 void MVKPhysicalDevice::initMemoryProperties() {
 
@@ -855,34 +900,59 @@ void MVKPhysicalDevice::initMemoryProperties() {
 #endif
 }
 
-void MVKPhysicalDevice::logFeatureSets() {
-	string fsMsg = "GPU device %s (vendorID: %#06x, deviceID: %#06x, pipelineCacheUUID: %s) supports the following Metal Feature Sets:";
+void MVKPhysicalDevice::logGPUInfo() {
+	string devTypeStr;
+	switch (_properties.deviceType) {
+		case VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU:
+			devTypeStr = "Discrete";
+			break;
+		case VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU:
+			devTypeStr = "Integrated";
+			break;
+		case VK_PHYSICAL_DEVICE_TYPE_VIRTUAL_GPU:
+			devTypeStr = "Virtual";
+			break;
+		case VK_PHYSICAL_DEVICE_TYPE_CPU:
+			devTypeStr = "CPU Emulation";
+			break;
+		default:
+			devTypeStr = "Unknown";
+			break;
+	}
+
+	string fsMsg = "GPU device:";
+	fsMsg += "\n\t\tmodel: %s";
+	fsMsg += "\n\t\ttype: %s";
+	fsMsg += "\n\t\tvendorID: %#06x";
+	fsMsg += "\n\t\tdeviceID: %#06x";
+	fsMsg += "\n\t\tpipelineCacheUUID: %s";
+	fsMsg += "\n\tsupports the following Metal Feature Sets:";
 
 #if MVK_IOS
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) { fsMsg += "\n\tiOS GPU Family 4 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) { fsMsg += "\n\tviOS GPU Family 4 v1"; }
 
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) { fsMsg += "\n\tiOS GPU Family 3 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) { fsMsg += "\n\tiOS GPU Family 3 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) { fsMsg += "\n\tiOS GPU Family 3 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) { fsMsg += "\n\t\tiOS GPU Family 3 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) { fsMsg += "\n\t\tiOS GPU Family 3 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) { fsMsg += "\n\t\tiOS GPU Family 3 v1"; }
 
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) { fsMsg += "\n\tiOS GPU Family 2 v4"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v3] ) { fsMsg += "\n\tiOS GPU Family 2 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v2] ) { fsMsg += "\n\tiOS GPU Family 2 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1] ) { fsMsg += "\n\tiOS GPU Family 2 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) { fsMsg += "\n\t\tiOS GPU Family 2 v4"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v3] ) { fsMsg += "\n\t\tiOS GPU Family 2 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v2] ) { fsMsg += "\n\t\tiOS GPU Family 2 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1] ) { fsMsg += "\n\t\tiOS GPU Family 2 v1"; }
 
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) { fsMsg += "\n\tiOS GPU Family 1 v4"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3] ) { fsMsg += "\n\tiOS GPU Family 1 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) { fsMsg += "\n\tiOS GPU Family 1 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v1] ) { fsMsg += "\n\tiOS GPU Family 1 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) { fsMsg += "\n\t\tiOS GPU Family 1 v4"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3] ) { fsMsg += "\n\t\tiOS GPU Family 1 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) { fsMsg += "\n\t\tiOS GPU Family 1 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v1] ) { fsMsg += "\n\t\tiOS GPU Family 1 v1"; }
 #endif
 
 #if MVK_MACOS
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) { fsMsg += "\n\tOSX GPU Family 1 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) { fsMsg += "\n\tOSX GPU Family 1 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v1] ) { fsMsg += "\n\tOSX GPU Family 1 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) { fsMsg += "\n\t\tOSX GPU Family 1 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) { fsMsg += "\n\t\tOSX GPU Family 1 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v1] ) { fsMsg += "\n\t\tOSX GPU Family 1 v1"; }
 #endif
 
-	MVKLogInfo(fsMsg.c_str(), _properties.deviceName, _properties.vendorID, _properties.deviceID,
+	MVKLogInfo(fsMsg.c_str(), _properties.deviceName, devTypeStr.c_str(), _properties.vendorID, _properties.deviceID,
 			   [[[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID] autorelease].UUIDString.UTF8String);
 }
 
@@ -906,7 +976,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initProperties();           // Call third.
 	initMemoryProperties();
 	initQueueFamilies();
-	logFeatureSets();
+	logGPUInfo();
 }
 
 MVKPhysicalDevice::~MVKPhysicalDevice() {
@@ -1255,25 +1325,30 @@ void MVKDevice::addShaderCompilationEventPerformanceImpl(MVKShaderCompilationEve
 	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
     shaderCompilationEvent.minimumDuration = min(currInterval, shaderCompilationEvent.minimumDuration);
     shaderCompilationEvent.maximumDuration = max(currInterval, shaderCompilationEvent.maximumDuration);
-    double totalInverval = (shaderCompilationEvent.averageDuration * shaderCompilationEvent.count++) + currInterval;
-    shaderCompilationEvent.averageDuration = totalInverval / shaderCompilationEvent.count;
+    double totalInterval = (shaderCompilationEvent.averageDuration * shaderCompilationEvent.count++) + currInterval;
+    shaderCompilationEvent.averageDuration = totalInterval / shaderCompilationEvent.count;
 
-    MVKLogInfo("%s performance curr: %.3f ms, avg: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
-               getShaderCompilationEventName(shaderCompilationEvent),
-               currInterval,
-               shaderCompilationEvent.averageDuration,
-               shaderCompilationEvent.minimumDuration,
-               shaderCompilationEvent.maximumDuration,
-               shaderCompilationEvent.count);
+	MVKLogDebug("Shader building performance to %s curr: %.3f ms, avg: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
+				getShaderCompilationEventName(shaderCompilationEvent),
+				currInterval,
+				shaderCompilationEvent.averageDuration,
+				shaderCompilationEvent.minimumDuration,
+				shaderCompilationEvent.maximumDuration,
+				shaderCompilationEvent.count);
 }
 
 const char* MVKDevice::getShaderCompilationEventName(MVKShaderCompilationEventPerformance& shaderCompilationEvent) {
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.spirvToMSL) { return "Convert SPIR-V to MSL source code"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslCompile) { return "Compile MSL source code into a MTLLibrary"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslLoad) { return "Load pre-compiled MSL code into a MTLLibrary"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionRetrieval) { return "Retrieve a MTLFunction from a MTLLibrary"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionSpecialization) { return "Specialize a retrieved MTLFunction"; }
-    if (&shaderCompilationEvent == &_shaderCompilationPerformance.pipelineCompile) { return "Compile MTLFunctions into a pipeline"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.hashShaderCode) { return "hash shader code"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.spirvToMSL) { return "convert SPIR-V to MSL source code"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslCompile) { return "compile MSL source code into a MTLLibrary"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.mslLoad) { return "load pre-compiled MSL code into a MTLLibrary"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.shaderLibraryFromCache) { return "retrieve shader library from the cache."; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionRetrieval) { return "retrieve a MTLFunction from a MTLLibrary"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.functionSpecialization) { return "specialize a retrieved MTLFunction"; }
+    if (&shaderCompilationEvent == &_shaderCompilationPerformance.pipelineCompile) { return "compile MTLFunctions into a pipeline"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.sizePipelineCache) { return "calculate cache size required to write MSL to pipeline cache"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.writePipelineCache) { return "write MSL to pipeline cache"; }
+	if (&shaderCompilationEvent == &_shaderCompilationPerformance.readPipelineCache) { return "read MSL from pipeline cache"; }
     return "Unknown shader compile event";
 }
 
@@ -1334,6 +1409,8 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) : _mvkConfig() {
 //	MVKLogDebug("Creating MVKDevice. Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
 
+	initPerformanceTracking();
+
 	_physicalDevice = physicalDevice;
 	_pFeatures = &_physicalDevice->_features;
 	_pMetalFeatures = &_physicalDevice->_metalFeatures;
@@ -1382,8 +1459,6 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 		}
 	}
 
-    initPerformanceTracking();
-
 	MVKLogInfo("Created VkDevice to run on GPU %s", _pProperties->deviceName);
 }
 
@@ -1394,12 +1469,17 @@ void MVKDevice::initPerformanceTracking() {
     initPerf.minimumDuration = numeric_limits<double>::max();
     initPerf.maximumDuration = 0.0;
 
+	_shaderCompilationPerformance.hashShaderCode = initPerf;
     _shaderCompilationPerformance.spirvToMSL = initPerf;
     _shaderCompilationPerformance.mslCompile = initPerf;
     _shaderCompilationPerformance.mslLoad = initPerf;
+	_shaderCompilationPerformance.shaderLibraryFromCache = initPerf;
     _shaderCompilationPerformance.functionRetrieval = initPerf;
     _shaderCompilationPerformance.functionSpecialization = initPerf;
     _shaderCompilationPerformance.pipelineCompile = initPerf;
+	_shaderCompilationPerformance.sizePipelineCache = initPerf;
+	_shaderCompilationPerformance.writePipelineCache = initPerf;
+	_shaderCompilationPerformance.readPipelineCache = initPerf;
 }
 
 MVKDevice::~MVKDevice() {

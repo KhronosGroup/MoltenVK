@@ -674,7 +674,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPipelineCacheData(
 	void*                                       pData) {
 
 	MVKPipelineCache* mvkPLC = (MVKPipelineCache*)pipelineCache;
-	return mvkPLC->getData(pDataSize, pData);
+	return mvkPLC->writeData(pDataSize, pData);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkMergePipelineCaches(

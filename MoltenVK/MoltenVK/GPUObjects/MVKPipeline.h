@@ -24,6 +24,7 @@
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
 #include <vector>
+#include <ostream>
 
 #import <Metal/Metal.h>
 
@@ -71,7 +72,12 @@ public:
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
 
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
-	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKBaseDeviceObject(device) {}
+	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKBaseDeviceObject(device),
+																						   _pipelineCache(pipelineCache) {}
+
+protected:
+	MVKPipelineCache* _pipelineCache;
+
 };
 
 
@@ -159,21 +165,32 @@ class MVKPipelineCache : public MVKBaseDeviceObject {
 public:
 
 	/** 
-	 * If pData is not null, serializes at most pDataSize bytes of the contents of the cache
-     * into that memory location, and returns the number of bytes serialized in pDataSize.
-     * If pData is null, returns the number of bytes required to serialize the contents of
+	 * If pData is not null, serializes at most pDataSize bytes of the contents of the cache into that
+	 * memory location, and returns the number of bytes serialized in pDataSize. If pData is null,
+	 * returns the number of bytes required to serialize the contents of this pipeline cache.
 	 */
-	inline VkResult getData(size_t* pDataSize, void* pData) {
-        *pDataSize = 0;
-        return VK_SUCCESS;
-    }
+	VkResult writeData(size_t* pDataSize, void* pData);
+
+	/** Return a shader library from the specified shader context sourced from the specified shader module. */
+	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConverterContext* pContext, MVKShaderModule* shaderModule);
 
 	/** Merges the contents of the specified number of pipeline caches into this cache. */
-    inline VkResult mergePipelineCaches(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches) { return VK_SUCCESS; }
+	VkResult mergePipelineCaches(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches);
 
 #pragma mark Construction
 
 	/** Constructs an instance for the specified device. */
-	MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {}
+	MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo);
 
+	~MVKPipelineCache() override;
+
+protected:
+	MVKShaderLibraryCache* getShaderLibraryCache(MVKShaderModuleKey smKey);
+	void readData(const VkPipelineCacheCreateInfo* pCreateInfo);
+	void writeData(std::ostream& outstream, bool isCounting = false);
+	void markDirty();
+
+	std::unordered_map<MVKShaderModuleKey, MVKShaderLibraryCache*> _shaderCache;
+	size_t _dataSize = 0;
+	std::mutex _shaderCacheLock;
 };

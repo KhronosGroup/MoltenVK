@@ -17,10 +17,17 @@
  */
 
 #include "MVKPipeline.h"
+#include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include "MVKRenderPass.h"
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"
+#include "MVKOSExtensions.h"
+#include "MVKStrings.h"
 #include "mvk_datatypes.h"
+
+#include <cereal/archives/binary.hpp>
+#include <cereal/types/string.hpp>
+#include <cereal/types/vector.hpp>
 
 using namespace std;
 
@@ -271,13 +278,13 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         // Vertex shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_VERTEX_BIT)) {
 			shaderContext.options.entryPointStage = spv::ExecutionModelVertex;
-            plDesc.vertexFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo).mtlFunction;
+            plDesc.vertexFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
         }
 
         // Fragment shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_FRAGMENT_BIT)) {
 			shaderContext.options.entryPointStage = spv::ExecutionModelFragment;
-			plDesc.fragmentFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo).mtlFunction;
+			plDesc.fragmentFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
         }
     }
 
@@ -437,10 +444,304 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     layout->populateShaderConverterContext(shaderContext);
 
     MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
-    return mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo);
+    return mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache);
 }
 
 
 MVKComputePipeline::~MVKComputePipeline() {
     [_mtlPipelineState release];
 }
+
+
+#pragma mark -
+#pragma mark MVKPipelineCache
+
+/** Return a shader library from the specified shader context sourced from the specified shader module. */
+MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConverterContext* pContext, MVKShaderModule* shaderModule) {
+	lock_guard<mutex> lock(_shaderCacheLock);
+
+	bool wasAdded = false;
+	MVKShaderLibraryCache* slCache = getShaderLibraryCache(shaderModule->getKey());
+	MVKShaderLibrary* shLib = slCache->getShaderLibrary(pContext, shaderModule, &wasAdded);
+	if (wasAdded) { markDirty(); }
+	return shLib;
+}
+
+// Returns a shader library cache for the specified shader module key, creating it if necessary.
+MVKShaderLibraryCache* MVKPipelineCache::getShaderLibraryCache(MVKShaderModuleKey smKey) {
+	MVKShaderLibraryCache* slCache = _shaderCache[smKey];
+	if ( !slCache ) {
+		slCache = new MVKShaderLibraryCache(_device);
+		_shaderCache[smKey] = slCache;
+	}
+	return slCache;
+}
+
+
+#pragma mark Streaming pipeline cache to and from offline memory
+
+static uint32_t kDataHeaderSize = (sizeof(uint32_t) * 4) + VK_UUID_SIZE;
+
+// Entry type markers to be inserted into data stream
+typedef enum {
+	MVKPipelineCacheEntryTypeEOF = 0,
+	MVKPipelineCacheEntryTypeShaderLibrary = 1,
+} MVKPipelineCacheEntryType;
+
+// Ceral archive definitions
+namespace mvk {
+
+	template<class Archive>
+	void serialize(Archive & archive, SPIRVEntryPoint& ep) {
+		archive(ep.mtlFunctionName,
+				ep.workgroupSize.width,
+				ep.workgroupSize.height,
+				ep.workgroupSize.depth,
+				ep.workgroupSizeId.width,
+				ep.workgroupSizeId.height,
+				ep.workgroupSizeId.depth,
+				ep.workgroupSizeId.constant);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, SPIRVToMSLConverterOptions& opt) {
+		archive(opt.entryPointName,
+				opt.entryPointStage,
+				opt.mslVersion,
+				opt.shouldFlipVertexY,
+				opt.isRenderingPoints);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLVertexAttribute& va) {
+		archive(va.location,
+				va.mslBuffer,
+				va.mslOffset,
+				va.mslStride,
+				va.isPerInstance,
+				va.isUsedByShader);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLResourceBinding& rb) {
+		archive(rb.stage,
+				rb.descriptorSet,
+				rb.binding,
+				rb.mslBuffer,
+				rb.mslTexture,
+				rb.mslSampler,
+				rb.isUsedByShader);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, SPIRVToMSLConverterContext& ctx) {
+		archive(ctx.options, ctx.vertexAttributes, ctx.resourceBindings);
+	}
+
+}
+
+template<class Archive>
+void serialize(Archive & archive, MVKShaderModuleKey& k) {
+	archive(k.codeSize, k.codeHash);
+}
+
+// Helper class to iterate through the shader libraries in a shader library cache in order to serialize them.
+// Needs to support input of null shader library cache.
+class MVKShaderCacheIterator : MVKBaseObject {
+protected:
+	friend MVKPipelineCache;
+
+	bool next() { return (++_index < (_pSLCache ? _pSLCache->_shaderLibraries.size() : 0)); }
+	SPIRVToMSLConverterContext& getShaderContext() { return _pSLCache->_shaderLibraries[_index].first; }
+	std::string& getMSL() { return _pSLCache->_shaderLibraries[_index].second->_msl; }
+	SPIRVEntryPoint& getEntryPoint() { return _pSLCache->_shaderLibraries[_index].second->_entryPoint; }
+	MVKShaderCacheIterator(MVKShaderLibraryCache* pSLCache) : _pSLCache(pSLCache) {}
+
+	MVKShaderLibraryCache* _pSLCache;
+	size_t _count = 0;
+	int32_t _index = -1;
+};
+
+// If pData is not null, serializes at most pDataSize bytes of the contents of the cache into that
+// memory location, and returns the number of bytes serialized in pDataSize. If pData is null,
+// returns the number of bytes required to serialize the contents of this pipeline cache.
+// This is the compliment of the readData() function. The two must be kept aligned.
+VkResult MVKPipelineCache::writeData(size_t* pDataSize, void* pData) {
+	lock_guard<mutex> lock(_shaderCacheLock);
+
+	try {
+
+		if ( !pDataSize ) { return VK_SUCCESS; }
+
+		if (pData) {
+			if (*pDataSize >= _dataSize) {
+				mvk::membuf mb((char*)pData, _dataSize);
+				ostream outStream(&mb);
+				writeData(outStream);
+				*pDataSize = _dataSize;
+				return VK_SUCCESS;
+			} else {
+				*pDataSize = 0;
+				return VK_INCOMPLETE;
+			}
+		} else {
+			if (_dataSize == 0) {
+				mvk::countbuf cb;
+				ostream outStream(&cb);
+				writeData(outStream, true);
+				_dataSize = cb.buffSize;
+			}
+			*pDataSize = _dataSize;
+			return VK_SUCCESS;
+		}
+
+	} catch (cereal::Exception& ex) {
+		*pDataSize = 0;
+		return mvkNotifyErrorWithText(VK_INCOMPLETE, "Error writing pipeline cache data: %s", ex.what());
+	}
+}
+
+// Serializes the data in this cache to a stream
+void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
+
+	MVKShaderCompilationEventPerformance& shaderCompilationEvent = isCounting
+		? _device->_shaderCompilationPerformance.sizePipelineCache
+		: _device->_shaderCompilationPerformance.writePipelineCache;
+
+	uint32_t cacheEntryType;
+	cereal::BinaryOutputArchive writer(outstream);
+
+	// Write the data header...after ensuring correct byte-order.
+	const VkPhysicalDeviceProperties* pDevProps = _device->_pProperties;
+	writer(NSSwapHostIntToLittle(kDataHeaderSize));
+	writer(NSSwapHostIntToLittle(VK_PIPELINE_CACHE_HEADER_VERSION_ONE));
+	writer(NSSwapHostIntToLittle(pDevProps->vendorID));
+	writer(NSSwapHostIntToLittle(pDevProps->deviceID));
+	writer(pDevProps->pipelineCacheUUID);
+
+	// Shader libraries
+	// Output a cache entry for each shader library, including the shader module key in each entry.
+	cacheEntryType = MVKPipelineCacheEntryTypeShaderLibrary;
+	for (auto& scPair : _shaderCache) {
+		MVKShaderModuleKey smKey = scPair.first;
+		MVKShaderCacheIterator cacheIter(scPair.second);
+		while (cacheIter.next()) {
+			uint64_t startTime = _device->getPerformanceTimestamp();
+			writer(cacheEntryType);
+			writer(smKey);
+			writer(cacheIter.getShaderContext());
+			writer(cacheIter.getEntryPoint());
+			writer(cacheIter.getMSL());
+			_device->addShaderCompilationEventPerformance(shaderCompilationEvent, startTime);
+		}
+	}
+
+	// Mark the end of the archive
+	cacheEntryType = MVKPipelineCacheEntryTypeEOF;
+	writer(cacheEntryType);
+}
+
+// Loads any data indicated by the creation info.
+// This is the compliment of the writeData() function. The two must be kept aligned.
+void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
+	try {
+
+		size_t byteCount = pCreateInfo->initialDataSize;
+		uint32_t cacheEntryType;
+
+		// Must be able to read the header and at least one cache entry type.
+		if (byteCount < kDataHeaderSize + sizeof(cacheEntryType)) { return; }
+
+		mvk::membuf mb((char*)pCreateInfo->pInitialData, byteCount);
+		istream inStream(&mb);
+		cereal::BinaryInputArchive reader(inStream);
+
+		// Read the data header...and ensure correct byte-order.
+		uint32_t hdrComponent;
+		uint8_t pcUUID[VK_UUID_SIZE];
+		const VkPhysicalDeviceProperties* pDevProps = _device->_pProperties;
+
+		reader(hdrComponent);	// Header size
+		if (NSSwapLittleIntToHost(hdrComponent) !=  kDataHeaderSize) { return; }
+
+		reader(hdrComponent);	// Header version
+		if (NSSwapLittleIntToHost(hdrComponent) !=  VK_PIPELINE_CACHE_HEADER_VERSION_ONE) { return; }
+
+		reader(hdrComponent);	// Vendor ID
+		if (NSSwapLittleIntToHost(hdrComponent) !=  pDevProps->vendorID) { return; }
+
+		reader(hdrComponent);	// Device ID
+		if (NSSwapLittleIntToHost(hdrComponent) !=  pDevProps->deviceID) { return; }
+
+		reader(pcUUID);			// Pipeline cache UUID
+		if (memcmp(pcUUID, pDevProps->pipelineCacheUUID, VK_UUID_SIZE) != 0) { return; }
+
+		bool done = false;
+		while ( !done ) {
+			reader(cacheEntryType);
+			switch (cacheEntryType) {
+				case MVKPipelineCacheEntryTypeShaderLibrary: {
+					uint64_t startTime = _device->getPerformanceTimestamp();
+
+					MVKShaderModuleKey smKey;
+					reader(smKey);
+
+					SPIRVToMSLConverterContext shaderContext;
+					reader(shaderContext);
+
+					SPIRVEntryPoint entryPoint;
+					reader(entryPoint);
+
+					string msl;
+					reader(msl);
+
+					// Add the shader library to the staging cache.
+					MVKShaderLibraryCache* slCache = getShaderLibraryCache(smKey);
+					_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.readPipelineCache, startTime);
+					slCache->addShaderLibrary(&shaderContext, msl, entryPoint);
+
+					break;
+				}
+
+				default: {
+					done = true;
+					break;
+				}
+			}
+		}
+
+	} catch (cereal::Exception& ex) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_SUCCESS, "Error reading pipeline cache data: %s", ex.what()));
+	}
+}
+
+// Mark the cache as dirty, so that existing streaming info is released
+void MVKPipelineCache::markDirty() {
+	_dataSize = 0;
+}
+
+VkResult MVKPipelineCache::mergePipelineCaches(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches) {
+	for (uint32_t srcIdx = 0; srcIdx < srcCacheCount; srcIdx++) {
+		MVKPipelineCache* srcPLC = (MVKPipelineCache*)pSrcCaches[srcIdx];
+		for (auto& srcPair : srcPLC->_shaderCache) {
+			getShaderLibraryCache(srcPair.first)->merge(srcPair.second);
+		}
+	}
+	markDirty();
+
+	return VK_SUCCESS;
+}
+
+
+#pragma mark Construction
+
+MVKPipelineCache::MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+	readData(pCreateInfo);
+}
+
+MVKPipelineCache::~MVKPipelineCache() {
+	for (auto& pair : _shaderCache) { delete pair.second; }
+	_shaderCache.clear();
+}
+
+

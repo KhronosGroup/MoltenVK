@@ -104,8 +104,6 @@ Once built, **MoltenVK** can be run on *iOS* or *macOS* devices that support *Me
 - Information on compatible *iOS* devices that are compatible with *Metal* can be found in 
   [this article](https://developer.apple.com/library/content/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/HardwareGPUInformation/HardwareGPUInformation.html).
 
-
-
 The `MoltenVKPackaging.xcodeproj` *Xcode* project contains targets and schemes to build 
 and package the entire **MoltenVK** runtime distribution package, or to build individual 
 **MoltenVK** or **MoltenVKShaderConverter** components.
@@ -129,6 +127,18 @@ or `Package/Debug` directories was most recently updated.
 With this packaging structure, you can follow the [instructions below](#using) to link your application 
 to the **MoltenVK** frameworks in the `Package/Latest` directory, to provide the flexibility to test your 
 app with either a **Debug** build, or a higher-performance **Release** build.
+
+
+### Building from the Command Line
+
+If you prefer to build **MoltenVK** from the command line, or to include the activity in a larger build script,
+you can do so using the following command from within the `MoltenVK` repository:
+
+	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK (Release)" build
+
+or
+
+	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK (Debug)" build
 
 
 

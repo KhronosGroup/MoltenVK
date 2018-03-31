@@ -20,6 +20,7 @@ Table of Contents
 - [Adding the *SPIRV-Cross* Library to the *MoltenVKShaderConverter Xcode* Project](#add_spirv-cross)
 - [Adding the *SPIRV-Tools* Library to the *MoltenVKShaderConverter Xcode* Project](#add_spirv-tools)
 - [Adding the *glslang* Library to the *MoltenVKShaderConverter Xcode* Project](#add_glslang)
+- [Adding the *cereal* Library to the *MoltenVK Xcode* Project](#add_cereal)
 
 
 
@@ -35,6 +36,7 @@ Fetching External Libraries
 - [*SPIRV-Tools*](https://github.com/KhronosGroup/SPIRV-Tools)
 - [*SPIRV-Headers*](https://github.com/KhronosGroup/SPIRV-Headers)
 - [*VulkanSamples*](https://github.com/brenwill/VulkanSamples)
+- [*cereal*](https://github.com/USCiLab/cereal)
 
 These external open-source libraries are maintained in the `External` directory.
 To retrieve these libraries from their sources, run the `fetchDependencies` 
@@ -75,9 +77,12 @@ determined as follows:
 
 - **_SPIRV-Headers_**: automatically retrieved by the *glslang* repository.
 
-You can update which version of the *SPIRV-Cross*, *VulkanSamples*, and
-*Vulkan-LoaderAndValidationLayers* libraries are retrieved, by changing the
-value held in the corresponding `*_repo_revision` file listed above.
+- **_cereal_**: a GitHub repository commit identifier found in the
+  `External/cereal_repo_revision` file. 
+  
+You can update which versions of the *SPIRV-Cross*, *VulkanSamples*,
+*Vulkan-LoaderAndValidationLayers*, or *cereal* libraries are retrieved, 
+by changing the value held in the corresponding `*_repo_revision` file listed above.
 
 The version of the *glslang*, *SPIRV-Tools*, and *SPIRV-Headers* libraries is 
 automatically determined by the version of the *Vulkan-LoaderAndValidationLayers* 
@@ -97,7 +102,7 @@ Adding the *SPIRV-Cross* Library to the *MoltenVKShaderConverter Xcode* Project
 
 The `MoltenVKShaderConverter` *Xcode* project is already configured to use the *SPIRV-Cross*
 library. However, after updating the version of *SPIRV-Cross*, as described [above](#updating),
-if you encounter any linking errors, may need to re-add the *SPIRV-Cross* library to the
+if you encounter any building errors, you may need to re-add the *SPIRV-Cross* library to the
 `MoltenVKShaderConverter` *Xcode* project as follows:
 
 1. In the *Project Navigator*, remove all of the files under the *Group* named 
@@ -158,7 +163,7 @@ Adding the *SPIRV-Tools* Library to the *MoltenVKShaderConverter Xcode* Project
 
 The `MoltenVKShaderConverter` *Xcode* project is already configured to use the *SPIRV-Tools*
 library. However, after updating the version of *SPIRV-Tools*, as described [above](#updating),
-if you encounter any linking errors, may need to re-add the *SPIRV-Tools* library to the
+if you encounter any building errors, you may need to re-add the *SPIRV-Tools* library to the
 `MoltenVKShaderConverter` *Xcode* project as follows:
 
 1. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
@@ -169,14 +174,16 @@ if you encounter any linking errors, may need to re-add the *SPIRV-Tools* librar
    _**Create groups**_ option, add the files to *both* the `MoltenVKSPIRVToMSLConverter-iOS` 
    and `MoltenVKSPIRVToMSLConverter-macOS` targets, and click the ***Finish*** button.
 
-3. In the *Project Navigator* panel, select your application's target, and open the 
-   *Build Settings* tab. Locate the build setting entry **Header Search Paths** 
-   (`HEADER_SEARCH_PATHS`) and add the following paths:
+3. In the *Project Navigator* panel, select the `MoltenVKShaderConverter` *Xcode* project, then select the 
+   `MoltenVKSPIRVToMSLConverter-macOS` target, and open the *Build Settings* tab. Locate the build setting 
+   entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
    
 		"$(SRCROOT)/../External/glslang/External/spirv-tools/include"
 		"$(SRCROOT)/../External/glslang/External/spirv-tools/source"
 		"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include"
 		"$(SRCROOT)/../External/glslang/build/External/spirv-tools"
+
+4. Repeat *Step 3* for the `MoltenVKSPIRVToMSLConverter-iOS` target within the `MoltenVKShaderConverter` *Xcode* project
 
 5. ***(Optional)*** To simplify the paths used within *Xcode* to reference the added files,
    perform the following steps:
@@ -196,7 +203,7 @@ Adding the *glslang* Library to the *MoltenVKShaderConverter Xcode* Project
 
 The `MoltenVKShaderConverter` *Xcode* project is already configured to use the *glslang*
 library. However, after updating the version of *glslang*, as described [above](#updating),
-if you encounter any linking errors, may need to re-add the *glslang* library to the
+if you encounter any building errors, you may need to re-add the *glslang* library to the
 `MoltenVKShaderConverter` *Xcode* project as follows:
 
 1. In the *Project Navigator*, remove all *Groups* from under the *Group* named
@@ -229,3 +236,17 @@ if you encounter any linking errors, may need to re-add the *glslang* library to
       `glslang`, `OGLCompilersDLL`, and `SPIRV` directories added above.
 
 
+
+<a name="add_cereal"></a>
+Adding the *cereal* Library to the *MoltenVK Xcode* Project
+-----------------------------------------------------------
+
+The `MoltenVK` *Xcode* project is already configured to use the *cereal* library. However, after 
+updating the version of *cereal*, as described [above](#updating), if you encounter any building 
+errors, you may need to re-add the *cereal* library to the `MoltenVK` *Xcode* project as follows:
+
+1. In the *Project Navigator* panel, select the `MoltenVK` *Xcode* project, then the `MoltenVK`
+   project target, and open the *Build Settings* tab. Locate the build setting entry 
+   **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
+   
+		"$(SRCROOT)/../External/cereal/include"

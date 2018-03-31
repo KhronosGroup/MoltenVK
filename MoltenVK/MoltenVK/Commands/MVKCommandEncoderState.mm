@@ -93,12 +93,7 @@ void MVKScissorCommandEncoderState::setScissors(vector<MTLScissorRect> mtlScisso
 }
 
 void MVKScissorCommandEncoderState::encodeImpl() {
-	// In debug mode, avoid Metal validation fails. In release mode, assume Metal validation is disabled.
-	if (_cmdEncoder->getDevice()->_mvkConfig.debugMode) {
-		[_cmdEncoder->_mtlRenderEncoder setScissorRect: _cmdEncoder->clipToRenderArea(_mtlScissor)];
-	} else {
-		[_cmdEncoder->_mtlRenderEncoder setScissorRect: _mtlScissor];
-	}
+	[_cmdEncoder->_mtlRenderEncoder setScissorRect: _cmdEncoder->clipToRenderArea(_mtlScissor)];
 }
 
 void MVKScissorCommandEncoderState::resetImpl() {

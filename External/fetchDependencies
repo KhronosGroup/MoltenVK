@@ -48,6 +48,16 @@ echo
 V_LVL_NAME=Vulkan-LoaderAndValidationLayers
 GLSLANG_NAME=glslang
 
+
+# ----------------- Cereal -------------------
+
+REPO_NAME=cereal
+REPO_URL="https://github.com/USCiLab/${REPO_NAME}.git"
+REPO_REV=$(cat "./${REPO_NAME}_repo_revision")
+
+clone_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+
 # ----------------- SPIRV-Cross -------------------
 
 REPO_NAME=SPIRV-Cross

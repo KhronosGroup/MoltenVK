@@ -20,6 +20,7 @@
 #define __MVKStrings_h_ 1
 
 #include <string>
+#include <streambuf>
 
 namespace mvk {
 
@@ -43,6 +44,26 @@ namespace mvk {
         size_t endPos = s.find_last_not_of(delimiters);
         return ( (startPos != std::string::npos) && (endPos != std::string::npos) ) ? s.substr(startPos, endPos + 1) : "";
     }
+
+	/** A memory-based stream buffer. */
+	class membuf : public std::streambuf {
+	public:
+		membuf(char* p, size_t n) {
+			setg(p, p, p + n);
+			setp(p, p + n);
+		}
+	};
+
+	/** A character counting stream buffer. */
+	class countbuf : public std::streambuf {
+	public:
+		size_t buffSize = 0;
+	private:
+		std::streamsize xsputn (const char* /* s */, std::streamsize n) override {
+			buffSize += n;
+			return n;
+		}
+	};
 
 }
 
