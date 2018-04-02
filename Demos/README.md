@@ -132,7 +132,7 @@ the following command-line steps:
 		git clone https://github.com/brenwill/Vulkan.git
 
 2. By default, the *Sascha Willems Vulkan* samples expect **MoltenVK** to be installed in a directory
-   beside the `Cinder` repository:
+   beside the `Vulkan` repository:
    
 		Vulkan/
    		MoltenVK/
