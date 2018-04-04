@@ -554,20 +554,20 @@ MVK_PUBLIC_SYMBOL float mvkMTLPixelFormatBytesPerTexel(MTLPixelFormat mtlFormat)
 
 MVK_PUBLIC_SYMBOL size_t mvkVkFormatBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow) {
     const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
-    return (texelsPerRow / fmtDesc.blockTexelSize.width) * fmtDesc.bytesPerBlock;
+    return mvkCeilingDivide(texelsPerRow, fmtDesc.blockTexelSize.width) * fmtDesc.bytesPerBlock;
 }
 
 MVK_PUBLIC_SYMBOL size_t mvkMTLPixelFormatBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow) {
     const MVKFormatDesc& fmtDesc = formatDescForMTLPixelFormat(mtlFormat);
-    return (texelsPerRow / fmtDesc.blockTexelSize.width) * fmtDesc.bytesPerBlock;
+    return mvkCeilingDivide(texelsPerRow, fmtDesc.blockTexelSize.width) * fmtDesc.bytesPerBlock;
 }
 
 MVK_PUBLIC_SYMBOL size_t mvkVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
-    return (texelRowsPerLayer / formatDescForVkFormat(vkFormat).blockTexelSize.height) * bytesPerRow;
+    return mvkCeilingDivide(texelRowsPerLayer, formatDescForVkFormat(vkFormat).blockTexelSize.height) * bytesPerRow;
 }
 
 MVK_PUBLIC_SYMBOL size_t mvkMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
-    return (texelRowsPerLayer / formatDescForMTLPixelFormat(mtlFormat).blockTexelSize.height) * bytesPerRow;
+    return mvkCeilingDivide(texelRowsPerLayer, formatDescForMTLPixelFormat(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
 MVK_PUBLIC_SYMBOL VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat) {

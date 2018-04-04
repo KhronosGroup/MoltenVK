@@ -118,29 +118,36 @@ float mvkMTLPixelFormatBytesPerTexel(MTLPixelFormat mtlFormat);
 
 /**
  * Returns the size, in bytes, of a row of texels of the specified Vulkan format.
+ *
  * For compressed formats, this takes into consideration the compression block size,
- * and texelsPerRow should specify the width in texels, not blocks.
+ * and texelsPerRow should specify the width in texels, not blocks. The result is rounded
+ * up if texelsPerRow is not an integer multiple of the compression block width.
  */
 size_t mvkVkFormatBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow);
 
 /**
- * Returns the size, in bytes, of a row of texels of the specified Metal format. 
+ * Returns the size, in bytes, of a row of texels of the specified Metal format.
+ *
  * For compressed formats, this takes into consideration the compression block size,
- * and texelsPerRow should specify the width in texels, not blocks.
+ * and texelsPerRow should specify the width in texels, not blocks. The result is rounded
+ * up if texelsPerRow is not an integer multiple of the compression block width.
  */
 size_t mvkMTLPixelFormatBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow);
 
 /**
  * Returns the size, in bytes, of a texture layer of the specified Vulkan format.
+ *
  * For compressed formats, this takes into consideration the compression block size,
- * and texelRowsPerLayer should specify the height in texels, not blocks.
+ * and texelRowsPerLayer should specify the height in texels, not blocks. The result is
+ * rounded up if texelRowsPerLayer is not an integer multiple of the compression block height.
  */
 size_t mvkVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 
 /**
  * Returns the size, in bytes, of a texture layer of the specified Metal format.
  * For compressed formats, this takes into consideration the compression block size,
- * and texelRowsPerLayer should specify the height in texels, not blocks.
+ * and texelRowsPerLayer should specify the height in texels, not blocks. The result is
+ * rounded up if texelRowsPerLayer is not an integer multiple of the compression block height.
  */
 size_t mvkMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 

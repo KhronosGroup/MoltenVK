@@ -110,6 +110,12 @@ VkResult mvkNotifyErrorWithText(VkResult vkErr, const char* errFmt, ...) __print
 #pragma mark -
 #pragma mark Alignment functions
 
+/** Returns the result of an unsigned integer division, rounded up. */
+static inline size_t mvkCeilingDivide(size_t numerator, size_t denominator) {
+	if (denominator == 1) { return numerator; }		// Short circuit for this very common usecase.
+	return (numerator + denominator - 1) / denominator;
+}
+
 /** Returns whether the specified value is a power-of-two. */
 static inline bool mvkIsPowerOfTwo(uintptr_t value) {
 	// Test POT:  (x != 0) && ((x & (x - 1)) == 0)
