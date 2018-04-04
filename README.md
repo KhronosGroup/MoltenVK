@@ -75,6 +75,10 @@ open-source libraries on which **MoltenVK** relies:
 		brew install cmake
 		brew install python3
 
+   For faster dependencies build, you can also install Ninja:
+
+		brew install ninja
+
 2. Clone the `MoltenVK` repository:
 
 		git clone https://github.com/KhronosGroup/MoltenVK.git

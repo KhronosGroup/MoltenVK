@@ -48,8 +48,13 @@ build_repo() {
 
 	mkdir -p $1/build
 	cd $1/build
-	cmake ..
-	make
+	if type ninja >/dev/null 2>&1 ; then
+		cmake .. -G Ninja
+		ninja
+	else
+		cmake ..
+		make
+	fi
 	cd -
 }
 
