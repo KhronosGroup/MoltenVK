@@ -59,7 +59,7 @@ static CVReturn DisplayLinkCallback(CVDisplayLinkRef displayLink,
 									CVOptionFlags flagsIn,
 									CVOptionFlags* flagsOut,
 									void* target) {
-	demo_update_and_draw((struct demo*)target);
+	demo_draw((struct demo*)target);
 	return kCVReturnSuccess;
 }
 
