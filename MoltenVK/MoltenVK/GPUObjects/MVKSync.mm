@@ -44,23 +44,20 @@ void MVKSemaphoreImpl::reserve() {
 	reserveImpl();
 }
 
-void MVKSemaphoreImpl::wait(bool reserveAgain) {
-	unique_lock<mutex> lock(_lock);
-	_blocker.wait(lock, [this]{ return isClear(); });
-    if (reserveAgain) { reserveImpl(); }
-}
-
 bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
     unique_lock<mutex> lock(_lock);
 
     bool isDone;
-    if (timeout > 0) {
+    if (timeout == 0) {
+		isDone = isClear();
+	} else if (timeout == UINT64_MAX) {
+		_blocker.wait(lock, [this]{ return isClear(); });
+		isDone = true;
+	} else {
         // Limit timeout to avoid overflow since wait_for() uses wait_until()
         uint64_t nanoTimeout = min(timeout, numeric_limits<uint64_t>::max() >> 4);
         chrono::nanoseconds nanos(nanoTimeout);
         isDone = _blocker.wait_for(lock, nanos, [this]{ return isClear(); });
-    } else {
-        isDone = isClear();
     }
 
     if (reserveAgain) { reserveImpl(); }
@@ -71,23 +68,14 @@ bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
 #pragma mark -
 #pragma mark MVKSemaphore
 
-void MVKSemaphore::wait() {
-//    MVKLogDebug("Waiting on semaphore %p. Elapsed time: %.6f ms.", this, mvkGetElapsedMilliseconds());
-    _blocker.wait(true);
-//    MVKLogDebug("Done waiting on semaphore %p. Elapsed time: %.6f ms.", this, mvkGetElapsedMilliseconds());
-}
-
 bool MVKSemaphore::wait(uint64_t timeout) {
-//    MVKLogDebug("Waiting on semaphore %p for max timeout %llu. Elapsed time: %.6f ms.", this, timeout, mvkGetElapsedMilliseconds());
 	bool isDone = _blocker.wait(timeout, true);
-//    MVKLogDebug("Done waiting on semaphore %p. Elapsed time: %.6f ms.", this, mvkGetElapsedMilliseconds());
 	if ( !isDone && timeout > 0 ) { mvkNotifyErrorWithText(VK_TIMEOUT, "Vulkan semaphore timeout after %llu nanoseconds.", timeout); }
 	return isDone;
 }
 
 void MVKSemaphore::signal() {
     _blocker.release();
-//    MVKLogDebug("Signalled semaphore %p. Elapsed time: %.6f ms.", this, mvkGetElapsedMilliseconds());
 }
 
 
@@ -99,21 +87,15 @@ void MVKFence::addSitter(MVKFenceSitter* fenceSitter) {
 
 	// Sitters only care about unsignaled fences. If already signaled,
 	// don't add myself to the sitter and don't notify the sitter.
-	if (_isSignaled) {
-//        MVKLogDebug("Fence %p already signaled. Sitter not added. Elapsed time: %.6f ms.", this, mvkGetElapsedMilliseconds());
-        return;
-    }
+	if (_isSignaled) { return; }
 
 	// Ensure each fence only added once to each fence sitter
 	auto addRslt = _fenceSitters.insert(fenceSitter);	// pair with second element true if was added
 	if (addRslt.second) { fenceSitter->addUnsignaledFence(this); }
-
-//    MVKLogDebug("Fence %p adding sitter %d. Elapsed time: %.6f ms.", this, _fenceSitters.size(), mvkGetElapsedMilliseconds());
 }
 
 void MVKFence::removeSitter(MVKFenceSitter* fenceSitter) {
 	lock_guard<mutex> lock(_lock);
-//    MVKLogDebug("Fence %p removing sitter %d. Elapsed time: %.6f ms.", this, _fenceSitters.size(), mvkGetElapsedMilliseconds());
 	_fenceSitters.erase(fenceSitter);
 }
 
@@ -122,8 +104,6 @@ void MVKFence::signal() {
 
 	if (_isSignaled) { return; }	// Only signal once
 	_isSignaled = true;
-
-//    MVKLogDebug("Fence %p with %d sitters signaled. Elapsed time: %.6f ms.", this , _fenceSitters.size(), mvkGetElapsedMilliseconds());
 
 	// Notify all the fence sitters, and clear them from this instance.
     for (auto& fs : _fenceSitters) {
@@ -136,12 +116,10 @@ void MVKFence::reset() {
 	lock_guard<mutex> lock(_lock);
 	_isSignaled = false;
 	_fenceSitters.clear();
-//    MVKLogDebug("Reset fence %p. Elapsed time: %.6f ms.", this, mvkGetElapsedMilliseconds());
 }
 
 bool MVKFence::getIsSignaled() {
 	lock_guard<mutex> lock(_lock);
-//    MVKLogDebug("Checking fence %p status: %ssignaled. Elapsed time: %.6f ms.", this, (_isSignaled ? "" : "un"), mvkGetElapsedMilliseconds());
 	return _isSignaled;
 }
 
@@ -171,8 +149,6 @@ void MVKFenceSitter::fenceSignaled(MVKFence* fence) {
 	// Only release semaphore if actually waiting for this fence
 	if (_unsignaledFences.erase(fence)) { _blocker.release(); }
 }
-
-void MVKFenceSitter::wait() { _blocker.wait(); }
 
 bool MVKFenceSitter::wait(uint64_t timeout) {
 	bool isDone = _blocker.wait(timeout);
@@ -206,19 +182,13 @@ VkResult mvkWaitForFences(uint32_t fenceCount,
 						  VkBool32 waitAll,
 						  uint64_t timeout) {
 
-//	MVKLogDebug("Waiting for fences. Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-
 	// Create a blocking fence sitter and add it to each fence
 	MVKFenceSitter fenceSitter(waitAll);
 	for (uint32_t i = 0; i < fenceCount; i++) {
 		MVKFence* mvkFence = (MVKFence*)pFences[i];
 		mvkFence->addSitter(&fenceSitter);
 	}
-	VkResult rslt = fenceSitter.wait(timeout) ? VK_SUCCESS : VK_TIMEOUT;
-
-//	MVKLogDebug("Fences done. Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-
-	return rslt;
+	return fenceSitter.wait(timeout) ? VK_SUCCESS : VK_TIMEOUT;
 }
 
 

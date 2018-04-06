@@ -55,24 +55,17 @@ public:
 	 */
 	void release();
 
-	/** 
-	 * Indefinitely blocks processing on the current thread until either any or all 
-	 * (depending on configuration) outstanding reservations have been released.
-     *
-     * If reserveAgain is set to true, a single reservation will be added to this
-     * instance once the wait is finished.
-	 */
-	void wait(bool reserveAgain = false);
-
 	/**
 	 * Blocks processing on the current thread until any or all (depending on configuration) outstanding
      * reservations have been released, or until the specified timeout interval in nanoseconds expires.
+	 *
+	 * If timeout is the special value UINT64_MAX the timeout is treated as infinite.
      *
      * If reserveAgain is set to true, a single reservation will be added once this wait is finished.
 	 *
 	 * Returns true if all reservations were cleared, or false if the timeout interval expired.
 	 */
-	bool wait(uint64_t timeout, bool reserveAgain = false);
+	bool wait(uint64_t timeout = UINT64_MAX, bool reserveAgain = false);
 
 
 #pragma mark Construction
@@ -111,16 +104,15 @@ class MVKSemaphore : public MVKBaseDeviceObject {
 
 public:
 
-	/** Indefinitely blocks processing on the current thread until this semaphore is signaled. */
-	void wait();
-
 	/** 
 	 * Blocks processing on the current thread until this semaphore is 
 	 * signaled, or until the specified timeout in nanoseconds expires.
 	 *
+	 * If timeout is the special value UINT64_MAX the timeout is treated as infinite.
+	 *
 	 * Returns true if this semaphore was signaled, or false if the timeout interval expired.
 	 */
-	bool wait(uint64_t timeout);
+	bool wait(uint64_t timeout = UINT64_MAX);
 
 	/** Signals the semaphore. Unblocks all waiting threads to continue processing. */
 	void signal();
@@ -196,24 +188,16 @@ class MVKFenceSitter : public MVKBaseObject {
 public:
 
 	/**
-	 * If this instance has been configured to wait for fences, blocks processing on the
-	 * current thread until any or all of the fences that this instance is waiting for are
-	 * signaled. If this instance has not been configured to wait for fences, this function
-	 * immediately returns true.
-	 *
-	 * Returns whether the lock timed out while waiting.
-	 */
-	void wait();
-
-	/**
 	 * If this instance has been configured to wait for fences, blocks processing on the 
 	 * current thread until any or all of the fences that this instance is waiting for are
 	 * signaled, or until the specified timeout in nanoseconds expires. If this instance
 	 * has not been configured to wait for fences, this function immediately returns true.
 	 *
+	 * If timeout is the special value UINT64_MAX the timeout is treated as infinite.
+	 *
 	 * Returns true if the required fences were triggered, or false if the timeout interval expired.
 	 */
-	bool wait(uint64_t timeout);
+	bool wait(uint64_t timeout = UINT64_MAX);
 
 
 #pragma mark Construction
@@ -248,6 +232,6 @@ VkResult mvkResetFences(uint32_t fenceCount, const VkFence* pFences);
 VkResult mvkWaitForFences(uint32_t fenceCount,
 						  const VkFence* pFences,
 						  VkBool32 waitAll,
-						  uint64_t timeout);
+						  uint64_t timeout = UINT64_MAX);
 
 

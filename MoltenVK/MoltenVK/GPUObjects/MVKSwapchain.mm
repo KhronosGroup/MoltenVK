@@ -68,35 +68,17 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
     MVKSwapchainImageAvailability minAvailability = { .acquisitionID = numeric_limits<uint64_t>::max(), .waitCount = numeric_limits<uint32_t>::max(), .isAvailable = false };
     for (MVKSwapchainImage* mvkSCImg : _surfaceImages) {
         const MVKSwapchainImageAvailability* currAvailability = mvkSCImg->getAvailability();
-//        MVKLogDebug("Comparing availability (isAvailable: %d waitCount: %d, acquisitionID: %d) to (isAvailable: %d waitCount: %d, acquisitionID: %d)",
-//                    currAvailability->isAvailable, currAvailability->waitCount, currAvailability->acquisitionID,
-//                    minAvailability.isAvailable, minAvailability.waitCount, minAvailability.acquisitionID);
         if (*currAvailability < minAvailability) {
             minAvailability = *currAvailability;
             minWaitIndex = mvkSCImg->getSwapchainIndex();
-//            MVKLogDebug("Is smaller! Index: %d", minWaitIndex);
         }
     }
 //    MVKLogDebug("Selected MVKSwapchainImage %p, index: %d to trigger semaphore %p and fence %p", _surfaceImages[minWaitIndex], minWaitIndex, semaphore, fence);
 
     *pImageIndex = minWaitIndex;	// Return the index of the image with the shortest wait
 
-    if (semaphore || fence) {
-        MVKSemaphore* mvkSem4 = (MVKSemaphore*)semaphore;
-        MVKFence* mvkFence = (MVKFence*)fence;
-        _surfaceImages[minWaitIndex]->signalWhenAvailable(mvkSem4, mvkFence);
-    } else {
-        // Interpret a NULL semaphore to mean that this function itself should block
-        // until the image is available. Create temp semaphore and wait on it here.
-        VkSemaphoreCreateInfo semaphoreCreateInfo = {
-            .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-            .pNext = NULL,
-        };
-        MVKSemaphore mvkSem4(_device, &semaphoreCreateInfo);
-        _surfaceImages[minWaitIndex]->signalWhenAvailable(&mvkSem4, NULL);
-        if ( !mvkSem4.wait(timeout) ) { return VK_TIMEOUT; }
-    }
-    
+    _surfaceImages[minWaitIndex]->signalWhenAvailable((MVKSemaphore*)semaphore, (MVKFence*)fence);
+
     return getHasSurfaceSizeChanged() ? VK_SUBOPTIMAL_KHR : VK_SUCCESS;
 }
 

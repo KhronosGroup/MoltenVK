@@ -90,10 +90,9 @@ VkResult MVKQueue::submitPresentKHR(const VkPresentInfoKHR* pPresentInfo) {
     return rslt;
 }
 
+// Create an empty submit struct and fence, submit to queue and wait on fence.
 VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 
-	// Create submit struct including a temp Vulkan reference to a semaphore
-	VkSemaphore vkSem4;
 	VkSubmitInfo vkSbmtInfo = {
 		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
 		.pNext = NULL,
@@ -101,22 +100,20 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 		.pWaitSemaphores = VK_NULL_HANDLE,
 		.commandBufferCount = 0,
 		.pCommandBuffers = VK_NULL_HANDLE,
-		.signalSemaphoreCount = 1,
-		.pSignalSemaphores = &vkSem4
+		.signalSemaphoreCount = 0,
+		.pSignalSemaphores = VK_NULL_HANDLE
 	};
 
-    VkSemaphoreCreateInfo vkSemInfo = {
-        .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO,
-        .pNext = NULL,
-        .flags = 0,
-    };
+	VkFenceCreateInfo vkFenceInfo = {
+		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
+		.pNext = NULL,
+		.flags = 0,
+	};
 
-	MVKSemaphore mvkSem4(_device, &vkSemInfo);              // Construct MVKSemaphore
-	vkSem4 = (VkSemaphore)&mvkSem4;                         // Set reference to MVKSemaphore in submit struct
-	submit(1, &vkSbmtInfo, VK_NULL_HANDLE, cmdBuffUse);		// Submit semaphore queue
-	mvkSem4.wait();                                         // Wait on the semaphore
-
-	return VK_SUCCESS;
+	MVKFence mvkFence(_device, &vkFenceInfo);
+	VkFence fence = (VkFence)&mvkFence;
+	submit(1, &vkSbmtInfo, fence, cmdBuffUse);
+	return mvkWaitForFences(1, &fence, false);
 }
 
 // This function is guarded against conflict with the mtlCommandBufferHasCompleted()
