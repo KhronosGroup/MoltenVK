@@ -137,12 +137,14 @@ fi
 # ----------------- glslang, SPIRV-Tools & SPIRV-Headers -------------------
 
 # When MoltenVK is built by something that already has a copy of the
-# glslang repo, use it by creating a symlink.
+# glslang repo, copy it here.
+# Note that a symlink doesn't work because the name of the containing
+# directory (e.g., External) may not be the same.
 if [ ! "$GLSLANG_ROOT" = "" ]; then
 
 	REPO_NAME=${GLSLANG_NAME}
 	rm -rf ${REPO_NAME}
-	ln -sfn ${GLSLANG_ROOT} ${REPO_NAME}
+	cp -a ${GLSLANG_ROOT} ${REPO_NAME}
 
 else
 
