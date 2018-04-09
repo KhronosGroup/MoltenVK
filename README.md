@@ -75,7 +75,7 @@ open-source libraries on which **MoltenVK** relies:
 		brew install cmake
 		brew install python3
 
-   For faster dependencies build, you can also install Ninja:
+   For faster dependency builds, you can also optionally install `ninja`:
 
 		brew install ninja
 
