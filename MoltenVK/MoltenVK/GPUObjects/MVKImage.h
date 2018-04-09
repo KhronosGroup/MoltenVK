@@ -72,10 +72,8 @@ public:
 	/**
 	 * Returns the number of layers at each mipmap level. For an array image type, this is
 	 * the number of elements in the array. For cube image type, this is a multiple of 6.
-	 * For a 3D image type, this is the depth of the image. Formally, this value is calculated
-	 * as the multiple of depth and array size.
 	 */
-	inline uint32_t getLayerCount() { return _extent.depth * _arrayLayers; }
+	inline uint32_t getLayerCount() { return _arrayLayers; }
 
     /** Returns the number of samples for each pixel of this image. */
     inline uint32_t getSampleCount() { return _samples; }

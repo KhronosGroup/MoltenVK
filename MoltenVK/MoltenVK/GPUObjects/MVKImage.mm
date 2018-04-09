@@ -454,9 +454,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     _hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
 
    // Calc _byteCount after _mtlTexture & _byteAlignment
-    uint32_t layerCount = getLayerCount();  // Combines depth & arrays
     for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
-        _byteCount += getBytesPerLayer(mipLvl) * layerCount;
+        _byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
     }
 
     initSubresources(pCreateInfo);
@@ -488,14 +487,13 @@ void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 	uint32_t currArrayLayer = subresource.arrayLayer;
 
 	VkDeviceSize bytesPerLayerCurrLevel = getBytesPerLayer(currMipLevel);
-	uint32_t layCnt = getLayerCount();
 
 	// Accumulate the byte offset for the specified sub-resource.
 	// This is the sum of the bytes consumed by all layers in all mipmap levels before the
 	// desired level, plus the layers before the desired layer at the desired level.
 	VkDeviceSize offset = 0;
 	for (uint32_t mipLvl = 0; mipLvl < currMipLevel; mipLvl++) {
-		offset += (getBytesPerLayer(mipLvl) * layCnt);
+		offset += (getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers);
 	}
 	offset += (bytesPerLayerCurrLevel * currArrayLayer);
 

@@ -630,6 +630,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLTexture> mtlTexture = _image->getMTLTexture();
     if ( !mtlBuffer || !mtlTexture ) { return; }
 
+	NSUInteger mtlBuffOffset = _buffer->getMTLBufferOffset();
     MTLPixelFormat mtlPixFmt = mtlTexture.pixelFormat;
     MVKCommandUse cmdUse = _toImage ? kMVKCommandUseCopyBufferToImage : kMVKCommandUseCopyImageToBuffer;
     id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(cmdUse);
@@ -671,7 +672,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
         for (uint32_t lyrIdx = 0; lyrIdx < cpyRgn.imageSubresource.layerCount; lyrIdx++) {
             if (_toImage) {
                 [mtlBlitEnc copyFromBuffer: mtlBuffer
-                              sourceOffset: (cpyRgn.bufferOffset + (bytesPerImg * lyrIdx))
+                              sourceOffset: (mtlBuffOffset + cpyRgn.bufferOffset + (bytesPerImg * lyrIdx))
                          sourceBytesPerRow: bytesPerRow
                        sourceBytesPerImage: bytesPerImg
                                 sourceSize: mtlTxtSize
@@ -687,7 +688,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
                                sourceOrigin: mtlTxtOrigin
                                  sourceSize: mtlTxtSize
                                    toBuffer: mtlBuffer
-                          destinationOffset: (cpyRgn.bufferOffset + (bytesPerImg * lyrIdx))
+                          destinationOffset: (mtlBuffOffset + cpyRgn.bufferOffset + (bytesPerImg * lyrIdx))
                      destinationBytesPerRow: bytesPerRow
                    destinationBytesPerImage: bytesPerImg
                                     options: blitOptions];
