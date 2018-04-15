@@ -269,7 +269,11 @@ void MVKQueueSubmission::recordResult(VkResult vkResult) {
 #pragma mark -
 #pragma mark MVKQueueCommandBufferSubmission
 
+std::atomic<uint32_t> _subCount;
+
 void MVKQueueCommandBufferSubmission::execute() {
+
+//	MVKLogDebug("Executing submission %p.", this);
 
     // Execute each command buffer, or if no command buffers, but a fence or semaphores,
     // create an empty MTLCommandBuffer to trigger the semaphores and fence.
@@ -325,6 +329,8 @@ NSString* MVKQueueCommandBufferSubmission::getMTLCommandBufferName() {
 
 void MVKQueueCommandBufferSubmission::finish() {
 
+//	MVKLogDebug("Finishing submission %p. Submission count %u.", this, _subCount--);
+
 	// Signal each of the signal semaphores.
     for (auto& ss : _signalSemaphores) { ss->signal(); }
 
@@ -364,6 +370,8 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 	_fence = (MVKFence*)fence;
     _cmdBuffUse= cmdBuffUse;
 	_activeMTLCommandBuffer = nil;
+
+//	MVKLogDebug("Creating submission %p. Submission count %u.", this, ++_subCount);
 }
 
 

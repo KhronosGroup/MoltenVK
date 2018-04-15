@@ -203,9 +203,6 @@ VkResult MVKImage::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
 }
 
 void* MVKImage::map(VkDeviceSize offset, VkDeviceSize size) {
-//    MVKLogDebug("Comparing map to image %p with memory offset %d and size %d.", this, _deviceMemoryOffset, _byteCount);
-//    if (doesContain(offset, size)) { MVKLogDebug("Mapping %d bytes to single image %p.", size, this); }
-
     return (doesContain(offset, size)
             ? _deviceMemory->allocateMappedMemory(offset, size)
             : VK_NULL_HANDLE);
@@ -773,54 +770,77 @@ bool MVKSwapchainImageAvailability_t::operator< (const MVKSwapchainImageAvailabi
 	return acquisitionID < rhs.acquisitionID;
 }
 
+// Makes this image available for acquisition by the app.
+// If any semaphores are waiting to be signaled when this image becomes available, the
+// earliest semaphore is signaled, and this image remains unavailable for other uses.
 void MVKSwapchainImage::makeAvailable() {
 	lock_guard<mutex> lock(_availabilityLock);
 
 	// Mark when this event happened, relative to that of other images
 	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
 
-	// If there are no availability trackers waiting, mark this image as available.
-	// Otherwise, mark this image as unavailable, and extract and signal the first semaphore and fence.
-	if ( _availabilityTrackers.empty() ) {
-		_availability.isAvailable = true;
+	// Mark this image as available if no semaphores or fences are waiting to be signaled.
+	_availability.isAvailable = _availabilitySignalers.empty();
+
+	MVKSwapchainSignaler signaler;
+	if (_availability.isAvailable) {
+		// If this image is now available, signal the semaphore and fence that were associated
+		// with the last time this image was acquired while available. This is a workaround for
+		// when an app uses a single semaphore or fence for more than one swapchain image.
+		// Becuase the semaphore or fence will be signaled by more than one image, it will
+		// get out of sync, and the final use of the image would not be signaled as a result.
+
+		signaler = _preSignaled;
 	} else {
-		_availability.isAvailable = false;
-		auto tracker = _availabilityTrackers.front();
-		_availabilityTrackers.pop_front();
-		signal(tracker);
+		// If this image is not yet available, extract and signal the first semaphore and fence.
+
+		signaler = _availabilitySignalers.front();
+		_availabilitySignalers.pop_front();
 	}
 
-//    MVKLogDebug("Finished presentation of MVKSwapchainImage %p. Elapsed time: %.6f ms.", this, mvkGetElapsedMilliseconds());
+	// Signal the semaphore and fence, and let them know they are no longer being tracked.
+	signal(signaler);
+	unmarkAsTracked(signaler);
 
+//	MVKLogDebug("Signaling%s swapchain image %p semaphore %p from present, with %lu remaining semaphores.", (_availability.isAvailable ? " pre-signaled" : ""), this, signaler.first, _availabilitySignalers.size());
 }
 
 void MVKSwapchainImage::signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
 	lock_guard<mutex> lock(_availabilityLock);
-//    MVKLogDebug("Requesting signal when MVKSwapchain image %p is free to semaphore %p and fence %p.", this, semaphore, fence);
-	auto tracker = make_pair(semaphore, fence);
+	auto signaler = make_pair(semaphore, fence);
 	if (_availability.isAvailable) {
 		_availability.isAvailable = false;
-		signal(tracker);
+		signal(signaler);
+		_preSignaled = signaler;
 	} else {
-		_availabilityTrackers.push_back(tracker);
+		_availabilitySignalers.push_back(signaler);
 	}
+	markAsTracked(signaler);
+
+//	MVKLogDebug("%s swapchain image %p semaphore %p in acquire with %lu other semaphores.", (_availability.isAvailable ? "Signaling" : "Tracking"), this, semaphore, _availabilitySignalers.size());
 }
 
 /** Signal either or both of the semaphore and fence in the specified tracker pair. */
-void MVKSwapchainImage::signal(pair<MVKSemaphore*, MVKFence*> tracker) {
+void MVKSwapchainImage::signal(MVKSwapchainSignaler& signaler) {
+	if (signaler.first) { signaler.first->signal(); }
+	if (signaler.second) { signaler.second->signal(); }
+}
 
-	MVKSemaphore* semaphore = tracker.first;
-	if (semaphore) { semaphore->signal(); }
+// Tell the semaphore and fence that they are being tracked for future signaling.
+void MVKSwapchainImage::markAsTracked(MVKSwapchainSignaler& signaler) {
+	if (signaler.first) { signaler.first->wasAddedToSignaler(); }
+	if (signaler.second) { signaler.second->wasAddedToSignaler(); }
+}
 
-	MVKFence* fence = tracker.second;
-	if (fence) { fence->signal(); }
-
-//    MVKLogDebug("MVKSwapchainImage %p signalling semaphore %p and fence %p.", this, semaphore, fence);
+// Tell the semaphore and fence that they are no longer being tracked for future signaling.
+void MVKSwapchainImage::unmarkAsTracked(MVKSwapchainSignaler& signaler) {
+	if (signaler.first) { signaler.first->wasRemovedFromSignaler(); }
+	if (signaler.second) { signaler.second->wasRemovedFromSignaler(); }
 }
 
 const MVKSwapchainImageAvailability* MVKSwapchainImage::getAvailability() {
 	lock_guard<mutex> lock(_availabilityLock);
-	_availability.waitCount = (uint32_t)_availabilityTrackers.size();
+	_availability.waitCount = (uint32_t)_availabilitySignalers.size();
 	return &_availability;
 }
 
@@ -833,12 +853,7 @@ const MVKSwapchainImageAvailability* MVKSwapchainImage::getAvailability() {
  * This implementation retrieves a MTLTexture from the CAMetalDrawable.
  */
 id<MTLTexture> MVKSwapchainImage::newMTLTexture() {
-//	return [[getCAMetalDrawable() texture] retain];
-    id<CAMetalDrawable> mtlDrwbl = getCAMetalDrawable();
-    id<MTLTexture> mtlTex = [[mtlDrwbl texture] retain];
-//    MVKLogDebug("Retrieved MTLTexture %p from CAMetalDrawable %p in MVKSwapchain image: %p. Elapsed time: %.6f ms.",
-//                mtlTex, mtlDrwbl, this, mvkGetElapsedMilliseconds());
-    return mtlTex;
+	return [[getCAMetalDrawable() texture] retain];
 }
 
 id<CAMetalDrawable> MVKSwapchainImage::getCAMetalDrawable() {
@@ -847,15 +862,12 @@ id<CAMetalDrawable> MVKSwapchainImage::getCAMetalDrawable() {
 			_mtlDrawable = [_swapchain->getNextCAMetalDrawable() retain];	// retained
 		}
 		MVKAssert(_mtlDrawable, "Could not aquire an available CAMetalDrawable from the CAMetalLayer in MVKSwapchain image: %p.", this);
-//		MVKLogDebug("Retrieved CAMetalDrawable %p with retain count %d in MVKSwapchain image: %p. Elapsed time: %.6f ms.",
-//					_mtlDrawable, _mtlDrawable.retainCount, this, mvkGetElapsedMilliseconds());
 	}
 	return _mtlDrawable;
 }
 
 void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) {
-//    MVKLogDebug("Presenting CAMetalDrawable: %s with retain count %d in MVKSwapchain image: %p. Elapsed time: %.6f ms.",
-//                _mtlDrawable.description.UTF8String, _mtlDrawable.retainCount, this, mvkGetElapsedMilliseconds());
+//	MVKLogDebug("Presenting swapchain image %p from present.", this);
 
     id<CAMetalDrawable> mtlDrawable = getCAMetalDrawable();
     _swapchain->willPresentSurface(getMTLTexture(), mtlCmdBuff);
@@ -876,16 +888,12 @@ void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) 
 
 /** Removes and releases the Metal drawable object, so that it can be lazily created by getCAMetalDrawable(). */
 void MVKSwapchainImage::resetCAMetalDrawable() {
-//	MVKLogDebug("Releasing MTLDrawable: %s with retain count %d in MVKSwapchain image: %p.",
-//				_mtlDrawable.description.UTF8String, _mtlDrawable.retainCount, this);
 	[_mtlDrawable release];
 	_mtlDrawable = nil;
 }
 
 /** Resets the MTLTexture and CAMetalDrawable underlying this image. */
 void MVKSwapchainImage::resetMetalSurface() {
-//    MVKLogDebug("Resetting MTLTexture: %p and CAMetalDrawable %p in MVKSwapchain image: %p. Elapsed time: %.6f ms.",
-//                _mtlTexture, _mtlDrawable, this, mvkGetElapsedMilliseconds());
     resetMTLTexture();			// Release texture first so drawable will be last to release it
     resetCAMetalDrawable();
 }
@@ -900,10 +908,9 @@ MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
 	_swapchainIndex = _swapchain->getImageCount();
 	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
 	_availability.isAvailable = true;
+	_preSignaled = make_pair(nullptr, nullptr);
 	_mtlDrawable = nil;
     _canSupportMTLTextureView = false;		// Override...swapchains never support Metal image view.
-
-//    MVKLogDebug("Created MVKSwapchain image %p.", this);
 }
 
 MVKSwapchainImage::~MVKSwapchainImage() {

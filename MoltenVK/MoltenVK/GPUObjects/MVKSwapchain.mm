@@ -73,12 +73,9 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
             minWaitIndex = mvkSCImg->getSwapchainIndex();
         }
     }
-//    MVKLogDebug("Selected MVKSwapchainImage %p, index: %d to trigger semaphore %p and fence %p", _surfaceImages[minWaitIndex], minWaitIndex, semaphore, fence);
 
     *pImageIndex = minWaitIndex;	// Return the index of the image with the shortest wait
-
     _surfaceImages[minWaitIndex]->signalWhenAvailable((MVKSemaphore*)semaphore, (MVKFence*)fence);
-
     return getHasSurfaceSizeChanged() ? VK_SUBOPTIMAL_KHR : VK_SUCCESS;
 }
 

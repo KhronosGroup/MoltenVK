@@ -31,7 +31,7 @@ void MVKSemaphoreImpl::release() {
 
     // Either decrement the reservation counter, or clear it altogether
     if (_shouldWaitAll) {
-        _reservationCount--;
+		if (_reservationCount > 0) { _reservationCount--; }
     } else {
         _reservationCount = 0;
     }
@@ -62,6 +62,36 @@ bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
 
     if (reserveAgain) { reserveImpl(); }
     return isDone;
+}
+
+
+#pragma mark -
+#pragma mark MVKSignalable
+
+void MVKSignalable::wasAddedToSignaler() {
+	lock_guard<mutex> lock(_signalerLock);
+
+	_signalerCount++;
+}
+
+void MVKSignalable::wasRemovedFromSignaler() {
+	lock_guard<mutex> lock(_signalerLock);
+
+	if (_signalerCount > 0) { _signalerCount--; }
+	maybeDestroy();
+}
+
+void MVKSignalable::destroy() {
+	lock_guard<mutex> lock(_signalerLock);
+
+	_isDestroyed = true;
+	maybeDestroy();
+}
+
+void MVKSignalable::maybeDestroy() {
+	if (_isDestroyed && _signalerCount == 0) {
+		MVKBaseDeviceObject::destroy();
+	}
 }
 
 

@@ -60,8 +60,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyInstance(
     VkInstance                                  instance,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-	delete mvkInst;
+	MVKInstance::getMVKInstance(instance)->destroy();
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDevices(
@@ -168,8 +167,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDevice(
 	VkDevice                                    device,
 	const VkAllocationCallbacks*                pAllocator) {
 
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	delete mvkDev;
+	MVKDevice::getMVKDevice(device)->destroy();
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceExtensionProperties(

@@ -1037,7 +1037,8 @@ MVKBuffer* MVKDevice::createBuffer(const VkBufferCreateInfo* pCreateInfo,
 
 void MVKDevice::destroyBuffer(MVKBuffer* mvkBuff,
 							  const VkAllocationCallbacks* pAllocator) {
-	delete removeResource(mvkBuff);
+	removeResource(mvkBuff);
+	mvkBuff->destroy();
 }
 
 MVKBufferView* MVKDevice::createBufferView(const VkBufferViewCreateInfo* pCreateInfo,
@@ -1047,7 +1048,7 @@ MVKBufferView* MVKDevice::createBufferView(const VkBufferViewCreateInfo* pCreate
 
 void MVKDevice::destroyBufferView(MVKBufferView* mvkBuffView,
                                   const VkAllocationCallbacks* pAllocator) {
-    delete mvkBuffView;
+    mvkBuffView->destroy();
 }
 
 MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
@@ -1057,7 +1058,8 @@ MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
 
 void MVKDevice::destroyImage(MVKImage* mvkImg,
 							 const VkAllocationCallbacks* pAllocator) {
-	delete removeResource(mvkImg);
+	removeResource(mvkImg);
+	mvkImg->destroy();
 }
 
 MVKImageView* MVKDevice::createImageView(const VkImageViewCreateInfo* pCreateInfo,
@@ -1067,7 +1069,7 @@ MVKImageView* MVKDevice::createImageView(const VkImageViewCreateInfo* pCreateInf
 
 void MVKDevice::destroyImageView(MVKImageView* mvkImgView,
 								 const VkAllocationCallbacks* pAllocator) {
-	delete mvkImgView;
+	mvkImgView->destroy();
 }
 
 MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreateInfo,
@@ -1077,7 +1079,7 @@ MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreate
 
 void MVKDevice::destroySwapchain(MVKSwapchain* mvkSwpChn,
 								 const VkAllocationCallbacks* pAllocator) {
-	delete mvkSwpChn;
+	mvkSwpChn->destroy();
 }
 
 MVKSwapchainImage* MVKDevice::createSwapchainImage(const VkImageCreateInfo* pCreateInfo,
@@ -1088,7 +1090,8 @@ MVKSwapchainImage* MVKDevice::createSwapchainImage(const VkImageCreateInfo* pCre
 
 void MVKDevice::destroySwapchainImage(MVKSwapchainImage* mvkImg,
 									  const VkAllocationCallbacks* pAllocator) {
-	delete removeResource(mvkImg);
+	removeResource(mvkImg);
+	mvkImg->destroy();
 }
 
 MVKFence* MVKDevice::createFence(const VkFenceCreateInfo* pCreateInfo,
@@ -1098,7 +1101,7 @@ MVKFence* MVKDevice::createFence(const VkFenceCreateInfo* pCreateInfo,
 
 void MVKDevice::destroyFence(MVKFence* mvkFence,
 							 const VkAllocationCallbacks* pAllocator) {
-	delete mvkFence;
+	mvkFence->destroy();
 }
 
 MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInfo,
@@ -1108,7 +1111,7 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 
 void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
 								 const VkAllocationCallbacks* pAllocator) {
-	delete mvkSem4;
+	mvkSem4->destroy();
 }
 
 MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInfo,
@@ -1127,7 +1130,7 @@ MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInf
 
 void MVKDevice::destroyQueryPool(MVKQueryPool* mvkQP,
 								 const VkAllocationCallbacks* pAllocator) {
-	delete mvkQP;
+	mvkQP->destroy();
 }
 
 MVKShaderModule* MVKDevice::createShaderModule(const VkShaderModuleCreateInfo* pCreateInfo,
@@ -1137,7 +1140,7 @@ MVKShaderModule* MVKDevice::createShaderModule(const VkShaderModuleCreateInfo* p
 
 void MVKDevice::destroyShaderModule(MVKShaderModule* mvkShdrMod,
 									const VkAllocationCallbacks* pAllocator) {
-	delete mvkShdrMod;
+	mvkShdrMod->destroy();
 }
 
 MVKPipelineCache* MVKDevice::createPipelineCache(const VkPipelineCacheCreateInfo* pCreateInfo,
@@ -1147,7 +1150,7 @@ MVKPipelineCache* MVKDevice::createPipelineCache(const VkPipelineCacheCreateInfo
 
 void MVKDevice::destroyPipelineCache(MVKPipelineCache* mvkPLC,
 									 const VkAllocationCallbacks* pAllocator) {
-	delete mvkPLC;
+	mvkPLC->destroy();
 }
 
 MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
@@ -1157,7 +1160,7 @@ MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateI
 
 void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 									  const VkAllocationCallbacks* pAllocator) {
-	delete mvkPLL;
+	mvkPLL->destroy();
 }
 
 template<typename PipelineType, typename PipelineInfoType>
@@ -1193,7 +1196,7 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
         } else {
             rslt = plRslt;
             pPipelines[plIdx] = VK_NULL_HANDLE;
-            delete mvkPL;
+            mvkPL->destroy();
         }
     }
 
@@ -1218,7 +1221,7 @@ template VkResult MVKDevice::createPipelines<MVKComputePipeline, VkComputePipeli
 
 void MVKDevice::destroyPipeline(MVKPipeline* mvkPL,
                                 const VkAllocationCallbacks* pAllocator) {
-    delete mvkPL;
+    mvkPL->destroy();
 }
 
 MVKSampler* MVKDevice::createSampler(const VkSamplerCreateInfo* pCreateInfo,
@@ -1228,7 +1231,7 @@ MVKSampler* MVKDevice::createSampler(const VkSamplerCreateInfo* pCreateInfo,
 
 void MVKDevice::destroySampler(MVKSampler* mvkSamp,
 							   const VkAllocationCallbacks* pAllocator) {
-	delete mvkSamp;
+	mvkSamp->destroy();
 }
 
 MVKDescriptorSetLayout* MVKDevice::createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
@@ -1238,7 +1241,7 @@ MVKDescriptorSetLayout* MVKDevice::createDescriptorSetLayout(const VkDescriptorS
 
 void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
 										   const VkAllocationCallbacks* pAllocator) {
-	delete mvkDSL;
+	mvkDSL->destroy();
 }
 
 MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
@@ -1248,7 +1251,7 @@ MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateI
 
 void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 									  const VkAllocationCallbacks* pAllocator) {
-	delete mvkDP;
+	mvkDP->destroy();
 }
 
 MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCreateInfo,
@@ -1258,7 +1261,7 @@ MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCre
 
 void MVKDevice::destroyFramebuffer(MVKFramebuffer* mvkFB,
 								   const VkAllocationCallbacks* pAllocator) {
-	delete mvkFB;
+	mvkFB->destroy();
 }
 
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
@@ -1268,7 +1271,7 @@ MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreate
 
 void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,
 								  const VkAllocationCallbacks* pAllocator) {
-	delete mvkRP;
+	mvkRP->destroy();
 }
 
 MVKCommandPool* MVKDevice::createCommandPool(const VkCommandPoolCreateInfo* pCreateInfo,
@@ -1278,7 +1281,7 @@ MVKCommandPool* MVKDevice::createCommandPool(const VkCommandPoolCreateInfo* pCre
 
 void MVKDevice::destroyCommandPool(MVKCommandPool* mvkCmdPool,
 								   const VkAllocationCallbacks* pAllocator) {
-	delete mvkCmdPool;
+	mvkCmdPool->destroy();
 }
 
 MVKDeviceMemory* MVKDevice::allocateMemory(const VkMemoryAllocateInfo* pAllocateInfo,
@@ -1288,7 +1291,7 @@ MVKDeviceMemory* MVKDevice::allocateMemory(const VkMemoryAllocateInfo* pAllocate
 
 void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 						   const VkAllocationCallbacks* pAllocator) {
-	delete mvkDevMem;
+	mvkDevMem->destroy();
 }
 
 /** Adds the specified resource for tracking, and returns the added resource. */
@@ -1407,7 +1410,6 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
 #pragma mark Construction
 
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) : _mvkConfig() {
-//	MVKLogDebug("Creating MVKDevice. Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
 
 	initPerformanceTracking();
 
@@ -1485,7 +1487,7 @@ void MVKDevice::initPerformanceTracking() {
 MVKDevice::~MVKDevice() {
 	mvkDestroyContainerContents(_queueFamilies);
     [_globalVisibilityResultMTLBuffer release];
-    delete _commandResourceFactory;
+	_commandResourceFactory->destroy();
 }
 
 

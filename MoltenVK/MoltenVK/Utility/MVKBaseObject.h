@@ -37,6 +37,9 @@ public:
     /** Returns the name of the class of which this object is an instance. */
     std::string className();
 
+	/** Destroys this object. Default behaviour simply deletes it. Subclasses may override to delay deletion. */
+	virtual void destroy() { delete this; }
+
     virtual ~MVKBaseObject() {}
 };
 
