@@ -310,6 +310,9 @@ protected:
 #pragma mark -
 #pragma mark MVKSwapchainImage
 
+/** Tracks a semaphore and fence for later signaling. */
+typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
+
 /** Indicates the relative availability of each image in the swapchain. */
 typedef struct MVKSwapchainImageAvailability_t {
 	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
@@ -326,14 +329,6 @@ public:
 
 	/** Returns the index of this image within the encompassing swapchain. */
 	inline uint32_t getSwapchainIndex() { return _swapchainIndex; }
-
-	/** 
-	 * Makes this image available for acquisition by the app.
-	 *
-	 * If any semaphores are waiting to be signaled when this image becomes available, the
-	 * earliest semaphore is signaled, and this image remains unavailable for other uses.
-	 */
-	void makeAvailable();
 
 	/**
 	 * Registers a semaphore and/or fence that will be signaled when this image becomes available.
@@ -373,14 +368,18 @@ protected:
 	id<CAMetalDrawable> getCAMetalDrawable();
 	void resetCAMetalDrawable();
     void resetMetalSurface();
-	void signal(std::pair<MVKSemaphore*, MVKFence*> tracker);
+	void signal(MVKSwapchainSignaler& signaler);
+	void markAsTracked(MVKSwapchainSignaler& signaler);
+	void unmarkAsTracked(MVKSwapchainSignaler& signaler);
+	void makeAvailable();
     void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
 	MVKSwapchain* _swapchain;
 	uint32_t _swapchainIndex;
 	id<CAMetalDrawable> _mtlDrawable;
 	std::mutex _availabilityLock;
-	std::list<std::pair<MVKSemaphore*, MVKFence*>> _availabilityTrackers;
+	std::list<MVKSwapchainSignaler> _availabilitySignalers;
+	MVKSwapchainSignaler _preSignaled;
 	MVKSwapchainImageAvailability _availability;
 };
 

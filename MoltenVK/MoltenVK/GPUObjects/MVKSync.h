@@ -97,10 +97,44 @@ private:
 
 
 #pragma mark -
+#pragma mark MVKSignalable
+
+/** Abstract class for Vulkan semaphores and fences. */
+class MVKSignalable : public MVKBaseDeviceObject {
+
+public:
+
+	/* Called when this object has been added to a tracker for later signaling. */
+	void wasAddedToSignaler();
+
+	/**
+	 * Called when this object has been removed from a tracker for later signaling.
+	 * If this object was destroyed while this signal was pending, it will now be deleted.
+	 */
+	void wasRemovedFromSignaler();
+
+	/** If this object is waiting to be signaled, deletion will be deferred until then. */
+	void destroy() override;
+
+
+#pragma mark Construction
+
+	MVKSignalable(MVKDevice* device) : MVKBaseDeviceObject(device) {}
+
+protected:
+	void maybeDestroy();
+
+	std::mutex _signalerLock;
+	uint32_t _signalerCount = 0;
+	bool _isDestroyed = false;
+};
+
+
+#pragma mark -
 #pragma mark MVKSemaphore
 
 /** Represents a Vulkan semaphore. */
-class MVKSemaphore : public MVKBaseDeviceObject {
+class MVKSemaphore : public MVKSignalable {
 
 public:
 
@@ -121,7 +155,7 @@ public:
 #pragma mark Construction
 
     MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo)
-        : MVKBaseDeviceObject(device), _blocker(false, 1) {}
+        : MVKSignalable(device), _blocker(false, 1) {}
 
 protected:
 	MVKSemaphoreImpl _blocker;
@@ -132,7 +166,7 @@ protected:
 #pragma mark MVKFence
 
 /** Represents a Vulkan fence. */
-class MVKFence : public MVKBaseDeviceObject {
+class MVKFence : public MVKSignalable {
 
 public:
 
@@ -165,7 +199,7 @@ public:
 	
 #pragma mark Construction
 
-    MVKFence(MVKDevice* device, const VkFenceCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device),
+    MVKFence(MVKDevice* device, const VkFenceCreateInfo* pCreateInfo) : MVKSignalable(device),
     _isSignaled(mvkAreFlagsEnabled(pCreateInfo->flags, VK_FENCE_CREATE_SIGNALED_BIT)) {}
 
 	~MVKFence() override;
