@@ -1177,7 +1177,7 @@
 				A9AB19961CB5B5A80001E7F9 /* spirv_msl.hpp */,
 			);
 			name = "SPIRV-Cross";
-			path = "../../External/SPIRV-Cross";
+			path = "../SPIRV-Cross";
 			sourceTree = "<group>";
 		};
 		A964B28D1C57EBC400D930D8 /* Products */ = {
@@ -1200,7 +1200,7 @@
 				A9A577C02054A0E20072F392 /* SPIRV */,
 			);
 			name = glslang;
-			path = ../../External/glslang;
+			path = ../glslang;
 			sourceTree = "<group>";
 		};
 		A97CC73C1C7527F3004A5C7E /* MoltenVKShaderConverterTool */ = {
@@ -1712,7 +1712,7 @@
 				A9A574D520549F1B0072F392 /* source */,
 			);
 			name = "SPIRV-Tools";
-			path = "../../External/glslang/External/spirv-tools";
+			path = "../glslang/External/spirv-tools";
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -2742,10 +2742,10 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/source\"",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/../External/glslang/build/External/spirv-tools\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/source\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				MACH_O_TYPE = staticlib;
@@ -2764,10 +2764,10 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/source\"",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/../External/glslang/build/External/spirv-tools\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/source\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 8.0;
 				MACH_O_TYPE = staticlib;
@@ -2785,10 +2785,10 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/source\"",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/../External/glslang/build/External/spirv-tools\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/source\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
@@ -2803,10 +2803,10 @@
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/source\"",
-					"\"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include\"",
-					"\"$(SRCROOT)/../External/glslang/build/External/spirv-tools\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/source\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
+					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;

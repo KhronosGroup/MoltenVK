@@ -30,25 +30,19 @@ Fetching External Libraries
 
 **MoltenVK** uses technology from the following external open-source libraries:
 
+- [*cereal*](https://github.com/USCiLab/cereal)
 - [*SPIRV-Cross*](https://github.com/KhronosGroup/SPIRV-Cross)
 - [*Vulkan-LoaderAndValidationLayers*](https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers)
 - [*glslang*](https://github.com/KhronosGroup/glslang)
 - [*SPIRV-Tools*](https://github.com/KhronosGroup/SPIRV-Tools)
 - [*SPIRV-Headers*](https://github.com/KhronosGroup/SPIRV-Headers)
-- [*VulkanSamples*](https://github.com/brenwill/VulkanSamples)
-- [*cereal*](https://github.com/USCiLab/cereal)
+- [*VulkanSamples*](https://github.com/LunarG/VulkanSamples)
 
 These external open-source libraries are maintained in the `External` directory.
 To retrieve these libraries from their sources, run the `fetchDependencies`  script
 in the main repository directory:
 
-	./fetchDependencies [-sdk]
-
-The `-sdk` option tells the script that **MoltenVK** is being installed as part of 
-the *LunarG Vulkan SDK*, and that **MoltenVK** can find some of the required libraries
-already loaded in the SDK, instead of retrieving them from their repositories again.
-If you are using **MoltenVK** outside of the *LunarG Vulkan SDK*, do not use the `-sdk`
-option, so that all of the required external libraries will be retrieved.
+	./fetchDependencies
 
 
 
@@ -60,6 +54,9 @@ To maintain consistency between the libraries, **MoltenVK** retrieves specific
 versions of each external library. The version of each external library is 
 determined as follows:
 
+- **_cereal_**: a GitHub repository commit identifier found in the
+  `ExternalRevisions/cereal_repo_revision` file. 
+
 - **_SPIRV-Cross_**: a GitHub repository commit identifier found in the
   `ExternalRevisions/SPIRV-Cross_repo_revision` file. 
   
@@ -69,15 +66,11 @@ determined as follows:
 - **_Vulkan-LoaderAndValidationLayers_**: a GitHub repository commit identifier found
   in the `ExternalRevisions/Vulkan-LoaderAndValidationLayers_repo_revision` file.
   
-- **_glslang_**: a GitHub repository commit identifier found in the retrieved 
-  *Vulkan-LoaderAndValidationLayers* repository.
+- **_glslang_**: automatically retrieved by the *Vulkan-LoaderAndValidationLayers* repository.
   
 - **_SPIRV-Tools_**: automatically retrieved by the *glslang* repository.
 
 - **_SPIRV-Headers_**: automatically retrieved by the *glslang* repository.
-
-- **_cereal_**: a GitHub repository commit identifier found in the
-  `ExternalRevisions/cereal_repo_revision` file. 
   
 You can update which versions of the *SPIRV-Cross*, *VulkanSamples*,
 *Vulkan-LoaderAndValidationLayers*, or *cereal* libraries are retrieved, 
@@ -93,6 +86,22 @@ the `fetchDependencies` script again.
 >***Note:*** If, after updating to new verions of the external libraries, you encounter 
 >build errors when building **MoltenVK**, review the instructions in the sections below 
 >to ensure all necessary external library files are included in the **MoltenVK** builds.
+
+
+
+<a name="add_cereal"></a>
+Adding the *cereal* Library to the *MoltenVK Xcode* Project
+-----------------------------------------------------------
+
+The `MoltenVK` *Xcode* project is already configured to use the *cereal* library. However, after 
+updating the version of *cereal*, as described [above](#updating), if you encounter any building 
+errors, you may need to re-add the *cereal* library to the `MoltenVK` *Xcode* project as follows:
+
+1. In the *Project Navigator* panel, select the `MoltenVK` *Xcode* project, then the `MoltenVK`
+   project target, and open the *Build Settings* tab. Locate the build setting entry 
+   **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
+   
+		"$(SRCROOT)/../External/cereal/include"
 
 
 <a name="add_spirv-cross"></a>
@@ -177,10 +186,10 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Tools* l
    `MoltenVKSPIRVToMSLConverter-macOS` target, and open the *Build Settings* tab. Locate the build setting 
    entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
    
-		"$(SRCROOT)/../External/glslang/External/spirv-tools/include"
-		"$(SRCROOT)/../External/glslang/External/spirv-tools/source"
-		"$(SRCROOT)/../External/glslang/External/spirv-tools/external/spirv-headers/include"
-		"$(SRCROOT)/../External/glslang/build/External/spirv-tools"
+		"$(SRCROOT)/glslang/External/spirv-tools/include"
+		"$(SRCROOT)/glslang/External/spirv-tools/source"
+		"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include"
+		"$(SRCROOT)/glslang/build/External/spirv-tools"
 
 4. Repeat *Step 3* for the `MoltenVKSPIRVToMSLConverter-iOS` target within the `MoltenVKShaderConverter` *Xcode* project
 
@@ -233,19 +242,3 @@ if you encounter any building errors, you may need to re-add the *glslang* libra
    3. Open the `project.pbxproj` file in a text editor.
    4. Remove all occurrences of `path-to-glslang-repo-folder` from the paths to the 
       `glslang`, `OGLCompilersDLL`, and `SPIRV` directories added above.
-
-
-
-<a name="add_cereal"></a>
-Adding the *cereal* Library to the *MoltenVK Xcode* Project
------------------------------------------------------------
-
-The `MoltenVK` *Xcode* project is already configured to use the *cereal* library. However, after 
-updating the version of *cereal*, as described [above](#updating), if you encounter any building 
-errors, you may need to re-add the *cereal* library to the `MoltenVK` *Xcode* project as follows:
-
-1. In the *Project Navigator* panel, select the `MoltenVK` *Xcode* project, then the `MoltenVK`
-   project target, and open the *Build Settings* tab. Locate the build setting entry 
-   **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
-   
-		"$(SRCROOT)/../External/cereal/include"

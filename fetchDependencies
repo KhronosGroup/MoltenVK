@@ -137,33 +137,9 @@ else
 
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
-fi
-
-# ----------------- glslang, SPIRV-Tools & SPIRV-Headers -------------------
-
-# When MoltenVK is built by something that already has a copy of the
-# glslang repo, copy it here.
-# Note that a symlink doesn't work because the name of the containing
-# directory (e.g., External) may not be the same.
-if [ ! "$GLSLANG_ROOT" = "" ]; then
-
-	REPO_NAME=${GLSLANG_NAME}
-	rm -rf ${REPO_NAME}
-	cp -a ${GLSLANG_ROOT} ${REPO_NAME}
-
-else
-
-	REPO_NAME=${GLSLANG_NAME}
-	REPO_URL=$(cat "${V_LVL_NAME}/external_revisions/glslang_giturl")
-	REPO_REV=$(cat "${V_LVL_NAME}/external_revisions/glslang_revision")
-
-	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
-
 	cd ${REPO_NAME}
-	./update_glslang_sources.py
+	./update_external_sources.sh -g
 	cd -
-
-	build_repo ${REPO_NAME}
 
 fi
 
