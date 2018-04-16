@@ -74,7 +74,7 @@
 #	include "../VulkanSamples/API-Samples/multithreaded_command_buffers/multithreaded_command_buffers.cpp"
 #endif
 
-#ifdef MVK_SAMP_occlusion_query         // iOS: Occlusion boolean supported, but not occlusion counting.
+#ifdef MVK_SAMP_occlusion_query         
 #	include "../VulkanSamples/API-Samples/occlusion_query/occlusion_query.cpp"
 #endif
 
@@ -98,7 +98,7 @@
 #	include "../VulkanSamples/API-Samples/template/template.cpp"
 #endif
 
-#ifdef MVK_SAMP_texel_buffer         // iOS only. Texel buffers are not supported on macOS
+#ifdef MVK_SAMP_texel_buffer
 #	include "../VulkanSamples/API-Samples/texel_buffer/texel_buffer.cpp"
 #endif
 
