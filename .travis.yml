@@ -16,3 +16,5 @@ cache:
 
 script:
   - xcodebuild -scheme "MoltenVK (Debug)"
+  - xcodebuild -workspace Demos/Demos.xcworkspace -scheme "API-Samples-macOS"
+
