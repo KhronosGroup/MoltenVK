@@ -41,7 +41,8 @@
 
 	self.view.contentScaleFactor = UIScreen.mainScreen.nativeScale;
 
-	demo_main(&demo, self.view);
+	const char* arg = "cube";
+	demo_main(&demo, self.view, 1, &arg);
 	demo_draw(&demo);
 
 	uint32_t fps = 60;
