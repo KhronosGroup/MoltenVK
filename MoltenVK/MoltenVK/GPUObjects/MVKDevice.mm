@@ -330,8 +330,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2);
         _metalFeatures.ioSurfaces = true;
-        _metalFeatures.depthClipMode = true;
     }
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
+		_metalFeatures.depthClipMode = true;
+	}
 #endif
 
 #if MVK_MACOS
