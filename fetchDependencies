@@ -113,7 +113,7 @@ update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 # ----------------- VulkanSamples -------------------
 
 REPO_NAME=VulkanSamples
-REPO_URL="https://github.com/brenwill/${REPO_NAME}.git"
+REPO_URL="https://github.com/LunarG/${REPO_NAME}.git"
 REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
