@@ -229,12 +229,16 @@ VkResult MVKPhysicalDevice::getSurfacePresentModes(MVKSurface* surface,
 	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
 	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
 
-	// TODO: check which mode(s) are applicable to Metal
-	const VkPresentModeKHR presentModes[] = {
-//		VK_PRESENT_MODE_MAILBOX_KHR,
-		VK_PRESENT_MODE_FIFO_KHR,
-	};
-	const uint presentModesCnt = sizeof(presentModes) / sizeof(VkPresentModeKHR);
+	vector<VkPresentModeKHR> presentModes;
+	presentModes.push_back(VK_PRESENT_MODE_FIFO_KHR);
+
+#if MVK_MACOS
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
+		presentModes.push_back(VK_PRESENT_MODE_IMMEDIATE_KHR);
+	}
+#endif
+
+	uint32_t presentModesCnt = uint32_t(presentModes.size());
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pPresentModes ) {
@@ -947,9 +951,9 @@ void MVKPhysicalDevice::logGPUInfo() {
 #endif
 
 #if MVK_MACOS
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) { fsMsg += "\n\t\tOSX GPU Family 1 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) { fsMsg += "\n\t\tOSX GPU Family 1 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v1] ) { fsMsg += "\n\t\tOSX GPU Family 1 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) { fsMsg += "\n\t\tmacOS GPU Family 1 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) { fsMsg += "\n\t\tmacOS GPU Family 1 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v1] ) { fsMsg += "\n\t\tmacOS GPU Family 1 v1"; }
 #endif
 
 	MVKLogInfo(fsMsg.c_str(), _properties.deviceName, devTypeStr.c_str(), _properties.vendorID, _properties.deviceID,

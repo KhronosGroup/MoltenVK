@@ -189,9 +189,15 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
                                                                                VK_IMAGE_USAGE_TRANSFER_DST_BIT |
                                                                                VK_IMAGE_USAGE_SAMPLED_BIT |
                                                                                VK_IMAGE_USAGE_STORAGE_BIT));
+#if MVK_MACOS
+	if ( pCreateInfo->presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
+		_mtlLayer.displaySyncEnabled = NO;
+	}
+#endif
 
 	// TODO: set additional CAMetalLayer properties before extracting drawables:
 	//	- presentsWithTransaction
+	//  - maximumDrawableCount (maybe for MAILBOX?)
 	//	- drawsAsynchronously
     //  - colorspace (macOS only) Vulkan only supports sRGB colorspace for now.
     //  - wantsExtendedDynamicRangeContent (macOS only)
