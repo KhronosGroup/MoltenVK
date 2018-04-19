@@ -582,7 +582,7 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 
 	_mtlTexture = nil;
     _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components);
-	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType, (_image->getSampleCount() > 1));
+	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType, (_image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT));
 	initMTLTextureViewSupport();
 }
 

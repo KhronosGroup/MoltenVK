@@ -76,7 +76,7 @@ public:
 	inline uint32_t getLayerCount() { return _arrayLayers; }
 
     /** Returns the number of samples for each pixel of this image. */
-    inline uint32_t getSampleCount() { return _samples; }
+    inline VkSampleCountFlagBits getSampleCount() { return _samples; }
 
 	 /** 
 	  * Returns the number of bytes per image row at the specified zero-based mip level.

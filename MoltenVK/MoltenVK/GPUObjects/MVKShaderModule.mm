@@ -305,7 +305,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			size_t mslCodeLen = pCreateInfo->codeSize - hdrSize;
 
 			uint64_t startTime = _device->getPerformanceTimestamp();
-			codeHash = mvkHash(&magicNum, 1);
+			codeHash = mvkHash(&magicNum);
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
 			_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.hashShaderCode, startTime);
 
@@ -320,7 +320,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			size_t mslCodeLen = pCreateInfo->codeSize - hdrSize;
 
 			uint64_t startTime = _device->getPerformanceTimestamp();
-			codeHash = mvkHash(&magicNum, 1);
+			codeHash = mvkHash(&magicNum);
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
 			_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.hashShaderCode, startTime);
 

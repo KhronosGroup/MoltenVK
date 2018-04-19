@@ -167,8 +167,6 @@ void MVKDepthStencilCommandEncoderState:: setDepthStencilState(VkPipelineDepthSt
     setStencilState(_depthStencilData.frontFaceStencilData, vkDepthStencilInfo.front, vkDepthStencilInfo.stencilTestEnable);
     setStencilState(_depthStencilData.backFaceStencilData, vkDepthStencilInfo.back, vkDepthStencilInfo.stencilTestEnable);
 
-    _depthStencilData.clearHash();  // Hash will change
-
     markDirty();
 }
 

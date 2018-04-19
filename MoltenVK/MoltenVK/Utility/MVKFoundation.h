@@ -255,7 +255,7 @@ const T& mvkClamp(const T& val, const T& lower, const T& upper) {
  * value returned by previous calls as the seed in subsequent calls.
  */
 template<class N>
-std::size_t mvkHash(const N* pVals, std::size_t count, std::size_t seed = 5381) {
+std::size_t mvkHash(const N* pVals, std::size_t count = 1, std::size_t seed = 5381) {
     std::size_t hash = seed;
     for (std::size_t i = 0; i < count; i++) { hash = ((hash << 5) + hash) ^ pVals[i]; }
     return hash;

@@ -97,6 +97,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
     plDesc.label = [NSString stringWithFormat: @"CmdClearAttachments%s", fragFuncSfx.data()];
     plDesc.vertexFunction = getFunctionNamed("vtxCmdClearAttachments");
     plDesc.fragmentFunction = getFunctionNamed((string("fragCmdClearAttachments") + fragFuncSfx).data());
+	plDesc.sampleCount = attKey.mtlSampleCount;
 
     for (uint32_t caIdx = 0; caIdx < kMVKAttachmentFormatDepthStencilIndex; caIdx++) {
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
