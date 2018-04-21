@@ -73,7 +73,7 @@ open-source libraries on which **MoltenVK** relies:
 1. Ensure you have `cmake` and `python3` installed:
 
 		brew install cmake
-		brew install python3
+		brew install python
 
    For faster dependency builds, you can also optionally install `ninja`:
 
