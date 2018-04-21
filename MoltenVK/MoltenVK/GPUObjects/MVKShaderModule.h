@@ -131,9 +131,7 @@ typedef struct MVKShaderModuleKey_t {
 namespace std {
 	template <>
 	struct hash<MVKShaderModuleKey> {
-		std::size_t operator()(const MVKShaderModuleKey& k) const {
-			return k.codeHash;
-		}
+		std::size_t operator()(const MVKShaderModuleKey& k) const { return k.codeHash; }
 	};
 }
 

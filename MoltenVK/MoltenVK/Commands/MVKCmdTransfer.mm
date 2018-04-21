@@ -708,7 +708,7 @@ void MVKCmdClearAttachments::setContent(uint32_t attachmentCount,
                                         const VkClearAttachment* pAttachments,
                                         uint32_t rectCount,
                                         const VkClearRect* pRects) {
-    _rpsKey.reset();
+    _rpsKey = kMVKRPSKeyClearAttDefault;
     _mtlStencilValue = 0;
     _isClearingDepth = false;
     _isClearingStencil = false;
@@ -814,11 +814,11 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     VkExtent2D fbExtent = cmdEncoder->_framebuffer->getExtent2D();
     populateVertices(fbExtent.width, fbExtent.height);
     uint32_t vtxCnt = (uint32_t)_vertices.size();
-
     uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 
-    // Populate the render pipeline state attachment key with
-    // the format of each color attachment used by the subpass
+    // Populate the render pipeline state attachment key with attachment info from the subpass.
+	_rpsKey.mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getSampleCount());
+
     uint32_t caCnt = subpass->getColorAttachmentCount();
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
         VkFormat vkAttFmt = subpass->getColorAttachmentFormat(caIdx);
@@ -868,9 +868,10 @@ void MVKCmdClearImage::setContent(VkImage image,
     _image = (MVKImage*)image;
     _imgLayout = imageLayout;
     _isDepthStencilClear = isDepthStencilClear;
+	_mtlStencilValue = 0;
 
-    _rpsKey.reset();
-    _mtlStencilValue = 0;
+	_rpsKey = kMVKRPSKeyClearAttDefault;
+	_rpsKey.mtlSampleCount = _image->getSampleCount();
 
     if (_isDepthStencilClear) {
         _rpsKey.enable(kMVKAttachmentFormatDepthStencilIndex);

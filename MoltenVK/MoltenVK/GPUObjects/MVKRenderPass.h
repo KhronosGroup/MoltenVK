@@ -44,6 +44,9 @@ public:
 	/** Returns the format of the depth/stencil attachment. */
 	VkFormat getDepthStencilFormat();
 
+	/** Returns the Vulkan sample count of the attachments used in this subpass. */
+	VkSampleCountFlagBits getSampleCount();
+
 	/** 
 	 * Populates the specified Metal MTLRenderPassDescriptor with content from this
 	 * instance, the specified framebuffer, and the specified array of clear values.
@@ -91,6 +94,9 @@ public:
 
     /** Returns the Vulkan format of this attachment. */
     VkFormat getFormat();
+
+	/** Returns the Vulkan sample count of this attachment. */
+	VkSampleCountFlagBits getSampleCount();
 
     /**
      * Populates the specified Metal color attachment description with the load and store actions for

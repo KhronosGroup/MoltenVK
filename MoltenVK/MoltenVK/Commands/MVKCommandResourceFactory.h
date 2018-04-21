@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKFoundation.h"
+#include "mvk_datatypes.h"
 #include <string>
 
 #import <Metal/Metal.h>
@@ -33,13 +34,16 @@
 
 /**
  * Key to use for looking up cached MTLRenderPipelineState instances.
- * Holds the formats for each color attachment plus one depth/stencil attachment.
+ * Indicates which attachments are used, and holds the Metal pixel formats for each
+ * color attachment plus one depth/stencil attachment. Also holds the Metal sample count.
  *
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
 typedef struct MVKRPSKeyClearAtt_t {
     uint16_t attachmentMTLPixelFormats[kMVKAttachmentFormatCount];
+	uint16_t mtlSampleCount;
     uint32_t enabledFlags;
+
     const static uint32_t bitFlag = 1;
 
     void enable(uint32_t attIdx) { mvkEnableFlag(enabledFlags, bitFlag << attIdx); }
@@ -55,13 +59,25 @@ typedef struct MVKRPSKeyClearAtt_t {
 
     bool operator==(const MVKRPSKeyClearAtt_t& rhs) const {
         return ((enabledFlags == rhs.enabledFlags) &&
+				(mtlSampleCount == rhs.mtlSampleCount) &&
                 (memcmp(attachmentMTLPixelFormats, rhs.attachmentMTLPixelFormats, sizeof(attachmentMTLPixelFormats)) == 0));
     }
 
-    void reset() { memset(this, 0, sizeof(*this)); }
+	std::size_t hash() const {
+		std::size_t hash = mvkHash(&enabledFlags);
+		hash = mvkHash(&mtlSampleCount, 1, hash);
+		return mvkHash(attachmentMTLPixelFormats, kMVKAttachmentFormatCount, hash);
+	}
 
-    MVKRPSKeyClearAtt_t() { reset(); }
+	MVKRPSKeyClearAtt_t() {
+		memset(this, 0, sizeof(*this));
+		mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
+	}
+
 } MVKRPSKeyClearAtt;
+
+/** An instance populated with default values, for use in resetting other instances to default state. */
+const MVKRPSKeyClearAtt kMVKRPSKeyClearAttDefault;
 
 /**
  * Hash structure implementation for MVKRPSKeyClearAtt in std namespace,
@@ -70,10 +86,7 @@ typedef struct MVKRPSKeyClearAtt_t {
 namespace std {
     template <>
     struct hash<MVKRPSKeyClearAtt> {
-        std::size_t operator()(const MVKRPSKeyClearAtt& k) const {
-            std::size_t hash = mvkHash(&k.enabledFlags, 1);
-            return mvkHash(k.attachmentMTLPixelFormats, kMVKAttachmentFormatCount, hash);
-        }
+        std::size_t operator()(const MVKRPSKeyClearAtt& k) const { return k.hash(); }
     };
 }
 
@@ -126,29 +139,18 @@ const MVKMTLStencilDescriptorData kMVKMTLStencilDescriptorDataDefault;
  * change as early as possible.
  */
 typedef struct MVKMTLDepthStencilDescriptorData_t {
-    std::size_t _hash;
     uint8_t depthCompareFunction;		/**< The depth compare function (interpreted as MTLCompareFunction). */
     bool depthWriteEnabled;				/**< Indicates whether depth writing is enabled. */
     MVKMTLStencilDescriptorData frontFaceStencilData;
     MVKMTLStencilDescriptorData backFaceStencilData;
 
-    std::size_t hash() {
-        if ( !_hash ) { _hash = mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t)); }
-        return _hash;
-    }
-    void clearHash() { _hash = 0; }
+	bool operator==(const MVKMTLDepthStencilDescriptorData_t& rhs) const {
+		return (memcmp(this, &rhs, sizeof(*this)) == 0);
+	}
 
-    bool operator==(const MVKMTLDepthStencilDescriptorData_t& rhs) const {
-        MVKMTLDepthStencilDescriptorData_t* pLHS = (MVKMTLDepthStencilDescriptorData_t*)this;
-        MVKMTLDepthStencilDescriptorData_t* pRHS = (MVKMTLDepthStencilDescriptorData_t*)&rhs;
-
-        if (pLHS == pRHS) { return true; }
-        if (!pLHS) { return false; }
-        if (!pRHS) { return false; }
-        if (pLHS->hash() != pRHS->hash()) { return false; }
-
-        return (memcmp(pLHS, pRHS, sizeof(*this)) == 0);
-    }
+	std::size_t hash() const {
+		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
+	}
 
     MVKMTLDepthStencilDescriptorData_t() {
 
@@ -156,7 +158,6 @@ typedef struct MVKMTLDepthStencilDescriptorData_t {
         // even if the structure contains alignment gaps.
         memset(this, 0, sizeof(*this));
 
-        _hash = 0;
         depthCompareFunction = MTLCompareFunctionAlways;
         depthWriteEnabled = false;
 
@@ -171,11 +172,8 @@ const MVKMTLDepthStencilDescriptorData kMVKMTLDepthStencilDescriptorDataDefault;
 
 namespace std {
     template <>
-    struct hash<MVKMTLDepthStencilDescriptorData_t> {
-        std::size_t operator()(const MVKMTLDepthStencilDescriptorData_t& k) const {
-            MVKMTLDepthStencilDescriptorData_t* pK = (MVKMTLDepthStencilDescriptorData_t*)&k;
-            return pK->hash();
-        }
+    struct hash<MVKMTLDepthStencilDescriptorData> {
+        std::size_t operator()(const MVKMTLDepthStencilDescriptorData& k) const { return k.hash(); }
     };
 }
 
@@ -202,6 +200,10 @@ typedef struct MVKImageDescriptorData_t {
         return (memcmp(this, &rhs, sizeof(*this)) == 0);
     }
 
+	std::size_t hash() const {
+		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
+	}
+
     MVKImageDescriptorData_t() { memset(this, 0, sizeof(*this)); }
 
 } __attribute__((aligned(sizeof(uint64_t)))) MVKImageDescriptorData;
@@ -213,9 +215,7 @@ typedef struct MVKImageDescriptorData_t {
 namespace std {
     template <>
     struct hash<MVKImageDescriptorData> {
-        std::size_t operator()(const MVKImageDescriptorData& k) const {
-            return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
-        }
+        std::size_t operator()(const MVKImageDescriptorData& k) const { return k.hash(); }
     };
 }
 

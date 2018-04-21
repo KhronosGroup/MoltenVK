@@ -43,6 +43,21 @@ VkFormat MVKRenderSubpass::getDepthStencilFormat() {
 	return _renderPass->_attachments[rpAttIdx].getFormat();
 }
 
+VkSampleCountFlagBits MVKRenderSubpass::getSampleCount() {
+	for (auto& ca : _colorAttachments) {
+		uint32_t rpAttIdx = ca.attachment;
+		if (rpAttIdx != VK_ATTACHMENT_UNUSED) {
+			return _renderPass->_attachments[rpAttIdx].getSampleCount();
+		}
+	}
+	uint32_t rpAttIdx = _depthStencilAttachment.attachment;
+	if (rpAttIdx != VK_ATTACHMENT_UNUSED) {
+		return _renderPass->_attachments[rpAttIdx].getSampleCount();
+	}
+
+	return VK_SAMPLE_COUNT_1_BIT;
+}
+
 void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 													   MVKFramebuffer* framebuffer,
 													   vector<VkClearValue>& clearValues,
@@ -191,6 +206,8 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 #pragma mark MVKRenderPassAttachment
 
 VkFormat MVKRenderPassAttachment::getFormat() { return _info.format; }
+
+VkSampleCountFlagBits MVKRenderPassAttachment::getSampleCount() { return _info.samples; }
 
 bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc,
                                                                         MVKRenderSubpass* subpass,

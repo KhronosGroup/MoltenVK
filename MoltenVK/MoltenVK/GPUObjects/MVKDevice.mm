@@ -330,8 +330,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2);
         _metalFeatures.ioSurfaces = true;
-        _metalFeatures.depthClipMode = true;
     }
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
+		_metalFeatures.depthClipMode = true;
+	}
 #endif
 
 #if MVK_MACOS
@@ -358,7 +360,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 
     for (uint32_t sc = VK_SAMPLE_COUNT_1_BIT; sc <= VK_SAMPLE_COUNT_64_BIT; sc <<= 1) {
-        if ([_mtlDevice supportsTextureSampleCount: sc]) {
+        if ([_mtlDevice supportsTextureSampleCount: mvkSampleCountFromVkSampleCountFlagBits((VkSampleCountFlagBits)sc)]) {
             _metalFeatures.supportedSampleCounts |= sc;
         }
     }
