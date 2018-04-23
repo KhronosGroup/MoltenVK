@@ -232,11 +232,9 @@ VkResult MVKPhysicalDevice::getSurfacePresentModes(MVKSurface* surface,
 	vector<VkPresentModeKHR> presentModes;
 	presentModes.push_back(VK_PRESENT_MODE_FIFO_KHR);
 
-#if MVK_MACOS
-	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
+	if (_metalFeatures.presentModeImmediate) {
 		presentModes.push_back(VK_PRESENT_MODE_IMMEDIATE_KHR);
 	}
-#endif
 
 	uint32_t presentModesCnt = uint32_t(presentModes.size());
 
@@ -356,6 +354,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2);
         _metalFeatures.texelBuffers = true;
+		_metalFeatures.presentModeImmediate = true;
     }
 #endif
 
