@@ -72,18 +72,17 @@ double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimest
 /** 
  * Replacement for the usage property.
  *
- * This property allows support under iOS 8. Delegates to the usage property
- * if it is available. otherwise, returns MTLTextureUsageUnknown when read
- * and does nothing when set.
+ * This property allows support under all OS versions. Delegates to the usage property if it
+ * is available. otherwise, returns MTLTextureUsageUnknown when read and does nothing when set.
  */
 @property(nonatomic, readwrite) MTLTextureUsage usageMVK;
 
 /**
  * Replacement for the storageMode property.
  *
- * This property allows support under iOS 8. Delegates to the storageMode property
- * if it is available. otherwise, returns MTLStorageModeShared when read and does 
- * nothing when set.
+ * This property allows support under all OS versions. Delegates to the storageMode
+ * property if it is available. otherwise, returns MTLStorageModeShared when read
+ * and does nothing when set.
  */
 @property(nonatomic, readwrite) MTLStorageMode storageModeMVK;
 
@@ -99,9 +98,9 @@ double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimest
 /**
  * Replacement for the compareFunction property.
  *
- * This property allows support under iOS 8. Delegates to the compareFunction property
- * if it is available. otherwise, returns MTLTextureUsageUnknown when read and does 
- * nothing when set.
+ * This property allows support under all OS versions. Delegates to the compareFunction
+ * property if it is available. otherwise, returns MTLTextureUsageUnknown when read and
+ * does nothing when set.
  */
 @property(nonatomic, readwrite) MTLCompareFunction compareFunctionMVK;
 
@@ -119,6 +118,14 @@ double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimest
  * of the bounds property and the contentScale property, and returns the updated value.
  */
 -(CGSize) updatedDrawableSizeMVK;
+
+/**
+ * Replacement for the displaySyncEnabled property.
+ *
+ * This property allows support under all OS versions. Delegates to the displaySyncEnabled
+ * property if it is available. otherwise, returns YES when read and does nothing when set.
+ */
+@property(nonatomic, readwrite) BOOL displaySyncEnabledMVK;
 
 @end
 

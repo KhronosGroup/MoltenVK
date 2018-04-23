@@ -145,6 +145,19 @@ __attribute__((constructor)) static void MVKInitTimestamps() {
     return drawSize;
 }
 
+-(BOOL) displaySyncEnabledMVK {
+#if MVK_MACOS
+	if ( [self respondsToSelector: @selector(displaySyncEnabled)]) { return self.displaySyncEnabled; }
+#endif
+	return YES;
+}
+
+-(void) setDisplaySyncEnabledMVK: (BOOL) enabled {
+#if MVK_MACOS
+	if ( [self respondsToSelector: @selector(setDisplaySyncEnabled:)]) { self.displaySyncEnabled = enabled; }
+#endif
+}
+
 @end
 
 
