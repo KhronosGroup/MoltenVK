@@ -25,7 +25,6 @@
 #include <vulkan/vulkan.h>
 
 #import <Metal/Metal.h>
-#import <QuartzCore/CAMetalLayer.h>
 
 
 typedef float MVKOSVersion;
@@ -61,73 +60,6 @@ double mvkGetTimestampPeriod();
  * If startTimestamp is zero or not supplied, it is taken to be the time the app was initialized.
  */
 double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
-
-
-#pragma mark -
-#pragma mark MTLTextureDescriptor
-
-/** Extensions to MTLTextureDescriptor to support MoltenVK. */
-@interface MTLTextureDescriptor (MoltenVK)
-
-/** 
- * Replacement for the usage property.
- *
- * This property allows support under all OS versions. Delegates to the usage property if it
- * is available. otherwise, returns MTLTextureUsageUnknown when read and does nothing when set.
- */
-@property(nonatomic, readwrite) MTLTextureUsage usageMVK;
-
-/**
- * Replacement for the storageMode property.
- *
- * This property allows support under all OS versions. Delegates to the storageMode
- * property if it is available. otherwise, returns MTLStorageModeShared when read
- * and does nothing when set.
- */
-@property(nonatomic, readwrite) MTLStorageMode storageModeMVK;
-
-@end
-
-
-#pragma mark -
-#pragma mark MTLSamplerDescriptor
-
-/** Extensions to MTLSamplerDescriptor to support MoltenVK. */
-@interface MTLSamplerDescriptor (MoltenVK)
-
-/**
- * Replacement for the compareFunction property.
- *
- * This property allows support under all OS versions. Delegates to the compareFunction
- * property if it is available. otherwise, returns MTLTextureUsageUnknown when read and
- * does nothing when set.
- */
-@property(nonatomic, readwrite) MTLCompareFunction compareFunctionMVK;
-
-@end
-
-
-#pragma mark -
-#pragma mark CAMetalLayer
-
-/** Extensions to CAMetalLayer to support MoltenVK. */
-@interface CAMetalLayer (MoltenVK)
-
-/**
- * Ensures the drawableSize property of this layer is up to date, by combining the size
- * of the bounds property and the contentScale property, and returns the updated value.
- */
--(CGSize) updatedDrawableSizeMVK;
-
-/**
- * Replacement for the displaySyncEnabled property.
- *
- * This property allows support under all OS versions. Delegates to the displaySyncEnabled
- * property if it is available. otherwise, returns YES when read and does nothing when set.
- */
-@property(nonatomic, readwrite) BOOL displaySyncEnabledMVK;
-
-@end
 
 
 #pragma mark -
