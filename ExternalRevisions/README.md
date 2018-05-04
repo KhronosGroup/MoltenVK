@@ -152,12 +152,17 @@ If you make changes to the `SPIRV-Cross` repository, you can regression test you
 
 		cd External/SPIRV-Cross
 		./checkout_glslang_spirv_tools.sh
+		./build_glslang_spirv_tools.sh
 
-2. Run the regression tests:
+2. Build `SPIRV-Cross`:
+
+		make
+
+3. Run the regression tests:
 
 		./test_shaders.sh
 
-3. If your changes result in different expected output for a reference shader, and the new results
+4. If your changes result in different expected output for a reference shader, and the new results
    are correct, you can update the reference shader for a particular regression test by deleting
    that reference shader, in either `External/SPIRV-Cross/reference/shaders-msl` or 
    `External/SPIRV-Cross/reference/opt/shaders-msl`, and running the test again. The test will

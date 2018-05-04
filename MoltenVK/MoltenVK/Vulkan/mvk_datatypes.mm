@@ -194,118 +194,118 @@ static const MVKFormatDesc _formatDescriptions[] {
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8_SNORM, MTLPixelFormatR8Snorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 1, MTLVertexFormatChar2Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 1, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 1, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8_UINT, MTLPixelFormatR8Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 1, MTLVertexFormatUChar2, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8_SINT, MTLPixelFormatR8Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 1, MTLVertexFormatChar2, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8_UINT, MTLPixelFormatR8Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 1, MTLVertexFormatUChar2, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8_SINT, MTLPixelFormatR8Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 1, MTLVertexFormatChar2, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8_SRGB, MTLPixelFormatR8Unorm_sRGB, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 1, 1, 1, MTLVertexFormatUChar2, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8_UNORM, MTLPixelFormatRG8Unorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatUChar2Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8_SNORM, MTLPixelFormatRG8Snorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatChar2Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 2, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 2, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8_UINT, MTLPixelFormatRG8Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatUChar2, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8_SINT, MTLPixelFormatRG8Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatChar2, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8_UINT, MTLPixelFormatRG8Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatUChar2, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8_SINT, MTLPixelFormatRG8Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatChar2, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8_SRGB, MTLPixelFormatRG8Unorm_sRGB, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 1, 1, 2, MTLVertexFormatUChar2, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8_UNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatUChar3Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8_SNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatChar3Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatUChar3, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatChar3, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatUChar3, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatChar3, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8_SRGB, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatUChar3, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8_UNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8_SNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorInt, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8_SRGB, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 3, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8A8_UNORM, MTLPixelFormatRGBA8Unorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUChar4Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8A8_SNORM, MTLPixelFormatRGBA8Snorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatChar4Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8A8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8A8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8A8_UINT, MTLPixelFormatRGBA8Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUChar4, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8A8_SINT, MTLPixelFormatRGBA8Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatChar4, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8A8_UINT, MTLPixelFormatRGBA8Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUChar4, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8A8_SINT, MTLPixelFormatRGBA8Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatChar4, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R8G8B8A8_SRGB, MTLPixelFormatRGBA8Unorm_sRGB, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUChar4, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8A8_UNORM, MTLPixelFormatBGRA8Unorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8A8_SNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8A8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8A8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8A8_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8A8_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8A8_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8A8_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B8G8R8A8_SRGB, MTLPixelFormatBGRA8Unorm_sRGB, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_UNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_SNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_USCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_SSCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_UINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_SINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_SRGB_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_UNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_SNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_USCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_SSCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_UINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_SINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A8B8G8R8_SRGB_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_UNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_SNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_USCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_SSCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_UINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_SINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_UINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_SINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_UNORM_PACK32, MTLPixelFormatRGB10A2Unorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),	// Vulkan packed is reversed
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_SNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_USCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_SSCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_UINT_PACK32, MTLPixelFormatRGB10A2Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_FEATS ),		// Vulkan packed is reversed
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_SINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt, MVK_FMT_ALL_CLR_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_UINT_PACK32, MTLPixelFormatRGB10A2Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_FEATS ),		// Vulkan packed is reversed
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_SINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16_UNORM, MTLPixelFormatR16Unorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatUShort2Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16_SNORM, MTLPixelFormatR16Snorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatShort2Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 2, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 2, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16_UINT, MTLPixelFormatR16Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatUShort2, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16_SINT, MTLPixelFormatR16Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatShort2, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16_UINT, MTLPixelFormatR16Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatUShort2, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16_SINT, MTLPixelFormatR16Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatShort2, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16_SFLOAT, MTLPixelFormatR16Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 2, MTLVertexFormatHalf2, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16_UNORM, MTLPixelFormatRG16Unorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUShort2Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16_SNORM, MTLPixelFormatRG16Snorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatShort2Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16_UINT, MTLPixelFormatRG16Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUShort2, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16_SINT, MTLPixelFormatRG16Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatShort2, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16_UINT, MTLPixelFormatRG16Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUShort2, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16_SINT, MTLPixelFormatRG16Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatShort2, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16_SFLOAT, MTLPixelFormatRG16Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatHalf2, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16_UNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 6, MTLVertexFormatUShort3Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16_SNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 6, MTLVertexFormatShort3Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 6, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 6, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 6, MTLVertexFormatUShort3, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 6, MTLVertexFormatShort3, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 6, MTLVertexFormatUShort3, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 6, MTLVertexFormatShort3, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 6, MTLVertexFormatHalf3, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16A16_UNORM, MTLPixelFormatRGBA16Unorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatUShort4Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16A16_SNORM, MTLPixelFormatRGBA16Snorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatShort4Normalized, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16A16_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 8, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16A16_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 8, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16A16_UINT, MTLPixelFormatRGBA16Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatUShort4, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16A16_SINT, MTLPixelFormatRGBA16Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatShort4, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16A16_UINT, MTLPixelFormatRGBA16Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatUShort4, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16A16_SINT, MTLPixelFormatRGBA16Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatShort4, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R16G16B16A16_SFLOAT, MTLPixelFormatRGBA16Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatHalf4, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32_UINT, MTLPixelFormatR32Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUInt, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32_SINT, MTLPixelFormatR32Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInt, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32_UINT, MTLPixelFormatR32Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUInt, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32_SINT, MTLPixelFormatR32Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInt, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32_SFLOAT, MTLPixelFormatR32Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatFloat, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32_UINT, MTLPixelFormatRG32Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatUInt2, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32_SINT, MTLPixelFormatRG32Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatInt2, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32_UINT, MTLPixelFormatRG32Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatUInt2, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32_SINT, MTLPixelFormatRG32Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatInt2, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32_SFLOAT, MTLPixelFormatRG32Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 8, MTLVertexFormatFloat2, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 12, MTLVertexFormatUInt3, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 12, MTLVertexFormatInt3, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 12, MTLVertexFormatUInt3, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 12, MTLVertexFormatInt3, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 12, MTLVertexFormatFloat3, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32A32_UINT, MTLPixelFormatRGBA32Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 16, MTLVertexFormatUInt4, kMVKFormatColorUInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32A32_SINT, MTLPixelFormatRGBA32Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 16, MTLVertexFormatInt4, kMVKFormatColorInt, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32A32_UINT, MTLPixelFormatRGBA32Uint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 16, MTLVertexFormatUInt4, kMVKFormatColorUInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32A32_SINT, MTLPixelFormatRGBA32Sint, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 16, MTLVertexFormatInt4, kMVKFormatColorInt32, MVK_FMT_ALL_CLR_VTX_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R32G32B32A32_SFLOAT, MTLPixelFormatRGBA32Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 16, MTLVertexFormatFloat4, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_VTX_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R64_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 8, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_ALL_CLR_FEATS ),
@@ -598,19 +598,24 @@ MVK_PUBLIC_SYMBOL MTLClearColor mvkMTLClearColorFromVkClearValue(VkClearValue vk
 																 VkFormat vkFormat) {
 	MTLClearColor mtlClr;
 	switch (mvkFormatTypeFromVkFormat(vkFormat)) {
+		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
 			mtlClr.red		= vkClearValue.color.float32[0];
 			mtlClr.green	= vkClearValue.color.float32[1];
 			mtlClr.blue		= vkClearValue.color.float32[2];
 			mtlClr.alpha	= vkClearValue.color.float32[3];
 			break;
-		case kMVKFormatColorUInt:
+		case kMVKFormatColorUInt8:
+		case kMVKFormatColorUInt16:
+		case kMVKFormatColorUInt32:
 			mtlClr.red		= vkClearValue.color.uint32[0];
 			mtlClr.green	= vkClearValue.color.uint32[1];
 			mtlClr.blue		= vkClearValue.color.uint32[2];
 			mtlClr.alpha	= vkClearValue.color.uint32[3];
 			break;
-		case kMVKFormatColorInt:
+		case kMVKFormatColorInt8:
+		case kMVKFormatColorInt16:
+		case kMVKFormatColorInt32:
 			mtlClr.red		= vkClearValue.color.int32[0];
 			mtlClr.green	= vkClearValue.color.int32[1];
 			mtlClr.blue		= vkClearValue.color.int32[2];

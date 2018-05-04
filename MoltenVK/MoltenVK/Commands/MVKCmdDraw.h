@@ -199,13 +199,13 @@ void mvkCmdDrawIndexed(MVKCommandBuffer* cmdBuff,
 void mvkCmdDrawIndirect(MVKCommandBuffer* cmdBuff,
 						VkBuffer buffer,
 						VkDeviceSize offset,
-						uint32_t count,
+						uint32_t drawCount,
 						uint32_t stride);
 
 /** Adds an indirect indexed draw command to the specified command buffer. */
 void mvkCmdDrawIndexedIndirect(MVKCommandBuffer* cmdBuff,
 							   VkBuffer buffer,
 							   VkDeviceSize offset,
-							   uint32_t count,
+							   uint32_t drawCount,
 							   uint32_t stride);
 

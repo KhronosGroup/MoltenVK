@@ -120,7 +120,7 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignUsageWith(const SPIRVToM
 #pragma mark SPIRVToMSLConverter
 
 /** Populates content extracted from the SPRI-V compiler. */
-void populateFromCompiler(spirv_cross::Compiler& compiler, SPIRVEntryPoint& entryPoint, SPIRVToMSLConverterOptions& options);
+void populateFromCompiler(spirv_cross::Compiler* pCompiler, SPIRVEntryPoint& entryPoint, SPIRVToMSLConverterOptions& options);
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const vector<uint32_t>& spirv) { _spirv = spirv; }
 
@@ -171,68 +171,74 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		resBindings.push_back(rb);
 	}
 
-    spirv_cross::CompilerMSL mslCompiler(_spirv);
 
-	if (context.options.hasEntryPoint()) {
-		mslCompiler.set_entry_point(context.options.entryPointName, context.options.entryPointStage);
-	}
-
-    // Establish the MSL options for the compiler
-    // This needs to be done in two steps...for CompilerMSL and its superclass.
-    auto mslOpts = mslCompiler.get_msl_options();
-
-#if MVK_MACOS
-    mslOpts.platform = spirv_cross::CompilerMSL::Options::macOS;
-#endif
-#if MVK_IOS
-    mslOpts.platform = spirv_cross::CompilerMSL::Options::iOS;
-#endif
-
-    mslOpts.msl_version = context.options.mslVersion;
-    mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
-    mslOpts.resolve_specialized_array_lengths = true;
-    mslCompiler.set_msl_options(mslOpts);
-
-    auto scOpts = mslCompiler.get_common_options();
-    scOpts.vertex.flip_vert_y = context.options.shouldFlipVertexY;
-    mslCompiler.set_common_options(scOpts);
+	spirv_cross::CompilerMSL* pMSLCompiler = nullptr;
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
 #endif
-		_msl = mslCompiler.compile(&vtxAttrs, &resBindings);
+		pMSLCompiler = new spirv_cross::CompilerMSL(_spirv);
+
+		if (context.options.hasEntryPoint()) {
+			pMSLCompiler->set_entry_point(context.options.entryPointName, context.options.entryPointStage);
+		}
+
+		// Establish the MSL options for the compiler
+		// This needs to be done in two steps...for CompilerMSL and its superclass.
+		auto mslOpts = pMSLCompiler->get_msl_options();
+
+#if MVK_MACOS
+		mslOpts.platform = spirv_cross::CompilerMSL::Options::macOS;
+#endif
+#if MVK_IOS
+		mslOpts.platform = spirv_cross::CompilerMSL::Options::iOS;
+#endif
+
+		mslOpts.msl_version = context.options.mslVersion;
+		mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
+		mslOpts.resolve_specialized_array_lengths = true;
+		pMSLCompiler->set_msl_options(mslOpts);
+
+		auto scOpts = pMSLCompiler->get_common_options();
+		scOpts.vertex.flip_vert_y = context.options.shouldFlipVertexY;
+		pMSLCompiler->set_common_options(scOpts);
+
+		_msl = pMSLCompiler->compile(&vtxAttrs, &resBindings);
         if (shouldLogMSL) { logSource(_msl, "MSL", "Converted"); }
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	} catch (spirv_cross::CompilerError& ex) {
 		string errMsg("MSL conversion error: ");
 		errMsg += ex.what();
 		logError(errMsg.data());
-        if (shouldLogMSL) {
-            _msl = mslCompiler.get_partial_source();
+        if (shouldLogMSL && pMSLCompiler) {
+            _msl = pMSLCompiler->get_partial_source();
             logSource(_msl, "MSL", "Partially converted");
         }
 	}
 #endif
 
     // Populate content extracted from the SPRI-V compiler.
-	populateFromCompiler(mslCompiler, _entryPoint, context.options);
+	populateFromCompiler(pMSLCompiler, _entryPoint, context.options);
 
     // To check GLSL conversion
     if (shouldLogGLSL) {
-        spirv_cross::CompilerGLSL glslCompiler(_spirv);
-        string glsl;
+		spirv_cross::CompilerGLSL* pGLSLCompiler = nullptr;
+
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
-        try {
+		try {
 #endif
-            glsl = glslCompiler.compile();
+			pGLSLCompiler = new spirv_cross::CompilerGLSL(_spirv);
+			string glsl = pGLSLCompiler->compile();
             logSource(glsl, "GLSL", "Estimated original");
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
         } catch (spirv_cross::CompilerError& ex) {
             string errMsg("Original GLSL extraction error: ");
             errMsg += ex.what();
             logMsg(errMsg.data());
-            glsl = glslCompiler.get_partial_source();
-            logSource(glsl, "GLSL", "Partially converted");
+			if (pGLSLCompiler) {
+				string glsl = pGLSLCompiler->get_partial_source();
+				logSource(glsl, "GLSL", "Partially converted");
+			}
         }
 #endif
     }
@@ -322,16 +328,18 @@ void SPIRVToMSLConverter::logSource(string& src, const char* srcLang, const char
 
 #pragma mark Support functions
 
-void populateFromCompiler(spirv_cross::Compiler& compiler, SPIRVEntryPoint& entryPoint, SPIRVToMSLConverterOptions& options) {
+void populateFromCompiler(spirv_cross::Compiler* pCompiler, SPIRVEntryPoint& entryPoint, SPIRVToMSLConverterOptions& options) {
+
+	if ( !pCompiler ) { return; }
 
 	spirv_cross::SPIREntryPoint spvEP;
 	if (options.hasEntryPoint()) {
-		spvEP = compiler.get_entry_point(options.entryPointName, options.entryPointStage);
+		spvEP = pCompiler->get_entry_point(options.entryPointName, options.entryPointStage);
 	} else {
-		const auto& entryPoints = compiler.get_entry_points_and_stages();
+		const auto& entryPoints = pCompiler->get_entry_points_and_stages();
 		if ( !entryPoints.empty() ) {
 			auto& ep = entryPoints[0];
-			spvEP = compiler.get_entry_point(ep.name, ep.execution_model);
+			spvEP = pCompiler->get_entry_point(ep.name, ep.execution_model);
 		}
 	}
 
@@ -344,7 +352,7 @@ void populateFromCompiler(spirv_cross::Compiler& compiler, SPIRVEntryPoint& entr
 	entryPoint.workgroupSize.depth = max(wgSize.z, minDim);
 
 	spirv_cross::SpecializationConstant width, height, depth;
-	entryPoint.workgroupSizeId.constant = compiler.get_work_group_size_specialization_constants(width, height, depth);
+	entryPoint.workgroupSizeId.constant = pCompiler->get_work_group_size_specialization_constants(width, height, depth);
 	entryPoint.workgroupSizeId.width = width.constant_id;
 	entryPoint.workgroupSizeId.height = height.constant_id;
 	entryPoint.workgroupSizeId.depth = depth.constant_id;

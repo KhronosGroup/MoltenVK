@@ -55,7 +55,7 @@ bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
 		isDone = true;
 	} else {
         // Limit timeout to avoid overflow since wait_for() uses wait_until()
-        uint64_t nanoTimeout = min(timeout, numeric_limits<uint64_t>::max() >> 4);
+        uint64_t nanoTimeout = min(timeout, kMVKUndefinedLargeUInt64);
         chrono::nanoseconds nanos(nanoTimeout);
         isDone = _blocker.wait_for(lock, nanos, [this]{ return isClear(); });
     }

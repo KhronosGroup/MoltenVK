@@ -1122,22 +1122,22 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndirect(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset,
-    uint32_t                                    count,
+    uint32_t                                    drawCount,
     uint32_t                                    stride) {
 	
     MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDrawIndirect(cmdBuff, buffer, offset, count, stride);
+	mvkCmdDrawIndirect(cmdBuff, buffer, offset, drawCount, stride);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdDrawIndexedIndirect(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset,
-    uint32_t                                    count,
+    uint32_t                                    drawCount,
     uint32_t                                    stride) {
 	
     MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDrawIndexedIndirect(cmdBuff, buffer, offset, count, stride);
+	mvkCmdDrawIndexedIndirect(cmdBuff, buffer, offset, drawCount, stride);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdDispatch(
