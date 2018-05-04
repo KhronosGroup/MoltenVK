@@ -19,10 +19,11 @@
 #include "MVKImage.h"
 #include "MVKSwapchain.h"
 #include "MVKCommandBuffer.h"
-#include "MVKOSExtensions.h"
 #include "mvk_datatypes.h"
 #include "MVKFoundation.h"
 #include "MVKLogging.h"
+#import "MTLTextureDescriptor+MoltenVK.h"
+#import "MTLSamplerDescriptor+MoltenVK.h"
 
 using namespace std;
 

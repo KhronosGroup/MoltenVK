@@ -167,6 +167,18 @@
 		A981496C1FB6A998005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A981496A1FB6A998005F00B4 /* MVKStrings.h */; };
 		A98149A21FB6B9E1005F00B4 /* MoltenVKSPIRVToMSLConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98149821FB6B566005F00B4 /* MoltenVKSPIRVToMSLConverter.framework */; };
 		A98149A51FB6B9F2005F00B4 /* MoltenVKSPIRVToMSLConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98149841FB6B566005F00B4 /* MoltenVKSPIRVToMSLConverter.framework */; };
+		A9917FF7209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9917FF1209CC588004069EB /* MTLSamplerDescriptor+MoltenVK.m */; };
+		A9917FF8209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9917FF1209CC588004069EB /* MTLSamplerDescriptor+MoltenVK.m */; };
+		A9917FF9209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9917FF2209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.h */; };
+		A9917FFA209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9917FF2209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.h */; };
+		A9917FFB209CC589004069EB /* MTLTextureDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9917FF3209CC589004069EB /* MTLTextureDescriptor+MoltenVK.h */; };
+		A9917FFC209CC589004069EB /* MTLTextureDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9917FF3209CC589004069EB /* MTLTextureDescriptor+MoltenVK.h */; };
+		A9917FFD209CC589004069EB /* MTLTextureDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9917FF4209CC589004069EB /* MTLTextureDescriptor+MoltenVK.m */; };
+		A9917FFE209CC589004069EB /* MTLTextureDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9917FF4209CC589004069EB /* MTLTextureDescriptor+MoltenVK.m */; };
+		A9917FFF209CC589004069EB /* CAMetalLayer+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9917FF5209CC589004069EB /* CAMetalLayer+MoltenVK.h */; };
+		A9918000209CC589004069EB /* CAMetalLayer+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9917FF5209CC589004069EB /* CAMetalLayer+MoltenVK.h */; };
+		A9918001209CC589004069EB /* CAMetalLayer+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9917FF6209CC589004069EB /* CAMetalLayer+MoltenVK.m */; };
+		A9918002209CC589004069EB /* CAMetalLayer+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9917FF6209CC589004069EB /* CAMetalLayer+MoltenVK.m */; };
 		A9C96DD01DDC20C20053187F /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
 		A9C96DD11DDC20C20053187F /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
 		A9C96DD21DDC20C20053187F /* MVKMTLBufferAllocation.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */; };
@@ -312,6 +324,12 @@
 		A981494B1FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKWatermarkShaderSource.h; sourceTree = "<group>"; };
 		A981494C1FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKWatermarkTextureContent.h; sourceTree = "<group>"; };
 		A981496A1FB6A998005F00B4 /* MVKStrings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKStrings.h; sourceTree = "<group>"; };
+		A9917FF1209CC588004069EB /* MTLSamplerDescriptor+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MTLSamplerDescriptor+MoltenVK.m"; sourceTree = "<group>"; };
+		A9917FF2209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLSamplerDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
+		A9917FF3209CC589004069EB /* MTLTextureDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLTextureDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
+		A9917FF4209CC589004069EB /* MTLTextureDescriptor+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MTLTextureDescriptor+MoltenVK.m"; sourceTree = "<group>"; };
+		A9917FF5209CC589004069EB /* CAMetalLayer+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "CAMetalLayer+MoltenVK.h"; sourceTree = "<group>"; };
+		A9917FF6209CC589004069EB /* CAMetalLayer+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "CAMetalLayer+MoltenVK.m"; sourceTree = "<group>"; };
 		A9AD67C72054DD6C00ED3C08 /* vulkan */ = {isa = PBXFileReference; lastKnownFileType = folder; path = vulkan; sourceTree = "<group>"; };
 		A9B8EE0A1A98D796009C5A02 /* MoltenVK.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVK.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVKShaderConverter.xcodeproj; path = ../MoltenVKShaderConverter/MoltenVKShaderConverter.xcodeproj; sourceTree = "<group>"; };
@@ -463,6 +481,12 @@
 		A98149401FB6A3F7005F00B4 /* Utility */ = {
 			isa = PBXGroup;
 			children = (
+				A9917FF5209CC589004069EB /* CAMetalLayer+MoltenVK.h */,
+				A9917FF6209CC589004069EB /* CAMetalLayer+MoltenVK.m */,
+				A9917FF2209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.h */,
+				A9917FF1209CC588004069EB /* MTLSamplerDescriptor+MoltenVK.m */,
+				A9917FF3209CC589004069EB /* MTLTextureDescriptor+MoltenVK.h */,
+				A9917FF4209CC589004069EB /* MTLTextureDescriptor+MoltenVK.m */,
 				A98149411FB6A3F7005F00B4 /* MVKBaseObject.cpp */,
 				A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */,
 				A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */,
@@ -569,6 +593,7 @@
 				A94FB7DC1C7DFB4800632CA3 /* MVKBuffer.h in Headers */,
 				A9F042A41FB4CF83009FCCB8 /* MVKCommonEnvironment.h in Headers */,
 				A981495D1FB6A3F7005F00B4 /* MVKWatermark.h in Headers */,
+				A9917FFB209CC589004069EB /* MTLTextureDescriptor+MoltenVK.h in Headers */,
 				A94FB7C41C7DFB4800632CA3 /* MVKCmdRenderPass.h in Headers */,
 				A94FB7BC1C7DFB4800632CA3 /* MVKCmdPipeline.h in Headers */,
 				A94FB7F81C7DFB4800632CA3 /* MVKPipeline.h in Headers */,
@@ -579,11 +604,13 @@
 				A94FB7D01C7DFB4800632CA3 /* MVKCommandBuffer.h in Headers */,
 				A98149631FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h in Headers */,
 				A98149531FB6A3F7005F00B4 /* MVKFoundation.h in Headers */,
+				A9917FF9209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.h in Headers */,
 				A94FB7E81C7DFB4800632CA3 /* MVKDeviceMemory.h in Headers */,
 				A98149591FB6A3F7005F00B4 /* MVKOSExtensions.h in Headers */,
 				A9E4B7891E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */,
 				A90C8DEA1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
 				A94FB8081C7DFB4800632CA3 /* MVKResource.h in Headers */,
+				A9917FFF209CC589004069EB /* CAMetalLayer+MoltenVK.h in Headers */,
 				A981496B1FB6A998005F00B4 /* MVKStrings.h in Headers */,
 				A94FB81C1C7DFB4800632CA3 /* MVKLayers.h in Headers */,
 			);
@@ -622,6 +649,7 @@
 				A94FB7DD1C7DFB4800632CA3 /* MVKBuffer.h in Headers */,
 				A9F042A51FB4CF83009FCCB8 /* MVKCommonEnvironment.h in Headers */,
 				A981495E1FB6A3F7005F00B4 /* MVKWatermark.h in Headers */,
+				A9917FFC209CC589004069EB /* MTLTextureDescriptor+MoltenVK.h in Headers */,
 				A94FB7C51C7DFB4800632CA3 /* MVKCmdRenderPass.h in Headers */,
 				A94FB7BD1C7DFB4800632CA3 /* MVKCmdPipeline.h in Headers */,
 				A94FB7F91C7DFB4800632CA3 /* MVKPipeline.h in Headers */,
@@ -632,11 +660,13 @@
 				A94FB7D11C7DFB4800632CA3 /* MVKCommandBuffer.h in Headers */,
 				A98149641FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h in Headers */,
 				A98149541FB6A3F7005F00B4 /* MVKFoundation.h in Headers */,
+				A9917FFA209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.h in Headers */,
 				A94FB7E91C7DFB4800632CA3 /* MVKDeviceMemory.h in Headers */,
 				A981495A1FB6A3F7005F00B4 /* MVKOSExtensions.h in Headers */,
 				A9E4B78A1E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */,
 				A90C8DEB1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
 				A94FB8091C7DFB4800632CA3 /* MVKResource.h in Headers */,
+				A9918000209CC589004069EB /* CAMetalLayer+MoltenVK.h in Headers */,
 				A981496C1FB6A998005F00B4 /* MVKStrings.h in Headers */,
 				A94FB81D1C7DFB4800632CA3 /* MVKLayers.h in Headers */,
 			);
@@ -801,6 +831,7 @@
 			files = (
 				A94FB80A1C7DFB4800632CA3 /* MVKResource.mm in Sources */,
 				A94FB7E21C7DFB4800632CA3 /* MVKDescriptorSet.mm in Sources */,
+				A9917FFD209CC589004069EB /* MTLTextureDescriptor+MoltenVK.m in Sources */,
 				A95870FA1C90D29F009EB096 /* MVKCommandResourceFactory.mm in Sources */,
 				A90C8DEC1F45354D009CB32C /* MVKCommandEncodingPool.mm in Sources */,
 				A981495F1FB6A3F7005F00B4 /* MVKWatermark.mm in Sources */,
@@ -813,6 +844,7 @@
 				A94FB7EA1C7DFB4800632CA3 /* MVKDeviceMemory.mm in Sources */,
 				A94FB7F21C7DFB4800632CA3 /* MVKImage.mm in Sources */,
 				A94FB7D61C7DFB4800632CA3 /* MVKCommandPool.mm in Sources */,
+				A9917FF7209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.m in Sources */,
 				A94FB7CA1C7DFB4800632CA3 /* MVKCmdDraw.mm in Sources */,
 				A94FB7D21C7DFB4800632CA3 /* MVKCommandBuffer.mm in Sources */,
 				A94FB7C61C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */,
@@ -836,6 +868,7 @@
 				A94FB7EE1C7DFB4800632CA3 /* MVKFramebuffer.mm in Sources */,
 				A9C96DD21DDC20C20053187F /* MVKMTLBufferAllocation.mm in Sources */,
 				A981495B1FB6A3F7005F00B4 /* MVKOSExtensions.mm in Sources */,
+				A9918001209CC589004069EB /* CAMetalLayer+MoltenVK.m in Sources */,
 				A9096E5E1F81E16300DFBEA6 /* MVKCmdDispatch.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -846,6 +879,7 @@
 			files = (
 				A94FB80B1C7DFB4800632CA3 /* MVKResource.mm in Sources */,
 				A94FB7E31C7DFB4800632CA3 /* MVKDescriptorSet.mm in Sources */,
+				A9917FFE209CC589004069EB /* MTLTextureDescriptor+MoltenVK.m in Sources */,
 				A95870FB1C90D29F009EB096 /* MVKCommandResourceFactory.mm in Sources */,
 				A90C8DED1F45354D009CB32C /* MVKCommandEncodingPool.mm in Sources */,
 				A98149601FB6A3F7005F00B4 /* MVKWatermark.mm in Sources */,
@@ -858,6 +892,7 @@
 				A94FB7EB1C7DFB4800632CA3 /* MVKDeviceMemory.mm in Sources */,
 				A94FB7F31C7DFB4800632CA3 /* MVKImage.mm in Sources */,
 				A94FB7D71C7DFB4800632CA3 /* MVKCommandPool.mm in Sources */,
+				A9917FF8209CC589004069EB /* MTLSamplerDescriptor+MoltenVK.m in Sources */,
 				A94FB7CB1C7DFB4800632CA3 /* MVKCmdDraw.mm in Sources */,
 				A94FB7D31C7DFB4800632CA3 /* MVKCommandBuffer.mm in Sources */,
 				A94FB7C71C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */,
@@ -881,6 +916,7 @@
 				A94FB7EF1C7DFB4800632CA3 /* MVKFramebuffer.mm in Sources */,
 				A9C96DD31DDC20C20053187F /* MVKMTLBufferAllocation.mm in Sources */,
 				A981495C1FB6A3F7005F00B4 /* MVKOSExtensions.mm in Sources */,
+				A9918002209CC589004069EB /* CAMetalLayer+MoltenVK.m in Sources */,
 				A9096E5F1F81E16300DFBEA6 /* MVKCmdDispatch.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

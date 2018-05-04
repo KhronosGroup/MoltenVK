@@ -26,6 +26,7 @@
 #include "MVKWatermarkShaderSource.h"
 #include "mvk_datatypes.h"
 #include "MVKLogging.h"
+#import "CAMetalLayer+MoltenVK.h"
 
 using namespace std;
 

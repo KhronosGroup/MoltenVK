@@ -35,6 +35,7 @@
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include "mvk_datatypes.h"
 #include "vk_mvk_moltenvk.h"
+#import "CAMetalLayer+MoltenVK.h"
 
 using namespace std;
 
