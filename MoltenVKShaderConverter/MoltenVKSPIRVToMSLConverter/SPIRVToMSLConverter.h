@@ -156,9 +156,6 @@ namespace mvk {
         } workgroupSizeId;
     } SPIRVEntryPoint;
 
-    /** Holds a map of entry point info, indexed by the SPIRV entry point name. */
-//    typedef std::unordered_map<std::string, SPIRVEntryPoint> SPIRVEntryPointsByName;
-
 	/** Special constant used in a MSLResourceBinding descriptorSet element to indicate the bindings for the push constants. */
     static const uint32_t kPushConstDescSet = std::numeric_limits<uint32_t>::max();
 

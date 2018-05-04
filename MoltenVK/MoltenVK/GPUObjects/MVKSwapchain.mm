@@ -66,7 +66,9 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
                                            uint32_t* pImageIndex) {
     // Find the image that has the smallest availability measure
     uint32_t minWaitIndex = 0;
-    MVKSwapchainImageAvailability minAvailability = { .acquisitionID = numeric_limits<uint64_t>::max(), .waitCount = numeric_limits<uint32_t>::max(), .isAvailable = false };
+    MVKSwapchainImageAvailability minAvailability = { .acquisitionID = kMVKUndefinedLargeUInt64,
+													  .waitCount = kMVKUndefinedLargeUInt32,
+													  .isAvailable = false };
     for (MVKSwapchainImage* mvkSCImg : _surfaceImages) {
         const MVKSwapchainImageAvailability* currAvailability = mvkSCImg->getAvailability();
         if (*currAvailability < minAvailability) {

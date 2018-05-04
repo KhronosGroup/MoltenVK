@@ -174,13 +174,13 @@ MVKCmdDrawIndexed::MVKCmdDrawIndexed(MVKCommandTypePool<MVKCmdDrawIndexed>* pool
 
 void MVKCmdDrawIndirect::setContent(VkBuffer buffer,
 										VkDeviceSize offset,
-										uint32_t count,
+										uint32_t drawCount,
 										uint32_t stride) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
 	_mtlIndirectBufferStride = stride;
-	_drawCount = count;
+	_drawCount = drawCount;
 
     // Validate
     clearConfigurationResult();
@@ -211,13 +211,13 @@ MVKCmdDrawIndirect::MVKCmdDrawIndirect(MVKCommandTypePool<MVKCmdDrawIndirect>* p
 
 void MVKCmdDrawIndexedIndirect::setContent(VkBuffer buffer,
 										VkDeviceSize offset,
-										uint32_t count,
+										uint32_t drawCount,
 										uint32_t stride) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
 	_mtlIndirectBufferStride = stride;
-	_drawCount = count;
+	_drawCount = drawCount;
 
     // Validate
     clearConfigurationResult();
@@ -294,20 +294,20 @@ void mvkCmdBindIndexBuffer(MVKCommandBuffer* cmdBuff,
 void mvkCmdDrawIndirect(MVKCommandBuffer* cmdBuff,
 						VkBuffer buffer,
 						VkDeviceSize offset,
-						uint32_t count,
+						uint32_t drawCount,
 						uint32_t stride) {
 	MVKCmdDrawIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndirectPool.acquireObject();
-	cmd->setContent(buffer, offset, count, stride);
+	cmd->setContent(buffer, offset, drawCount, stride);
 	cmdBuff->addCommand(cmd);
 }
 
 void mvkCmdDrawIndexedIndirect(MVKCommandBuffer* cmdBuff,
 							   VkBuffer buffer,
 							   VkDeviceSize offset,
-							   uint32_t count,
+							   uint32_t drawCount,
 							   uint32_t stride) {
 	MVKCmdDrawIndexedIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndexedIndirectPool.acquireObject();
-	cmd->setContent(buffer, offset, count, stride);
+	cmd->setContent(buffer, offset, drawCount, stride);
 	cmdBuff->addCommand(cmd);
 }
 

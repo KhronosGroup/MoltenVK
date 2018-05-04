@@ -278,7 +278,12 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         // Vertex shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_VERTEX_BIT)) {
 			shaderContext.options.entryPointStage = spv::ExecutionModelVertex;
-            plDesc.vertexFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
+			id<MTLFunction> mtlFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
+			if ( !mtlFunction ) {
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader function could not be compiled into pipeline. See previous error."));
+				return nil;
+			}
+			plDesc.vertexFunction = mtlFunction;
         }
 
         // Fragment shader
@@ -418,14 +423,17 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
         _mtlThreadgroupSize = shaderFunc.threadGroupSize;
         _mtlPipelineState = nil;
 
-        NSError* psError = nil;
-        uint64_t startTime = _device->getPerformanceTimestamp();
-        _mtlPipelineState = [getMTLDevice() newComputePipelineStateWithFunction: shaderFunc.mtlFunction error: &psError];  // retained
-        if (psError) {
-            setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Could not create compute pipeline:\n%s.", psError.description.UTF8String));
-        }
-        _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.pipelineCompile, startTime);
-
+		if (shaderFunc.mtlFunction) {
+			NSError* psError = nil;
+			uint64_t startTime = _device->getPerformanceTimestamp();
+			_mtlPipelineState = [getMTLDevice() newComputePipelineStateWithFunction: shaderFunc.mtlFunction error: &psError];  // retained
+			if (psError) {
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Could not create compute pipeline:\n%s.", psError.description.UTF8String));
+			}
+			_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.pipelineCompile, startTime);
+		} else {
+			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous error."));
+		}
     }
 }
 

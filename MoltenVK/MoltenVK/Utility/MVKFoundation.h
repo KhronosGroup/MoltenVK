@@ -28,8 +28,17 @@
 
 #pragma mark Math
 
-/** Maximum value of any variable of unsigned integral type. */
-#define kMVKMaxUnsigned		(~0U)
+/**
+ * The following constants are used to indicate values that have no defined limit.
+ * They are ridiculously large numbers, but low enough to be safely used as both
+ * uint and int values without risking overflowing between positive and negative values.
+ */
+static int32_t kMVKUndefinedLargeNegativeInt32 = std::numeric_limits<int32_t>::min() / 2;
+static int32_t kMVKUndefinedLargePositiveInt32 = std::numeric_limits<int32_t>::max() / 2;
+static uint32_t kMVKUndefinedLargeUInt32 = kMVKUndefinedLargePositiveInt32;
+static int64_t kMVKUndefinedLargeNegativeInt64 = std::numeric_limits<int64_t>::min() / 2;
+static int64_t kMVKUndefinedLargePositiveInt64 = std::numeric_limits<int64_t>::max() / 2;
+static uint64_t kMVKUndefinedLargeUInt64 = kMVKUndefinedLargePositiveInt64;
 
 // Common scaling multipliers
 #define KIBI		(1024)

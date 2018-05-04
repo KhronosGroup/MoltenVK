@@ -72,19 +72,19 @@
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-gi"
-            isEnabled = "NO">
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/Support/2018/MVK_Issue_112/bad_attrs.vert"
-            isEnabled = "NO">
+            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK-bh/External/SPIRV-Cross/shaders-msl/frag/gather-offset.frag"
+            isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-si"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/Support/2018/MVK_Issue_112/second/vert_bin.spv"
-            isEnabled = "YES">
+            isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
             argument = "-mo"

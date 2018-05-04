@@ -255,7 +255,7 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 	_attachmentIndex = uint32_t(_renderPass->_attachments.size());
 
 	// Determine the indices of the first and last render subpasses to use that attachment.
-	_firstUseSubpassIdx = kMVKMaxUnsigned;
+	_firstUseSubpassIdx = kMVKUndefinedLargeUInt32;
 	_lastUseSubpassIdx = 0;
 	for (auto& subPass : _renderPass->_subpasses) {
 		if (subPass.isUsingAttachmentAt(_attachmentIndex)) {

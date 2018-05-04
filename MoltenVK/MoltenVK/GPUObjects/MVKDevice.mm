@@ -137,7 +137,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
     pImageFormatProperties->maxMipLevels = mvkMipmapLevels3D(maxExt);
     pImageFormatProperties->maxArrayLayers = maxLayers;
     pImageFormatProperties->sampleCounts = _metalFeatures.supportedSampleCounts;
-    pImageFormatProperties->maxResourceSize = numeric_limits<int64_t>::max();
+    pImageFormatProperties->maxResourceSize = kMVKUndefinedLargeUInt64;
 
     return VK_SUCCESS;
 }
@@ -380,6 +380,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderStorageImageExtendedFormats = true;
     _features.shaderClipDistance = true;
     _features.shaderInt16 = true;
+	_features.multiDrawIndirect = true;
 
 #if MVK_IOS
     _features.textureCompressionETC2 = true;
@@ -421,7 +422,7 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    sampleRateShading;
 //    VkBool32    dualSrcBlend;                                 // done
 //    VkBool32    logicOp;
-//    VkBool32    multiDrawIndirect;
+//    VkBool32    multiDrawIndirect;							// done
 //    VkBool32    drawIndirectFirstInstance;
 //    VkBool32    depthClamp;                                   // done
 //    VkBool32    depthBiasClamp;                               // done
@@ -621,31 +622,33 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.standardSampleLocations = VK_FALSE;
     _properties.limits.strictLines = VK_FALSE;
 
+	_properties.limits.maxComputeWorkGroupSize[0] = _properties.limits.maxComputeWorkGroupInvocations;
+	_properties.limits.maxComputeWorkGroupSize[1] = _properties.limits.maxComputeWorkGroupInvocations;
+	_properties.limits.maxComputeWorkGroupSize[2] = _properties.limits.maxComputeWorkGroupInvocations;
+
 
     // Features with no specific limits - default to unlimited int values
 
-    _properties.limits.maxMemoryAllocationCount = numeric_limits<uint32_t>::max();
-    _properties.limits.maxSamplerAllocationCount = numeric_limits<uint32_t>::max();
-    _properties.limits.maxBoundDescriptorSets = numeric_limits<uint32_t>::max();
+    _properties.limits.maxMemoryAllocationCount = kMVKUndefinedLargeUInt32;
+    _properties.limits.maxSamplerAllocationCount = kMVKUndefinedLargeUInt32;
+    _properties.limits.maxBoundDescriptorSets = kMVKUndefinedLargeUInt32;
 
-    _properties.limits.maxComputeWorkGroupCount[0] = numeric_limits<uint32_t>::max();
-    _properties.limits.maxComputeWorkGroupCount[1] = numeric_limits<uint32_t>::max();
-    _properties.limits.maxComputeWorkGroupCount[2] = numeric_limits<uint32_t>::max();
+    _properties.limits.maxComputeWorkGroupCount[0] = kMVKUndefinedLargeUInt32;
+    _properties.limits.maxComputeWorkGroupCount[1] = kMVKUndefinedLargeUInt32;
+    _properties.limits.maxComputeWorkGroupCount[2] = kMVKUndefinedLargeUInt32;
 
-    _properties.limits.maxComputeWorkGroupSize[0] = numeric_limits<uint32_t>::max();
-    _properties.limits.maxComputeWorkGroupSize[1] = numeric_limits<uint32_t>::max();
-    _properties.limits.maxComputeWorkGroupSize[2] = numeric_limits<uint32_t>::max();
+    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max() - 1;
+    _properties.limits.maxDrawIndirectCount = kMVKUndefinedLargeUInt32;
 
-    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max();
-    _properties.limits.maxDrawIndirectCount = numeric_limits<uint32_t>::max();
+    _properties.limits.minTexelOffset = -8;
+    _properties.limits.maxTexelOffset = 7;
+    _properties.limits.minTexelGatherOffset = _properties.limits.minTexelOffset;
+    _properties.limits.maxTexelGatherOffset = _properties.limits.maxTexelOffset;
 
-    _properties.limits.minTexelOffset = numeric_limits<int32_t>::min();
-    _properties.limits.maxTexelOffset = numeric_limits<int32_t>::max();
-    _properties.limits.minTexelGatherOffset = numeric_limits<int32_t>::min();
-    _properties.limits.maxTexelGatherOffset = numeric_limits<int32_t>::max();
-
-    _properties.limits.maxClipDistances = numeric_limits<uint32_t>::max();
-    _properties.limits.maxCombinedClipAndCullDistances = numeric_limits<uint32_t>::max();
+    _properties.limits.maxClipDistances = kMVKUndefinedLargeUInt32;
+	_properties.limits.maxCullDistances = 0;	// unsupported
+    _properties.limits.maxCombinedClipAndCullDistances = _properties.limits.maxClipDistances +
+														 _properties.limits.maxCullDistances;
 
 
     // Features with unknown limits - default to Vulkan required limits
@@ -684,9 +687,6 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.minInterpolationOffset = 0.0;
     _properties.limits.maxInterpolationOffset = 0.0;
     _properties.limits.subPixelInterpolationOffsetBits = 0;
-
-    _properties.limits.maxCullDistances = 0;
-
 }
 
 

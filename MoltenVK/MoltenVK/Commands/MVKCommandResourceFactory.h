@@ -50,13 +50,6 @@ typedef struct MVKRPSKeyClearAtt_t {
 
     bool isEnabled(uint32_t attIdx) { return mvkIsAnyFlagEnabled(enabledFlags, bitFlag << attIdx); }
 
-    bool isEnabledOnly(uint32_t attIdx) {
-        // Ignore depth stencil bit
-        uint32_t colorFlags = enabledFlags;
-        mvkDisableFlag(colorFlags, bitFlag << kMVKAttachmentFormatDepthStencilIndex);
-        return mvkAreOnlyFlagsEnabled(colorFlags, bitFlag << attIdx);
-    }
-
     bool operator==(const MVKRPSKeyClearAtt_t& rhs) const {
         return ((enabledFlags == rhs.enabledFlags) &&
 				(mtlSampleCount == rhs.mtlSampleCount) &&
@@ -288,9 +281,11 @@ public:
 
 protected:
 	void initMTLLibrary();
-    std::string getFragFunctionSuffix(MTLPixelFormat mtlPixFmt);
-    std::string getFragFunctionSuffix(MVKRPSKeyClearAtt& attKey);
+	id<MTLFunction> getBlitFragFunction(MTLPixelFormat mtlPixFmt);
+	id<MTLFunction> getClearFragFunction(MVKRPSKeyClearAtt& attKey);
+	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
     id<MTLFunction> getFunctionNamed(const char* funcName);
+	id<MTLFunction> newMTLFunction(NSString* mslSrcCode, NSString* funcName);
     id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc);
 
 	id<MTLLibrary> _mtlLibrary;
