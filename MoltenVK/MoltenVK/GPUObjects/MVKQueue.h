@@ -30,37 +30,39 @@
 
 class MVKQueue;
 class MVKQueueSubmission;
+class MVKPhysicalDevice;
 
 
 #pragma mark -
 #pragma mark MVKQueueFamily
 
 /** Represents a Vulkan queue family. */
-class MVKQueueFamily : public MVKBaseDeviceObject {
+class MVKQueueFamily : public MVKConfigurableObject {
 
 public:
 
 	/** Returns the index of this queue family. */
 	inline uint32_t getIndex() { return _queueFamilyIndex; }
 
-	/** Returns the number of queues allocated for this family. */
-	inline uint32_t getQueueCount() { return uint32_t(_queues.size()); }
+	/** Populates the specified properties structure. */
+	void getProperties(VkQueueFamilyProperties* queueProperties) {
+		if (queueProperties) { *queueProperties = _properties; }
+	}
 
-	/** Returns the queue at the specified index. */
-	inline MVKQueue* getQueue(uint32_t queueIndex) { return _queues[queueIndex]; }
+	/** Returns the MTLCommandQueue at the specified index. */
+	id<MTLCommandQueue> getMTLCommandQueue(uint32_t queueIndex);
 
-	/** Constructs an instance with the specified number of queues for the specified device. */
-	MVKQueueFamily(MVKDevice* device,
-				   const VkDeviceQueueCreateInfo* pCreateInfo,
-				   const VkQueueFamilyProperties* pProperties);
+	/** Constructs an instance with the specified index. */
+	MVKQueueFamily(MVKPhysicalDevice* physicalDevice, uint32_t queueFamilyIndex, const VkQueueFamilyProperties* pProperties);
 
 	~MVKQueueFamily() override;
 
 protected:
+	MVKPhysicalDevice* _physicalDevice;
     uint32_t _queueFamilyIndex;
 	VkQueueFamilyProperties _properties;
-	std::vector<MVKQueue*> _queues;
-	std::mutex _lock;
+	std::vector<id<MTLCommandQueue>> _mtlQueues;
+	std::mutex _qLock;
 };
 
 

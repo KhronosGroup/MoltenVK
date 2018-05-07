@@ -245,7 +245,7 @@ void MVKInstance::initProcAddrs() {
     ADD_PROC_ADDR(vkSetMoltenVKDeviceConfigurationMVK);
     ADD_PROC_ADDR(vkGetPhysicalDeviceMetalFeaturesMVK);
     ADD_PROC_ADDR(vkGetSwapchainPerformanceMVK);
-    ADD_PROC_ADDR(vkGetShaderCompilationPerformanceMVK);
+    ADD_PROC_ADDR(vkGetPerformanceStatisticsMVK);
     ADD_PROC_ADDR(vkGetVersionStringsMVK);
     ADD_PROC_ADDR(vkGetMTLDeviceMVK);
     ADD_PROC_ADDR(vkSetMTLTextureMVK);

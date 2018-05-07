@@ -230,8 +230,12 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
         .flags = 0,
     };
 
-    uint32_t imgCnt = MVK_MAX_SWAPCHAIN_SURFACE_IMAGE_COUNT;
-    _surfaceImages.reserve(imgCnt);
+	VkSurfaceCapabilitiesKHR srfcProps;
+	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
+	_device->getPhysicalDevice()->getSurfaceCapabilities(mvkSrfc, &srfcProps);
+
+	uint32_t imgCnt = srfcProps.maxImageCount;
+	_surfaceImages.reserve(imgCnt);
     for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
         _surfaceImages.push_back(_device->createSwapchainImage(&imgInfo, this, NULL));
     }

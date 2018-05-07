@@ -60,12 +60,11 @@ MVK_PUBLIC_SYMBOL void vkGetSwapchainPerformanceMVK(
     mvkSwapchain->getPerformanceStatistics(pSwapchainPerf);
 }
 
-MVK_PUBLIC_SYMBOL void vkGetShaderCompilationPerformanceMVK(
+MVK_PUBLIC_SYMBOL void vkGetPerformanceStatisticsMVK(
     VkDevice                                    device,
-    MVKShaderCompilationPerformance*            pShaderCompPerf) {
+    MVKPerformanceStatistics*            		pPerf) {
 
-    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-    mvkDev->getShaderCompilationPerformanceStatistics(pShaderCompPerf);
+    MVKDevice::getMVKDevice(device)->getPerformanceStatistics(pPerf);
 }
 
 MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(

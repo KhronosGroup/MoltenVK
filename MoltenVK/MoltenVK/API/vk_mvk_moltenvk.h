@@ -48,7 +48,7 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   5
+#define MVK_VERSION_PATCH   6
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
@@ -64,7 +64,7 @@ typedef struct {
     VkBool32 supportLargeQueryPools;        /**< Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK allocates a MTLBuffer for each query pool, allowing each query pool to support 8192 queries, which may slow performance or cause unexpected behaviour if the query pool is not established prior to a Metal renderpass, or if the query pool is changed within a Metal renderpass. If disabled, one MTLBuffer will be shared by all query pools, which improves performance, but limits the total device queries to 8192. Default is false. */
 	VkBool32 presentWithCommandBuffer;      /**< If enabled, each surface presentation is scheduled using a command buffer. Enabling this may improve rendering frame synchronization, but may result in reduced frame rates. Default value is false if the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting is defined when MoltenVK is compiled, and true otherwise. By default the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting is not defined and the value of this setting is true. */
     VkBool32 displayWatermark;              /**< If enabled, a MoltenVK logo watermark will be rendered on top of the scene. This can be enabled for publicity during demos. Default value is true if the MVK_DISPLAY_WATERMARK build setting is defined when MoltenVK is compiled, and false otherwise. By default the MVK_DISPLAY_WATERMARK build setting is not defined. */
-    VkBool32 performanceTracking;           /**< If enabled, per-frame performance statistics are tracked, optionally logged, and can be retrieved via the vkGetSwapchainPerformanceMVK() function, and various shader compilation performance statistics are tracked, logged, and can be retrieved via the vkGetShaderCompilationPerformanceMVK() function. Default is false. */
+    VkBool32 performanceTracking;           /**< If enabled, per-frame performance statistics are tracked, optionally logged, and can be retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function. Default is false. */
     uint32_t performanceLoggingFrameCount;  /**< If non-zero, performance statistics will be periodically logged to the console, on a repeating cycle of this many frames per swapchain. The performanceTracking capability must also be enabled. Default is zero, indicating no logging. */
 } MVKDeviceConfiguration;
 
@@ -96,28 +96,45 @@ typedef struct {
     double averageFramesPerSecond;      /**< The rolling average number of frames per second. This is simply the 1000 divided by the averageFrameInterval value. */
 } MVKSwapchainPerformance;
 
-/** MoltenVK performance of a particular type of shader compilation event. */
+/** MoltenVK performance of a particular type of activity. */
 typedef struct {
-    uint32_t count;             /**< The number of compilation events of this type. */
-    double averageDuration;     /**< The average duration of the compilation event, in milliseconds. */
-    double minimumDuration;     /**< The minimum duration of the compilation event, in milliseconds. */
-    double maximumDuration;     /**< The maximum duration of the compilation event, in milliseconds. */
-} MVKShaderCompilationEventPerformance;
+    uint32_t count;             /**< The number of activities of this type. */
+    double averageDuration;     /**< The average duration of the activity, in milliseconds. */
+    double minimumDuration;     /**< The minimum duration of the activity, in milliseconds. */
+    double maximumDuration;     /**< The maximum duration of the activity, in milliseconds. */
+} MVKPerformanceTracker;
 
-/** MoltenVK performance of shader compilation events for a VkDevice. */
+/** MoltenVK performance of shader compilation activities. */
 typedef struct {
-	MVKShaderCompilationEventPerformance hashShaderCode;            /** Create a hash from the incoming shader code. */
-    MVKShaderCompilationEventPerformance spirvToMSL;                /** Convert SPIR-V to MSL source code. */
-    MVKShaderCompilationEventPerformance mslCompile;                /** Compile MSL source code into a MTLLibrary. */
-    MVKShaderCompilationEventPerformance mslLoad;                   /** Load pre-compiled MSL code into a MTLLibrary. */
-	MVKShaderCompilationEventPerformance shaderLibraryFromCache;    /** Retrieve a shader library from the cache, lazily creating it if needed. */
-    MVKShaderCompilationEventPerformance functionRetrieval;         /** Retrieve a MTLFunction from a MTLLibrary. */
-    MVKShaderCompilationEventPerformance functionSpecialization;    /** Specialize a retrieved MTLFunction. */
-    MVKShaderCompilationEventPerformance pipelineCompile;           /** Compile MTLFunctions into a pipeline. */
-	MVKShaderCompilationEventPerformance sizePipelineCache;         /** Calculate the size of cache data required to write MSL to pipeline cache data stream. */
-	MVKShaderCompilationEventPerformance writePipelineCache;        /** Write MSL to pipeline cache data stream. */
-	MVKShaderCompilationEventPerformance readPipelineCache;         /** Read MSL from pipeline cache data stream. */
+	MVKPerformanceTracker hashShaderCode;				/** Create a hash from the incoming shader code. */
+    MVKPerformanceTracker spirvToMSL;					/** Convert SPIR-V to MSL source code. */
+    MVKPerformanceTracker mslCompile;					/** Compile MSL source code into a MTLLibrary. */
+    MVKPerformanceTracker mslLoad;						/** Load pre-compiled MSL code into a MTLLibrary. */
+	MVKPerformanceTracker shaderLibraryFromCache;		/** Retrieve a shader library from the cache, lazily creating it if needed. */
+    MVKPerformanceTracker functionRetrieval;			/** Retrieve a MTLFunction from a MTLLibrary. */
+    MVKPerformanceTracker functionSpecialization;		/** Specialize a retrieved MTLFunction. */
+    MVKPerformanceTracker pipelineCompile;				/** Compile MTLFunctions into a pipeline. */
 } MVKShaderCompilationPerformance;
+
+
+/** MoltenVK performance of pipeline cache activities. */
+typedef struct {
+	MVKPerformanceTracker sizePipelineCache;			/** Calculate the size of cache data required to write MSL to pipeline cache data stream. */
+	MVKPerformanceTracker writePipelineCache;			/** Write MSL to pipeline cache data stream. */
+	MVKPerformanceTracker readPipelineCache;			/** Read MSL from pipeline cache data stream. */
+} MVKPipelineCachePerformance;
+
+/** MoltenVK performance of queue activities. */
+typedef struct {
+	MVKPerformanceTracker mtlQueueAccess;          	/** Create an MTLCommmandQueue or access an existing cached instance. */
+} MVKQueuePerformance;
+
+/** MoltenVK performance. */
+typedef struct {
+	MVKShaderCompilationPerformance shaderCompilation;	/** Shader compilations activities. */
+	MVKPipelineCachePerformance pipelineCache;			/** Pipeline cache activities. */
+	MVKQueuePerformance queue;          				/** Queue activities. */
+} MVKPerformanceStatistics;
 
 
 #pragma mark -
@@ -127,7 +144,7 @@ typedef void (VKAPI_PTR *PFN_vkGetMoltenVKDeviceConfigurationMVK)(VkDevice devic
 typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKDeviceConfigurationMVK)(VkDevice device, MVKDeviceConfiguration* pConfiguration);
 typedef void (VKAPI_PTR *PFN_vkGetPhysicalDeviceMetalFeaturesMVK)(VkPhysicalDevice physicalDevice, MVKPhysicalDeviceMetalFeatures* pMetalFeatures);
 typedef void (VKAPI_PTR *PFN_vkGetSwapchainPerformanceMVK)(VkDevice device, VkSwapchainKHR swapchain, MVKSwapchainPerformance* pSwapchainPerf);
-typedef void (VKAPI_PTR *PFN_vkGetShaderCompilationPerformanceMVK)(VkDevice device, MVKShaderCompilationPerformance* pShaderCompPerf);
+typedef void (VKAPI_PTR *PFN_vkGetPerformanceStatisticsMVK)(VkDevice device, MVKPerformanceStatistics* pPerf);
 typedef void (VKAPI_PTR *PFN_vkGetVersionStringsMVK)(char* pMoltenVersionStringBuffer, uint32_t moltenVersionStringBufferLength, char* pVulkanVersionStringBuffer, uint32_t vulkanVersionStringBufferLength);
 
 #ifdef __OBJC__
@@ -190,12 +207,12 @@ VKAPI_ATTR void VKAPI_CALL vkGetSwapchainPerformanceMVK(
     MVKSwapchainPerformance*                    pSwapchainPerf);
 
 /**
- * Populates the specified MVKShaderCompilationPerformance structure with the
- * current shader compilation performance statistics for the specified device.
+ * Populates the specified MVKPerformanceStatistics structure with
+ * the current performance statistics for the specified device.
  */
-VKAPI_ATTR void VKAPI_CALL vkGetShaderCompilationPerformanceMVK(
+VKAPI_ATTR void VKAPI_CALL vkGetPerformanceStatisticsMVK(
     VkDevice                                    device,
-    MVKShaderCompilationPerformance*            pShaderCompPerf);
+    MVKPerformanceStatistics*            		pPerf);
 
 /**
  * Returns a human readable version of the MoltenVK and Vulkan versions.

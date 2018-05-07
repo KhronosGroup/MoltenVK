@@ -29,21 +29,28 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKQueueFamily
 
-MVKQueueFamily::MVKQueueFamily(MVKDevice* device,
-							   const VkDeviceQueueCreateInfo* pCreateInfo,
-							   const VkQueueFamilyProperties* pProperties) : MVKBaseDeviceObject(device) {
-	_properties = *pProperties;
-
-	// Create the queues
-	uint32_t qCnt = pCreateInfo->queueCount;
-	_queues.reserve(qCnt);
-	for (uint32_t qIdx = 0; qIdx < qCnt; qIdx++) {
-        _queues.push_back(new MVKQueue(_device, this, qIdx, pCreateInfo->pQueuePriorities[qIdx]));
+// MTLCommandQueues are cached in MVKQueueFamily/MVKPhysicalDevice because they are very
+// limited in number. An app that creates multiple VkDevices over time (such as a test suite)
+// will soon find 15 second delays when creating subsequent MTLCommandQueues.
+id<MTLCommandQueue> MVKQueueFamily::getMTLCommandQueue(uint32_t queueIndex) {
+	lock_guard<mutex> lock(_qLock);
+	id<MTLCommandQueue> mtlQ = _mtlQueues[queueIndex];
+	if ( !mtlQ ) {
+		mtlQ = [_physicalDevice->getMTLDevice() newCommandQueue];	// retained
+		_mtlQueues[queueIndex] = mtlQ;
 	}
+	return mtlQ;
+}
+
+MVKQueueFamily::MVKQueueFamily(MVKPhysicalDevice* physicalDevice, uint32_t queueFamilyIndex, const VkQueueFamilyProperties* pProperties) {
+	_physicalDevice = physicalDevice;
+	_queueFamilyIndex = queueFamilyIndex;
+	_properties = *pProperties;
+	_mtlQueues.assign(_properties.queueCount, nil);
 }
 
 MVKQueueFamily::~MVKQueueFamily() {
-	mvkDestroyContainerContents(_queues);
+	mvkReleaseContainerContents(_mtlQueues);
 }
 
 
@@ -123,7 +130,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 // from a single thread.
 id<MTLCommandBuffer> MVKQueue::makeMTLCommandBuffer(NSString* mtlCmdBuffLabel) {
 
-	// Retrieve a MTLCommandBuffer from the MTLQueue.
+	// Retrieve a MTLCommandBuffer from the MTLCommandQueue.
 	id<MTLCommandBuffer> mtlCmdBuffer = [_mtlQueue commandBufferWithUnretainedReferences];
     mtlCmdBuffer.label = mtlCmdBuffLabel;
 
@@ -208,7 +215,9 @@ void MVKQueue::initExecQueue() {
 
 /** Creates and initializes the Metal queue. */
 void MVKQueue::initMTLCommandQueue() {
-	_mtlQueue = [_device->getMTLDevice() newCommandQueue];	// retained
+	uint64_t startTime = _device->getPerformanceTimestamp();
+	_mtlQueue = _queueFamily->getMTLCommandQueue(_index);	// not retained (cached in queue family)
+	_device->addActivityPerformance(_device->_performanceStatistics.queue.mtlQueueAccess, startTime);
     [_mtlQueue insertDebugCaptureBoundary];                 // Allow Xcode to capture the first frame if desired.
 }
 
@@ -223,7 +232,6 @@ MVKQueue::~MVKQueue() {
     // in the destructor of the lock created in registerMTLCommandBufferCountdown().
     lock_guard<mutex> lock(_completionLock);
 	destroyExecQueue();
-	[_mtlQueue release];
 }
 
 /** Destroys the execution dispatch queue. */

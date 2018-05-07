@@ -252,7 +252,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
             if (psError) {
                 setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Could not create render pipeline:\n%s.", psError.description.UTF8String));
             }
-            _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.pipelineCompile, startTime);
+            _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.pipelineCompile, startTime);
         }
     }
 }
@@ -430,7 +430,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 			if (psError) {
 				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Could not create compute pipeline:\n%s.", psError.description.UTF8String));
 			}
-			_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.pipelineCompile, startTime);
+			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.pipelineCompile, startTime);
 		} else {
 			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous error."));
 		}
@@ -612,9 +612,9 @@ VkResult MVKPipelineCache::writeData(size_t* pDataSize, void* pData) {
 // Serializes the data in this cache to a stream
 void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 
-	MVKShaderCompilationEventPerformance& shaderCompilationEvent = isCounting
-		? _device->_shaderCompilationPerformance.sizePipelineCache
-		: _device->_shaderCompilationPerformance.writePipelineCache;
+	MVKPerformanceTracker& shaderCompilationEvent = isCounting
+		? _device->_performanceStatistics.pipelineCache.sizePipelineCache
+		: _device->_performanceStatistics.pipelineCache.writePipelineCache;
 
 	uint32_t cacheEntryType;
 	cereal::BinaryOutputArchive writer(outstream);
@@ -640,7 +640,7 @@ void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 			writer(cacheIter.getShaderContext());
 			writer(cacheIter.getEntryPoint());
 			writer(cacheIter.getMSL());
-			_device->addShaderCompilationEventPerformance(shaderCompilationEvent, startTime);
+			_device->addActivityPerformance(shaderCompilationEvent, startTime);
 		}
 	}
 
@@ -705,7 +705,7 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 
 					// Add the shader library to the staging cache.
 					MVKShaderLibraryCache* slCache = getShaderLibraryCache(smKey);
-					_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.readPipelineCache, startTime);
+					_device->addActivityPerformance(_device->_performanceStatistics.pipelineCache.readPipelineCache, startTime);
 					slCache->addShaderLibrary(&shaderContext, msl, entryPoint);
 
 					break;

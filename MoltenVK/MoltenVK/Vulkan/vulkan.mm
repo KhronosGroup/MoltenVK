@@ -112,11 +112,11 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties(
 
 MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties(
 	VkPhysicalDevice                            physicalDevice,
-	uint32_t*                                   pCount,
+	uint32_t*                                   pQueueFamilyPropertyCount,
 	VkQueueFamilyProperties*                    pQueueFamilyProperties) {
 	
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	mvkPD->getQueueFamilyProperties(pCount, pQueueFamilyProperties);
+	mvkPD->getQueueFamilyProperties(pQueueFamilyPropertyCount, pQueueFamilyProperties);
 }
 
 MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties(
