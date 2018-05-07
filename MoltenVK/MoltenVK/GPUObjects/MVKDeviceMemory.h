@@ -110,7 +110,7 @@ protected:
 	friend MVKResource;
 
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);
-    bool mapToSingleResource(VkDeviceSize offset, VkDeviceSize size);
+    bool mapToUniqueResource(VkDeviceSize offset, VkDeviceSize size);
 	void addResource(MVKResource* rez);
 	void removeResource(MVKResource* rez);
 

@@ -59,7 +59,7 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 
     VkDeviceSize mapSize = adjustMemorySize(size, offset);
 //    MVKLogDebug("Mapping device memory %p with offset %d and size %d.", this, offset, mapSize);
-    if ( !mapToSingleResource(offset, mapSize) ) {
+    if ( !mapToUniqueResource(offset, mapSize) ) {
         if (isMemoryHostCoherent()) {
             if ( !_mtlBuffer ) {
 
@@ -109,15 +109,24 @@ void MVKDeviceMemory::unmap() {
 	_mapSize = 0;
 }
 
-// Attempts to map the memory defined by the offset and size to a single resource, and returns
+// Attempts to map the memory defined by the offset and size to a unique resource, and returns
 // whether such a mapping was possible. If it was, the mapped region is stored in _pMappedMemory.
-bool MVKDeviceMemory::mapToSingleResource(VkDeviceSize offset, VkDeviceSize size) {
+bool MVKDeviceMemory::mapToUniqueResource(VkDeviceSize offset, VkDeviceSize size) {
 	lock_guard<mutex> lock(_rezLock);
+	MVKResource* uniqueRez = nullptr;
 	for (auto& rez : _resources) {
-        _pMappedMemory = rez->map(offset, size);
-        if (_pMappedMemory) { return true; }
+		if (rez->doesContain(offset, size)) {
+			if (uniqueRez) { return false; }	// More than one resource mapped to the region
+			uniqueRez = rez;
+		}
     }
-    return false;
+
+	if (uniqueRez) {
+		_pMappedMemory = uniqueRez->map(offset, size);
+		return true;
+	}
+
+	return false;
 }
 
 void* MVKDeviceMemory::allocateMappedMemory(VkDeviceSize offset, VkDeviceSize size) {

@@ -204,9 +204,7 @@ VkResult MVKImage::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
 }
 
 void* MVKImage::map(VkDeviceSize offset, VkDeviceSize size) {
-    return (doesContain(offset, size)
-            ? _deviceMemory->allocateMappedMemory(offset, size)
-            : VK_NULL_HANDLE);
+	return _deviceMemory->allocateMappedMemory(offset, size);
 }
 
 
