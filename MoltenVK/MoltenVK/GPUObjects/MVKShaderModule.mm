@@ -153,6 +153,12 @@ MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device,
     _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslLoad, startTime);
 }
 
+MVKShaderLibrary::MVKShaderLibrary(MVKShaderLibrary& other) : MVKBaseDeviceObject(other._device) {
+	_mtlLibrary = [other._mtlLibrary retain];
+	_entryPoint = other._entryPoint;
+	_msl = other._msl;
+}
+
 // If err object is nil, the compilation succeeded without any warnings.
 // If err object exists, and the MTLLibrary was created, the compilation succeeded, but with warnings.
 // If err object exists, and the MTLLibrary was not created, the compilation failed.
@@ -204,7 +210,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConverterCo
 			return slPair.second;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 // Adds and returns a new shader library configured from the specified context.
@@ -212,7 +218,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(SPIRVToMSLConverterCon
 														  const string& mslSourceCode,
 														  const SPIRVEntryPoint& entryPoint) {
 	MVKShaderLibrary* shLib = new MVKShaderLibrary(_device, mslSourceCode, entryPoint);
-	_shaderLibraries.push_back(pair<SPIRVToMSLConverterContext, MVKShaderLibrary*>(*pContext, shLib));
+	_shaderLibraries.emplace_back(*pContext, shLib);
 	return shLib;
 }
 
@@ -221,13 +227,13 @@ void MVKShaderLibraryCache::merge(MVKShaderLibraryCache* other) {
 	if ( !other ) { return; }
 	for (auto& otherPair : other->_shaderLibraries) {
 		if ( !findShaderLibrary(&otherPair.first) ) {
-			_shaderLibraries.push_back(otherPair);
+			_shaderLibraries.emplace_back(otherPair.first, new MVKShaderLibrary(*otherPair.second));
 		}
 	}
 }
 
 MVKShaderLibraryCache::~MVKShaderLibraryCache() {
-	for (auto& slPair : _shaderLibraries) { delete slPair.second; }
+	for (auto& slPair : _shaderLibraries) { slPair.second->destroy(); }
 }
 
 
@@ -337,6 +343,6 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 }
 
 MVKShaderModule::~MVKShaderModule() {
-	if (_defaultLibrary) { delete _defaultLibrary; }
+	if (_defaultLibrary) { _defaultLibrary->destroy(); }
 }
 

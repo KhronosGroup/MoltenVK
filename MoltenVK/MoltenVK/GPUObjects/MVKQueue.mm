@@ -345,7 +345,7 @@ void MVKQueueCommandBufferSubmission::finish() {
     // If a fence exists, signal it.
     if (_fence) { _fence->signal(); }
     
-    delete this;
+    this->destroy();
 }
 
 MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* device,
@@ -411,7 +411,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
     // Let Xcode know the frame is done, in case command buffer is not used
     if (_device->_mvkConfig.debugMode) { [mtlQ insertDebugCaptureBoundary]; }
 
-    delete this;
+    this->destroy();
 }
 
 MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKDevice* device,

@@ -19,6 +19,7 @@
 #pragma once
 
 
+#include "MVKBaseObject.h"
 #include <string>
 
 #import <Metal/Metal.h>
@@ -53,7 +54,7 @@ typedef struct MVKWatermarkColor {
  *
  * This class uses Metal directly.
  */
-class MVKWatermark {
+class MVKWatermark : public MVKBaseObject {
 
 public:
 

@@ -1366,7 +1366,7 @@ const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& 
     if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.spirvToMSL) { return "convert SPIR-V to MSL source code"; }
     if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.mslCompile) { return "compile MSL source code into a MTLLibrary"; }
     if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.mslLoad) { return "load pre-compiled MSL code into a MTLLibrary"; }
-	if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.shaderLibraryFromCache) { return "retrieve shader library from the cache."; }
+	if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.shaderLibraryFromCache) { return "retrieve shader library from the cache"; }
     if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.functionRetrieval) { return "retrieve a MTLFunction from a MTLLibrary"; }
     if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.functionSpecialization) { return "specialize a retrieved MTLFunction"; }
     if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.pipelineCompile) { return "compile MTLFunctions into a pipeline"; }

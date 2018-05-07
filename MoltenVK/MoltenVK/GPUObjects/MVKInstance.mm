@@ -81,7 +81,7 @@ MVKSurface* MVKInstance::createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* p
 
 void MVKInstance::destroySurface(MVKSurface* mvkSrfc,
 								const VkAllocationCallbacks* pAllocator) {
-	delete mvkSrfc;
+	mvkSrfc->destroy();
 }
 
 

@@ -58,8 +58,8 @@ VkResult MVKCommandPool::allocateCommandBuffers(const VkCommandBufferAllocateInf
 void MVKCommandPool::freeCommandBuffers(uint32_t commandBufferCount,
 										const VkCommandBuffer* pCommandBuffers) {
 	for (uint32_t cbIdx = 0; cbIdx < commandBufferCount; cbIdx++) {
-        MVKCommandBuffer* mvkCmdBuff = MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]);
-		delete mvkCmdBuff;
+		VkCommandBuffer cmdBuff = pCommandBuffers[cbIdx];
+		if (cmdBuff) { MVKCommandBuffer::getMVKCommandBuffer(cmdBuff)->destroy(); }
 	}
 }
 

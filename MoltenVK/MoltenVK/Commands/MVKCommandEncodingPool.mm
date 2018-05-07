@@ -146,7 +146,7 @@ void MVKCommandEncodingPool::initTextureDeviceMemory() {
 }
 
 MVKCommandEncodingPool::~MVKCommandEncodingPool() {
-    if (_transferImageMemory) { delete _transferImageMemory; }
+    if (_transferImageMemory) { _transferImageMemory->destroy(); }
 	destroyMetalResources();
 }
 
@@ -161,7 +161,7 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     for (auto& pair : _mtlDepthStencilStates) { [pair.second release]; }
     _mtlDepthStencilStates.clear();
 
-    for (auto& pair : _transferImages) { delete pair.second; }
+    for (auto& pair : _transferImages) { pair.second->destroy(); }
     _transferImages.clear();
 
     [_cmdBlitImageLinearMTLSamplerState release];

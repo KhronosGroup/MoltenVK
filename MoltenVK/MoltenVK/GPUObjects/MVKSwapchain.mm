@@ -119,8 +119,8 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
         _licenseWatermark->render(mtlTexture, mtlCmdBuff, _performanceStatistics.lastFrameInterval);
     } else {
         if (_licenseWatermark) {
-            delete _licenseWatermark;
-            _licenseWatermark = NULL;
+            _licenseWatermark->destroy();
+            _licenseWatermark = nullptr;
         }
     }
 }
@@ -260,6 +260,6 @@ void MVKSwapchain::initFrameIntervalTracking() {
 MVKSwapchain::~MVKSwapchain() {
 	for (auto& img : _surfaceImages) { _device->destroySwapchainImage(img, NULL); }
 
-    if (_licenseWatermark) { delete _licenseWatermark; }
+    if (_licenseWatermark) { _licenseWatermark->destroy(); }
 }
 

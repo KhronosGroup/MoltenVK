@@ -282,7 +282,7 @@ void mvkEnsureSize(C& container, S size) {
  */
 template<typename C>
 void mvkDestroyContainerContents(C& container) {
-    for (auto elem : container) { delete elem; }
+    for (auto elem : container) { elem->destroy(); }
     container.clear();
 }
 

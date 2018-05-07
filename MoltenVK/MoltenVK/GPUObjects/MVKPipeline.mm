@@ -748,7 +748,7 @@ MVKPipelineCache::MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreat
 }
 
 MVKPipelineCache::~MVKPipelineCache() {
-	for (auto& pair : _shaderCache) { delete pair.second; }
+	for (auto& pair : _shaderCache) { pair.second->destroy(); }
 	_shaderCache.clear();
 }
 
