@@ -58,6 +58,9 @@ public:
 					 const void* mslCompiledCodeData,
 					 size_t mslCompiledCodeLength);
 
+	/** Copy constructor. */
+	MVKShaderLibrary(MVKShaderLibrary& other);
+
 	~MVKShaderLibrary() override;
 
 protected:

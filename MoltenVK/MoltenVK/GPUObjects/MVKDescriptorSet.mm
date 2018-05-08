@@ -634,9 +634,11 @@ VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescripto
 
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
 		MVKDescriptorSet* mvkDS = (MVKDescriptorSet*)pDescriptorSets[dsIdx];
-		_allocatedSets.remove(mvkDS);
-		_allocatedSetCount--;
-        delete mvkDS;
+		if (mvkDS) {
+			_allocatedSets.remove(mvkDS);
+			_allocatedSetCount--;
+			mvkDS->destroy();
+		}
 	}
 
 //	MVKLogDebug("Pool %p freed %d descriptor sets for a new total of %d sets.", this, count, _allocatedSetCount);

@@ -119,8 +119,8 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
         _licenseWatermark->render(mtlTexture, mtlCmdBuff, _performanceStatistics.lastFrameInterval);
     } else {
         if (_licenseWatermark) {
-            delete _licenseWatermark;
-            _licenseWatermark = NULL;
+            _licenseWatermark->destroy();
+            _licenseWatermark = nullptr;
         }
     }
 }
@@ -230,8 +230,12 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
         .flags = 0,
     };
 
-    uint32_t imgCnt = MVK_MAX_SWAPCHAIN_SURFACE_IMAGE_COUNT;
-    _surfaceImages.reserve(imgCnt);
+	VkSurfaceCapabilitiesKHR srfcProps;
+	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
+	_device->getPhysicalDevice()->getSurfaceCapabilities(mvkSrfc, &srfcProps);
+
+	uint32_t imgCnt = srfcProps.maxImageCount;
+	_surfaceImages.reserve(imgCnt);
     for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
         _surfaceImages.push_back(_device->createSwapchainImage(&imgInfo, this, NULL));
     }
@@ -256,6 +260,6 @@ void MVKSwapchain::initFrameIntervalTracking() {
 MVKSwapchain::~MVKSwapchain() {
 	for (auto& img : _surfaceImages) { _device->destroySwapchainImage(img, NULL); }
 
-    if (_licenseWatermark) { delete _licenseWatermark; }
+    if (_licenseWatermark) { _licenseWatermark->destroy(); }
 }
 

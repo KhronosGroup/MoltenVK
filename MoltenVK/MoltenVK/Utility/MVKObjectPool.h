@@ -38,7 +38,7 @@
  * or somewhat faster, but not-thread-safe manner.
  *
  * An instance of this pool can be configured to either manage a pool of objects,
- * or simply allocate a new object instance on each request and delete the object
+ * or simply allocate a new object instance on each request and destroy the object
  * when it is released back to the pool.
  */
 template <class T>
@@ -82,7 +82,7 @@ public:
 			_tail = obj;
 			if ( !_head ) { _head = obj; }
 		} else {
-			delete obj;
+			obj->destroy();
 		}
 	}
 
@@ -101,7 +101,7 @@ public:
 	/** Clears all the objects from this pool, deleting each one. This method is thread-safe. */
 	void clear() {
         std::lock_guard<std::mutex> lock(_lock);
-		while ( T* obj = nextObject() ) { delete obj; }
+		while ( T* obj = nextObject() ) { obj->destroy(); }
 	}
 
 	/**

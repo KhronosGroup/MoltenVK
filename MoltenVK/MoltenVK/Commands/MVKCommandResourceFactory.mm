@@ -300,7 +300,7 @@ MVKImage* MVKCommandResourceFactory::newMVKImage(MVKImageDescriptorData& imgData
 id<MTLFunction> MVKCommandResourceFactory::getFunctionNamed(const char* funcName) {
     uint64_t startTime = _device->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: @(funcName)] autorelease];
-    _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.functionRetrieval, startTime);
+    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
     return mtlFunc;
 }
 
@@ -311,7 +311,7 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 	id<MTLLibrary> mtlLib = [[getMTLDevice() newLibraryWithSource: mslSrcCode
 														  options: shdrOpts
 															error: &err] autorelease];
-	_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.mslCompile, startTime);
+	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 	if (err) {
 		mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Could not compile support shader from MSL source:\n%s\n %s (code %li) %s", mslSrcCode.UTF8String, err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
 		return nil;
@@ -319,7 +319,7 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 
 	startTime = _device->getPerformanceTimestamp();
 	id<MTLFunction> mtlFunc = [mtlLib newFunctionWithName: funcName];
-	_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.functionRetrieval, startTime);
+	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
 	return mtlFunc;
 }
 
@@ -328,7 +328,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(
     NSError* err = nil;
     id<MTLRenderPipelineState> rps = [getMTLDevice() newRenderPipelineStateWithDescriptor: plDesc error: &err];    // retained
     MVKAssert( !err, "Could not create %s pipeline state: %s (code %li) %s", plDesc.label.UTF8String, err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
-    _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.pipelineCompile, startTime);
+    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.pipelineCompile, startTime);
     return rps;
 }
 
@@ -360,7 +360,7 @@ void MVKCommandResourceFactory::initMTLLibrary() {
                                                      error: &err];    // retained
         MVKAssert( !err, "Could not compile command shaders %s (code %li) %s", err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
     }
-    _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.mslCompile, startTime);
+    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 }
 
 MVKCommandResourceFactory::~MVKCommandResourceFactory() {

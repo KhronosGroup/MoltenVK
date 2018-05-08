@@ -50,7 +50,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
     uint64_t startTime = _device->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
-    _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.functionRetrieval, startTime);
+    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
 
     if (mtlFunc) {
         // If the Metal device supports shader specialization, and the Metal function expects to be
@@ -83,7 +83,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
                 NSError* err = nil;
                 mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName constantValues: mtlFCVals error: &err] autorelease];
                 handleCompilationError(err, "Shader function specialization");
-                _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.functionSpecialization, startTimeSpec);
+                _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionSpecialization, startTimeSpec);
             }
         }
     } else {
@@ -130,7 +130,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device, const string& mslSourceCod
 													 error: &err];        // retained
 		handleCompilationError(err, "Shader module compilation");
 	}
-	_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.mslCompile, startTime);
+	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 
 	_entryPoint = entryPoint;
 	_msl = mslSourceCode;
@@ -150,7 +150,13 @@ MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device,
         handleCompilationError(err, "Compiled shader module creation");
         [shdrData release];
     }
-    _device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.mslLoad, startTime);
+    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslLoad, startTime);
+}
+
+MVKShaderLibrary::MVKShaderLibrary(MVKShaderLibrary& other) : MVKBaseDeviceObject(other._device) {
+	_mtlLibrary = [other._mtlLibrary retain];
+	_entryPoint = other._entryPoint;
+	_msl = other._msl;
 }
 
 // If err object is nil, the compilation succeeded without any warnings.
@@ -204,7 +210,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConverterCo
 			return slPair.second;
 		}
 	}
-	return NULL;
+	return nullptr;
 }
 
 // Adds and returns a new shader library configured from the specified context.
@@ -212,7 +218,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(SPIRVToMSLConverterCon
 														  const string& mslSourceCode,
 														  const SPIRVEntryPoint& entryPoint) {
 	MVKShaderLibrary* shLib = new MVKShaderLibrary(_device, mslSourceCode, entryPoint);
-	_shaderLibraries.push_back(pair<SPIRVToMSLConverterContext, MVKShaderLibrary*>(*pContext, shLib));
+	_shaderLibraries.emplace_back(*pContext, shLib);
 	return shLib;
 }
 
@@ -221,13 +227,13 @@ void MVKShaderLibraryCache::merge(MVKShaderLibraryCache* other) {
 	if ( !other ) { return; }
 	for (auto& otherPair : other->_shaderLibraries) {
 		if ( !findShaderLibrary(&otherPair.first) ) {
-			_shaderLibraries.push_back(otherPair);
+			_shaderLibraries.emplace_back(otherPair.first, new MVKShaderLibrary(*otherPair.second));
 		}
 	}
 }
 
 MVKShaderLibraryCache::~MVKShaderLibraryCache() {
-	for (auto& slPair : _shaderLibraries) { delete slPair.second; }
+	for (auto& slPair : _shaderLibraries) { slPair.second->destroy(); }
 }
 
 
@@ -246,7 +252,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConverterContext* pCont
 		} else {
 			mvkLib = _shaderLibraryCache.getShaderLibrary(pContext, this);
 		}
-		_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.shaderLibraryFromCache, startTime);
+		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
 	}
 	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo) : MVKMTLFunctionNull;
 }
@@ -256,7 +262,7 @@ bool MVKShaderModule::convert(SPIRVToMSLConverterContext* pContext) {
 
 	uint64_t startTime = _device->getPerformanceTimestamp();
 	bool wasConverted = _converter.convert(*pContext, shouldLogCode, shouldLogCode, shouldLogCode);
-	_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.spirvToMSL, startTime);
+	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.spirvToMSL, startTime);
 
 	if (wasConverted) {
 		if (shouldLogCode) { MVKLogInfo("%s", _converter.getResultLog().data()); }
@@ -293,7 +299,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
 			uint64_t startTime = _device->getPerformanceTimestamp();
 			codeHash = mvkHash(pCreateInfo->pCode, spvCount);
-			_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.hashShaderCode, startTime);
+			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
 			_converter.setSPIRV(pCreateInfo->pCode, spvCount);
 
@@ -307,7 +313,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			uint64_t startTime = _device->getPerformanceTimestamp();
 			codeHash = mvkHash(&magicNum);
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
-			_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.hashShaderCode, startTime);
+			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
 			_converter.setMSL(pMSLCode, nullptr);
 			_defaultLibrary = new MVKShaderLibrary(_device, _converter.getMSL().c_str(), _converter.getEntryPoint());
@@ -322,7 +328,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			uint64_t startTime = _device->getPerformanceTimestamp();
 			codeHash = mvkHash(&magicNum);
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
-			_device->addShaderCompilationEventPerformance(_device->_shaderCompilationPerformance.hashShaderCode, startTime);
+			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
 			_defaultLibrary = new MVKShaderLibrary(_device, (void*)(pMSLCode), mslCodeLen);
 
@@ -337,6 +343,6 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 }
 
 MVKShaderModule::~MVKShaderModule() {
-	if (_defaultLibrary) { delete _defaultLibrary; }
+	if (_defaultLibrary) { _defaultLibrary->destroy(); }
 }
 

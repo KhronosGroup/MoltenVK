@@ -95,9 +95,10 @@ VkResult MVKBuffer::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
     VkResult rslt = copyMTLBufferContent(offset, size, false);
 
     // If we are pulling to populate a newly created device memory MTLBuffer,
-    // from a previously created local MTLBuffer, remove the local MTLBuffer now.
+    // from a previously created local MTLBuffer, remove the local MTLBuffer.
+	// Use autorelease in case the earlier MTLBuffer was encoded.
     if (_mtlBuffer && _deviceMemory->getMTLBuffer()) {
-        [_mtlBuffer release];
+        [_mtlBuffer autorelease];
         _mtlBuffer = nil;
     }
 
@@ -105,12 +106,7 @@ VkResult MVKBuffer::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
 }
 
 void* MVKBuffer::map(VkDeviceSize offset, VkDeviceSize size) {
-//    MVKLogDebug("Comparing map to buffer %p with memory offset %d and size %d.", this, _deviceMemoryOffset, _byteCount);
-//    if (doesContain(offset, size)) { MVKLogDebug("Mapping %d bytes to single buffer %p.", size, this); }
-
-    return (doesContain(offset, size)
-            ? (void*)((uintptr_t)getMTLBuffer().contents + mtlBufferRange(offset, size).location)
-            : VK_NULL_HANDLE);
+    return (void*)((uintptr_t)getMTLBuffer().contents + mtlBufferRange(offset, size).location);
 }
 
 // Copies host content into or out of the MTLBuffer.

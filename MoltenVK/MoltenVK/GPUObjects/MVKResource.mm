@@ -46,7 +46,7 @@ bool MVKResource::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 #if MVK_MACOS
 	return (mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(pMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
-			_deviceMemory->isMemoryHostAccessible() && !_deviceMemory->isMemoryHostCoherent());
+			_deviceMemory && _deviceMemory->isMemoryHostAccessible() && !_deviceMemory->isMemoryHostCoherent());
 #endif
 }
 
