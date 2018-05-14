@@ -222,4 +222,63 @@ VkResult mvkWaitForFences(uint32_t fenceCount,
 }
 
 
+#pragma mark -
+#pragma mark MVKMetalCompiler
+
+// Create a compiled object by dispatching the block to the default global dispatch queue, and waiting only as long
+// as the MVKDeviceConfiguration::metalCompileTimeout value. If the timeout is triggered, a Vulkan error is created.
+// This approach is used to limit the lengthy time (30+ seconds!) consumed by Metal when it's internal compiler fails.
+// The thread dispatch is needed because even the sync portion of the async Metal compilation methods can take well
+// over a second to return when a compiler failure occurs!
+void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block) {
+	MVKAssert( _startTime == 0, "%s compile occurred already in this instance. Instances of %s should only be used for a single compile activity.", _compilerType.c_str(), className().c_str());
+	_startTime = _device->getPerformanceTimestamp();
+
+	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), block);
+
+	// Limit timeout to avoid overflow since wait_for() uses wait_until()
+	chrono::nanoseconds nanoTimeout(min(_device->_mvkConfig.metalCompileTimeout, kMVKUndefinedLargeUInt64));
+	_blocker.wait_for(lock, nanoTimeout, [this]{ return _isCompileDone; });
+
+	if ( !_isCompileDone ) {
+		NSString* errDesc = [NSString stringWithFormat: @"Timeout after %.3f milliseconds. Likely internal Metal compiler error", (double)nanoTimeout.count() / 1e6];
+		_compileError = [[NSError alloc] initWithDomain: @"MoltenVK" code: 1 userInfo: @{NSLocalizedDescriptionKey : errDesc}];	// retained
+	}
+
+	if (_compileError) { handleError(); }
+
+	_device->addActivityPerformance(*_pPerformanceTracker, _startTime);
+}
+
+void MVKMetalCompiler::handleError() {
+	setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "%s compile failed (error code %li):\n%s.", _compilerType.c_str(), (long)_compileError.code, _compileError.localizedDescription.UTF8String));
+}
+
+void MVKMetalCompiler::endCompile(NSError* compileError) {
+	_compileError = [compileError retain];		// retained
+	_isCompileDone = true;
+	_blocker.notify_all();
+	maybeDestroy();
+}
+
+void MVKMetalCompiler::destroy() {
+	lock_guard<mutex> lock(_completionLock);
+
+	_isDestroyed = true;
+	maybeDestroy();
+}
+
+void MVKMetalCompiler::maybeDestroy() {
+	if (_isDestroyed && _isCompileDone) {
+		MVKBaseDeviceObject::destroy();
+	}
+}
+
+#pragma mark Construction
+
+MVKMetalCompiler::~MVKMetalCompiler() {
+	[_compileError release];
+}
+
+
 

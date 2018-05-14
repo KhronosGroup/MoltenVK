@@ -59,8 +59,6 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
         if (_device->_pMetalFeatures->shaderSpecialization) {
             NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
             if (mtlFCs.count) {
-                uint64_t startTimeSpec = _device->getPerformanceTimestamp();
-
                 // The Metal shader contains function constants and expects to be specialized
                 // Populate the Metal function constant values from the Vulkan specialization info.
                 MTLFunctionConstantValues* mtlFCVals = [[MTLFunctionConstantValues new] autorelease];
@@ -80,10 +78,10 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
                 }
 
                 // Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
-                NSError* err = nil;
-                mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName constantValues: mtlFCVals error: &err] autorelease];
-                handleCompilationError(err, "Shader function specialization");
-                _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionSpecialization, startTimeSpec);
+				MVKFunctionSpecializer* fs = new MVKFunctionSpecializer(_device);
+				mtlFunc = [fs->newMTLFunction(_mtlLibrary, mtlFuncName, mtlFCVals) autorelease];
+				setConfigurationResult(fs->getConfigurationResult());
+				fs->destroy();
             }
         }
     } else {
@@ -121,16 +119,10 @@ MTLFunctionConstant* MVKShaderLibrary::getFunctionConstant(NSArray<MTLFunctionCo
 }
 
 MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device, const string& mslSourceCode, const SPIRVEntryPoint& entryPoint) : MVKBaseDeviceObject(device) {
-	uint64_t startTime = _device->getPerformanceTimestamp();
-	@autoreleasepool {
-		MTLCompileOptions* options = [[MTLCompileOptions new] autorelease]; // TODO: what compile options apply?
-		NSError* err = nil;
-		_mtlLibrary = [getMTLDevice() newLibraryWithSource: @(mslSourceCode.c_str())
-												   options: options
-													 error: &err];        // retained
-		handleCompilationError(err, "Shader module compilation");
-	}
-	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_device);
+	_mtlLibrary = slc->newMTLLibrary(@(mslSourceCode.c_str()));	// retained
+	setConfigurationResult(slc->getConfigurationResult());
+	slc->destroy();
 
 	_entryPoint = entryPoint;
 	_msl = mslSourceCode;
@@ -344,5 +336,79 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
 MVKShaderModule::~MVKShaderModule() {
 	if (_defaultLibrary) { _defaultLibrary->destroy(); }
+}
+
+
+#pragma mark -
+#pragma mark MVKShaderLibraryCompiler
+
+id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode) {
+	unique_lock<mutex> lock(_completionLock);
+
+	compile(lock, ^{
+		MTLCompileOptions* options = [[MTLCompileOptions new] autorelease]; // TODO: what compile options apply?
+		[getMTLDevice() newLibraryWithSource: mslSourceCode
+									 options: options
+						   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
+							   compileComplete(mtlLib, error);
+						   }];
+	});
+
+	return [_mtlLibrary retain];
+}
+
+void MVKShaderLibraryCompiler::handleError() {
+	if (_mtlLibrary) {
+		MVKLogInfo("%s compilation succeeded with warnings (code %li):\n\n%s", _compilerType.c_str(),
+				   (long)_compileError.code, _compileError.localizedDescription.UTF8String);
+	} else {
+		MVKMetalCompiler::handleError();
+	}
+}
+
+void MVKShaderLibraryCompiler::compileComplete(id<MTLLibrary> mtlLibrary, NSError* compileError) {
+	lock_guard<mutex> lock(_completionLock);
+
+	_mtlLibrary = [mtlLibrary retain];		// retained
+	endCompile(compileError);
+}
+
+#pragma mark Construction
+
+MVKShaderLibraryCompiler::~MVKShaderLibraryCompiler() {
+	[_mtlLibrary release];
+}
+
+
+#pragma mark -
+#pragma mark MVKFunctionSpecializer
+
+id<MTLFunction> MVKFunctionSpecializer::newMTLFunction(id<MTLLibrary> mtlLibrary,
+													   NSString* funcName,
+													   MTLFunctionConstantValues* constantValues) {
+	unique_lock<mutex> lock(_completionLock);
+
+	compile(lock, ^{
+		[mtlLibrary newFunctionWithName: funcName
+						 constantValues: constantValues
+					  completionHandler: ^(id<MTLFunction> mtlFunc, NSError* error) {
+						  compileComplete(mtlFunc, error);
+					  }];
+	});
+
+	return [_mtlFunction retain];
+}
+
+void MVKFunctionSpecializer::compileComplete(id<MTLFunction> mtlFunction, NSError* compileError) {
+	lock_guard<mutex> lock(_completionLock);
+
+	_mtlFunction = [mtlFunction retain];		// retained
+	endCompile(compileError);
+}
+
+#pragma mark Construction
+
+MVKFunctionSpecializer::~MVKFunctionSpecializer() {
+	[_mtlFunction release];
 }
 

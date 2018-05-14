@@ -269,3 +269,41 @@ VkResult mvkWaitForFences(uint32_t fenceCount,
 						  uint64_t timeout = UINT64_MAX);
 
 
+#pragma mark -
+#pragma mark MVKMetalCompiler
+
+/**
+ * Abstract class that creates Metal objects that require compilation, such as
+ * MTLShaderLibrary, MTLFunction, MTLRenderPipelineState and MTLComputePipelineState.
+ *
+ * Instances of this class are one-shot, and can only be used for a single compilation.
+ */
+class MVKMetalCompiler : public MVKBaseDeviceObject {
+
+public:
+
+	/** If this object is waiting for compilation to complete, deletion will be deferred until then. */
+	void destroy() override;
+
+
+#pragma mark Construction
+
+	MVKMetalCompiler(MVKDevice* device) : MVKBaseDeviceObject(device) {}
+
+	~MVKMetalCompiler() override;
+
+protected:
+	void compile(std::unique_lock<std::mutex>& lock, dispatch_block_t block);
+	virtual void handleError();
+	void endCompile(NSError* compileError);
+	void maybeDestroy();
+
+	NSError* _compileError = nil;
+	uint64_t _startTime = 0;
+	bool _isCompileDone = false;
+	bool _isDestroyed = false;
+	std::mutex _completionLock;
+	std::condition_variable _blocker;
+	std::string _compilerType = "Unknown";
+	MVKPerformanceTracker* _pPerformanceTracker = nullptr;
+};
