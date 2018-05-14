@@ -52,7 +52,7 @@ distribution package, see the main [`README.md`](../README.md) document in the `
 About **MoltenVK**
 ------------------
 
-**MoltenVK** is an implementation of the [*Vulkan*](https://www.khronos.org/vulkan) 
+**MoltenVK** is an implementation of the [*Vulkan 1.0*](https://www.khronos.org/vulkan) 
 graphics and compute API, that runs on Apple's [*Metal*](https://developer.apple.com/metal) 
 graphics and compute framework on both *iOS* and *macOS*.
 
@@ -441,10 +441,10 @@ Known **MoltenVK** Limitations
 
 This section documents the known limitations in this version of **MoltenVK**.
 
-- **MoltenVK** is a Layer-0 driver implementation of *Vulkan*, and currently does not
+- **MoltenVK** is a Layer-0 driver implementation of *Vulkan 1.0*, and currently does not
   support the loading of higher level *Vulkan Layers*.
 
-The following *Vulkan* features have not been implemented in this version of **MoltenVK**:
+The following *Vulkan 1.0* features have not been implemented in this version of **MoltenVK**:
 
 - Tessellation and Geometry shader stages.
 

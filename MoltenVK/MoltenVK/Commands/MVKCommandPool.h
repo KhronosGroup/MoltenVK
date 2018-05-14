@@ -29,8 +29,6 @@
 #include "MVKCmdQueries.h"
 #include "MVKMTLBufferAllocation.h"
 #include <unordered_set>
-#include <list>
-#include <mutex>
 
 #import <Metal/Metal.h>
 

@@ -23,7 +23,6 @@
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <forward_list>
 #include <vector>
-#include <mutex>
 
 using namespace mvk;
 
@@ -289,7 +288,6 @@ protected:
     uint32_t _maxSets;
 	std::forward_list<MVKDescriptorSet*> _allocatedSets;
 	size_t _allocatedSetCount;
-	std::mutex _lock;
 };
 
 
