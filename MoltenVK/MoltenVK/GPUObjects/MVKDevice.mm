@@ -1444,12 +1444,13 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     // Init const config. Use a pointer to bypass the const qualifier.
     MVKDeviceConfiguration* pCfg = (MVKDeviceConfiguration*)&_mvkConfig;
     pCfg->debugMode = MVK_DEBUG;
-    pCfg->supportLargeQueryPools = false;
+    pCfg->supportLargeQueryPools = true;
     pCfg->shaderConversionFlipVertexY = true;
 	pCfg->presentWithCommandBuffer = MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL;
     pCfg->displayWatermark = MVK_DISPLAY_WATERMARK_BOOL;
     pCfg->performanceTracking = MVK_DEBUG;
     pCfg->performanceLoggingFrameCount = MVK_DEBUG ? 300 : 0;
+	pCfg->metalCompileTimeout = MVK_DEBUG ? UINT64_MAX : (125 * 1000 * 1000);
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;

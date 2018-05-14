@@ -21,6 +21,7 @@
 #include "MVKDevice.h"
 #include "MVKDescriptorSet.h"
 #include "MVKShaderModule.h"
+#include "MVKSync.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
 #include <vector>
@@ -193,4 +194,78 @@ protected:
 	std::unordered_map<MVKShaderModuleKey, MVKShaderLibraryCache*> _shaderCache;
 	size_t _dataSize = 0;
 	std::mutex _shaderCacheLock;
+};
+
+
+#pragma mark -
+#pragma mark MVKRenderPipelineCompiler
+
+/**
+ * Creates a MTLRenderPipelineState from a descriptor.
+ *
+ * Instances of this class are one-shot, and can only be used for a single pipeline compilation.
+ */
+class MVKRenderPipelineCompiler : public MVKMetalCompiler {
+
+public:
+
+	/**
+	 * Returns a new (retained) MTLRenderPipelineState object compiled from the descriptor.
+	 *
+	 * If the Metal pipeline compiler does not return within MVKDeviceConfiguration::metalCompileTimeout
+	 * nanoseconds, an error will be generated and logged, and nil will be returned.
+	 */
+	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* mtlRPLDesc);
+
+
+#pragma mark Construction
+
+	MVKRenderPipelineCompiler(MVKDevice* device) : MVKMetalCompiler(device) {
+		_compilerType = "Render pipeline";
+		_pPerformanceTracker = &_device->_performanceStatistics.shaderCompilation.pipelineCompile;
+	}
+
+	~MVKRenderPipelineCompiler() override;
+
+protected:
+	void compileComplete(id<MTLRenderPipelineState> pipelineState, NSError *error);
+
+	id<MTLRenderPipelineState> _mtlRenderPipelineState = nil;
+};
+
+
+#pragma mark -
+#pragma mark MVKComputePipelineCompiler
+
+/**
+ * Creates a MTLComputePipelineState from a MTLFunction.
+ *
+ * Instances of this class are one-shot, and can only be used for a single pipeline compilation.
+ */
+class MVKComputePipelineCompiler : public MVKMetalCompiler {
+
+public:
+
+	/**
+	 * Returns a new (retained) MTLComputePipelineState object compiled from the MTLFunction.
+	 *
+	 * If the Metal pipeline compiler does not return within MVKDeviceConfiguration::metalCompileTimeout
+	 * nanoseconds, an error will be generated and logged, and nil will be returned.
+	 */
+	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction);
+
+
+#pragma mark Construction
+
+	MVKComputePipelineCompiler(MVKDevice* device) : MVKMetalCompiler(device) {
+		_compilerType = "Compute pipeline";
+		_pPerformanceTracker = &_device->_performanceStatistics.shaderCompilation.pipelineCompile;
+	}
+
+	~MVKComputePipelineCompiler() override;
+
+protected:
+	void compileComplete(id<MTLComputePipelineState> pipelineState, NSError *error);
+
+	id<MTLComputePipelineState> _mtlComputePipelineState = nil;
 };

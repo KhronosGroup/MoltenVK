@@ -48,7 +48,7 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   6
+#define MVK_VERSION_PATCH   7
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
@@ -57,15 +57,22 @@ extern "C" {
 #define VK_MVK_MOLTENVK_SPEC_VERSION            4
 #define VK_MVK_MOLTENVK_EXTENSION_NAME			"VK_MVK_moltenvk"
 
-/** MoltenVK configuration settings. */
+/**
+ * MoltenVK configuration settings.
+ *
+ * The default value of several of these settings is deterined at build time by the presence
+ * of a DEBUG build setting, By default the DEBUG build setting is defined when MoltenVK is
+ * compiled in Debug mode, and not defined when compiled in Release mode.
+ */
 typedef struct {
-    VkBool32 debugMode;                     /**< If enabled, several debugging capabilities will be enabled. Shader code will be logged during Runtime Shader Conversion. Adjusts settings that might trigger Metal validation but are otherwise acceptable to Metal runtime. Improves support for Xcode GPU Frame Capture. Default value is determined at build time by the presence of a DEBUG build setting. By default the DEBUG build setting is defined when MoltenVK is compiled in Debug mode, and not defined when compiled in Release mode. */
+    VkBool32 debugMode;                     /**< If enabled, several debugging capabilities will be enabled. Shader code will be logged during Runtime Shader Conversion. Adjusts settings that might trigger Metal validation but are otherwise acceptable to Metal runtime. Improves support for Xcode GPU Frame Capture. Default value is true in the presence of the DEBUG build setting, and false otherwise. */
     VkBool32 shaderConversionFlipVertexY;   /**< If enabled, MSL vertex shader code created during Runtime Shader Conversion will flip the Y-axis of each vertex, as Vulkan coordinate system is inverse of OpenGL. Default is true. */
-    VkBool32 supportLargeQueryPools;        /**< Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK allocates a MTLBuffer for each query pool, allowing each query pool to support 8192 queries, which may slow performance or cause unexpected behaviour if the query pool is not established prior to a Metal renderpass, or if the query pool is changed within a Metal renderpass. If disabled, one MTLBuffer will be shared by all query pools, which improves performance, but limits the total device queries to 8192. Default is false. */
+    VkBool32 supportLargeQueryPools;        /**< Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK allocates a MTLBuffer for each query pool, allowing each query pool to support 8192 queries, which may slow performance or cause unexpected behaviour if the query pool is not established prior to a Metal renderpass, or if the query pool is changed within a Metal renderpass. If disabled, one MTLBuffer will be shared by all query pools, which improves performance, but limits the total device queries to 8192. Default is true. */
 	VkBool32 presentWithCommandBuffer;      /**< If enabled, each surface presentation is scheduled using a command buffer. Enabling this may improve rendering frame synchronization, but may result in reduced frame rates. Default value is false if the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting is defined when MoltenVK is compiled, and true otherwise. By default the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting is not defined and the value of this setting is true. */
     VkBool32 displayWatermark;              /**< If enabled, a MoltenVK logo watermark will be rendered on top of the scene. This can be enabled for publicity during demos. Default value is true if the MVK_DISPLAY_WATERMARK build setting is defined when MoltenVK is compiled, and false otherwise. By default the MVK_DISPLAY_WATERMARK build setting is not defined. */
-    VkBool32 performanceTracking;           /**< If enabled, per-frame performance statistics are tracked, optionally logged, and can be retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function. Default is false. */
-    uint32_t performanceLoggingFrameCount;  /**< If non-zero, performance statistics will be periodically logged to the console, on a repeating cycle of this many frames per swapchain. The performanceTracking capability must also be enabled. Default is zero, indicating no logging. */
+    VkBool32 performanceTracking;           /**< If enabled, per-frame performance statistics are tracked, optionally logged, and can be retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function. Default value is true in the presence of the DEBUG build setting, and false otherwise. */
+    uint32_t performanceLoggingFrameCount;  /**< If non-zero, performance statistics will be periodically logged to the console, on a repeating cycle of this many frames per swapchain. The performanceTracking capability must also be enabled. Default value is 300 in the presence of the DEBUG build setting, and zero otherwise. */
+	uint64_t metalCompileTimeout;			/**< The maximum amount of time, in nanoseconds, to wait for a Metal library, function or pipeline state object to be compiled and created. If an internal error occurs with the Metal compiler, it can stall the thread for up to 30 seconds. Setting this value limits the delay to that amount of time. Default value is infinite in the presence of the DEBUG build setting, and 125,000,000 (125 ms) otherwise. */
 } MVKDeviceConfiguration;
 
 /** Features provided by the current implementation of Metal on the current device. */

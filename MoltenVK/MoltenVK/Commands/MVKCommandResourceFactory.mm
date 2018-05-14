@@ -18,6 +18,7 @@
 
 #include "MVKCommandResourceFactory.h"
 #include "MVKCommandPipelineStateFactoryShaderSource.h"
+#include "MVKPipeline.h"
 #include "MVKFoundation.h"
 #include "mvk_datatypes.h"
 #include "NSString+MoltenVK.h"
@@ -324,11 +325,9 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 }
 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc) {
-    uint64_t startTime = _device->getPerformanceTimestamp();
-    NSError* err = nil;
-    id<MTLRenderPipelineState> rps = [getMTLDevice() newRenderPipelineStateWithDescriptor: plDesc error: &err];    // retained
-    MVKAssert( !err, "Could not create %s pipeline state: %s (code %li) %s", plDesc.label.UTF8String, err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
-    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.pipelineCompile, startTime);
+	MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(_device);
+	id<MTLRenderPipelineState> rps = plc->newMTLRenderPipelineState(plDesc);	// retained
+	plc->destroy();
     return rps;
 }
 

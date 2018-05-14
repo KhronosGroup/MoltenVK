@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
+#include "MVKSync.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <vector>
 #include <mutex>
@@ -177,4 +178,79 @@ protected:
 	MVKShaderLibrary* _defaultLibrary;
 	MVKShaderModuleKey _key;
     std::mutex _accessLock;
+};
+
+
+#pragma mark -
+#pragma mark MVKShaderLibraryCompiler
+
+/**
+ * Creates a MTLLibrary from source code.
+ *
+ * Instances of this class are one-shot, and can only be used for a single library compilation.
+ */
+class MVKShaderLibraryCompiler : public MVKMetalCompiler {
+
+public:
+
+	/**
+	 * Returns a new (retained) MTLLibrary object compiled from the MSL source code.
+	 *
+	 * If the Metal library compiler does not return within MVKDeviceConfiguration::metalCompileTimeout
+	 * nanoseconds, an error will be generated and logged, and nil will be returned.
+	 */
+	id<MTLLibrary> newMTLLibrary(NSString* mslSourceCode);
+
+
+#pragma mark Construction
+
+	MVKShaderLibraryCompiler(MVKDevice* device) : MVKMetalCompiler(device) {
+		_compilerType = "Shader library";
+		_pPerformanceTracker = &_device->_performanceStatistics.shaderCompilation.mslCompile;
+	}
+
+	~MVKShaderLibraryCompiler() override;
+
+protected:
+	void compileComplete(id<MTLLibrary> mtlLibrary, NSError *error);
+	void handleError() override;
+
+	id<MTLLibrary> _mtlLibrary = nil;
+};
+
+
+#pragma mark -
+#pragma mark MVKFunctionSpecializer
+
+/**
+ * Compiles a specialized MTLFunction.
+ *
+ * Instances of this class are one-shot, and can only be used for a single function compilation.
+ */
+class MVKFunctionSpecializer : public MVKMetalCompiler {
+
+public:
+
+	/**
+	 * Returns a new (retained) MTLFunction object compiled from the MTLLibrary and specialization constants.
+	 *
+	 * If the Metal function compiler does not return within MVKDeviceConfiguration::metalCompileTimeout
+	 * nanoseconds, an error will be generated and logged, and nil will be returned.
+	 */
+	id<MTLFunction> newMTLFunction(id<MTLLibrary> mtlLibrary, NSString* funcName, MTLFunctionConstantValues* constantValues);
+
+
+#pragma mark Construction
+
+	MVKFunctionSpecializer(MVKDevice* device) : MVKMetalCompiler(device) {
+		_compilerType = "Function specialization";
+		_pPerformanceTracker = &_device->_performanceStatistics.shaderCompilation.functionSpecialization;
+	}
+
+	~MVKFunctionSpecializer() override;
+
+protected:
+	void compileComplete(id<MTLFunction> mtlFunction, NSError *error);
+
+	id<MTLFunction> _mtlFunction = nil;
 };

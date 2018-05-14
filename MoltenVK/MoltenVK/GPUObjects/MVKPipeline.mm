@@ -241,20 +241,14 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 
 /** Constructs the underlying Metal render pipeline. */
 void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-    @autoreleasepool {
-        _mtlPipelineState = nil;
-
-        MTLRenderPipelineDescriptor* plDesc = getMTLRenderPipelineDescriptor(pCreateInfo);
-        if (plDesc) {
-            uint64_t startTime = _device->getPerformanceTimestamp();
-            NSError* psError = nil;
-            _mtlPipelineState = [getMTLDevice() newRenderPipelineStateWithDescriptor: plDesc error: &psError];  // retained
-            if (psError) {
-                setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Could not create render pipeline:\n%s.", psError.description.UTF8String));
-            }
-            _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.pipelineCompile, startTime);
-        }
-    }
+	_mtlPipelineState = nil;
+	MTLRenderPipelineDescriptor* plDesc = getMTLRenderPipelineDescriptor(pCreateInfo);
+	if (plDesc) {
+		MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(_device);
+		_mtlPipelineState = plc->newMTLRenderPipelineState(plDesc);	// retained
+		setConfigurationResult(plc->getConfigurationResult());
+		plc->destroy();
+	}
 }
 
 // Returns a MTLRenderPipelineDescriptor constructed from this instance, or nil if an error occurs.
@@ -293,15 +287,12 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         }
     }
 
-    MTLVertexDescriptor* vtxDesc = plDesc.vertexDescriptor;
-
     // Vertex attributes
-    MTLVertexAttributeDescriptorArray* vaArray = vtxDesc.attributes;
     uint32_t vaCnt = pCreateInfo->pVertexInputState->vertexAttributeDescriptionCount;
     for (uint32_t i = 0; i < vaCnt; i++) {
         const VkVertexInputAttributeDescription* pVKVA = &pCreateInfo->pVertexInputState->pVertexAttributeDescriptions[i];
         if (shaderContext.isVertexAttributeLocationUsed(pVKVA->location)) {
-            MTLVertexAttributeDescriptor* vaDesc = vaArray[pVKVA->location];
+            MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
             vaDesc.format = mvkMTLVertexFormatFromVkFormat(pVKVA->format);
             vaDesc.bufferIndex = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
             vaDesc.offset = pVKVA->offset;
@@ -309,13 +300,12 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     }
 
     // Vertex buffer bindings
-    MTLVertexBufferLayoutDescriptorArray* vbArray = vtxDesc.layouts;
     uint32_t vbCnt = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
     for (uint32_t i = 0; i < vbCnt; i++) {
         const VkVertexInputBindingDescription* pVKVB = &pCreateInfo->pVertexInputState->pVertexBindingDescriptions[i];
         uint32_t vbIdx = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
         if (shaderContext.isVertexBufferUsed(vbIdx)) {
-            MTLVertexBufferLayoutDescriptor* vbDesc = vbArray[vbIdx];
+            MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
             vbDesc.stride = (pVKVB->stride == 0) ? sizeof(simd::float4) : pVKVB->stride;      // Vulkan allows zero stride but Metal doesn't. Default to float4
             vbDesc.stepFunction = mvkMTLVertexStepFunctionFromVkVertexInputRate(pVKVB->inputRate);
             vbDesc.stepRate = 1;
@@ -418,23 +408,18 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   MVKPipelineCache* pipelineCache,
 									   MVKPipeline* parent,
 									   const VkComputePipelineCreateInfo* pCreateInfo) : MVKPipeline(device, pipelineCache, parent) {
-    @autoreleasepool {
-        MVKMTLFunction shaderFunc = getMTLFunction(pCreateInfo);
-        _mtlThreadgroupSize = shaderFunc.threadGroupSize;
-        _mtlPipelineState = nil;
+	MVKMTLFunction shaderFunc = getMTLFunction(pCreateInfo);
+	_mtlThreadgroupSize = shaderFunc.threadGroupSize;
+	_mtlPipelineState = nil;
 
-		if (shaderFunc.mtlFunction) {
-			NSError* psError = nil;
-			uint64_t startTime = _device->getPerformanceTimestamp();
-			_mtlPipelineState = [getMTLDevice() newComputePipelineStateWithFunction: shaderFunc.mtlFunction error: &psError];  // retained
-			if (psError) {
-				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Could not create compute pipeline:\n%s.", psError.description.UTF8String));
-			}
-			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.pipelineCompile, startTime);
-		} else {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous error."));
-		}
-    }
+	if (shaderFunc.mtlFunction) {
+		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(_device);
+		_mtlPipelineState = plc->newMTLComputePipelineState(shaderFunc.mtlFunction);	// retained
+		setConfigurationResult(plc->getConfigurationResult());
+		plc->destroy();
+	} else {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous error."));
+	}
 }
 
 // Returns a MTLFunction to use when creating the MTLComputePipelineState.
@@ -752,4 +737,63 @@ MVKPipelineCache::~MVKPipelineCache() {
 	_shaderCache.clear();
 }
 
+
+#pragma mark -
+#pragma mark MVKRenderPipelineCompiler
+
+id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(MTLRenderPipelineDescriptor* mtlRPLDesc) {
+	unique_lock<mutex> lock(_completionLock);
+
+	compile(lock, ^{
+		[getMTLDevice() newRenderPipelineStateWithDescriptor: mtlRPLDesc
+										   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
+											   compileComplete(ps, error);
+										   }];
+	});
+
+	return [_mtlRenderPipelineState retain];
+}
+
+void MVKRenderPipelineCompiler::compileComplete(id<MTLRenderPipelineState> mtlRenderPipelineState, NSError* compileError) {
+	lock_guard<mutex> lock(_completionLock);
+
+	_mtlRenderPipelineState = [mtlRenderPipelineState retain];		// retained
+	endCompile(compileError);
+}
+
+#pragma mark Construction
+
+MVKRenderPipelineCompiler::~MVKRenderPipelineCompiler() {
+	[_mtlRenderPipelineState release];
+}
+
+
+#pragma mark -
+#pragma mark MVKComputePipelineCompiler
+
+id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineState(id<MTLFunction> mtlFunction) {
+	unique_lock<mutex> lock(_completionLock);
+
+	compile(lock, ^{
+		[getMTLDevice() newComputePipelineStateWithFunction: mtlFunction
+										  completionHandler: ^(id<MTLComputePipelineState> ps, NSError* error) {
+											  compileComplete(ps, error);
+										  }];
+	});
+
+	return [_mtlComputePipelineState retain];
+}
+
+void MVKComputePipelineCompiler::compileComplete(id<MTLComputePipelineState> mtlComputePipelineState, NSError* compileError) {
+	lock_guard<mutex> lock(_completionLock);
+
+	_mtlComputePipelineState = [mtlComputePipelineState retain];		// retained
+	endCompile(compileError);
+}
+
+#pragma mark Construction
+
+MVKComputePipelineCompiler::~MVKComputePipelineCompiler() {
+	[_mtlComputePipelineState release];
+}
 

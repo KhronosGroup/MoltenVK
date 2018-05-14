@@ -67,7 +67,7 @@ MVKQueueFamily::~MVKQueueFamily() {
  */
 void MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	if ( !qSubmit ) { return; }     // Ignore nils
-	dispatch_async( _execQueue, ^{ @autoreleasepool { qSubmit->execute(); } } );
+	dispatch_async(_execQueue, ^{ @autoreleasepool { qSubmit->execute(); } } );
 }
 
 VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
