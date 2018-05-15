@@ -49,7 +49,7 @@ Introduction
 
 **MoltenVK** contains two products:
 
-- **MoltenVK** is an implementation of the [*Vulkan*](https://www.khronos.org/vulkan) 
+- **MoltenVK** is an implementation of the [*Vulkan 1.0*](https://www.khronos.org/vulkan) 
   graphics and compute API, that runs on Apple's [*Metal*](https://developer.apple.com/metal) 
   graphics and compute framework on both *iOS* and *macOS*.
 
@@ -183,11 +183,11 @@ the contents of that directory out of this **MoltenVK** repository into your own
 **MoltenVK** and *Vulkan* Compliance
 ------------------------------------
 
-**MoltenVK** is designed to be a *Vulkan* driver that runs on *macOS* and *iOS* platforms by mapping *Vulkan*
+**MoltenVK** is designed to be a *Vulkan 1.0* driver that runs on *macOS* and *iOS* platforms by mapping *Vulkan*
 capability to native *Metal* capability.
 
 The fundamental design and development goal of **MoltenVK** is to provide this capability in a way that 
-is both maximally compliant with the *Vulkan* specification, and maximally  performant.
+is both maximally compliant with the *Vulkan 1.0* specification, and maximally  performant.
 
 Such compliance and performance is inherently affected by the capability available through *Metal*, as the 
 native driver on *macOS* and *iOS* platforms. *Vulkan* compliance may fall into one of the following categories:

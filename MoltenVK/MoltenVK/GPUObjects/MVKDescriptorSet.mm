@@ -610,10 +610,7 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDevice* device,
 VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 												   const VkDescriptorSetLayout* pSetLayouts,
 												   VkDescriptorSet* pDescriptorSets) {
-	lock_guard<mutex> lock(_lock);
-
 	if (_allocatedSetCount + count > _maxSets) {
-//		MVKLogDebug("Pool %p could not allocate %d descriptor sets. There are alreay %d sets, and the maximum for this pool is %d.", this, count, _allocatedSetCount, _maxSets);
 		return mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "The maximum number of descriptor sets that can be allocated by this descriptor pool is %d.", _maxSets);
 	}
 
@@ -624,14 +621,10 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 		pDescriptorSets[dsIdx] = (VkDescriptorSet)mvkDescSet;
 		_allocatedSetCount++;
 	}
-
-//	MVKLogDebug("Pool %p allocating %d descriptor sets for a new total of %d sets.", this, count, _allocatedSetCount);
 	return VK_SUCCESS;
 }
 
 VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets) {
-	lock_guard<mutex> lock(_lock);
-
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
 		MVKDescriptorSet* mvkDS = (MVKDescriptorSet*)pDescriptorSets[dsIdx];
 		if (mvkDS) {
@@ -640,15 +633,10 @@ VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescripto
 			mvkDS->destroy();
 		}
 	}
-
-//	MVKLogDebug("Pool %p freed %d descriptor sets for a new total of %d sets.", this, count, _allocatedSetCount);
 	return VK_SUCCESS;
 }
 
 VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
-	lock_guard<mutex> lock(_lock);
-
-//	MVKLogDebug("Pool %p resetting and freeing remaining %d descriptor sets.", this, _allocatedSetCount);
 	mvkDestroyContainerContents(_allocatedSets);
 	_allocatedSetCount = 0;
 	return VK_SUCCESS;
@@ -656,7 +644,6 @@ VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
 
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device,
 									 const VkDescriptorPoolCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
-//	MVKLogDebug("Pool %p created.", this);
 	_maxSets = pCreateInfo->maxSets;
 	_allocatedSetCount = 0;
 }

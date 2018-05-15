@@ -22,7 +22,6 @@
 #include "MVKCommand.h"
 #include "MVKCommandEncoderState.h"
 #include "MVKCmdPipeline.h"
-#include <mutex>
 #include <vector>
 #include <unordered_map>
 
