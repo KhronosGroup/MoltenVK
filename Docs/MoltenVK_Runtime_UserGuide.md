@@ -163,7 +163,7 @@ follow these instructions:
 2. On the *Build Settings* tab:
      1. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, add an entry 
         that points to the `MoltenVK/include` folder, found in the **MoltenVK** distribution package.
-     2. In the **Library Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, add an entry 
+     2. In the **Library Search Paths** (aka `LIBRARY_SEARCH_PATHS`) setting, add an entry 
         that points to either the `MoltenVK/iOS` or `MoltenVK/macOS` folder, found in the
         **MoltenVK** distribution package.
      3. In the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting, add a path 
