@@ -105,6 +105,16 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
                                                      VkImageFormatProperties* pImageFormatProperties) {
     if (!pImageFormatProperties) { return VK_SUCCESS; }
 
+    if ((!_features.textureCompressionETC2 &&
+        format >= VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK && format <= VK_FORMAT_EAC_R11G11_SNORM_BLOCK)
+        || (!_features.textureCompressionASTC_LDR &&
+        format >= VK_FORMAT_ASTC_4x4_UNORM_BLOCK && format <= VK_FORMAT_ASTC_12x12_SRGB_BLOCK)
+        || (!_features.textureCompressionBC &&
+        format >= VK_FORMAT_BC1_RGB_UNORM_BLOCK && format <= VK_FORMAT_BC7_SRGB_BLOCK))
+    {
+        return VK_ERROR_FORMAT_NOT_SUPPORTED;
+    }
+
     VkPhysicalDeviceLimits* pLimits = &_properties.limits;
     VkExtent3D maxExt;
     uint32_t maxLayers;
