@@ -60,14 +60,18 @@ MVKQueueFamily::~MVKQueueFamily() {
 
 #pragma mark Queue submissions
 
-/**
- * Submits the specified submission object to the execution queue, wrapping each submission
- * in a dedicated autorelease pool. Relying on the dispatch queue to find time to drain the
- * autorelease pool can result in significant memory creep under heavy workloads.
- */
+// Executes the submmission, either immediately, or by dispatching to an execution queue.
+// Submissions to the execution queue are wrapped in a dedicated autorelease pool.
+// Relying on the dispatch queue to find time to drain the autorelease pool can
+// result in significant memory creep under heavy workloads.
 void MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	if ( !qSubmit ) { return; }     // Ignore nils
-	dispatch_async(_execQueue, ^{ @autoreleasepool { qSubmit->execute(); } } );
+
+	if (_execQueue) {
+		dispatch_async(_execQueue, ^{ @autoreleasepool { qSubmit->execute(); } } );
+	} else {
+		qSubmit->execute();
+	}
 }
 
 VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
@@ -196,21 +200,25 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 	_nextMTLCmdBuffID = 1;
 }
 
-/** Creates and initializes the execution dispatch queue. */
+// Unless synchronous submission processing was configured,
+// creates and initializes the prioritized execution dispatch queue.
 void MVKQueue::initExecQueue() {
+	if (_device->_mvkConfig.synchronousQueueSubmits) {
+		_execQueue = nullptr;
+	} else {
+		// Create a name for the dispatch queue
+		const char* dqNameFmt = "MoltenVKDispatchQueue-%d-%d-%.1f";
+		char dqName[strlen(dqNameFmt) + 32];
+		sprintf(dqName, dqNameFmt, _queueFamily->getIndex(), _index, _priority);
 
-	// Create a name for the dispatch queue
-	const char* dqNameFmt = "MoltenVKDispatchQueue-%d-%d-%.1f";
-	char dqName[strlen(dqNameFmt) + 32];
-	sprintf(dqName, dqNameFmt, _queueFamily->getIndex(), _index, _priority);
+		// Determine the dispatch queue priority
+		dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
+		int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
+		dispatch_queue_attr_t dqAttr = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, dqQOS, dqPriority);
 
-	// Determine the dispatch queue priority
-	dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
-	int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
-	dispatch_queue_attr_t dqAttr = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, dqQOS, dqPriority);
-
-	// Create the dispatch queue
-	_execQueue = dispatch_queue_create(dqName, dqAttr);		// retained
+		// Create the dispatch queue
+		_execQueue = dispatch_queue_create(dqName, dqAttr);		// retained
+	}
 }
 
 /** Creates and initializes the Metal queue. */
@@ -234,9 +242,9 @@ MVKQueue::~MVKQueue() {
 	destroyExecQueue();
 }
 
-/** Destroys the execution dispatch queue. */
+// Destroys the execution dispatch queue.
 void MVKQueue::destroyExecQueue() {
-	dispatch_release(_execQueue);
+	if (_execQueue) { dispatch_release(_execQueue); }
 }
 
 

@@ -1444,6 +1444,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     // Init const config. Use a pointer to bypass the const qualifier.
     MVKDeviceConfiguration* pCfg = (MVKDeviceConfiguration*)&_mvkConfig;
     pCfg->debugMode = MVK_DEBUG;
+	pCfg->synchronousQueueSubmits = false;
     pCfg->supportLargeQueryPools = true;
     pCfg->shaderConversionFlipVertexY = true;
 	pCfg->presentWithCommandBuffer = MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL;
