@@ -103,7 +103,10 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
                                                      VkImageUsageFlags usage,
                                                      VkImageCreateFlags flags,
                                                      VkImageFormatProperties* pImageFormatProperties) {
-    if (!pImageFormatProperties) { return VK_SUCCESS; }
+
+	if ( !mvkVkFormatIsSupported(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+
+	if ( !pImageFormatProperties ) { return VK_SUCCESS; }
 
     VkPhysicalDeviceLimits* pLimits = &_properties.limits;
     VkExtent3D maxExt;
@@ -1451,7 +1454,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     pCfg->displayWatermark = MVK_DISPLAY_WATERMARK_BOOL;
     pCfg->performanceTracking = MVK_DEBUG;
     pCfg->performanceLoggingFrameCount = MVK_DEBUG ? 300 : 0;
-	pCfg->metalCompileTimeout = MVK_DEBUG ? UINT64_MAX : (125 * 1000 * 1000);
+	pCfg->metalCompileTimeout = numeric_limits<int64_t>::max();
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;

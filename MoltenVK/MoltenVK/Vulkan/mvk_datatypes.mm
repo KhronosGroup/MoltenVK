@@ -498,8 +498,24 @@ inline const MVKFormatDesc& formatDescForVkFormat(VkFormat vkFormat) {
 
 // Return a reference to the format description corresponding to the MTLPixelFormat.
 inline const MVKFormatDesc& formatDescForMTLPixelFormat(MTLPixelFormat mtlFormat) {
-    uint16_t fmtIdx = _fmtDescIndicesByMTLPixelFormats[mtlFormat];
+    uint16_t fmtIdx = (mtlFormat < _mtlFormatCount) ? _fmtDescIndicesByMTLPixelFormats[mtlFormat] : 0;
     return _formatDescriptions[fmtIdx];
+}
+
+MVK_PUBLIC_SYMBOL bool mvkVkFormatIsSupported(VkFormat vkFormat) {
+	return formatDescForVkFormat(vkFormat).isSupported();
+}
+
+MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsSupported(MTLPixelFormat mtlFormat) {
+	return formatDescForMTLPixelFormat(mtlFormat).isSupported();
+}
+
+MVK_PUBLIC_SYMBOL MVKFormatType mvkFormatTypeFromVkFormat(VkFormat vkFormat) {
+	return formatDescForVkFormat(vkFormat).formatType;
+}
+
+MVK_PUBLIC_SYMBOL MVKFormatType mvkFormatTypeFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
+	return formatDescForMTLPixelFormat(mtlFormat).formatType;
 }
 
 MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
@@ -528,14 +544,6 @@ MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat
     }
 
     return mtlPixFmt;
-}
-
-MVK_PUBLIC_SYMBOL MVKFormatType mvkFormatTypeFromVkFormat(VkFormat vkFormat) {
-    return formatDescForVkFormat(vkFormat).formatType;
-}
-
-MVK_PUBLIC_SYMBOL MVKFormatType mvkFormatTypeFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
-    return formatDescForMTLPixelFormat(mtlFormat).formatType;
 }
 
 MVK_PUBLIC_SYMBOL VkFormat mvkVkFormatFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
