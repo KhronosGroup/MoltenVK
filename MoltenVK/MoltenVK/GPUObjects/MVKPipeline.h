@@ -228,7 +228,7 @@ public:
 	~MVKRenderPipelineCompiler() override;
 
 protected:
-	void compileComplete(id<MTLRenderPipelineState> pipelineState, NSError *error);
+	bool compileComplete(id<MTLRenderPipelineState> pipelineState, NSError *error);
 
 	id<MTLRenderPipelineState> _mtlRenderPipelineState = nil;
 };
@@ -265,7 +265,7 @@ public:
 	~MVKComputePipelineCompiler() override;
 
 protected:
-	void compileComplete(id<MTLComputePipelineState> pipelineState, NSError *error);
+	bool compileComplete(id<MTLComputePipelineState> pipelineState, NSError *error);
 
 	id<MTLComputePipelineState> _mtlComputePipelineState = nil;
 };

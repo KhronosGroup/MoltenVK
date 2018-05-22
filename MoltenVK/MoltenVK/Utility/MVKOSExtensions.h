@@ -71,3 +71,11 @@ uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice);
 /** Populate the propertes with info about the GPU represented by the MTLDevice. */
 void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice);
 
+/** Ensures the block is executed on the main thread. */
+inline void mvkDispatchToMainAndWait(dispatch_block_t block) {
+	if (NSThread.isMainThread) {
+		block();
+	} else {
+		dispatch_sync(dispatch_get_main_queue(), block);
+	}
+}

@@ -747,18 +747,19 @@ id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(
 	compile(lock, ^{
 		[getMTLDevice() newRenderPipelineStateWithDescriptor: mtlRPLDesc
 										   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
-											   compileComplete(ps, error);
+											   bool isLate = compileComplete(ps, error);
+											   if (isLate) { destroy(); }
 										   }];
 	});
 
 	return [_mtlRenderPipelineState retain];
 }
 
-void MVKRenderPipelineCompiler::compileComplete(id<MTLRenderPipelineState> mtlRenderPipelineState, NSError* compileError) {
+bool MVKRenderPipelineCompiler::compileComplete(id<MTLRenderPipelineState> mtlRenderPipelineState, NSError* compileError) {
 	lock_guard<mutex> lock(_completionLock);
 
 	_mtlRenderPipelineState = [mtlRenderPipelineState retain];		// retained
-	endCompile(compileError);
+	return endCompile(compileError);
 }
 
 #pragma mark Construction
@@ -777,18 +778,19 @@ id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineSta
 	compile(lock, ^{
 		[getMTLDevice() newComputePipelineStateWithFunction: mtlFunction
 										  completionHandler: ^(id<MTLComputePipelineState> ps, NSError* error) {
-											  compileComplete(ps, error);
+											  bool isLate = compileComplete(ps, error);
+											  if (isLate) { destroy(); }
 										  }];
 	});
 
 	return [_mtlComputePipelineState retain];
 }
 
-void MVKComputePipelineCompiler::compileComplete(id<MTLComputePipelineState> mtlComputePipelineState, NSError* compileError) {
+bool MVKComputePipelineCompiler::compileComplete(id<MTLComputePipelineState> mtlComputePipelineState, NSError* compileError) {
 	lock_guard<mutex> lock(_completionLock);
 
 	_mtlComputePipelineState = [mtlComputePipelineState retain];		// retained
-	endCompile(compileError);
+	return endCompile(compileError);
 }
 
 #pragma mark Construction

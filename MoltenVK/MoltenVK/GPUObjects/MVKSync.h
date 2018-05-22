@@ -22,6 +22,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <unordered_set>
+#include <vector>
 
 class MVKFenceSitter;
 
@@ -122,7 +123,8 @@ public:
 	MVKSignalable(MVKDevice* device) : MVKBaseDeviceObject(device) {}
 
 protected:
-	void maybeDestroy();
+	bool decrementSignalerCount();
+	bool markDestroyed();
 
 	std::mutex _signalerLock;
 	uint32_t _signalerCount = 0;
@@ -246,6 +248,7 @@ private:
 
 	void addUnsignaledFence(MVKFence* fence);
 	void fenceSignaled(MVKFence* fence);
+	void getUnsignaledFences(std::vector<MVKFence*>& fences);
 
 	std::mutex _lock;
 	std::unordered_set<MVKFence*> _unsignaledFences;
@@ -295,8 +298,8 @@ public:
 protected:
 	void compile(std::unique_lock<std::mutex>& lock, dispatch_block_t block);
 	virtual void handleError();
-	void endCompile(NSError* compileError);
-	void maybeDestroy();
+	bool endCompile(NSError* compileError);
+	bool markDestroyed();
 
 	NSError* _compileError = nil;
 	uint64_t _startTime = 0;

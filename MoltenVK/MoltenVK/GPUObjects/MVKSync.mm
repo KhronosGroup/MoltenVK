@@ -75,23 +75,27 @@ void MVKSignalable::wasAddedToSignaler() {
 }
 
 void MVKSignalable::wasRemovedFromSignaler() {
+	if (decrementSignalerCount()) { destroy(); }
+}
+
+// Decrements the signaler count, and returns whether it's time to destroy this object.
+bool MVKSignalable::decrementSignalerCount() {
 	lock_guard<mutex> lock(_signalerLock);
 
 	if (_signalerCount > 0) { _signalerCount--; }
-	maybeDestroy();
+	return (_isDestroyed && _signalerCount == 0);
 }
 
 void MVKSignalable::destroy() {
+	if (markDestroyed()) { MVKBaseDeviceObject::destroy(); }
+}
+
+// Marks this object as destroyed, and returns whether the compilation is complete.
+bool MVKSignalable::markDestroyed() {
 	lock_guard<mutex> lock(_signalerLock);
 
 	_isDestroyed = true;
-	maybeDestroy();
-}
-
-void MVKSignalable::maybeDestroy() {
-	if (_isDestroyed && _signalerCount == 0) {
-		MVKBaseDeviceObject::destroy();
-	}
+	return _signalerCount == 0;
 }
 
 
@@ -190,10 +194,23 @@ bool MVKFenceSitter::wait(uint64_t timeout) {
 #pragma mark Construction
 
 MVKFenceSitter::~MVKFenceSitter() {
-	lock_guard<mutex> lock(_lock);
-    for (auto& uf : _unsignaledFences) {
+	// Use copy of collection to avoid deadlocks with the fences if lock in place here when removing sitters
+	vector<MVKFence*> ufsCopy;
+	getUnsignaledFences(ufsCopy);
+	for (auto& uf : ufsCopy) {
         uf->removeSitter(this);
     }
+}
+
+// Fills the vector with the collection of unsignaled fences
+void MVKFenceSitter::getUnsignaledFences(vector<MVKFence*>& fences) {
+	fences.clear();
+	fences.reserve(_unsignaledFences.size());
+
+	lock_guard<mutex> lock(_lock);
+	for (auto& uf : _unsignaledFences) {
+		fences.push_back(uf);
+	}
 }
 
 
@@ -231,7 +248,7 @@ VkResult mvkWaitForFences(uint32_t fenceCount,
 // The thread dispatch is needed because even the sync portion of the async Metal compilation methods can take well
 // over a second to return when a compiler failure occurs!
 void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block) {
-	MVKAssert( _startTime == 0, "%s compile occurred already in this instance. Instances of %s should only be used for a single compile activity.", _compilerType.c_str(), className().c_str());
+	MVKAssert( _startTime == 0, "%s compile occurred already in this instance. Instances of %s should only be used for a single compile activity.", _compilerType.c_str(), getClassName().c_str());
 	_startTime = _device->getPerformanceTimestamp();
 
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), block);
@@ -254,25 +271,26 @@ void MVKMetalCompiler::handleError() {
 	setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "%s compile failed (error code %li):\n%s.", _compilerType.c_str(), (long)_compileError.code, _compileError.localizedDescription.UTF8String));
 }
 
-void MVKMetalCompiler::endCompile(NSError* compileError) {
+// Returns whether the compilation came in late, after the compiler was destroyed.
+bool MVKMetalCompiler::endCompile(NSError* compileError) {
 	_compileError = [compileError retain];		// retained
 	_isCompileDone = true;
 	_blocker.notify_all();
-	maybeDestroy();
+	return _isDestroyed;
 }
 
 void MVKMetalCompiler::destroy() {
+	if (markDestroyed()) { MVKBaseDeviceObject::destroy(); }
+}
+
+// Marks this object as destroyed, and returns whether the compilation is complete.
+bool MVKMetalCompiler::markDestroyed() {
 	lock_guard<mutex> lock(_completionLock);
 
 	_isDestroyed = true;
-	maybeDestroy();
+	return _isCompileDone;
 }
 
-void MVKMetalCompiler::maybeDestroy() {
-	if (_isDestroyed && _isCompileDone) {
-		MVKBaseDeviceObject::destroy();
-	}
-}
 
 #pragma mark Construction
 

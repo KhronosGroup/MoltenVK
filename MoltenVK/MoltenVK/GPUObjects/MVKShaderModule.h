@@ -212,7 +212,7 @@ public:
 	~MVKShaderLibraryCompiler() override;
 
 protected:
-	void compileComplete(id<MTLLibrary> mtlLibrary, NSError *error);
+	bool compileComplete(id<MTLLibrary> mtlLibrary, NSError *error);
 	void handleError() override;
 
 	id<MTLLibrary> _mtlLibrary = nil;
@@ -250,7 +250,7 @@ public:
 	~MVKFunctionSpecializer() override;
 
 protected:
-	void compileComplete(id<MTLFunction> mtlFunction, NSError *error);
+	bool compileComplete(id<MTLFunction> mtlFunction, NSError *error);
 
 	id<MTLFunction> _mtlFunction = nil;
 };

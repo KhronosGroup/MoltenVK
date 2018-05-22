@@ -26,7 +26,7 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKBaseObject
 
-string MVKBaseObject::className() {
+string MVKBaseObject::getClassName() {
     int status;
     char* demangled = abi::__cxa_demangle(typeid(*this).name(), 0, 0, &status);
     string clzName = demangled;
