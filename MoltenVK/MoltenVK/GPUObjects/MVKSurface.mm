@@ -19,6 +19,7 @@
 #include "MVKSurface.h"
 #include "MVKInstance.h"
 #include "MVKFoundation.h"
+#include "MVKOSExtensions.h"
 
 
 #pragma mark MVKSurface
@@ -29,7 +30,8 @@ MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 					   const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 					   const VkAllocationCallbacks* pAllocator) {
 
-    CALayer* viewLayer = ((PLATFORM_VIEW_CLASS*)pCreateInfo->pView).layer;
+	__block CALayer* viewLayer = nil;
+	mvkDispatchToMainAndWait(^{ viewLayer = ((PLATFORM_VIEW_CLASS*)pCreateInfo->pView).layer; });
     if ( [viewLayer isKindOfClass: [CAMetalLayer class]] ) {
         _mtlCAMetalLayer = (CAMetalLayer*)[viewLayer retain];		// retained
     } else {

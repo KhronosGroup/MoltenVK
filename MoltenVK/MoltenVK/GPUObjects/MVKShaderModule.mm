@@ -350,7 +350,8 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode) 
 		[getMTLDevice() newLibraryWithSource: mslSourceCode
 									 options: options
 						   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
-							   compileComplete(mtlLib, error);
+							   bool isLate = compileComplete(mtlLib, error);
+							   if (isLate) { destroy(); }
 						   }];
 	});
 
@@ -366,11 +367,11 @@ void MVKShaderLibraryCompiler::handleError() {
 	}
 }
 
-void MVKShaderLibraryCompiler::compileComplete(id<MTLLibrary> mtlLibrary, NSError* compileError) {
+bool MVKShaderLibraryCompiler::compileComplete(id<MTLLibrary> mtlLibrary, NSError* compileError) {
 	lock_guard<mutex> lock(_completionLock);
 
 	_mtlLibrary = [mtlLibrary retain];		// retained
-	endCompile(compileError);
+	return endCompile(compileError);
 }
 
 #pragma mark Construction
@@ -392,18 +393,19 @@ id<MTLFunction> MVKFunctionSpecializer::newMTLFunction(id<MTLLibrary> mtlLibrary
 		[mtlLibrary newFunctionWithName: funcName
 						 constantValues: constantValues
 					  completionHandler: ^(id<MTLFunction> mtlFunc, NSError* error) {
-						  compileComplete(mtlFunc, error);
+						  bool isLate = compileComplete(mtlFunc, error);
+						  if (isLate) { destroy(); }
 					  }];
 	});
 
 	return [_mtlFunction retain];
 }
 
-void MVKFunctionSpecializer::compileComplete(id<MTLFunction> mtlFunction, NSError* compileError) {
+bool MVKFunctionSpecializer::compileComplete(id<MTLFunction> mtlFunction, NSError* compileError) {
 	lock_guard<mutex> lock(_completionLock);
 
 	_mtlFunction = [mtlFunction retain];		// retained
-	endCompile(compileError);
+	return endCompile(compileError);
 }
 
 #pragma mark Construction
