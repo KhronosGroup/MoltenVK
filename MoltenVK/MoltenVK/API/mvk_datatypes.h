@@ -56,6 +56,12 @@ typedef enum {
     kMVKFormatDepthStencil,     /**< A depth and stencil value. */
 } MVKFormatType;
 
+/** Returns whether the VkFormat is supported by this implementation. */
+bool mvkVkFormatIsSupported(VkFormat vkFormat);
+
+/** Returns whether the MTLPixelFormat is supported by this implementation. */
+bool mvkMTLPixelFormatIsSupported(MTLPixelFormat mtlFormat);
+
 /** Returns the format type corresponding to the specified Vulkan VkFormat, */
 MVKFormatType mvkFormatTypeFromVkFormat(VkFormat vkFormat);
 
