@@ -83,7 +83,7 @@ library you have retrieved.
 Once you have made changes, you can retrieve the updated library versions by running
 the `fetchDependencies` script again.
 
->***Note:*** If, after updating to new verions of the external libraries, you encounter 
+>***Note:*** If, after updating to new versions of the external libraries, you encounter 
 >build errors when building **MoltenVK**, review the instructions in the sections below 
 >to ensure all necessary external library files are included in the **MoltenVK** builds.
 
