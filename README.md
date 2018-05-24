@@ -212,7 +212,7 @@ be implemented or worked around.
 **MoltenVK** is a key component of the [*Khronos Vulkan Portability Initiative*](https://www.khronos.org/vulkan/portability-initiative), 
 whose intention is to provide specifications, resources, and tools to allow developers to understand and design 
 their *Vulkan* apps for maximum cross-platform compatibility and portability, including on platforms, such as 
-*macOS* and *iOS*, where a native *Vulkan* driver is not avaialble. 
+*macOS* and *iOS*, where a native *Vulkan* driver is not available. 
 
 
 
@@ -242,5 +242,5 @@ Property claims.
 
 ### Code Formatting
 
-When contirbuting code, please honour the code formatting style found in existing **MoltenVK** source code.
+When contributing code, please honour the code formatting style found in existing **MoltenVK** source code.
 In future, this will formally be enforced using `clang-format`.
