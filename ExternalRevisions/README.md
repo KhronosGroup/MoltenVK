@@ -87,7 +87,7 @@ determined by the version of the *glslang* library you have retrieved.
 Once you have made changes to the `*_repo_revision` files, you can retrieve the 
 updated library versions by running the `fetchDependencies` script again.
 
->***Note:*** After updating to new verions of the external libraries, if you encounter 
+>***Note:*** If, after updating to new versions of the external libraries, you encounter 
 >build errors when building **MoltenVK**, review the instructions in the sections below 
 >to ensure all necessary external library files are included in the **MoltenVK** builds.
 
