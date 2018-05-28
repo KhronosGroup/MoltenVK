@@ -132,7 +132,7 @@
 			isa = PBXGroup;
 			children = (
 				A904B4641C99B5950008C013 /* Demos.h */,
-				A904B52C1C9A08C80008C013 /* demos */,
+				A904B52C1C9A08C80008C013 /* cube */,
 				A9B67B6A1C3AAE9800373FFD /* iOS */,
 				A9B67B811C3AAEA200373FFD /* macOS */,
 				A9295EAA1CECEF0900EFC483 /* Frameworks */,
@@ -141,7 +141,7 @@
 			name = CustomTemplate;
 			sourceTree = "<group>";
 		};
-		A904B52C1C9A08C80008C013 /* demos */ = {
+		A904B52C1C9A08C80008C013 /* cube */ = {
 			isa = PBXGroup;
 			children = (
 				A904B52E1C9A08C90008C013 /* cube-frag.spv */,
@@ -151,8 +151,8 @@
 				A904B5331C9A08C90008C013 /* cube.vert */,
 				A904B5351C9A08C90008C013 /* lunarg.ppm */,
 			);
-			name = demos;
-			path = "../Vulkan-LoaderAndValidationLayers/demos";
+			name = cube;
+			path = "../Vulkan-Tools/cube";
 			sourceTree = "<group>";
 		};
 		A9295EAA1CECEF0900EFC483 /* Frameworks */ = {
@@ -335,7 +335,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\n\"${PROJECT_DIR}/../../../MoltenVKShaderConverter/Tools/MoltenVKShaderConverter\" -gi -so -xs \"-\" -d \"${PROJECT_DIR}/../Vulkan-LoaderAndValidationLayers/demos\"\n";
+			shellScript = "set -e\n\n\"${PROJECT_DIR}/../../../MoltenVKShaderConverter/Tools/MoltenVKShaderConverter\" -gi -so -xs \"-\" -d \"${PROJECT_DIR}/../Vulkan-Tools/cube\"\n";
 		};
 		A9BA29C6204F298800EA6575 /* Generate SPIR-V shaders */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -349,7 +349,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\n\"${PROJECT_DIR}/../../../MoltenVKShaderConverter/Tools/MoltenVKShaderConverter\" -gi -so -xs \"-\" -d \"${PROJECT_DIR}/../Vulkan-LoaderAndValidationLayers/demos\"\n";
+			shellScript = "set -e\n\n\"${PROJECT_DIR}/../../../MoltenVKShaderConverter/Tools/MoltenVKShaderConverter\" -gi -so -xs \"-\" -d \"${PROJECT_DIR}/../Vulkan-Tools/cube\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -480,7 +480,6 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../../../MoltenVK/include\"",
-					"\"$(SRCROOT)/../Vulkan-LoaderAndValidationLayers/include\"",
 				);
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-ObjC";
@@ -505,7 +504,6 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../../../MoltenVK/include\"",
-					"\"$(SRCROOT)/../Vulkan-LoaderAndValidationLayers/include\"",
 				);
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.moltenvk.${PRODUCT_NAME:identifier}";

@@ -15,13 +15,12 @@ build/
 *.[oa]
 
 # Dependencies
-External/Vulkan-LoaderAndValidationLayers
-External/glslang
-External/SPIRV-Tools
-External/SPIRV-Headers
-External/SPIRV-Cross
-External/VulkanSamples
 External/cereal
+External/glslang
+External/SPIRV-Cross
+External/Vulkan-Headers
+External/Vulkan-Tools
+External/VulkanSamples
 
 # Other source repository archive directories (protects when importing)
 .hg

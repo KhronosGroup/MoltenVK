@@ -23,7 +23,7 @@
 #include <MoltenVK/mvk_vulkan.h>
 
 #ifdef MVK_SAMP_CUBE
-#	include "../Vulkan-LoaderAndValidationLayers/demos/cube.c"
+#	include "../Vulkan-Tools/cube/cube.c"
 #endif
 
 
