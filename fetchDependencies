@@ -4,17 +4,8 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [--v-lvl-root path] [--glslang-root path]
+# macOS usage: ./fetchDependencies
 #
-#	--v-lvl-root path
-#		"path" specifies a directory path to a
-#		KhronosGroup/Vulkan-LoaderAndValidationLayers repository.
-#		This repository does not have to be built.
-#	--glslang-root path
-#		"path" specifies a directory path to a KhronosGroup/glslang 
-#		repository.  This repository does need to be built and the
-#		build directory must be in the specified directory.
-#		It should be built the same way this script builds it.
 
 
 # ----------------- Functions -------------------
@@ -49,10 +40,10 @@ build_repo() {
 	mkdir -p $1/build
 	cd $1/build
 	if type ninja >/dev/null 2>&1 ; then
-		cmake .. -G Ninja
+		cmake .. -G Ninja -D CMAKE_BUILD_TYPE=Release
 		ninja
 	else
-		cmake ..
+		cmake ..  -D CMAKE_BUILD_TYPE=Release
 		make
 	fi
 	cd -
@@ -63,27 +54,6 @@ build_repo() {
 
 EXT_DIR=External
 EXT_REV_DIR=ExternalRevisions
-V_LVL_NAME=Vulkan-LoaderAndValidationLayers
-GLSLANG_NAME=glslang
-V_LVL_ROOT=""
-GLSLANG_ROOT=""
-
-while (( "$#" )); do
-  case "$1" in
-	--v-lvl-root)
-	  V_LVL_ROOT=$2
-	  shift 2
-	  ;;
-	--glslang-root)
-	  GLSLANG_ROOT=$2
-	  shift 2
-	  ;;
-	-*|--*=)
-	  echo "Error: Unsupported flag $1" >&2
-	  exit 1
-	  ;;
-  esac
-done
 
 echo
 echo Retrieving MoltenVK dependencies into ${EXT_DIR}.
@@ -101,9 +71,42 @@ REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
+# ----------------- Vulkan-Headers -------------------
+
+REPO_NAME=Vulkan-Headers
+REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+
+update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+
 # ----------------- SPIRV-Cross -------------------
 
 REPO_NAME=SPIRV-Cross
+REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+
+update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+
+# ----------------- glslang -------------------
+
+REPO_NAME=glslang
+REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+
+update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+cd ${REPO_NAME}
+./update_glslang_sources.py
+cd -
+
+build_repo ${REPO_NAME}
+
+
+# ----------------- Vulkan-Tools -------------------
+
+REPO_NAME=Vulkan-Tools
 REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
 REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
@@ -118,30 +121,6 @@ REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
-
-# ----------------- Vulkan-LoaderAndValidationLayers -------------------
-
-# When MoltenVK is built by something that already has a copy of the
-# Vulkan-LoaderAndValidationLayers repo, use it by creating a symlink.
-if [ ! "$V_LVL_ROOT" = "" ]; then
-
-	REPO_NAME=${V_LVL_NAME}
-	rm -rf ${REPO_NAME}
-	ln -sfn ${V_LVL_ROOT} ${REPO_NAME}
-
-else
-
-	REPO_NAME=${V_LVL_NAME}
-	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-	REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
-
-	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
-
-	cd ${REPO_NAME}
-	./update_external_sources.sh -g
-	cd -
-
-fi
 
 cd ..
 

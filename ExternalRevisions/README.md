@@ -17,10 +17,10 @@ Table of Contents
 
 - [Fetching External Libraries](#fetching)
 - [Updating External Library Versions](#updating)
-- [Adding the *SPIRV-Cross* Library to the *MoltenVKShaderConverter Xcode* Project](#add_spirv-cross)
-- [Adding the *SPIRV-Tools* Library to the *MoltenVKShaderConverter Xcode* Project](#add_spirv-tools)
-- [Adding the *glslang* Library to the *MoltenVKShaderConverter Xcode* Project](#add_glslang)
 - [Adding the *cereal* Library to the *MoltenVK Xcode* Project](#add_cereal)
+- [Adding the *SPIRV-Cross* Library to the *MoltenVKShaderConverter Xcode* Project](#add_spirv-cross)
+- [Adding the *glslang* Library to the *MoltenVKShaderConverter Xcode* Project](#add_glslang)
+- [Adding the *SPIRV-Tools* Library to the *MoltenVKShaderConverter Xcode* Project](#add_spirv-tools)
 
 
 
@@ -31,11 +31,12 @@ Fetching External Libraries
 **MoltenVK** uses technology from the following external open-source libraries:
 
 - [*cereal*](https://github.com/USCiLab/cereal)
+- [*Vulkan-Headers*](https://github.com/KhronosGroup/Vulkan-Headers)
 - [*SPIRV-Cross*](https://github.com/KhronosGroup/SPIRV-Cross)
-- [*Vulkan-LoaderAndValidationLayers*](https://github.com/KhronosGroup/Vulkan-LoaderAndValidationLayers)
 - [*glslang*](https://github.com/KhronosGroup/glslang)
 - [*SPIRV-Tools*](https://github.com/KhronosGroup/SPIRV-Tools)
 - [*SPIRV-Headers*](https://github.com/KhronosGroup/SPIRV-Headers)
+- [*Vulkan-Tools*](https://github.com/KhronosGroup/Vulkan-Tools)
 - [*VulkanSamples*](https://github.com/LunarG/VulkanSamples)
 
 These external open-source libraries are maintained in the `External` directory.
@@ -56,34 +57,37 @@ determined as follows:
 
 - **_cereal_**: a GitHub repository commit identifier found in the
   `ExternalRevisions/cereal_repo_revision` file. 
+  
+- **_Vulkan-Headers_**: a GitHub repository commit identifier found in the
+  `ExternalRevisions/Vulkan-Headers_repo_revision` file.
 
 - **_SPIRV-Cross_**: a GitHub repository commit identifier found in the
   `ExternalRevisions/SPIRV-Cross_repo_revision` file. 
   
-- **_VulkanSamples_**: a GitHub repository commit identifier found in the
-  `ExternalRevisions/VulkanSamples_repo_revision` file.
-  
-- **_Vulkan-LoaderAndValidationLayers_**: a GitHub repository commit identifier found
-  in the `ExternalRevisions/Vulkan-LoaderAndValidationLayers_repo_revision` file.
-  
-- **_glslang_**: automatically retrieved by the *Vulkan-LoaderAndValidationLayers* repository.
+- **_glslang_**: a GitHub repository commit identifier found
+  in the `ExternalRevisions/glslang_repo_revision` file.
   
 - **_SPIRV-Tools_**: automatically retrieved by the *glslang* repository.
 
 - **_SPIRV-Headers_**: automatically retrieved by the *glslang* repository.
   
-You can update which versions of the *SPIRV-Cross*, *VulkanSamples*,
-*Vulkan-LoaderAndValidationLayers*, or *cereal* libraries are retrieved, 
-by changing the value held in the corresponding `*_repo_revision` file listed above.
+- **_Vulkan-Tools_**: a GitHub repository commit identifier found in the
+  `ExternalRevisions/Vulkan-Tools_repo_revision` file.
+  
+- **_VulkanSamples_**: a GitHub repository commit identifier found in the
+  `ExternalRevisions/VulkanSamples_repo_revision` file.
+  
+You can update which versions of the *cereal*, *Vulkan-Headers*, *SPIRV-Cross*, 
+*glslang*, *Vulkan-Tools*, or *VulkanSamples* libraries are retrieved by changing 
+the value held in the corresponding `*_repo_revision` file listed above.
 
-The version of the *glslang*, *SPIRV-Tools*, and *SPIRV-Headers* libraries is 
-automatically determined by the version of the *Vulkan-LoaderAndValidationLayers* 
-library you have retrieved.
+The version of the *SPIRV-Tools* and *SPIRV-Headers* libraries is automatically 
+determined by the version of the *glslang* library you have retrieved.
 
-Once you have made changes, you can retrieve the updated library versions by running
-the `fetchDependencies` script again.
+Once you have made changes to the `*_repo_revision` files, you can retrieve the 
+updated library versions by running the `fetchDependencies` script again.
 
->***Note:*** If, after updating to new verions of the external libraries, you encounter 
+>***Note:*** After updating to new verions of the external libraries, if you encounter 
 >build errors when building **MoltenVK**, review the instructions in the sections below 
 >to ensure all necessary external library files are included in the **MoltenVK** builds.
 
@@ -170,46 +174,6 @@ If you make changes to the `SPIRV-Cross` repository, you can regression test you
 
 
 
-<a name="add_spirv-tools"></a>
-Adding the *SPIRV-Tools* Library to the *MoltenVKShaderConverter Xcode* Project
--------------------------------------------------------------------------------
-
-The `MoltenVKShaderConverter` *Xcode* project is already configured to use the *SPIRV-Tools*
-library. However, after updating the version of *SPIRV-Tools*, as described [above](#updating),
-if you encounter any building errors, you may need to re-add the *SPIRV-Tools* library to the
-`MoltenVKShaderConverter` *Xcode* project as follows:
-
-1. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
-   `MoltenVKSPIRVToMSLConverter/SPIRV-Tools`.
-
-2. Drag the `SPIRV-Tools/source` file folder to the `SPIRV-Tools` group in the *Project Navigator* panel.
-   In the _**Choose options for adding these files**_ dialog that opens, select the 
-   _**Create groups**_ option, add the files to *both* the `MoltenVKSPIRVToMSLConverter-iOS` 
-   and `MoltenVKSPIRVToMSLConverter-macOS` targets, and click the ***Finish*** button.
-
-3. In the *Project Navigator* panel, select the `MoltenVKShaderConverter` *Xcode* project, then select the 
-   `MoltenVKSPIRVToMSLConverter-macOS` target, and open the *Build Settings* tab. Locate the build setting 
-   entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
-   
-		"$(SRCROOT)/glslang/External/spirv-tools/include"
-		"$(SRCROOT)/glslang/External/spirv-tools/source"
-		"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include"
-		"$(SRCROOT)/glslang/build/External/spirv-tools"
-
-4. Repeat *Step 3* for the `MoltenVKSPIRVToMSLConverter-iOS` target within the `MoltenVKShaderConverter` *Xcode* project
-
-5. ***(Optional)*** To simplify the paths used within *Xcode* to reference the added files,
-   perform the following steps:
-   
-   1. **Create a backup of your project!** This is an intrusive and dangerous operation!
-   2. In the *Finder*, right-click your `MoltenVKShaderConverter.xcodeproj` file and select 
-      **_Show Package Contents_**.
-   3. Open the `project.pbxproj` file in a text editor.
-   4. Remove all occurrences of `path-to-SPIRV-Tools-repo-folder` from the paths to the 
-      `source` directory added above.
-
-
-
 <a name="add_glslang"></a>
 Adding the *glslang* Library to the *MoltenVKShaderConverter Xcode* Project
 ---------------------------------------------------------------------------
@@ -247,3 +211,43 @@ if you encounter any building errors, you may need to re-add the *glslang* libra
    3. Open the `project.pbxproj` file in a text editor.
    4. Remove all occurrences of `path-to-glslang-repo-folder` from the paths to the 
       `glslang`, `OGLCompilersDLL`, and `SPIRV` directories added above.
+
+
+
+<a name="add_spirv-tools"></a>
+Adding the *SPIRV-Tools* Library to the *MoltenVKShaderConverter Xcode* Project
+-------------------------------------------------------------------------------
+
+The `MoltenVKShaderConverter` *Xcode* project is already configured to use the *SPIRV-Tools*
+library. However, after updating the version of *SPIRV-Tools*, as described [above](#updating),
+if you encounter any building errors, you may need to re-add the *SPIRV-Tools* library to the
+`MoltenVKShaderConverter` *Xcode* project as follows:
+
+1. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
+   `MoltenVKSPIRVToMSLConverter/SPIRV-Tools`.
+
+2. Drag the `SPIRV-Tools/source` file folder to the `SPIRV-Tools` group in the *Project Navigator* panel.
+   In the _**Choose options for adding these files**_ dialog that opens, select the 
+   _**Create groups**_ option, add the files to *both* the `MoltenVKSPIRVToMSLConverter-iOS` 
+   and `MoltenVKSPIRVToMSLConverter-macOS` targets, and click the ***Finish*** button.
+
+3. In the *Project Navigator* panel, select the `MoltenVKShaderConverter` *Xcode* project, then select the 
+   `MoltenVKSPIRVToMSLConverter-macOS` target, and open the *Build Settings* tab. Locate the build setting 
+   entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
+   
+		"$(SRCROOT)/glslang/External/spirv-tools/include"
+		"$(SRCROOT)/glslang/External/spirv-tools/source"
+		"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include"
+		"$(SRCROOT)/glslang/build/External/spirv-tools"
+
+4. Repeat *Step 3* for the `MoltenVKSPIRVToMSLConverter-iOS` target within the `MoltenVKShaderConverter` *Xcode* project
+
+5. ***(Optional)*** To simplify the paths used within *Xcode* to reference the added files,
+   perform the following steps:
+   
+   1. **Create a backup of your project!** This is an intrusive and dangerous operation!
+   2. In the *Finder*, right-click your `MoltenVKShaderConverter.xcodeproj` file and select 
+      **_Show Package Contents_**.
+   3. Open the `project.pbxproj` file in a text editor.
+   4. Remove all occurrences of `path-to-SPIRV-Tools-repo-folder` from the paths to the 
+      `source` directory added above.
