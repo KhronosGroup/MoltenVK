@@ -258,7 +258,7 @@ can be included in your application source code as follows:
 
 where `HEADER_FILE` is one of the following:
 
-- `vk_mvk_moltenvk.h` - Contains declarations and documenation for the functions, structures, 
+- `vk_mvk_moltenvk.h` - Contains declarations and documentation for the functions, structures, 
   and enumerations that define the behaviour of the `VK_MVK_moltenvk` *Vulkan* extension.
 
 - `mvk_vulkan.h` - This is a convenience header file that loads the `vulkan.h` header file
@@ -305,7 +305,7 @@ sophistication and difficulty:
   function, you are indicating that the remainder of the *SPIR-V* stream contains either
   *MSL* source code, or *MSL* compiled code, respectively.
 
-  You can use the `MoltenVKShaderConverter` command-line tool found in this **MoltenVK** distribution 
+- You can use the `MoltenVKShaderConverter` command-line tool found in this **MoltenVK** distribution 
   package to convert your *SPIR-V* shaders to *MSL* source code, offline at development time,
   in order to create the appropriate *MSL* code to load at runtime. The [section below](#shaders)
   discusses how to use this tool in more detail.
