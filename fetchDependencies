@@ -40,12 +40,15 @@ build_repo() {
 	mkdir -p $1/build
 	cd $1/build
 	if type ninja >/dev/null 2>&1 ; then
-		cmake .. -G Ninja -D CMAKE_BUILD_TYPE=Release
+		cmake -G Ninja -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=install ..
 		ninja
 	else
-		cmake ..  -D CMAKE_BUILD_TYPE=Release
+		cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=install ..
 		make
 	fi
+
+	make install
+
 	cd -
 }
 
