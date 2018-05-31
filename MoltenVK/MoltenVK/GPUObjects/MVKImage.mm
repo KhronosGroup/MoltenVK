@@ -132,10 +132,8 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 	}
 }
 
-/**
- * Returns whether the specified image memory barrier requires a sync between this
- * texture and host memory for the purpose of the host reading texture memory.
- */
+// Returns whether the specified image memory barrier requires a sync between this
+// texture and host memory for the purpose of the host reading texture memory.
 bool MVKImage::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 								 VkPipelineStageFlags dstStageMask,
 								 VkImageMemoryBarrier* pImageMemoryBarrier) {
@@ -146,11 +144,11 @@ bool MVKImage::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 	return ((pImageMemoryBarrier->newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
 			mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(pImageMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
-			_deviceMemory->isMemoryHostAccessible() && getMTLStorageMode() != MTLStorageModeShared);
+			isMemoryHostAccessible() && !isMemoryHostCoherent());
 #endif
 }
 
-/** Returns a pointer to the internal subresource for the specified MIP level layer. */
+// Returns a pointer to the internal subresource for the specified MIP level layer.
 MVKImageSubresource* MVKImage::getSubresource(uint32_t mipLevel, uint32_t arrayLayer) {
 	uint32_t srIdx = (mipLevel * _arrayLayers) + arrayLayer;
 	return (srIdx < _subresources.size()) ? &_subresources[srIdx] : NULL;
@@ -165,10 +163,15 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 	return VK_SUCCESS;
 }
 
-/** 
- * Flushes the device memory at the specified memory range into the MTLTexture. Updates
- * all subresources that overlap the specified range and are in an updatable layout state.
- */
+// Memory may have been mapped before image was bound, and needs to be loaded into the MTLTexture.
+VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
+	VkResult rslt = MVKResource::bindDeviceMemory(mvkMem, memOffset);
+	if (isMemoryHostAccessible()) { flushToDevice(getDeviceMemoryOffset(), getByteCount()); }
+	return rslt;
+}
+
+// Flushes the device memory at the specified memory range into the MTLTexture. Updates
+// all subresources that overlap the specified range and are in an updatable layout state.
 VkResult MVKImage::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
 	for (auto& subRez : _subresources) {
 		switch (subRez.layoutState) {
@@ -185,10 +188,8 @@ VkResult MVKImage::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
 	return VK_SUCCESS;
 }
 
-/**
- * Pulls content from the MTLTexture into the device memory at the specified memory range. 
- * Pulls from all subresources that overlap the specified range and are in an updatable layout state.
- */
+// Pulls content from the MTLTexture into the device memory at the specified memory range.
+// Pulls from all subresources that overlap the specified range and are in an updatable layout state.
 VkResult MVKImage::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
 	for (auto& subRez : _subresources) {
 		switch (subRez.layoutState) {
@@ -201,10 +202,6 @@ VkResult MVKImage::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
 		}
 	}
 	return VK_SUCCESS;
-}
-
-void* MVKImage::map(VkDeviceSize offset, VkDeviceSize size) {
-	return _deviceMemory->allocateMappedMemory(offset, size);
 }
 
 
@@ -246,12 +243,9 @@ VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
     return VK_SUCCESS;
 }
 
-/**
- * Creates and returns a retained Metal texture suitable for use in this instance.
- *
- * This implementation creates a new MTLTexture from a MTLTextureDescriptor and possible IOSurface.
- * Subclasses may override this function to create the MTLTexture in a different manner.
- */
+// Creates and returns a retained Metal texture suitable for use in this instance.
+// This implementation creates a new MTLTexture from a MTLTextureDescriptor and possible IOSurface.
+// Subclasses may override this function to create the MTLTexture in a different manner.
 id<MTLTexture> MVKImage::newMTLTexture() {
     if (_ioSurface) {
         return [getMTLDevice() newTextureWithDescriptor: getMTLTextureDescriptor() iosurface: _ioSurface plane: 0];
@@ -260,7 +254,7 @@ id<MTLTexture> MVKImage::newMTLTexture() {
     }
 }
 
-/** Removes and releases the MTLTexture object, so that it can be lazily created by getMTLTexture(). */
+// Removes and releases the MTLTexture object, so that it can be lazily created by getMTLTexture().
 void MVKImage::resetMTLTexture() {
 	[_mtlTexture release];
 	_mtlTexture = nil;
@@ -309,7 +303,7 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     return VK_SUCCESS;
 }
 
-/** Returns an autoreleased Metal texture descriptor constructed from the properties of this image. */
+// Returns an autoreleased Metal texture descriptor constructed from the properties of this image.
 MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
 	MTLTextureDescriptor* mtlTexDesc = [[MTLTextureDescriptor alloc] init];
 	mtlTexDesc.pixelFormat = _mtlPixelFormat;
@@ -339,10 +333,8 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
     return stgMode;
 }
 
-/**
- * Updates the contents of the underlying MTLTexture, corresponding to the 
- * specified subresource definition, from the underlying memory buffer.
- */
+// Updates the contents of the underlying MTLTexture, corresponding to the
+//specified subresource definition, from the underlying memory buffer.
 void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
                                        VkDeviceSize offset, VkDeviceSize size) {
     // Check if subresource overlaps the memory range.
@@ -352,6 +344,10 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
     VkDeviceSize imgEnd = subresource.layout.offset + subresource.layout.size;
     if (imgStart >= memEnd || imgEnd <= memStart) { return; }
 
+	// Don't update if host memory has not been mapped yet.
+	void* pHostMem = getHostMemoryAddress();
+	if ( !pHostMem ) { return; }
+
     VkImageSubresource& imgSubRez = subresource.subresource;
     VkSubresourceLayout& imgLayout = subresource.layout;
 
@@ -360,7 +356,7 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
 
     VkExtent3D mipExtent = getExtent3D(mipLvl);
     VkImageType imgType = getImageType();
-    void* pImgBytes = (void*)((uintptr_t)getLogicalMappedMemory() + imgLayout.offset);
+    void* pImgBytes = (void*)((uintptr_t)pHostMem + imgLayout.offset);
 
     MTLRegion mtlRegion;
     mtlRegion.origin = MTLOriginMake(0, 0, 0);
@@ -374,10 +370,8 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
                      bytesPerImage: (imgType == VK_IMAGE_TYPE_3D ? imgLayout.depthPitch : 0)];
 }
 
-/**
- * Updates the contents of the underlying memory buffer from the contents of 
- * the underlying MTLTexture, corresponding to the specified subresource definition.
- */
+// Updates the contents of the underlying memory buffer from the contents of
+// the underlying MTLTexture, corresponding to the specified subresource definition.
 void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
                                     VkDeviceSize offset, VkDeviceSize size) {
     // Check if subresource overlaps the memory range.
@@ -387,6 +381,10 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
     VkDeviceSize imgEnd = subresource.layout.offset + subresource.layout.size;
     if (imgStart >= memEnd || imgEnd <= memStart) { return; }
 
+	// Don't update if host memory has not been mapped yet.
+	void* pHostMem = getHostMemoryAddress();
+	if ( !pHostMem ) { return; }
+
     VkImageSubresource& imgSubRez = subresource.subresource;
     VkSubresourceLayout& imgLayout = subresource.layout;
 
@@ -395,7 +393,7 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
 
     VkExtent3D mipExtent = getExtent3D(mipLvl);
     VkImageType imgType = getImageType();
-    void* pImgBytes = (void*)((uintptr_t)getLogicalMappedMemory() + imgLayout.offset);
+    void* pImgBytes = (void*)((uintptr_t)pHostMem + imgLayout.offset);
 
     MTLRegion mtlRegion;
     mtlRegion.origin = MTLOriginMake(0, 0, 0);
@@ -458,7 +456,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	initMTLTextureViewSupport();
 }
 
-/** Initializes the subresource definitions. */
+// Initializes the subresource definitions.
 void MVKImage::initSubresources(const VkImageCreateInfo* pCreateInfo) {
 	_subresources.reserve(_mipLevels * _arrayLayers);
 
@@ -476,7 +474,7 @@ void MVKImage::initSubresources(const VkImageCreateInfo* pCreateInfo) {
 	}
 }
 
-/** Initializes the layout element of the specified image subresource. */
+// Initializes the layout element of the specified image subresource.
 void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 	VkImageSubresource subresource = imgSubRez.subresource;
 	uint32_t currMipLevel = subresource.mipLevel;
@@ -500,10 +498,8 @@ void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 	layout.depthPitch = bytesPerLayerCurrLevel;
 }
 
-/**
- * Determines whether this image can support Metal texture views,
- * and sets the _canSupportMTLTextureView variable appropriately.
- */
+// Determines whether this image can support Metal texture views,
+// and sets the _canSupportMTLTextureView variable appropriately.
 void MVKImage::initMTLTextureViewSupport() {
 	_canSupportMTLTextureView = !_isDepthStencilAttachment;
 }
@@ -552,10 +548,8 @@ id<MTLTexture> MVKImageView::getMTLTexture() {
 	}
 }
 
-/**
- * Creates and returns a retained Metal texture as an
- * overlay on the Metal texture of the underlying image.
- */
+// Creates and returns a retained Metal texture as an
+// overlay on the Metal texture of the underlying image.
 id<MTLTexture> MVKImageView::newMTLTexture() {
     return [_image->getMTLTexture() newTextureViewWithPixelFormat: _mtlPixelFormat
                                                       textureType: _mtlTextureType
@@ -698,10 +692,8 @@ bool MVKImageView::matchesSwizzle(VkComponentMapping components, VkComponentMapp
     return true;
 }
 
-/**
- * Determine whether this image view should use a Metal texture view,
- * and set the _useMTLTextureView variable appropriately.
- */
+// Determine whether this image view should use a Metal texture view,
+// and set the _useMTLTextureView variable appropriately.
 void MVKImageView::initMTLTextureViewSupport() {
 	_useMTLTextureView = _image->_canSupportMTLTextureView;
 
@@ -722,7 +714,7 @@ MVKImageView::~MVKImageView() {
 #pragma mark -
 #pragma mark MVKSampler
 
-/** Returns an autoreleased Metal sampler descriptor constructed from the properties of this image. */
+// Returns an autoreleased Metal sampler descriptor constructed from the properties of this image.
 MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo) {
 
 	MTLSamplerDescriptor* mtlSampDesc = [[MTLSamplerDescriptor alloc] init];
@@ -746,7 +738,7 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 	return [mtlSampDesc autorelease];
 }
 
-/** Constructs an instance on the specified image. */
+// Constructs an instance on the specified image.
 MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
     _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: getMTLSamplerDescriptor(pCreateInfo)];
 }
@@ -819,7 +811,7 @@ void MVKSwapchainImage::signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* f
 //	MVKLogDebug("%s swapchain image %p semaphore %p in acquire with %lu other semaphores.", (_availability.isAvailable ? "Signaling" : "Tracking"), this, semaphore, _availabilitySignalers.size());
 }
 
-/** Signal either or both of the semaphore and fence in the specified tracker pair. */
+// Signal either or both of the semaphore and fence in the specified tracker pair.
 void MVKSwapchainImage::signal(MVKSwapchainSignaler& signaler) {
 	if (signaler.first) { signaler.first->signal(); }
 	if (signaler.second) { signaler.second->signal(); }
@@ -846,11 +838,8 @@ const MVKSwapchainImageAvailability* MVKSwapchainImage::getAvailability() {
 
 #pragma mark Metal
 
-/**
- * Creates and returns a retained Metal texture suitable for use in this instance.
- *
- * This implementation retrieves a MTLTexture from the CAMetalDrawable.
- */
+// Creates and returns a retained Metal texture suitable for use in this instance.
+// This implementation retrieves a MTLTexture from the CAMetalDrawable.
 id<MTLTexture> MVKSwapchainImage::newMTLTexture() {
 	return [[getCAMetalDrawable() texture] retain];
 }
@@ -885,13 +874,13 @@ void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) 
     }
 }
 
-/** Removes and releases the Metal drawable object, so that it can be lazily created by getCAMetalDrawable(). */
+// Removes and releases the Metal drawable object, so that it can be lazily created by getCAMetalDrawable().
 void MVKSwapchainImage::resetCAMetalDrawable() {
 	[_mtlDrawable release];
 	_mtlDrawable = nil;
 }
 
-/** Resets the MTLTexture and CAMetalDrawable underlying this image. */
+// Resets the MTLTexture and CAMetalDrawable underlying this image.
 void MVKSwapchainImage::resetMetalSurface() {
     resetMTLTexture();			// Release texture first so drawable will be last to release it
     resetCAMetalDrawable();

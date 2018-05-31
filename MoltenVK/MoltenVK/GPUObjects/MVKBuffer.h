@@ -54,32 +54,22 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal buffer underlying this memory allocation. */
-	id<MTLBuffer> getMTLBuffer();
+	inline id<MTLBuffer> getMTLBuffer() { return _deviceMemory ? _deviceMemory->getMTLBuffer() : nullptr; }
 
 	/** Returns the offset at which the contents of this instance starts within the underlying Metal buffer. */
-	NSUInteger getMTLBufferOffset();
+	inline NSUInteger getMTLBufferOffset() { return _deviceMemoryOffset; }
 
 
 #pragma mark Construction
 	
 	MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo);
 
-	~MVKBuffer() override;
-
 protected:
 	using MVKResource::needsHostReadSync;
 
-    void* map(VkDeviceSize offset, VkDeviceSize size) override;
-	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size) override;
-	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size) override;
-    VkResult copyMTLBufferContent(VkDeviceSize offset, VkDeviceSize size, bool intoMTLBuffer);
-    NSRange mtlBufferRange(VkDeviceSize offset, VkDeviceSize size);
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   VkBufferMemoryBarrier* pBufferMemoryBarrier);
-
-    id<MTLBuffer> _mtlBuffer;
-    std::mutex _lock;
 };
 
 

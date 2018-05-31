@@ -27,61 +27,25 @@ using namespace std;
 
 #pragma mark MVKDeviceMemory
 
-// Metal does not support the concept of mappable device memory separate from individual
-// resources. There are a number of potentially conflicting requirements defined by Vulkan
-// that make it a challenge to map device memory to Metal resources.
-// 1) Memory can be mapped and populated prior to any resources being bound.
-// 2) Coherent memory can be mapped forever and simply overwritten without regard for
-//    requiring host generated update indications.
-// 3) MTLTextures are never natively coherent.
-// 4) MTLBuffers are restricted to smaller sizes (eg. 256MB - 1GB) than MTLTextures.
-//
-// To try to deal with all of this...
-// 1) If the mapped range falls within a single resource, we map it directly. This allows
-//    us to maximize the size of the resources (images and buffers can be larger)...and
-//    coherent buffers can be mapped directly.
-// 2) If we can't map to a single resource, and memory must be coherent, allocate a single
-//    coherent MTLBuffer for the entire memory range. If any attached resources already have
-//    content, the subsequent coherent pullFromDevice() will populate the larger MTLBuffer.
-// 3) If we can't map to a single resource, and memory is not coherent, we can allocate the
-//    host portion as an aligned malloc, and the individual resources will copy to and from it.
-// 4) There is no way around requiring coherent memory that is used for image to be updated
-//    by the host, or at least unmapped, so that we have a signal to update MTLTexture content.
 VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData) {
 
-    if ( !isMemoryHostAccessible() ) {
-        return mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be mapped to host memory.");
-    }
+	if ( !isMemoryHostAccessible() ) {
+		return mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be mapped to host memory.");
+	}
 
-    if (_pMappedMemory) {
-        return mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Memory is already mapped. Call vkUnmapMemory() first.");
-    }
+	if (_isMapped) {
+		return mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Memory is already mapped. Call vkUnmapMemory() first.");
+	}
 
-    VkDeviceSize mapSize = adjustMemorySize(size, offset);
-//    MVKLogDebug("Mapping device memory %p with offset %d and size %d.", this, offset, mapSize);
-    if ( !mapToUniqueResource(offset, mapSize) ) {
-        if (isMemoryHostCoherent()) {
-            if ( !_mtlBuffer ) {
+	if ( !ensureHostMemory() ) {
+		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_HOST_MEMORY, "Could not allocate %llu bytes of host-accessible device memory.", _allocationSize);
+	}
 
-				// Lock and check again in case another thread has created the buffer.
-				lock_guard<mutex> lock(_lock);
-				if ( !_mtlBuffer ) {
-					NSUInteger mtlBuffLen = mvkAlignByteOffset(_allocationSize, _device->_pMetalFeatures->mtlBufferAlignment);
-					_mtlBuffer = [getMTLDevice() newBufferWithLength: mtlBuffLen options: _mtlResourceOptions];     // retained
-//                	MVKLogDebug("Allocating host mapped memory %p with offset %d and size %d via underlying coherent MTLBuffer %p of size %d.", this, offset, mapSize, _mtlBuffer , _mtlBuffer.length);
-				}
-			}
-            _pLogicalMappedMemory = _mtlBuffer.contents;
-            _pMappedMemory = (void*)((uintptr_t)_pLogicalMappedMemory + offset);
-        } else {
-//            MVKLogDebug("Allocating host mapped memory %p with offset %d and size %d via host allocation.", this, offset, mapSize);
-            _pMappedMemory = allocateMappedMemory(offset, mapSize);
-        }
-    }
+	_mapOffset = offset;
+	_mapSize = adjustMemorySize(size, offset);
+	_isMapped = true;
 
-    *ppData = _pMappedMemory;
-    _mapOffset = offset;
-    _mapSize = mapSize;
+	*ppData = (void*)((uintptr_t)_pMemory + offset);
 
 	// Coherent memory does not require flushing by app, so we must flush now, to handle any texture updates.
 	if (isMemoryHostCoherent()) { pullFromDevice(offset, size, true); }
@@ -90,71 +54,32 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 }
 
 void MVKDeviceMemory::unmap() {
-//    MVKLogDebug("Unapping device memory %p.", this);
 
-    if (!_pMappedMemory) {
-        mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
-        return;
-    }
+	if ( !_isMapped ) {
+		mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
+		return;
+	}
 
 	// Coherent memory does not require flushing by app, so we must flush now.
 	if (isMemoryHostCoherent()) { flushToDevice(_mapOffset, _mapSize, true); }
 
-    free(_pMappedHostAllocation);
-    _pMappedHostAllocation = VK_NULL_HANDLE;
-    _pMappedMemory = VK_NULL_HANDLE;
-    _pLogicalMappedMemory = VK_NULL_HANDLE;
-
 	_mapOffset = 0;
 	_mapSize = 0;
-}
-
-// Attempts to map the memory defined by the offset and size to a unique resource, and returns
-// whether such a mapping was possible. If it was, the mapped region is stored in _pMappedMemory.
-bool MVKDeviceMemory::mapToUniqueResource(VkDeviceSize offset, VkDeviceSize size) {
-	lock_guard<mutex> lock(_rezLock);
-	MVKResource* uniqueRez = nullptr;
-	for (auto& rez : _resources) {
-		if (rez->doesContain(offset, size)) {
-			if (uniqueRez) { return false; }	// More than one resource mapped to the region
-			uniqueRez = rez;
-		}
-    }
-
-	if (uniqueRez) {
-		_pMappedMemory = uniqueRez->map(offset, size);
-		return true;
-	}
-
-	return false;
-}
-
-void* MVKDeviceMemory::allocateMappedMemory(VkDeviceSize offset, VkDeviceSize size) {
-
-    void* pMapAlloc = VK_NULL_HANDLE;
-
-//    MVKLogDebug("Allocating %d bytes of device memory %p.", size, this);
-
-    size_t mmAlign = _device->_pProperties->limits.minMemoryMapAlignment;
-    VkDeviceSize deltaOffset = offset % mmAlign;
-    int err = posix_memalign(&pMapAlloc, mmAlign, mvkAlignByteOffset(size + deltaOffset, mmAlign));
-    if (err) {
-        mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Could not allocate host memory to map to GPU memory.");
-        return nullptr;
-    }
-
-    _pMappedHostAllocation = pMapAlloc;
-    _pLogicalMappedMemory = (void*)((uintptr_t)pMapAlloc - offset);
-
-    return (void*)((uintptr_t)pMapAlloc + deltaOffset);
+	_isMapped = false;
 }
 
 VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, bool evenIfCoherent) {
 	// Coherent memory is flushed on unmap(), so it is only flushed if forced
-	if (size > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) ) {
+	VkDeviceSize memSize = adjustMemorySize(size, offset);
+	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) ) {
 		lock_guard<mutex> lock(_rezLock);
-		VkDeviceSize memSize = adjustMemorySize(size, offset);
         for (auto& rez : _resources) { rez->flushToDevice(offset, memSize); }
+
+#if MVK_MACOS
+		if (_mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
+			[_mtlBuffer didModifyRange: NSMakeRange(offset, memSize)];
+		}
+#endif
 	}
 	return VK_SUCCESS;
 }
@@ -169,17 +94,22 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset, VkDeviceSize size,
 	return VK_SUCCESS;
 }
 
-/** 
- * If the size parameter is the special constant VK_WHOLE_SIZE, returns the size of memory 
- * between offset and the end of the buffer, otherwise simply returns size.
- */
+// If the size parameter is the special constant VK_WHOLE_SIZE, returns the size of memory
+// between offset and the end of the buffer, otherwise simply returns size.
 VkDeviceSize MVKDeviceMemory::adjustMemorySize(VkDeviceSize size, VkDeviceSize offset) {
 	return (size == VK_WHOLE_SIZE) ? (_allocationSize - offset) : size;
 }
 
-void MVKDeviceMemory::addResource(MVKResource* rez) {
+VkResult MVKDeviceMemory::addResource(MVKResource* rez) {
 	lock_guard<mutex> lock(_rezLock);
+
+	if (rez->_isBuffer && !ensureMTLBuffer() ) {
+		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind a VkBuffer to a VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a VkDeviceMemory that supports a VkBuffer is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize);
+	}
+
 	_resources.push_back(rez);
+
+	return VK_SUCCESS;
 }
 
 void MVKDeviceMemory::removeResource(MVKResource* rez) {
@@ -187,23 +117,71 @@ void MVKDeviceMemory::removeResource(MVKResource* rez) {
 	mvkRemoveAllOccurances(_resources, rez);
 }
 
+// Ensures that this instance is backed by a MTLBuffer object,
+// creating the MTLBuffer if needed, and returns whether it was successful.
+bool MVKDeviceMemory::ensureMTLBuffer() {
+
+	if (_mtlBuffer) { return true; }
+
+	NSUInteger memLen = mvkAlignByteOffset(_allocationSize, _device->_pMetalFeatures->mtlBufferAlignment);
+
+	if (memLen > _device->_pMetalFeatures->maxMTLBufferSize) { return false; }
+
+	// If host memory was already allocated, it is copied into the new MTLBuffer, and then released.
+	if (_pHostMemory) {
+		_mtlBuffer = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: _mtlResourceOptions];     // retained
+		freeHostMemory();
+	} else {
+		_mtlBuffer = [getMTLDevice() newBufferWithLength: memLen options: _mtlResourceOptions];     // retained
+	}
+	_pMemory = _mtlBuffer.contents;
+
+	return true;
+}
+
+// Ensures that host-accessible memory is available, allocating it if necessary.
+bool MVKDeviceMemory::ensureHostMemory() {
+
+	if (_pMemory) { return true; }
+
+	if ( !_pHostMemory) {
+		size_t memAlign = _device->_pMetalFeatures->mtlBufferAlignment;
+		NSUInteger memLen = mvkAlignByteOffset(_allocationSize, memAlign);
+		int err = posix_memalign(&_pHostMemory, memAlign, memLen);
+		if (err) { return false; }
+	}
+
+	_pMemory = _pHostMemory;
+
+	return true;
+}
+
+void MVKDeviceMemory::freeHostMemory() {
+	free(_pHostMemory);
+	_pHostMemory = nullptr;
+}
+
 MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkMemoryAllocateInfo* pAllocateInfo,
 								 const VkAllocationCallbacks* pAllocator) : MVKBaseDeviceObject(device) {
-	_allocationSize = pAllocateInfo->allocationSize;
-	_mtlBuffer = nil;
-	_mapOffset = 0;
-	_mapSize = 0;
-
-    _pMappedHostAllocation = VK_NULL_HANDLE;
-    _pMappedMemory = VK_NULL_HANDLE;
-    _pLogicalMappedMemory = VK_NULL_HANDLE;
-
 	// Set Metal memory parameters
 	VkMemoryPropertyFlags vkMemProps = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
 	_mtlResourceOptions = mvkMTLResourceOptionsFromVkMemoryPropertyFlags(vkMemProps);
 	_mtlStorageMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(vkMemProps);
 	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(vkMemProps);
+
+	_allocationSize = pAllocateInfo->allocationSize;
+	_mtlBuffer = nil;
+	_pMemory = nullptr;
+	_pHostMemory = nullptr;
+	_isMapped = false;
+	_mapOffset = 0;
+	_mapSize = 0;
+
+	// If memory needs to be coherent it must reside in an MTLBuffer, since an open-ended map() must work.
+	if (isMemoryHostCoherent() && !ensureMTLBuffer() ) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+	}
 }
 
 MVKDeviceMemory::~MVKDeviceMemory() {
@@ -214,4 +192,6 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 
 	[_mtlBuffer release];
 	_mtlBuffer = nil;
+
+	freeHostMemory();
 }

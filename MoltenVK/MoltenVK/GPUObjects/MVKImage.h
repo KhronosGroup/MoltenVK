@@ -107,6 +107,9 @@ public:
 	/** Returns the memory requirements of this resource by populating the specified structure. */
 	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) override;
 
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+
 	/** Applies the specified global memory barrier. */
     void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
                             VkPipelineStageFlags dstStageMask,
@@ -204,7 +207,6 @@ protected:
 	MTLTextureDescriptor* getMTLTextureDescriptor();
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
-    void* map(VkDeviceSize offset, VkDeviceSize size) override;
 	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size) override;
 	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size) override;
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,

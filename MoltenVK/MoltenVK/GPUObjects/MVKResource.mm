@@ -28,9 +28,7 @@ VkResult MVKResource::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize mem
 	_deviceMemory = mvkMem;
 	_deviceMemoryOffset = memOffset;
 
-	if (_deviceMemory) { _deviceMemory->addResource(this); }
-
-	return VK_SUCCESS;
+	return _deviceMemory ? _deviceMemory->addResource(this) : VK_SUCCESS;
 }
 
 /**
@@ -46,28 +44,8 @@ bool MVKResource::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 #if MVK_MACOS
 	return (mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(pMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
-			_deviceMemory && _deviceMemory->isMemoryHostAccessible() && !_deviceMemory->isMemoryHostCoherent());
+			isMemoryHostAccessible() && !isMemoryHostCoherent());
 #endif
-}
-
-// Check if this resource overlaps the device memory offset and range
-bool MVKResource::doesOverlap(VkDeviceSize offset, VkDeviceSize size) {
-    VkDeviceSize memStart = offset;
-    VkDeviceSize memEnd = memStart + size;
-    VkDeviceSize rezStart = _deviceMemoryOffset;
-    VkDeviceSize rezEnd = rezStart + _byteCount;
-
-    return (memStart < rezEnd && memEnd > rezStart);
-}
-
-// Check if this resource completely contains the device memory offset and range
-bool MVKResource::doesContain(VkDeviceSize offset, VkDeviceSize size) {
-    VkDeviceSize memStart = offset;
-    VkDeviceSize memEnd = memStart + size;
-    VkDeviceSize rezStart = _deviceMemoryOffset;
-    VkDeviceSize rezEnd = rezStart + _byteCount;
-
-    return (memStart >= rezStart && memEnd <= rezEnd);
 }
 
 
