@@ -23,18 +23,13 @@
 #pragma mark MVKResource
 
 VkResult MVKResource::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
-	if (_deviceMemory) { _deviceMemory->removeResource(this); }
-
 	_deviceMemory = mvkMem;
 	_deviceMemoryOffset = memOffset;
-
-	return _deviceMemory ? _deviceMemory->addResource(this) : VK_SUCCESS;
+	return VK_SUCCESS;
 }
 
-/**
- * Returns whether the specified global memory barrier requires a sync between this
- * texture and host memory for the purpose of the host reading texture memory.
- */
+// Returns whether the specified global memory barrier requires a sync between this
+// texture and host memory for the purpose of the host reading texture memory.
 bool MVKResource::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 									VkPipelineStageFlags dstStageMask,
 									VkMemoryBarrier* pMemoryBarrier) {
@@ -47,11 +42,4 @@ bool MVKResource::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 			isMemoryHostAccessible() && !isMemoryHostCoherent());
 #endif
 }
-
-
-#pragma mark Construction
-
-MVKResource::~MVKResource() {
-    if (_deviceMemory) { _deviceMemory->removeResource(this); }
-};
 

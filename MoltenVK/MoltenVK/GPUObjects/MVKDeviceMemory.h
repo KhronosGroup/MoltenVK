@@ -23,7 +23,8 @@
 
 #import <Metal/Metal.h>
 
-class MVKResource;
+class MVKBuffer;
+class MVKImage;
 
 
 #pragma mark MVKDeviceMemory
@@ -97,25 +98,28 @@ public:
     ~MVKDeviceMemory() override;
 
 protected:
-	friend MVKResource;
+	friend MVKBuffer;
+	friend MVKImage;
 
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);
-	VkResult addResource(MVKResource* rez);
-	void removeResource(MVKResource* rez);
+	VkResult addBuffer(MVKBuffer* mvkBuff);
+	void removeBuffer(MVKBuffer* mvkBuff);
+	VkResult addImage(MVKImage* mvkImg);
+	void removeImage(MVKImage* mvkImg);
 	bool ensureMTLBuffer();
 	bool ensureHostMemory();
 	void freeHostMemory();
 
-	std::vector<MVKResource*> _resources;
+	std::vector<MVKBuffer*> _buffers;
+	std::vector<MVKImage*> _images;
 	std::mutex _rezLock;
-    VkDeviceSize _allocationSize;
-	VkDeviceSize _mapOffset;
-	VkDeviceSize _mapSize;
-	id<MTLBuffer> _mtlBuffer;
-	void* _pMemory;
-	void* _pHostMemory;
-	bool _isMapped;
-	std::mutex _lock;
+    VkDeviceSize _allocationSize = 0;
+	VkDeviceSize _mapOffset = 0;
+	VkDeviceSize _mapSize = 0;
+	id<MTLBuffer> _mtlBuffer = nil;
+	void* _pMemory = nullptr;
+	void* _pHostMemory = nullptr;
+	bool _isMapped = false;
 	MTLResourceOptions _mtlResourceOptions;
 	MTLStorageMode _mtlStorageMode;
 	MTLCPUCacheMode _mtlCPUCacheMode;

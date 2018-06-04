@@ -165,24 +165,49 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 
 // Memory may have been mapped before image was bound, and needs to be loaded into the MTLTexture.
 VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
-	VkResult rslt = MVKResource::bindDeviceMemory(mvkMem, memOffset);
-	if (isMemoryHostAccessible()) { flushToDevice(getDeviceMemoryOffset(), getByteCount()); }
-	return rslt;
+	if (_deviceMemory) { _deviceMemory->removeImage(this); }
+
+	MVKResource::bindDeviceMemory(mvkMem, memOffset);
+
+	_usesTexelBuffer = validateUseTexelBuffer();
+
+	flushToDevice(getDeviceMemoryOffset(), getByteCount());
+
+	return _deviceMemory ? _deviceMemory->addImage(this) : VK_SUCCESS;
 }
+
+bool MVKImage::validateUseTexelBuffer() {
+	VkExtent2D blockExt = mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat);
+	bool isUncompressed = blockExt.width == 1 && blockExt.height == 1;
+
+	bool useTexelBuffer = _device->_pMetalFeatures->texelBuffers;								// Texel buffers available
+	useTexelBuffer = useTexelBuffer && isMemoryHostAccessible() && _isLinear && isUncompressed;	// Applicable memory layout
+	useTexelBuffer = useTexelBuffer && _deviceMemory && _deviceMemory->_mtlBuffer;				// Buffer is available to overlay
+
+#if MVK_MACOS
+	useTexelBuffer = useTexelBuffer && !isMemoryHostCoherent();	// macOS cannot use shared memory for texel buffers
+#endif
+
+	return useTexelBuffer;
+}
+
+bool MVKImage::shouldFlushHostMemory() { return isMemoryHostAccessible() && !_usesTexelBuffer; }
 
 // Flushes the device memory at the specified memory range into the MTLTexture. Updates
 // all subresources that overlap the specified range and are in an updatable layout state.
 VkResult MVKImage::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
-	for (auto& subRez : _subresources) {
-		switch (subRez.layoutState) {
-			case VK_IMAGE_LAYOUT_UNDEFINED:			// TODO: VK_IMAGE_LAYOUT_UNDEFINED should be illegal
-			case VK_IMAGE_LAYOUT_PREINITIALIZED:
-			case VK_IMAGE_LAYOUT_GENERAL: {
-				updateMTLTextureContent(subRez, offset, size);
-				break;
+	if (shouldFlushHostMemory()) {
+		for (auto& subRez : _subresources) {
+			switch (subRez.layoutState) {
+				case VK_IMAGE_LAYOUT_UNDEFINED:
+				case VK_IMAGE_LAYOUT_PREINITIALIZED:
+				case VK_IMAGE_LAYOUT_GENERAL: {
+					updateMTLTextureContent(subRez, offset, size);
+					break;
+				}
+				default:
+					break;
 			}
-			default:
-				break;
 		}
 	}
 	return VK_SUCCESS;
@@ -191,14 +216,16 @@ VkResult MVKImage::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
 // Pulls content from the MTLTexture into the device memory at the specified memory range.
 // Pulls from all subresources that overlap the specified range and are in an updatable layout state.
 VkResult MVKImage::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
-	for (auto& subRez : _subresources) {
-		switch (subRez.layoutState) {
-			case VK_IMAGE_LAYOUT_GENERAL: {
-                getMTLTextureContent(subRez, offset, size);
-				break;
+	if (shouldFlushHostMemory()) {
+		for (auto& subRez : _subresources) {
+			switch (subRez.layoutState) {
+				case VK_IMAGE_LAYOUT_GENERAL: {
+					getMTLTextureContent(subRez, offset, size);
+					break;
+				}
+				default:
+					break;
 			}
-			default:
-				break;
 		}
 	}
 	return VK_SUCCESS;
@@ -249,6 +276,10 @@ VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
 id<MTLTexture> MVKImage::newMTLTexture() {
     if (_ioSurface) {
         return [getMTLDevice() newTextureWithDescriptor: getMTLTextureDescriptor() iosurface: _ioSurface plane: 0];
+	} else if (_usesTexelBuffer) {
+        return [_deviceMemory->_mtlBuffer newTextureWithDescriptor: getMTLTextureDescriptor()
+															offset: getDeviceMemoryOffset()
+													   bytesPerRow: _subresources[0].layout.rowPitch];
     } else {
         return [getMTLDevice() newTextureWithDescriptor: getMTLTextureDescriptor()];
     }
@@ -337,24 +368,22 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 //specified subresource definition, from the underlying memory buffer.
 void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
                                        VkDeviceSize offset, VkDeviceSize size) {
-    // Check if subresource overlaps the memory range.
+
+	VkImageSubresource& imgSubRez = subresource.subresource;
+	VkSubresourceLayout& imgLayout = subresource.layout;
+
+	// Check if subresource overlaps the memory range.
     VkDeviceSize memStart = offset;
     VkDeviceSize memEnd = offset + size;
-    VkDeviceSize imgStart = subresource.layout.offset;
-    VkDeviceSize imgEnd = subresource.layout.offset + subresource.layout.size;
+    VkDeviceSize imgStart = imgLayout.offset;
+    VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
     if (imgStart >= memEnd || imgEnd <= memStart) { return; }
 
 	// Don't update if host memory has not been mapped yet.
 	void* pHostMem = getHostMemoryAddress();
 	if ( !pHostMem ) { return; }
 
-    VkImageSubresource& imgSubRez = subresource.subresource;
-    VkSubresourceLayout& imgLayout = subresource.layout;
-
-    uint32_t mipLvl = imgSubRez.mipLevel;
-    uint32_t layer = imgSubRez.arrayLayer;
-
-    VkExtent3D mipExtent = getExtent3D(mipLvl);
+    VkExtent3D mipExtent = getExtent3D(imgSubRez.mipLevel);
     VkImageType imgType = getImageType();
     void* pImgBytes = (void*)((uintptr_t)pHostMem + imgLayout.offset);
 
@@ -363,8 +392,8 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
     mtlRegion.size = mvkMTLSizeFromVkExtent3D(mipExtent);
 
     [getMTLTexture() replaceRegion: mtlRegion
-                       mipmapLevel: mipLvl
-                             slice: layer
+                       mipmapLevel: imgSubRez.mipLevel
+                             slice: imgSubRez.arrayLayer
                          withBytes: pImgBytes
                        bytesPerRow: (imgType != VK_IMAGE_TYPE_1D ? imgLayout.rowPitch : 0)
                      bytesPerImage: (imgType == VK_IMAGE_TYPE_3D ? imgLayout.depthPitch : 0)];
@@ -374,24 +403,22 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
 // the underlying MTLTexture, corresponding to the specified subresource definition.
 void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
                                     VkDeviceSize offset, VkDeviceSize size) {
-    // Check if subresource overlaps the memory range.
+
+	VkImageSubresource& imgSubRez = subresource.subresource;
+	VkSubresourceLayout& imgLayout = subresource.layout;
+
+	// Check if subresource overlaps the memory range.
     VkDeviceSize memStart = offset;
     VkDeviceSize memEnd = offset + size;
-    VkDeviceSize imgStart = subresource.layout.offset;
-    VkDeviceSize imgEnd = subresource.layout.offset + subresource.layout.size;
+    VkDeviceSize imgStart = imgLayout.offset;
+    VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
     if (imgStart >= memEnd || imgEnd <= memStart) { return; }
 
 	// Don't update if host memory has not been mapped yet.
 	void* pHostMem = getHostMemoryAddress();
 	if ( !pHostMem ) { return; }
 
-    VkImageSubresource& imgSubRez = subresource.subresource;
-    VkSubresourceLayout& imgLayout = subresource.layout;
-
-    uint32_t mipLvl = imgSubRez.mipLevel;
-    uint32_t layer = imgSubRez.arrayLayer;
-
-    VkExtent3D mipExtent = getExtent3D(mipLvl);
+    VkExtent3D mipExtent = getExtent3D(imgSubRez.mipLevel);
     VkImageType imgType = getImageType();
     void* pImgBytes = (void*)((uintptr_t)pHostMem + imgLayout.offset);
 
@@ -403,8 +430,8 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
                   bytesPerRow: (imgType != VK_IMAGE_TYPE_1D ? imgLayout.rowPitch : 0)
                 bytesPerImage: (imgType == VK_IMAGE_TYPE_3D ? imgLayout.depthPitch : 0)
                    fromRegion: mtlRegion
-                  mipmapLevel: mipLvl
-                        slice: layer];
+                  mipmapLevel: imgSubRez.mipLevel
+                        slice: imgSubRez.arrayLayer];
 }
 
 
@@ -444,8 +471,10 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
     _isDepthStencilAttachment = (mvkAreFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
                                  mvkAreFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
-
+	_canSupportMTLTextureView = !_isDepthStencilAttachment;
     _hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
+	_isLinear = validateLinear(pCreateInfo);
+	_usesTexelBuffer = false;
 
    // Calc _byteCount after _mtlTexture & _byteAlignment
     for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
@@ -453,8 +482,44 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     }
 
     initSubresources(pCreateInfo);
-	initMTLTextureViewSupport();
 }
+
+bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
+	if (pCreateInfo->tiling != VK_IMAGE_TILING_LINEAR) { return false; }
+
+	if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, imageType must be VK_IMAGE_TYPE_2D."));
+		return false;
+	}
+
+	if (_isDepthStencilAttachment) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a depth/stencil format."));
+		return false;
+	}
+
+	if (_mipLevels > 1) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, mipLevels must be 1."));
+		return false;
+	}
+
+	if (_arrayLayers > 1) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, arrayLayers must be 1."));
+		return false;
+	}
+
+	if (_samples > 1) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, samples must be VK_SAMPLE_COUNT_1_BIT."));
+		return false;
+	}
+
+	if (mvkAreOnlyAnyFlagsEnabled(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT))) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, usage must only include VK_IMAGE_USAGE_TRANSFER_SRC_BIT and/or VK_IMAGE_USAGE_TRANSFER_DST_BIT."));
+		return false;
+	}
+
+	return true;
+}
+
 
 // Initializes the subresource definitions.
 void MVKImage::initSubresources(const VkImageCreateInfo* pCreateInfo) {
@@ -498,13 +563,8 @@ void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 	layout.depthPitch = bytesPerLayerCurrLevel;
 }
 
-// Determines whether this image can support Metal texture views,
-// and sets the _canSupportMTLTextureView variable appropriately.
-void MVKImage::initMTLTextureViewSupport() {
-	_canSupportMTLTextureView = !_isDepthStencilAttachment;
-}
-
 MVKImage::~MVKImage() {
+	if (_deviceMemory) { _deviceMemory->removeImage(this); }
 	resetMTLTexture();
     resetIOSurface();
 }

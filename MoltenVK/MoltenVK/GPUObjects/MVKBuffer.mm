@@ -36,6 +36,14 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequireme
 	return VK_SUCCESS;
 }
 
+VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
+	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
+
+	MVKResource::bindDeviceMemory(mvkMem, memOffset);
+
+	return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
+}
+
 void MVKBuffer::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
 								   VkMemoryBarrier* pMemoryBarrier,
@@ -83,7 +91,10 @@ bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) : MVKResource(device) {
     _byteAlignment = _device->_pMetalFeatures->mtlBufferAlignment;
     _byteCount = pCreateInfo->size;
-	_isBuffer  = true;
+}
+
+MVKBuffer::~MVKBuffer() {
+	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
 }
 
 

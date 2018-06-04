@@ -17,6 +17,7 @@
  */
 
 #include "MVKDeviceMemory.h"
+#include "MVKBuffer.h"
 #include "MVKImage.h"
 #include "mvk_datatypes.h"
 #include "MVKFoundation.h"
@@ -48,7 +49,7 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 	*ppData = (void*)((uintptr_t)_pMemory + offset);
 
 	// Coherent memory does not require flushing by app, so we must flush now, to handle any texture updates.
-	if (isMemoryHostCoherent()) { pullFromDevice(offset, size, true); }
+	pullFromDevice(offset, size, isMemoryHostCoherent());
 
 	return VK_SUCCESS;
 }
@@ -61,7 +62,7 @@ void MVKDeviceMemory::unmap() {
 	}
 
 	// Coherent memory does not require flushing by app, so we must flush now.
-	if (isMemoryHostCoherent()) { flushToDevice(_mapOffset, _mapSize, true); }
+	flushToDevice(_mapOffset, _mapSize, isMemoryHostCoherent());
 
 	_mapOffset = 0;
 	_mapSize = 0;
@@ -72,14 +73,15 @@ VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, 
 	// Coherent memory is flushed on unmap(), so it is only flushed if forced
 	VkDeviceSize memSize = adjustMemorySize(size, offset);
 	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) ) {
-		lock_guard<mutex> lock(_rezLock);
-        for (auto& rez : _resources) { rez->flushToDevice(offset, memSize); }
 
 #if MVK_MACOS
 		if (_mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
 			[_mtlBuffer didModifyRange: NSMakeRange(offset, memSize)];
 		}
 #endif
+
+		lock_guard<mutex> lock(_rezLock);
+        for (auto& img : _images) { img->flushToDevice(offset, memSize); }
 	}
 	return VK_SUCCESS;
 }
@@ -89,7 +91,7 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset, VkDeviceSize size,
     VkDeviceSize memSize = adjustMemorySize(size, offset);
 	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) ) {
 		lock_guard<mutex> lock(_rezLock);
-        for (auto& rez : _resources) { rez->pullFromDevice(offset, memSize); }
+        for (auto& img : _images) { img->pullFromDevice(offset, memSize); }
 	}
 	return VK_SUCCESS;
 }
@@ -100,21 +102,34 @@ VkDeviceSize MVKDeviceMemory::adjustMemorySize(VkDeviceSize size, VkDeviceSize o
 	return (size == VK_WHOLE_SIZE) ? (_allocationSize - offset) : size;
 }
 
-VkResult MVKDeviceMemory::addResource(MVKResource* rez) {
+VkResult MVKDeviceMemory::addBuffer(MVKBuffer* mvkBuff) {
 	lock_guard<mutex> lock(_rezLock);
 
-	if (rez->_isBuffer && !ensureMTLBuffer() ) {
+	if (!ensureMTLBuffer() ) {
 		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind a VkBuffer to a VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a VkDeviceMemory that supports a VkBuffer is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize);
 	}
 
-	_resources.push_back(rez);
+	_buffers.push_back(mvkBuff);
 
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::removeResource(MVKResource* rez) {
+void MVKDeviceMemory::removeBuffer(MVKBuffer* mvkBuff) {
 	lock_guard<mutex> lock(_rezLock);
-	mvkRemoveAllOccurances(_resources, rez);
+	mvkRemoveAllOccurances(_buffers, mvkBuff);
+}
+
+VkResult MVKDeviceMemory::addImage(MVKImage* mvkImg) {
+	lock_guard<mutex> lock(_rezLock);
+
+	_images.push_back(mvkImg);
+
+	return VK_SUCCESS;
+}
+
+void MVKDeviceMemory::removeImage(MVKImage* mvkImg) {
+	lock_guard<mutex> lock(_rezLock);
+	mvkRemoveAllOccurances(_images, mvkImg);
 }
 
 // Ensures that this instance is backed by a MTLBuffer object,
@@ -171,12 +186,6 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(vkMemProps);
 
 	_allocationSize = pAllocateInfo->allocationSize;
-	_mtlBuffer = nil;
-	_pMemory = nullptr;
-	_pHostMemory = nullptr;
-	_isMapped = false;
-	_mapOffset = 0;
-	_mapSize = 0;
 
 	// If memory needs to be coherent it must reside in an MTLBuffer, since an open-ended map() must work.
 	if (isMemoryHostCoherent() && !ensureMTLBuffer() ) {
@@ -187,8 +196,10 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 MVKDeviceMemory::~MVKDeviceMemory() {
     // Unbind any resources that are using me. Iterate a copy of the collection,
     // to allow the resource to callback to remove itself from the collection.
-    auto rezCopies = _resources;
-    for (auto& rez : rezCopies) { rez->bindDeviceMemory(nullptr, 0); }
+    auto buffCopies = _buffers;
+    for (auto& buf : buffCopies) { buf->bindDeviceMemory(nullptr, 0); }
+	auto imgCopies = _images;
+	for (auto& img : imgCopies) { img->bindDeviceMemory(nullptr, 0); }
 
 	[_mtlBuffer release];
 	_mtlBuffer = nil;

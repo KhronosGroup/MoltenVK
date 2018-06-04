@@ -36,6 +36,9 @@ public:
 	/** Returns the memory requirements of this resource by populating the specified structure. */
 	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) override;
 
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+
 	/** Applies the specified global memory barrier. */
     void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
                             VkPipelineStageFlags dstStageMask,
@@ -63,6 +66,8 @@ public:
 #pragma mark Construction
 	
 	MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo);
+
+	~MVKBuffer() override;
 
 protected:
 	using MVKResource::needsHostReadSync;

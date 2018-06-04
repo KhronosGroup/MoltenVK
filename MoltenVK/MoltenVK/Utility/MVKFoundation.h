@@ -363,7 +363,11 @@ bool mvkAreFlagsEnabled(T1 value, const T2 bitMask) { return ((value & bitMask) 
 template<typename T1, typename T2>
 bool mvkIsAnyFlagEnabled(T1 value, const T2 bitMask) { return !!(value & bitMask); }
 
-/** Returns whether the specified value has ONLY of the flags specified in bitMask enabled (set to 1). */
+/** Returns whether the specified value has ONLY ALL of the flags specified in bitMask enabled (set to 1), and none others. */
 template<typename T1, typename T2>
-bool mvkAreOnlyFlagsEnabled(T1 value, const T2 bitMask) { return (value == bitMask); }
+bool mvkAreOnlyAllFlagsEnabled(T1 value, const T2 bitMask) { return (value == bitMask); }
+
+/** Returns whether the specified value has ONLY one or more of the flags specified in bitMask enabled (set to 1), and none others. */
+template<typename T1, typename T2>
+bool mvkAreOnlyAnyFlagsEnabled(T1 value, const T2 bitMask) { return (mvkIsAnyFlagEnabled(value, bitMask) && ((value | bitMask) == bitMask)); }
 

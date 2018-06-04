@@ -71,17 +71,9 @@ public:
 	
 #pragma mark Construction
 
-	/** Constructs an instance for the specified device. */
     MVKResource(MVKDevice* device) : MVKBaseDeviceObject(device) {}
 
-	/** Destructor. */
-	~MVKResource() override;
-
 protected:
-	friend MVKDeviceMemory;
-	
-	virtual VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size) { return VK_SUCCESS; };
-	virtual VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size) { return VK_SUCCESS; };
 	virtual bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
 								   VkMemoryBarrier* pMemoryBarrier);
@@ -90,5 +82,4 @@ protected:
 	VkDeviceSize _deviceMemoryOffset = 0;
     VkDeviceSize _byteCount = 0;
     VkDeviceSize _byteAlignment = 0;
-	bool _isBuffer  = false;
 };
