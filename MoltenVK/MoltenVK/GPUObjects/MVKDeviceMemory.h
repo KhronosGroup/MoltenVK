@@ -23,7 +23,8 @@
 
 #import <Metal/Metal.h>
 
-class MVKResource;
+class MVKBuffer;
+class MVKImage;
 
 
 #pragma mark MVKDeviceMemory
@@ -42,18 +43,11 @@ public:
     /** Returns the memory already committed by this instance. */
     inline VkDeviceSize getDeviceMemoryCommitment() { return _allocationSize; }
 
-    /**
-     * Returns the host memory address that represents what would be the beginning of the 
-     * mapped address space if the entire device memory represented by this object were to
-     * be mapped to host memory.
-     *
-     * This is the address to which the offset value in the vMapMemory() call references.
-     * It only has physical meaning if offset is zero, otherwise it is a logical address
-     * used to calculate resource offsets.
-     *
-     * This function must only be called between vkMapMemory() and vkUnmapMemory() calls.
-     */
-    inline void* getLogicalMappedMemory() { return _pLogicalMappedMemory; }
+	/**
+	 * Returns the host memory address of this memory, or NULL if the memory
+	 * is marked as device-only and cannot be mapped to a host address.
+	 */
+	inline void* getHostMemoryAddress() { return _pMemory; }
 
 	/**
 	 * Maps the memory address at the specified offset from the start of this memory allocation,
@@ -63,9 +57,6 @@ public:
 
 	/** Unmaps a previously mapped memory range. */
 	void unmap();
-
-    /** Allocates mapped host memory, and returns a pointer to it. */
-    void* allocateMappedMemory(VkDeviceSize offset, VkDeviceSize size);
 
 	/** 
 	 * If this memory is host-visible, the specified memory range is flushed to the device.
@@ -107,25 +98,30 @@ public:
     ~MVKDeviceMemory() override;
 
 protected:
-	friend MVKResource;
+	friend MVKBuffer;
+	friend MVKImage;
 
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);
-    bool mapToUniqueResource(VkDeviceSize offset, VkDeviceSize size);
-	void addResource(MVKResource* rez);
-	void removeResource(MVKResource* rez);
+	VkResult addBuffer(MVKBuffer* mvkBuff);
+	void removeBuffer(MVKBuffer* mvkBuff);
+	VkResult addImage(MVKImage* mvkImg);
+	void removeImage(MVKImage* mvkImg);
+	bool ensureMTLBuffer();
+	bool ensureHostMemory();
+	void freeHostMemory();
 
-	std::vector<MVKResource*> _resources;
+	std::vector<MVKBuffer*> _buffers;
+	std::vector<MVKImage*> _images;
 	std::mutex _rezLock;
-    VkDeviceSize _allocationSize;
-	VkDeviceSize _mapOffset;
-	VkDeviceSize _mapSize;
-	id<MTLBuffer> _mtlBuffer;
-	std::mutex _lock;
+    VkDeviceSize _allocationSize = 0;
+	VkDeviceSize _mapOffset = 0;
+	VkDeviceSize _mapSize = 0;
+	id<MTLBuffer> _mtlBuffer = nil;
+	void* _pMemory = nullptr;
+	void* _pHostMemory = nullptr;
+	bool _isMapped = false;
 	MTLResourceOptions _mtlResourceOptions;
 	MTLStorageMode _mtlStorageMode;
 	MTLCPUCacheMode _mtlCPUCacheMode;
-    void* _pMappedHostAllocation;
-    void* _pMappedMemory;
-    void* _pLogicalMappedMemory;
 };
 

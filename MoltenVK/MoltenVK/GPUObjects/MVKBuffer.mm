@@ -31,9 +31,17 @@ using namespace std;
 
 VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) {
 	pMemoryRequirements->size = getByteCount();
-	pMemoryRequirements->alignment = getByteAlignment();
+	pMemoryRequirements->alignment = _byteAlignment;
 	pMemoryRequirements->memoryTypeBits = _device->getPhysicalDevice()->getAllMemoryTypes();
 	return VK_SUCCESS;
+}
+
+VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
+	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
+
+	MVKResource::bindDeviceMemory(mvkMem, memOffset);
+
+	return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
 }
 
 void MVKBuffer::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
@@ -73,104 +81,8 @@ bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 #if MVK_MACOS
 	return (mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(pBufferMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
-			_deviceMemory->isMemoryHostAccessible() && !_deviceMemory->isMemoryHostCoherent());
+			isMemoryHostAccessible() && !isMemoryHostCoherent());
 #endif
-}
-
-/** Called when the bound device memory is updated. Flushes any associated resource memory. */
-VkResult MVKBuffer::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
-    VkResult rslt = copyMTLBufferContent(offset, size, true);
-
-#if MVK_MACOS
-    if (_deviceMemory->getMTLStorageMode() == MTLStorageModeManaged) {
-        [getMTLBuffer() didModifyRange: mtlBufferRange(offset, size)];
-    }
-#endif
-
-    return rslt;
-}
-
-// Called when the bound device memory is invalidated. Pulls any associated resource memory from the device.
-VkResult MVKBuffer::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
-    VkResult rslt = copyMTLBufferContent(offset, size, false);
-
-    // If we are pulling to populate a newly created device memory MTLBuffer,
-    // from a previously created local MTLBuffer, remove the local MTLBuffer.
-	// Use autorelease in case the earlier MTLBuffer was encoded.
-    if (_mtlBuffer && _deviceMemory->getMTLBuffer()) {
-        [_mtlBuffer autorelease];
-        _mtlBuffer = nil;
-    }
-
-    return rslt;
-}
-
-void* MVKBuffer::map(VkDeviceSize offset, VkDeviceSize size) {
-    return (void*)((uintptr_t)getMTLBuffer().contents + mtlBufferRange(offset, size).location);
-}
-
-// Copies host content into or out of the MTLBuffer.
-VkResult MVKBuffer::copyMTLBufferContent(VkDeviceSize offset, VkDeviceSize size, bool intoMTLBuffer) {
-
-    // Only copy if there is separate host memory and this buffer overlaps the host memory range
-    void* pMemBase = _deviceMemory->getLogicalMappedMemory();
-    if (pMemBase && doesOverlap(offset, size)) {
-
-        NSRange copyRange = mtlBufferRange(offset, size);
-        VkDeviceSize memOffset = max(offset, _deviceMemoryOffset);
-
-//        MVKLogDebug("Copying contents %s buffer %p at buffer offset %d memory offset %d and length %d.", (intoMTLBuffer ? "to" : "from"), this, copyRange.location, memOffset, copyRange.length);
-
-        void* pMemBytes = (void*)((uintptr_t)pMemBase + memOffset);
-        void* pMTLBuffBytes = (void*)((uintptr_t)getMTLBuffer().contents + copyRange.location);
-
-        // Copy in the direction indicated.
-        // Don't copy if the source and destination are the same address, which will
-        // occur if the underlying MTLBuffer comes from the device memory object.
-        if (pMemBytes != pMTLBuffBytes) {
-//            MVKLogDebug("Copying buffer contents.");
-            if (intoMTLBuffer) {
-                memcpy(pMTLBuffBytes, pMemBytes, copyRange.length);
-            } else {
-                memcpy(pMemBytes, pMTLBuffBytes, copyRange.length);
-            }
-        }
-    }
-
-    return VK_SUCCESS;
-}
-
-
-#pragma mark Metal
-
-// If a local MTLBuffer already exists, use it.
-// If the device memory has a MTLBuffer, use it.
-// Otherwise, create a new MTLBuffer and use it from now on.
-id<MTLBuffer> MVKBuffer::getMTLBuffer() {
-
-    if (_mtlBuffer) { return _mtlBuffer; }
-
-    id<MTLBuffer> devMemMTLBuff = _deviceMemory->getMTLBuffer();
-    if (devMemMTLBuff) { return devMemMTLBuff; }
-
-	// Lock and check again in case another thread has created the buffer.
-    lock_guard<mutex> lock(_lock);
-    if (_mtlBuffer) { return _mtlBuffer; }
-    
-    NSUInteger mtlBuffLen = mvkAlignByteOffset(_byteCount, _byteAlignment);
-    _mtlBuffer = [getMTLDevice() newBufferWithLength: mtlBuffLen
-                                             options: _deviceMemory->getMTLResourceOptions()];     // retained
-//    MVKLogDebug("MVKBuffer %p creating local MTLBuffer of size %d.", this, _mtlBuffer.length);
-    return _mtlBuffer;
-}
-
-NSUInteger MVKBuffer::getMTLBufferOffset() { return _mtlBuffer ? 0 : _deviceMemoryOffset; }
-
-// Returns an NSRange that maps the specified host memory range to the MTLBuffer.
-NSRange MVKBuffer::mtlBufferRange(VkDeviceSize offset, VkDeviceSize size) {
-    NSUInteger localRangeLoc = min((offset > _deviceMemoryOffset) ? (offset - _deviceMemoryOffset) : 0, _byteCount);
-    NSUInteger localRangeLen = min(size, _byteCount - localRangeLoc);
-    return NSMakeRange(getMTLBufferOffset() + localRangeLoc, localRangeLen);
 }
 
 
@@ -179,12 +91,10 @@ NSRange MVKBuffer::mtlBufferRange(VkDeviceSize offset, VkDeviceSize size) {
 MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) : MVKResource(device) {
     _byteAlignment = _device->_pMetalFeatures->mtlBufferAlignment;
     _byteCount = pCreateInfo->size;
-    _mtlBuffer = nil;
 }
 
 MVKBuffer::~MVKBuffer() {
-    [_mtlBuffer release];
-    _mtlBuffer = nil;
+	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
 }
 
 

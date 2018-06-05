@@ -107,6 +107,9 @@ public:
 	/** Returns the memory requirements of this resource by populating the specified structure. */
 	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) override;
 
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+
 	/** Applies the specified global memory barrier. */
     void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
                             VkPipelineStageFlags dstStageMask,
@@ -191,11 +194,13 @@ public:
 	~MVKImage() override;
 
 protected:
+	friend class MVKDeviceMemory;
 	friend class MVKImageView;
 	using MVKResource::needsHostReadSync;
 
 	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
-	void initMTLTextureViewSupport();
+	bool validateLinear(const VkImageCreateInfo* pCreateInfo);
+	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
 	virtual id<MTLTexture> newMTLTexture();
@@ -204,9 +209,9 @@ protected:
 	MTLTextureDescriptor* getMTLTextureDescriptor();
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
-    void* map(VkDeviceSize offset, VkDeviceSize size) override;
-	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size) override;
-	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size) override;
+	bool shouldFlushHostMemory();
+	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
+	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   VkImageMemoryBarrier* pImageMemoryBarrier);
@@ -225,6 +230,8 @@ protected:
     bool _isDepthStencilAttachment;
 	bool _canSupportMTLTextureView;
     bool _hasExpectedTexelSize;
+	bool _usesTexelBuffer;
+	bool _isLinear;
 };
 
 

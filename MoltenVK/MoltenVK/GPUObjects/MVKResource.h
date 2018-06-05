@@ -38,36 +38,28 @@ public:
     /** Returns the byte offset in the bound device memory. */
     inline VkDeviceSize getDeviceMemoryOffset() { return _deviceMemoryOffset; }
 
-	/** Returns the byte alignment required for this resource. */
-    inline VkDeviceSize getByteAlignment() { return _byteAlignment; }
-
 	/** Returns the memory requirements of this resource by populating the specified structure. */
 	virtual VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) = 0;
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
+	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
 
 	/** Returns the device memory underlying this resource. */
 	inline MVKDeviceMemory* getDeviceMemory() { return _deviceMemory; }
 
 	/** Returns whether the memory is accessible from the host. */
-    inline bool isMemoryHostAccessible() {
-        return (_deviceMemory ? _deviceMemory->isMemoryHostAccessible() : false);
-    }
+	inline bool isMemoryHostAccessible() { return _deviceMemory && _deviceMemory->isMemoryHostAccessible(); }
 
-    /**
-     * Returns the host memory address that represents what would be the beginning of 
-     * the host address space that this resource is mapped to by a vkMapMemory() call.
-     *
-     * The returnd value only has physical meaning if the mapped memory overlaps the 
-     * beginning of the memory used by this resource, otherwise it is a logical address
-     * used to calculate resource offsets.
-     *
-     * This function must only be called between vkMapMemory() and vkUnmapMemory() calls.
-     */
-    inline void* getLogicalMappedMemory() {
-        return (_deviceMemory ? (void*)((uintptr_t)_deviceMemory->getLogicalMappedMemory() + _deviceMemoryOffset) : nullptr);
-    }
+	/** Returns whether the memory is automatically coherent between device and host. */
+	inline bool isMemoryHostCoherent() { return _deviceMemory && _deviceMemory->isMemoryHostCoherent(); }
+
+	/**
+	 * Returns the host memory address of this resource, or NULL if the memory
+	 * is marked as device-only and cannot be mapped to a host address.
+	 */
+	inline void* getHostMemoryAddress() {
+		return (_deviceMemory ? (void*)((uintptr_t)_deviceMemory->getHostMemoryAddress() + _deviceMemoryOffset) : nullptr);
+	}
 
 	/** Applies the specified global memory barrier. */
 	virtual void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
@@ -79,23 +71,12 @@ public:
 	
 #pragma mark Construction
 
-	/** Constructs an instance for the specified device. */
     MVKResource(MVKDevice* device) : MVKBaseDeviceObject(device) {}
 
-	/** Destructor. */
-	~MVKResource() override;
-
 protected:
-	friend MVKDeviceMemory;
-	
-    virtual void* map(VkDeviceSize offset, VkDeviceSize size) = 0;
-	virtual VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size) = 0;
-	virtual VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size) = 0;
 	virtual bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
 								   VkMemoryBarrier* pMemoryBarrier);
-    bool doesOverlap(VkDeviceSize offset, VkDeviceSize size);
-    bool doesContain(VkDeviceSize offset, VkDeviceSize size);
 
 	MVKDeviceMemory* _deviceMemory = nullptr;
 	VkDeviceSize _deviceMemoryOffset = 0;
