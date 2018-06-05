@@ -149,7 +149,7 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 	} else {
 		_mtlBuffer = [getMTLDevice() newBufferWithLength: memLen options: _mtlResourceOptions];     // retained
 	}
-	_pMemory = _mtlBuffer.contents;
+	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
 
 	return true;
 }
