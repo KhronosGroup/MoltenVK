@@ -512,7 +512,7 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
 		return false;
 	}
 
-	if (mvkAreOnlyAnyFlagsEnabled(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT))) {
+	if ( !mvkAreOnlyAnyFlagsEnabled(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) ) {
 		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, usage must only include VK_IMAGE_USAGE_TRANSFER_SRC_BIT and/or VK_IMAGE_USAGE_TRANSFER_DST_BIT."));
 		return false;
 	}

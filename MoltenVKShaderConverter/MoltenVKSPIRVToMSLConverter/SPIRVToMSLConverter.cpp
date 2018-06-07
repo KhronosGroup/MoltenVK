@@ -86,26 +86,30 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::matches(const SPIRVToMSLConve
 
     if ( !options.matches(other.options) ) { return false; }
 
-    for (const auto& va : vertexAttributes) {
-        if (va.isUsedByShader && !contains(other.vertexAttributes, va)) { return false; }
-    }
+	if (options.entryPointStage == spv::ExecutionModelVertex) {
+		for (const auto& va : vertexAttributes) {
+			if (va.isUsedByShader && !contains(other.vertexAttributes, va)) { return false; }
+		}
+	}
 
     for (const auto& rb : resourceBindings) {
         if (rb.isUsedByShader && !contains(other.resourceBindings, rb)) { return false; }
     }
-    
+
     return true;
 }
 
 // Aligns the usage of the destination context to that of the source context.
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignUsageWith(const SPIRVToMSLConverterContext& srcContext) {
 
-    for (auto& va : vertexAttributes) {
-        va.isUsedByShader = false;
-        for (auto& srcVA : srcContext.vertexAttributes) {
-            if (va.matches(srcVA)) { va.isUsedByShader = srcVA.isUsedByShader; }
-        }
-    }
+	if (options.entryPointStage == spv::ExecutionModelVertex) {
+		for (auto& va : vertexAttributes) {
+			va.isUsedByShader = false;
+			for (auto& srcVA : srcContext.vertexAttributes) {
+				if (va.matches(srcVA)) { va.isUsedByShader = srcVA.isUsedByShader; }
+			}
+		}
+	}
 
     for (auto& rb : resourceBindings) {
         rb.isUsedByShader = false;
