@@ -195,6 +195,8 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
 
 	if (pCreateInfo->presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
 		_mtlLayer.displaySyncEnabledMVK = NO;
+	} else {
+		_mtlLayer.displaySyncEnabledMVK = YES;
 	}
 
 	// TODO: set additional CAMetalLayer properties before extracting drawables:
