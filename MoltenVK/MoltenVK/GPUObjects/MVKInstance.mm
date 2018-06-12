@@ -296,7 +296,16 @@ static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
 		BOOL md1IsLP = md1.isLowPower;
 		BOOL md2IsLP = md2.isLowPower;
 
-		if (md1IsLP == md2IsLP) { return NSOrderedSame; }
+		if (md1IsLP == md2IsLP) {
+			// If one device is headless and the other one is not, select the
+			// one that is not headless first.
+			BOOL md1IsHeadless = md1.isHeadless;
+			BOOL md2IsHeadless = md2.isHeadless;
+			if (md1IsHeadless == md2IsHeadless ) {
+				return NSOrderedSame;
+			}
+			return md2IsHeadless ? NSOrderedAscending : NSOrderedDescending;
+		}
 
 		return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
 	}];
