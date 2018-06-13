@@ -33,11 +33,11 @@ id<MTLRenderPipelineState> MVKCommandEncodingPool::getCmdClearMTLRenderPipelineS
 	return rps;
 }
 
-id<MTLRenderPipelineState> MVKCommandEncodingPool::getCmdBlitImageMTLRenderPipelineState(MTLPixelFormat mtlPixFmt) {
-    id<MTLRenderPipelineState> rps = _cmdBlitImageMTLRenderPipelineStates[mtlPixFmt];
+id<MTLRenderPipelineState> MVKCommandEncodingPool::getCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey) {
+    id<MTLRenderPipelineState> rps = _cmdBlitImageMTLRenderPipelineStates[blitKey];
     if ( !rps ) {
-        rps = _device->getCommandResourceFactory()->newCmdBlitImageMTLRenderPipelineState(mtlPixFmt);	// retained
-        _cmdBlitImageMTLRenderPipelineStates[mtlPixFmt] = rps;
+        rps = _device->getCommandResourceFactory()->newCmdBlitImageMTLRenderPipelineState(blitKey);	// retained
+        _cmdBlitImageMTLRenderPipelineStates[blitKey] = rps;
     }
     return rps;
 }

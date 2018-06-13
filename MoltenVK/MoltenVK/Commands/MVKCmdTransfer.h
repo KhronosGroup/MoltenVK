@@ -36,12 +36,12 @@ class MVKBuffer;
 
 /** Describes the Metal texture copying parameters. */
 typedef struct {
-	NSUInteger	srcLevel;
-	NSUInteger	srcSlice;
+	uint32_t	srcLevel;
+	uint32_t	srcSlice;
 	MTLOrigin	srcOrigin;
 	MTLSize		srcSize;
-	NSUInteger	dstLevel;
-	NSUInteger	dstSlice;
+	uint32_t	dstLevel;
+	uint32_t	dstSlice;
 	MTLOrigin	dstOrigin;
 } MVKMetalCopyTextureRegion;
 
@@ -81,10 +81,10 @@ protected:
 
 /** Describes Metal texture rendering parameters. */
 typedef struct {
-	NSUInteger	srcLevel;
-	NSUInteger	srcSlice;
-	NSUInteger	dstLevel;
-	NSUInteger	dstSlice;
+	uint32_t	srcLevel;
+	uint32_t	srcSlice;
+	uint32_t	dstLevel;
+	uint32_t	dstSlice;
 	MVKVertexPosTex vertices[kMVKBlitVertexCount];
 } MVKMetalBlitTextureRender;
 
@@ -117,8 +117,8 @@ protected:
 	MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
 	MTLSamplerMinMagFilter _mtlFilter;
     MTLPixelFormat _mtlPixFmt;
+	MVKRPSKeyBlitImg _blitKey;
 	std::vector<MVKMetalBlitTextureRender> _mtlTexBlitRenders;
-    bool _isDepthFormat;
 };
 
 

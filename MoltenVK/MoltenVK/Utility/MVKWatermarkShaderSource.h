@@ -36,7 +36,7 @@ typedef struct {																		\n\
 } Attributes;																			\n\
 																						\n\
 typedef struct {																		\n\
-	float4 gl_Position [[position]];													\n\
+	float4 v_position [[position]];													\n\
 	float2 v_texCoord;																	\n\
 	float4 v_fragColor;																	\n\
 } Varyings;																				\n\
@@ -44,7 +44,7 @@ typedef struct {																		\n\
 vertex Varyings watermarkVertex(Attributes attributes [[stage_in]],						\n\
 								constant Uniforms& uniforms [[ buffer(0) ]]) {			\n\
 	Varyings varyings;																	\n\
-	varyings.gl_Position = uniforms.mvpMtx * float4(attributes.a_position, 0.0, 1.0);	\n\
+	varyings.v_position = uniforms.mvpMtx * float4(attributes.a_position, 0.0, 1.0);	\n\
 	varyings.v_fragColor = uniforms.color;												\n\
 	varyings.v_texCoord = attributes.a_texCoord;										\n\
 	return varyings;																	\n\

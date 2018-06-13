@@ -20,7 +20,6 @@
 #include "MVKCommandPipelineStateFactoryShaderSource.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
-#include "mvk_datatypes.h"
 #include "NSString+MoltenVK.h"
 #include "MVKLogging.h"
 
@@ -30,19 +29,20 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKCommandResourceFactory
 
-id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPipelineState(MTLPixelFormat mtlPixFmt) {
-    bool isDepthFormat = mvkMTLPixelFormatIsDepthFormat(mtlPixFmt);
+id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey) {
+	bool isDepthFormat = blitKey.isDepthFormat();
+	bool isArrayType = blitKey.isArrayType();
 
     MTLRenderPipelineDescriptor* plDesc = [[[MTLRenderPipelineDescriptor alloc] init] autorelease];
     plDesc.label = [NSString stringWithFormat: @"CmdBlitImage"];
 
-    plDesc.vertexFunction = getFunctionNamed(isDepthFormat ? "vtxCmdBlitImageD" : "vtxCmdBlitImage");
-    plDesc.fragmentFunction = getBlitFragFunction(mtlPixFmt);
+	plDesc.vertexFunction = getFunctionNamed(isDepthFormat ? (isArrayType ? "vtxCmdBlitImageDA" : "vtxCmdBlitImageD") : "vtxCmdBlitImage");
+    plDesc.fragmentFunction = getBlitFragFunction(blitKey);
 
     if (isDepthFormat) {
-        plDesc.depthAttachmentPixelFormat = mtlPixFmt;
+        plDesc.depthAttachmentPixelFormat = blitKey.getMTLPixelFormat();
     } else {
-		plDesc.colorAttachments[0].pixelFormat = mtlPixFmt;
+		plDesc.colorAttachments[0].pixelFormat = blitKey.getMTLPixelFormat();
     }
 
     MTLVertexDescriptor* vtxDesc = plDesc.vertexDescriptor;
@@ -131,10 +131,15 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
     return newMTLRenderPipelineState(plDesc);
 }
 
-id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MTLPixelFormat mtlPixFmt) {
+id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg& blitKey) {
 	id<MTLFunction> mtlFunc = nil;
-	bool isDepthFormat = mvkMTLPixelFormatIsDepthFormat(mtlPixFmt);
-	NSString* typeStr = getMTLFormatTypeString(mtlPixFmt);
+
+	bool isDepthFormat = blitKey.isDepthFormat();
+	NSString* typeStr = getMTLFormatTypeString(blitKey.getMTLPixelFormat());
+
+	bool isArrayType = blitKey.isArrayType();
+	NSString* arraySuffix = isArrayType ? @"_array" : @"";
+	NSString* sliceArg = isArrayType ? @", blitInfo.srcSlice" : @"";
 
 	@autoreleasepool {
 		NSMutableString* msl = [NSMutableString stringWithCapacity: (2 * KIBI) ];
@@ -142,27 +147,41 @@ id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MTLPixelFormat mt
 		[msl appendLineMVK: @"using namespace metal;"];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"typedef struct {"];
-		[msl appendLineMVK: @"    float4 gl_Position [[position]];"];
+		[msl appendLineMVK: @"    float4 v_position [[position]];"];
 		[msl appendLineMVK: @"    float2 v_texCoord;"];
 		[msl appendLineMVK: @"} VaryingsPosTex;"];
 		[msl appendLineMVK];
+		if (isArrayType) {
+			[msl appendLineMVK: @"typedef struct {"];
+			[msl appendLineMVK: @"    uint srcLevel;"];
+			[msl appendLineMVK: @"    uint srcSlice;"];
+			[msl appendLineMVK: @"    uint dstLevel;"];
+			[msl appendLineMVK: @"    uint dstSlice;"];
+			[msl appendLineMVK: @"} BlitInfo;"];
+			[msl appendLineMVK];
+		}
 
 		NSString* funcName = @"fragBlit";
 		[msl appendFormat: @"fragment %@4 %@(VaryingsPosTex varyings [[stage_in]],", typeStr, funcName];
 		[msl appendLineMVK];
 		if (isDepthFormat) {
-			[msl appendLineMVK: @"                         depth2d<float> texture [[texture(0)]],"];
+			[msl appendFormat: @"                         depth2d%@<float> texture [[texture(0)]],", arraySuffix];
 		} else {
-			[msl appendFormat: @"                         texture2d<%@> texture [[texture(0)]],", typeStr];
-			[msl appendLineMVK];
+			[msl appendFormat: @"                         texture2d%@<%@> texture [[texture(0)]],", arraySuffix, typeStr];
 		}
-		[msl appendLineMVK: @"                         sampler sampler [[ sampler(0) ]]) {"];
+		[msl appendLineMVK];
+		if (isArrayType) {
+			[msl appendLineMVK: @"                         sampler sampler [[sampler(0)]],"];
+			[msl appendLineMVK: @"                         constant BlitInfo& blitInfo [[buffer(0)]]) {"];
+		} else {
+			[msl appendLineMVK: @"                         sampler sampler [[sampler(0)]]) {"];
+		}
 		if (isDepthFormat) {
-			[msl appendFormat: @"    return %@4(texture.sample(sampler, varyings.v_texCoord));", typeStr];
-			[msl appendLineMVK];
+			[msl appendFormat: @"    return %@4(texture.sample(sampler, varyings.v_texCoord)%@);", typeStr, sliceArg];
 		} else {
-			[msl appendLineMVK: @"    return texture.sample(sampler, varyings.v_texCoord);"];
+			[msl appendFormat: @"    return texture.sample(sampler, varyings.v_texCoord%@);", sliceArg];
 		}
+		[msl appendLineMVK];
 		[msl appendLineMVK: @"}"];
 
 		mtlFunc = newMTLFunction(msl, funcName);
@@ -179,7 +198,7 @@ id<MTLFunction> MVKCommandResourceFactory::getClearFragFunction(MVKRPSKeyClearAt
 		[msl appendLineMVK: @"using namespace metal;"];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"typedef struct {"];
-		[msl appendLineMVK: @"    float4 gl_Position [[position]];"];
+		[msl appendLineMVK: @"    float4 v_position [[position]];"];
 		[msl appendLineMVK: @"} VaryingsPos;"];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"typedef struct {"];

@@ -125,8 +125,10 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 	_dstLayout = dstImageLayout;
 
     _mtlPixFmt = _dstImage->getMTLPixelFormat();
-    _isDepthFormat = mvkMTLPixelFormatIsDepthFormat(_mtlPixFmt);
     _mtlFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
+
+	_blitKey.mtlPixFmt = (uint32_t)_mtlPixFmt;
+	_blitKey.mtlTexType = (uint32_t)_srcImage->getMTLTextureType();
 
     _commandUse = commandUse;
 
@@ -298,8 +300,11 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
         id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
         if ( !srcMTLTex || !dstMTLTex ) { return; }
 
+		bool isDepthFormat = _blitKey.isDepthFormat();
+		bool isArrayType = _blitKey.isArrayType();
+
         MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = _mtlRenderPassDescriptor.colorAttachments[0];
-        mtlColorAttDesc.texture = _isDepthFormat ? nil : dstMTLTex;
+        mtlColorAttDesc.texture = isDepthFormat ? nil : dstMTLTex;
 
         uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 
@@ -314,12 +319,18 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
             mtlRendEnc.label = mvkMTLRenderCommandEncoderLabel(_commandUse);
 
             [mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
-            [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdBlitImageMTLRenderPipelineState(_mtlPixFmt)];
+            [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdBlitImageMTLRenderPipelineState(_blitKey)];
             cmdEncoder->setVertexBytes(mtlRendEnc, bltRend.vertices, sizeof(bltRend.vertices), vtxBuffIdx);
-            if (_isDepthFormat) {
-                [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(_isDepthFormat, false)];
+			if (isArrayType) {
+				cmdEncoder->setFragmentBytes(mtlRendEnc, &bltRend, sizeof(bltRend), 0);
+			}
+            if (isDepthFormat) {
+                [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(isDepthFormat, false)];
                 [mtlRendEnc setVertexTexture: srcMTLTex atIndex: 0];
                 [mtlRendEnc setVertexSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
+				if (isArrayType) {
+					cmdEncoder->setVertexBytes(mtlRendEnc, &bltRend, sizeof(bltRend), 0);
+				}
             } else {
                 [mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
                 [mtlRendEnc setFragmentSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
