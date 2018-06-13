@@ -41,36 +41,10 @@ typedef struct {                                                                
     float2 v_texCoord;                                                                                          \n\
 } VaryingsPosTex;                                                                                               \n\
                                                                                                                 \n\
-typedef struct {                                                                                                \n\
-    uint srcLevel;                                                                                              \n\
-    uint srcSlice;                                                                                              \n\
-    uint dstLevel;                                                                                              \n\
-    uint dstSlice;                                                                                              \n\
-} BlitInfo;                                                                                                     \n\
-                                                                                                                \n\
 vertex VaryingsPosTex vtxCmdBlitImage(AttributesPosTex attributes [[stage_in]]) {                               \n\
     VaryingsPosTex varyings;                                                                                    \n\
     varyings.v_position = float4(attributes.a_position, 0.0, 1.0);                                              \n\
     varyings.v_texCoord = attributes.a_texCoord;                                                                \n\
-    return varyings;                                                                                            \n\
-}                                                                                                               \n\
-                                                                                                                \n\
-vertex VaryingsPos vtxCmdBlitImageD(AttributesPosTex attributes [[stage_in]],                                   \n\
-                                    depth2d<float> texture [[texture(0)]],                                      \n\
-                                    sampler sampler  [[sampler(0)]]) {                                          \n\
-    float depth = texture.sample(sampler, attributes.a_texCoord);                                               \n\
-    VaryingsPos varyings;                                                                                       \n\
-    varyings.v_position = float4(attributes.a_position, depth, 1.0);                                            \n\
-    return varyings;                                                                                            \n\
-}                                                                                                               \n\
-                                                                                                                \n\
-vertex VaryingsPos vtxCmdBlitImageDA(AttributesPosTex attributes [[stage_in]],                                  \n\
-                                    depth2d_array<float> texture [[texture(0)]],                                \n\
-                                    sampler sampler  [[sampler(0)]],                                            \n\
-                                    constant BlitInfo& blitInfo [[buffer(0)]]) {                                \n\
-    float depth = texture.sample(sampler, attributes.a_texCoord, blitInfo.srcSlice);                            \n\
-    VaryingsPos varyings;                                                                                       \n\
-    varyings.v_position = float4(attributes.a_position, depth, 1.0);                                            \n\
     return varyings;                                                                                            \n\
 }                                                                                                               \n\
 																			                			        \n\

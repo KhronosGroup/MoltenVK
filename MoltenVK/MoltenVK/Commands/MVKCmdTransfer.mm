@@ -165,6 +165,9 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 
     // Validate
     clearConfigurationResult();
+    if (_blitKey.isDepthFormat() && renderRegionCount > 0) {
+        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling of depth/stencil images is not supported."));
+    }
     if ((_srcImage->getMTLPixelFormat() != _mtlPixFmt) && mvkMTLPixelFormatIsStencilFormat(_mtlPixFmt)) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): The source and destination images must have the same format for depth/stencil images."));
     }
@@ -292,7 +295,7 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
     }
 
     // Perform those BLITs that require rendering to destination texture.
-    if ( !_mtlTexBlitRenders.empty() ) {
+    if ( !_mtlTexBlitRenders.empty() && !_blitKey.isDepthFormat() ) {
 
         cmdEncoder->endCurrentMetalEncoding();
 
@@ -300,11 +303,10 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
         id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
         if ( !srcMTLTex || !dstMTLTex ) { return; }
 
-		bool isDepthFormat = _blitKey.isDepthFormat();
 		bool isArrayType = _blitKey.isArrayType();
 
         MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = _mtlRenderPassDescriptor.colorAttachments[0];
-        mtlColorAttDesc.texture = isDepthFormat ? nil : dstMTLTex;
+        mtlColorAttDesc.texture = dstMTLTex;
 
         uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 
@@ -321,20 +323,11 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
             [mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
             [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdBlitImageMTLRenderPipelineState(_blitKey)];
             cmdEncoder->setVertexBytes(mtlRendEnc, bltRend.vertices, sizeof(bltRend.vertices), vtxBuffIdx);
+			[mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
+			[mtlRendEnc setFragmentSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
 			if (isArrayType) {
 				cmdEncoder->setFragmentBytes(mtlRendEnc, &bltRend, sizeof(bltRend), 0);
 			}
-            if (isDepthFormat) {
-                [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(isDepthFormat, false)];
-                [mtlRendEnc setVertexTexture: srcMTLTex atIndex: 0];
-                [mtlRendEnc setVertexSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
-				if (isArrayType) {
-					cmdEncoder->setVertexBytes(mtlRendEnc, &bltRend, sizeof(bltRend), 0);
-				}
-            } else {
-                [mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
-                [mtlRendEnc setFragmentSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
-            }
             [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount];
             [mtlRendEnc popDebugGroup];
             [mtlRendEnc endEncoding];

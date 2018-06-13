@@ -30,20 +30,13 @@ using namespace std;
 #pragma mark MVKCommandResourceFactory
 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey) {
-	bool isDepthFormat = blitKey.isDepthFormat();
-	bool isArrayType = blitKey.isArrayType();
-
     MTLRenderPipelineDescriptor* plDesc = [[[MTLRenderPipelineDescriptor alloc] init] autorelease];
     plDesc.label = [NSString stringWithFormat: @"CmdBlitImage"];
 
-	plDesc.vertexFunction = getFunctionNamed(isDepthFormat ? (isArrayType ? "vtxCmdBlitImageDA" : "vtxCmdBlitImageD") : "vtxCmdBlitImage");
+	plDesc.vertexFunction = getFunctionNamed("vtxCmdBlitImage");
     plDesc.fragmentFunction = getBlitFragFunction(blitKey);
 
-    if (isDepthFormat) {
-        plDesc.depthAttachmentPixelFormat = blitKey.getMTLPixelFormat();
-    } else {
-		plDesc.colorAttachments[0].pixelFormat = blitKey.getMTLPixelFormat();
-    }
+	plDesc.colorAttachments[0].pixelFormat = blitKey.getMTLPixelFormat();
 
     MTLVertexDescriptor* vtxDesc = plDesc.vertexDescriptor;
 
@@ -134,7 +127,6 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg& blitKey) {
 	id<MTLFunction> mtlFunc = nil;
 
-	bool isDepthFormat = blitKey.isDepthFormat();
 	NSString* typeStr = getMTLFormatTypeString(blitKey.getMTLPixelFormat());
 
 	bool isArrayType = blitKey.isArrayType();
@@ -164,11 +156,7 @@ id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg&
 		NSString* funcName = @"fragBlit";
 		[msl appendFormat: @"fragment %@4 %@(VaryingsPosTex varyings [[stage_in]],", typeStr, funcName];
 		[msl appendLineMVK];
-		if (isDepthFormat) {
-			[msl appendFormat: @"                         depth2d%@<float> texture [[texture(0)]],", arraySuffix];
-		} else {
-			[msl appendFormat: @"                         texture2d%@<%@> texture [[texture(0)]],", arraySuffix, typeStr];
-		}
+		[msl appendFormat: @"                         texture2d%@<%@> texture [[texture(0)]],", arraySuffix, typeStr];
 		[msl appendLineMVK];
 		if (isArrayType) {
 			[msl appendLineMVK: @"                         sampler sampler [[sampler(0)]],"];
@@ -176,11 +164,7 @@ id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg&
 		} else {
 			[msl appendLineMVK: @"                         sampler sampler [[sampler(0)]]) {"];
 		}
-		if (isDepthFormat) {
-			[msl appendFormat: @"    return %@4(texture.sample(sampler, varyings.v_texCoord)%@);", typeStr, sliceArg];
-		} else {
-			[msl appendFormat: @"    return texture.sample(sampler, varyings.v_texCoord%@);", sliceArg];
-		}
+		[msl appendFormat: @"    return texture.sample(sampler, varyings.v_texCoord%@);", sliceArg];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"}"];
 
