@@ -59,7 +59,8 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdCopyImage(MVKCommandTypePool<MVKCmdCopyImage>* pool);
+	MVKCmdCopyImage(MVKCommandTypePool<MVKCmdCopyImage>* pool) :
+		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
     void addMetalCopyRegions(const VkImageCopy* pRegion);
@@ -180,7 +181,8 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdCopyBuffer(MVKCommandTypePool<MVKCmdCopyBuffer>* pool);
+	MVKCmdCopyBuffer(MVKCommandTypePool<MVKCmdCopyBuffer>* pool) :
+		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
 
@@ -206,7 +208,8 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdBufferImageCopy(MVKCommandTypePool<MVKCmdBufferImageCopy>* pool);
+    MVKCmdBufferImageCopy(MVKCommandTypePool<MVKCmdBufferImageCopy>* pool) :
+		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
     MVKBuffer* _buffer;
@@ -231,9 +234,8 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdClearAttachments(MVKCommandTypePool<MVKCmdClearAttachments>* pool);
-
-    ~MVKCmdClearAttachments() override;
+    MVKCmdClearAttachments(MVKCommandTypePool<MVKCmdClearAttachments>* pool) :
+		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
     void populateVertices(float attWidth, float attHeight);
@@ -266,9 +268,8 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdClearImage(MVKCommandTypePool<MVKCmdClearImage>* pool);
-
-    ~MVKCmdClearImage();
+    MVKCmdClearImage(MVKCommandTypePool<MVKCmdClearImage>* pool) :
+		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
     uint32_t populateMetalCopyRegions(const VkImageBlit* pRegion, uint32_t cpyRgnIdx);
@@ -279,7 +280,6 @@ protected:
     VkImageLayout _imgLayout;
     std::vector<VkImageSubresourceRange> _subresourceRanges;
     simd::float4 _clearColors[kMVKAttachmentFormatCount];
-    MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
     MVKRPSKeyClearAtt _rpsKey;
     uint32_t _mtlStencilValue;
     bool _isDepthStencilClear;
@@ -297,7 +297,8 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdFillBuffer(MVKCommandTypePool<MVKCmdFillBuffer>* pool);
+    MVKCmdFillBuffer(MVKCommandTypePool<MVKCmdFillBuffer>* pool) :
+		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
     MVKBuffer* _dstBuffer;
@@ -322,7 +323,8 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdUpdateBuffer(MVKCommandTypePool<MVKCmdUpdateBuffer>* pool);
+    MVKCmdUpdateBuffer(MVKCommandTypePool<MVKCmdUpdateBuffer>* pool) :
+		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
     MVKBuffer* _dstBuffer;
