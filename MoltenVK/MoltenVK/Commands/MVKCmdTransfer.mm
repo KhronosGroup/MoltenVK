@@ -104,9 +104,6 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
     }
 }
 
-MVKCmdCopyImage::MVKCmdCopyImage(MVKCommandTypePool<MVKCmdCopyImage>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdBlitImage
@@ -125,8 +122,10 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 	_dstLayout = dstImageLayout;
 
     _mtlPixFmt = _dstImage->getMTLPixelFormat();
-    _isDepthFormat = mvkMTLPixelFormatIsDepthFormat(_mtlPixFmt);
     _mtlFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
+
+	_blitKey.mtlPixFmt = (uint32_t)_mtlPixFmt;
+	_blitKey.mtlTexType = (uint32_t)_srcImage->getMTLTextureType();
 
     _commandUse = commandUse;
 
@@ -163,6 +162,9 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 
     // Validate
     clearConfigurationResult();
+    if (_blitKey.isDepthFormat() && renderRegionCount > 0) {
+        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling of depth/stencil images is not supported."));
+    }
     if ((_srcImage->getMTLPixelFormat() != _mtlPixFmt) && mvkMTLPixelFormatIsStencilFormat(_mtlPixFmt)) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): The source and destination images must have the same format for depth/stencil images."));
     }
@@ -290,7 +292,7 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
     }
 
     // Perform those BLITs that require rendering to destination texture.
-    if ( !_mtlTexBlitRenders.empty() ) {
+    if ( !_mtlTexBlitRenders.empty() && !_blitKey.isDepthFormat() ) {
 
         cmdEncoder->endCurrentMetalEncoding();
 
@@ -298,8 +300,10 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
         id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
         if ( !srcMTLTex || !dstMTLTex ) { return; }
 
+		bool isArrayType = _blitKey.isArrayType();
+
         MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = _mtlRenderPassDescriptor.colorAttachments[0];
-        mtlColorAttDesc.texture = _isDepthFormat ? nil : dstMTLTex;
+        mtlColorAttDesc.texture = dstMTLTex;
 
         uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 
@@ -314,16 +318,13 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
             mtlRendEnc.label = mvkMTLRenderCommandEncoderLabel(_commandUse);
 
             [mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
-            [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdBlitImageMTLRenderPipelineState(_mtlPixFmt)];
+            [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdBlitImageMTLRenderPipelineState(_blitKey)];
             cmdEncoder->setVertexBytes(mtlRendEnc, bltRend.vertices, sizeof(bltRend.vertices), vtxBuffIdx);
-            if (_isDepthFormat) {
-                [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(_isDepthFormat, false)];
-                [mtlRendEnc setVertexTexture: srcMTLTex atIndex: 0];
-                [mtlRendEnc setVertexSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
-            } else {
-                [mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
-                [mtlRendEnc setFragmentSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
-            }
+			[mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
+			[mtlRendEnc setFragmentSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
+			if (isArrayType) {
+				cmdEncoder->setFragmentBytes(mtlRendEnc, &bltRend, sizeof(bltRend), 0);
+			}
             [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount];
             [mtlRendEnc popDebugGroup];
             [mtlRendEnc endEncoding];
@@ -592,9 +593,6 @@ void MVKCmdCopyBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 	}
 }
 
-MVKCmdCopyBuffer::MVKCmdCopyBuffer(MVKCommandTypePool<MVKCmdCopyBuffer>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdBufferImageCopy
@@ -658,9 +656,12 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             bool wantStencil = mvkAreFlagsEnabled(imgFlags, VK_IMAGE_ASPECT_STENCIL_BIT);
 
             // The stencil component is always 1 byte per pixel.
+			// Don't reduce depths of 32-bit depth/stencil formats.
             if (wantDepth && !wantStencil) {
-                bytesPerRow -= buffImgWd;
-                bytesPerImg -= buffImgWd * buffImgHt;
+				if (mvkMTLPixelFormatBytesPerTexel(mtlPixFmt) != 4) {
+					bytesPerRow -= buffImgWd;
+					bytesPerImg -= buffImgWd * buffImgHt;
+				}
                 blitOptions |= MTLBlitOptionDepthFromDepthStencil;
             } else if (wantStencil && !wantDepth) {
                 bytesPerRow = buffImgWd;
@@ -696,9 +697,6 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
         }
     }
 }
-
-MVKCmdBufferImageCopy::MVKCmdBufferImageCopy(MVKCommandTypePool<MVKCmdBufferImageCopy>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -848,14 +846,6 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
 }
 
 
-#pragma mark Construction
-
-MVKCmdClearAttachments::MVKCmdClearAttachments(MVKCommandTypePool<MVKCmdClearAttachments>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
-MVKCmdClearAttachments::~MVKCmdClearAttachments() {}
-
-
 #pragma mark -
 #pragma mark MVKCmdClearImage
 
@@ -896,13 +886,11 @@ void MVKCmdClearImage::setContent(VkImage image,
 
 void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 
+	MTLPixelFormat imgMTLPixFmt = _image->getMTLPixelFormat();
     id<MTLTexture> imgMTLTex = _image->getMTLTexture();
     if ( !imgMTLTex ) { return; }
 
     cmdEncoder->endCurrentMetalEncoding();
-
-    MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = _mtlRenderPassDescriptor.colorAttachments[0];
-    mtlColorAttDesc.texture = imgMTLTex;
 
     static const simd::float2 vertices[] = {
         { -1.0, -1.0 },         // Bottom-left
@@ -913,17 +901,38 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 
     uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 
+	MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
+	MTLRenderPassAttachmentDescriptor* mtlRPCADesc = nil;
+	MTLRenderPassAttachmentDescriptor* mtlRPDADesc = nil;
+	MTLRenderPassAttachmentDescriptor* mtlRPSADesc = nil;
     NSString* mtlRendEncName;
     NSString* mtlDebugGroupName;
     if (_isDepthStencilClear) {
+		if (mvkMTLPixelFormatIsDepthFormat(imgMTLPixFmt)) {
+			mtlRPDADesc = mtlRPDesc.depthAttachment;
+			mtlRPDADesc.texture = imgMTLTex;
+			mtlRPDADesc.loadAction = MTLLoadActionLoad;
+			mtlRPDADesc.storeAction = MTLStoreActionStore;
+		}
+		if (mvkMTLPixelFormatIsStencilFormat(imgMTLPixFmt)) {
+			mtlRPSADesc = mtlRPDesc.stencilAttachment;
+			mtlRPSADesc.texture = imgMTLTex;
+			mtlRPSADesc.loadAction = MTLLoadActionLoad;
+			mtlRPSADesc.storeAction = MTLStoreActionStore;
+		}
         mtlDebugGroupName = @"vkCmdClearDepthStencilImage";
         mtlRendEncName = mvkMTLRenderCommandEncoderLabel(kMVKCommandUseClearDepthStencilImage);
     } else {
+		mtlRPCADesc = mtlRPDesc.colorAttachments[0];
+		mtlRPCADesc.texture = imgMTLTex;
+		mtlRPCADesc.loadAction = MTLLoadActionLoad;
+		mtlRPCADesc.storeAction = MTLStoreActionStore;
         mtlDebugGroupName = @"vkCmdClearColorImage";
         mtlRendEncName = mvkMTLRenderCommandEncoderLabel(kMVKCommandUseClearColorImage);
     }
 
     MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
+	id<MTLRenderPipelineState> mtlRPS = cmdEncPool->getCmdClearMTLRenderPipelineState(_rpsKey);
 
     size_t srCnt = _subresourceRanges.size();
     for (uint32_t srIdx = 0; srIdx < srCnt; srIdx++) {
@@ -931,6 +940,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 
         bool isClearingDepth = _isDepthStencilClear && mvkIsAnyFlagEnabled(srRange.aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT);
         bool isClearingStencil = _isDepthStencilClear && mvkIsAnyFlagEnabled(srRange.aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT);
+		id<MTLDepthStencilState> mtlDSS = cmdEncPool->getMTLDepthStencilState(isClearingDepth, isClearingStencil);
 
         // Extract the mipmap levels that are to be updated
         uint32_t mipLvlStart = srRange.baseMipLevel;
@@ -948,16 +958,21 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 
         // Iterate across mipmap levels and layers, and render to clear each
         for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {
-            mtlColorAttDesc.level = mipLvl;
-            for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
-                mtlColorAttDesc.slice = layer;
+			mtlRPCADesc.level = mipLvl;
+			mtlRPDADesc.level = mipLvl;
+			mtlRPSADesc.level = mipLvl;
 
-                id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: _mtlRenderPassDescriptor];
+            for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
+                mtlRPCADesc.slice = layer;
+				mtlRPDADesc.slice = layer;
+				mtlRPSADesc.slice = layer;
+
+                id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
                 mtlRendEnc.label = mtlRendEncName;
 
                 [mtlRendEnc pushDebugGroup: mtlDebugGroupName];
-                [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdClearMTLRenderPipelineState(_rpsKey)];
-                [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(isClearingDepth, isClearingStencil)];
+                [mtlRendEnc setRenderPipelineState: mtlRPS];
+                [mtlRendEnc setDepthStencilState: mtlDSS];
                 [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
 
                 cmdEncoder->setVertexBytes(mtlRendEnc, _clearColors, sizeof(_clearColors), 0);
@@ -969,23 +984,6 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
             }
         }
     }
-}
-
-
-#pragma mark Construction
-
-MVKCmdClearImage::MVKCmdClearImage(MVKCommandTypePool<MVKCmdClearImage>* pool)
-: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {
-    
-    // Create and configure the render pass descriptor
-    _mtlRenderPassDescriptor = [[MTLRenderPassDescriptor renderPassDescriptor] retain];		// retained
-    MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = _mtlRenderPassDescriptor.colorAttachments[0];
-    mtlColorAttDesc.loadAction = MTLLoadActionLoad;
-    mtlColorAttDesc.storeAction = MTLStoreActionStore;
-}
-
-MVKCmdClearImage::~MVKCmdClearImage() {
-    [_mtlRenderPassDescriptor release];
 }
 
 
@@ -1016,9 +1014,6 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
                      range: NSMakeRange(dstMTLBuffOffset, byteCnt)
                      value: (uint8_t)_dataValue];
 }
-
-MVKCmdFillBuffer::MVKCmdFillBuffer(MVKCommandTypePool<MVKCmdFillBuffer>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -1059,9 +1054,6 @@ void MVKCmdUpdateBuffer::encode(MVKCommandEncoder* cmdEncoder) {
         srcMTLBufferAlloc->returnToPool();
     }];
 }
-
-MVKCmdUpdateBuffer::MVKCmdUpdateBuffer(MVKCommandTypePool<MVKCmdUpdateBuffer>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -

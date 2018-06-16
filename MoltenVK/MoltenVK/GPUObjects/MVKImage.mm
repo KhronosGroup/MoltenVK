@@ -512,7 +512,7 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
 		return false;
 	}
 
-	if (mvkAreOnlyAnyFlagsEnabled(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT))) {
+	if ( !mvkAreOnlyAnyFlagsEnabled(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)) ) {
 		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, usage must only include VK_IMAGE_USAGE_TRANSFER_SRC_BIT and/or VK_IMAGE_USAGE_TRANSFER_DST_BIT."));
 		return false;
 	}
@@ -573,18 +573,17 @@ MVKImage::~MVKImage() {
 #pragma mark -
 #pragma mark MVKImageView
 
-
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     mtlAttDesc.texture = getMTLTexture();           // Use image view, necessary if image view format differs from image format
-    mtlAttDesc.level = _subresourceRange.baseMipLevel;
-    mtlAttDesc.slice = _subresourceRange.baseArrayLayer;
+    mtlAttDesc.level = _useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
+    mtlAttDesc.slice = _useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
     mtlAttDesc.depthPlane = 0;
 }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     mtlAttDesc.resolveTexture = getMTLTexture();    // Use image view, necessary if image view format differs from image format
-    mtlAttDesc.resolveLevel = _subresourceRange.baseMipLevel;
-    mtlAttDesc.resolveSlice = _subresourceRange.baseArrayLayer;
+    mtlAttDesc.resolveLevel = _useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
+    mtlAttDesc.resolveSlice = _useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
     mtlAttDesc.resolveDepthPlane = 0;
 }
 

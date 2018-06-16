@@ -11,8 +11,6 @@
 		A904B5721C9A08C90008C013 /* cube-frag.spv in Resources */ = {isa = PBXBuildFile; fileRef = A904B52E1C9A08C90008C013 /* cube-frag.spv */; };
 		A904B5751C9A08C90008C013 /* cube-vert.spv in Resources */ = {isa = PBXBuildFile; fileRef = A904B52F1C9A08C90008C013 /* cube-vert.spv */; };
 		A904B5761C9A08C90008C013 /* cube-vert.spv in Resources */ = {isa = PBXBuildFile; fileRef = A904B52F1C9A08C90008C013 /* cube-vert.spv */; };
-		A904B5891C9A08C90008C013 /* lunarg.ppm in Resources */ = {isa = PBXBuildFile; fileRef = A904B5351C9A08C90008C013 /* lunarg.ppm */; };
-		A904B58A1C9A08C90008C013 /* lunarg.ppm in Resources */ = {isa = PBXBuildFile; fileRef = A904B5351C9A08C90008C013 /* lunarg.ppm */; };
 		A9096E511F7EF11A00DFBEA6 /* IOSurface.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9096E501F7EF11A00DFBEA6 /* IOSurface.framework */; };
 		A91F43A01EDDD46B00733D01 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A91F439F1EDDD46B00733D01 /* libMoltenVK.dylib */; };
 		A91F43A51EDDD5CF00733D01 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A91F43A41EDDD5CF00733D01 /* libc++.tbd */; };
@@ -266,7 +264,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0930;
+				LastUpgradeCheck = 0940;
 				TargetAttributes = {
 					A9B53B0F1C3AC0BE00ABC6F6 = {
 						DevelopmentTeam = VU3TCKU48B;
@@ -300,7 +298,6 @@
 			files = (
 				A904B5761C9A08C90008C013 /* cube-vert.spv in Resources */,
 				A904B5721C9A08C90008C013 /* cube-frag.spv in Resources */,
-				A904B58A1C9A08C90008C013 /* lunarg.ppm in Resources */,
 				A9B53B151C3AC0BE00ABC6F6 /* macOS.xcassets in Resources */,
 				A9B53B161C3AC0BE00ABC6F6 /* Main.storyboard in Resources */,
 			);
@@ -313,7 +310,6 @@
 				A904B5751C9A08C90008C013 /* cube-vert.spv in Resources */,
 				A9B53B2F1C3AC15200ABC6F6 /* Icon.png in Resources */,
 				A9B53B301C3AC15200ABC6F6 /* Main.storyboard in Resources */,
-				A904B5891C9A08C90008C013 /* lunarg.ppm in Resources */,
 				A9B53B311C3AC15200ABC6F6 /* Default~ipad.png in Resources */,
 				A9B53B321C3AC15200ABC6F6 /* Default-568h@2x.png in Resources */,
 				A904B5711C9A08C90008C013 /* cube-frag.spv in Resources */,

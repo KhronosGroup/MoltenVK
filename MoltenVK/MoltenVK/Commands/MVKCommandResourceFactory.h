@@ -27,6 +27,51 @@
 
 
 #pragma mark -
+#pragma mark MVKRPSKeyBlitImg
+
+/**
+ * Key to use for looking up cached MTLRenderPipelineState instances based on MTLPixelFormat and MTLTextureType.
+ *
+ * This structure can be used as a key in a std::map and std::unordered_map.
+ */
+typedef struct MVKRPSKeyBlitImg_t {
+	uint16_t mtlPixFmt = 0;			/**< MTLPixelFormat */
+	uint16_t mtlTexType = 0;		/**< MTLTextureType */
+
+	bool operator==(const MVKRPSKeyBlitImg_t& rhs) const {
+		return ((mtlPixFmt == rhs.mtlPixFmt) && (mtlTexType == rhs.mtlTexType));
+	}
+
+	inline MTLPixelFormat getMTLPixelFormat() { return (MTLPixelFormat)mtlPixFmt; }
+
+	inline bool isDepthFormat() { return mvkMTLPixelFormatIsDepthFormat(getMTLPixelFormat()); }
+
+	inline MTLTextureType getMTLTextureType() { return (MTLTextureType)mtlTexType; }
+
+	inline bool isArrayType() { return (mtlTexType == MTLTextureType2DArray) || (mtlTexType == MTLTextureType1DArray); }
+
+	std::size_t hash() const {
+		std::size_t hash = mtlTexType;
+		hash <<= 16;
+		hash |= mtlPixFmt;
+		return hash;
+	}
+
+} MVKRPSKeyBlitImg;
+
+/**
+ * Hash structure implementation for MVKRPSKeyBlitImg in std namespace,
+ * so MVKRPSKeyBlitImg can be used as a key in a std::map and std::unordered_map.
+ */
+namespace std {
+	template <>
+	struct hash<MVKRPSKeyBlitImg> {
+		std::size_t operator()(const MVKRPSKeyBlitImg& k) const { return k.hash(); }
+	};
+}
+
+
+#pragma mark -
 #pragma mark MVKRPSKeyClearAtt
 
 #define kMVKAttachmentFormatCount					9
@@ -226,11 +271,8 @@ public:
 
 #pragma mark Command resources
 
-	/**
-	 * Returns a new MTLRenderPipelineState dedicated to rendering to a texture
-	 * in the specified pixel format to support certain Vulkan BLIT commands.
-	 */
-	id<MTLRenderPipelineState> newCmdBlitImageMTLRenderPipelineState(MTLPixelFormat mtlPixFmt);
+	/** Returns a new MTLRenderPipelineState to support certain Vulkan BLIT commands. */
+	id<MTLRenderPipelineState> newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey);
 
 	/**
 	 * Returns a new MTLSamplerState dedicated to rendering to a texture using the
@@ -281,7 +323,7 @@ public:
 
 protected:
 	void initMTLLibrary();
-	id<MTLFunction> getBlitFragFunction(MTLPixelFormat mtlPixFmt);
+	id<MTLFunction> getBlitFragFunction(MVKRPSKeyBlitImg& blitKey);
 	id<MTLFunction> getClearFragFunction(MVKRPSKeyClearAtt& attKey);
 	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
     id<MTLFunction> getFunctionNamed(const char* funcName);

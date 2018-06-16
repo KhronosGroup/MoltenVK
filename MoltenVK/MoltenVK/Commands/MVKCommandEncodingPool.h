@@ -43,11 +43,8 @@ public:
 
 #pragma mark Command resources
 
-    /**
-     * Returns a MTLRenderPipelineState dedicated to rendering to a texture
-     * in the specified pixel format to support certain Vulkan BLIT commands.
-     */
-    id<MTLRenderPipelineState> getCmdBlitImageMTLRenderPipelineState(MTLPixelFormat mtlPixFmt);
+	/** Returns a MTLRenderPipelineState to support certain Vulkan BLIT commands. */
+    id<MTLRenderPipelineState> getCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey);
 
     /**
      * Returns a MTLSamplerState dedicated to rendering to a texture using the
@@ -110,7 +107,7 @@ private:
     void initTextureDeviceMemory();
 	void destroyMetalResources();
 
-    std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _cmdBlitImageMTLRenderPipelineStates;
+    std::unordered_map<MVKRPSKeyBlitImg, id<MTLRenderPipelineState>> _cmdBlitImageMTLRenderPipelineStates;
 	std::unordered_map<MVKRPSKeyClearAtt, id<MTLRenderPipelineState>> _cmdClearMTLRenderPipelineStates;
     std::unordered_map<MVKMTLDepthStencilDescriptorData, id<MTLDepthStencilState>> _mtlDepthStencilStates;
     std::unordered_map<MVKImageDescriptorData, MVKImage*> _transferImages;
