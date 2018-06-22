@@ -4,11 +4,53 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies
+# macOS usage: ./fetchDependencies [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
+#
+#      --v-headers-root path
+#              "path" specific a directory path to a
+#              KhronosGroup/Vulkan-Headers repository.
+#              This repository does not have to be built.
+#
+#      --spirv-cross-root path
+#              "path" specifies a directory path to a
+#              KhronosGroup/SPIRV-Cross repository.
+#              This repository does not have to be built.
+#
+#      --glslang-root path
+#              "path" specifies a directory path to a KhronosGroup/glslang
+#              repository.  This repository does need to be built and the
+#              build directory must be in the specified directory.
+#              It should be built the same way this script builds it.
+#
 #
 
 
 # ----------------- Functions -------------------
+
+V_HEADERS_ROOT=""
+SPIRV_CROSS_ROOT=""
+GLSLANG_ROOT=""
+
+while (( "$#" )); do
+  case "$1" in
+       --v-headers-root)
+         V_HEADERS_ROOT=$2
+         shift 2
+         ;;
+       --spirv-cross-root)
+         SPIRV_CROSS_ROOT=$2
+         shift 2
+         ;;
+       --glslang-root)
+         GLSLANG_ROOT=$2
+         shift 2
+         ;;
+       -*|--*=)
+         echo "Error: Unsupported flag $1" >&2
+         exit 1
+         ;;
+  esac
+done
 
 # Update a repository. If it exists, fetch it, if not clone it.
 # $1 repo name
@@ -76,35 +118,59 @@ update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 # ----------------- Vulkan-Headers -------------------
 
-REPO_NAME=Vulkan-Headers
-REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+# When MoltenVK is built by something that alread has a copy of the
+# Vulkan-Headers repo, use it by creating a symlink.
+if [ ! "$V_HEADERS_ROOT" = "" ]; then
+       REPO_NAME=Vulkan-Headers
+       rm -rf ${REPO_NAME}
+       ln -sfn ${V_HEADERS_ROOT} ${REPO_NAME}
+else
+       REPO_NAME=Vulkan-Headers
+       REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+       REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+       update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+fi
 
 
 # ----------------- SPIRV-Cross -------------------
 
-REPO_NAME=SPIRV-Cross
-REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+# When MoltenVK is built by something that alread has a copy of the
+# Vulkan-Headers repo, use it by creating a symlink.
+if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
+       REPO_NAME=SPIRV-Cross
+       rm -rf ${REPO_NAME}
+       ln -sfn ${SPIRV_CROSS_ROOT} ${REPO_NAME}
+else
+       REPO_NAME=SPIRV-Cross
+       REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+       REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+       update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+fi
 
 
 # ----------------- glslang -------------------
 
-REPO_NAME=glslang
-REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+# When MoltenVK is built by something that alread has a copy of the
+# Vulkan-Headers repo, use it by creating a symlink.
+if [ ! "$GLSLANG_ROOT" = "" ]; then
+       REPO_NAME=glslang
+       rm -rf ${REPO_NAME}
+       ln -sfn ${GLSLANG_ROOT} ${REPO_NAME}
+else
+       REPO_NAME=glslang
+       REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+       REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+       update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
-cd ${REPO_NAME}
-./update_glslang_sources.py
-cd -
+       cd ${REPO_NAME}
+       ./update_glslang_sources.py
+       cd -
 
-build_repo ${REPO_NAME}
+       build_repo ${REPO_NAME}
+fi
 
 
 # ----------------- Vulkan-Tools -------------------
@@ -114,7 +180,6 @@ REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
 REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
-
 
 # ----------------- VulkanSamples -------------------
 
