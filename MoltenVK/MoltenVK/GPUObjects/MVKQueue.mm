@@ -436,7 +436,7 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKDevice* de
 		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[i];
 		_surfaceImages.push_back(mvkSC->getImage(pPresentInfo->pImageIndices[i]));
 		if (mvkSC->getHasSurfaceSizeChanged()) {
-			_submissionResult = VK_SUBOPTIMAL_KHR;
+			_submissionResult = VK_ERROR_OUT_OF_DATE_KHR;
 		}
 	}
 }
