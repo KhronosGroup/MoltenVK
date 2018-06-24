@@ -79,11 +79,11 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
 
     *pImageIndex = minWaitIndex;	// Return the index of the image with the shortest wait
     _surfaceImages[minWaitIndex]->signalWhenAvailable((MVKSemaphore*)semaphore, (MVKFence*)fence);
-    return getHasSurfaceSizeChanged() ? VK_SUBOPTIMAL_KHR : VK_SUCCESS;
+    return getHasSurfaceSizeChanged() ? VK_ERROR_OUT_OF_DATE_KHR : VK_SUCCESS;
 }
 
 bool MVKSwapchain::getHasSurfaceSizeChanged() {
-	return !CGSizeEqualToSize(_mtlLayer.drawableSize, _mtlLayerOrigDrawSize);
+	return !CGSizeEqualToSize(_mtlLayer.updatedDrawableSizeMVK, _mtlLayerOrigDrawSize);
 }
 
 uint64_t MVKSwapchain::getNextAcquisitionID() { return ++_currentAcquisitionID; }
