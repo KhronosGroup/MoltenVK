@@ -75,7 +75,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK-bh/External/SPIRV-Cross/shaders-msl/frag/gather-offset.frag"
+            argument = "/Users/bill/Desktop/texture_buffer.vert"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument

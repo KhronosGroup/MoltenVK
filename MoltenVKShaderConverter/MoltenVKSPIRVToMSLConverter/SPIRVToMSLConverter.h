@@ -36,6 +36,7 @@ namespace mvk {
 		spv::ExecutionModel entryPointStage = spv::ExecutionModelMax;
 
         uint32_t mslVersion = makeMSLVersion(2);
+		uint32_t texelBufferTextureWidth = 4096;
 		bool shouldFlipVertexY = true;
 		bool isRenderingPoints = false;
 

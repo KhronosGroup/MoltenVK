@@ -319,16 +319,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.mtlBufferAlignment = 64;
 	_metalFeatures.mtlCopyBufferAlignment = 1;
     _metalFeatures.texelBuffers = true;
-
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
-		_metalFeatures.indirectDrawing = true;
-		_metalFeatures.baseVertexInstanceDrawing = true;
-        _metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
-	}
+	_metalFeatures.maxTextureDimension = (4 * KIBI);
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 1);
         _metalFeatures.dynamicMTLBuffers = true;
+		_metalFeatures.maxTextureDimension = (8 * KIBI);
     }
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 2);
@@ -341,6 +337,13 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
 		_metalFeatures.depthClipMode = true;
 	}
+
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
+		_metalFeatures.indirectDrawing = true;
+		_metalFeatures.baseVertexInstanceDrawing = true;
+		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
+		_metalFeatures.maxTextureDimension = (16 * KIBI);
+	}
 #endif
 
 #if MVK_MACOS
@@ -352,6 +355,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.baseVertexInstanceDrawing = true;
     _metalFeatures.ioSurfaces = true;
     _metalFeatures.depthClipMode = true;
+	_metalFeatures.maxTextureDimension = (16 * KIBI);
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 2);
@@ -513,29 +517,15 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.sampledImageStencilSampleCounts = _metalFeatures.supportedSampleCounts;
 	_properties.limits.storageImageSampleCounts = _metalFeatures.supportedSampleCounts;
 
-    uint32_t maxTextureDimension;
-#if MVK_IOS
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
-        maxTextureDimension = (16 * KIBI);
-    } else if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) {
-        maxTextureDimension = (8 * KIBI);
-    } else {
-        maxTextureDimension = (4 * KIBI);
-    }
-#endif
-#if MVK_MACOS
-    maxTextureDimension = (16 * KIBI);
-#endif
-
-	_properties.limits.maxImageDimension1D = maxTextureDimension;
-	_properties.limits.maxImageDimension2D = maxTextureDimension;
-	_properties.limits.maxImageDimensionCube = maxTextureDimension;
-	_properties.limits.maxFramebufferWidth = maxTextureDimension;
-	_properties.limits.maxFramebufferHeight = maxTextureDimension;
+	_properties.limits.maxImageDimension1D = _metalFeatures.maxTextureDimension;
+	_properties.limits.maxImageDimension2D = _metalFeatures.maxTextureDimension;
+	_properties.limits.maxImageDimensionCube = _metalFeatures.maxTextureDimension;
+	_properties.limits.maxFramebufferWidth = _metalFeatures.maxTextureDimension;
+	_properties.limits.maxFramebufferHeight = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxFramebufferLayers = 256;
 
-    _properties.limits.maxViewportDimensions[0] = maxTextureDimension;
-    _properties.limits.maxViewportDimensions[1] = maxTextureDimension;
+    _properties.limits.maxViewportDimensions[0] = _metalFeatures.maxTextureDimension;
+    _properties.limits.maxViewportDimensions[1] = _metalFeatures.maxTextureDimension;
     float maxVPDim = max(_properties.limits.maxViewportDimensions[0], _properties.limits.maxViewportDimensions[1]);
     _properties.limits.viewportBoundsRange[0] = (-2.0 * maxVPDim);
     _properties.limits.viewportBoundsRange[1] = (2.0 * maxVPDim) - 1;
@@ -569,7 +559,7 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxDescriptorSetSampledImages = (_properties.limits.maxPerStageDescriptorSampledImages * 2);
 	_properties.limits.maxDescriptorSetStorageImages = (_properties.limits.maxPerStageDescriptorStorageImages * 2);
 
-	_properties.limits.maxTexelBufferElements = (uint32_t)_metalFeatures.maxMTLBufferSize;
+	_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
 	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 	_properties.limits.maxStorageBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 	_properties.limits.maxPushConstantsSize = (4 * KIBI);

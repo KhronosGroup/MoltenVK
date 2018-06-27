@@ -111,15 +111,13 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 		lock_guard<mutex> lock(_lock);
 		if (_mtlTexture) { return _mtlTexture; }
 
-        VkDeviceSize byteAlign = _device->_pProperties->limits.minTexelBufferOffsetAlignment;
-        NSUInteger mtlByteCnt = mvkAlignByteOffset(_byteCount, byteAlign);
         MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: _mtlPixelFormat
                                                                                               width: _textureSize.width
                                                                                              height: _textureSize.height
                                                                                           mipmapped: NO];
-        _mtlTexture = [getMTLBuffer() newTextureWithDescriptor: mtlTexDesc
-                                                        offset: _mtlBufferOffset
-                                                   bytesPerRow: mtlByteCnt];
+		_mtlTexture = [_buffer->getMTLBuffer() newTextureWithDescriptor: mtlTexDesc
+																 offset: _mtlBufferOffset
+															bytesPerRow: _mtlBytesPerRow];
     }
     return _mtlTexture;
 }
@@ -131,18 +129,25 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
     _buffer = (MVKBuffer*)pCreateInfo->buffer;
     _mtlBufferOffset = _buffer->getMTLBufferOffset() + pCreateInfo->offset;
     _mtlPixelFormat = mtlPixelFormatFromVkFormat(pCreateInfo->format);
-    _mtlTexture = nil;
     VkExtent2D fmtBlockSize = mvkVkFormatBlockTexelSize(pCreateInfo->format);  // Pixel size of format
     size_t bytesPerBlock = mvkVkFormatBytesPerBlock(pCreateInfo->format);
+	_mtlTexture = nil;
 
     // Layout texture as a 1D array of texel blocks (which are texels for non-compressed textures) that covers the bytes
-    _byteCount = pCreateInfo->range;
-    if (_byteCount == VK_WHOLE_SIZE) { _byteCount = _buffer->getByteCount() - _mtlBufferOffset; }    // Remaining bytes in buffer
-    size_t blockCount = _byteCount / bytesPerBlock;
-    _byteCount = blockCount * bytesPerBlock;            // Round down
+    VkDeviceSize byteCount = pCreateInfo->range;
+    if (byteCount == VK_WHOLE_SIZE) { byteCount = _buffer->getByteCount() - _mtlBufferOffset; }    // Remaining bytes in buffer
+    size_t blockCount = byteCount / bytesPerBlock;
 
-    _textureSize.width = (uint32_t)blockCount * fmtBlockSize.width;
-    _textureSize.height = fmtBlockSize.height;
+	// But Metal requires the texture to be a 2D texture. Determine the number of 2D rows we need and their width.
+	size_t maxBlocksPerRow = _device->_pMetalFeatures->maxTextureDimension / fmtBlockSize.width;
+	size_t blocksPerRow = min(blockCount, maxBlocksPerRow);
+	_mtlBytesPerRow = mvkAlignByteOffset(blocksPerRow * bytesPerBlock, _device->_pProperties->limits.minTexelBufferOffsetAlignment);
+
+	size_t rowCount = blockCount / blocksPerRow;
+	if (blockCount % blocksPerRow) { rowCount++; }
+
+	_textureSize.width = uint32_t(blocksPerRow * fmtBlockSize.width);
+	_textureSize.height = uint32_t(rowCount * fmtBlockSize.height);
 
     if ( !_device->_pMetalFeatures->texelBuffers ) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Texel buffers are not supported on this device."));
