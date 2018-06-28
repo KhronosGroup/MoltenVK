@@ -1441,6 +1441,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     pCfg->supportLargeQueryPools = true;
     pCfg->shaderConversionFlipVertexY = true;
 	pCfg->presentWithCommandBuffer = MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL;
+	pCfg->swapchainMagFilterUseNearest = true;
     pCfg->displayWatermark = MVK_DISPLAY_WATERMARK_BOOL;
     pCfg->performanceTracking = MVK_DEBUG;
     pCfg->performanceLoggingFrameCount = MVK_DEBUG ? 300 : 0;

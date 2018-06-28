@@ -183,36 +183,36 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
 	MVKSwapchain* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
 	if (oldSwapchain) { oldSwapchain->releaseUndisplayedSurfaces(); }
 
-	// Get the layer underlying the surface view, which must be a CAMetalLayer.
-	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
-	_mtlLayer = mvkSrfc->getCAMetalLayer();
-	_mtlLayer.device = getMTLDevice();
-	_mtlLayer.pixelFormat = mtlPixelFormatFromVkFormat(pCreateInfo->imageFormat);
-    _mtlLayer.framebufferOnly = !mvkIsAnyFlagEnabled(pCreateInfo->imageUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                                                                               VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                                                                               VK_IMAGE_USAGE_SAMPLED_BIT |
-                                                                               VK_IMAGE_USAGE_STORAGE_BIT));
-
-	if (pCreateInfo->presentMode == VK_PRESENT_MODE_IMMEDIATE_KHR) {
-		_mtlLayer.displaySyncEnabledMVK = NO;
-	} else {
-		_mtlLayer.displaySyncEnabledMVK = YES;
-	}
-
-	// TODO: set additional CAMetalLayer properties before extracting drawables:
-	//	- presentsWithTransaction
-	//  - maximumDrawableCount (maybe for MAILBOX?)
-	//	- drawsAsynchronously
-    //  - colorspace (macOS only) Vulkan only supports sRGB colorspace for now.
-    //  - wantsExtendedDynamicRangeContent (macOS only)
-
+	initCAMetalLayer(pCreateInfo);
     initSurfaceImages(pCreateInfo);
     initFrameIntervalTracking();
 
     _licenseWatermark = NULL;
 }
 
-/** Initializes the array of images used for the surfaces of this swapchain. */
+// Initializes the CAMetalLayer underlying the surface of this swapchain.
+void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo) {
+
+	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
+	_mtlLayer = mvkSrfc->getCAMetalLayer();
+	_mtlLayer.device = getMTLDevice();
+	_mtlLayer.pixelFormat = mtlPixelFormatFromVkFormat(pCreateInfo->imageFormat);
+	_mtlLayer.displaySyncEnabledMVK = (pCreateInfo->presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
+	_mtlLayer.magnificationFilter = _device->_mvkConfig.swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
+	_mtlLayer.framebufferOnly = !mvkIsAnyFlagEnabled(pCreateInfo->imageUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+																			   VK_IMAGE_USAGE_SAMPLED_BIT |
+																			   VK_IMAGE_USAGE_STORAGE_BIT));
+
+	// TODO: set additional CAMetalLayer properties before extracting drawables:
+	//	- presentsWithTransaction
+	//  - maximumDrawableCount (maybe for MAILBOX?)
+	//	- drawsAsynchronously
+	//  - colorspace (macOS only) Vulkan only supports sRGB colorspace for now.
+	//  - wantsExtendedDynamicRangeContent (macOS only)
+}
+
+// Initializes the array of images used for the surface of this swapchain.
 void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo) {
 
     _mtlLayerOrigDrawSize = _mtlLayer.updatedDrawableSizeMVK;
