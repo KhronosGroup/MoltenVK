@@ -111,33 +111,42 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
     VkPhysicalDeviceLimits* pLimits = &_properties.limits;
     VkExtent3D maxExt;
     uint32_t maxLayers;
+	uint32_t maxLevels;
     switch (type) {
         case VK_IMAGE_TYPE_1D:
+			// Metal does not allow 1D textures to be used as attachments
+			if (mvkIsAnyFlagEnabled(usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+			}
             maxExt.width = pLimits->maxImageDimension1D;
             maxExt.height = 1;
             maxExt.depth = 1;
+			maxLevels = 1;
             maxLayers = pLimits->maxImageArrayLayers;
             break;
         case VK_IMAGE_TYPE_2D:
             maxExt.width = pLimits->maxImageDimension2D;
             maxExt.height = pLimits->maxImageDimension2D;
             maxExt.depth = 1;
+			maxLevels = mvkMipmapLevels3D(maxExt);
             maxLayers = pLimits->maxImageArrayLayers;
             break;
         case VK_IMAGE_TYPE_3D:
             maxExt.width = pLimits->maxImageDimension3D;
             maxExt.height = pLimits->maxImageDimension3D;
             maxExt.depth = pLimits->maxImageDimension3D;
+			maxLevels = mvkMipmapLevels3D(maxExt);
             maxLayers = 1;
             break;
         default:
             maxExt = { 1, 1, 1};
             maxLayers = 1;
+			maxLevels = 1;
             break;
     }
 
     pImageFormatProperties->maxExtent = maxExt;
-    pImageFormatProperties->maxMipLevels = mvkMipmapLevels3D(maxExt);
+    pImageFormatProperties->maxMipLevels = maxLevels;
     pImageFormatProperties->maxArrayLayers = maxLayers;
     pImageFormatProperties->sampleCounts = _metalFeatures.supportedSampleCounts;
     pImageFormatProperties->maxResourceSize = kMVKUndefinedLargeUInt64;
