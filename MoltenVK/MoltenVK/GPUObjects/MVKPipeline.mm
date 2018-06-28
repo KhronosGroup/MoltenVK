@@ -357,6 +357,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
                                                         const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 
     shaderContext.options.mslVersion = _device->_pMetalFeatures->mslVersion;
+	shaderContext.options.texelBufferTextureWidth = _device->_pMetalFeatures->maxTextureDimension;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -501,6 +502,7 @@ namespace mvk {
 		archive(opt.entryPointName,
 				opt.entryPointStage,
 				opt.mslVersion,
+				opt.texelBufferTextureWidth,
 				opt.shouldFlipVertexY,
 				opt.isRenderingPoints);
 	}

@@ -87,6 +87,7 @@ public:
 protected:
 	friend class MVKSwapchainImage;
 
+	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo);
     void initFrameIntervalTracking();
 	void releaseUndisplayedSurfaces();

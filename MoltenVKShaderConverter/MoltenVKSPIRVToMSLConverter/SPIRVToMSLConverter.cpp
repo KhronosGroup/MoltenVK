@@ -41,6 +41,7 @@ bool contains(const vector<T>& vec, const T& val) {
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterOptions::matches(const SPIRVToMSLConverterOptions& other) const {
 	if (entryPointStage != other.entryPointStage) { return false; }
     if (mslVersion != other.mslVersion) { return false; }
+	if (texelBufferTextureWidth != other.texelBufferTextureWidth) { return false; }
     if (!!shouldFlipVertexY != !!other.shouldFlipVertexY) { return false; }
     if (!!isRenderingPoints != !!other.isRenderingPoints) { return false; }
 	if (entryPointName != other.entryPointName) { return false; }
@@ -199,6 +200,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 #endif
 
 		mslOpts.msl_version = context.options.mslVersion;
+		mslOpts.texel_buffer_texture_width = context.options.texelBufferTextureWidth;
 		mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
 		mslOpts.resolve_specialized_array_lengths = true;
 		pMSLCompiler->set_msl_options(mslOpts);

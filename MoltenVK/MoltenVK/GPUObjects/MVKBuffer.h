@@ -85,20 +85,7 @@ class MVKBufferView : public MVKBaseDeviceObject {
 
 public:
 
-
-#pragma mark Resource memory
-
-    /** Returns the number of bytes used by this buffer view. */
-    inline VkDeviceSize getByteCount() { return _byteCount; };
-
-
 #pragma mark Metal
-
-    /** Returns the Metal buffer underlying this memory allocation. */
-    inline id<MTLBuffer> getMTLBuffer() { return _buffer->getMTLBuffer(); }
-
-    /** Returns the offset at which the contents of this instance starts within the underlying Metal buffer. */
-    inline NSUInteger getMTLBufferOffset() { return _mtlBufferOffset; }
 
     /** Returns a Metal texture that overlays this buffer view. */
     id<MTLTexture> getMTLTexture();
@@ -112,10 +99,10 @@ public:
 
 protected:
     MVKBuffer* _buffer;
+	id<MTLTexture> _mtlTexture;
+	MTLPixelFormat _mtlPixelFormat;
     NSUInteger _mtlBufferOffset;
-    MTLPixelFormat _mtlPixelFormat;
-    id<MTLTexture> _mtlTexture;
-    VkDeviceSize _byteCount;
+	NSUInteger _mtlBytesPerRow;
     VkExtent2D _textureSize;
 	std::mutex _lock;
 };
