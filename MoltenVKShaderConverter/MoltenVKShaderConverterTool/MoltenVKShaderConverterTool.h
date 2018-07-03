@@ -69,10 +69,10 @@ namespace mvk {
 		void log(const char* logMsg);
 		void showUsage();
 		bool isOptionArg(std::string& arg);
-		int optionParam(std::string& optionParamResult,
-						int optionArgIndex,
-						int argc,
-						const char* argv[]);
+		int optionalParam(std::string& optionParamResult,
+						  int optionArgIndex,
+						  int argc,
+						  const char* argv[]);
 
 		std::string _processName;
 		std::string _directoryPath;

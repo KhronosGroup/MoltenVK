@@ -124,8 +124,8 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignUsageWith(const SPIRVToM
 #pragma mark -
 #pragma mark SPIRVToMSLConverter
 
-/** Populates content extracted from the SPRI-V compiler. */
-void populateFromCompiler(spirv_cross::Compiler* pCompiler, SPIRVEntryPoint& entryPoint, SPIRVToMSLConverterOptions& options);
+// Populates the entry point with info extracted from the SPRI-V compiler.
+void populateEntryPoint(SPIRVEntryPoint& entryPoint, spirv_cross::Compiler* pCompiler, SPIRVToMSLConverterOptions& options);
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const vector<uint32_t>& spirv) { _spirv = spirv; }
 
@@ -224,7 +224,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 #endif
 
     // Populate content extracted from the SPRI-V compiler.
-	populateFromCompiler(pMSLCompiler, _entryPoint, context.options);
+	populateEntryPoint(_entryPoint, pMSLCompiler, context.options);
 
     // To check GLSL conversion
     if (shouldLogGLSL) {
@@ -334,7 +334,14 @@ void SPIRVToMSLConverter::logSource(string& src, const char* srcLang, const char
 
 #pragma mark Support functions
 
-void populateFromCompiler(spirv_cross::Compiler* pCompiler, SPIRVEntryPoint& entryPoint, SPIRVToMSLConverterOptions& options) {
+// Populate a workgroup size dimension.
+void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, spirv_cross::SpecializationConstant& spvSpecConst) {
+	wgDim.size = max(size, 1u);
+	wgDim.isSpecialized = (spvSpecConst.id != 0);
+	wgDim.specializationID = spvSpecConst.constant_id;
+}
+
+void populateEntryPoint(SPIRVEntryPoint& entryPoint, spirv_cross::Compiler* pCompiler, SPIRVToMSLConverterOptions& options) {
 
 	if ( !pCompiler ) { return; }
 
@@ -349,19 +356,13 @@ void populateFromCompiler(spirv_cross::Compiler* pCompiler, SPIRVEntryPoint& ent
 		}
 	}
 
-	uint32_t minDim = 1;
-	auto& wgSize = spvEP.workgroup_size;
+	spirv_cross::SpecializationConstant widthSC, heightSC, depthSC;
+	pCompiler->get_work_group_size_specialization_constants(widthSC, heightSC, depthSC);
 
 	entryPoint.mtlFunctionName = spvEP.name;
-	entryPoint.workgroupSize.width = max(wgSize.x, minDim);
-	entryPoint.workgroupSize.height = max(wgSize.y, minDim);
-	entryPoint.workgroupSize.depth = max(wgSize.z, minDim);
-
-	spirv_cross::SpecializationConstant width, height, depth;
-	entryPoint.workgroupSizeId.constant = pCompiler->get_work_group_size_specialization_constants(width, height, depth);
-	entryPoint.workgroupSizeId.width = width.constant_id;
-	entryPoint.workgroupSizeId.height = height.constant_id;
-	entryPoint.workgroupSizeId.depth = depth.constant_id;
+	populateWorkgroupDimension(entryPoint.workgroupSize.width, spvEP.workgroup_size.x, widthSC);
+	populateWorkgroupDimension(entryPoint.workgroupSize.height, spvEP.workgroup_size.y, heightSC);
+	populateWorkgroupDimension(entryPoint.workgroupSize.depth, spvEP.workgroup_size.z, depthSC);
 }
 
 MVK_PUBLIC_SYMBOL void mvk::logSPIRV(vector<uint32_t>& spirv, string& spvLog) {

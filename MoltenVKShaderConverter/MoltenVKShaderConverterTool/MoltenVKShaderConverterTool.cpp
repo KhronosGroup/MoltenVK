@@ -26,16 +26,16 @@ using namespace std;
 using namespace mvk;
 
 
-/** The default list of vertex file extensions. */
+// The default list of vertex file extensions.
 static const char* _defaultVertexShaderExtns = "vs vsh vert vertex";
 
-/** The default list of fragment file extensions. */
+// The default list of fragment file extensions.
 static const char* _defaultFragShaderExtns = "fs fsh frag fragment";
 
-/** The default list of compute file extensions. */
+// The default list of compute file extensions.
 static const char* _defaultCompShaderExtns = "cp cmp comp compute kn kl krn kern kernel";
 
-/** The default list of SPIR-V file extensions. */
+// The default list of SPIR-V file extensions.
 static const char* _defaultSPIRVShaderExtns = "spv spirv";
 
 
@@ -75,10 +75,8 @@ bool MoltenVKShaderConverterTool::processFile(string filePath) {
 	return false;
 }
 
-/**
- * Read GLSL code from a GLSL file, convert to SPIR-V, and optionally MSL,
- * and write the SPIR-V and/or MSL code to files.
- */
+// Read GLSL code from a GLSL file, convert to SPIR-V, and optionally MSL,
+// and write the SPIR-V and/or MSL code to files.
 bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 											string& spvOutFile,
 											string& mslOutFile,
@@ -149,9 +147,8 @@ bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 	return convertSPIRV(spv, glslInFile, mslOutFile, false);
 }
 
-/** Read SPIR-V code from a SPIR-V file, convert to MSL, and write the MSL code to files. */
-bool MoltenVKShaderConverterTool::convertSPIRV(string& spvInFile,
-											 string& mslOutFile) {
+// Read SPIR-V code from a SPIR-V file, convert to MSL, and write the MSL code to files.
+bool MoltenVKShaderConverterTool::convertSPIRV(string& spvInFile, string& mslOutFile) {
 	string path;
 	vector<char> fileContents;
 	vector<uint32_t> spv;
@@ -177,11 +174,11 @@ bool MoltenVKShaderConverterTool::convertSPIRV(string& spvInFile,
 	return convertSPIRV(spv, spvInFile, mslOutFile, _shouldLogConversions);
 }
 
-/** Read SPIR-V code from an array, convert to MSL, and write the MSL code to files. */
+// Read SPIR-V code from an array, convert to MSL, and write the MSL code to files.
 bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
-											 string& inFile,
-											 string& mslOutFile,
-											 bool shouldLogSPV) {
+											   string& inFile,
+											   string& mslOutFile,
+											   bool shouldLogSPV) {
 	if ( !_shouldWriteMSL ) { return true; }
 
 	// Derive the context under which conversion will occur
@@ -236,10 +233,10 @@ bool MoltenVKShaderConverterTool::isSPIRVFileExtension(string& pathExtension) {
 	return false;
 }
 
-/** Log the specified message to the console. */
+// Log the specified message to the console.
 void MoltenVKShaderConverterTool::log(const char* logMsg) { printf("%s\n", logMsg); }
 
-/** Display usage information about this application on the console. */
+// Display usage information about this application on the console.
 void MoltenVKShaderConverterTool::showUsage() {
 	string line = "\n\e[1m" + _processName + "\e[0m converts OpenGL Shading Language (GLSL) source code to";
 	log((const char*)line.c_str());
@@ -252,9 +249,9 @@ void MoltenVKShaderConverterTool::showUsage() {
     log("\nUse the -so or -mo option to indicate the desired type of output");
     log("(SPIR-V or MSL, respectively).");
 	log("\nUsage:");
-	log("  -d [\"dirPath\"]     - Path to a directory containing GLSL shader source code");
-	log("                       files. The dirPath may be omitted to use the current");
-	log("                       working directory.");
+	log("  -d [\"dirPath\"]     - Path to a directory containing GLSL or SPIR-V shader");
+	log("                       source code files. The dirPath may be omitted to use");
+	log("                       the current working directory.");
 	log("  -r                 - (when using -d) Process directories recursively.");
 	log("  -gi [\"glslInFile\"] - Indicates that GLSL shader code should be input.");
 	log("                       The optional path parameter specifies the path to a");
@@ -334,7 +331,7 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 
 		if (equal(arg, "-d", false)) {
 			int optIdx = argIdx;
-			argIdx = optionParam(_directoryPath, argIdx, argc, argv);
+			argIdx = optionalParam(_directoryPath, argIdx, argc, argv);
 			if (argIdx == optIdx) { return false; }
 			_directoryPath = absolutePath(_directoryPath);
 			continue;
@@ -347,32 +344,32 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 
 		if (equal(arg, "-gi", true)) {
 			_shouldReadGLSL = true;
-			argIdx = optionParam(_glslInFilePath, argIdx, argc, argv);
+			argIdx = optionalParam(_glslInFilePath, argIdx, argc, argv);
 			continue;
 		}
 
 		if (equal(arg, "-si", true)) {
 			_shouldReadSPIRV = true;
-			argIdx = optionParam(_spvInFilePath, argIdx, argc, argv);
+			argIdx = optionalParam(_spvInFilePath, argIdx, argc, argv);
 			continue;
 		}
 
 		if (equal(arg, "-so", true)) {
 			_shouldWriteSPIRV = true;
-			argIdx = optionParam(_spvOutFilePath, argIdx, argc, argv);
+			argIdx = optionalParam(_spvOutFilePath, argIdx, argc, argv);
 			continue;
 		}
 
 		if (equal(arg, "-mo", true)) {
 			_shouldWriteMSL = true;
-			argIdx = optionParam(_mslOutFilePath, argIdx, argc, argv);
+			argIdx = optionalParam(_mslOutFilePath, argIdx, argc, argv);
 			continue;
 		}
 
 		if (equal(arg, "-t", true)) {
 			int optIdx = argIdx;
 			string shdrTypeStr;
-			argIdx = optionParam(shdrTypeStr, argIdx, argc, argv);
+			argIdx = optionalParam(shdrTypeStr, argIdx, argc, argv);
 			if (argIdx == optIdx || shdrTypeStr.length() == 0) { return false; }
 
 			switch (shdrTypeStr.front()) {
@@ -416,7 +413,7 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 		if (equal(arg, "-vx", true)) {
 			int optIdx = argIdx;
 			string shdrExtnStr;
-			argIdx = optionParam(shdrExtnStr, argIdx, argc, argv);
+			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
 			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
 			extractTokens(shdrExtnStr, _glslVtxFileExtns);
 			continue;
@@ -425,7 +422,7 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 		if (equal(arg, "-fx", true)) {
 			int optIdx = argIdx;
 			string shdrExtnStr;
-			argIdx = optionParam(shdrExtnStr, argIdx, argc, argv);
+			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
 			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
 			extractTokens(shdrExtnStr, _glslFragFileExtns);
 			continue;
@@ -434,7 +431,7 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
         if (equal(arg, "-cx", true)) {
             int optIdx = argIdx;
             string shdrExtnStr;
-            argIdx = optionParam(shdrExtnStr, argIdx, argc, argv);
+            argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
             if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
             extractTokens(shdrExtnStr, _glslCompFileExtns);
             continue;
@@ -443,7 +440,7 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 		if (equal(arg, "-sx", true)) {
 			int optIdx = argIdx;
 			string shdrExtnStr;
-			argIdx = optionParam(shdrExtnStr, argIdx, argc, argv);
+			argIdx = optionalParam(shdrExtnStr, argIdx, argc, argv);
 			if (argIdx == optIdx || shdrExtnStr.length() == 0) { return false; }
 			extractTokens(shdrExtnStr, _spvFileExtns);
 			continue;
@@ -459,21 +456,19 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 	return true;
 }
 
-/** Returns whether the specified command line arg is an option arg. */
+// Returns whether the specified command line arg is an option arg.
 bool MoltenVKShaderConverterTool::isOptionArg(string& arg) {
 	return (arg.length() > 1 && arg.front() == '-');
 }
 
-/** 
- * Sets the contents of the specified string to the parameter part of the option at the 
- * specified arg index, and increments and returns the option index. If no parameter was
- * provided for the option, the string will be set to an empty string, and the returned
- * index will be the same as the specified index.
- */
-int MoltenVKShaderConverterTool::optionParam(string& optionParamResult,
-										   int optionArgIndex,
-										   int argc,
-										   const char* argv[]) {
+// Sets the contents of the specified string to the parameter part of the option at the
+// specified arg index, and increments and returns the option index. If no parameter was
+// provided for the option, the string will be set to an empty string, and the returned
+// index will be the same as the specified index.
+int MoltenVKShaderConverterTool::optionalParam(string& optionParamResult,
+											   int optionArgIndex,
+											   int argc,
+											   const char* argv[]) {
 	int optParamIdx = optionArgIndex + 1;
 	if (optParamIdx < argc) {
 		string arg(argv[optParamIdx]);
@@ -490,7 +485,7 @@ int MoltenVKShaderConverterTool::optionParam(string& optionParamResult,
 #pragma mark -
 #pragma mark Support functions
 
-/** Template function for tokenizing the components of a string into a vector. */
+// Template function for tokenizing the components of a string into a vector.
 template <typename Container>
 Container& split(Container& result,
 				 const typename Container::value_type& s,
@@ -516,7 +511,7 @@ void mvk::extractTokens(string str, vector<string>& tokens) {
 	split(tokens, str, " \t\n\f", false);
 }
 
-/** Compares the specified characters ignoring case. */
+// Compares the specified characters ignoring case.
 static bool compareIgnoringCase(unsigned char a, unsigned char b) {
 	return tolower(a) == tolower(b);
 }
