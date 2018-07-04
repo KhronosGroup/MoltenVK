@@ -486,15 +486,18 @@ typedef enum {
 namespace mvk {
 
 	template<class Archive>
+	void serialize(Archive & archive, SPIRVWorkgroupSizeDimension& wsd) {
+		archive(wsd.size,
+				wsd.specializationID,
+				wsd.isSpecialized);
+	}
+
+	template<class Archive>
 	void serialize(Archive & archive, SPIRVEntryPoint& ep) {
 		archive(ep.mtlFunctionName,
 				ep.workgroupSize.width,
 				ep.workgroupSize.height,
-				ep.workgroupSize.depth,
-				ep.workgroupSizeId.width,
-				ep.workgroupSizeId.height,
-				ep.workgroupSizeId.depth,
-				ep.workgroupSizeId.constant);
+				ep.workgroupSize.depth);
 	}
 
 	template<class Archive>

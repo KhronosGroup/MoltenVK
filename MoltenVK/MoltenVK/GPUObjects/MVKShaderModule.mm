@@ -30,14 +30,19 @@ const MVKMTLFunction MVKMTLFunctionNull = { nil, MTLSizeMake(1, 1, 1) };
 #pragma mark -
 #pragma mark MVKShaderLibrary
 
-static uint32_t getOffsetForConstantId(const VkSpecializationInfo* pSpecInfo, uint32_t constantId)
-{
-    for (uint32_t specIdx = 0; specIdx < pSpecInfo->mapEntryCount; specIdx++) {
-        const VkSpecializationMapEntry* pMapEntry = &pSpecInfo->pMapEntries[specIdx];
-        if (pMapEntry->constantID == constantId) { return pMapEntry->offset; }
-    }
+// If the size of the workgroup dimension is specialized, extract it from the
+// specialization info, otherwise use the value specified in the SPIR-V shader code.
+static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgDim, const VkSpecializationInfo* pSpecInfo) {
+	if (wgDim.isSpecialized && pSpecInfo) {
+		for (uint32_t specIdx = 0; specIdx < pSpecInfo->mapEntryCount; specIdx++) {
+			const VkSpecializationMapEntry* pMapEntry = &pSpecInfo->pMapEntries[specIdx];
+			if (pMapEntry->constantID == wgDim.specializationID) {
+				return *reinterpret_cast<uint32_t*>((uintptr_t)pSpecInfo->pData + pMapEntry->offset) ;
+			}
+		}
+	}
 
-    return -1;
+	return wgDim.size;
 }
 
 MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpecializationInfo) {
@@ -88,27 +93,10 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
         mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
     }
 
-    if (pSpecializationInfo) {
-        // Get the specialization constant values for the work group size
-        if (_entryPoint.workgroupSizeId.constant != 0) {
-            uint32_t widthOffset = getOffsetForConstantId(pSpecializationInfo, _entryPoint.workgroupSizeId.width);
-            if (widthOffset != -1) {
-                _entryPoint.workgroupSize.width = *reinterpret_cast<uint32_t*>((uint8_t*)pSpecializationInfo->pData + widthOffset);
-            }
+	return { mtlFunc, MTLSizeMake(getWorkgroupDimensionSize(_entryPoint.workgroupSize.width, pSpecializationInfo),
+								  getWorkgroupDimensionSize(_entryPoint.workgroupSize.height, pSpecializationInfo),
+								  getWorkgroupDimensionSize(_entryPoint.workgroupSize.depth, pSpecializationInfo)) };
 
-            uint32_t heightOffset = getOffsetForConstantId(pSpecializationInfo, _entryPoint.workgroupSizeId.height);
-            if (heightOffset != -1) {
-                _entryPoint.workgroupSize.height = *reinterpret_cast<uint32_t*>((uint8_t*)pSpecializationInfo->pData + heightOffset);
-            }
-
-            uint32_t depthOffset = getOffsetForConstantId(pSpecializationInfo, _entryPoint.workgroupSizeId.depth);
-            if (depthOffset != -1) {
-                _entryPoint.workgroupSize.depth = *reinterpret_cast<uint32_t*>((uint8_t*)pSpecializationInfo->pData + depthOffset);
-            }
-        }
-    }
-
-    return { mtlFunc, MTLSizeMake(_entryPoint.workgroupSize.width, _entryPoint.workgroupSize.height, _entryPoint.workgroupSize.depth) };
 }
 
 // Returns the MTLFunctionConstant with the specified ID from the specified array of function constants.

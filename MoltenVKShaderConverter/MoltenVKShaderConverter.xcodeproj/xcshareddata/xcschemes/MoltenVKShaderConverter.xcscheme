@@ -67,7 +67,11 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/MoltenVK/External/SPIRV-Cross/shaders-msl"
+            argument = "path-to-shader-directory"
+            isEnabled = "NO">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "-r"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
@@ -75,7 +79,7 @@
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Desktop/texture_buffer.vert"
+            argument = "path-to-GLSL-shader-file"
             isEnabled = "YES">
          </CommandLineArgument>
          <CommandLineArgument
@@ -83,7 +87,7 @@
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument
-            argument = "/Users/bill/Documents/Dev/iOSProjects/Molten/Support/2018/MVK_Issue_112/second/vert_bin.spv"
+            argument = "path-to-SPIR-V-shader-file"
             isEnabled = "NO">
          </CommandLineArgument>
          <CommandLineArgument

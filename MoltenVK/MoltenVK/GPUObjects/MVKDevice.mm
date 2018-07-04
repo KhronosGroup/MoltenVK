@@ -111,33 +111,42 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
     VkPhysicalDeviceLimits* pLimits = &_properties.limits;
     VkExtent3D maxExt;
     uint32_t maxLayers;
+	uint32_t maxLevels;
     switch (type) {
         case VK_IMAGE_TYPE_1D:
+			// Metal does not allow 1D textures to be used as attachments
+			if (mvkIsAnyFlagEnabled(usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+			}
             maxExt.width = pLimits->maxImageDimension1D;
             maxExt.height = 1;
             maxExt.depth = 1;
+			maxLevels = 1;
             maxLayers = pLimits->maxImageArrayLayers;
             break;
         case VK_IMAGE_TYPE_2D:
             maxExt.width = pLimits->maxImageDimension2D;
             maxExt.height = pLimits->maxImageDimension2D;
             maxExt.depth = 1;
+			maxLevels = mvkMipmapLevels3D(maxExt);
             maxLayers = pLimits->maxImageArrayLayers;
             break;
         case VK_IMAGE_TYPE_3D:
             maxExt.width = pLimits->maxImageDimension3D;
             maxExt.height = pLimits->maxImageDimension3D;
             maxExt.depth = pLimits->maxImageDimension3D;
+			maxLevels = mvkMipmapLevels3D(maxExt);
             maxLayers = 1;
             break;
         default:
             maxExt = { 1, 1, 1};
             maxLayers = 1;
+			maxLevels = 1;
             break;
     }
 
     pImageFormatProperties->maxExtent = maxExt;
-    pImageFormatProperties->maxMipLevels = mvkMipmapLevels3D(maxExt);
+    pImageFormatProperties->maxMipLevels = maxLevels;
     pImageFormatProperties->maxArrayLayers = maxLayers;
     pImageFormatProperties->sampleCounts = _metalFeatures.supportedSampleCounts;
     pImageFormatProperties->maxResourceSize = kMVKUndefinedLargeUInt64;
@@ -541,12 +550,12 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.maxVertexInputAttributeOffset = (4 * KIBI);
     _properties.limits.maxVertexInputBindingStride = _properties.limits.maxVertexInputAttributeOffset - 1;
 
+	_properties.limits.maxPerStageDescriptorSamplers = _metalFeatures.maxPerStageSamplerCount;
 	_properties.limits.maxPerStageDescriptorUniformBuffers = _metalFeatures.maxPerStageBufferCount;
 	_properties.limits.maxPerStageDescriptorStorageBuffers = _metalFeatures.maxPerStageBufferCount;
 	_properties.limits.maxPerStageDescriptorSampledImages = _metalFeatures.maxPerStageTextureCount;
 	_properties.limits.maxPerStageDescriptorStorageImages = _metalFeatures.maxPerStageTextureCount;
-    _properties.limits.maxPerStageDescriptorSamplers = _metalFeatures.maxPerStageSamplerCount;
-    _properties.limits.maxDescriptorSetInputAttachments = _metalFeatures.maxPerStageTextureCount;
+	_properties.limits.maxPerStageDescriptorInputAttachments = _metalFeatures.maxPerStageTextureCount;
 
     _properties.limits.maxPerStageResources = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount);
     _properties.limits.maxFragmentCombinedOutputResources = _properties.limits.maxPerStageResources;
@@ -558,6 +567,7 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxDescriptorSetStorageBuffersDynamic = (_properties.limits.maxPerStageDescriptorStorageBuffers * 2);
 	_properties.limits.maxDescriptorSetSampledImages = (_properties.limits.maxPerStageDescriptorSampledImages * 2);
 	_properties.limits.maxDescriptorSetStorageImages = (_properties.limits.maxPerStageDescriptorStorageImages * 2);
+	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 2);
 
 	_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
 	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
