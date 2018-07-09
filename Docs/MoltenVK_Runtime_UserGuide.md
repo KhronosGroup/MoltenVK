@@ -441,8 +441,11 @@ Known **MoltenVK** Limitations
 
 This section documents the known limitations in this version of **MoltenVK**.
 
-- **MoltenVK** is a Layer-0 driver implementation of *Vulkan 1.0*, and currently does not
-  support the loading of higher level *Vulkan Layers*.
+- **MoltenVK** is a Layer-0 driver implementation of *Vulkan 1.0*
+  Since it takes on the role of a driver in the Vulkan architecture, it does not load *Vulkan Layers*
+  on its own.
+  In order to use Vulkan layers such as the validation layers, use the Vulkan loader and layers from the
+  [LunarG Vulkan SDK](https://vulkan.lunarg.com).
 
 The following *Vulkan 1.0* features have not been implemented in this version of **MoltenVK**:
 
