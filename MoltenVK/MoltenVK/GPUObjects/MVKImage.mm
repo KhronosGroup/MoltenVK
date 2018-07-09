@@ -304,6 +304,8 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 
     if (!_device->_pMetalFeatures->ioSurfaces) { return mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
 
+#if !MVK_IOS
+
     resetMTLTexture();
     resetIOSurface();
 
@@ -331,6 +333,8 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 
     }
 
+#endif
+	
     return VK_SUCCESS;
 }
 
