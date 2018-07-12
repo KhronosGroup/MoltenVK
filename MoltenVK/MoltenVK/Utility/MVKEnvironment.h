@@ -39,3 +39,32 @@
                                                                     VK_VERSION_MINOR(api_ver),	\
                                                                     0)
 
+/** To present surface using a command buffer, define the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting. */
+#ifdef MVK_PRESENT_WITHOUT_COMMAND_BUFFER
+#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    0
+#else
+#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    1
+#endif
+
+/** To display the MoltenVK logo watermark by default, define the MVK_DISPLAY_WATERMARK build setting. */
+#ifdef MVK_DISPLAY_WATERMARK
+#   define MVK_DISPLAY_WATERMARK_BOOL    1
+#else
+#   define MVK_DISPLAY_WATERMARK_BOOL    0
+#endif
+
+
+/**
+ * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.
+ *
+ * To enable IOSurface support on iOS in MoltenVK, set the iOS Deployment Target
+ * (IPHONEOS_DEPLOYMENT_TARGET) build setting to 11.0 or greater when building
+ * MoltenVK, and any app that uses IOSurfaces.
+ */
+#if MVK_MACOS
+#	define MVK_SUPPORT_IOSURFACE_BOOL    1
+#endif
+
+#if MVK_IOS
+#	define MVK_SUPPORT_IOSURFACE_BOOL	(__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_11_0)
+#endif

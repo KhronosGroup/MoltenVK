@@ -806,7 +806,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nexport MVK_SYS_FWK_DIR=\"${SDK_DIR}/System/Library/Frameworks\"\nexport MVK_USR_LIB_DIR=\"${SDK_DIR}/usr/lib\"\n\nclang \\\n-dynamiclib \\\n-arch x86_64 \\\n-mmacosx-version-min=10.11 \\\n-compatibility_version 1.0.0 -current_version 1.0.0  \\\n-install_name \"@rpath/${MVK_DYLIB_NAME}\"  \\\n-Wno-incompatible-sysroot \\\n-isysroot ${SDK_DIR} \\\n-iframework ${MVK_SYS_FWK_DIR}  \\\n-framework Metal -framework IOSurface -framework IOKit -framework QuartzCore -framework Foundation \\\n--library-directory ${MVK_USR_LIB_DIR} \\\n-lSystem  -lc++ \\\n-o \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \\\n-force_load \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/${MVK_PROD_NAME}\"\n";
+			shellScript = "set -e\n\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nexport MVK_SYS_FWK_DIR=\"${SDK_DIR}/System/Library/Frameworks\"\nexport MVK_USR_LIB_DIR=\"${SDK_DIR}/usr/lib\"\n\nclang \\\n-dynamiclib \\\n-arch x86_64 \\\n-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET} \\\n-compatibility_version 1.0.0 -current_version 1.0.0  \\\n-install_name \"@rpath/${MVK_DYLIB_NAME}\"  \\\n-Wno-incompatible-sysroot \\\n-isysroot ${SDK_DIR} \\\n-iframework ${MVK_SYS_FWK_DIR}  \\\n-framework Metal -framework IOSurface -framework IOKit -framework QuartzCore -framework Foundation \\\n--library-directory ${MVK_USR_LIB_DIR} \\\n-lSystem  -lc++ \\\n-o \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \\\n-force_load \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/${MVK_PROD_NAME}\"\n";
 		};
 		A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -820,7 +820,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nexport MVK_SYS_FWK_DIR=\"${SDK_DIR}/System/Library/Frameworks\"\nexport MVK_USR_LIB_DIR=\"${SDK_DIR}/usr/lib\"\n\nclang \\\n-dynamiclib \\\n-arch arm64 \\\n-mios-version-min=9.0  \\\n-compatibility_version 1.0.0 -current_version 1.0.0  \\\n-install_name \"@rpath/${MVK_DYLIB_NAME}\"  \\\n-Wno-incompatible-sysroot \\\n-isysroot ${SDK_DIR} \\\n-iframework ${MVK_SYS_FWK_DIR}  \\\n-framework Metal -framework UIKit -framework QuartzCore -framework Foundation \\\n--library-directory ${MVK_USR_LIB_DIR} \\\n-lSystem  -lc++ \\\n-o \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \\\n-force_load \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/${MVK_PROD_NAME}\"\n";
+			shellScript = "set -e\n\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nexport MVK_SYS_FWK_DIR=\"${SDK_DIR}/System/Library/Frameworks\"\nexport MVK_USR_LIB_DIR=\"${SDK_DIR}/usr/lib\"\n\n# Do not link to IOSurface if deploying to iOS versions below 11.0, doing so will\n# link IOSurface as a private framework, which will trigger App Store rejection.\nif [ $(echo \"${IPHONEOS_DEPLOYMENT_TARGET} >= 11.0\" | bc) -eq 1 ]\nthen\n    export MVK_IOSURFACE_FWK=\"-framework IOSurface\"\nelse\n    export MVK_IOSURFACE_FWK=\"\"\nfi\n\nclang \\\n-dynamiclib \\\n-arch arm64 \\\n-mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}  \\\n-compatibility_version 1.0.0 -current_version 1.0.0  \\\n-install_name \"@rpath/${MVK_DYLIB_NAME}\"  \\\n-Wno-incompatible-sysroot \\\n-isysroot ${SDK_DIR} \\\n-iframework ${MVK_SYS_FWK_DIR}  \\\n-framework Metal ${MVK_IOSURFACE_FWK} -framework UIKit -framework QuartzCore -framework Foundation \\\n--library-directory ${MVK_USR_LIB_DIR} \\\n-lSystem  -lc++ \\\n-o \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \\\n-force_load \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/${MVK_PROD_NAME}\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -940,7 +940,9 @@
 		A9B8EE1E1A98D796009C5A02 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
 			};
 			name = Debug;
@@ -948,7 +950,9 @@
 		A9B8EE1F1A98D796009C5A02 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
 			};
 			name = Release;
@@ -956,6 +960,7 @@
 		A9CBEDFF1B6299D800E45FDC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SDKROOT = macosx;
 				VALID_ARCHS = x86_64;
 			};
@@ -964,6 +969,7 @@
 		A9CBEE001B6299D800E45FDC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SDKROOT = macosx;
 				VALID_ARCHS = x86_64;
 			};
@@ -1019,14 +1025,11 @@
 					"\"$(SRCROOT)/../MoltenVKShaderConverter\"",
 					"\"$(SRCROOT)/../External/cereal/include\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1077,13 +1080,10 @@
 					"\"$(SRCROOT)/../MoltenVKShaderConverter\"",
 					"\"$(SRCROOT)/../External/cereal/include\"",
 				);
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				MACH_O_TYPE = staticlib;
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

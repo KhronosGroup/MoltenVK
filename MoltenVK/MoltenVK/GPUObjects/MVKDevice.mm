@@ -49,20 +49,6 @@ using namespace std;
 #	define MVKViewClass		NSView
 #endif
 
-// To present surface using a command buffer, define the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting.
-#ifdef MVK_PRESENT_WITHOUT_COMMAND_BUFFER
-#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    0
-#else
-#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    1
-#endif
-
-// To display the MoltenVK logo watermark by default, define the MVK_DISPLAY_WATERMARK build setting.
-#ifdef MVK_DISPLAY_WATERMARK
-#   define MVK_DISPLAY_WATERMARK_BOOL    1
-#else
-#   define MVK_DISPLAY_WATERMARK_BOOL    0
-#endif
-
 
 #pragma mark -
 #pragma mark MVKPhysicalDevice
@@ -322,6 +308,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.maxPerStageSamplerCount = 16;
     _metalFeatures.maxQueryBufferSize = (64 * KIBI);
 
+	_metalFeatures.ioSurfaces = MVK_SUPPORT_IOSURFACE_BOOL;
+
 #if MVK_IOS
     _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1);
     _metalFeatures.maxPerStageTextureCount = 31;
@@ -329,7 +317,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mtlCopyBufferAlignment = 1;
     _metalFeatures.texelBuffers = true;
 	_metalFeatures.maxTextureDimension = (4 * KIBI);
-	_metalFeatures.ioSurfaces = false;
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 1);
@@ -362,7 +349,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mtlCopyBufferAlignment = 4;
 	_metalFeatures.indirectDrawing = true;
 	_metalFeatures.baseVertexInstanceDrawing = true;
-    _metalFeatures.ioSurfaces = true;
     _metalFeatures.depthClipMode = true;
 	_metalFeatures.maxTextureDimension = (16 * KIBI);
 

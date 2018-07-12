@@ -108,6 +108,10 @@ Once built, **MoltenVK** can be run on *iOS* or *macOS* devices that support *Me
 - Information on compatible *iOS* devices that are compatible with *Metal* can be found in 
   [this article](https://developer.apple.com/library/content/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/HardwareGPUInformation/HardwareGPUInformation.html).
 
+>***Note:*** To support `IOSurfaces` on *iOS*, **MoltenVK**, and any app that uses **MoltenVK**, 
+must be built with a minimum **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET `) build 
+setting of `iOS 11.0` or greater.
+
 The `MoltenVKPackaging.xcodeproj` *Xcode* project contains targets and schemes to build 
 and package the entire **MoltenVK** runtime distribution package, or to build individual 
 **MoltenVK** or **MoltenVKShaderConverter** components.

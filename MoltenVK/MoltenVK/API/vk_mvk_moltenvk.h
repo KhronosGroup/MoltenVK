@@ -48,7 +48,7 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   14
+#define MVK_VERSION_PATCH   15
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
@@ -274,6 +274,14 @@ VKAPI_ATTR void VKAPI_CALL vkGetMTLTextureMVK(
  * whose properties are compatible with the properties of this image.
  *
  * If a MTLTexture has already been created for this image, it will be destroyed.
+ *
+ * IOSurfaces are supported on the following platforms:
+ *   -  macOS 10.11 and above
+ *   -  iOS 11.0 and above
+ *
+ * To enable IOSurface support, ensure the Deployment Target build setting
+ * (MACOSX_DEPLOYMENT_TARGET or IPHONEOS_DEPLOYMENT_TARGET) is set to at least
+ * one of the values above when compiling MoltenVK, and any app that uses MoltenVK.
  *
  * Returns:
  *   - VK_SUCCESS.
