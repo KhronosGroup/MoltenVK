@@ -42,7 +42,7 @@ extern "C" {
 #	endif	// DEBUG
 #endif	// MVK_DEBUG
 
-    /** Building for iOS. Use ifdef instead of defined() operator to allow MVK_IOS to be used in expansions */
+/** Building for iOS. Use ifdef instead of defined() operator to allow MVK_IOS to be used in expansions */
 #ifndef MVK_IOS
 #    ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 #        define MVK_IOS            1
@@ -51,7 +51,7 @@ extern "C" {
 #    endif
 #endif
 
-    /** Building for macOS. Use ifdef instead of defined() operator to allow MVK_MACOS to be used in expansions */
+/** Building for macOS. Use ifdef instead of defined() operator to allow MVK_MACOS to be used in expansions */
 #ifndef MVK_MACOS
 #    ifdef __MAC_OS_X_VERSION_MAX_ALLOWED
 #        define MVK_MACOS        1

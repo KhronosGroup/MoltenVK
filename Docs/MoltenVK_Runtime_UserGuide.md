@@ -112,8 +112,11 @@ the *Metal* environment.
       found in the **MoltenVK** distribution package.
     - If building for *macOS*, add an entry that points to the `MoltenVK/macOS` folder, 
       found in the **MoltenVK** distribution package.
-   
-3. On the *Build Phases* tab, open the *Link Binary With Libraries* list.
+
+3. If using `IOSurfaces` on *iOS*, in the *Build Settings* tab, open the **iOS Deployment Target** 
+   (aka `IPHONEOS_DEPLOYMENT_TARGET`) setting, and ensure it is set to a value of `iOS 11.0` or greater.
+
+4. On the *Build Phases* tab, open the *Link Binary With Libraries* list.
 
    1. Drag the `MoltenVK/iOS/MoltenVK.framework` or `MoltenVK/macOS/MoltenVK.framework` folder, 
       found  in the **MoltenVK** distribution package, to the *Link Binary With Libraries* list.
@@ -122,13 +125,13 @@ the *Metal* environment.
       **Enable Modules (C and Objective-C** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the 
       **+** button, and (selecting from the list of system frameworks) add the following frameworks:
 		- `Metal.framework`
-		- `IOSurface.framework`
+		- `Foundation.framework`.
 		- `QuartzCore.framework`
 		- `IOKit.framework` (*macOS*)
 		- `UIKit.framework` (*iOS*)
-		- `Foundation.framework`.
+		- `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`)
 
-4. When a *Metal* app is running from *Xcode*, the default ***Scheme*** settings reduce
+5. When a *Metal* app is running from *Xcode*, the default ***Scheme*** settings reduce
    performance. To improve performance and gain the benefits of *Metal*, perform the 
    following in *Xcode*:
    
@@ -172,7 +175,10 @@ follow these instructions:
         either `@executable_path` or `@loader_path`. The `libMoltenVK.dylib` library is internally 
         configured to be located at `@rpath/libMoltenVK.dylib`.
 
-3. On the *Build Phases* tab, open the *Link Binary With Libraries* list.
+3. If using `IOSurfaces` on *iOS*, in the *Build Settings* tab, open the **iOS Deployment Target** 
+   (aka `IPHONEOS_DEPLOYMENT_TARGET`) setting, and ensure it is set to a value of `iOS 11.0` or greater.
+
+4. On the *Build Phases* tab, open the *Link Binary With Libraries* list.
 
    1. Drag the `MoltenVK/iOS/libMoltenVK.dylib` or `MoltenVK/macOS/libMoltenVK.dylib` file, 
       found  in the **MoltenVK** distribution package, to the *Link Binary With Libraries* list.
@@ -181,13 +187,13 @@ follow these instructions:
       **Enable Modules (C and Objective-C** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the 
       **+** button, and (selecting from the list of system frameworks) add the following frameworks:
 		- `Metal.framework`
-		- `IOSurface.framework`
+		- `Foundation.framework`.
 		- `QuartzCore.framework`
 		- `IOKit.framework` (*macOS*)
 		- `UIKit.framework` (*iOS*)
-		- `Foundation.framework`.
+		- `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`)
 
-4. Arrange to install the `libMoltenVK.dylib` file in your application environment:
+5. Arrange to install the `libMoltenVK.dylib` file in your application environment:
 
    - To copy the `libMoltenVK.dylib` file into your application or component library:
         1. On the *Build Phases* tab, add a new *Copy Files* build phase.

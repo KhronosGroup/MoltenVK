@@ -7,7 +7,6 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		A9096E4F1F7EF10300DFBEA6 /* IOSurface.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9096E4E1F7EF10300DFBEA6 /* IOSurface.framework */; };
 		A95C050B1C98FC1100CC653D /* blue.ppm in Resources */ = {isa = PBXBuildFile; fileRef = A95C05021C98FC1100CC653D /* blue.ppm */; };
 		A95C050C1C98FC1100CC653D /* blue.ppm in Resources */ = {isa = PBXBuildFile; fileRef = A95C05021C98FC1100CC653D /* blue.ppm */; };
 		A95C050D1C98FC1100CC653D /* green.ppm in Resources */ = {isa = PBXBuildFile; fileRef = A95C05041C98FC1100CC653D /* green.ppm */; };
@@ -154,7 +153,6 @@
 			files = (
 				A9B5D0A21CF8835500D7CBDD /* MoltenVK.framework in Frameworks */,
 				A9B5D0A61CF8838E00D7CBDD /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */,
-				A9096E4F1F7EF10300DFBEA6 /* IOSurface.framework in Frameworks */,
 				A9B5D09E1CF8831400D7CBDD /* libc++.tbd in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
