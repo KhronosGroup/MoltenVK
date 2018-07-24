@@ -213,6 +213,12 @@ void mvkFlipVertically(void* rowMajorData, uint32_t rowCount, size_t bytesPerRow
 
 #pragma mark Vulkan structure support functions
 
+/** Returns a VkExtent2D created from the width and height of a VkExtent3D. */
+static inline VkExtent2D mvkVkExtent2DFromVkExtent3D(VkExtent3D e) { return {e.width, e.height }; }
+
+/** Returns a VkExtent3D, created from a VkExtent2D, and with depth of 1. */
+static inline VkExtent3D mvkVkExtent3DFromVkExtent2D(VkExtent2D e) { return {e.width, e.height, 1U }; }
+
 /** Returns whether the two Vulkan extents are equal by comparing their respective components. */
 static inline bool mvkVkExtent2DsAreEqual(VkExtent2D e1, VkExtent2D e2) {
 	return (e1.width == e2.width) && (e1.height == e2.height);

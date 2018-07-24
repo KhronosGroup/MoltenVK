@@ -265,13 +265,25 @@ uint32_t mvkMipmapLevels3D(VkExtent3D extent);
  * Returns the size of the specified zero-based mipmap level, 
  * when the size of the base level is the specified size. 
  */
-VkExtent2D mvkMipmapLevelSizeFromBaseSize(VkExtent2D baseSize, uint32_t level);
+VkExtent2D mvkMipmapLevelSizeFromBaseSize2D(VkExtent2D baseSize, uint32_t level);
+
+/**
+ * Returns the size of the specified zero-based mipmap level,
+ * when the size of the base level is the specified size.
+ */
+VkExtent3D mvkMipmapLevelSizeFromBaseSize3D(VkExtent3D baseSize, uint32_t level);
 
 /** 
  * Returns the size of the mipmap base level, when the size of 
  * the specified zero-based mipmap level is the specified size.
  */
-VkExtent2D mvkMipmapBaseSizeFromLevelSize(VkExtent2D levelSize, uint32_t level);
+VkExtent2D mvkMipmapBaseSizeFromLevelSize2D(VkExtent2D levelSize, uint32_t level);
+
+/**
+ * Returns the size of the mipmap base level, when the size of
+ * the specified zero-based mipmap level is the specified size.
+ */
+VkExtent3D mvkMipmapBaseSizeFromLevelSize3D(VkExtent3D levelSize, uint32_t level);
 
 
 #pragma mark Samplers
@@ -319,10 +331,12 @@ MTLVertexStepFunction mvkMTLVertexStepFunctionFromVkVertexInputRate(VkVertexInpu
 /** Returns the Metal MTLPrimitiveType corresponding to the specified Vulkan VkPrimitiveTopology. */
 MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology);
 
-#if MVK_MACOS
-/** Returns the Metal MTLPrimitiveTopologyClass corresponding to the specified Vulkan VkPrimitiveTopology. */
-MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology);
-#endif
+/**
+ * Returns the Metal MTLPrimitiveTopologyClass corresponding to the specified Vulkan VkPrimitiveTopology.
+ *
+ * The value is treated as an NSUInteger to support OS versions on which the enum is unavailable.
+ */
+NSUInteger mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology);
 
 /** Returns the Metal MTLLoadAction corresponding to the specified Vulkan VkAttachmentLoadOp. */
 MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachmentLoadOp vkLoadOp);

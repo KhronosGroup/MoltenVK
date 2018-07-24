@@ -1,5 +1,5 @@
 /*
- * CAMetalLayer+MoltenVK.h
+ * MTLRenderPassDescriptor+MoltenVK.h
  *
  * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -16,24 +16,19 @@
  * limitations under the License.
  */
 
+#pragma once
 
-#import <QuartzCore/QuartzCore.h>
+#import <Metal/Metal.h>
 
-/** Extensions to CAMetalLayer to support MoltenVK. */
-@interface CAMetalLayer (MoltenVK)
-
-/**
- * Ensures the drawableSize property of this layer is up to date, by combining the size
- * of the bounds property and the contentScale property, and returns the updated value.
- */
--(CGSize) updatedDrawableSizeMVK;
+/** Extensions to MTLRenderPassDescriptor to support MoltenVK. */
+@interface MTLRenderPassDescriptor (MoltenVK)
 
 /**
- * Replacement for the displaySyncEnabled property.
+ * Replacement for the renderTargetArrayLength property.
  *
- * This property allows support under all OS versions. Delegates to the displaySyncEnabled
- * property if it is available. otherwise, returns YES when read and does nothing when set.
+ * This property allows support under all OS versions. Delegates to the renderTargetArrayLength
+ * property if it is available. otherwise, returns 0 when read and does nothing when set.
  */
-@property(nonatomic, readwrite) BOOL displaySyncEnabledMVK;
+@property(nonatomic, readwrite) NSUInteger renderTargetArrayLengthMVK;
 
 @end

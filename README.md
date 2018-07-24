@@ -47,18 +47,34 @@ If you are just looking for a pre-built **MoltenVK** runtime binary, you can dow
 Introduction
 ------------
 
+**MoltenVK** is an implementation of the [*Vulkan 1.0*](https://www.khronos.org/vulkan) 
+graphics and compute API, that runs on Apple's [*Metal*](https://developer.apple.com/metal) 
+graphics and compute framework on both *iOS* and *macOS*.
+
+**MoltenVK** allows you to use the *Vulkan* graphics and compute API to develop modern, 
+cross-platform, high-performance graphical games and applications, and to run them across 
+many platforms, including both *iOS* and *macOS*.
+
+*Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than 
+*Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
+to their *MSL* equivalents.
+
+To provide *Vulkan* capability to the *iOS* and *macOS* platforms, **MoltenVK** uses *Apple's* 
+publicly available API's, including *Metal*. **MoltenVK** does **_not_** use any private or
+undocumented API calls or features, so your app will be compatible with all standard distribution 
+channels, including *Apple's App Store*.
+
 **MoltenVK** contains two products:
 
 - **MoltenVK** is an implementation of the [*Vulkan 1.0*](https://www.khronos.org/vulkan) 
-  graphics and compute API, that runs on Apple's [*Metal*](https://developer.apple.com/metal) 
-  graphics and compute framework on both *iOS* and *macOS*.
+  graphics and compute API.
 
 - **MoltenVKShaderConverter** converts *SPIR-V* shader code to *Metal Shading Language (MSL)*
-  shader source code, and converts *GLSL* shader source code to *SPIR-V* shader code and/or
-  *Metal Shading Language (MSL)* shader source code, for use with **MoltenVK**. The converter
-  can run at runtime as a component of the *MoltenVK* runtime, or it can be packaged into a 
-  stand-alone command-line *macOS* tool. The *Xcode* project contains several targets, 
-  reflecting this multi-use capability.
+  shader code, and converts *GLSL* shader source code to *SPIR-V* shader code and/or
+  *Metal Shading Language (MSL)* shader code. The *SPIR-V* converter is included in the 
+  **MoltenVK** runtime to automatically convert *SPIR-V* shaders to their *MSL* equivalents. 
+  In addition, both the *SPIR-V* and *GLSL* converters can be be packaged into a stand-alone 
+  command-line *macOS* tool for converting shaders at development time.
 
 
 

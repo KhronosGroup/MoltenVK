@@ -340,8 +340,8 @@ static const MVKFormatDesc _formatDescriptions[] {
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R64G64B64A64_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 32, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R64G64B64A64_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 32, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B10G11R11_UFLOAT_PACK32, MTLPixelFormatRG11B10Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_E5B9G9R9_UFLOAT_PACK32, MTLPixelFormatRGB9E5Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B10G11R11_UFLOAT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_E5B9G9R9_UFLOAT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_D32_SFLOAT, MTLPixelFormatDepth32Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_BUFFER_FEATS ),
     MVK_MAKE_FMT_STRUCT( VK_FORMAT_D32_SFLOAT_S8_UINT, MTLPixelFormatDepth32Float_Stencil8, MTLPixelFormatInvalid, 9.0, 10.11, 1, 1, 5, MTLVertexFormatInvalid, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_BUFFER_FEATS ),
@@ -813,7 +813,7 @@ MVK_PUBLIC_SYMBOL uint32_t mvkMipmapLevels(uint32_t dim) {
 }
 
 MVK_PUBLIC_SYMBOL uint32_t mvkMipmapLevels2D(VkExtent2D extent) {
-    return mvkMipmapLevels3D( {extent.width, extent.height, 1} );
+    return mvkMipmapLevels3D(mvkVkExtent3DFromVkExtent2D(extent));
 }
 
 MVK_PUBLIC_SYMBOL uint32_t mvkMipmapLevels3D(VkExtent3D extent) {
@@ -821,21 +821,27 @@ MVK_PUBLIC_SYMBOL uint32_t mvkMipmapLevels3D(VkExtent3D extent) {
     return max(mvkMipmapLevels(maxDim), 1U);
 }
 
-MVK_PUBLIC_SYMBOL VkExtent2D mvkMipmapLevelSizeFromBaseSize(VkExtent2D baseSize, uint32_t level) {
-	// Before shifting, ensure dims are treated as unsigned
-	uint32_t width = baseSize.width;
-	uint32_t height = baseSize.height;
+MVK_PUBLIC_SYMBOL VkExtent2D mvkMipmapLevelSizeFromBaseSize2D(VkExtent2D baseSize, uint32_t level) {
+	return mvkVkExtent2DFromVkExtent3D(mvkMipmapLevelSizeFromBaseSize3D(mvkVkExtent3DFromVkExtent2D(baseSize), level));
+}
 
-	VkExtent2D lvlSize;
-	lvlSize.width = MAX(width >> level, 1);
-	lvlSize.height = MAX(height >> level, 1);
+MVK_PUBLIC_SYMBOL VkExtent3D mvkMipmapLevelSizeFromBaseSize3D(VkExtent3D baseSize, uint32_t level) {
+	VkExtent3D lvlSize;
+	lvlSize.width = max(baseSize.width >> level, 1U);
+	lvlSize.height = max(baseSize.height >> level, 1U);
+	lvlSize.depth = max(baseSize.depth >> level, 1U);
 	return lvlSize;
 }
 
-MVK_PUBLIC_SYMBOL VkExtent2D mvkMipmapBaseSizeFromLevelSize(VkExtent2D levelSize, uint32_t level) {
-	VkExtent2D baseSize;
+MVK_PUBLIC_SYMBOL VkExtent2D mvkMipmapBaseSizeFromLevelSize2D(VkExtent2D levelSize, uint32_t level) {
+	return mvkVkExtent2DFromVkExtent3D(mvkMipmapBaseSizeFromLevelSize3D(mvkVkExtent3DFromVkExtent2D(levelSize), level));
+}
+
+MVK_PUBLIC_SYMBOL VkExtent3D mvkMipmapBaseSizeFromLevelSize3D(VkExtent3D levelSize, uint32_t level) {
+	VkExtent3D baseSize;
 	baseSize.width = levelSize.width << level;
 	baseSize.height = levelSize.height << level;
+	baseSize.depth = levelSize.depth << level;
 	return baseSize;
 }
 
@@ -968,8 +974,8 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(Vk
 	}
 }
 
+MVK_PUBLIC_SYMBOL NSUInteger mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology) {
 #if MVK_MACOS
-MVK_PUBLIC_SYMBOL MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology) {
 	switch (vkTopology) {
 		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
 			return MTLPrimitiveTopologyClassPoint;
@@ -992,8 +998,11 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPr
 			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for render pipelines.", vkTopology);
 			return MTLPrimitiveTopologyClassUnspecified;
 	}
-}
 #endif
+#if MVK_IOS
+	return 0;
+#endif
+}
 
 MVK_PUBLIC_SYMBOL MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachmentLoadOp vkLoadOp) {
 	switch (vkLoadOp) {

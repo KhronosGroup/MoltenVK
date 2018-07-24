@@ -81,6 +81,9 @@ public:
 	/** Populates the specified structure with the properties of this device. */
 	void getProperties(VkPhysicalDeviceProperties* properties);
 
+	/** Returns whether the specified format is supported. */
+	bool getFormatIsSupported(VkFormat format);
+
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
 

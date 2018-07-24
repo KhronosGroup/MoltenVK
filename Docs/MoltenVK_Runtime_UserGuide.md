@@ -56,16 +56,21 @@ About **MoltenVK**
 graphics and compute API, that runs on Apple's [*Metal*](https://developer.apple.com/metal) 
 graphics and compute framework on both *iOS* and *macOS*.
 
-**MoltenVK** allows you to use the *Vulkan* graphics and compute API to develop modern, cross-platform, 
-high-performance graphical games and applications, and to run them across many platforms, including 
-both *iOS* and *macOS*.
+**MoltenVK** allows you to use the *Vulkan* graphics and compute API to develop modern, 
+cross-platform, high-performance graphical games and applications, and to run them across 
+many platforms, including both *iOS* and *macOS*.
 
 *Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than 
-*Vulkan*, which uses *SPIR-V*. However, fear not, as **MoltenVK** will automatically convert 
-your *SPIR-V* shaders to their *MSL* equivalents. This can be performed transparently at run time, 
-using the **Runtime Shader Conversion** feature of **MoltenVK**, or at development time using the 
-[**MoltenVKShaderConverter**](#shader_converter_tool) tool provided with this **MoltenVK** distribution
-package.
+*Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
+to their *MSL* equivalents. This can be performed transparently at run time, using the 
+**Runtime Shader Conversion** feature of **MoltenVK**, or at development time using the 
+[**MoltenVKShaderConverter**] (#shader_converter_tool) tool provided with this **MoltenVK** 
+distribution package.
+
+To provide *Vulkan* capability to the *iOS* and *macOS* platforms, **MoltenVK** uses *Apple's* 
+publicly available API's, including *Metal*. **MoltenVK** does **_not_** use any private or
+undocumented API calls or features, so your app will be compatible with all standard distribution 
+channels, including *Apple's App Store*.
 
 
 <a name="install"></a>

@@ -21,6 +21,7 @@
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
 #include "NSString+MoltenVK.h"
+#include "MTLRenderPipelineDescriptor+MoltenVK.h"
 #include "MVKLogging.h"
 
 using namespace std;
@@ -31,7 +32,7 @@ using namespace std;
 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey) {
     MTLRenderPipelineDescriptor* plDesc = [[[MTLRenderPipelineDescriptor alloc] init] autorelease];
-    plDesc.label = [NSString stringWithFormat: @"CmdBlitImage"];
+    plDesc.label = @"CmdBlitImage";
 
 	plDesc.vertexFunction = getFunctionNamed("vtxCmdBlitImage");
     plDesc.fragmentFunction = getBlitFragFunction(blitKey);
@@ -85,10 +86,11 @@ id<MTLSamplerState> MVKCommandResourceFactory::newCmdBlitImageMTLSamplerState(MT
 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipelineState(MVKRPSKeyClearAtt& attKey) {
     MTLRenderPipelineDescriptor* plDesc = [[[MTLRenderPipelineDescriptor alloc] init] autorelease];
-    plDesc.label = [NSString stringWithFormat: @"CmdClearAttachments"];
+    plDesc.label = @"CmdClearAttachments";
     plDesc.vertexFunction = getFunctionNamed("vtxCmdClearAttachments");
     plDesc.fragmentFunction = getClearFragFunction(attKey);
 	plDesc.sampleCount = attKey.mtlSampleCount;
+	plDesc.inputPrimitiveTopologyMVK = mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST);
 
     for (uint32_t caIdx = 0; caIdx < kMVKAttachmentFormatDepthStencilIndex; caIdx++) {
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
@@ -109,10 +111,10 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 
     // Vertex location
     vaDesc = vaDescArray[0];
-    vaDesc.format = MTLVertexFormatFloat2;
+    vaDesc.format = MTLVertexFormatFloat4;
     vaDesc.bufferIndex = vtxBuffIdx;
     vaDesc.offset = vtxStride;
-    vtxStride += sizeof(simd::float2);
+    vtxStride += sizeof(simd::float4);
 
     // Vertex attribute buffer.
     MTLVertexBufferLayoutDescriptorArray* vbDescArray = vtxDesc.layouts;
@@ -357,7 +359,7 @@ void MVKCommandResourceFactory::initMTLLibrary() {
     @autoreleasepool {
         MTLCompileOptions* shdrOpts = [[MTLCompileOptions new] autorelease];
         NSError* err = nil;
-        _mtlLibrary = [getMTLDevice() newLibraryWithSource: @(_MVKStaticCmdShaderSource)
+        _mtlLibrary = [getMTLDevice() newLibraryWithSource: MVKStaticCmdShaderSource
                                                    options: shdrOpts
                                                      error: &err];    // retained
         MVKAssert( !err, "Could not compile command shaders %s (code %li) %s", err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);

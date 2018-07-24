@@ -17,17 +17,26 @@
  */
 
 
-#import "MTLTextureDescriptor+MoltenVK.h"
+#include "MTLTextureDescriptor+MoltenVK.h"
 
-@implementation MTLSamplerDescriptor (MoltenVK)
+@implementation MTLTextureDescriptor (MoltenVK)
 
--(MTLCompareFunction) compareFunctionMVK {
-    if ( [self respondsToSelector: @selector(compareFunction)]) { return self.compareFunction; }
-    return MTLCompareFunctionNever;
+-(MTLTextureUsage) usageMVK {
+	if ( [self respondsToSelector: @selector(usage)]) { return self.usage; }
+	return MTLTextureUsageUnknown;
 }
 
--(void) setCompareFunctionMVK: (MTLCompareFunction) cmpFunc {
-    if ( [self respondsToSelector: @selector(setCompareFunction:)]) { self.compareFunction = cmpFunc; }
+-(void) setUsageMVK: (MTLTextureUsage) usage {
+	if ( [self respondsToSelector: @selector(setUsage:)]) { self.usage = usage; }
+}
+
+-(MTLStorageMode) storageModeMVK {
+	if ( [self respondsToSelector: @selector(storageMode)]) { return self.storageMode; }
+	return MTLStorageModeShared;
+}
+
+-(void) setStorageModeMVK: (MTLStorageMode) storageMode {
+	if ( [self respondsToSelector: @selector(setStorageMode:)]) { self.storageMode = storageMode; }
 }
 
 @end

@@ -242,7 +242,7 @@ protected:
     void populateVertices(VkClearRect& clearRect, float attWidth, float attHeight);
 
     std::vector<VkClearRect> _clearRects;
-    std::vector<simd::float2> _vertices;
+    std::vector<simd::float4> _vertices;
     simd::float4 _clearColors[kMVKAttachmentFormatCount];
     VkClearValue _vkClearValues[kMVKAttachmentFormatCount];
     MVKRPSKeyClearAtt _rpsKey;
@@ -279,9 +279,9 @@ protected:
     MVKImage* _image;
     VkImageLayout _imgLayout;
     std::vector<VkImageSubresourceRange> _subresourceRanges;
-    simd::float4 _clearColors[kMVKAttachmentFormatCount];
-    MVKRPSKeyClearAtt _rpsKey;
-    uint32_t _mtlStencilValue;
+	MTLClearColor _mtlColorClearValue;
+	double _mtlDepthClearValue;
+    uint32_t _mtlStencilClearValue;
     bool _isDepthStencilClear;
 };
 
@@ -396,12 +396,12 @@ void mvkCmdClearAttachments(MVKCommandBuffer* cmdBuff,
                             const VkClearRect* pRects);
 
 /** Adds a clear color image command to the specified command buffer. */
-void mvkCmdClearImage(MVKCommandBuffer* cmdBuff,
-                      VkImage image,
-                      VkImageLayout imageLayout,
-                      const VkClearColorValue* pColor,
-                      uint32_t rangeCount,
-                      const VkImageSubresourceRange* pRanges);
+void mvkCmdClearColorImage(MVKCommandBuffer* cmdBuff,
+						   VkImage image,
+						   VkImageLayout imageLayout,
+						   const VkClearColorValue* pColor,
+						   uint32_t rangeCount,
+						   const VkImageSubresourceRange* pRanges);
 
 /** Adds a clear depth stencil image command to the specified command buffer. */
 void mvkCmdClearDepthStencilImage(MVKCommandBuffer* cmdBuff,

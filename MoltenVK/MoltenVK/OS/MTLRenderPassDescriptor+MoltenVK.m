@@ -1,14 +1,14 @@
 /*
- * NSString+MoltenVK.h
+ * MTLRenderPassDescriptor+MoltenVK.m
  *
  * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -17,24 +17,28 @@
  */
 
 
-/* This file contains convenient functions for accessing Metal components during execution. */
-
-#pragma once
-
+#include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "MVKCommonEnvironment.h"
-#import <Foundation/Foundation.h>
 
+@implementation MTLRenderPassDescriptor (MoltenVK)
 
-#pragma mark -
-#pragma mark NSMutableString extension
+-(NSUInteger) renderTargetArrayLengthMVK {
 
-/** Extensions to NSMutableString to support MoltenVK. */
-@interface NSMutableString (MoltenVK)
+#if MVK_MACOS
+	return self.renderTargetArrayLength;
+#endif
+#if MVK_IOS
+	return 0;
+#endif
 
-/** Appends the string and a new line. */
--(void) appendLineMVK:(NSString*) aString;
+}
 
-/** Appends an empty new line. */
--(void) appendLineMVK;
+-(void) setRenderTargetArrayLengthMVK: (NSUInteger) length {
+
+#if MVK_MACOS
+	self.renderTargetArrayLength = length;
+#endif
+
+}
 
 @end

@@ -19,19 +19,20 @@
 
 #include "MVKOSExtensions.h"
 #include "MVKFoundation.h"
+#include "MVKCommonEnvironment.h"
 
 #include <vector>
 #include <mach/mach_host.h>
 #include <mach/mach_time.h>
 
 #if MVK_MACOS
-#import <CoreFoundation/CFData.h>
-#import <IOKit/IOKitLib.h>
-#import <IOKit/IOKitKeys.h>
+#	import <CoreFoundation/CFData.h>
+#	import <IOKit/IOKitLib.h>
+#	import <IOKit/IOKitKeys.h>
 #endif
 
 #if MVK_IOS
-#import <UIKit/UIDevice.h>
+#	import <UIKit/UIDevice.h>
 #endif
 
 using namespace std;

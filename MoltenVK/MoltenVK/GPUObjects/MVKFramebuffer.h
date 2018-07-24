@@ -33,6 +33,9 @@ public:
 	/** Returns the dimensions of this framebuffer. */
 	inline VkExtent2D getExtent2D() { return _extent; }
 
+	/** Returns the layers covered by this framebuffer. */
+	inline uint32_t getLayerCount() { return _layerCount; }
+
 	/** Returns the attachment at the specified index.  */
 	inline MVKImageView* getAttachment(uint32_t index) { return _attachments[index]; }
 
@@ -44,6 +47,7 @@ public:
 
 protected:
     VkExtent2D _extent;
+	uint32_t _layerCount;
 	std::vector<MVKImageView*> _attachments;
 };
 
