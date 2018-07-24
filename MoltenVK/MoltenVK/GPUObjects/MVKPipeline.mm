@@ -287,7 +287,6 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 			id<MTLFunction> mtlFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 			if ( !mtlFunction ) {
 				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader function could not be compiled into pipeline. See previous error."));
-				return nil;
 			}
 			plDesc.fragmentFunction = mtlFunction;
         }
