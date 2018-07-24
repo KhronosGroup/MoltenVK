@@ -22,21 +22,21 @@
 @implementation MTLTextureDescriptor (MoltenVK)
 
 -(MTLTextureUsage) usageMVK {
-	if ( [self respondsToSelector: @selector(usage)]) { return self.usage; }
+	if ( [self respondsToSelector: @selector(usage)] ) { return self.usage; }
 	return MTLTextureUsageUnknown;
 }
 
 -(void) setUsageMVK: (MTLTextureUsage) usage {
-	if ( [self respondsToSelector: @selector(setUsage:)]) { self.usage = usage; }
+	if ( [self respondsToSelector: @selector(setUsage:)] ) { self.usage = usage; }
 }
 
 -(MTLStorageMode) storageModeMVK {
-	if ( [self respondsToSelector: @selector(storageMode)]) { return self.storageMode; }
+	if ( [self respondsToSelector: @selector(storageMode)] ) { return self.storageMode; }
 	return MTLStorageModeShared;
 }
 
 -(void) setStorageModeMVK: (MTLStorageMode) storageMode {
-	if ( [self respondsToSelector: @selector(setStorageMode:)]) { self.storageMode = storageMode; }
+	if ( [self respondsToSelector: @selector(setStorageMode:)] ) { self.storageMode = storageMode; }
 }
 
 @end

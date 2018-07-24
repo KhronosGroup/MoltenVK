@@ -22,12 +22,12 @@
 @implementation MTLSamplerDescriptor (MoltenVK)
 
 -(MTLCompareFunction) compareFunctionMVK {
-	if ( [self respondsToSelector: @selector(compareFunction)]) { return self.compareFunction; }
+	if ( [self respondsToSelector: @selector(compareFunction)] ) { return self.compareFunction; }
 	return MTLCompareFunctionNever;
 }
 
 -(void) setCompareFunctionMVK: (MTLCompareFunction) cmpFunc {
-	if ( [self respondsToSelector: @selector(setCompareFunction:)]) { self.compareFunction = cmpFunc; }
+	if ( [self respondsToSelector: @selector(setCompareFunction:)] ) { self.compareFunction = cmpFunc; }
 }
 
 @end
