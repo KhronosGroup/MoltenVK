@@ -54,7 +54,7 @@ extern "C" {
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            5
+#define VK_MVK_MOLTENVK_SPEC_VERSION            6
 #define VK_MVK_MOLTENVK_EXTENSION_NAME			"VK_MVK_moltenvk"
 
 /**
@@ -86,8 +86,9 @@ typedef struct {
     VkBool32 shaderSpecialization;              /**< If true, shader specialization (aka Metal function constants) is supported. */
     VkBool32 ioSurfaces;                        /**< If true, VkImages can be underlaid by IOSurfaces via the vkUseIOSurfaceMVK() function, to support inter-process image transfers. */
     VkBool32 texelBuffers;                      /**< If true, texel buffers are supported, allowing the contents of a buffer to be interpreted as an image via a VkBufferView. */
-    VkBool32 depthClipMode;                     /**< If true, the device supports both depth clipping and depth clamping per the depthClampEnable flag of VkPipelineRasterizationStateCreateInfo in VkGraphicsPipelineCreateInfo. */
-	VkBool32 presentModeImmediate;              /**< If true, the device supports immediate surface present mode (VK_PRESENT_MODE_IMMEDIATE_KHR), allowing a swapchain image to be presented immediately, without waiting for the vertical sync period of the display. */
+    VkBool32 depthClipMode;                     /**< If true, depth clipping and depth clamping per the VkGraphicsPipelineCreateInfo::VkPipelineRasterizationStateCreateInfo::depthClampEnable flag is supported. */
+	VkBool32 layeredRendering;                  /**< If true, layered rendering to multiple cube or texture array layers is supported. */
+	VkBool32 presentModeImmediate;              /**< If true, immediate surface present mode (VK_PRESENT_MODE_IMMEDIATE_KHR), allowing a swapchain image to be presented immediately, without waiting for the vertical sync period of the display, is supported. */
 	uint32_t maxTextureDimension; 	     	  	/**< The maximum size of each texture dimension (width, height, or depth). */
 	uint32_t maxPerStageBufferCount;            /**< The total number of per-stage Metal buffers available for shader uniform content and attributes. */
     uint32_t maxPerStageTextureCount;           /**< The total number of per-stage Metal textures available for shader uniform content. */

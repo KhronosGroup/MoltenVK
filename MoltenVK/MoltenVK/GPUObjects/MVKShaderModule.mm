@@ -334,9 +334,8 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode) 
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		MTLCompileOptions* options = [[MTLCompileOptions new] autorelease]; // TODO: what compile options apply?
 		[getMTLDevice() newLibraryWithSource: mslSourceCode
-									 options: options
+									 options: getDevice()->getMTLCompileOptions()
 						   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
 							   bool isLate = compileComplete(mtlLib, error);
 							   if (isLate) { destroy(); }

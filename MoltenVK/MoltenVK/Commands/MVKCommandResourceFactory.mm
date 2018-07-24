@@ -312,10 +312,9 @@ id<MTLFunction> MVKCommandResourceFactory::getFunctionNamed(const char* funcName
 
 id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, NSString* funcName) {
 	uint64_t startTime = _device->getPerformanceTimestamp();
-	MTLCompileOptions* shdrOpts = [[MTLCompileOptions new] autorelease];
 	NSError* err = nil;
 	id<MTLLibrary> mtlLib = [[getMTLDevice() newLibraryWithSource: mslSrcCode
-														  options: shdrOpts
+														  options: getDevice()->getMTLCompileOptions()
 															error: &err] autorelease];
 	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 	if (err) {
@@ -357,10 +356,9 @@ MVKCommandResourceFactory::MVKCommandResourceFactory(MVKDevice* device) : MVKBas
 void MVKCommandResourceFactory::initMTLLibrary() {
     uint64_t startTime = _device->getPerformanceTimestamp();
     @autoreleasepool {
-        MTLCompileOptions* shdrOpts = [[MTLCompileOptions new] autorelease];
         NSError* err = nil;
-        _mtlLibrary = [getMTLDevice() newLibraryWithSource: MVKStaticCmdShaderSource
-                                                   options: shdrOpts
+        _mtlLibrary = [getMTLDevice() newLibraryWithSource: mvkStaticCmdShaderSource(_device)
+                                                   options: getDevice()->getMTLCompileOptions()
                                                      error: &err];    // retained
         MVKAssert( !err, "Could not compile command shaders %s (code %li) %s", err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
     }
