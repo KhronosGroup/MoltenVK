@@ -383,14 +383,24 @@ static inline VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize) {
 	return vkExt;
 }
 
-/** Returns a Metal MTLOrigin constructed from the specified VkOffset3D. */
+/** Returns a Metal MTLOrigin constructed from a VkOffset3D. */
 static inline MTLOrigin mvkMTLOriginFromVkOffset3D(VkOffset3D vkOffset) {
 	return MTLOriginMake(vkOffset.x, vkOffset.y, vkOffset.z);
 }
 
-/** Returns a Metal MTLSize constructed from the specified VkExtent3D. */
+/** Returns a Vulkan VkOffset3D constructed from a Metal MTLOrigin. */
+static inline VkOffset3D mvkVkOffset3DFromMTLSize(MTLOrigin mtlOrigin) {
+	return { (int32_t)mtlOrigin.x, (int32_t)mtlOrigin.y, (int32_t)mtlOrigin.z };
+}
+
+/** Returns a Metal MTLSize constructed from a VkExtent3D. */
 static inline MTLSize mvkMTLSizeFromVkExtent3D(VkExtent3D vkExtent) {
 	return MTLSizeMake(vkExtent.width, vkExtent.height, vkExtent.depth);
+}
+
+/** Returns a Vulkan VkExtent3D  constructed from a Metal MTLSize. */
+static inline VkExtent3D mvkVkExtent3DFromMTLSize(MTLSize mtlSize) {
+	return { (uint32_t)mtlSize.width, (uint32_t)mtlSize.height, (uint32_t)mtlSize.depth };
 }
 
 

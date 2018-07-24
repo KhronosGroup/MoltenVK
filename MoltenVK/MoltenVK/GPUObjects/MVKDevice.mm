@@ -35,6 +35,7 @@
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include "mvk_datatypes.h"
 #include "vk_mvk_moltenvk.h"
+
 #import "CAMetalLayer+MoltenVK.h"
 
 using namespace std;
@@ -590,7 +591,6 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.optimalBufferCopyOffsetAlignment = 256;
 #endif
 
-
     _properties.limits.maxVertexOutputComponents = _properties.limits.maxFragmentInputComponents;
 
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
@@ -605,30 +605,31 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.lineWidthRange[1] = 1;
     _properties.limits.pointSizeGranularity = 1;
 
-#if MVK_IOS
-    if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1]) {
-        _properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
-        _properties.limits.maxComputeWorkGroupInvocations = (1 * KIBI);
-    } else if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
-        _properties.limits.maxComputeSharedMemorySize = (16 * KIBI);
-        _properties.limits.maxComputeWorkGroupInvocations = 512;
-    } else {
-        _properties.limits.maxComputeSharedMemorySize = ((16 * KIBI) - 32);
-        _properties.limits.maxComputeWorkGroupInvocations = 512;
-    }
-#endif
-#if MVK_MACOS
-    _properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
-    _properties.limits.maxComputeWorkGroupInvocations = (1 * KIBI);
-#endif
-
     _properties.limits.standardSampleLocations = VK_FALSE;
     _properties.limits.strictLines = VK_FALSE;
 
-	_properties.limits.maxComputeWorkGroupSize[0] = _properties.limits.maxComputeWorkGroupInvocations;
-	_properties.limits.maxComputeWorkGroupSize[1] = _properties.limits.maxComputeWorkGroupInvocations;
-	_properties.limits.maxComputeWorkGroupSize[2] = _properties.limits.maxComputeWorkGroupInvocations;
+	VkExtent3D wgSize = mvkVkExtent3DFromMTLSize(_mtlDevice.maxThreadsPerThreadgroup);
+	_properties.limits.maxComputeWorkGroupSize[0] = wgSize.width;
+	_properties.limits.maxComputeWorkGroupSize[1] = wgSize.height;
+	_properties.limits.maxComputeWorkGroupSize[2] = wgSize.depth;
+	_properties.limits.maxComputeWorkGroupInvocations = max({wgSize.width, wgSize.height, wgSize.depth});
 
+	if ( [_mtlDevice respondsToSelector: @selector(maxThreadgroupMemoryLength)] ) {
+		_properties.limits.maxComputeSharedMemorySize = (uint32_t)_mtlDevice.maxThreadgroupMemoryLength;
+	} else {
+#if MVK_IOS
+		if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1]) {
+			_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
+		} else if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
+			_properties.limits.maxComputeSharedMemorySize = (16 * KIBI);
+		} else {
+			_properties.limits.maxComputeSharedMemorySize = ((16 * KIBI) - 32);
+		}
+#endif
+#if MVK_MACOS
+		_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
+#endif
+	}
 
     // Features with no specific limits - default to unlimited int values
 
