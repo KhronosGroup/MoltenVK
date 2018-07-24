@@ -24,6 +24,7 @@
 #include "MVKFramebuffer.h"
 #include "MVKQueryPool.h"
 #include "MVKFoundation.h"
+#include "MTLRenderPassDescriptor+MoltenVK.h"
 
 using namespace std;
 
@@ -225,6 +226,7 @@ void MVKCommandEncoder::beginMetalRenderPass() {
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
     getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues, _isRenderingEntireAttachment);
     mtlRPDesc.visibilityResultBuffer = _occlusionQueryState.getVisibilityResultMTLBuffer();
+	mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
     _mtlRenderEncoder.label = getMTLRenderCommandEncoderName();
@@ -314,7 +316,7 @@ void MVKCommandEncoder::clearRenderArea() {
 	VkClearRect clearRect;
 	clearRect.rect = _renderArea;
 	clearRect.baseArrayLayer = 0;
-	clearRect.layerCount = 1;
+	clearRect.layerCount = _framebuffer->getLayerCount();
 
     // Create and execute a temporary clear attachments command.
     // To be threadsafe...do NOT acquire and return the command from the pool.

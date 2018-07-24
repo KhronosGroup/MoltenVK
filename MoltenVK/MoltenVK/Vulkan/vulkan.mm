@@ -1281,7 +1281,7 @@ MVK_PUBLIC_SYMBOL void vkCmdClearColorImage(
     const VkImageSubresourceRange*              pRanges) {
 	
     MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdClearImage(cmdBuff, image, imageLayout, pColor, rangeCount, pRanges);
+	mvkCmdClearColorImage(cmdBuff, image, imageLayout, pColor, rangeCount, pRanges);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdClearDepthStencilImage(

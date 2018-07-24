@@ -16,24 +16,27 @@
  * limitations under the License.
  */
 
+#include "MVKCommonEnvironment.h"
 
-/** This file contains static source code for the MoltenVK command shaders. */
+
+/** This file contains static MSL source code for the MoltenVK command shaders. */
 
 static const char* _MVKStaticCmdShaderSource = "                                                                \n\
 #include <metal_stdlib>                                                                                         \n\
 using namespace metal;                                                                                          \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
-    float2 a_position	[[attribute(0)]];                                                                       \n\
+    float4 a_position [[attribute(0)]];                                                                         \n\
 } AttributesPos;                                                                                                \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
     float4 v_position [[position]];                                                                             \n\
+    uint layer%s;                                                                                               \n\
 } VaryingsPos;                                                                                                  \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
-    float2 a_position	[[attribute(0)]];                                                                       \n\
-    float2 a_texCoord	[[attribute(1)]];                                                                       \n\
+    float2 a_position [[attribute(0)]];                                                                         \n\
+    float2 a_texCoord [[attribute(1)]];                                                                         \n\
 } AttributesPosTex;                                                                                             \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
@@ -56,6 +59,7 @@ vertex VaryingsPos vtxCmdClearAttachments(AttributesPos attributes [[stage_in]],
                                           constant ClearColorsIn& ccIn [[buffer(0)]]) {                         \n\
     VaryingsPos varyings;                                                                                       \n\
     varyings.v_position = float4(attributes.a_position.x, -attributes.a_position.y, ccIn.colors[8].r, 1.0);     \n\
+    varyings.layer = uint(attributes.a_position.w);                                                             \n\
     return varyings;                                                                                            \n\
 }                                                                                                               \n\
                                                                                                                 \n\
@@ -74,4 +78,12 @@ kernel void compCopyBufferBytes(device uint8_t* src [[ buffer(0) ]],            
 };                                                                                                              \n\
 ";
 
+#if MVK_MACOS
+static const char* _MVKAttrRTAI = " [[render_target_array_index]]";
+#endif
 
+#if MVK_IOS
+static const char* _MVKAttrRTAI = "";
+#endif
+
+#define MVKStaticCmdShaderSource [NSString stringWithFormat: @(_MVKStaticCmdShaderSource), _MVKAttrRTAI]

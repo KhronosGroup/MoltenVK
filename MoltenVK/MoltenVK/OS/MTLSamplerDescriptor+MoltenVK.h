@@ -1,14 +1,14 @@
 /*
- * MVKFramebuffer.mm
+ * MTLSamplerDescriptor+MoltenVK.h
  *
  * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,22 +16,20 @@
  * limitations under the License.
  */
 
-#include "MVKFramebuffer.h"
+#pragma once
 
+#import <Metal/Metal.h>
 
-#pragma mark MVKFramebuffer
+/** Extensions to MTLSamplerDescriptor to support MoltenVK. */
+@interface MTLSamplerDescriptor (MoltenVK)
 
-#pragma mark Construction
+/**
+ * Replacement for the compareFunction property.
+ *
+ * This property allows support under all OS versions. Delegates to the compareFunction
+ * property if it is available. otherwise, returns MTLTextureUsageUnknown when read and
+ * does nothing when set.
+ */
+@property(nonatomic, readwrite) MTLCompareFunction compareFunctionMVK;
 
-MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
-							   const VkFramebufferCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
-    _extent = { .width = pCreateInfo->width, .height = pCreateInfo->height };
-	_layerCount = pCreateInfo->layers;
-
-	// Add clear values
-	_attachments.reserve(pCreateInfo->attachmentCount);
-	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-		_attachments.push_back((MVKImageView*)pCreateInfo->pAttachments[i]);
-	}
-}
-
+@end

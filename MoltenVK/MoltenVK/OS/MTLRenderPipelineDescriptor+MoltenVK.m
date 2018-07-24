@@ -1,14 +1,14 @@
 /*
- * MVKFramebuffer.mm
+ * MTLRenderPipelineDescriptor+MoltenVK.m
  *
  * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
- * 
+ *
  *     http://www.apache.org/licenses/LICENSE-2.0
- * 
+ *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
  * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -16,22 +16,29 @@
  * limitations under the License.
  */
 
-#include "MVKFramebuffer.h"
 
+#include "MTLRenderPipelineDescriptor+MoltenVK.h"
+#include "MVKCommonEnvironment.h"
 
-#pragma mark MVKFramebuffer
+@implementation MTLRenderPipelineDescriptor (MoltenVK)
 
-#pragma mark Construction
+-(NSUInteger) inputPrimitiveTopologyMVK {
 
-MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
-							   const VkFramebufferCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
-    _extent = { .width = pCreateInfo->width, .height = pCreateInfo->height };
-	_layerCount = pCreateInfo->layers;
+#if MVK_MACOS
+	return self.inputPrimitiveTopology;
+#endif
+#if MVK_IOS
+	return 0;
+#endif
 
-	// Add clear values
-	_attachments.reserve(pCreateInfo->attachmentCount);
-	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-		_attachments.push_back((MVKImageView*)pCreateInfo->pAttachments[i]);
-	}
 }
 
+-(void) setInputPrimitiveTopologyMVK: (NSUInteger) topology {
+
+#if MVK_MACOS
+	self.inputPrimitiveTopology = topology;
+#endif
+
+}
+
+@end

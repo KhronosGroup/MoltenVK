@@ -23,6 +23,7 @@
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKStrings.h"
+#include "MTLRenderPipelineDescriptor+MoltenVK.h"
 #include "mvk_datatypes.h"
 
 #include <cereal/archives/binary.hpp>
@@ -343,11 +344,9 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         plDesc.alphaToOneEnabled = pCreateInfo->pMultisampleState->alphaToOneEnable;
     }
 
-#if MVK_MACOS
     if (pCreateInfo->pInputAssemblyState) {
-        plDesc.inputPrimitiveTopology = mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
+        plDesc.inputPrimitiveTopologyMVK = mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
     }
-#endif
 
     return plDesc;
 }

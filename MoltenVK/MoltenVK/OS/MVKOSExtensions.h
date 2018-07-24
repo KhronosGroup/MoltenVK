@@ -16,12 +16,8 @@
  * limitations under the License.
  */
 
-
-/* This file contains convenient functions for accessing Metal components during execution. */
-
 #pragma once
 
-#include "MVKCommonEnvironment.h"
 #include <vulkan/vulkan.h>
 
 #import <Metal/Metal.h>

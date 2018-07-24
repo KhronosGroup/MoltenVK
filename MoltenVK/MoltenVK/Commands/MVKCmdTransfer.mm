@@ -24,6 +24,7 @@
 #include "MVKBuffer.h"
 #include "MVKFramebuffer.h"
 #include "MVKRenderPass.h"
+#include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "mvk_datatypes.h"
 
 
@@ -774,35 +775,43 @@ void MVKCmdClearAttachments::populateVertices(VkClearRect& clearRect, float attW
     bottomPos = (bottomPos * 2.0) - 1.0;
     topPos = (topPos * 2.0) - 1.0;
 
-    simd::float2 vtx;
+    simd::float4 vtx;
 
-    // Top left vertex	- First triangle
-    vtx.y = topPos;
-    vtx.x = leftPos;
-    _vertices.push_back(vtx);
+	uint32_t startLayer = clearRect.baseArrayLayer;
+	uint32_t endLayer = startLayer + clearRect.layerCount;
+	for (uint32_t layer = startLayer; layer < endLayer; layer++) {
 
-    // Bottom left vertex
-    vtx.y = bottomPos;
-    vtx.x = leftPos;
-    _vertices.push_back(vtx);
+		vtx.z = 0.0;
+		vtx.w = layer;
 
-    // Bottom right vertex
-    vtx.y = bottomPos;
-    vtx.x = rightPos;
-    _vertices.push_back(vtx);
+		// Top left vertex	- First triangle
+		vtx.y = topPos;
+		vtx.x = leftPos;
+		_vertices.push_back(vtx);
 
-    // Bottom right vertex	- Second triangle
-    _vertices.push_back(vtx);
+		// Bottom left vertex
+		vtx.y = bottomPos;
+		vtx.x = leftPos;
+		_vertices.push_back(vtx);
 
-    // Top right vertex
-    vtx.y = topPos;
-    vtx.x = rightPos;
-    _vertices.push_back(vtx);
+		// Bottom right vertex
+		vtx.y = bottomPos;
+		vtx.x = rightPos;
+		_vertices.push_back(vtx);
 
-    // Top left vertex
-    vtx.y = topPos;
-    vtx.x = leftPos;
-    _vertices.push_back(vtx);
+		// Bottom right vertex	- Second triangle
+		_vertices.push_back(vtx);
+
+		// Top right vertex
+		vtx.y = topPos;
+		vtx.x = rightPos;
+		_vertices.push_back(vtx);
+
+		// Top left vertex
+		vtx.y = topPos;
+		vtx.x = leftPos;
+		_vertices.push_back(vtx);
+	}
 }
 
 void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
@@ -840,7 +849,7 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
 
     cmdEncoder->setVertexBytes(mtlRendEnc, _clearColors, sizeof(_clearColors), 0);
     cmdEncoder->setFragmentBytes(mtlRendEnc, _clearColors, sizeof(_clearColors), 0);
-    cmdEncoder->setVertexBytes(mtlRendEnc, _vertices.data(), vtxCnt * sizeof(simd::float2), vtxBuffIdx);
+    cmdEncoder->setVertexBytes(mtlRendEnc, _vertices.data(), vtxCnt * sizeof(_vertices[0]), vtxBuffIdx);
     [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: vtxCnt];
     [mtlRendEnc popDebugGroup];
 }
@@ -858,23 +867,10 @@ void MVKCmdClearImage::setContent(VkImage image,
     _image = (MVKImage*)image;
     _imgLayout = imageLayout;
     _isDepthStencilClear = isDepthStencilClear;
-	_mtlStencilValue = 0;
 
-	_rpsKey = kMVKRPSKeyClearAttDefault;
-	_rpsKey.mtlSampleCount = _image->getSampleCount();
-
-    if (_isDepthStencilClear) {
-        _rpsKey.enable(kMVKAttachmentFormatDepthStencilIndex);
-        _rpsKey.attachmentMTLPixelFormats[kMVKAttachmentFormatDepthStencilIndex] = _image->getMTLPixelFormat();
-        float mtlDepthVal = mvkMTLClearDepthFromVkClearValue(clearValue);
-        _clearColors[kMVKAttachmentFormatDepthStencilIndex] = { mtlDepthVal, mtlDepthVal, mtlDepthVal, mtlDepthVal };
-        _mtlStencilValue = mvkMTLClearStencilFromVkClearValue(clearValue);
-    } else {
-        _rpsKey.enable(0);
-        _rpsKey.attachmentMTLPixelFormats[0] = _image->getMTLPixelFormat();
-        MTLClearColor mtlCC = mvkMTLClearColorFromVkClearValue(clearValue, _image->getVkFormat());
-        _clearColors[0] = { (float)mtlCC.red, (float)mtlCC.green, (float)mtlCC.blue, (float)mtlCC.alpha};
-    }
+	_mtlColorClearValue = mvkMTLClearColorFromVkClearValue(clearValue, _image->getVkFormat());
+	_mtlDepthClearValue = mvkMTLClearDepthFromVkClearValue(clearValue);
+	_mtlStencilClearValue = mvkMTLClearStencilFromVkClearValue(clearValue);
 
     // Add subresource ranges
     _subresourceRanges.clear();
@@ -883,64 +879,51 @@ void MVKCmdClearImage::setContent(VkImage image,
         _subresourceRanges.push_back(pRanges[i]);
     }
 }
-
 void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
-
-	MTLPixelFormat imgMTLPixFmt = _image->getMTLPixelFormat();
-    id<MTLTexture> imgMTLTex = _image->getMTLTexture();
+	id<MTLTexture> imgMTLTex = _image->getMTLTexture();
     if ( !imgMTLTex ) { return; }
 
-    cmdEncoder->endCurrentMetalEncoding();
+	VkExtent3D imgBaseExtent = _image->getExtent3D();
+	NSString* mtlRendEncName = (_isDepthStencilClear
+								? mvkMTLRenderCommandEncoderLabel(kMVKCommandUseClearDepthStencilImage)
+								: mvkMTLRenderCommandEncoderLabel(kMVKCommandUseClearColorImage));
 
-    static const simd::float2 vertices[] = {
-        { -1.0, -1.0 },         // Bottom-left
-        {  1.0, -1.0 },         // Bottom-right
-        { -1.0,  1.0 },         // Top-left
-        {  1.0,  1.0 },         // Top-right
-    };
+	cmdEncoder->endCurrentMetalEncoding();
 
-    uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
+	for (auto& srRange : _subresourceRanges) {
 
-	MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-	MTLRenderPassAttachmentDescriptor* mtlRPCADesc = nil;
-	MTLRenderPassAttachmentDescriptor* mtlRPDADesc = nil;
-	MTLRenderPassAttachmentDescriptor* mtlRPSADesc = nil;
-    NSString* mtlRendEncName;
-    NSString* mtlDebugGroupName;
-    if (_isDepthStencilClear) {
-		if (mvkMTLPixelFormatIsDepthFormat(imgMTLPixFmt)) {
-			mtlRPDADesc = mtlRPDesc.depthAttachment;
-			mtlRPDADesc.texture = imgMTLTex;
-			mtlRPDADesc.loadAction = MTLLoadActionLoad;
-			mtlRPDADesc.storeAction = MTLStoreActionStore;
-		}
-		if (mvkMTLPixelFormatIsStencilFormat(imgMTLPixFmt)) {
-			mtlRPSADesc = mtlRPDesc.stencilAttachment;
-			mtlRPSADesc.texture = imgMTLTex;
-			mtlRPSADesc.loadAction = MTLLoadActionLoad;
-			mtlRPSADesc.storeAction = MTLStoreActionStore;
-		}
-        mtlDebugGroupName = @"vkCmdClearDepthStencilImage";
-        mtlRendEncName = mvkMTLRenderCommandEncoderLabel(kMVKCommandUseClearDepthStencilImage);
-    } else {
-		mtlRPCADesc = mtlRPDesc.colorAttachments[0];
-		mtlRPCADesc.texture = imgMTLTex;
-		mtlRPCADesc.loadAction = MTLLoadActionLoad;
-		mtlRPCADesc.storeAction = MTLStoreActionStore;
-        mtlDebugGroupName = @"vkCmdClearColorImage";
-        mtlRendEncName = mvkMTLRenderCommandEncoderLabel(kMVKCommandUseClearColorImage);
-    }
+		MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
+		MTLRenderPassColorAttachmentDescriptor* mtlRPCADesc = nil;
+		MTLRenderPassDepthAttachmentDescriptor* mtlRPDADesc = nil;
+		MTLRenderPassStencilAttachmentDescriptor* mtlRPSADesc = nil;
 
-    MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
-	id<MTLRenderPipelineState> mtlRPS = cmdEncPool->getCmdClearMTLRenderPipelineState(_rpsKey);
-
-    size_t srCnt = _subresourceRanges.size();
-    for (uint32_t srIdx = 0; srIdx < srCnt; srIdx++) {
-        auto& srRange = _subresourceRanges[srIdx];
-
+		bool isClearingColor = !_isDepthStencilClear && mvkIsAnyFlagEnabled(srRange.aspectMask, VK_IMAGE_ASPECT_COLOR_BIT);
         bool isClearingDepth = _isDepthStencilClear && mvkIsAnyFlagEnabled(srRange.aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT);
         bool isClearingStencil = _isDepthStencilClear && mvkIsAnyFlagEnabled(srRange.aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT);
-		id<MTLDepthStencilState> mtlDSS = cmdEncPool->getMTLDepthStencilState(isClearingDepth, isClearingStencil);
+
+		if (isClearingColor) {
+			mtlRPCADesc = mtlRPDesc.colorAttachments[0];
+			mtlRPCADesc.texture = imgMTLTex;
+			mtlRPCADesc.loadAction = MTLLoadActionClear;
+			mtlRPCADesc.storeAction = MTLStoreActionStore;
+			mtlRPCADesc.clearColor = _mtlColorClearValue;
+		}
+
+		if (isClearingDepth) {
+			mtlRPDADesc = mtlRPDesc.depthAttachment;
+			mtlRPDADesc.texture = imgMTLTex;
+			mtlRPDADesc.loadAction = MTLLoadActionClear;
+			mtlRPDADesc.storeAction = MTLStoreActionStore;
+			mtlRPDADesc.clearDepth = _mtlDepthClearValue;
+		}
+
+		if (isClearingStencil) {
+			mtlRPSADesc = mtlRPDesc.stencilAttachment;
+			mtlRPSADesc.texture = imgMTLTex;
+			mtlRPSADesc.loadAction = MTLLoadActionClear;
+			mtlRPSADesc.storeAction = MTLStoreActionStore;
+			mtlRPSADesc.clearStencil = _mtlStencilClearValue;
+		}
 
         // Extract the mipmap levels that are to be updated
         uint32_t mipLvlStart = srRange.baseMipLevel;
@@ -961,6 +944,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPCADesc.level = mipLvl;
 			mtlRPDADesc.level = mipLvl;
 			mtlRPSADesc.level = mipLvl;
+			mtlRPDesc.renderTargetArrayLengthMVK = mvkMipmapLevelSizeFromBaseSize3D(imgBaseExtent, mipLvl).depth;
 
             for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
                 mtlRPCADesc.slice = layer;
@@ -969,17 +953,6 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
                 mtlRendEnc.label = mtlRendEncName;
-
-                [mtlRendEnc pushDebugGroup: mtlDebugGroupName];
-                [mtlRendEnc setRenderPipelineState: mtlRPS];
-                [mtlRendEnc setDepthStencilState: mtlDSS];
-                [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
-
-                cmdEncoder->setVertexBytes(mtlRendEnc, _clearColors, sizeof(_clearColors), 0);
-                cmdEncoder->setFragmentBytes(mtlRendEnc, _clearColors, sizeof(_clearColors), 0);
-                cmdEncoder->setVertexBytes(mtlRendEnc, vertices, sizeof(vertices), vtxBuffIdx);
-                [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount];
-                [mtlRendEnc popDebugGroup];
                 [mtlRendEnc endEncoding];
             }
         }
@@ -1138,12 +1111,12 @@ void mvkCmdClearAttachments(MVKCommandBuffer* cmdBuff,
     cmdBuff->addCommand(cmd);
 }
 
-void mvkCmdClearImage(MVKCommandBuffer* cmdBuff,
-                      VkImage image,
-                      VkImageLayout imageLayout,
-                      const VkClearColorValue* pColor,
-                      uint32_t rangeCount,
-                      const VkImageSubresourceRange* pRanges) {
+void mvkCmdClearColorImage(MVKCommandBuffer* cmdBuff,
+						   VkImage image,
+						   VkImageLayout imageLayout,
+						   const VkClearColorValue* pColor,
+						   uint32_t rangeCount,
+						   const VkImageSubresourceRange* pRanges) {
     MVKCmdClearImage* cmd = cmdBuff->_commandPool->_cmdClearImagePool.acquireObject();
     VkClearValue clrVal;
     clrVal.color = *pColor;

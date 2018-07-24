@@ -35,27 +35,16 @@ VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_
 VkFormat MVKImage::getVkFormat() { return mvkVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
 
 VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
-	VkExtent2D baseExtent = { _extent.width, _extent.height };
-	VkExtent2D mipLvlExt = mvkMipmapLevelSizeFromBaseSize(baseExtent, mipLevel);
-
-	VkExtent3D extent;
-	extent.width = mipLvlExt.width;
-	extent.height = mipLvlExt.height;
-	extent.depth = _extent.depth;
-	return extent;
+	return mvkMipmapLevelSizeFromBaseSize3D(_extent, mipLevel);
 }
 
 VkDeviceSize MVKImage::getBytesPerRow(uint32_t mipLevel) {
-    VkExtent2D baseExtent = { _extent.width, _extent.height };
-    VkExtent2D mipLvlExt = mvkMipmapLevelSizeFromBaseSize(baseExtent, mipLevel);
-    size_t bytesPerRow = mvkMTLPixelFormatBytesPerRow(_mtlPixelFormat, mipLvlExt.width);
+    size_t bytesPerRow = mvkMTLPixelFormatBytesPerRow(_mtlPixelFormat, getExtent3D(mipLevel).width);
     return (uint32_t)mvkAlignByteOffset(bytesPerRow, _byteAlignment);
 }
 
 VkDeviceSize MVKImage::getBytesPerLayer(uint32_t mipLevel) {
-    VkExtent2D baseExtent = { _extent.width, _extent.height };
-    VkExtent2D mipLvlExt = mvkMipmapLevelSizeFromBaseSize(baseExtent, mipLevel);
-    return mvkMTLPixelFormatBytesPerLayer(_mtlPixelFormat, getBytesPerRow(mipLevel), mipLvlExt.height);
+    return mvkMTLPixelFormatBytesPerLayer(_mtlPixelFormat, getBytesPerRow(mipLevel), getExtent3D(mipLevel).height);
 }
 
 VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,
