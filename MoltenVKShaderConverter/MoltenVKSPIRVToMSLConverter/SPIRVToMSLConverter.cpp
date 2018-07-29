@@ -100,8 +100,9 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::matches(const SPIRVToMSLConve
     return true;
 }
 
-// Aligns the usage of the destination context to that of the source context.
-MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignUsageWith(const SPIRVToMSLConverterContext& srcContext) {
+MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignWith(const SPIRVToMSLConverterContext& srcContext) {
+
+	options.isRasterizationDisabled = srcContext.options.isRasterizationDisabled;
 
 	if (options.entryPointStage == spv::ExecutionModelVertex) {
 		for (auto& va : vertexAttributes) {
@@ -176,7 +177,6 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		resBindings.push_back(rb);
 	}
 
-
 	spirv_cross::CompilerMSL* pMSLCompiler = nullptr;
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
@@ -202,6 +202,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		mslOpts.msl_version = context.options.mslVersion;
 		mslOpts.texel_buffer_texture_width = context.options.texelBufferTextureWidth;
 		mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
+		mslOpts.disable_rasterization = context.options.isRasterizationDisabled;
 		mslOpts.resolve_specialized_array_lengths = true;
 		pMSLCompiler->set_msl_options(mslOpts);
 
@@ -210,7 +211,9 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		pMSLCompiler->set_common_options(scOpts);
 
 		_msl = pMSLCompiler->compile(&vtxAttrs, &resBindings);
+
         if (shouldLogMSL) { logSource(_msl, "MSL", "Converted"); }
+
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	} catch (spirv_cross::CompilerError& ex) {
 		string errMsg("MSL conversion error: ");
@@ -225,6 +228,17 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 
     // Populate content extracted from the SPRI-V compiler.
 	populateEntryPoint(_entryPoint, pMSLCompiler, context.options);
+	context.options.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
+
+	// Copy whether the vertex attributes and resource bindings are used by the shader
+	uint32_t vaCnt = (uint32_t)vtxAttrs.size();
+	for (uint32_t vaIdx = 0; vaIdx < vaCnt; vaIdx++) {
+		context.vertexAttributes[vaIdx].isUsedByShader = vtxAttrs[vaIdx].used_by_shader;
+	}
+	uint32_t rbCnt = (uint32_t)resBindings.size();
+	for (uint32_t rbIdx = 0; rbIdx < rbCnt; rbIdx++) {
+		context.resourceBindings[rbIdx].isUsedByShader = resBindings[rbIdx].used_by_shader;
+	}
 
     // To check GLSL conversion
     if (shouldLogGLSL) {
@@ -247,16 +261,6 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 			}
         }
 #endif
-    }
-
-	// Copy whether the vertex attributes and resource bindings are used by the shader
-	uint32_t vaCnt = (uint32_t)vtxAttrs.size();
-	for (uint32_t vaIdx = 0; vaIdx < vaCnt; vaIdx++) {
-		context.vertexAttributes[vaIdx].isUsedByShader = vtxAttrs[vaIdx].used_by_shader;
-	}
-	uint32_t rbCnt = (uint32_t)resBindings.size();
-	for (uint32_t rbIdx = 0; rbIdx < rbCnt; rbIdx++) {
-		context.resourceBindings[rbIdx].isUsedByShader = resBindings[rbIdx].used_by_shader;
 	}
 
 	return _wasConverted;

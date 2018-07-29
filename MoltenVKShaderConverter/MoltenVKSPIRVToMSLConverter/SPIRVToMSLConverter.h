@@ -40,6 +40,8 @@ namespace mvk {
 		bool shouldFlipVertexY = true;
 		bool isRenderingPoints = false;
 
+		bool isRasterizationDisabled = false;
+
         /** 
          * Returns whether the specified options match this one.
          * It does if all corresponding elements are equal.
@@ -132,8 +134,8 @@ namespace mvk {
          */
         bool matches(const SPIRVToMSLConverterContext& other) const;
 
-        /** Aligns the usage of this context with that of the source context. */
-        void alignUsageWith(const SPIRVToMSLConverterContext& srcContext);
+        /** Aligns certain aspects of this context with the source context. */
+        void alignWith(const SPIRVToMSLConverterContext& srcContext);
 
 	} SPIRVToMSLConverterContext;
 

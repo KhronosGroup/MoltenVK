@@ -279,6 +279,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 				return nil;
 			}
 			plDesc.vertexFunction = mtlFunction;
+			plDesc.rasterizationEnabled = !shaderContext.options.isRasterizationDisabled;
         }
 
         // Fragment shader
@@ -340,8 +341,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
     if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
-    // Rasterization
-    plDesc.rasterizationEnabled = !_rasterInfo.rasterizerDiscardEnable;
+    // Multisampling
     if (pCreateInfo->pMultisampleState) {
         plDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(pCreateInfo->pMultisampleState->rasterizationSamples);
         plDesc.alphaToCoverageEnabled = pCreateInfo->pMultisampleState->alphaToCoverageEnable;
@@ -366,6 +366,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
     layout->populateShaderConverterContext(shaderContext);
 
     shaderContext.options.isRenderingPoints = (pCreateInfo->pInputAssemblyState && (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST));
+	shaderContext.options.isRasterizationDisabled = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
     shaderContext.options.shouldFlipVertexY = _device->_mvkConfig.shaderConversionFlipVertexY;
 
     // Set the shader context vertex attribute information
@@ -510,7 +511,8 @@ namespace mvk {
 				opt.mslVersion,
 				opt.texelBufferTextureWidth,
 				opt.shouldFlipVertexY,
-				opt.isRenderingPoints);
+				opt.isRenderingPoints,
+				opt.isRasterizationDisabled);
 	}
 
 	template<class Archive>

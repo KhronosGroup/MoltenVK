@@ -182,11 +182,11 @@ MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConverterCon
 }
 
 // Finds and returns a shader library matching the specified context, or returns nullptr if it doesn't exist.
-// If a match is found, the usage of the specified context is aligned with the context of the matching library.
+// If a match is found, the specified context is aligned with the context of the matching library.
 MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConverterContext* pContext) {
 	for (auto& slPair : _shaderLibraries) {
 		if (slPair.first.matches(*pContext)) {
-			pContext->alignUsageWith(slPair.first);
+			pContext->alignWith(slPair.first);
 			return slPair.second;
 		}
 	}
