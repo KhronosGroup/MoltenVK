@@ -120,7 +120,7 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Cross* l
 1. In the *Project Navigator*, remove all of the files under the *Group* named 
    `MoltenVKSPIRVToMSLConverter/SPIRV-Cross`.
 
-2. Add the following files from the `SPIRV-Cross` file folder to the `SPIRV-Cross` 
+2. Drag the following files from the `External/SPIRV-Cross` directory to the `SPIRV-Cross` 
    group in the *Project Navigator* panel:
 
 		spirv_cfg.cpp
@@ -186,7 +186,7 @@ if you encounter any building errors, you may need to re-add the *glslang* libra
 1. In the *Project Navigator*, remove all *Groups* from under the *Group* named
    `MoltenVKGLSLToSPIRVConverter/glslang`.
 
-2. Add the following folders from the `glslang` file folder to the `glslang` *Group* in
+2. Drag the following folders from the `External/glslang` file folder to the `glslang` *Group* in
    the *Project Navigator* panel:
 
 		glslang
@@ -226,7 +226,7 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Tools* l
 1. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
    `MoltenVKSPIRVToMSLConverter/SPIRV-Tools`.
 
-2. Drag the `SPIRV-Tools/source` file folder to the `SPIRV-Tools` group in the *Project Navigator* panel.
+2. Drag the `External/glslang/Extermal/spirv-tools/source` file folder to the `SPIRV-Tools` group in the *Project Navigator* panel.
    In the _**Choose options for adding these files**_ dialog that opens, select the 
    _**Create groups**_ option, add the files to *both* the `MoltenVKSPIRVToMSLConverter-iOS` 
    and `MoltenVKSPIRVToMSLConverter-macOS` targets, and click the ***Finish*** button.

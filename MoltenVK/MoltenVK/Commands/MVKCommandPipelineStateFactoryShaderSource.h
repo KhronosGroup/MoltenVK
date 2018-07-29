@@ -16,12 +16,14 @@
  * limitations under the License.
  */
 
-#include "MVKCommonEnvironment.h"
+#include "MVKDevice.h"
+
+#import <Foundation/Foundation.h>
 
 
 /** This file contains static MSL source code for the MoltenVK command shaders. */
 
-static const char* _MVKStaticCmdShaderSource = "                                                                \n\
+static NSString* _MVKStaticCmdShaderSource = @"                                                                 \n\
 #include <metal_stdlib>                                                                                         \n\
 using namespace metal;                                                                                          \n\
                                                                                                                 \n\
@@ -78,12 +80,11 @@ kernel void compCopyBufferBytes(device uint8_t* src [[ buffer(0) ]],            
 };                                                                                                              \n\
 ";
 
-#if MVK_MACOS
-static const char* _MVKAttrRTAI = " [[render_target_array_index]]";
-#endif
+/** Returns MSL shader source code containing static functions to be used for various Vulkan commands. */
+static inline NSString* mvkStaticCmdShaderSource(MVKDevice* device) {
+	const char* rtaiStr = device->_pMetalFeatures->layeredRendering ? " [[render_target_array_index]]" : "";
+	return [NSString stringWithFormat: _MVKStaticCmdShaderSource, rtaiStr];
+}
 
-#if MVK_IOS
-static const char* _MVKAttrRTAI = "";
-#endif
 
-#define MVKStaticCmdShaderSource [NSString stringWithFormat: @(_MVKStaticCmdShaderSource), _MVKAttrRTAI]
+

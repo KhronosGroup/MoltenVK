@@ -182,11 +182,11 @@ MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConverterCon
 }
 
 // Finds and returns a shader library matching the specified context, or returns nullptr if it doesn't exist.
-// If a match is found, the usage of the specified context is aligned with the context of the matching library.
+// If a match is found, the specified context is aligned with the context of the matching library.
 MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConverterContext* pContext) {
 	for (auto& slPair : _shaderLibraries) {
 		if (slPair.first.matches(*pContext)) {
-			pContext->alignUsageWith(slPair.first);
+			pContext->alignWith(slPair.first);
 			return slPair.second;
 		}
 	}
@@ -334,9 +334,8 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode) 
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		MTLCompileOptions* options = [[MTLCompileOptions new] autorelease]; // TODO: what compile options apply?
 		[getMTLDevice() newLibraryWithSource: mslSourceCode
-									 options: options
+									 options: getDevice()->getMTLCompileOptions()
 						   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
 							   bool isLate = compileComplete(mtlLib, error);
 							   if (isLate) { destroy(); }

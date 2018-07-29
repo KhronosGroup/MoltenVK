@@ -304,9 +304,8 @@ void MVKWatermark::initTexture(unsigned char* textureContent,
 // Initialize the shader functions for rendering the watermark
 void MVKWatermark::initShaders(const char* mslSourceCode) {
     NSError* err = nil;
-    MTLCompileOptions* shdrOpts = [[MTLCompileOptions new] autorelease];
     id<MTLLibrary> mtlLib = [[_mtlDevice newLibraryWithSource: @(mslSourceCode)
-                                                      options: shdrOpts
+                                                      options: nil
                                                         error: &err] autorelease];
     MVKAssert( !err, "Could not compile watermark shaders %s (code %li) %s",
               err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
