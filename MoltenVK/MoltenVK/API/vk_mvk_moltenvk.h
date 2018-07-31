@@ -345,12 +345,6 @@ typedef enum {
 typedef uint32_t MVKMSLSPIRVHeader;
 
 
-#pragma mark Deprecated license functions
-__attribute__((deprecated("MoltenVK no longer requires a runtime license.")))
-VKAPI_ATTR VkResult VKAPI_CALL vkActivateMoltenVKLicenseMVK(const char* licenseID, const char* licenseKey, VkBool32 acceptLicenseTermsAndConditions);
-__attribute__((deprecated("MoltenVK no longer requires a runtime license.")))
-VKAPI_ATTR static inline void VKAPI_CALL vkActivateMoltenVKLicensesMVK()  {}
-
 #endif // VK_NO_PROTOTYPES
 
 

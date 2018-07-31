@@ -259,12 +259,6 @@ void MVKInstance::initProcAddrs() {
 #ifdef VK_USE_PLATFORM_MACOS_MVK
 	ADD_PROC_ADDR(vkCreateMacOSSurfaceMVK);
 #endif
-
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-    ADD_PROC_ADDR(vkActivateMoltenVKLicenseMVK);    // Deprecated
-    ADD_PROC_ADDR(vkActivateMoltenVKLicensesMVK);   // Deprecated
-#pragma clang diagnostic pop
 }
 
 void MVKInstance::logVersions() {

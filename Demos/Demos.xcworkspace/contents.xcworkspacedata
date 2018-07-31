@@ -11,7 +11,7 @@
          location = "group:LunarG-VulkanSamples/API-Samples/API-Samples.xcodeproj">
       </FileRef>
       <FileRef
-         location = "group:LunarG-VulkanSamples/Demos/Demos.xcodeproj">
+         location = "group:LunarG-VulkanSamples/Cube/Cube.xcodeproj">
       </FileRef>
       <FileRef
          location = "group:LunarG-VulkanSamples/Hologram/Hologram.xcodeproj">
