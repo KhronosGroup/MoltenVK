@@ -134,6 +134,3 @@ MVK_PUBLIC_SYMBOL void vkGetIOSurfaceMVK(
     *pIOSurface = mvkImg->getIOSurface();
 }
 
-// Deprecated license function
-MVK_PUBLIC_SYMBOL VkResult vkActivateMoltenVKLicenseMVK(const char* licenseID, const char* licenseKey, VkBool32 acceptLicenseTermsAndConditions) { return VK_SUCCESS; }
-

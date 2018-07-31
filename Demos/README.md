@@ -17,7 +17,7 @@ Table of Contents
 -----------------
 
 - [LunarG Vulkan Samples](#lunarg-vulkan-samples)
-	- [*Demos*](#lunarg-vulkan-samples-demos)
+	- [*Cube*](#lunarg-vulkan-samples-cube)
 	- [*API-Samples*](#lunarg-vulkan-samples-api)
 	- [*Hologram*](#lunarg-vulkan-samples-hologram)
 - [Sascha Willems Vulkan Samples](#sascha-willems-vulkan-samples)
@@ -41,16 +41,19 @@ folder of this `Demos` folder, and in the `LunarG-VulkanSamples` group in the *X
 in the `Demos.xcworkspace` *Xcode* workspace.
 
 
-<a name="lunarg-vulkan-samples-demos"></a>
-### *Demos*
+<a name="lunarg-vulkan-samples-cube"></a>
+### *Cube*
 
 A basic textured cube that spins in place.
 
-The demo can be found in the `LunarG-VulkanSamples/Demos` folder, and in the 
-`LunarG-VulkanSamples/Demos` group in the *Xcode Project Navigator* in the 
-`Demos.xcworkspace` *Xcode* workspace.
+The demo can be found in the `LunarG-VulkanSamples/Cube` folder, and in the 
+`LunarG-VulkanSamples/Cube` group in the *Xcode Project Navigator* in the 
+`Cube.xcworkspace` *Xcode* workspace.
 
 To run this demo, run either the `Cube-iOS` or `Cube-macOS` *Scheme* from within *Xcode*.
+
+This demo includes a sizable window, and represents an example of how to detect, within your
+*Vulkan* code, when a window has been resized, and to modify the *Vulkan* swapchain accordingly.
 
 This demo is a simple example of installing **MoltenVK** as a dynamic library, instead of as
 a statically-linked framework. In this demo, the **MoltenVK** dynamic library is embedded in 

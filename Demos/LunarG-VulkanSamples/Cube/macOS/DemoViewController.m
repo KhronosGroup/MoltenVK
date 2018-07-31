@@ -19,7 +19,8 @@
 #import "DemoViewController.h"
 #import <QuartzCore/CAMetalLayer.h>
 
-#include "../Demos.h"			// The LunarG Vulkan SDK demo code
+#include <MoltenVK/mvk_vulkan.h>
+#include "../../Vulkan-Tools/cube/cube.c"
 
 
 #pragma mark -

@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "A9B53B291C3AC15200ABC6F6"
+               BlueprintIdentifier = "A9B53B0F1C3AC0BE00ABC6F6"
                BuildableName = "Cube.app"
-               BlueprintName = "Cube-iOS"
-               ReferencedContainer = "container:Demos.xcodeproj">
+               BlueprintName = "Cube-macOS"
+               ReferencedContainer = "container:Cube.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,10 +32,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A9B53B291C3AC15200ABC6F6"
+            BlueprintIdentifier = "A9B53B0F1C3AC0BE00ABC6F6"
             BuildableName = "Cube.app"
-            BlueprintName = "Cube-iOS"
-            ReferencedContainer = "container:Demos.xcodeproj">
+            BlueprintName = "Cube-macOS"
+            ReferencedContainer = "container:Cube.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
       <AdditionalOptions>
@@ -48,7 +48,7 @@
       launchStyle = "0"
       useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
-      debugDocumentVersioning = "YES"
+      debugDocumentVersioning = "NO"
       debugXPCServices = "NO"
       debugServiceExtension = "internal"
       enableGPUFrameCaptureMode = "3"
@@ -60,10 +60,10 @@
          runnableDebuggingMode = "0">
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A9B53B291C3AC15200ABC6F6"
+            BlueprintIdentifier = "A9B53B0F1C3AC0BE00ABC6F6"
             BuildableName = "Cube.app"
-            BlueprintName = "Cube-iOS"
-            ReferencedContainer = "container:Demos.xcodeproj">
+            BlueprintName = "Cube-macOS"
+            ReferencedContainer = "container:Cube.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
       <AdditionalOptions>
@@ -78,10 +78,10 @@
       <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "A9B53B291C3AC15200ABC6F6"
+            BlueprintIdentifier = "A9B53B0F1C3AC0BE00ABC6F6"
             BuildableName = "Cube.app"
-            BlueprintName = "Cube-iOS"
-            ReferencedContainer = "container:Demos.xcodeproj">
+            BlueprintName = "Cube-macOS"
+            ReferencedContainer = "container:Cube.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
    </ProfileAction>
