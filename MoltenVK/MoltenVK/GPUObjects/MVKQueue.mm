@@ -64,41 +64,37 @@ MVKQueueFamily::~MVKQueueFamily() {
 // Submissions to the execution queue are wrapped in a dedicated autorelease pool.
 // Relying on the dispatch queue to find time to drain the autorelease pool can
 // result in significant memory creep under heavy workloads.
-void MVKQueue::submit(MVKQueueSubmission* qSubmit) {
-	if ( !qSubmit ) { return; }     // Ignore nils
+VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
+	if ( !qSubmit ) { return VK_SUCCESS; }     // Ignore nils
 
+	VkResult rslt = qSubmit->_submissionResult;     // Extract result before submission to avoid race condition with early destruction
 	if (_execQueue) {
 		dispatch_async(_execQueue, ^{ @autoreleasepool { qSubmit->execute(); } } );
 	} else {
 		qSubmit->execute();
 	}
+	return rslt;
 }
 
 VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
                           VkFence fence, MVKCommandUse cmdBuffUse) {
+
+	// Fence-only submission
+	if (submitCount == 0 && fence) {
+		return submit(new MVKQueueCommandBufferSubmission(_device, this, VK_NULL_HANDLE, fence, cmdBuffUse));
+	}
+
 	VkResult rslt = VK_SUCCESS;
     for (uint32_t sIdx = 0; sIdx < submitCount; sIdx++) {
         VkFence fenceOrNil = (sIdx == (submitCount - 1)) ? fence : VK_NULL_HANDLE;	// last one gets the fence
-        MVKQueueSubmission* qSub = new MVKQueueCommandBufferSubmission(_device, this, &pSubmits[sIdx], fenceOrNil, cmdBuffUse);
-        if (rslt == VK_SUCCESS) { rslt = qSub->_submissionResult; }     // Extract result before submission to avoid race condition with early destruction
-        submit(qSub);
+        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(_device, this, &pSubmits[sIdx], fenceOrNil, cmdBuffUse));
+		if (rslt == VK_SUCCESS) { rslt = subRslt; }
     }
-
-    // Support fence-only submission
-    if (submitCount == 0 && fence) {
-        MVKQueueSubmission* qSub = new MVKQueueCommandBufferSubmission(_device, this, VK_NULL_HANDLE, fence, cmdBuffUse);
-        if (rslt == VK_SUCCESS) { rslt = qSub->_submissionResult; }     // Extract result before submission to avoid race condition with early destruction
-        submit(qSub);
-    }
-
     return rslt;
 }
 
-VkResult MVKQueue::submitPresentKHR(const VkPresentInfoKHR* pPresentInfo) {
-	MVKQueueSubmission* qSub = new MVKQueuePresentSurfaceSubmission(_device, this, pPresentInfo);
-    VkResult rslt = qSub->_submissionResult;     // Extract result before submission to avoid race condition with early destruction
-	submit(qSub);
-    return rslt;
+VkResult MVKQueue::submit(const VkPresentInfoKHR* pPresentInfo) {
+	return submit(new MVKQueuePresentSurfaceSubmission(_device, this, pPresentInfo));
 }
 
 // Create an empty submit struct and fence, submit to queue and wait on fence.

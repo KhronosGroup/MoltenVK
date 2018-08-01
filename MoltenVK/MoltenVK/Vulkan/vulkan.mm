@@ -1524,7 +1524,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueuePresentKHR(
     const VkPresentInfoKHR*                      pPresentInfo) {
 
     MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
-    return mvkQ->submitPresentKHR(pPresentInfo);
+    return mvkQ->submit(pPresentInfo);
 }
 
 

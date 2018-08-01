@@ -24,8 +24,19 @@
 @interface CAMetalLayer (MoltenVK)
 
 /**
- * Ensures the drawableSize property of this layer is up to date, by combining the size
- * of the bounds property and the contentScale property, and returns the updated value.
+ * Returns the natural drawable size for this layer.
+ *
+ * The natural drawable size is the size of the bounds property of this layer, multiplied
+ * by the contentsScale property of this layer, and is the value that the drawableSize
+ * property will be set to when the updatedDrawableSizeMVK nethod is invoked.
+ */
+@property(nonatomic, readonly) CGSize naturalDrawableSizeMVK;
+
+/**
+ * Ensures the drawableSize property of this layer is up to date, by ensuring
+ * it is set to the value returned by the naturalDrawableSizeMVK property.
+ *
+ * Returns the updated drawableSize value.
  */
 -(CGSize) updatedDrawableSizeMVK;
 

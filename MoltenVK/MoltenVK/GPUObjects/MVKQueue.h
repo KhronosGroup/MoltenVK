@@ -81,7 +81,7 @@ public:
                     VkFence fence, MVKCommandUse cmdBuffUse);
 
 	/** Submits the specified presentation command to the queue. */
-	VkResult submitPresentKHR(const VkPresentInfoKHR* pPresentInfo);
+	VkResult submit(const VkPresentInfoKHR* pPresentInfo);
 
 	/** Block the current thread until this queue is idle. */
 	VkResult waitIdle(MVKCommandUse cmdBuffUse);
@@ -145,7 +145,7 @@ protected:
 	void initExecQueue();
 	void initMTLCommandQueue();
 	void destroyExecQueue();
-	void submit(MVKQueueSubmission* qSubmit);
+	VkResult submit(MVKQueueSubmission* qSubmit);
 
 	MVKQueueFamily* _queueFamily;
 	uint32_t _index;
