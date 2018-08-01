@@ -83,7 +83,7 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
 }
 
 bool MVKSwapchain::getHasSurfaceSizeChanged() {
-	return !CGSizeEqualToSize(_mtlLayer.updatedDrawableSizeMVK, _mtlLayerOrigDrawSize);
+	return !CGSizeEqualToSize(_mtlLayer.naturalDrawableSizeMVK, _mtlLayerOrigDrawSize);
 }
 
 uint64_t MVKSwapchain::getNextAcquisitionID() { return ++_currentAcquisitionID; }

@@ -174,7 +174,7 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(MVKSurface* surface,
 	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
 	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
 
-    VkExtent2D surfExtnt = mvkVkExtent2DFromCGSize(mtlLayer.updatedDrawableSizeMVK);
+    VkExtent2D surfExtnt = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
 
 	// Metal supports 3 concurrent drawables, but if the swapchain is destroyed and
 	// rebuilt as part of resizing, one will be held by the current display image.

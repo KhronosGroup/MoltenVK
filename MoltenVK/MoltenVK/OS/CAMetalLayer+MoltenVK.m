@@ -22,18 +22,21 @@
 
 @implementation CAMetalLayer (MoltenVK)
 
--(CGSize) updatedDrawableSizeMVK {
+-(CGSize) naturalDrawableSizeMVK {
     CGSize drawSize = self.bounds.size;
     CGFloat scaleFactor = self.contentsScale;
     drawSize.width = trunc(drawSize.width * scaleFactor);
     drawSize.height = trunc(drawSize.height * scaleFactor);
-    
-    // Only update property value if it needs to be, in case
-    // updating to same value causes internal reconfigurations.
+    return drawSize;
+}
+
+// Only update drawableSize property value if it needs to be,
+// in case updating to same value causes internal reconfigurations.
+-(CGSize) updatedDrawableSizeMVK {
+	CGSize drawSize = self.naturalDrawableSizeMVK;
     if ( !CGSizeEqualToSize(drawSize, self.drawableSize) ) {
         self.drawableSize = drawSize;
     }
-    
     return drawSize;
 }
 
