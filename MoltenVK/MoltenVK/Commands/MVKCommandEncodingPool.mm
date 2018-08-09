@@ -111,25 +111,24 @@ MVKImage* MVKCommandEncodingPool::getTransferMVKImage(MVKImageDescriptorData& im
     return mvkImg;
 }
 
-id<MTLComputePipelineState> MVKCommandEncodingPool::getCopyBufferBytesComputePipelineState() {
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferBytesMTLComputePipelineState() {
     if (_mtlCopyBufferBytesComputePipelineState == nil) {
-        _mtlCopyBufferBytesComputePipelineState = _device->getCommandResourceFactory()->newCopyBytesMTLComputePipelineState();
+        _mtlCopyBufferBytesComputePipelineState = _device->getCommandResourceFactory()->newCmdCopyBufferBytesMTLComputePipelineState();
     }
     return _mtlCopyBufferBytesComputePipelineState;
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdFillBufferMTLComputePipelineState() {
+	if (_mtlFillBufferComputePipelineState == nil) {
+		_mtlFillBufferComputePipelineState = _device->getCommandResourceFactory()->newCmdFillBufferMTLComputePipelineState();
+	}
+	return _mtlFillBufferComputePipelineState;
 }
 
 #pragma mark Construction
 
 MVKCommandEncodingPool::MVKCommandEncodingPool(MVKDevice* device) : MVKBaseDeviceObject(device),
     _mtlBufferAllocator(device, device->_pMetalFeatures->maxMTLBufferSize) {
-
-    _cmdBlitImageLinearMTLSamplerState = nil;
-    _cmdBlitImageNearestMTLSamplerState = nil;
-    _cmdClearDepthAndStencilDepthStencilState = nil;
-    _cmdClearDepthOnlyDepthStencilState = nil;
-    _cmdClearStencilOnlyDepthStencilState = nil;
-    _cmdClearDefaultDepthStencilState = nil;
-    _mtlCopyBufferBytesComputePipelineState = nil;
 
     initTextureDeviceMemory();
 }

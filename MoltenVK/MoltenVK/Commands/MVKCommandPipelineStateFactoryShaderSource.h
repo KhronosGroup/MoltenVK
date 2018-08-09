@@ -68,16 +68,30 @@ vertex VaryingsPos vtxCmdClearAttachments(AttributesPos attributes [[stage_in]],
 typedef struct {                                                                                                \n\
     uint32_t srcOffset;                                                                                         \n\
     uint32_t dstOffset;                                                                                         \n\
-    uint32_t copySize;                                                                                          \n\
+    uint32_t size;                                                                                              \n\
 } CopyInfo;                                                                                                     \n\
                                                                                                                 \n\
-kernel void compCopyBufferBytes(device uint8_t* src [[ buffer(0) ]],                                            \n\
-                                device uint8_t* dst [[ buffer(1) ]],                                            \n\
-                                constant CopyInfo& info [[ buffer(2) ]]) {                                      \n\
-    for (size_t i = 0; i < info.copySize; i++) {                                                                \n\
+kernel void cmdCopyBufferBytes(device uint8_t* src [[ buffer(0) ]],                                             \n\
+                               device uint8_t* dst [[ buffer(1) ]],                                             \n\
+                               constant CopyInfo& info [[ buffer(2) ]]) {                                       \n\
+    for (size_t i = 0; i < info.size; i++) {                                                                    \n\
         dst[i + info.dstOffset] = src[i + info.srcOffset];                                                      \n\
     }                                                                                                           \n\
 };                                                                                                              \n\
+                                                                                                                \n\
+typedef struct {                                                                                                \n\
+    uint32_t dstOffset;                                                                                         \n\
+    uint32_t size;                                                                                              \n\
+    uint32_t data;                                                                                              \n\
+} FillInfo;                                                                                                     \n\
+                                                                                                                \n\
+kernel void cmdFillBuffer(device uint32_t* dst [[ buffer(0) ]],                                                 \n\
+                          constant FillInfo& info [[ buffer(1) ]]) {                                            \n\
+    for (uint32_t i = 0; i < info.size; i++) {                                                                  \n\
+        dst[i + info.dstOffset] = info.data;                                                                    \n\
+    }                                                                                                           \n\
+};                                                                                                              \n\
+                                                                                                                \n\
 ";
 
 /** Returns MSL shader source code containing static functions to be used for various Vulkan commands. */

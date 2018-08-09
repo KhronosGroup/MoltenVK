@@ -308,12 +308,11 @@ public:
      */
     MVKImage* newMVKImage(MVKImageDescriptorData& imgData);
     
-    /**
-     * Returns a new MTLComputePipelineState dedicated to copying bytes between two buffers
-     * with unaligned copy regions.
-     */
-    id<MTLComputePipelineState> newCopyBytesMTLComputePipelineState();
+    /** Returns a new MTLComputePipelineState for copying between two buffers with byte-aligned copy regions. */
+    id<MTLComputePipelineState> newCmdCopyBufferBytesMTLComputePipelineState();
 
+	/** Returns a new MTLComputePipelineState for filling a buffer. */
+	id<MTLComputePipelineState> newCmdFillBufferMTLComputePipelineState();
 
 #pragma mark Construction
 
@@ -329,6 +328,7 @@ protected:
     id<MTLFunction> getFunctionNamed(const char* funcName);
 	id<MTLFunction> newMTLFunction(NSString* mslSrcCode, NSString* funcName);
     id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc);
+	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction);
 
 	id<MTLLibrary> _mtlLibrary;
 };

@@ -541,6 +541,13 @@ MVKCmdResolveImage::~MVKCmdResolveImage() {
 #pragma mark -
 #pragma mark MVKCmdCopyBuffer
 
+// Matches shader struct.
+typedef struct {
+	uint32_t srcOffset;
+	uint32_t dstOffset;
+	uint32_t size;
+} MVKCmdCopyBufferInfo;
+
 void MVKCmdCopyBuffer::setContent(VkBuffer srcBuffer,
 								  VkBuffer destBuffer,
 								  uint32_t regionCount,
@@ -570,17 +577,20 @@ void MVKCmdCopyBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 													  cpyRgn.dstOffset % buffAlign != 0 ||
 													  cpyRgn.size      % buffAlign != 0);
 		if (useComputeCopy) {
-			MVKAssert(cpyRgn.srcOffset <= UINT32_MAX || cpyRgn.dstOffset <= UINT32_MAX || cpyRgn.size <= UINT32_MAX,
-					  "Compute buffer copy region offsets and size must fit into a 32-bit unsigned integer.");
+			MVKAssert(mvkFits<uint32_t>(cpyRgn.srcOffset) && mvkFits<uint32_t>(cpyRgn.dstOffset) && mvkFits<uint32_t>(cpyRgn.size),
+					  "Byte-aligned buffer copy region offsets and size must each fit into a 32-bit unsigned integer.");
+
+			MVKCmdCopyBufferInfo copyInfo;
+			copyInfo.srcOffset = (uint32_t)cpyRgn.srcOffset;
+			copyInfo.dstOffset = (uint32_t)cpyRgn.dstOffset;
+			copyInfo.size = (uint32_t)cpyRgn.size;
 
 			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer);
 			[mtlComputeEnc pushDebugGroup: @"vkCmdCopyBuffer"];
-			id<MTLComputePipelineState> pipelineState = cmdEncoder->getCommandEncodingPool()->getCopyBufferBytesComputePipelineState();
-			[mtlComputeEnc setComputePipelineState:pipelineState];
-			[mtlComputeEnc setBuffer:srcMTLBuff offset:srcMTLBuffOffset atIndex:0];
-			[mtlComputeEnc setBuffer:dstMTLBuff offset:dstMTLBuffOffset atIndex:1];
-			uint32_t copyInfo[3] = { (uint32_t)cpyRgn.srcOffset,  (uint32_t)cpyRgn.dstOffset, (uint32_t)cpyRgn.size };
-			[mtlComputeEnc setBytes:copyInfo length:sizeof(copyInfo) atIndex:2];
+			[mtlComputeEnc setComputePipelineState: cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferBytesMTLComputePipelineState()];
+			[mtlComputeEnc setBuffer:srcMTLBuff offset: srcMTLBuffOffset atIndex: 0];
+			[mtlComputeEnc setBuffer:dstMTLBuff offset: dstMTLBuffOffset atIndex: 1];
+			[mtlComputeEnc setBytes: &copyInfo length: sizeof(copyInfo) atIndex: 2];
 			[mtlComputeEnc dispatchThreads: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
 			[mtlComputeEnc popDebugGroup];
 		} else {
@@ -963,6 +973,13 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdFillBuffer
 
+// Matches shader struct
+typedef struct {
+	uint32_t dstOffset;
+	uint32_t size;
+	uint32_t data;
+} MVKCmdFillBufferInfo;
+
 void MVKCmdFillBuffer::setContent(VkBuffer dstBuffer,
                                   VkDeviceSize dstOffset,
                                   VkDeviceSize size,
@@ -974,18 +991,26 @@ void MVKCmdFillBuffer::setContent(VkBuffer dstBuffer,
 }
 
 void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
-
-    id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseFillBuffer);
-
     id<MTLBuffer> dstMTLBuff = _dstBuffer->getMTLBuffer();
-    NSUInteger dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset() + _dstOffset;
-    VkDeviceSize byteCnt = (_size == VK_WHOLE_SIZE) ? (_dstBuffer->getByteCount() - _dstOffset) : _size;
+    VkDeviceSize dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset();
+    VkDeviceSize byteCnt = (_size == VK_WHOLE_SIZE) ? (_dstBuffer->getByteCount() - (dstMTLBuffOffset + _dstOffset)) : _size;
+	VkDeviceSize wordCnt = byteCnt >> 2;
 
-    // Metal only supports filling with a single byte value, so each byte in the
-    // buffer will be filled with the lower 8 bits of the Vulkan 32-bit data value.
-    [mtlBlitEnc fillBuffer: dstMTLBuff
-                     range: NSMakeRange(dstMTLBuffOffset, byteCnt)
-                     value: (uint8_t)_dataValue];
+	MVKAssert(mvkFits<uint32_t>(_dstOffset) && mvkFits<uint32_t>(wordCnt),
+			  "Buffer fill offset and size must each fit into a 32-bit unsigned integer.");
+
+	MVKCmdFillBufferInfo fillInfo;
+	fillInfo.dstOffset = (uint32_t)_dstOffset;
+	fillInfo.size = (uint32_t)wordCnt;
+	fillInfo.data = _dataValue;
+
+	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer);
+	[mtlComputeEnc pushDebugGroup: @"vkCmdFillBuffer"];
+	[mtlComputeEnc setComputePipelineState: cmdEncoder->getCommandEncodingPool()->getCmdFillBufferMTLComputePipelineState()];
+	[mtlComputeEnc setBuffer: dstMTLBuff offset: dstMTLBuffOffset atIndex: 0];
+	[mtlComputeEnc setBytes: &fillInfo length: sizeof(fillInfo) atIndex: 1];
+	[mtlComputeEnc dispatchThreads: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
+	[mtlComputeEnc popDebugGroup];
 }
 
 

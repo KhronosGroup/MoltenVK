@@ -91,11 +91,11 @@ public:
      */
     MVKImage* getTransferMVKImage(MVKImageDescriptorData& imgData);
     
-    /**
-     * Returns an MTLComputePipelineState dedicated to copying bytes between two buffers
-     * with unaligned copy regions.
-     */
-    id<MTLComputePipelineState> getCopyBufferBytesComputePipelineState();
+	/** Returns a MTLComputePipelineState for copying between two buffers with byte-aligned copy regions. */
+    id<MTLComputePipelineState> getCmdCopyBufferBytesMTLComputePipelineState();
+
+	/** Returns a MTLComputePipelineState for filling a buffer. */
+	id<MTLComputePipelineState> getCmdFillBufferMTLComputePipelineState();
 
 #pragma mark Construction
 
@@ -113,12 +113,13 @@ private:
     std::unordered_map<MVKImageDescriptorData, MVKImage*> _transferImages;
     MVKDeviceMemory* _transferImageMemory;
     MVKMTLBufferAllocator _mtlBufferAllocator;
-    id<MTLSamplerState> _cmdBlitImageLinearMTLSamplerState;
-    id<MTLSamplerState> _cmdBlitImageNearestMTLSamplerState;
-    id<MTLDepthStencilState> _cmdClearDepthOnlyDepthStencilState;
-    id<MTLDepthStencilState> _cmdClearStencilOnlyDepthStencilState;
-    id<MTLDepthStencilState> _cmdClearDepthAndStencilDepthStencilState;
-    id<MTLDepthStencilState> _cmdClearDefaultDepthStencilState;
-    id<MTLComputePipelineState> _mtlCopyBufferBytesComputePipelineState;
+    id<MTLSamplerState> _cmdBlitImageLinearMTLSamplerState = nil;
+    id<MTLSamplerState> _cmdBlitImageNearestMTLSamplerState = nil;
+    id<MTLDepthStencilState> _cmdClearDepthOnlyDepthStencilState = nil;
+    id<MTLDepthStencilState> _cmdClearStencilOnlyDepthStencilState = nil;
+    id<MTLDepthStencilState> _cmdClearDepthAndStencilDepthStencilState = nil;
+    id<MTLDepthStencilState> _cmdClearDefaultDepthStencilState = nil;
+    id<MTLComputePipelineState> _mtlCopyBufferBytesComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlFillBufferComputePipelineState = nil;
 };
 
