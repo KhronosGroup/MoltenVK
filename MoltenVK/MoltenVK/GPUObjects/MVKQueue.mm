@@ -21,6 +21,7 @@
 #include "MVKSync.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
+#include "MVKGPUCapture.h"
 #include "MVKLogging.h"
 
 using namespace std;
@@ -124,7 +125,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 }
 
 // This function is guarded against conflict with the mtlCommandBufferHasCompleted()
-// function, but is not theadsafe against calls to this function itself, or to the
+// function, but is not threadsafe against calls to this function itself, or to the
 // registerMTLCommandBufferCountdown() function from multiple threads. It is assumed
 // that this function and the registerMTLCommandBufferCountdown() function are called
 // from a single thread.
@@ -190,10 +191,20 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 	_queueFamily = queueFamily;
 	_index = index;
 	_priority = priority;
-	initExecQueue();
-	initMTLCommandQueue();
 	_activeMTLCommandBufferCount = 0;
 	_nextMTLCmdBuffID = 1;
+
+	initName();
+	initExecQueue();
+	initMTLCommandQueue();
+	initGPUCaptureScopes();
+}
+
+void MVKQueue::initName() {
+	const char* fmt = "MoltenVKQueue-%d-%d-%.1f";
+	char name[256];
+	sprintf(name, fmt, _queueFamily->getIndex(), _index, _priority);
+	_name = name;
 }
 
 // Unless synchronous submission processing was configured,
@@ -202,27 +213,29 @@ void MVKQueue::initExecQueue() {
 	if (_device->_mvkConfig.synchronousQueueSubmits) {
 		_execQueue = nullptr;
 	} else {
-		// Create a name for the dispatch queue
-		const char* dqNameFmt = "MoltenVKDispatchQueue-%d-%d-%.1f";
-		char dqName[strlen(dqNameFmt) + 32];
-		sprintf(dqName, dqNameFmt, _queueFamily->getIndex(), _index, _priority);
-
 		// Determine the dispatch queue priority
 		dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
 		int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
 		dispatch_queue_attr_t dqAttr = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_SERIAL, dqQOS, dqPriority);
 
 		// Create the dispatch queue
-		_execQueue = dispatch_queue_create(dqName, dqAttr);		// retained
+		_execQueue = dispatch_queue_create((getName() + "-Dispatch").c_str(), dqAttr);		// retained
 	}
 }
 
-/** Creates and initializes the Metal queue. */
+// Creates and initializes the Metal queue.
 void MVKQueue::initMTLCommandQueue() {
 	uint64_t startTime = _device->getPerformanceTimestamp();
 	_mtlQueue = _queueFamily->getMTLCommandQueue(_index);	// not retained (cached in queue family)
 	_device->addActivityPerformance(_device->_performanceStatistics.queue.mtlQueueAccess, startTime);
-    [_mtlQueue insertDebugCaptureBoundary];                 // Allow Xcode to capture the first frame if desired.
+}
+
+// Initializes Xcode GPU capture scopes
+void MVKQueue::initGPUCaptureScopes() {
+	_submissionCaptureScope = new MVKGPUCaptureScope(this, "CommandBuffer-Submission");
+	_presentationCaptureScope = new MVKGPUCaptureScope(this, "Surface-Presentation");
+	_presentationCaptureScope->makeDefault();
+	_presentationCaptureScope->beginScope();	// Allow Xcode to capture the first frame if desired.
 }
 
 MVKQueue::~MVKQueue() {
@@ -236,6 +249,8 @@ MVKQueue::~MVKQueue() {
     // in the destructor of the lock created in registerMTLCommandBufferCountdown().
     lock_guard<mutex> lock(_completionLock);
 	destroyExecQueue();
+	_submissionCaptureScope->destroy();
+	_presentationCaptureScope->destroy();
 }
 
 // Destroys the execution dispatch queue.
@@ -287,6 +302,9 @@ void MVKQueueCommandBufferSubmission::execute() {
 
 //	MVKLogDebug("Executing submission %p.", this);
 
+	auto cs = _queue->_submissionCaptureScope;
+	cs->beginScope();
+
     // Execute each command buffer, or if no command buffers, but a fence or semaphores,
     // create an empty MTLCommandBuffer to trigger the semaphores and fence.
     if ( !_cmdBuffers.empty() ) {
@@ -302,6 +320,8 @@ void MVKQueueCommandBufferSubmission::execute() {
     }
 
 	commitActiveMTLCommandBuffer();
+
+	cs->endScope();
 
     // Register for callback when MTLCommandBuffers have completed
     _queue->registerMTLCommandBufferCountdown(&_cmdBuffCountdown);
@@ -412,8 +432,10 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 		for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(nil); }
 	}
 
-    // Let Xcode know the frame is done, in case command buffer is not used
-    if (_device->_mvkConfig.debugMode) { [mtlQ insertDebugCaptureBoundary]; }
+    // Let Xcode know the current frame is done, then start a new frame
+	auto cs = _queue->_presentationCaptureScope;
+	cs->endScope();
+	cs->beginScope();
 
     this->destroy();
 }

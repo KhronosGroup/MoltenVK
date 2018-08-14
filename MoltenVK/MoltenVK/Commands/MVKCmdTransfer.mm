@@ -949,7 +949,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
                              ? _image->getLayerCount()
                              : (layerStart + layerCnt));
 
-        // Iterate across mipmap levels and layers, and render to clear each
+        // Iterate across mipmap levels and layers, and perform and empty render to clear each
         for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {
 			mtlRPCADesc.level = mipLvl;
 			mtlRPDADesc.level = mipLvl;
