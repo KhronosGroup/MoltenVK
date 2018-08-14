@@ -266,6 +266,12 @@ public:
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
 
+	/** Returns a pointer to the MoltenVK configuration info for this device. */
+	const MVKDeviceConfiguration* getMoltenVKConfiguration();
+
+	/** Sets the MoltenVK configuration info for this device. */
+	void setMoltenVKConfiguration(const MVKDeviceConfiguration* pConfiguration);
+
 
 #pragma mark Object lifecycle
 

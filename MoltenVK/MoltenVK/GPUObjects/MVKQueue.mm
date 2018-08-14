@@ -193,11 +193,13 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 	_priority = priority;
 	_activeMTLCommandBufferCount = 0;
 	_nextMTLCmdBuffID = 1;
+	_execQueue = nullptr;	// Before updateDeviceConfiguration()
 
 	initName();
-	initExecQueue();
 	initMTLCommandQueue();
 	initGPUCaptureScopes();
+
+	updateDeviceConfiguration();
 }
 
 void MVKQueue::initName() {
@@ -207,12 +209,14 @@ void MVKQueue::initName() {
 	_name = name;
 }
 
-// Unless synchronous submission processing was configured,
+// If synchronous submission processing is not configured in the device,
 // creates and initializes the prioritized execution dispatch queue.
-void MVKQueue::initExecQueue() {
+// If synchronous submission processing is configured in the device,
+// destroys the internal execution dispatch queue if it exists.
+void MVKQueue::updateDeviceConfiguration() {
 	if (_device->_mvkConfig.synchronousQueueSubmits) {
-		_execQueue = nullptr;
-	} else {
+		destroyExecQueue();
+	} else if ( !_execQueue ) {
 		// Determine the dispatch queue priority
 		dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
 		int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
@@ -255,7 +259,10 @@ MVKQueue::~MVKQueue() {
 
 // Destroys the execution dispatch queue.
 void MVKQueue::destroyExecQueue() {
-	if (_execQueue) { dispatch_release(_execQueue); }
+	if (_execQueue) {
+		dispatch_release(_execQueue);
+		_execQueue = nullptr;
+	}
 }
 
 

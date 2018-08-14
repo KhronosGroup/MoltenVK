@@ -1022,6 +1022,21 @@ VkResult MVKDevice::waitIdle() {
 	return VK_SUCCESS;
 }
 
+const MVKDeviceConfiguration* MVKDevice::getMoltenVKConfiguration() { return &_mvkConfig; }
+
+void MVKDevice::setMoltenVKConfiguration(const MVKDeviceConfiguration* pConfiguration) {
+	if ( !pConfiguration) { return; }
+
+	*(MVKDeviceConfiguration*)&_mvkConfig = *pConfiguration;
+
+	// Reconfigure the queues from the updated info
+	for (auto& queues : _queuesByQueueFamilyIndex) {
+		for (MVKQueue* q : queues) {
+			q->updateDeviceConfiguration();
+		}
+	}
+}
+
 
 #pragma mark Object lifecycle
 
