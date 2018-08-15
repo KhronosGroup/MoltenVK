@@ -85,11 +85,9 @@ bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
 	return true;
 }
 
-void MVKPhysicalDevice::getFormatProperties(VkFormat format,
-                                            VkFormatProperties* pFormatProperties) {
-	static VkFormatProperties noFmtFeats = { 0, 0, 0 };
+void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
     if (pFormatProperties) {
-		*pFormatProperties = getFormatIsSupported(format) ? mvkVkFormatProperties(format) : noFmtFeats;
+		*pFormatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
 	}
 }
 
