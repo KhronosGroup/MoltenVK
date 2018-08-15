@@ -164,35 +164,44 @@ static inline uint32_t mvkPowerOfTwoExponent(uintptr_t value) {
 }
 
 /**
- * Aligns the specified bytes reference to the specified alignment, and returns the
- * aligned value, which will be equal to or greater than the specified reference.
+ * Aligns the byte reference to the specified alignment, and returns the aligned value,
+ * which will be greater than or equal to the reference if alignDown is false, or less
+ * than or equal to the reference if alignDown is true.
  *
- * This is a low level utility method. Usually you will use the convenience methods
- * mvkAlignAddress and mvkAlignByteOffset to align addresses and offsets respectively.
+ * This is a low level utility method. Usually you will use the convenience functions
+ * mvkAlignAddress() and mvkAlignByteOffset() to align addresses and offsets respectively.
  */
-static inline uintptr_t mvkAlignByteRef(uintptr_t byteRef, uintptr_t byteAlignment) {
+static inline uintptr_t mvkAlignByteRef(uintptr_t byteRef, uintptr_t byteAlignment, bool alignDown = false) {
 	if (byteAlignment == 0) { return byteRef; }
 
 	MVKAssert(mvkIsPowerOfTwo(byteAlignment), "Byte alignment %lu is not a power-of-two value.", byteAlignment);
 
 	uintptr_t mask = byteAlignment - 1;
-	return (byteRef + mask) & ~mask;
+	uintptr_t alignedRef = (byteRef + mask) & ~mask;
+
+	if (alignDown && (alignedRef > byteRef)) {
+		alignedRef -= byteAlignment;
+	}
+
+	return alignedRef;
 }
 
 /**
- * Aligns the specified memory address to the specified byte alignment. The memory address
- * returned by this function will be equal to or greater than the specified address.
+ * Aligns the memory address to the specified byte alignment, and returns the aligned address,
+ * which will be greater than or equal to the original address if alignDown is false, or less
+ * than or equal to the original address if alignDown is true.
  */
-static inline void* mvkAlignAddress(void* address, uintptr_t byteAlignment) {
-	return (void*)mvkAlignByteRef((uintptr_t)address, byteAlignment);
+static inline void* mvkAlignAddress(void* address, uintptr_t byteAlignment, bool alignDown = false) {
+	return (void*)mvkAlignByteRef((uintptr_t)address, byteAlignment, alignDown);
 }
 
 /**
- * Aligns the specified byte offset to the specified byte alignment. The byte offset
- * returned by this function will be equal to or greater than the specified byte offset.
+ * Aligns the byte offset to the specified byte alignment, and returns the aligned offset,
+ * which will be greater than or equal to the original offset if alignDown is false, or less
+ * than or equal to the original offset if alignDown is true.
  */
-static inline uintptr_t mvkAlignByteOffset(uintptr_t byteOffset, uintptr_t byteAlignment) {
-	return mvkAlignByteRef(byteOffset, byteAlignment);
+static inline uintptr_t mvkAlignByteOffset(uintptr_t byteOffset, uintptr_t byteAlignment, bool alignDown = false) {
+	return mvkAlignByteRef(byteOffset, byteAlignment, alignDown);
 }
 
 /**
@@ -254,6 +263,12 @@ static inline VkOffset3D mvkVkOffset3DDifference(VkOffset3D minuend, VkOffset3D 
 
 #pragma mark -
 #pragma mark Template functions
+
+/** Returns whether the value will fit inside the numeric type. */
+template<typename T, typename Tval>
+const bool mvkFits(const Tval& val) {
+	return val <= std::numeric_limits<T>::max();
+}
 
 /** Clamps the value between the lower and upper bounds, inclusive. */
 template<typename T>

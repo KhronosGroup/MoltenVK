@@ -594,9 +594,9 @@ MVK_PUBLIC_SYMBOL size_t mvkMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat
     return mvkCeilingDivide(texelRowsPerLayer, formatDescForMTLPixelFormat(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
-MVK_PUBLIC_SYMBOL VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat) {
+MVK_PUBLIC_SYMBOL VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat, bool assumeGPUSupportsDefault) {
 	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
-	if (fmtDesc.isSupported()) {
+	if (assumeGPUSupportsDefault && fmtDesc.isSupported()) {
 		return fmtDesc.properties;
 	} else {
 		// If texture format is unsupported, vertex buffer format may still be.

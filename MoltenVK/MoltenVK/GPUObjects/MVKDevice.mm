@@ -85,11 +85,9 @@ bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
 	return true;
 }
 
-void MVKPhysicalDevice::getFormatProperties(VkFormat format,
-                                            VkFormatProperties* pFormatProperties) {
-	static VkFormatProperties noFmtFeats = { 0, 0, 0 };
+void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
     if (pFormatProperties) {
-		*pFormatProperties = getFormatIsSupported(format) ? mvkVkFormatProperties(format) : noFmtFeats;
+		*pFormatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
 	}
 }
 
@@ -1020,6 +1018,21 @@ VkResult MVKDevice::waitIdle() {
 		}
 	}
 	return VK_SUCCESS;
+}
+
+const MVKDeviceConfiguration* MVKDevice::getMoltenVKConfiguration() { return &_mvkConfig; }
+
+void MVKDevice::setMoltenVKConfiguration(const MVKDeviceConfiguration* pConfiguration) {
+	if ( !pConfiguration) { return; }
+
+	*(MVKDeviceConfiguration*)&_mvkConfig = *pConfiguration;
+
+	// Reconfigure the queues from the updated info
+	for (auto& queues : _queuesByQueueFamilyIndex) {
+		for (MVKQueue* q : queues) {
+			q->updateDeviceConfiguration();
+		}
+	}
 }
 
 

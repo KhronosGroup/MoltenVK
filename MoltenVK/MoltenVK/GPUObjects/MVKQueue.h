@@ -31,6 +31,7 @@
 class MVKQueue;
 class MVKQueueSubmission;
 class MVKPhysicalDevice;
+class MVKGPUCaptureScope;
 
 
 #pragma mark -
@@ -112,6 +113,9 @@ public:
     /** Returns the command encoding pool. */
     inline MVKCommandEncodingPool* getCommandEncodingPool() { return &_commandEncodingPool; }
 
+	/** Return the name of this queue. */
+	inline const std::string& getName() { return _name; }
+
 
 #pragma mark Metal
 
@@ -122,6 +126,13 @@ public:
 	
 	/** Constructs an instance for the device and queue family. */
 	MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority);
+
+	/**
+	 * Called from MVKDevice when MVKDeviceConfiguration is updated.
+	 *
+	 * Updates the use of a dispatch queue based on the value of MVKDeviceConfiguration::synchronousQueueSubmits.
+	 */
+	void updateDeviceConfiguration();
 
 	~MVKQueue() override;
 
@@ -141,9 +152,12 @@ public:
 
 protected:
 	friend class MVKQueueSubmission;
+	friend class MVKQueueCommandBufferSubmission;
+	friend class MVKQueuePresentSurfaceSubmission;
 
-	void initExecQueue();
+	void initName();
 	void initMTLCommandQueue();
+	void initGPUCaptureScopes();
 	void destroyExecQueue();
 	VkResult submit(MVKQueueSubmission* qSubmit);
 
@@ -152,11 +166,14 @@ protected:
 	float _priority;
 	dispatch_queue_t _execQueue;
 	id<MTLCommandQueue> _mtlQueue;
+	std::string _name;
 	std::vector<MVKMTLCommandBufferCountdown*> _completionCountdowns;
 	std::mutex _completionLock;
 	uint32_t _activeMTLCommandBufferCount;
 	MVKMTLCommandBufferID _nextMTLCmdBuffID;
     MVKCommandEncodingPool _commandEncodingPool;
+	MVKGPUCaptureScope* _submissionCaptureScope;
+	MVKGPUCaptureScope* _presentationCaptureScope;
 };
 
 

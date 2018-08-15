@@ -81,7 +81,7 @@ public:
 	/** Populates the specified structure with the properties of this device. */
 	void getProperties(VkPhysicalDeviceProperties* properties);
 
-	/** Returns whether the specified format is supported. */
+	/** Returns whether the specified format is supported on this device. */
 	bool getFormatIsSupported(VkFormat format);
 
 	/** Populates the specified structure with the format properties of this device. */
@@ -265,6 +265,12 @@ public:
 
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
+
+	/** Returns a pointer to the MoltenVK configuration info for this device. */
+	const MVKDeviceConfiguration* getMoltenVKConfiguration();
+
+	/** Sets the MoltenVK configuration info for this device. */
+	void setMoltenVKConfiguration(const MVKDeviceConfiguration* pConfiguration);
 
 
 #pragma mark Object lifecycle

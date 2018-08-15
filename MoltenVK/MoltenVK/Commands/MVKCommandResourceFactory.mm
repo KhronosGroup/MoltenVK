@@ -303,6 +303,17 @@ MVKImage* MVKCommandResourceFactory::newMVKImage(MVKImageDescriptorData& imgData
     return _device->createImage(&createInfo, nullptr);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferBytesMTLComputePipelineState() {
+	return newMTLComputePipelineState(getFunctionNamed("cmdCopyBufferBytes"));
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdFillBufferMTLComputePipelineState() {
+	return newMTLComputePipelineState(getFunctionNamed("cmdFillBuffer"));
+}
+
+
+#pragma mark Support methods
+
 id<MTLFunction> MVKCommandResourceFactory::getFunctionNamed(const char* funcName) {
     uint64_t startTime = _device->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: @(funcName)] autorelease];
@@ -335,16 +346,13 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(
     return rps;
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newCopyBytesMTLComputePipelineState() {
-    MTLComputePipelineDescriptor* plDesc = [[[MTLComputePipelineDescriptor alloc] init] autorelease];
-    plDesc.computeFunction = getFunctionNamed("compCopyBufferBytes");
-    plDesc.buffers[0].mutability = MTLMutabilityMutable;
-    plDesc.buffers[1].mutability = MTLMutabilityMutable;
-    NSError* err = nil;
-    id<MTLComputePipelineState> computePipelineState = [getMTLDevice() newComputePipelineStateWithDescriptor:plDesc options:MTLPipelineOptionNone reflection:nil error:&err];
-    MVKAssert( !err, "Could not create %s pipeline state: %s (code %li) %s", plDesc.label.UTF8String, err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
-    return computePipelineState;
+id<MTLComputePipelineState> MVKCommandResourceFactory::newMTLComputePipelineState(id<MTLFunction> mtlFunction) {
+	MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(_device);
+	id<MTLComputePipelineState> cps = plc->newMTLComputePipelineState(mtlFunction);		// retained
+	plc->destroy();
+    return cps;
 }
+
 
 #pragma mark Construction
 
