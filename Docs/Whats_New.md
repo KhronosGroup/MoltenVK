@@ -13,6 +13,19 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.18
+---------------
+
+Released 2018/08/15
+
+- vkCmdFullBuffer() fills buffer using compute shader.
+- Fix API for updating MVKDeviceConfiguration::synchronousQueueSubmits.
+- vkGetPhysicalDeviceFormatProperties() return VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT 
+  if supported, even if other format properties are not.
+- Support Metal GPU capture scopes.
+- Update to latest SPIRV-Cross, glslang & SPIRV-Tools.
+
+
 MoltenVK 1.0.17
 ---------------
 
