@@ -7,7 +7,7 @@
 # macOS usage: ./fetchDependencies [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
 #
 #      --v-headers-root path
-#              "path" specific a directory path to a
+#              "path" specifies a directory path to a
 #              KhronosGroup/Vulkan-Headers repository.
 #              This repository does not have to be built.
 #
@@ -52,7 +52,7 @@ while (( "$#" )); do
   esac
 done
 
-# Update a repository. If it exists, fetch it, if not clone it.
+# Update a repository. If it exists, fetch it; if not, clone it.
 # $1 repo name
 # $2 repo url
 # $3 repo revision (commit SHA)
@@ -118,7 +118,7 @@ update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 # ----------------- Vulkan-Headers -------------------
 
-# When MoltenVK is built by something that alread has a copy of the
+# When MoltenVK is built by something that already has a copy of the
 # Vulkan-Headers repo, use it by creating a symlink.
 if [ ! "$V_HEADERS_ROOT" = "" ]; then
        REPO_NAME=Vulkan-Headers
@@ -135,7 +135,7 @@ fi
 
 # ----------------- SPIRV-Cross -------------------
 
-# When MoltenVK is built by something that alread has a copy of the
+# When MoltenVK is built by something that already has a copy of the
 # Vulkan-Headers repo, use it by creating a symlink.
 if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
        REPO_NAME=SPIRV-Cross
@@ -152,7 +152,7 @@ fi
 
 # ----------------- glslang -------------------
 
-# When MoltenVK is built by something that alread has a copy of the
+# When MoltenVK is built by something that already has a copy of the
 # Vulkan-Headers repo, use it by creating a symlink.
 if [ ! "$GLSLANG_ROOT" = "" ]; then
        REPO_NAME=glslang
