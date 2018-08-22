@@ -158,7 +158,10 @@ public:
 	 */
 	VkResult getQueueFamilyProperties(uint32_t* pCount, VkQueueFamilyProperties* properties);
 
-	/** Returns a pointer to the layer manager for this device. */
+	/** Returns a pointer to the Vulkan instance. */
+	inline MVKInstance* getInstance() { return _mvkInstance; }
+
+	/** Returns a pointer to the layer manager. */
 	inline MVKLayerManager* getLayerManager() { return MVKLayerManager::globalManager(); }
 
 
@@ -251,6 +254,9 @@ class MVKDevice : public MVKDispatchableObject {
 
 public:
 
+	/** Returns a pointer to the Vulkan instance. */
+	inline MVKInstance* getInstance() { return _physicalDevice->getInstance(); }
+
 	/** Returns the physical device underlying this logical device. */
 	inline MVKPhysicalDevice* getPhysicalDevice() { return _physicalDevice; }
 
@@ -265,12 +271,6 @@ public:
 
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
-
-	/** Returns a pointer to the MoltenVK configuration info for this device. */
-	const MVKDeviceConfiguration* getMoltenVKConfiguration();
-
-	/** Sets the MoltenVK configuration info for this device. */
-	void setMoltenVKConfiguration(const MVKDeviceConfiguration* pConfiguration);
 
 
 #pragma mark Object lifecycle
@@ -402,7 +402,7 @@ public:
 	 * can be used to perform this calculation.
      */
     inline uint64_t getPerformanceTimestamp() {
-		return _mvkConfig.performanceTracking ? getPerformanceTimestampImpl() : 0;
+		return _pMVKConfig->performanceTracking ? getPerformanceTimestampImpl() : 0;
 	}
 
     /**
@@ -413,7 +413,7 @@ public:
      */
     inline void addActivityPerformance(MVKPerformanceTracker& shaderCompilationEvent,
 									   uint64_t startTime, uint64_t endTime = 0) {
-		if (_mvkConfig.performanceTracking) {
+		if (_pMVKConfig->performanceTracking) {
 			addActivityPerformanceImpl(shaderCompilationEvent, startTime, endTime);
 		}
 	};
@@ -471,6 +471,9 @@ public:
 
 #pragma mark Properties directly accessible
 
+	/** The MoltenVK configuration settings. */
+	const MVKConfiguration* _pMVKConfig;
+
 	/** Pointer to the feature set of the underlying physical device. */
 	const VkPhysicalDeviceFeatures* _pFeatures;
 
@@ -482,9 +485,6 @@ public:
 
 	/** Pointer to the memory properties of the underlying physical device. */
 	const VkPhysicalDeviceMemoryProperties* _pMemoryProperties;
-
-    /** The MoltenVK configuration settings for this device. */
-    const MVKDeviceConfiguration _mvkConfig;
 
     /** Performance statistics. */
     MVKPerformanceStatistics _performanceStatistics;

@@ -1020,21 +1020,6 @@ VkResult MVKDevice::waitIdle() {
 	return VK_SUCCESS;
 }
 
-const MVKDeviceConfiguration* MVKDevice::getMoltenVKConfiguration() { return &_mvkConfig; }
-
-void MVKDevice::setMoltenVKConfiguration(const MVKDeviceConfiguration* pConfiguration) {
-	if ( !pConfiguration) { return; }
-
-	*(MVKDeviceConfiguration*)&_mvkConfig = *pConfiguration;
-
-	// Reconfigure the queues from the updated info
-	for (auto& queues : _queuesByQueueFamilyIndex) {
-		for (MVKQueue* q : queues) {
-			q->updateDeviceConfiguration();
-		}
-	}
-}
-
 
 #pragma mark Object lifecycle
 
@@ -1430,7 +1415,7 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
     _globalVisibilityQueryCount = uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes);
 
     if (reqBuffLen > maxBuffLen) {
-        mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): A maximum of %d total queries are available on this device in its current configuration. See the API notes for the MVKDeviceConfiguration.supportLargeQueryPools configuration parameter for more info.", _globalVisibilityQueryCount);
+        mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): A maximum of %d total queries are available on this device in its current configuration. See the API notes for the MVKConfiguration.supportLargeQueryPools configuration parameter for more info.", _globalVisibilityQueryCount);
     }
 
     NSUInteger mtlBuffLen = mvkAlignByteOffset(newBuffLen, _pMetalFeatures->mtlBufferAlignment);
@@ -1444,28 +1429,16 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
 
 #pragma mark Construction
 
-MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) : _mvkConfig() {
+MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
 
 	initPerformanceTracking();
 
 	_physicalDevice = physicalDevice;
+	_pMVKConfig = &_physicalDevice->getInstance()->_mvkConfig;
 	_pFeatures = &_physicalDevice->_features;
 	_pMetalFeatures = &_physicalDevice->_metalFeatures;
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
-
-    // Init const config. Use a pointer to bypass the const qualifier.
-    MVKDeviceConfiguration* pCfg = (MVKDeviceConfiguration*)&_mvkConfig;
-    pCfg->debugMode = MVK_DEBUG;
-	pCfg->synchronousQueueSubmits = false;
-    pCfg->supportLargeQueryPools = true;
-    pCfg->shaderConversionFlipVertexY = true;
-	pCfg->presentWithCommandBuffer = MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL;
-	pCfg->swapchainMagFilterUseNearest = true;
-    pCfg->displayWatermark = MVK_DISPLAY_WATERMARK_BOOL;
-    pCfg->performanceTracking = MVK_DEBUG;
-    pCfg->performanceLoggingFrameCount = MVK_DEBUG ? 300 : 0;
-	pCfg->metalCompileTimeout = numeric_limits<int64_t>::max();
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;

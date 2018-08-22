@@ -17,6 +17,7 @@
  */
 
 
+#include "MVKInstance.h"
 #include "vk_mvk_moltenvk.h"
 #include "MVKEnvironment.h"
 #include "MVKSwapchain.h"
@@ -26,20 +27,20 @@
 using namespace std;
 
 
-MVK_PUBLIC_SYMBOL void vkGetMoltenVKDeviceConfigurationMVK(
-    VkDevice                                    device,
-    MVKDeviceConfiguration*                     pConfiguration) {
+MVK_PUBLIC_SYMBOL void vkGetMoltenVKConfigurationMVK(
+    VkInstance                                  instance,
+    MVKConfiguration*                           pConfiguration) {
 
-    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-    if (pConfiguration) { *pConfiguration = *mvkDev->getMoltenVKConfiguration(); }
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+    if (pConfiguration) { *pConfiguration = mvkInst->_mvkConfig; }
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKDeviceConfigurationMVK(
-    VkDevice                                    device,
-    MVKDeviceConfiguration*                     pConfiguration) {
+MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
+    VkInstance                                  instance,
+    MVKConfiguration*                           pConfiguration) {
 
-    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-    if (pConfiguration) { mvkDev->setMoltenVKConfiguration(pConfiguration); }
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+    if (pConfiguration) { mvkInst->_mvkConfig = *pConfiguration; }
     return VK_SUCCESS;
 }
 
@@ -133,4 +134,24 @@ MVK_PUBLIC_SYMBOL void vkGetIOSurfaceMVK(
     MVKImage* mvkImg = (MVKImage*)image;
     *pIOSurface = mvkImg->getIOSurface();
 }
+
+
+// Deprecated functions
+MVK_PUBLIC_SYMBOL void vkGetMoltenVKDeviceConfigurationMVK(
+	VkDevice                                    device,
+	MVKDeviceConfiguration*                     pConfiguration) {
+
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	if (pConfiguration) { *pConfiguration = mvkDev->getInstance()->_mvkConfig; }
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKDeviceConfigurationMVK(
+	VkDevice                                    device,
+	MVKDeviceConfiguration*                     pConfiguration) {
+
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	if (pConfiguration) { mvkDev->getInstance()->_mvkConfig = *pConfiguration; }
+	return VK_SUCCESS;
+}
+
 

@@ -238,7 +238,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConverterContext* pCont
 }
 
 bool MVKShaderModule::convert(SPIRVToMSLConverterContext* pContext) {
-	bool shouldLogCode = _device->_mvkConfig.debugMode;
+	bool shouldLogCode = _device->_pMVKConfig->debugMode;
 
 	uint64_t startTime = _device->getPerformanceTimestamp();
 	bool wasConverted = _converter.convert(*pContext, shouldLogCode, shouldLogCode, shouldLogCode);

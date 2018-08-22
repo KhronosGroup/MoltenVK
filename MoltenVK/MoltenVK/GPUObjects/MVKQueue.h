@@ -127,13 +127,6 @@ public:
 	/** Constructs an instance for the device and queue family. */
 	MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority);
 
-	/**
-	 * Called from MVKDevice when MVKDeviceConfiguration is updated.
-	 *
-	 * Updates the use of a dispatch queue based on the value of MVKDeviceConfiguration::synchronousQueueSubmits.
-	 */
-	void updateDeviceConfiguration();
-
 	~MVKQueue() override;
 
     /**
@@ -156,6 +149,7 @@ protected:
 	friend class MVKQueuePresentSurfaceSubmission;
 
 	void initName();
+	void initExecQueue();
 	void initMTLCommandQueue();
 	void initGPUCaptureScopes();
 	void destroyExecQueue();
