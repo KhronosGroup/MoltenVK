@@ -1316,7 +1316,6 @@
 				A93E8219211F76F6001FEBD4 /* doc.cpp */,
 				A93E821A211F76F6001FEBD4 /* disassemble.cpp */,
 			);
-			name = SPIRV;
 			path = SPIRV;
 			sourceTree = "<group>";
 		};
@@ -1331,7 +1330,6 @@
 				A93E8265211F76F6001FEBD4 /* Public */,
 				A93E8267211F76F6001FEBD4 /* GenericCodeGen */,
 			);
-			name = glslang;
 			path = glslang;
 			sourceTree = "<group>";
 		};
@@ -1457,7 +1455,6 @@
 				A93E826C211F76F6001FEBD4 /* InitializeDll.h */,
 				A93E826D211F76F6001FEBD4 /* InitializeDll.cpp */,
 			);
-			name = OGLCompilersDLL;
 			path = OGLCompilersDLL;
 			sourceTree = "<group>";
 		};
@@ -2388,7 +2385,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 0940;
+				LastUpgradeCheck = 1000;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9092A8C1A81717B00051823 = {
