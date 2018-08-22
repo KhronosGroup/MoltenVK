@@ -106,7 +106,7 @@ void MVKSwapchain::willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBu
 
 // If the product has not been fully licensed, renders the watermark image to the surface.
 void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff) {
-    if (_device->_mvkConfig.displayWatermark) {
+    if (_device->_pMVKConfig->displayWatermark) {
         if ( !_licenseWatermark ) {
             _licenseWatermark = new MVKWatermarkRandom(getMTLDevice(),
                                                        __watermarkTextureContent,
@@ -127,7 +127,7 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
 
 // Calculates and remembers the time interval between frames.
 void MVKSwapchain::markFrameInterval() {
-    if ( !(_device->_mvkConfig.performanceTracking || _licenseWatermark) ) { return; }
+    if ( !(_device->_pMVKConfig->performanceTracking || _licenseWatermark) ) { return; }
 
     uint64_t prevFrameTime = _lastFrameTime;
     _lastFrameTime = mvkGetTimestamp();
@@ -145,7 +145,7 @@ void MVKSwapchain::markFrameInterval() {
 //				_performanceStatistics.averageFrameInterval,
 //				_currentPerfLogFrameCount + 1);
 
-    uint32_t perfLogCntLimit = _device->_mvkConfig.performanceLoggingFrameCount;
+    uint32_t perfLogCntLimit = _device->_pMVKConfig->performanceLoggingFrameCount;
     if ((perfLogCntLimit > 0) && (++_currentPerfLogFrameCount >= perfLogCntLimit)) {
 		_currentPerfLogFrameCount = 0;
 		MVKLogInfo("Frame interval: %.2f ms. Avg frame interval: %.2f ms. Avg FPS: %.2f. Reporting every: %d frames. Elapsed time: %.3f seconds.",
@@ -198,7 +198,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo)
 	_mtlLayer.device = getMTLDevice();
 	_mtlLayer.pixelFormat = mtlPixelFormatFromVkFormat(pCreateInfo->imageFormat);
 	_mtlLayer.displaySyncEnabledMVK = (pCreateInfo->presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
-	_mtlLayer.magnificationFilter = _device->_mvkConfig.swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
+	_mtlLayer.magnificationFilter = _device->_pMVKConfig->swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
 	_mtlLayer.framebufferOnly = !mvkIsAnyFlagEnabled(pCreateInfo->imageUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			   VK_IMAGE_USAGE_SAMPLED_BIT |

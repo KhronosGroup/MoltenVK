@@ -212,7 +212,7 @@ public:
 	/**
 	 * Returns a new (retained) MTLRenderPipelineState object compiled from the descriptor.
 	 *
-	 * If the Metal pipeline compiler does not return within MVKDeviceConfiguration::metalCompileTimeout
+	 * If the Metal pipeline compiler does not return within MVKConfiguration::metalCompileTimeout
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* mtlRPLDesc);
@@ -249,7 +249,7 @@ public:
 	/**
 	 * Returns a new (retained) MTLComputePipelineState object compiled from the MTLFunction.
 	 *
-	 * If the Metal pipeline compiler does not return within MVKDeviceConfiguration::metalCompileTimeout
+	 * If the Metal pipeline compiler does not return within MVKConfiguration::metalCompileTimeout
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction);

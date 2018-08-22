@@ -365,10 +365,10 @@ you can address the issue as follows:
   
   		#include <MoltenVK/vk_mvk_moltenvk.h>
   		...
-  		MVKDeviceConfiguration mvkConfig;
-  		vkGetMoltenVKDeviceConfigurationMVK(vkDevice, &mvkConfig);
+  		MVKConfiguration mvkConfig;
+  		vkGetMoltenVKConfigurationMVK(vkInstance, &mvkConfig);
   		mvkConfig.debugMode = true;
-  		vkSetMoltenVKDeviceConfigurationMVK(vkDevice, &mvkConfig);
+  		vkSetMoltenVKConfigurationMVK(vkInstance, &mvkConfig);
 
   Performing these steps will enable debug mode in **MoltenVK**, which includes shader conversion 
   logging, and causes both the incoming *SPIR-V* code and the converted *MSL* source code to be 

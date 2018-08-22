@@ -367,7 +367,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
 
     shaderContext.options.isRenderingPoints = (pCreateInfo->pInputAssemblyState && (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST));
 	shaderContext.options.isRasterizationDisabled = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
-    shaderContext.options.shouldFlipVertexY = _device->_mvkConfig.shaderConversionFlipVertexY;
+    shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
 
     // Set the shader context vertex attribute information
     shaderContext.vertexAttributes.clear();

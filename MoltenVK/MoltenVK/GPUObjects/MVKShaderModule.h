@@ -196,7 +196,7 @@ public:
 	/**
 	 * Returns a new (retained) MTLLibrary object compiled from the MSL source code.
 	 *
-	 * If the Metal library compiler does not return within MVKDeviceConfiguration::metalCompileTimeout
+	 * If the Metal library compiler does not return within MVKConfiguration::metalCompileTimeout
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLLibrary> newMTLLibrary(NSString* mslSourceCode);
@@ -234,7 +234,7 @@ public:
 	/**
 	 * Returns a new (retained) MTLFunction object compiled from the MTLLibrary and specialization constants.
 	 *
-	 * If the Metal function compiler does not return within MVKDeviceConfiguration::metalCompileTimeout
+	 * If the Metal function compiler does not return within MVKConfiguration::metalCompileTimeout
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLFunction> newMTLFunction(id<MTLLibrary> mtlLibrary, NSString* funcName, MTLFunctionConstantValues* constantValues);

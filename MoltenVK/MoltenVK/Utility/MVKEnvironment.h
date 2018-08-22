@@ -39,20 +39,40 @@
                                                                     VK_VERSION_MINOR(api_ver),	\
                                                                     0)
 
-/** To present surface using a command buffer, define the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting. */
-#ifdef MVK_PRESENT_WITHOUT_COMMAND_BUFFER
-#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    0
-#else
-#   define MVK_PRESENT_WITH_COMMAND_BUFFER_BOOL    1
+/** Flip the vertex coordinate in shaders. Enabled by default. */
+#ifndef MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
+#   define MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y    1
 #endif
 
-/** To display the MoltenVK logo watermark by default, define the MVK_DISPLAY_WATERMARK build setting. */
-#ifdef MVK_DISPLAY_WATERMARK
-#   define MVK_DISPLAY_WATERMARK_BOOL    1
-#else
-#   define MVK_DISPLAY_WATERMARK_BOOL    0
+/** Process command queue submissions on the same thread on which the submission call was made. Disabled by default. */
+#ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
+#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    0
 #endif
 
+/** Support more than 8192 occlusion queries per buffer. Enabled by default. */
+#ifndef MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
+#   define MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS    1
+#endif
+
+/** Present surfaces using a command buffer. Enabled by default. */
+#ifndef MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER
+#   define MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER    1
+#endif
+
+/** Use nearest sampling to magnify swapchain images. Enabled by default. */
+#ifndef MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST
+#   define MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST    1
+#endif
+
+/** Display the MoltenVK logo watermark. Disabled by default. */
+#ifndef MVK_CONFIG_DISPLAY_WATERMARK
+#   define MVK_CONFIG_DISPLAY_WATERMARK    0
+#endif
+
+/** The maximum amount of time, in nanoseconds, to wait for a Metal library. Default is infinite. */
+#ifndef MVK_CONFIG_METAL_COMPILE_TIMEOUT
+#   define MVK_CONFIG_METAL_COMPILE_TIMEOUT    INT64_MAX
+#endif
 
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.

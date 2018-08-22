@@ -13,6 +13,18 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.19
+---------------
+
+Released 2018/08/22
+
+- Move MoltenVK config to instance instead of device.
+- Add MVKConfiguration and deprecate MVKDeviceConfiguration.
+- Add vkGetMoltenVKConfigurationMVK() and deprecate vkGetMoltenVKDeviceConfigurationMVK().
+- Add vkSetMoltenVKConfigurationMVK() and deprecate vkSetMoltenVKDeviceConfigurationMVK().
+- Add build setting overrides for all initial MVKConfiguration member values.
+
+
 MoltenVK 1.0.18
 ---------------
 

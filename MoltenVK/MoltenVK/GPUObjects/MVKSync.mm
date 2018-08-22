@@ -243,7 +243,7 @@ VkResult mvkWaitForFences(uint32_t fenceCount,
 #pragma mark MVKMetalCompiler
 
 // Create a compiled object by dispatching the block to the default global dispatch queue, and waiting only as long
-// as the MVKDeviceConfiguration::metalCompileTimeout value. If the timeout is triggered, a Vulkan error is created.
+// as the MVKConfiguration::metalCompileTimeout value. If the timeout is triggered, a Vulkan error is created.
 // This approach is used to limit the lengthy time (30+ seconds!) consumed by Metal when it's internal compiler fails.
 // The thread dispatch is needed because even the sync portion of the async Metal compilation methods can take well
 // over a second to return when a compiler failure occurs!
@@ -254,7 +254,7 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), block);
 
 	// Limit timeout to avoid overflow since wait_for() uses wait_until()
-	chrono::nanoseconds nanoTimeout(min(_device->_mvkConfig.metalCompileTimeout, kMVKUndefinedLargeUInt64));
+	chrono::nanoseconds nanoTimeout(min(_device->_pMVKConfig->metalCompileTimeout, kMVKUndefinedLargeUInt64));
 	_blocker.wait_for(lock, nanoTimeout, [this]{ return _isCompileDone; });
 
 	if ( !_isCompileDone ) {

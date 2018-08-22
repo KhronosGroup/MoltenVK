@@ -20,6 +20,7 @@
 
 #include "MVKSurface.h"
 #include "MVKBaseObject.h"
+#include "vk_mvk_moltenvk.h"
 #include <vector>
 #include <unordered_map>
 #include <string>
@@ -72,6 +73,9 @@ public:
 	void destroySurface(MVKSurface* mvkSrfc,
 						const VkAllocationCallbacks* pAllocator);
 
+	/** The MoltenVK configuration settings. */
+	MVKConfiguration _mvkConfig;
+
 
 #pragma mark Object Creation
 
@@ -96,6 +100,7 @@ public:
 
 protected:
 	void initProcAddrs();
+	void initConfig();
     void logVersions();
 
 	VkApplicationInfo _appInfo;

@@ -241,8 +241,8 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkGetSwapchainImagesKHR);
 	ADD_PROC_ADDR(vkAcquireNextImageKHR);
 	ADD_PROC_ADDR(vkQueuePresentKHR);
-    ADD_PROC_ADDR(vkGetMoltenVKDeviceConfigurationMVK);
-    ADD_PROC_ADDR(vkSetMoltenVKDeviceConfigurationMVK);
+	ADD_PROC_ADDR(vkGetMoltenVKConfigurationMVK);
+	ADD_PROC_ADDR(vkSetMoltenVKConfigurationMVK);
     ADD_PROC_ADDR(vkGetPhysicalDeviceMetalFeaturesMVK);
     ADD_PROC_ADDR(vkGetSwapchainPerformanceMVK);
     ADD_PROC_ADDR(vkGetPerformanceStatisticsMVK);
@@ -259,6 +259,15 @@ void MVKInstance::initProcAddrs() {
 #ifdef VK_USE_PLATFORM_MACOS_MVK
 	ADD_PROC_ADDR(vkCreateMacOSSurfaceMVK);
 #endif
+
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
+	// Deprecated functions
+	ADD_PROC_ADDR(vkGetMoltenVKDeviceConfigurationMVK);
+	ADD_PROC_ADDR(vkSetMoltenVKDeviceConfigurationMVK);
+#pragma clang diagnostic pop
+
+
 }
 
 void MVKInstance::logVersions() {
@@ -318,6 +327,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 
     logVersions();          // Log the MoltenVK and Vulkan versions
 	initProcAddrs();		// Init function pointers
+	initConfig();
 
 	// Populate the array of physical GPU devices
 	NSArray<id<MTLDevice>>* mtlDevices = getAvailableMTLDevices();
@@ -333,6 +343,20 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 
     setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
     setConfigurationResult(verifyExtensions(pCreateInfo->enabledExtensionCount, pCreateInfo->ppEnabledExtensionNames));
+}
+
+// Init config.
+void MVKInstance::initConfig() {
+	_mvkConfig.debugMode					= MVK_DEBUG;
+	_mvkConfig.shaderConversionFlipVertexY 	= MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y;
+	_mvkConfig.synchronousQueueSubmits		= MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS;
+	_mvkConfig.supportLargeQueryPools		= MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS;
+	_mvkConfig.presentWithCommandBuffer		= MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER;
+	_mvkConfig.swapchainMagFilterUseNearest	= MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST;
+	_mvkConfig.displayWatermark				= MVK_CONFIG_DISPLAY_WATERMARK;
+	_mvkConfig.performanceTracking			= MVK_DEBUG;
+	_mvkConfig.performanceLoggingFrameCount	= MVK_DEBUG ? 300 : 0;
+	_mvkConfig.metalCompileTimeout			= MVK_CONFIG_METAL_COMPILE_TIMEOUT;
 }
 
 MVKInstance::~MVKInstance() {

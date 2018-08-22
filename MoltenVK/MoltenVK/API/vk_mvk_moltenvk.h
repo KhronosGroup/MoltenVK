@@ -48,13 +48,13 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   18
+#define MVK_VERSION_PATCH   19
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            6
+#define VK_MVK_MOLTENVK_SPEC_VERSION            7
 #define VK_MVK_MOLTENVK_EXTENSION_NAME			"VK_MVK_moltenvk"
 
 /**
@@ -62,20 +62,25 @@ extern "C" {
  *
  * The default value of several of these settings is deterined at build time by the presence
  * of a DEBUG build setting, By default the DEBUG build setting is defined when MoltenVK is
- * compiled in Debug mode, and not defined when compiled in Release mode.
+ * compiled in Debug mode, and not defined when compiled in Release mode. The default values
+ * of the other settings is determined by other compile build settings when MoltenVK is compiled.
+ * See the description of the individual configuration structure members for more information.
+ *
+ * To be active, some configuration settings must be set before a VkDevice is created.
+ * See the description of the individual configuration structure members for more information.
  */
 typedef struct {
-    VkBool32 debugMode;                     /**< If enabled, several debugging capabilities will be enabled. Shader code will be logged during Runtime Shader Conversion. Adjusts settings that might trigger Metal validation but are otherwise acceptable to Metal runtime. Improves support for Xcode GPU Frame Capture. Default value is true in the presence of the DEBUG build setting, and false otherwise. */
-    VkBool32 shaderConversionFlipVertexY;   /**< If enabled, MSL vertex shader code created during Runtime Shader Conversion will flip the Y-axis of each vertex, as Vulkan coordinate system is inverse of OpenGL. Default is true. */
-	VkBool32 synchronousQueueSubmits;       /**< If enabled, queue command submissions (vkQueueSubmit() & vkQueuePresentKHR()) will be processed on the thread that called the submission function. If disabled, processing will be dispatched to a GCD dispatch_queue whose priority is determined by VkDeviceQueueCreateInfo::pQueuePriorities during vkCreateDevice(). This setting affects how much command processing should be performed on the rendering thread, or offloaded to a secondary thread. Default value is false, and command processing will be handled on a prioritizable queue thread. */
-    VkBool32 supportLargeQueryPools;        /**< Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK allocates a MTLBuffer for each query pool, allowing each query pool to support 8192 queries, which may slow performance or cause unexpected behaviour if the query pool is not established prior to a Metal renderpass, or if the query pool is changed within a Metal renderpass. If disabled, one MTLBuffer will be shared by all query pools, which improves performance, but limits the total device queries to 8192. Default value is true. */
-	VkBool32 presentWithCommandBuffer;      /**< If enabled, each surface presentation is scheduled using a command buffer. Enabling this setting may improve rendering frame synchronization, but may result in reduced frame rates. Default value is false if the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting is defined when MoltenVK is compiled, and true otherwise. By default the MVK_PRESENT_WITHOUT_COMMAND_BUFFER build setting is not defined and the value of this setting is true. */
-	VkBool32 swapchainMagFilterUseNearest;  /**< If enabled, swapchain images will use simple Nearest sampling when magnifying the swapchain image to fit a physical display surface. If disabled, swapchain images will use Linear sampling when magnifying the swapchain image to fit a physical display surface. Enabling this setting avoids smearing effects when swapchain images are simple interger multiples of display pixels (eg- macOS Retina, and typical of graphics apps and games), but may cause aliasing effects when using non-integer display scaling. Default value is true. */
-    VkBool32 displayWatermark;              /**< If enabled, a MoltenVK logo watermark will be rendered on top of the scene. This can be enabled for publicity during demos. Default value is true if the MVK_DISPLAY_WATERMARK build setting is defined when MoltenVK is compiled, and false otherwise. By default the MVK_DISPLAY_WATERMARK build setting is not defined. */
-    VkBool32 performanceTracking;           /**< If enabled, per-frame performance statistics are tracked, optionally logged, and can be retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function. Default value is true in the presence of the DEBUG build setting, and false otherwise. */
-    uint32_t performanceLoggingFrameCount;  /**< If non-zero, performance statistics will be periodically logged to the console, on a repeating cycle of this many frames per swapchain. The performanceTracking capability must also be enabled. Default value is 300 in the presence of the DEBUG build setting, and zero otherwise. */
-	uint64_t metalCompileTimeout;			/**< The maximum amount of time, in nanoseconds, to wait for a Metal library, function or pipeline state object to be compiled and created. If an internal error occurs with the Metal compiler, it can stall the thread for up to 30 seconds. Setting this value limits the delay to that amount of time. Default value is infinite. */
-} MVKDeviceConfiguration;
+    VkBool32 debugMode;                            /**< If enabled, several debugging capabilities will be enabled. Shader code will be logged during Runtime Shader Conversion. Adjusts settings that might trigger Metal validation but are otherwise acceptable to Metal runtime. Improves support for Xcode GPU Frame Capture. Default value is true in the presence of the DEBUG build setting, and false otherwise. */
+    VkBool32 shaderConversionFlipVertexY;          /**< If enabled, MSL vertex shader code created during Runtime Shader Conversion will flip the Y-axis of each vertex, as Vulkan coordinate system is inverse of OpenGL. Initial value is set by the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting when MoltenVK is compiled. By default the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting is set to true. */
+	VkBool32 synchronousQueueSubmits;              /**< If enabled, queue command submissions (vkQueueSubmit() & vkQueuePresentKHR()) will be processed on the thread that called the submission function. If disabled, processing will be dispatched to a GCD dispatch_queue whose priority is determined by VkDeviceQueueCreateInfo::pQueuePriorities during vkCreateDevice(). Initial value is set by the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting when MoltenVK is compiled. By default the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting is set to false, and command processing will be handled on a prioritizable queue thread. Changing the value of this parameter must be done before creating a VkDevice, for the change to take effect. */
+    VkBool32 supportLargeQueryPools;               /**< Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK allocates a MTLBuffer for each query pool, allowing each query pool to support 8192 queries, which may slow performance or cause unexpected behaviour if the query pool is not established prior to a Metal renderpass, or if the query pool is changed within a Metal renderpass. If disabled, one MTLBuffer will be shared by all query pools, which improves performance, but limits the total device queries to 8192. Initial value is set by the MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS build setting when MoltenVK is compiled. By default the MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS build setting is set to true. */
+	VkBool32 presentWithCommandBuffer;             /**< If enabled, each surface presentation is scheduled using a command buffer. Enabling this setting may improve rendering frame synchronization, but may result in reduced frame rates. Initial value is set by the MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER build setting when MoltenVK is compiled. By default the MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER build setting is set to true. */
+	VkBool32 swapchainMagFilterUseNearest;         /**< If enabled, swapchain images will use simple Nearest sampling when magnifying the swapchain image to fit a physical display surface. If disabled, swapchain images will use Linear sampling when magnifying the swapchain image to fit a physical display surface. Enabling this setting avoids smearing effects when swapchain images are simple interger multiples of display pixels (eg- macOS Retina, and typical of graphics apps and games), but may cause aliasing effects when using non-integer display scaling. Initial value is set by the MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST build setting when MoltenVK is compiled. By default the MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST build setting is set to true. */
+    VkBool32 displayWatermark;                     /**< If enabled, a MoltenVK logo watermark will be rendered on top of the scene. This can be enabled for publicity during demos. Initial value is set by the MVK_CONFIG_DISPLAY_WATERMARK build setting when MoltenVK is compiled. By default the MVK_CONFIG_DISPLAY_WATERMARK build setting is set to false. */
+    VkBool32 performanceTracking;                  /**< If enabled, per-frame performance statistics are tracked, optionally logged, and can be retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function. Initial value is true in the presence of the DEBUG build setting, and false otherwise. */
+    uint32_t performanceLoggingFrameCount;         /**< If non-zero, performance statistics will be periodically logged to the console, on a repeating cycle of this many frames per swapchain. The performanceTracking capability must also be enabled. Initial value is 300 in the presence of the DEBUG build setting, and zero otherwise. */
+	uint64_t metalCompileTimeout;			       /**< The maximum amount of time, in nanoseconds, to wait for a Metal library, function or pipeline state object to be compiled and created. If an internal error occurs with the Metal compiler, it can stall the thread for up to 30 seconds. Setting this value limits the delay to that amount of time. Initial value is set by the MVK_CONFIG_METAL_COMPILE_TIMEOUT build setting when MoltenVK is compiled. By default the MVK_CONFIG_METAL_COMPILE_TIMEOUT build setting is infinite. */
+} MVKConfiguration;
 
 /** Features provided by the current implementation of Metal on the current device. */
 typedef struct {
@@ -151,8 +156,8 @@ typedef struct {
 #pragma mark -
 #pragma mark Function types
 
-typedef void (VKAPI_PTR *PFN_vkGetMoltenVKDeviceConfigurationMVK)(VkDevice device, MVKDeviceConfiguration* pConfiguration);
-typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKDeviceConfigurationMVK)(VkDevice device, MVKDeviceConfiguration* pConfiguration);
+typedef void (VKAPI_PTR *PFN_vkGetMoltenVKConfigurationMVK)(VkDevice device, MVKConfiguration* pConfiguration);
+typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(VkDevice device, MVKConfiguration* pConfiguration);
 typedef void (VKAPI_PTR *PFN_vkGetPhysicalDeviceMetalFeaturesMVK)(VkPhysicalDevice physicalDevice, MVKPhysicalDeviceMetalFeatures* pMetalFeatures);
 typedef void (VKAPI_PTR *PFN_vkGetSwapchainPerformanceMVK)(VkDevice device, VkSwapchainKHR swapchain, MVKSwapchainPerformance* pSwapchainPerf);
 typedef void (VKAPI_PTR *PFN_vkGetPerformanceStatisticsMVK)(VkDevice device, MVKPerformanceStatistics* pPerf);
@@ -166,9 +171,12 @@ typedef VkResult (VKAPI_PTR *PFN_vkUseIOSurfaceMVK)(VkImage image, IOSurfaceRef 
 typedef void (VKAPI_PTR *PFN_vkGetIOSurfaceMVK)(VkImage image, IOSurfaceRef* pIOSurface);
 #endif // __OBJC__
 
-#pragma mark Deprecated license functions
-typedef VkResult (VKAPI_PTR *PFN_vkActivateMoltenVKLicenseMVK)(const char* licenseID, const char* licenseKey, VkBool32 acceptLicenseTermsAndConditions);
-typedef VkResult (VKAPI_PTR *PFN_vkActivateMoltenVKLicensesMVK)();
+// Deprecated functions
+typedef MVKConfiguration MVKDeviceConfiguration;
+__attribute__((deprecated("Use PFN_vkGetMoltenVKConfigurationMVK instead.")))
+typedef void (VKAPI_PTR *PFN_vkGetMoltenVKDeviceConfigurationMVK)(VkDevice device, MVKConfiguration* pConfiguration);
+__attribute__((deprecated("Use PFN_vkSetMoltenVKConfigurationMVK instead.")))
+typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKDeviceConfigurationMVK)(VkDevice device, MVKConfiguration* pConfiguration);
 
 
 #pragma mark -
@@ -177,28 +185,32 @@ typedef VkResult (VKAPI_PTR *PFN_vkActivateMoltenVKLicensesMVK)();
 #ifndef VK_NO_PROTOTYPES
 
 /** 
- * Populates the pConfiguration structure with the current MoltenVK configuration settings 
- * of the specified device. 
+ * Populates the pConfiguration structure with the current MoltenVK configuration settings.
  *
- * To change a specific configuration value, call vkGetMoltenVKDeviceConfigurationMVK()
+ * To change a specific configuration value, call vkGetMoltenVKConfigurationMVK()
  * to retrieve the current configuration, make changes, and call 
- * vkSetMoltenVKDeviceConfigurationMVK() to update all of the values.
+ * vkSetMoltenVKConfigurationMVK() to update all of the values.
+ *
+ * To be active, some configuration settings must be set before a VkDevice is created.
+ * See the description of the MVKConfiguration members for more information.
  */
-VKAPI_ATTR void VKAPI_CALL vkGetMoltenVKDeviceConfigurationMVK(
-    VkDevice                                    device,
-    MVKDeviceConfiguration*                     pConfiguration);
+VKAPI_ATTR void VKAPI_CALL vkGetMoltenVKConfigurationMVK(
+    VkInstance                                  instance,
+    MVKConfiguration*                           pConfiguration);
 
 /** 
- * Sets the MoltenVK configuration settings of the specified device to those found in the 
- * pConfiguration structure.
+ * Sets the MoltenVK configuration settings to those found in the pConfiguration structure.
  *
- * To change a specific configuration value, call vkGetMoltenVKDeviceConfigurationMVK()
+ * To change a specific configuration value, call vkGetMoltenVKConfigurationMVK()
  * to retrieve the current configuration, make changes, and call
- * vkSetMoltenVKDeviceConfigurationMVK() to update all of the values.
+ * vkSetMoltenVKConfigurationMVK() to update all of the values.
+ *
+ * To be active, some configuration settings must be set before a VkDevice is created.
+ * See the description of the MVKConfiguration members for more information.
  */
-VKAPI_ATTR VkResult VKAPI_CALL vkSetMoltenVKDeviceConfigurationMVK(
-    VkDevice                                    device,
-    MVKDeviceConfiguration*                     pConfiguration);
+VKAPI_ATTR VkResult VKAPI_CALL vkSetMoltenVKConfigurationMVK(
+    VkInstance                                  instance,
+    MVKConfiguration*                           pConfiguration);
 
 /** 
  * Populates the pMetalFeatures structure with the Metal-specific features
@@ -293,7 +305,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkUseIOSurfaceMVK(
     VkImage                                     image,
     IOSurfaceRef                                ioSurface);
 
-
 /**
  * Returns, in the pIOSurface pointer, the IOSurface currently underlaying the VkImage,
  * as set by the useIOSurfaceMVK() function, or returns null if the VkImage is not using
@@ -302,7 +313,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkUseIOSurfaceMVK(
 VKAPI_ATTR void VKAPI_CALL vkGetIOSurfaceMVK(
     VkImage                                     image,
     IOSurfaceRef*                               pIOSurface);
-
 
 #endif // __OBJC__
 
@@ -347,6 +357,12 @@ typedef uint32_t MVKMSLSPIRVHeader;
 
 #endif // VK_NO_PROTOTYPES
 
+
+// Deprecated functions
+__attribute__((deprecated("Use vkGetMoltenVKConfigurationMVK() instead.")))
+VKAPI_ATTR void VKAPI_CALL vkGetMoltenVKDeviceConfigurationMVK(VkDevice device, MVKDeviceConfiguration* pConfiguration);
+__attribute__((deprecated("Use vkSetMoltenVKConfigurationMVK() instead.")))
+VKAPI_ATTR VkResult VKAPI_CALL vkSetMoltenVKDeviceConfigurationMVK(VkDevice device, MVKDeviceConfiguration* pConfiguration);
 
 #ifdef __cplusplus
 }

@@ -193,13 +193,11 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 	_priority = priority;
 	_activeMTLCommandBufferCount = 0;
 	_nextMTLCmdBuffID = 1;
-	_execQueue = nullptr;	// Before updateDeviceConfiguration()
 
 	initName();
+	initExecQueue();
 	initMTLCommandQueue();
 	initGPUCaptureScopes();
-
-	updateDeviceConfiguration();
 }
 
 void MVKQueue::initName() {
@@ -209,14 +207,9 @@ void MVKQueue::initName() {
 	_name = name;
 }
 
-// If synchronous submission processing is not configured in the device,
-// creates and initializes the prioritized execution dispatch queue.
-// If synchronous submission processing is configured in the device,
-// destroys the internal execution dispatch queue if it exists.
-void MVKQueue::updateDeviceConfiguration() {
-	if (_device->_mvkConfig.synchronousQueueSubmits) {
-		destroyExecQueue();
-	} else if ( !_execQueue ) {
+void MVKQueue::initExecQueue() {
+	_execQueue = nil;
+	if ( !_device->_pMVKConfig->synchronousQueueSubmits ) {
 		// Determine the dispatch queue priority
 		dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
 		int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
@@ -422,7 +415,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 void MVKQueuePresentSurfaceSubmission::execute() {
     id<MTLCommandQueue> mtlQ = _queue->getMTLCommandQueue();
 
-	if (_device->_mvkConfig.presentWithCommandBuffer || _device->_mvkConfig.displayWatermark) {
+	if (_device->_pMVKConfig->presentWithCommandBuffer || _device->_pMVKConfig->displayWatermark) {
 		// Create a command buffer, present surfaces via the command buffer,
 		// then wait on the semaphores before committing.
 		id<MTLCommandBuffer> mtlCmdBuff = [mtlQ commandBufferWithUnretainedReferences];
