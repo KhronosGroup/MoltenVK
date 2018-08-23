@@ -235,8 +235,8 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Tools* l
    `MoltenVKSPIRVToMSLConverter-macOS` target, and open the *Build Settings* tab. Locate the build setting 
    entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
    
+		"$(SRCROOT)/glslang/External/spirv-tools"
 		"$(SRCROOT)/glslang/External/spirv-tools/include"
-		"$(SRCROOT)/glslang/External/spirv-tools/source"
 		"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include"
 		"$(SRCROOT)/glslang/build/External/spirv-tools"
 

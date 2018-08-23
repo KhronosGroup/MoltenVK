@@ -16,13 +16,15 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.19
 ---------------
 
-Released 2018/08/22
+Released 2018/08/23
 
 - Move MoltenVK config to instance instead of device.
 - Add MVKConfiguration and deprecate MVKDeviceConfiguration.
 - Add vkGetMoltenVKConfigurationMVK() and deprecate vkGetMoltenVKDeviceConfigurationMVK().
 - Add vkSetMoltenVKConfigurationMVK() and deprecate vkSetMoltenVKDeviceConfigurationMVK().
 - Add build setting overrides for all initial MVKConfiguration member values.
+- Support Xcode 10: Explicitly specify MoltenVKSPIRVToMSLConverter as prelink library.
+- Update to Vulkan header 1.1.83 and latest version of library dependencies.
 
 
 MoltenVK 1.0.18
