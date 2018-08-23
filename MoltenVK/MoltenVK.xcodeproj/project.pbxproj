@@ -161,8 +161,6 @@
 		A98149641FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h in Headers */ = {isa = PBXBuildFile; fileRef = A981494C1FB6A3F7005F00B4 /* MVKWatermarkTextureContent.h */; };
 		A981496B1FB6A998005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A981496A1FB6A998005F00B4 /* MVKStrings.h */; };
 		A981496C1FB6A998005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A981496A1FB6A998005F00B4 /* MVKStrings.h */; };
-		A98149A21FB6B9E1005F00B4 /* MoltenVKSPIRVToMSLConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98149821FB6B566005F00B4 /* MoltenVKSPIRVToMSLConverter.framework */; };
-		A98149A51FB6B9F2005F00B4 /* MoltenVKSPIRVToMSLConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98149841FB6B566005F00B4 /* MoltenVKSPIRVToMSLConverter.framework */; };
 		A9C96DD01DDC20C20053187F /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
 		A9C96DD11DDC20C20053187F /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
 		A9C96DD21DDC20C20053187F /* MVKMTLBufferAllocation.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */; };
@@ -359,25 +357,6 @@
 		A9F0429D1FB4CF82009FCCB8 /* MVKCommonEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommonEnvironment.h; sourceTree = "<group>"; };
 		A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKLogging.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
-
-/* Begin PBXFrameworksBuildPhase section */
-		A94C19D01C55B9F500714189 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A98149A21FB6B9E1005F00B4 /* MoltenVKSPIRVToMSLConverter.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-		A9C86CC41C55B8530096CAF2 /* Frameworks */ = {
-			isa = PBXFrameworksBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-				A98149A51FB6B9F2005F00B4 /* MoltenVKSPIRVToMSLConverter.framework in Frameworks */,
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-		};
-/* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		A94FB7641C7DFB4800632CA3 /* MoltenVK */ = {
@@ -719,7 +698,6 @@
 			buildPhases = (
 				A9B8EE071A98D796009C5A02 /* Headers */,
 				A9B8EE051A98D796009C5A02 /* Sources */,
-				A94C19D01C55B9F500714189 /* Frameworks */,
 				A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */,
 			);
 			buildRules = (
@@ -738,7 +716,6 @@
 			buildPhases = (
 				A9CBED871B6299D800E45FDC /* Headers */,
 				A9CBEDCE1B6299D800E45FDC /* Sources */,
-				A9C86CC41C55B8530096CAF2 /* Frameworks */,
 				A93F47C91D7E389E002AF700 /* Create Dynamic Library */,
 			);
 			buildRules = (
