@@ -1614,6 +1614,70 @@ MVK_PUBLIC_SYMBOL void vkTrimCommandPoolKHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_get_physical_device_properties2 extension
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceFeatures2KHR*               pFeatures) {
+    
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getFeatures(pFeatures);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceProperties2KHR*             pProperties) {
+
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getProperties(pProperties);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFormatProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkFormat                                    format,
+    VkFormatProperties2KHR*                     pFormatProperties) {
+    
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getFormatProperties(format, pFormatProperties);
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceImageFormatInfo2KHR*  pImageFormatInfo,
+    VkImageFormatProperties2KHR*                pImageFormatProperties) {
+    
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    return mvkPD->getImageFormatProperties(pImageFormatInfo, pImageFormatProperties);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties2KHR*                pQueueFamilyProperties) {
+    
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getQueueFamilyProperties(pQueueFamilyPropertyCount, pQueueFamilyProperties);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceMemoryProperties2KHR*       pMemoryProperties) {
+
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getPhysicalDeviceMemoryProperties(pMemoryProperties);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceSparseImageFormatInfo2KHR* pFormatInfo,
+    uint32_t*                                   pPropertyCount,
+    VkSparseImageFormatProperties2KHR*          pProperties) {
+
+    MVKLogUnimplemented("vkGetPhysicalDeviceSparseImageFormatProperties");
+}
+
+
+#pragma mark -
 #pragma mark Loader and Layer ICD interface extension
 
 #ifdef __cplusplus
