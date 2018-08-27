@@ -77,6 +77,20 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2KHR* properties
     if (properties) {
         properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
         properties->properties = _properties;
+        auto* next = (VkStructureType*)properties->pNext;
+        while (next) {
+            switch (*next) {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+                auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
+                pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
+                next = (VkStructureType*)pushDescProps->pNext;
+                break;
+            }
+            default:
+                next = *(VkStructureType**)(next+1);
+                break;
+            }
+        }
     }
 }
 

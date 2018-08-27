@@ -131,6 +131,8 @@ public:
 
     MVKCommandTypePool<MVKCmdDispatchIndirect> _cmdDispatchIndirectPool;
 
+    MVKCommandTypePool<MVKCmdPushDescriptorSet> _cmdPushDescriptorSetPool;
+
 
 #pragma mark Command resources
 

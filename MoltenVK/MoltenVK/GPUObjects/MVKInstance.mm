@@ -249,6 +249,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkGetPhysicalDeviceQueueFamilyProperties2KHR);
 	ADD_PROC_ADDR(vkGetPhysicalDeviceMemoryProperties2KHR);
 	ADD_PROC_ADDR(vkGetPhysicalDeviceSparseImageFormatProperties2KHR);
+	ADD_PROC_ADDR(vkCmdPushDescriptorSetKHR);
 	ADD_PROC_ADDR(vkGetMoltenVKConfigurationMVK);
 	ADD_PROC_ADDR(vkSetMoltenVKConfigurationMVK);
     ADD_PROC_ADDR(vkGetPhysicalDeviceMetalFeaturesMVK);
