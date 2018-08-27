@@ -92,6 +92,11 @@ MVKLayer::MVKLayer() {
     extTmplt.specVersion = VK_AMD_NEGATIVE_VIEWPORT_HEIGHT_SPEC_VERSION;
     _extensions.push_back(extTmplt);
 
+    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
+    strcpy(extTmplt.extensionName, VK_KHR_MAINTENANCE1_EXTENSION_NAME);
+    extTmplt.specVersion = VK_KHR_MAINTENANCE1_SPEC_VERSION;
+    _extensions.push_back(extTmplt);
+
 #if MVK_IOS
     memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
 	strcpy(extTmplt.extensionName, VK_MVK_IOS_SURFACE_EXTENSION_NAME);

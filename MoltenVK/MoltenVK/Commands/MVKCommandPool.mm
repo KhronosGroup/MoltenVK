@@ -63,6 +63,10 @@ void MVKCommandPool::freeCommandBuffers(uint32_t commandBufferCount,
 	}
 }
 
+void MVKCommandPool::trimCommandPool() {
+	// TODO: Implement.
+}
+
 void MVKCommandPool::addCommandBuffer(MVKCommandBuffer* cmdBuffer) {
 	_commandBuffers.insert(cmdBuffer);
 }

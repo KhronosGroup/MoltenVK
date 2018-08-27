@@ -241,6 +241,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkGetSwapchainImagesKHR);
 	ADD_PROC_ADDR(vkAcquireNextImageKHR);
 	ADD_PROC_ADDR(vkQueuePresentKHR);
+	ADD_PROC_ADDR(vkTrimCommandPoolKHR);
 	ADD_PROC_ADDR(vkGetMoltenVKConfigurationMVK);
 	ADD_PROC_ADDR(vkSetMoltenVKConfigurationMVK);
     ADD_PROC_ADDR(vkGetPhysicalDeviceMetalFeaturesMVK);

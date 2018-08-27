@@ -142,6 +142,9 @@ public:
 	void freeCommandBuffers(uint32_t commandBufferCount,
 							const VkCommandBuffer* pCommandBuffers);
 
+	/** Release any held but unused memory back to the system. */
+	void trimCommandPool();
+
 
 #pragma mark Construction
 
