@@ -1602,6 +1602,18 @@ MVK_PUBLIC_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(
 
 
 #pragma mark -
+#pragma mark VK_KHR_maintenace1 extension
+
+MVK_PUBLIC_SYMBOL void vkTrimCommandPoolKHR(
+    VkDevice                                    device,
+    VkCommandPool                               commandPool,
+    VkCommandPoolTrimFlagsKHR                   flags) {
+	MVKCommandPool* mvkCmdPool = (MVKCommandPool*)commandPool;
+    mvkCmdPool->trimCommandPool();
+}
+
+
+#pragma mark -
 #pragma mark Loader and Layer ICD interface extension
 
 #ifdef __cplusplus
