@@ -49,6 +49,7 @@ struct MVKExtensionList {
 			MVKExtension vk_KHR_shader_draw_parameters;
 			MVKExtension vk_KHR_get_physical_device_properties2;
 			MVKExtension vk_KHR_push_descriptor;
+			MVKExtension vk_KHR_descriptor_update_template;
 		};
 		MVKExtension extensionArray;
 	};

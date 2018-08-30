@@ -52,6 +52,7 @@ MVK_MAKE_VK_EXT_PROPS(AMD_NEGATIVE_VIEWPORT_HEIGHT);
 MVK_MAKE_VK_EXT_PROPS(KHR_SHADER_DRAW_PARAMETERS);
 MVK_MAKE_VK_EXT_PROPS(KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
 MVK_MAKE_VK_EXT_PROPS(KHR_PUSH_DESCRIPTOR);
+MVK_MAKE_VK_EXT_PROPS(KHR_DESCRIPTOR_UPDATE_TEMPLATE);
 
 // Calls the constructor for a MVKExtension member variable, using the member name and the
 // portion of the extension name, as uppercase, used in the MVK_MAKE_VK_EXT_PROPS() macro above.
@@ -70,6 +71,7 @@ MVKExtensionList::MVKExtensionList(bool enableForPlatform) :
 	MVKExt_CONSTRUCT(vk_KHR_shader_draw_parameters, KHR_SHADER_DRAW_PARAMETERS),
 	MVKExt_CONSTRUCT(vk_KHR_get_physical_device_properties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2),
 	MVKExt_CONSTRUCT(vk_KHR_push_descriptor, KHR_PUSH_DESCRIPTOR)
+	MVKExt_CONSTRUCT(vk_KHR_descriptor_update_template, KHR_DESCRIPTOR_UPDATE_TEMPLATE)
 {}
 
 bool MVKExtensionList::isEnabled(const char* extnName) const {

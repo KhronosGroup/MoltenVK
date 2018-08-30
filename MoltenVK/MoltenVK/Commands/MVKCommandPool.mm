@@ -119,7 +119,8 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 	_cmdPushConstantsPool(this, true),
     _cmdDispatchPool(this, true),
     _cmdDispatchIndirectPool(this, true),
-    _cmdPushDescriptorSetPool(this, true)
+    _cmdPushDescriptorSetPool(this, true),
+    _cmdPushSetWithTemplatePool(this, true)
 {}
 
 // TODO: Destroying a command pool implicitly destroys all command buffers and commands created from it.

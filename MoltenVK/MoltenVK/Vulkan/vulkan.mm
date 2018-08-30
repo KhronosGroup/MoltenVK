@@ -1692,6 +1692,53 @@ MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetKHR(
     mvkCmdPushDescriptorSet(cmdBuff, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
 }
 
+MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
+    VkCommandBuffer                            commandBuffer,
+    VkDescriptorUpdateTemplateKHR              descriptorUpdateTemplate,
+    VkPipelineLayout                           layout,
+    uint32_t                                   set,
+    const void*                                pData) {
+
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdPushDescriptorSetWithTemplate(cmdBuff, descriptorUpdateTemplate, layout, set, pData);
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_descriptor_update_template extension
+
+MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorUpdateTemplateKHR(
+    VkDevice                                       device,
+    const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*                   pAllocator,
+    VkDescriptorUpdateTemplateKHR*                 pDescriptorUpdateTemplate) {
+
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    auto *mvkDUT = mvkDev->createDescriptorUpdateTemplate(pCreateInfo,
+                                                          pAllocator);
+    *pDescriptorUpdateTemplate = (VkDescriptorUpdateTemplateKHR)mvkDUT;
+    return mvkDUT->getConfigurationResult();
+}
+
+MVK_PUBLIC_SYMBOL void vkDestroyDescriptorUpdateTemplateKHR(
+    VkDevice                                    device,
+    VkDescriptorUpdateTemplateKHR               descriptorUpdateTemplate,
+    const VkAllocationCallbacks*                pAllocator) {
+
+    if (!descriptorUpdateTemplate) { return; }
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    mvkDev->destroyDescriptorUpdateTemplate((MVKDescriptorUpdateTemplate*)descriptorUpdateTemplate, pAllocator);
+}
+
+MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplateKHR(
+    VkDevice                                    device,
+    VkDescriptorSet                             descriptorSet,
+    VkDescriptorUpdateTemplateKHR               descriptorUpdateTemplate,
+    const void*                                 pData) {
+
+    mvkUpdateDescriptorSetWithTemplate(descriptorSet, descriptorUpdateTemplate, pData);
+}
+
 
 #pragma mark -
 #pragma mark Loader and Layer ICD interface extension

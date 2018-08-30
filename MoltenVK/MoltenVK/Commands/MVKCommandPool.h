@@ -133,6 +133,8 @@ public:
 
     MVKCommandTypePool<MVKCmdPushDescriptorSet> _cmdPushDescriptorSetPool;
 
+    MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate> _cmdPushSetWithTemplatePool;
+
 
 #pragma mark Command resources
 

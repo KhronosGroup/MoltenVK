@@ -238,6 +238,67 @@ void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
 
 
 #pragma mark -
+#pragma mark MVKCmdPushDescriptorSetWithTemplate
+
+void MVKCmdPushDescriptorSetWithTemplate::setContent(VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+													 VkPipelineLayout layout,
+													 uint32_t set,
+													 const void* pData) {
+	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
+	_pipelineLayout = (MVKPipelineLayout*)layout;
+	_set = set;
+	if (_pData) delete[] (char*)_pData;
+	// Work out how big the memory block in pData is.
+	const VkDescriptorUpdateTemplateEntryKHR* pEntry =
+		_descUpdateTemplate->getEntry(_descUpdateTemplate->getNumberOfEntries()-1);
+	size_t size = pEntry->offset;
+	// If we were given a stride, use that; otherwise, assume only one info
+	// struct of the appropriate type.
+	if (pEntry->stride)
+		size += pEntry->stride * pEntry->descriptorCount;
+	else switch (pEntry->descriptorType) {
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			size += sizeof(VkDescriptorBufferInfo);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			size += sizeof(VkDescriptorImageInfo);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			size += sizeof(VkBufferView);
+			break;
+
+		default:
+			break;
+	}
+	_pData = new char[size];
+	memcpy(_pData, pData, size);
+}
+
+void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) {
+	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descUpdateTemplate, _set, _pData);
+}
+
+MVKCmdPushDescriptorSetWithTemplate::MVKCmdPushDescriptorSetWithTemplate(
+	MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate>* pool)
+	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
+
+MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
+	if (_pData) delete[] (char*)_pData;
+}
+
+
+#pragma mark -
 #pragma mark Command creation functions
 
 void mvkCmdPipelineBarrier(MVKCommandBuffer* cmdBuff,
@@ -298,5 +359,15 @@ void mvkCmdPushDescriptorSet(MVKCommandBuffer* cmdBuff,
 							 const VkWriteDescriptorSet* pDescriptorWrites) {
 	MVKCmdPushDescriptorSet* cmd = cmdBuff->_commandPool->_cmdPushDescriptorSetPool.acquireObject();
 	cmd->setContent(pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+	cmdBuff->addCommand(cmd);
+}
+
+void mvkCmdPushDescriptorSetWithTemplate(MVKCommandBuffer* cmdBuff,
+										 VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+										 VkPipelineLayout layout,
+										 uint32_t set,
+										 const void* pData) {
+	MVKCmdPushDescriptorSetWithTemplate* cmd = cmdBuff->_commandPool->_cmdPushSetWithTemplatePool.acquireObject();
+	cmd->setContent(descUpdateTemplate, layout, set, pData);
 	cmdBuff->addCommand(cmd);
 }
