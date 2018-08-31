@@ -102,6 +102,11 @@ MVKLayer::MVKLayer() {
     extTmplt.specVersion = VK_KHR_SHADER_DRAW_PARAMETERS_SPEC_VERSION;
     _extensions.push_back(extTmplt);
 
+    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
+    strcpy(extTmplt.extensionName, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+    extTmplt.specVersion = VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_SPEC_VERSION;
+    _extensions.push_back(extTmplt);
+
 #if MVK_IOS
     memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
 	strcpy(extTmplt.extensionName, VK_MVK_IOS_SURFACE_EXTENSION_NAME);

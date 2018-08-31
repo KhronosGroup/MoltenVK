@@ -58,12 +58,26 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures* features) {
     if (features) { *features = _features; }
 }
 
+void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2KHR* features) {
+    if (features) {
+        features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+        features->features = _features;
+    }
+}
+
 void MVKPhysicalDevice::getMetalFeatures(MVKPhysicalDeviceMetalFeatures* mtlFeatures) {
     if (mtlFeatures) { *mtlFeatures = _metalFeatures; }
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
     if (properties) { *properties = _properties; }
+}
+
+void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2KHR* properties) {
+    if (properties) {
+        properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+        properties->properties = _properties;
+    }
 }
 
 bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
@@ -88,6 +102,15 @@ bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
     if (pFormatProperties) {
 		*pFormatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
+	}
+}
+
+void MVKPhysicalDevice::getFormatProperties(VkFormat format,
+                                            VkFormatProperties2KHR* pFormatProperties) {
+	static VkFormatProperties noFmtFeats = { 0, 0, 0 };
+	if (pFormatProperties) {
+		pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
+		pFormatProperties->formatProperties = getFormatIsSupported(format) ? mvkVkFormatProperties(format) : noFmtFeats;
 	}
 }
 
@@ -146,6 +169,25 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
     pImageFormatProperties->maxResourceSize = kMVKUndefinedLargeUInt64;
 
     return VK_SUCCESS;
+}
+
+VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo,
+                                                     VkImageFormatProperties2KHR* pImageFormatProperties) {
+
+    if ( !pImageFormatInfo || pImageFormatInfo->sType != VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR ) {
+        return VK_ERROR_FORMAT_NOT_SUPPORTED;
+    }
+    if ( !getFormatIsSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+
+    if ( !pImageFormatProperties ) {
+        return VK_SUCCESS;
+    }
+
+    pImageFormatProperties->sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR;
+    return getImageFormatProperties(pImageFormatInfo->format, pImageFormatInfo->type,
+                                    pImageFormatInfo->tiling, pImageFormatInfo->usage,
+                                    pImageFormatInfo->flags,
+                                    &pImageFormatProperties->imageFormatProperties);
 }
 
 
@@ -293,12 +335,45 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 	return (*pCount <= qfCnt) ? VK_SUCCESS : VK_INCOMPLETE;
 }
 
+VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
+													 VkQueueFamilyProperties2KHR* queueProperties) {
+
+	uint32_t qfCnt = uint32_t(_queueFamilies.size());
+
+	// If properties aren't actually being requested yet, simply update the returned count
+	if ( !queueProperties ) {
+		*pCount = qfCnt;
+		return VK_SUCCESS;
+	}
+
+	// Determine how many families we'll return, and return that number
+	*pCount = min(*pCount, qfCnt);
+
+	// Now populate the queue families
+	if (queueProperties) {
+		for (uint32_t qfIdx = 0; qfIdx < *pCount; qfIdx++) {
+			queueProperties[qfIdx].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR;
+			_queueFamilies[qfIdx]->getProperties(&queueProperties[qfIdx].queueFamilyProperties);
+		}
+	}
+
+	return (*pCount <= qfCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+}
+
 
 #pragma mark Memory models
 
 /** Populates the specified memory properties with the memory characteristics of this device. */
 VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties* pMemoryProperties) {
 	*pMemoryProperties = _memoryProperties;
+	return VK_SUCCESS;
+}
+
+VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties2KHR* pMemoryProperties) {
+	if (pMemoryProperties) {
+		pMemoryProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR;
+		pMemoryProperties->memoryProperties = _memoryProperties;
+	}
 	return VK_SUCCESS;
 }
 
