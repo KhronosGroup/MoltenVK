@@ -12,6 +12,19 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
+MoltenVK 1.0.20
+---------------
+
+Released 2018/09/01
+
+- Add support for extensions:
+    - VK_KHR_maintenance1;
+	- VK_KHR_shader_draw_parameters;
+	- VK_KHR_get_physical_device_properties2;
+	- VK_KHR_push_descriptor;
+- Add ability to track and access supported and enabled extensions.
+- Update to latest SPIRV-Cross version.
+
 
 MoltenVK 1.0.19
 ---------------
