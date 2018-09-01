@@ -173,6 +173,172 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
     }
 }
 
+void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
+                                         uint32_t& dstArrayElement,
+                                         uint32_t& descriptorCount,
+                                         VkDescriptorType descriptorType,
+                                         const VkDescriptorImageInfo*& pImageInfo,
+                                         const VkDescriptorBufferInfo*& pBufferInfo,
+                                         const VkBufferView*& pTexelBufferView,
+                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
+    MVKMTLBufferBinding bb;
+    MVKMTLTextureBinding tb;
+    MVKMTLSamplerStateBinding sb;
+
+    if (dstArrayElement >= _info.descriptorCount) {
+        dstArrayElement -= _info.descriptorCount;
+        return;
+    }
+
+    if (descriptorType != _info.descriptorType) {
+        dstArrayElement = 0;
+        if (_info.descriptorCount > descriptorCount)
+            descriptorCount = 0;
+        else {
+            descriptorCount -= _info.descriptorCount;
+            pImageInfo += _info.descriptorCount;
+            pBufferInfo += _info.descriptorCount;
+            pTexelBufferView += _info.descriptorCount;
+        }
+        return;
+    }
+
+    // Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
+    MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
+
+    for (uint32_t rezIdx = dstArrayElement;
+         rezIdx < _info.descriptorCount && rezIdx - dstArrayElement < descriptorCount;
+         rezIdx++) {
+        switch (_info.descriptorType) {
+
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+            case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+            case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+                const VkDescriptorBufferInfo& bufferInfo = pBufferInfo[rezIdx - dstArrayElement];
+                MVKBuffer* buffer = (MVKBuffer*)bufferInfo.buffer;
+                bb.mtlBuffer = buffer->getMTLBuffer();
+                bb.offset = bufferInfo.offset;
+                if (_applyToVertexStage) {
+                    bb.index = mtlIdxs.vertexStage.bufferIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindVertexBuffer(bb);
+                }
+                if (_applyToFragmentStage) {
+                    bb.index = mtlIdxs.fragmentStage.bufferIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindFragmentBuffer(bb);
+                }
+                if (_applyToComputeStage) {
+                    bb.index = mtlIdxs.computeStage.bufferIndex + rezIdx;
+                    cmdEncoder->_computeResourcesState.bindBuffer(bb);
+                }
+                break;
+            }
+
+            case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+            case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+            case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
+                const VkDescriptorImageInfo& imageInfo = pImageInfo[rezIdx - dstArrayElement];
+                MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
+                tb.mtlTexture = imageView->getMTLTexture();
+                if (_applyToVertexStage) {
+                    tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
+                }
+                if (_applyToFragmentStage) {
+                    tb.index = mtlIdxs.fragmentStage.textureIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindFragmentTexture(tb);
+                }
+                if (_applyToComputeStage) {
+                    tb.index = mtlIdxs.computeStage.textureIndex + rezIdx;
+                    cmdEncoder->_computeResourcesState.bindTexture(tb);
+                }
+                break;
+            }
+
+            case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+            case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
+                MVKBufferView* bufferView = (MVKBufferView*)pTexelBufferView[rezIdx - dstArrayElement];
+                tb.mtlTexture = bufferView->getMTLTexture();
+                if (_applyToVertexStage) {
+                    tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
+                }
+                if (_applyToFragmentStage) {
+                    tb.index = mtlIdxs.fragmentStage.textureIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindFragmentTexture(tb);
+                }
+                if (_applyToComputeStage) {
+                    tb.index = mtlIdxs.computeStage.textureIndex + rezIdx;
+                    cmdEncoder->_computeResourcesState.bindTexture(tb);
+                }
+                break;
+            }
+
+            case VK_DESCRIPTOR_TYPE_SAMPLER: {
+                MVKSampler* sampler;
+                if (_immutableSamplers.empty())
+                    sampler = (MVKSampler*)pImageInfo[rezIdx - dstArrayElement].sampler;
+                else
+                    sampler = _immutableSamplers[rezIdx];
+                sb.mtlSamplerState = sampler->getMTLSamplerState();
+                if (_applyToVertexStage) {
+                    sb.index = mtlIdxs.vertexStage.samplerIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindVertexSamplerState(sb);
+                }
+                if (_applyToFragmentStage) {
+                    sb.index = mtlIdxs.fragmentStage.samplerIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindFragmentSamplerState(sb);
+                }
+                if (_applyToComputeStage) {
+                    sb.index = mtlIdxs.computeStage.samplerIndex + rezIdx;
+                    cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                }
+                break;
+            }
+
+            case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+                const VkDescriptorImageInfo& imageInfo = pImageInfo[rezIdx - dstArrayElement];
+                MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
+                MVKSampler* sampler = _immutableSamplers.empty() ? (MVKSampler*)imageInfo.sampler : _immutableSamplers[rezIdx];
+                tb.mtlTexture = imageView->getMTLTexture();
+                sb.mtlSamplerState = sampler->getMTLSamplerState();
+                if (_applyToVertexStage) {
+                    tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
+                    sb.index = mtlIdxs.vertexStage.samplerIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindVertexSamplerState(sb);
+                }
+                if (_applyToFragmentStage) {
+                    tb.index = mtlIdxs.fragmentStage.textureIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindFragmentTexture(tb);
+                    sb.index = mtlIdxs.fragmentStage.samplerIndex + rezIdx;
+                    cmdEncoder->_graphicsResourcesState.bindFragmentSamplerState(sb);
+                }
+                if (_applyToComputeStage) {
+                    tb.index = mtlIdxs.computeStage.textureIndex + rezIdx;
+                    cmdEncoder->_computeResourcesState.bindTexture(tb);
+                    sb.index = mtlIdxs.computeStage.samplerIndex + rezIdx;
+                    cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                }
+                break;
+            }
+
+            default:
+                break;
+        }
+    }
+
+    dstArrayElement = 0;
+    if (_info.descriptorCount > descriptorCount)
+        descriptorCount = 0;
+    else {
+        descriptorCount -= _info.descriptorCount;
+        pImageInfo += _info.descriptorCount;
+        pBufferInfo += _info.descriptorCount;
+        pTexelBufferView += _info.descriptorCount;
+    }
+}
+
 void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLConverterContext& context,
                                                                    MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                                                    uint32_t dslIndex) {
@@ -300,11 +466,34 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                vector<uint32_t>& dynamicOffsets,
                                                uint32_t* pDynamicOffsetIndex) {
 
+    if (_isPushDescriptorLayout) return;
     uint32_t bindCnt = (uint32_t)_bindings.size();
     for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
         _bindings[bindIdx].bind(cmdEncoder, descSet->_bindings[bindIdx],
                                 dslMTLRezIdxOffsets, dynamicOffsets,
                                 pDynamicOffsetIndex);
+    }
+}
+
+void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+                                               vector<VkWriteDescriptorSet>& descriptorWrites,
+                                               MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
+
+    if (!_isPushDescriptorLayout) return;
+    for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
+        uint32_t bindIdx = descWrite.dstBinding;
+        uint32_t dstArrayElement = descWrite.dstArrayElement;
+        uint32_t descriptorCount = descWrite.descriptorCount;
+        const VkDescriptorImageInfo* pImageInfo = descWrite.pImageInfo;
+        const VkDescriptorBufferInfo* pBufferInfo = descWrite.pBufferInfo;
+        const VkBufferView* pTexelBufferView = descWrite.pTexelBufferView;
+        // Note: This will result in us walking off the end of the array
+        // in case there are too many updates... but that's ill-defined anyway.
+        for (; descriptorCount; bindIdx++) {
+            _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
+                                    descWrite.descriptorType, pImageInfo, pBufferInfo,
+                                    pTexelBufferView, dslMTLRezIdxOffsets);
+        }
     }
 }
 
@@ -319,6 +508,7 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(SPIRVToMSLConverterC
 
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+    _isPushDescriptorLayout = (pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) != 0;
     // Create the descriptor bindings
     _bindings.reserve(pCreateInfo->bindingCount);
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
@@ -616,6 +806,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
 		MVKDescriptorSetLayout* mvkDSL = (MVKDescriptorSetLayout*)pSetLayouts[dsIdx];
+		if (mvkDSL->isPushDescriptorLayout()) continue;
 		MVKDescriptorSet* mvkDescSet = new MVKDescriptorSet(_device, mvkDSL);
 		_allocatedSets.push_front(mvkDescSet);
 		pDescriptorSets[dsIdx] = (VkDescriptorSet)mvkDescSet;

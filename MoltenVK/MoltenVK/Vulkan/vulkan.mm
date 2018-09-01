@@ -1678,6 +1678,22 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_push_descriptor extension
+
+MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetKHR(
+    VkCommandBuffer                             commandBuffer,
+    VkPipelineBindPoint                         pipelineBindPoint,
+    VkPipelineLayout                            layout,
+    uint32_t                                    set,
+    uint32_t                                    descriptorWriteCount,
+    const VkWriteDescriptorSet*                 pDescriptorWrites) {
+
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdPushDescriptorSet(cmdBuff, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+}
+
+
+#pragma mark -
 #pragma mark Loader and Layer ICD interface extension
 
 #ifdef __cplusplus

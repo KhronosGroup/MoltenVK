@@ -180,6 +180,64 @@ MVKCmdPushConstants::MVKCmdPushConstants(MVKCommandTypePool<MVKCmdPushConstants>
 
 
 #pragma mark -
+#pragma mark MVKCmdPushDescriptorSet
+
+void MVKCmdPushDescriptorSet::setContent(VkPipelineBindPoint pipelineBindPoint,
+                                         VkPipelineLayout layout,
+                                         uint32_t set,
+                                         uint32_t descriptorWriteCount,
+                                         const VkWriteDescriptorSet* pDescriptorWrites) {
+	_pipelineBindPoint = pipelineBindPoint;
+	_pipelineLayout = (MVKPipelineLayout*)layout;
+	_set = set;
+
+	// Add the descriptor writes
+	clearDescriptorWrites();	// Clear for reuse
+	_descriptorWrites.reserve(descriptorWriteCount);
+	for (uint32_t dwIdx = 0; dwIdx < descriptorWriteCount; dwIdx++) {
+		_descriptorWrites.push_back(pDescriptorWrites[dwIdx]);
+		VkWriteDescriptorSet& descWrite = _descriptorWrites.back();
+		// Make a copy of the associated data.
+		if (descWrite.pImageInfo) {
+			auto* pNewImageInfo = new VkDescriptorImageInfo[descWrite.descriptorCount];
+			std::copy_n(descWrite.pImageInfo, descWrite.descriptorCount, pNewImageInfo);
+			descWrite.pImageInfo = pNewImageInfo;
+		}
+		if (descWrite.pBufferInfo) {
+			auto* pNewBufferInfo = new VkDescriptorBufferInfo[descWrite.descriptorCount];
+			std::copy_n(descWrite.pBufferInfo, descWrite.descriptorCount, pNewBufferInfo);
+			descWrite.pBufferInfo = pNewBufferInfo;
+		}
+		if (descWrite.pTexelBufferView) {
+			auto* pNewTexelBufferView = new VkBufferView[descWrite.descriptorCount];
+			std::copy_n(descWrite.pTexelBufferView, descWrite.descriptorCount, pNewTexelBufferView);
+			descWrite.pTexelBufferView = pNewTexelBufferView;
+		}
+	}
+}
+
+void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
+	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descriptorWrites, _set);
+}
+
+MVKCmdPushDescriptorSet::MVKCmdPushDescriptorSet(MVKCommandTypePool<MVKCmdPushDescriptorSet>* pool)
+	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
+
+MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {
+	clearDescriptorWrites();
+}
+
+void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
+	for (VkWriteDescriptorSet &descWrite : _descriptorWrites) {
+		if (descWrite.pImageInfo) delete[] descWrite.pImageInfo;
+		if (descWrite.pBufferInfo) delete[] descWrite.pBufferInfo;
+		if (descWrite.pTexelBufferView) delete[] descWrite.pTexelBufferView;
+	}
+	_descriptorWrites.clear();
+}
+
+
+#pragma mark -
 #pragma mark Command creation functions
 
 void mvkCmdPipelineBarrier(MVKCommandBuffer* cmdBuff,
@@ -232,3 +290,13 @@ void mvkCmdPushConstants(MVKCommandBuffer* cmdBuff,
 	cmdBuff->addCommand(cmd);
 }
 
+void mvkCmdPushDescriptorSet(MVKCommandBuffer* cmdBuff,
+							 VkPipelineBindPoint pipelineBindPoint,
+							 VkPipelineLayout layout,
+							 uint32_t set,
+							 uint32_t descriptorWriteCount,
+							 const VkWriteDescriptorSet* pDescriptorWrites) {
+	MVKCmdPushDescriptorSet* cmd = cmdBuff->_commandPool->_cmdPushDescriptorSetPool.acquireObject();
+	cmd->setContent(pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+	cmdBuff->addCommand(cmd);
+}

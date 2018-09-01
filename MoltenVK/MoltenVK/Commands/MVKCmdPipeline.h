@@ -132,6 +132,35 @@ private:
 
 
 #pragma mark -
+#pragma mark MVKCmdPushDescriptorSet
+
+/** Vulkan command to update a descriptor set. */
+class MVKCmdPushDescriptorSet : public MVKCommand {
+
+public:
+	void setContent(VkPipelineBindPoint pipelineBindPoint,
+					VkPipelineLayout layout,
+					uint32_t set,
+					uint32_t descriptorWriteCount,
+					const VkWriteDescriptorSet* pDescriptorWrites);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	MVKCmdPushDescriptorSet(MVKCommandTypePool<MVKCmdPushDescriptorSet>* pool);
+
+	~MVKCmdPushDescriptorSet() override;
+
+private:
+	void clearDescriptorWrites();
+
+	VkPipelineBindPoint _pipelineBindPoint;
+	MVKPipelineLayout* _pipelineLayout;
+	std::vector<VkWriteDescriptorSet> _descriptorWrites;
+	uint32_t _set;
+};
+
+
+#pragma mark -
 #pragma mark Command creation functions
 
 /** Adds commands to the specified command buffer that insert the specified pipeline barriers. */
@@ -168,3 +197,11 @@ void mvkCmdPushConstants(MVKCommandBuffer* cmdBuff,
 						 uint32_t offset,
 						 uint32_t size,
 						 const void* pValues);
+
+/** Adds commands to the specified command buffer that update the specified descriptor set. */
+void mvkCmdPushDescriptorSet(MVKCommandBuffer* cmdBuff,
+							 VkPipelineBindPoint pipelineBindPoint,
+							 VkPipelineLayout layout,
+							 uint32_t set,
+							 uint32_t descriptorWriteCount,
+							 const VkWriteDescriptorSet* pDescriptorWrites);
