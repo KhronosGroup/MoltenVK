@@ -32,88 +32,43 @@ VkLayerProperties* const MVKLayer::getLayerProperties() { return &_layerProperti
 
 VkResult MVKLayer::getExtensionProperties(uint32_t* pCount, VkExtensionProperties* pProperties) {
 
-	// If properties aren't actually being requested yet, simply update the returned count
-	if ( !pProperties ) {
-		*pCount = (uint32_t)_extensions.size();
-		return VK_SUCCESS;
+	uint32_t enabledCnt = 0;
+
+	// Iterate extensions and handle those that are enabled. Count them,
+	// and if they are to be returned, and there is room, do so.
+	uint32_t extnCnt = _supportedExtensions.getCount();
+	MVKExtension* extnAry = &_supportedExtensions.extensionArray;
+	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {
+		if (extnAry[extnIdx].enabled) {
+			if (pProperties) {
+				if (enabledCnt < *pCount) {
+					pProperties[enabledCnt] = *(extnAry[extnIdx].pProperties);
+				} else {
+					return VK_INCOMPLETE;
+				}
+			}
+			enabledCnt++;
+		}
 	}
 
-	// Othewise, determine how many extensions we'll return, and return that count
-	uint32_t extCnt = (uint32_t)_extensions.size();
-	VkResult result = (*pCount <= extCnt) ? VK_SUCCESS : VK_INCOMPLETE;
-	*pCount = min(extCnt, *pCount);
-
-	// Now populate the layer properties
-	for (uint32_t extIdx = 0; extIdx < *pCount; extIdx++) {
-		pProperties[extIdx] = _extensions[extIdx];
-	}
-
-	return result;
-}
-
-bool MVKLayer::hasExtensionNamed(const char* extnName) {
-    for (auto& extn : _extensions) {
-        if ( strcmp(extn.extensionName, extnName) == 0 ) { return true; }
-    }
-    return false;
+	// Return the count of enabled extensions. This will either be a
+	// count of all enabled extensions, or a count of those returned.
+	*pCount = enabledCnt;
+	return VK_SUCCESS;
 }
 
 
 #pragma mark Object Creation
 
-MVKLayer::MVKLayer() {
+MVKLayer::MVKLayer() : _supportedExtensions(true) {
 
 	// The core driver layer
+	memset(_layerProperties.layerName, 0, sizeof(_layerProperties.layerName));
 	strcpy(_layerProperties.layerName, "MoltenVK");
+	memset(_layerProperties.description, 0, sizeof(_layerProperties.description));
 	strcpy(_layerProperties.description, "MoltenVK driver layer");
 	_layerProperties.specVersion = MVK_VULKAN_API_VERSION;
 	_layerProperties.implementationVersion = MVK_VERSION;
-
-    // Extensions
-    VkExtensionProperties extTmplt;
-
-    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
-    strcpy(extTmplt.extensionName, VK_MVK_MOLTENVK_EXTENSION_NAME);
-    extTmplt.specVersion = VK_MVK_MOLTENVK_SPEC_VERSION;
-    _extensions.push_back(extTmplt);
-
-    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
-	strcpy(extTmplt.extensionName, VK_KHR_SWAPCHAIN_EXTENSION_NAME);
-    extTmplt.specVersion = VK_KHR_SWAPCHAIN_SPEC_VERSION;
-	_extensions.push_back(extTmplt);
-
-    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
-    strcpy(extTmplt.extensionName, VK_KHR_SURFACE_EXTENSION_NAME);
-    extTmplt.specVersion = VK_KHR_SURFACE_SPEC_VERSION;
-    _extensions.push_back(extTmplt);
-
-    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
-    strcpy(extTmplt.extensionName, VK_AMD_NEGATIVE_VIEWPORT_HEIGHT_EXTENSION_NAME);
-    extTmplt.specVersion = VK_AMD_NEGATIVE_VIEWPORT_HEIGHT_SPEC_VERSION;
-    _extensions.push_back(extTmplt);
-
-    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
-    strcpy(extTmplt.extensionName, VK_KHR_MAINTENANCE1_EXTENSION_NAME);
-    extTmplt.specVersion = VK_KHR_MAINTENANCE1_SPEC_VERSION;
-    _extensions.push_back(extTmplt);
-
-#if MVK_IOS
-    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
-	strcpy(extTmplt.extensionName, VK_MVK_IOS_SURFACE_EXTENSION_NAME);
-    extTmplt.specVersion = VK_MVK_IOS_SURFACE_SPEC_VERSION;
-	_extensions.push_back(extTmplt);
-
-    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
-    strcpy(extTmplt.extensionName, VK_IMG_FORMAT_PVRTC_EXTENSION_NAME);
-    extTmplt.specVersion = VK_IMG_FORMAT_PVRTC_SPEC_VERSION;
-    _extensions.push_back(extTmplt);
-#endif
-#if MVK_MACOS
-    memset(extTmplt.extensionName, 0, sizeof(extTmplt.extensionName));
-	strcpy(extTmplt.extensionName, VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
-    extTmplt.specVersion = VK_MVK_MACOS_SURFACE_SPEC_VERSION;
-	_extensions.push_back(extTmplt);
-#endif
 }
 
 
@@ -134,7 +89,6 @@ MVKLayer* MVKLayerManager::getLayerNamed(const char* pLayerName) {
 	}
 	return VK_NULL_HANDLE;
 }
-
 
 VkResult MVKLayerManager::getLayerProperties(uint32_t* pCount, VkLayerProperties* pProperties) {
 

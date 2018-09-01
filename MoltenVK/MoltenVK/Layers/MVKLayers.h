@@ -18,8 +18,8 @@
 
 #pragma once
 
-#include "mvk_vulkan.h"
 #include "MVKBaseObject.h"
+#include "MVKExtensions.h"
 #include <vector>
 
 
@@ -50,16 +50,16 @@ public:
 	 */
 	VkResult getExtensionProperties(uint32_t* pCount, VkExtensionProperties* pProperties);
 
-    /** Returns whether this layer supports the specified extension. */
-    bool hasExtensionNamed(const char* extnName);
+	/** Returns the list of supported extensions. */
+	MVKExtensionList* getSupportedExtensions() { return &_supportedExtensions; }
 
 	/** Default constructor.  This represents the driver implementation. */
 	MVKLayer();
 
 protected:
 	VkLayerProperties _layerProperties;
-	std::vector<VkExtensionProperties> _extensions;
-	
+	MVKExtensionList _supportedExtensions;
+
 };
 
 
@@ -70,12 +70,11 @@ class MVKLayerManager : public MVKConfigurableObject {
 
 public:
 
-	/** Returns a pointer to the driver layer. */
+	/** Returns the driver layer. */
 	MVKLayer* getDriverLayer();
 
 	/**
-	 * Returns a pointe to the layer with the specified name, 
-	 * or null if no layer was found with that name.
+	 * Returns the layer with the specified name, or null if no layer was found with that name.
 	 *
 	 * If pLayerName is null, returns the driver layer, which is
 	 * the same layer returned by the getDriverLayer() function.

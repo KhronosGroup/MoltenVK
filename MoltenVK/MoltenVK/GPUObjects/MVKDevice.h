@@ -255,7 +255,7 @@ class MVKDevice : public MVKDispatchableObject {
 public:
 
 	/** Returns a pointer to the Vulkan instance. */
-	inline MVKInstance* getInstance() { return _physicalDevice->getInstance(); }
+	inline MVKInstance* getInstance() { return _physicalDevice->_mvkInstance; }
 
 	/** Returns the physical device underlying this logical device. */
 	inline MVKPhysicalDevice* getPhysicalDevice() { return _physicalDevice; }
@@ -471,7 +471,7 @@ public:
 
 #pragma mark Properties directly accessible
 
-	/** The MoltenVK configuration settings. */
+	/** Pointer to the MoltenVK configuration settings. */
 	const MVKConfiguration* _pMVKConfig;
 
 	/** Pointer to the feature set of the underlying physical device. */
@@ -485,6 +485,9 @@ public:
 
 	/** Pointer to the memory properties of the underlying physical device. */
 	const VkPhysicalDeviceMemoryProperties* _pMemoryProperties;
+
+	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
+	const MVKExtensionList _enabledExtensions;
 
     /** Performance statistics. */
     MVKPerformanceStatistics _performanceStatistics;

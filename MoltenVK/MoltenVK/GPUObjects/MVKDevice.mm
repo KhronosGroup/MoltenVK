@@ -929,39 +929,39 @@ void MVKPhysicalDevice::logGPUInfo() {
 			break;
 	}
 
-	string fsMsg = "GPU device:";
-	fsMsg += "\n\t\tmodel: %s";
-	fsMsg += "\n\t\ttype: %s";
-	fsMsg += "\n\t\tvendorID: %#06x";
-	fsMsg += "\n\t\tdeviceID: %#06x";
-	fsMsg += "\n\t\tpipelineCacheUUID: %s";
-	fsMsg += "\n\tsupports the following Metal Feature Sets:";
+	string logMsg = "GPU device:";
+	logMsg += "\n\t\tmodel: %s";
+	logMsg += "\n\t\ttype: %s";
+	logMsg += "\n\t\tvendorID: %#06x";
+	logMsg += "\n\t\tdeviceID: %#06x";
+	logMsg += "\n\t\tpipelineCacheUUID: %s";
+	logMsg += "\n\tsupports the following Metal Feature Sets:";
 
 #if MVK_IOS
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) { fsMsg += "\n\tviOS GPU Family 4 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) { logMsg += "\n\t\tiOS GPU Family 4 v1"; }
 
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) { fsMsg += "\n\t\tiOS GPU Family 3 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) { fsMsg += "\n\t\tiOS GPU Family 3 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) { fsMsg += "\n\t\tiOS GPU Family 3 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) { logMsg += "\n\t\tiOS GPU Family 3 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) { logMsg += "\n\t\tiOS GPU Family 3 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) { logMsg += "\n\t\tiOS GPU Family 3 v1"; }
 
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) { fsMsg += "\n\t\tiOS GPU Family 2 v4"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v3] ) { fsMsg += "\n\t\tiOS GPU Family 2 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v2] ) { fsMsg += "\n\t\tiOS GPU Family 2 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1] ) { fsMsg += "\n\t\tiOS GPU Family 2 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) { logMsg += "\n\t\tiOS GPU Family 2 v4"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v3] ) { logMsg += "\n\t\tiOS GPU Family 2 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v2] ) { logMsg += "\n\t\tiOS GPU Family 2 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1] ) { logMsg += "\n\t\tiOS GPU Family 2 v1"; }
 
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) { fsMsg += "\n\t\tiOS GPU Family 1 v4"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3] ) { fsMsg += "\n\t\tiOS GPU Family 1 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) { fsMsg += "\n\t\tiOS GPU Family 1 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v1] ) { fsMsg += "\n\t\tiOS GPU Family 1 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) { logMsg += "\n\t\tiOS GPU Family 1 v4"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3] ) { logMsg += "\n\t\tiOS GPU Family 1 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) { logMsg += "\n\t\tiOS GPU Family 1 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v1] ) { logMsg += "\n\t\tiOS GPU Family 1 v1"; }
 #endif
 
 #if MVK_MACOS
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) { fsMsg += "\n\t\tmacOS GPU Family 1 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) { fsMsg += "\n\t\tmacOS GPU Family 1 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v1] ) { fsMsg += "\n\t\tmacOS GPU Family 1 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) { logMsg += "\n\t\tmacOS GPU Family 1 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) { logMsg += "\n\t\tmacOS GPU Family 1 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v1] ) { logMsg += "\n\t\tmacOS GPU Family 1 v1"; }
 #endif
 
-	MVKLogInfo(fsMsg.c_str(), _properties.deviceName, devTypeStr.c_str(), _properties.vendorID, _properties.deviceID,
+	MVKLogInfo(logMsg.c_str(), _properties.deviceName, devTypeStr.c_str(), _properties.vendorID, _properties.deviceID,
 			   [[[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID] autorelease].UUIDString.UTF8String);
 }
 
@@ -1434,7 +1434,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	initPerformanceTracking();
 
 	_physicalDevice = physicalDevice;
-	_pMVKConfig = &_physicalDevice->getInstance()->_mvkConfig;
+	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
 	_pFeatures = &_physicalDevice->_features;
 	_pMetalFeatures = &_physicalDevice->_metalFeatures;
 	_pProperties = &_physicalDevice->_properties;
@@ -1443,11 +1443,13 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;
 
-    // Verify the requested extension names. Should be same as those requested from instance.
-    setConfigurationResult(_physicalDevice->_mvkInstance->verifyExtensions(pCreateInfo->enabledExtensionCount,
-                                                                           pCreateInfo->ppEnabledExtensionNames));
+	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
-    _commandResourceFactory = new MVKCommandResourceFactory(this);
+    // Verify the requested extension names. Should be same as those requested from instance.
+	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
+	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
+												  pCreateInfo->ppEnabledExtensionNames,
+												  getInstance()->getDriverLayer()->getSupportedExtensions()));
 
 	// Create the queues
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
@@ -1462,7 +1464,9 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 		}
 	}
 
-	MVKLogInfo("Created VkDevice to run on GPU %s", _pProperties->deviceName);
+	string logMsg = "Created VkDevice to run on GPU %s with the following Vulkan extensions enabled:";
+	logMsg += _enabledExtensions.enabledNamesString("\n\t\t", true);
+	MVKLogInfo(logMsg.c_str(), _pProperties->deviceName);
 }
 
 void MVKDevice::initPerformanceTracking() {

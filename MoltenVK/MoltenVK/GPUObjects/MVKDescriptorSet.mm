@@ -611,7 +611,11 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 												   const VkDescriptorSetLayout* pSetLayouts,
 												   VkDescriptorSet* pDescriptorSets) {
 	if (_allocatedSetCount + count > _maxSets) {
-		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_POOL_MEMORY_KHR, "The maximum number of descriptor sets that can be allocated by this descriptor pool is %d.", _maxSets);
+		if (_device->_enabledExtensions.vk_KHR_maintenance1.enabled) {
+			return VK_ERROR_OUT_OF_POOL_MEMORY;		// Failure is an acceptable test...don't log as error.
+		} else {
+			return mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "The maximum number of descriptor sets that can be allocated by this descriptor pool is %d.", _maxSets);
+		}
 	}
 
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {

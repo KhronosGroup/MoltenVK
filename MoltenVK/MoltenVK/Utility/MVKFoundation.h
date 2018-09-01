@@ -20,7 +20,7 @@
 #pragma once
 
 
-#include <vulkan/vulkan.h>
+#include "mvk_vulkan.h"
 #include "MVKLogging.h"
 #include <algorithm>
 #include <simd/simd.h>
@@ -311,11 +311,13 @@ void mvkDestroyContainerContents(C& container) {
  * Iterates through the contents of the specified Objective-C object pointer 
  * container and releases each object, and clears the container.
  */
+#ifdef __OBJC__
 template<typename C>
 void mvkReleaseContainerContents(C& container) {
     for (auto elem : container) { [elem release]; }
     container.clear();
 }
+#endif
 
 /** Removes the first occurance of the specified value from the specified container. */
 template<class C, class T>

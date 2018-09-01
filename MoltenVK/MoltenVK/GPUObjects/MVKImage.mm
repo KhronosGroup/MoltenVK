@@ -614,6 +614,8 @@ id<MTLTexture> MVKImageView::newMTLTexture() {
 
 MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
 
+	validateImageViewConfig(pCreateInfo);
+
 	_image = (MVKImage*)pCreateInfo->image;
 
 	// Remember the subresource range, and determine the actual number of mip levels and texture slices
@@ -629,6 +631,17 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
     _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components);
 	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType, (_image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT));
 	initMTLTextureViewSupport();
+}
+
+// Validate whether the image view configuration can be supported
+void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo) {
+	VkImageType imgType = ((MVKImage*)pCreateInfo->image)->getImageType();
+	VkImageViewType viewType = pCreateInfo->viewType;
+
+	// VK_KHR_maintenance1 supports taking 2D image views of 3D slices. No dice in Metal.
+	if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not support creating a 2D view on a 3D image."));
+	}
 }
 
 // Returns a MTLPixelFormat, based on the original MTLPixelFormat, as converted from the VkFormat,
