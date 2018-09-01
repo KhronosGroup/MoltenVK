@@ -281,6 +281,7 @@ protected:
     bool matchesSwizzle(VkComponentMapping components, VkComponentMapping pattern);
     const char* getSwizzleName(VkComponentSwizzle swizzle);
     void setSwizzleFormatError(VkFormat format, VkComponentMapping components);
+	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
 
     MVKImage* _image;
     VkImageSubresourceRange _subresourceRange;

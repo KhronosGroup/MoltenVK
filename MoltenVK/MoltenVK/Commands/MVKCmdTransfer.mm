@@ -62,6 +62,9 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
     if (_srcImage->getMTLPixelFormat() != _dstImage->getMTLPixelFormat()) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): The source and destination images must have the same format."));
     }
+	if ((_srcImage->getMTLTextureType() == MTLTextureType3D) || (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture."));
+	}
 }
 
 // Adds a Metal copy region structure for each layer in the specified copy region.

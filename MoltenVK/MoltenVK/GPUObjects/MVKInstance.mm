@@ -18,7 +18,6 @@
 
 
 #include "MVKInstance.h"
-#include "MVKLayers.h"
 #include "MVKDevice.h"
 #include "MVKFoundation.h"
 #include "MVKEnvironment.h"
@@ -53,27 +52,6 @@ VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPh
 	return result;
 }
 
-VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {
-    VkResult result = VK_SUCCESS;
-    for (uint32_t i = 0; i < count; i++) {
-        if ( !MVKLayerManager::globalManager()->getLayerNamed(names[i]) ) {
-            result = mvkNotifyErrorWithText(VK_ERROR_LAYER_NOT_PRESENT, "Vulkan layer %s is not supported.", names[i]);
-        }
-    }
-    return result;
-}
-
-VkResult MVKInstance::verifyExtensions(uint32_t count, const char* const* names) {
-    VkResult result = VK_SUCCESS;
-    MVKLayer* driverLayer = MVKLayerManager::globalManager()->getDriverLayer();
-    for (uint32_t i = 0; i < count; i++) {
-        if (!driverLayer->hasExtensionNamed(names[i])) {
-            result = mvkNotifyErrorWithText(VK_ERROR_EXTENSION_NOT_PRESENT, "Vulkan extension %s is not supported.", names[i]);
-        }
-    }
-    return result;
-}
-
 MVKSurface* MVKInstance::createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 									   const VkAllocationCallbacks* pAllocator) {
 	return new MVKSurface(this, pCreateInfo, pAllocator);
@@ -86,6 +64,74 @@ void MVKInstance::destroySurface(MVKSurface* mvkSrfc,
 
 
 #pragma mark Object Creation
+
+// Returns an autoreleased array containing the MTLDevices available on this system,
+// sorted according to power, with higher power GPU's at the front of the array.
+// This ensures that a lazy app that simply grabs the first GPU will get a high-power one by default.
+// If the MVK_FORCE_LOW_POWER_GPU is defined, the returned array will only include low-power devices.
+static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
+#if MVK_MACOS
+	NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
+
+#ifdef MVK_FORCE_LOW_POWER_GPU
+	NSMutableArray* lpDevs = [[NSMutableArray new] autorelease];
+	for (id<MTLDevice> md in mtlDevs) {
+		if (md.isLowPower) { [lpDevs addObject: md]; }
+	}
+	return lpDevs;
+#else
+	return [mtlDevs sortedArrayUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
+		BOOL md1IsLP = md1.isLowPower;
+		BOOL md2IsLP = md2.isLowPower;
+
+		if (md1IsLP == md2IsLP) {
+			// If one device is headless and the other one is not, select the
+			// one that is not headless first.
+			BOOL md1IsHeadless = md1.isHeadless;
+			BOOL md2IsHeadless = md2.isHeadless;
+			if (md1IsHeadless == md2IsHeadless ) {
+				return NSOrderedSame;
+			}
+			return md2IsHeadless ? NSOrderedAscending : NSOrderedDescending;
+		}
+
+		return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
+	}];
+#endif	// MVK_MACOS
+
+#endif
+#if MVK_IOS
+	return [NSArray arrayWithObject: MTLCreateSystemDefaultDevice()];
+#endif
+}
+
+MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
+
+	_appInfo.apiVersion = MVK_VULKAN_API_VERSION;	// Default
+	mvkSetOrClear(&_appInfo, pCreateInfo->pApplicationInfo);
+
+	initProcAddrs();		// Init function pointers
+	initConfig();
+
+	setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
+	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
+	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
+												  pCreateInfo->ppEnabledExtensionNames,
+												  getDriverLayer()->getSupportedExtensions()));
+	logVersions();	// Log the MoltenVK and Vulkan versions
+
+	if (MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <
+		MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion)) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER, "Request for driver version %x is not compatible with provided version %x.", _appInfo.apiVersion, MVK_VULKAN_API_VERSION));
+	}
+
+	// Populate the array of physical GPU devices
+	NSArray<id<MTLDevice>>* mtlDevices = getAvailableMTLDevices();
+	_physicalDevices.reserve(mtlDevices.count);
+	for (id<MTLDevice> mtlDev in mtlDevices) {
+		_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
+	}
+}
 
 #define ADD_PROC_ADDR(entrypoint)	_procAddrMap[""#entrypoint] = (PFN_vkVoidFunction)&entrypoint;
 
@@ -276,7 +322,6 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkSetMoltenVKDeviceConfigurationMVK);
 #pragma clang diagnostic pop
 
-
 }
 
 void MVKInstance::logVersions() {
@@ -284,74 +329,14 @@ void MVKInstance::logVersions() {
     char mvkVer[buffLen];
     char vkVer[buffLen];
     vkGetVersionStringsMVK(mvkVer, buffLen, vkVer, buffLen);
-    MVKLogInfo("MoltenVK version %s. Vulkan version %s.", mvkVer, vkVer);
-}
 
-/**
- * Returns an autoreleased array containing the MTLDevices available on this system,
- * sorted according to power, with higher power GPU's at the front of the array.
- * This ensures that a lazy app that simply grabs the first GPU will get a high-power one by default.
- * If the MVK_FORCE_LOW_POWER_GPU is defined, the returned array will only include low-power devices.
- */
-static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
-#if MVK_MACOS
-	NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
-
-#ifdef MVK_FORCE_LOW_POWER_GPU
-	NSMutableArray* lpDevs = [[NSMutableArray new] autorelease];
-	for (id<MTLDevice> md in mtlDevs) {
-		if (md.isLowPower) { [lpDevs addObject: md]; }
-	}
-	return lpDevs;
-#else
-	return [mtlDevs sortedArrayUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
-		BOOL md1IsLP = md1.isLowPower;
-		BOOL md2IsLP = md2.isLowPower;
-
-		if (md1IsLP == md2IsLP) {
-			// If one device is headless and the other one is not, select the
-			// one that is not headless first.
-			BOOL md1IsHeadless = md1.isHeadless;
-			BOOL md2IsHeadless = md2.isHeadless;
-			if (md1IsHeadless == md2IsHeadless ) {
-				return NSOrderedSame;
-			}
-			return md2IsHeadless ? NSOrderedAscending : NSOrderedDescending;
-		}
-
-		return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
-	}];
-#endif	// MVK_MACOS
-
-#endif
-#if MVK_IOS
-	return [NSArray arrayWithObject: MTLCreateSystemDefaultDevice()];
-#endif
-}
-
-MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
-
-	_appInfo.apiVersion = MVK_VULKAN_API_VERSION;	// Default
-	mvkSetOrClear(&_appInfo, pCreateInfo->pApplicationInfo);
-
-    logVersions();          // Log the MoltenVK and Vulkan versions
-	initProcAddrs();		// Init function pointers
-	initConfig();
-
-	// Populate the array of physical GPU devices
-	NSArray<id<MTLDevice>>* mtlDevices = getAvailableMTLDevices();
-	_physicalDevices.reserve(mtlDevices.count);
-	for (id<MTLDevice> mtlDev in mtlDevices) {
-		_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
-	}
-
-	if (MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <
-		MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion)) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER, "Request for driver version %x is not compatible with provided version %x.", _appInfo.apiVersion, MVK_VULKAN_API_VERSION));
-	}
-
-    setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
-    setConfigurationResult(verifyExtensions(pCreateInfo->enabledExtensionCount, pCreateInfo->ppEnabledExtensionNames));
+	const char* indent = "\n\t\t";
+	string logMsg = "MoltenVK version %s. Vulkan version %s.";
+	logMsg += "\n\tThe following Vulkan extensions are supported:";
+	logMsg += getDriverLayer()->getSupportedExtensions()->enabledNamesString(indent, true);
+	logMsg += "\n\tCreated VkInstance with the following Vulkan extensions enabled:";
+	logMsg += _enabledExtensions.enabledNamesString(indent, true);
+	MVKLogInfo(logMsg.c_str(), mvkVer, vkVer);
 }
 
 // Init config.
@@ -366,6 +351,16 @@ void MVKInstance::initConfig() {
 	_mvkConfig.performanceTracking			= MVK_DEBUG;
 	_mvkConfig.performanceLoggingFrameCount	= MVK_DEBUG ? 300 : 0;
 	_mvkConfig.metalCompileTimeout			= MVK_CONFIG_METAL_COMPILE_TIMEOUT;
+}
+
+VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {
+    VkResult result = VK_SUCCESS;
+    for (uint32_t i = 0; i < count; i++) {
+        if ( !MVKLayerManager::globalManager()->getLayerNamed(names[i]) ) {
+            result = mvkNotifyErrorWithText(VK_ERROR_LAYER_NOT_PRESENT, "Vulkan layer %s is not supported.", names[i]);
+        }
+    }
+    return result;
 }
 
 MVKInstance::~MVKInstance() {

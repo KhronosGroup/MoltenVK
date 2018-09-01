@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "MVKLayers.h"
 #include "MVKSurface.h"
 #include "MVKBaseObject.h"
 #include "vk_mvk_moltenvk.h"
@@ -53,17 +54,8 @@ public:
 	 */
 	VkResult getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPhysicalDevices);
 
-    /** 
-     * Verifies that the list of layers are available, 
-     * and returns VK_SUCCESS or VK_ERROR_LAYER_NOT_PRESENT.
-     */
-    VkResult verifyLayers(uint32_t count, const char* const* names);
-
-    /**
-     * Verifies that the list of extensions are available,
-     * and returns VK_SUCCESS or VK_ERROR_EXTENSION_NOT_PRESENT.
-     */
-    VkResult verifyExtensions(uint32_t count, const char* const* names);
+	/** Returns the driver layer. */
+	MVKLayer* getDriverLayer() { return MVKLayerManager::globalManager()->getDriverLayer(); }
 
 	/** Creates and returns a new object. */
 	MVKSurface* createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
@@ -73,8 +65,14 @@ public:
 	void destroySurface(MVKSurface* mvkSrfc,
 						const VkAllocationCallbacks* pAllocator);
 
-	/** The MoltenVK configuration settings. */
-	MVKConfiguration _mvkConfig;
+	/** Returns the MoltenVK configuration settings. */
+	const MVKConfiguration* getMoltenVKConfiguration() { return &_mvkConfig; }
+
+	/** Returns the MoltenVK configuration settings. */
+	void setMoltenVKConfiguration(MVKConfiguration* mvkConfig) { _mvkConfig = *mvkConfig; }
+
+	/** The list of Vulkan extensions, indicating whether each has been enabled by the app. */
+	const MVKExtensionList _enabledExtensions;
 
 
 #pragma mark Object Creation
@@ -102,7 +100,9 @@ protected:
 	void initProcAddrs();
 	void initConfig();
     void logVersions();
+	VkResult verifyLayers(uint32_t count, const char* const* names);
 
+	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
 	std::vector<MVKPhysicalDevice*> _physicalDevices;
 	std::unordered_map<std::string, PFN_vkVoidFunction> _procAddrMap;
