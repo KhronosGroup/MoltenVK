@@ -75,17 +75,26 @@ public:
 	/** Populates the specified structure with the features of this device. */
 	void getFeatures(VkPhysicalDeviceFeatures* features);
 
+	/** Populates the specified structure with the features of this device. */
+	void getFeatures(VkPhysicalDeviceFeatures2KHR* features);
+
 	/** Populates the specified structure with the Metal-specific features of this device. */
 	void getMetalFeatures(MVKPhysicalDeviceMetalFeatures* mtlFeatures);
 
 	/** Populates the specified structure with the properties of this device. */
 	void getProperties(VkPhysicalDeviceProperties* properties);
 
+	/** Populates the specified structure with the properties of this device. */
+	void getProperties(VkPhysicalDeviceProperties2KHR* properties);
+
 	/** Returns whether the specified format is supported on this device. */
 	bool getFormatIsSupported(VkFormat format);
 
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
+
+	/** Populates the specified structure with the format properties of this device. */
+	void getFormatProperties(VkFormat format, VkFormatProperties2KHR* pFormatProperties);
 
     /** 
      * Populates the specified structure with the image format properties
@@ -97,6 +106,13 @@ public:
                                       VkImageUsageFlags usage,
                                       VkImageCreateFlags flags,
                                       VkImageFormatProperties* pImageFormatProperties);
+
+    /** 
+     * Populates the specified structure with the image format properties
+     * supported for the specified image characteristics on this device.
+     */
+    VkResult getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2KHR* pImageFormatInfo,
+                                      VkImageFormatProperties2KHR* pImageFormatProperties);
 
 #pragma mark Surfaces
 
@@ -158,6 +174,20 @@ public:
 	 */
 	VkResult getQueueFamilyProperties(uint32_t* pCount, VkQueueFamilyProperties* properties);
 
+	/**
+	 * If properties is null, the value of pCount is updated with the number of
+	 * queue families supported by this instance.
+	 *
+	 * If properties is not null, then pCount queue family properties are copied into the 
+	 * array. If the number of available queue families is less than pCount, the value of 
+	 * pCount is updated to indicate the number of queue families actually returned in the array.
+	 *
+	 * Returns VK_SUCCESS if successful. Returns VK_INCOMPLETE if the number of queue families
+	 * available in this instance is larger than the specified pCount. Returns other values if
+	 * an error occurs.
+	 */
+	VkResult getQueueFamilyProperties(uint32_t* pCount, VkQueueFamilyProperties2KHR* properties);
+
 	/** Returns a pointer to the Vulkan instance. */
 	inline MVKInstance* getInstance() { return _mvkInstance; }
 
@@ -172,6 +202,9 @@ public:
 
 	/** Populates the specified memory properties with the memory characteristics of this device. */
 	VkResult getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties* pMemoryProperties);
+
+	/** Populates the specified memory properties with the memory characteristics of this device. */
+	VkResult getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties2KHR* pMemoryProperties);
 
 	/**
 	 * Returns a bit mask of all memory type indices. 

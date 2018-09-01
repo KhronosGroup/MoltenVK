@@ -78,6 +78,16 @@ public:
               std::vector<uint32_t>& dynamicOffsets,
               uint32_t* pDynamicOffsetIndex);
 
+    /** Encodes this binding layout and the specified descriptor binding on the specified command encoder immediately. */
+    void push(MVKCommandEncoder* cmdEncoder,
+              uint32_t& dstArrayElement,
+              uint32_t& descriptorCount,
+              VkDescriptorType descriptorType,
+              const VkDescriptorImageInfo*& pImageInfo,
+              const VkDescriptorBufferInfo*& pBufferInfo,
+              const VkBufferView*& pTexelBufferView,
+              MVKShaderResourceBinding& dslMTLRezIdxOffsets);
+
 	/** Populates the specified shader converter context, at the specified descriptor set binding. */
 	void populateShaderConverterContext(SPIRVToMSLConverterContext& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
@@ -119,10 +129,19 @@ public:
                            uint32_t* pDynamicOffsetIndex);
 
 
+	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
+	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+						   std::vector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKShaderResourceBinding& dslMTLRezIdxOffsets);
+
+
 	/** Populates the specified shader converter context, at the specified DSL index. */
 	void populateShaderConverterContext(SPIRVToMSLConverterContext& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
+
+	/** Returns true if this layout is for push descriptors only. */
+	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
 	/** Constructs an instance for the specified device. */
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
@@ -135,6 +154,7 @@ protected:
 
 	std::vector<MVKDescriptorSetLayoutBinding> _bindings;
 	MVKShaderResourceBinding _mtlResourceCounts;
+	bool _isPushDescriptorLayout : 1;
 };
 
 
