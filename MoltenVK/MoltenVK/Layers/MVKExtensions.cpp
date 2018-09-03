@@ -70,7 +70,7 @@ MVKExtensionList::MVKExtensionList(bool enableForPlatform) :
 	MVKExt_CONSTRUCT(vk_AMD_negative_viewport_height, AMD_NEGATIVE_VIEWPORT_HEIGHT),
 	MVKExt_CONSTRUCT(vk_KHR_shader_draw_parameters, KHR_SHADER_DRAW_PARAMETERS),
 	MVKExt_CONSTRUCT(vk_KHR_get_physical_device_properties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2),
-	MVKExt_CONSTRUCT(vk_KHR_push_descriptor, KHR_PUSH_DESCRIPTOR)
+	MVKExt_CONSTRUCT(vk_KHR_push_descriptor, KHR_PUSH_DESCRIPTOR),
 	MVKExt_CONSTRUCT(vk_KHR_descriptor_update_template, KHR_DESCRIPTOR_UPDATE_TEMPLATE)
 {}
 
