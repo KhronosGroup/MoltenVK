@@ -1,8 +1,8 @@
 language: objective-c 
 
 # macOS and Xcode Version
-# Xcode 9.2 running on macOS 10.12
-osx_image: xcode9.2
+# Xcode 10 running on macOS 10.13
+osx_image: xcode10
 
 # Build dependencies
 install:
