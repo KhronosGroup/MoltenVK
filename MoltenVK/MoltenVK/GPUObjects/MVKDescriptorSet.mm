@@ -173,13 +173,18 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
     }
 }
 
+template<typename T>
+static const T& get(const void* pData, size_t stride, uint32_t index) {
+    return *(T*)((const char*)pData + stride * index);
+}
+
 void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                                          uint32_t& dstArrayElement,
                                          uint32_t& descriptorCount,
+                                         uint32_t& descriptorsPushed,
                                          VkDescriptorType descriptorType,
-                                         const VkDescriptorImageInfo*& pImageInfo,
-                                         const VkDescriptorBufferInfo*& pBufferInfo,
-                                         const VkBufferView*& pTexelBufferView,
+                                         size_t stride,
+                                         const void* pData,
                                          MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
     MVKMTLBufferBinding bb;
     MVKMTLTextureBinding tb;
@@ -196,9 +201,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             descriptorCount = 0;
         else {
             descriptorCount -= _info.descriptorCount;
-            pImageInfo += _info.descriptorCount;
-            pBufferInfo += _info.descriptorCount;
-            pTexelBufferView += _info.descriptorCount;
+            descriptorsPushed = _info.descriptorCount;
         }
         return;
     }
@@ -215,7 +218,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
-                const VkDescriptorBufferInfo& bufferInfo = pBufferInfo[rezIdx - dstArrayElement];
+                const auto& bufferInfo = get<VkDescriptorBufferInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKBuffer* buffer = (MVKBuffer*)bufferInfo.buffer;
                 bb.mtlBuffer = buffer->getMTLBuffer();
                 bb.offset = bufferInfo.offset;
@@ -237,7 +240,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
             case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
             case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
-                const VkDescriptorImageInfo& imageInfo = pImageInfo[rezIdx - dstArrayElement];
+                const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
                 tb.mtlTexture = imageView->getMTLTexture();
                 if (_applyToVertexStage) {
@@ -257,7 +260,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
 
             case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
-                MVKBufferView* bufferView = (MVKBufferView*)pTexelBufferView[rezIdx - dstArrayElement];
+                auto* bufferView = get<MVKBufferView*>(pData, stride, rezIdx - dstArrayElement);
                 tb.mtlTexture = bufferView->getMTLTexture();
                 if (_applyToVertexStage) {
                     tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
@@ -277,7 +280,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_SAMPLER: {
                 MVKSampler* sampler;
                 if (_immutableSamplers.empty())
-                    sampler = (MVKSampler*)pImageInfo[rezIdx - dstArrayElement].sampler;
+                    sampler = (MVKSampler*)get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement).sampler;
                 else
                     sampler = _immutableSamplers[rezIdx];
                 sb.mtlSamplerState = sampler->getMTLSamplerState();
@@ -297,7 +300,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             }
 
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-                const VkDescriptorImageInfo& imageInfo = pImageInfo[rezIdx - dstArrayElement];
+                const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
                 MVKSampler* sampler = _immutableSamplers.empty() ? (MVKSampler*)imageInfo.sampler : _immutableSamplers[rezIdx];
                 tb.mtlTexture = imageView->getMTLTexture();
@@ -333,9 +336,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
         descriptorCount = 0;
     else {
         descriptorCount -= _info.descriptorCount;
-        pImageInfo += _info.descriptorCount;
-        pBufferInfo += _info.descriptorCount;
-        pTexelBufferView += _info.descriptorCount;
+        descriptorsPushed = _info.descriptorCount;
     }
 }
 
@@ -475,6 +476,41 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
     }
 }
 
+static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorImageInfo* pImageInfo,
+                                      const VkDescriptorBufferInfo* pBufferInfo, const VkBufferView* pTexelBufferView,
+                                      size_t& stride) {
+    const void* pData;
+    switch (type) {
+    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+    case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+    case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+        pData = pBufferInfo;
+        stride = sizeof(VkDescriptorBufferInfo);
+        break;
+
+    case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+    case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+    case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+    case VK_DESCRIPTOR_TYPE_SAMPLER:
+    case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+        pData = pImageInfo;
+        stride = sizeof(VkDescriptorImageInfo);
+        break;
+
+    case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+    case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+        pData = pTexelBufferView;
+        stride = sizeof(MVKBufferView*);
+        break;
+
+    default:
+        pData = nullptr;
+        stride = 0;
+    }
+    return pData;
+}
+
 void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                vector<VkWriteDescriptorSet>& descriptorWrites,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
@@ -490,9 +526,42 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         // Note: This will result in us walking off the end of the array
         // in case there are too many updates... but that's ill-defined anyway.
         for (; descriptorCount; bindIdx++) {
+            size_t stride;
+            const void* pData = getWriteParameters(descWrite.descriptorType, pImageInfo,
+                                                   pBufferInfo, pTexelBufferView, stride);
+            uint32_t descriptorsPushed = 0;
             _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
-                                    descWrite.descriptorType, pImageInfo, pBufferInfo,
-                                    pTexelBufferView, dslMTLRezIdxOffsets);
+                                    descriptorsPushed, descWrite.descriptorType,
+                                    stride, pData, dslMTLRezIdxOffsets);
+            pBufferInfo += descriptorsPushed;
+            pImageInfo += descriptorsPushed;
+            pTexelBufferView += descriptorsPushed;
+        }
+    }
+}
+
+void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+                                               MVKDescriptorUpdateTemplate* descUpdateTemplate,
+                                               const void* pData,
+                                               MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
+
+    if (!_isPushDescriptorLayout ||
+        descUpdateTemplate->getType() != VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR)
+        return;
+    for (uint32_t i = 0; i < descUpdateTemplate->getNumberOfEntries(); i++) {
+        const VkDescriptorUpdateTemplateEntryKHR* pEntry = descUpdateTemplate->getEntry(i);
+        uint32_t bindIdx = pEntry->dstBinding;
+        uint32_t dstArrayElement = pEntry->dstArrayElement;
+        uint32_t descriptorCount = pEntry->descriptorCount;
+        const void* pCurData = (const char*)pData + pEntry->offset;
+        // Note: This will result in us walking off the end of the array
+        // in case there are too many updates... but that's ill-defined anyway.
+        for (; descriptorCount; bindIdx++) {
+            uint32_t descriptorsPushed = 0;
+            _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
+                                    descriptorsPushed, pEntry->descriptorType,
+                                    pEntry->stride, pCurData, dslMTLRezIdxOffsets);
+            pCurData = (const char*)pCurData + pEntry->stride * descriptorsPushed;
         }
     }
 }
@@ -524,9 +593,8 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 											 uint32_t dstStartIndex,
 											 uint32_t count,
-											 const VkDescriptorImageInfo* pImageInfo,
-											 const VkDescriptorBufferInfo* pBufferInfo,
-											 const VkBufferView* pTexelBufferView) {
+											 size_t stride,
+											 const void* pData) {
 
 	uint32_t dstCnt = MIN(count, _pBindingLayout->_info.descriptorCount - dstStartIndex);
 
@@ -534,7 +602,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 			for (uint32_t i = 0; i < dstCnt; i++) {
 				uint32_t dstIdx = dstStartIndex + i;
-				const VkDescriptorImageInfo* pImgInfo = &pImageInfo[srcStartIndex + i];
+				const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcStartIndex + i);
 				_imageBindings[dstIdx] = *pImgInfo;
 				if (_hasDynamicSamplers) {
 					_mtlSamplers[dstIdx] = ((MVKSampler*)pImgInfo->sampler)->getMTLSamplerState();
@@ -545,7 +613,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 			for (uint32_t i = 0; i < dstCnt; i++) {
 				uint32_t dstIdx = dstStartIndex + i;
-				const VkDescriptorImageInfo* pImgInfo = &pImageInfo[srcStartIndex + i];
+				const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcStartIndex + i);
 				_imageBindings[dstIdx] = *pImgInfo;
 				_mtlTextures[dstIdx] = ((MVKImageView*)pImgInfo->imageView)->getMTLTexture();
 				if (_hasDynamicSamplers) {
@@ -559,7 +627,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 			for (uint32_t i = 0; i < dstCnt; i++) {
 				uint32_t dstIdx = dstStartIndex + i;
-				const VkDescriptorImageInfo* pImgInfo = &pImageInfo[srcStartIndex + i];
+				const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcStartIndex + i);
 				_imageBindings[dstIdx] = *pImgInfo;
 				_mtlTextures[dstIdx] = ((MVKImageView*)pImgInfo->imageView)->getMTLTexture();
 			}
@@ -571,7 +639,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 			for (uint32_t i = 0; i < dstCnt; i++) {
 				uint32_t dstIdx = dstStartIndex + i;
-				const VkDescriptorBufferInfo* pBuffInfo = &pBufferInfo[srcStartIndex + i];
+				const auto* pBuffInfo = &get<VkDescriptorBufferInfo>(pData, stride, srcStartIndex + i);
 				_bufferBindings[dstIdx] = *pBuffInfo;
                 MVKBuffer* mtlBuff = (MVKBuffer*)pBuffInfo->buffer;
 				_mtlBuffers[dstIdx] = mtlBuff->getMTLBuffer();
@@ -583,7 +651,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             for (uint32_t i = 0; i < dstCnt; i++) {
                 uint32_t dstIdx = dstStartIndex + i;
-                const VkBufferView* pBuffView = &pTexelBufferView[srcStartIndex + i];
+                const auto* pBuffView = &get<VkBufferView>(pData, stride, srcStartIndex + i);
                 _texelBufferBindings[dstIdx] = *pBuffView;
                 _mtlTextures[dstIdx] = ((MVKBufferView*)*pBuffView)->getMTLTexture();
             }
@@ -598,12 +666,14 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 uint32_t MVKDescriptorBinding::readBindings(uint32_t srcStartIndex,
 											uint32_t dstStartIndex,
 											uint32_t count,
+											VkDescriptorType& descType,
 											VkDescriptorImageInfo* pImageInfo,
 											VkDescriptorBufferInfo* pBufferInfo,
 											VkBufferView* pTexelBufferView) {
 
 	uint32_t srcCnt = MIN(count, _pBindingLayout->_info.descriptorCount - srcStartIndex);
 
+	descType = _pBindingLayout->_info.descriptorType;
 	switch (_pBindingLayout->_info.descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
@@ -714,9 +784,7 @@ void MVKDescriptorBinding::initMTLSamplers(MVKDescriptorSetLayoutBinding* pBindi
 
 template<typename DescriptorAction>
 void MVKDescriptorSet::writeDescriptorSets(const DescriptorAction* pDescriptorAction,
-                                           const VkDescriptorImageInfo* pImageInfo,
-                                           const VkDescriptorBufferInfo* pBufferInfo,
-                                           const VkBufferView* pTexelBufferView) {
+                                           size_t stride, const void* pData) {
     uint32_t dstStartIdx = pDescriptorAction->dstArrayElement;
     uint32_t binding = pDescriptorAction->dstBinding;
     uint32_t origCnt = pDescriptorAction->descriptorCount;
@@ -731,7 +799,7 @@ void MVKDescriptorSet::writeDescriptorSets(const DescriptorAction* pDescriptorAc
 
         uint32_t srcStartIdx = origCnt - remainCnt;
         remainCnt = mvkDescBind->writeBindings(srcStartIdx, dstStartIdx, remainCnt,
-                                               pImageInfo, pBufferInfo, pTexelBufferView);
+                                               stride, pData);
 
         binding++;                              // If not consumed, move to next consecutive binding point
         mvkDescBind = getBinding(binding);
@@ -739,17 +807,17 @@ void MVKDescriptorSet::writeDescriptorSets(const DescriptorAction* pDescriptorAc
     }
 }
 
-// Create concrete implementations of the two variations of the writeDescriptorSets() function.
+// Create concrete implementations of the three variations of the writeDescriptorSets() function.
 template void MVKDescriptorSet::writeDescriptorSets<VkWriteDescriptorSet>(const VkWriteDescriptorSet* pDescriptorAction,
-																		  const VkDescriptorImageInfo* pImageInfo,
-																		  const VkDescriptorBufferInfo* pBufferInfo,
-																		  const VkBufferView* pTexelBufferView);
+																		  size_t stride, const void *pData);
 template void MVKDescriptorSet::writeDescriptorSets<VkCopyDescriptorSet>(const VkCopyDescriptorSet* pDescriptorAction,
-																		 const VkDescriptorImageInfo* pImageInfo,
-																		 const VkDescriptorBufferInfo* pBufferInfo,
-																		 const VkBufferView* pTexelBufferView);
+																		 size_t stride, const void *pData);
+template void MVKDescriptorSet::writeDescriptorSets<VkDescriptorUpdateTemplateEntryKHR>(
+	const VkDescriptorUpdateTemplateEntryKHR* pDescriptorAction,
+	size_t stride, const void *pData);
 
 void MVKDescriptorSet::readDescriptorSets(const VkCopyDescriptorSet* pDescriptorCopy,
+										  VkDescriptorType& descType,
 										  VkDescriptorImageInfo* pImageInfo,
 										  VkDescriptorBufferInfo* pBufferInfo,
 										  VkBufferView* pTexelBufferView) {
@@ -766,7 +834,7 @@ void MVKDescriptorSet::readDescriptorSets(const VkCopyDescriptorSet* pDescriptor
 //        MVKLogDebug("Reading MVKDescriptorBinding with binding point %d.", binding);
 
         uint32_t dstStartIdx = origCnt - remainCnt;
-        remainCnt = mvkDescBind->readBindings(srcStartIdx, dstStartIdx, remainCnt,
+        remainCnt = mvkDescBind->readBindings(srcStartIdx, dstStartIdx, remainCnt, descType,
                                               pImageInfo, pBufferInfo, pTexelBufferView);
 
         binding++;                              // If not consumed, move to next consecutive binding point
@@ -852,6 +920,29 @@ MVKDescriptorPool::~MVKDescriptorPool() {
 
 
 #pragma mark -
+#pragma mark MVKDescriptorUpdateTemplate
+
+const VkDescriptorUpdateTemplateEntryKHR* MVKDescriptorUpdateTemplate::getEntry(uint32_t n) const {
+	return &_entries[n];
+}
+
+uint32_t MVKDescriptorUpdateTemplate::getNumberOfEntries() const {
+	return (uint32_t)_entries.size();
+}
+
+VkDescriptorUpdateTemplateTypeKHR MVKDescriptorUpdateTemplate::getType() const {
+	return _type;
+}
+
+MVKDescriptorUpdateTemplate::MVKDescriptorUpdateTemplate(MVKDevice* device, const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo) :
+	MVKConfigurableObject(), _type(pCreateInfo->templateType) {
+
+	for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++)
+		_entries.push_back(pCreateInfo->pDescriptorUpdateEntries[i]);
+}
+
+
+#pragma mark -
 #pragma mark Support functions
 
 /** Updates the resource bindings in the descriptor sets inditified in the specified content. */
@@ -863,11 +954,12 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 	// Perform the write updates
 	for (uint32_t i = 0; i < writeCount; i++) {
 		const VkWriteDescriptorSet* pDescWrite = &pDescriptorWrites[i];
+		size_t stride;
+		const void* pData = getWriteParameters(pDescWrite->descriptorType, pDescWrite->pImageInfo,
+											   pDescWrite->pBufferInfo, pDescWrite->pTexelBufferView,
+											   stride);
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescWrite->dstSet;
-		dstSet->writeDescriptorSets(pDescWrite,
-									pDescWrite->pImageInfo,
-									pDescWrite->pBufferInfo,
-									pDescWrite->pTexelBufferView);
+		dstSet->writeDescriptorSets(pDescWrite, stride, pData);
 	}
 
 	// Perform the copy updates by reading bindings from one set and writing to other set.
@@ -875,15 +967,37 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		const VkCopyDescriptorSet* pDescCopy = &pDescriptorCopies[i];
 
 		uint32_t descCnt = pDescCopy->descriptorCount;
+		VkDescriptorType descType;
 		VkDescriptorImageInfo imgInfos[descCnt];
 		VkDescriptorBufferInfo buffInfos[descCnt];
 		VkBufferView texelBuffInfos[descCnt];
 
 		MVKDescriptorSet* srcSet = (MVKDescriptorSet*)pDescCopy->srcSet;
-		srcSet->readDescriptorSets(pDescCopy, imgInfos, buffInfos, texelBuffInfos);
+		srcSet->readDescriptorSets(pDescCopy, descType, imgInfos, buffInfos, texelBuffInfos);
 
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescCopy->dstSet;
-		dstSet->writeDescriptorSets(pDescCopy, imgInfos, buffInfos, texelBuffInfos);
+		size_t stride;
+		const void* pData = getWriteParameters(descType, imgInfos, buffInfos, texelBuffInfos, stride);
+		dstSet->writeDescriptorSets(pDescCopy, stride, pData);
+	}
+}
+
+/** Updates the resource bindings in the given descriptor set from the specified template. */
+void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
+										VkDescriptorUpdateTemplateKHR updateTemplate,
+										const void* pData) {
+
+	MVKDescriptorSet* dstSet = (MVKDescriptorSet*)descriptorSet;
+	MVKDescriptorUpdateTemplate* pTemplate = (MVKDescriptorUpdateTemplate*)updateTemplate;
+
+	if (pTemplate->getType() != VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_DESCRIPTOR_SET_KHR)
+		return;
+
+	// Perform the updates
+	for (uint32_t i = 0; i < pTemplate->getNumberOfEntries(); i++) {
+		const VkDescriptorUpdateTemplateEntryKHR* pEntry = pTemplate->getEntry(i);
+		const void* pCurData = (const char*)pData + pEntry->offset;
+		dstSet->writeDescriptorSets(pEntry, pEntry->stride, pCurData);
 	}
 }
 

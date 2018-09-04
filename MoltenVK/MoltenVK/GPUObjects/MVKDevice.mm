@@ -1362,6 +1362,17 @@ void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 	mvkDP->destroy();
 }
 
+MVKDescriptorUpdateTemplate* MVKDevice::createDescriptorUpdateTemplate(
+	const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo,
+	const VkAllocationCallbacks* pAllocator) {
+	return new MVKDescriptorUpdateTemplate(this, pCreateInfo);
+}
+
+void MVKDevice::destroyDescriptorUpdateTemplate(MVKDescriptorUpdateTemplate* mvkDUT,
+												const VkAllocationCallbacks* pAllocator) {
+	mvkDUT->destroy();
+}
+
 MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCreateInfo,
 											 const VkAllocationCallbacks* pAllocator) {
 	return new MVKFramebuffer(this, pCreateInfo);

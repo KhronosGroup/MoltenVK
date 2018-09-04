@@ -53,6 +53,7 @@ class MVKPipeline;
 class MVKSampler;
 class MVKDescriptorSetLayout;
 class MVKDescriptorPool;
+class MVKDescriptorUpdateTemplate;
 class MVKFramebuffer;
 class MVKRenderPass;
 class MVKCommandPool;
@@ -396,6 +397,11 @@ public:
 											const VkAllocationCallbacks* pAllocator);
 	void destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 							   const VkAllocationCallbacks* pAllocator);
+
+	MVKDescriptorUpdateTemplate* createDescriptorUpdateTemplate(const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo,
+																const VkAllocationCallbacks* pAllocator);
+	void destroyDescriptorUpdateTemplate(MVKDescriptorUpdateTemplate* mvkDUT,
+										 const VkAllocationCallbacks* pAllocator);
 
 	MVKFramebuffer* createFramebuffer(const VkFramebufferCreateInfo* pCreateInfo,
 									  const VkAllocationCallbacks* pAllocator);

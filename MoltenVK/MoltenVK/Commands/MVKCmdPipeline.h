@@ -25,6 +25,7 @@ class MVKCommandBuffer;
 class MVKPipeline;
 class MVKPipelineLayout;
 class MVKDescriptorSet;
+class MVKDescriptorUpdateTemplate;
 
 
 #pragma mark -
@@ -161,6 +162,32 @@ private:
 
 
 #pragma mark -
+#pragma mark MVKCmdPushDescriptorSetWithTemplate
+
+/** Vulkan command to update a descriptor set from a template. */
+class MVKCmdPushDescriptorSetWithTemplate : public MVKCommand {
+
+public:
+	void setContent(VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+					VkPipelineLayout layout,
+					uint32_t set,
+					const void* pData);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	MVKCmdPushDescriptorSetWithTemplate(MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate>* pool);
+
+	~MVKCmdPushDescriptorSetWithTemplate() override;
+
+private:
+	MVKDescriptorUpdateTemplate* _descUpdateTemplate;
+	MVKPipelineLayout* _pipelineLayout;
+	uint32_t _set;
+	void* _pData;
+};
+
+
+#pragma mark -
 #pragma mark Command creation functions
 
 /** Adds commands to the specified command buffer that insert the specified pipeline barriers. */
@@ -205,3 +232,10 @@ void mvkCmdPushDescriptorSet(MVKCommandBuffer* cmdBuff,
 							 uint32_t set,
 							 uint32_t descriptorWriteCount,
 							 const VkWriteDescriptorSet* pDescriptorWrites);
+
+/** Adds commands to the specified command buffer that update the specified descriptor set from the given template. */
+void mvkCmdPushDescriptorSetWithTemplate(MVKCommandBuffer* cmdBuff,
+										 VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+										 VkPipelineLayout layout,
+										 uint32_t set,
+										 const void* pData);
