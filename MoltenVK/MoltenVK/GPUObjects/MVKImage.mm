@@ -603,8 +603,13 @@ id<MTLTexture> MVKImageView::getMTLTexture() {
 // Creates and returns a retained Metal texture as an
 // overlay on the Metal texture of the underlying image.
 id<MTLTexture> MVKImageView::newMTLTexture() {
+    MTLTextureType mtlTextureType = _mtlTextureType;
+    // Fake support for 2D views of 3D textures.
+    if (_image->getImageType() == VK_IMAGE_TYPE_3D &&
+        (mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray))
+        mtlTextureType = MTLTextureType3D;
     return [_image->getMTLTexture() newTextureViewWithPixelFormat: _mtlPixelFormat
-                                                      textureType: _mtlTextureType
+                                                      textureType: mtlTextureType
                                                            levels: NSMakeRange(_subresourceRange.baseMipLevel, _subresourceRange.levelCount)
                                                            slices: NSMakeRange(_subresourceRange.baseArrayLayer, _subresourceRange.layerCount)];	// retained
 }
