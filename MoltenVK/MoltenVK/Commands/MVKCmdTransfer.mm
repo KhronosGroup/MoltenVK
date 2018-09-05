@@ -1012,7 +1012,7 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 	[mtlComputeEnc setComputePipelineState: cmdEncoder->getCommandEncodingPool()->getCmdFillBufferMTLComputePipelineState()];
 	[mtlComputeEnc setBuffer: dstMTLBuff offset: dstMTLBuffOffset atIndex: 0];
 	[mtlComputeEnc setBytes: &fillInfo length: sizeof(fillInfo) atIndex: 1];
-	[mtlComputeEnc dispatchThreads: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
+	[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
 	[mtlComputeEnc popDebugGroup];
 }
 
