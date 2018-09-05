@@ -87,7 +87,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2KHR* properties
                 break;
             }
             default:
-                next = *(VkStructureType**)(next+1);
+                next = (VkStructureType*)((VkPhysicalDeviceProperties2KHR*)next)->pNext;
                 break;
             }
         }
