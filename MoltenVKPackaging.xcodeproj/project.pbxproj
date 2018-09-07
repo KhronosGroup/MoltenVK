@@ -7,14 +7,40 @@
 	objects = {
 
 /* Begin PBXAggregateTarget section */
+		A975D5782140585200D4834F /* MoltenVK-iOS */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = A975D5882140585200D4834F /* Build configuration list for PBXAggregateTarget "MoltenVK-iOS" */;
+			buildPhases = (
+				A975D5872140585200D4834F /* Package MoltenVK */,
+			);
+			dependencies = (
+				A975D5792140585200D4834F /* PBXTargetDependency */,
+				A975D57D2140585200D4834F /* PBXTargetDependency */,
+				A975D5812140585200D4834F /* PBXTargetDependency */,
+			);
+			name = "MoltenVK-iOS";
+			productName = Package;
+		};
+		A975D58B2140586700D4834F /* MoltenVK-macOS */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = A975D59B2140586700D4834F /* Build configuration list for PBXAggregateTarget "MoltenVK-macOS" */;
+			buildPhases = (
+				A975D59A2140586700D4834F /* Package MoltenVK */,
+			);
+			dependencies = (
+				A975D58E2140586700D4834F /* PBXTargetDependency */,
+				A975D5922140586700D4834F /* PBXTargetDependency */,
+				A975D5962140586700D4834F /* PBXTargetDependency */,
+				A975D5982140586700D4834F /* PBXTargetDependency */,
+			);
+			name = "MoltenVK-macOS";
+			productName = Package;
+		};
 		A9FEADBC1F3517480010240E /* MoltenVK */ = {
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A9FEADDC1F3517480010240E /* Build configuration list for PBXAggregateTarget "MoltenVK" */;
 			buildPhases = (
 				A9FEADD61F3517480010240E /* Package MoltenVK */,
-				A9FEADD71F3517480010240E /* Package MoltenVKShaderConverter */,
-				A9A5D8A61FB3AABA00F20475 /* Package Docs */,
-				A9FEADDB1F3517480010240E /* Update Latest */,
 			);
 			dependencies = (
 				A9FEADBD1F3517480010240E /* PBXTargetDependency */,
@@ -44,6 +70,55 @@
 			proxyType = 2;
 			remoteGlobalIDString = A9CBEE011B6299D800E45FDC;
 			remoteInfo = "MoltenVK-macOS";
+		};
+		A975D57A2140585200D4834F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A9B8EE091A98D796009C5A02;
+			remoteInfo = "MoltenVK-iOS";
+		};
+		A975D57E2140585200D4834F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A93903B81C57E9D700FE90DC;
+			remoteInfo = "MoltenVKSPIRVToMSLConverter-iOS";
+		};
+		A975D5822140585200D4834F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A937472B1A9A8B2900F29B34;
+			remoteInfo = "MoltenVKGLSLToSPIRVConverter-iOS";
+		};
+		A975D58F2140586700D4834F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A9CBED861B6299D800E45FDC;
+			remoteInfo = "MoltenVK-macOS";
+		};
+		A975D5932140586700D4834F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A93903C01C57E9ED00FE90DC;
+			remoteInfo = "MoltenVKSPIRVToMSLConverter-macOS";
+		};
+		A975D5972140586700D4834F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A93747701A9A98D000F29B34;
+			remoteInfo = "MoltenVKGLSLToSPIRVConverter-macOS";
+		};
+		A975D5992140586700D4834F /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A9092A8C1A81717B00051823;
+			remoteInfo = MoltenVKShaderConverter;
 		};
 		A981498A1FB6B566005F00B4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -138,6 +213,13 @@
 		A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVK.xcodeproj; path = MoltenVK/MoltenVK.xcodeproj; sourceTree = "<group>"; };
 		A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = MoltenVKShaderConverter.xcodeproj; path = MoltenVKShaderConverter/MoltenVKShaderConverter.xcodeproj; sourceTree = "<group>"; };
 		A943100220546CDD00F5CF87 /* fetchDependencies */ = {isa = PBXFileReference; lastKnownFileType = text; name = fetchDependencies; path = ../fetchDependencies; sourceTree = "<group>"; };
+		A975D55C213F25D700D4834F /* create_dylib_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = create_dylib_ios.sh; path = MoltenVK/scripts/create_dylib_ios.sh; sourceTree = SOURCE_ROOT; };
+		A975D55D213F266000D4834F /* create_dylib_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; name = create_dylib_macos.sh; path = MoltenVK/scripts/create_dylib_macos.sh; sourceTree = SOURCE_ROOT; };
+		A975D561213F299500D4834F /* update_latest.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = update_latest.sh; sourceTree = "<group>"; };
+		A975D562213F2B7700D4834F /* package_docs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_docs.sh; sourceTree = "<group>"; };
+		A975D566213F2DAA00D4834F /* package_shader_converter.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_shader_converter.sh; sourceTree = "<group>"; };
+		A975D573214050AB00D4834F /* package_moltenvk.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_moltenvk.sh; sourceTree = "<group>"; };
+		A975D5742140567B00D4834F /* package_all.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_all.sh; sourceTree = "<group>"; };
 		A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Runtime_UserGuide.md; path = Docs/MoltenVK_Runtime_UserGuide.md; sourceTree = "<group>"; };
 		A9AD67D12054E2D700ED3C08 /* VulkanSamples_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = VulkanSamples_repo_revision; sourceTree = "<group>"; };
 		A9AD67D32054E2D700ED3C08 /* SPIRV-Cross_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = "SPIRV-Cross_repo_revision"; sourceTree = "<group>"; };
@@ -154,6 +236,7 @@
 			children = (
 				A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */,
 				A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */,
+				A975D55B213F25AD00D4834F /* Scripts */,
 				A92DB3E11CE0F34500FBC835 /* Docs */,
 				A939A6FB1F5479D0006ACA0C /* External */,
 			);
@@ -193,6 +276,20 @@
 			);
 			name = External;
 			path = ExternalRevisions;
+			sourceTree = "<group>";
+		};
+		A975D55B213F25AD00D4834F /* Scripts */ = {
+			isa = PBXGroup;
+			children = (
+				A975D55C213F25D700D4834F /* create_dylib_ios.sh */,
+				A975D55D213F266000D4834F /* create_dylib_macos.sh */,
+				A975D5742140567B00D4834F /* package_all.sh */,
+				A975D562213F2B7700D4834F /* package_docs.sh */,
+				A975D573214050AB00D4834F /* package_moltenvk.sh */,
+				A975D566213F2DAA00D4834F /* package_shader_converter.sh */,
+				A975D561213F299500D4834F /* update_latest.sh */,
+			);
+			path = Scripts;
 			sourceTree = "<group>";
 		};
 		A98149741FB6B565005F00B4 /* Products */ = {
@@ -242,6 +339,8 @@
 			projectRoot = "";
 			targets = (
 				A9FEADBC1F3517480010240E /* MoltenVK */,
+				A975D5782140585200D4834F /* MoltenVK-iOS */,
+				A975D58B2140586700D4834F /* MoltenVK-macOS */,
 			);
 		};
 /* End PBXProject section */
@@ -299,19 +398,33 @@
 /* End PBXReferenceProxy section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		A9A5D8A61FB3AABA00F20475 /* Package Docs */ = {
+		A975D5872140585200D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
 			);
 			inputPaths = (
 			);
-			name = "Package Docs";
+			name = "Package MoltenVK";
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\n# Package folder\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\n\n# Copy the docs. Allow silent fail if a symlinked doc is not built.\ncp -a \"${MVK_WKSPC_PATH}/LICENSE\" \"${MVK_PKG_CONFIG_PATH}\"\ncp -pRLf \"${MVK_WKSPC_PATH}/Docs\" \"${MVK_PKG_CONFIG_PATH}\" 2> /dev/null || true\n";
+			shellScript = "${SRCROOT}/Scripts/package_all.sh";
+		};
+		A975D59A2140586700D4834F /* Package MoltenVK */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Package MoltenVK";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "${SRCROOT}/Scripts/package_all.sh";
 		};
 		A9FEADD61F3517480010240E /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -325,39 +438,46 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\n# Package folder\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_ICD_NAME=\"${MVK_PROD_NAME}_icd.json\"\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PROD_PROJ_PATH=\"${MVK_WKSPC_PATH}/${MVK_PROD_NAME}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}\"\nexport MVK_PKG_PROD_PATH=\"${MVK_PKG_CONFIG_PATH}/${MVK_PROD_NAME}\"\n\n# Remove the product folder\nrm -rf \"${MVK_PKG_PROD_PATH}\"\n\n# Remove and replace the existing macOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_PROD_PATH}/macOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_PROD_PROJ_PATH}/icd/${MVK_ICD_NAME}\" \"${MVK_OS_PROD_PATH}\"\n\n# Remove and replace the existing iOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_PROD_PATH}/iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}/../${CONFIGURATION}-iphoneos\"\nrm -rf \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/_CodeSignature\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_PROD_PROJ_PATH}/icd/${MVK_ICD_NAME}\" \"${MVK_OS_PROD_PATH}\"\n\n# Remove and replace header include folder\nrm -rf \"${MVK_PKG_PROD_PATH}/include\"\ncp -pRL \"${MVK_PROD_PROJ_PATH}/include\" \"${MVK_PKG_PROD_PATH}\"";
-		};
-		A9FEADD71F3517480010240E /* Package MoltenVKShaderConverter */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Package MoltenVKShaderConverter";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\n\n# Package folder\nexport MVK_PROD_BASE_NAME=\"MoltenVKShaderConverter\"\nexport MVK_WKSPC_PATH=\"${PROJECT_DIR}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_PATH}/Package\"\n\n# Remove the base product folder\nrm -rf \"${MVK_PKG_LOCN}/${CONFIGURATION}/${MVK_PROD_BASE_NAME}\"\n\n#-----------------------------------\n# MoltenVKGLSLToSPIRVConverter\nexport MVK_PROD_NAME=\"MoltenVKGLSLToSPIRVConverter\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}/${MVK_PROD_BASE_NAME}/${MVK_PROD_NAME}\"\n\n# Remove and replace the existing macOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_CONFIG_PATH}/macOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\n\n# Remove and replace the existing iOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_CONFIG_PATH}/iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}/../${CONFIGURATION}-iphoneos\"\nrm -rf \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/_CodeSignature\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\n\n#-----------------------------------\n# MoltenVKSPIRVToMSLConverter\nexport MVK_PROD_NAME=\"MoltenVKSPIRVToMSLConverter\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}/${MVK_PROD_BASE_NAME}/${MVK_PROD_NAME}\"\n\n# Remove and replace the existing macOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_CONFIG_PATH}/macOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\n\n# Remove and replace the existing iOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_CONFIG_PATH}/iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}/../${CONFIGURATION}-iphoneos\"\nrm -rf \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/_CodeSignature\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework\" \"${MVK_OS_PROD_PATH}\"\n\n#-----------------------------------\n# MoltenVKShaderConverter Tool\nexport MVK_PROD_NAME=\"MoltenVKShaderConverter\"\nexport MVK_PKG_CONFIG_PATH=\"${MVK_PKG_LOCN}/${CONFIGURATION}/${MVK_PROD_BASE_NAME}\"\n\n# Remove and replace the existing macOS framework folder and copy framework into it\nexport MVK_OS_PROD_PATH=\"${MVK_PKG_CONFIG_PATH}/Tools\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nrm -rf \"${MVK_OS_PROD_PATH}\"\nmkdir -p \"${MVK_OS_PROD_PATH}\"\ncp -a \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}\" \"${MVK_OS_PROD_PATH}\"\n";
-		};
-		A9FEADDB1F3517480010240E /* Update Latest */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			name = "Update Latest";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "set -e\n\n# Package folder\nexport MVK_WKSPC_LOCN=\"${PROJECT_DIR}\"\nexport MVK_PKG_LOCN=\"${MVK_WKSPC_LOCN}/Package\"\n\n# Configuration package folder location\nexport MVK_PKG_CONFIG_LOCN=\"${CONFIGURATION}\"\nexport MVK_PKG_LATEST_LOCN=\"Latest\"\n\n# Assign symlink from Latest\nln -sfn \"${MVK_PKG_LOCN}/${MVK_PKG_CONFIG_LOCN}\" \"${MVK_PKG_LOCN}/${MVK_PKG_LATEST_LOCN}\"";
+			shellScript = "${SRCROOT}/Scripts/package_all.sh";
 		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A975D5792140585200D4834F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVK-iOS";
+			targetProxy = A975D57A2140585200D4834F /* PBXContainerItemProxy */;
+		};
+		A975D57D2140585200D4834F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVKSPIRVToMSLConverter-iOS";
+			targetProxy = A975D57E2140585200D4834F /* PBXContainerItemProxy */;
+		};
+		A975D5812140585200D4834F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVKGLSLToSPIRVConverter-iOS";
+			targetProxy = A975D5822140585200D4834F /* PBXContainerItemProxy */;
+		};
+		A975D58E2140586700D4834F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVK-macOS";
+			targetProxy = A975D58F2140586700D4834F /* PBXContainerItemProxy */;
+		};
+		A975D5922140586700D4834F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVKSPIRVToMSLConverter-macOS";
+			targetProxy = A975D5932140586700D4834F /* PBXContainerItemProxy */;
+		};
+		A975D5962140586700D4834F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVKGLSLToSPIRVConverter-macOS";
+			targetProxy = A975D5972140586700D4834F /* PBXContainerItemProxy */;
+		};
+		A975D5982140586700D4834F /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = MoltenVKShaderConverter;
+			targetProxy = A975D5992140586700D4834F /* PBXContainerItemProxy */;
+		};
 		A98149CB1FB7689D005F00B4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = MoltenVKShaderConverter;
@@ -408,10 +528,37 @@
 			};
 			name = Release;
 		};
+		A975D5892140585200D4834F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		A975D58A2140585200D4834F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
+		A975D59C2140586700D4834F /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		A975D59D2140586700D4834F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		A9FEADDD1F3517480010240E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = "$(GCC_PREPROCESSOR_DEFINITIONS)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
@@ -419,7 +566,6 @@
 		A9FEADDE1F3517480010240E /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = "$(GCC_PREPROCESSOR_DEFINITIONS)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
@@ -432,6 +578,24 @@
 			buildConfigurations = (
 				A90B2B211A9B6170008EE819 /* Debug */,
 				A90B2B221A9B6170008EE819 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A975D5882140585200D4834F /* Build configuration list for PBXAggregateTarget "MoltenVK-iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A975D5892140585200D4834F /* Debug */,
+				A975D58A2140585200D4834F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A975D59B2140586700D4834F /* Build configuration list for PBXAggregateTarget "MoltenVK-macOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A975D59C2140586700D4834F /* Debug */,
+				A975D59D2140586700D4834F /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
