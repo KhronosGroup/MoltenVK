@@ -603,8 +603,13 @@ id<MTLTexture> MVKImageView::getMTLTexture() {
 // Creates and returns a retained Metal texture as an
 // overlay on the Metal texture of the underlying image.
 id<MTLTexture> MVKImageView::newMTLTexture() {
+    MTLTextureType mtlTextureType = _mtlTextureType;
+    // Fake support for 2D views of 3D textures.
+    if (_image->getImageType() == VK_IMAGE_TYPE_3D &&
+        (mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray))
+        mtlTextureType = MTLTextureType3D;
     return [_image->getMTLTexture() newTextureViewWithPixelFormat: _mtlPixelFormat
-                                                      textureType: _mtlTextureType
+                                                      textureType: mtlTextureType
                                                            levels: NSMakeRange(_subresourceRange.baseMipLevel, _subresourceRange.levelCount)
                                                            slices: NSMakeRange(_subresourceRange.baseArrayLayer, _subresourceRange.layerCount)];	// retained
 }
@@ -635,12 +640,19 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 
 // Validate whether the image view configuration can be supported
 void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo) {
-	VkImageType imgType = ((MVKImage*)pCreateInfo->image)->getImageType();
+	MVKImage* image = (MVKImage*)pCreateInfo->image;
+	VkImageType imgType = image->getImageType();
 	VkImageViewType viewType = pCreateInfo->viewType;
 
 	// VK_KHR_maintenance1 supports taking 2D image views of 3D slices. No dice in Metal.
 	if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not support creating a 2D view on a 3D image."));
+		if (pCreateInfo->subresourceRange.layerCount != image->_extent.depth) {
+			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not support views on a subset of a 3D texture."));
+		} else if (!(image->_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments."));
+		} else if (image->_usage & ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+			mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments.");
+		}
 	}
 }
 
@@ -763,10 +775,12 @@ void MVKImageView::initMTLTextureViewSupport() {
 	_useMTLTextureView = _image->_canSupportMTLTextureView;
 
 	// If the view is identical to underlying image, don't bother using a Metal view
+	bool is3D = _image->_mtlTextureType == MTLTextureType3D;
 	if (_mtlPixelFormat == _image->_mtlPixelFormat &&
-		_mtlTextureType == _image->_mtlTextureType &&
+		(_mtlTextureType == _image->_mtlTextureType ||
+		 ((_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray) && is3D)) &&
 		_subresourceRange.levelCount == _image->_mipLevels &&
-		_subresourceRange.layerCount == _image->_arrayLayers) {
+		_subresourceRange.layerCount == (is3D ? _image->_extent.depth : _image->_arrayLayers)) {
 		_useMTLTextureView = false;
 	}
 }
