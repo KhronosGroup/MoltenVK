@@ -778,7 +778,7 @@ void MVKImageView::initMTLTextureViewSupport() {
 	bool is3D = _image->_mtlTextureType == MTLTextureType3D;
 	if (_mtlPixelFormat == _image->_mtlPixelFormat &&
 		(_mtlTextureType == _image->_mtlTextureType ||
-		 (_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray) && is3D) &&
+		 ((_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray) && is3D)) &&
 		_subresourceRange.levelCount == _image->_mipLevels &&
 		_subresourceRange.layerCount == (is3D ? _image->_extent.depth : _image->_arrayLayers)) {
 		_useMTLTextureView = false;
