@@ -80,7 +80,6 @@ kernel void cmdCopyBufferBytes(device uint8_t* src [[ buffer(0) ]],             
 };                                                                                                              \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
-    uint32_t dstOffset;                                                                                         \n\
     uint32_t size;                                                                                              \n\
     uint32_t data;                                                                                              \n\
 } FillInfo;                                                                                                     \n\
@@ -88,7 +87,7 @@ typedef struct {                                                                
 kernel void cmdFillBuffer(device uint32_t* dst [[ buffer(0) ]],                                                 \n\
                           constant FillInfo& info [[ buffer(1) ]]) {                                            \n\
     for (uint32_t i = 0; i < info.size; i++) {                                                                  \n\
-        dst[i + info.dstOffset] = info.data;                                                                    \n\
+        dst[i] = info.data;                                                                                     \n\
     }                                                                                                           \n\
 };                                                                                                              \n\
                                                                                                                 \n\
