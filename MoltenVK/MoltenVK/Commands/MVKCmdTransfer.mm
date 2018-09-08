@@ -594,7 +594,7 @@ void MVKCmdCopyBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 			[mtlComputeEnc setBuffer:srcMTLBuff offset: srcMTLBuffOffset atIndex: 0];
 			[mtlComputeEnc setBuffer:dstMTLBuff offset: dstMTLBuffOffset atIndex: 1];
 			[mtlComputeEnc setBytes: &copyInfo length: sizeof(copyInfo) atIndex: 2];
-			[mtlComputeEnc dispatchThreads: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
+			[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
 			[mtlComputeEnc popDebugGroup];
 		} else {
 			id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyBuffer);
@@ -1012,7 +1012,7 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 	[mtlComputeEnc setComputePipelineState: cmdEncoder->getCommandEncodingPool()->getCmdFillBufferMTLComputePipelineState()];
 	[mtlComputeEnc setBuffer: dstMTLBuff offset: dstMTLBuffOffset atIndex: 0];
 	[mtlComputeEnc setBytes: &fillInfo length: sizeof(fillInfo) atIndex: 1];
-	[mtlComputeEnc dispatchThreads: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
+	[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
 	[mtlComputeEnc popDebugGroup];
 }
 
