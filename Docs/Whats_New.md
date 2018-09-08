@@ -12,16 +12,38 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
+MoltenVK 1.0.21
+---------------
+
+Released 2018/09/08
+
+- Add support for extensions:
+    - VK_KHR_descriptor_update_template
+- Create 3D MTLTextureViews for 2D image views of 3D textures.
+- Allow building and packaging MoltenVK for of only iOS or only macOS.
+- Move packaging scripts out of Xcode projects and into script files.
+- vkUpdateDescriptorSet: Handle copies of uninitialized descriptors.
+- vkCmdFillBuffer & vkCmdCopyBuffers: Use dispatch call that supports older OS versions.
+- Update to latest SPIRV-Cross version:
+	- MSL: Emit F{Min,Max,Clamp} as fast:: and N{Min,Max,Clamp} as precise
+	- MSL: Implement multisampled array textures.
+	- MSL: Emit spvTexelBufferCoord() on ImageWrite to a Buffer.
+	- MSL: Handle interpolation qualifiers.
+	- MSL: Account for components when assigning locations to varyings.
+	- MSL: Do not emit function constants for version < 1.2.
+
+
+
 MoltenVK 1.0.20
 ---------------
 
 Released 2018/09/01
 
 - Add support for extensions:
-    - VK_KHR_maintenance1;
-	- VK_KHR_shader_draw_parameters;
-	- VK_KHR_get_physical_device_properties2;
-	- VK_KHR_push_descriptor;
+    - VK_KHR_maintenance1
+	- VK_KHR_shader_draw_parameters
+	- VK_KHR_get_physical_device_properties2
+	- VK_KHR_push_descriptor
 - Add ability to track and access supported and enabled extensions.
 - Update to latest SPIRV-Cross version.
 
