@@ -831,7 +831,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nexport MVK_SYS_FWK_DIR=\"${SDK_DIR}/System/Library/Frameworks\"\nexport MVK_USR_LIB_DIR=\"${SDK_DIR}/usr/lib\"\n\nclang \\\n-dynamiclib \\\n-arch x86_64 \\\n-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET} \\\n-compatibility_version 1.0.0 -current_version 1.0.0  \\\n-install_name \"@rpath/${MVK_DYLIB_NAME}\"  \\\n-Wno-incompatible-sysroot \\\n-isysroot ${SDK_DIR} \\\n-iframework ${MVK_SYS_FWK_DIR}  \\\n-framework Metal -framework IOSurface -framework IOKit -framework QuartzCore -framework Foundation \\\n--library-directory ${MVK_USR_LIB_DIR} \\\n-lSystem  -lc++ \\\n-o \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \\\n-force_load \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/${MVK_PROD_NAME}\"\n";
+			shellScript = "${SRCROOT}/scripts/create_dylib_macos.sh";
 		};
 		A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -845,7 +845,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nexport MVK_SYS_FWK_DIR=\"${SDK_DIR}/System/Library/Frameworks\"\nexport MVK_USR_LIB_DIR=\"${SDK_DIR}/usr/lib\"\n\n# Do not link to IOSurface if deploying to iOS versions below 11.0, doing so will\n# link IOSurface as a private framework, which will trigger App Store rejection.\nif [ $(echo \"${IPHONEOS_DEPLOYMENT_TARGET} >= 11.0\" | bc) -eq 1 ]\nthen\n    export MVK_IOSURFACE_FWK=\"-framework IOSurface\"\nelse\n    export MVK_IOSURFACE_FWK=\"\"\nfi\n\nclang \\\n-dynamiclib \\\n-arch arm64 \\\n-mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}  \\\n-compatibility_version 1.0.0 -current_version 1.0.0  \\\n-install_name \"@rpath/${MVK_DYLIB_NAME}\"  \\\n-Wno-incompatible-sysroot \\\n-isysroot ${SDK_DIR} \\\n-iframework ${MVK_SYS_FWK_DIR}  \\\n-framework Metal ${MVK_IOSURFACE_FWK} -framework UIKit -framework QuartzCore -framework Foundation \\\n--library-directory ${MVK_USR_LIB_DIR} \\\n-lSystem  -lc++ \\\n-o \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \\\n-force_load \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/${MVK_PROD_NAME}\"\n";
+			shellScript = "${SRCROOT}/scripts/create_dylib_ios.sh";
 		};
 /* End PBXShellScriptBuildPhase section */
 
