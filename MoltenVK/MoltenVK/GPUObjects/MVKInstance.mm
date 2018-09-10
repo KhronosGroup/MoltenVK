@@ -347,16 +347,17 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 
 // Init config.
 void MVKInstance::initConfig() {
-	_mvkConfig.debugMode					= MVK_DEBUG;
-	_mvkConfig.shaderConversionFlipVertexY 	= MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y;
-	_mvkConfig.synchronousQueueSubmits		= MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS;
-	_mvkConfig.supportLargeQueryPools		= MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS;
-	_mvkConfig.presentWithCommandBuffer		= MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER;
-	_mvkConfig.swapchainMagFilterUseNearest	= MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST;
-	_mvkConfig.displayWatermark				= MVK_CONFIG_DISPLAY_WATERMARK;
-	_mvkConfig.performanceTracking			= MVK_DEBUG;
-	_mvkConfig.performanceLoggingFrameCount	= MVK_DEBUG ? 300 : 0;
-	_mvkConfig.metalCompileTimeout			= MVK_CONFIG_METAL_COMPILE_TIMEOUT;
+	_mvkConfig.debugMode							= MVK_DEBUG;
+	_mvkConfig.shaderConversionFlipVertexY			= MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y;
+	_mvkConfig.synchronousQueueSubmits				= MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS;
+	_mvkConfig.maxActiveMetalCommandBuffersPerPool	= MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL;
+	_mvkConfig.supportLargeQueryPools				= MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS;
+	_mvkConfig.presentWithCommandBuffer				= MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER;
+	_mvkConfig.swapchainMagFilterUseNearest			= MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST;
+	_mvkConfig.displayWatermark						= MVK_CONFIG_DISPLAY_WATERMARK;
+	_mvkConfig.performanceTracking					= MVK_DEBUG;
+	_mvkConfig.performanceLoggingFrameCount			= MVK_DEBUG ? 300 : 0;
+	_mvkConfig.metalCompileTimeout					= MVK_CONFIG_METAL_COMPILE_TIMEOUT;
 }
 
 MVKInstance::~MVKInstance() {

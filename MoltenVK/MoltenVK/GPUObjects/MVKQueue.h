@@ -46,7 +46,7 @@ public:
 	inline uint32_t getIndex() { return _queueFamilyIndex; }
 
 	/** Populates the specified properties structure. */
-	void getProperties(VkQueueFamilyProperties* queueProperties) {
+	inline void getProperties(VkQueueFamilyProperties* queueProperties) {
 		if (queueProperties) { *queueProperties = _properties; }
 	}
 

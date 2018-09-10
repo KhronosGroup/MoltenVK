@@ -49,6 +49,14 @@
 #   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    0
 #endif
 
+/**
+ * The number of concurrently active Metal command buffers that can be
+ * allocated per Vulkan command pool. Default is Metal's default value of 64.
+ */
+#ifndef MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL
+#   define MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL    64
+#endif
+
 /** Support more than 8192 occlusion queries per buffer. Enabled by default. */
 #ifndef MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
 #   define MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS    1

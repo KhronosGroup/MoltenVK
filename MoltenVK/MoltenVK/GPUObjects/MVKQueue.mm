@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "MVKInstance.h"
 #include "MVKQueue.h"
 #include "MVKSwapchain.h"
 #include "MVKSync.h"
@@ -37,7 +38,8 @@ id<MTLCommandQueue> MVKQueueFamily::getMTLCommandQueue(uint32_t queueIndex) {
 	lock_guard<mutex> lock(_qLock);
 	id<MTLCommandQueue> mtlQ = _mtlQueues[queueIndex];
 	if ( !mtlQ ) {
-		mtlQ = [_physicalDevice->getMTLDevice() newCommandQueue];	// retained
+		uint32_t maxCmdBuffs = _physicalDevice->getInstance()->_mvkConfig.maxActiveMetalCommandBuffersPerPool;
+		mtlQ = [_physicalDevice->getMTLDevice() newCommandQueueWithMaxCommandBufferCount: maxCmdBuffs];		// retained
 		_mtlQueues[queueIndex] = mtlQ;
 	}
 	return mtlQ;
@@ -220,7 +222,7 @@ void MVKQueue::initExecQueue() {
 	}
 }
 
-// Creates and initializes the Metal queue.
+// Retrieves and initializes the Metal command queue.
 void MVKQueue::initMTLCommandQueue() {
 	uint64_t startTime = _device->getPerformanceTimestamp();
 	_mtlQueue = _queueFamily->getMTLCommandQueue(_index);	// not retained (cached in queue family)
