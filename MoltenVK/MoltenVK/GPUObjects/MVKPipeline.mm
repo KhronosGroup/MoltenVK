@@ -54,6 +54,30 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
     cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.computeStage.bufferIndex);
 }
 
+void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+                                          vector<VkWriteDescriptorSet>& descriptorWrites,
+                                          uint32_t set) {
+
+    _descriptorSetLayouts[set].pushDescriptorSet(cmdEncoder, descriptorWrites,
+                                                 _dslMTLResourceIndexOffsets[set]);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.vertexStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_FRAGMENT_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.fragmentStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.computeStage.bufferIndex);
+}
+
+void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+                                          MVKDescriptorUpdateTemplate* descUpdateTemplate,
+                                          uint32_t set,
+                                          const void* pData) {
+
+    _descriptorSetLayouts[set].pushDescriptorSet(cmdEncoder, descUpdateTemplate,
+                                                 pData,
+                                                 _dslMTLResourceIndexOffsets[set]);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.vertexStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_FRAGMENT_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.fragmentStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.computeStage.bufferIndex);
+}
+
 void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConverterContext& context) {
 	context.resourceBindings.clear();
 

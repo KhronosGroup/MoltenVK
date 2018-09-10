@@ -1,8 +1,8 @@
 language: objective-c 
 
 # macOS and Xcode Version
-# Xcode 9.2 running on macOS 10.12
-osx_image: xcode9.2
+# Xcode 9.4 running on macOS 10.13
+osx_image: xcode9.4
 
 # Build dependencies
 install:
@@ -15,6 +15,6 @@ cache:
     - External
 
 script:
-  - xcodebuild -scheme "MoltenVK (Debug)"
-  - xcodebuild -workspace Demos/Demos.xcworkspace -scheme "API-Samples-macOS"
+  - xcodebuild -scheme "MoltenVK Package (Release)"
+  - xcodebuild -workspace Demos/Demos.xcworkspace -scheme "Cube-macOS"
 

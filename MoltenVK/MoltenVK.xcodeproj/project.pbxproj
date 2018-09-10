@@ -9,6 +9,10 @@
 /* Begin PBXBuildFile section */
 		A9096E5E1F81E16300DFBEA6 /* MVKCmdDispatch.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */; };
 		A9096E5F1F81E16300DFBEA6 /* MVKCmdDispatch.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */; };
+		A909F65F213B190700FCD6BE /* MVKExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A909F65A213B190600FCD6BE /* MVKExtensions.h */; };
+		A909F660213B190700FCD6BE /* MVKExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A909F65A213B190600FCD6BE /* MVKExtensions.h */; };
+		A909F661213B190700FCD6BE /* MVKExtensions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A909F65E213B190700FCD6BE /* MVKExtensions.cpp */; };
+		A909F662213B190700FCD6BE /* MVKExtensions.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A909F65E213B190700FCD6BE /* MVKExtensions.cpp */; };
 		A90C8DEA1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A90C8DE81F45354D009CB32C /* MVKCommandEncodingPool.h */; };
 		A90C8DEB1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A90C8DE81F45354D009CB32C /* MVKCommandEncodingPool.h */; };
 		A90C8DEC1F45354D009CB32C /* MVKCommandEncodingPool.mm in Sources */ = {isa = PBXBuildFile; fileRef = A90C8DE91F45354D009CB32C /* MVKCommandEncodingPool.mm */; };
@@ -147,8 +151,8 @@
 		A98149521FB6A3F7005F00B4 /* MVKEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */; };
 		A98149531FB6A3F7005F00B4 /* MVKFoundation.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149441FB6A3F7005F00B4 /* MVKFoundation.h */; };
 		A98149541FB6A3F7005F00B4 /* MVKFoundation.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149441FB6A3F7005F00B4 /* MVKFoundation.h */; };
-		A98149551FB6A3F7005F00B4 /* MVKFoundation.mm in Sources */ = {isa = PBXBuildFile; fileRef = A98149451FB6A3F7005F00B4 /* MVKFoundation.mm */; };
-		A98149561FB6A3F7005F00B4 /* MVKFoundation.mm in Sources */ = {isa = PBXBuildFile; fileRef = A98149451FB6A3F7005F00B4 /* MVKFoundation.mm */; };
+		A98149551FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A98149451FB6A3F7005F00B4 /* MVKFoundation.cpp */; };
+		A98149561FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A98149451FB6A3F7005F00B4 /* MVKFoundation.cpp */; };
 		A98149571FB6A3F7005F00B4 /* MVKObjectPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149461FB6A3F7005F00B4 /* MVKObjectPool.h */; };
 		A98149581FB6A3F7005F00B4 /* MVKObjectPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149461FB6A3F7005F00B4 /* MVKObjectPool.h */; };
 		A981495D1FB6A3F7005F00B4 /* MVKWatermark.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149491FB6A3F7005F00B4 /* MVKWatermark.h */; };
@@ -256,6 +260,8 @@
 /* Begin PBXFileReference section */
 		A9096E5C1F81E16300DFBEA6 /* MVKCmdDispatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKCmdDispatch.h; sourceTree = "<group>"; };
 		A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdDispatch.mm; sourceTree = "<group>"; };
+		A909F65A213B190600FCD6BE /* MVKExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKExtensions.h; sourceTree = "<group>"; };
+		A909F65E213B190700FCD6BE /* MVKExtensions.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKExtensions.cpp; sourceTree = "<group>"; };
 		A90C8DE81F45354D009CB32C /* MVKCommandEncodingPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommandEncodingPool.h; sourceTree = "<group>"; };
 		A90C8DE91F45354D009CB32C /* MVKCommandEncodingPool.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCommandEncodingPool.mm; sourceTree = "<group>"; };
 		A93E832E2121C5D3001FEBD4 /* MVKGPUCapture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKGPUCapture.h; sourceTree = "<group>"; };
@@ -325,7 +331,7 @@
 		A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKBaseObject.h; sourceTree = "<group>"; };
 		A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKEnvironment.h; sourceTree = "<group>"; };
 		A98149441FB6A3F7005F00B4 /* MVKFoundation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKFoundation.h; sourceTree = "<group>"; };
-		A98149451FB6A3F7005F00B4 /* MVKFoundation.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKFoundation.mm; sourceTree = "<group>"; };
+		A98149451FB6A3F7005F00B4 /* MVKFoundation.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKFoundation.cpp; sourceTree = "<group>"; };
 		A98149461FB6A3F7005F00B4 /* MVKObjectPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKObjectPool.h; sourceTree = "<group>"; };
 		A98149491FB6A3F7005F00B4 /* MVKWatermark.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKWatermark.h; sourceTree = "<group>"; };
 		A981494A1FB6A3F7005F00B4 /* MVKWatermark.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKWatermark.mm; sourceTree = "<group>"; };
@@ -365,7 +371,7 @@
 				A94FB7651C7DFB4800632CA3 /* API */,
 				A94FB76B1C7DFB4800632CA3 /* Commands */,
 				A94FB77E1C7DFB4800632CA3 /* GPUObjects */,
-				A94FB79F1C7DFB4800632CA3 /* Loader */,
+				A94FB79F1C7DFB4800632CA3 /* Layers */,
 				A9E53DCC2100B197002781DD /* OS */,
 				A98149401FB6A3F7005F00B4 /* Utility */,
 				A94FB7A81C7DFB4800632CA3 /* Vulkan */,
@@ -457,13 +463,15 @@
 			path = GPUObjects;
 			sourceTree = "<group>";
 		};
-		A94FB79F1C7DFB4800632CA3 /* Loader */ = {
+		A94FB79F1C7DFB4800632CA3 /* Layers */ = {
 			isa = PBXGroup;
 			children = (
+				A909F65A213B190600FCD6BE /* MVKExtensions.h */,
+				A909F65E213B190700FCD6BE /* MVKExtensions.cpp */,
 				A94FB7A01C7DFB4800632CA3 /* MVKLayers.h */,
 				A94FB7A11C7DFB4800632CA3 /* MVKLayers.mm */,
 			);
-			path = Loader;
+			path = Layers;
 			sourceTree = "<group>";
 		};
 		A94FB7A81C7DFB4800632CA3 /* Vulkan */ = {
@@ -483,7 +491,7 @@
 				A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */,
 				A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */,
 				A98149441FB6A3F7005F00B4 /* MVKFoundation.h */,
-				A98149451FB6A3F7005F00B4 /* MVKFoundation.mm */,
+				A98149451FB6A3F7005F00B4 /* MVKFoundation.cpp */,
 				A98149461FB6A3F7005F00B4 /* MVKObjectPool.h */,
 				A98149491FB6A3F7005F00B4 /* MVKWatermark.h */,
 				A981494A1FB6A3F7005F00B4 /* MVKWatermark.mm */,
@@ -576,6 +584,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A94FB7B41C7DFB4800632CA3 /* vk_mvk_moltenvk.h in Headers */,
+				A909F65F213B190700FCD6BE /* MVKExtensions.h in Headers */,
 				A94FB7B01C7DFB4800632CA3 /* mvk_datatypes.h in Headers */,
 				A98149511FB6A3F7005F00B4 /* MVKEnvironment.h in Headers */,
 				A948BB7F1E51642700DE59F2 /* mvk_vulkan.h in Headers */,
@@ -635,6 +644,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A94FB7B51C7DFB4800632CA3 /* vk_mvk_moltenvk.h in Headers */,
+				A909F660213B190700FCD6BE /* MVKExtensions.h in Headers */,
 				A94FB7B11C7DFB4800632CA3 /* mvk_datatypes.h in Headers */,
 				A98149521FB6A3F7005F00B4 /* MVKEnvironment.h in Headers */,
 				A948BB801E51642700DE59F2 /* mvk_vulkan.h in Headers */,
@@ -821,7 +831,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nexport MVK_SYS_FWK_DIR=\"${SDK_DIR}/System/Library/Frameworks\"\nexport MVK_USR_LIB_DIR=\"${SDK_DIR}/usr/lib\"\n\nclang \\\n-dynamiclib \\\n-arch x86_64 \\\n-mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET} \\\n-compatibility_version 1.0.0 -current_version 1.0.0  \\\n-install_name \"@rpath/${MVK_DYLIB_NAME}\"  \\\n-Wno-incompatible-sysroot \\\n-isysroot ${SDK_DIR} \\\n-iframework ${MVK_SYS_FWK_DIR}  \\\n-framework Metal -framework IOSurface -framework IOKit -framework QuartzCore -framework Foundation \\\n--library-directory ${MVK_USR_LIB_DIR} \\\n-lSystem  -lc++ \\\n-o \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \\\n-force_load \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/${MVK_PROD_NAME}\"\n";
+			shellScript = "${SRCROOT}/scripts/create_dylib_macos.sh";
 		};
 		A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -835,7 +845,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -e\n\nexport MVK_PROD_NAME=\"MoltenVK\"\nexport MVK_DYLIB_NAME=\"lib${MVK_PROD_NAME}.dylib\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\nexport MVK_SYS_FWK_DIR=\"${SDK_DIR}/System/Library/Frameworks\"\nexport MVK_USR_LIB_DIR=\"${SDK_DIR}/usr/lib\"\n\n# Do not link to IOSurface if deploying to iOS versions below 11.0, doing so will\n# link IOSurface as a private framework, which will trigger App Store rejection.\nif [ $(echo \"${IPHONEOS_DEPLOYMENT_TARGET} >= 11.0\" | bc) -eq 1 ]\nthen\n    export MVK_IOSURFACE_FWK=\"-framework IOSurface\"\nelse\n    export MVK_IOSURFACE_FWK=\"\"\nfi\n\nclang \\\n-dynamiclib \\\n-arch arm64 \\\n-mios-version-min=${IPHONEOS_DEPLOYMENT_TARGET}  \\\n-compatibility_version 1.0.0 -current_version 1.0.0  \\\n-install_name \"@rpath/${MVK_DYLIB_NAME}\"  \\\n-Wno-incompatible-sysroot \\\n-isysroot ${SDK_DIR} \\\n-iframework ${MVK_SYS_FWK_DIR}  \\\n-framework Metal ${MVK_IOSURFACE_FWK} -framework UIKit -framework QuartzCore -framework Foundation \\\n--library-directory ${MVK_USR_LIB_DIR} \\\n-lSystem  -lc++ \\\n-o \"${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}\" \\\n-force_load \"${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/${MVK_PROD_NAME}\"\n";
+			shellScript = "${SRCROOT}/scripts/create_dylib_ios.sh";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -866,7 +876,8 @@
 				A94FB7C61C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */,
 				A94FB7DE1C7DFB4800632CA3 /* MVKBuffer.mm in Sources */,
 				A94FB82A1C7DFB4800632CA3 /* mvk_datatypes.mm in Sources */,
-				A98149551FB6A3F7005F00B4 /* MVKFoundation.mm in Sources */,
+				A909F661213B190700FCD6BE /* MVKExtensions.cpp in Sources */,
+				A98149551FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */,
 				A94FB7E61C7DFB4800632CA3 /* MVKDevice.mm in Sources */,
 				A9E53DF52100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.m in Sources */,
 				A94FB7FA1C7DFB4800632CA3 /* MVKPipeline.mm in Sources */,
@@ -917,7 +928,8 @@
 				A94FB7C71C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */,
 				A94FB7DF1C7DFB4800632CA3 /* MVKBuffer.mm in Sources */,
 				A94FB82B1C7DFB4800632CA3 /* mvk_datatypes.mm in Sources */,
-				A98149561FB6A3F7005F00B4 /* MVKFoundation.mm in Sources */,
+				A909F662213B190700FCD6BE /* MVKExtensions.cpp in Sources */,
+				A98149561FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */,
 				A94FB7E71C7DFB4800632CA3 /* MVKDevice.mm in Sources */,
 				A9E53DF62100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.m in Sources */,
 				A94FB7FB1C7DFB4800632CA3 /* MVKPipeline.mm in Sources */,

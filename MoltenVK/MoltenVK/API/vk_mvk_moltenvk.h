@@ -26,7 +26,7 @@
 extern "C" {
 #endif	//  __cplusplus
 	
-#include <vulkan/vulkan.h>
+#include <MoltenVK/mvk_vulkan.h>
 
 #ifdef __OBJC__
 #import <Metal/Metal.h>
@@ -48,7 +48,7 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   19
+#define MVK_VERSION_PATCH   21
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)

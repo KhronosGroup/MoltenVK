@@ -180,6 +180,125 @@ MVKCmdPushConstants::MVKCmdPushConstants(MVKCommandTypePool<MVKCmdPushConstants>
 
 
 #pragma mark -
+#pragma mark MVKCmdPushDescriptorSet
+
+void MVKCmdPushDescriptorSet::setContent(VkPipelineBindPoint pipelineBindPoint,
+                                         VkPipelineLayout layout,
+                                         uint32_t set,
+                                         uint32_t descriptorWriteCount,
+                                         const VkWriteDescriptorSet* pDescriptorWrites) {
+	_pipelineBindPoint = pipelineBindPoint;
+	_pipelineLayout = (MVKPipelineLayout*)layout;
+	_set = set;
+
+	// Add the descriptor writes
+	clearDescriptorWrites();	// Clear for reuse
+	_descriptorWrites.reserve(descriptorWriteCount);
+	for (uint32_t dwIdx = 0; dwIdx < descriptorWriteCount; dwIdx++) {
+		_descriptorWrites.push_back(pDescriptorWrites[dwIdx]);
+		VkWriteDescriptorSet& descWrite = _descriptorWrites.back();
+		// Make a copy of the associated data.
+		if (descWrite.pImageInfo) {
+			auto* pNewImageInfo = new VkDescriptorImageInfo[descWrite.descriptorCount];
+			std::copy_n(descWrite.pImageInfo, descWrite.descriptorCount, pNewImageInfo);
+			descWrite.pImageInfo = pNewImageInfo;
+		}
+		if (descWrite.pBufferInfo) {
+			auto* pNewBufferInfo = new VkDescriptorBufferInfo[descWrite.descriptorCount];
+			std::copy_n(descWrite.pBufferInfo, descWrite.descriptorCount, pNewBufferInfo);
+			descWrite.pBufferInfo = pNewBufferInfo;
+		}
+		if (descWrite.pTexelBufferView) {
+			auto* pNewTexelBufferView = new VkBufferView[descWrite.descriptorCount];
+			std::copy_n(descWrite.pTexelBufferView, descWrite.descriptorCount, pNewTexelBufferView);
+			descWrite.pTexelBufferView = pNewTexelBufferView;
+		}
+	}
+}
+
+void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
+	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descriptorWrites, _set);
+}
+
+MVKCmdPushDescriptorSet::MVKCmdPushDescriptorSet(MVKCommandTypePool<MVKCmdPushDescriptorSet>* pool)
+	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
+
+MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {
+	clearDescriptorWrites();
+}
+
+void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
+	for (VkWriteDescriptorSet &descWrite : _descriptorWrites) {
+		if (descWrite.pImageInfo) delete[] descWrite.pImageInfo;
+		if (descWrite.pBufferInfo) delete[] descWrite.pBufferInfo;
+		if (descWrite.pTexelBufferView) delete[] descWrite.pTexelBufferView;
+	}
+	_descriptorWrites.clear();
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdPushDescriptorSetWithTemplate
+
+void MVKCmdPushDescriptorSetWithTemplate::setContent(VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+													 VkPipelineLayout layout,
+													 uint32_t set,
+													 const void* pData) {
+	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
+	_pipelineLayout = (MVKPipelineLayout*)layout;
+	_set = set;
+	if (_pData) delete[] (char*)_pData;
+	// Work out how big the memory block in pData is.
+	const VkDescriptorUpdateTemplateEntryKHR* pEntry =
+		_descUpdateTemplate->getEntry(_descUpdateTemplate->getNumberOfEntries()-1);
+	size_t size = pEntry->offset;
+	// If we were given a stride, use that; otherwise, assume only one info
+	// struct of the appropriate type.
+	if (pEntry->stride)
+		size += pEntry->stride * pEntry->descriptorCount;
+	else switch (pEntry->descriptorType) {
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			size += sizeof(VkDescriptorBufferInfo);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			size += sizeof(VkDescriptorImageInfo);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			size += sizeof(VkBufferView);
+			break;
+
+		default:
+			break;
+	}
+	_pData = new char[size];
+	memcpy(_pData, pData, size);
+}
+
+void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) {
+	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descUpdateTemplate, _set, _pData);
+}
+
+MVKCmdPushDescriptorSetWithTemplate::MVKCmdPushDescriptorSetWithTemplate(
+	MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate>* pool)
+	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
+
+MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
+	if (_pData) delete[] (char*)_pData;
+}
+
+
+#pragma mark -
 #pragma mark Command creation functions
 
 void mvkCmdPipelineBarrier(MVKCommandBuffer* cmdBuff,
@@ -232,3 +351,23 @@ void mvkCmdPushConstants(MVKCommandBuffer* cmdBuff,
 	cmdBuff->addCommand(cmd);
 }
 
+void mvkCmdPushDescriptorSet(MVKCommandBuffer* cmdBuff,
+							 VkPipelineBindPoint pipelineBindPoint,
+							 VkPipelineLayout layout,
+							 uint32_t set,
+							 uint32_t descriptorWriteCount,
+							 const VkWriteDescriptorSet* pDescriptorWrites) {
+	MVKCmdPushDescriptorSet* cmd = cmdBuff->_commandPool->_cmdPushDescriptorSetPool.acquireObject();
+	cmd->setContent(pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+	cmdBuff->addCommand(cmd);
+}
+
+void mvkCmdPushDescriptorSetWithTemplate(MVKCommandBuffer* cmdBuff,
+										 VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+										 VkPipelineLayout layout,
+										 uint32_t set,
+										 const void* pData) {
+	MVKCmdPushDescriptorSetWithTemplate* cmd = cmdBuff->_commandPool->_cmdPushSetWithTemplatePool.acquireObject();
+	cmd->setContent(descUpdateTemplate, layout, set, pData);
+	cmdBuff->addCommand(cmd);
+}

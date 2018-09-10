@@ -78,6 +78,16 @@ public:
               std::vector<uint32_t>& dynamicOffsets,
               uint32_t* pDynamicOffsetIndex);
 
+    /** Encodes this binding layout and the specified descriptor binding on the specified command encoder immediately. */
+    void push(MVKCommandEncoder* cmdEncoder,
+              uint32_t& dstArrayElement,
+              uint32_t& descriptorCount,
+              uint32_t& descriptorsPushed,
+              VkDescriptorType descriptorType,
+              size_t stride,
+              const void* pData,
+              MVKShaderResourceBinding& dslMTLRezIdxOffsets);
+
 	/** Populates the specified shader converter context, at the specified descriptor set binding. */
 	void populateShaderConverterContext(SPIRVToMSLConverterContext& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
@@ -119,10 +129,26 @@ public:
                            uint32_t* pDynamicOffsetIndex);
 
 
+	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
+	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+						   std::vector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKShaderResourceBinding& dslMTLRezIdxOffsets);
+
+
+	/** Encodes this descriptor set layout and the updates from the given template on the specified command encoder immediately. */
+	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+						   MVKDescriptorUpdateTemplate* descUpdateTemplates,
+						   const void* pData,
+						   MVKShaderResourceBinding& dslMTLRezIdxOffsets);
+
+
 	/** Populates the specified shader converter context, at the specified DSL index. */
 	void populateShaderConverterContext(SPIRVToMSLConverterContext& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
+
+	/** Returns true if this layout is for push descriptors only. */
+	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
 	/** Constructs an instance for the specified device. */
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
@@ -135,6 +161,7 @@ protected:
 
 	std::vector<MVKDescriptorSetLayoutBinding> _bindings;
 	MVKShaderResourceBinding _mtlResourceCounts;
+	bool _isPushDescriptorLayout : 1;
 };
 
 
@@ -169,9 +196,8 @@ public:
 	uint32_t writeBindings(uint32_t srcStartIndex,
 						   uint32_t dstStartIndex,
 						   uint32_t count,
-						   const VkDescriptorImageInfo* pImageInfo,
-						   const VkDescriptorBufferInfo* pBufferInfo,
-						   const VkBufferView* pTexelBufferView);
+						   size_t stride,
+						   const void* pData);
 
 	/**
 	 * Updates the specified content arrays from the internal element bindings.
@@ -196,6 +222,7 @@ public:
 	uint32_t readBindings(uint32_t srcStartIndex,
 						  uint32_t dstStartIndex,
 						  uint32_t count,
+						  VkDescriptorType& descType,
 						  VkDescriptorImageInfo* pImageInfo,
 						  VkDescriptorBufferInfo* pBufferInfo,
 						  VkBufferView* pTexelBufferView);
@@ -234,15 +261,15 @@ public:
 	/** Updates the resource bindings in this instance from the specified content. */
 	template<typename DescriptorAction>
 	void writeDescriptorSets(const DescriptorAction* pDescriptorAction,
-							 const VkDescriptorImageInfo* pImageInfo,
-							 const VkDescriptorBufferInfo* pBufferInfo,
-							 const VkBufferView* pTexelBufferView);
+							 size_t stride,
+							 const void* pData);
 
 	/** 
 	 * Reads the resource bindings defined in the specified content 
 	 * from this instance into the specified collection of bindings.
 	 */
 	void readDescriptorSets(const VkCopyDescriptorSet* pDescriptorCopies,
+							VkDescriptorType& descType,
 							VkDescriptorImageInfo* pImageInfo,
 							VkDescriptorBufferInfo* pBufferInfo,
 							VkBufferView* pTexelBufferView);
@@ -292,6 +319,34 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKDescriptorUpdateTemplate
+
+/** Represents a Vulkan descriptor update template. */
+class MVKDescriptorUpdateTemplate : public MVKConfigurableObject {
+
+public:
+
+	/** Get the nth update template entry. */
+	const VkDescriptorUpdateTemplateEntryKHR* getEntry(uint32_t n) const;
+
+	/** Get the total number of entries. */
+	uint32_t getNumberOfEntries() const;
+
+	/** Get the type of this template. */
+	VkDescriptorUpdateTemplateTypeKHR getType() const;
+
+	/** Constructs an instance for the specified device. */
+	MVKDescriptorUpdateTemplate(MVKDevice* device, const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo);
+
+	/** Destructor. */
+	~MVKDescriptorUpdateTemplate() override = default;
+
+private:
+	VkDescriptorUpdateTemplateTypeKHR _type;
+	std::vector<VkDescriptorUpdateTemplateEntryKHR> _entries;
+};
+
+#pragma mark -
 #pragma mark Support functions
 
 /** Updates the resource bindings in the descriptor sets inditified in the specified content. */
@@ -299,6 +354,11 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 							const VkWriteDescriptorSet* pDescriptorWrites,
 							uint32_t copyCount,
 							const VkCopyDescriptorSet* pDescriptorCopies);
+
+/** Updates the resource bindings in the given descriptor set from the specified template. */
+void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
+										VkDescriptorUpdateTemplateKHR updateTemplate,
+										const void* pData);
 
 /**
  * If the shader stage binding has a binding defined for the specified stage, populates

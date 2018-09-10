@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include <vulkan/vulkan.h>
+#include "mvk_vulkan.h"
 #include <vulkan/vk_icd.h>
 #include <string>
 

@@ -50,6 +50,17 @@ public:
 	/** Populates the specified shader converter context. */
 	void populateShaderConverterContext(SPIRVToMSLConverterContext& context);
 
+	/** Updates a descriptor set in a command encoder. */
+	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+						   std::vector<VkWriteDescriptorSet>& descriptorWrites,
+						   uint32_t set);
+
+	/** Updates a descriptor set from a template in a command encoder. */
+	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
+						   MVKDescriptorUpdateTemplate* descriptorUpdateTemplate,
+						   uint32_t set,
+						   const void* pData);
+
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 

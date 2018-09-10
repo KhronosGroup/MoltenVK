@@ -1602,6 +1602,145 @@ MVK_PUBLIC_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(
 
 
 #pragma mark -
+#pragma mark VK_KHR_maintenace1 extension
+
+MVK_PUBLIC_SYMBOL void vkTrimCommandPoolKHR(
+    VkDevice                                    device,
+    VkCommandPool                               commandPool,
+    VkCommandPoolTrimFlagsKHR                   flags) {
+	MVKCommandPool* mvkCmdPool = (MVKCommandPool*)commandPool;
+    mvkCmdPool->trimCommandPool();
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_get_physical_device_properties2 extension
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceFeatures2KHR*               pFeatures) {
+    
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getFeatures(pFeatures);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceProperties2KHR*             pProperties) {
+
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getProperties(pProperties);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFormatProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkFormat                                    format,
+    VkFormatProperties2KHR*                     pFormatProperties) {
+    
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getFormatProperties(format, pFormatProperties);
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceImageFormatInfo2KHR*  pImageFormatInfo,
+    VkImageFormatProperties2KHR*                pImageFormatProperties) {
+    
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    return mvkPD->getImageFormatProperties(pImageFormatInfo, pImageFormatProperties);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties2KHR*                pQueueFamilyProperties) {
+    
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getQueueFamilyProperties(pQueueFamilyPropertyCount, pQueueFamilyProperties);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceMemoryProperties2KHR*       pMemoryProperties) {
+
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getPhysicalDeviceMemoryProperties(pMemoryProperties);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceSparseImageFormatInfo2KHR* pFormatInfo,
+    uint32_t*                                   pPropertyCount,
+    VkSparseImageFormatProperties2KHR*          pProperties) {
+
+    MVKLogUnimplemented("vkGetPhysicalDeviceSparseImageFormatProperties");
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_push_descriptor extension
+
+MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetKHR(
+    VkCommandBuffer                             commandBuffer,
+    VkPipelineBindPoint                         pipelineBindPoint,
+    VkPipelineLayout                            layout,
+    uint32_t                                    set,
+    uint32_t                                    descriptorWriteCount,
+    const VkWriteDescriptorSet*                 pDescriptorWrites) {
+
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdPushDescriptorSet(cmdBuff, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
+    VkCommandBuffer                            commandBuffer,
+    VkDescriptorUpdateTemplateKHR              descriptorUpdateTemplate,
+    VkPipelineLayout                           layout,
+    uint32_t                                   set,
+    const void*                                pData) {
+
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdPushDescriptorSetWithTemplate(cmdBuff, descriptorUpdateTemplate, layout, set, pData);
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_descriptor_update_template extension
+
+MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorUpdateTemplateKHR(
+    VkDevice                                       device,
+    const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo,
+    const VkAllocationCallbacks*                   pAllocator,
+    VkDescriptorUpdateTemplateKHR*                 pDescriptorUpdateTemplate) {
+
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    auto *mvkDUT = mvkDev->createDescriptorUpdateTemplate(pCreateInfo,
+                                                          pAllocator);
+    *pDescriptorUpdateTemplate = (VkDescriptorUpdateTemplateKHR)mvkDUT;
+    return mvkDUT->getConfigurationResult();
+}
+
+MVK_PUBLIC_SYMBOL void vkDestroyDescriptorUpdateTemplateKHR(
+    VkDevice                                    device,
+    VkDescriptorUpdateTemplateKHR               descriptorUpdateTemplate,
+    const VkAllocationCallbacks*                pAllocator) {
+
+    if (!descriptorUpdateTemplate) { return; }
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    mvkDev->destroyDescriptorUpdateTemplate((MVKDescriptorUpdateTemplate*)descriptorUpdateTemplate, pAllocator);
+}
+
+MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplateKHR(
+    VkDevice                                    device,
+    VkDescriptorSet                             descriptorSet,
+    VkDescriptorUpdateTemplateKHR               descriptorUpdateTemplate,
+    const void*                                 pData) {
+
+    mvkUpdateDescriptorSetWithTemplate(descriptorSet, descriptorUpdateTemplate, pData);
+}
+
+
+#pragma mark -
 #pragma mark Loader and Layer ICD interface extension
 
 #ifdef __cplusplus

@@ -58,12 +58,40 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures* features) {
     if (features) { *features = _features; }
 }
 
+void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2KHR* features) {
+    if (features) {
+        features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+        features->features = _features;
+    }
+}
+
 void MVKPhysicalDevice::getMetalFeatures(MVKPhysicalDeviceMetalFeatures* mtlFeatures) {
     if (mtlFeatures) { *mtlFeatures = _metalFeatures; }
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
     if (properties) { *properties = _properties; }
+}
+
+void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2KHR* properties) {
+    if (properties) {
+        properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+        properties->properties = _properties;
+        auto* next = (VkStructureType*)properties->pNext;
+        while (next) {
+            switch (*next) {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+                auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
+                pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
+                next = (VkStructureType*)pushDescProps->pNext;
+                break;
+            }
+            default:
+                next = (VkStructureType*)((VkPhysicalDeviceProperties2KHR*)next)->pNext;
+                break;
+            }
+        }
+    }
 }
 
 bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
@@ -88,6 +116,15 @@ bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
     if (pFormatProperties) {
 		*pFormatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
+	}
+}
+
+void MVKPhysicalDevice::getFormatProperties(VkFormat format,
+                                            VkFormatProperties2KHR* pFormatProperties) {
+	static VkFormatProperties noFmtFeats = { 0, 0, 0 };
+	if (pFormatProperties) {
+		pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
+		pFormatProperties->formatProperties = getFormatIsSupported(format) ? mvkVkFormatProperties(format) : noFmtFeats;
 	}
 }
 
@@ -146,6 +183,25 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
     pImageFormatProperties->maxResourceSize = kMVKUndefinedLargeUInt64;
 
     return VK_SUCCESS;
+}
+
+VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo,
+                                                     VkImageFormatProperties2KHR* pImageFormatProperties) {
+
+    if ( !pImageFormatInfo || pImageFormatInfo->sType != VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR ) {
+        return VK_ERROR_FORMAT_NOT_SUPPORTED;
+    }
+    if ( !getFormatIsSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+
+    if ( !pImageFormatProperties ) {
+        return VK_SUCCESS;
+    }
+
+    pImageFormatProperties->sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR;
+    return getImageFormatProperties(pImageFormatInfo->format, pImageFormatInfo->type,
+                                    pImageFormatInfo->tiling, pImageFormatInfo->usage,
+                                    pImageFormatInfo->flags,
+                                    &pImageFormatProperties->imageFormatProperties);
 }
 
 
@@ -293,12 +349,45 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 	return (*pCount <= qfCnt) ? VK_SUCCESS : VK_INCOMPLETE;
 }
 
+VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
+													 VkQueueFamilyProperties2KHR* queueProperties) {
+
+	uint32_t qfCnt = uint32_t(_queueFamilies.size());
+
+	// If properties aren't actually being requested yet, simply update the returned count
+	if ( !queueProperties ) {
+		*pCount = qfCnt;
+		return VK_SUCCESS;
+	}
+
+	// Determine how many families we'll return, and return that number
+	*pCount = min(*pCount, qfCnt);
+
+	// Now populate the queue families
+	if (queueProperties) {
+		for (uint32_t qfIdx = 0; qfIdx < *pCount; qfIdx++) {
+			queueProperties[qfIdx].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR;
+			_queueFamilies[qfIdx]->getProperties(&queueProperties[qfIdx].queueFamilyProperties);
+		}
+	}
+
+	return (*pCount <= qfCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+}
+
 
 #pragma mark Memory models
 
 /** Populates the specified memory properties with the memory characteristics of this device. */
 VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties* pMemoryProperties) {
 	*pMemoryProperties = _memoryProperties;
+	return VK_SUCCESS;
+}
+
+VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties2KHR* pMemoryProperties) {
+	if (pMemoryProperties) {
+		pMemoryProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR;
+		pMemoryProperties->memoryProperties = _memoryProperties;
+	}
 	return VK_SUCCESS;
 }
 
@@ -929,39 +1018,39 @@ void MVKPhysicalDevice::logGPUInfo() {
 			break;
 	}
 
-	string fsMsg = "GPU device:";
-	fsMsg += "\n\t\tmodel: %s";
-	fsMsg += "\n\t\ttype: %s";
-	fsMsg += "\n\t\tvendorID: %#06x";
-	fsMsg += "\n\t\tdeviceID: %#06x";
-	fsMsg += "\n\t\tpipelineCacheUUID: %s";
-	fsMsg += "\n\tsupports the following Metal Feature Sets:";
+	string logMsg = "GPU device:";
+	logMsg += "\n\t\tmodel: %s";
+	logMsg += "\n\t\ttype: %s";
+	logMsg += "\n\t\tvendorID: %#06x";
+	logMsg += "\n\t\tdeviceID: %#06x";
+	logMsg += "\n\t\tpipelineCacheUUID: %s";
+	logMsg += "\n\tsupports the following Metal Feature Sets:";
 
 #if MVK_IOS
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) { fsMsg += "\n\tviOS GPU Family 4 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) { logMsg += "\n\t\tiOS GPU Family 4 v1"; }
 
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) { fsMsg += "\n\t\tiOS GPU Family 3 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) { fsMsg += "\n\t\tiOS GPU Family 3 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) { fsMsg += "\n\t\tiOS GPU Family 3 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) { logMsg += "\n\t\tiOS GPU Family 3 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) { logMsg += "\n\t\tiOS GPU Family 3 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) { logMsg += "\n\t\tiOS GPU Family 3 v1"; }
 
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) { fsMsg += "\n\t\tiOS GPU Family 2 v4"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v3] ) { fsMsg += "\n\t\tiOS GPU Family 2 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v2] ) { fsMsg += "\n\t\tiOS GPU Family 2 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1] ) { fsMsg += "\n\t\tiOS GPU Family 2 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) { logMsg += "\n\t\tiOS GPU Family 2 v4"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v3] ) { logMsg += "\n\t\tiOS GPU Family 2 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v2] ) { logMsg += "\n\t\tiOS GPU Family 2 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1] ) { logMsg += "\n\t\tiOS GPU Family 2 v1"; }
 
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) { fsMsg += "\n\t\tiOS GPU Family 1 v4"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3] ) { fsMsg += "\n\t\tiOS GPU Family 1 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) { fsMsg += "\n\t\tiOS GPU Family 1 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v1] ) { fsMsg += "\n\t\tiOS GPU Family 1 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) { logMsg += "\n\t\tiOS GPU Family 1 v4"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3] ) { logMsg += "\n\t\tiOS GPU Family 1 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) { logMsg += "\n\t\tiOS GPU Family 1 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v1] ) { logMsg += "\n\t\tiOS GPU Family 1 v1"; }
 #endif
 
 #if MVK_MACOS
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) { fsMsg += "\n\t\tmacOS GPU Family 1 v3"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) { fsMsg += "\n\t\tmacOS GPU Family 1 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v1] ) { fsMsg += "\n\t\tmacOS GPU Family 1 v1"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) { logMsg += "\n\t\tmacOS GPU Family 1 v3"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) { logMsg += "\n\t\tmacOS GPU Family 1 v2"; }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v1] ) { logMsg += "\n\t\tmacOS GPU Family 1 v1"; }
 #endif
 
-	MVKLogInfo(fsMsg.c_str(), _properties.deviceName, devTypeStr.c_str(), _properties.vendorID, _properties.deviceID,
+	MVKLogInfo(logMsg.c_str(), _properties.deviceName, devTypeStr.c_str(), _properties.vendorID, _properties.deviceID,
 			   [[[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID] autorelease].UUIDString.UTF8String);
 }
 
@@ -1272,6 +1361,17 @@ void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 	mvkDP->destroy();
 }
 
+MVKDescriptorUpdateTemplate* MVKDevice::createDescriptorUpdateTemplate(
+	const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo,
+	const VkAllocationCallbacks* pAllocator) {
+	return new MVKDescriptorUpdateTemplate(this, pCreateInfo);
+}
+
+void MVKDevice::destroyDescriptorUpdateTemplate(MVKDescriptorUpdateTemplate* mvkDUT,
+												const VkAllocationCallbacks* pAllocator) {
+	mvkDUT->destroy();
+}
+
 MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCreateInfo,
 											 const VkAllocationCallbacks* pAllocator) {
 	return new MVKFramebuffer(this, pCreateInfo);
@@ -1433,7 +1533,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	initPerformanceTracking();
 
 	_physicalDevice = physicalDevice;
-	_pMVKConfig = &_physicalDevice->getInstance()->_mvkConfig;
+	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
 	_pFeatures = &_physicalDevice->_features;
 	_pMetalFeatures = &_physicalDevice->_metalFeatures;
 	_pProperties = &_physicalDevice->_properties;
@@ -1442,15 +1542,19 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;
 
-    // Verify the requested extension names. Should be same as those requested from instance.
-    setConfigurationResult(_physicalDevice->_mvkInstance->verifyExtensions(pCreateInfo->enabledExtensionCount,
-                                                                           pCreateInfo->ppEnabledExtensionNames));
+	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
-    _commandResourceFactory = new MVKCommandResourceFactory(this);
+    // Verify the requested extension names. Should be same as those requested from instance.
+	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
+	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
+												  pCreateInfo->ppEnabledExtensionNames,
+												  getInstance()->getDriverLayer()->getSupportedExtensions()));
 
 	initQueues(pCreateInfo);
 
-	MVKLogInfo("Created VkDevice to run on GPU %s", _pProperties->deviceName);
+	string logMsg = "Created VkDevice to run on GPU %s with the following Vulkan extensions enabled:";
+	logMsg += _enabledExtensions.enabledNamesString("\n\t\t", true);
+	MVKLogInfo(logMsg.c_str(), _pProperties->deviceName);
 }
 
 void MVKDevice::initPerformanceTracking() {

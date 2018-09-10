@@ -1,5 +1,5 @@
 /*
- * MVKFoundation.mm
+ * MVKFoundation.cpp
  *
  * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -52,8 +52,8 @@ char* mvkResultName(VkResult vkResult, char* name) {
             CASE_RESULT(VK_ERROR_VALIDATION_FAILED_EXT)
             CASE_RESULT(VK_ERROR_INVALID_SHADER_NV)
 
-            CASE_RESULT(VK_ERROR_OUT_OF_POOL_MEMORY_KHR)
-            CASE_RESULT(VK_ERROR_INVALID_EXTERNAL_HANDLE_KHR)
+            CASE_RESULT(VK_ERROR_OUT_OF_POOL_MEMORY)
+            CASE_RESULT(VK_ERROR_INVALID_EXTERNAL_HANDLE)
 
 		default:
 			sprintf(name, "UNKNOWN_VkResult(%d)", vkResult);

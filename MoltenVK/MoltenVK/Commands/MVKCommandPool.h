@@ -131,6 +131,10 @@ public:
 
     MVKCommandTypePool<MVKCmdDispatchIndirect> _cmdDispatchIndirectPool;
 
+    MVKCommandTypePool<MVKCmdPushDescriptorSet> _cmdPushDescriptorSetPool;
+
+    MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate> _cmdPushSetWithTemplatePool;
+
 
 #pragma mark Command resources
 
@@ -141,6 +145,9 @@ public:
 	/** Frees the specified command buffers from this pool. */
 	void freeCommandBuffers(uint32_t commandBufferCount,
 							const VkCommandBuffer* pCommandBuffers);
+
+	/** Release any held but unused memory back to the system. */
+	void trimCommandPool();
 
 
 #pragma mark Construction

@@ -32,7 +32,7 @@ MVK_PUBLIC_SYMBOL void vkGetMoltenVKConfigurationMVK(
     MVKConfiguration*                           pConfiguration) {
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-    if (pConfiguration) { *pConfiguration = mvkInst->_mvkConfig; }
+    if (pConfiguration) { *pConfiguration = *(MVKConfiguration*)mvkInst->getMoltenVKConfiguration(); }
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
@@ -40,7 +40,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
     MVKConfiguration*                           pConfiguration) {
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-    if (pConfiguration) { mvkInst->_mvkConfig = *pConfiguration; }
+    if (pConfiguration) { mvkInst->setMoltenVKConfiguration(pConfiguration); }
     return VK_SUCCESS;
 }
 
@@ -142,7 +142,7 @@ MVK_PUBLIC_SYMBOL void vkGetMoltenVKDeviceConfigurationMVK(
 	MVKDeviceConfiguration*                     pConfiguration) {
 
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	if (pConfiguration) { *pConfiguration = mvkDev->getInstance()->_mvkConfig; }
+	if (pConfiguration) { *pConfiguration = *(MVKConfiguration*)mvkDev->getInstance()->getMoltenVKConfiguration(); }
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKDeviceConfigurationMVK(
@@ -150,7 +150,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKDeviceConfigurationMVK(
 	MVKDeviceConfiguration*                     pConfiguration) {
 
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	if (pConfiguration) { mvkDev->getInstance()->_mvkConfig = *pConfiguration; }
+	if (pConfiguration) { mvkDev->getInstance()->setMoltenVKConfiguration(pConfiguration); }
 	return VK_SUCCESS;
 }
 
