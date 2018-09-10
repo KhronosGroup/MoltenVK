@@ -38,7 +38,7 @@ id<MTLCommandQueue> MVKQueueFamily::getMTLCommandQueue(uint32_t queueIndex) {
 	lock_guard<mutex> lock(_qLock);
 	id<MTLCommandQueue> mtlQ = _mtlQueues[queueIndex];
 	if ( !mtlQ ) {
-		uint32_t maxCmdBuffs = _physicalDevice->getInstance()->_mvkConfig.maxActiveMetalCommandBuffersPerPool;
+		uint32_t maxCmdBuffs = _physicalDevice->getInstance()->getMoltenVKConfiguration()->maxActiveMetalCommandBuffersPerPool;
 		mtlQ = [_physicalDevice->getMTLDevice() newCommandQueueWithMaxCommandBufferCount: maxCmdBuffs];		// retained
 		_mtlQueues[queueIndex] = mtlQ;
 	}
