@@ -60,26 +60,138 @@ extern "C" {
 /**
  * MoltenVK configuration settings.
  *
- * The default value of several of these settings is deterined at build time by the presence
- * of a DEBUG build setting, By default the DEBUG build setting is defined when MoltenVK is
- * compiled in Debug mode, and not defined when compiled in Release mode. The default values
- * of the other settings is determined by other compile build settings when MoltenVK is compiled.
- * See the description of the individual configuration structure members for more information.
+ * To change the MoltenVK configuration settings, use the vkGetMoltenVKConfigurationMVK() and
+ * vkSetMoltenVKConfigurationMVK() functions to retrieve, modify, and set a copy of this structure.
  *
  * To be active, some configuration settings must be set before a VkDevice is created.
  * See the description of the individual configuration structure members for more information.
+ *
+ * The initial value of several of these settings is deterined when MolttenVK is compiled by the
+ * presence of a DEBUG build setting, By default the DEBUG build setting is present when MoltenVK
+ * is compiled in Debug mode, and not present when compiled in Release mode. The initial values
+ * of the other settings are determined by other build settings when MoltenVK is compiled.
+ * See the description of the individual configuration structure members for more information.
  */
 typedef struct {
-    VkBool32 debugMode;                            /**< If enabled, several debugging capabilities will be enabled. Shader code will be logged during Runtime Shader Conversion. Adjusts settings that might trigger Metal validation but are otherwise acceptable to Metal runtime. Improves support for Xcode GPU Frame Capture. Default value is true in the presence of the DEBUG build setting, and false otherwise. */
-    VkBool32 shaderConversionFlipVertexY;          /**< If enabled, MSL vertex shader code created during Runtime Shader Conversion will flip the Y-axis of each vertex, as Vulkan coordinate system is inverse of OpenGL. Initial value is set by the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting when MoltenVK is compiled. By default the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting is set to true. */
-	VkBool32 synchronousQueueSubmits;              /**< If enabled, queue command submissions (vkQueueSubmit() & vkQueuePresentKHR()) will be processed on the thread that called the submission function. If disabled, processing will be dispatched to a GCD dispatch_queue whose priority is determined by VkDeviceQueueCreateInfo::pQueuePriorities during vkCreateDevice(). Initial value is set by the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting when MoltenVK is compiled. By default the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting is set to false, and command processing will be handled on a prioritizable queue thread. Changing the value of this parameter must be done before creating a VkDevice, for the change to take effect. */
-    VkBool32 supportLargeQueryPools;               /**< Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK allocates a MTLBuffer for each query pool, allowing each query pool to support 8192 queries, which may slow performance or cause unexpected behaviour if the query pool is not established prior to a Metal renderpass, or if the query pool is changed within a Metal renderpass. If disabled, one MTLBuffer will be shared by all query pools, which improves performance, but limits the total device queries to 8192. Initial value is set by the MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS build setting when MoltenVK is compiled. By default the MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS build setting is set to true. */
-	VkBool32 presentWithCommandBuffer;             /**< If enabled, each surface presentation is scheduled using a command buffer. Enabling this setting may improve rendering frame synchronization, but may result in reduced frame rates. Initial value is set by the MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER build setting when MoltenVK is compiled. By default the MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER build setting is set to true. */
-	VkBool32 swapchainMagFilterUseNearest;         /**< If enabled, swapchain images will use simple Nearest sampling when magnifying the swapchain image to fit a physical display surface. If disabled, swapchain images will use Linear sampling when magnifying the swapchain image to fit a physical display surface. Enabling this setting avoids smearing effects when swapchain images are simple interger multiples of display pixels (eg- macOS Retina, and typical of graphics apps and games), but may cause aliasing effects when using non-integer display scaling. Initial value is set by the MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST build setting when MoltenVK is compiled. By default the MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST build setting is set to true. */
-    VkBool32 displayWatermark;                     /**< If enabled, a MoltenVK logo watermark will be rendered on top of the scene. This can be enabled for publicity during demos. Initial value is set by the MVK_CONFIG_DISPLAY_WATERMARK build setting when MoltenVK is compiled. By default the MVK_CONFIG_DISPLAY_WATERMARK build setting is set to false. */
-    VkBool32 performanceTracking;                  /**< If enabled, per-frame performance statistics are tracked, optionally logged, and can be retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function. Initial value is true in the presence of the DEBUG build setting, and false otherwise. */
-    uint32_t performanceLoggingFrameCount;         /**< If non-zero, performance statistics will be periodically logged to the console, on a repeating cycle of this many frames per swapchain. The performanceTracking capability must also be enabled. Initial value is 300 in the presence of the DEBUG build setting, and zero otherwise. */
-	uint64_t metalCompileTimeout;			       /**< The maximum amount of time, in nanoseconds, to wait for a Metal library, function or pipeline state object to be compiled and created. If an internal error occurs with the Metal compiler, it can stall the thread for up to 30 seconds. Setting this value limits the delay to that amount of time. Initial value is set by the MVK_CONFIG_METAL_COMPILE_TIMEOUT build setting when MoltenVK is compiled. By default the MVK_CONFIG_METAL_COMPILE_TIMEOUT build setting is infinite. */
+
+	/**
+	 * If enabled, debugging capabilities will be enabled, including logging shader code
+	 * during runtime shader conversion.
+	 *
+	 * Initial value is true in the presence of the DEBUG build setting, and false otherwise.
+	 */
+    VkBool32 debugMode;
+
+	/**
+	 * If enabled, MSL vertex shader code created during runtime shader conversion will
+	 * flip the Y-axis of each vertex, as the Vulkan Y-axis is the inverse of OpenGL.
+	 * An alternate way to reverse the Y-axis is to employ a negative Y-axis value on
+	 * the viewport, in which case this parameter can be disabled.
+	 *
+	 * Initial value is set by the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting
+	 * when MoltenVK is compiled. By default the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
+	 * build setting is set to true.
+	 */
+    VkBool32 shaderConversionFlipVertexY;
+
+	/**
+	 * If enabled, queue command submissions (vkQueueSubmit() & vkQueuePresentKHR())
+	 * will be processed on the thread that called the submission function. If disabled,
+	 * processing will be dispatched to a GCD dispatch_queue whose priority is determined
+	 * by VkDeviceQueueCreateInfo::pQueuePriorities during vkCreateDevice().
+	 *
+	 * Initial value is set by the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting when
+	 * MoltenVK is compiled. By default the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting
+	 * is set to false, and command processing will be handled on a prioritizable queue thread.
+	 * Changing the value of this parameter must be done before creating a VkDevice,
+	 * for the change to take effect.
+	 */
+	VkBool32 synchronousQueueSubmits;
+
+	/**
+	 * The maximum number of command buffers that can be concurrently active per Vulkan command pool.
+	 *
+	 * Initial value is set by the MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL build setting
+	 * when MoltenVK is compiled. By default the MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL
+	 * build setting is set to 64. Changing the value of this parameter must be done before creating
+	 * a VkDevice, for the change to take effect.
+	 */
+	uint32_t maxActiveMetalCommandBuffersPerPool;
+
+	/**
+	 * Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK
+	 * allocates a MTLBuffer for each query pool, allowing each query pool to support
+	 * 8192 queries, which may slow performance or cause unexpected behaviour if the query
+	 * pool is not established prior to a Metal renderpass, or if the query pool is changed
+	 * within a renderpass. If disabled, one MTLBuffer will be shared by all query pools,
+	 * which improves performance, but limits the total device queries to 8192.
+	 *
+	 * Initial value is set by the MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS build setting
+	 * when MoltenVK is compiled. By default the MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
+	 * build setting is set to true.
+	 */
+	VkBool32 supportLargeQueryPools;
+
+	/**
+	 * If enabled, each surface presentation is scheduled using a command buffer. Enabling this
+	 * setting may improve rendering frame synchronization, but may result in reduced frame rates.
+	 *
+	 * Initial value is set by the MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER build setting when MoltenVK
+	 * is compiled. By default the MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER build setting is set to true.
+	 */
+	VkBool32 presentWithCommandBuffer;
+
+	/**
+	 * If enabled, swapchain images will use simple Nearest sampling when magnifying the
+	 * swapchain image to fit a physical display surface. If disabled, swapchain images will
+	 * use Linear sampling when magnifying the swapchain image to fit a physical display surface.
+	 * Enabling this setting avoids smearing effects when swapchain images are simple interger
+	 * multiples of display pixels (eg- macOS Retina, and typical of graphics apps and games),
+	 * but may cause aliasing effects when using non-integer display scaling.
+	 *
+	 * Initial value is set by the MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST build setting
+	 * when MoltenVK is compiled. By default the MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST
+	 * build setting is set to true.
+	 */
+	VkBool32 swapchainMagFilterUseNearest;
+
+	/**
+	 * The maximum amount of time, in nanoseconds, to wait for a Metal library, function, or
+	 * pipeline state object to be compiled and created by the Metal compiler. An internal error
+	 * within the Metal compiler can stall the thread for up to 30 seconds. Setting this value
+	 * limits that delay to a specified amount of time, allowing shader compilations to fail fast.
+	 *
+	 * Initial value is set by the MVK_CONFIG_METAL_COMPILE_TIMEOUT build setting when MoltenVK
+	 * is compiled. By default the MVK_CONFIG_METAL_COMPILE_TIMEOUT build setting is infinite.
+	 */
+	uint64_t metalCompileTimeout;
+
+	/**
+	 * If enabled, per-frame performance statistics are tracked, optionally logged, and can be
+	 * retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics
+	 * are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function.
+	 *
+	 * Initial value is true in the presence of the DEBUG build setting, and false otherwise.
+	 */
+	VkBool32 performanceTracking;
+
+	/**
+	 * If non-zero, performance statistics will be periodically logged to the console, on a repeating
+	 * cycle of this many frames per swapchain. The performanceTracking capability must also be enabled.
+	 *
+	 * Initial value is 300 in the presence of the DEBUG build setting, and zero otherwise.
+	 */
+	uint32_t performanceLoggingFrameCount;
+
+	/**
+	 * If enabled, a MoltenVK logo watermark will be rendered on top of the scene.
+	 * This can be enabled for publicity during demos.
+	 *
+	 * Initial value is set by the MVK_CONFIG_DISPLAY_WATERMARK build setting when MoltenVK
+	 * is compiled. By default the MVK_CONFIG_DISPLAY_WATERMARK build setting is set to false.
+	 */
+	VkBool32 displayWatermark;
+
 } MVKConfiguration;
 
 /** Features provided by the current implementation of Metal on the current device. */

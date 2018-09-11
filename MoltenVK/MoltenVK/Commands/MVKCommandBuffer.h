@@ -439,64 +439,6 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKMTLCommandBufferCountdown
-
-/**
- * Abstract class that can be initialized with the number of active MTLCommandBuffers and the 
- * ID of the MTLCommandBuffer after those tracked by this countdown, counts down as each earlier 
- * active MTLCommandBuffer completes, and takes action when the countdown reaches zero.
- *
- * Subclasses must override the finish() member function to perform the action
- * that is to be taken upon completion of the countdown.
- *
- * This class is not thread-safe. When using this class with multiple threads,
- * you must ensure that operations that change the count value are guarded.
- */
-class MVKMTLCommandBufferCountdown : public MVKBaseObject {
-
-public:
-
-	/** 
-	 * Sets the number of active MTLCommandBuffers and the ID of the next MTLCommandBuffer
-     * after those tracked by this countdown. This countdown is interested in MTLCommandBuffers
-     * whose ID's are less than the specified ID.
-	 *
-	 * If the count is zero, the finish() member function is called.
-	 *
-	 * Returns whether the count is zero. If this function returns true, it is possible
-	 * that this intance has completed and has been destroyed. No further references should be
-	 * made to this instance.
-	 */
-	bool setActiveMTLCommandBufferCount(uint32_t count, MVKMTLCommandBufferID mtlCmdBuffID);
-
-	/** 
-	 * Called when the MTLCommandBuffer with the specified ID has completed. If the specified
-	 * ID is less than the ID registered via the setActiveMTLCommandBufferCount() function, 
-     * the count of active MTLCommandBuffers is decremented. If the count is zero, the finish() 
-     * member function is called.
-	 *
-	 * Returns whether the count is now at zero. If this function returns true, it is possible
-	 * that this intance has completed and has been destroyed. No further references should be
-	 * made to this instance.
-	 */
-	bool mtlCommandBufferHasCompleted(MVKMTLCommandBufferID mtlCmdBuffID);
-
-	/** Returns the current count value. */
-	uint32_t getCount();
-
-protected:
-
-	/** Performs the action to take when the count has reached zero. */
-	virtual void finish() = 0;
-
-    bool checkFinished();
-
-	uint32_t _activeMTLCommandBufferCount;
-	MVKMTLCommandBufferID _maxMTLCmdBuffID;
-};
-
-
-#pragma mark -
 #pragma mark Support functions
 
 /** Returns a name, suitable for use as a MTLCommandBuffer label, based on the MVKCommandUse. */

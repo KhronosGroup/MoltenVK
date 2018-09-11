@@ -527,35 +527,6 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
 
 
 #pragma mark -
-#pragma mark MVKMTLCommandBufferCountdown
-
-bool MVKMTLCommandBufferCountdown::setActiveMTLCommandBufferCount(uint32_t count,
-                                                                  MVKMTLCommandBufferID mtlCmdBuffID) {
-    _activeMTLCommandBufferCount = count;
-    _maxMTLCmdBuffID = mtlCmdBuffID;
-
-    return checkFinished();
-}
-
-bool MVKMTLCommandBufferCountdown::mtlCommandBufferHasCompleted(MVKMTLCommandBufferID mtlCmdBuffID) {
-    if ( (_activeMTLCommandBufferCount > 0) && (mtlCmdBuffID < _maxMTLCmdBuffID) ) {
-        _activeMTLCommandBufferCount--;
-    }
-    return checkFinished();
-}
-
-// If the count of active MTLCommandBuffers is zero, calls the finish() member function.
-// Returns whether the count is now at zero.
-bool MVKMTLCommandBufferCountdown::checkFinished() {
-    bool isDone = (_activeMTLCommandBufferCount == 0);
-    if (isDone) { finish();	}
-    return isDone;
-}
-
-uint32_t MVKMTLCommandBufferCountdown::getCount() { return _activeMTLCommandBufferCount; }
-
-
-#pragma mark -
 #pragma mark Support functions
 
 NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse) {
