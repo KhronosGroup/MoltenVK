@@ -327,6 +327,19 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     return VK_SUCCESS;
 }
 
+MTLTextureUsage MVKImage::getMTLTextureUsage() {
+	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
+	// If this is a depth/stencil texture, and the device supports it, tell
+	// Metal we may create texture views of this, too.
+	if ((_mtlPixelFormat == MTLPixelFormatDepth32Float_Stencil8
+#if MVK_MACOS
+		 || _mtlPixelFormat == MTLPixelFormatDepth24Unorm_Stencil8
+#endif
+		) && _device->_pMetalFeatures->stencilViews)
+		mvkEnableFlag(usage, MTLTextureUsagePixelFormatView);
+	return usage;
+}
+
 // Returns an autoreleased Metal texture descriptor constructed from the properties of this image.
 MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
 	MTLTextureDescriptor* mtlTexDesc = [[MTLTextureDescriptor alloc] init];
@@ -338,7 +351,7 @@ MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
 	mtlTexDesc.mipmapLevelCount = _mipLevels;
 	mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_samples);
 	mtlTexDesc.arrayLength = _arrayLayers;
-	mtlTexDesc.usageMVK = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
+	mtlTexDesc.usageMVK = getMTLTextureUsage();
 	mtlTexDesc.storageModeMVK = getMTLStorageMode();
 	mtlTexDesc.cpuCacheMode = getMTLCPUCacheMode();
 
@@ -464,12 +477,12 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
     _isDepthStencilAttachment = (mvkAreFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
                                  mvkAreFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
-	_canSupportMTLTextureView = !_isDepthStencilAttachment;
+	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
     _hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
 	_isLinear = validateLinear(pCreateInfo);
 	_usesTexelBuffer = false;
 
-   // Calc _byteCount after _mtlTexture & _byteAlignment
+    // Calc _byteCount after _mtlTexture & _byteAlignment
     for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
         _byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
     }
@@ -717,6 +730,22 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkCompon
                 return MTLPixelFormatRGBA8Unorm_sRGB;
             }
             break;
+
+        case MTLPixelFormatDepth32Float_Stencil8:
+            if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+                matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM} ) ) {
+                return MTLPixelFormatX32_Stencil8;
+            }
+            break;
+
+#if MVK_MACOS
+        case MTLPixelFormatDepth24Unorm_Stencil8:
+            if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+                matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM} ) ) {
+                return MTLPixelFormatX24_Stencil8;
+            }
+            break;
+#endif
 
         default:
             break;
