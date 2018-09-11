@@ -46,7 +46,7 @@ public:
 	inline uint32_t getIndex() { return _queueFamilyIndex; }
 
 	/** Populates the specified properties structure. */
-	void getProperties(VkQueueFamilyProperties* queueProperties) {
+	inline void getProperties(VkQueueFamilyProperties* queueProperties) {
 		if (queueProperties) { *queueProperties = _properties; }
 	}
 
@@ -86,29 +86,6 @@ public:
 
 	/** Block the current thread until this queue is idle. */
 	VkResult waitIdle(MVKCommandUse cmdBuffUse);
-
-	/**
-	 * Retrieves a MTLCommandBuffer instance from the contained MTLCommandQueue, adds a 
-	 * completion handler to it so that the mtlCommandBufferHasCompleted() function will 
-	 * be called when the MTLCommandBuffer completes, and returns the MTLCommandBuffer.
-	 */
-	id<MTLCommandBuffer> makeMTLCommandBuffer(NSString* mtlCmdBuffLabel);
-
-	/** Called automatically when the specified MTLCommandBuffer with the specified ID has completed. */
-	void mtlCommandBufferHasCompleted(id<MTLCommandBuffer> mtlCmdBuff, MVKMTLCommandBufferID mtlCmdBuffID);
-
-	/**
-	 * Registers the specified countdown object. This function sets the count value
-	 * of the countdown object to the current number of incomplete MTLCommandBuffers,
-	 * and marks the countdown object with the ID of the most recently registered
-	 * MTLCommandBuffer. The countdown object will be decremented each time any
-	 * MTLCommandBuffer with an ID less than the ID of the most recent MTLCommandBuffer
-	 * at the time the countdown object was registered.
-	 *
-	 * If the current number of incomplete MTLCommandBuffers is zero, the countdown
-	 * object will indicate that it is already completed, and will not be registered.
-	 */
-	void registerMTLCommandBufferCountdown(MVKMTLCommandBufferCountdown* countdown);
 
     /** Returns the command encoding pool. */
     inline MVKCommandEncodingPool* getCommandEncodingPool() { return &_commandEncodingPool; }
@@ -161,33 +138,10 @@ protected:
 	dispatch_queue_t _execQueue;
 	id<MTLCommandQueue> _mtlQueue;
 	std::string _name;
-	std::vector<MVKMTLCommandBufferCountdown*> _completionCountdowns;
-	std::mutex _completionLock;
-	uint32_t _activeMTLCommandBufferCount;
 	MVKMTLCommandBufferID _nextMTLCmdBuffID;
     MVKCommandEncodingPool _commandEncodingPool;
 	MVKGPUCaptureScope* _submissionCaptureScope;
 	MVKGPUCaptureScope* _presentationCaptureScope;
-};
-
-
-#pragma mark -
-#pragma mark MVKQueueCommandBufferSubmissionCountdown
-
-/** Counts down MTLCommandBuffers on behalf of an MVKQueueCommandBufferSubmission instance. */
-class MVKQueueCommandBufferSubmissionCountdown : public MVKMTLCommandBufferCountdown {
-
-public:
-
-	/** Constructs an instance. */
-	MVKQueueCommandBufferSubmissionCountdown(MVKQueueCommandBufferSubmission* qSub);
-
-protected:
-
-	/** Performs the action to take when the count has reached zero. */
-	virtual void finish();
-
-	MVKQueueCommandBufferSubmission* _qSub;
 };
 
 
@@ -247,7 +201,7 @@ public:
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 
 	/** Commits and releases the currently active MTLCommandBuffer. */
-	void commitActiveMTLCommandBuffer();
+	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
 
 	/** 
      * Constructs an instance for the device and queue.
@@ -265,9 +219,6 @@ public:
 protected:
 	friend MVKCommandEncoder;
 
-    NSString* getMTLCommandBufferName();
-
-	MVKQueueCommandBufferSubmissionCountdown _cmdBuffCountdown;
 	std::vector<MVKCommandBuffer*> _cmdBuffers;
 	std::vector<MVKSemaphore*> _signalSemaphores;
 	MVKFence* _fence;

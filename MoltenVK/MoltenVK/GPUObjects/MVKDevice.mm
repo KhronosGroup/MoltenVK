@@ -1054,20 +1054,19 @@ void MVKPhysicalDevice::logGPUInfo() {
 			   [[[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID] autorelease].UUIDString.UTF8String);
 }
 
-/** Initializes the queue families supported by this instance. */
+// Initializes the queue families supported by this instance.
 void MVKPhysicalDevice::initQueueFamilies() {
-
-	// TODO: determine correct values
 	VkQueueFamilyProperties qfProps;
+	uint32_t qfIdx;
+
+	qfProps.queueCount = 1;		// In Metal, each family must have a single queue
+
+	qfIdx = 0;
 	qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT);
-	qfProps.queueCount = 8;
 	qfProps.timestampValidBits = 64;
 	qfProps.minImageTransferGranularity = { 1, 1, 1};
 
-	uint32_t qfCount = 1;
-	for (uint32_t qfIdx = 0; qfIdx < qfCount; qfIdx++) {
-		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx, &qfProps));
-	}
+	_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx, &qfProps));
 }
 
 MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) {
@@ -1551,18 +1550,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 												  pCreateInfo->ppEnabledExtensionNames,
 												  getInstance()->getDriverLayer()->getSupportedExtensions()));
 
-	// Create the queues
-	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
-	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
-		const VkDeviceQueueCreateInfo* pQFInfo = &pCreateInfo->pQueueCreateInfos[qrIdx];
-		uint32_t qfIdx = pQFInfo->queueFamilyIndex;
-		MVKQueueFamily* qFam = _physicalDevice->_queueFamilies[qfIdx];
-		_queuesByQueueFamilyIndex.resize(qfIdx + 1);	// Ensure an entry for this queue family exists
-		auto& queues = _queuesByQueueFamilyIndex[qfIdx];
-		for (uint32_t qIdx = 0; qIdx < pQFInfo->queueCount; qIdx++) {
-			queues.push_back(new MVKQueue(this, qFam, qIdx, pQFInfo->pQueuePriorities[qIdx]));
-		}
-	}
+	initQueues(pCreateInfo);
 
 	string logMsg = "Created VkDevice to run on GPU %s with the following Vulkan extensions enabled:";
 	logMsg += _enabledExtensions.enabledNamesString("\n\t\t", true);
@@ -1588,6 +1576,21 @@ void MVKDevice::initPerformanceTracking() {
 	_performanceStatistics.pipelineCache.writePipelineCache = initPerf;
 	_performanceStatistics.pipelineCache.readPipelineCache = initPerf;
 	_performanceStatistics.queue.mtlQueueAccess = initPerf;
+}
+
+// Create the command queues
+void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
+	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
+	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
+		const VkDeviceQueueCreateInfo* pQFInfo = &pCreateInfo->pQueueCreateInfos[qrIdx];
+		uint32_t qfIdx = pQFInfo->queueFamilyIndex;
+		MVKQueueFamily* qFam = _physicalDevice->_queueFamilies[qfIdx];
+		_queuesByQueueFamilyIndex.resize(qfIdx + 1);	// Ensure an entry for this queue family exists
+		auto& queues = _queuesByQueueFamilyIndex[qfIdx];
+		for (uint32_t qIdx = 0; qIdx < pQFInfo->queueCount; qIdx++) {
+			queues.push_back(new MVKQueue(this, qFam, qIdx, pQFInfo->pQueuePriorities[qIdx]));
+		}
+	}
 }
 
 MVKDevice::~MVKDevice() {
