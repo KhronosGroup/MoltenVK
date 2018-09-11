@@ -759,7 +759,7 @@ MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImag
     }
     if ( mvkAreFlagsEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
         mvkEnableFlag(mtlUsage, MTLTextureUsageRenderTarget);
-        mvkEnableFlag(mtlUsage, MTLTextureUsagePixelFormatView);
+        mvkDisableFlag(mtlUsage, MTLTextureUsagePixelFormatView);        // Clears bit. Do this last.
     }
 
     return mtlUsage;

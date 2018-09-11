@@ -327,6 +327,19 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     return VK_SUCCESS;
 }
 
+MTLTextureUsage MVKImage::getMTLTextureUsage() {
+	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
+	// If this is a depth/stencil texture, and the device supports it, tell
+	// Metal we may create texture views of this, too.
+	if ((_mtlPixelFormat == MTLPixelFormatDepth32Float_Stencil8
+#if MVK_MACOS
+		 || _mtlPixelFormat == MTLPixelFormatDepth24Unorm_Stencil8
+#endif
+		) && _device->_pMetalFeatures->stencilViews)
+		mvkEnableFlag(usage, MTLTextureUsagePixelFormatView);
+	return usage;
+}
+
 // Returns an autoreleased Metal texture descriptor constructed from the properties of this image.
 MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
 	MTLTextureDescriptor* mtlTexDesc = [[MTLTextureDescriptor alloc] init];
@@ -338,7 +351,7 @@ MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
 	mtlTexDesc.mipmapLevelCount = _mipLevels;
 	mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_samples);
 	mtlTexDesc.arrayLength = _arrayLayers;
-	mtlTexDesc.usageMVK = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
+	mtlTexDesc.usageMVK = getMTLTextureUsage();
 	mtlTexDesc.storageModeMVK = getMTLStorageMode();
 	mtlTexDesc.cpuCacheMode = getMTLCPUCacheMode();
 
