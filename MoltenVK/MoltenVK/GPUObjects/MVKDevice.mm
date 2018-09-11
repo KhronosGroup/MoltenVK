@@ -423,6 +423,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 2);
         _metalFeatures.shaderSpecialization = true;
+        _metalFeatures.stencilViews = true;
     }
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2);
@@ -454,6 +455,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 2);
         _metalFeatures.dynamicMTLBuffers = true;
         _metalFeatures.shaderSpecialization = true;
+        _metalFeatures.stencilViews = true;
         _metalFeatures.maxMTLBufferSize = (1 * GIBI);
     }
 

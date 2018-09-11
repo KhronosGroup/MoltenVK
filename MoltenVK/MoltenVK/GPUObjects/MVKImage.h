@@ -168,6 +168,9 @@ public:
 	/** Returns the Metal texture type of this image. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
 
+	/** Returns the Metal texture usage of this image. */
+	MTLTextureUsage getMTLTextureUsage();
+
     /** 
      * Returns whether the Metal texel size is the same as the Vulkan texel size.
      *
