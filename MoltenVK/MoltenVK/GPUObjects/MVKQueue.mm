@@ -126,62 +126,6 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 	return mvkWaitForFences(1, &fence, false);
 }
 
-// This function is guarded against conflict with the mtlCommandBufferHasCompleted()
-// function, but is not threadsafe against calls to this function itself, or to the
-// registerMTLCommandBufferCountdown() function from multiple threads. It is assumed
-// that this function and the registerMTLCommandBufferCountdown() function are called
-// from a single thread.
-id<MTLCommandBuffer> MVKQueue::makeMTLCommandBuffer(NSString* mtlCmdBuffLabel) {
-
-	// Retrieve a MTLCommandBuffer from the MTLCommandQueue.
-	id<MTLCommandBuffer> mtlCmdBuffer = [_mtlQueue commandBufferWithUnretainedReferences];
-    mtlCmdBuffer.label = mtlCmdBuffLabel;
-
-	// Assign a unique ID to the MTLCommandBuffer, and track when it completes.
-    MVKMTLCommandBufferID mtlCmdBuffID = _nextMTLCmdBuffID++;
-	[mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-		this->mtlCommandBufferHasCompleted(mtlCmdBuff, mtlCmdBuffID);
-	}];
-
-    // Keep a running count of the active MTLCommandBuffers.
-    // This needs to be guarded against a race condition with a MTLCommandBuffer completing.
-    lock_guard<mutex> lock(_completionLock);
-	_activeMTLCommandBufferCount++;
-
-	return mtlCmdBuffer;
-}
-
-// This function must be called after all corresponding calls to makeMTLCommandBuffer() and from the same thead.
-void MVKQueue::registerMTLCommandBufferCountdown(MVKMTLCommandBufferCountdown* countdown) {
-	lock_guard<mutex> lock(_completionLock);
-
-	if ( !countdown->setActiveMTLCommandBufferCount(_activeMTLCommandBufferCount, _nextMTLCmdBuffID) ) {
-		_completionCountdowns.push_back(countdown);
-	}
-}
-
-void MVKQueue::mtlCommandBufferHasCompleted(id<MTLCommandBuffer> mtlCmdBuff, MVKMTLCommandBufferID mtlCmdBuffID) {
-	lock_guard<mutex> lock(_completionLock);
-
-	_activeMTLCommandBufferCount--;
-
-	// Iterate through the countdowns, letting them know about the completion, and
-	// remove any countdowns that have completed by eliding them out of the array.
-	uint32_t ccCnt = (uint32_t)_completionCountdowns.size();
-	uint32_t currCCIdx = 0;
-	for (uint32_t ccIdx = 0; ccIdx < ccCnt; ccIdx++) {
-		MVKMTLCommandBufferCountdown* mvkCD = _completionCountdowns[ccIdx];
-		if ( !mvkCD->mtlCommandBufferHasCompleted(mtlCmdBuffID) ) {
-			// Only retain the countdown if it has not just completed.
-			// Move it forward in the array if any preceding countdowns have been removed.
-			if (currCCIdx != ccIdx) { _completionCountdowns[currCCIdx] = mvkCD; }
-			currCCIdx++;
-		}
-	}
-	// If any countdowns were removed, clear out the extras at the end
-	if (currCCIdx < ccCnt) { _completionCountdowns.resize(currCCIdx); }
-}
-
 
 #pragma mark Construction
 
@@ -193,7 +137,6 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 	_queueFamily = queueFamily;
 	_index = index;
 	_priority = priority;
-	_activeMTLCommandBufferCount = 0;
 	_nextMTLCmdBuffID = 1;
 
 	initName();
@@ -238,15 +181,6 @@ void MVKQueue::initGPUCaptureScopes() {
 }
 
 MVKQueue::~MVKQueue() {
-    // Delay destroying this queue until registerMTLCommandBufferCountdown() is done.
-    // registerMTLCommandBufferCountdown() can trigger a queue submission to finish(),
-    // which may trigger semaphores that control a queue waitIdle(). If that waitIdle()
-    // is being called by the app just prior to device and queue destruction, a rare race
-    // condition exists if registerMTLCommandBufferCountdown() does not complete before
-    // this queue is destroyed. If _completionLock is destroyed along with this queue,
-    // before registerMTLCommandBufferCountdown() completes, a SIGABRT crash will arise
-    // in the destructor of the lock created in registerMTLCommandBufferCountdown().
-    lock_guard<mutex> lock(_completionLock);
 	destroyExecQueue();
 	_submissionCaptureScope->destroy();
 	_presentationCaptureScope->destroy();
@@ -259,16 +193,6 @@ void MVKQueue::destroyExecQueue() {
 		_execQueue = nullptr;
 	}
 }
-
-
-#pragma mark -
-#pragma mark MVKQueueCommandBufferSubmissionCountdown
-
-MVKQueueCommandBufferSubmissionCountdown::MVKQueueCommandBufferSubmissionCountdown(MVKQueueCommandBufferSubmission* qSub) {
-	_qSub = qSub;
-}
-
-void MVKQueueCommandBufferSubmissionCountdown::finish() { _qSub->finish(); }
 
 
 #pragma mark -
@@ -298,14 +222,11 @@ void MVKQueueSubmission::recordResult(VkResult vkResult) {
 #pragma mark -
 #pragma mark MVKQueueCommandBufferSubmission
 
-std::atomic<uint32_t> _subCount;
-
 void MVKQueueCommandBufferSubmission::execute() {
 
 //	MVKLogDebug("Executing submission %p.", this);
 
-	auto cs = _queue->_submissionCaptureScope;
-	cs->beginScope();
+	_queue->_submissionCaptureScope->beginScope();
 
     // Execute each command buffer, or if no command buffers, but a fence or semaphores,
     // create an empty MTLCommandBuffer to trigger the semaphores and fence.
@@ -321,23 +242,20 @@ void MVKQueueCommandBufferSubmission::execute() {
 		}
     }
 
-	commitActiveMTLCommandBuffer();
-
-	cs->endScope();
-
-    // Register for callback when MTLCommandBuffers have completed
-    _queue->registerMTLCommandBufferCountdown(&_cmdBuffCountdown);
+	// Nothing after this because callback might destroy this instance before this function ends.
+	commitActiveMTLCommandBuffer(true);
 }
 
 id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer() {
 	if ( !_activeMTLCommandBuffer ) {
-		_activeMTLCommandBuffer = _queue->makeMTLCommandBuffer(getMTLCommandBufferName());
+		_activeMTLCommandBuffer = [_queue->_mtlQueue commandBufferWithUnretainedReferences];
+		_activeMTLCommandBuffer.label = mvkMTLCommandBufferLabel(_cmdBuffUse);
 		[_activeMTLCommandBuffer enqueue];
 	}
 	return _activeMTLCommandBuffer;
 }
 
-void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer() {
+void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCompletion) {
 
 	// Wait on each wait semaphore in turn. It doesn't matter which order they are signalled.
 	// We have delayed this as long as possible to allow as much filling of the MTLCommandBuffer
@@ -347,23 +265,25 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer() {
 		for (auto& ws : _waitSemaphores) { ws->wait(); }
 	}
 
-	[_activeMTLCommandBuffer commit];
-	_activeMTLCommandBuffer = nil;			// not retained
-}
+	if (signalCompletion) {
+		[_activeMTLCommandBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
+			this->finish();
+		}];
+	}
 
-// Returns an NSString suitable for use as a label
-NSString* MVKQueueCommandBufferSubmission::getMTLCommandBufferName() {
-    switch (_cmdBuffUse) {
-        case kMVKCommandUseQueueSubmit:
-            return [NSString stringWithFormat: @"%@ (virtual for sync)", mvkMTLCommandBufferLabel(_cmdBuffUse)];
-        default:
-            return mvkMTLCommandBufferLabel(_cmdBuffUse);
-    }
+	// Use temp var because callback may destroy this instance before this function ends.
+	id<MTLCommandBuffer> mtlCmdBuff = _activeMTLCommandBuffer;
+	_activeMTLCommandBuffer = nil;			// not retained
+	[mtlCmdBuff commit];
 }
 
 void MVKQueueCommandBufferSubmission::finish() {
 
 //	MVKLogDebug("Finishing submission %p. Submission count %u.", this, _subCount--);
+
+	// Performed here instead of as part of execute() for rare case where app destroys queue
+	// immediately after a waitIdle() is cleared by fence below, taking the capture scope with it.
+	_queue->_submissionCaptureScope->endScope();
 
 	// Signal each of the signal semaphores.
     for (auto& ss : _signalSemaphores) { ss->signal(); }
@@ -382,7 +302,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
         : MVKQueueSubmission(device,
 							 queue,
 							 (pSubmit ? pSubmit->waitSemaphoreCount : 0),
-							 (pSubmit ? pSubmit->pWaitSemaphores : nullptr)), _cmdBuffCountdown(this) {
+							 (pSubmit ? pSubmit->pWaitSemaphores : nullptr)) {
 
     // pSubmit can be null if just tracking the fence alone
     if (pSubmit) {
@@ -405,6 +325,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
     _cmdBuffUse= cmdBuffUse;
 	_activeMTLCommandBuffer = nil;
 
+//	static std::atomic<uint32_t> _subCount;
 //	MVKLogDebug("Creating submission %p. Submission count %u.", this, ++_subCount);
 }
 
