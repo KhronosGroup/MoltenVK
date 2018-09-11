@@ -135,11 +135,10 @@ protected:
 
 	bool canExecute();
 
-	VkCommandBufferLevel _level;
 	MVKCommand* _head;
 	MVKCommand* _tail;
 	uint32_t _commandCount;
-	std::atomic_flag _nonConcurrentIsExecuting;
+	std::atomic_flag _isExecutingNonConcurrently;
 	VkResult _recordingResult;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	bool _isSecondary;
@@ -284,14 +283,6 @@ public:
 	/** Ends encoding operations on the current Metal command encoder if it is a rendering encoder. */
 	void endMetalRenderEncoding();
 
-	/**
-	 * Commits any commands already encoded onto the command buffer, to ensure they are
-	 * completed as quickly as possible, without waiting for future commands to be encoded.
-	 *
-	 * If a render pass is currently active, command flushing will occur at the end of the render pass.
-	 */
-	void flush();
-
 	/** 
 	 * The current Metal compute encoder for the specified use,
 	 * which determines the label assigned to the returned encoder.
@@ -434,7 +425,6 @@ protected:
     MVKCommandBufferBatchPosition _batchPosition;
     uint32_t _flushCount = 0;
 	bool _isRenderingEntireAttachment;
-	bool _isAwaitingFlush;
 };
 
 
