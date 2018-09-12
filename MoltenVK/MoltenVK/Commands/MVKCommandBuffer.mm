@@ -33,9 +33,11 @@ using namespace std;
 #pragma mark MVKCommandBuffer
 
 VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
+
+	reset(0);
+
 	_recordingResult = VK_SUCCESS;
 	_canAcceptCommands = true;
-	reset(0);
 
 	VkCommandBufferUsageFlags usage = pBeginInfo->flags;
 	_isReusable = !mvkAreFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
@@ -47,7 +49,6 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	bool hasInheritInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
 	_doesContinueRenderPass = mvkAreFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
 
-	_wasExecuted = false;
 	return _recordingResult;
 }
 
@@ -61,8 +62,15 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 
 	_head = nullptr;
 	_tail = nullptr;
+	_doesContinueRenderPass = false;
+	_canAcceptCommands = false;
+	_isReusable = false;
+	_supportsConcurrentExecution = false;
+	_wasExecuted = false;
+	_isExecutingNonConcurrently.clear();
+	_recordingResult = VK_NOT_READY;
 	_commandCount = 0;
-    _initialVisibilityResultMTLBuffer = nil;       // not retained
+	_initialVisibilityResultMTLBuffer = nil;		// not retained
 
 	if (mvkAreFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
 		// TODO: what are we releasing or returning here?
@@ -83,7 +91,7 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
 	}
 
     if (_tail) { _tail->_next = command; }
-    command->_next = VK_NULL_HANDLE;
+    command->_next = nullptr;
     _tail = command;
     if ( !_head ) { _head = command; }
     _commandCount++;
@@ -93,14 +101,13 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
     recordResult(command->getConfigurationResult());
 }
 
-void MVKCommandBuffer::execute(MVKQueueCommandBufferSubmission* cmdBuffSubmit,
-                               const MVKCommandBufferBatchPosition& batchPosition) {
+void MVKCommandBuffer::execute(id<MTLCommandBuffer> mtlCmdBuff) {
 	if ( !canExecute() ) { return; }
 
-	MVKCommandEncoder encoder(this, batchPosition);
-	encoder.encode(cmdBuffSubmit);
+	MVKCommandEncoder encoder(this);
+	encoder.encode(mtlCmdBuff);
 
-	if ( !_supportsConcurrentExecution ) { _nonConcurrentIsExecuting.clear(); }
+	if ( !_supportsConcurrentExecution ) { _isExecutingNonConcurrently.clear(); }
 }
 
 bool MVKCommandBuffer::canExecute() {
@@ -113,8 +120,8 @@ bool MVKCommandBuffer::canExecute() {
 		return false;
 	}
 
-	// Do this test last so that _isExecution is only set if everthing else passes
-	if ( !_supportsConcurrentExecution && _nonConcurrentIsExecuting.test_and_set()) {
+	// Do this test last so that _isExecutingNonConcurrently is only set if everything else passes
+	if ( !_supportsConcurrentExecution && _isExecutingNonConcurrently.test_and_set()) {
 		recordResult(mvkNotifyErrorWithText(VK_NOT_READY, "Command buffer does not support concurrent execution."));
 		return false;
 	}
@@ -131,19 +138,11 @@ MVKCommandBuffer::MVKCommandBuffer(MVKDevice* device,
 
 	_commandPool = (MVKCommandPool*)pAllocateInfo->commandPool;
 	_commandPool->addCommandBuffer(this);
-	_level = pAllocateInfo->level;
-	_isSecondary = (_level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-	_doesContinueRenderPass = false;
-	_canAcceptCommands = false;
-	_isReusable = false;
-	_supportsConcurrentExecution = false;
-	_wasExecuted = false;
-	_nonConcurrentIsExecuting.clear();
-	_recordingResult = VK_NOT_READY;
-	_head = VK_NULL_HANDLE;
-	_tail = VK_NULL_HANDLE;
-	_commandCount = 0;
-    _initialVisibilityResultMTLBuffer = nil;
+	_isSecondary = (pAllocateInfo->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
+	_head = nullptr;
+	_tail = nullptr;
+
+	reset(0);
 }
 
 MVKCommandBuffer::~MVKCommandBuffer() {
@@ -155,13 +154,11 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 #pragma mark -
 #pragma mark MVKCommandEncoder
 
-void MVKCommandEncoder::encode(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
-	_queueSubmission = cmdBuffSubmit;
+void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 	_renderSubpassIndex = 0;
-	_isAwaitingFlush = false;
 
-	beginEncoding();
+	_mtlCmdBuffer = mtlCmdBuff;		// not retained
 
     MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
@@ -169,7 +166,8 @@ void MVKCommandEncoder::encode(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
         cmd = cmd->_next;
 	}
 
-	endEncoding();
+	endCurrentMetalEncoding();
+	finishQueries();
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
@@ -178,17 +176,6 @@ void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
 		cmd->encode(this);
 		cmd = cmd->_next;
 	}
-}
-
-// Retrieves and caches the MTLCommandBuffer from the queue submission
-void MVKCommandEncoder::beginEncoding() {
-	_mtlCmdBuffer = _queueSubmission->getActiveMTLCommandBuffer();
-}
-
-// Finishes the encoding process.
-void MVKCommandEncoder::endEncoding() {
-	endCurrentMetalEncoding();
-    finishQueries();
 }
 
 void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
@@ -335,8 +322,6 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 //    MVKLogDebugIf(_mtlRenderEncoder, "Render subpass end MTLRenderCommandEncoder.");
     [_mtlRenderEncoder endEncoding];
 	_mtlRenderEncoder = nil;    // not retained
-
-	if (_isAwaitingFlush) { flush(); }		// if awaiting a flush, do so now
 }
 
 void MVKCommandEncoder::endCurrentMetalEncoding() {
@@ -349,20 +334,6 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	[_mtlBlitEncoder endEncoding];
 	_mtlBlitEncoder = nil;          // not retained
     _mtlBlitEncoderUse = kMVKCommandUseNone;
-}
-
-void MVKCommandEncoder::flush() {
-	if (_mtlRenderEncoder) {
-		// If currently in a render pass, wait until it's done before flushing,
-		_isAwaitingFlush = true;
-	} else {
-		// Otherwise, flush immediately by committing the current MTLCommandBuffer and starting a new one.
-		_isAwaitingFlush = false;
-        _flushCount++;
-		endEncoding();
-		_queueSubmission->commitActiveMTLCommandBuffer();
-		beginEncoding();
-	}
 }
 
 id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandUse cmdUse) {
@@ -395,7 +366,7 @@ MVKPushConstantsCommandEncoderState* MVKCommandEncoder::getPushConstants(VkShade
 		case VK_SHADER_STAGE_COMPUTE_BIT:	return &_computePushConstants;
 		default:
 			MVKAssert(false, "Invalid shader stage: %u", shaderStage);
-			return VK_NULL_HANDLE;
+			return nullptr;
 	}
 }
 
@@ -435,7 +406,7 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
     }
 }
 
-MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _queueSubmission->_queue->getCommandEncodingPool(); }
+MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _cmdBuffer->_commandPool->getCommandEncodingPool(); }
 
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {
@@ -461,12 +432,10 @@ void MVKCommandEncoder::beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, u
 
 void MVKCommandEncoder::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
     _occlusionQueryState.endOcclusionQuery(pQueryPool, query);
-    flush();
 }
 
 void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) {
     addActivatedQuery(pQueryPool, query);
-    flush();
 }
 
 // Marks the specified query as activated
@@ -493,10 +462,8 @@ void MVKCommandEncoder::finishQueries() {
 
 #pragma mark Construction
 
-MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
-                                     const MVKCommandBufferBatchPosition& batchPosition) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
+MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
         _cmdBuffer(cmdBuffer),
-        _batchPosition(batchPosition),
         _graphicsPipelineState(this),
         _computePipelineState(this),
         _viewportState(this),

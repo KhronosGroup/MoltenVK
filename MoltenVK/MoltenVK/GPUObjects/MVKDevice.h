@@ -301,7 +301,7 @@ public:
 	PFN_vkVoidFunction getProcAddr(const char* pName);
 
 	/** Retrieves a queue at the specified index within the specified family. */
-	VkResult getDeviceQueue(uint32_t queueFamilyIndex, uint32_t queueIndex, VkQueue* pQueue);
+	MVKQueue* getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex);
 
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();

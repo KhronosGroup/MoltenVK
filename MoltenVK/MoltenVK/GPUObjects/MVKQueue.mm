@@ -132,7 +132,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 #define MVK_DISPATCH_QUEUE_QOS_CLASS		QOS_CLASS_USER_INITIATED
 
 MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority)
-        : MVKDispatchableDeviceObject(device), _commandEncodingPool(device) {
+        : MVKDispatchableDeviceObject(device) {
 
 	_queueFamily = queueFamily;
 	_index = index;
@@ -228,18 +228,13 @@ void MVKQueueCommandBufferSubmission::execute() {
 
 	_queue->_submissionCaptureScope->beginScope();
 
-    // Execute each command buffer, or if no command buffers, but a fence or semaphores,
-    // create an empty MTLCommandBuffer to trigger the semaphores and fence.
-    if ( !_cmdBuffers.empty() ) {
-		MVKCommandBufferBatchPosition cmdBuffPos = {1, uint32_t(_cmdBuffers.size()), _cmdBuffUse};
-		for (auto& cb : _cmdBuffers) {
-			cb->execute(this, cmdBuffPos);
-			cmdBuffPos.index++;
-		}
-    } else {
-		if (_fence || !_signalSemaphores.empty() ) {
-			getActiveMTLCommandBuffer();
-		}
+    // Execute each command buffer.
+	for (auto& cb : _cmdBuffers) { cb->execute(getActiveMTLCommandBuffer()); }
+
+	// If no command buffers were provided, but a fence or semaphores was,
+	// create an empty MTLCommandBuffer to trigger the semaphores and fence.
+	if (_cmdBuffers.empty() && (_fence || !_signalSemaphores.empty()) ) {
+		getActiveMTLCommandBuffer();
     }
 
 	// Nothing after this because callback might destroy this instance before this function ends.

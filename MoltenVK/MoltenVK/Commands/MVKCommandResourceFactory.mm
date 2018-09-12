@@ -300,7 +300,9 @@ MVKImage* MVKCommandResourceFactory::newMVKImage(MVKImageDescriptorData& imgData
         .pQueueFamilyIndices = nullptr,
         .initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED
     };
-    return _device->createImage(&createInfo, nullptr);
+	MVKImage* mvkImg = _device->createImage(&createInfo, nullptr);
+	mvkImg->bindDeviceMemory(_transferImageMemory, 0);
+	return mvkImg;
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferBytesMTLComputePipelineState() {
@@ -358,9 +360,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newMTLComputePipelineStat
 
 MVKCommandResourceFactory::MVKCommandResourceFactory(MVKDevice* device) : MVKBaseDeviceObject(device) {
 	initMTLLibrary();
+	initImageDeviceMemory();
 }
 
-/** Initializes the Metal shaders used for command activity. */
+// Initializes the Metal shaders used for command activity.
 void MVKCommandResourceFactory::initMTLLibrary() {
     uint64_t startTime = _device->getPerformanceTimestamp();
     @autoreleasepool {
@@ -373,8 +376,20 @@ void MVKCommandResourceFactory::initMTLLibrary() {
     _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 }
 
+// Initializes the empty device memory used to back temporary VkImages.
+void MVKCommandResourceFactory::initImageDeviceMemory() {
+	VkMemoryAllocateInfo allocInfo = {
+		.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+		.pNext = NULL,
+		.allocationSize = 0,
+		.memoryTypeIndex = _device->getVulkanMemoryTypeIndex(MTLStorageModePrivate),
+	};
+	_transferImageMemory = _device->allocateMemory(&allocInfo, nullptr);
+}
+
 MVKCommandResourceFactory::~MVKCommandResourceFactory() {
 	[_mtlLibrary release];
 	_mtlLibrary = nil;
+	if (_transferImageMemory) { _transferImageMemory->destroy(); }
 }
 

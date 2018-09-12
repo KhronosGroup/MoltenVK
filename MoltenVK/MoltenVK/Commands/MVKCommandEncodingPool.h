@@ -22,6 +22,7 @@
 #include "MVKCommandResourceFactory.h"
 #include "MVKMTLBufferAllocation.h"
 #include <unordered_map>
+#include <mutex>
 
 #import <Metal/Metal.h>
 
@@ -31,11 +32,10 @@
 
 /** 
  * Represents a pool containing transient resources that commands can use during encoding
- * onto a queue. This is distinct from a command pool, which contains resources that can be 
- * assigned to commands when their content is established.
+ * onto a queue. This is distinct from a command pool, which contains resources that can
+ * be assigned to commands when their content is established.
  *
- * Access to the content within this pool is not thread-safe. All access to the content
- * of this pool should be done during the MVKCommand::encode() member functions.
+ * Access to the content within this pool is thread-safe.
  */
 class MVKCommandEncodingPool : public MVKBaseDeviceObject {
 
@@ -104,14 +104,13 @@ public:
 	~MVKCommandEncodingPool() override;
 
 private:
-    void initTextureDeviceMemory();
 	void destroyMetalResources();
 
+	std::mutex _lock;
     std::unordered_map<MVKRPSKeyBlitImg, id<MTLRenderPipelineState>> _cmdBlitImageMTLRenderPipelineStates;
 	std::unordered_map<MVKRPSKeyClearAtt, id<MTLRenderPipelineState>> _cmdClearMTLRenderPipelineStates;
     std::unordered_map<MVKMTLDepthStencilDescriptorData, id<MTLDepthStencilState>> _mtlDepthStencilStates;
     std::unordered_map<MVKImageDescriptorData, MVKImage*> _transferImages;
-    MVKDeviceMemory* _transferImageMemory;
     MVKMTLBufferAllocator _mtlBufferAllocator;
     id<MTLSamplerState> _cmdBlitImageLinearMTLSamplerState = nil;
     id<MTLSamplerState> _cmdBlitImageNearestMTLSamplerState = nil;

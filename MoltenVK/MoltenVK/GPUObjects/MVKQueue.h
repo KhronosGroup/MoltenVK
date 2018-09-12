@@ -20,7 +20,6 @@
 
 #include "MVKDevice.h"
 #include "MVKCommandBuffer.h"
-#include "MVKCommandEncodingPool.h"
 #include "MVKImage.h"
 #include "MVKSync.h"
 #include <vector>
@@ -87,9 +86,6 @@ public:
 	/** Block the current thread until this queue is idle. */
 	VkResult waitIdle(MVKCommandUse cmdBuffUse);
 
-    /** Returns the command encoding pool. */
-    inline MVKCommandEncodingPool* getCommandEncodingPool() { return &_commandEncodingPool; }
-
 	/** Return the name of this queue. */
 	inline const std::string& getName() { return _name; }
 
@@ -139,7 +135,6 @@ protected:
 	id<MTLCommandQueue> _mtlQueue;
 	std::string _name;
 	MVKMTLCommandBufferID _nextMTLCmdBuffID;
-    MVKCommandEncodingPool _commandEncodingPool;
 	MVKGPUCaptureScope* _submissionCaptureScope;
 	MVKGPUCaptureScope* _presentationCaptureScope;
 };

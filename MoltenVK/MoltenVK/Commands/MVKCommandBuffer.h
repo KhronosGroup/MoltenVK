@@ -40,13 +40,6 @@ class MVKComputePipeline;
 
 typedef uint64_t MVKMTLCommandBufferID;
 
-/** The position of a specific MVKCommandBuffer within a batch as part of a queue submission. */
-typedef struct {
-    uint32_t index;
-    uint32_t count;
-    MVKCommandUse use;
-} MVKCommandBufferBatchPosition;
-
 
 #pragma mark -
 #pragma mark MVKCommandBuffer
@@ -71,15 +64,8 @@ public:
 	/** Returns the number of commands currently in this command buffer. */
 	inline uint32_t getCommandCount() { return _commandCount; }
 
-	/** 
-	 * Encode commands from this command buffer onto the Metal command buffer, as part of
-     * the execution of a batch of command buffers, where the position of this command buffer
-     * within that batch is specified by the batchPosition parameter.
-	 *
-	 * This call is thread-safe and can be called simultaneously from more than one thread.
-	 */
-	void execute(MVKQueueCommandBufferSubmission* cmdBuffSubmit,
-                 const MVKCommandBufferBatchPosition& batchPosition);
+	/** Encode commands from this command buffer onto the Metal command buffer. This call is thread-safe. */
+	void execute(id<MTLCommandBuffer> mtlCmdBuff);
 
 	/*** If no error has occured yet, records the specified result. */
     inline void recordResult(VkResult vkResult) { if (_recordingResult == VK_SUCCESS) { _recordingResult = vkResult; } }
@@ -135,11 +121,10 @@ protected:
 
 	bool canExecute();
 
-	VkCommandBufferLevel _level;
 	MVKCommand* _head;
 	MVKCommand* _tail;
 	uint32_t _commandCount;
-	std::atomic_flag _nonConcurrentIsExecuting;
+	std::atomic_flag _isExecutingNonConcurrently;
 	VkResult _recordingResult;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	bool _isSecondary;
@@ -237,7 +222,7 @@ class MVKCommandEncoder : public MVKBaseDeviceObject {
 public:
 
 	/** Encode commands from the command buffer onto the Metal command buffer. */
-	void encode(MVKQueueCommandBufferSubmission* cmdBuffSubmit);
+	void encode(id<MTLCommandBuffer> mtlCmdBuff);
 
 	/** Encode commands from the specified secondary command buffer onto the Metal command buffer. */
 	void encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer);
@@ -283,14 +268,6 @@ public:
 
 	/** Ends encoding operations on the current Metal command encoder if it is a rendering encoder. */
 	void endMetalRenderEncoding();
-
-	/**
-	 * Commits any commands already encoded onto the command buffer, to ensure they are
-	 * completed as quickly as possible, without waiting for future commands to be encoded.
-	 *
-	 * If a render pass is currently active, command flushing will occur at the end of the render pass.
-	 */
-	void flush();
 
 	/** 
 	 * The current Metal compute encoder for the specified use,
@@ -402,12 +379,9 @@ public:
 
 #pragma mark Construction
 
-	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
-                      const MVKCommandBufferBatchPosition& batchPosition);
+	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer);
 
 protected:
-	void beginEncoding();
-	void endEncoding();
     void addActivatedQuery(MVKQueryPool* pQueryPool, uint32_t query);
     void finishQueries();
 	void setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex);
@@ -416,7 +390,6 @@ protected:
     const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length);
     NSString* getMTLRenderCommandEncoderName();
 
-	MVKQueueCommandBufferSubmission* _queueSubmission;
 	VkSubpassContents _subpassContents;
 	MVKRenderPass* _renderPass;
 	uint32_t _renderSubpassIndex;
@@ -431,10 +404,8 @@ protected:
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
     MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
-    MVKCommandBufferBatchPosition _batchPosition;
     uint32_t _flushCount = 0;
 	bool _isRenderingEntireAttachment;
-	bool _isAwaitingFlush;
 };
 
 

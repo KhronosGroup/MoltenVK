@@ -1096,9 +1096,8 @@ PFN_vkVoidFunction MVKDevice::getProcAddr(const char* pName) {
 	return _physicalDevice->_mvkInstance->getProcAddr(pName);
 }
 
-VkResult MVKDevice::getDeviceQueue(uint32_t queueFamilyIndex, uint32_t queueIndex, VkQueue* pQueue) {
-	*pQueue = _queuesByQueueFamilyIndex[queueFamilyIndex][queueIndex]->getVkQueue();
-	return VK_SUCCESS;
+MVKQueue* MVKDevice::getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex) {
+	return _queuesByQueueFamilyIndex[queueFamilyIndex][queueIndex];
 }
 
 VkResult MVKDevice::waitIdle() {

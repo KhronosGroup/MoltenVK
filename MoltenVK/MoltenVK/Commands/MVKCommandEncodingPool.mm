@@ -24,67 +24,64 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKCommandEncodingPool
 
+// In order to provide thread-safety with minimal performance impact, each of these access
+// functions follows a 3-step pattern:
+//
+// 1) Retrieve resource without locking, and if it exists, return it.
+// 2) If it doesn't exist, lock, then test again if it exists, and if it does, return it.
+// 3) If it still does not exist, create and cache the resource, and return it.
+//
+// Step 1 handles the common case where the resource exists, without the expense of a lock.
+// Step 2 guards against a potential race condition where two threads get past Step 1 at
+// the same time, and then both barrel ahead onto Step 3.
+#define MVK_ENC_REZ_ACCESS(rezAccess, rezFactoryFunc)				\
+	auto rez = rezAccess;											\
+	if (rez) { return rez; }										\
+																	\
+	lock_guard<mutex> lock(_lock);									\
+	rez = rezAccess;												\
+	if (rez) { return rez; }										\
+																	\
+	rez = _device->getCommandResourceFactory()->rezFactoryFunc;		\
+	rezAccess = rez;												\
+	return rez
+
+
 id<MTLRenderPipelineState> MVKCommandEncodingPool::getCmdClearMTLRenderPipelineState(MVKRPSKeyClearAtt& attKey) {
-	id<MTLRenderPipelineState> rps = _cmdClearMTLRenderPipelineStates[attKey];
-	if ( !rps ) {
-		rps = _device->getCommandResourceFactory()->newCmdClearMTLRenderPipelineState(attKey);		// retained
-		_cmdClearMTLRenderPipelineStates[attKey] = rps;
-	}
-	return rps;
+	MVK_ENC_REZ_ACCESS(_cmdClearMTLRenderPipelineStates[attKey], newCmdClearMTLRenderPipelineState(attKey));
 }
 
 id<MTLRenderPipelineState> MVKCommandEncodingPool::getCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey) {
-    id<MTLRenderPipelineState> rps = _cmdBlitImageMTLRenderPipelineStates[blitKey];
-    if ( !rps ) {
-        rps = _device->getCommandResourceFactory()->newCmdBlitImageMTLRenderPipelineState(blitKey);	// retained
-        _cmdBlitImageMTLRenderPipelineStates[blitKey] = rps;
-    }
-    return rps;
+	MVK_ENC_REZ_ACCESS(_cmdBlitImageMTLRenderPipelineStates[blitKey], newCmdBlitImageMTLRenderPipelineState(blitKey));
 }
 
 id<MTLSamplerState> MVKCommandEncodingPool::getCmdBlitImageMTLSamplerState(MTLSamplerMinMagFilter mtlFilter) {
     switch (mtlFilter) {
-        case MTLSamplerMinMagFilterNearest:
-            if ( !_cmdBlitImageNearestMTLSamplerState ) {
-                _cmdBlitImageNearestMTLSamplerState = _device->getCommandResourceFactory()->newCmdBlitImageMTLSamplerState(mtlFilter);	// retained
-            }
-            return _cmdBlitImageNearestMTLSamplerState;
+		case MTLSamplerMinMagFilterNearest: {
+			MVK_ENC_REZ_ACCESS(_cmdBlitImageNearestMTLSamplerState, newCmdBlitImageMTLSamplerState(mtlFilter));
+		}
 
-        case MTLSamplerMinMagFilterLinear:
-            if ( !_cmdBlitImageLinearMTLSamplerState ) {
-                _cmdBlitImageLinearMTLSamplerState = _device->getCommandResourceFactory()->newCmdBlitImageMTLSamplerState(mtlFilter);		// retained
-            }
-            return _cmdBlitImageLinearMTLSamplerState;
+		case MTLSamplerMinMagFilterLinear: {
+			MVK_ENC_REZ_ACCESS(_cmdBlitImageLinearMTLSamplerState, newCmdBlitImageMTLSamplerState(mtlFilter));
+		}
     }
 }
 
 id<MTLDepthStencilState> MVKCommandEncodingPool::getMTLDepthStencilState(bool useDepth, bool useStencil) {
 
     if (useDepth && useStencil) {
-        if ( !_cmdClearDepthAndStencilDepthStencilState ) {
-            _cmdClearDepthAndStencilDepthStencilState = _device->getCommandResourceFactory()->newMTLDepthStencilState(useDepth, useStencil);  // retained
-        }
-        return _cmdClearDepthAndStencilDepthStencilState;
+		MVK_ENC_REZ_ACCESS(_cmdClearDepthAndStencilDepthStencilState, newMTLDepthStencilState(useDepth, useStencil));
     }
 
     if (useDepth) {
-        if ( !_cmdClearDepthOnlyDepthStencilState ) {
-            _cmdClearDepthOnlyDepthStencilState = _device->getCommandResourceFactory()->newMTLDepthStencilState(useDepth, useStencil);  // retained
-        }
-        return _cmdClearDepthOnlyDepthStencilState;
+		MVK_ENC_REZ_ACCESS(_cmdClearDepthOnlyDepthStencilState, newMTLDepthStencilState(useDepth, useStencil));
     }
 
     if (useStencil) {
-        if ( !_cmdClearStencilOnlyDepthStencilState ) {
-            _cmdClearStencilOnlyDepthStencilState = _device->getCommandResourceFactory()->newMTLDepthStencilState(useDepth, useStencil);  // retained
-        }
-        return _cmdClearStencilOnlyDepthStencilState;
+		MVK_ENC_REZ_ACCESS(_cmdClearStencilOnlyDepthStencilState, newMTLDepthStencilState(useDepth, useStencil));
     }
 
-    if ( !_cmdClearDefaultDepthStencilState ) {
-        _cmdClearDefaultDepthStencilState = _device->getCommandResourceFactory()->newMTLDepthStencilState(useDepth, useStencil);  // retained
-    }
-    return _cmdClearDefaultDepthStencilState;
+	MVK_ENC_REZ_ACCESS(_cmdClearDefaultDepthStencilState, newMTLDepthStencilState(useDepth, useStencil));
 }
 
 const MVKMTLBufferAllocation* MVKCommandEncodingPool::acquireMTLBufferAllocation(NSUInteger length) {
@@ -93,59 +90,28 @@ const MVKMTLBufferAllocation* MVKCommandEncodingPool::acquireMTLBufferAllocation
 
 
 id<MTLDepthStencilState> MVKCommandEncodingPool::getMTLDepthStencilState(MVKMTLDepthStencilDescriptorData& dsData) {
-    id<MTLDepthStencilState> dss = _mtlDepthStencilStates[dsData];
-    if ( !dss ) {
-        dss = _device->getCommandResourceFactory()->newMTLDepthStencilState(dsData);		// retained
-        _mtlDepthStencilStates[dsData] = dss;
-    }
-    return dss;
+	MVK_ENC_REZ_ACCESS(_mtlDepthStencilStates[dsData], newMTLDepthStencilState(dsData));
 }
 
 MVKImage* MVKCommandEncodingPool::getTransferMVKImage(MVKImageDescriptorData& imgData) {
-    MVKImage* mvkImg = _transferImages[imgData];
-    if ( !mvkImg ) {
-        mvkImg = _device->getCommandResourceFactory()->newMVKImage(imgData);
-        mvkImg->bindDeviceMemory(_transferImageMemory, 0);
-        _transferImages[imgData] = mvkImg;
-    }
-    return mvkImg;
+	MVK_ENC_REZ_ACCESS(_transferImages[imgData], newMVKImage(imgData));
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferBytesMTLComputePipelineState() {
-    if (_mtlCopyBufferBytesComputePipelineState == nil) {
-        _mtlCopyBufferBytesComputePipelineState = _device->getCommandResourceFactory()->newCmdCopyBufferBytesMTLComputePipelineState();
-    }
-    return _mtlCopyBufferBytesComputePipelineState;
+	MVK_ENC_REZ_ACCESS(_mtlCopyBufferBytesComputePipelineState, newCmdCopyBufferBytesMTLComputePipelineState());
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdFillBufferMTLComputePipelineState() {
-	if (_mtlFillBufferComputePipelineState == nil) {
-		_mtlFillBufferComputePipelineState = _device->getCommandResourceFactory()->newCmdFillBufferMTLComputePipelineState();
-	}
-	return _mtlFillBufferComputePipelineState;
+	MVK_ENC_REZ_ACCESS(_mtlFillBufferComputePipelineState, newCmdFillBufferMTLComputePipelineState());
 }
 
 #pragma mark Construction
 
 MVKCommandEncodingPool::MVKCommandEncodingPool(MVKDevice* device) : MVKBaseDeviceObject(device),
-    _mtlBufferAllocator(device, device->_pMetalFeatures->maxMTLBufferSize) {
-
-    initTextureDeviceMemory();
-}
-
-// Initializes the empty device memory used to back temporary VkImages.
-void MVKCommandEncodingPool::initTextureDeviceMemory() {
-    VkMemoryAllocateInfo allocInfo = {
-        .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-        .pNext = NULL,
-        .allocationSize = 0,
-        .memoryTypeIndex = _device->getVulkanMemoryTypeIndex(MTLStorageModePrivate),
-    };
-    _transferImageMemory = _device->allocateMemory(&allocInfo, nullptr);
+    _mtlBufferAllocator(device, device->_pMetalFeatures->maxMTLBufferSize, true) {
 }
 
 MVKCommandEncodingPool::~MVKCommandEncodingPool() {
-    if (_transferImageMemory) { _transferImageMemory->destroy(); }
 	destroyMetalResources();
 }
 

@@ -31,6 +31,8 @@ void MVKCommand::returnToPool() { _pool->returnObject(this); }
 
 MVKCommandPool* MVKCommand::getCommandPool() { return _pool->getCommandPool(); }
 
+MVKCommandEncodingPool* MVKCommand::getCommandEncodingPool() { return getCommandPool()->getCommandEncodingPool(); }
+
 MVKDevice* MVKCommand::getDevice() { return getCommandPool()->getDevice(); }
 
 id<MTLDevice> MVKCommand::getMTLDevice() { return getCommandPool()->getMTLDevice(); }

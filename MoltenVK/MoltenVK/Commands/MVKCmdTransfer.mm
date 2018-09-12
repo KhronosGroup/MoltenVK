@@ -311,7 +311,7 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
 
         uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 
-        MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
+        MVKCommandEncodingPool* cmdEncPool = getCommandEncodingPool();
 
         for (auto& bltRend : _mtlTexBlitRenders) {
 
@@ -471,7 +471,7 @@ void MVKCmdResolveImage::addResolveSlices(const VkImageResolve& resolveRegion) {
 }
 
 void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
-    MVKImage* xfrImage = cmdEncoder->getCommandEncodingPool()->getTransferMVKImage(_transferImageData);
+    MVKImage* xfrImage = getCommandEncodingPool()->getTransferMVKImage(_transferImageData);
 
     id<MTLTexture> xfrMTLTex = xfrImage->getMTLTexture();
     id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
@@ -590,7 +590,7 @@ void MVKCmdCopyBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 
 			id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer);
 			[mtlComputeEnc pushDebugGroup: @"vkCmdCopyBuffer"];
-			[mtlComputeEnc setComputePipelineState: cmdEncoder->getCommandEncodingPool()->getCmdCopyBufferBytesMTLComputePipelineState()];
+			[mtlComputeEnc setComputePipelineState: getCommandEncodingPool()->getCmdCopyBufferBytesMTLComputePipelineState()];
 			[mtlComputeEnc setBuffer:srcMTLBuff offset: srcMTLBuffOffset atIndex: 0];
 			[mtlComputeEnc setBuffer:dstMTLBuff offset: dstMTLBuffOffset atIndex: 1];
 			[mtlComputeEnc setBytes: &copyInfo length: sizeof(copyInfo) atIndex: 2];
@@ -856,8 +856,8 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     // Render the clear colors to the attachments
     id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;
     [mtlRendEnc pushDebugGroup: @"vkCmdClearAttachments"];
-    [mtlRendEnc setRenderPipelineState: cmdEncoder->getCommandEncodingPool()->getCmdClearMTLRenderPipelineState(_rpsKey)];
-    [mtlRendEnc setDepthStencilState: cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(isClearingDepth, isClearingStencil)];
+    [mtlRendEnc setRenderPipelineState: getCommandEncodingPool()->getCmdClearMTLRenderPipelineState(_rpsKey)];
+    [mtlRendEnc setDepthStencilState: getCommandEncodingPool()->getMTLDepthStencilState(isClearingDepth, isClearingStencil)];
     [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
 
     cmdEncoder->setVertexBytes(mtlRendEnc, _clearColors, sizeof(_clearColors), 0);
@@ -1007,7 +1007,7 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 
 	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer);
 	[mtlComputeEnc pushDebugGroup: @"vkCmdFillBuffer"];
-	[mtlComputeEnc setComputePipelineState: cmdEncoder->getCommandEncodingPool()->getCmdFillBufferMTLComputePipelineState()];
+	[mtlComputeEnc setComputePipelineState: getCommandEncodingPool()->getCmdFillBufferMTLComputePipelineState()];
 	[mtlComputeEnc setBuffer: dstMTLBuff offset: dstMTLBuffOffset+_dstOffset atIndex: 0];
 	[mtlComputeEnc setBytes: &fillInfo length: sizeof(fillInfo) atIndex: 1];
 	[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
@@ -1039,7 +1039,7 @@ void MVKCmdUpdateBuffer::encode(MVKCommandEncoder* cmdEncoder) {
     NSUInteger dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset() + _dstOffset;
 
     // Copy data to the source MTLBuffer
-    MVKMTLBufferAllocation* srcMTLBufferAlloc = (MVKMTLBufferAllocation*)cmdEncoder->getCommandEncodingPool()->acquireMTLBufferAllocation(_dataSize);
+    MVKMTLBufferAllocation* srcMTLBufferAlloc = (MVKMTLBufferAllocation*)getCommandEncodingPool()->acquireMTLBufferAllocation(_dataSize);
     memcpy(srcMTLBufferAlloc->getContents(), _srcDataCache.data(), _dataSize);
 
     [mtlBlitEnc copyFromBuffer: srcMTLBufferAlloc->_mtlBuffer

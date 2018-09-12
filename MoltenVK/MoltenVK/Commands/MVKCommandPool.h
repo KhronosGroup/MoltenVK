@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKCommandResourceFactory.h"
+#include "MVKCommandEncodingPool.h"
 #include "MVKCommand.h"
 #include "MVKCmdPipeline.h"
 #include "MVKCmdRenderPass.h"
@@ -146,8 +147,17 @@ public:
 	void freeCommandBuffers(uint32_t commandBufferCount,
 							const VkCommandBuffer* pCommandBuffers);
 
+	/** Returns the command encoding pool. */
+	inline MVKCommandEncodingPool* getCommandEncodingPool() { return &_commandEncodingPool; }
+
+	/**
+	 * Returns a MTLCommandBuffer created from the indexed queue
+	 * within the queue family for which this command pool was created.
+	 */
+	id<MTLCommandBuffer> makeMTLCommandBuffer(uint32_t queueIndex);
+
 	/** Release any held but unused memory back to the system. */
-	void trimCommandPool();
+	void trim();
 
 
 #pragma mark Construction
@@ -166,5 +176,7 @@ private:
 	void removeCommandBuffer(MVKCommandBuffer* cmdBuffer);
 
 	std::unordered_set<MVKCommandBuffer*> _commandBuffers;
+	MVKCommandEncodingPool _commandEncodingPool;
+	uint32_t _queueFamilyIndex;
 };
 

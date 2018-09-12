@@ -120,7 +120,6 @@ void MVKCmdCopyQueryPoolResults::encode(MVKCommandEncoder* cmdEncoder) {
     [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
         _queryPool->copyQueryPoolResults(_query, _queryCount, _destBuffer, _destOffset, _destStride, _flags);
     }];
-    cmdEncoder->flush();
 }
 
 MVKCmdCopyQueryPoolResults::MVKCmdCopyQueryPoolResults(MVKCommandTypePool<MVKCmdCopyQueryPoolResults>* pool)

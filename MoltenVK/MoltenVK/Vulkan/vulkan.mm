@@ -211,9 +211,11 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceQueue(
     uint32_t                                    queueFamilyIndex,
     uint32_t                                    queueIndex,
     VkQueue*                                    pQueue) {
-	
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	mvkDev->getDeviceQueue(queueFamilyIndex, queueIndex, pQueue);
+
+	if (pQueue) {
+		MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+		*pQueue = mvkDev->getQueue(queueFamilyIndex, queueIndex)->getVkQueue();
+	}
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkQueueSubmit(
@@ -1609,7 +1611,7 @@ MVK_PUBLIC_SYMBOL void vkTrimCommandPoolKHR(
     VkCommandPool                               commandPool,
     VkCommandPoolTrimFlagsKHR                   flags) {
 	MVKCommandPool* mvkCmdPool = (MVKCommandPool*)commandPool;
-    mvkCmdPool->trimCommandPool();
+    mvkCmdPool->trim();
 }
 
 
