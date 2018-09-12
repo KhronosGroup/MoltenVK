@@ -302,9 +302,9 @@ public:
     MTLStencilDescriptor* getMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData);
 
     /**
-     * Returns a new MVKImage configured from the specified MTLTexture configuration,
-     * with content held in Private storage. The object returned can be used as a
-     * temporary image during image transfers.
+     * Returns a new MVKImage configured with content held in Private storage.
+	 * The image returned is bound to an empty device memory, and can be used
+	 * as a temporary image during image transfers.
      */
     MVKImage* newMVKImage(MVKImageDescriptorData& imgData);
     
@@ -322,6 +322,7 @@ public:
 
 protected:
 	void initMTLLibrary();
+	void initImageDeviceMemory();
 	id<MTLFunction> getBlitFragFunction(MVKRPSKeyBlitImg& blitKey);
 	id<MTLFunction> getClearFragFunction(MVKRPSKeyClearAtt& attKey);
 	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
@@ -331,5 +332,6 @@ protected:
 	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction);
 
 	id<MTLLibrary> _mtlLibrary;
+	MVKDeviceMemory* _transferImageMemory;
 };
 

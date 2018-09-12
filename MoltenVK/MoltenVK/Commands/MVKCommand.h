@@ -25,6 +25,7 @@
 class MVKCommandBuffer;
 class MVKCommandEncoder;
 class MVKCommandPool;
+class MVKCommandEncodingPool;
 template <class T> class MVKCommandTypePool;
 
 
@@ -64,6 +65,9 @@ public:
 
 	/** Returns the command pool that is managing the resources used by this command. */
     MVKCommandPool* getCommandPool();
+
+	/** Returns the command encoding pool. */
+	MVKCommandEncodingPool* getCommandEncodingPool();
 
     /** Returns the device for which this command was created. */
     MVKDevice* getDevice();

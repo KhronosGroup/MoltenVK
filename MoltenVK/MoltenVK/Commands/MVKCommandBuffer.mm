@@ -101,12 +101,11 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
     recordResult(command->getConfigurationResult());
 }
 
-void MVKCommandBuffer::execute(MVKQueueCommandBufferSubmission* cmdBuffSubmit,
-                               const MVKCommandBufferBatchPosition& batchPosition) {
+void MVKCommandBuffer::execute(id<MTLCommandBuffer> mtlCmdBuff) {
 	if ( !canExecute() ) { return; }
 
-	MVKCommandEncoder encoder(this, batchPosition);
-	encoder.encode(cmdBuffSubmit);
+	MVKCommandEncoder encoder(this);
+	encoder.encode(mtlCmdBuff);
 
 	if ( !_supportsConcurrentExecution ) { _isExecutingNonConcurrently.clear(); }
 }
@@ -155,12 +154,11 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 #pragma mark -
 #pragma mark MVKCommandEncoder
 
-void MVKCommandEncoder::encode(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
-	_queueSubmission = cmdBuffSubmit;
+void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 	_renderSubpassIndex = 0;
 
-	beginEncoding();
+	_mtlCmdBuffer = mtlCmdBuff;		// not retained
 
     MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
@@ -168,7 +166,8 @@ void MVKCommandEncoder::encode(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
         cmd = cmd->_next;
 	}
 
-	endEncoding();
+	endCurrentMetalEncoding();
+	finishQueries();
 }
 
 void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
@@ -177,17 +176,6 @@ void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
 		cmd->encode(this);
 		cmd = cmd->_next;
 	}
-}
-
-// Retrieves and caches the MTLCommandBuffer from the queue submission
-void MVKCommandEncoder::beginEncoding() {
-	_mtlCmdBuffer = _queueSubmission->getActiveMTLCommandBuffer();
-}
-
-// Finishes the encoding process.
-void MVKCommandEncoder::endEncoding() {
-	endCurrentMetalEncoding();
-    finishQueries();
 }
 
 void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
@@ -418,7 +406,7 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
     }
 }
 
-MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _queueSubmission->_queue->getCommandEncodingPool(); }
+MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _cmdBuffer->_commandPool->getCommandEncodingPool(); }
 
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {
@@ -474,10 +462,8 @@ void MVKCommandEncoder::finishQueries() {
 
 #pragma mark Construction
 
-MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer,
-                                     const MVKCommandBufferBatchPosition& batchPosition) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
+MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
         _cmdBuffer(cmdBuffer),
-        _batchPosition(batchPosition),
         _graphicsPipelineState(this),
         _computePipelineState(this),
         _viewportState(this),

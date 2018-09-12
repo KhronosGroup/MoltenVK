@@ -19,6 +19,7 @@
 #include "MVKCommandPool.h"
 #include "MVKCommandBuffer.h"
 #include "MVKImage.h"
+#include "MVKQueue.h"
 #include "MVKDeviceMemory.h"
 #include "MVKFoundation.h"
 #include "mvk_datatypes.h"
@@ -30,13 +31,11 @@ using namespace std;
 #pragma mark MVKCommandPool
 
 
+// Reset all of the command buffers
 VkResult MVKCommandPool::reset(VkCommandPoolResetFlags flags) {
-
-	// Reset all of the command buffers
     for (auto& cb : _commandBuffers) {
 		cb->reset(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
 	}
-
 	return VK_SUCCESS;
 }
 
@@ -63,7 +62,11 @@ void MVKCommandPool::freeCommandBuffers(uint32_t commandBufferCount,
 	}
 }
 
-void MVKCommandPool::trimCommandPool() {
+id<MTLCommandBuffer> MVKCommandPool::makeMTLCommandBuffer(uint32_t queueIndex) {
+	return [_device->getQueue(_queueFamilyIndex, queueIndex)->getMTLCommandQueue() commandBuffer];
+}
+
+void MVKCommandPool::trim() {
 	// TODO: Implement.
 }
 
@@ -80,6 +83,8 @@ void MVKCommandPool::removeCommandBuffer(MVKCommandBuffer* cmdBuffer) {
 
 MVKCommandPool::MVKCommandPool(MVKDevice* device,
 							   const VkCommandPoolCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device),
+	_commandEncodingPool(device),
+	_queueFamilyIndex(pCreateInfo->queueFamilyIndex),
 	_cmdPipelineBarrierPool(this, true),
 	_cmdBindPipelinePool(this, true),
 	_cmdBeginRenderPassPool(this, true),
