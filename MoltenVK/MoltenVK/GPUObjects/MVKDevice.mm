@@ -477,6 +477,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 void MVKPhysicalDevice::initFeatures() {
 	memset(&_features, 0, sizeof(_features));	// Start with everything cleared
 
+    _features.robustBufferAccess = true;  // XXX Required by Vulkan spec
     _features.independentBlend = true;
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
@@ -520,7 +521,7 @@ void MVKPhysicalDevice::initFeatures() {
 #pragma mark VkPhysicalDeviceFeatures - List of features available on the device
 
 //typedef struct VkPhysicalDeviceFeatures {
-//    VkBool32    robustBufferAccess;
+//    VkBool32    robustBufferAccess;                           // done
 //    VkBool32    fullDrawIndexUint32;
 //    VkBool32    imageCubeArray;                               // done
 //    VkBool32    independentBlend;                             // done
