@@ -56,21 +56,31 @@ void MVKViewportCommandEncoderState::setViewports(vector<MTLViewport> mtlViewpor
 
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 
+	uint32_t maxViewports = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
 	if ((mustSetDynamically == isSettingDynamically) &&
-		(firstViewport < mtlViewports.size()) &&
-		(firstViewport == 0)) {
+		(firstViewport + mtlViewports.size() <= maxViewports) &&
+		(firstViewport < maxViewports)) {
 
-		_mtlViewport = mtlViewports[firstViewport];
+		if (firstViewport + mtlViewports.size() > _mtlViewports.size())
+			_mtlViewports.resize(firstViewport + mtlViewports.size());
+
+		std::copy(mtlViewports.begin(), mtlViewports.end(), _mtlViewports.begin() + firstViewport);
 		markDirty();
 	}
 }
 
 void MVKViewportCommandEncoderState::encodeImpl() {
-    [_cmdEncoder->_mtlRenderEncoder setViewport: _mtlViewport];
+    MVKAssert(!_mtlViewports.empty(), "Must specify at least one viewport");
+#if MVK_MACOS
+    if (_cmdEncoder->getDevice()->_pFeatures->multiViewport) {
+        [_cmdEncoder->_mtlRenderEncoder setViewports: &_mtlViewports[0] count: _mtlViewports.size()];
+    } else
+#endif
+    [_cmdEncoder->_mtlRenderEncoder setViewport: _mtlViewports[0]];
 }
 
 void MVKViewportCommandEncoderState::resetImpl() {
-    _mtlViewport =  { 0, 0, 0, 0, 0, 0 };
+    _mtlViewports.clear();
 }
 
 
@@ -83,21 +93,35 @@ void MVKScissorCommandEncoderState::setScissors(vector<MTLScissorRect> mtlScisso
 
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 
+	uint32_t maxScissors = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
 	if ((mustSetDynamically == isSettingDynamically) &&
-		(firstScissor < mtlScissors.size()) &&
-		(firstScissor == 0)) {
+		(firstScissor + mtlScissors.size() <= maxScissors) &&
+		(firstScissor < maxScissors)) {
 
-		_mtlScissor = mtlScissors[firstScissor];
+		if (firstScissor + mtlScissors.size() > _mtlScissors.size())
+			_mtlScissors.resize(firstScissor + mtlScissors.size());
+
+		std::copy(mtlScissors.begin(), mtlScissors.end(), _mtlScissors.begin() + firstScissor);
 		markDirty();
 	}
 }
 
 void MVKScissorCommandEncoderState::encodeImpl() {
-	[_cmdEncoder->_mtlRenderEncoder setScissorRect: _cmdEncoder->clipToRenderArea(_mtlScissor)];
+	MVKAssert(!_mtlScissors.empty(), "Must specify at least one scissor rect");
+	std::vector<MTLScissorRect> clippedScissors(_mtlScissors);
+	std::for_each(clippedScissors.begin(), clippedScissors.end(), [this](MTLScissorRect& scissor) {
+		scissor = _cmdEncoder->clipToRenderArea(scissor);
+	});
+#if MVK_MACOS
+	if (_cmdEncoder->getDevice()->_pFeatures->multiViewport) {
+		[_cmdEncoder->_mtlRenderEncoder setScissorRects: &clippedScissors[0] count: clippedScissors.size()];
+	} else
+#endif
+	[_cmdEncoder->_mtlRenderEncoder setScissorRect: clippedScissors[0]];
 }
 
 void MVKScissorCommandEncoderState::resetImpl() {
-    _mtlScissor =  { 0, 0, 0, 0 };
+    _mtlScissors.clear();
 }
 
 

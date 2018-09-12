@@ -520,6 +520,10 @@ void MVKPhysicalDevice::initFeatures() {
         _features.dualSrcBlend = true;
     }
 
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
+        _features.multiViewport = true;
+    }
+
 #endif
 }
 
@@ -545,7 +549,7 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    wideLines;
 //    VkBool32    largePoints;                                  // done
 //    VkBool32    alphaToOne;                                   // done
-//    VkBool32    multiViewport;
+//    VkBool32    multiViewport;                                // done
 //    VkBool32    samplerAnisotropy;                            // done
 //    VkBool32    textureCompressionETC2;                       // done
 //    VkBool32    textureCompressionASTC_LDR;                   // done
@@ -634,6 +638,12 @@ void MVKPhysicalDevice::initProperties() {
 
 	_properties.limits.maxImageDimension3D = (2 * KIBI);
 	_properties.limits.maxImageArrayLayers = (2 * KIBI);
+#if MVK_MACOS
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
+		_properties.limits.maxViewports = 16;
+	}
+	else
+#endif
 	_properties.limits.maxViewports = 1;
 	_properties.limits.maxSamplerAnisotropy = 16;
 
