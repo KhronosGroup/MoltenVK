@@ -478,6 +478,7 @@ void MVKPhysicalDevice::initFeatures() {
 	memset(&_features, 0, sizeof(_features));	// Start with everything cleared
 
     _features.robustBufferAccess = true;  // XXX Required by Vulkan spec
+    _features.fullDrawIndexUint32 = true;
     _features.independentBlend = true;
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
@@ -522,7 +523,7 @@ void MVKPhysicalDevice::initFeatures() {
 
 //typedef struct VkPhysicalDeviceFeatures {
 //    VkBool32    robustBufferAccess;                           // done
-//    VkBool32    fullDrawIndexUint32;
+//    VkBool32    fullDrawIndexUint32;                          // done
 //    VkBool32    imageCubeArray;                               // done
 //    VkBool32    independentBlend;                             // done
 //    VkBool32    geometryShader;
@@ -732,7 +733,7 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.maxComputeWorkGroupCount[1] = kMVKUndefinedLargeUInt32;
     _properties.limits.maxComputeWorkGroupCount[2] = kMVKUndefinedLargeUInt32;
 
-    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max() - 1;
+    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max();
     _properties.limits.maxDrawIndirectCount = kMVKUndefinedLargeUInt32;
 
     _properties.limits.minTexelOffset = -8;
