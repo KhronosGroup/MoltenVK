@@ -491,6 +491,10 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderInt16 = true;
 	_features.multiDrawIndirect = true;
 
+    if (_metalFeatures.indirectDrawing && _metalFeatures.baseVertexInstanceDrawing) {
+        _features.drawIndirectFirstInstance = true;
+    }
+
 #if MVK_IOS
     _features.textureCompressionETC2 = true;
 
@@ -531,8 +535,8 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    sampleRateShading;
 //    VkBool32    dualSrcBlend;                                 // done
 //    VkBool32    logicOp;
-//    VkBool32    multiDrawIndirect;							// done
-//    VkBool32    drawIndirectFirstInstance;
+//    VkBool32    multiDrawIndirect;                            // done
+//    VkBool32    drawIndirectFirstInstance;                    // done
 //    VkBool32    depthClamp;                                   // done
 //    VkBool32    depthBiasClamp;                               // done
 //    VkBool32    fillModeNonSolid;                             // done
