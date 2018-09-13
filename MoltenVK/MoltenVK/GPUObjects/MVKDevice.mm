@@ -477,6 +477,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 void MVKPhysicalDevice::initFeatures() {
 	memset(&_features, 0, sizeof(_features));	// Start with everything cleared
 
+    _features.robustBufferAccess = true;  // XXX Required by Vulkan spec
+    _features.fullDrawIndexUint32 = true;
     _features.independentBlend = true;
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
@@ -488,6 +490,10 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderClipDistance = true;
     _features.shaderInt16 = true;
 	_features.multiDrawIndirect = true;
+
+    if (_metalFeatures.indirectDrawing && _metalFeatures.baseVertexInstanceDrawing) {
+        _features.drawIndirectFirstInstance = true;
+    }
 
 #if MVK_IOS
     _features.textureCompressionETC2 = true;
@@ -520,8 +526,8 @@ void MVKPhysicalDevice::initFeatures() {
 #pragma mark VkPhysicalDeviceFeatures - List of features available on the device
 
 //typedef struct VkPhysicalDeviceFeatures {
-//    VkBool32    robustBufferAccess;
-//    VkBool32    fullDrawIndexUint32;
+//    VkBool32    robustBufferAccess;                           // done
+//    VkBool32    fullDrawIndexUint32;                          // done
 //    VkBool32    imageCubeArray;                               // done
 //    VkBool32    independentBlend;                             // done
 //    VkBool32    geometryShader;
@@ -529,8 +535,8 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    sampleRateShading;
 //    VkBool32    dualSrcBlend;                                 // done
 //    VkBool32    logicOp;
-//    VkBool32    multiDrawIndirect;							// done
-//    VkBool32    drawIndirectFirstInstance;
+//    VkBool32    multiDrawIndirect;                            // done
+//    VkBool32    drawIndirectFirstInstance;                    // done
 //    VkBool32    depthClamp;                                   // done
 //    VkBool32    depthBiasClamp;                               // done
 //    VkBool32    fillModeNonSolid;                             // done
@@ -731,7 +737,7 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.maxComputeWorkGroupCount[1] = kMVKUndefinedLargeUInt32;
     _properties.limits.maxComputeWorkGroupCount[2] = kMVKUndefinedLargeUInt32;
 
-    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max() - 1;
+    _properties.limits.maxDrawIndexedIndexValue = numeric_limits<uint32_t>::max();
     _properties.limits.maxDrawIndirectCount = kMVKUndefinedLargeUInt32;
 
     _properties.limits.minTexelOffset = -8;
