@@ -277,6 +277,19 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkCmdExecuteCommands);
 
 	// Supported extensions:
+	ADD_PROC_ADDR(vkCreateDescriptorUpdateTemplateKHR);
+	ADD_PROC_ADDR(vkDestroyDescriptorUpdateTemplateKHR);
+	ADD_PROC_ADDR(vkUpdateDescriptorSetWithTemplateKHR);
+	ADD_PROC_ADDR(vkGetPhysicalDeviceFeatures2KHR);
+	ADD_PROC_ADDR(vkGetPhysicalDeviceProperties2KHR);
+	ADD_PROC_ADDR(vkGetPhysicalDeviceFormatProperties2KHR);
+	ADD_PROC_ADDR(vkGetPhysicalDeviceImageFormatProperties2KHR);
+	ADD_PROC_ADDR(vkGetPhysicalDeviceQueueFamilyProperties2KHR);
+	ADD_PROC_ADDR(vkGetPhysicalDeviceMemoryProperties2KHR);
+	ADD_PROC_ADDR(vkGetPhysicalDeviceSparseImageFormatProperties2KHR);
+	ADD_PROC_ADDR(vkTrimCommandPoolKHR);
+	ADD_PROC_ADDR(vkCmdPushDescriptorSetKHR);
+	ADD_PROC_ADDR(vkCmdPushDescriptorSetWithTemplateKHR);
 	ADD_PROC_ADDR(vkDestroySurfaceKHR);
 	ADD_PROC_ADDR(vkGetPhysicalDeviceSurfaceSupportKHR);
 	ADD_PROC_ADDR(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
@@ -287,19 +300,6 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkGetSwapchainImagesKHR);
 	ADD_PROC_ADDR(vkAcquireNextImageKHR);
 	ADD_PROC_ADDR(vkQueuePresentKHR);
-	ADD_PROC_ADDR(vkTrimCommandPoolKHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceFeatures2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceFormatProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceImageFormatProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceQueueFamilyProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceMemoryProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceSparseImageFormatProperties2KHR);
-	ADD_PROC_ADDR(vkCmdPushDescriptorSetKHR);
-	ADD_PROC_ADDR(vkCmdPushDescriptorSetWithTemplateKHR);
-	ADD_PROC_ADDR(vkCreateDescriptorUpdateTemplateKHR);
-	ADD_PROC_ADDR(vkDestroyDescriptorUpdateTemplateKHR);
-	ADD_PROC_ADDR(vkUpdateDescriptorSetWithTemplateKHR);
 	ADD_PROC_ADDR(vkGetMoltenVKConfigurationMVK);
 	ADD_PROC_ADDR(vkSetMoltenVKConfigurationMVK);
     ADD_PROC_ADDR(vkGetPhysicalDeviceMetalFeaturesMVK);

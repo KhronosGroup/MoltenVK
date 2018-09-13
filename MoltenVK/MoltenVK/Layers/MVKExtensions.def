@@ -1,0 +1,47 @@
+/*
+ * MVKExtensions.def
+ *
+ * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+// To use this file, define the macro MVK_EXTENSION(var, EXT), then #include this file.
+// To add a new extension, simply add an MVK_EXTENSION line below. The macro takes the
+// portion of the extension name without the leading "VK_", both in lowercase and uppercase.
+// The last line in the list must be an MVK_EXTENSION_LAST line; this is used in the MVKExtensionList
+// constructor to avoid a dangling ',' at the end of the initializer list.
+
+#ifndef MVK_EXTENSION
+#error MVK_EXTENSION must be defined before including this file
+#endif
+
+#ifndef MVK_EXTENSION_LAST
+#define MVK_EXTENSION_LAST(var, EXT) MVK_EXTENSION(var, EXT)
+#endif
+
+MVK_EXTENSION(KHR_descriptor_update_template, KHR_DESCRIPTOR_UPDATE_TEMPLATE)
+MVK_EXTENSION(KHR_get_physical_device_properties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2)
+MVK_EXTENSION(KHR_maintenance1, KHR_MAINTENANCE1)
+MVK_EXTENSION(KHR_push_descriptor, KHR_PUSH_DESCRIPTOR)
+MVK_EXTENSION(KHR_shader_draw_parameters, KHR_SHADER_DRAW_PARAMETERS)
+MVK_EXTENSION(KHR_surface, KHR_SURFACE)
+MVK_EXTENSION(KHR_swapchain, KHR_SWAPCHAIN)
+MVK_EXTENSION(MVK_ios_surface, MVK_IOS_SURFACE)
+MVK_EXTENSION(MVK_macos_surface, MVK_MACOS_SURFACE)
+MVK_EXTENSION(MVK_moltenvk, MVK_MOLTENVK)
+MVK_EXTENSION(AMD_negative_viewport_height, AMD_NEGATIVE_VIEWPORT_HEIGHT)
+MVK_EXTENSION_LAST(IMG_format_pvrtc, IMG_FORMAT_PVRTC)
+
+#undef MVK_EXTENSION
+#undef MVK_EXTENSION_LAST

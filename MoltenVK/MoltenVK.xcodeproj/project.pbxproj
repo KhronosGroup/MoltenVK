@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		45003E73214AD4E500E989CB /* MVKExtensions.def in Headers */ = {isa = PBXBuildFile; fileRef = 45003E6F214AD4C900E989CB /* MVKExtensions.def */; };
+		45003E74214AD4E600E989CB /* MVKExtensions.def in Headers */ = {isa = PBXBuildFile; fileRef = 45003E6F214AD4C900E989CB /* MVKExtensions.def */; };
 		A9096E5E1F81E16300DFBEA6 /* MVKCmdDispatch.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */; };
 		A9096E5F1F81E16300DFBEA6 /* MVKCmdDispatch.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */; };
 		A909F65F213B190700FCD6BE /* MVKExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A909F65A213B190600FCD6BE /* MVKExtensions.h */; };
@@ -258,6 +260,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		45003E6F214AD4C900E989CB /* MVKExtensions.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKExtensions.def; sourceTree = "<group>"; };
 		A9096E5C1F81E16300DFBEA6 /* MVKCmdDispatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKCmdDispatch.h; sourceTree = "<group>"; };
 		A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdDispatch.mm; sourceTree = "<group>"; };
 		A909F65A213B190600FCD6BE /* MVKExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKExtensions.h; sourceTree = "<group>"; };
@@ -466,6 +469,7 @@
 		A94FB79F1C7DFB4800632CA3 /* Layers */ = {
 			isa = PBXGroup;
 			children = (
+				45003E6F214AD4C900E989CB /* MVKExtensions.def */,
 				A909F65A213B190600FCD6BE /* MVKExtensions.h */,
 				A909F65E213B190700FCD6BE /* MVKExtensions.cpp */,
 				A94FB7A01C7DFB4800632CA3 /* MVKLayers.h */,
@@ -631,6 +635,7 @@
 				A98149531FB6A3F7005F00B4 /* MVKFoundation.h in Headers */,
 				A94FB7E81C7DFB4800632CA3 /* MVKDeviceMemory.h in Headers */,
 				A9E4B7891E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */,
+				45003E73214AD4E500E989CB /* MVKExtensions.def in Headers */,
 				A90C8DEA1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
 				A94FB8081C7DFB4800632CA3 /* MVKResource.h in Headers */,
 				A9E53DDD2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */,
@@ -691,6 +696,7 @@
 				A98149541FB6A3F7005F00B4 /* MVKFoundation.h in Headers */,
 				A94FB7E91C7DFB4800632CA3 /* MVKDeviceMemory.h in Headers */,
 				A9E4B78A1E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */,
+				45003E74214AD4E600E989CB /* MVKExtensions.def in Headers */,
 				A90C8DEB1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
 				A94FB8091C7DFB4800632CA3 /* MVKResource.h in Headers */,
 				A9E53DDE2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */,
