@@ -1511,6 +1511,37 @@ MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplateKHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_get_memory_requirements2 extension
+
+MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements2KHR(
+    VkDevice                                    device,
+    const VkBufferMemoryRequirementsInfo2KHR*   pInfo,
+    VkMemoryRequirements2KHR*                   pMemoryRequirements) {
+
+    MVKBuffer* mvkBuff = (MVKBuffer*)pInfo->buffer;
+    mvkBuff->getMemoryRequirements(pInfo, pMemoryRequirements);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetImageMemoryRequirements2KHR(
+    VkDevice                                    device,
+    const VkImageMemoryRequirementsInfo2KHR*    pInfo,
+    VkMemoryRequirements2KHR*                   pMemoryRequirements) {
+
+    auto* mvkImg = (MVKImage*)pInfo->image;
+    mvkImg->getMemoryRequirements(pInfo, pMemoryRequirements);
+}
+
+MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements2KHR(
+    VkDevice                                        device,
+    const VkImageSparseMemoryRequirementsInfo2KHR*  pInfo,
+    uint32_t*                                       pSparseMemoryRequirementCount,
+    VkSparseImageMemoryRequirements2KHR*            pSparseMemoryRequirements) {
+
+    MVKLogUnimplemented("vkGetImageSparseMemoryRequirements2KHR");
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_get_physical_device_properties2 extension
 
 MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures2KHR(
