@@ -291,6 +291,7 @@ protected:
 
     MVKImage* _image;
     VkImageSubresourceRange _subresourceRange;
+    VkImageUsageFlags _usage;
 	id<MTLTexture> _mtlTexture;
 	std::mutex _lock;
 	MTLPixelFormat _mtlPixelFormat;

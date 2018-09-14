@@ -73,9 +73,9 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
     if (properties) { *properties = _properties; }
 }
 
-void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2KHR* properties) {
+void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
     if (properties) {
-        properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2_KHR;
+        properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         properties->properties = _properties;
         auto* next = (VkStructureType*)properties->pNext;
         while (next) {
@@ -86,8 +86,14 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2KHR* properties
                 next = (VkStructureType*)pushDescProps->pNext;
                 break;
             }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+                auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
+                pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+                next = (VkStructureType*)pointClipProps->pNext;
+                break;
+            }
             default:
-                next = (VkStructureType*)((VkPhysicalDeviceProperties2KHR*)next)->pNext;
+                next = (VkStructureType*)((VkPhysicalDeviceProperties2*)next)->pNext;
                 break;
             }
         }

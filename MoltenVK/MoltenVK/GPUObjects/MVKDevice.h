@@ -86,7 +86,7 @@ public:
 	void getProperties(VkPhysicalDeviceProperties* properties);
 
 	/** Populates the specified structure with the properties of this device. */
-	void getProperties(VkPhysicalDeviceProperties2KHR* properties);
+	void getProperties(VkPhysicalDeviceProperties2* properties);
 
 	/** Returns whether the specified format is supported on this device. */
 	bool getFormatIsSupported(VkFormat format);
