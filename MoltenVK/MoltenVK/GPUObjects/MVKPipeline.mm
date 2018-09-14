@@ -278,6 +278,21 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 
 // Returns a MTLRenderPipelineDescriptor constructed from this instance, or nil if an error occurs.
 MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+    // Collect extension structures
+    VkPipelineVertexInputDivisorStateCreateInfoEXT* pVertexInputDivisorState = nullptr;
+    VkStructureType* next = (VkStructureType*)pCreateInfo->pNext;
+    while (next) {
+        switch (*next) {
+        case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
+            pVertexInputDivisorState = (VkPipelineVertexInputDivisorStateCreateInfoEXT*)next;
+            next = (VkStructureType*)pVertexInputDivisorState->pNext;
+            break;
+        default:
+            next = (VkStructureType*)((VkGraphicsPipelineCreateInfo*)next)->pNext;
+            break;
+        }
+    }
+
     SPIRVToMSLConverterContext shaderContext;
     initMVKShaderConverterContext(shaderContext, pCreateInfo);
 
@@ -339,6 +354,24 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
             vbDesc.stride = (pVKVB->stride == 0) ? sizeof(simd::float4) : pVKVB->stride;      // Vulkan allows zero stride but Metal doesn't. Default to float4
             vbDesc.stepFunction = mvkMTLVertexStepFunctionFromVkVertexInputRate(pVKVB->inputRate);
             vbDesc.stepRate = 1;
+        }
+    }
+
+    // Vertex buffer divisors (step rates)
+    if (pVertexInputDivisorState) {
+        vbCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
+        for (uint32_t i = 0; i < vbCnt; i++) {
+            const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
+            uint32_t vbIdx = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+            if (shaderContext.isVertexBufferUsed(vbIdx)) {
+                MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
+                if (vbDesc.stepFunction == MTLVertexStepFunctionPerInstance) {
+                    if (pVKVB->divisor == 0)
+                        vbDesc.stepFunction = MTLVertexStepFunctionConstant;
+                    else
+                        vbDesc.stepRate = pVKVB->divisor;
+                }
+            }
         }
     }
 
