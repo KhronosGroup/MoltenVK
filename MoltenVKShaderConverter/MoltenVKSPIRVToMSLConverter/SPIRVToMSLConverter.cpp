@@ -229,6 +229,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
     // Populate content extracted from the SPRI-V compiler.
 	populateEntryPoint(_entryPoint, pMSLCompiler, context.options);
 	context.options.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
+	delete pMSLCompiler;
 
 	// Copy whether the vertex attributes and resource bindings are used by the shader
 	uint32_t vaCnt = (uint32_t)vtxAttrs.size();
@@ -261,6 +262,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 			}
         }
 #endif
+		delete pGLSLCompiler;
 	}
 
 	return _wasConverted;
