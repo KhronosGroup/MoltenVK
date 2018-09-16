@@ -135,9 +135,9 @@ and package the entire **MoltenVK** runtime distribution package, or to build in
 To build a **MoltenVK** runtime distribution package, suitable for testing and integrating into an app, 
 open `MoltenVKPackaging.xcodeproj` in *Xcode*, and use one of the following *Xcode Schemes*:
 
-- **MoltenVK (Release)** - build the entire **MoltenVK** runtime distribution package using the 
+- **MoltenVK Package (Release)** - build the entire **MoltenVK** runtime distribution package using the
   *Release* configuration.
-- **MoltenVK (Debug)** - build the entire **MoltenVK** runtime distribution package using the 
+- **MoltenVK Package (Debug)** - build the entire **MoltenVK** runtime distribution package using the
   *Debug* configuration.
 
 Each of these`MoltenVKPackaging.xcodeproj` *Xcode* project *Schemes* puts the resulting packages in the 
@@ -158,11 +158,11 @@ app with either a **Debug** build, or a higher-performance **Release** build.
 If you prefer to build **MoltenVK** from the command line, or to include the activity in a larger build script,
 you can do so using the following command from within the `MoltenVK` repository:
 
-	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK (Release)" build
+	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (Release)" build
 
 or
 
-	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK (Debug)" build
+	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (Debug)" build
 
 
 
