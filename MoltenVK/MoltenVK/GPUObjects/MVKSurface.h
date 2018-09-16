@@ -28,14 +28,14 @@
 #	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkIOSSurfaceCreateInfoMVK
 #	define PLATFORM_VIEW_CLASS					UIView
 #	include <UIKit/UIView.h>
-#endif	// MVK_IOS
+#endif
 
 #ifdef VK_USE_PLATFORM_MACOS_MVK
 #	define vkCreate_PLATFORM_SurfaceMVK			vkCreateMacOSSurfaceMVK
 #	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkMacOSSurfaceCreateInfoMVK
 #	define PLATFORM_VIEW_CLASS					NSView
 #	include <AppKit/NSView.h>
-#endif	// MVK_MACOS
+#endif
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>

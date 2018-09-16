@@ -26,7 +26,7 @@ clang \
 -Wno-incompatible-sysroot \
 -isysroot ${SDK_DIR} \
 -iframework ${MVK_SYS_FWK_DIR}  \
--framework Metal ${MVK_IOSURFACE_FWK} -framework UIKit -framework QuartzCore -framework Foundation \
+-framework Metal ${MVK_IOSURFACE_FWK} -framework UIKit -framework QuartzCore -framework UIKit -framework Foundation \
 --library-directory ${MVK_USR_LIB_DIR} \
 -lSystem  -lc++ \
 -o "${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}" \
