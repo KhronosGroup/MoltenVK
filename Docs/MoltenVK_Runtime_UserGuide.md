@@ -237,11 +237,16 @@ in your source code files as follows:
 In addition to the core *Vulkan* API, **MoltenVK**  also supports the following *Vulkan* extensions:
 
 - `VK_MVK_moltenvk`
-- `VK_KHR_swapchain`
-- `VK_KHR_surface`
-- `VK_MVK_ios_surface` (iOS)
 - `VK_MVK_macos_surface` (macOS)
-- `VK_AMD_negative_viewport_height`
+- `VK_MVK_ios_surface` (iOS)
+- `VK_KHR_surface`
+- `VK_KHR_swapchain`
+- `vk_KHR_maintenance1`
+- `vk_AMD_negative_viewport_height`
+- `vk_KHR_shader_draw_parameters`
+- `vk_KHR_get_physical_device_properties2`
+- `vk_KHR_push_descriptor`
+- `vk_KHR_descriptor_update_template`
 - `VK_IMG_format_pvrtc` (iOS)
 
 In order to visibly display your content on *iOS* or *macOS*, you must enable the `VK_MVK_ios_surface` 

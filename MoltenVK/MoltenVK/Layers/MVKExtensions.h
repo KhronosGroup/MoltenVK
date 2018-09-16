@@ -44,8 +44,8 @@ struct MVKExtensionList {
 			MVKExtension vk_KHR_surface;
 			MVKExtension vk_KHR_swapchain;
 			MVKExtension vk_KHR_maintenance1;
-			MVKExtension vk_IMG_format_pvrtc;
 			MVKExtension vk_AMD_negative_viewport_height;
+			MVKExtension vk_IMG_format_pvrtc;
 			MVKExtension vk_KHR_shader_draw_parameters;
 			MVKExtension vk_KHR_get_physical_device_properties2;
 			MVKExtension vk_KHR_push_descriptor;

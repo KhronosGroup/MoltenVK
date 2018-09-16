@@ -133,12 +133,16 @@ and package the entire **MoltenVK** runtime distribution package, or to build in
 **MoltenVK** or **MoltenVKShaderConverter** components.
 
 To build a **MoltenVK** runtime distribution package, suitable for testing and integrating into an app, 
-open `MoltenVKPackaging.xcodeproj` in *Xcode*, and use one of the following *Xcode Schemes*:
+open `MoltenVKPackaging.xcodeproj` in *Xcode*, and use one of the following *Xcode Schemes*, depending
+on whether you want a *Debug* or *Release* configuration, and whether you want to build for both the 
+*iOS* and *macOS* platforms, or just one platform:
 
-- **MoltenVK (Release)** - build the entire **MoltenVK** runtime distribution package using the 
-  *Release* configuration.
-- **MoltenVK (Debug)** - build the entire **MoltenVK** runtime distribution package using the 
-  *Debug* configuration.
+- **MoltenVK Package (Debug)** 
+- **MoltenVK Package (Debug) (iOS only)**
+- **MoltenVK Package (Debug) (macOS only)** 
+- **MoltenVK Package (Release)**
+- **MoltenVK Package (Release) (iOS only)**
+- **MoltenVK Package (Release) (macOS only)**
 
 Each of these`MoltenVKPackaging.xcodeproj` *Xcode* project *Schemes* puts the resulting packages in the 
 `Package` directory, creating it if necessary. This directory contains separate `Release` and `Debug` 
@@ -156,13 +160,10 @@ app with either a **Debug** build, or a higher-performance **Release** build.
 ### Building from the Command Line
 
 If you prefer to build **MoltenVK** from the command line, or to include the activity in a larger build script,
-you can do so using the following command from within the `MoltenVK` repository:
+you can do so using the following command within the `MoltenVK` repository, and identifying one of the 
+*Xcode Schemes* from the list above:
 
-	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK (Release)" build
-
-or
-
-	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK (Debug)" build
+	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (Release)" build
 
 
 
