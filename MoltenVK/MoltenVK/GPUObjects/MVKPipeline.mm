@@ -171,7 +171,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder) {
     [mtlCmdEnc setFrontFacingWinding: _mtlFrontWinding];
     [mtlCmdEnc setTriangleFillMode: _mtlFillMode];
 
-    if (_device->_pMetalFeatures->depthClipMode) {
+    if (_device->_pFeatures->depthClamp) {
         [mtlCmdEnc setDepthClipMode: _mtlDepthClipMode];
     }
 }
@@ -227,7 +227,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		_mtlFrontWinding = mvkMTLWindingFromVkFrontFace(_rasterInfo.frontFace);
 		_mtlFillMode = mvkMTLTriangleFillModeFromVkPolygonMode(_rasterInfo.polygonMode);
         if (_rasterInfo.depthClampEnable) {
-            if (_device->_pMetalFeatures->depthClipMode) {
+			if (_device->_pFeatures->depthClamp) {
                 _mtlDepthClipMode = MTLDepthClipModeClamp;
             } else {
                 setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "This device does not support depth clamping."));

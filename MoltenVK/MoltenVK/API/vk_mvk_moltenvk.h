@@ -54,7 +54,7 @@ extern "C" {
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            9
+#define VK_MVK_MOLTENVK_SPEC_VERSION            10
 #define VK_MVK_MOLTENVK_EXTENSION_NAME			"VK_MVK_moltenvk"
 
 /**
@@ -203,7 +203,6 @@ typedef struct {
     VkBool32 shaderSpecialization;              /**< If true, shader specialization (aka Metal function constants) is supported. */
     VkBool32 ioSurfaces;                        /**< If true, VkImages can be underlaid by IOSurfaces via the vkUseIOSurfaceMVK() function, to support inter-process image transfers. */
     VkBool32 texelBuffers;                      /**< If true, texel buffers are supported, allowing the contents of a buffer to be interpreted as an image via a VkBufferView. */
-    VkBool32 depthClipMode;                     /**< If true, depth clipping and depth clamping per the VkGraphicsPipelineCreateInfo::VkPipelineRasterizationStateCreateInfo::depthClampEnable flag is supported. */
 	VkBool32 layeredRendering;                  /**< If true, layered rendering to multiple cube or texture array layers is supported. */
 	VkBool32 presentModeImmediate;              /**< If true, immediate surface present mode (VK_PRESENT_MODE_IMMEDIATE_KHR), allowing a swapchain image to be presented immediately, without waiting for the vertical sync period of the display, is supported. */
 	VkBool32 stencilViews;                      /**< If true, stencil aspect views are supported through the MTLPixelFormatX24_Stencil8 and MTLPixelFormatX32_Stencil8 formats. */
