@@ -139,8 +139,6 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
 #endif
 
-	if (pProperties == &kVkExtProps_AMD_NEGATIVE_VIEWPORT_HEIGHT) { return false; }
-
 	return true;
 }
 

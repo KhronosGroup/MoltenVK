@@ -237,11 +237,16 @@ in your source code files as follows:
 In addition to the core *Vulkan* API, **MoltenVK**  also supports the following *Vulkan* extensions:
 
 - `VK_MVK_moltenvk`
-- `VK_KHR_swapchain`
-- `VK_KHR_surface`
-- `VK_MVK_ios_surface` (iOS)
 - `VK_MVK_macos_surface` (macOS)
-- `VK_AMD_negative_viewport_height`
+- `VK_MVK_ios_surface` (iOS)
+- `VK_KHR_surface`
+- `VK_KHR_swapchain`
+- `vk_KHR_maintenance1`
+- `vk_AMD_negative_viewport_height`
+- `vk_KHR_shader_draw_parameters`
+- `vk_KHR_get_physical_device_properties2`
+- `vk_KHR_push_descriptor`
+- `vk_KHR_descriptor_update_template`
 - `VK_IMG_format_pvrtc` (iOS)
 
 In order to visibly display your content on *iOS* or *macOS*, you must enable the `VK_MVK_ios_surface` 
@@ -252,6 +257,17 @@ You can enable each of these extensions by defining the `VK_USE_PLATFORM_IOS_MVK
 `VK_USE_PLATFORM_MACOS_MVK` guard macro in your compiler build settings. See the description
 of the `mvk_vulkan.h` file below for a convenient way to enable these extensions automatically.
 
+When using the `VK_MVK_macos_surface ` extension, the `pView` member of the `VkMacOSSurfaceCreateInfoMVK` 
+structure passed in the `vkCreateMacOSSurfaceMVK` function can be either an `NSView` whose layer is a 
+`CAMetalLayer`, or the `CAMetalLayer` itself. Passing the `CAMetalLayer` itself is recommended when calling
+the `vkCreateMacOSSurfaceMVK` function from outside the main application thread, as `NSView` should only be
+accessed from the main application thread.
+
+When using the `VK_MVK_ios_surface ` extension, the `pView` member of the `VkIOSSurfaceCreateInfoMVK` 
+structure passed in the `vkCreateIOSSurfaceMVK` function can be either a `UIView` whose layer is a 
+`CAMetalLayer`, or the `CAMetalLayer` itself. Passing the `CAMetalLayer` itself is recommended when 
+calling the `vkCreateIOSSurfaceMVK ` function from outside the main application thread, as `UIView` 
+should only be accessed from the main application thread.
 
 <a name="moltenvk_extension"></a>
 ### MoltenVK Extension
