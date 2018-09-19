@@ -49,9 +49,14 @@
 #   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    0
 #endif
 
+/** Fill a Metal command buffers when each Vulkan command buffer is filled. */
+#ifndef MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS
+#   define MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS    0
+#endif
+
 /**
- * The number of concurrently active Metal command buffers that can be
- * allocated per Vulkan command pool. Default is Metal's default value of 64.
+ * The maximum number of Metal command buffers that can be concurrently
+ * active per Vulkan queue. Default is Metal's default value of 64.
  */
 #ifndef MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL
 #   define MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL    64

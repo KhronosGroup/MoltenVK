@@ -38,7 +38,7 @@ id<MTLCommandQueue> MVKQueueFamily::getMTLCommandQueue(uint32_t queueIndex) {
 	lock_guard<mutex> lock(_qLock);
 	id<MTLCommandQueue> mtlQ = _mtlQueues[queueIndex];
 	if ( !mtlQ ) {
-		uint32_t maxCmdBuffs = _physicalDevice->getInstance()->getMoltenVKConfiguration()->maxActiveMetalCommandBuffersPerPool;
+		uint32_t maxCmdBuffs = _physicalDevice->getInstance()->getMoltenVKConfiguration()->maxActiveMetalCommandBuffersPerQueue;
 		mtlQ = [_physicalDevice->getMTLDevice() newCommandQueueWithMaxCommandBufferCount: maxCmdBuffs];		// retained
 		_mtlQueues[queueIndex] = mtlQ;
 	}
@@ -228,33 +228,42 @@ void MVKQueueCommandBufferSubmission::execute() {
 
 	_queue->_submissionCaptureScope->beginScope();
 
-    // Execute each command buffer.
-	for (auto& cb : _cmdBuffers) { cb->execute(getActiveMTLCommandBuffer()); }
+    // Submit each command buffer.
+	for (auto& cb : _cmdBuffers) { cb->submit(this); }
 
-	// If no command buffers were provided, but a fence or semaphores was,
-	// create an empty MTLCommandBuffer to trigger the semaphores and fence.
-	if (_cmdBuffers.empty() && (_fence || !_signalSemaphores.empty()) ) {
-		getActiveMTLCommandBuffer();
-    }
+	// If a fence or semaphores was provided, ensure that a MTLCommandBuffer
+	// is available to trigger them, in case no command buffers were provided.
+	if (_fence || !_signalSemaphores.empty()) { getActiveMTLCommandBuffer(); }
 
+	// Commit the last MTLCommandBuffer.
 	// Nothing after this because callback might destroy this instance before this function ends.
 	commitActiveMTLCommandBuffer(true);
 }
 
+// Returns the active MTLCommandBuffer, lazily retrieving it from the queue if needed.
 id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer() {
 	if ( !_activeMTLCommandBuffer ) {
-		_activeMTLCommandBuffer = [_queue->_mtlQueue commandBufferWithUnretainedReferences];
-		_activeMTLCommandBuffer.label = mvkMTLCommandBufferLabel(_cmdBuffUse);
-		[_activeMTLCommandBuffer enqueue];
+		setActiveMTLCommandBuffer([_queue->_mtlQueue commandBufferWithUnretainedReferences]);
 	}
 	return _activeMTLCommandBuffer;
 }
 
+// Commits the current active MTLCommandBuffer, if it exists, and sets a new active MTLCommandBuffer.
+void MVKQueueCommandBufferSubmission::setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff) {
+
+	if (_activeMTLCommandBuffer) { commitActiveMTLCommandBuffer(); }
+
+	_activeMTLCommandBuffer = mtlCmdBuff;	// not retained
+	_activeMTLCommandBuffer.label = mvkMTLCommandBufferLabel(_cmdBuffUse);
+	[_activeMTLCommandBuffer enqueue];
+}
+
+// Commits and releases the currently active MTLCommandBuffer, optionally signalling
+// when the MTLCommandBuffer is done. The first time this is called, it will wait on
+// any semaphores. We have delayed signalling the semaphores as long as possible to
+// allow as much filling of the MTLCommandBuffer as possible before forcing a wait.
 void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCompletion) {
 
-	// Wait on each wait semaphore in turn. It doesn't matter which order they are signalled.
-	// We have delayed this as long as possible to allow as much filling of the MTLCommandBuffer
-	// as possible before forcing a wait. We only wait for each semaphore once per submission.
 	if (_isAwaitingSemaphores) {
 		_isAwaitingSemaphores = false;
 		for (auto& ws : _waitSemaphores) { ws->wait(); }

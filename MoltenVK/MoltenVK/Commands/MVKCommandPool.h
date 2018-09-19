@@ -151,10 +151,10 @@ public:
 	inline MVKCommandEncodingPool* getCommandEncodingPool() { return &_commandEncodingPool; }
 
 	/**
-	 * Returns a MTLCommandBuffer created from the indexed queue
+	 * Returns a retained MTLCommandBuffer created from the indexed queue
 	 * within the queue family for which this command pool was created.
 	 */
-	id<MTLCommandBuffer> makeMTLCommandBuffer(uint32_t queueIndex);
+	id<MTLCommandBuffer> newMTLCommandBuffer(uint32_t queueIndex);
 
 	/** Release any held but unused memory back to the system. */
 	void trim();

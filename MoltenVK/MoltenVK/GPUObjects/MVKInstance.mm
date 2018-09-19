@@ -348,7 +348,8 @@ void MVKInstance::initConfig() {
 	_mvkConfig.debugMode							= MVK_DEBUG;
 	_mvkConfig.shaderConversionFlipVertexY			= MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y;
 	_mvkConfig.synchronousQueueSubmits				= MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS;
-	_mvkConfig.maxActiveMetalCommandBuffersPerPool	= MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL;
+	_mvkConfig.prefillMetalCommandBuffers			= MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS;
+	_mvkConfig.maxActiveMetalCommandBuffersPerQueue	= MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL;
 	_mvkConfig.supportLargeQueryPools				= MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS;
 	_mvkConfig.presentWithCommandBuffer				= MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER;
 	_mvkConfig.swapchainMagFilterUseNearest			= MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST;

@@ -55,7 +55,7 @@ extern "C" {
 
 
 #define VK_MVK_MOLTENVK_SPEC_VERSION            10
-#define VK_MVK_MOLTENVK_EXTENSION_NAME			"VK_MVK_moltenvk"
+#define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
  * MoltenVK configuration settings.
@@ -95,28 +95,67 @@ typedef struct {
     VkBool32 shaderConversionFlipVertexY;
 
 	/**
-	 * If enabled, queue command submissions (vkQueueSubmit() & vkQueuePresentKHR())
-	 * will be processed on the thread that called the submission function. If disabled,
-	 * processing will be dispatched to a GCD dispatch_queue whose priority is determined
-	 * by VkDeviceQueueCreateInfo::pQueuePriorities during vkCreateDevice().
+	 * If enabled, queue command submissions (vkQueueSubmit() & vkQueuePresentKHR()) will be
+	 * processed on the thread that called the submission function. If disabled, processing
+	 * will be dispatched to a GCD dispatch_queue whose priority is determined by
+	 * VkDeviceQueueCreateInfo::pQueuePriorities during vkCreateDevice().
 	 *
-	 * Initial value is set by the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting when
-	 * MoltenVK is compiled. By default the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting
-	 * is set to false, and command processing will be handled on a prioritizable queue thread.
-	 * Changing the value of this parameter must be done before creating a VkDevice,
-	 * for the change to take effect.
+	 * Initial value is set by the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting when MoltenVK
+	 * is compiled. By default the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting is set to false,
+	 * and command processing will be handled on a prioritizable queue thread. Changing the value of
+	 * this parameter must be done before creating a VkDevice, for the change to take effect.
 	 */
 	VkBool32 synchronousQueueSubmits;
 
 	/**
-	 * The maximum number of command buffers that can be concurrently active per Vulkan command pool.
+	 * If enabled, where possible, a Metal command buffer will be created and filled when each
+	 * Vulkan command buffer is filled. For applications that parallelize the filling of Vulkan
+	 * commmand buffers across multiple threads, this allows the Metal command buffers to also
+	 * be filled on the same parallel thread. Because each command buffer is filled separately,
+	 * this requires that each Vulkan command buffer requires a dedicated Metal command buffer.
+	 *
+	 * If disabled, a single Metal command buffer will be created and filled when the Vulkan
+	 * command buffers are submitted to the Vulkan queue. This allows a single Metal command
+	 * buffer to be used for all of the Vulkan command buffers in a queue submission. The
+	 * Metal command buffer is filled on the thread that processes the command queue submission.
+	 *
+	 * Depending on the nature of your application, you may find performance is improved by filling
+	 * the Metal command buffers on parallel threads, or you may find that performance is improved by
+	 * consolidating all Vulkan command buffers onto a single Metal command buffer during queue submission.
+	 *
+	 * Prefilling of a Metal command buffer will not occur during the filling of secondary command
+	 * buffers (VK_COMMAND_BUFFER_LEVEL_SECONDARY), or for primary command buffers that are intended
+	 * to be submitted to multiple queues concurrently (VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT).
+	 *
+	 * When enabling this features, be aware that one Metal command buffer is required for each Vulkan
+	 * command buffer. Depending on the number of command buffers that you use, you may also need to
+	 * change the value of the maxActiveMetalCommandBuffersPerQueue setting.
+	 *
+	 * In addition, if this feature is enabled, be aware that if you have recorded commands to a
+	 * Vulkan command buffer, and then choose to reset that command buffer instead of submitting it,
+	 * the corresponding prefilled Metal command buffer will still be submitted. This is because Metal
+	 * command buffers do not support the concept of being reset after being filled. Depending on when
+	 * and how often you do this, it may cause unexpected visual artifacts and unnecessary GPU load.
+	 *
+	 * Initial value is set by the MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS build setting when MoltenVK
+	 * is compiled. By default the MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS build setting is set to false.
+	 */
+	VkBool32 prefillMetalCommandBuffers;
+
+	/**
+	 * The maximum number of Metal command buffers that can be concurrently active per Vulkan queue.
+	 * The number of active Metal command buffers required depends on the prefillMetalCommandBuffers
+	 * setting. If prefillMetalCommandBuffers is enabled, one Metal command buffer is required per
+	 * Vulkan command buffer. If prefillMetalCommandBuffers is disabled, one Metal command buffer
+	 * is required per command buffer queue submission, which may be significantly less than the
+	 * number of Vulkan command buffers.
 	 *
 	 * Initial value is set by the MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL build setting
 	 * when MoltenVK is compiled. By default the MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL
 	 * build setting is set to 64. Changing the value of this parameter must be done before creating
 	 * a VkDevice, for the change to take effect.
 	 */
-	uint32_t maxActiveMetalCommandBuffersPerPool;
+	uint32_t maxActiveMetalCommandBuffersPerQueue;
 
 	/**
 	 * Metal allows only 8192 occlusion queries per MTLBuffer. If enabled, MoltenVK

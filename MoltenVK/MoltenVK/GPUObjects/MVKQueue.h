@@ -181,22 +181,7 @@ protected:
 class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 
 public:
-
-	/**
-	 * Executes this action on the queue and then disposes of this instance.
-	 *
-	 * Upon completion of this function, no further calls should be made to this instance.
-	 */
-	virtual void execute();
-
-	/** Automatically called once all the MTLCommandBuffers have completed execution. */
-	void finish();
-
-	/** Returns the active MTLCommandBuffer instance, lazily retrieving it from the queue if needed. */
-	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
-
-	/** Commits and releases the currently active MTLCommandBuffer. */
-	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
+	void execute() override;
 
 	/** 
      * Constructs an instance for the device and queue.
@@ -212,7 +197,12 @@ public:
     MVKQueueCommandBufferSubmission(MVKDevice* device, MVKQueue* queue, VkFence fence);
 
 protected:
-	friend MVKCommandEncoder;
+	friend MVKCommandBuffer;
+
+	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
+	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
+	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
+	void finish();
 
 	std::vector<MVKCommandBuffer*> _cmdBuffers;
 	std::vector<MVKSemaphore*> _signalSemaphores;
@@ -229,13 +219,7 @@ protected:
 class MVKQueuePresentSurfaceSubmission : public MVKQueueSubmission {
 
 public:
-
-	/**
-	 * Executes this action on the queue and then disposes of this instance.
-	 *
-	 * Upon completion of this function, no further calls should be made to this instance.
-	 */
-	virtual void execute();
+	void execute() override;
 
 	/** Constructs an instance for the device and queue. */
 	MVKQueuePresentSurfaceSubmission(MVKDevice* device,

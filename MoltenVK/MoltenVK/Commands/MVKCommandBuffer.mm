@@ -60,6 +60,8 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 		cmd = nextCmd;
 	}
 
+	clearPrefilledMTLCommandBuffer();
+
 	_head = nullptr;
 	_tail = nullptr;
 	_doesContinueRenderPass = false;
@@ -81,6 +83,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 
 VkResult MVKCommandBuffer::end() {
 	_canAcceptCommands = false;
+	prefill();
 	return _recordingResult;
 }
 
@@ -101,11 +104,16 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
     recordResult(command->getConfigurationResult());
 }
 
-void MVKCommandBuffer::execute(id<MTLCommandBuffer> mtlCmdBuff) {
+void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
 	if ( !canExecute() ) { return; }
 
-	MVKCommandEncoder encoder(this);
-	encoder.encode(mtlCmdBuff);
+	if (_prefilledMTLCmdBuffer) {
+		cmdBuffSubmit->setActiveMTLCommandBuffer(_prefilledMTLCmdBuffer);
+		clearPrefilledMTLCommandBuffer();
+	} else {
+		MVKCommandEncoder encoder(this);
+		encoder.encode(cmdBuffSubmit->getActiveMTLCommandBuffer());
+	}
 
 	if ( !_supportsConcurrentExecution ) { _isExecutingNonConcurrently.clear(); }
 }
@@ -130,6 +138,40 @@ bool MVKCommandBuffer::canExecute() {
 	return true;
 }
 
+// If we can, prefill a MTLCommandBuffer with the commands in this command buffer
+void MVKCommandBuffer::prefill() {
+
+	clearPrefilledMTLCommandBuffer();
+
+	if ( !canPrefill() ) { return; }
+
+	uint32_t qIdx = 0;
+	_prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);	// retain
+
+	MVKCommandEncoder encoder(this);
+	encoder.encode(_prefilledMTLCmdBuffer);
+}
+
+bool MVKCommandBuffer::canPrefill() {
+	bool wantPrefill = _device->_pMVKConfig->prefillMetalCommandBuffers;
+	return wantPrefill && !(_isSecondary || _supportsConcurrentExecution);
+}
+
+void MVKCommandBuffer::clearPrefilledMTLCommandBuffer() {
+
+	// Metal command buffers do not return to their pool on release, nor do they support the
+	// concept of a reset. In order to become available again in their pool, they must pass
+	// through the commit step. This is unfortunate because if the app adds commands to this
+	// command buffer and then chooses to reset it instead of submit it, we risk committing
+	// a prefilled Metal command buffer that the app did not intend to submit, potentially
+	// causing unexpected side effects. But unfortunately there is nothing else we can do.
+	if (_prefilledMTLCmdBuffer && _prefilledMTLCmdBuffer.status == MTLCommandBufferStatusNotEnqueued) {
+		[_prefilledMTLCmdBuffer commit];
+	}
+
+	[_prefilledMTLCmdBuffer release];
+	_prefilledMTLCmdBuffer = nil;
+}
 
 #pragma mark Construction
 
@@ -141,6 +183,7 @@ MVKCommandBuffer::MVKCommandBuffer(MVKDevice* device,
 	_isSecondary = (pAllocateInfo->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 	_head = nullptr;
 	_tail = nullptr;
+	_prefilledMTLCmdBuffer = nil;
 
 	reset(0);
 }
