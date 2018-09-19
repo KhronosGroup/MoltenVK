@@ -64,8 +64,8 @@ public:
 	/** Returns the number of commands currently in this command buffer. */
 	inline uint32_t getCommandCount() { return _commandCount; }
 
-	/** Encode commands from this command buffer onto the Metal command buffer. This call is thread-safe. */
-	void execute(id<MTLCommandBuffer> mtlCmdBuff);
+	/** Submit the commands in this buffer as part of the queue submission. */
+	void submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit);
 
 	/*** If no error has occured yet, records the specified result. */
     inline void recordResult(VkResult vkResult) { if (_recordingResult == VK_SUCCESS) { _recordingResult = vkResult; } }
@@ -120,6 +120,9 @@ protected:
 	friend class MVKCommandEncoder;
 
 	bool canExecute();
+	bool canPrefill();
+	void prefill();
+	void clearPrefilledMTLCommandBuffer();
 
 	MVKCommand* _head;
 	MVKCommand* _tail;
@@ -127,6 +130,7 @@ protected:
 	std::atomic_flag _isExecutingNonConcurrently;
 	VkResult _recordingResult;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
+	id<MTLCommandBuffer> _prefilledMTLCmdBuffer;
 	bool _isSecondary;
 	bool _doesContinueRenderPass;
 	bool _canAcceptCommands;

@@ -428,9 +428,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2);
     }
-	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
-		_metalFeatures.depthClipMode = true;
-	}
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
 		_metalFeatures.indirectDrawing = true;
@@ -447,7 +444,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mtlCopyBufferAlignment = 4;
 	_metalFeatures.indirectDrawing = true;
 	_metalFeatures.baseVertexInstanceDrawing = true;
-    _metalFeatures.depthClipMode = true;
 	_metalFeatures.layeredRendering = true;
 	_metalFeatures.maxTextureDimension = (16 * KIBI);
 
@@ -506,6 +502,9 @@ void MVKPhysicalDevice::initFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
         _features.occlusionQueryPrecise = true;
     }
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
+		_features.depthClamp = true;
+	}
 #endif
 
 #if MVK_MACOS

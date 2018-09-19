@@ -410,7 +410,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "${SRCROOT}/Scripts/package_all.sh";
+			shellScript = "${SRCROOT}/Scripts/package_all.sh\n";
 		};
 		A975D59A2140586700D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -438,7 +438,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "${SRCROOT}/Scripts/package_all.sh";
+			shellScript = "${SRCROOT}/Scripts/package_all.sh\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
