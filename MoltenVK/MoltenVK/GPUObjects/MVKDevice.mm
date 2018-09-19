@@ -476,6 +476,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.robustBufferAccess = true;  // XXX Required by Vulkan spec
     _features.fullDrawIndexUint32 = true;
     _features.independentBlend = true;
+    _features.sampleRateShading = true;
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
     _features.largePoints = true;
@@ -531,7 +532,7 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    independentBlend;                             // done
 //    VkBool32    geometryShader;
 //    VkBool32    tessellationShader;
-//    VkBool32    sampleRateShading;
+//    VkBool32    sampleRateShading;                            // done
 //    VkBool32    dualSrcBlend;                                 // done
 //    VkBool32    logicOp;
 //    VkBool32    multiDrawIndirect;                            // done
