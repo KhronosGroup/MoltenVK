@@ -487,6 +487,8 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderStorageImageMultisample = true;
     _features.shaderStorageImageReadWithoutFormat = true;
     _features.shaderStorageImageWriteWithoutFormat = true;
+    _features.shaderUniformBufferArrayDynamicIndexing = true;
+    _features.shaderStorageBufferArrayDynamicIndexing = true;
     _features.shaderClipDistance = true;
     _features.shaderInt16 = true;
 	_features.multiDrawIndirect = true;
@@ -566,9 +568,9 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    shaderStorageImageMultisample;                // done
 //    VkBool32    shaderStorageImageReadWithoutFormat;          // done
 //    VkBool32    shaderStorageImageWriteWithoutFormat;         // done
-//    VkBool32    shaderUniformBufferArrayDynamicIndexing;
+//    VkBool32    shaderUniformBufferArrayDynamicIndexing;      // done
 //    VkBool32    shaderSampledImageArrayDynamicIndexing;
-//    VkBool32    shaderStorageBufferArrayDynamicIndexing;
+//    VkBool32    shaderStorageBufferArrayDynamicIndexing;      // done
 //    VkBool32    shaderStorageImageArrayDynamicIndexing;
 //    VkBool32    shaderClipDistance;                           // done
 //    VkBool32    shaderCullDistance;
