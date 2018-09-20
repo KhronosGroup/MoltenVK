@@ -40,6 +40,9 @@ public:
 	/** Returns whether the memory is automatically coherent between device and host. */
     inline bool isMemoryHostCoherent() { return (_mtlStorageMode == MTLStorageModeShared); }
 
+    /** Returns whether this is a dedicated allocation. */
+    inline bool isDedicatedAllocation() { return _isDedicated; }
+
     /** Returns the memory already committed by this instance. */
     inline VkDeviceSize getDeviceMemoryCommitment() { return _allocationSize; }
 
@@ -109,6 +112,7 @@ protected:
 	bool ensureMTLBuffer();
 	bool ensureHostMemory();
 	void freeHostMemory();
+	MVKResource* getDedicatedResource();
 
 	std::vector<MVKBuffer*> _buffers;
 	std::vector<MVKImage*> _images;
@@ -120,6 +124,7 @@ protected:
 	void* _pMemory = nullptr;
 	void* _pHostMemory = nullptr;
 	bool _isMapped = false;
+	bool _isDedicated = false;
 	MTLResourceOptions _mtlResourceOptions;
 	MTLStorageMode _mtlStorageMode;
 	MTLCPUCacheMode _mtlCPUCacheMode;

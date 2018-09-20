@@ -23,6 +23,11 @@
 #pragma mark MVKResource
 
 VkResult MVKResource::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
+	// Don't do anything with a non-zero offset into a dedicated allocation.
+	if (mvkMem->isDedicatedAllocation() && memOffset) {
+		_deviceMemory = nullptr;
+		return VK_SUCCESS;
+	}
 	_deviceMemory = mvkMem;
 	_deviceMemoryOffset = memOffset;
 	return VK_SUCCESS;

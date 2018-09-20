@@ -154,7 +154,26 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 
 VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
 	pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-	return getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
+	getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
+	auto* next = (VkStructureType*)pMemoryRequirements->pNext;
+	while (next) {
+		switch (*next) {
+		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
+			// TODO: Maybe someday we could do something with MTLHeaps
+			// and allocate non-dedicated memory from them. For now, we
+			// always prefer dedicated allocations.
+			dedicatedReqs->prefersDedicatedAllocation = VK_TRUE;
+			dedicatedReqs->requiresDedicatedAllocation = VK_FALSE;
+			next = (VkStructureType*)dedicatedReqs->pNext;
+			break;
+		}
+		default:
+			next = (VkStructureType*)((VkMemoryRequirements2*)next)->pNext;
+			break;
+		}
+	}
+	return VK_SUCCESS;
 }
 
 // Memory may have been mapped before image was bound, and needs to be loaded into the MTLTexture.

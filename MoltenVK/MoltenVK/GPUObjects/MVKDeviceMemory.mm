@@ -105,30 +105,47 @@ VkDeviceSize MVKDeviceMemory::adjustMemorySize(VkDeviceSize size, VkDeviceSize o
 VkResult MVKDeviceMemory::addBuffer(MVKBuffer* mvkBuff) {
 	lock_guard<mutex> lock(_rezLock);
 
+	// If a dedicated alloc, ensure this buffer is the one and only buffer
+	// I am dedicated to.
+	if (_isDedicated && (_buffers.empty() || _buffers[0] != mvkBuff) ) {
+		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkBuffer %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkBuff, getDedicatedResource() );
+	}
+
 	if (!ensureMTLBuffer() ) {
 		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind a VkBuffer to a VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a VkDeviceMemory that supports a VkBuffer is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize);
 	}
 
-	_buffers.push_back(mvkBuff);
+	// In the dedicated case, we already saved the buffer we're going to use.
+	if (!_isDedicated)
+		_buffers.push_back(mvkBuff);
 
 	return VK_SUCCESS;
 }
 
 void MVKDeviceMemory::removeBuffer(MVKBuffer* mvkBuff) {
 	lock_guard<mutex> lock(_rezLock);
+	if (_isDedicated) return;
 	mvkRemoveAllOccurances(_buffers, mvkBuff);
 }
 
 VkResult MVKDeviceMemory::addImage(MVKImage* mvkImg) {
 	lock_guard<mutex> lock(_rezLock);
 
-	_images.push_back(mvkImg);
+	// If a dedicated alloc, ensure this image is the one and only image
+	// I am dedicated to.
+	if (_isDedicated && (_images.empty() || _images[0] != mvkImg) ) {
+		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
+	}
+
+	if (!_isDedicated)
+		_images.push_back(mvkImg);
 
 	return VK_SUCCESS;
 }
 
 void MVKDeviceMemory::removeImage(MVKImage* mvkImg) {
 	lock_guard<mutex> lock(_rezLock);
+	if (_isDedicated) return;
 	mvkRemoveAllOccurances(_images, mvkImg);
 }
 
@@ -176,6 +193,14 @@ void MVKDeviceMemory::freeHostMemory() {
 	_pHostMemory = nullptr;
 }
 
+MVKResource* MVKDeviceMemory::getDedicatedResource() {
+	MVKAssert(_isDedicated, "This method should only be called on dedicated allocations!");
+	if (_buffers.empty())
+		return _images[0];
+	else
+		return _buffers[0];
+}
+
 MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkMemoryAllocateInfo* pAllocateInfo,
 								 const VkAllocationCallbacks* pAllocator) : MVKBaseDeviceObject(device) {
@@ -187,9 +212,42 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 
 	_allocationSize = pAllocateInfo->allocationSize;
 
+	VkImage dedicatedImage = VK_NULL_HANDLE;
+	VkBuffer dedicatedBuffer = VK_NULL_HANDLE;
+	auto* next = (VkStructureType*)pAllocateInfo->pNext;
+	while (next) {
+		switch (*next) {
+		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: {
+			auto* pDedicatedInfo = (VkMemoryDedicatedAllocateInfo*)next;
+			dedicatedImage = pDedicatedInfo->image;
+			dedicatedBuffer = pDedicatedInfo->buffer;
+			next = (VkStructureType*)pDedicatedInfo->pNext;
+			break;
+		}
+		default:
+			next = (VkStructureType*)((VkMemoryAllocateInfo*)next)->pNext;
+			break;
+		}
+	}
+
+	// "Dedicated" means this memory can only be used for this image or buffer.
+	if (dedicatedImage) {
+		if (isMemoryHostCoherent() ) {
+			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Host-coherent VkDeviceMemory objects cannot be associated with images."));
+		}
+		_isDedicated = true;
+		_images.push_back((MVKImage*)dedicatedImage);
+		return;
+	}
+
 	// If memory needs to be coherent it must reside in an MTLBuffer, since an open-ended map() must work.
 	if (isMemoryHostCoherent() && !ensureMTLBuffer() ) {
 		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+	}
+
+	if (dedicatedBuffer) {
+		_isDedicated = true;
+		_buffers.push_back((MVKBuffer*)dedicatedBuffer);
 	}
 }
 
