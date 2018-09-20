@@ -280,6 +280,9 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkCreateDescriptorUpdateTemplateKHR);
 	ADD_PROC_ADDR(vkDestroyDescriptorUpdateTemplateKHR);
 	ADD_PROC_ADDR(vkUpdateDescriptorSetWithTemplateKHR);
+	ADD_PROC_ADDR(vkGetBufferMemoryRequirements2KHR);
+	ADD_PROC_ADDR(vkGetImageMemoryRequirements2KHR);
+	ADD_PROC_ADDR(vkGetImageSparseMemoryRequirements2KHR);
 	ADD_PROC_ADDR(vkGetPhysicalDeviceFeatures2KHR);
 	ADD_PROC_ADDR(vkGetPhysicalDeviceProperties2KHR);
 	ADD_PROC_ADDR(vkGetPhysicalDeviceFormatProperties2KHR);

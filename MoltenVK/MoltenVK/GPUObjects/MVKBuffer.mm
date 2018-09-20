@@ -36,6 +36,11 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequireme
 	return VK_SUCCESS;
 }
 
+VkResult MVKBuffer::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
+	pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+	return getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
+}
+
 VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
 	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
 
