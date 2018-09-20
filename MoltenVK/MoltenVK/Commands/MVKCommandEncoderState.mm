@@ -61,8 +61,9 @@ void MVKViewportCommandEncoderState::setViewports(vector<MTLViewport> mtlViewpor
 		(firstViewport + mtlViewports.size() <= maxViewports) &&
 		(firstViewport < maxViewports)) {
 
-		if (firstViewport + mtlViewports.size() > _mtlViewports.size())
+		if (firstViewport + mtlViewports.size() > _mtlViewports.size()) {
 			_mtlViewports.resize(firstViewport + mtlViewports.size());
+		}
 
 		std::copy(mtlViewports.begin(), mtlViewports.end(), _mtlViewports.begin() + firstViewport);
 		markDirty();
@@ -74,9 +75,12 @@ void MVKViewportCommandEncoderState::encodeImpl() {
 #if MVK_MACOS
     if (_cmdEncoder->getDevice()->_pFeatures->multiViewport) {
         [_cmdEncoder->_mtlRenderEncoder setViewports: &_mtlViewports[0] count: _mtlViewports.size()];
-    } else
-#endif
+    } else {
+        [_cmdEncoder->_mtlRenderEncoder setViewport: _mtlViewports[0]];
+    }
+#else
     [_cmdEncoder->_mtlRenderEncoder setViewport: _mtlViewports[0]];
+#endif
 }
 
 void MVKViewportCommandEncoderState::resetImpl() {
@@ -98,8 +102,9 @@ void MVKScissorCommandEncoderState::setScissors(vector<MTLScissorRect> mtlScisso
 		(firstScissor + mtlScissors.size() <= maxScissors) &&
 		(firstScissor < maxScissors)) {
 
-		if (firstScissor + mtlScissors.size() > _mtlScissors.size())
+		if (firstScissor + mtlScissors.size() > _mtlScissors.size()) {
 			_mtlScissors.resize(firstScissor + mtlScissors.size());
+		}
 
 		std::copy(mtlScissors.begin(), mtlScissors.end(), _mtlScissors.begin() + firstScissor);
 		markDirty();
@@ -115,9 +120,12 @@ void MVKScissorCommandEncoderState::encodeImpl() {
 #if MVK_MACOS
 	if (_cmdEncoder->getDevice()->_pFeatures->multiViewport) {
 		[_cmdEncoder->_mtlRenderEncoder setScissorRects: &clippedScissors[0] count: clippedScissors.size()];
-	} else
-#endif
+	} else {
+		[_cmdEncoder->_mtlRenderEncoder setScissorRect: clippedScissors[0]];
+	}
+#else
 	[_cmdEncoder->_mtlRenderEncoder setScissorRect: clippedScissors[0]];
+#endif
 }
 
 void MVKScissorCommandEncoderState::resetImpl() {

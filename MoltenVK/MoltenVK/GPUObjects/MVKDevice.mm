@@ -641,10 +641,12 @@ void MVKPhysicalDevice::initProperties() {
 #if MVK_MACOS
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
 		_properties.limits.maxViewports = 16;
+	} else {
+		_properties.limits.maxViewports = 1;
 	}
-	else
-#endif
+#else
 	_properties.limits.maxViewports = 1;
+#endif
 	_properties.limits.maxSamplerAnisotropy = 16;
 
     _properties.limits.maxVertexInputAttributes = 31;
