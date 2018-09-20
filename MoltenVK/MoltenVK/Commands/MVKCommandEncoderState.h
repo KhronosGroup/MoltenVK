@@ -144,7 +144,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MTLViewport _mtlViewport =  { 0, 0, 0, 0, 0, 0 };
+    std::vector<MTLViewport> _mtlViewports;
 };
 
 
@@ -173,7 +173,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MTLScissorRect _mtlScissor =  { 0, 0, 0, 0 };
+    std::vector<MTLScissorRect> _mtlScissors;
 };
 
 
