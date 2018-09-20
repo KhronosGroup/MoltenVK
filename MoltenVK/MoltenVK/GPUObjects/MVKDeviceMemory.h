@@ -112,6 +112,7 @@ protected:
 	bool ensureMTLBuffer();
 	bool ensureHostMemory();
 	void freeHostMemory();
+	MVKResource* getDedicatedResource();
 
 	std::vector<MVKBuffer*> _buffers;
 	std::vector<MVKImage*> _images;

@@ -107,8 +107,9 @@ VkResult MVKDeviceMemory::addBuffer(MVKBuffer* mvkBuff) {
 
 	// If a dedicated alloc, ensure this buffer is the one and only buffer
 	// I am dedicated to.
-	if (_isDedicated && (_buffers.empty() || _buffers[0] != mvkBuff) )
-		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+	if (_isDedicated && (_buffers.empty() || _buffers[0] != mvkBuff) ) {
+		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkBuffer %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkBuff, getDedicatedResource() );
+	}
 
 	if (!ensureMTLBuffer() ) {
 		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind a VkBuffer to a VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a VkDeviceMemory that supports a VkBuffer is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize);
@@ -132,8 +133,9 @@ VkResult MVKDeviceMemory::addImage(MVKImage* mvkImg) {
 
 	// If a dedicated alloc, ensure this image is the one and only image
 	// I am dedicated to.
-	if (_isDedicated && (_images.empty() || _images[0] != mvkImg) )
-		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+	if (_isDedicated && (_images.empty() || _images[0] != mvkImg) ) {
+		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
+	}
 
 	if (!_isDedicated)
 		_images.push_back(mvkImg);
@@ -189,6 +191,14 @@ bool MVKDeviceMemory::ensureHostMemory() {
 void MVKDeviceMemory::freeHostMemory() {
 	free(_pHostMemory);
 	_pHostMemory = nullptr;
+}
+
+MVKResource* MVKDeviceMemory::getDedicatedResource() {
+	MVKAssert(_isDedicated, "This method should only be called on dedicated allocations!");
+	if (_buffers.empty())
+		return _images[0];
+	else
+		return _buffers[0];
 }
 
 MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
