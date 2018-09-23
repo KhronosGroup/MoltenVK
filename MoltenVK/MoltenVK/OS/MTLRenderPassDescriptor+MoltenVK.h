@@ -31,4 +31,20 @@
  */
 @property(nonatomic, readwrite) NSUInteger renderTargetArrayLengthMVK;
 
+/**
+ * Replacement for the renderTargetWidth property.
+ *
+ * This property allows support under all OS versions. Delegates to the renderTargetWidth
+ * property if it is available. otherwise, returns 0 when read and does nothing when set.
+ */
+@property(nonatomic, readwrite) NSUInteger renderTargetWidthMVK;
+
+/**
+ * Replacement for the renderTargetHeight property.
+ *
+ * This property allows support under all OS versions. Delegates to the renderTargetHeight
+ * property if it is available. otherwise, returns 0 when read and does nothing when set.
+ */
+@property(nonatomic, readwrite) NSUInteger renderTargetHeightMVK;
+
 @end

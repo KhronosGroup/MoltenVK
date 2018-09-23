@@ -41,4 +41,48 @@
 
 }
 
+-(NSUInteger) renderTargetWidthMVK {
+
+#if MVK_MACOS
+	return 0;
+#endif
+#if MVK_IOS
+	if ([self respondsToSelector: @selector(renderTargetWidth)])
+		return self.renderTargetWidth;
+	return 0;
+#endif
+
+}
+
+-(void) setRenderTargetWidthMVK: (NSUInteger) width {
+
+#if MVK_IOS
+	if ([self respondsToSelector: @selector(setRenderTargetWidth:)])
+		self.renderTargetWidth = width;
+#endif
+
+}
+
+-(NSUInteger) renderTargetHeightMVK {
+
+#if MVK_MACOS
+	return 0;
+#endif
+#if MVK_IOS
+	if ([self respondsToSelector: @selector(renderTargetHeight)])
+		return self.renderTargetHeight;
+	return 0;
+#endif
+
+}
+
+-(void) setRenderTargetHeightMVK: (NSUInteger) height {
+
+#if MVK_IOS
+	if ([self respondsToSelector: @selector(setRenderTargetHeight:)])
+		self.renderTargetHeight = height;
+#endif
+
+}
+
 @end
