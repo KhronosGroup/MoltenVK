@@ -398,6 +398,18 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
     if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
+    // In Vulkan, it's perfectly valid to do rasterization with no attachments.
+    // Not so in Metal. If we have no attachments and rasterization is enabled,
+    // then we'll have to add a dummy attachment.
+    if (plDesc.rasterizationEnabled &&
+            (!pCreateInfo->pColorBlendState || !pCreateInfo->pColorBlendState->attachmentCount) &&
+            !mvkMTLPixelFormatIsDepthFormat(mtlDSFormat) &&
+            !mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
+        MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[0];
+        colorDesc.pixelFormat = MTLPixelFormatR8Unorm;
+        colorDesc.writeMask = MTLColorWriteMaskNone;
+    }
+
     // Multisampling
     if (pCreateInfo->pMultisampleState) {
         plDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(pCreateInfo->pMultisampleState->rasterizationSamples);
