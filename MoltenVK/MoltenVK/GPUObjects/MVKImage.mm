@@ -660,8 +660,6 @@ id<MTLTexture> MVKImageView::newMTLTexture() {
 
 MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
 
-	validateImageViewConfig(pCreateInfo);
-
 	_image = (MVKImage*)pCreateInfo->image;
 	_usage = _image->_usage;
 
@@ -680,6 +678,8 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 			break;
 		}
 	}
+
+	validateImageViewConfig(pCreateInfo);
 
 	// Remember the subresource range, and determine the actual number of mip levels and texture slices
     _subresourceRange = pCreateInfo->subresourceRange;
