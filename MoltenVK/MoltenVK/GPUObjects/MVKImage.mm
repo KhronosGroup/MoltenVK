@@ -610,15 +610,25 @@ MVKImage::~MVKImage() {
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     mtlAttDesc.texture = getMTLTexture();           // Use image view, necessary if image view format differs from image format
     mtlAttDesc.level = _useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
-    mtlAttDesc.slice = _useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
-    mtlAttDesc.depthPlane = 0;
+    if (mtlAttDesc.texture.textureType == MTLTextureType3D) {
+        mtlAttDesc.slice = 0;
+        mtlAttDesc.depthPlane = _useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
+    } else {
+        mtlAttDesc.slice = _useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
+        mtlAttDesc.depthPlane = 0;
+    }
 }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     mtlAttDesc.resolveTexture = getMTLTexture();    // Use image view, necessary if image view format differs from image format
     mtlAttDesc.resolveLevel = _useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
-    mtlAttDesc.resolveSlice = _useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
-    mtlAttDesc.resolveDepthPlane = 0;
+    if (mtlAttDesc.resolveTexture.textureType == MTLTextureType3D) {
+        mtlAttDesc.resolveSlice = 0;
+        mtlAttDesc.resolveDepthPlane = _useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
+    } else {
+        mtlAttDesc.resolveSlice = _useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
+        mtlAttDesc.resolveDepthPlane = 0;
+    }
 }
 
 
@@ -705,7 +715,7 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 	// VK_KHR_maintenance1 supports taking 2D image views of 3D slices. No dice in Metal.
 	if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
 		if (pCreateInfo->subresourceRange.layerCount != image->_extent.depth) {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not support views on a subset of a 3D texture."));
+			mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
 		} else if (!(_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
 			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments."));
 		} else if (_usage & ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
@@ -848,13 +858,17 @@ bool MVKImageView::matchesSwizzle(VkComponentMapping components, VkComponentMapp
 void MVKImageView::initMTLTextureViewSupport() {
 	_useMTLTextureView = _image->_canSupportMTLTextureView;
 
-	// If the view is identical to underlying image, don't bother using a Metal view
 	bool is3D = _image->_mtlTextureType == MTLTextureType3D;
+	// If the view is identical to underlying image, don't bother using a Metal view
 	if (_mtlPixelFormat == _image->_mtlPixelFormat &&
 		(_mtlTextureType == _image->_mtlTextureType ||
 		 ((_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray) && is3D)) &&
 		_subresourceRange.levelCount == _image->_mipLevels &&
 		_subresourceRange.layerCount == (is3D ? _image->_extent.depth : _image->_arrayLayers)) {
+		_useMTLTextureView = false;
+	}
+	// Never use views for subsets of 3D textures. Metal doesn't support them yet.
+	if (is3D && _subresourceRange.layerCount != _image->_extent.depth) {
 		_useMTLTextureView = false;
 	}
 }
