@@ -471,6 +471,10 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
     _byteAlignment = _device->_pProperties->limits.minTexelBufferOffsetAlignment;
 
+    if (pCreateInfo->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) {
+        mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal may not allow uncompressed views of compressed images.");
+    }
+
     // Adjust the info components to be compatible with Metal, then use the modified versions
     // to set other config info. Vulkan allows unused extent dimensions to be zero, but Metal
     // requires minimum of one. Adjust samples and miplevels for the right texture type.
@@ -656,9 +660,26 @@ id<MTLTexture> MVKImageView::newMTLTexture() {
 
 MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
 
-	validateImageViewConfig(pCreateInfo);
-
 	_image = (MVKImage*)pCreateInfo->image;
+	_usage = _image->_usage;
+
+	auto* next = (VkStructureType*)pCreateInfo->pNext;
+	while (next) {
+		switch (*next) {
+		case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
+			auto* pViewUsageInfo = (VkImageViewUsageCreateInfo*)next;
+			if (!(pViewUsageInfo->usage & ~_usage))
+				_usage = pViewUsageInfo->usage;
+			next = (VkStructureType*)pViewUsageInfo->pNext;
+			break;
+		}
+		default:
+			next = (VkStructureType*)((VkImageViewCreateInfo*)next)->pNext;
+			break;
+		}
+	}
+
+	validateImageViewConfig(pCreateInfo);
 
 	// Remember the subresource range, and determine the actual number of mip levels and texture slices
     _subresourceRange = pCreateInfo->subresourceRange;
@@ -685,9 +706,9 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 	if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
 		if (pCreateInfo->subresourceRange.layerCount != image->_extent.depth) {
 			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not support views on a subset of a 3D texture."));
-		} else if (!(image->_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+		} else if (!(_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
 			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments."));
-		} else if (image->_usage & ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+		} else if (_usage & ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
 			mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments.");
 		}
 	}
