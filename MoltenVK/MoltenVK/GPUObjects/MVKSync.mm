@@ -205,9 +205,9 @@ MVKFenceSitter::~MVKFenceSitter() {
 // Fills the vector with the collection of unsignaled fences
 void MVKFenceSitter::getUnsignaledFences(vector<MVKFence*>& fences) {
 	fences.clear();
-	fences.reserve(_unsignaledFences.size());
 
 	lock_guard<mutex> lock(_lock);
+	fences.reserve(_unsignaledFences.size());
 	for (auto& uf : _unsignaledFences) {
 		fences.push_back(uf);
 	}
