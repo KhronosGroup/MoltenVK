@@ -12,6 +12,39 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
+MoltenVK 1.0.22
+---------------
+
+Released 2018/09/25
+
+- Add support for extensions:
+	- VK_KHR_maintenance2
+    - VK_EXT_vertex_attribute_divisor
+    - VK_KHR_sampler_mirror_clamp_to_edge
+    - VK_KHR_image_format_list
+    - VK_KHR_dedicated_allocation
+    - VK_KHR_get_memory_requirements2
+    - VK_EXT_shader_viewport_index_layer
+- Support multiple viewports and scissor rectangles.
+- Support sampleRateShading.
+- Support pre-filling Metal command buffer on same thread as Vulkan command buffer.
+- Support passing either a CAMetalLayer or an NSView/UIView in the pView member 
+  when creating a surface.
+- Support views of the stencil aspect of depth/stencil images.
+- Improvements to subviews on 3D textures.
+- Enforce single queue per queue family to improve Metal command buffer handling.
+- Set Metal render target sizes on iOS.
+- Fix potential deadlocks on query results and fences.
+- Fix memory leak on SPIRV conversion.
+- Update to Vulkan header 1.1.85 and latest version of library dependencies.
+- Update to latest SPIRV-Cross version:
+	- MSL: Handle the ViewportIndex builtin.
+	- MSL: Handle the SamplePosition builtin.
+	- MSL: Fix OpAtomicIIncrement and OpAtomicIDecrement.
+	- MSL: Support array of arrays composites and copying.
+	- MSL: Fix issues with casting of builtin integer vectors.
+
+
 MoltenVK 1.0.21
 ---------------
 
@@ -31,7 +64,6 @@ Released 2018/09/08
 	- MSL: Handle interpolation qualifiers.
 	- MSL: Account for components when assigning locations to varyings.
 	- MSL: Do not emit function constants for version < 1.2.
-
 
 
 MoltenVK 1.0.20
