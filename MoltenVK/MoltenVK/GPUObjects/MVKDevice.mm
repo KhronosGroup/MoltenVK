@@ -58,10 +58,25 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures* features) {
     if (features) { *features = _features; }
 }
 
-void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2KHR* features) {
+void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
     if (features) {
-        features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+        features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         features->features = _features;
+        auto* next = (VkStructureType*)features->pNext;
+        while (next) {
+            switch (*next) {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+                auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
+                divisorFeatures->vertexAttributeInstanceRateDivisor = true;
+                divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
+                next = (VkStructureType*)divisorFeatures->pNext;
+                break;
+            }
+            default:
+                next = (VkStructureType*)((VkPhysicalDeviceFeatures2*)next)->pNext;
+                break;
+            }
+        }
     }
 }
 
@@ -90,6 +105,12 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
                 pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
                 next = (VkStructureType*)pointClipProps->pNext;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+                auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
+                divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
+                next = (VkStructureType*)divisorProps->pNext;
                 break;
             }
             default:

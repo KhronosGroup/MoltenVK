@@ -77,7 +77,7 @@ public:
 	void getFeatures(VkPhysicalDeviceFeatures* features);
 
 	/** Populates the specified structure with the features of this device. */
-	void getFeatures(VkPhysicalDeviceFeatures2KHR* features);
+	void getFeatures(VkPhysicalDeviceFeatures2* features);
 
 	/** Populates the specified structure with the Metal-specific features of this device. */
 	void getMetalFeatures(MVKPhysicalDeviceMetalFeatures* mtlFeatures);
