@@ -224,8 +224,6 @@
 		A96FE6E5215473A00060D1A3 /* parse_number.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5AB2154739F0060D1A3 /* parse_number.h */; };
 		A96FE6E6215473A00060D1A3 /* ilist_node.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5AC2154739F0060D1A3 /* ilist_node.h */; };
 		A96FE6E7215473A00060D1A3 /* ilist_node.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5AC2154739F0060D1A3 /* ilist_node.h */; };
-		A96FE6E8215473A00060D1A3 /* make_unique.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5AD2154739F0060D1A3 /* make_unique.h */; };
-		A96FE6E9215473A00060D1A3 /* make_unique.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5AD2154739F0060D1A3 /* make_unique.h */; };
 		A96FE6EA215473A00060D1A3 /* string_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5AE2154739F0060D1A3 /* string_utils.h */; };
 		A96FE6EB215473A00060D1A3 /* string_utils.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5AE2154739F0060D1A3 /* string_utils.h */; };
 		A96FE6EC215473A00060D1A3 /* small_vector.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5AF2154739F0060D1A3 /* small_vector.h */; };
@@ -256,8 +254,6 @@
 		A96FE705215473A00060D1A3 /* id_descriptor.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5BB2154739F0060D1A3 /* id_descriptor.cpp */; };
 		A96FE706215473A00060D1A3 /* latest_version_opencl_std_header.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5BC2154739F0060D1A3 /* latest_version_opencl_std_header.h */; };
 		A96FE707215473A00060D1A3 /* latest_version_opencl_std_header.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5BC2154739F0060D1A3 /* latest_version_opencl_std_header.h */; };
-		A96FE708215473A00060D1A3 /* spirv_optimizer_options.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5BD2154739F0060D1A3 /* spirv_optimizer_options.cpp */; };
-		A96FE709215473A00060D1A3 /* spirv_optimizer_options.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5BD2154739F0060D1A3 /* spirv_optimizer_options.cpp */; };
 		A96FE70A215473A00060D1A3 /* cfa.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5BE2154739F0060D1A3 /* cfa.h */; };
 		A96FE70B215473A00060D1A3 /* cfa.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5BE2154739F0060D1A3 /* cfa.h */; };
 		A96FE70C215473A00060D1A3 /* enum_string_mapping.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5BF2154739F0060D1A3 /* enum_string_mapping.h */; };
@@ -282,34 +278,10 @@
 		A96FE71F215473A00060D1A3 /* spirv_validator_options.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5CA2154739F0060D1A3 /* spirv_validator_options.h */; };
 		A96FE720215473A00060D1A3 /* markv_codec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5CC2154739F0060D1A3 /* markv_codec.cpp */; };
 		A96FE721215473A00060D1A3 /* markv_codec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5CC2154739F0060D1A3 /* markv_codec.cpp */; };
-		A96FE722215473A00060D1A3 /* markv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5CD2154739F0060D1A3 /* markv.cpp */; };
-		A96FE723215473A00060D1A3 /* markv.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5CD2154739F0060D1A3 /* markv.cpp */; };
-		A96FE724215473A00060D1A3 /* huffman_codec.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5CE2154739F0060D1A3 /* huffman_codec.h */; };
-		A96FE725215473A00060D1A3 /* huffman_codec.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5CE2154739F0060D1A3 /* huffman_codec.h */; };
-		A96FE726215473A00060D1A3 /* bit_stream.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D02154739F0060D1A3 /* bit_stream.h */; };
-		A96FE727215473A00060D1A3 /* bit_stream.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D02154739F0060D1A3 /* bit_stream.h */; };
-		A96FE728215473A00060D1A3 /* move_to_front.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5D12154739F0060D1A3 /* move_to_front.cpp */; };
-		A96FE729215473A00060D1A3 /* move_to_front.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5D12154739F0060D1A3 /* move_to_front.cpp */; };
-		A96FE72A215473A00060D1A3 /* markv_encoder.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D22154739F0060D1A3 /* markv_encoder.h */; };
-		A96FE72B215473A00060D1A3 /* markv_encoder.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D22154739F0060D1A3 /* markv_encoder.h */; };
-		A96FE72C215473A00060D1A3 /* markv_decoder.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D32154739F0060D1A3 /* markv_decoder.h */; };
-		A96FE72D215473A00060D1A3 /* markv_decoder.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D32154739F0060D1A3 /* markv_decoder.h */; };
 		A96FE72E215473A00060D1A3 /* markv.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D42154739F0060D1A3 /* markv.h */; };
 		A96FE72F215473A00060D1A3 /* markv.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D42154739F0060D1A3 /* markv.h */; };
 		A96FE730215473A00060D1A3 /* markv_model.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D52154739F0060D1A3 /* markv_model.h */; };
 		A96FE731215473A00060D1A3 /* markv_model.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D52154739F0060D1A3 /* markv_model.h */; };
-		A96FE732215473A00060D1A3 /* markv_decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5D62154739F0060D1A3 /* markv_decoder.cpp */; };
-		A96FE733215473A00060D1A3 /* markv_decoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5D62154739F0060D1A3 /* markv_decoder.cpp */; };
-		A96FE734215473A00060D1A3 /* move_to_front.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D72154739F0060D1A3 /* move_to_front.h */; };
-		A96FE735215473A00060D1A3 /* move_to_front.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D72154739F0060D1A3 /* move_to_front.h */; };
-		A96FE736215473A00060D1A3 /* markv_codec.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D82154739F0060D1A3 /* markv_codec.h */; };
-		A96FE737215473A00060D1A3 /* markv_codec.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D82154739F0060D1A3 /* markv_codec.h */; };
-		A96FE738215473A00060D1A3 /* markv_logger.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D92154739F0060D1A3 /* markv_logger.h */; };
-		A96FE739215473A00060D1A3 /* markv_logger.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5D92154739F0060D1A3 /* markv_logger.h */; };
-		A96FE73A215473A00060D1A3 /* bit_stream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5DA2154739F0060D1A3 /* bit_stream.cpp */; };
-		A96FE73B215473A00060D1A3 /* bit_stream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5DA2154739F0060D1A3 /* bit_stream.cpp */; };
-		A96FE73C215473A00060D1A3 /* markv_encoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5DB2154739F0060D1A3 /* markv_encoder.cpp */; };
-		A96FE73D215473A00060D1A3 /* markv_encoder.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5DB2154739F0060D1A3 /* markv_encoder.cpp */; };
 		A96FE73E215473A00060D1A3 /* enum_string_mapping.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5DC2154739F0060D1A3 /* enum_string_mapping.cpp */; };
 		A96FE73F215473A00060D1A3 /* enum_string_mapping.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE5DC2154739F0060D1A3 /* enum_string_mapping.cpp */; };
 		A96FE740215473A00060D1A3 /* text_handler.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE5DD2154739F0060D1A3 /* text_handler.h */; };
@@ -472,8 +444,6 @@
 		A96FE7DD215473A00060D1A3 /* constants.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6302154739F0060D1A3 /* constants.cpp */; };
 		A96FE7DE215473A00060D1A3 /* loop_fusion_pass.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6312154739F0060D1A3 /* loop_fusion_pass.h */; };
 		A96FE7DF215473A00060D1A3 /* loop_fusion_pass.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6312154739F0060D1A3 /* loop_fusion_pass.h */; };
-		A96FE7E0215473A00060D1A3 /* struct_cfg_analysis.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6322154739F0060D1A3 /* struct_cfg_analysis.h */; };
-		A96FE7E1215473A00060D1A3 /* struct_cfg_analysis.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6322154739F0060D1A3 /* struct_cfg_analysis.h */; };
 		A96FE7E2215473A00060D1A3 /* common_uniform_elim_pass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6332154739F0060D1A3 /* common_uniform_elim_pass.cpp */; };
 		A96FE7E3215473A00060D1A3 /* common_uniform_elim_pass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6332154739F0060D1A3 /* common_uniform_elim_pass.cpp */; };
 		A96FE7E4215473A00060D1A3 /* def_use_manager.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6342154739F0060D1A3 /* def_use_manager.cpp */; };
@@ -642,8 +612,6 @@
 		A96FE887215473A00060D1A3 /* instruction.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE685215473A00060D1A3 /* instruction.h */; };
 		A96FE888215473A00060D1A3 /* aggressive_dead_code_elim_pass.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE686215473A00060D1A3 /* aggressive_dead_code_elim_pass.h */; };
 		A96FE889215473A00060D1A3 /* aggressive_dead_code_elim_pass.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE686215473A00060D1A3 /* aggressive_dead_code_elim_pass.h */; };
-		A96FE88A215473A00060D1A3 /* struct_cfg_analysis.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE687215473A00060D1A3 /* struct_cfg_analysis.cpp */; };
-		A96FE88B215473A00060D1A3 /* struct_cfg_analysis.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE687215473A00060D1A3 /* struct_cfg_analysis.cpp */; };
 		A96FE88C215473A00060D1A3 /* vector_dce.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE688215473A00060D1A3 /* vector_dce.h */; };
 		A96FE88D215473A00060D1A3 /* vector_dce.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE688215473A00060D1A3 /* vector_dce.h */; };
 		A96FE88E215473A00060D1A3 /* combine_access_chains.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE689215473A00060D1A3 /* combine_access_chains.h */; };
@@ -694,8 +662,6 @@
 		A96FE8BB215473A00060D1A3 /* instruction.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE69F215473A00060D1A3 /* instruction.h */; };
 		A96FE8BC215473A00060D1A3 /* id_descriptor.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6A0215473A00060D1A3 /* id_descriptor.h */; };
 		A96FE8BD215473A00060D1A3 /* id_descriptor.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6A0215473A00060D1A3 /* id_descriptor.h */; };
-		A96FE8BE215473A00060D1A3 /* spirv_optimizer_options.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6A1215473A00060D1A3 /* spirv_optimizer_options.h */; };
-		A96FE8BF215473A00060D1A3 /* spirv_optimizer_options.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6A1215473A00060D1A3 /* spirv_optimizer_options.h */; };
 		A96FE8C0215473A00060D1A3 /* opcode.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6A2215473A00060D1A3 /* opcode.h */; };
 		A96FE8C1215473A00060D1A3 /* opcode.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6A2215473A00060D1A3 /* opcode.h */; };
 		A96FE8C2215473A00060D1A3 /* operand.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6A3215473A00060D1A3 /* operand.cpp */; };
@@ -740,8 +706,6 @@
 		A96FE8E9215473A00060D1A3 /* validate.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6B7215473A00060D1A3 /* validate.cpp */; };
 		A96FE8EA215473A00060D1A3 /* validation_state.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6B8215473A00060D1A3 /* validation_state.h */; };
 		A96FE8EB215473A00060D1A3 /* validation_state.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6B8215473A00060D1A3 /* validation_state.h */; };
-		A96FE8EC215473A00060D1A3 /* validate_constants.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6B9215473A00060D1A3 /* validate_constants.cpp */; };
-		A96FE8ED215473A00060D1A3 /* validate_constants.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6B9215473A00060D1A3 /* validate_constants.cpp */; };
 		A96FE8EE215473A00060D1A3 /* validate_bitwise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6BA215473A00060D1A3 /* validate_bitwise.cpp */; };
 		A96FE8EF215473A00060D1A3 /* validate_bitwise.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6BA215473A00060D1A3 /* validate_bitwise.cpp */; };
 		A96FE8F0215473A00060D1A3 /* construct.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6BB215473A00060D1A3 /* construct.cpp */; };
@@ -780,14 +744,10 @@
 		A96FE911215473A00060D1A3 /* validate_ext_inst.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6CB215473A00060D1A3 /* validate_ext_inst.cpp */; };
 		A96FE912215473A00060D1A3 /* instruction.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6CC215473A00060D1A3 /* instruction.h */; };
 		A96FE913215473A00060D1A3 /* instruction.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6CC215473A00060D1A3 /* instruction.h */; };
-		A96FE914215473A00060D1A3 /* validate_execution_limitations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6CD215473A00060D1A3 /* validate_execution_limitations.cpp */; };
-		A96FE915215473A00060D1A3 /* validate_execution_limitations.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6CD215473A00060D1A3 /* validate_execution_limitations.cpp */; };
 		A96FE916215473A00060D1A3 /* validate_layout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6CE215473A00060D1A3 /* validate_layout.cpp */; };
 		A96FE917215473A00060D1A3 /* validate_layout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6CE215473A00060D1A3 /* validate_layout.cpp */; };
 		A96FE918215473A00060D1A3 /* basic_block.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6CF215473A00060D1A3 /* basic_block.cpp */; };
 		A96FE919215473A00060D1A3 /* basic_block.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6CF215473A00060D1A3 /* basic_block.cpp */; };
-		A96FE91A215473A00060D1A3 /* validate_function.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6D0215473A00060D1A3 /* validate_function.cpp */; };
-		A96FE91B215473A00060D1A3 /* validate_function.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6D0215473A00060D1A3 /* validate_function.cpp */; };
 		A96FE91C215473A00060D1A3 /* function.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6D1215473A00060D1A3 /* function.h */; };
 		A96FE91D215473A00060D1A3 /* function.h in Headers */ = {isa = PBXBuildFile; fileRef = A96FE6D1215473A00060D1A3 /* function.h */; };
 		A96FE91E215473A00060D1A3 /* validate_composites.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A96FE6D2215473A00060D1A3 /* validate_composites.cpp */; };
@@ -972,7 +932,6 @@
 		A96FE5A92154739F0060D1A3 /* extensions.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = extensions.cpp; sourceTree = "<group>"; };
 		A96FE5AB2154739F0060D1A3 /* parse_number.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = parse_number.h; sourceTree = "<group>"; };
 		A96FE5AC2154739F0060D1A3 /* ilist_node.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ilist_node.h; sourceTree = "<group>"; };
-		A96FE5AD2154739F0060D1A3 /* make_unique.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = make_unique.h; sourceTree = "<group>"; };
 		A96FE5AE2154739F0060D1A3 /* string_utils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = string_utils.h; sourceTree = "<group>"; };
 		A96FE5AF2154739F0060D1A3 /* small_vector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = small_vector.h; sourceTree = "<group>"; };
 		A96FE5B02154739F0060D1A3 /* timer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = timer.cpp; sourceTree = "<group>"; };
@@ -988,7 +947,6 @@
 		A96FE5BA2154739F0060D1A3 /* table.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = table.cpp; sourceTree = "<group>"; };
 		A96FE5BB2154739F0060D1A3 /* id_descriptor.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = id_descriptor.cpp; sourceTree = "<group>"; };
 		A96FE5BC2154739F0060D1A3 /* latest_version_opencl_std_header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = latest_version_opencl_std_header.h; sourceTree = "<group>"; };
-		A96FE5BD2154739F0060D1A3 /* spirv_optimizer_options.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_optimizer_options.cpp; sourceTree = "<group>"; };
 		A96FE5BE2154739F0060D1A3 /* cfa.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = cfa.h; sourceTree = "<group>"; };
 		A96FE5BF2154739F0060D1A3 /* enum_string_mapping.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = enum_string_mapping.h; sourceTree = "<group>"; };
 		A96FE5C02154739F0060D1A3 /* spirv_validator_options.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_validator_options.cpp; sourceTree = "<group>"; };
@@ -1003,21 +961,9 @@
 		A96FE5C92154739F0060D1A3 /* binary.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = binary.cpp; sourceTree = "<group>"; };
 		A96FE5CA2154739F0060D1A3 /* spirv_validator_options.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = spirv_validator_options.h; sourceTree = "<group>"; };
 		A96FE5CC2154739F0060D1A3 /* markv_codec.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = markv_codec.cpp; sourceTree = "<group>"; };
-		A96FE5CD2154739F0060D1A3 /* markv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = markv.cpp; sourceTree = "<group>"; };
-		A96FE5CE2154739F0060D1A3 /* huffman_codec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = huffman_codec.h; sourceTree = "<group>"; };
 		A96FE5CF2154739F0060D1A3 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
-		A96FE5D02154739F0060D1A3 /* bit_stream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bit_stream.h; sourceTree = "<group>"; };
-		A96FE5D12154739F0060D1A3 /* move_to_front.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = move_to_front.cpp; sourceTree = "<group>"; };
-		A96FE5D22154739F0060D1A3 /* markv_encoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = markv_encoder.h; sourceTree = "<group>"; };
-		A96FE5D32154739F0060D1A3 /* markv_decoder.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = markv_decoder.h; sourceTree = "<group>"; };
 		A96FE5D42154739F0060D1A3 /* markv.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = markv.h; sourceTree = "<group>"; };
 		A96FE5D52154739F0060D1A3 /* markv_model.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = markv_model.h; sourceTree = "<group>"; };
-		A96FE5D62154739F0060D1A3 /* markv_decoder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = markv_decoder.cpp; sourceTree = "<group>"; };
-		A96FE5D72154739F0060D1A3 /* move_to_front.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = move_to_front.h; sourceTree = "<group>"; };
-		A96FE5D82154739F0060D1A3 /* markv_codec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = markv_codec.h; sourceTree = "<group>"; };
-		A96FE5D92154739F0060D1A3 /* markv_logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = markv_logger.h; sourceTree = "<group>"; };
-		A96FE5DA2154739F0060D1A3 /* bit_stream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bit_stream.cpp; sourceTree = "<group>"; };
-		A96FE5DB2154739F0060D1A3 /* markv_encoder.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = markv_encoder.cpp; sourceTree = "<group>"; };
 		A96FE5DC2154739F0060D1A3 /* enum_string_mapping.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = enum_string_mapping.cpp; sourceTree = "<group>"; };
 		A96FE5DD2154739F0060D1A3 /* text_handler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = text_handler.h; sourceTree = "<group>"; };
 		A96FE5DE2154739F0060D1A3 /* parsed_operand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = parsed_operand.h; sourceTree = "<group>"; };
@@ -1102,7 +1048,6 @@
 		A96FE62F2154739F0060D1A3 /* loop_unroller.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = loop_unroller.cpp; sourceTree = "<group>"; };
 		A96FE6302154739F0060D1A3 /* constants.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = constants.cpp; sourceTree = "<group>"; };
 		A96FE6312154739F0060D1A3 /* loop_fusion_pass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = loop_fusion_pass.h; sourceTree = "<group>"; };
-		A96FE6322154739F0060D1A3 /* struct_cfg_analysis.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = struct_cfg_analysis.h; sourceTree = "<group>"; };
 		A96FE6332154739F0060D1A3 /* common_uniform_elim_pass.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = common_uniform_elim_pass.cpp; sourceTree = "<group>"; };
 		A96FE6342154739F0060D1A3 /* def_use_manager.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = def_use_manager.cpp; sourceTree = "<group>"; };
 		A96FE6352154739F0060D1A3 /* strip_reflect_info_pass.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = strip_reflect_info_pass.cpp; sourceTree = "<group>"; };
@@ -1187,7 +1132,6 @@
 		A96FE684215473A00060D1A3 /* loop_descriptor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = loop_descriptor.h; sourceTree = "<group>"; };
 		A96FE685215473A00060D1A3 /* instruction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = instruction.h; sourceTree = "<group>"; };
 		A96FE686215473A00060D1A3 /* aggressive_dead_code_elim_pass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = aggressive_dead_code_elim_pass.h; sourceTree = "<group>"; };
-		A96FE687215473A00060D1A3 /* struct_cfg_analysis.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = struct_cfg_analysis.cpp; sourceTree = "<group>"; };
 		A96FE688215473A00060D1A3 /* vector_dce.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = vector_dce.h; sourceTree = "<group>"; };
 		A96FE689215473A00060D1A3 /* combine_access_chains.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = combine_access_chains.h; sourceTree = "<group>"; };
 		A96FE68A215473A00060D1A3 /* pass_manager.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = pass_manager.h; sourceTree = "<group>"; };
@@ -1213,7 +1157,6 @@
 		A96FE69E215473A00060D1A3 /* libspirv.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = libspirv.cpp; sourceTree = "<group>"; };
 		A96FE69F215473A00060D1A3 /* instruction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = instruction.h; sourceTree = "<group>"; };
 		A96FE6A0215473A00060D1A3 /* id_descriptor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = id_descriptor.h; sourceTree = "<group>"; };
-		A96FE6A1215473A00060D1A3 /* spirv_optimizer_options.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = spirv_optimizer_options.h; sourceTree = "<group>"; };
 		A96FE6A2215473A00060D1A3 /* opcode.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = opcode.h; sourceTree = "<group>"; };
 		A96FE6A3215473A00060D1A3 /* operand.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = operand.cpp; sourceTree = "<group>"; };
 		A96FE6A4215473A00060D1A3 /* latest_version_glsl_std_450_header.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = latest_version_glsl_std_450_header.h; sourceTree = "<group>"; };
@@ -1236,7 +1179,6 @@
 		A96FE6B6215473A00060D1A3 /* validate_interfaces.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_interfaces.cpp; sourceTree = "<group>"; };
 		A96FE6B7215473A00060D1A3 /* validate.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate.cpp; sourceTree = "<group>"; };
 		A96FE6B8215473A00060D1A3 /* validation_state.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = validation_state.h; sourceTree = "<group>"; };
-		A96FE6B9215473A00060D1A3 /* validate_constants.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_constants.cpp; sourceTree = "<group>"; };
 		A96FE6BA215473A00060D1A3 /* validate_bitwise.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_bitwise.cpp; sourceTree = "<group>"; };
 		A96FE6BB215473A00060D1A3 /* construct.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = construct.cpp; sourceTree = "<group>"; };
 		A96FE6BC215473A00060D1A3 /* function.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = function.cpp; sourceTree = "<group>"; };
@@ -1256,10 +1198,8 @@
 		A96FE6CA215473A00060D1A3 /* validate_type.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_type.cpp; sourceTree = "<group>"; };
 		A96FE6CB215473A00060D1A3 /* validate_ext_inst.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_ext_inst.cpp; sourceTree = "<group>"; };
 		A96FE6CC215473A00060D1A3 /* instruction.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = instruction.h; sourceTree = "<group>"; };
-		A96FE6CD215473A00060D1A3 /* validate_execution_limitations.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_execution_limitations.cpp; sourceTree = "<group>"; };
 		A96FE6CE215473A00060D1A3 /* validate_layout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_layout.cpp; sourceTree = "<group>"; };
 		A96FE6CF215473A00060D1A3 /* basic_block.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = basic_block.cpp; sourceTree = "<group>"; };
-		A96FE6D0215473A00060D1A3 /* validate_function.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_function.cpp; sourceTree = "<group>"; };
 		A96FE6D1215473A00060D1A3 /* function.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = function.h; sourceTree = "<group>"; };
 		A96FE6D2215473A00060D1A3 /* validate_composites.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_composites.cpp; sourceTree = "<group>"; };
 		A96FE6D3215473A00060D1A3 /* validation_state.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validation_state.cpp; sourceTree = "<group>"; };
@@ -1539,7 +1479,6 @@
 				A96FE5BA2154739F0060D1A3 /* table.cpp */,
 				A96FE5BB2154739F0060D1A3 /* id_descriptor.cpp */,
 				A96FE5BC2154739F0060D1A3 /* latest_version_opencl_std_header.h */,
-				A96FE5BD2154739F0060D1A3 /* spirv_optimizer_options.cpp */,
 				A96FE5BE2154739F0060D1A3 /* cfa.h */,
 				A96FE5BF2154739F0060D1A3 /* enum_string_mapping.h */,
 				A96FE5C02154739F0060D1A3 /* spirv_validator_options.cpp */,
@@ -1577,7 +1516,6 @@
 				A96FE69E215473A00060D1A3 /* libspirv.cpp */,
 				A96FE69F215473A00060D1A3 /* instruction.h */,
 				A96FE6A0215473A00060D1A3 /* id_descriptor.h */,
-				A96FE6A1215473A00060D1A3 /* spirv_optimizer_options.h */,
 				A96FE6A2215473A00060D1A3 /* opcode.h */,
 				A96FE6A3215473A00060D1A3 /* operand.cpp */,
 				A96FE6A4215473A00060D1A3 /* latest_version_glsl_std_450_header.h */,
@@ -1596,7 +1534,6 @@
 			children = (
 				A96FE5AB2154739F0060D1A3 /* parse_number.h */,
 				A96FE5AC2154739F0060D1A3 /* ilist_node.h */,
-				A96FE5AD2154739F0060D1A3 /* make_unique.h */,
 				A96FE5AE2154739F0060D1A3 /* string_utils.h */,
 				A96FE5AF2154739F0060D1A3 /* small_vector.h */,
 				A96FE5B02154739F0060D1A3 /* timer.cpp */,
@@ -1616,21 +1553,9 @@
 			isa = PBXGroup;
 			children = (
 				A96FE5CC2154739F0060D1A3 /* markv_codec.cpp */,
-				A96FE5CD2154739F0060D1A3 /* markv.cpp */,
-				A96FE5CE2154739F0060D1A3 /* huffman_codec.h */,
 				A96FE5CF2154739F0060D1A3 /* CMakeLists.txt */,
-				A96FE5D02154739F0060D1A3 /* bit_stream.h */,
-				A96FE5D12154739F0060D1A3 /* move_to_front.cpp */,
-				A96FE5D22154739F0060D1A3 /* markv_encoder.h */,
-				A96FE5D32154739F0060D1A3 /* markv_decoder.h */,
 				A96FE5D42154739F0060D1A3 /* markv.h */,
 				A96FE5D52154739F0060D1A3 /* markv_model.h */,
-				A96FE5D62154739F0060D1A3 /* markv_decoder.cpp */,
-				A96FE5D72154739F0060D1A3 /* move_to_front.h */,
-				A96FE5D82154739F0060D1A3 /* markv_codec.h */,
-				A96FE5D92154739F0060D1A3 /* markv_logger.h */,
-				A96FE5DA2154739F0060D1A3 /* bit_stream.cpp */,
-				A96FE5DB2154739F0060D1A3 /* markv_encoder.cpp */,
 			);
 			path = comp;
 			sourceTree = "<group>";
@@ -1715,7 +1640,6 @@
 				A96FE62F2154739F0060D1A3 /* loop_unroller.cpp */,
 				A96FE6302154739F0060D1A3 /* constants.cpp */,
 				A96FE6312154739F0060D1A3 /* loop_fusion_pass.h */,
-				A96FE6322154739F0060D1A3 /* struct_cfg_analysis.h */,
 				A96FE6332154739F0060D1A3 /* common_uniform_elim_pass.cpp */,
 				A96FE6342154739F0060D1A3 /* def_use_manager.cpp */,
 				A96FE6352154739F0060D1A3 /* strip_reflect_info_pass.cpp */,
@@ -1800,7 +1724,6 @@
 				A96FE684215473A00060D1A3 /* loop_descriptor.h */,
 				A96FE685215473A00060D1A3 /* instruction.h */,
 				A96FE686215473A00060D1A3 /* aggressive_dead_code_elim_pass.h */,
-				A96FE687215473A00060D1A3 /* struct_cfg_analysis.cpp */,
 				A96FE688215473A00060D1A3 /* vector_dce.h */,
 				A96FE689215473A00060D1A3 /* combine_access_chains.h */,
 				A96FE68A215473A00060D1A3 /* pass_manager.h */,
@@ -1841,7 +1764,6 @@
 				A96FE6B6215473A00060D1A3 /* validate_interfaces.cpp */,
 				A96FE6B7215473A00060D1A3 /* validate.cpp */,
 				A96FE6B8215473A00060D1A3 /* validation_state.h */,
-				A96FE6B9215473A00060D1A3 /* validate_constants.cpp */,
 				A96FE6BA215473A00060D1A3 /* validate_bitwise.cpp */,
 				A96FE6BB215473A00060D1A3 /* construct.cpp */,
 				A96FE6BC215473A00060D1A3 /* function.cpp */,
@@ -1861,10 +1783,8 @@
 				A96FE6CA215473A00060D1A3 /* validate_type.cpp */,
 				A96FE6CB215473A00060D1A3 /* validate_ext_inst.cpp */,
 				A96FE6CC215473A00060D1A3 /* instruction.h */,
-				A96FE6CD215473A00060D1A3 /* validate_execution_limitations.cpp */,
 				A96FE6CE215473A00060D1A3 /* validate_layout.cpp */,
 				A96FE6CF215473A00060D1A3 /* basic_block.cpp */,
-				A96FE6D0215473A00060D1A3 /* validate_function.cpp */,
 				A96FE6D1215473A00060D1A3 /* function.h */,
 				A96FE6D2215473A00060D1A3 /* validate_composites.cpp */,
 				A96FE6D3215473A00060D1A3 /* validation_state.cpp */,
@@ -2055,11 +1975,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A96FE8BE215473A00060D1A3 /* spirv_optimizer_options.h in Headers */,
 				A96FE76E215473A00060D1A3 /* compact_ids_pass.h in Headers */,
 				A96FE712215473A00060D1A3 /* spirv_definition.h in Headers */,
 				A96FE8A8215473A00060D1A3 /* dominator_tree.h in Headers */,
-				A96FE7E0215473A00060D1A3 /* struct_cfg_analysis.h in Headers */,
 				A96FE766215473A00060D1A3 /* loop_fusion.h in Headers */,
 				A96FE824215473A00060D1A3 /* workaround1209.h in Headers */,
 				A98149681FB6A98A005F00B4 /* MVKStrings.h in Headers */,
@@ -2091,20 +2009,17 @@
 				A96FE714215473A00060D1A3 /* operand.h in Headers */,
 				A96FE762215473A00060D1A3 /* merge_return_pass.h in Headers */,
 				A96FE884215473A00060D1A3 /* loop_descriptor.h in Headers */,
-				A96FE72C215473A00060D1A3 /* markv_decoder.h in Headers */,
 				A96FE7FC215473A00060D1A3 /* freeze_spec_constant_value_pass.h in Headers */,
 				A96FE912215473A00060D1A3 /* instruction.h in Headers */,
 				A96FE82A215473A00060D1A3 /* copy_prop_arrays.h in Headers */,
 				A96FE85C215473A00060D1A3 /* remove_duplicates_pass.h in Headers */,
 				A96FE878215473A00060D1A3 /* loop_utils.h in Headers */,
 				A96FE7D6215473A00060D1A3 /* loop_peeling.h in Headers */,
-				A96FE726215473A00060D1A3 /* bit_stream.h in Headers */,
 				A96FE74A215473A00060D1A3 /* spirv_endian.h in Headers */,
 				A96FE8B0215473A00060D1A3 /* table.h in Headers */,
 				A96FE7B4215473A00060D1A3 /* basic_block.h in Headers */,
 				A96FE818215473A00060D1A3 /* constants.h in Headers */,
 				A96FE86E215473A00060D1A3 /* redundancy_elimination.h in Headers */,
-				A96FE736215473A00060D1A3 /* markv_codec.h in Headers */,
 				A96FE6F0215473A00060D1A3 /* timer.h in Headers */,
 				A9BB09761CEF89B100CCAB22 /* spirv.hpp in Headers */,
 				A96FE810215473A00060D1A3 /* value_number_table.h in Headers */,
@@ -2117,8 +2032,6 @@
 				A928C9191D0488DC00071B88 /* SPIRVConversion.h in Headers */,
 				A96FE8C0215473A00060D1A3 /* opcode.h in Headers */,
 				A96FE7CA215473A00060D1A3 /* def_use_manager.h in Headers */,
-				A96FE6E8215473A00060D1A3 /* make_unique.h in Headers */,
-				A96FE734215473A00060D1A3 /* move_to_front.h in Headers */,
 				A96FE880215473A00060D1A3 /* loop_unswitch_pass.h in Headers */,
 				A96FE7E8215473A00060D1A3 /* decoration_manager.h in Headers */,
 				A9AB19971CB5B5A80001E7F9 /* spirv_common.hpp in Headers */,
@@ -2147,11 +2060,9 @@
 				A96FE75C215473A00060D1A3 /* if_conversion.h in Headers */,
 				A96FE6D8215473A00060D1A3 /* assembly_grammar.h in Headers */,
 				A96FE856215473A00060D1A3 /* strip_reflect_info_pass.h in Headers */,
-				A96FE724215473A00060D1A3 /* huffman_codec.h in Headers */,
 				A96FE828215473A00060D1A3 /* log.h in Headers */,
 				A96FE786215473A00060D1A3 /* replace_invalid_opc.h in Headers */,
 				A96FE764215473A00060D1A3 /* inline_opaque_pass.h in Headers */,
-				A96FE72A215473A00060D1A3 /* markv_encoder.h in Headers */,
 				A96FE7EC215473A00060D1A3 /* local_single_block_elim_pass.h in Headers */,
 				A96FE87A215473A00060D1A3 /* module.h in Headers */,
 				A96FE76C215473A00060D1A3 /* composite.h in Headers */,
@@ -2161,7 +2072,6 @@
 				A96FE852215473A00060D1A3 /* passes.h in Headers */,
 				A96FE7C6215473A00060D1A3 /* private_to_local_pass.h in Headers */,
 				A96FE77C215473A00060D1A3 /* strip_debug_info_pass.h in Headers */,
-				A96FE738215473A00060D1A3 /* markv_logger.h in Headers */,
 				A96FE7BA215473A00060D1A3 /* block_merge_pass.h in Headers */,
 				A909408C1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */,
 				A96FE8C6215473A00060D1A3 /* extensions.h in Headers */,
@@ -2216,11 +2126,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A96FE8BF215473A00060D1A3 /* spirv_optimizer_options.h in Headers */,
 				A96FE76F215473A00060D1A3 /* compact_ids_pass.h in Headers */,
 				A96FE713215473A00060D1A3 /* spirv_definition.h in Headers */,
 				A96FE8A9215473A00060D1A3 /* dominator_tree.h in Headers */,
-				A96FE7E1215473A00060D1A3 /* struct_cfg_analysis.h in Headers */,
 				A96FE767215473A00060D1A3 /* loop_fusion.h in Headers */,
 				A96FE825215473A00060D1A3 /* workaround1209.h in Headers */,
 				A98149691FB6A98A005F00B4 /* MVKStrings.h in Headers */,
@@ -2252,20 +2160,17 @@
 				A96FE715215473A00060D1A3 /* operand.h in Headers */,
 				A96FE763215473A00060D1A3 /* merge_return_pass.h in Headers */,
 				A96FE885215473A00060D1A3 /* loop_descriptor.h in Headers */,
-				A96FE72D215473A00060D1A3 /* markv_decoder.h in Headers */,
 				A96FE7FD215473A00060D1A3 /* freeze_spec_constant_value_pass.h in Headers */,
 				A96FE913215473A00060D1A3 /* instruction.h in Headers */,
 				A96FE82B215473A00060D1A3 /* copy_prop_arrays.h in Headers */,
 				A96FE85D215473A00060D1A3 /* remove_duplicates_pass.h in Headers */,
 				A96FE879215473A00060D1A3 /* loop_utils.h in Headers */,
 				A96FE7D7215473A00060D1A3 /* loop_peeling.h in Headers */,
-				A96FE727215473A00060D1A3 /* bit_stream.h in Headers */,
 				A96FE74B215473A00060D1A3 /* spirv_endian.h in Headers */,
 				A96FE8B1215473A00060D1A3 /* table.h in Headers */,
 				A96FE7B5215473A00060D1A3 /* basic_block.h in Headers */,
 				A96FE819215473A00060D1A3 /* constants.h in Headers */,
 				A96FE86F215473A00060D1A3 /* redundancy_elimination.h in Headers */,
-				A96FE737215473A00060D1A3 /* markv_codec.h in Headers */,
 				A96FE6F1215473A00060D1A3 /* timer.h in Headers */,
 				A9BB09771CEF89B100CCAB22 /* spirv.hpp in Headers */,
 				A96FE811215473A00060D1A3 /* value_number_table.h in Headers */,
@@ -2278,8 +2183,6 @@
 				A928C91A1D0488DC00071B88 /* SPIRVConversion.h in Headers */,
 				A96FE8C1215473A00060D1A3 /* opcode.h in Headers */,
 				A96FE7CB215473A00060D1A3 /* def_use_manager.h in Headers */,
-				A96FE6E9215473A00060D1A3 /* make_unique.h in Headers */,
-				A96FE735215473A00060D1A3 /* move_to_front.h in Headers */,
 				A96FE881215473A00060D1A3 /* loop_unswitch_pass.h in Headers */,
 				A96FE7E9215473A00060D1A3 /* decoration_manager.h in Headers */,
 				A9AB19981CB5B5A80001E7F9 /* spirv_common.hpp in Headers */,
@@ -2308,11 +2211,9 @@
 				A96FE75D215473A00060D1A3 /* if_conversion.h in Headers */,
 				A96FE6D9215473A00060D1A3 /* assembly_grammar.h in Headers */,
 				A96FE857215473A00060D1A3 /* strip_reflect_info_pass.h in Headers */,
-				A96FE725215473A00060D1A3 /* huffman_codec.h in Headers */,
 				A96FE829215473A00060D1A3 /* log.h in Headers */,
 				A96FE787215473A00060D1A3 /* replace_invalid_opc.h in Headers */,
 				A96FE765215473A00060D1A3 /* inline_opaque_pass.h in Headers */,
-				A96FE72B215473A00060D1A3 /* markv_encoder.h in Headers */,
 				A96FE7ED215473A00060D1A3 /* local_single_block_elim_pass.h in Headers */,
 				A96FE87B215473A00060D1A3 /* module.h in Headers */,
 				A96FE76D215473A00060D1A3 /* composite.h in Headers */,
@@ -2322,7 +2223,6 @@
 				A96FE853215473A00060D1A3 /* passes.h in Headers */,
 				A96FE7C7215473A00060D1A3 /* private_to_local_pass.h in Headers */,
 				A96FE77D215473A00060D1A3 /* strip_debug_info_pass.h in Headers */,
-				A96FE739215473A00060D1A3 /* markv_logger.h in Headers */,
 				A96FE7BB215473A00060D1A3 /* block_merge_pass.h in Headers */,
 				A909408D1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */,
 				A96FE8C7215473A00060D1A3 /* extensions.h in Headers */,
@@ -2634,7 +2534,6 @@
 				A96FE874215473A00060D1A3 /* inline_opaque_pass.cpp in Sources */,
 				A96FE746215473A00060D1A3 /* parsed_operand.cpp in Sources */,
 				A96FE85E215473A00060D1A3 /* redundancy_elimination.cpp in Sources */,
-				A96FE8EC215473A00060D1A3 /* validate_constants.cpp in Sources */,
 				A96FE7DA215473A00060D1A3 /* loop_unroller.cpp in Sources */,
 				A96FE8FA215473A00060D1A3 /* validate_datarules.cpp in Sources */,
 				A96FE7A0215473A00060D1A3 /* const_folding_rules.cpp in Sources */,
@@ -2668,14 +2567,11 @@
 				A96FE902215473A00060D1A3 /* validate_logicals.cpp in Sources */,
 				A96FE8EE215473A00060D1A3 /* validate_bitwise.cpp in Sources */,
 				A96FE752215473A00060D1A3 /* opcode.cpp in Sources */,
-				A96FE73A215473A00060D1A3 /* bit_stream.cpp in Sources */,
 				A96FE798215473A00060D1A3 /* merge_return_pass.cpp in Sources */,
 				A96FE704215473A00060D1A3 /* id_descriptor.cpp in Sources */,
-				A96FE722215473A00060D1A3 /* markv.cpp in Sources */,
 				A96FE862215473A00060D1A3 /* workaround1209.cpp in Sources */,
 				A96FE7B6215473A00060D1A3 /* remove_duplicates_pass.cpp in Sources */,
 				A96FE6E2215473A00060D1A3 /* extensions.cpp in Sources */,
-				A96FE73C215473A00060D1A3 /* markv_encoder.cpp in Sources */,
 				A96FE90C215473A00060D1A3 /* instruction.cpp in Sources */,
 				A96FE81A215473A00060D1A3 /* strength_reduction_pass.cpp in Sources */,
 				A96FE78A215473A00060D1A3 /* local_redundancy_elimination.cpp in Sources */,
@@ -2688,7 +2584,6 @@
 				A96FE876215473A00060D1A3 /* replace_invalid_opc.cpp in Sources */,
 				A96FE7BC215473A00060D1A3 /* module.cpp in Sources */,
 				A96FE84C215473A00060D1A3 /* propagator.cpp in Sources */,
-				A96FE914215473A00060D1A3 /* validate_execution_limitations.cpp in Sources */,
 				A96FE86C215473A00060D1A3 /* reduce_load_size.cpp in Sources */,
 				A96FE796215473A00060D1A3 /* dominator_tree.cpp in Sources */,
 				A96FE7EA215473A00060D1A3 /* ccp_pass.cpp in Sources */,
@@ -2742,7 +2637,6 @@
 				A96FE804215473A00060D1A3 /* local_ssa_elim_pass.cpp in Sources */,
 				A96FE916215473A00060D1A3 /* validate_layout.cpp in Sources */,
 				A96FE848215473A00060D1A3 /* private_to_local_pass.cpp in Sources */,
-				A96FE708215473A00060D1A3 /* spirv_optimizer_options.cpp in Sources */,
 				A96FE710215473A00060D1A3 /* print.cpp in Sources */,
 				A96FE76A215473A00060D1A3 /* build_module.cpp in Sources */,
 				A96FE7F0215473A00060D1A3 /* aggressive_dead_code_elim_pass.cpp in Sources */,
@@ -2753,7 +2647,6 @@
 				A96FE7DC215473A00060D1A3 /* constants.cpp in Sources */,
 				A96FE6D6215473A00060D1A3 /* spirv_target_env.cpp in Sources */,
 				A96FE79C215473A00060D1A3 /* eliminate_dead_constant_pass.cpp in Sources */,
-				A96FE88A215473A00060D1A3 /* struct_cfg_analysis.cpp in Sources */,
 				A96FE920215473A00060D1A3 /* validation_state.cpp in Sources */,
 				A96FE806215473A00060D1A3 /* function.cpp in Sources */,
 				A96FE8B8215473A00060D1A3 /* libspirv.cpp in Sources */,
@@ -2766,14 +2659,11 @@
 				A96FE75E215473A00060D1A3 /* register_pressure.cpp in Sources */,
 				A96FE8D0215473A00060D1A3 /* validate_cfg.cpp in Sources */,
 				A96FE844215473A00060D1A3 /* local_single_store_elim_pass.cpp in Sources */,
-				A96FE728215473A00060D1A3 /* move_to_front.cpp in Sources */,
 				A96FE6EE215473A00060D1A3 /* timer.cpp in Sources */,
 				A96FE784215473A00060D1A3 /* freeze_spec_constant_value_pass.cpp in Sources */,
 				A96FE918215473A00060D1A3 /* basic_block.cpp in Sources */,
-				A96FE732215473A00060D1A3 /* markv_decoder.cpp in Sources */,
 				A96FE832215473A00060D1A3 /* scalar_analysis.cpp in Sources */,
 				A96FE8CE215473A00060D1A3 /* validate_annotation.cpp in Sources */,
-				A96FE91A215473A00060D1A3 /* validate_function.cpp in Sources */,
 				A96FE858215473A00060D1A3 /* scalar_replacement_pass.cpp in Sources */,
 				A96FE716215473A00060D1A3 /* spirv_endian.cpp in Sources */,
 				A96FE922215473A00060D1A3 /* validate_primitives.cpp in Sources */,
@@ -2801,7 +2691,6 @@
 				A96FE875215473A00060D1A3 /* inline_opaque_pass.cpp in Sources */,
 				A96FE747215473A00060D1A3 /* parsed_operand.cpp in Sources */,
 				A96FE85F215473A00060D1A3 /* redundancy_elimination.cpp in Sources */,
-				A96FE8ED215473A00060D1A3 /* validate_constants.cpp in Sources */,
 				A96FE7DB215473A00060D1A3 /* loop_unroller.cpp in Sources */,
 				A96FE8FB215473A00060D1A3 /* validate_datarules.cpp in Sources */,
 				A96FE7A1215473A00060D1A3 /* const_folding_rules.cpp in Sources */,
@@ -2835,14 +2724,11 @@
 				A96FE903215473A00060D1A3 /* validate_logicals.cpp in Sources */,
 				A96FE8EF215473A00060D1A3 /* validate_bitwise.cpp in Sources */,
 				A96FE753215473A00060D1A3 /* opcode.cpp in Sources */,
-				A96FE73B215473A00060D1A3 /* bit_stream.cpp in Sources */,
 				A96FE799215473A00060D1A3 /* merge_return_pass.cpp in Sources */,
 				A96FE705215473A00060D1A3 /* id_descriptor.cpp in Sources */,
-				A96FE723215473A00060D1A3 /* markv.cpp in Sources */,
 				A96FE863215473A00060D1A3 /* workaround1209.cpp in Sources */,
 				A96FE7B7215473A00060D1A3 /* remove_duplicates_pass.cpp in Sources */,
 				A96FE6E3215473A00060D1A3 /* extensions.cpp in Sources */,
-				A96FE73D215473A00060D1A3 /* markv_encoder.cpp in Sources */,
 				A96FE90D215473A00060D1A3 /* instruction.cpp in Sources */,
 				A96FE81B215473A00060D1A3 /* strength_reduction_pass.cpp in Sources */,
 				A96FE78B215473A00060D1A3 /* local_redundancy_elimination.cpp in Sources */,
@@ -2855,7 +2741,6 @@
 				A96FE877215473A00060D1A3 /* replace_invalid_opc.cpp in Sources */,
 				A96FE7BD215473A00060D1A3 /* module.cpp in Sources */,
 				A96FE84D215473A00060D1A3 /* propagator.cpp in Sources */,
-				A96FE915215473A00060D1A3 /* validate_execution_limitations.cpp in Sources */,
 				A96FE86D215473A00060D1A3 /* reduce_load_size.cpp in Sources */,
 				A96FE797215473A00060D1A3 /* dominator_tree.cpp in Sources */,
 				A96FE7EB215473A00060D1A3 /* ccp_pass.cpp in Sources */,
@@ -2909,7 +2794,6 @@
 				A96FE805215473A00060D1A3 /* local_ssa_elim_pass.cpp in Sources */,
 				A96FE917215473A00060D1A3 /* validate_layout.cpp in Sources */,
 				A96FE849215473A00060D1A3 /* private_to_local_pass.cpp in Sources */,
-				A96FE709215473A00060D1A3 /* spirv_optimizer_options.cpp in Sources */,
 				A96FE711215473A00060D1A3 /* print.cpp in Sources */,
 				A96FE76B215473A00060D1A3 /* build_module.cpp in Sources */,
 				A96FE7F1215473A00060D1A3 /* aggressive_dead_code_elim_pass.cpp in Sources */,
@@ -2920,7 +2804,6 @@
 				A96FE7DD215473A00060D1A3 /* constants.cpp in Sources */,
 				A96FE6D7215473A00060D1A3 /* spirv_target_env.cpp in Sources */,
 				A96FE79D215473A00060D1A3 /* eliminate_dead_constant_pass.cpp in Sources */,
-				A96FE88B215473A00060D1A3 /* struct_cfg_analysis.cpp in Sources */,
 				A96FE921215473A00060D1A3 /* validation_state.cpp in Sources */,
 				A96FE807215473A00060D1A3 /* function.cpp in Sources */,
 				A96FE8B9215473A00060D1A3 /* libspirv.cpp in Sources */,
@@ -2933,14 +2816,11 @@
 				A96FE75F215473A00060D1A3 /* register_pressure.cpp in Sources */,
 				A96FE8D1215473A00060D1A3 /* validate_cfg.cpp in Sources */,
 				A96FE845215473A00060D1A3 /* local_single_store_elim_pass.cpp in Sources */,
-				A96FE729215473A00060D1A3 /* move_to_front.cpp in Sources */,
 				A96FE6EF215473A00060D1A3 /* timer.cpp in Sources */,
 				A96FE785215473A00060D1A3 /* freeze_spec_constant_value_pass.cpp in Sources */,
 				A96FE919215473A00060D1A3 /* basic_block.cpp in Sources */,
-				A96FE733215473A00060D1A3 /* markv_decoder.cpp in Sources */,
 				A96FE833215473A00060D1A3 /* scalar_analysis.cpp in Sources */,
 				A96FE8CF215473A00060D1A3 /* validate_annotation.cpp in Sources */,
-				A96FE91B215473A00060D1A3 /* validate_function.cpp in Sources */,
 				A96FE859215473A00060D1A3 /* scalar_replacement_pass.cpp in Sources */,
 				A96FE717215473A00060D1A3 /* spirv_endian.cpp in Sources */,
 				A96FE923215473A00060D1A3 /* validate_primitives.cpp in Sources */,
