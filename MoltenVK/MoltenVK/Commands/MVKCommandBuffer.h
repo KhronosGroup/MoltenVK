@@ -21,6 +21,7 @@
 #include "MVKDevice.h"
 #include "MVKCommand.h"
 #include "MVKCommandEncoderState.h"
+#include "MVKMTLBufferAllocation.h"
 #include "MVKCmdPipeline.h"
 #include <vector>
 #include <unordered_map>
@@ -90,15 +91,15 @@ public:
 
 	/**
 	 * Instances of this class can participate in a linked list or pool. When so participating,
-	 * this is a reference to the next command in the linked list. This value should only be
+	 * this is a reference to the next instance in the linked list. This value should only be
 	 * managed and set by the linked list.
 	 */
 	MVKCommandBuffer* _next;
 
 
 #pragma mark Construction
-	
-	MVKCommandBuffer(MVKDevice* device, const VkCommandBufferAllocateInfo* pAllocateInfo);
+
+	MVKCommandBuffer(MVKDevice* device) : MVKDispatchableDeviceObject(device) {}
 
 	~MVKCommandBuffer() override;
 
@@ -118,7 +119,9 @@ public:
 
 protected:
 	friend class MVKCommandEncoder;
+	friend class MVKCommandPool;
 
+	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();
 	bool canPrefill();
 	void prefill();
@@ -137,6 +140,33 @@ protected:
 	bool _isReusable;
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
+};
+
+
+#pragma mark -
+#pragma mark MVKCommandBufferPool
+
+/**
+ * A pool of MVKCommandBuffer instances.
+ *
+ * To return a MVKCommandBuffer retrieved from this pool, back to this pool,
+ * call the returnToPool() function on the MVKCommandBuffer instance.
+ */
+class MVKCommandBufferPool : public MVKObjectPool<MVKCommandBuffer> {
+
+public:
+
+	/** Returns a new command instance. */
+	MVKCommandBuffer* newObject() override { return new MVKCommandBuffer(_device); }
+
+	/**
+	 * Configures this instance to either use pooling, or not, depending on the
+	 * value of isPooling, which defaults to true if not indicated explicitly.
+	 */
+	MVKCommandBufferPool(MVKDevice* device, bool isPooling = true) : MVKObjectPool<MVKCommandBuffer>(isPooling), _device(device) {}
+
+protected:
+	MVKDevice* _device;
 };
 
 

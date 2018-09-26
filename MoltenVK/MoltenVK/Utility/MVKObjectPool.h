@@ -76,6 +76,8 @@ public:
      * aquireObject() and returnObject() must be made from the same thread.
 	 */
 	void returnObject(T* obj) {
+		if ( !obj ) { return; }
+
 		if (_isPooling) {
 			if (_tail) { _tail->_next = obj; }
 			obj->_next = VK_NULL_HANDLE;

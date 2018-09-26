@@ -97,6 +97,9 @@ public:
 	/** Returns a MTLComputePipelineState for filling a buffer. */
 	id<MTLComputePipelineState> getCmdFillBufferMTLComputePipelineState();
 
+	/** Deletes all the internal resources. */
+	void clear();
+
 #pragma mark Construction
 
 	MVKCommandEncodingPool(MVKDevice* device);

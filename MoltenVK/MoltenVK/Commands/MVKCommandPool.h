@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
+#include "MVKCommandBuffer.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommand.h"
@@ -169,12 +170,10 @@ public:
 
 	~MVKCommandPool() override;
 
-private:
-	friend class MVKCommandBuffer;
+protected:
+	void freeCommandBuffer(MVKCommandBuffer* mvkCmdBuff);
 
-	void addCommandBuffer(MVKCommandBuffer* cmdBuffer);
-	void removeCommandBuffer(MVKCommandBuffer* cmdBuffer);
-
+	MVKCommandBufferPool _commandBufferPool;
 	std::unordered_set<MVKCommandBuffer*> _commandBuffers;
 	MVKCommandEncodingPool _commandEncodingPool;
 	uint32_t _queueFamilyIndex;
