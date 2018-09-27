@@ -534,6 +534,10 @@ void MVKPhysicalDevice::initFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
         _features.occlusionQueryPrecise = true;
     }
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) {
+        _features.shaderSampledImageArrayDynamicIndexing = true;
+        _features.shaderStorageImageArrayDynamicIndexing = true;
+    }
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
 		_features.depthClamp = true;
 	}
@@ -553,6 +557,8 @@ void MVKPhysicalDevice::initFeatures() {
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
         _features.multiViewport = true;
+        _features.shaderSampledImageArrayDynamicIndexing = true;
+        _features.shaderStorageImageArrayDynamicIndexing = true;
     }
 
 #endif
@@ -596,9 +602,9 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    shaderStorageImageReadWithoutFormat;          // done
 //    VkBool32    shaderStorageImageWriteWithoutFormat;         // done
 //    VkBool32    shaderUniformBufferArrayDynamicIndexing;      // done
-//    VkBool32    shaderSampledImageArrayDynamicIndexing;
+//    VkBool32    shaderSampledImageArrayDynamicIndexing;       // done
 //    VkBool32    shaderStorageBufferArrayDynamicIndexing;      // done
-//    VkBool32    shaderStorageImageArrayDynamicIndexing;
+//    VkBool32    shaderStorageImageArrayDynamicIndexing;       // done
 //    VkBool32    shaderClipDistance;                           // done
 //    VkBool32    shaderCullDistance;
 //    VkBool32    shaderFloat64;
