@@ -8,8 +8,12 @@ export MVK_BUILT_PROD_PATH="${BUILT_PRODUCTS_DIR}"
 export MVK_SYS_FWK_DIR="${SDK_DIR}/System/Library/Frameworks"
 export MVK_USR_LIB_DIR="${SDK_DIR}/usr/lib"
 
+if test x"${ENABLE_THREAD_SANITIZER}" = xYES; then
+	MVK_TSAN="-fsanitize=thread"
+fi
+
 clang \
--dynamiclib \
+-dynamiclib ${MVK_TSAN} \
 -arch x86_64 \
 -mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET} \
 -compatibility_version 1.0.0 -current_version 1.0.0  \
