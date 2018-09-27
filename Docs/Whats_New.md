@@ -12,6 +12,28 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
+MoltenVK 1.0.23
+---------------
+
+Released 2018/09/28
+
+- Add support for features:
+	- shaderStorageImageMultisample
+	- shaderStorageImageReadWithoutFormat
+	- shaderStorageImageWriteWithoutFormat
+	- shaderUniformBufferArrayDynamicIndexing
+	- shaderSampledImageArrayDynamicIndexing
+	- shaderStorageBufferArrayDynamicIndexing
+	- shaderStorageImageArrayDynamicIndexing
+- Support reduced render area
+- Support rasterization to missing attachment
+- Allocate MVKCommandBuffers from a pool within MVKCommandPool.
+- Update glslang version
+- Update to latest SPIRV-Cross version:
+	- MSL: Improve coordinate handling for buffer reads.
+	- MSL: Expand arrays of buffers passed as input.
+
+
 MoltenVK 1.0.22
 ---------------
 
