@@ -254,8 +254,8 @@ void MVKCommandEncoder::beginMetalRenderPass() {
     getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues, _isRenderingEntireAttachment);
     mtlRPDesc.visibilityResultBuffer = _occlusionQueryState.getVisibilityResultMTLBuffer();
 	mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
-	mtlRPDesc.renderTargetWidthMVK = _framebuffer->getExtent2D().width;
-	mtlRPDesc.renderTargetHeightMVK = _framebuffer->getExtent2D().height;
+	mtlRPDesc.renderTargetWidthMVK = min(_framebuffer->getExtent2D().width, _renderArea.extent.width);
+	mtlRPDesc.renderTargetHeightMVK = min(_framebuffer->getExtent2D().height, _renderArea.extent.height);
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
     _mtlRenderEncoder.label = getMTLRenderCommandEncoderName();
