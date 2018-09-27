@@ -115,6 +115,36 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			}
 		}
 	}
+
+	_mtlDummyTex = nil;
+	if (caCnt == 0 && dsRPAttIdx == VK_ATTACHMENT_UNUSED) {
+		// Add a dummy attachment so this passes validation.
+		VkExtent2D fbExtent = framebuffer->getExtent2D();
+		MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
+		if (framebuffer->getLayerCount() > 1) {
+			mtlTexDesc.textureType = MTLTextureType2DArray;
+			mtlTexDesc.arrayLength = framebuffer->getLayerCount();
+		}
+#if MVK_IOS
+		if ([_renderPass->getDevice()->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
+			mtlTexDesc.storageMode = MTLStorageModeMemoryless;
+		} else {
+			mtlTexDesc.storageMode = MTLStorageModePrivate;
+		}
+#else
+		mtlTexDesc.storageMode = MTLStorageModePrivate;
+#endif
+		mtlTexDesc.usage = MTLTextureUsageRenderTarget;
+		_mtlDummyTex = [_renderPass->getDevice()->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];  // not retained
+		[_mtlDummyTex setPurgeableState: MTLPurgeableStateVolatile];
+		MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
+		mtlColorAttDesc.texture = _mtlDummyTex;
+		mtlColorAttDesc.level = 0;
+		mtlColorAttDesc.slice = 0;
+		mtlColorAttDesc.depthPlane = 0;
+		mtlColorAttDesc.loadAction = MTLLoadActionDontCare;
+		mtlColorAttDesc.storeAction = MTLStoreActionDontCare;
+	}
 }
 
 void MVKRenderSubpass::populateClearAttachments(vector<VkClearAttachment>& clearAtts,

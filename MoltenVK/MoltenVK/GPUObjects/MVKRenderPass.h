@@ -80,6 +80,7 @@ private:
 	std::vector<VkAttachmentReference> _resolveAttachments;
 	std::vector<uint32_t> _preserveAttachments;
 	VkAttachmentReference _depthStencilAttachment;
+	id<MTLTexture> _mtlDummyTex = nil;
 };
 
 
