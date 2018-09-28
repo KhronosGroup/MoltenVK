@@ -313,8 +313,8 @@ public:
 
 protected:
     uint32_t _maxSets;
+	uint32_t _allocatedSetCount;
 	std::forward_list<MVKDescriptorSet*> _allocatedSets;
-	size_t _allocatedSetCount;
 };
 
 

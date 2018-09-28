@@ -95,7 +95,7 @@ public:
      * This is the compliment of the getVkHandle() method.
      */
     static inline MVKDispatchableObject* getDispatchableObject(void* vkHandle) {
-        return ((MVKDispatchableObjectICDRef*)vkHandle)->mvkObject;
+		return vkHandle ? ((MVKDispatchableObjectICDRef*)vkHandle)->mvkObject : nullptr;
     }
 
 protected:

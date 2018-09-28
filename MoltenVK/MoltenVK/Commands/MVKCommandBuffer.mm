@@ -175,11 +175,9 @@ void MVKCommandBuffer::clearPrefilledMTLCommandBuffer() {
 
 #pragma mark Construction
 
-MVKCommandBuffer::MVKCommandBuffer(MVKDevice* device,
-								   const VkCommandBufferAllocateInfo* pAllocateInfo) : MVKDispatchableDeviceObject(device) {
-
+// Initializes this instance after it has been created retrieved from a pool.
+void MVKCommandBuffer::init(const VkCommandBufferAllocateInfo* pAllocateInfo) {
 	_commandPool = (MVKCommandPool*)pAllocateInfo->commandPool;
-	_commandPool->addCommandBuffer(this);
 	_isSecondary = (pAllocateInfo->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
 	_head = nullptr;
 	_tail = nullptr;
@@ -190,7 +188,6 @@ MVKCommandBuffer::MVKCommandBuffer(MVKDevice* device,
 
 MVKCommandBuffer::~MVKCommandBuffer() {
 	reset(0);
-	_commandPool->removeCommandBuffer(this);
 }
 
 

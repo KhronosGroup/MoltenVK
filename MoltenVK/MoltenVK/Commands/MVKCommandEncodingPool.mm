@@ -105,6 +105,12 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdFillBufferMTLComputePi
 	MVK_ENC_REZ_ACCESS(_mtlFillBufferComputePipelineState, newCmdFillBufferMTLComputePipelineState());
 }
 
+void MVKCommandEncodingPool::clear() {
+	lock_guard<mutex> lock(_lock);
+	destroyMetalResources();
+}
+
+
 #pragma mark Construction
 
 MVKCommandEncodingPool::MVKCommandEncodingPool(MVKDevice* device) : MVKBaseDeviceObject(device),

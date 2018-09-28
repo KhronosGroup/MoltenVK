@@ -18,7 +18,8 @@
 
 #pragma once
 
-#include "MVKCommandPool.h"
+#include  "MVKMTLResourceBindings.h"
+#include "MVKCommandResourceFactory.h"
 #include <vector>
 
 class MVKCommandEncoder;

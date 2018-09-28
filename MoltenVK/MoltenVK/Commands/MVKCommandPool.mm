@@ -33,9 +33,14 @@ using namespace std;
 
 // Reset all of the command buffers
 VkResult MVKCommandPool::reset(VkCommandPoolResetFlags flags) {
-    for (auto& cb : _commandBuffers) {
-		cb->reset(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-	}
+	bool releaseRez = mvkAreFlagsEnabled(flags, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+
+	VkCommandBufferResetFlags cmdBuffFlags = releaseRez ? VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT : 0;
+
+	for (auto& cb : _commandBuffers) { cb->reset(cmdBuffFlags); }
+
+	if (releaseRez) { trim(); }
+
 	return VK_SUCCESS;
 }
 
@@ -47,7 +52,9 @@ VkResult MVKCommandPool::allocateCommandBuffers(const VkCommandBufferAllocateInf
 	VkResult rslt = VK_SUCCESS;
 	uint32_t cbCnt = pAllocateInfo->commandBufferCount;
 	for (uint32_t cbIdx = 0; cbIdx < cbCnt; cbIdx++) {
-		MVKCommandBuffer* mvkCmdBuff = new MVKCommandBuffer(_device, pAllocateInfo);
+		MVKCommandBuffer* mvkCmdBuff = _commandBufferPool.acquireObject();
+		mvkCmdBuff->init(pAllocateInfo);
+		_commandBuffers.insert(mvkCmdBuff);
         pCmdBuffer[cbIdx] = mvkCmdBuff->getVkCommandBuffer();
 		if (rslt == VK_SUCCESS) { rslt = mvkCmdBuff->getConfigurationResult(); }
 	}
@@ -57,9 +64,16 @@ VkResult MVKCommandPool::allocateCommandBuffers(const VkCommandBufferAllocateInf
 void MVKCommandPool::freeCommandBuffers(uint32_t commandBufferCount,
 										const VkCommandBuffer* pCommandBuffers) {
 	for (uint32_t cbIdx = 0; cbIdx < commandBufferCount; cbIdx++) {
-		VkCommandBuffer cmdBuff = pCommandBuffers[cbIdx];
-		if (cmdBuff) { MVKCommandBuffer::getMVKCommandBuffer(cmdBuff)->destroy(); }
+		freeCommandBuffer(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
 	}
+}
+
+void MVKCommandPool::freeCommandBuffer(MVKCommandBuffer* mvkCmdBuff) {
+	if ( !mvkCmdBuff ) { return; }
+
+	mvkCmdBuff->reset(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+	_commandBuffers.erase(mvkCmdBuff);
+	_commandBufferPool.returnObject(mvkCmdBuff);
 }
 
 id<MTLCommandBuffer> MVKCommandPool::newMTLCommandBuffer(uint32_t queueIndex) {
@@ -67,15 +81,49 @@ id<MTLCommandBuffer> MVKCommandPool::newMTLCommandBuffer(uint32_t queueIndex) {
 }
 
 void MVKCommandPool::trim() {
-	// TODO: Implement.
-}
-
-void MVKCommandPool::addCommandBuffer(MVKCommandBuffer* cmdBuffer) {
-	_commandBuffers.insert(cmdBuffer);
-}
-
-void MVKCommandPool::removeCommandBuffer(MVKCommandBuffer* cmdBuffer) {
-	_commandBuffers.erase(cmdBuffer);
+	_commandBufferPool.clear();
+	_commandEncodingPool.clear();
+	_cmdPipelineBarrierPool.clear();
+	_cmdBindPipelinePool.clear();
+	_cmdBeginRenderPassPool.clear();
+	_cmdNextSubpassPool.clear();
+	_cmdExecuteCommandsPool.clear();
+	_cmdEndRenderPassPool.clear();
+	_cmdBindDescriptorSetsPool.clear();
+	_cmdSetViewportPool.clear();
+	_cmdSetScissorPool.clear();
+	_cmdSetLineWidthPool.clear();
+	_cmdSetDepthBiasPool.clear();
+	_cmdSetBlendConstantsPool.clear();
+	_cmdSetDepthBoundsPool.clear();
+	_cmdSetStencilCompareMaskPool.clear();
+	_cmdSetStencilWriteMaskPool.clear();
+	_cmdSetStencilReferencePool.clear();
+	_cmdBindVertexBuffersPool.clear();
+	_cmdBindIndexBufferPool.clear();
+	_cmdDrawPool.clear();
+	_cmdDrawIndexedPool.clear();
+	_cmdDrawIndirectPool.clear();
+	_cmdDrawIndexedIndirectPool.clear();
+	_cmdCopyImagePool.clear();
+	_cmdBlitImagePool.clear();
+	_cmdResolveImagePool.clear();
+	_cmdFillBufferPool.clear();
+	_cmdUpdateBufferPool.clear();
+	_cmdCopyBufferPool.clear();
+	_cmdBufferImageCopyPool.clear();
+	_cmdClearAttachmentsPool.clear();
+	_cmdClearImagePool.clear();
+	_cmdBeginQueryPool.clear();
+	_cmdEndQueryPool.clear();
+	_cmdWriteTimestampPool.clear();
+	_cmdResetQueryPoolPool.clear();
+	_cmdCopyQueryPoolResultsPool.clear();
+	_cmdPushConstantsPool.clear();
+	_cmdDispatchPool.clear();
+	_cmdDispatchIndirectPool.clear();
+	_cmdPushDescriptorSetPool.clear();
+	_cmdPushSetWithTemplatePool.clear();
 }
 
 
@@ -83,6 +131,7 @@ void MVKCommandPool::removeCommandBuffer(MVKCommandBuffer* cmdBuffer) {
 
 MVKCommandPool::MVKCommandPool(MVKDevice* device,
 							   const VkCommandPoolCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device),
+	_commandBufferPool(device),
 	_commandEncodingPool(device),
 	_queueFamilyIndex(pCreateInfo->queueFamilyIndex),
 	_cmdPipelineBarrierPool(this, true),
@@ -128,7 +177,8 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
     _cmdPushSetWithTemplatePool(this, true)
 {}
 
-// TODO: Destroying a command pool implicitly destroys all command buffers and commands created from it.
-
-MVKCommandPool::~MVKCommandPool() {}
+MVKCommandPool::~MVKCommandPool() {
+	auto cmdBuffs = _commandBuffers;
+	for (auto& cb : cmdBuffs) { freeCommandBuffer(cb); }
+}
 

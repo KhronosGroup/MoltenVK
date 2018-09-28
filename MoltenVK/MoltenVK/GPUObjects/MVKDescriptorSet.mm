@@ -868,6 +868,7 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDevice* device,
 VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 												   const VkDescriptorSetLayout* pSetLayouts,
 												   VkDescriptorSet* pDescriptorSets) {
+//	MVKLogDebug("Descriptor pool %p allocating %d descriptor sets for total %d.", this, count, _allocatedSetCount + count);
 	if (_allocatedSetCount + count > _maxSets) {
 		if (_device->_enabledExtensions.vk_KHR_maintenance1.enabled) {
 			return VK_ERROR_OUT_OF_POOL_MEMORY;		// Failure is an acceptable test...don't log as error.
@@ -888,6 +889,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 }
 
 VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets) {
+//	MVKLogDebug("Descriptor pool %p freeing %d descriptor sets from total %d.", this, count, _allocatedSetCount);
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
 		MVKDescriptorSet* mvkDS = (MVKDescriptorSet*)pDescriptorSets[dsIdx];
 		if (mvkDS) {
@@ -900,6 +902,7 @@ VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescripto
 }
 
 VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
+//	MVKLogDebug("Descriptor pool %p resetting with %d descriptor sets.", this,  _allocatedSetCount);
 	mvkDestroyContainerContents(_allocatedSets);
 	_allocatedSetCount = 0;
 	return VK_SUCCESS;
@@ -909,12 +912,13 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device,
 									 const VkDescriptorPoolCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
 	_maxSets = pCreateInfo->maxSets;
 	_allocatedSetCount = 0;
+//	MVKLogDebug("Descriptor pool %p created with max %d sets.", this, _maxSets);
 }
 
 // TODO: Destroying a descriptor pool implicitly destroys all descriptor sets created from it.
 
 MVKDescriptorPool::~MVKDescriptorPool() {
-//	MVKLogDebug("Pool %p destroyed with %d descriptor sets.", this, _allocatedSetCount);
+//	MVKLogDebug("Descriptor pool %p destroyed with %d descriptor sets.", this, _allocatedSetCount);
 	reset(0);
 }
 
