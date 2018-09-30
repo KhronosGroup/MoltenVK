@@ -37,10 +37,12 @@ namespace mvk {
 
         uint32_t mslVersion = makeMSLVersion(2);
 		uint32_t texelBufferTextureWidth = 4096;
+		uint32_t auxBufferIndex = 0;
 		bool shouldFlipVertexY = true;
 		bool isRenderingPoints = false;
 
 		bool isRasterizationDisabled = false;
+		bool needsAuxBuffer = false;
 
         /** 
          * Returns whether the specified options match this one.

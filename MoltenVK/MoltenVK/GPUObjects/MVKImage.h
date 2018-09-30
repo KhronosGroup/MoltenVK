@@ -261,6 +261,9 @@ public:
 	/** Returns the Metal texture type of this image view. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
 
+	/** Returns the packed component swizzle of this image view. */
+	inline uint32_t getPackedSwizzle() { return _packedSwizzle; }
+
 	/**
 	 * Populates the texture of the specified render pass descriptor
 	 * with the Metal texture underlying this image.
@@ -283,10 +286,10 @@ public:
 protected:
 	id<MTLTexture> newMTLTexture();
 	void initMTLTextureViewSupport();
-    MTLPixelFormat getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components);
+    MTLPixelFormat getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components, bool& useSwizzle);
     bool matchesSwizzle(VkComponentMapping components, VkComponentMapping pattern);
     const char* getSwizzleName(VkComponentSwizzle swizzle);
-    void setSwizzleFormatError(VkFormat format, VkComponentMapping components);
+    uint32_t packSwizzle(VkComponentMapping components);
 	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
 
     MVKImage* _image;
@@ -296,6 +299,7 @@ protected:
 	std::mutex _lock;
 	MTLPixelFormat _mtlPixelFormat;
 	MTLTextureType _mtlTextureType;
+	uint32_t _packedSwizzle;
 	bool _useMTLTextureView;
 };
 

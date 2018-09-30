@@ -201,9 +201,11 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 
 		mslOpts.msl_version = context.options.mslVersion;
 		mslOpts.texel_buffer_texture_width = context.options.texelBufferTextureWidth;
+		mslOpts.aux_buffer_index = context.options.auxBufferIndex;
 		mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
 		mslOpts.disable_rasterization = context.options.isRasterizationDisabled;
 		mslOpts.resolve_specialized_array_lengths = true;
+		mslOpts.swizzle_texture_samples = true;
 		pMSLCompiler->set_msl_options(mslOpts);
 
 		auto scOpts = pMSLCompiler->get_common_options();
@@ -229,6 +231,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
     // Populate content extracted from the SPRI-V compiler.
 	populateEntryPoint(_entryPoint, pMSLCompiler, context.options);
 	context.options.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
+	context.options.needsAuxBuffer = pMSLCompiler && pMSLCompiler->needs_aux_buffer();
 	delete pMSLCompiler;
 
 	// Copy whether the vertex attributes and resource bindings are used by the shader

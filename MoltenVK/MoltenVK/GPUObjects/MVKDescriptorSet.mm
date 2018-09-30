@@ -111,6 +111,11 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
                 tb.mtlTexture = descBinding._mtlTextures[rezIdx];
+                if (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE && tb.mtlTexture) {
+                    tb.swizzle = ((MVKImageView*)descBinding._imageBindings[rezIdx].imageView)->getPackedSwizzle();
+                } else {
+                    tb.swizzle = 0;
+                }
                 if (_applyToVertexStage) {
                     tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
                     cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
@@ -145,6 +150,11 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
 
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
                 tb.mtlTexture = descBinding._mtlTextures[rezIdx];
+                if (tb.mtlTexture) {
+                    tb.swizzle = ((MVKImageView*)descBinding._imageBindings[rezIdx].imageView)->getPackedSwizzle();
+                } else {
+                    tb.swizzle = 0;
+                }
                 sb.mtlSamplerState = descBinding._mtlSamplers[rezIdx];
                 if (_applyToVertexStage) {
                     tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
@@ -243,6 +253,11 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
                 tb.mtlTexture = imageView->getMTLTexture();
+                if (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE && imageView) {
+                    tb.swizzle = imageView->getPackedSwizzle();
+                } else {
+                    tb.swizzle = 0;
+                }
                 if (_applyToVertexStage) {
                     tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
                     cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
@@ -262,6 +277,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
                 auto* bufferView = get<MVKBufferView*>(pData, stride, rezIdx - dstArrayElement);
                 tb.mtlTexture = bufferView->getMTLTexture();
+                tb.swizzle = 0;
                 if (_applyToVertexStage) {
                     tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
                     cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
@@ -304,6 +320,11 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
                 MVKSampler* sampler = _immutableSamplers.empty() ? (MVKSampler*)imageInfo.sampler : _immutableSamplers[rezIdx];
                 tb.mtlTexture = imageView->getMTLTexture();
+                if (imageView) {
+                    tb.swizzle = imageView->getPackedSwizzle();
+                } else {
+                    tb.swizzle = 0;
+                }
                 sb.mtlSamplerState = sampler->getMTLSamplerState();
                 if (_applyToVertexStage) {
                     tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;

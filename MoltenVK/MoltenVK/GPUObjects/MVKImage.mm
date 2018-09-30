@@ -702,10 +702,12 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 		_subresourceRange.layerCount = _image->getLayerCount() - _subresourceRange.baseArrayLayer;
 	}
 
+	bool useSwizzle;
 	_mtlTexture = nil;
-    _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components);
+    _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components, useSwizzle);
 	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType, (_image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT));
 	initMTLTextureViewSupport();
+	_packedSwizzle = useSwizzle ? packSwizzle(pCreateInfo->components) : 0;
 }
 
 // Validate whether the image view configuration can be supported
@@ -731,22 +733,13 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 // Metal does not support general per-texture swizzles, and so this function relies on a few coincidental
 // alignments of existing MTLPixelFormats of the same structure. If swizzling is not possible for a
 // particular combination of format and swizzle spec, the original MTLPixelFormat is returned.
-MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components) {
+MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components, bool& useSwizzle) {
     MTLPixelFormat mtlPF = mtlPixelFormatFromVkFormat(format);
 
+    useSwizzle = false;
     switch (mtlPF) {
         case MTLPixelFormatR8Unorm:
             if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_R} ) ) {
-                return MTLPixelFormatA8Unorm;
-            }
-            break;
-
-        case MTLPixelFormatR8Snorm:
-#if MVK_IOS
-        case MTLPixelFormatR8Unorm_sRGB:
-#endif
-            if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_R} ) ) {
-                setSwizzleFormatError(format, components);
                 return MTLPixelFormatA8Unorm;
             }
             break;
@@ -769,13 +762,6 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkCompon
             }
             break;
 
-        case MTLPixelFormatRGBA8Snorm:
-            if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A} ) ) {
-                setSwizzleFormatError(format, components);
-                return MTLPixelFormatBGRA8Unorm;
-            }
-            break;
-
         case MTLPixelFormatBGRA8Unorm:
             if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A} ) ) {
                 return MTLPixelFormatRGBA8Unorm;
@@ -789,16 +775,20 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkCompon
             break;
 
         case MTLPixelFormatDepth32Float_Stencil8:
-            if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
-                matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM} ) ) {
+            if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+                if (!matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM} ) ) {
+                    useSwizzle = true;
+                }
                 return MTLPixelFormatX32_Stencil8;
             }
             break;
 
 #if MVK_MACOS
         case MTLPixelFormatDepth24Unorm_Stencil8:
-            if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
-                matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM} ) ) {
+            if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+                if (!matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM} ) ) {
+                    useSwizzle = true;
+                }
                 return MTLPixelFormatX24_Stencil8;
             }
             break;
@@ -809,7 +799,7 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkCompon
     }
 
     if ( !matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A} ) ) {
-        setSwizzleFormatError(format, components);
+        useSwizzle = true;
     }
     return mtlPF;
 }
@@ -827,17 +817,6 @@ const char*  MVKImageView::getSwizzleName(VkComponentSwizzle swizzle) {
     }
 }
 
-// Sets a standard swizzle format error during instance construction.
-void MVKImageView::setSwizzleFormatError(VkFormat format, VkComponentMapping components) {
-    setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED,
-                                                  "VkImageView format %s and swizzle (%s, %s, %s, %s) does not map to a valid MTLPixelFormat.\n",
-                                                  mvkVkFormatName(format),
-                                                  getSwizzleName(components.r),
-                                                  getSwizzleName(components.g),
-                                                  getSwizzleName(components.b),
-                                                  getSwizzleName(components.a)));
-}
-
 // Returns whether the swizzle components of the internal VkComponentMapping matches the
 // swizzle pattern, by comparing corresponding elements of the two structures. The pattern
 // supports wildcards, in that any element of pattern can be set to VK_COMPONENT_SWIZZLE_MAX_ENUM
@@ -853,6 +832,12 @@ bool MVKImageView::matchesSwizzle(VkComponentMapping components, VkComponentMapp
            ((pattern.a == VK_COMPONENT_SWIZZLE_A) && (components.a == VK_COMPONENT_SWIZZLE_IDENTITY))) ) { return false; }
 
     return true;
+}
+
+// Packs a VkComponentMapping structure into a single 32-bit word.
+uint32_t MVKImageView::packSwizzle(VkComponentMapping components) {
+    return ((components.r & 0xFF) << 0) | ((components.g & 0xFF) << 8) |
+           ((components.b & 0xFF) << 16) | ((components.a & 0xFF) << 24);
 }
 
 // Determine whether this image view should use a Metal texture view,

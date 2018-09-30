@@ -100,6 +100,7 @@ public:
 
 protected:
 	friend class MVKDescriptorBinding;
+	friend class MVKPipelineLayout;
 
 	VkResult initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
                                            MVKShaderStageResourceBinding* pDescSetCounts,

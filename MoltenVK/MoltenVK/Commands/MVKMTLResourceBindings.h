@@ -24,6 +24,7 @@
 typedef struct {
     union { id<MTLTexture> mtlTexture = nil; id<MTLTexture> mtlResource; }; // aliases
     uint32_t index = 0;
+    uint32_t swizzle = 0;
     bool isDirty = true;
 } MVKMTLTextureBinding;
 

@@ -25,6 +25,8 @@
 class MVKCommandEncoder;
 class MVKOcclusionQueryPool;
 
+struct MVKShaderAuxBufferBinding;
+
 
 #pragma mark -
 #pragma mark MVKCommandEncoderState
@@ -388,6 +390,16 @@ protected:
             }
         }
     }
+
+    struct AuxBuffer {
+        uint32_t swizzleConst[1];
+    };
+
+    // Updates the swizzle for an image in the given buffer.
+    void updateSwizzle(id<MTLBuffer> buffer, uint32_t index, uint32_t swizzle) {
+        auto* aux = (AuxBuffer*)buffer.contents;
+        aux->swizzleConst[index] = swizzle;
+    }
 };
 
 
@@ -425,6 +437,9 @@ public:
         _mtlIndexBufferBinding = binding;   // No need to track dirty state
     }
 
+    /** Sets the current auxiliary buffer state. */
+    void bindAuxBuffer(id<MTLBuffer> buffer, const MVKShaderAuxBufferBinding& binding, bool needVertexAuxBuffer, bool needFragmentAuxBuffer);
+
 
 #pragma mark Construction
     
@@ -442,6 +457,8 @@ protected:
     std::vector<MVKMTLTextureBinding> _fragmentTextureBindings;
     std::vector<MVKMTLSamplerStateBinding> _vertexSamplerStateBindings;
     std::vector<MVKMTLSamplerStateBinding> _fragmentSamplerStateBindings;
+    MVKMTLBufferBinding _vertexAuxBufferBinding;
+    MVKMTLBufferBinding _fragmentAuxBufferBinding;
 
     bool _areVertexBufferBindingsDirty = false;
     bool _areFragmentBufferBindingsDirty = false;
@@ -469,6 +486,8 @@ public:
     /** Binds the specified sampler state. */
     void bindSamplerState(const MVKMTLSamplerStateBinding& binding);
 
+    /** Sets the current auxiliary buffer state. */
+    void bindAuxBuffer(id<MTLBuffer> buffer, const MVKShaderAuxBufferBinding& binding);
 
 #pragma mark Construction
 
@@ -483,6 +502,7 @@ protected:
     std::vector<MVKMTLBufferBinding> _bufferBindings;
     std::vector<MVKMTLTextureBinding> _textureBindings;
     std::vector<MVKMTLSamplerStateBinding> _samplerStateBindings;
+    MVKMTLBufferBinding _auxBufferBinding;
 
     bool _areBufferBindingsDirty = false;
     bool _areTextureBindingsDirty = false;
