@@ -91,8 +91,8 @@ public:
 
 	/**
 	 * Instances of this class can participate in a linked list or pool. When so participating,
-	 * this is a reference to the next instance in the linked list. This value should only be
-	 * managed and set by the linked list.
+	 * this is a reference to the next instance in the list or pool. This value should only be
+	 * managed and set by the list or pool.
 	 */
 	MVKCommandBuffer* _next;
 
@@ -127,46 +127,19 @@ protected:
 	void prefill();
 	void clearPrefilledMTLCommandBuffer();
 
-	MVKCommand* _head;
-	MVKCommand* _tail;
+	MVKCommand* _head = nullptr;
+	MVKCommand* _tail = nullptr;
 	uint32_t _commandCount;
 	std::atomic_flag _isExecutingNonConcurrently;
 	VkResult _recordingResult;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
-	id<MTLCommandBuffer> _prefilledMTLCmdBuffer;
+	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
 	bool _isSecondary;
 	bool _doesContinueRenderPass;
 	bool _canAcceptCommands;
 	bool _isReusable;
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
-};
-
-
-#pragma mark -
-#pragma mark MVKCommandBufferPool
-
-/**
- * A pool of MVKCommandBuffer instances.
- *
- * To return a MVKCommandBuffer retrieved from this pool, back to this pool,
- * call the returnToPool() function on the MVKCommandBuffer instance.
- */
-class MVKCommandBufferPool : public MVKObjectPool<MVKCommandBuffer> {
-
-public:
-
-	/** Returns a new command instance. */
-	MVKCommandBuffer* newObject() override { return new MVKCommandBuffer(_device); }
-
-	/**
-	 * Configures this instance to either use pooling, or not, depending on the
-	 * value of isPooling, which defaults to true if not indicated explicitly.
-	 */
-	MVKCommandBufferPool(MVKDevice* device, bool isPooling = true) : MVKObjectPool<MVKCommandBuffer>(isPooling), _device(device) {}
-
-protected:
-	MVKDevice* _device;
 };
 
 

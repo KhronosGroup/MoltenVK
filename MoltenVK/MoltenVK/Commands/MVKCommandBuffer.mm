@@ -179,9 +179,6 @@ void MVKCommandBuffer::clearPrefilledMTLCommandBuffer() {
 void MVKCommandBuffer::init(const VkCommandBufferAllocateInfo* pAllocateInfo) {
 	_commandPool = (MVKCommandPool*)pAllocateInfo->commandPool;
 	_isSecondary = (pAllocateInfo->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
-	_head = nullptr;
-	_tail = nullptr;
-	_prefilledMTLCmdBuffer = nil;
 
 	reset(0);
 }
