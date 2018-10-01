@@ -55,8 +55,8 @@ public:
 
     /**
 	 * Instances of this class can participate in a linked list or pool. When so participating,
-	 * this is a reference to the next instance in the linked list. This value should only be
-	 * managed and set by the linked list.
+	 * this is a reference to the next instance in the list or pool. This value should only be
+	 * managed and set by the list or pool.
 	 */
 	MVKMTLBufferAllocation* _next = nullptr;
 

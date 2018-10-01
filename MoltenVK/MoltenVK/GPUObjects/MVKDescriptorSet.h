@@ -21,7 +21,8 @@
 #include "MVKDevice.h"
 #include "MVKImage.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
-#include <forward_list>
+#include <unordered_set>
+#include <unordered_map>
 #include <vector>
 
 using namespace mvk;
@@ -274,20 +275,31 @@ public:
 							VkDescriptorBufferInfo* pBufferInfo,
 							VkBufferView* pTexelBufferView);
 
-	/** Constructs an instance for the specified device. */
-	MVKDescriptorSet(MVKDevice* device, MVKDescriptorSetLayout* layout);
+	/**
+	 * Instances of this class can participate in a linked list or pool. When so participating,
+	 * this is a reference to the next instance in the list or pool. This value should only be
+	 * managed and set by the list or pool.
+	 */
+	MVKDescriptorSet* _next;
+
+	MVKDescriptorSet(MVKDevice* device) : MVKBaseDeviceObject(device) {}
 
 protected:
 	friend class MVKDescriptorSetLayout;
+	friend class MVKDescriptorPool;
 
+	void setLayout(MVKDescriptorSetLayout* layout);
     MVKDescriptorBinding* getBinding(uint32_t binding);
 
+	MVKDescriptorSetLayout* _pLayout = nullptr;
 	std::vector<MVKDescriptorBinding> _bindings;
 };
 
 
 #pragma mark -
 #pragma mark MVKDescriptorPool
+
+typedef MVKDeviceObjectPool<MVKDescriptorSet> MVKDescriptorSetPool;
 
 /** Represents a Vulkan descriptor pool. */
 class MVKDescriptorPool : public MVKBaseDeviceObject {
@@ -312,9 +324,11 @@ public:
 	~MVKDescriptorPool() override;
 
 protected:
-    uint32_t _maxSets;
-	uint32_t _allocatedSetCount;
-	std::forward_list<MVKDescriptorSet*> _allocatedSets;
+	MVKDescriptorSetPool* getDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout);
+
+	uint32_t _maxSets;
+	std::unordered_set<MVKDescriptorSet*> _allocatedSets;
+	std::unordered_map<MVKDescriptorSetLayout*, MVKDescriptorSetPool*> _descriptorSetPools;
 };
 
 

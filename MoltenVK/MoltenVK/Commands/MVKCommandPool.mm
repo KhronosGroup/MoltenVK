@@ -37,7 +37,7 @@ VkResult MVKCommandPool::reset(VkCommandPoolResetFlags flags) {
 
 	VkCommandBufferResetFlags cmdBuffFlags = releaseRez ? VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT : 0;
 
-	for (auto& cb : _commandBuffers) { cb->reset(cmdBuffFlags); }
+	for (auto& cb : _allocatedCommandBuffers) { cb->reset(cmdBuffFlags); }
 
 	if (releaseRez) { trim(); }
 
@@ -54,7 +54,7 @@ VkResult MVKCommandPool::allocateCommandBuffers(const VkCommandBufferAllocateInf
 	for (uint32_t cbIdx = 0; cbIdx < cbCnt; cbIdx++) {
 		MVKCommandBuffer* mvkCmdBuff = _commandBufferPool.acquireObject();
 		mvkCmdBuff->init(pAllocateInfo);
-		_commandBuffers.insert(mvkCmdBuff);
+		_allocatedCommandBuffers.insert(mvkCmdBuff);
         pCmdBuffer[cbIdx] = mvkCmdBuff->getVkCommandBuffer();
 		if (rslt == VK_SUCCESS) { rslt = mvkCmdBuff->getConfigurationResult(); }
 	}
@@ -64,16 +64,12 @@ VkResult MVKCommandPool::allocateCommandBuffers(const VkCommandBufferAllocateInf
 void MVKCommandPool::freeCommandBuffers(uint32_t commandBufferCount,
 										const VkCommandBuffer* pCommandBuffers) {
 	for (uint32_t cbIdx = 0; cbIdx < commandBufferCount; cbIdx++) {
-		freeCommandBuffer(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
+		MVKCommandBuffer* mvkCmdBuff = MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]);
+		if (_allocatedCommandBuffers.erase(mvkCmdBuff)) {
+			mvkCmdBuff->reset(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+			_commandBufferPool.returnObject(mvkCmdBuff);
+		}
 	}
-}
-
-void MVKCommandPool::freeCommandBuffer(MVKCommandBuffer* mvkCmdBuff) {
-	if ( !mvkCmdBuff ) { return; }
-
-	mvkCmdBuff->reset(VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
-	_commandBuffers.erase(mvkCmdBuff);
-	_commandBufferPool.returnObject(mvkCmdBuff);
 }
 
 id<MTLCommandBuffer> MVKCommandPool::newMTLCommandBuffer(uint32_t queueIndex) {
@@ -130,7 +126,8 @@ void MVKCommandPool::trim() {
 #pragma mark Construction
 
 MVKCommandPool::MVKCommandPool(MVKDevice* device,
-							   const VkCommandPoolCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device),
+							   const VkCommandPoolCreateInfo* pCreateInfo) :
+	MVKBaseDeviceObject(device),
 	_commandBufferPool(device),
 	_commandEncodingPool(device),
 	_queueFamilyIndex(pCreateInfo->queueFamilyIndex),
@@ -178,7 +175,8 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 {}
 
 MVKCommandPool::~MVKCommandPool() {
-	auto cmdBuffs = _commandBuffers;
-	for (auto& cb : cmdBuffs) { freeCommandBuffer(cb); }
+	for (auto& mvkCB : _allocatedCommandBuffers) {
+		_commandBufferPool.returnObject(mvkCB);
+	}
 }
 

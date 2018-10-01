@@ -171,10 +171,8 @@ public:
 	~MVKCommandPool() override;
 
 protected:
-	void freeCommandBuffer(MVKCommandBuffer* mvkCmdBuff);
-
-	MVKCommandBufferPool _commandBufferPool;
-	std::unordered_set<MVKCommandBuffer*> _commandBuffers;
+	MVKDeviceObjectPool<MVKCommandBuffer> _commandBufferPool;
+	std::unordered_set<MVKCommandBuffer*> _allocatedCommandBuffers;
 	MVKCommandEncodingPool _commandEncodingPool;
 	uint32_t _queueFamilyIndex;
 };

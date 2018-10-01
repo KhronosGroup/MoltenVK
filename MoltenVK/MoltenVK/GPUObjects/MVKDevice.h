@@ -21,6 +21,7 @@
 #include "MVKFoundation.h"
 #include "MVKBaseObject.h"
 #include "MVKLayers.h"
+#include "MVKObjectPool.h"
 #include "vk_mvk_moltenvk.h"
 #include <vector>
 #include <string>
@@ -628,6 +629,29 @@ public:
 
 protected:
     MVKDevice* _device;
+};
+
+
+#pragma mark -
+#pragma mark MVKDeviceObjectPool
+
+/** Manages a pool of instances of a particular object type that requires an MVKDevice during construction. */
+template <class T>
+class MVKDeviceObjectPool : public MVKObjectPool<T> {
+
+public:
+
+	/** Returns a new instance. */
+	T* newObject() override { return new T(_device); }
+
+	/**
+	 * Configures this instance for the device, and either use pooling, or not, depending
+	 * on the value of isPooling, which defaults to true if not indicated explicitly.
+	 */
+	MVKDeviceObjectPool(MVKDevice* device, bool isPooling = true) : MVKObjectPool<T>(isPooling), _device(device) {}
+
+protected:
+	MVKDevice* _device;
 };
 
 

@@ -12,6 +12,14 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
+MoltenVK 1.0.24
+---------------
+
+Released TBD
+
+- Allocate MVKDescriptorSets from a pool within MVKDescriptorPool,
+
+
 MoltenVK 1.0.23
 ---------------
 
