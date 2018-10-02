@@ -17,6 +17,7 @@ MoltenVK 1.0.24
 
 Released TBD
 
+- Include version number in VK_MVK_moltenvk extension functions that pass structs that might change.
 - Allocate MVKDescriptorSets from a pool within MVKDescriptorPool,
 
 

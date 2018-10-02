@@ -26,46 +26,76 @@
 
 using namespace std;
 
+// Validate the VK_MVK_moltenvk spec version to avoid passing incompatible memory structures
+#define MVK_VALIDATE_SPEC_VERSION(mvkSpecVer, cmdName)																				\
+	do {																															\
+		if (mvkSpecVer != VK_MVK_MOLTENVK_SPEC_VERSION) {																			\
+			const char* errMsg  = "%s(): This version of MoltenVK supports VK_MVK_moltenvk extension version %d."					\
+							" You are using version %d."																			\
+							" The memory structures used in this function may be incompatible between the two versions.";			\
+			return mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER, errMsg, cmdName, VK_MVK_MOLTENVK_SPEC_VERSION, mvkSpecVer);	\
+		}																															\
+	} while(0)
 
-MVK_PUBLIC_SYMBOL void vkGetMoltenVKConfigurationMVK(
-    VkInstance                                  instance,
-    MVKConfiguration*                           pConfiguration) {
+
+MVK_PUBLIC_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
+	uint32_t                                    mvkSpecVersion,
+	VkInstance                                  instance,
+	MVKConfiguration*                           pConfiguration) {
+
+	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkGetMoltenVKConfigurationMVK");
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
     if (pConfiguration) { *pConfiguration = *(MVKConfiguration*)mvkInst->getMoltenVKConfiguration(); }
+	return VK_SUCCESS;
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
-    VkInstance                                  instance,
-    MVKConfiguration*                           pConfiguration) {
+	uint32_t                                    mvkSpecVersion,
+	VkInstance                                  instance,
+	MVKConfiguration*                           pConfiguration) {
+
+	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkSetMoltenVKConfigurationMVK");
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
     if (pConfiguration) { mvkInst->setMoltenVKConfiguration(pConfiguration); }
     return VK_SUCCESS;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMetalFeaturesMVK(
-    VkPhysicalDevice                            physicalDevice,
-    MVKPhysicalDeviceMetalFeatures*             pMetalFeatures) {
-    
+MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
+	uint32_t                                    mvkSpecVersion,
+	VkPhysicalDevice                            physicalDevice,
+	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures) {
+
+	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkGetPhysicalDeviceMetalFeaturesMVK");
+
     MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
     mvkPD->getMetalFeatures(pMetalFeatures);
+	return VK_SUCCESS;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetSwapchainPerformanceMVK(
-    VkDevice                                     device,
-    VkSwapchainKHR                               swapchain,
-    MVKSwapchainPerformance*                     pSwapchainPerf) {
+MVK_PUBLIC_SYMBOL VkResult vkGetSwapchainPerformanceMVK(
+	uint32_t                                    mvkSpecVersion,
+	VkDevice                                    device,
+	VkSwapchainKHR                              swapchain,
+	MVKSwapchainPerformance*                    pSwapchainPerf) {
+
+	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkGetSwapchainPerformanceMVK");
 
     MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
     mvkSwapchain->getPerformanceStatistics(pSwapchainPerf);
+	return VK_SUCCESS;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPerformanceStatisticsMVK(
-    VkDevice                                    device,
-    MVKPerformanceStatistics*            		pPerf) {
+MVK_PUBLIC_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
+	uint32_t                                    mvkSpecVersion,
+	VkDevice                                    device,
+	MVKPerformanceStatistics*            		pPerf) {
+
+	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkGetPerformanceStatisticsMVK");
 
     MVKDevice::getMVKDevice(device)->getPerformanceStatistics(pPerf);
+	return VK_SUCCESS;
 }
 
 MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(
@@ -140,18 +170,13 @@ MVK_PUBLIC_SYMBOL void vkGetIOSurfaceMVK(
 MVK_PUBLIC_SYMBOL void vkGetMoltenVKDeviceConfigurationMVK(
 	VkDevice                                    device,
 	MVKDeviceConfiguration*                     pConfiguration) {
-
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	if (pConfiguration) { *pConfiguration = *(MVKConfiguration*)mvkDev->getInstance()->getMoltenVKConfiguration(); }
+	mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkGetMoltenVKDeviceConfigurationMVK(): This function is no longer supported. Use vkGetMoltenVKConfigurationMVK() instead.");
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKDeviceConfigurationMVK(
 	VkDevice                                    device,
 	MVKDeviceConfiguration*                     pConfiguration) {
-
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	if (pConfiguration) { mvkDev->getInstance()->setMoltenVKConfiguration(pConfiguration); }
-	return VK_SUCCESS;
+	return 	mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkSetMoltenVKDeviceConfigurationMVK(): This function is no longer supported. Use vkSetMoltenVKConfigurationMVK() instead.");
 }
 
 

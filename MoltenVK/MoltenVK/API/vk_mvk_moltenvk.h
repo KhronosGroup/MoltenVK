@@ -54,7 +54,7 @@ extern "C" {
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            10
+#define VK_MVK_MOLTENVK_SPEC_VERSION            11
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -307,11 +307,11 @@ typedef struct {
 #pragma mark -
 #pragma mark Function types
 
-typedef void (VKAPI_PTR *PFN_vkGetMoltenVKConfigurationMVK)(VkDevice device, MVKConfiguration* pConfiguration);
-typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(VkDevice device, MVKConfiguration* pConfiguration);
-typedef void (VKAPI_PTR *PFN_vkGetPhysicalDeviceMetalFeaturesMVK)(VkPhysicalDevice physicalDevice, MVKPhysicalDeviceMetalFeatures* pMetalFeatures);
-typedef void (VKAPI_PTR *PFN_vkGetSwapchainPerformanceMVK)(VkDevice device, VkSwapchainKHR swapchain, MVKSwapchainPerformance* pSwapchainPerf);
-typedef void (VKAPI_PTR *PFN_vkGetPerformanceStatisticsMVK)(VkDevice device, MVKPerformanceStatistics* pPerf);
+typedef VkResult (VKAPI_PTR *PFN_vkGetMoltenVKConfigurationMVK)(uint32_t mvkSpecVersion, VkDevice device, MVKConfiguration* pConfiguration);
+typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(uint32_t mvkSpecVersion, VkDevice device, MVKConfiguration* pConfiguration);
+typedef VkResult (VKAPI_PTR *PFN_vkGetPhysicalDeviceMetalFeaturesMVK)(uint32_t mvkSpecVersion, VkPhysicalDevice physicalDevice, MVKPhysicalDeviceMetalFeatures* pMetalFeatures);
+typedef VkResult (VKAPI_PTR *PFN_vkGetSwapchainPerformanceMVK)(uint32_t mvkSpecVersion, VkDevice device, VkSwapchainKHR swapchain, MVKSwapchainPerformance* pSwapchainPerf);
+typedef VkResult (VKAPI_PTR *PFN_vkGetPerformanceStatisticsMVK)(uint32_t mvkSpecVersion, VkDevice device, MVKPerformanceStatistics* pPerf);
 typedef void (VKAPI_PTR *PFN_vkGetVersionStringsMVK)(char* pMoltenVersionStringBuffer, uint32_t moltenVersionStringBufferLength, char* pVulkanVersionStringBuffer, uint32_t vulkanVersionStringBufferLength);
 
 #ifdef __OBJC__
@@ -322,7 +322,7 @@ typedef VkResult (VKAPI_PTR *PFN_vkUseIOSurfaceMVK)(VkImage image, IOSurfaceRef 
 typedef void (VKAPI_PTR *PFN_vkGetIOSurfaceMVK)(VkImage image, IOSurfaceRef* pIOSurface);
 #endif // __OBJC__
 
-// Deprecated functions
+// Deprecated functions. These do nothing now.
 typedef MVKConfiguration MVKDeviceConfiguration;
 __attribute__((deprecated("Use PFN_vkGetMoltenVKConfigurationMVK instead.")))
 typedef void (VKAPI_PTR *PFN_vkGetMoltenVKDeviceConfigurationMVK)(VkDevice device, MVKConfiguration* pConfiguration);
@@ -344,10 +344,17 @@ typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKDeviceConfigurationMVK)(VkDevice d
  *
  * To be active, some configuration settings must be set before a VkDevice is created.
  * See the description of the MVKConfiguration members for more information.
+ *
+ * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
+ * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
+ * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
+ * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
+ * version of this header file included in the MoltenVK build to which you will link your app.
  */
-VKAPI_ATTR void VKAPI_CALL vkGetMoltenVKConfigurationMVK(
-    VkInstance                                  instance,
-    MVKConfiguration*                           pConfiguration);
+VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
+	uint32_t                                    mvkSpecVersion,
+	VkInstance                                  instance,
+	MVKConfiguration*                           pConfiguration);
 
 /** 
  * Sets the MoltenVK configuration settings to those found in the pConfiguration structure.
@@ -358,35 +365,63 @@ VKAPI_ATTR void VKAPI_CALL vkGetMoltenVKConfigurationMVK(
  *
  * To be active, some configuration settings must be set before a VkDevice is created.
  * See the description of the MVKConfiguration members for more information.
+ *
+ * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
+ * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
+ * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
+ * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
+ * version of this header file included in the MoltenVK build to which you will link your app.
  */
 VKAPI_ATTR VkResult VKAPI_CALL vkSetMoltenVKConfigurationMVK(
-    VkInstance                                  instance,
-    MVKConfiguration*                           pConfiguration);
+	uint32_t                                    mvkSpecVersion,
+	VkInstance                                  instance,
+	MVKConfiguration*                           pConfiguration);
 
 /** 
  * Populates the pMetalFeatures structure with the Metal-specific features
  * supported by the specified physical device. 
+ *
+ * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
+ * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
+ * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
+ * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
+ * version of this header file included in the MoltenVK build to which you will link your app.
  */
-VKAPI_ATTR void VKAPI_CALL vkGetPhysicalDeviceMetalFeaturesMVK(
+VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceMetalFeaturesMVK(
+	uint32_t                                    mvkSpecVersion,
 	VkPhysicalDevice                            physicalDevice,
 	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures);
 
 /**
  * Populates the specified MVKSwapchainPerformance structure with
  * the current performance statistics for the specified swapchain.
+ *
+ * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
+ * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
+ * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
+ * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
+ * version of this header file included in the MoltenVK build to which you will link your app.
  */
-VKAPI_ATTR void VKAPI_CALL vkGetSwapchainPerformanceMVK(
-    VkDevice                                    device,
-    VkSwapchainKHR                              swapchain,
-    MVKSwapchainPerformance*                    pSwapchainPerf);
+VKAPI_ATTR VkResult VKAPI_CALL vkGetSwapchainPerformanceMVK(
+	uint32_t                                    mvkSpecVersion,
+	VkDevice                                    device,
+	VkSwapchainKHR                              swapchain,
+	MVKSwapchainPerformance*                    pSwapchainPerf);
 
 /**
  * Populates the specified MVKPerformanceStatistics structure with
  * the current performance statistics for the specified device.
+ *
+ * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
+ * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
+ * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
+ * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
+ * version of this header file included in the MoltenVK build to which you will link your app.
  */
-VKAPI_ATTR void VKAPI_CALL vkGetPerformanceStatisticsMVK(
-    VkDevice                                    device,
-    MVKPerformanceStatistics*            		pPerf);
+VKAPI_ATTR VkResult VKAPI_CALL vkGetPerformanceStatisticsMVK(
+	uint32_t                                    mvkSpecVersion,
+	VkDevice                                    device,
+	MVKPerformanceStatistics*            		pPerf);
 
 /**
  * Returns a human readable version of the MoltenVK and Vulkan versions.
