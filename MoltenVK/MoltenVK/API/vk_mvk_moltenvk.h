@@ -54,7 +54,7 @@ extern "C" {
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            12
+#define VK_MVK_MOLTENVK_SPEC_VERSION            13
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -261,6 +261,7 @@ typedef struct {
 	VkBool32 presentModeImmediate;              /**< If true, immediate surface present mode (VK_PRESENT_MODE_IMMEDIATE_KHR), allowing a swapchain image to be presented immediately, without waiting for the vertical sync period of the display, is supported. */
 	VkBool32 stencilViews;                      /**< If true, stencil aspect views are supported through the MTLPixelFormatX24_Stencil8 and MTLPixelFormatX32_Stencil8 formats. */
 	VkBool32 multisampleArrayTextures;          /**< If true, MTLTextureType2DMultisampleArray is supported. */
+	VkBool32 samplerClampToBorder;              /**< If true, the border color set when creating a sampler will be respected. */
 	uint32_t maxTextureDimension; 	     	  	/**< The maximum size of each texture dimension (width, height, or depth). */
 	uint32_t maxPerStageBufferCount;            /**< The total number of per-stage Metal buffers available for shader uniform content and attributes. */
     uint32_t maxPerStageTextureCount;           /**< The total number of per-stage Metal textures available for shader uniform content. */
