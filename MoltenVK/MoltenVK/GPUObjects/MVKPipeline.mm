@@ -280,7 +280,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
     // Collect extension structures
     VkPipelineVertexInputDivisorStateCreateInfoEXT* pVertexInputDivisorState = nullptr;
-    VkStructureType* next = (VkStructureType*)pCreateInfo->pNext;
+    VkStructureType* next = (VkStructureType*)pCreateInfo->pVertexInputState->pNext;
     while (next) {
         switch (*next) {
         case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
@@ -288,7 +288,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
             next = (VkStructureType*)pVertexInputDivisorState->pNext;
             break;
         default:
-            next = (VkStructureType*)((VkGraphicsPipelineCreateInfo*)next)->pNext;
+            next = (VkStructureType*)((VkPipelineVertexInputStateCreateInfo*)next)->pNext;
             break;
         }
     }
