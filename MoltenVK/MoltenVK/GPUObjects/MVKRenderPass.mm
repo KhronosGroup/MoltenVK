@@ -37,6 +37,13 @@ VkFormat MVKRenderSubpass::getColorAttachmentFormat(uint32_t colorAttIdx) {
 	return VK_FORMAT_UNDEFINED;
 }
 
+bool MVKRenderSubpass::isColorAttachmentUsed(uint32_t colorAttIdx) {
+	if (colorAttIdx >= _colorAttachments.size()) {
+		return false;
+	}
+	return _colorAttachments[colorAttIdx].attachment != VK_ATTACHMENT_UNUSED;
+}
+
 VkFormat MVKRenderSubpass::getDepthStencilFormat() {
 	uint32_t rpAttIdx = _depthStencilAttachment.attachment;
 	if (rpAttIdx == VK_ATTACHMENT_UNUSED) { return VK_FORMAT_UNDEFINED; }
