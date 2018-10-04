@@ -2338,6 +2338,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.fullDrawIndexUint32 = true;
     _features.independentBlend = true;
     _features.sampleRateShading = true;
+	_features.logicOp = getMVKConfig().useMetalPrivateAPI;
     _features.depthBiasClamp = true;
     _features.fillModeNonSolid = true;
     _features.largePoints = true;

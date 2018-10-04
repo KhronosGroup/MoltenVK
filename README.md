@@ -328,6 +328,7 @@ included in any of the `make` command-line build commands [mentioned above](#com
 
 Functionality added with `MVK_USE_METAL_PRIVATE_API` enabled includes:
 - `VkPhysicalDeviceFeatures::wideLines`
+- `VkPhysicalDeviceFeatures::logicOp`
 
 
 <a name="demos"></a>

@@ -342,6 +342,9 @@ MTLBlendOperation mvkMTLBlendOperationFromVkBlendOp(VkBlendOp vkBlendOp);
 /** Returns the Metal MTLBlendFactor corresponding to the specified Vulkan VkBlendFactor. */
 MTLBlendFactor mvkMTLBlendFactorFromVkBlendFactor(VkBlendFactor vkBlendFactor);
 
+/** Returns the Metal MTLLogicOperation corresponding to the specified Vulkan VkLogicOp. */
+NSUInteger mvkMTLLogicOperationFromVkLogicOp(VkLogicOp vkBlendOp);
+
 /**
  * Returns the Metal MTLVertexFormat corresponding to the specified
  * Vulkan VkFormat as used as a vertex attribute format.

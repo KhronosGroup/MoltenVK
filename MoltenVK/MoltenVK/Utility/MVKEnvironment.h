@@ -23,7 +23,9 @@
 #include "mvk_vulkan.h"
 #include "mvk_private_api.h"
 #include "MVKLogging.h"
+#ifdef __cplusplus
 #include <string>
+#endif
 
 
 // Expose MoltenVK Apple surface extension functionality
@@ -73,22 +75,11 @@
 #	define MVK_SUPPORT_IOSURFACE_BOOL (__TV_OS_VERSION_MIN_REQUIRED >= __TVOS_11_0)
 #endif
 
-/**
- * Enable use of private Metal APIs.
- *
- * Enabling this build setting during a MoltenVK build will allow MoltenVK to
- * extend its functionality by using certain private Metal API calls, but it 
- * will also disqualify the app from being distributed via Apple App Stores.
- *
- * Disabled by default.
- */
-#ifndef MVK_USE_METAL_PRIVATE_API
-#	define MVK_USE_METAL_PRIVATE_API		0
-#endif
-
 
 #pragma mark -
 #pragma mark MoltenVK Configuration
+
+#ifdef __cplusplus
 
 /** The number of members of MVKConfiguration that are strings. */
 static constexpr uint32_t kMVKConfigurationStringCount = 1;
@@ -104,6 +95,8 @@ void mvkSetGlobalConfig(const MVKConfiguration& srcMVKConfig);
  * config, while using the string object to retain string content.
  */
 void mvkSetConfig(MVKConfiguration& dstMVKConfig, const MVKConfiguration& srcMVKConfig, std::string* stringHolders);
+
+#endif
 
 /**
  * Enable debug mode.
