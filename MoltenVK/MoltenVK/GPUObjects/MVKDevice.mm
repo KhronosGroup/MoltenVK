@@ -80,10 +80,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
     }
 }
 
-void MVKPhysicalDevice::getMetalFeatures(MVKPhysicalDeviceMetalFeatures* mtlFeatures) {
-    if (mtlFeatures) { *mtlFeatures = _metalFeatures; }
-}
-
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
     if (properties) { *properties = _properties; }
 }
@@ -1592,7 +1588,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_physicalDevice = physicalDevice;
 	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
 	_pFeatures = &_physicalDevice->_features;
-	_pMetalFeatures = &_physicalDevice->_metalFeatures;
+	_pMetalFeatures = _physicalDevice->getMetalFeatures();
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 

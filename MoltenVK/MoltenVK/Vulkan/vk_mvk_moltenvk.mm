@@ -22,80 +22,73 @@
 #include "MVKEnvironment.h"
 #include "MVKSwapchain.h"
 #include "MVKImage.h"
+#include "MVKFoundation.h"
 #include <string>
 
 using namespace std;
 
-// Validate the VK_MVK_moltenvk spec version to avoid passing incompatible memory structures
-#define MVK_VALIDATE_SPEC_VERSION(mvkSpecVer, cmdName)																				\
-	do {																															\
-		if (mvkSpecVer != VK_MVK_MOLTENVK_SPEC_VERSION) {																			\
-			const char* errMsg  = "%s(): This version of MoltenVK supports VK_MVK_moltenvk extension version %d."					\
-							" You are using version %d."																			\
-							" The memory structures used in this function may be incompatible between the two versions.";			\
-			return mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER, errMsg, cmdName, VK_MVK_MOLTENVK_SPEC_VERSION, mvkSpecVer);	\
-		}																															\
-	} while(0)
-
+// If pSrc and pDst are not null, copies at most *pCopySize bytes from the contents of the source struct
+// to the destination struct, and sets *pCopySize to the number of bytes copied, which is the smaller of
+// the original value of *pCopySize and the actual size of the struct. Returns VK_SUCCESS if the original
+// value of *pCopySize is the same as the actual size of the struct, or VK_INCOMPLETE otherwise.
+// If either pSrc or pDst are null, sets the value of *pCopySize to the size of the struct and returns VK_SUCCESS.
+template<typename S>
+VkResult mvkCopyStruct(S* pDst, const S* pSrc, size_t* pCopySize) {
+	if (pSrc && pDst) {
+		size_t origSize = *pCopySize;
+		*pCopySize = mvkCopyStruct(pDst, pSrc, origSize);
+		return (*pCopySize == origSize) ? VK_SUCCESS : VK_INCOMPLETE;
+	} else {
+		*pCopySize = sizeof(S);
+		return VK_SUCCESS;
+	}
+}
 
 MVK_PUBLIC_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkInstance                                  instance,
-	MVKConfiguration*                           pConfiguration) {
-
-	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkGetMoltenVKConfigurationMVK");
+	MVKConfiguration*                           pConfiguration,
+	size_t*                                     pConfigurationSize) {
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-    if (pConfiguration) { *pConfiguration = *(MVKConfiguration*)mvkInst->getMoltenVKConfiguration(); }
-	return VK_SUCCESS;
+	return mvkCopyStruct(pConfiguration, mvkInst->getMoltenVKConfiguration(), pConfigurationSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkInstance                                  instance,
-	MVKConfiguration*                           pConfiguration) {
-
-	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkSetMoltenVKConfigurationMVK");
+	const MVKConfiguration*                     pConfiguration,
+	size_t*                                     pConfigurationSize) {
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-    if (pConfiguration) { mvkInst->setMoltenVKConfiguration(pConfiguration); }
-    return VK_SUCCESS;
+	return mvkCopyStruct((MVKConfiguration*)mvkInst->getMoltenVKConfiguration(), pConfiguration, pConfigurationSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkPhysicalDevice                            physicalDevice,
-	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures) {
+	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures,
+	size_t*                                     pMetalFeaturesSize) {
 
-	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkGetPhysicalDeviceMetalFeaturesMVK");
-
-    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    mvkPD->getMetalFeatures(pMetalFeatures);
-	return VK_SUCCESS;
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	return mvkCopyStruct(pMetalFeatures, mvkPD->getMetalFeatures(), pMetalFeaturesSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkGetSwapchainPerformanceMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkDevice                                    device,
 	VkSwapchainKHR                              swapchain,
-	MVKSwapchainPerformance*                    pSwapchainPerf) {
+	MVKSwapchainPerformance*                    pSwapchainPerf,
+	size_t*                                     pSwapchainPerfSize) {
 
-	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkGetSwapchainPerformanceMVK");
-
-    MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
-    mvkSwapchain->getPerformanceStatistics(pSwapchainPerf);
-	return VK_SUCCESS;
+	MVKSwapchain* mvkSC = (MVKSwapchain*)swapchain;
+	return mvkCopyStruct(pSwapchainPerf, mvkSC->getPerformanceStatistics(), pSwapchainPerfSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkDevice                                    device,
-	MVKPerformanceStatistics*            		pPerf) {
+	MVKPerformanceStatistics*            		pPerf,
+	size_t*                                     pPerfSize) {
 
-	MVK_VALIDATE_SPEC_VERSION(mvkSpecVersion, "vkGetPerformanceStatisticsMVK");
-
-    MVKDevice::getMVKDevice(device)->getPerformanceStatistics(pPerf);
-	return VK_SUCCESS;
+	MVKPerformanceStatistics mvkPerf;
+	MVKDevice::getMVKDevice(device)->getPerformanceStatistics(&mvkPerf);
+	return mvkCopyStruct(pPerf, &mvkPerf, pPerfSize);
 }
 
 MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(
@@ -164,19 +157,3 @@ MVK_PUBLIC_SYMBOL void vkGetIOSurfaceMVK(
     MVKImage* mvkImg = (MVKImage*)image;
     *pIOSurface = mvkImg->getIOSurface();
 }
-
-
-// Deprecated functions
-MVK_PUBLIC_SYMBOL void vkGetMoltenVKDeviceConfigurationMVK(
-	VkDevice                                    device,
-	MVKDeviceConfiguration*                     pConfiguration) {
-	mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkGetMoltenVKDeviceConfigurationMVK(): This function is no longer supported. Use vkGetMoltenVKConfigurationMVK() instead.");
-}
-
-MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKDeviceConfigurationMVK(
-	VkDevice                                    device,
-	MVKDeviceConfiguration*                     pConfiguration) {
-	return 	mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkSetMoltenVKDeviceConfigurationMVK(): This function is no longer supported. Use vkSetMoltenVKConfigurationMVK() instead.");
-}
-
-

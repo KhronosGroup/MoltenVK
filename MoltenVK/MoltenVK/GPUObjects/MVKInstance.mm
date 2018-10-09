@@ -322,13 +322,6 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkCreateMacOSSurfaceMVK);
 #endif
 
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-	// Deprecated functions
-	ADD_PROC_ADDR(vkGetMoltenVKDeviceConfigurationMVK);
-	ADD_PROC_ADDR(vkSetMoltenVKDeviceConfigurationMVK);
-#pragma clang diagnostic pop
-
 }
 
 void MVKInstance::logVersions() {

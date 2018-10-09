@@ -62,8 +62,8 @@ public:
 	/** Returns whether the surface size has changed since the last time this function was called. */
 	bool getHasSurfaceSizeChanged();
 
-    /** Populates the specified performance stats structure. */
-    void getPerformanceStatistics(MVKSwapchainPerformance* pSwapchainPerf);
+	/** Returns the specified performance stats structure. */
+	const MVKSwapchainPerformance* getPerformanceStatistics() { return &_performanceStatistics; }
 
 
 #pragma mark Metal

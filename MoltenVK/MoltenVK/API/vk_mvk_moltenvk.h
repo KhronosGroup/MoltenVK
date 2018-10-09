@@ -71,6 +71,12 @@ extern "C" {
  * is compiled in Debug mode, and not present when compiled in Release mode. The initial values
  * of the other settings are determined by other build settings when MoltenVK is compiled.
  * See the description of the individual configuration structure members for more information.
+ *
+ * This structure may be extended as new features are added to MoltenVK. If you are linking to
+ * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
+ * than your app was, the size of this structure in your app may be larger or smaller than the
+ * struct in MoltenVK. See the description of the vkGetMoltenVKConfigurationMVK() and
+ * vkSetMoltenVKConfigurationMVK() functions for information about how to handle this.
  */
 typedef struct {
 
@@ -233,7 +239,16 @@ typedef struct {
 
 } MVKConfiguration;
 
-/** Features provided by the current implementation of Metal on the current device. */
+/**
+ * Features provided by the current implementation of Metal on the current device. You can
+ * retrieve a copy of this structure using the vkGetPhysicalDeviceMetalFeaturesMVK() function.
+ *
+ * This structure may be extended as new features are added to MoltenVK. If you are linking to
+ * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
+ * than your app was, the size of this structure in your app may be larger or smaller than the
+ * struct in MoltenVK. See the description of the vkGetPhysicalDeviceMetalFeaturesMVK() function
+ * for information about how to handle this.
+ */
 typedef struct {
     uint32_t mslVersion;                        /**< The version of the Metal Shading Language available on this device. The format of the integer is MMmmpp, with two decimal digts each for Major, minor, and patch version values (eg. MSL 1.2 would appear as 010200). */
 	VkBool32 indirectDrawing;                   /**< If true, draw calls support parameters held in a GPU buffer. */
@@ -256,7 +271,16 @@ typedef struct {
     VkSampleCountFlags supportedSampleCounts;   /**< A bitmask identifying the sample counts supported by the device. */
 } MVKPhysicalDeviceMetalFeatures;
 
-/** MoltenVK swapchain performance statistics. */
+/**
+ * MoltenVK swapchain performance statistics. You can retrieve a copy of this structure using
+ * the vkGetSwapchainPerformanceMVK() function.
+ *
+ * This structure may be extended as new features are added to MoltenVK. If you are linking to
+ * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
+ * than your app was, the size of this structure in your app may be larger or smaller than the
+ * struct in MoltenVK. See the description of the vkGetSwapchainPerformanceMVK() function for
+ * information about how to handle this.
+ */
 typedef struct {
     double lastFrameInterval;           /**< The time interval between this frame and the immediately previous frame, in milliseconds. */
     double averageFrameInterval;        /**< The rolling average time interval between frames, in miliseconds. This value has less volatility than the lastFrameInterval value. */
@@ -296,7 +320,15 @@ typedef struct {
 	MVKPerformanceTracker mtlQueueAccess;          	/** Create an MTLCommmandQueue or access an existing cached instance. */
 } MVKQueuePerformance;
 
-/** MoltenVK performance. */
+/**
+ * MoltenVK performance. You can retrieve a copy of this structure using the vkGetPerformanceStatisticsMVK() function.
+ *
+ * This structure may be extended as new features are added to MoltenVK. If you are linking to
+ * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
+ * than your app was, the size of this structure in your app may be larger or smaller than the
+ * struct in MoltenVK. See the description of the vkGetPerformanceStatisticsMVK() function for
+ * information about how to handle this.
+ */
 typedef struct {
 	MVKShaderCompilationPerformance shaderCompilation;	/** Shader compilations activities. */
 	MVKPipelineCachePerformance pipelineCache;			/** Pipeline cache activities. */
@@ -307,11 +339,11 @@ typedef struct {
 #pragma mark -
 #pragma mark Function types
 
-typedef VkResult (VKAPI_PTR *PFN_vkGetMoltenVKConfigurationMVK)(uint32_t mvkSpecVersion, VkDevice device, MVKConfiguration* pConfiguration);
-typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(uint32_t mvkSpecVersion, VkDevice device, MVKConfiguration* pConfiguration);
-typedef VkResult (VKAPI_PTR *PFN_vkGetPhysicalDeviceMetalFeaturesMVK)(uint32_t mvkSpecVersion, VkPhysicalDevice physicalDevice, MVKPhysicalDeviceMetalFeatures* pMetalFeatures);
-typedef VkResult (VKAPI_PTR *PFN_vkGetSwapchainPerformanceMVK)(uint32_t mvkSpecVersion, VkDevice device, VkSwapchainKHR swapchain, MVKSwapchainPerformance* pSwapchainPerf);
-typedef VkResult (VKAPI_PTR *PFN_vkGetPerformanceStatisticsMVK)(uint32_t mvkSpecVersion, VkDevice device, MVKPerformanceStatistics* pPerf);
+typedef VkResult (VKAPI_PTR *PFN_vkGetMoltenVKConfigurationMVK)(VkInstance instance, MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
+typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(VkInstance instance, MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
+typedef VkResult (VKAPI_PTR *PFN_vkGetPhysicalDeviceMetalFeaturesMVK)(VkPhysicalDevice physicalDevice, MVKPhysicalDeviceMetalFeatures* pMetalFeatures, size_t* pMetalFeaturesSize);
+typedef VkResult (VKAPI_PTR *PFN_vkGetSwapchainPerformanceMVK)(VkDevice device, VkSwapchainKHR swapchain, MVKSwapchainPerformance* pSwapchainPerf, size_t* pSwapchainPerfSize);
+typedef VkResult (VKAPI_PTR *PFN_vkGetPerformanceStatisticsMVK)(VkDevice device, MVKPerformanceStatistics* pPerf, size_t* pPerfSize);
 typedef void (VKAPI_PTR *PFN_vkGetVersionStringsMVK)(char* pMoltenVersionStringBuffer, uint32_t moltenVersionStringBufferLength, char* pVulkanVersionStringBuffer, uint32_t vulkanVersionStringBufferLength);
 
 #ifdef __OBJC__
@@ -322,13 +354,6 @@ typedef VkResult (VKAPI_PTR *PFN_vkUseIOSurfaceMVK)(VkImage image, IOSurfaceRef 
 typedef void (VKAPI_PTR *PFN_vkGetIOSurfaceMVK)(VkImage image, IOSurfaceRef* pIOSurface);
 #endif // __OBJC__
 
-// Deprecated functions. These do nothing now.
-typedef MVKConfiguration MVKDeviceConfiguration;
-__attribute__((deprecated("Use PFN_vkGetMoltenVKConfigurationMVK instead.")))
-typedef void (VKAPI_PTR *PFN_vkGetMoltenVKDeviceConfigurationMVK)(VkDevice device, MVKConfiguration* pConfiguration);
-__attribute__((deprecated("Use PFN_vkSetMoltenVKConfigurationMVK instead.")))
-typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKDeviceConfigurationMVK)(VkDevice device, MVKConfiguration* pConfiguration);
-
 
 #pragma mark -
 #pragma mark Function prototypes
@@ -338,23 +363,36 @@ typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKDeviceConfigurationMVK)(VkDevice d
 /** 
  * Populates the pConfiguration structure with the current MoltenVK configuration settings.
  *
- * To change a specific configuration value, call vkGetMoltenVKConfigurationMVK()
- * to retrieve the current configuration, make changes, and call 
- * vkSetMoltenVKConfigurationMVK() to update all of the values.
+ * To change a specific configuration value, call vkGetMoltenVKConfigurationMVK() to retrieve
+ * the current configuration, make changes, and call  vkSetMoltenVKConfigurationMVK() to
+ * update all of the values.
  *
  * To be active, some configuration settings must be set before a VkDevice is created.
  * See the description of the MVKConfiguration members for more information.
  *
- * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
- * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
- * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
- * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
- * version of this header file included in the MoltenVK build to which you will link your app.
+ * If you are linking to an implementation of MoltenVK that was compiled from a different
+ * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKConfiguration structure
+ * in your app may be larger or smaller than the same struct as expected by MoltenVK.
+ *
+ * When calling this function, set the value of *pConfigurationSize to sizeof(MVKConfiguration),
+ * to tell MoltenVK the limit of the size of your MVKConfiguration structure. Upon return from
+ * this function, the value of *pConfigurationSize will hold the actual number of bytes copied
+ * into your passed MVKConfiguration structure, which will be the smaller of what your app
+ * thinks is the size of MVKConfiguration, and what MoltenVK thinks it is. This represents the
+ * safe access area within the structure for both MoltenVK and your app.
+ *
+ * If the size that MoltenVK expects for MVKConfiguration is different than the value passed in
+ * *pConfigurationSize, this function will return VK_INCOMPLETE, otherwise it will return VK_SUCCESS.
+ *
+ * Although it is not necessary, you can use this function to determine in advance the value
+ * that MoltenVK expects the size of MVKConfiguration to be by setting the value of pConfiguration
+ * to NULL. In that case, this function will set *pConfigurationSize to the size that MoltenVK
+ * expects MVKConfiguration to be.
  */
 VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkInstance                                  instance,
-	MVKConfiguration*                           pConfiguration);
+	MVKConfiguration*                           pConfiguration,
+	size_t*                                     pConfigurationSize);
 
 /** 
  * Sets the MoltenVK configuration settings to those found in the pConfiguration structure.
@@ -366,62 +404,112 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetMoltenVKConfigurationMVK(
  * To be active, some configuration settings must be set before a VkDevice is created.
  * See the description of the MVKConfiguration members for more information.
  *
- * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
- * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
- * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
- * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
- * version of this header file included in the MoltenVK build to which you will link your app.
+ * If you are linking to an implementation of MoltenVK that was compiled from a different
+ * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKConfiguration structure
+ * in your app may be larger or smaller than the same struct as expected by MoltenVK.
+ *
+ * When calling this function, set the value of *pConfigurationSize to sizeof(MVKConfiguration),
+ * to tell MoltenVK the limit of the size of your MVKConfiguration structure. Upon return from
+ * this function, the value of *pConfigurationSize will hold the actual number of bytes copied
+ * out of your passed MVKConfiguration structure, which will be the smaller of what your app
+ * thinks is the size of MVKConfiguration, and what MoltenVK thinks it is. This represents the
+ * safe access area within the structure for both MoltenVK and your app.
+ *
+ * If the size that MoltenVK expects for MVKConfiguration is different than the value passed in
+ * *pConfigurationSize, this function will return VK_INCOMPLETE, otherwise it will return VK_SUCCESS.
+ *
+ * Although it is not necessary, you can use this function to determine in advance the value
+ * that MoltenVK expects the size of MVKConfiguration to be by setting the value of pConfiguration
+ * to NULL. In that case, this function will set *pConfigurationSize to the size that MoltenVK
+ * expects MVKConfiguration to be.
  */
 VKAPI_ATTR VkResult VKAPI_CALL vkSetMoltenVKConfigurationMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkInstance                                  instance,
-	MVKConfiguration*                           pConfiguration);
+	const MVKConfiguration*                     pConfiguration,
+	size_t*                                     pConfigurationSize);
 
 /** 
  * Populates the pMetalFeatures structure with the Metal-specific features
  * supported by the specified physical device. 
  *
- * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
- * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
- * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
- * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
- * version of this header file included in the MoltenVK build to which you will link your app.
+ * If you are linking to an implementation of MoltenVK that was compiled from a different
+ * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKPhysicalDeviceMetalFeatures
+ * structure in your app may be larger or smaller than the same struct as expected by MoltenVK.
+ *
+ * When calling this function, set the value of *pMetalFeaturesSize to sizeof(MVKPhysicalDeviceMetalFeatures),
+ * to tell MoltenVK the limit of the size of your MVKPhysicalDeviceMetalFeatures structure. Upon return from
+ * this function, the value of *pMetalFeaturesSize will hold the actual number of bytes copied into your
+ * passed MVKPhysicalDeviceMetalFeatures structure, which will be the smaller of what your app thinks is the
+ * size of MVKPhysicalDeviceMetalFeatures, and what MoltenVK thinks it is. This represents the safe access
+ * area within the structure for both MoltenVK and your app.
+ *
+ * If the size that MoltenVK expects for MVKPhysicalDeviceMetalFeatures is different than the value passed in
+ * *pMetalFeaturesSize, this function will return VK_INCOMPLETE, otherwise it will return VK_SUCCESS.
+ *
+ * Although it is not necessary, you can use this function to determine in advance the value that MoltenVK
+ * expects the size of MVKPhysicalDeviceMetalFeatures to be by setting the value of pMetalFeatures to NULL.
+ * In that case, this function will set *pMetalFeaturesSize to the size that MoltenVK expects
+ * MVKPhysicalDeviceMetalFeatures to be.
  */
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceMetalFeaturesMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkPhysicalDevice                            physicalDevice,
-	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures);
+	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures,
+	size_t*                                     pMetalFeaturesSize);
 
 /**
- * Populates the specified MVKSwapchainPerformance structure with
- * the current performance statistics for the specified swapchain.
+ * Populates the pSwapchainPerf structure with the current performance statistics for the swapchain.
  *
- * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
- * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
- * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
- * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
- * version of this header file included in the MoltenVK build to which you will link your app.
+ * If you are linking to an implementation of MoltenVK that was compiled from a different
+ * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKSwapchainPerformance
+ * structure in your app may be larger or smaller than the same struct as expected by MoltenVK.
+ *
+ * When calling this function, set the value of *pSwapchainPerfSize to sizeof(MVKSwapchainPerformance),
+ * to tell MoltenVK the limit of the size of your MVKSwapchainPerformance structure. Upon return from
+ * this function, the value of *pSwapchainPerfSize will hold the actual number of bytes copied into
+ * your passed MVKSwapchainPerformance structure, which will be the smaller of what your app thinks
+ * is the size of MVKSwapchainPerformance, and what MoltenVK thinks it is. This represents the safe
+ * access area within the structure for both MoltenVK and your app.
+ *
+ * If the size that MoltenVK expects for MVKSwapchainPerformance is different than the value passed in
+ * *pSwapchainPerfSize, this function will return VK_INCOMPLETE, otherwise it will return VK_SUCCESS.
+ *
+ * Although it is not necessary, you can use this function to determine in advance the value
+ * that MoltenVK expects the size of MVKSwapchainPerformance to be by setting the value of
+ * pSwapchainPerf to NULL. In that case, this function will set *pSwapchainPerfSize to the
+ * size that MoltenVK expects MVKSwapchainPerformance to be.
  */
 VKAPI_ATTR VkResult VKAPI_CALL vkGetSwapchainPerformanceMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkDevice                                    device,
 	VkSwapchainKHR                              swapchain,
-	MVKSwapchainPerformance*                    pSwapchainPerf);
+	MVKSwapchainPerformance*                    pSwapchainPerf,
+	size_t*                                     pSwapchainPerfSize);
 
 /**
- * Populates the specified MVKPerformanceStatistics structure with
- * the current performance statistics for the specified device.
+ * Populates the pPerf structure with the current performance statistics for the device.
  *
- * To ensure passing compatible memory structures, mvkSpecVersion must be set to the
- * value of VK_MVK_MOLTENVK_SPEC_VERSION under which MoltenVK was compiled, otherwise
- * this function will do nothing, and will return the error VK_ERROR_INCOMPATIBLE_DRIVER.
- * You can ensure this by setting mvkSpecVersion to VK_MVK_MOLTENVK_SPEC_VERSION from the
- * version of this header file included in the MoltenVK build to which you will link your app.
+ * If you are linking to an implementation of MoltenVK that was compiled from a different
+ * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKPerformanceStatistics
+ * structure in your app may be larger or smaller than the same struct as expected by MoltenVK.
+ *
+ * When calling this function, set the value of *pPerfSize to sizeof(MVKPerformanceStatistics),
+ * to tell MoltenVK the limit of the size of your MVKPerformanceStatistics structure. Upon return
+ * from this function, the value of *pPerfSize will hold the actual number of bytes copied into
+ * your passed MVKPerformanceStatistics structure, which will be the smaller of what your app
+ * thinks is the size of MVKPerformanceStatistics, and what MoltenVK thinks it is. This
+ * represents the safe access area within the structure for both MoltenVK and your app.
+ *
+ * If the size that MoltenVK expects for MVKPerformanceStatistics is different than the value passed
+ * in *pPerfSize, this function will return VK_INCOMPLETE, otherwise it will return VK_SUCCESS.
+ *
+ * Although it is not necessary, you can use this function to determine in advance the value
+ * that MoltenVK expects the size of MVKPerformanceStatistics to be by setting the value of
+ * pPerf to NULL. In that case, this function will set *pPerfSize to the size that MoltenVK
+ * expects MVKPerformanceStatistics to be.
  */
 VKAPI_ATTR VkResult VKAPI_CALL vkGetPerformanceStatisticsMVK(
-	uint32_t                                    mvkSpecVersion,
 	VkDevice                                    device,
-	MVKPerformanceStatistics*            		pPerf);
+	MVKPerformanceStatistics*            		pPerf,
+	size_t*                                     pPerfSize);
 
 /**
  * Returns a human readable version of the MoltenVK and Vulkan versions.
@@ -543,13 +631,7 @@ typedef uint32_t MVKMSLSPIRVHeader;
 
 #endif // VK_NO_PROTOTYPES
 
-
-// Deprecated functions
-__attribute__((deprecated("Use vkGetMoltenVKConfigurationMVK() instead.")))
-VKAPI_ATTR void VKAPI_CALL vkGetMoltenVKDeviceConfigurationMVK(VkDevice device, MVKDeviceConfiguration* pConfiguration);
-__attribute__((deprecated("Use vkSetMoltenVKConfigurationMVK() instead.")))
-VKAPI_ATTR VkResult VKAPI_CALL vkSetMoltenVKDeviceConfigurationMVK(VkDevice device, MVKDeviceConfiguration* pConfiguration);
-
+	
 #ifdef __cplusplus
 }
 #endif	//  __cplusplus

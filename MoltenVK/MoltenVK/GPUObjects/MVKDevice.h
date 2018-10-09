@@ -80,9 +80,6 @@ public:
 	/** Populates the specified structure with the features of this device. */
 	void getFeatures(VkPhysicalDeviceFeatures2* features);
 
-	/** Populates the specified structure with the Metal-specific features of this device. */
-	void getMetalFeatures(MVKPhysicalDeviceMetalFeatures* mtlFeatures);
-
 	/** Populates the specified structure with the properties of this device. */
 	void getProperties(VkPhysicalDeviceProperties* properties);
 
@@ -228,6 +225,9 @@ public:
 
 	
 #pragma mark Metal
+
+	/** Populates the specified structure with the Metal-specific features of this device. */
+	const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
 
 	/** Returns the underlying Metal device. */
 	inline id<MTLDevice> getMTLDevice() { return _mtlDevice; }

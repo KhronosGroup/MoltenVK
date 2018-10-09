@@ -17,8 +17,12 @@ MoltenVK 1.0.24
 
 Released TBD
 
-- Include version number in VK_MVK_moltenvk extension functions that pass structs that might change.
-- Allocate MVKDescriptorSets from a pool within MVKDescriptorPool,
+- Include struct size parameter in VK_MVK_moltenvk extension functions that pass structs that 
+  might change size across extension versions.
+- Remove vkGetMoltenVKDeviceConfigurationMVK() & vkSetMoltenVKDeviceConfigurationMVK() functions.
+- Allocate MVKDescriptorSets from a pool within MVKDescriptorPool
+- Support copying between textures of compatible-sized formats
+- Support VK_FORMAT_A2B10G10R10_UNORM_PACKED vertex format
 
 
 MoltenVK 1.0.23
