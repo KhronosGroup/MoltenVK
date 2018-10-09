@@ -157,10 +157,6 @@ void MVKSwapchain::markFrameInterval() {
 	}
 }
 
-void MVKSwapchain::getPerformanceStatistics(MVKSwapchainPerformance* pSwapchainPerf) {
-    if (pSwapchainPerf) { *pSwapchainPerf = _performanceStatistics; }
-}
-
 
 #pragma mark Metal
 

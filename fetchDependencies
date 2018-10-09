@@ -107,6 +107,7 @@ echo
 mkdir -p ${EXT_DIR}
 cd ${EXT_DIR}
 
+
 # ----------------- Cereal -------------------
 
 REPO_NAME=cereal
@@ -118,8 +119,8 @@ update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 # ----------------- Vulkan-Headers -------------------
 
-# When MoltenVK is built by something that already has a copy of the
-# Vulkan-Headers repo, use it by creating a symlink.
+# When MoltenVK is built by something that already has
+# a copy of this repo, use it by creating a symlink.
 if [ ! "$V_HEADERS_ROOT" = "" ]; then
        REPO_NAME=Vulkan-Headers
        rm -rf ${REPO_NAME}
@@ -135,8 +136,8 @@ fi
 
 # ----------------- SPIRV-Cross -------------------
 
-# When MoltenVK is built by something that already has a copy of the
-# Vulkan-Headers repo, use it by creating a symlink.
+# When MoltenVK is built by something that already has
+# a copy of this repo, use it by creating a symlink.
 if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
        REPO_NAME=SPIRV-Cross
        rm -rf ${REPO_NAME}
@@ -152,8 +153,8 @@ fi
 
 # ----------------- glslang -------------------
 
-# When MoltenVK is built by something that already has a copy of the
-# Vulkan-Headers repo, use it by creating a symlink.
+# When MoltenVK is built by something that already has
+# a copy of this repo, use it by creating a symlink.
 if [ ! "$GLSLANG_ROOT" = "" ]; then
        REPO_NAME=glslang
        rm -rf ${REPO_NAME}
@@ -181,6 +182,7 @@ REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
+
 # ----------------- VulkanSamples -------------------
 
 REPO_NAME=VulkanSamples
@@ -189,6 +191,8 @@ REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
+
+# ----------------- Cleanup -------------------
 
 cd ..
 

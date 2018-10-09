@@ -22,50 +22,73 @@
 #include "MVKEnvironment.h"
 #include "MVKSwapchain.h"
 #include "MVKImage.h"
+#include "MVKFoundation.h"
 #include <string>
 
 using namespace std;
 
+// If pSrc and pDst are not null, copies at most *pCopySize bytes from the contents of the source struct
+// to the destination struct, and sets *pCopySize to the number of bytes copied, which is the smaller of
+// the original value of *pCopySize and the actual size of the struct. Returns VK_SUCCESS if the original
+// value of *pCopySize is the same as the actual size of the struct, or VK_INCOMPLETE otherwise.
+// If either pSrc or pDst are null, sets the value of *pCopySize to the size of the struct and returns VK_SUCCESS.
+template<typename S>
+VkResult mvkCopyStruct(S* pDst, const S* pSrc, size_t* pCopySize) {
+	if (pSrc && pDst) {
+		size_t origSize = *pCopySize;
+		*pCopySize = mvkCopyStruct(pDst, pSrc, origSize);
+		return (*pCopySize == origSize) ? VK_SUCCESS : VK_INCOMPLETE;
+	} else {
+		*pCopySize = sizeof(S);
+		return VK_SUCCESS;
+	}
+}
 
-MVK_PUBLIC_SYMBOL void vkGetMoltenVKConfigurationMVK(
-    VkInstance                                  instance,
-    MVKConfiguration*                           pConfiguration) {
+MVK_PUBLIC_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
+	VkInstance                                  instance,
+	MVKConfiguration*                           pConfiguration,
+	size_t*                                     pConfigurationSize) {
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-    if (pConfiguration) { *pConfiguration = *(MVKConfiguration*)mvkInst->getMoltenVKConfiguration(); }
+	return mvkCopyStruct(pConfiguration, mvkInst->getMoltenVKConfiguration(), pConfigurationSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
-    VkInstance                                  instance,
-    MVKConfiguration*                           pConfiguration) {
+	VkInstance                                  instance,
+	const MVKConfiguration*                     pConfiguration,
+	size_t*                                     pConfigurationSize) {
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-    if (pConfiguration) { mvkInst->setMoltenVKConfiguration(pConfiguration); }
-    return VK_SUCCESS;
+	return mvkCopyStruct((MVKConfiguration*)mvkInst->getMoltenVKConfiguration(), pConfiguration, pConfigurationSize);
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMetalFeaturesMVK(
-    VkPhysicalDevice                            physicalDevice,
-    MVKPhysicalDeviceMetalFeatures*             pMetalFeatures) {
-    
-    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    mvkPD->getMetalFeatures(pMetalFeatures);
+MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
+	VkPhysicalDevice                            physicalDevice,
+	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures,
+	size_t*                                     pMetalFeaturesSize) {
+
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	return mvkCopyStruct(pMetalFeatures, mvkPD->getMetalFeatures(), pMetalFeaturesSize);
 }
 
-MVK_PUBLIC_SYMBOL void vkGetSwapchainPerformanceMVK(
-    VkDevice                                     device,
-    VkSwapchainKHR                               swapchain,
-    MVKSwapchainPerformance*                     pSwapchainPerf) {
+MVK_PUBLIC_SYMBOL VkResult vkGetSwapchainPerformanceMVK(
+	VkDevice                                    device,
+	VkSwapchainKHR                              swapchain,
+	MVKSwapchainPerformance*                    pSwapchainPerf,
+	size_t*                                     pSwapchainPerfSize) {
 
-    MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
-    mvkSwapchain->getPerformanceStatistics(pSwapchainPerf);
+	MVKSwapchain* mvkSC = (MVKSwapchain*)swapchain;
+	return mvkCopyStruct(pSwapchainPerf, mvkSC->getPerformanceStatistics(), pSwapchainPerfSize);
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPerformanceStatisticsMVK(
-    VkDevice                                    device,
-    MVKPerformanceStatistics*            		pPerf) {
+MVK_PUBLIC_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
+	VkDevice                                    device,
+	MVKPerformanceStatistics*            		pPerf,
+	size_t*                                     pPerfSize) {
 
-    MVKDevice::getMVKDevice(device)->getPerformanceStatistics(pPerf);
+	MVKPerformanceStatistics mvkPerf;
+	MVKDevice::getMVKDevice(device)->getPerformanceStatistics(&mvkPerf);
+	return mvkCopyStruct(pPerf, &mvkPerf, pPerfSize);
 }
 
 MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(
@@ -134,24 +157,3 @@ MVK_PUBLIC_SYMBOL void vkGetIOSurfaceMVK(
     MVKImage* mvkImg = (MVKImage*)image;
     *pIOSurface = mvkImg->getIOSurface();
 }
-
-
-// Deprecated functions
-MVK_PUBLIC_SYMBOL void vkGetMoltenVKDeviceConfigurationMVK(
-	VkDevice                                    device,
-	MVKDeviceConfiguration*                     pConfiguration) {
-
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	if (pConfiguration) { *pConfiguration = *(MVKConfiguration*)mvkDev->getInstance()->getMoltenVKConfiguration(); }
-}
-
-MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKDeviceConfigurationMVK(
-	VkDevice                                    device,
-	MVKDeviceConfiguration*                     pConfiguration) {
-
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	if (pConfiguration) { mvkDev->getInstance()->setMoltenVKConfiguration(pConfiguration); }
-	return VK_SUCCESS;
-}
-
-

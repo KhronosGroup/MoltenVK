@@ -337,6 +337,21 @@ void mvkRemoveAllOccurances(C& container, T val) {
 }
 
 /**
+ * If pSrc and pDst are not null, copies at most copySize bytes from the contents of the source
+ * struct to the destination struct, and returns the number of bytes copied, which is the smaller
+ * of copySize and the actual size of the struct. If either pSrc or pDst are null, returns zero.
+ */
+template<typename S>
+size_t mvkCopyStruct(S* pDst, const S* pSrc, size_t copySize = sizeof(S)) {
+	size_t bytesCopied = 0;
+	if (pSrc && pDst) {
+		bytesCopied = std::min(copySize, sizeof(S));
+		memcpy(pDst, pSrc, bytesCopied);
+	}
+	return bytesCopied;
+}
+
+/**
  * Sets the value referenced by the destination pointer with the value referenced by
  * the source pointer, and returns whether the value was set.
  *
