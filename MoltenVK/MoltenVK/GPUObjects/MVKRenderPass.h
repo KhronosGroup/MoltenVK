@@ -41,6 +41,9 @@ public:
 	/** Returns the format of the color attachment at the specified index. */
 	VkFormat getColorAttachmentFormat(uint32_t colorAttIdx);
 
+	/** Returns whether or not the color attachment at the specified index is being used. */
+	bool isColorAttachmentUsed(uint32_t colorAttIdx);
+
 	/** Returns the format of the depth/stencil attachment. */
 	VkFormat getDepthStencilFormat();
 

@@ -124,7 +124,6 @@ VkResult MVKDeviceMemory::addBuffer(MVKBuffer* mvkBuff) {
 
 void MVKDeviceMemory::removeBuffer(MVKBuffer* mvkBuff) {
 	lock_guard<mutex> lock(_rezLock);
-	if (_isDedicated) return;
 	mvkRemoveAllOccurances(_buffers, mvkBuff);
 }
 
@@ -145,7 +144,6 @@ VkResult MVKDeviceMemory::addImage(MVKImage* mvkImg) {
 
 void MVKDeviceMemory::removeImage(MVKImage* mvkImg) {
 	lock_guard<mutex> lock(_rezLock);
-	if (_isDedicated) return;
 	mvkRemoveAllOccurances(_images, mvkImg);
 }
 

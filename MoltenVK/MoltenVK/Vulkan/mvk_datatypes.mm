@@ -61,10 +61,14 @@ using namespace std;
 #	define MVK_FMT_DEPTH_FEATS		(MVK_FMT_STENCIL_FEATS | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)
 #endif
 
-#define MVK_FMT_LINEAR_TILING_FEATS	(VK_FORMAT_FEATURE_TRANSFER_SRC_BIT		\
-									| VK_FORMAT_FEATURE_TRANSFER_DST_BIT 	\
+#if MVK_MACOS
+// macOS does not support linear images as framebuffer attachments.
+#define MVK_FMT_LINEAR_TILING_FEATS	(MVK_FMT_IMAGE_FEATS					\
 									| VK_FORMAT_FEATURE_BLIT_SRC_BIT        \
 									| VK_FORMAT_FEATURE_BLIT_DST_BIT)
+#else
+#define MVK_FMT_LINEAR_TILING_FEATS	MVK_FMT_COLOR_FEATS
+#endif
 
 #define MVK_FMT_BUFFER_FEATS		(VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT             \
 									| VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT            \
@@ -269,7 +273,7 @@ static const MVKFormatDesc _formatDescriptions[] {
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_UINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorUInt32, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2R10G10B10_SINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorInt32, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
   
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_UNORM_PACK32, MTLPixelFormatRGB10A2Unorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_UNORM_PACK32, MTLPixelFormatRGB10A2Unorm, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatUInt1010102Normalized, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS ),	// Vulkan packed is reversed
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_SNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInt1010102Normalized, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_USCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_A2B10G10R10_SSCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
