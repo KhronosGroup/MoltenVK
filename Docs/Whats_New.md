@@ -23,6 +23,7 @@ Released TBD
 - Allocate MVKDescriptorSets from a pool within MVKDescriptorPool
 - Support copying between textures of compatible-sized formats
 - Support VK_FORMAT_A2B10G10R10_UNORM_PACKED vertex format
+- Build scripts support SRCROOT path containing spaces.
 
 
 MoltenVK 1.0.23
