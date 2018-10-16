@@ -344,8 +344,8 @@ static const MVKFormatDesc _formatDescriptions[] {
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R64G64B64A64_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 32, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R64G64B64A64_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 32, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B10G11R11_UFLOAT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_E5B9G9R9_UFLOAT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B10G11R11_UFLOAT_PACK32, MTLPixelFormatRG11B10Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_E5B9G9R9_UFLOAT_PACK32, MTLPixelFormatRGB9E5Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_D32_SFLOAT, MTLPixelFormatDepth32Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_BUFFER_FEATS ),
     MVK_MAKE_FMT_STRUCT( VK_FORMAT_D32_SFLOAT_S8_UINT, MTLPixelFormatDepth32Float_Stencil8, MTLPixelFormatInvalid, 9.0, 10.11, 1, 1, 5, MTLVertexFormatInvalid, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_BUFFER_FEATS ),
