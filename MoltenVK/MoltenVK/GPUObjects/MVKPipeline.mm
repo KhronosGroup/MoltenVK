@@ -49,9 +49,9 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
                                                         _dslMTLResourceIndexOffsets[dslIdx],
                                                         dynamicOffsets, &pDynamicOffsetIndex);
 	}
-	cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.vertexStage.bufferIndex);
-	cmdEncoder->getPushConstants(VK_SHADER_STAGE_FRAGMENT_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.fragmentStage.bufferIndex);
-    cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.computeStage.bufferIndex);
+	cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.vertexStage.bufferIndex);
+	cmdEncoder->getPushConstants(VK_SHADER_STAGE_FRAGMENT_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.fragmentStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.computeStage.bufferIndex);
 }
 
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
@@ -60,9 +60,9 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
     _descriptorSetLayouts[set].pushDescriptorSet(cmdEncoder, descriptorWrites,
                                                  _dslMTLResourceIndexOffsets[set]);
-    cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.vertexStage.bufferIndex);
-    cmdEncoder->getPushConstants(VK_SHADER_STAGE_FRAGMENT_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.fragmentStage.bufferIndex);
-    cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.computeStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.vertexStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_FRAGMENT_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.fragmentStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.computeStage.bufferIndex);
 }
 
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
@@ -73,9 +73,9 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     _descriptorSetLayouts[set].pushDescriptorSet(cmdEncoder, descUpdateTemplate,
                                                  pData,
                                                  _dslMTLResourceIndexOffsets[set]);
-    cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.vertexStage.bufferIndex);
-    cmdEncoder->getPushConstants(VK_SHADER_STAGE_FRAGMENT_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.fragmentStage.bufferIndex);
-    cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexOffsets.computeStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.vertexStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_FRAGMENT_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.fragmentStage.bufferIndex);
+    cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.computeStage.bufferIndex);
 }
 
 void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConverterContext& context) {
@@ -91,62 +91,26 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConverterContex
 
 	// Add any resource bindings used by push-constants
     mvkPopulateShaderConverterContext(context,
-                                      _pushConstantsMTLResourceIndexOffsets.vertexStage,
+                                      _pushConstantsMTLResourceIndexes.vertexStage,
                                       spv::ExecutionModelVertex,
                                       kPushConstDescSet,
                                       kPushConstBinding);
 
     mvkPopulateShaderConverterContext(context,
-                                      _pushConstantsMTLResourceIndexOffsets.fragmentStage,
+                                      _pushConstantsMTLResourceIndexes.fragmentStage,
                                       spv::ExecutionModelFragment,
                                       kPushConstDescSet,
                                       kPushConstBinding);
 
     mvkPopulateShaderConverterContext(context,
-                                      _pushConstantsMTLResourceIndexOffsets.computeStage,
+                                      _pushConstantsMTLResourceIndexes.computeStage,
                                       spv::ExecutionModelGLCompute,
                                       kPushConstDescSet,
                                       kPushConstBinding);
 
-    // Scan the resource bindings, looking for an unused buffer index.
-    // FIXME: If we ever encounter a device that supports more than 31 buffer
-    // bindings, we'll need to update this code.
-    unordered_map<uint32_t, uint32_t> freeBufferMasks;
-    freeBufferMasks[spv::ExecutionModelVertex] = freeBufferMasks[spv::ExecutionModelFragment] = freeBufferMasks[spv::ExecutionModelGLCompute] = (1 << _device->_pMetalFeatures->maxPerStageBufferCount) - 1;
-    _numTextures = 0;
-    for (auto& binding : context.resourceBindings) {
-        if (binding.descriptorSet == kPushConstDescSet && binding.binding == kPushConstBinding) {
-            // This is the special push constant buffer.
-            freeBufferMasks[binding.stage] &= ~(1 << binding.mslBuffer);
-            continue;
-        }
-        VkDescriptorType descriptorType = _descriptorSetLayouts[binding.descriptorSet]._bindings[binding.binding]._info.descriptorType;
-        switch (descriptorType) {
-        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            // This buffer is being used.
-            freeBufferMasks[binding.stage] &= ~(1 << binding.mslBuffer);
-            break;
-        case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-        case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-        case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-        case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-        case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-            // If it results in a texture binding, we need to account for it so
-            // we know how big to make the auxiliary buffer.
-            if (binding.mslTexture + 1 > _numTextures)
-                _numTextures = binding.mslTexture + 1;
-            break;
-        default:
-            break;
-        }
-    }
-    // Pick the lowest index that isn't used.
-    _auxBufferIndex.vertex = ffs(freeBufferMasks[spv::ExecutionModelVertex]) - 1;
-    _auxBufferIndex.fragment = ffs(freeBufferMasks[spv::ExecutionModelFragment]) - 1;
-    _auxBufferIndex.compute = ffs(freeBufferMasks[spv::ExecutionModelGLCompute]) - 1;
+    _auxBufferIndex.vertex = _pushConstantsMTLResourceIndexes.vertexStage.bufferIndex + 1;
+    _auxBufferIndex.fragment = _pushConstantsMTLResourceIndexes.fragmentStage.bufferIndex + 1;
+    _auxBufferIndex.compute = _pushConstantsMTLResourceIndexes.computeStage.bufferIndex + 1;
 }
 
 MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
@@ -167,8 +131,8 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 	for (uint32_t i = 0; i < pCreateInfo->setLayoutCount; i++) {
 		MVKDescriptorSetLayout* pDescSetLayout = (MVKDescriptorSetLayout*)pCreateInfo->pSetLayouts[i];
 		_descriptorSetLayouts.push_back(*pDescSetLayout);
-		_dslMTLResourceIndexOffsets.push_back(_pushConstantsMTLResourceIndexOffsets);
-		_pushConstantsMTLResourceIndexOffsets += pDescSetLayout->_mtlResourceCounts;
+		_dslMTLResourceIndexOffsets.push_back(_pushConstantsMTLResourceIndexes);
+		_pushConstantsMTLResourceIndexes += pDescSetLayout->_mtlResourceCounts;
 	}
 
 	// Add push constants
@@ -339,7 +303,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     initMVKShaderConverterContext(shaderContext, pCreateInfo);
     auto* mvkLayout = (MVKPipelineLayout*)pCreateInfo->layout;
     _auxBufferIndex = mvkLayout->getAuxBufferIndex();
-    uint32_t auxBufferSize = sizeof(uint32_t) * mvkLayout->getNumTextures();
+    uint32_t auxBufferSize = sizeof(uint32_t) * mvkLayout->getMaxTextureIndex();
 
     // Retrieve the render subpass for which this pipeline is being constructed
     MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
@@ -394,7 +358,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     }
 
     if (_needsVertexAuxBuffer || _needsFragmentAuxBuffer) {
-        _auxBuffer = [_device->getMTLDevice() newBufferWithLength: auxBufferSize options: MTLResourceStorageModeShared];
+        _auxBuffer = [_device->getMTLDevice() newBufferWithLength: auxBufferSize options: MTLResourceStorageModeShared];	// retained
     }
 
     // Vertex attributes
@@ -584,14 +548,14 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
     _auxBufferIndex = layout->getAuxBufferIndex();
-    uint32_t auxBufferSize = sizeof(uint32_t) * layout->getNumTextures();
+    uint32_t auxBufferSize = sizeof(uint32_t) * layout->getMaxTextureIndex();
     shaderContext.options.auxBufferIndex = _auxBufferIndex.compute;
 
     MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
     auto func = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache);
     _needsAuxBuffer = shaderContext.options.needsAuxBuffer;
     if (_needsAuxBuffer) {
-        _auxBuffer = [_device->getMTLDevice() newBufferWithLength: auxBufferSize options: MTLResourceStorageModeShared];
+        _auxBuffer = [_device->getMTLDevice() newBufferWithLength: auxBufferSize options: MTLResourceStorageModeShared];	// retained
     }
     return func;
 }
@@ -661,9 +625,11 @@ namespace mvk {
 				opt.entryPointStage,
 				opt.mslVersion,
 				opt.texelBufferTextureWidth,
+				opt.auxBufferIndex,
 				opt.shouldFlipVertexY,
 				opt.isRenderingPoints,
-				opt.isRasterizationDisabled);
+				opt.isRasterizationDisabled,
+				opt.needsAuxBuffer);
 	}
 
 	template<class Archive>

@@ -42,6 +42,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterOptions::matches(const SPIRVToMSLConve
 	if (entryPointStage != other.entryPointStage) { return false; }
     if (mslVersion != other.mslVersion) { return false; }
 	if (texelBufferTextureWidth != other.texelBufferTextureWidth) { return false; }
+	if (auxBufferIndex != other.auxBufferIndex) { return false; }
     if (!!shouldFlipVertexY != !!other.shouldFlipVertexY) { return false; }
     if (!!isRenderingPoints != !!other.isRenderingPoints) { return false; }
 	if (entryPointName != other.entryPointName) { return false; }
@@ -103,6 +104,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::matches(const SPIRVToMSLConve
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignWith(const SPIRVToMSLConverterContext& srcContext) {
 
 	options.isRasterizationDisabled = srcContext.options.isRasterizationDisabled;
+	options.needsAuxBuffer = srcContext.options.needsAuxBuffer;
 
 	if (options.entryPointStage == spv::ExecutionModelVertex) {
 		for (auto& va : vertexAttributes) {

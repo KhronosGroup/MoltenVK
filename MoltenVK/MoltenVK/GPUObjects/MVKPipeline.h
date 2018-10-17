@@ -75,18 +75,17 @@ public:
 	const MVKShaderAuxBufferBinding& getAuxBufferIndex() { return _auxBufferIndex; }
 
 	/** Returns the number of textures in this layout. This is used to calculate the size of the auxiliary buffer. */
-	uint32_t getNumTextures() { return _numTextures; }
+	uint32_t getMaxTextureIndex() { return _pushConstantsMTLResourceIndexes.getMaxTextureIndex(); }
 
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
-private:
+protected:
 	std::vector<MVKDescriptorSetLayout> _descriptorSetLayouts;
 	std::vector<MVKShaderResourceBinding> _dslMTLResourceIndexOffsets;
 	std::vector<VkPushConstantRange> _pushConstants;
-	MVKShaderResourceBinding _pushConstantsMTLResourceIndexOffsets;
+	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	MVKShaderAuxBufferBinding _auxBufferIndex;
-	uint32_t _numTextures;
 };
 
 
@@ -107,6 +106,10 @@ public:
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKBaseDeviceObject(device),
 																						   _pipelineCache(pipelineCache) {}
+
+	~MVKPipeline() override {
+		[_auxBuffer release];
+	};
 
 protected:
 	MVKPipelineCache* _pipelineCache;
