@@ -297,6 +297,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkGetPhysicalDeviceMemoryProperties2KHR);
 	ADD_PROC_ADDR(vkGetPhysicalDeviceSparseImageFormatProperties2KHR);
 	ADD_PROC_ADDR(vkTrimCommandPoolKHR);
+	ADD_PROC_ADDR(vkGetDescriptorSetLayoutSupportKHR);
 	ADD_PROC_ADDR(vkCmdPushDescriptorSetKHR);
 	ADD_PROC_ADDR(vkCmdPushDescriptorSetWithTemplateKHR);
 	ADD_PROC_ADDR(vkDestroySurfaceKHR);
