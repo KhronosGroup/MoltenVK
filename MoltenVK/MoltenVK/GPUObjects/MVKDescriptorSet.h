@@ -58,6 +58,10 @@ typedef struct MVKShaderResourceBinding {
 	MVKShaderStageResourceBinding fragmentStage;
     MVKShaderStageResourceBinding computeStage;
 
+	uint32_t getMaxBufferIndex();
+	uint32_t getMaxTextureIndex();
+	uint32_t getMaxSamplerIndex();
+
 	MVKShaderResourceBinding operator+ (const MVKShaderResourceBinding& rhs);
 	MVKShaderResourceBinding& operator+= (const MVKShaderResourceBinding& rhs);
 

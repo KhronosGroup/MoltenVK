@@ -46,6 +46,18 @@ MVK_PUBLIC_SYMBOL MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::
 
 #pragma mark MVKShaderResourceBinding
 
+MVK_PUBLIC_SYMBOL uint32_t MVKShaderResourceBinding::getMaxBufferIndex() {
+	return max({vertexStage.bufferIndex, fragmentStage.bufferIndex, computeStage.bufferIndex});
+}
+
+MVK_PUBLIC_SYMBOL uint32_t MVKShaderResourceBinding::getMaxTextureIndex() {
+	return max({vertexStage.textureIndex, fragmentStage.textureIndex, computeStage.textureIndex});
+}
+
+MVK_PUBLIC_SYMBOL uint32_t MVKShaderResourceBinding::getMaxSamplerIndex() {
+	return max({vertexStage.samplerIndex, fragmentStage.samplerIndex, computeStage.samplerIndex});
+}
+
 MVK_PUBLIC_SYMBOL MVKShaderResourceBinding MVKShaderResourceBinding::operator+ (const MVKShaderResourceBinding& rhs) {
 	MVKShaderResourceBinding rslt;
 	rslt.vertexStage = this->vertexStage + rhs.vertexStage;
