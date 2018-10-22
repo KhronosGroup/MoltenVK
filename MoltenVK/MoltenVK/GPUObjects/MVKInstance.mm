@@ -69,9 +69,11 @@ void MVKInstance::destroySurface(MVKSurface* mvkSrfc,
 // sorted according to power, with higher power GPU's at the front of the array.
 // This ensures that a lazy app that simply grabs the first GPU will get a high-power one by default.
 // If the MVK_FORCE_LOW_POWER_GPU is defined, the returned array will only include low-power devices.
+// If Metal is not supported, ensure we return an empty array.
 static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
 #if MVK_MACOS
 	NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
+	if ( !mtlDevs ) { return @[]; }
 
 #ifdef MVK_FORCE_LOW_POWER_GPU
 	NSMutableArray* lpDevs = [[NSMutableArray new] autorelease];
@@ -101,8 +103,9 @@ static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
 
 #endif
 #if MVK_IOS
-	return [NSArray arrayWithObject: MTLCreateSystemDefaultDevice()];
-#endif
+	id<MTLDevice> mtlDev = MTLCreateSystemDefaultDevice();
+	return mtlDev ? [NSArray arrayWithObject: mtlDev] : @[];
+#endif	// MVK_IOS
 }
 
 MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
@@ -130,6 +133,9 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 	_physicalDevices.reserve(mtlDevices.count);
 	for (id<MTLDevice> mtlDev in mtlDevices) {
 		_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
+	}
+	if (_physicalDevices.empty()) {
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
 	}
 }
 
