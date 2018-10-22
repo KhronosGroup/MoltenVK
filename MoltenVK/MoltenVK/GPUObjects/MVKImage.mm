@@ -20,6 +20,7 @@
 #include "MVKSwapchain.h"
 #include "MVKCommandBuffer.h"
 #include "mvk_datatypes.h"
+#include "MVKDescriptorSet.h"
 #include "MVKFoundation.h"
 #include "MVKLogging.h"
 #import "MTLTextureDescriptor+MoltenVK.h"
@@ -633,6 +634,16 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPas
     }
 }
 
+void MVKImageView::addDescriptorBinding(MVKDescriptorBinding* binding) {
+	lock_guard<mutex> lock(_lock);
+    _bindings.insert(binding);
+}
+
+void MVKImageView::removeDescriptorBinding(MVKDescriptorBinding* binding) {
+	lock_guard<mutex> lock(_lock);
+    _bindings.erase(binding);
+}
+
 
 #pragma mark Metal
 
@@ -862,6 +873,10 @@ void MVKImageView::initMTLTextureViewSupport() {
 }
 
 MVKImageView::~MVKImageView() {
+	lock_guard<mutex> lock(_lock);
+	for (MVKDescriptorBinding* binding : _bindings) {
+		binding->unbind(this);
+	}
 	[_mtlTexture release];
 }
 
@@ -893,12 +908,26 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 	return [mtlSampDesc autorelease];
 }
 
+void MVKSampler::addDescriptorBinding(MVKDescriptorBinding* binding) {
+	lock_guard<mutex> lock(_lock);
+	_bindings.insert(binding);
+}
+
+void MVKSampler::removeDescriptorBinding(MVKDescriptorBinding* binding) {
+	lock_guard<mutex> lock(_lock);
+	_bindings.erase(binding);
+}
+
 // Constructs an instance on the specified image.
 MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
     _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: getMTLSamplerDescriptor(pCreateInfo)];
 }
 
 MVKSampler::~MVKSampler() {
+	lock_guard<mutex> lock(_lock);
+	for (MVKDescriptorBinding* binding : _bindings) {
+		binding->unbind(this);
+	}
 	[_mtlSamplerState release];
 }
 

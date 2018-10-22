@@ -236,8 +236,23 @@ public:
     /** Returns whether this instance represents the specified Vulkan binding point. */
     bool hasBinding(uint32_t binding);
 
+    /** Remove a binding for an image view that is about to be destroyed. */
+    void unbind(MVKImageView* imageView);
+
+    /** Remove a binding for a sampler that is about to be destroyed. */
+    void unbind(MVKSampler* sampler);
+
+    /** Remove a binding for a buffer that is about to be destroyed. */
+    void unbind(MVKBuffer* buffer);
+
+    /** Remove a binding for a buffer view that is about to be destroyed. */
+    void unbind(MVKBufferView* bufferView);
+
 	/** Constructs an instance. */
 	MVKDescriptorBinding(MVKDescriptorSetLayoutBinding* pBindingLayout);
+
+	/** Destructor. */
+	~MVKDescriptorBinding();
 
 protected:
 	friend class MVKDescriptorSetLayoutBinding;

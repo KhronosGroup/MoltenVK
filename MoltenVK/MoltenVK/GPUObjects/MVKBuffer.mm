@@ -18,6 +18,7 @@
 
 #include "MVKBuffer.h"
 #include "MVKCommandBuffer.h"
+#include "MVKDescriptorSet.h"
 #include "MVKFoundation.h"
 #include "mvk_datatypes.h"
 
@@ -109,6 +110,16 @@ bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 #endif
 }
 
+void MVKBuffer::addDescriptorBinding(MVKDescriptorBinding* binding) {
+	lock_guard<mutex> lock(_lock);
+	_bindings.insert(binding);
+}
+
+void MVKBuffer::removeDescriptorBinding(MVKDescriptorBinding* binding) {
+	lock_guard<mutex> lock(_lock);
+	_bindings.erase(binding);
+}
+
 
 #pragma mark Construction
 
@@ -118,12 +129,26 @@ MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) :
 }
 
 MVKBuffer::~MVKBuffer() {
+	lock_guard<mutex> lock(_lock);
+	for (MVKDescriptorBinding* binding : _bindings) {
+		binding->unbind(this);
+	}
 	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
 }
 
 
 #pragma mark -
 #pragma mark MVKBufferView
+
+void MVKBufferView::addDescriptorBinding(MVKDescriptorBinding* binding) {
+	lock_guard<mutex> lock(_lock);
+	_bindings.insert(binding);
+}
+
+void MVKBufferView::removeDescriptorBinding(MVKDescriptorBinding* binding) {
+	lock_guard<mutex> lock(_lock);
+	_bindings.erase(binding);
+}
 
 
 #pragma mark Metal
@@ -179,6 +204,10 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 }
 
 MVKBufferView::~MVKBufferView() {
+	lock_guard<mutex> lock(_lock);
+	for (MVKDescriptorBinding* binding : _bindings) {
+		binding->unbind(this);
+	}
     [_mtlTexture release];
     _mtlTexture = nil;
 }

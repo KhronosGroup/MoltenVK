@@ -22,12 +22,14 @@
 #include "MVKSync.h"
 #include <mutex>
 #include <list>
+#include <unordered_set>
 
 #import <IOSurface/IOSurfaceRef.h>
 
 class MVKImageView;
 class MVKSwapchain;
 class MVKCommandEncoder;
+class MVKDescriptorBinding;
 struct MVKImageDescriptorData_t;
 typedef MVKImageDescriptorData_t MVKImageDescriptorData;
 
@@ -276,6 +278,15 @@ public:
 	 */
 	void populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc);
 
+	/** Informs this object of a descriptor binding to which it was bound. */
+	void addDescriptorBinding(MVKDescriptorBinding* binding);
+
+	/**
+	 * Informs this object that a descriptor set to which this object was
+	 * bound is now destroyed.
+	 */
+	void removeDescriptorBinding(MVKDescriptorBinding* binding);
+
 
 #pragma mark Construction
 
@@ -295,6 +306,7 @@ protected:
     MVKImage* _image;
     VkImageSubresourceRange _subresourceRange;
     VkImageUsageFlags _usage;
+    std::unordered_set<MVKDescriptorBinding*> _bindings;
 	id<MTLTexture> _mtlTexture;
 	std::mutex _lock;
 	MTLPixelFormat _mtlPixelFormat;
@@ -315,6 +327,15 @@ public:
 	/** Returns the Metal sampler state. */
 	inline id<MTLSamplerState> getMTLSamplerState() { return _mtlSamplerState; }
 
+	/** Informs this object of a descriptor binding to which it was bound. */
+	void addDescriptorBinding(MVKDescriptorBinding* binding);
+
+	/**
+	 * Informs this object that a descriptor set to which this object was
+	 * bound is now destroyed.
+	 */
+	void removeDescriptorBinding(MVKDescriptorBinding* binding);
+
 	MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo);
 
 	~MVKSampler() override;
@@ -322,6 +343,8 @@ public:
 protected:
 	MTLSamplerDescriptor* getMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
 
+	std::mutex _lock;
+	std::unordered_set<MVKDescriptorBinding*> _bindings;
 	id<MTLSamplerState> _mtlSamplerState;
 };
 
