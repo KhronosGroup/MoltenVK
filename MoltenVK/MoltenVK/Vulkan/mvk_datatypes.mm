@@ -978,8 +978,7 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(Vk
 	}
 }
 
-MVK_PUBLIC_SYMBOL NSUInteger mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology) {
-#if MVK_MACOS
+MVK_PUBLIC_SYMBOL MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology) {
 	switch (vkTopology) {
 		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
 			return MTLPrimitiveTopologyClassPoint;
@@ -1002,10 +1001,21 @@ MVK_PUBLIC_SYMBOL NSUInteger mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology
 			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for render pipelines.", vkTopology);
 			return MTLPrimitiveTopologyClassUnspecified;
 	}
-#endif
-#if MVK_IOS
-	return 0;
-#endif
+}
+
+MVK_PUBLIC_SYMBOL MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(VkPolygonMode vkFillMode) {
+	switch (vkFillMode) {
+		case VK_POLYGON_MODE_FILL:
+		case VK_POLYGON_MODE_POINT:
+			return MTLTriangleFillModeFill;
+
+		case VK_POLYGON_MODE_LINE:
+			return MTLTriangleFillModeLines;
+
+		default:
+			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPolygonMode value %d is not supported for render pipelines.", vkFillMode);
+			return MTLTriangleFillModeFill;
+	}
 }
 
 MVK_PUBLIC_SYMBOL MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachmentLoadOp vkLoadOp) {
@@ -1093,15 +1103,6 @@ MVK_PUBLIC_SYMBOL MTLWinding mvkMTLWindingFromVkFrontFace(VkFrontFace vkWinding)
 		case VK_FRONT_FACE_COUNTER_CLOCKWISE:	return MTLWindingCounterClockwise;
 		case VK_FRONT_FACE_CLOCKWISE:			return MTLWindingClockwise;
 		default:								return MTLWindingCounterClockwise;
-	}
-}
-
-MVK_PUBLIC_SYMBOL MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(VkPolygonMode vkFillMode) {
-	switch (vkFillMode) {
-		case VK_POLYGON_MODE_FILL:		return MTLTriangleFillModeFill;
-		case VK_POLYGON_MODE_LINE:		return MTLTriangleFillModeLines;
-		case VK_POLYGON_MODE_POINT:		return MTLTriangleFillModeLines;
-		default:						return MTLTriangleFillModeLines;
 	}
 }
 

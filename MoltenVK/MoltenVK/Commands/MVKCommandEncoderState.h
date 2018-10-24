@@ -218,7 +218,7 @@ class MVKDepthStencilCommandEncoderState : public MVKCommandEncoderState {
 public:
 
     /** Sets the depth stencil state during pipeline binding. */
-    void setDepthStencilState(VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
+    void setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
 
     /** 
      * Sets the stencil compare mask value of the indicated faces
@@ -240,7 +240,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
     void setStencilState(MVKMTLStencilDescriptorData& stencilInfo,
-                         VkStencilOpState& vkStencil,
+                         const VkStencilOpState& vkStencil,
                          bool enabled);
 
     MVKMTLDepthStencilDescriptorData _depthStencilData;
@@ -256,7 +256,7 @@ class MVKStencilReferenceValueCommandEncoderState : public MVKCommandEncoderStat
 public:
 
     /** Sets the stencil references during pipeline binding. */
-    void setReferenceValues(VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
+    void setReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
 
     /** Sets the stencil state from explicit dynamic command. */
     void setReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference);
@@ -283,7 +283,7 @@ class MVKDepthBiasCommandEncoderState : public MVKCommandEncoderState {
 public:
 
     /** Sets the depth bias during pipeline binding. */
-    void setDepthBias(VkPipelineRasterizationStateCreateInfo vkRasterInfo);
+    void setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo);
 
     /** Sets the depth bias dynamically. */
     void setDepthBias(float depthBiasConstantFactor,

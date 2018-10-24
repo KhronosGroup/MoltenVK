@@ -332,12 +332,11 @@ MTLVertexStepFunction mvkMTLVertexStepFunctionFromVkVertexInputRate(VkVertexInpu
 /** Returns the Metal MTLPrimitiveType corresponding to the specified Vulkan VkPrimitiveTopology. */
 MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology);
 
-/**
- * Returns the Metal MTLPrimitiveTopologyClass corresponding to the specified Vulkan VkPrimitiveTopology.
- *
- * The value is treated as an NSUInteger to support OS versions on which the enum is unavailable.
- */
-NSUInteger mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology);
+/** Returns the Metal MTLPrimitiveTopologyClass corresponding to the specified Vulkan VkPrimitiveTopology. */
+MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology);
+
+/** Returns the Metal MTLTriangleFillMode corresponding to the specified Vulkan VkPolygonMode, */
+MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(VkPolygonMode vkFillMode);
 
 /** Returns the Metal MTLLoadAction corresponding to the specified Vulkan VkAttachmentLoadOp. */
 MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachmentLoadOp vkLoadOp);
@@ -362,9 +361,6 @@ MTLCullMode mvkMTLCullModeFromVkCullModeFlags(VkCullModeFlags vkCull);
 
 /** Returns the Metal MTLWinding corresponding to the specified Vulkan VkFrontFace, */
 MTLWinding mvkMTLWindingFromVkFrontFace(VkFrontFace vkWinding);
-
-/** Returns the Metal MTLTriangleFillMode corresponding to the specified Vulkan VkPolygonMode, */
-MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(VkPolygonMode vkFillMode);
 
 /** Returns the Metal MTLIndexType corresponding to the specified Vulkan VkIndexType, */
 MTLIndexType mvkMTLIndexTypeFromVkIndexType(VkIndexType vkIdxType);

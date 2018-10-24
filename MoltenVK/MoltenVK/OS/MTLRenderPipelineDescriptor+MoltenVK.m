@@ -22,23 +22,13 @@
 
 @implementation MTLRenderPipelineDescriptor (MoltenVK)
 
--(NSUInteger) inputPrimitiveTopologyMVK {
-
-#if MVK_MACOS
-	return self.inputPrimitiveTopology;
-#endif
-#if MVK_IOS
-	return 0;
-#endif
-
+-(MTLPrimitiveTopologyClass) inputPrimitiveTopologyMVK {
+	if ( [self respondsToSelector: @selector(inputPrimitiveTopology)] ) { return self.inputPrimitiveTopology; }
+	return MTLPrimitiveTopologyClassUnspecified;
 }
 
--(void) setInputPrimitiveTopologyMVK: (NSUInteger) topology {
-
-#if MVK_MACOS
-	self.inputPrimitiveTopology = topology;
-#endif
-
+-(void) setInputPrimitiveTopologyMVK: (MTLPrimitiveTopologyClass) topology {
+	if ([self respondsToSelector: @selector(setInputPrimitiveTopology:)]) { self.inputPrimitiveTopology = topology; }
 }
 
 @end

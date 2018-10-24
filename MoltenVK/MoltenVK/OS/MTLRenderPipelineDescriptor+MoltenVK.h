@@ -30,9 +30,7 @@
  * This property allows support under all OS versions. Delegates to the inputPrimitiveTopology
  * property if it is available. otherwise, returns MTLPrimitiveTopologyClassUnspecified when
  * read and does nothing when set.
- *
- * The value is treated as an NSUInteger to support OS versions on which the enum is unavailable.
  */
-@property(nonatomic, readwrite) NSUInteger inputPrimitiveTopologyMVK;
+@property(nonatomic, readwrite) MTLPrimitiveTopologyClass inputPrimitiveTopologyMVK;
 
 @end
