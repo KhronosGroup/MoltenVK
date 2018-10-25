@@ -186,7 +186,7 @@ void MVKPushConstantsCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKDepthStencilCommandEncoderState
 
-void MVKDepthStencilCommandEncoderState:: setDepthStencilState(VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
+void MVKDepthStencilCommandEncoderState:: setDepthStencilState(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
 
     if (vkDepthStencilInfo.depthTestEnable) {
         _depthStencilData.depthCompareFunction = mvkMTLCompareFunctionFromVkCompareOp(vkDepthStencilInfo.depthCompareOp);
@@ -203,7 +203,7 @@ void MVKDepthStencilCommandEncoderState:: setDepthStencilState(VkPipelineDepthSt
 }
 
 void MVKDepthStencilCommandEncoderState::setStencilState(MVKMTLStencilDescriptorData& stencilInfo,
-                                                         VkStencilOpState& vkStencil,
+                                                         const VkStencilOpState& vkStencil,
                                                          bool enabled) {
     if ( !enabled ) {
         stencilInfo = kMVKMTLStencilDescriptorDataDefault;
@@ -282,7 +282,7 @@ void MVKDepthStencilCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKStencilReferenceValueCommandEncoderState
 
-void MVKStencilReferenceValueCommandEncoderState:: setReferenceValues(VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
+void MVKStencilReferenceValueCommandEncoderState:: setReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo) {
 
     // If ref values are to be set dynamically, don't set them here.
     if (_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_REFERENCE)) { return; }
@@ -323,7 +323,7 @@ void MVKStencilReferenceValueCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKDepthBiasCommandEncoderState
 
-void MVKDepthBiasCommandEncoderState::setDepthBias(VkPipelineRasterizationStateCreateInfo vkRasterInfo) {
+void MVKDepthBiasCommandEncoderState::setDepthBias(const VkPipelineRasterizationStateCreateInfo& vkRasterInfo) {
 
     _isEnabled = vkRasterInfo.depthBiasEnable;
 

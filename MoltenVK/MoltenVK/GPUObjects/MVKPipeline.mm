@@ -204,7 +204,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipeline* parent,
 										 const VkGraphicsPipelineCreateInfo* pCreateInfo) : MVKPipeline(device, pipelineCache, parent) {
 
-    // Track dynamic state in _dynamicStateEnabled array
+	// Track dynamic state in _dynamicStateEnabled array
 	memset(&_dynamicStateEnabled, false, sizeof(_dynamicStateEnabled));		// start with all dynamic state disabled
 	const VkPipelineDynamicStateCreateInfo* pDS = pCreateInfo->pDynamicState;
 	if (pDS) {
@@ -214,31 +214,34 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
-    if (pCreateInfo->pColorBlendState) {
-        memcpy(&_blendConstants, &pCreateInfo->pColorBlendState->blendConstants, sizeof(_blendConstants));
-    }
+	// Blending
+	if (pCreateInfo->pColorBlendState) {
+		memcpy(&_blendConstants, &pCreateInfo->pColorBlendState->blendConstants, sizeof(_blendConstants));
+	}
 
-    if (pCreateInfo->pInputAssemblyState) {
-        _mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
-    }
+	// Topology
+	_mtlPrimitiveType = MTLPrimitiveTypePoint;
+	if (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)) {
+		_mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
+	}
 
-	// Add raster content - must occur before initMTLRenderPipelineState() for rasterizerDiscardEnable
+	// Rasterization
 	_mtlCullMode = MTLCullModeNone;
 	_mtlFrontWinding = MTLWindingCounterClockwise;
 	_mtlFillMode = MTLTriangleFillModeFill;
-    _mtlDepthClipMode = MTLDepthClipModeClip;
+	_mtlDepthClipMode = MTLDepthClipModeClip;
 	bool hasRasterInfo = mvkSetOrClear(&_rasterInfo, pCreateInfo->pRasterizationState);
 	if (hasRasterInfo) {
 		_mtlCullMode = mvkMTLCullModeFromVkCullModeFlags(_rasterInfo.cullMode);
 		_mtlFrontWinding = mvkMTLWindingFromVkFrontFace(_rasterInfo.frontFace);
 		_mtlFillMode = mvkMTLTriangleFillModeFromVkPolygonMode(_rasterInfo.polygonMode);
-        if (_rasterInfo.depthClampEnable) {
+		if (_rasterInfo.depthClampEnable) {
 			if (_device->_pFeatures->depthClamp) {
-                _mtlDepthClipMode = MTLDepthClipModeClamp;
-            } else {
-                setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "This device does not support depth clamping."));
-            }
-        }
+				_mtlDepthClipMode = MTLDepthClipModeClamp;
+			} else {
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "This device does not support depth clamping."));
+			}
+		}
 	}
 
 	// Render pipeline state
@@ -247,7 +250,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	// Depth stencil content
 	_hasDepthStencilInfo = mvkSetOrClear(&_depthStencilInfo, pCreateInfo->pDepthStencilState);
 
-	// Add viewports and scissors
+	// Viewports and scissors
 	if (pCreateInfo->pViewportState) {
 		_mtlViewports.reserve(pCreateInfo->pViewportState->viewportCount);
 		for (uint32_t i = 0; i < pCreateInfo->pViewportState->viewportCount; i++) {
@@ -270,7 +273,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 }
 
-/** Constructs the underlying Metal render pipeline. */
+// Constructs the underlying Metal render pipeline.
 void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 	_mtlPipelineState = nil;
 	MTLRenderPipelineDescriptor* plDesc = getMTLRenderPipelineDescriptor(pCreateInfo);
@@ -450,14 +453,16 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         plDesc.alphaToOneEnabled = pCreateInfo->pMultisampleState->alphaToOneEnable;
     }
 
-    if (pCreateInfo->pInputAssemblyState) {
-        plDesc.inputPrimitiveTopologyMVK = mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
-    }
+	if (pCreateInfo->pInputAssemblyState) {
+		plDesc.inputPrimitiveTopologyMVK = isRenderingPoints(pCreateInfo)
+												? MTLPrimitiveTopologyClassPoint
+												: mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
+	}
 
     return plDesc;
 }
 
-/** Initializes the context used to prepare the MSL library used by this pipeline. */
+// Initializes the context used to prepare the MSL library used by this pipeline.
 void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterContext& shaderContext,
                                                         const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 
@@ -467,7 +472,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
 
-    shaderContext.options.isRenderingPoints = (pCreateInfo->pInputAssemblyState && (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST));
+    shaderContext.options.isRenderingPoints = isRenderingPoints(pCreateInfo);
 	shaderContext.options.isRasterizationDisabled = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
 
@@ -496,6 +501,12 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
 
         shaderContext.vertexAttributes.push_back(va);
     }
+}
+
+// We render points if either the topology or polygon fill mode dictate it
+bool MVKGraphicsPipeline::isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+	return ((pCreateInfo->pInputAssemblyState && (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)) ||
+			(pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT)));
 }
 
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
@@ -569,7 +580,7 @@ MVKComputePipeline::~MVKComputePipeline() {
 #pragma mark -
 #pragma mark MVKPipelineCache
 
-/** Return a shader library from the specified shader context sourced from the specified shader module. */
+// Return a shader library from the specified shader context sourced from the specified shader module.
 MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConverterContext* pContext, MVKShaderModule* shaderModule) {
 	lock_guard<mutex> lock(_shaderCacheLock);
 

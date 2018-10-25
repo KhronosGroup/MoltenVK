@@ -12,11 +12,22 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
-MoltenVK 1.0.24
+MoltenVK 1.0.25
 ---------------
 
 Released TBD
 
+- Update shader caching for compatibility with texture swizzling.
+- Support polygonMode VK_POLYGON_MODE_POINT.
+- vkCreateInstance returns VK_ERROR_INCOMPATIBLE_DRIVER if Metal not available.
+
+
+MoltenVK 1.0.24
+---------------
+
+Released 2018/10/16
+
+- Support arbitrary swizzles of image data.
 - Include struct size parameter in VK_MVK_moltenvk extension functions that pass structs that 
   might change size across extension versions.
 - Remove vkGetMoltenVKDeviceConfigurationMVK() & vkSetMoltenVKDeviceConfigurationMVK() functions.
