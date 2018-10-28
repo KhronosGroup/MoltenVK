@@ -218,6 +218,12 @@ public:
 	inline uint32_t getHostVisibleMemoryTypes() { return _hostVisibleMemoryTypes; }
 
 	/**
+	 * Returns a bit mask of all memory type indices that are coherent between host and device.
+	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
+	 */
+	inline uint32_t getHostCoherentMemoryTypes() { return _hostCoherentMemoryTypes; }
+
+	/**
 	 * Returns a bit mask of all memory type indices that do NOT allow host visibility to the memory.
 	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
 	 */
@@ -277,6 +283,7 @@ protected:
 	std::vector<MVKQueueFamily*> _queueFamilies;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
+	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
 };
 

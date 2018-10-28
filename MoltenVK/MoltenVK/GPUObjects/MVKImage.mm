@@ -149,6 +149,11 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 	pMemoryRequirements->memoryTypeBits = (_isDepthStencilAttachment
 										   ? _device->getPhysicalDevice()->getPrivateMemoryTypes()
 										   : _device->getPhysicalDevice()->getAllMemoryTypes());
+#if MVK_MACOS
+	if (!_isLinear) {  // XXX Linear images must support host-coherent memory
+		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
+	}
+#endif
 	return VK_SUCCESS;
 }
 
