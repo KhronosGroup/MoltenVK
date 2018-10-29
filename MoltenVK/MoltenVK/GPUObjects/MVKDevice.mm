@@ -1061,6 +1061,13 @@ void MVKPhysicalDevice::initMemoryProperties() {
 	//		- encoder synchronizeResource: followed by
 	//		- cmdbuff waitUntilCompleted (or completion handler)
 	//		- buffer/texture getBytes:
+	// Metal Memoryless:
+	//	- applies only to textures used as transient render targets
+	//	- only available with TBDR devices (i.e. on iOS)
+	//	- no device memory is reserved at all
+	//	- storage comes from tile memory
+	//	- contents are undefined after rendering
+	//	- use for temporary renderable textures
 
     _memoryProperties = (VkPhysicalDeviceMemoryProperties){
         .memoryHeapCount = 1,
@@ -1086,12 +1093,19 @@ void MVKPhysicalDevice::initMemoryProperties() {
                 .heapIndex = 0,
                 .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_SHARED,    // Shared storage
             },
+#if MVK_IOS
+            {
+                .heapIndex = 0,
+                .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS,    // Memoryless storage
+            },
+#endif
         },
     };
 
 #if MVK_MACOS
 	_memoryProperties.memoryTypeCount = 3;
 	_privateMemoryTypes			= 0x1;			// Private only
+	_lazilyAllocatedMemoryTypes	= 0x0;			// Not supported on macOS
 	_hostCoherentMemoryTypes 	= 0x4;			// Shared only
 	_hostVisibleMemoryTypes		= 0x6;			// Shared & managed
 	_allMemoryTypes				= 0x7;			// Private, shared, & managed
@@ -1099,9 +1113,16 @@ void MVKPhysicalDevice::initMemoryProperties() {
 #if MVK_IOS
 	_memoryProperties.memoryTypeCount = 2;		// Managed storage not available on iOS
 	_privateMemoryTypes			= 0x1;			// Private only
+	_lazilyAllocatedMemoryTypes	= 0x0;			// Not supported on this version
 	_hostCoherentMemoryTypes 	= 0x2;			// Shared only
 	_hostVisibleMemoryTypes		= 0x2;			// Shared only
 	_allMemoryTypes				= 0x3;			// Private & shared
+	if ([getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
+		_memoryProperties.memoryTypeCount = 3;	// Memoryless storage available
+		_privateMemoryTypes			= 0x5;		// Private & memoryless
+		_lazilyAllocatedMemoryTypes	= 0x4;		// Memoryless only
+		_allMemoryTypes				= 0x7;		// Private, shared & memoryless
+	}
 #endif
 }
 
@@ -1229,6 +1250,11 @@ uint32_t MVKDevice::getVulkanMemoryTypeIndex(MTLStorageMode mtlStorageMode) {
 #if MVK_MACOS
         case MTLStorageModeManaged:
             vkMemFlags = MVK_VK_MEMORY_TYPE_METAL_MANAGED;
+            break;
+#endif
+#if MVK_IOS
+        case MTLStorageModeMemoryless:
+            vkMemFlags = MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS;
             break;
 #endif
         default:

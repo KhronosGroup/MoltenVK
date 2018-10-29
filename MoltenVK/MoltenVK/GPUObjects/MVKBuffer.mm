@@ -33,6 +33,10 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequireme
 	pMemoryRequirements->size = getByteCount();
 	pMemoryRequirements->alignment = _byteAlignment;
 	pMemoryRequirements->memoryTypeBits = _device->getPhysicalDevice()->getAllMemoryTypes();
+#if MVK_IOS
+	// Memoryless storage is not allowed for buffers
+	mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
+#endif
 	return VK_SUCCESS;
 }
 

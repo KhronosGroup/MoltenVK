@@ -35,7 +35,13 @@ class MVKDeviceMemory : public MVKBaseDeviceObject {
 public:
 
 	/** Returns whether the memory is accessible from the host. */
-    inline bool isMemoryHostAccessible() { return (_mtlStorageMode != MTLStorageModePrivate); }
+    inline bool isMemoryHostAccessible() {
+#if MVK_IOS
+        if (_mtlStorageMode == MTLStorageModeMemoryless)
+            return false;
+#endif
+        return (_mtlStorageMode != MTLStorageModePrivate);
+    }
 
 	/** Returns whether the memory is automatically coherent between device and host. */
     inline bool isMemoryHostCoherent() { return (_mtlStorageMode == MTLStorageModeShared); }
