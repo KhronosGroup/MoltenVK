@@ -75,7 +75,7 @@ public:
 	const MVKShaderAuxBufferBinding& getAuxBufferIndex() { return _auxBufferIndex; }
 
 	/** Returns the number of textures in this layout. This is used to calculate the size of the auxiliary buffer. */
-	uint32_t getMaxTextureIndex() { return _pushConstantsMTLResourceIndexes.getMaxTextureIndex(); }
+	uint32_t getTextureCount() { return _pushConstantsMTLResourceIndexes.getMaxTextureIndex(); }
 
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);

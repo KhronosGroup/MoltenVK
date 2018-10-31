@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A9CBED861B6299D800E45FDC"
-               BuildableName = "MoltenVK.framework"
+               BuildableName = "libMoltenVK.a"
                BlueprintName = "MoltenVK-macOS"
                ReferencedContainer = "container:MoltenVK.xcodeproj">
             </BuildableReference>
@@ -51,7 +51,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A9CBED861B6299D800E45FDC"
-            BuildableName = "MoltenVK.framework"
+            BuildableName = "libMoltenVK.a"
             BlueprintName = "MoltenVK-macOS"
             ReferencedContainer = "container:MoltenVK.xcodeproj">
          </BuildableReference>
@@ -69,7 +69,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A9CBED861B6299D800E45FDC"
-            BuildableName = "MoltenVK.framework"
+            BuildableName = "libMoltenVK.a"
             BlueprintName = "MoltenVK-macOS"
             ReferencedContainer = "container:MoltenVK.xcodeproj">
          </BuildableReference>

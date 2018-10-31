@@ -55,9 +55,9 @@ To run this demo, run either the `Cube-iOS` or `Cube-macOS` *Scheme* from within
 This demo includes a sizable window, and represents an example of how to detect, within your
 *Vulkan* code, when a window has been resized, and to modify the *Vulkan* swapchain accordingly.
 
-This demo is a simple example of installing **MoltenVK** as a dynamic library, instead of as
-a statically-linked framework. In this demo, the **MoltenVK** dynamic library is embedded in 
-the application, but it could have been installed as a system library instead.
+The `Cube` demo is a simple example of installing **MoltenVK** as a *dynamic library*. In this demo, 
+the **MoltenVK** *dynamic library* is embedded in the application, but it could have been installed 
+as a system library instead.
 
 
 
@@ -84,6 +84,8 @@ follow the instructions in the comments within that file.
 
 To see descriptions and screenshots of each of the demos, open 
 [this summary document](LunarG-VulkanSamples/VulkanSamples/samples_index.html#AdditionalVulkan).
+
+The `API-Samples` demo is a simple example of installing **MoltenVK** as a *static framework*.
 
 
 <a name="lunarg-vulkan-samples-hologram"></a>
@@ -112,6 +114,8 @@ and `vkSetMoltenVKDeviceConfigurationMVK()` functions to enable **MoltenVK** deb
 logging the conversion of shaders from *SPIR-V* to *Metal Shading Language*. See the use of these
 functions in the `Hologram/Hologram.cpp` file. To see the effect, modify the `Hologram-iOS` or 
 `Hologram-macOS` *Scheme* from within *Xcode* to use the **Debug** *Build Configuration* setting.
+
+The `Hologram` demo is a simple example of installing **MoltenVK** as a *static library*.
 
 
 

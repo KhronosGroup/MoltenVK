@@ -45,7 +45,7 @@
       debugServiceExtension = "internal"
       enableGPUFrameCaptureMode = "3"
       enableGPUValidationMode = "1"
-      allowLocationSimulation = "YES"
+      allowLocationSimulation = "NO"
       queueDebuggingEnabled = "No">
       <MacroExpansion>
          <BuildableReference

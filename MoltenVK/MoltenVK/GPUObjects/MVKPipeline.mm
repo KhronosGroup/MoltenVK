@@ -306,7 +306,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     initMVKShaderConverterContext(shaderContext, pCreateInfo);
     auto* mvkLayout = (MVKPipelineLayout*)pCreateInfo->layout;
     _auxBufferIndex = mvkLayout->getAuxBufferIndex();
-    uint32_t auxBufferSize = sizeof(uint32_t) * mvkLayout->getMaxTextureIndex();
+    uint32_t auxBufferSize = sizeof(uint32_t) * mvkLayout->getTextureCount();
 
     // Retrieve the render subpass for which this pipeline is being constructed
     MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
@@ -559,7 +559,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
     _auxBufferIndex = layout->getAuxBufferIndex();
-    uint32_t auxBufferSize = sizeof(uint32_t) * layout->getMaxTextureIndex();
+    uint32_t auxBufferSize = sizeof(uint32_t) * layout->getTextureCount();
     shaderContext.options.auxBufferIndex = _auxBufferIndex.compute;
 
     MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;

@@ -2,9 +2,7 @@
 
 set -e
 
-export MVK_PROD_NAME="MoltenVK"
-export MVK_DYLIB_NAME="lib${MVK_PROD_NAME}.dylib"
-export MVK_BUILT_PROD_PATH="${BUILT_PRODUCTS_DIR}"
+export MVK_DYLIB_NAME="lib${PRODUCT_NAME}.dylib"
 export MVK_SYS_FWK_DIR="${SDK_DIR}/System/Library/Frameworks"
 export MVK_USR_LIB_DIR="${SDK_DIR}/usr/lib"
 
@@ -14,15 +12,15 @@ fi
 
 clang \
 -dynamiclib ${MVK_TSAN} \
--arch x86_64 \
--mmacosx-version-min=${MACOSX_DEPLOYMENT_TARGET} \
+-arch ${MVK_ARCH} \
+-m${MVK_OS}-version-min=${MVK_MIN_OS_VERSION} \
 -compatibility_version 1.0.0 -current_version 1.0.0  \
 -install_name "@rpath/${MVK_DYLIB_NAME}"  \
 -Wno-incompatible-sysroot \
 -isysroot ${SDK_DIR} \
 -iframework ${MVK_SYS_FWK_DIR}  \
--framework Metal -framework IOSurface -framework IOKit -framework QuartzCore -framework AppKit -framework Foundation \
+-framework Metal ${MVK_IOSURFACE_FWK} -framework ${MVK_UX_FWK} -framework QuartzCore -framework IOKit -framework Foundation \
 --library-directory ${MVK_USR_LIB_DIR} \
 -lSystem  -lc++ \
--o "${MVK_BUILT_PROD_PATH}/${MVK_DYLIB_NAME}" \
--force_load "${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework/${MVK_PROD_NAME}"
+-o "${BUILT_PRODUCTS_DIR}/${MVK_DYLIB_NAME}" \
+-force_load "${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a"

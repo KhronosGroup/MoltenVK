@@ -37,35 +37,19 @@
 		A9B67B8F1C3AAEA200373FFD /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B871C3AAEA200373FFD /* main.m */; };
 		A9B67B901C3AAEA200373FFD /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B8A1C3AAEA200373FFD /* Main.storyboard */; };
 		A9B67B911C3AAEA200373FFD /* macOS.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */; };
+		A9C2AB99218503A400DDBC03 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB97218503A400DDBC03 /* libMoltenVK.a */; };
+		A9C2AB9A218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB98218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */; };
+		A9C2AB9D218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB9B218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */; };
+		A9C2AB9E218503BA00DDBC03 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */; };
 		A9D516F81CD575E300097D96 /* HelpersDispatchTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */; };
 		A9D516F91CD575E300097D96 /* HelpersDispatchTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */; };
-		A9F4FB461CF68822003FA0C3 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4FB451CF68822003FA0C3 /* libc++.tbd */; };
-		A9F4FB481CF6882E003FA0C3 /* libc++.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4FB471CF6882E003FA0C3 /* libc++.tbd */; };
-		A9F4FB4A1CF688A5003FA0C3 /* MoltenVK.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4FB491CF688A5003FA0C3 /* MoltenVK.framework */; };
-		A9F4FB4C1CF688B5003FA0C3 /* MoltenVK.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4FB4B1CF688B5003FA0C3 /* MoltenVK.framework */; };
-		A9F4FB4F1CF68C79003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4FB4E1CF68C79003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework */; };
-		A9F4FB511CF68C83003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9F4FB501CF68C83003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		1D30AB110D05D00D00671497 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = System/Library/Frameworks/Foundation.framework; sourceTree = SDKROOT; };
-		1D3623EB0D0F72F000981E51 /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
 		1D6058910D05DD3D006BFB54 /* Hologram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hologram.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		1DF5F4DF0D08C38300B7A737 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
-		2D500B990D5A79CF00DBA0E3 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
-		A900B1A21B5EAA1C00150D60 /* libc++.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.dylib"; path = "usr/lib/libc++.dylib"; sourceTree = SDKROOT; };
-		A90941BB1C582DF40094110D /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = "../../../../../../../../Library/Developer/Xcode/DerivedData/VulkanSamples-emusmkeclqfwfncmwqpcvdzumhpu/Build/Products/Release/MoltenVKGLSLToSPIRVConverter.framework"; sourceTree = "<group>"; };
-		A9096E521F7EF13000DFBEA6 /* IOSurface.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = IOSurface.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS11.0.sdk/System/Library/Frameworks/IOSurface.framework; sourceTree = DEVELOPER_DIR; };
 		A93CC3701CD56B8F00EB8A56 /* generate-dispatch-table */ = {isa = PBXFileReference; explicitFileType = text.script.python; path = "generate-dispatch-table"; sourceTree = "<group>"; };
 		A93CC3711CD56FD600EB8A56 /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
-		A94A67231B7BDE9B00F6D7C4 /* MetalGL.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalGL.framework; path = ../../MetalGL/macOS/MetalGL.framework; sourceTree = "<group>"; };
-		A94A67241B7BDE9B00F6D7C4 /* MetalGLShaderConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalGLShaderConverter.framework; path = ../../MetalGLShaderConverter/macOS/MetalGLShaderConverter.framework; sourceTree = "<group>"; };
 		A977BCFE1B66BB010067E5BF /* Hologram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hologram.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		A977BD211B67186B0067E5BF /* AppKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppKit.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/System/Library/Frameworks/AppKit.framework; sourceTree = DEVELOPER_DIR; };
-		A977BD221B67186B0067E5BF /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/System/Library/Frameworks/CoreGraphics.framework; sourceTree = DEVELOPER_DIR; };
-		A977BD231B67186B0067E5BF /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
-		A977BD251B67186B0067E5BF /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/System/Library/Frameworks/Metal.framework; sourceTree = DEVELOPER_DIR; };
-		A977BD261B67186B0067E5BF /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.11.sdk/System/Library/Frameworks/QuartzCore.framework; sourceTree = DEVELOPER_DIR; };
 		A997897F1CD3D4E2005E7DAC /* Game.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Game.h; sourceTree = "<group>"; };
 		A99789821CD3D4E2005E7DAC /* Helpers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Helpers.h; sourceTree = "<group>"; };
 		A99789831CD3D4E2005E7DAC /* Hologram.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Hologram.cpp; sourceTree = "<group>"; };
@@ -83,9 +67,6 @@
 		A99789961CD3D4E2005E7DAC /* Simulation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Simulation.h; sourceTree = "<group>"; };
 		A99789C71CD3D819005E7DAC /* ShellMVK.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ShellMVK.cpp; sourceTree = SOURCE_ROOT; };
 		A99789C81CD3D819005E7DAC /* ShellMVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShellMVK.h; sourceTree = SOURCE_ROOT; };
-		A99789E01CD4186E005E7DAC /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = "../../../../MoltenShaderConverter/build/Debug-iphoneos/MoltenVKGLSLToSPIRVConverter.framework"; sourceTree = "<group>"; };
-		A99789E21CD4187A005E7DAC /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../../MoltenShaderConverter/build/Debug/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
-		A9A222171B5D69F40050A5F9 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		A9B67B6B1C3AAE9800373FFD /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		A9B67B6C1C3AAE9800373FFD /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		A9B67B6E1C3AAE9800373FFD /* DemoViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DemoViewController.h; sourceTree = "<group>"; };
@@ -106,20 +87,12 @@
 		A9B67B881C3AAEA200373FFD /* Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Prefix.pch; sourceTree = "<group>"; };
 		A9B67B8A1C3AAEA200373FFD /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = macOS.xcassets; sourceTree = "<group>"; };
-		A9B6B75F1C0F795000A9E33A /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS9.1.sdk/System/Library/Frameworks/CoreAudio.framework; sourceTree = DEVELOPER_DIR; };
-		A9B6B7641C0F795D00A9E33A /* CoreAudio.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreAudio.framework; path = System/Library/Frameworks/CoreAudio.framework; sourceTree = SDKROOT; };
-		A9BF67C21C582EC900B8CF77 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = "../../../MoltenShaderConverter/build/Debug-iphoneos/MoltenVKGLSLToSPIRVConverter.framework"; sourceTree = "<group>"; };
-		A9CDEA271B6A782C00F7B008 /* GLKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLKit.framework; path = System/Library/Frameworks/GLKit.framework; sourceTree = SDKROOT; };
+		A9C2AB97218503A400DDBC03 /* libMoltenVK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMoltenVK.a; path = ../../../MoltenVK/iOS/static/libMoltenVK.a; sourceTree = "<group>"; };
+		A9C2AB98218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
+		A9C2AB9B218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
+		A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMoltenVK.a; path = ../../../MoltenVK/macOS/static/libMoltenVK.a; sourceTree = "<group>"; };
 		A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HelpersDispatchTable.cpp; sourceTree = SOURCE_ROOT; };
 		A9D516F71CD575E300097D96 /* HelpersDispatchTable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HelpersDispatchTable.h; sourceTree = SOURCE_ROOT; };
-		A9E264761B671B0A00FE691A /* libc++.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = "libc++.dylib"; path = "Platforms/MacOSX.platform/Developer/SDKs/MacOSX10.10.sdk/usr/lib/libc++.dylib"; sourceTree = DEVELOPER_DIR; };
-		A9F4FB451CF68822003FA0C3 /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "usr/lib/libc++.tbd"; sourceTree = SDKROOT; };
-		A9F4FB471CF6882E003FA0C3 /* libc++.tbd */ = {isa = PBXFileReference; lastKnownFileType = "sourcecode.text-based-dylib-definition"; name = "libc++.tbd"; path = "Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS9.3.sdk/usr/lib/libc++.tbd"; sourceTree = DEVELOPER_DIR; };
-		A9F4FB491CF688A5003FA0C3 /* MoltenVK.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVK.framework; path = ../../../../Package/Latest/MoltenVK/iOS/MoltenVK.framework; sourceTree = "<group>"; };
-		A9F4FB4B1CF688B5003FA0C3 /* MoltenVK.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVK.framework; path = ../../../../Package/Latest/MoltenVK/macOS/MoltenVK.framework; sourceTree = "<group>"; };
-		A9F4FB4E1CF68C79003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../../Package/Latest/MoltenShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
-		A9F4FB501CF68C83003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../../Package/Latest/MoltenShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
-		BA240AC10FEFE77A00DE852D /* OpenGLES.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = OpenGLES.framework; path = System/Library/Frameworks/OpenGLES.framework; sourceTree = SDKROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -127,9 +100,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9F4FB4A1CF688A5003FA0C3 /* MoltenVK.framework in Frameworks */,
-				A9F4FB4F1CF68C79003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */,
-				A9F4FB481CF6882E003FA0C3 /* libc++.tbd in Frameworks */,
+				A9C2AB99218503A400DDBC03 /* libMoltenVK.a in Frameworks */,
+				A9C2AB9A218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -137,9 +109,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9F4FB4C1CF688B5003FA0C3 /* MoltenVK.framework in Frameworks */,
-				A9F4FB511CF68C83003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */,
-				A9F4FB461CF68822003FA0C3 /* libc++.tbd in Frameworks */,
+				A9C2AB9E218503BA00DDBC03 /* libMoltenVK.a in Frameworks */,
+				A9C2AB9D218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -161,32 +132,10 @@
 				A99789681CD3D4E2005E7DAC /* Hologram */,
 				A9B67B6A1C3AAE9800373FFD /* iOS */,
 				A9B67B811C3AAEA200373FFD /* macOS */,
-				29B97323FDCFA39411CA2CEA /* Frameworks */,
 				19C28FACFE9D520D11CA2CBB /* Products */,
+				A9C2AB96218503A400DDBC03 /* Frameworks */,
 			);
 			name = CustomTemplate;
-			sourceTree = "<group>";
-		};
-		29B97323FDCFA39411CA2CEA /* Frameworks */ = {
-			isa = PBXGroup;
-			children = (
-				A9096E521F7EF13000DFBEA6 /* IOSurface.framework */,
-				A9F4FB501CF68C83003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework */,
-				A9F4FB4E1CF68C79003FA0C3 /* MoltenVKGLSLToSPIRVConverter.framework */,
-				A9F4FB4B1CF688B5003FA0C3 /* MoltenVK.framework */,
-				A9F4FB491CF688A5003FA0C3 /* MoltenVK.framework */,
-				A9F4FB471CF6882E003FA0C3 /* libc++.tbd */,
-				A9F4FB451CF68822003FA0C3 /* libc++.tbd */,
-				A99789E21CD4187A005E7DAC /* MoltenVKGLSLToSPIRVConverter.framework */,
-				A99789E01CD4186E005E7DAC /* MoltenVKGLSLToSPIRVConverter.framework */,
-				A9BF67C21C582EC900B8CF77 /* MoltenVKGLSLToSPIRVConverter.framework */,
-				A90941BB1C582DF40094110D /* MoltenVKGLSLToSPIRVConverter.framework */,
-				A9B6B7641C0F795D00A9E33A /* CoreAudio.framework */,
-				A9B6B75F1C0F795000A9E33A /* CoreAudio.framework */,
-				A9ADEC601B6EC2EB00DBA48C /* iOS */,
-				A9ADEC611B6EC2F300DBA48C /* macOS */,
-			);
-			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		A99789681CD3D4E2005E7DAC /* Hologram */ = {
@@ -215,36 +164,6 @@
 			);
 			name = Hologram;
 			path = "../VulkanSamples/Sample-Programs/Hologram";
-			sourceTree = "<group>";
-		};
-		A9ADEC601B6EC2EB00DBA48C /* iOS */ = {
-			isa = PBXGroup;
-			children = (
-				A9A222171B5D69F40050A5F9 /* Metal.framework */,
-				BA240AC10FEFE77A00DE852D /* OpenGLES.framework */,
-				1D3623EB0D0F72F000981E51 /* CoreGraphics.framework */,
-				2D500B990D5A79CF00DBA0E3 /* QuartzCore.framework */,
-				1DF5F4DF0D08C38300B7A737 /* UIKit.framework */,
-				1D30AB110D05D00D00671497 /* Foundation.framework */,
-				A9CDEA271B6A782C00F7B008 /* GLKit.framework */,
-				A900B1A21B5EAA1C00150D60 /* libc++.dylib */,
-			);
-			name = iOS;
-			sourceTree = "<group>";
-		};
-		A9ADEC611B6EC2F300DBA48C /* macOS */ = {
-			isa = PBXGroup;
-			children = (
-				A94A67231B7BDE9B00F6D7C4 /* MetalGL.framework */,
-				A94A67241B7BDE9B00F6D7C4 /* MetalGLShaderConverter.framework */,
-				A9E264761B671B0A00FE691A /* libc++.dylib */,
-				A977BD251B67186B0067E5BF /* Metal.framework */,
-				A977BD261B67186B0067E5BF /* QuartzCore.framework */,
-				A977BD211B67186B0067E5BF /* AppKit.framework */,
-				A977BD221B67186B0067E5BF /* CoreGraphics.framework */,
-				A977BD231B67186B0067E5BF /* Foundation.framework */,
-			);
-			name = macOS;
 			sourceTree = "<group>";
 		};
 		A9B67B6A1C3AAE9800373FFD /* iOS */ = {
@@ -295,6 +214,17 @@
 				A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */,
 			);
 			path = Resources;
+			sourceTree = "<group>";
+		};
+		A9C2AB96218503A400DDBC03 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */,
+				A9C2AB9B218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */,
+				A9C2AB97218503A400DDBC03 /* libMoltenVK.a */,
+				A9C2AB98218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		A9D516F51CD575B000097D96 /* Generated */ = {
@@ -462,7 +392,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "../VulkanSamples/Sample-Programs/Hologram/generate-dispatch-table HelpersDispatchTable.cpp";
+			shellScript = "../VulkanSamples/Sample-Programs/Hologram/generate-dispatch-table HelpersDispatchTable.cpp\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -509,14 +439,12 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "";
-				FRAMEWORK_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../MoltenVK/iOS\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS\"",
-				);
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS/static\"";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
@@ -528,14 +456,12 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "";
-				FRAMEWORK_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../MoltenVK/iOS\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS\"",
-				);
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS/static\"";
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
 				VALID_ARCHS = arm64;
@@ -547,13 +473,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../MoltenVK/macOS\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS\"",
-				);
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS/static\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SDKROOT = macosx;
 			};
@@ -564,13 +488,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../MoltenVK/macOS\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS\"",
-				);
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS/static\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SDKROOT = macosx;
 			};
