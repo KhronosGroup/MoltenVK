@@ -189,6 +189,8 @@
 		A9D3560A20BB3A2900BE295C /* glslang_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = glslang_repo_revision; sourceTree = "<group>"; };
 		A9D3560B20BB3A5600BE295C /* Vulkan-Headers_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Vulkan-Headers_repo_revision"; sourceTree = "<group>"; };
 		A9D3560C20BB3A7200BE295C /* Vulkan-Tools_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = "Vulkan-Tools_repo_revision"; sourceTree = "<group>"; };
+		A9DA8340218A198C002AA662 /* .travis.yml */ = {isa = PBXFileReference; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; };
+		A9DA8341218A198C002AA662 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		A9EE46412065766C00193200 /* cereal_repo_revision */ = {isa = PBXFileReference; lastKnownFileType = text; path = cereal_repo_revision; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -198,9 +200,10 @@
 			children = (
 				A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */,
 				A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */,
+				A939A6FB1F5479D0006ACA0C /* External */,
 				A975D55B213F25AD00D4834F /* Scripts */,
 				A92DB3E11CE0F34500FBC835 /* Docs */,
-				A939A6FB1F5479D0006ACA0C /* External */,
+				A9DA833F218A193F002AA662 /* Git */,
 			);
 			sourceTree = "<group>";
 		};
@@ -267,6 +270,15 @@
 				A98149931FB6B566005F00B4 /* MoltenVKSPIRVToMSLConverter.framework */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A9DA833F218A193F002AA662 /* Git */ = {
+			isa = PBXGroup;
+			children = (
+				A9DA8341218A198C002AA662 /* .gitignore */,
+				A9DA8340218A198C002AA662 /* .travis.yml */,
+			);
+			name = Git;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
