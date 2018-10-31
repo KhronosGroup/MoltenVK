@@ -134,37 +134,51 @@ and package the entire **MoltenVK** runtime distribution package, or to build in
 
 To build a **MoltenVK** runtime distribution package, suitable for testing and integrating into an app, 
 open `MoltenVKPackaging.xcodeproj` in *Xcode*, and use one of the following *Xcode Schemes*, depending
-on whether you want a *Debug* or *Release* configuration, and whether you want to build for both the 
-*iOS* and *macOS* platforms, or just one platform:
+on whether you want a **_Release_** or **_Debug_** configuration, and whether you want to build for both
+the *iOS* and *macOS* platforms, or just one platform (in **_Release_** configuration):
 
+- **MoltenVK Package** 
 - **MoltenVK Package (Debug)** 
-- **MoltenVK Package (Debug) (iOS only)**
-- **MoltenVK Package (Debug) (macOS only)** 
-- **MoltenVK Package (Release)**
-- **MoltenVK Package (Release) (iOS only)**
-- **MoltenVK Package (Release) (macOS only)**
+- **MoltenVK Package (iOS only)**
+- **MoltenVK Package (macOS only)** 
 
 Each of these`MoltenVKPackaging.xcodeproj` *Xcode* project *Schemes* puts the resulting packages in the 
 `Package` directory, creating it if necessary. This directory contains separate `Release` and `Debug` 
-directories, holding the most recent **Release** and **Debug** builds, respectively.
+directories, holding the most recent **_Release_** and **_Debug_** builds, respectively.
 
-A separate `Latest` directory links to  the most recent build, regardless of whether it was a **Release** 
-or **Debug** build. Effectively, the `Package/Latest` directory points to whichever of the `Package/Release` 
+A separate `Latest` directory links to  the most recent build, regardless of whether it was a **_Release_** 
+or **_Debug_** build. Effectively, the `Package/Latest` directory points to whichever of the `Package/Release` 
 or `Package/Debug` directories was most recently updated.
 
 With this packaging structure, you can follow the [instructions below](#using) to link your application 
 to the **MoltenVK** frameworks in the `Package/Latest` directory, to provide the flexibility to test your 
-app with either a **Debug** build, or a higher-performance **Release** build.
+app with either a **_Debug_** build, or a higher-performance **_Release_** build.
 
 
 ### Building from the Command Line
 
 If you prefer to build **MoltenVK** from the command line, or to include the activity in a larger build script,
-you can do so using the following command within the `MoltenVK` repository, and identifying one of the 
-*Xcode Schemes* from the list above:
+you can do so using the following command within the `MoltenVK` repository folder, and identifying one of the 
+*Xcode Schemes* from the list above. For example, the following command will build **MoltenVK** in the 
+**_Release_** configuration for both *macOS* and *iOS*:
 
-	xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (Release)" build
+	xcodebuild -quiet -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package" build
 
+Alternately, you can use the basic `Makefile` in the `MoltenVK` repository folder to build **MoltenVK** 
+in the **_Release_** configuration from the command line. The following `make` targets are provided:
+
+	make
+	make all
+	make macos
+	make ios
+	make clean
+
+The `make` targets above all require that *Xcode* is installed on your system.
+
+The default `make` command with no arguments is the same as `make all`. 
+
+Building from the command line creates the same `Package` folder structure described above when building
+from within *Xcode*.
 
 
 <a name="demos"></a>

@@ -21,8 +21,7 @@ Table of Contents
 - [About **MoltenVK**](#about_moltenvk)
 - [Installing **MoltenVK** in Your *Vulkan* Application](#install)
 	- [Build and Runtime Requirements](#requirements)
-	- [Install as Static Library Framework](#install_static_lib)
-	- [Install as Dynamic Library](#install_dynamic_lib)
+	- [Install as Static Framework, Static Library, or Dynamic Library](#install_lib)
 - [Interacting with the **MoltenVK** Runtime](#interaction)
 	- [MoltenVK Extension](#moltenvk_extension)
 - [*Metal Shading Language* Shaders](#shaders)
@@ -93,50 +92,94 @@ Once built, **MoltenVK** can be run on *iOS* or *macOS* devices that support *Me
   [this article](https://developer.apple.com/library/content/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/HardwareGPUInformation/HardwareGPUInformation.html).
 
 
-<a name="install_static_lib"></a>
-### Install as Static Library Framework
+<a name="install_lib"></a>
+### Install as Static Framework, Static Library, or Dynamic Library
 
 Installation of **MoltenVK** is straightforward and easy!
 
-For most applications, you can install **MoltenVK** as a *static library framework* that will be 
-embedded directly in your application executable, or a component library within your application.
-This is simple and straightforward, and is the recommended installation approach for all applications.
-
-To add **MoltenVK** as a *static library framework* to your existing *Vulkan* application, 
-follow the steps in this section. If you're new to **MoltenVK**, it is recommended that you 
-start with a smaller project to help you understand the transition, and to reduce the possibility
-of needing to make modifications to your [shaders](#shaders) to  ensure their compatibility with 
-the *Metal* environment. 
+Depending on your build and deployment needs, you can install **MoltenVK** as a *static framework*,
+*static library*, or *dynamic library*, by following the steps in this section. If you are unsure 
+about which linking and deployment option you need, follow the steps for installing a 
+*static framework*, as it is the simplest to install.
 
 1. Open your application in *Xcode* and select your application's target in the 
    *Project Navigator* panel.
 
-2. Open the *Build Settings* tab, and in the **Framework Search Paths** (aka `FRAMEWORK_SEARCH_PATHS`)
-   setting:
-    - If building for *iOS*, add an entry that points to the `MoltenVK/iOS` folder, 
-      found in the **MoltenVK** distribution package.
-    - If building for *macOS*, add an entry that points to the `MoltenVK/macOS` folder, 
-      found in the **MoltenVK** distribution package.
 
-3. If using `IOSurfaces` on *iOS*, in the *Build Settings* tab, open the **iOS Deployment Target** 
+2. Open the *Build Settings* tab.
+
+	- If installing **MoltenVK** as a *static framework* in your application:
+	    1. In the **Framework Search Paths** (aka `FRAMEWORK_SEARCH_PATHS`) 
+	       setting, add an entry that points to **_one_** of the following folders:
+	          - `MoltenVK/macOS/framework` *(macOS)*
+	          - `MoltenVK/iOS/framework` *(iOS)*
+
+	- If installing **MoltenVK** as a *static library* in your application:
+	    1. In the **Library Search Paths** (aka `LIBRARY_SEARCH_PATHS`) setting, 
+	       add an entry that points to **_one_** of the following folders:
+	          - `MoltenVK/macOS/static` *(macOS)*
+	          - `MoltenVK/iOS/static` *(iOS)*
+        2. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, 
+           add an entry that points to the `MoltenVK/include` folder.
+
+	- If installing **MoltenVK** as a *dynamic library* in your application:
+	    1. In the **Library Search Paths** (aka `LIBRARY_SEARCH_PATHS`) setting, 
+	       add an entry that points to **_one_** of the following folders:
+	          - `MoltenVK/macOS/dynamic` *(macOS)*
+	          - `MoltenVK/iOS/dynamic` *(iOS)*
+        2. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, 
+           add an entry that points to the `MoltenVK/include` folder.
+        3. In the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting, 
+           add an entry that matches where the dynamic library will be located in your runtime
+           environment. If the dynamic library is to be embedded within your application, 
+           you would typically set this value to either `@executable_path` or `@loader_path`. 
+           The `libMoltenVK.dylib` library is internally configured to be located at 
+           `@rpath/libMoltenVK.dylib`.
+
+3. With the *Build Settings* tab open, if using `IOSurfaces` on *iOS*, open the **iOS Deployment Target** 
    (aka `IPHONEOS_DEPLOYMENT_TARGET`) setting, and ensure it is set to a value of `iOS 11.0` or greater.
 
 4. On the *Build Phases* tab, open the *Link Binary With Libraries* list.
+   
+   - For *macOS*, drag **_one_** of the following files to the *Link Binary With Libraries* list:
+      - `MoltenVK/macOS/framework/MoltenVK.framework ` *(static framework)* 
+      - `MoltenVK/macOS/static/libMoltenVK.a` *(static library)* 
+      - `MoltenVK/macOS/dynamic/libMoltenVK.dylib` *(dynamic library)* 
 
-   1. Drag the `MoltenVK/iOS/MoltenVK.framework` or `MoltenVK/macOS/MoltenVK.framework` folder, 
-      found  in the **MoltenVK** distribution package, to the *Link Binary With Libraries* list.
-   2. Click the **+** button, and (selecting from the list of system libraries) add `libc++.tbd`. 
-   3. If you do not have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and
-      **Enable Modules (C and Objective-C** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the 
-      **+** button, and (selecting from the list of system frameworks) add the following frameworks:
-		- `Metal.framework`
-		- `Foundation.framework`.
-		- `QuartzCore.framework`
-		- `IOKit.framework` (*macOS*)
-		- `UIKit.framework` (*iOS*)
-		- `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`)
+   - For *iOS*, drag **_one_** of the following files to the *Link Binary With Libraries* list:
+      - `MoltenVK/iOS/framework/MoltenVK.framework ` *(static framework)* 
+      - `MoltenVK/iOS/static/libMoltenVK.a` *(static library)* 
+      - `MoltenVK/iOS/dynamic/libMoltenVK.dylib` *(dynamic library)* 
 
-5. When a *Metal* app is running from *Xcode*, the default ***Scheme*** settings reduce
+5. While in the *Link Binary With Libraries* list on the *Build Phases* tab, if you do **_not_** 
+   have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and 
+   **Enable Modules (C and Objective-C)** (aka `CLANG_ENABLE_MODULES`) settings enabled, click
+   the **+** button, and (selecting from the list of system frameworks) add the following items:
+   - `libc++.tbd`
+   - `Metal.framework`
+   - `Foundation.framework`.
+   - `QuartzCore.framework`
+   - `IOKit.framework` (*macOS*)
+   - `UIKit.framework` (*iOS*)
+   - `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`)
+
+
+6. If installing **MoltenVK** as a *dynamic library* in your application, arrange to install 
+   the `libMoltenVK.dylib` file in your application environment:
+
+   - To copy the `libMoltenVK.dylib` file into your application or component library:
+        1. On the *Build Phases* tab, add a new *Copy Files* build phase.
+        2. Set the *Destination* into which you want to place  the `libMoltenVK.dylib` file.
+           Typically this will be *Executables*.
+        3. Drag **_one_** of the following files to the *Copy Files* list in this new build phase:
+	          - `MoltenVK/macOS/dynamic/libMoltenVK.dylib` *(macOS)*
+	          - `MoltenVK/iOS/dynamic/libMoltenVK.dylib` *(iOS)*
+   
+   - Alternately, you may create your own installation mechanism to install either the 
+     `MoltenVK/macOS/dynamic/libMoltenVK.dylib` or `MoltenVK/iOS/dynamic/libMoltenVK.dylib` 
+     file into a standard *macOS* or *iOS* system library folder on the user's device.
+
+7. When a *Metal* app is running from *Xcode*, the default ***Scheme*** settings reduce
    performance. To improve performance and gain the benefits of *Metal*, perform the 
    following in *Xcode*:
    
@@ -152,70 +195,12 @@ the *Metal* environment.
 	   section of Apple's *Metal Programming Guide* documentation.
 
 
+The demo apps, found in the `Demos.xcworkspace`, located in the `Demos` folder, demonstrate each
+of the installation techniques discussed above:
 
-<a name="install_dynamic_lib"></a>
-### Install as Dynamic Library
-
-For some applications, you may prefer to install **MoltenVK** as a dynamic library.
-This is only recommended for developers who are used to working with dynamic libraries,
-and even then, the preferred approach is to link the **MoltenVK** 
-[*static library framework*](#install_static_lib) into a dynamic library of your own 
-creation, in order to give you the most flexibility for organizing your dynamic libraries.
-
-In order to install **MoltenVK** as its own dynamic library in your application, 
-follow these instructions:
-
-1. Open your application in *Xcode* and select your application's target in the 
-   *Project Navigator* panel.
-
-2. On the *Build Settings* tab:
-     1. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, add an entry 
-        that points to the `MoltenVK/include` folder, found in the **MoltenVK** distribution package.
-     2. In the **Library Search Paths** (aka `LIBRARY_SEARCH_PATHS`) setting, add an entry 
-        that points to either the `MoltenVK/iOS` or `MoltenVK/macOS` folder, found in the
-        **MoltenVK** distribution package.
-     3. In the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting, add a path 
-        that matches the library destination you established in **Step 2** above. If the dynamic 
-        library is to be embedded within your application, you would typically set this value to 
-        either `@executable_path` or `@loader_path`. The `libMoltenVK.dylib` library is internally 
-        configured to be located at `@rpath/libMoltenVK.dylib`.
-
-3. If using `IOSurfaces` on *iOS*, in the *Build Settings* tab, open the **iOS Deployment Target** 
-   (aka `IPHONEOS_DEPLOYMENT_TARGET`) setting, and ensure it is set to a value of `iOS 11.0` or greater.
-
-4. On the *Build Phases* tab, open the *Link Binary With Libraries* list.
-
-   1. Drag the `MoltenVK/iOS/libMoltenVK.dylib` or `MoltenVK/macOS/libMoltenVK.dylib` file, 
-      found  in the **MoltenVK** distribution package, to the *Link Binary With Libraries* list.
-   2. Click the **+** button, and (selecting from the list of system libraries) add `libc++.tbd`. 
-   3. If you do not have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and
-      **Enable Modules (C and Objective-C** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the 
-      **+** button, and (selecting from the list of system frameworks) add the following frameworks:
-		- `Metal.framework`
-		- `Foundation.framework`.
-		- `QuartzCore.framework`
-		- `IOKit.framework` (*macOS*)
-		- `UIKit.framework` (*iOS*)
-		- `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`)
-
-5. Arrange to install the `libMoltenVK.dylib` file in your application environment:
-
-   - To copy the `libMoltenVK.dylib` file into your application or component library:
-        1. On the *Build Phases* tab, add a new *Copy Files* build phase.
-        2. Set the *Destination* into which you want to place  the `libMoltenVK.dylib` file.
-           Typically this will be *Executables*.
-        3. Drag the `MoltenVK/iOS/libMoltenVK.dylib` or `MoltenVK/macOS/libMoltenVK.dylib` 
-           file to the *Copy Files* list in this new build phase.
-   
-   - Alternately, you may create your own installation mechanism to install the 
-     `MoltenVK/iOS/libMoltenVK.dylib` or `MoltenVK/macOS/libMoltenVK.dylib` file 
-     into a standard *iOS* or *macOS* system library folder on the user's device.
-
-
-The `Cube-iOS` and `Cube-macOS` **MoltenVK** demo apps, found in the `Demos.xcworkspace`,
-located in the `Demos` folder within the **MoltenVK** distribution package, are simple 
-examples of installing *MoltenVK* as a dynamic library embedded within an *iOS* or *macOS* 
-application, respectively.
+- Static Framework: `API-Samples`.
+- Static library: `Hologram`.
+- Dynamic library: `Cube`.
 
 
 
@@ -500,7 +485,3 @@ The following *Vulkan 1.0* features have not been implemented in this version of
 - Pipeline statistics query pool:
 	- `vkCreateQueryPool(VK_QUERY_TYPE_PIPELINE_STATISTICS)`
 
-- `VkImageViewCreateInfo::VkComponentMapping` supports only the following per-texture swizzles:
-	- `VK_FORMAT_R8_UNORM`: `VkComponentMapping.r` = `VK_COMPONENT_SWIZZLE_R`
-	- `VK_FORMAT_R8G8B8A8_UNORM` <->	`VK_FORMAT_B8G8R8A8_UNORM`
-	- `VK_FORMAT_R8G8B8A8_SRGB` <->	`VK_FORMAT_B8G8R8A8_SRGB`

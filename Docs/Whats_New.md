@@ -15,8 +15,15 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.25
 ---------------
 
-Released TBD
+Released 2018/10/31
 
+- Refactor the build environment.
+	- Support creation of static library and build framework and dynamic library from it.
+	- Add Makefile to better support command line or script building integration.
+	- Update demos to each use one of framework, static library, and dynamic library.
+	- Refactor and rename the build scripts.
+	- Refactor and rename the Xcode Schemes.
+	- Update build and runtime documentation.
 - Update shader caching for compatibility with texture swizzling.
 - Support polygonMode VK_POLYGON_MODE_POINT.
 - vkCreateInstance returns VK_ERROR_INCOMPATIBLE_DRIVER if Metal not available.
