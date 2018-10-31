@@ -407,6 +407,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     }
 
     // Color attachments
+    uint32_t caCnt = 0;
     if (pCreateInfo->pColorBlendState) {
         for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
             const VkPipelineColorBlendAttachmentState* pCA = &pCreateInfo->pColorBlendState->pAttachments[caIdx];
@@ -418,6 +419,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
             // The pixel format will be MTLPixelFormatInvalid in that case, and
             // Metal asserts if we turn on blending with that pixel format.
             if (mvkRenderSubpass->isColorAttachmentUsed(caIdx)) {
+                caCnt++;
                 colorDesc.blendingEnabled = pCA->blendEnable;
                 colorDesc.rgbBlendOperation = mvkMTLBlendOperationFromVkBlendOp(pCA->colorBlendOp);
                 colorDesc.sourceRGBBlendFactor = mvkMTLBlendFactorFromVkBlendFactor(pCA->srcColorBlendFactor);
@@ -437,8 +439,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     // In Vulkan, it's perfectly valid to do rasterization with no attachments.
     // Not so in Metal. If we have no attachments and rasterization is enabled,
     // then we'll have to add a dummy attachment.
-    if (plDesc.rasterizationEnabled &&
-            (!pCreateInfo->pColorBlendState || !pCreateInfo->pColorBlendState->attachmentCount) &&
+    if (plDesc.rasterizationEnabled && !caCnt &&
             !mvkMTLPixelFormatIsDepthFormat(mtlDSFormat) &&
             !mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[0];

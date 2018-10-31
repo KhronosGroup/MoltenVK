@@ -93,6 +93,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 				mtlColorAttDesc.clearColor = mvkMTLClearColorFromVkClearValue(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
 			}
 
+		} else {
+			caCnt--;
 		}
 	}
 
