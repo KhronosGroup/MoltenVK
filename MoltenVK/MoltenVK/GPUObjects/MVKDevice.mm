@@ -1062,15 +1062,32 @@ void MVKPhysicalDevice::initMemoryProperties() {
 	//		- cmdbuff waitUntilCompleted (or completion handler)
 	//		- buffer/texture getBytes:
 
-	_memoryProperties.memoryHeapCount = 1;
-	_memoryProperties.memoryHeaps[0].flags = (VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
-	_memoryProperties.memoryHeaps[0].size = (VkDeviceSize)mvkRecommendedMaxWorkingSetSize(_mtlDevice);
-	_memoryProperties.memoryTypes[0].heapIndex = 0;
-	_memoryProperties.memoryTypes[0].propertyFlags = MVK_VK_MEMORY_TYPE_METAL_PRIVATE;	// Private storage
-	_memoryProperties.memoryTypes[1].heapIndex = 0;
-	_memoryProperties.memoryTypes[1].propertyFlags = MVK_VK_MEMORY_TYPE_METAL_SHARED;	// Shared storage
-	_memoryProperties.memoryTypes[2].heapIndex = 0;
-	_memoryProperties.memoryTypes[2].propertyFlags = MVK_VK_MEMORY_TYPE_METAL_MANAGED;	// Managed storage
+    _memoryProperties = (VkPhysicalDeviceMemoryProperties){
+        .memoryHeapCount = 1,
+        .memoryHeaps = {
+            {
+                .flags = (VK_MEMORY_HEAP_DEVICE_LOCAL_BIT),
+                .size = (VkDeviceSize)mvkRecommendedMaxWorkingSetSize(_mtlDevice),
+            },
+        },
+        // NB this list needs to stay sorted by propertyFlags (as bit sets)
+        .memoryTypes = {
+            {
+                .heapIndex = 0,
+                .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_PRIVATE,    // Private storage
+            },
+#if MVK_MACOS
+            {
+                .heapIndex = 0,
+                .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_MANAGED,    // Managed storage
+            },
+#endif
+            {
+                .heapIndex = 0,
+                .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_SHARED,    // Shared storage
+            },
+        },
+    };
 
 #if MVK_MACOS
 	_memoryProperties.memoryTypeCount = 3;
