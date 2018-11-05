@@ -720,9 +720,10 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 	if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
 		if (pCreateInfo->subresourceRange.layerCount != image->_extent.depth) {
 			mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
-		} else if (!(_usage & VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+		}
+		if (!mvkAreFlagsEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
 			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments."));
-		} else if (_usage & ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) {
+		} else if (mvkIsAnyFlagEnabled(_usage, ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
 			mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments.");
 		}
 	}
