@@ -18,6 +18,7 @@ $(printf "-arch %s " ${ARCHS}) \
 -compatibility_version 1.0.0 -current_version 1.0.0  \
 -install_name "@rpath/${MVK_DYLIB_NAME}"  \
 -Wno-incompatible-sysroot \
+-fembed-bitcode \
 -isysroot ${SDK_DIR} \
 -iframework ${MVK_SYS_FWK_DIR}  \
 -framework Metal ${MVK_IOSURFACE_FWK} -framework ${MVK_UX_FWK} -framework QuartzCore -framework IOKit -framework Foundation \
