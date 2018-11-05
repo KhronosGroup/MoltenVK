@@ -875,7 +875,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"macosx\"\nexport MVK_ARCH=\"x86_64\"\nexport MVK_UX_FWK=\"AppKit\"\nexport MVK_MIN_OS_VERSION=${MACOSX_DEPLOYMENT_TARGET}\nexport MVK_IOSURFACE_FWK=\"-framework IOSurface\"\n\n\"${SRCROOT}/scripts/create_dylib.sh\"\n";
+			shellScript = "export MVK_OS=\"macosx\"\nexport MVK_UX_FWK=\"AppKit\"\nexport MVK_MIN_OS_VERSION=${MACOSX_DEPLOYMENT_TARGET}\nexport MVK_IOSURFACE_FWK=\"-framework IOSurface\"\n\n\"${SRCROOT}/scripts/create_dylib.sh\"\n";
 		};
 		A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -889,7 +889,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"ios\"\nexport MVK_ARCH=\"arm64\"\nexport MVK_UX_FWK=\"UIKit\"\nexport MVK_MIN_OS_VERSION=${IPHONEOS_DEPLOYMENT_TARGET}\nexport MVK_IOSURFACE_FWK=\"-framework IOSurface\"\n\n# Do not link to IOSurface if deploying to iOS versions below 11.0, doing so will\n# link IOSurface as a private framework, which will trigger App Store rejection.\nif [ $(echo \"${MVK_MIN_OS_VERSION} < 11.0\" | bc) -eq 1 ]; then\n    MVK_IOSURFACE_FWK=\"\"\nfi\n\n\"${SRCROOT}/scripts/create_dylib.sh\"\n";
+			shellScript = "export MVK_OS=\"ios\"\nexport MVK_UX_FWK=\"UIKit\"\nexport MVK_MIN_OS_VERSION=${IPHONEOS_DEPLOYMENT_TARGET}\nexport MVK_IOSURFACE_FWK=\"-framework IOSurface\"\n\n# Do not link to IOSurface if deploying to iOS versions below 11.0, doing so will\n# link IOSurface as a private framework, which will trigger App Store rejection.\nif [ $(echo \"${MVK_MIN_OS_VERSION} < 11.0\" | bc) -eq 1 ]; then\n    MVK_IOSURFACE_FWK=\"\"\nfi\n\n\"${SRCROOT}/scripts/create_dylib.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
