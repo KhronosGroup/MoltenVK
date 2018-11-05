@@ -13,7 +13,7 @@ fi
 clang++ \
 -stdlib=${CLANG_CXX_LIBRARY} \
 -dynamiclib ${MVK_TSAN} \
--arch ${MVK_ARCH} \
+$(printf "-arch %s " ${ARCHS}) \
 -m${MVK_OS}-version-min=${MVK_MIN_OS_VERSION} \
 -compatibility_version 1.0.0 -current_version 1.0.0  \
 -install_name "@rpath/${MVK_DYLIB_NAME}"  \
