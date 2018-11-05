@@ -11,6 +11,7 @@ if test x"${ENABLE_THREAD_SANITIZER}" = xYES; then
 fi
 
 clang++ \
+-stdlib=${CLANG_CXX_LIBRARY} \
 -dynamiclib ${MVK_TSAN} \
 -arch ${MVK_ARCH} \
 -m${MVK_OS}-version-min=${MVK_MIN_OS_VERSION} \
