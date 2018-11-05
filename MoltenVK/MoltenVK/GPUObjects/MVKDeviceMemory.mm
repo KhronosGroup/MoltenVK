@@ -230,9 +230,20 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 
 	// "Dedicated" means this memory can only be used for this image or buffer.
 	if (dedicatedImage) {
+#if MVK_MACOS
 		if (isMemoryHostCoherent() ) {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Host-coherent VkDeviceMemory objects cannot be associated with images."));
+			if (!((MVKImage*)dedicatedImage)->_isLinear) {
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Host-coherent VkDeviceMemory objects cannot be associated with optimal-tiling images."));
+			} else {
+				// Need to use the managed mode for images.
+				_mtlStorageMode = MTLStorageModeManaged;
+				// Nonetheless, we need a buffer to be able to map the memory at will.
+				if (!ensureMTLBuffer() ) {
+					setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+				}
+			}
 		}
+#endif
 		_isDedicated = true;
 		_images.push_back((MVKImage*)dedicatedImage);
 		return;
