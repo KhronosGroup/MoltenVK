@@ -66,40 +66,6 @@ bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
 
 
 #pragma mark -
-#pragma mark MVKSignalable
-
-void MVKSignalable::wasAddedToSignaler() {
-	lock_guard<mutex> lock(_signalerLock);
-
-	_signalerCount++;
-}
-
-void MVKSignalable::wasRemovedFromSignaler() {
-	if (decrementSignalerCount()) { destroy(); }
-}
-
-// Decrements the signaler count, and returns whether it's time to destroy this object.
-bool MVKSignalable::decrementSignalerCount() {
-	lock_guard<mutex> lock(_signalerLock);
-
-	if (_signalerCount > 0) { _signalerCount--; }
-	return (_isDestroyed && _signalerCount == 0);
-}
-
-void MVKSignalable::destroy() {
-	if (markDestroyed()) { MVKBaseDeviceObject::destroy(); }
-}
-
-// Marks this object as destroyed, and returns whether the compilation is complete.
-bool MVKSignalable::markDestroyed() {
-	lock_guard<mutex> lock(_signalerLock);
-
-	_isDestroyed = true;
-	return _signalerCount == 0;
-}
-
-
-#pragma mark -
 #pragma mark MVKSemaphore
 
 bool MVKSemaphore::wait(uint64_t timeout) {

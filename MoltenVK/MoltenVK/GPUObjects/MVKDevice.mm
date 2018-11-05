@@ -1705,3 +1705,37 @@ MVKDevice::~MVKDevice() {
 }
 
 
+#pragma mark -
+#pragma mark MVKRefCountedDeviceObject
+
+void MVKRefCountedDeviceObject::retain() {
+	lock_guard<mutex> lock(_refLock);
+
+	_refCount++;
+}
+
+void MVKRefCountedDeviceObject::release() {
+	if (decrementRetainCount()) { destroy(); }
+}
+
+// Decrements the reference count, and returns whether it's time to destroy this object.
+bool MVKRefCountedDeviceObject::decrementRetainCount() {
+	lock_guard<mutex> lock(_refLock);
+
+	if (_refCount > 0) { _refCount--; }
+	return (_isDestroyed && _refCount == 0);
+}
+
+void MVKRefCountedDeviceObject::destroy() {
+	if (markDestroyed()) { MVKBaseDeviceObject::destroy(); }
+}
+
+// Marks this object as destroyed, and returns whether no references are left outstanding.
+bool MVKRefCountedDeviceObject::markDestroyed() {
+	lock_guard<mutex> lock(_refLock);
+
+	_isDestroyed = true;
+	return _refCount == 0;
+}
+
+

@@ -633,6 +633,37 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKRefCountedDeviceObject
+
+/** Represents a device-spawned object that can live past destruction by the client. */
+class MVKRefCountedDeviceObject : public MVKBaseDeviceObject {
+
+public:
+
+    /** Increments the object reference count by one. */
+    void retain();
+
+    /** Decrements the object reference count by one. */
+    void release();
+
+    void destroy() override;
+
+#pragma mark Construction
+
+	MVKRefCountedDeviceObject(MVKDevice* device) : MVKBaseDeviceObject(device) {}
+
+private:
+
+    bool decrementRetainCount();
+    bool markDestroyed();
+
+	std::mutex _refLock;
+    unsigned _refCount = 0;
+    bool _isDestroyed = false;
+};
+
+
+#pragma mark -
 #pragma mark MVKDeviceObjectPool
 
 /** Manages a pool of instances of a particular object type that requires an MVKDevice during construction. */
