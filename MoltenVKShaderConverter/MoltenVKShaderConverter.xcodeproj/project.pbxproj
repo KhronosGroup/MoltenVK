@@ -199,6 +199,14 @@
 		A93E831F211F76F6001FEBD4 /* InitializeDll.h in Headers */ = {isa = PBXBuildFile; fileRef = A93E826C211F76F6001FEBD4 /* InitializeDll.h */; };
 		A93E8320211F76F6001FEBD4 /* InitializeDll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A93E826D211F76F6001FEBD4 /* InitializeDll.cpp */; };
 		A93E8321211F76F6001FEBD4 /* InitializeDll.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A93E826D211F76F6001FEBD4 /* InitializeDll.cpp */; };
+		A94E30CF219209C700394673 /* spirv_parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A94E30CD219209C700394673 /* spirv_parser.cpp */; };
+		A94E30D0219209C700394673 /* spirv_parser.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A94E30CD219209C700394673 /* spirv_parser.cpp */; };
+		A94E30D1219209C700394673 /* spirv_parser.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A94E30CE219209C700394673 /* spirv_parser.hpp */; };
+		A94E30D2219209C700394673 /* spirv_parser.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A94E30CE219209C700394673 /* spirv_parser.hpp */; };
+		A94E30D521920A8C00394673 /* spirv_cross_parsed_ir.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A94E30D321920A8C00394673 /* spirv_cross_parsed_ir.hpp */; };
+		A94E30D621920A8C00394673 /* spirv_cross_parsed_ir.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A94E30D321920A8C00394673 /* spirv_cross_parsed_ir.hpp */; };
+		A94E30D721920A8C00394673 /* spirv_cross_parsed_ir.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A94E30D421920A8C00394673 /* spirv_cross_parsed_ir.cpp */; };
+		A94E30D821920A8C00394673 /* spirv_cross_parsed_ir.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A94E30D421920A8C00394673 /* spirv_cross_parsed_ir.cpp */; };
 		A95096BB2003D00300F10950 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		A95096BC2003D00300F10950 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		A95096BF2003D32400F10950 /* DirectorySupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95096BD2003D32400F10950 /* DirectorySupport.mm */; };
@@ -953,6 +961,10 @@
 		A93E826B211F76F6001FEBD4 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		A93E826C211F76F6001FEBD4 /* InitializeDll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InitializeDll.h; sourceTree = "<group>"; };
 		A93E826D211F76F6001FEBD4 /* InitializeDll.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InitializeDll.cpp; sourceTree = "<group>"; };
+		A94E30CD219209C700394673 /* spirv_parser.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_parser.cpp; sourceTree = "<group>"; };
+		A94E30CE219209C700394673 /* spirv_parser.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_parser.hpp; sourceTree = "<group>"; };
+		A94E30D321920A8C00394673 /* spirv_cross_parsed_ir.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_cross_parsed_ir.hpp; sourceTree = "<group>"; };
+		A94E30D421920A8C00394673 /* spirv_cross_parsed_ir.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_cross_parsed_ir.cpp; sourceTree = "<group>"; };
 		A95096BD2003D32400F10950 /* DirectorySupport.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DirectorySupport.mm; sourceTree = "<group>"; };
 		A95096BE2003D32400F10950 /* DirectorySupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DirectorySupport.h; sourceTree = "<group>"; };
 		A95C5F3D1DEA9070000D17B6 /* spirv_cfg.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_cfg.cpp; sourceTree = "<group>"; };
@@ -1328,12 +1340,16 @@
 				A95C5F3D1DEA9070000D17B6 /* spirv_cfg.cpp */,
 				A95C5F3E1DEA9070000D17B6 /* spirv_cfg.hpp */,
 				A9AB19901CB5B5A80001E7F9 /* spirv_common.hpp */,
+				A94E30D421920A8C00394673 /* spirv_cross_parsed_ir.cpp */,
+				A94E30D321920A8C00394673 /* spirv_cross_parsed_ir.hpp */,
 				A9AB19911CB5B5A80001E7F9 /* spirv_cross.cpp */,
 				A9AB19921CB5B5A80001E7F9 /* spirv_cross.hpp */,
 				A9AB19931CB5B5A80001E7F9 /* spirv_glsl.cpp */,
 				A9AB19941CB5B5A80001E7F9 /* spirv_glsl.hpp */,
 				A9AB19951CB5B5A80001E7F9 /* spirv_msl.cpp */,
 				A9AB19961CB5B5A80001E7F9 /* spirv_msl.hpp */,
+				A94E30CD219209C700394673 /* spirv_parser.cpp */,
+				A94E30CE219209C700394673 /* spirv_parser.hpp */,
 			);
 			name = "SPIRV-Cross";
 			path = "../SPIRV-Cross";
@@ -2058,6 +2074,7 @@
 				A96FE8BE215473A00060D1A3 /* spirv_optimizer_options.h in Headers */,
 				A96FE76E215473A00060D1A3 /* compact_ids_pass.h in Headers */,
 				A96FE712215473A00060D1A3 /* spirv_definition.h in Headers */,
+				A94E30D1219209C700394673 /* spirv_parser.hpp in Headers */,
 				A96FE8A8215473A00060D1A3 /* dominator_tree.h in Headers */,
 				A96FE7E0215473A00060D1A3 /* struct_cfg_analysis.h in Headers */,
 				A96FE766215473A00060D1A3 /* loop_fusion.h in Headers */,
@@ -2134,6 +2151,7 @@
 				A96FE8DC215473A00060D1A3 /* basic_block.h in Headers */,
 				A96FE834215473A00060D1A3 /* dead_variable_elimination.h in Headers */,
 				A96FE740215473A00060D1A3 /* text_handler.h in Headers */,
+				A94E30D521920A8C00394673 /* spirv_cross_parsed_ir.hpp in Headers */,
 				A9AB199B1CB5B5A80001E7F9 /* spirv_cross.hpp in Headers */,
 				A96FE7F8215473A00060D1A3 /* dead_insert_elim_pass.h in Headers */,
 				A96FE872215473A00060D1A3 /* local_ssa_elim_pass.h in Headers */,
@@ -2219,6 +2237,7 @@
 				A96FE8BF215473A00060D1A3 /* spirv_optimizer_options.h in Headers */,
 				A96FE76F215473A00060D1A3 /* compact_ids_pass.h in Headers */,
 				A96FE713215473A00060D1A3 /* spirv_definition.h in Headers */,
+				A94E30D2219209C700394673 /* spirv_parser.hpp in Headers */,
 				A96FE8A9215473A00060D1A3 /* dominator_tree.h in Headers */,
 				A96FE7E1215473A00060D1A3 /* struct_cfg_analysis.h in Headers */,
 				A96FE767215473A00060D1A3 /* loop_fusion.h in Headers */,
@@ -2295,6 +2314,7 @@
 				A96FE8DD215473A00060D1A3 /* basic_block.h in Headers */,
 				A96FE835215473A00060D1A3 /* dead_variable_elimination.h in Headers */,
 				A96FE741215473A00060D1A3 /* text_handler.h in Headers */,
+				A94E30D621920A8C00394673 /* spirv_cross_parsed_ir.hpp in Headers */,
 				A9AB199C1CB5B5A80001E7F9 /* spirv_cross.hpp in Headers */,
 				A96FE7F9215473A00060D1A3 /* dead_insert_elim_pass.h in Headers */,
 				A96FE873215473A00060D1A3 /* local_ssa_elim_pass.h in Headers */,
@@ -2464,7 +2484,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1000;
+				LastUpgradeCheck = 1010;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9092A8C1A81717B00051823 = {
@@ -2678,6 +2698,7 @@
 				A96FE73C215473A00060D1A3 /* markv_encoder.cpp in Sources */,
 				A96FE90C215473A00060D1A3 /* instruction.cpp in Sources */,
 				A96FE81A215473A00060D1A3 /* strength_reduction_pass.cpp in Sources */,
+				A94E30D721920A8C00394673 /* spirv_cross_parsed_ir.cpp in Sources */,
 				A96FE78A215473A00060D1A3 /* local_redundancy_elimination.cpp in Sources */,
 				A96FE826215473A00060D1A3 /* loop_fusion_pass.cpp in Sources */,
 				A96FE782215473A00060D1A3 /* local_single_block_elim_pass.cpp in Sources */,
@@ -2717,6 +2738,7 @@
 				A96FE7F2215473A00060D1A3 /* simplification_pass.cpp in Sources */,
 				A95096BB2003D00300F10950 /* FileSupport.mm in Sources */,
 				A96FE6F2215473A00060D1A3 /* string_utils.cpp in Sources */,
+				A94E30CF219209C700394673 /* spirv_parser.cpp in Sources */,
 				A909408A1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
 				A96FE7C0215473A00060D1A3 /* loop_unswitch_pass.cpp in Sources */,
 				A96FE82E215473A00060D1A3 /* dead_insert_elim_pass.cpp in Sources */,
@@ -2845,6 +2867,7 @@
 				A96FE73D215473A00060D1A3 /* markv_encoder.cpp in Sources */,
 				A96FE90D215473A00060D1A3 /* instruction.cpp in Sources */,
 				A96FE81B215473A00060D1A3 /* strength_reduction_pass.cpp in Sources */,
+				A94E30D821920A8C00394673 /* spirv_cross_parsed_ir.cpp in Sources */,
 				A96FE78B215473A00060D1A3 /* local_redundancy_elimination.cpp in Sources */,
 				A96FE827215473A00060D1A3 /* loop_fusion_pass.cpp in Sources */,
 				A96FE783215473A00060D1A3 /* local_single_block_elim_pass.cpp in Sources */,
@@ -2884,6 +2907,7 @@
 				A96FE7F3215473A00060D1A3 /* simplification_pass.cpp in Sources */,
 				A95096BC2003D00300F10950 /* FileSupport.mm in Sources */,
 				A96FE6F3215473A00060D1A3 /* string_utils.cpp in Sources */,
+				A94E30D0219209C700394673 /* spirv_parser.cpp in Sources */,
 				A909408B1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
 				A96FE7C1215473A00060D1A3 /* loop_unswitch_pass.cpp in Sources */,
 				A96FE82F215473A00060D1A3 /* dead_insert_elim_pass.cpp in Sources */,

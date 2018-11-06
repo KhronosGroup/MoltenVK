@@ -233,7 +233,7 @@ void MVKCommandEncoder::beginNextSubpass(VkSubpassContents contents) {
 	setSubpass(contents, _renderSubpassIndex + 1);
 }
 
-/** Sets the current render subpass to the subpass with the specified index. */
+// Sets the current render subpass to the subpass with the specified index.
 void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex) {
 	_subpassContents = subpassContents;
 	_renderSubpassIndex = subpassIndex;
@@ -241,8 +241,7 @@ void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t s
     beginMetalRenderPass();
 }
 
-// Called after the _mtlRenderEncoder is established.
-// Marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
+// Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
 void MVKCommandEncoder::beginMetalRenderPass() {
 
     endCurrentMetalEncoding();
