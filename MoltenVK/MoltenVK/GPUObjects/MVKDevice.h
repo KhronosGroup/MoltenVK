@@ -229,6 +229,12 @@ public:
 	 */
 	inline uint32_t getPrivateMemoryTypes() { return _privateMemoryTypes; }
 
+	/**
+	 * Returns a bit mask of all memory type indices that are lazily allocated.
+	 * Each bit [0..31] in the returned bit mask indicates a distinct memory type.
+	 */
+	inline uint32_t getLazilyAllocatedMemoryTypes() { return _lazilyAllocatedMemoryTypes; }
+
 	
 #pragma mark Metal
 
@@ -285,6 +291,7 @@ protected:
 	uint32_t _hostVisibleMemoryTypes;
 	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
+	uint32_t _lazilyAllocatedMemoryTypes;
 };
 
 

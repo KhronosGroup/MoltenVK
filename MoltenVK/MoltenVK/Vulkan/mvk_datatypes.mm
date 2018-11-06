@@ -1129,6 +1129,12 @@ MVK_PUBLIC_SYMBOL MTLStorageMode mvkMTLStorageModeFromVkMemoryPropertyFlags(VkMe
 
 	// If not visible to the host: Private
 	if ( !mvkAreFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ) {
+#if MVK_IOS
+		// iOS: If lazily allocated, Memoryless
+		if (mvkAreFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)) {
+			return MTLStorageModeMemoryless;
+		}
+#endif
 		return MTLStorageModePrivate;
 	}
 
@@ -1175,6 +1181,11 @@ MVK_PUBLIC_SYMBOL MTLResourceOptions mvkMTLResourceOptionsFromVkMemoryPropertyFl
 #if MVK_MACOS
 		case MTLStorageModeManaged:
 			mvkEnableFlag(mtlFlags, MTLResourceStorageModeManaged);
+			break;
+#endif
+#if MVK_IOS
+		case MTLStorageModeMemoryless:
+			mvkEnableFlag(mtlFlags, MTLResourceStorageModeMemoryless);
 			break;
 #endif
 		default:		// Silence erroneous -Wswitch-enum warning on MTLResourceStorageModeManaged under iOS
