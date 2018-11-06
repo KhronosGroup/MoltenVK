@@ -1091,15 +1091,17 @@ void MVKPhysicalDevice::initMemoryProperties() {
 
 #if MVK_MACOS
 	_memoryProperties.memoryTypeCount = 3;
-	_privateMemoryTypes		= 0x1;				// Private only
-	_hostVisibleMemoryTypes	= 0x6;				// Shared & managed
-	_allMemoryTypes			= 0x7;				// Private, shared, & managed
+	_privateMemoryTypes			= 0x1;			// Private only
+	_hostCoherentMemoryTypes 	= 0x4;			// Shared only
+	_hostVisibleMemoryTypes		= 0x6;			// Shared & managed
+	_allMemoryTypes				= 0x7;			// Private, shared, & managed
 #endif
 #if MVK_IOS
 	_memoryProperties.memoryTypeCount = 2;		// Managed storage not available on iOS
-	_privateMemoryTypes		= 0x1;				// Private only
-	_hostVisibleMemoryTypes	= 0x2;				// Shared only
-	_allMemoryTypes			= 0x3;				// Private & shared
+	_privateMemoryTypes			= 0x1;			// Private only
+	_hostCoherentMemoryTypes 	= 0x2;			// Shared only
+	_hostVisibleMemoryTypes		= 0x2;			// Shared only
+	_allMemoryTypes				= 0x3;			// Private & shared
 #endif
 }
 
