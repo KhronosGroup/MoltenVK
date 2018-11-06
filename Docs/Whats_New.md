@@ -12,6 +12,22 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
+MoltenVK 1.0.26
+---------------
+
+Released 2018/11/06
+
+- Fix memoryTypes order to match Vulkan spec.
+- Allow linear images to use host-coherent memory.
+- Generate Bitcode in iOS libraries.
+- Allow all pipeline attachements to be unused.
+- Perform usage checks on 3D images.
+- Enhancements to dylib generation script.
+- Update to latest SPIRV-Cross version:
+	- MSL: Support 8 & 16 bit types.
+	- MSL: Updated spec constant support.
+
+
 MoltenVK 1.0.25
 ---------------
 

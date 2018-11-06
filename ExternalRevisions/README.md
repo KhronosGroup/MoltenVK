@@ -126,12 +126,16 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Cross* l
 		spirv_cfg.cpp
 		spirv_cfg.hpp
 		spirv_common.hpp
+		spirv_cross_parsed_ir.cpp
+		spirv_cross_parsed_ir.hpp
 		spirv_cross.cpp
 		spirv_cross.hpp
 		spirv_glsl.cpp
 		spirv_glsl.hpp
 		spirv_msl.cpp
 		spirv_msl.hpp
+		spirv_parser.cpp
+		spirv_parser.hpp
 
    In the ***Choose options for adding these files*** dialog that opens, select the 
    ***Create groups*** option, add the files to *both* the `MoltenVKSPIRVToMSLConverter-iOS` 

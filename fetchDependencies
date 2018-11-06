@@ -101,14 +101,17 @@ EXT_DIR=External
 EXT_REV_DIR=ExternalRevisions
 
 echo
-echo Retrieving MoltenVK dependencies into ${EXT_DIR}.
-echo
+echo ========== Retrieving MoltenVK dependencies into ${EXT_DIR} ==========
 
 mkdir -p ${EXT_DIR}
 cd ${EXT_DIR}
 
 
 # ----------------- Cereal -------------------
+
+echo
+echo ========== Cereal ==========
+echo
 
 REPO_NAME=cereal
 REPO_URL="https://github.com/USCiLab/${REPO_NAME}.git"
@@ -118,6 +121,10 @@ update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
 # ----------------- Vulkan-Headers -------------------
+
+echo
+echo ========== Vulkan-Headers ==========
+echo
 
 # When MoltenVK is built by something that already has
 # a copy of this repo, use it by creating a symlink.
@@ -136,6 +143,10 @@ fi
 
 # ----------------- SPIRV-Cross -------------------
 
+echo
+echo ========== SPIRV-Cross ==========
+echo
+
 # When MoltenVK is built by something that already has
 # a copy of this repo, use it by creating a symlink.
 if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
@@ -152,6 +163,10 @@ fi
 
 
 # ----------------- glslang -------------------
+
+echo
+echo ========== glslang and SPIRV-Tools ==========
+echo
 
 # When MoltenVK is built by something that already has
 # a copy of this repo, use it by creating a symlink.
@@ -176,6 +191,10 @@ fi
 
 # ----------------- Vulkan-Tools -------------------
 
+echo
+echo ========== Vulkan-Tools ==========
+echo
+
 REPO_NAME=Vulkan-Tools
 REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
 REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
@@ -184,6 +203,10 @@ update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
 # ----------------- VulkanSamples -------------------
+
+echo
+echo ========== VulkanSamples ==========
+echo
 
 REPO_NAME=VulkanSamples
 REPO_URL="https://github.com/LunarG/${REPO_NAME}.git"
