@@ -399,8 +399,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
                 if (vbDesc.stepFunction == MTLVertexStepFunctionPerInstance) {
                     if (pVKVB->divisor == 0)
                         vbDesc.stepFunction = MTLVertexStepFunctionConstant;
-                    else
-                        vbDesc.stepRate = pVKVB->divisor;
+                    vbDesc.stepRate = pVKVB->divisor;
                 }
             }
         }
