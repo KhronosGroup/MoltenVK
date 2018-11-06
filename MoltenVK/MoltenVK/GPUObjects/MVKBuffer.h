@@ -20,10 +20,8 @@
 
 #include "MVKResource.h"
 #include "MVKCommandBuffer.h"
-#include <unordered_set>
 
 class MVKCommandEncoder;
-class MVKDescriptorBinding;
 
 
 #pragma mark MVKBuffer
@@ -58,15 +56,6 @@ public:
                                   MVKCommandEncoder* cmdEncoder,
                                   MVKCommandUse cmdUse);
 
-    /** Informs this object of a descriptor binding to which it was bound. */
-    void addDescriptorBinding(MVKDescriptorBinding* binding);
-
-    /**
-     * Informs this object that a descriptor set to which this object was
-     * bound is now destroyed.
-     */
-    void removeDescriptorBinding(MVKDescriptorBinding* binding);
-
 
 #pragma mark Metal
 
@@ -89,28 +78,15 @@ protected:
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   VkBufferMemoryBarrier* pBufferMemoryBarrier);
-
-	std::mutex _lock;
-	std::unordered_set<MVKDescriptorBinding*> _bindings;
 };
 
 
 #pragma mark MVKBufferView
 
 /** Represents a Vulkan buffer view. */
-class MVKBufferView : public MVKBaseDeviceObject {
+class MVKBufferView : public MVKRefCountedDeviceObject {
 
 public:
-
-    /** Informs this object of a descriptor binding to which it was bound. */
-    void addDescriptorBinding(MVKDescriptorBinding* binding);
-
-    /**
-     * Informs this object that a descriptor set to which this object was
-     * bound is now destroyed.
-     */
-    void removeDescriptorBinding(MVKDescriptorBinding* binding);
-
 
 #pragma mark Metal
 
@@ -126,7 +102,6 @@ public:
 
 protected:
     MVKBuffer* _buffer;
-	std::unordered_set<MVKDescriptorBinding*> _bindings;
 	id<MTLTexture> _mtlTexture;
 	MTLPixelFormat _mtlPixelFormat;
     NSUInteger _mtlBufferOffset;

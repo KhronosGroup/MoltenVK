@@ -636,7 +636,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 				_imageBindings[dstIdx] = *pImgInfo;
 				if (_hasDynamicSamplers) {
 					auto* mvkSampler = (MVKSampler*)pImgInfo->sampler;
-					mvkSampler->addDescriptorBinding(this);
+					mvkSampler->retain();
 					_mtlSamplers[dstIdx] = mvkSampler ? mvkSampler->getMTLSamplerState() : nil;
 				}
 			}
@@ -647,12 +647,12 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 				uint32_t dstIdx = dstStartIndex + i;
 				const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcStartIndex + i);
 				auto* mvkImageView = (MVKImageView*)pImgInfo->imageView;
-				mvkImageView->addDescriptorBinding(this);
+				mvkImageView->retain();
 				_imageBindings[dstIdx] = *pImgInfo;
 				_mtlTextures[dstIdx] = mvkImageView ? mvkImageView->getMTLTexture() : nil;
 				if (_hasDynamicSamplers) {
 					auto* mvkSampler = (MVKSampler*)pImgInfo->sampler;
-					mvkSampler->addDescriptorBinding(this);
+					mvkSampler->retain();
 					_mtlSamplers[dstIdx] = mvkSampler ? mvkSampler->getMTLSamplerState() : nil;
 				}
 			}
@@ -666,7 +666,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 				const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcStartIndex + i);
                 auto* mvkImageView = (MVKImageView*)pImgInfo->imageView;
                 if (mvkImageView) {
-                    mvkImageView->addDescriptorBinding(this);
+                    mvkImageView->retain();
                 }
 				_imageBindings[dstIdx] = *pImgInfo;
 				_mtlTextures[dstIdx] = mvkImageView ? mvkImageView->getMTLTexture() : nil;
@@ -683,7 +683,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 				_bufferBindings[dstIdx] = *pBuffInfo;
                 auto* mtlBuff = (MVKBuffer*)pBuffInfo->buffer;
                 if (mtlBuff) {
-                    mtlBuff->addDescriptorBinding(this);
+                    mtlBuff->retain();
                 }
 				_mtlBuffers[dstIdx] = mtlBuff ? mtlBuff->getMTLBuffer() : nil;
 				_mtlBufferOffsets[dstIdx] = mtlBuff ? (mtlBuff->getMTLBufferOffset() + pBuffInfo->offset) : 0;
@@ -697,7 +697,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
                 const auto* pBuffView = &get<VkBufferView>(pData, stride, srcStartIndex + i);
                 auto* mvkBuffView = (MVKBufferView*)*pBuffView;
                 if (mvkBuffView) {
-                    mvkBuffView->addDescriptorBinding(this);
+                    mvkBuffView->retain();
                 }
                 _texelBufferBindings[dstIdx] = *pBuffView;
                 _mtlTextures[dstIdx] = mvkBuffView ? mvkBuffView->getMTLTexture() : nil;
@@ -759,42 +759,6 @@ bool MVKDescriptorBinding::hasBinding(uint32_t binding) {
     return _pBindingLayout->_info.binding == binding;
 }
 
-void MVKDescriptorBinding::unbind(MVKImageView* imageView) {
-	for (uint32_t i = 0; i < _imageBindings.size(); i++) {
-		if (_imageBindings[i].imageView == (VkImageView)imageView) {
-			_imageBindings[i].imageView = VK_NULL_HANDLE;
-			_mtlTextures[i] = nil;
-		}
-	}
-}
-
-void MVKDescriptorBinding::unbind(MVKSampler* sampler) {
-	for (uint32_t i = 0; i < _imageBindings.size(); i++) {
-		if (_imageBindings[i].sampler == (VkSampler)sampler) {
-			_imageBindings[i].sampler = VK_NULL_HANDLE;
-			_mtlSamplers[i] = nil;
-		}
-	}
-}
-
-void MVKDescriptorBinding::unbind(MVKBuffer* buffer) {
-	for (uint32_t i = 0; i < _bufferBindings.size(); i++) {
-		if (_bufferBindings[i].buffer == (VkBuffer)buffer) {
-			_bufferBindings[i] = VkDescriptorBufferInfo();
-			_mtlBuffers[i] = nil;
-		}
-	}
-}
-
-void MVKDescriptorBinding::unbind(MVKBufferView* bufferView) {
-	for (uint32_t i = 0; i < _texelBufferBindings.size(); i++) {
-		if (_texelBufferBindings[i] == (VkBufferView)bufferView) {
-			_texelBufferBindings[i] = VK_NULL_HANDLE;
-			_mtlTextures[i] = nil;
-		}
-	}
-}
-
 MVKDescriptorBinding::MVKDescriptorBinding(MVKDescriptorSetLayoutBinding* pBindingLayout) : MVKBaseObject() {
 
 	uint32_t descCnt = pBindingLayout->_info.descriptorCount;
@@ -848,20 +812,20 @@ MVKDescriptorBinding::MVKDescriptorBinding(MVKDescriptorSetLayoutBinding* pBindi
 MVKDescriptorBinding::~MVKDescriptorBinding() {
 	for (const VkDescriptorImageInfo& imgInfo : _imageBindings) {
 		if (imgInfo.imageView) {
-			((MVKImageView*)imgInfo.imageView)->removeDescriptorBinding(this);
+			((MVKImageView*)imgInfo.imageView)->release();
 		}
 		if (imgInfo.sampler) {
-			((MVKSampler*)imgInfo.sampler)->removeDescriptorBinding(this);
+			((MVKSampler*)imgInfo.sampler)->release();
 		}
 	}
 	for (const VkDescriptorBufferInfo& buffInfo : _bufferBindings) {
 		if (buffInfo.buffer) {
-			((MVKBuffer*)buffInfo.buffer)->removeDescriptorBinding(this);
+			((MVKBuffer*)buffInfo.buffer)->release();
 		}
 	}
 	for (VkBufferView buffView : _texelBufferBindings) {
 		if (buffView) {
-			((MVKBufferView*)buffView)->removeDescriptorBinding(this);
+			((MVKBufferView*)buffView)->release();
 		}
 	}
 }
