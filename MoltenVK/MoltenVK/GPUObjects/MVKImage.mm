@@ -670,7 +670,7 @@ id<MTLTexture> MVKImageView::newMTLTexture() {
 
 #pragma mark Construction
 
-MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo) : MVKRefCountedDeviceObject(device) {
 
 	_image = (MVKImage*)pCreateInfo->image;
 	_usage = _image->_usage;
@@ -894,7 +894,7 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 }
 
 // Constructs an instance on the specified image.
-MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKRefCountedDeviceObject(device) {
     _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: getMTLSamplerDescriptor(pCreateInfo)];
 }
 

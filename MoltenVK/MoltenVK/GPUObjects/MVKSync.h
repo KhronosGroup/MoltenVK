@@ -101,7 +101,7 @@ private:
 #pragma mark MVKSignalable
 
 /** Abstract class for Vulkan semaphores and fences. */
-class MVKSignalable : public MVKBaseDeviceObject {
+class MVKSignalable : public MVKRefCountedDeviceObject {
 
 public:
 
@@ -117,7 +117,7 @@ public:
 
 #pragma mark Construction
 
-	MVKSignalable(MVKDevice* device) : MVKBaseDeviceObject(device) {}
+	MVKSignalable(MVKDevice* device) : MVKRefCountedDeviceObject(device) {}
 };
 
 

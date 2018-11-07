@@ -245,7 +245,7 @@ protected:
 #pragma mark MVKImageView
 
 /** Represents a Vulkan image view. */
-class MVKImageView : public MVKBaseDeviceObject {
+class MVKImageView : public MVKRefCountedDeviceObject {
 
 public:
 
@@ -308,7 +308,7 @@ protected:
 #pragma mark MVKSampler
 
 /** Represents a Vulkan sampler. */
-class MVKSampler : public MVKBaseDeviceObject {
+class MVKSampler : public MVKRefCountedDeviceObject {
 
 public:
 
