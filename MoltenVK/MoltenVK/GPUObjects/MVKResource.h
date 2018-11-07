@@ -28,7 +28,7 @@ class MVKCommandEncoder;
 #pragma mark MVKResource
 
 /** Represents an abstract Vulkan resource. Specialized subclasses include MVKBuffer and MVKImage. */
-class MVKResource : public MVKRefCountedDeviceObject {
+class MVKResource : public MVKBaseDeviceObject {
 
 public:
 
@@ -74,7 +74,7 @@ public:
 	
 #pragma mark Construction
 
-    MVKResource(MVKDevice* device) : MVKRefCountedDeviceObject(device) {}
+    MVKResource(MVKDevice* device) : MVKBaseDeviceObject(device) {}
 
 protected:
 	virtual bool needsHostReadSync(VkPipelineStageFlags srcStageMask,

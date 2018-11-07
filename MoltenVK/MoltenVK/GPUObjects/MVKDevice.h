@@ -602,10 +602,25 @@ public:
         return _device->mtlPixelFormatFromVkFormat(vkFormat);
     }
 
+    /** Increments the object reference count by one. */
+    void retain();
+
+    /** Decrements the object reference count by one. */
+    void release();
+
+    void destroy() override;
+
 	/** Constructs an instance for the specified device. */
     MVKBaseDeviceObject(MVKDevice* device) : _device(device) {}
 
 protected:
+
+    bool decrementRetainCount();
+    bool markDestroyed();
+
+	std::mutex _refLock;
+	unsigned _refCount = 0;
+	bool _isDestroyed = false;
 	MVKDevice* _device;
 };
 
@@ -629,37 +644,6 @@ public:
 
 protected:
     MVKDevice* _device;
-};
-
-
-#pragma mark -
-#pragma mark MVKRefCountedDeviceObject
-
-/** Represents a device-spawned object that can live past destruction by the client. */
-class MVKRefCountedDeviceObject : public MVKBaseDeviceObject {
-
-public:
-
-    /** Increments the object reference count by one. */
-    void retain();
-
-    /** Decrements the object reference count by one. */
-    void release();
-
-    void destroy() override;
-
-#pragma mark Construction
-
-	MVKRefCountedDeviceObject(MVKDevice* device) : MVKBaseDeviceObject(device) {}
-
-private:
-
-    bool decrementRetainCount();
-    bool markDestroyed();
-
-	std::mutex _refLock;
-    unsigned _refCount = 0;
-    bool _isDestroyed = false;
 };
 
 
