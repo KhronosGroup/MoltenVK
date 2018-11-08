@@ -486,6 +486,10 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
         mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal may not allow uncompressed views of compressed images.");
     }
 
+    if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatNone) ) {
+        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
+    }
+
     // Adjust the info components to be compatible with Metal, then use the modified versions
     // to set other config info. Vulkan allows unused extent dimensions to be zero, but Metal
     // requires minimum of one. Adjust samples and miplevels for the right texture type.
@@ -511,6 +515,10 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     _samples = pCreateInfo->samples;
     if ( (_samples > 1) && (_mtlTextureType != MTLTextureType2DMultisample) ) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type with an array length of 1. Setting sample count to 1."));
+        _samples = VK_SAMPLE_COUNT_1_BIT;
+    }
+    if ( (_samples > 1) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatNone) ) {
+        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with compressed images. Setting sample count to 1."));
         _samples = VK_SAMPLE_COUNT_1_BIT;
     }
 
