@@ -177,6 +177,10 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
+			// Metal does not allow compressed formats on 1D textures
+			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+			}
             maxExt.width = pLimits->maxImageDimension1D;
             maxExt.height = 1;
             maxExt.depth = 1;
@@ -207,6 +211,10 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				// - They may not be multisampled.
 				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 			} else {
+				// Compressed multisampled textures aren't supported.
+				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+					sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+				}
 				maxLevels = mvkMipmapLevels3D(maxExt);
 				maxLayers = pLimits->maxImageArrayLayers;
 			}
@@ -214,6 +222,10 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
         case VK_IMAGE_TYPE_3D:
             // Metal does not allow linear tiling on 3D textures
             if (tiling == VK_IMAGE_TILING_LINEAR) {
+                return VK_ERROR_FORMAT_NOT_SUPPORTED;
+            }
+            // Metal does not allow compressed formats on 3D textures
+            if (mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
                 return VK_ERROR_FORMAT_NOT_SUPPORTED;
             }
             maxExt.width = pLimits->maxImageDimension3D;
@@ -225,6 +237,10 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
         default:
 			// Metal does not allow linear tiling on anything but 2D textures
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
+				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+			}
+			// Metal does not allow compressed formats on anything but 2D textures
+			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt = { 1, 1, 1};
