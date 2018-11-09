@@ -129,7 +129,6 @@ MVKBuffer::~MVKBuffer() {
 #pragma mark -
 #pragma mark MVKBufferView
 
-
 #pragma mark Metal
 
 id<MTLTexture> MVKBufferView::getMTLTexture() {
@@ -153,7 +152,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 
 #pragma mark Construction
 
-MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pCreateInfo) : MVKRefCountedDeviceObject(device) {
     _buffer = (MVKBuffer*)pCreateInfo->buffer;
     _mtlBufferOffset = _buffer->getMTLBufferOffset() + pCreateInfo->offset;
     _mtlPixelFormat = mtlPixelFormatFromVkFormat(pCreateInfo->format);

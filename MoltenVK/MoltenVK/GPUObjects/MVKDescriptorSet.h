@@ -239,6 +239,9 @@ public:
 	/** Constructs an instance. */
 	MVKDescriptorBinding(MVKDescriptorSetLayoutBinding* pBindingLayout);
 
+	/** Destructor. */
+	~MVKDescriptorBinding();
+
 protected:
 	friend class MVKDescriptorSetLayoutBinding;
 

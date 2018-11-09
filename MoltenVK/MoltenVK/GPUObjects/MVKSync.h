@@ -101,34 +101,23 @@ private:
 #pragma mark MVKSignalable
 
 /** Abstract class for Vulkan semaphores and fences. */
-class MVKSignalable : public MVKBaseDeviceObject {
+class MVKSignalable : public MVKRefCountedDeviceObject {
 
 public:
 
 	/* Called when this object has been added to a tracker for later signaling. */
-	void wasAddedToSignaler();
+	void wasAddedToSignaler() { retain(); }
 
 	/**
 	 * Called when this object has been removed from a tracker for later signaling.
 	 * If this object was destroyed while this signal was pending, it will now be deleted.
 	 */
-	void wasRemovedFromSignaler();
-
-	/** If this object is waiting to be signaled, deletion will be deferred until then. */
-	void destroy() override;
+	void wasRemovedFromSignaler() { release(); }
 
 
 #pragma mark Construction
 
-	MVKSignalable(MVKDevice* device) : MVKBaseDeviceObject(device) {}
-
-protected:
-	bool decrementSignalerCount();
-	bool markDestroyed();
-
-	std::mutex _signalerLock;
-	uint32_t _signalerCount = 0;
-	bool _isDestroyed = false;
+	MVKSignalable(MVKDevice* device) : MVKRefCountedDeviceObject(device) {}
 };
 
 

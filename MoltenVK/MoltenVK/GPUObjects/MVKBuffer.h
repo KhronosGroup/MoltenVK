@@ -84,7 +84,7 @@ protected:
 #pragma mark MVKBufferView
 
 /** Represents a Vulkan buffer view. */
-class MVKBufferView : public MVKBaseDeviceObject {
+class MVKBufferView : public MVKRefCountedDeviceObject {
 
 public:
 
