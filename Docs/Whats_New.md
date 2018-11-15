@@ -12,6 +12,24 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
+MoltenVK 1.0.27
+---------------
+
+Released 2018/11/15
+
+- Remove destroyed resources from descriptor sets.
+- Forbid compressed formats on non-2D images.
+- Update to latest dependency libraries for Vulkan SDK 1.1.92.
+- Update to latest SPIRV-Cross version:
+	- MSL: Print early_fragment_tests specifier before fragment shader declaration.
+	- MSL: Also pack members at unaligned offsets.
+	- MSL: Also pack 2- and 4- element vectors when necessary.
+	- MSL: Emit wrapper for SSign (sign() for int types).
+	- MSL: Support extended arithmetic opcodes.
+	- Handle opcode OpSourceContinued.
+	- Handle group decorations.
+
+
 MoltenVK 1.0.26
 ---------------
 

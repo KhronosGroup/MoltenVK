@@ -91,8 +91,8 @@
 		A9C2AB98218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
 		A9C2AB9B218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
 		A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMoltenVK.a; path = ../../../MoltenVK/macOS/static/libMoltenVK.a; sourceTree = "<group>"; };
-		A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HelpersDispatchTable.cpp; sourceTree = SOURCE_ROOT; };
-		A9D516F71CD575E300097D96 /* HelpersDispatchTable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HelpersDispatchTable.h; sourceTree = SOURCE_ROOT; };
+		A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HelpersDispatchTable.cpp; sourceTree = "<group>"; };
+		A9D516F71CD575E300097D96 /* HelpersDispatchTable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HelpersDispatchTable.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -243,8 +243,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 1D6058960D05DD3E006BFB54 /* Build configuration list for PBXNativeTarget "Hologram-iOS" */;
 			buildPhases = (
-				A99789D71CD41746005E7DAC /* ShellScript */,
-				A9006C4A1CDAB49000C6BC7B /* ShellScript */,
 				1D60588D0D05DD3D006BFB54 /* Resources */,
 				1D60588E0D05DD3D006BFB54 /* Sources */,
 				1D60588F0D05DD3D006BFB54 /* Frameworks */,
@@ -262,8 +260,6 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A977BCFB1B66BB010067E5BF /* Build configuration list for PBXNativeTarget "Hologram-macOS" */;
 			buildPhases = (
-				A99789CD1CD3FFEB005E7DAC /* Run Script */,
-				A9D516F41CD5752C00097D96 /* ShellScript */,
 				A977BCBE1B66BB010067E5BF /* Resources */,
 				A977BCC91B66BB010067E5BF /* Sources */,
 				A977BCF11B66BB010067E5BF /* Frameworks */,
@@ -338,63 +334,6 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
-
-/* Begin PBXShellScriptBuildPhase section */
-		A9006C4A1CDAB49000C6BC7B /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "../VulkanSamples/Sample-Programs/Hologram/generate-dispatch-table HelpersDispatchTable.cpp";
-		};
-		A99789CD1CD3FFEB005E7DAC /* Run Script */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-				"",
-			);
-			name = "Run Script";
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "../VulkanSamples/Sample-Programs/Hologram/generate-dispatch-table HelpersDispatchTable.h";
-		};
-		A99789D71CD41746005E7DAC /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "../VulkanSamples/Sample-Programs/Hologram/generate-dispatch-table HelpersDispatchTable.h";
-		};
-		A9D516F41CD5752C00097D96 /* ShellScript */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = "../VulkanSamples/Sample-Programs/Hologram/generate-dispatch-table HelpersDispatchTable.cpp\n";
-		};
-/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		1D60588E0D05DD3D006BFB54 /* Sources */ = {
