@@ -649,17 +649,37 @@ protected:
 #pragma mark -
 #pragma mark MVKRefCountedDeviceObject
 
-/** Represents a device-spawned object that can live past destruction by the client. */
+/**
+ * Represents a device-spawned object that supports basic reference counting.
+ *
+ * An object of this type will automatically be deleted iff it has been destroyed
+ * by the client, and all references have been released. An object of this type is
+ * therefore allowed to live past its destruction by the client, until it is no
+ * longer referenced by other objects.
+ */
 class MVKRefCountedDeviceObject : public MVKBaseDeviceObject {
 
 public:
 
-    /** Increments the object reference count by one. */
+    /**
+	 * Called when this instance has been retained as a reference by another object,
+	 * indicating that this instance will not be deleted until that reference is released.
+	 */
     void retain();
 
-    /** Decrements the object reference count by one. */
+    /**
+	 * Called when this instance has been released as a reference from another object.
+	 * Once all references have been released, this object is free to be deleted.
+	 * If the destroy() function has already been called on this instance by the time
+	 * this function is called, this instance will be deleted.
+	 */
     void release();
 
+	/**
+	 * Marks this instance as destroyed. If all previous references to this instance
+	 * have been released, this instance will be deleted, otherwise deletion of this
+	 * instance will automatically be deferred until all references have been released.
+	 */
     void destroy() override;
 
 #pragma mark Construction

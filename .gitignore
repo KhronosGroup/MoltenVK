@@ -1,6 +1,14 @@
 # MoltenVK specific
 Package/
 
+# MoltenVK Dependencies
+External/cereal
+External/glslang
+External/SPIRV-Cross
+External/Vulkan-Headers
+External/Vulkan-Tools
+External/VulkanSamples
+
 # Mac OS X Finder
 .DS_Store
 
@@ -13,14 +21,6 @@ project.xcworkspace/
 # build products
 build/
 *.[oa]
-
-# Dependencies
-External/cereal
-External/glslang
-External/SPIRV-Cross
-External/Vulkan-Headers
-External/Vulkan-Tools
-External/VulkanSamples
 
 # Other source repository archive directories (protects when importing)
 .hg

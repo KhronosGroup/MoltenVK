@@ -993,14 +993,14 @@ void MVKSwapchainImage::signal(MVKSwapchainSignaler& signaler) {
 
 // Tell the semaphore and fence that they are being tracked for future signaling.
 void MVKSwapchainImage::markAsTracked(MVKSwapchainSignaler& signaler) {
-	if (signaler.first) { signaler.first->wasAddedToSignaler(); }
-	if (signaler.second) { signaler.second->wasAddedToSignaler(); }
+	if (signaler.first) { signaler.first->retain(); }
+	if (signaler.second) { signaler.second->retain(); }
 }
 
 // Tell the semaphore and fence that they are no longer being tracked for future signaling.
 void MVKSwapchainImage::unmarkAsTracked(MVKSwapchainSignaler& signaler) {
-	if (signaler.first) { signaler.first->wasRemovedFromSignaler(); }
-	if (signaler.second) { signaler.second->wasRemovedFromSignaler(); }
+	if (signaler.first) { signaler.first->release(); }
+	if (signaler.second) { signaler.second->release(); }
 }
 
 const MVKSwapchainImageAvailability* MVKSwapchainImage::getAvailability() {

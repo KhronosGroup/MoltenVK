@@ -635,6 +635,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 				const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcStartIndex + i);
 				auto* oldSampler = (MVKSampler*)_imageBindings[dstIdx].sampler;
 				_imageBindings[dstIdx] = *pImgInfo;
+				_imageBindings[dstIdx].imageView = nullptr;		// Sampler only. Guard against app not explicitly clearing ImageView.
 				if (_hasDynamicSamplers) {
 					auto* mvkSampler = (MVKSampler*)pImgInfo->sampler;
 					mvkSampler->retain();
@@ -682,6 +683,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
                     mvkImageView->retain();
                 }
 				_imageBindings[dstIdx] = *pImgInfo;
+				_imageBindings[dstIdx].sampler = nullptr;		// ImageView only. Guard against app not explicitly clearing Sampler.
 				_mtlTextures[dstIdx] = mvkImageView ? mvkImageView->getMTLTexture() : nil;
                 if (oldImageView) {
                     oldImageView->release();
