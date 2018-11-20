@@ -86,7 +86,7 @@ build_repo() {
 		ninja
 	else
 		cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=install ..
-		make
+		make -j
 	fi
 
 	make install
