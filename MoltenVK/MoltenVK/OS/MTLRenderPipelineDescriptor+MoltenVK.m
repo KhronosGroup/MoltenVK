@@ -16,12 +16,13 @@
  * limitations under the License.
  */
 
-
+#include "MVKEnvironment.h"
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
 #include "MVKCommonEnvironment.h"
 
 @implementation MTLRenderPipelineDescriptor (MoltenVK)
 
+#if MVK_SUPPORT_INPUT_PRIMITIVE_TOPOLOGY_BOOL
 -(MTLPrimitiveTopologyClass) inputPrimitiveTopologyMVK {
 	if ( [self respondsToSelector: @selector(inputPrimitiveTopology)] ) { return self.inputPrimitiveTopology; }
 	return MTLPrimitiveTopologyClassUnspecified;
@@ -30,5 +31,6 @@
 -(void) setInputPrimitiveTopologyMVK: (MTLPrimitiveTopologyClass) topology {
 	if ([self respondsToSelector: @selector(setInputPrimitiveTopology:)]) { self.inputPrimitiveTopology = topology; }
 }
+#endif
 
 @end

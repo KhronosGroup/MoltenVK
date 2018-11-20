@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "MVKEnvironment.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKCommandPipelineStateFactoryShaderSource.h"
 #include "MVKPipeline.h"
@@ -90,8 +91,9 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
     plDesc.vertexFunction = getFunctionNamed("vtxCmdClearAttachments");
     plDesc.fragmentFunction = getClearFragFunction(attKey);
 	plDesc.sampleCount = attKey.mtlSampleCount;
+#if MVK_SUPPORT_INPUT_PRIMITIVE_TOPOLOGY_BOOL
 	plDesc.inputPrimitiveTopologyMVK = MTLPrimitiveTopologyClassTriangle;
-
+#endif
     for (uint32_t caIdx = 0; caIdx < kMVKAttachmentFormatDepthStencilIndex; caIdx++) {
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
         colorDesc.pixelFormat = (MTLPixelFormat)attKey.attachmentMTLPixelFormats[caIdx];

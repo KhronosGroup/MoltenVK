@@ -24,6 +24,7 @@
 /** Extensions to MTLRenderPassDescriptor to support MoltenVK. */
 @interface MTLRenderPipelineDescriptor (MoltenVK)
 
+#if MVK_SUPPORT_INPUT_PRIMITIVE_TOPOLOGY_BOOL
 /**
  * Replacement for the inputPrimitiveTopology property.
  *
@@ -32,5 +33,5 @@
  * read and does nothing when set.
  */
 @property(nonatomic, readwrite) MTLPrimitiveTopologyClass inputPrimitiveTopologyMVK;
-
+#endif
 @end

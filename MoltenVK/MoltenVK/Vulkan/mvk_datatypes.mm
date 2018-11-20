@@ -978,6 +978,7 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(Vk
 	}
 }
 
+#if MVK_SUPPORT_INPUT_PRIMITIVE_TOPOLOGY_BOOL
 MVK_PUBLIC_SYMBOL MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology) {
 	switch (vkTopology) {
 		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
@@ -1002,6 +1003,7 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPr
 			return MTLPrimitiveTopologyClassUnspecified;
 	}
 }
+#endif
 
 MVK_PUBLIC_SYMBOL MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(VkPolygonMode vkFillMode) {
 	switch (vkFillMode) {

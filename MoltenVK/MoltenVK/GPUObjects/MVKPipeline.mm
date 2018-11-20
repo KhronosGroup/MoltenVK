@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+#include "MVKEnvironment.h"
 #include "MVKPipeline.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include "MVKRenderPass.h"
@@ -453,11 +454,13 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         plDesc.alphaToOneEnabled = pCreateInfo->pMultisampleState->alphaToOneEnable;
     }
 
+#if MVK_SUPPORT_INPUT_PRIMITIVE_TOPOLOGY_BOOL
 	if (pCreateInfo->pInputAssemblyState) {
 		plDesc.inputPrimitiveTopologyMVK = isRenderingPoints(pCreateInfo)
 												? MTLPrimitiveTopologyClassPoint
 												: mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
 	}
+#endif
 
     return plDesc;
 }
