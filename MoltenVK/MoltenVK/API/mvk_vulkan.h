@@ -23,10 +23,6 @@
  *
  * When building for iOS, this header automatically enables the VK_MVK_ios_surface Vulkan extension.
  * When building for macOS, this header automatically enables the VK_MVK_macos_surface Vulkan extension.
- *
- * Use the following form when including this header file:
- *
- *     #include <MoltenVK/mvk_vulkan.h>
  */
 
 #ifndef __mvk_vulkan_h_

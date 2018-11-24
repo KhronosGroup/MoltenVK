@@ -410,7 +410,8 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
-					"\"$(SRCROOT)/../../../MoltenVK/include\"",
+					"\"$(SRCROOT)/../../../MoltenVK/include/MoltenVK\"",
+					"\"$(SRCROOT)/../../../External/Vulkan-Headers/include\"",
 				);
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-ObjC";
@@ -434,7 +435,8 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
-					"\"$(SRCROOT)/../../../MoltenVK/include\"",
+					"\"$(SRCROOT)/../../../MoltenVK/include/MoltenVK\"",
+					"\"$(SRCROOT)/../../../External/Vulkan-Headers/include\"",
 				);
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.moltenvk.${PRODUCT_NAME:identifier}";
