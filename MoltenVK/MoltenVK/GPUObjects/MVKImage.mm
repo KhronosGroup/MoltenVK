@@ -513,9 +513,17 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
                                                        _arrayLayers,
                                                        (pCreateInfo->samples > 1));
     _samples = pCreateInfo->samples;
-    if ( (_samples > 1) && (_mtlTextureType != MTLTextureType2DMultisample) ) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type with an array length of 1. Setting sample count to 1."));
+    if ( (_samples > 1) && (_mtlTextureType != MTLTextureType2DMultisample) &&
+         (pCreateInfo->imageType != VK_IMAGE_TYPE_2D || !_device->_pMetalFeatures->multisampleArrayTextures) ) {
+        if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
+            setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
+        } else {
+            setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This version of Metal does not support multisampled array textures. Setting sample count to 1."));
+        }
         _samples = VK_SAMPLE_COUNT_1_BIT;
+        if (pCreateInfo->imageType == VK_IMAGE_TYPE_2D) {
+            _mtlTextureType = MTLTextureType2DArray;
+        }
     }
     if ( (_samples > 1) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatNone) ) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with compressed images. Setting sample count to 1."));

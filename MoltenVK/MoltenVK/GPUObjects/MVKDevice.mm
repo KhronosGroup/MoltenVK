@@ -533,6 +533,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.texelBuffers = true;
 		_metalFeatures.presentModeImmediate = true;
     }
+
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v4] ) {
+        _metalFeatures.multisampleArrayTextures = true;
+    }
+
 #endif
 
     for (uint32_t sc = VK_SAMPLE_COUNT_1_BIT; sc <= VK_SAMPLE_COUNT_64_BIT; sc <<= 1) {
