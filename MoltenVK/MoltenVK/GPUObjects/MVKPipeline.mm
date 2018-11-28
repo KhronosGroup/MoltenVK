@@ -488,6 +488,40 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
         va.mslBuffer = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
         va.mslOffset = pVKVA->offset;
 
+        // Metal can't do signedness conversions on vertex buffers (rdar://45922847). If the shader
+        // and the vertex attribute have mismatched signedness, we have to fix the shader
+        // to match the vertex attribute. So tell SPIRV-Cross if we're expecting an unsigned format.
+        // Only do this if the attribute could be reasonably expected to fit in the shader's
+        // declared type. Programs that try to invoke undefined behavior are on their own.
+        switch (mvkFormatTypeFromVkFormat(pVKVA->format) ) {
+        case kMVKFormatColorUInt8:
+            va.format = MSLVertexFormat::UInt8;
+            break;
+
+        case kMVKFormatColorUInt16:
+            va.format = MSLVertexFormat::UInt16;
+            break;
+
+        case kMVKFormatDepthStencil:
+            // Only some depth/stencil formats have unsigned components.
+            switch (pVKVA->format) {
+            case VK_FORMAT_S8_UINT:
+            case VK_FORMAT_D16_UNORM_S8_UINT:
+            case VK_FORMAT_D24_UNORM_S8_UINT:
+            case VK_FORMAT_D32_SFLOAT_S8_UINT:
+                va.format = MSLVertexFormat::UInt8;
+                break;
+
+            default:
+                break;
+            }
+            break;
+
+        default:
+            break;
+
+        }
+
         // Set stride and input rate of vertex attribute from corresponding Vulkan vertex bindings
         uint32_t vbCnt = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
         for (uint32_t vbIdx = 0; vbIdx < vbCnt; vbIdx++) {
