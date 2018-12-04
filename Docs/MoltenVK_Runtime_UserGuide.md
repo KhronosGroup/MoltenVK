@@ -221,17 +221,28 @@ in your source code files as follows:
 
 In addition to the core *Vulkan* API, **MoltenVK**  also supports the following *Vulkan* extensions:
 
+- `VK_KHR_16bit_storage`
+- `VK_KHR_dedicated_allocation`
+- `VK_KHR_descriptor_update_template`
+- `VK_KHR_get_memory_requirements2`
+- `VK_KHR_get_physical_device_properties2`
+- `VK_KHR_image_format_list`
+- `VK_KHR_maintenance1`
+- `VK_KHR_maintenance2`
+- `VK_KHR_maintenance3`
+- `VK_KHR_push_descriptor`
+- `VK_KHR_relaxed_block_layout`
+- `VK_KHR_sampler_mirror_clamp_to_edge`
+- `VK_KHR_shader_draw_parameters`
+- `VK_KHR_storage_buffer_storage_class`
+- `VK_KHR_surface`
+- `VK_KHR_swapchain`
+- `VK_EXT_shader_viewport_index_layer`
+- `VK_EXT_vertex_attribute_divisor`
 - `VK_MVK_moltenvk`
 - `VK_MVK_macos_surface` (macOS)
 - `VK_MVK_ios_surface` (iOS)
-- `VK_KHR_surface`
-- `VK_KHR_swapchain`
-- `vk_KHR_maintenance1`
-- `vk_AMD_negative_viewport_height`
-- `vk_KHR_shader_draw_parameters`
-- `vk_KHR_get_physical_device_properties2`
-- `vk_KHR_push_descriptor`
-- `vk_KHR_descriptor_update_template`
+- `VK_AMD_negative_viewport_height`
 - `VK_IMG_format_pvrtc` (iOS)
 
 In order to visibly display your content on *iOS* or *macOS*, you must enable the `VK_MVK_ios_surface` 
