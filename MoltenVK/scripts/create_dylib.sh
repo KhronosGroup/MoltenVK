@@ -30,3 +30,7 @@ ${MVK_TSAN} \
 --library-directory ${MVK_USR_LIB_DIR} \
 -o "${BUILT_PRODUCTS_DIR}/${MVK_DYLIB_NAME}" \
 -force_load "${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a"
+
+if test "$CONFIGURATION" = Debug; then
+	dsymutil "${BUILT_PRODUCTS_DIR}/${MVK_DYLIB_NAME}" -o "${DWARF_DSYM_FOLDER_PATH}/${MVK_DYLIB_NAME}${DWARF_DSYM_FILE_NAME}"
+fi
