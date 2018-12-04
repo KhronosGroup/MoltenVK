@@ -321,6 +321,10 @@ public:
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
 
+	/** Returns whether or not the given descriptor set layout is supported. */
+	void getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+									   VkDescriptorSetLayoutSupport* pSupport);
+
 
 #pragma mark Object lifecycle
 

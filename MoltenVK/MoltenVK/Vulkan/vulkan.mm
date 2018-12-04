@@ -1618,6 +1618,18 @@ MVK_PUBLIC_SYMBOL void vkTrimCommandPoolKHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_maintenance3 extension
+
+MVK_PUBLIC_SYMBOL void vkGetDescriptorSetLayoutSupportKHR(
+    VkDevice                                    device,
+    const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
+    VkDescriptorSetLayoutSupportKHR*            pSupport) {
+    MVKDevice* mvkDevice = (MVKDevice*)device;
+    mvkDevice->getDescriptorSetLayoutSupport(pCreateInfo, pSupport);
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_push_descriptor extension
 
 MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetKHR(
