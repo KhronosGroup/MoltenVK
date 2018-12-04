@@ -271,6 +271,7 @@ id<MTLTexture> MVKImage::getMTLTexture() {
 }
 
 VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
+    lock_guard<mutex> lock(_lock);
     resetMTLTexture();
     resetIOSurface();
 
