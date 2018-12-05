@@ -65,6 +65,15 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
         auto* next = (VkStructureType*)features->pNext;
         while (next) {
             switch (*next) {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+                auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
+                storageFeatures->storageBuffer16BitAccess = true;
+                storageFeatures->uniformAndStorageBuffer16BitAccess = true;
+                storageFeatures->storagePushConstant16 = true;
+                storageFeatures->storageInputOutput16 = true;
+                next = (VkStructureType*)storageFeatures->pNext;
+                break;
+            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
                 auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
                 divisorFeatures->vertexAttributeInstanceRateDivisor = true;
