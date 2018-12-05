@@ -235,6 +235,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_KHR_relaxed_block_layout`
 - `VK_KHR_sampler_mirror_clamp_to_edge`
 - `VK_KHR_shader_draw_parameters`
+- `VK_KHR_shader_float16_int8`
 - `VK_KHR_storage_buffer_storage_class`
 - `VK_KHR_surface`
 - `VK_KHR_swapchain`

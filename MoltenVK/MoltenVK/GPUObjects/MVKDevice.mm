@@ -82,6 +82,13 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                 next = (VkStructureType*)storageFeatures->pNext;
                 break;
             }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
+                auto* f16Features = (VkPhysicalDeviceFloat16Int8FeaturesKHR*)next;
+                f16Features->shaderFloat16 = true;
+                f16Features->shaderInt8 = false;  // FIXME Needs SPIRV-Cross update
+                next = (VkStructureType*)f16Features->pNext;
+                break;
+            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
                 auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
                 divisorFeatures->vertexAttributeInstanceRateDivisor = true;
