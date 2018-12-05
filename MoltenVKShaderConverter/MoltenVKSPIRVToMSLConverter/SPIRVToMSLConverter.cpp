@@ -54,6 +54,7 @@ MVK_PUBLIC_SYMBOL bool MSLVertexAttribute::matches(const MSLVertexAttribute& oth
     if (mslBuffer != other.mslBuffer) { return false; }
     if (mslOffset != other.mslOffset) { return false; }
     if (mslStride != other.mslStride) { return false; }
+    if (format != other.format) { return false; }
     if (!!isPerInstance != !!other.isPerInstance) { return false; }
     return true;
 }
@@ -161,6 +162,17 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
         va.msl_offset = ctxVA.mslOffset;
         va.msl_stride = ctxVA.mslStride;
         va.per_instance = ctxVA.isPerInstance;
+        switch (ctxVA.format) {
+        case MSLVertexFormat::Other:
+            va.format = spirv_cross::MSL_VERTEX_FORMAT_OTHER;
+            break;
+        case MSLVertexFormat::UInt8:
+            va.format = spirv_cross::MSL_VERTEX_FORMAT_UINT8;
+            break;
+        case MSLVertexFormat::UInt16:
+            va.format = spirv_cross::MSL_VERTEX_FORMAT_UINT16;
+            break;
+        }
         va.used_by_shader = ctxVA.isUsedByShader;
 		vtxAttrs.push_back(va);
 	}

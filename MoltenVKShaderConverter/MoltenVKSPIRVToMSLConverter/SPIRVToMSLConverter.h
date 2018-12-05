@@ -69,6 +69,17 @@ namespace mvk {
     } SPIRVToMSLConverterOptions;
 
 	/**
+	 * Defines the format of a vertex attribute. Currently limited to describing
+	 * whether or not the attribute is of an 8-bit unsigned format, a 16-bit
+	 * unsigned format, or some other format.
+	 */
+	enum class MSLVertexFormat {
+		Other,
+		UInt8,
+		UInt16
+	};
+
+	/**
 	 * Defines MSL characteristics of a vertex attribute at a particular location.
 	 * The isUsedByShader flag is set to true during conversion of SPIR-V to MSL
 	 * if the shader makes use of this vertex attribute.
@@ -78,6 +89,7 @@ namespace mvk {
 		uint32_t mslBuffer = 0;
         uint32_t mslOffset = 0;
         uint32_t mslStride = 0;
+		MSLVertexFormat format = MSLVertexFormat::Other;
         bool isPerInstance = false;
 
 		bool isUsedByShader = false;
