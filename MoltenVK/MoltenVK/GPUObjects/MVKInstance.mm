@@ -283,6 +283,8 @@ void MVKInstance::initProcAddrs() {
 	ADD_PROC_ADDR(vkCmdExecuteCommands);
 
 	// Supported extensions:
+	ADD_PROC_ADDR(vkBindBufferMemory2KHR);
+	ADD_PROC_ADDR(vkBindImageMemory2KHR);
 	ADD_PROC_ADDR(vkCreateDescriptorUpdateTemplateKHR);
 	ADD_PROC_ADDR(vkDestroyDescriptorUpdateTemplateKHR);
 	ADD_PROC_ADDR(vkUpdateDescriptorSetWithTemplateKHR);

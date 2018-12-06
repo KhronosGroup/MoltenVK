@@ -20,6 +20,18 @@
 #include "MVKCommandBuffer.h"
 
 
+struct MVKBindDeviceMemoryInfo {
+	VkStructureType sType;
+	void* pNext;
+	union {
+		VkBuffer buffer;
+		VkImage image;
+	};
+	VkDeviceMemory memory;
+	VkDeviceSize memoryOffset;
+};
+
+
 #pragma mark MVKResource
 
 VkResult MVKResource::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
@@ -31,6 +43,11 @@ VkResult MVKResource::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize mem
 	_deviceMemory = mvkMem;
 	_deviceMemoryOffset = memOffset;
 	return VK_SUCCESS;
+}
+
+VkResult MVKResource::bindDeviceMemory2(const void* pBindInfo) {
+	auto* mvkBindInfo = (const MVKBindDeviceMemoryInfo*)pBindInfo;
+	return bindDeviceMemory((MVKDeviceMemory*)mvkBindInfo->memory, mvkBindInfo->memoryOffset);
 }
 
 // Returns whether the specified global memory barrier requires a sync between this

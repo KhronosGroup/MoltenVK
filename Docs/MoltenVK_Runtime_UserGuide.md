@@ -223,6 +223,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 
 - `VK_KHR_16bit_storage`
 - `VK_KHR_8bit_storage`
+- `VK_KHR_bind_memory2`
 - `VK_KHR_dedicated_allocation`
 - `VK_KHR_descriptor_update_template`
 - `VK_KHR_get_memory_requirements2`
