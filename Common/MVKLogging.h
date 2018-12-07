@@ -183,7 +183,7 @@ static inline void MVKLogImplV(bool logToPrintf, bool logToASL, int aslLvl, cons
 	char lvlFmt[strlen(lvlStr) + strlen(format) + 5];
 	sprintf(lvlFmt, "[%s] %s\n", lvlStr, format);
 
-	if (logToPrintf) { vprintf(lvlFmt, args); }
+	if (logToPrintf) { vfprintf(stderr, lvlFmt, args); }
 //	if (logToASL) { asl_vlog(NULL, NULL, aslLvl, lvlFmt, args); }       // Multi-threaded ASL support requires a separate ASL client to be opened per thread!
 }
 
