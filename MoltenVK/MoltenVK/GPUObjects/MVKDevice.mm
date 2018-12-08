@@ -65,6 +65,30 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
         auto* next = (VkStructureType*)features->pNext;
         while (next) {
             switch (*next) {
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+                auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
+                storageFeatures->storageBuffer16BitAccess = true;
+                storageFeatures->uniformAndStorageBuffer16BitAccess = true;
+                storageFeatures->storagePushConstant16 = true;
+                storageFeatures->storageInputOutput16 = true;
+                next = (VkStructureType*)storageFeatures->pNext;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
+                auto* storageFeatures = (VkPhysicalDevice8BitStorageFeaturesKHR*)next;
+                storageFeatures->storageBuffer8BitAccess = true;
+                storageFeatures->uniformAndStorageBuffer8BitAccess = true;
+                storageFeatures->storagePushConstant8 = true;
+                next = (VkStructureType*)storageFeatures->pNext;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
+                auto* f16Features = (VkPhysicalDeviceFloat16Int8FeaturesKHR*)next;
+                f16Features->shaderFloat16 = true;
+                f16Features->shaderInt8 = false;  // FIXME Needs SPIRV-Cross update
+                next = (VkStructureType*)f16Features->pNext;
+                break;
+            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
                 auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
                 divisorFeatures->vertexAttributeInstanceRateDivisor = true;
@@ -91,16 +115,23 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
         auto* next = (VkStructureType*)properties->pNext;
         while (next) {
             switch (*next) {
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
-                auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
-                pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
-                next = (VkStructureType*)pushDescProps->pNext;
-                break;
-            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
                 auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
                 pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
                 next = (VkStructureType*)pointClipProps->pNext;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
+                auto* maint3Props = (VkPhysicalDeviceMaintenance3Properties*)next;
+                maint3Props->maxPerSetDescriptors = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount + _metalFeatures.maxPerStageSamplerCount) * 2;
+                maint3Props->maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
+                next = (VkStructureType*)maint3Props->pNext;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+                auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
+                pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
+                next = (VkStructureType*)pushDescProps->pNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
@@ -533,6 +564,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.texelBuffers = true;
 		_metalFeatures.presentModeImmediate = true;
     }
+
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v4] ) {
+        _metalFeatures.multisampleArrayTextures = true;
+    }
+
 #endif
 
     for (uint32_t sc = VK_SAMPLE_COUNT_1_BIT; sc <= VK_SAMPLE_COUNT_64_BIT; sc <<= 1) {
@@ -1249,6 +1285,19 @@ VkResult MVKDevice::waitIdle() {
 		}
 	}
 	return VK_SUCCESS;
+}
+
+void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+											  VkDescriptorSetLayoutSupport* pSupport) {
+	// According to the Vulkan spec:
+	//   "If the descriptor set layout satisfies the VkPhysicalDeviceMaintenance3Properties::maxPerSetDescriptors
+	//   limit, this command is guaranteed to return VK_TRUE in VkDescriptorSetLayout::supported...
+	//   "This command does not consider other limits such as maxPerStageDescriptor*..."
+	uint32_t descriptorCount = 0;
+	for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
+		descriptorCount += pCreateInfo->pBindings[i].descriptorCount;
+	}
+	pSupport->supported = (descriptorCount < ((_physicalDevice->_metalFeatures.maxPerStageBufferCount + _physicalDevice->_metalFeatures.maxPerStageTextureCount + _physicalDevice->_metalFeatures.maxPerStageSamplerCount) * 2));
 }
 
 

@@ -214,7 +214,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
     _mtlLayerOrigDrawSize = _mtlLayer.updatedDrawableSizeMVK;
     VkExtent2D imgExtent = mvkVkExtent2DFromCGSize(_mtlLayerOrigDrawSize);
 
-    const VkImageCreateInfo imgInfo = {
+    VkImageCreateInfo imgInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .imageType = VK_IMAGE_TYPE_2D,
@@ -227,6 +227,10 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
         .usage = pCreateInfo->imageUsage,
         .flags = 0,
     };
+
+	if (mvkAreFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)) {
+		mvkEnableFlag(imgInfo.flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT|VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
+	}
 
 	VkSurfaceCapabilitiesKHR srfcProps;
 	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;

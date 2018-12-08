@@ -1475,6 +1475,40 @@ MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
 
 
 #pragma mark -
+#pragma mark VK_KHR_bind_memory2 extension
+
+MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory2KHR(
+    VkDevice                                       device,
+    uint32_t                                       bindInfoCount,
+    const VkBindBufferMemoryInfoKHR*               pBindInfos) {
+    VkResult res;
+    for (uint32_t i = 0; i < bindInfoCount; ++i) {
+        MVKBuffer* mvkBuff = (MVKBuffer*)pBindInfos[i].buffer;
+        res = mvkBuff->bindDeviceMemory2(&pBindInfos[i]);
+        if (res != VK_SUCCESS) {
+            break;
+        }
+    }
+    return res;
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory2KHR(
+    VkDevice                                       device,
+    uint32_t                                       bindInfoCount,
+    const VkBindImageMemoryInfoKHR*                pBindInfos) {
+    VkResult res;
+    for (uint32_t i = 0; i < bindInfoCount; ++i) {
+        MVKImage* mvkImg = (MVKImage*)pBindInfos[i].image;
+        res = mvkImg->bindDeviceMemory2(&pBindInfos[i]);
+        if (res != VK_SUCCESS) {
+            break;
+        }
+    }
+    return res;
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_descriptor_update_template extension
 
 MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorUpdateTemplateKHR(
@@ -1614,6 +1648,18 @@ MVK_PUBLIC_SYMBOL void vkTrimCommandPoolKHR(
     VkCommandPoolTrimFlagsKHR                   flags) {
 	MVKCommandPool* mvkCmdPool = (MVKCommandPool*)commandPool;
     mvkCmdPool->trim();
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_maintenance3 extension
+
+MVK_PUBLIC_SYMBOL void vkGetDescriptorSetLayoutSupportKHR(
+    VkDevice                                    device,
+    const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
+    VkDescriptorSetLayoutSupportKHR*            pSupport) {
+    MVKDevice* mvkDevice = (MVKDevice*)device;
+    mvkDevice->getDescriptorSetLayoutSupport(pCreateInfo, pSupport);
 }
 
 
