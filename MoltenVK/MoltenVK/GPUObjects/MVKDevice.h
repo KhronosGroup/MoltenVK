@@ -502,7 +502,10 @@ public:
 	 *
 	 * All other pixel formats are returned unchanged.
 	 */
-	MTLPixelFormat mtlPixelFormatFromVkFormat(VkFormat vkFormat);
+	MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat);
+
+	/** Returns the memory alignment required for the format when used in a texel buffer. */
+	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format);
 
     /** 
      * Returns the MTLBuffer used to hold occlusion query results, 
@@ -608,12 +611,12 @@ public:
 	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
 	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
 	 *
-	 * This function delegates to the MVKDevice::mtlPixelFormatFromVkFormat() function.
+	 * This function delegates to the MVKDevice::getMTLPixelFormatFromVkFormat() function.
 	 * See the notes for that function for more information about how MTLPixelFormats
 	 * are managed for each platform device.
 	 */
-    inline MTLPixelFormat mtlPixelFormatFromVkFormat(VkFormat vkFormat) {
-        return _device->mtlPixelFormatFromVkFormat(vkFormat);
+    inline MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
+        return _device->getMTLPixelFormatFromVkFormat(vkFormat);
     }
 
 	/** Constructs an instance for the specified device. */

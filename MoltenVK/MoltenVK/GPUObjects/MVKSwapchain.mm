@@ -192,7 +192,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo)
 	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
 	_mtlLayer = mvkSrfc->getCAMetalLayer();
 	_mtlLayer.device = getMTLDevice();
-	_mtlLayer.pixelFormat = mtlPixelFormatFromVkFormat(pCreateInfo->imageFormat);
+	_mtlLayer.pixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->imageFormat);
 	_mtlLayer.displaySyncEnabledMVK = (pCreateInfo->presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 	_mtlLayer.magnificationFilter = _device->_pMVKConfig->swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
 	_mtlLayer.framebufferOnly = !mvkIsAnyFlagEnabled(pCreateInfo->imageUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
