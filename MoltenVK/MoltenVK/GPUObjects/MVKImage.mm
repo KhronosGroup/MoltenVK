@@ -481,8 +481,6 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
 
 MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKResource(device) {
 
-    _byteAlignment = _device->_pProperties->limits.minTexelBufferOffsetAlignment;
-
     if (pCreateInfo->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) {
         mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal may not allow uncompressed views of compressed images.");
     }
@@ -509,7 +507,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
     _mtlTexture = nil;
     _ioSurface = nil;
-    _mtlPixelFormat = mtlPixelFormatFromVkFormat(pCreateInfo->format);
+    _mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
     _mtlTextureType = mvkMTLTextureTypeFromVkImageType(pCreateInfo->imageType,
                                                        _arrayLayers,
                                                        (pCreateInfo->samples > 1));
@@ -537,6 +535,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     _hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
 	_isLinear = validateLinear(pCreateInfo);
 	_usesTexelBuffer = false;
+
+	_byteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format) : mvkVkFormatBytesPerBlock(pCreateInfo->format);
 
     // Calc _byteCount after _mtlTexture & _byteAlignment
     for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
@@ -763,7 +763,7 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 // alignments of existing MTLPixelFormats of the same structure. If swizzling is not possible for a
 // particular combination of format and swizzle spec, the original MTLPixelFormat is returned.
 MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components, bool& useSwizzle) {
-    MTLPixelFormat mtlPF = mtlPixelFormatFromVkFormat(format);
+    MTLPixelFormat mtlPF = getMTLPixelFormatFromVkFormat(format);
 
     useSwizzle = false;
     switch (mtlPF) {

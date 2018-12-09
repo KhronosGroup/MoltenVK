@@ -57,6 +57,15 @@ double mvkGetTimestampPeriod();
  */
 double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
 
+/** Ensures the block is executed on the main thread. */
+inline void mvkDispatchToMainAndWait(dispatch_block_t block) {
+	if (NSThread.isMainThread) {
+		block();
+	} else {
+		dispatch_sync(dispatch_get_main_queue(), block);
+	}
+}
+
 
 #pragma mark -
 #pragma mark MTLDevice
@@ -67,11 +76,9 @@ uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice);
 /** Populate the propertes with info about the GPU represented by the MTLDevice. */
 void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice);
 
-/** Ensures the block is executed on the main thread. */
-inline void mvkDispatchToMainAndWait(dispatch_block_t block) {
-	if (NSThread.isMainThread) {
-		block();
-	} else {
-		dispatch_sync(dispatch_get_main_queue(), block);
-	}
-}
+/**
+ * If the MTLDevice defines a texture memory alignment for the format, it is retrieved from
+ * the MTLDevice and returned, or returns zero if the MTLDevice does not define an alignment.
+ * The format must support linear texture memory (must not be depth, stencil, or compressed).
+ */
+VkDeviceSize mvkMTLPixelFormatLinearTextureAlignment(MTLPixelFormat mtlPixelFormat, id<MTLDevice> mtlDevice);

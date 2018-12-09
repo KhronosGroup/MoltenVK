@@ -188,4 +188,11 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
 }
 #endif	//MVK_IOS
 
-
+VkDeviceSize mvkMTLPixelFormatLinearTextureAlignment(MTLPixelFormat mtlPixelFormat,
+													 id<MTLDevice> mtlDevice) {
+	if ([mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
+		return [mtlDevice minimumLinearTextureAlignmentForPixelFormat: mtlPixelFormat];
+	} else {
+		return 0;
+	}
+}

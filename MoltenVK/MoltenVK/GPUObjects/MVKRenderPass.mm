@@ -178,7 +178,7 @@ void MVKRenderSubpass::populateClearAttachments(vector<VkClearAttachment>& clear
 		cAtt.colorAttachment = 0;
 		cAtt.clearValue = clearValues[attIdx];
 
-		MTLPixelFormat mtlDSFmt = _renderPass->mtlPixelFormatFromVkFormat(getDepthStencilFormat());
+		MTLPixelFormat mtlDSFmt = _renderPass->getMTLPixelFormatFromVkFormat(getDepthStencilFormat());
 		if (mvkMTLPixelFormatIsDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
 		if (mvkMTLPixelFormatIsStencilFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT; }
 		if (cAtt.aspectMask) { clearAtts.push_back(cAtt); }

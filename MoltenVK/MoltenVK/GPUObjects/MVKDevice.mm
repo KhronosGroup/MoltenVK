@@ -1684,7 +1684,7 @@ uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t bindin
 	return ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
 }
 
-MTLPixelFormat MVKDevice::mtlPixelFormatFromVkFormat(VkFormat vkFormat) {
+MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
 	MTLPixelFormat mtlPixFmt = mvkMTLPixelFormatFromVkFormat(vkFormat);
 #if MVK_MACOS
 	if (mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8 &&
@@ -1693,6 +1693,11 @@ MTLPixelFormat MVKDevice::mtlPixelFormatFromVkFormat(VkFormat vkFormat) {
 	}
 #endif
 	return mtlPixFmt;
+}
+
+VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format) {
+	VkDeviceSize deviceAlignment = mvkMTLPixelFormatLinearTextureAlignment(getMTLPixelFormatFromVkFormat(format), getMTLDevice());
+	return deviceAlignment ? deviceAlignment : _pProperties->limits.minTexelBufferOffsetAlignment;
 }
 
 id<MTLBuffer> MVKDevice::getGlobalVisibilityResultMTLBuffer() {
