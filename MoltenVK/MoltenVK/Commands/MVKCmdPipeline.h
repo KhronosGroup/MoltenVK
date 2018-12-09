@@ -19,8 +19,8 @@
 #pragma once
 
 #include "MVKCommand.h"
+#include "MVKVector.h"
 #include <vector>
-
 class MVKCommandBuffer;
 class MVKPipeline;
 class MVKPipelineLayout;
@@ -101,8 +101,8 @@ public:
 private:
 	VkPipelineBindPoint _pipelineBindPoint;
 	MVKPipelineLayout* _pipelineLayout;
-	std::vector<MVKDescriptorSet*> _descriptorSets;
-	std::vector<uint32_t> _dynamicOffsets;
+	MVKVector<MVKDescriptorSet*> _descriptorSets;
+	MVKVector<uint32_t>          _dynamicOffsets;
 	uint32_t _firstSet;
 };
 
@@ -128,7 +128,7 @@ private:
 	MVKPipelineLayout* _pipelineLayout;
 	VkShaderStageFlags _stageFlags;
 	uint32_t _offset;
-	std::vector<char> _pushConstants;
+	MVKVector<char> _pushConstants;
 };
 
 

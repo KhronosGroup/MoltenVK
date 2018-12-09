@@ -22,6 +22,7 @@
 #include "MVKCommandBuffer.h"
 #include "MVKImage.h"
 #include "MVKSync.h"
+#include "MVKVector.h"
 #include <vector>
 #include <mutex>
 
@@ -169,7 +170,7 @@ protected:
 	MVKQueueSubmission* _prev;
 	MVKQueueSubmission* _next;
 	VkResult _submissionResult;
-	std::vector<MVKSemaphore*> _waitSemaphores;
+	MVKVector<MVKSemaphore*> _waitSemaphores;
 	bool _isAwaitingSemaphores;
 };
 
@@ -204,8 +205,8 @@ protected:
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
 	void finish();
 
-	std::vector<MVKCommandBuffer*> _cmdBuffers;
-	std::vector<MVKSemaphore*> _signalSemaphores;
+	MVKVector<MVKCommandBuffer*> _cmdBuffers;
+	MVKVector<MVKSemaphore*>     _signalSemaphores;
 	MVKFence* _fence;
     MVKCommandUse _cmdBuffUse;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
@@ -227,6 +228,6 @@ public:
 									 const VkPresentInfoKHR* pPresentInfo);
 
 protected:
-	std::vector<MVKSwapchainImage*> _surfaceImages;
+	MVKVector<MVKSwapchainImage*> _surfaceImages;
 };
 

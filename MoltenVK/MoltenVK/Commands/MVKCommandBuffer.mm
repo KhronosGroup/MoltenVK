@@ -219,13 +219,19 @@ void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
 										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
-										vector<VkClearValue>* clearValues) {
+										MVKVector<VkClearValue>* clearValues) {
 	_renderPass = renderPass;
 	_framebuffer = framebuffer;
 	_renderArea = renderArea;
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebuffer->getExtent2D()));
-	_clearValues.assign(clearValues->begin(), clearValues->end());
+
+        _clearValues.clear();
+        for( auto cv : *clearValues )
+        {
+          _clearValues.push_back( cv );
+        }
+	//_clearValues.assign(clearValues->begin(), clearValues->end());
 	setSubpass(subpassContents, 0);
 }
 

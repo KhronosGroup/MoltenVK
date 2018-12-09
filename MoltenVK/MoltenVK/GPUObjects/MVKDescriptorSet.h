@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKImage.h"
+#include "MVKVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
 #include <unordered_map>
@@ -80,7 +81,7 @@ public:
     void bind(MVKCommandEncoder* cmdEncoder,
               MVKDescriptorBinding& descBinding,
               MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-              std::vector<uint32_t>& dynamicOffsets,
+              MVKVector<uint32_t>& dynamicOffsets,
               uint32_t* pDynamicOffsetIndex);
 
     /** Encodes this binding layout and the specified descriptor binding on the specified command encoder immediately. */
@@ -131,7 +132,7 @@ public:
     void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                            MVKDescriptorSet* descSet,
                            MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                           std::vector<uint32_t>& dynamicOffsets,
+                           MVKVector<uint32_t>& dynamicOffsets,
                            uint32_t* pDynamicOffsetIndex);
 
 
@@ -165,7 +166,7 @@ protected:
 	friend class MVKPipelineLayout;
 	friend class MVKDescriptorSet;
 
-	std::vector<MVKDescriptorSetLayoutBinding> _bindings;
+	MVKVector<MVKDescriptorSetLayoutBinding> _bindings;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	bool _isPushDescriptorLayout : 1;
 };

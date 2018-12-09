@@ -22,6 +22,7 @@
 #include "MVKDescriptorSet.h"
 #include "MVKShaderModule.h"
 #include "MVKSync.h"
+#include "MVKVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
 #include <vector>
@@ -53,9 +54,9 @@ public:
 
 	/** Binds descriptor sets to a command encoder. */
     void bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
-                            std::vector<MVKDescriptorSet*>& descriptorSets,
+                            MVKVector<MVKDescriptorSet*>& descriptorSets,
                             uint32_t firstSet,
-                            std::vector<uint32_t>& dynamicOffsets);
+                            MVKVector<uint32_t>& dynamicOffsets);
 
 	/** Populates the specified shader converter context. */
 	void populateShaderConverterContext(SPIRVToMSLConverterContext& context);
@@ -157,8 +158,8 @@ protected:
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 
-    std::vector<MTLViewport> _mtlViewports;
-	std::vector<MTLScissorRect> _mtlScissors;
+        MVKVector<MTLViewport> _mtlViewports;
+        MVKVector<MTLScissorRect> _mtlScissors;
 
 	id<MTLRenderPipelineState> _mtlPipelineState;
 	MTLCullMode _mtlCullMode;

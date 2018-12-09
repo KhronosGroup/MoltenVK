@@ -50,7 +50,7 @@ void MVKPipelineCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKViewportCommandEncoderState
 
-void MVKViewportCommandEncoderState::setViewports(vector<MTLViewport> mtlViewports,
+void MVKViewportCommandEncoderState::setViewports(const MVKVector<MTLViewport> &mtlViewports,
 												  uint32_t firstViewport,
 												  bool isSettingDynamically) {
 
@@ -91,7 +91,7 @@ void MVKViewportCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKScissorCommandEncoderState
 
-void MVKScissorCommandEncoderState::setScissors(vector<MTLScissorRect> mtlScissors,
+void MVKScissorCommandEncoderState::setScissors(const MVKVector<MTLScissorRect> &mtlScissors,
                                                 uint32_t firstScissor,
 												bool isSettingDynamically) {
 
@@ -113,7 +113,11 @@ void MVKScissorCommandEncoderState::setScissors(vector<MTLScissorRect> mtlScisso
 
 void MVKScissorCommandEncoderState::encodeImpl() {
 	MVKAssert(!_mtlScissors.empty(), "Must specify at least one scissor rect");
-	std::vector<MTLScissorRect> clippedScissors(_mtlScissors);
+        MVKVector<MTLScissorRect> clippedScissors;
+        for ( const auto &scissor : _mtlScissors)
+        {
+          clippedScissors.emplace_back( scissor );
+        }
 	std::for_each(clippedScissors.begin(), clippedScissors.end(), [this](MTLScissorRect& scissor) {
 		scissor = _cmdEncoder->clipToRenderArea(scissor);
 	});
@@ -136,7 +140,7 @@ void MVKScissorCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKPushConstantsCommandEncoderState
 
-void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, vector<char>& pushConstants) {
+void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVKVector<char>& pushConstants) {
     uint32_t pcCnt = (uint32_t)pushConstants.size();
     mvkEnsureSize(_pushConstants, offset + pcCnt);
     copy(pushConstants.begin(), pushConstants.end(), _pushConstants.begin() + offset);
