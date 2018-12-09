@@ -343,6 +343,8 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 			}
         }
 
+        // bug fix by aerofly -> if no fragment shader is used and _needsFragmentAuxBuffer was true newBufferWithLength was trying to allocate zero bytes
+        // please verify this fix
         _needsFragmentAuxBuffer = false;
         // Fragment shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_FRAGMENT_BIT)) {

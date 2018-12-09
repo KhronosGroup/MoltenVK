@@ -22,6 +22,7 @@
 // a simple std::vector like container with a configurable extra stack space
 // this class supports just the necessary members to be compatible with MoltenVK
 // if C++17 is used, code can be simplified further
+// by default MVKVector used 8 elements from the stack before getting memory from heap
 //
 #include "MVKVectorAllocator.h"
 #include <type_traits>
