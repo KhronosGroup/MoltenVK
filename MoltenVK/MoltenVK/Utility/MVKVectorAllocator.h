@@ -1,42 +1,29 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// mvk_vector_allocator.h - allocator classes for slist's
-//
-// 2017/01/26 - th/mb
-//
-// ---------------------------------------------------------------------------
-//
-// copyright (C) 2005-2017, Dr. Torsten Hans / Dr. Marc Borchers
-// All rights reserved.
-//
-// Redistribution  and  use  in  source  and  binary  forms,  with  or  without
-// modification, are permitted provided that the following conditions are met:
-//
-//  - Redistributions of  source code must  retain the above  copyright notice,
-//    this list of conditions and the disclaimer below.
-//  - Redistributions in binary form must reproduce the above copyright notice,
-//    this  list of  conditions  and  the  disclaimer (as noted below)  in  the
-//    documentation and/or other materials provided with the distribution.
-//  - Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT  HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR  IMPLIED WARRANTIES, INCLUDING,  BUT NOT  LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND  FITNESS FOR A PARTICULAR  PURPOSE
-// ARE  DISCLAIMED.
-//
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+ * MVKVectorAllocator.h
+ *
+ * Copyright (c) 2012-2018 Dr. Torsten Hans (hans@ipacs.de)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#ifndef MVK_VECTOR_ALLOCATOR_H
-#define MVK_VECTOR_ALLOCATOR_H
+#pragma once
 
 #include <new>
 #include <type_traits>
 
 namespace mvk_memory_allocator
 {
-  inline char *alloc( size_t num_bytes )
+  inline char *alloc( const size_t num_bytes )
   {
     return new char[num_bytes];
   }
@@ -50,7 +37,7 @@ namespace mvk_memory_allocator
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// mvk_vector_allocator_default -> malloc based allocator for tm_vector
+// mvk_vector_allocator_default -> malloc based allocator for MVKVector
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename T>
@@ -217,7 +204,7 @@ public:
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //
-// mvk_vector_allocator_with_stack -> malloc based slist allocator with extra stack storage
+// mvk_vector_allocator_with_stack -> malloc based MVKVector allocator with extra stack storage
 //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 template <typename T, int N>
@@ -231,7 +218,7 @@ private:
   //size_t  num_elements_reserved; // uhh, num_elements_reserved is mapped onto the stack elements, let the fun begin
   alignas( alignof( T ) ) unsigned char   elements_stack[N * sizeof( T )];
 
-  static_assert( N * sizeof( T ) >= sizeof( size_t ), "Bummer, TH's nasty optimization doesn't work" );
+  static_assert( N * sizeof( T ) >= sizeof( size_t ), "Bummer, nasty optimization doesn't work" );
 
   void set_num_elements_reserved( const size_t num_elements_reserved )
   {
@@ -542,8 +529,5 @@ public:
     num_elements_used = 0;
   }
 };
-
-
-#endif  // MVK_VECTOR_ALLOCATOR_H
 
 

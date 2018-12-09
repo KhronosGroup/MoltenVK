@@ -1,36 +1,28 @@
-///////////////////////////////////////////////////////////////////////////////////////////////////
-//
-// MVKVector.h - similar to std::vector
-//
-// 2017/01/26 - th/mb
-//
-// ---------------------------------------------------------------------------
-//
-// copyright (C) 2005-2017, Dr. Torsten Hans / Dr. Marc Borchers
-// All rights reserved.
-//
-// Redistribution  and  use  in  source  and  binary  forms,  with  or  without
-// modification, are permitted provided that the following conditions are met:
-//
-//  - Redistributions of  source code must  retain the above  copyright notice,
-//    this vector of conditions and the disclaimer below.
-//  - Redistributions in binary form must reproduce the above copyright notice,
-//    this  vector of  conditions  and  the  disclaimer (as noted below)  in  the
-//    documentation and/or other materials provided with the distribution.
-//  - Neither the name of the copyright holder nor the names of its contributors
-//    may be used to endorse or promote products derived from this software
-//    without specific prior written permission.
-//
-// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT  HOLDERS AND CONTRIBUTORS "AS IS"
-// AND ANY EXPRESS OR  IMPLIED WARRANTIES, INCLUDING,  BUT NOT  LIMITED TO, THE
-// IMPLIED WARRANTIES OF MERCHANTABILITY AND  FITNESS FOR A PARTICULAR  PURPOSE
-// ARE  DISCLAIMED.
-//
-///////////////////////////////////////////////////////////////////////////////////////////////////
+/*
+ * MVKVectorAllocator.h
+ *
+ * Copyright (c) 2012-2018 Dr. Torsten Hans (hans@ipacs.de)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#ifndef MVK_VECTOR_H
-#define MVK_VECTOR_H
+#pragma once
 
+//
+// a simple std::vector like container with a configurable extra stack space
+// this class supports just the necessary members to be compatible with MoltenVK
+// if C++17 is used, code can be simplified further
+//
 #include "MVKVectorAllocator.h"
 #include <type_traits>
 #include <initializer_list>
@@ -499,6 +491,4 @@ public:
   }
 };
 
-
-#endif  // MVK_VECTOR_H
 
