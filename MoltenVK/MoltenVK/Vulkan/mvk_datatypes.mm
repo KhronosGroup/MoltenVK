@@ -729,7 +729,13 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageVie
         case VK_IMAGE_VIEW_TYPE_1D:             return MTLTextureType1D;
         case VK_IMAGE_VIEW_TYPE_1D_ARRAY:       return MTLTextureType1DArray;
         case VK_IMAGE_VIEW_TYPE_2D:             return (isMultisample ? MTLTextureType2DMultisample : MTLTextureType2D);
-        case VK_IMAGE_VIEW_TYPE_2D_ARRAY:       return MTLTextureType2DArray;
+        case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+#if MVK_MACOS
+            if (isMultisample) {
+                return MTLTextureType2DMultisampleArray;
+            }
+#endif
+            return MTLTextureType2DArray;
         case VK_IMAGE_VIEW_TYPE_3D:             return MTLTextureType3D;
         case VK_IMAGE_VIEW_TYPE_CUBE:           return MTLTextureTypeCube;
 #if MVK_MACOS
