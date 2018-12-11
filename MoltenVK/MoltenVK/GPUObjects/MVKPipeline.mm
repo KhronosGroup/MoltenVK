@@ -435,12 +435,10 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
     if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
-    // In Vulkan, it's perfectly valid to do rasterization with no attachments.
-    // Not so in Metal. If we have no attachments and rasterization is enabled,
-    // then we'll have to add a dummy attachment.
-    if (plDesc.rasterizationEnabled && !caCnt &&
-            !mvkMTLPixelFormatIsDepthFormat(mtlDSFormat) &&
-            !mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
+    // In Vulkan, it's perfectly valid to render with no attachments. Not so
+    // in Metal. If we have no attachments, then we'll have to add a dummy
+    // attachment.
+    if (!caCnt && !mvkMTLPixelFormatIsDepthFormat(mtlDSFormat) && !mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[0];
         colorDesc.pixelFormat = MTLPixelFormatR8Unorm;
         colorDesc.writeMask = MTLColorWriteMaskNone;
