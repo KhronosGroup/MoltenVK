@@ -70,8 +70,12 @@ using namespace std;
 #if MVK_MACOS
 // macOS does not support linear images as framebuffer attachments.
 #define MVK_FMT_LINEAR_TILING_FEATS	MVK_FMT_IMAGE_FEATS
+
+// macOS also does not support E5B9G9R9 for anything but filtering.
+#define MVK_FMT_E5B9G9R9_FEATS 		MVK_FMT_COMPRESSED_FEATS
 #else
 #define MVK_FMT_LINEAR_TILING_FEATS	MVK_FMT_COLOR_FEATS
+#define MVK_FMT_E5B9G9R9_FEATS		MVK_FMT_COLOR_FEATS
 #endif
 
 #define MVK_FMT_BUFFER_FEATS		(VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT             \
@@ -79,6 +83,14 @@ using namespace std;
 									| VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT)
 
 #define MVK_FMT_BUFFER_VTX_FEATS	(MVK_FMT_BUFFER_FEATS | VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
+
+#define MVK_FMT_BUFFER_RDONLY_FEATS	(VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)
+
+#if MVK_MACOS
+#define MVK_FMT_E5B9G9R9_BUFFER_FEATS 		MVK_FMT_BUFFER_RDONLY_FEATS
+#else
+#define MVK_FMT_E5B9G9R9_BUFFER_FEATS 		MVK_FMT_BUFFER_FEATS
+#endif
 
 #define MVK_FMT_NO_FEATS			0
 
@@ -363,7 +375,7 @@ static const MVKFormatDesc _formatDescriptions[] {
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R64G64B64A64_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 32, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_B10G11R11_UFLOAT_PACK32, MTLPixelFormatRG11B10Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_E5B9G9R9_UFLOAT_PACK32, MTLPixelFormatRGB9E5Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),	// Vulkan packed is reversed
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_E5B9G9R9_UFLOAT_PACK32, MTLPixelFormatRGB9E5Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatColorFloat, MVK_FMT_E5B9G9R9_FEATS, MVK_FMT_E5B9G9R9_BUFFER_FEATS ),	// Vulkan packed is reversed
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_D32_SFLOAT, MTLPixelFormatDepth32Float, MTLPixelFormatInvalid, 8.0, 10.11, 1, 1, 4, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_NO_FEATS ),
     MVK_MAKE_FMT_STRUCT( VK_FORMAT_D32_SFLOAT_S8_UINT, MTLPixelFormatDepth32Float_Stencil8, MTLPixelFormatInvalid, 9.0, 10.11, 1, 1, 5, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_NO_FEATS ),
