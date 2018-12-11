@@ -34,13 +34,13 @@ using namespace std;
 #define MVK_FMT_IMAGE_FEATS			(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT                    \
 									| VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT                   \
 									| VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT            \
+                                    | VK_FORMAT_FEATURE_BLIT_SRC_BIT                        \
 									| VK_FORMAT_FEATURE_TRANSFER_SRC_BIT                    \
 									| VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
 
 #define MVK_FMT_COLOR_INTEGER_FEATS	(MVK_FMT_IMAGE_FEATS                                    \
 									| VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT                \
 									| VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT          \
-                                    | VK_FORMAT_FEATURE_BLIT_SRC_BIT                        \
                                     | VK_FORMAT_FEATURE_BLIT_DST_BIT)
 
 #define MVK_FMT_COLOR_FEATS			(MVK_FMT_COLOR_INTEGER_FEATS | VK_FORMAT_FEATURE_SAMPLED_IMAGE_FILTER_LINEAR_BIT)
@@ -70,7 +70,6 @@ using namespace std;
 #if MVK_MACOS
 // macOS does not support linear images as framebuffer attachments.
 #define MVK_FMT_LINEAR_TILING_FEATS	(MVK_FMT_IMAGE_FEATS					\
-									| VK_FORMAT_FEATURE_BLIT_SRC_BIT        \
 									| VK_FORMAT_FEATURE_BLIT_DST_BIT)
 #else
 #define MVK_FMT_LINEAR_TILING_FEATS	MVK_FMT_COLOR_FEATS
