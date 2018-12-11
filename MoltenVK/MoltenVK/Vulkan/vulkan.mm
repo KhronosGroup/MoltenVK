@@ -369,6 +369,7 @@ MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements(
     VkSparseImageMemoryRequirements*            pSparseMemoryRequirements) {
 	
 	MVKLogUnimplemented("vkGetImageSparseMemoryRequirements");
+	*pNumRequirements = 0;
 }
 
 MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties(
@@ -382,6 +383,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties(
 	VkSparseImageFormatProperties*              pProperties) {
 
 	MVKLogUnimplemented("vkGetPhysicalDeviceSparseImageFormatProperties");
+	*pPropertyCount = 0;
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkQueueBindSparse(
@@ -1572,6 +1574,7 @@ MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements2KHR(
     VkSparseImageMemoryRequirements2KHR*            pSparseMemoryRequirements) {
 
     MVKLogUnimplemented("vkGetImageSparseMemoryRequirements2KHR");
+    *pSparseMemoryRequirementCount = 0;
 }
 
 
@@ -1636,6 +1639,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
     VkSparseImageFormatProperties2KHR*          pProperties) {
 
     MVKLogUnimplemented("vkGetPhysicalDeviceSparseImageFormatProperties");
+    *pPropertyCount = 0;
 }
 
 
