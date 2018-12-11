@@ -365,14 +365,27 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 
 MTLTextureUsage MVKImage::getMTLTextureUsage() {
 	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
+
 	// If this is a depth/stencil texture, and the device supports it, tell
 	// Metal we may create texture views of this, too.
 	if ((_mtlPixelFormat == MTLPixelFormatDepth32Float_Stencil8
 #if MVK_MACOS
 		 || _mtlPixelFormat == MTLPixelFormatDepth24Unorm_Stencil8
 #endif
-		) && _device->_pMetalFeatures->stencilViews)
+		) && _device->_pMetalFeatures->stencilViews) {
 		mvkEnableFlag(usage, MTLTextureUsagePixelFormatView);
+	}
+
+	// If this format doesn't support being blitted to, and the usage
+	// doesn't specify use as an attachment, turn off
+	// MTLTextureUsageRenderTarget.
+	VkFormatProperties props;
+	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
+	if (!mvkAreFlagsEnabled(_isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures, VK_FORMAT_FEATURE_BLIT_DST_BIT) &&
+		!mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+		mvkDisableFlag(usage, MTLTextureUsageRenderTarget);
+	}
+
 	return usage;
 }
 
