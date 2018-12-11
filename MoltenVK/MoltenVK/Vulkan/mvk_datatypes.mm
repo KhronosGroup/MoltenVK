@@ -69,8 +69,7 @@ using namespace std;
 
 #if MVK_MACOS
 // macOS does not support linear images as framebuffer attachments.
-#define MVK_FMT_LINEAR_TILING_FEATS	(MVK_FMT_IMAGE_FEATS					\
-									| VK_FORMAT_FEATURE_BLIT_DST_BIT)
+#define MVK_FMT_LINEAR_TILING_FEATS	MVK_FMT_IMAGE_FEATS
 #else
 #define MVK_FMT_LINEAR_TILING_FEATS	MVK_FMT_COLOR_FEATS
 #endif
