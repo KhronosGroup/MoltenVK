@@ -1662,7 +1662,7 @@ MVK_PUBLIC_SYMBOL void vkGetDescriptorSetLayoutSupportKHR(
     VkDevice                                    device,
     const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
     VkDescriptorSetLayoutSupportKHR*            pSupport) {
-    MVKDevice* mvkDevice = (MVKDevice*)device;
+    MVKDevice* mvkDevice = MVKDevice::getMVKDevice(device);
     mvkDevice->getDescriptorSetLayoutSupport(pCreateInfo, pSupport);
 }
 
