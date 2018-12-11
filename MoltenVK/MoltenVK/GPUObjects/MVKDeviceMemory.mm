@@ -38,7 +38,7 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 		return mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Memory is already mapped. Call vkUnmapMemory() first.");
 	}
 
-	if ( !ensureHostMemory() ) {
+	if ( !ensureMTLBuffer() && !ensureHostMemory() ) {
 		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_HOST_MEMORY, "Could not allocate %llu bytes of host-accessible device memory.", _allocationSize);
 	}
 
