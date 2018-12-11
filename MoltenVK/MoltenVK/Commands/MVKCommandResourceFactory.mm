@@ -226,9 +226,9 @@ NSString* MVKCommandResourceFactory::getMTLFormatTypeString(MTLPixelFormat mtlPi
 	switch (mvkFormatTypeFromMTLPixelFormat(mtlPixFmt)) {
 		case kMVKFormatColorHalf:		return @"half";
 		case kMVKFormatColorFloat:		return @"float";
-		case kMVKFormatColorInt8:		return @"char";
-		case kMVKFormatColorUInt8:		return @"uchar";
+		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:		return @"short";
+		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:		return @"ushort";
 		case kMVKFormatColorInt32:		return @"int";
 		case kMVKFormatColorUInt32:		return @"uint";

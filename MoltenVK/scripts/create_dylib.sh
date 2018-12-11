@@ -11,7 +11,9 @@ if test x"${ENABLE_BITCODE}" = xYES; then
 fi
 
 if test x"${ENABLE_THREAD_SANITIZER}" = xYES; then
-	MVK_TSAN="-fsanitize=thread"
+	MVK_SAN="-fsanitize=thread"
+elif test x"${ENABLE_ADDRESS_SANITIZER}" = xYES; then
+	MVK_SAN="-fsanitize=address"
 fi
 
 clang++ \
@@ -23,7 +25,7 @@ $(printf -- "-arch %s " ${ARCHS}) \
 -install_name "@rpath/${MVK_DYLIB_NAME}"  \
 -Wno-incompatible-sysroot \
 ${MVK_EMBED_BITCODE} \
-${MVK_TSAN} \
+${MVK_SAN} \
 -isysroot ${SDK_DIR} \
 -iframework ${MVK_SYS_FWK_DIR}  \
 -framework Metal ${MVK_IOSURFACE_FWK} -framework ${MVK_UX_FWK} -framework QuartzCore -framework IOKit -framework Foundation \
@@ -32,5 +34,5 @@ ${MVK_TSAN} \
 -force_load "${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a"
 
 if test "$CONFIGURATION" = Debug; then
-	dsymutil "${BUILT_PRODUCTS_DIR}/${MVK_DYLIB_NAME}" -o "${DWARF_DSYM_FOLDER_PATH}/${MVK_DYLIB_NAME}${DWARF_DSYM_FILE_NAME}"
+	dsymutil "${BUILT_PRODUCTS_DIR}/${MVK_DYLIB_NAME}" -o "${DWARF_DSYM_FOLDER_PATH}/${MVK_DYLIB_NAME}.dSYM"
 fi
