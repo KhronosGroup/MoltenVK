@@ -137,6 +137,10 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 	if (_physicalDevices.empty()) {
 		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
 	}
+
+	string logMsg = "Created VkInstance with the following Vulkan extensions enabled:";
+	logMsg += _enabledExtensions.enabledNamesString("\n\t\t", true);
+	MVKLogInfo("%s", logMsg.c_str());
 }
 
 #define ADD_PROC_ADDR(entrypoint)	_procAddrMap[""#entrypoint] = (PFN_vkVoidFunction)&entrypoint;
@@ -339,12 +343,9 @@ void MVKInstance::logVersions() {
     char vkVer[buffLen];
     vkGetVersionStringsMVK(mvkVer, buffLen, vkVer, buffLen);
 
-	const char* indent = "\n\t\t";
 	string logMsg = "MoltenVK version %s. Vulkan version %s.";
 	logMsg += "\n\tThe following Vulkan extensions are supported:";
-	logMsg += getDriverLayer()->getSupportedExtensions()->enabledNamesString(indent, true);
-	logMsg += "\n\tCreated VkInstance with the following Vulkan extensions enabled:";
-	logMsg += _enabledExtensions.enabledNamesString(indent, true);
+	logMsg += getDriverLayer()->getSupportedExtensions()->enabledNamesString("\n\t\t", true);
 	MVKLogInfo(logMsg.c_str(), mvkVer, vkVer);
 }
 

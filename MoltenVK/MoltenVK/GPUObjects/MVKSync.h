@@ -87,7 +87,6 @@ public:
 
 private:
 	bool operator()();
-    inline void reserveImpl() { _reservationCount++; }          // Not thread-safe
     inline bool isClear() { return _reservationCount == 0; }    // Not thread-safe
 
 	std::mutex _lock;
@@ -166,10 +165,8 @@ public:
 	
 #pragma mark Construction
 
-    MVKFence(MVKDevice* device, const VkFenceCreateInfo* pCreateInfo) : MVKRefCountedDeviceObject(device),
-    _isSignaled(mvkAreFlagsEnabled(pCreateInfo->flags, VK_FENCE_CREATE_SIGNALED_BIT)) {}
-
-	~MVKFence() override;
+    MVKFence(MVKDevice* device, const VkFenceCreateInfo* pCreateInfo) :
+	MVKRefCountedDeviceObject(device), _isSignaled(mvkAreFlagsEnabled(pCreateInfo->flags, VK_FENCE_CREATE_SIGNALED_BIT)) {}
 
 protected:
 	void notifySitters();
@@ -198,25 +195,19 @@ public:
 	 *
 	 * Returns true if the required fences were triggered, or false if the timeout interval expired.
 	 */
-	bool wait(uint64_t timeout = UINT64_MAX);
+	bool wait(uint64_t timeout = UINT64_MAX) { return _blocker.wait(timeout); }
 
 
 #pragma mark Construction
 
-	/** Constructs an instance with the specified type of waiting. */
-	MVKFenceSitter(bool waitAll = true) : _blocker(waitAll, 0) {}
-
-	~MVKFenceSitter() override;
+	MVKFenceSitter(bool waitAll) : _blocker(waitAll, 0) {}
 
 private:
 	friend class MVKFence;
 
-	void addUnsignaledFence(MVKFence* fence);
-	void fenceSignaled(MVKFence* fence);
-	void getUnsignaledFences(std::vector<MVKFence*>& fences);
+	void awaitFence(MVKFence* fence) { _blocker.reserve(); }
+	void fenceSignaled(MVKFence* fence) { _blocker.release(); }
 
-	std::mutex _lock;
-	std::unordered_set<MVKFence*> _unsignaledFences;
 	MVKSemaphoreImpl _blocker;
 };
 

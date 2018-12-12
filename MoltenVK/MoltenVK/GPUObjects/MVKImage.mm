@@ -365,14 +365,27 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 
 MTLTextureUsage MVKImage::getMTLTextureUsage() {
 	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
+
 	// If this is a depth/stencil texture, and the device supports it, tell
 	// Metal we may create texture views of this, too.
 	if ((_mtlPixelFormat == MTLPixelFormatDepth32Float_Stencil8
 #if MVK_MACOS
 		 || _mtlPixelFormat == MTLPixelFormatDepth24Unorm_Stencil8
 #endif
-		) && _device->_pMetalFeatures->stencilViews)
+		) && _device->_pMetalFeatures->stencilViews) {
 		mvkEnableFlag(usage, MTLTextureUsagePixelFormatView);
+	}
+
+	// If this format doesn't support being blitted to, and the usage
+	// doesn't specify use as an attachment, turn off
+	// MTLTextureUsageRenderTarget.
+	VkFormatProperties props;
+	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
+	if (!mvkAreFlagsEnabled(_isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures, VK_FORMAT_FEATURE_BLIT_DST_BIT) &&
+		!mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+		mvkDisableFlag(usage, MTLTextureUsageRenderTarget);
+	}
+
 	return usage;
 }
 
@@ -481,8 +494,6 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
 
 MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKResource(device) {
 
-    _byteAlignment = _device->_pProperties->limits.minTexelBufferOffsetAlignment;
-
     if (pCreateInfo->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) {
         mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal may not allow uncompressed views of compressed images.");
     }
@@ -509,7 +520,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
     _mtlTexture = nil;
     _ioSurface = nil;
-    _mtlPixelFormat = mtlPixelFormatFromVkFormat(pCreateInfo->format);
+    _mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
     _mtlTextureType = mvkMTLTextureTypeFromVkImageType(pCreateInfo->imageType,
                                                        _arrayLayers,
                                                        (pCreateInfo->samples > 1));
@@ -537,6 +548,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     _hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
 	_isLinear = validateLinear(pCreateInfo);
 	_usesTexelBuffer = false;
+
+	_byteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format) : mvkEnsurePowerOfTwo(mvkVkFormatBytesPerBlock(pCreateInfo->format));
 
     // Calc _byteCount after _mtlTexture & _byteAlignment
     for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
@@ -763,7 +776,7 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 // alignments of existing MTLPixelFormats of the same structure. If swizzling is not possible for a
 // particular combination of format and swizzle spec, the original MTLPixelFormat is returned.
 MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components, bool& useSwizzle) {
-    MTLPixelFormat mtlPF = mtlPixelFormatFromVkFormat(format);
+    MTLPixelFormat mtlPF = getMTLPixelFormatFromVkFormat(format);
 
     useSwizzle = false;
     switch (mtlPF) {

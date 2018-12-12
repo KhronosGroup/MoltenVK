@@ -839,13 +839,13 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t caCnt = subpass->getColorAttachmentCount();
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
         VkFormat vkAttFmt = subpass->getColorAttachmentFormat(caIdx);
-		_rpsKey.attachmentMTLPixelFormats[caIdx] = cmdPool->mtlPixelFormatFromVkFormat(vkAttFmt);
+		_rpsKey.attachmentMTLPixelFormats[caIdx] = cmdPool->getMTLPixelFormatFromVkFormat(vkAttFmt);
 		MTLClearColor mtlCC = mvkMTLClearColorFromVkClearValue(_vkClearValues[caIdx], vkAttFmt);
 		_clearColors[caIdx] = { (float)mtlCC.red, (float)mtlCC.green, (float)mtlCC.blue, (float)mtlCC.alpha};
     }
 
     VkFormat vkAttFmt = subpass->getDepthStencilFormat();
-	MTLPixelFormat mtlAttFmt = cmdPool->mtlPixelFormatFromVkFormat(vkAttFmt);
+	MTLPixelFormat mtlAttFmt = cmdPool->getMTLPixelFormatFromVkFormat(vkAttFmt);
     _rpsKey.attachmentMTLPixelFormats[kMVKAttachmentFormatDepthStencilIndex] = mtlAttFmt;
 	bool isClearingDepth = _isClearingDepth && mvkMTLPixelFormatIsDepthFormat(mtlAttFmt);
 	bool isClearingStencil = _isClearingStencil && mvkMTLPixelFormatIsStencilFormat(mtlAttFmt);

@@ -304,6 +304,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 
     SPIRVToMSLConverterContext shaderContext;
     initMVKShaderConverterContext(shaderContext, pCreateInfo);
+
     auto* mvkLayout = (MVKPipelineLayout*)pCreateInfo->layout;
     _auxBufferIndex = mvkLayout->getAuxBufferIndex();
     uint32_t auxBufferSize = sizeof(uint32_t) * mvkLayout->getTextureCount();
@@ -316,18 +317,14 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 
     uint32_t vbCnt = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
 
-    // Add shader stages
+	// Add shader stages. Compile vertex shder before others just in case conversion changes anything...like rasterizaion disable.
     for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
         const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
-		shaderContext.options.entryPointName = pSS->pName;
-
-        MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
-
-        // Vertex shader
         if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_VERTEX_BIT)) {
 			shaderContext.options.entryPointStage = spv::ExecutionModelVertex;
 			shaderContext.options.auxBufferIndex = _auxBufferIndex.vertex;
-			id<MTLFunction> mtlFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
+			shaderContext.options.entryPointName = pSS->pName;
+			id<MTLFunction> mtlFunction = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 			if ( !mtlFunction ) {
 				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader function could not be compiled into pipeline. See previous error."));
 				return nil;
@@ -335,22 +332,25 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 			plDesc.vertexFunction = mtlFunction;
 			plDesc.rasterizationEnabled = !shaderContext.options.isRasterizationDisabled;
 			_needsVertexAuxBuffer = shaderContext.options.needsAuxBuffer;
-			// If we need the auxiliary buffer and there's no place to put it,
-			// we're in serious trouble.
+			// If we need the auxiliary buffer and there's no place to put it, we're in serious trouble.
 			if (_needsVertexAuxBuffer && (_auxBufferIndex.vertex == ~0u || _auxBufferIndex.vertex >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) ) {
 				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires auxiliary buffer, but there is no free slot to pass it."));
 				return nil;
 			}
         }
+	}
 
         // bug fix by aerofly -> if no fragment shader is used and _needsFragmentAuxBuffer was true newBufferWithLength was trying to allocate zero bytes
         // please verify this fix
         _needsFragmentAuxBuffer = false;
-        // Fragment shader
-        if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_FRAGMENT_BIT)) {
+	// Fragment shader - only add if rasterization is enabled
+	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+		const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
+		if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_FRAGMENT_BIT) && !shaderContext.options.isRasterizationDisabled) {
 			shaderContext.options.entryPointStage = spv::ExecutionModelFragment;
 			shaderContext.options.auxBufferIndex = _auxBufferIndex.fragment;
-			id<MTLFunction> mtlFunction = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
+			shaderContext.options.entryPointName = pSS->pName;
+			id<MTLFunction> mtlFunction = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 			if ( !mtlFunction ) {
 				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader function could not be compiled into pipeline. See previous error."));
 			}
@@ -360,8 +360,8 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader requires auxiliary buffer, but there is no free slot to pass it."));
 				return nil;
 			}
-        }
-    }
+		}
+	}
 
     if (_needsVertexAuxBuffer || _needsFragmentAuxBuffer) {
         _auxBuffer = [_device->getMTLDevice() newBufferWithLength: auxBufferSize options: MTLResourceStorageModeShared];	// retained
@@ -415,7 +415,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
             const VkPipelineColorBlendAttachmentState* pCA = &pCreateInfo->pColorBlendState->pAttachments[caIdx];
 
             MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
-            colorDesc.pixelFormat = mtlPixelFormatFromVkFormat(mvkRenderSubpass->getColorAttachmentFormat(caIdx));
+            colorDesc.pixelFormat = getMTLPixelFormatFromVkFormat(mvkRenderSubpass->getColorAttachmentFormat(caIdx));
             colorDesc.writeMask = mvkMTLColorWriteMaskFromVkChannelFlags(pCA->colorWriteMask);
             // Don't set the blend state if we're not using this attachment.
             // The pixel format will be MTLPixelFormatInvalid in that case, and
@@ -434,16 +434,14 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     }
 
     // Depth & stencil attachments
-    MTLPixelFormat mtlDSFormat = mtlPixelFormatFromVkFormat(mvkRenderSubpass->getDepthStencilFormat());
+    MTLPixelFormat mtlDSFormat = getMTLPixelFormatFromVkFormat(mvkRenderSubpass->getDepthStencilFormat());
     if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
     if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
-    // In Vulkan, it's perfectly valid to do rasterization with no attachments.
-    // Not so in Metal. If we have no attachments and rasterization is enabled,
-    // then we'll have to add a dummy attachment.
-    if (plDesc.rasterizationEnabled && !caCnt &&
-            !mvkMTLPixelFormatIsDepthFormat(mtlDSFormat) &&
-            !mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
+    // In Vulkan, it's perfectly valid to render with no attachments. Not so
+    // in Metal. If we have no attachments, then we'll have to add a dummy
+    // attachment.
+    if (!caCnt && !mvkMTLPixelFormatIsDepthFormat(mtlDSFormat) && !mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[0];
         colorDesc.pixelFormat = MTLPixelFormatR8Unorm;
         colorDesc.writeMask = MTLColorWriteMaskNone;
