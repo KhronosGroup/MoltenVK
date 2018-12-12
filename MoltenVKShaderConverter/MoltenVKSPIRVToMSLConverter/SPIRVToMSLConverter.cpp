@@ -237,7 +237,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		mslOpts.aux_buffer_index = context.options.auxBufferIndex;
 		mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
 		mslOpts.disable_rasterization = context.options.isRasterizationDisabled;
-		mslOpts.swizzle_texture_samples = true;
+		mslOpts.swizzle_texture_samples = false;
 		pMSLCompiler->set_msl_options(mslOpts);
 
 		auto scOpts = pMSLCompiler->get_common_options();
