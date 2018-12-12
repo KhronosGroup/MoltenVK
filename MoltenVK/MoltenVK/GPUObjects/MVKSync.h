@@ -186,7 +186,7 @@ class MVKFenceSitter : public MVKBaseObject {
 public:
 
 	/**
-	 * If this instance has been configured to wait for fences, blocks processing on the 
+	 * If this instance has been configured to wait for fences, blocks processing on the
 	 * current thread until any or all of the fences that this instance is waiting for are
 	 * signaled, or until the specified timeout in nanoseconds expires. If this instance
 	 * has not been configured to wait for fences, this function immediately returns true.

@@ -1217,7 +1217,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) { logMsg += "\n\t\tiOS GPU Family 5 v1"; }
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v2] ) { logMsg += "\n\t\tiOS GPU Family 4 v2"; }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) { logMsg += "\n\t\tiOS GPU Family 4 v1"; }
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) { logMsg += "\n\t\tiOS GPU Family 4 v1"; }
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v4] ) { logMsg += "\n\t\tiOS GPU Family 3 v4"; }
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) { logMsg += "\n\t\tiOS GPU Family 3 v3"; }

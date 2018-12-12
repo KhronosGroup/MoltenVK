@@ -318,9 +318,9 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     uint32_t vbCnt = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
 
 	// Add shader stages. Compile vertex shder before others just in case conversion changes anything...like rasterizaion disable.
-    for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
-        const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
-        if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_VERTEX_BIT)) {
+	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
+		const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
+		if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_VERTEX_BIT)) {
 			shaderContext.options.entryPointStage = spv::ExecutionModelVertex;
 			shaderContext.options.auxBufferIndex = _auxBufferIndex.vertex;
 			shaderContext.options.entryPointName = pSS->pName;
@@ -337,12 +337,12 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires auxiliary buffer, but there is no free slot to pass it."));
 				return nil;
 			}
-        }
+		}
 	}
 
-        // bug fix by aerofly -> if no fragment shader is used and _needsFragmentAuxBuffer was true newBufferWithLength was trying to allocate zero bytes
-        // please verify this fix
-        _needsFragmentAuxBuffer = false;
+  // bug fix by aerofly -> if no fragment shader is used and _needsFragmentAuxBuffer was true newBufferWithLength was trying to allocate zero bytes
+  // please verify this fix
+  needsFragmentAuxBuffer = false;
 	// Fragment shader - only add if rasterization is enabled
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
