@@ -66,6 +66,8 @@ namespace mvk {
             return (major * 10000) + (minor * 100) + patch;
         }
 
+		static std::string printMSLVersion(uint32_t mslVersion, bool includePatch = false);
+
     } SPIRVToMSLConverterOptions;
 
 	/**

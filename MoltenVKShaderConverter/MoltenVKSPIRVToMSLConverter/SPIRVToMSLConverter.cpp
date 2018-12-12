@@ -49,6 +49,25 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterOptions::matches(const SPIRVToMSLConve
     return true;
 }
 
+MVK_PUBLIC_SYMBOL std::string SPIRVToMSLConverterOptions::printMSLVersion(uint32_t mslVersion, bool includePatch) {
+	string verStr;
+
+	uint32_t major = mslVersion / 10000;
+	verStr += to_string(major);
+
+	uint32_t minor = (mslVersion - makeMSLVersion(major)) / 100;
+	verStr += ".";
+	verStr += to_string(minor);
+
+	if (includePatch) {
+		uint32_t patch = mslVersion - makeMSLVersion(major, minor);
+		verStr += ".";
+		verStr += to_string(patch);
+	}
+
+	return verStr;
+}
+
 MVK_PUBLIC_SYMBOL bool MSLVertexAttribute::matches(const MSLVertexAttribute& other) const {
     if (location != other.location) { return false; }
     if (mslBuffer != other.mslBuffer) { return false; }
