@@ -87,7 +87,7 @@ id<MTLSamplerState> MVKCommandResourceFactory::newCmdBlitImageMTLSamplerState(MT
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipelineState(MVKRPSKeyClearAtt& attKey) {
     MTLRenderPipelineDescriptor* plDesc = [[[MTLRenderPipelineDescriptor alloc] init] autorelease];
     plDesc.label = @"CmdClearAttachments";
-    plDesc.vertexFunction = getFunctionNamed("vtxCmdClearAttachments");
+	plDesc.vertexFunction = getClearVertFunction(attKey);
     plDesc.fragmentFunction = getClearFragFunction(attKey);
 	plDesc.sampleCount = attKey.mtlSampleCount;
 	plDesc.inputPrimitiveTopologyMVK = MTLPrimitiveTopologyClassTriangle;
@@ -168,6 +168,43 @@ id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg&
 		}
 		[msl appendFormat: @"    return texture.sample(sampler, varyings.v_texCoord%@);", sliceArg];
 		[msl appendLineMVK];
+		[msl appendLineMVK: @"}"];
+
+		mtlFunc = newMTLFunction(msl, funcName);
+//		MVKLogDebug("\n%s", msl.UTF8String);
+	}
+	return [mtlFunc autorelease];
+}
+
+id<MTLFunction> MVKCommandResourceFactory::getClearVertFunction(MVKRPSKeyClearAtt& attKey) {
+	id<MTLFunction> mtlFunc = nil;
+	bool allowLayers = _device->_pMetalFeatures->layeredRendering && (attKey.mtlSampleCount == 1 || _device->_pMetalFeatures->multisampleArrayTextures);
+	@autoreleasepool {
+		NSMutableString* msl = [NSMutableString stringWithCapacity: (2 * KIBI) ];
+		[msl appendLineMVK: @"#include <metal_stdlib>"];
+		[msl appendLineMVK: @"using namespace metal;"];
+		[msl appendLineMVK];
+		[msl appendLineMVK: @"typedef struct {"];
+		[msl appendLineMVK: @"    float4 a_position [[attribute(0)]];"];
+		[msl appendLineMVK: @"} AttributesPos;"];
+		[msl appendLineMVK];
+		[msl appendLineMVK: @"typedef struct {"];
+		[msl appendLineMVK: @"    float4 colors[9];"];
+		[msl appendLineMVK: @"} ClearColorsIn;"];
+		[msl appendLineMVK];
+		[msl appendLineMVK: @"typedef struct {"];
+		[msl appendLineMVK: @"    float4 v_position [[position]];"];
+		[msl appendFormat:  @"    uint layer%s;", allowLayers ? " [[render_target_array_index]]" : ""];
+		[msl appendLineMVK: @"} VaryingsPos;"];
+		[msl appendLineMVK];
+
+		NSString* funcName = @"vertClear";
+		[msl appendFormat: @"vertex VaryingsPos %@(AttributesPos attributes [[stage_in]], constant ClearColorsIn& ccIn [[buffer(0)]]) {", funcName];
+		[msl appendLineMVK];
+		[msl appendLineMVK: @"    VaryingsPos varyings;"];
+		[msl appendLineMVK: @"    varyings.v_position = float4(attributes.a_position.x, -attributes.a_position.y, ccIn.colors[8].r, 1.0);"];
+		[msl appendLineMVK: @"    varyings.layer = uint(attributes.a_position.w);"];
+		[msl appendLineMVK: @"    return varyings;"];
 		[msl appendLineMVK: @"}"];
 
 		mtlFunc = newMTLFunction(msl, funcName);
@@ -368,7 +405,7 @@ void MVKCommandResourceFactory::initMTLLibrary() {
     uint64_t startTime = _device->getPerformanceTimestamp();
     @autoreleasepool {
         NSError* err = nil;
-        _mtlLibrary = [getMTLDevice() newLibraryWithSource: mvkStaticCmdShaderSource(_device)
+        _mtlLibrary = [getMTLDevice() newLibraryWithSource: _MVKStaticCmdShaderSource
                                                    options: getDevice()->getMTLCompileOptions()
                                                      error: &err];    // retained
         MVKAssert( !err, "Could not compile command shaders %s (code %li) %s", err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);

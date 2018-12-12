@@ -28,15 +28,6 @@ static NSString* _MVKStaticCmdShaderSource = @"                                 
 using namespace metal;                                                                                          \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
-    float4 a_position [[attribute(0)]];                                                                         \n\
-} AttributesPos;                                                                                                \n\
-                                                                                                                \n\
-typedef struct {                                                                                                \n\
-    float4 v_position [[position]];                                                                             \n\
-    uint layer%s;                                                                                               \n\
-} VaryingsPos;                                                                                                  \n\
-                                                                                                                \n\
-typedef struct {                                                                                                \n\
     float2 a_position [[attribute(0)]];                                                                         \n\
     float2 a_texCoord [[attribute(1)]];                                                                         \n\
 } AttributesPosTex;                                                                                             \n\
@@ -53,18 +44,6 @@ vertex VaryingsPosTex vtxCmdBlitImage(AttributesPosTex attributes [[stage_in]]) 
     return varyings;                                                                                            \n\
 }                                                                                                               \n\
 																			                			        \n\
-typedef struct {                                                                                                \n\
-    float4 colors[9];                                                                                           \n\
-} ClearColorsIn;                                                                                                \n\
-												        						        				        \n\
-vertex VaryingsPos vtxCmdClearAttachments(AttributesPos attributes [[stage_in]],                                \n\
-                                          constant ClearColorsIn& ccIn [[buffer(0)]]) {                         \n\
-    VaryingsPos varyings;                                                                                       \n\
-    varyings.v_position = float4(attributes.a_position.x, -attributes.a_position.y, ccIn.colors[8].r, 1.0);     \n\
-    varyings.layer = uint(attributes.a_position.w);                                                             \n\
-    return varyings;                                                                                            \n\
-}                                                                                                               \n\
-                                                                                                                \n\
 typedef struct {                                                                                                \n\
     uint32_t srcOffset;                                                                                         \n\
     uint32_t dstOffset;                                                                                         \n\
@@ -92,12 +71,4 @@ kernel void cmdFillBuffer(device uint32_t* dst [[ buffer(0) ]],                 
 };                                                                                                              \n\
                                                                                                                 \n\
 ";
-
-/** Returns MSL shader source code containing static functions to be used for various Vulkan commands. */
-static inline NSString* mvkStaticCmdShaderSource(MVKDevice* device) {
-	const char* rtaiStr = device->_pMetalFeatures->layeredRendering ? " [[render_target_array_index]]" : "";
-	return [NSString stringWithFormat: _MVKStaticCmdShaderSource, rtaiStr];
-}
-
-
 
