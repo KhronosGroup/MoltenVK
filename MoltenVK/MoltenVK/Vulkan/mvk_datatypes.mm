@@ -941,6 +941,20 @@ MVK_PUBLIC_SYMBOL MTLSamplerAddressMode mvkMTLSamplerAddressModeFromVkSamplerAdd
 	}
 }
 
+#if MVK_MACOS
+MVK_PUBLIC_SYMBOL MTLSamplerBorderColor mvkMTLSamplerBorderColorFromVkBorderColor(VkBorderColor vkColor) {
+	switch (vkColor) {
+		case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:	return MTLSamplerBorderColorTransparentBlack;
+		case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:		return MTLSamplerBorderColorTransparentBlack;
+		case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:		return MTLSamplerBorderColorOpaqueBlack;
+		case VK_BORDER_COLOR_INT_OPAQUE_BLACK:			return MTLSamplerBorderColorOpaqueBlack;
+		case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:		return MTLSamplerBorderColorOpaqueWhite;
+		case VK_BORDER_COLOR_INT_OPAQUE_WHITE:			return MTLSamplerBorderColorOpaqueWhite;
+		default:										return MTLSamplerBorderColorTransparentBlack;
+	}
+}
+#endif
+
 MVK_PUBLIC_SYMBOL MTLSamplerMinMagFilter mvkMTLSamplerMinMagFilterFromVkFilter(VkFilter vkFilter) {
 	switch (vkFilter) {
 		case VK_FILTER_NEAREST:		return MTLSamplerMinMagFilterNearest;
