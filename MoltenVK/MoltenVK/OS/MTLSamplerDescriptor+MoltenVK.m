@@ -30,4 +30,17 @@
 	if ( [self respondsToSelector: @selector(setCompareFunction:)] ) { self.compareFunction = cmpFunc; }
 }
 
+-(NSUInteger) borderColorMVK {
+#if MVK_MACOS
+	if ( [self respondsToSelector: @selector(borderColor)] ) { return self.borderColor; }
+#endif
+	return /*MTLSamplerBorderColorTransparentBlack*/ 0;
+}
+
+-(void) setBorderColorMVK: (NSUInteger) color {
+#if MVK_MACOS
+	if ( [self respondsToSelector: @selector(setBorderColor:)] ) { self.borderColor = (MTLSamplerBorderColor) color; }
+#endif
+}
+
 @end
