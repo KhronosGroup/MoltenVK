@@ -108,9 +108,6 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConverterContex
                                       kPushConstDescSet,
                                       kPushConstBinding);
 
-    _auxBufferIndex.vertex = _pushConstantsMTLResourceIndexes.vertexStage.bufferIndex + 1;
-    _auxBufferIndex.fragment = _pushConstantsMTLResourceIndexes.fragmentStage.bufferIndex + 1;
-    _auxBufferIndex.compute = _pushConstantsMTLResourceIndexes.computeStage.bufferIndex + 1;
 }
 
 MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
@@ -140,6 +137,11 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 	for (uint32_t i = 0; i < pCreateInfo->pushConstantRangeCount; i++) {
 		_pushConstants.push_back(pCreateInfo->pPushConstantRanges[i]);
 	}
+
+	// Set auxiliary buffer offsets
+	_auxBufferIndex.vertex = _pushConstantsMTLResourceIndexes.vertexStage.bufferIndex + 1;
+	_auxBufferIndex.fragment = _pushConstantsMTLResourceIndexes.fragmentStage.bufferIndex + 1;
+	_auxBufferIndex.compute = _pushConstantsMTLResourceIndexes.computeStage.bufferIndex + 1;
 }
 
 

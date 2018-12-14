@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
+#include "MVKVector.h"
 #include <vector>
 
 #import <Metal/Metal.h>
@@ -56,7 +57,7 @@ public:
 	 */
 	void populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 										 MVKFramebuffer* framebuffer,
-										 std::vector<VkClearValue>& clearValues,
+										 MVKVector<VkClearValue>& clearValues,
 										 bool isRenderingEntireAttachment);
 
 	/**
@@ -64,7 +65,7 @@ public:
 	 * when the render area is smaller than the full framebuffer size.
 	 */
 	void populateClearAttachments(std::vector<VkClearAttachment>& clearAtts,
-								  std::vector<VkClearValue>& clearValues);
+								  MVKVector<VkClearValue>& clearValues);
 
 	/** Constructs an instance for the specified parent renderpass. */
 	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo);

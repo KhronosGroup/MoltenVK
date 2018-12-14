@@ -295,6 +295,14 @@ VkExtent3D mvkMipmapBaseSizeFromLevelSize3D(VkExtent3D levelSize, uint32_t level
  */
 MTLSamplerAddressMode mvkMTLSamplerAddressModeFromVkSamplerAddressMode(VkSamplerAddressMode vkMode);
 
+#if MVK_MACOS
+/**
+ * Returns the Metal MTLSamplerBorderColor corresponding to the specified Vulkan VkBorderColor,
+ * or returns MTLSamplerBorderColorTransparentBlack if no corresponding MTLSamplerBorderColor exists.
+ */
+MTLSamplerBorderColor mvkMTLSamplerBorderColorFromVkBorderColor(VkBorderColor vkColor);
+#endif
+
 /**
  * Returns the Metal MTLSamplerMinMagFilter corresponding to the specified Vulkan VkFilter,
  * or returns MTLSamplerMinMagFilterNearest if no corresponding MTLSamplerMinMagFilter exists.

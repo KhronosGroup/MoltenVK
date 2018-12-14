@@ -74,7 +74,6 @@ public:
   {
   }
 
-
   template<class S> typename std::enable_if< !std::is_trivially_destructible<S>::value >::type
     destruct_all()
   {

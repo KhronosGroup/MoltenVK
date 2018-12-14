@@ -19,6 +19,16 @@
 #pragma once
 
 //
+// in case MVKVector should use std::vector
+//
+#if 0
+
+template<typename T>
+using MVKVector = std::vector<T>;
+
+#else
+
+//
 // a simple std::vector like container with a configurable extra stack space
 // this class supports just the necessary members to be compatible with MoltenVK
 // if C++17 is used, code can be simplified further
@@ -55,7 +65,12 @@ public:
       return &vector->alc.ptr[index];
     }
 
-    operator Type*( ) const
+    Type &operator*() const
+    {
+      return vector->alc.ptr[index];
+    }
+
+    operator Type*() const
     {
       return &vector->alc.ptr[index];
     }
@@ -91,11 +106,16 @@ public:
       return &vector->alc.ptr[index];
     }
 
-    operator Type*( ) const
+    Type &operator*() const
+    {
+      return vector->alc.ptr[index];
+    }
+
+    operator Type*() const
     {
       return &vector->alc.ptr[index];
     }
-
+    
     bool operator==( const reverse_iterator &it ) const
     {
       return vector == it.vector && index == it.index;
@@ -216,7 +236,7 @@ public:
         }
         else
         {
-          alc.destruct_all();
+          alc.template destruct_all<Type>();
         }
 
         for( size_t i = 0; i < n; ++i )
@@ -369,6 +389,18 @@ public:
     alc.num_elements_used = new_size;
   }
 
+  template <class InputIterator>
+  void assign( InputIterator first, InputIterator last )
+  {
+    clear();
+    
+    while( first != last )
+    {
+      emplace_back( *first );
+      ++first;
+    }
+  }
+
   void resize( const size_t new_size, const Type t = { } )
   {
     if( new_size == alc.num_elements_used )
@@ -492,5 +524,5 @@ public:
   }
 };
 
-
+#endif
 

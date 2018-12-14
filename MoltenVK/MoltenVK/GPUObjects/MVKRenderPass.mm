@@ -67,7 +67,7 @@ VkSampleCountFlagBits MVKRenderSubpass::getSampleCount() {
 
 void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 													   MVKFramebuffer* framebuffer,
-													   vector<VkClearValue>& clearValues,
+													   MVKVector<VkClearValue>& clearValues,
 													   bool isRenderingEntireAttachment) {
 	// Populate the Metal color attachments
 	uint32_t caCnt = getColorAttachmentCount();
@@ -157,7 +157,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 }
 
 void MVKRenderSubpass::populateClearAttachments(vector<VkClearAttachment>& clearAtts,
-												vector<VkClearValue>& clearValues) {
+												MVKVector<VkClearValue>& clearValues) {
 	VkClearAttachment cAtt;
 
 	uint32_t attIdx;

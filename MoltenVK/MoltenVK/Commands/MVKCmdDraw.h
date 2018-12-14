@@ -21,6 +21,7 @@
 #include "MVKCommand.h"
 #include "MVKMTLResourceBindings.h"
 #include "MVKVector.h"
+
 #import <Metal/Metal.h>
 
 class MVKDevice;

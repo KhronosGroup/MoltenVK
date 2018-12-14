@@ -113,11 +113,7 @@ void MVKScissorCommandEncoderState::setScissors(const MVKVector<MTLScissorRect> 
 
 void MVKScissorCommandEncoderState::encodeImpl() {
 	MVKAssert(!_mtlScissors.empty(), "Must specify at least one scissor rect");
-        MVKVector<MTLScissorRect> clippedScissors;
-        for ( const auto &scissor : _mtlScissors)
-        {
-          clippedScissors.emplace_back( scissor );
-        }
+	auto clippedScissors(_mtlScissors);
 	std::for_each(clippedScissors.begin(), clippedScissors.end(), [this](MTLScissorRect& scissor) {
 		scissor = _cmdEncoder->clipToRenderArea(scissor);
 	});

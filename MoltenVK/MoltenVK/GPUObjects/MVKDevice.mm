@@ -562,6 +562,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.dynamicMTLBuffers = true;
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
+        _metalFeatures.samplerClampToBorder = true;
         _metalFeatures.maxMTLBufferSize = (1 * GIBI);
     }
 

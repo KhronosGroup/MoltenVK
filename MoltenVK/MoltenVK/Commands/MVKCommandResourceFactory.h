@@ -324,6 +324,7 @@ protected:
 	void initMTLLibrary();
 	void initImageDeviceMemory();
 	id<MTLFunction> getBlitFragFunction(MVKRPSKeyBlitImg& blitKey);
+	id<MTLFunction> getClearVertFunction(MVKRPSKeyClearAtt& attKey);
 	id<MTLFunction> getClearFragFunction(MVKRPSKeyClearAtt& attKey);
 	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
     id<MTLFunction> getFunctionNamed(const char* funcName);
