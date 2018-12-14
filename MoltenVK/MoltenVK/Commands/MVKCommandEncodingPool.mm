@@ -132,7 +132,7 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     for (auto& pair : _mtlDepthStencilStates) { [pair.second release]; }
     _mtlDepthStencilStates.clear();
 
-    for (auto& pair : _transferImages) { pair.second->destroy(); }
+    for (auto& pair : _transferImages) { _device->destroyImage(pair.second, nullptr); }
     _transferImages.clear();
 
     [_cmdBlitImageLinearMTLSamplerState release];
