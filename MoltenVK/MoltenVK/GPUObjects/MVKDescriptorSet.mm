@@ -547,19 +547,22 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
     if (!_isPushDescriptorLayout) return;
     for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
-        uint32_t bindIdx = descWrite.dstBinding;
+        uint32_t dstBinding = descWrite.dstBinding;
         uint32_t dstArrayElement = descWrite.dstArrayElement;
         uint32_t descriptorCount = descWrite.descriptorCount;
         const VkDescriptorImageInfo* pImageInfo = descWrite.pImageInfo;
         const VkDescriptorBufferInfo* pBufferInfo = descWrite.pBufferInfo;
         const VkBufferView* pTexelBufferView = descWrite.pTexelBufferView;
+        if (!_bindingToIndex.count(dstBinding)) continue;
         // Note: This will result in us walking off the end of the array
         // in case there are too many updates... but that's ill-defined anyway.
-        for (; descriptorCount; bindIdx++) {
+        for (; descriptorCount; dstBinding++) {
+            if (!_bindingToIndex.count(dstBinding)) continue;
             size_t stride;
             const void* pData = getWriteParameters(descWrite.descriptorType, pImageInfo,
                                                    pBufferInfo, pTexelBufferView, stride);
             uint32_t descriptorsPushed = 0;
+            uint32_t bindIdx = _bindingToIndex[dstBinding];
             _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
                                     descriptorsPushed, descWrite.descriptorType,
                                     stride, pData, dslMTLRezIdxOffsets);
@@ -580,14 +583,17 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         return;
     for (uint32_t i = 0; i < descUpdateTemplate->getNumberOfEntries(); i++) {
         const VkDescriptorUpdateTemplateEntryKHR* pEntry = descUpdateTemplate->getEntry(i);
-        uint32_t bindIdx = pEntry->dstBinding;
+        uint32_t dstBinding = pEntry->dstBinding;
         uint32_t dstArrayElement = pEntry->dstArrayElement;
         uint32_t descriptorCount = pEntry->descriptorCount;
         const void* pCurData = (const char*)pData + pEntry->offset;
+        if (!_bindingToIndex.count(dstBinding)) continue;
         // Note: This will result in us walking off the end of the array
         // in case there are too many updates... but that's ill-defined anyway.
-        for (; descriptorCount; bindIdx++) {
+        for (; descriptorCount; dstBinding++) {
+            if (!_bindingToIndex.count(dstBinding)) continue;
             uint32_t descriptorsPushed = 0;
+            uint32_t bindIdx = _bindingToIndex[dstBinding];
             _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
                                     descriptorsPushed, pEntry->descriptorType,
                                     pEntry->stride, pCurData, dslMTLRezIdxOffsets);
@@ -612,6 +618,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
     _bindings.reserve(pCreateInfo->bindingCount);
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
         _bindings.emplace_back(this, &pCreateInfo->pBindings[i]);
+        _bindingToIndex[pCreateInfo->pBindings[i].binding] = i;
         setConfigurationResult(_bindings.back().getConfigurationResult());
     }
 }
