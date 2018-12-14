@@ -384,6 +384,13 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         uint32_t vbIdx = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
         if (shaderContext.isVertexBufferUsed(vbIdx)) {
             MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
+            // Vulkan allows any stride, but Metal only allows multiples of 4.
+            // TODO: We should try to expand the buffer to the required alignment
+            // in that case.
+            if ((pVKVB->stride % 4) != 0) {
+                setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex buffer strides must be aligned to four bytes."));
+                return nil;
+            }
             vbDesc.stride = (pVKVB->stride == 0) ? sizeof(simd::float4) : pVKVB->stride;      // Vulkan allows zero stride but Metal doesn't. Default to float4
             vbDesc.stepFunction = mvkMTLVertexStepFunctionFromVkVertexInputRate(pVKVB->inputRate);
             vbDesc.stepRate = 1;
