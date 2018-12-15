@@ -206,7 +206,7 @@ protected:
 	void finish();
 
 	MVKVector<MVKCommandBuffer*> _cmdBuffers;
-	MVKVector<MVKSemaphore*>     _signalSemaphores;
+	MVKVector<MVKSemaphore*> _signalSemaphores;
 	MVKFence* _fence;
     MVKCommandUse _cmdBuffUse;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
