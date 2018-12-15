@@ -17,15 +17,6 @@ MoltenVK 1.0.29
 
 Released 2018/12/15
 
-- Add support for extensions:
-	- VK_KHR_bind_memory2
-	- VK_KHR_swapchain_mutable_format
-	- VK_KHR_shader_float16_int8
-	- VK_KHR_8bit_storage
-	- VK_KHR_16bit_storage
-	- VK_KHR_relaxed_block_layout
-	- VK_KHR_maintenance3
-	- VK_KHR_storage_buffer_storage_class
 - Replace use of std::vector with MVKVector to support allocations on stack.
 - Add missing include MVKEnvironment.h to MVKImage.mm for IOSurfaces.
 - vkCmdClearAttachments apply [[render_target_array_index]] more carefully.
