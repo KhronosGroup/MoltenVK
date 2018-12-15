@@ -21,6 +21,7 @@
 #include "MVKCommandBuffer.h"
 #include "mvk_datatypes.h"
 #include "MVKFoundation.h"
+#include "MVKEnvironment.h"
 #include "MVKLogging.h"
 #import "MTLTextureDescriptor+MoltenVK.h"
 #import "MTLSamplerDescriptor+MoltenVK.h"
