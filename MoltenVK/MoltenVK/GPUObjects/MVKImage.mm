@@ -21,6 +21,7 @@
 #include "MVKCommandBuffer.h"
 #include "mvk_datatypes.h"
 #include "MVKFoundation.h"
+#include "MVKEnvironment.h"
 #include "MVKLogging.h"
 #import "MTLTextureDescriptor+MoltenVK.h"
 #import "MTLSamplerDescriptor+MoltenVK.h"
@@ -500,6 +501,9 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
     if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatNone) ) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
+    }
+    if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) ) {
+        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
     }
 
     // Adjust the info components to be compatible with Metal, then use the modified versions

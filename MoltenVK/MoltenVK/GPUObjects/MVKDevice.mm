@@ -208,8 +208,9 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
-			// Metal does not allow compressed formats on 1D textures
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+			// Metal does not allow compressed or depth/stencil formats on 1D textures
+			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
+				mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt.width = pLimits->maxImageDimension1D;
@@ -255,10 +256,11 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
             if (tiling == VK_IMAGE_TILING_LINEAR) {
                 return VK_ERROR_FORMAT_NOT_SUPPORTED;
             }
-            // Metal does not allow compressed formats on 3D textures
-            if (mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
-                return VK_ERROR_FORMAT_NOT_SUPPORTED;
-            }
+			// Metal does not allow compressed or depth/stencil formats on 3D textures
+			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
+				mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+			}
             maxExt.width = pLimits->maxImageDimension3D;
             maxExt.height = pLimits->maxImageDimension3D;
             maxExt.depth = pLimits->maxImageDimension3D;
@@ -270,8 +272,9 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
-			// Metal does not allow compressed formats on anything but 2D textures
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+			// Metal does not allow compressed or depth/stencil formats on anything but 2D textures
+			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
+				mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt = { 1, 1, 1};

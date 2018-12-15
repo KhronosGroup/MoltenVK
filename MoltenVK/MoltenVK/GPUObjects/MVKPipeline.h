@@ -158,8 +158,8 @@ protected:
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 
-        MVKVector<MTLViewport> _mtlViewports;
-        MVKVector<MTLScissorRect> _mtlScissors;
+  MVKVector<MTLViewport> _mtlViewports;
+  MVKVector<MTLScissorRect> _mtlScissors;
 
 	id<MTLRenderPipelineState> _mtlPipelineState;
 	MTLCullMode _mtlCullMode;

@@ -167,6 +167,7 @@ protected:
 	friend class MVKDescriptorSet;
 
 	MVKVector<MVKDescriptorSetLayoutBinding> _bindings;
+	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	bool _isPushDescriptorLayout : 1;
 };
