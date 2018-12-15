@@ -219,7 +219,7 @@ void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
 										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
-										vector<VkClearValue>* clearValues) {
+										MVKVector<VkClearValue>* clearValues) {
 	_renderPass = renderPass;
 	_framebuffer = framebuffer;
 	_renderArea = renderArea;

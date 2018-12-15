@@ -80,7 +80,7 @@ MVK_PUBLIC_SYMBOL MVKShaderResourceBinding& MVKShaderResourceBinding::operator+=
 void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                                          MVKDescriptorBinding& descBinding,
                                          MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                                         vector<uint32_t>& dynamicOffsets,
+                                         MVKVector<uint32_t>& dynamicOffsets,
                                          uint32_t* pDynamicOffsetIndex) {
     MVKMTLBufferBinding bb;
     MVKMTLTextureBinding tb;
@@ -494,7 +494,7 @@ VkResult MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderS
 void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                MVKDescriptorSet* descSet,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                                               vector<uint32_t>& dynamicOffsets,
+                                               MVKVector<uint32_t>& dynamicOffsets,
                                                uint32_t* pDynamicOffsetIndex) {
 
     if (_isPushDescriptorLayout) return;

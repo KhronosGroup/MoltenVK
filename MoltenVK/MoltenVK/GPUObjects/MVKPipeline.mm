@@ -36,9 +36,9 @@ using namespace std;
 #pragma mark MVKPipelineLayout
 
 void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
-                                           vector<MVKDescriptorSet*>& descriptorSets,
+                                           MVKVector<MVKDescriptorSet*>& descriptorSets,
                                            uint32_t firstSet,
-                                           vector<uint32_t>& dynamicOffsets) {
+                                           MVKVector<uint32_t>& dynamicOffsets) {
 
 	uint32_t pDynamicOffsetIndex = 0;
 	uint32_t dsCnt = (uint32_t)descriptorSets.size();
@@ -342,7 +342,11 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 		}
 	}
 
-	// Fragment shader - only add if rasterization is enabled
+  // bug fix by aerofly -> if no fragment shader is used and _needsFragmentAuxBuffer was true newBufferWithLength was trying to allocate zero bytes
+  // please verify this fix
+  _needsFragmentAuxBuffer = false;
+
+  // Fragment shader - only add if rasterization is enabled
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
 		if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_FRAGMENT_BIT) && !shaderContext.options.isRasterizationDisabled) {

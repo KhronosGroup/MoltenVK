@@ -20,7 +20,7 @@
 
 #include "MVKCommand.h"
 #include "MVKMTLResourceBindings.h"
-#include <vector>
+#include "MVKVector.h"
 
 #import <Metal/Metal.h>
 
@@ -44,7 +44,7 @@ public:
     MVKCmdBindVertexBuffers(MVKCommandTypePool<MVKCmdBindVertexBuffers>* pool);
 
 protected:
-    std::vector<MVKMTLBufferBinding> _bindings;
+    MVKVector<MVKMTLBufferBinding> _bindings;
 };
 
 

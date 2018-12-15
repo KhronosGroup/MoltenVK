@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKCommand.h"
+#include "MVKVector.h"
 #include <vector>
 
 #import <Metal/Metal.h>
@@ -47,7 +48,7 @@ private:
 	VkSubpassContents _contents;
 	MVKRenderPass* _renderPass;
 	MVKFramebuffer* _framebuffer;
-	std::vector<VkClearValue> _clearValues;
+	MVKVector<VkClearValue> _clearValues;
 };
 
 
@@ -114,7 +115,7 @@ public:
 
 private:
 	uint32_t _firstViewport;
-	std::vector<MTLViewport> _mtlViewports;
+	MVKVector<MTLViewport> _mtlViewports;
 };
 
 
@@ -133,7 +134,7 @@ public:
 
 private:
 	uint32_t _firstScissor;
-	std::vector<MTLScissorRect> _mtlScissors;
+	MVKVector<MTLScissorRect> _mtlScissors;
 };
 
 

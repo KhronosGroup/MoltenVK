@@ -160,7 +160,7 @@ void MVKCmdPushConstants::setContent(VkPipelineLayout layout,
 	_offset = offset;
 
 	_pushConstants.resize(size);
-	copy_n((char*)pValues, size, _pushConstants.begin());
+  std::copy_n((char*)pValues, size, _pushConstants.begin());
 }
 
 void MVKCmdPushConstants::encode(MVKCommandEncoder* cmdEncoder) {
