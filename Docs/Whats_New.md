@@ -12,6 +12,83 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
+MoltenVK 1.0.29
+---------------
+
+Released 2018/12/15
+
+- Add support for extensions:
+	- VK_KHR_bind_memory2
+	- VK_KHR_swapchain_mutable_format
+	- VK_KHR_shader_float16_int8
+	- VK_KHR_8bit_storage
+	- VK_KHR_16bit_storage
+	- VK_KHR_relaxed_block_layout
+	- VK_KHR_maintenance3
+	- VK_KHR_storage_buffer_storage_class
+- Replace use of std::vector with MVKVector to support allocations on stack.
+- Add missing include MVKEnvironment.h to MVKImage.mm for IOSurfaces.
+- vkCmdClearAttachments apply [[render_target_array_index]] more carefully.
+- vkCmdPushDescriptorSet: Fix mapping of binding numbers to descriptor layouts.
+- Forbid depth/stencil formats on anything but 2D images.
+- MVKCommandPool: Destroy transfer images using the device.
+- MVKPipeline: Reject non-multiple-of-4 vertex buffer strides.
+- MVKPipeline: Set auxiliary buffer offsets once, on layout creation.
+- MVKSampler: Support border colors.
+- MVKImage: Round up byte alignment to the nearest power of 2.
+- MVKImage: Don't set MTLTextureUsageRenderTarget for non-blittable formats.
+- MVKImage: Support image views of 2D multisample array images.
+- MVKGraphicsPipeline: Add dummy attachments even when rasterization is off.
+- MVKDeviceMemory: Try creating an MTLBuffer before allocating heap memory.
+- Add support for VK_FORMAT_A2R10G10B10_UNORM_PACK32.
+- Support A8B8G8R8_PACK32 formats.
+- Add new formats and fix existing ones.
+- On macOS, VK_FORMAT_E5B9G9R9_UFLOAT_PACK32 can only be filtered.
+- On macOS, linear textures cannot be blitted to.
+- Depth formats cannot be used for a VkBufferView.
+- Give every image format we support the BLIT_SRC feature.
+- Correct supported features of compressed formats.
+- Correct mapping of packed 16-bit formats.
+- Add some more vertex formats.
+- Don't use char/uchar for clearing/copying 8-bit formats.
+- Explicitly set number of sparse image property/requirement info sets to 0.
+- Retrieve linear image memory alignment requirements from Metal device.
+- For each GPU, log MSL version and updated list of feature sets.
+- Cube demo on iOS support Portrait and Landscape device orientation.
+- Build the dylib with -fsanitize=address when asan is enabled.
+- Fix name of generated dSYM file.
+- Update to latest SPIRV-Cross version:
+	- MSL don't emit `memory_scope` after MSL 2.0.
+
+
+MoltenVK 1.0.28
+---------------
+
+Released 2018/12/06
+
+- Add support for extensions:
+	- VK_KHR_bind_memory2
+	- VK_KHR_swapchain_mutable_format
+	- VK_KHR_shader_float16_int8
+	- VK_KHR_8bit_storage
+	- VK_KHR_16bit_storage
+	- VK_KHR_relaxed_block_layout
+	- VK_KHR_maintenance3
+	- VK_KHR_storage_buffer_storage_class
+- Add support for 2D multisample array textures.
+- Ignore fragment shader if raster discard is enabled.
+- Force signedness of shader vertex attributes to match the host.
+- In debug configurations, create a dSYM bundle for libMoltenVK.dylib.
+- MVKImage: Take lock when setting the MTLTexture manually.
+- Optimize MVKFenceSitter.
+- Support parallel builds of fetchDependencies to improve build times.
+- Change internal header references to increase header path flexibility.
+- Update to latest SPIRV-Cross version:
+	- MSL: Use an enum instead of two mutually exclusive booleans.
+	- MSL: Force signedness of shader vertex attributes to match the host.
+	- Support gl_HelperInvocation on GLSL and MSL.
+
+
 MoltenVK 1.0.27
 ---------------
 
