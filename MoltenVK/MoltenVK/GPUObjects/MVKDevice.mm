@@ -175,10 +175,9 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties*
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format,
                                             VkFormatProperties2KHR* pFormatProperties) {
-	static VkFormatProperties noFmtFeats = { 0, 0, 0 };
 	if (pFormatProperties) {
 		pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
-		pFormatProperties->formatProperties = getFormatIsSupported(format) ? mvkVkFormatProperties(format) : noFmtFeats;
+		pFormatProperties->formatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
 	}
 }
 
