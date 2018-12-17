@@ -377,7 +377,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         if (shaderContext.isVertexAttributeLocationUsed(pVKVA->location)) {
             // Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
             const VkVertexInputBindingDescription* pVKVB = pCreateInfo->pVertexInputState->pVertexBindingDescriptions;
-            for (uint32_t j = 0; j < vbCnt; j++) {
+            for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
                 if (pVKVB->binding == pVKVA->binding) { break; }
             }
             if (pVKVA->offset >= pVKVB->stride) {
