@@ -425,11 +425,9 @@ void MVKGraphicsResourcesCommandEncoderState::bindFragmentSamplerState(const MVK
     bind(binding, _fragmentSamplerStateBindings, _areFragmentSamplerStateBindingsDirty);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::bindAuxBuffer(id<MTLBuffer> buffer, const MVKShaderAuxBufferBinding& binding, bool needVertexAuxBuffer, bool needFragmentAuxBuffer) {
-    _vertexAuxBufferBinding.mtlBuffer = needVertexAuxBuffer ? buffer : nil;
+void MVKGraphicsResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needVertexAuxBuffer, bool needFragmentAuxBuffer) {
     _vertexAuxBufferBinding.index = binding.vertex;
     _vertexAuxBufferBinding.isDirty = needVertexAuxBuffer;
-    _fragmentAuxBufferBinding.mtlBuffer = needFragmentAuxBuffer ? buffer : nil;
     _fragmentAuxBufferBinding.index = binding.fragment;
     _fragmentAuxBufferBinding.isDirty = needFragmentAuxBuffer;
 }
@@ -443,23 +441,21 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
     MVKResourcesCommandEncoderState::markDirty(_fragmentTextureBindings, _areFragmentTextureBindingsDirty);
     MVKResourcesCommandEncoderState::markDirty(_vertexSamplerStateBindings, _areVertexSamplerStateBindingsDirty);
     MVKResourcesCommandEncoderState::markDirty(_fragmentSamplerStateBindings, _areFragmentSamplerStateBindingsDirty);
-    _vertexAuxBufferBinding.isDirty = true;
-    _fragmentAuxBufferBinding.isDirty = true;
 }
 
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl() {
 
-    if (_vertexAuxBufferBinding.mtlBuffer) {
+    if (_vertexAuxBufferBinding.isDirty) {
         for (auto& b : _vertexTextureBindings) {
             if (b.isDirty)
-                updateSwizzle(_vertexAuxBufferBinding.mtlBuffer, b.index, b.swizzle);
+                updateSwizzle(_vertexSwizzleConstants, b.index, b.swizzle);
         }
     }
 
-    if (_fragmentAuxBufferBinding.mtlBuffer) {
+    if (_fragmentAuxBufferBinding.isDirty) {
         for (auto& b : _fragmentTextureBindings) {
             if (b.isDirty)
-                updateSwizzle(_fragmentAuxBufferBinding.mtlBuffer, b.index, b.swizzle);
+                updateSwizzle(_fragmentSwizzleConstants, b.index, b.swizzle);
         }
     }
 
@@ -478,17 +474,17 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl() {
                                        });
 
     if (_vertexAuxBufferBinding.isDirty) {
-        _vertexAuxBufferBinding.isDirty = false;
-        [_cmdEncoder->_mtlRenderEncoder setVertexBuffer: _vertexAuxBufferBinding.mtlBuffer
-                                        offset: 0
-                                        atIndex: _vertexAuxBufferBinding.index];
+        _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
+                                    _vertexSwizzleConstants.data(),
+                                    _vertexSwizzleConstants.size() * sizeof(uint32_t),
+                                    _vertexAuxBufferBinding.index);
     }
 
     if (_fragmentAuxBufferBinding.isDirty) {
-        _fragmentAuxBufferBinding.isDirty = false;
-        [_cmdEncoder->_mtlRenderEncoder setFragmentBuffer: _fragmentAuxBufferBinding.mtlBuffer
-                                        offset: 0
-                                        atIndex: _fragmentAuxBufferBinding.index];
+        _cmdEncoder->setFragmentBytes(_cmdEncoder->_mtlRenderEncoder,
+                                      _fragmentSwizzleConstants.data(),
+                                      _fragmentSwizzleConstants.size() * sizeof(uint32_t),
+                                      _fragmentAuxBufferBinding.index);
     }
 
     encodeBinding<MVKMTLTextureBinding>(_vertexTextureBindings, _areVertexTextureBindingsDirty,
@@ -523,8 +519,8 @@ void MVKGraphicsResourcesCommandEncoderState::resetImpl() {
     _fragmentTextureBindings.clear();
     _vertexSamplerStateBindings.clear();
     _fragmentSamplerStateBindings.clear();
-    _vertexAuxBufferBinding.mtlBuffer = nil;
-    _fragmentAuxBufferBinding.mtlBuffer = nil;
+    _vertexSwizzleConstants.clear();
+    _fragmentSwizzleConstants.clear();
 
     _areVertexBufferBindingsDirty = false;
     _areFragmentBufferBindingsDirty = false;
@@ -552,10 +548,9 @@ void MVKComputeResourcesCommandEncoderState::bindSamplerState(const MVKMTLSample
     bind(binding, _samplerStateBindings, _areSamplerStateBindingsDirty);
 }
 
-void MVKComputeResourcesCommandEncoderState::bindAuxBuffer(id<MTLBuffer> buffer, const MVKShaderAuxBufferBinding& binding) {
-    _auxBufferBinding.mtlBuffer = buffer;
+void MVKComputeResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderAuxBufferBinding& binding) {
     _auxBufferBinding.index = binding.compute;
-    _auxBufferBinding.isDirty = buffer != nil;
+    _auxBufferBinding.isDirty = true;
 }
 
 // Mark everything as dirty
@@ -564,15 +559,14 @@ void MVKComputeResourcesCommandEncoderState::markDirty() {
     MVKResourcesCommandEncoderState::markDirty(_bufferBindings, _areBufferBindingsDirty);
     MVKResourcesCommandEncoderState::markDirty(_textureBindings, _areTextureBindingsDirty);
     MVKResourcesCommandEncoderState::markDirty(_samplerStateBindings, _areSamplerStateBindingsDirty);
-    _auxBufferBinding.isDirty = true;
 }
 
 void MVKComputeResourcesCommandEncoderState::encodeImpl() {
 
-    if (_auxBufferBinding.mtlBuffer) {
+    if (_auxBufferBinding.isDirty) {
         for (auto& b : _textureBindings) {
             if (b.isDirty)
-                updateSwizzle(_auxBufferBinding.mtlBuffer, b.index, b.swizzle);
+                updateSwizzle(_swizzleConstants, b.index, b.swizzle);
         }
     }
 
@@ -584,10 +578,10 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl() {
                                        });
 
     if (_auxBufferBinding.isDirty) {
-        _auxBufferBinding.isDirty = false;
-        [_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setBuffer: _auxBufferBinding.mtlBuffer
-                                                                   offset: 0
-                                                                   atIndex: _auxBufferBinding.index];
+        _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
+                                     _swizzleConstants.data(),
+                                     _swizzleConstants.size() * sizeof(uint32_t),
+                                     _auxBufferBinding.index);
     }
 
     encodeBinding<MVKMTLTextureBinding>(_textureBindings, _areTextureBindingsDirty,
@@ -607,7 +601,7 @@ void MVKComputeResourcesCommandEncoderState::resetImpl() {
     _bufferBindings.clear();
     _textureBindings.clear();
     _samplerStateBindings.clear();
-    _auxBufferBinding.mtlBuffer = nil;
+    _swizzleConstants.clear();
 
     _areBufferBindingsDirty = false;
     _areTextureBindingsDirty = false;

@@ -108,14 +108,9 @@ public:
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKBaseDeviceObject(device),
 																						   _pipelineCache(pipelineCache) {}
 
-	~MVKPipeline() override {
-		[_auxBuffer release];
-	};
-
 protected:
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderAuxBufferBinding _auxBufferIndex;
-	id<MTLBuffer> _auxBuffer = nil;
 
 };
 
