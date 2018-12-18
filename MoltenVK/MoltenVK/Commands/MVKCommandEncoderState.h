@@ -189,7 +189,7 @@ class MVKPushConstantsCommandEncoderState : public MVKCommandEncoderState {
 public:
 
     /** Sets the specified push constants. */
-    void setPushConstants(uint32_t offset, MVKVector<char>& pushConstants);
+    void setPushConstants(uint32_t offset, MVKVector128<char>& pushConstants);
 
     /** Sets the index of the Metal buffer used to hold the push constants. */
     void setMTLBufferIndex(uint32_t mtlBufferIndex);
@@ -203,7 +203,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MVKVector<char> _pushConstants;
+    MVKVector128<char> _pushConstants;
     VkShaderStageFlagBits _shaderStage;
     uint32_t _mtlBufferIndex = 0;
 };

@@ -129,7 +129,7 @@ private:
 	MVKPipelineLayout* _pipelineLayout;
 	VkShaderStageFlags _stageFlags;
 	uint32_t _offset;
-	MVKVector<char> _pushConstants;
+	MVKVector128<char> _pushConstants;
 };
 
 
@@ -157,7 +157,7 @@ private:
 
 	VkPipelineBindPoint _pipelineBindPoint;
 	MVKPipelineLayout* _pipelineLayout;
-	std::vector<VkWriteDescriptorSet> _descriptorWrites;
+	MVKVector<VkWriteDescriptorSet> _descriptorWrites;
 	uint32_t _set;
 };
 

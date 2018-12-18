@@ -55,7 +55,7 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-                                          vector<VkWriteDescriptorSet>& descriptorWrites,
+                                          MVKVector<VkWriteDescriptorSet>& descriptorWrites,
                                           uint32_t set) {
 
     _descriptorSetLayouts[set].pushDescriptorSet(cmdEncoder, descriptorWrites,

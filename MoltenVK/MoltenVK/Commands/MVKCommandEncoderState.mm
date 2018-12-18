@@ -136,7 +136,7 @@ void MVKScissorCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKPushConstantsCommandEncoderState
 
-void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVKVector<char>& pushConstants) {
+void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVKVector128<char>& pushConstants) {
     uint32_t pcCnt = (uint32_t)pushConstants.size();
     mvkEnsureSize(_pushConstants, offset + pcCnt);
     copy(pushConstants.begin(), pushConstants.end(), _pushConstants.begin() + offset);

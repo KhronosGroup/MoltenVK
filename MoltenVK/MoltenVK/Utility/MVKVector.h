@@ -456,7 +456,7 @@ public:
     {
       --alc.num_elements_used;
 
-      for( size_t i = it.GetIndex(); i < alc.num_elements_used; ++i )
+      for( size_t i = it.get_position(); i < alc.num_elements_used; ++i )
       {
         alc.ptr[i] = std::move( alc.ptr[i + 1] );
       }
@@ -523,6 +523,11 @@ public:
     return alc.ptr[alc.num_elements_used - 1];
   }
 };
+
+
+template<typename Type>
+using MVKVector128 = MVKVector<Type, mvk_vector_allocator_with_stack<Type, 128>>;
+
 
 #endif
 

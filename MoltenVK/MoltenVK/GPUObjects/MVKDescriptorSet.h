@@ -138,7 +138,7 @@ public:
 
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   std::vector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKVector<VkWriteDescriptorSet>& descriptorWrites,
 						   MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
 

@@ -25,7 +25,6 @@
 #include "MVKVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
-#include <vector>
 #include <ostream>
 
 #import <Metal/Metal.h>
@@ -63,7 +62,7 @@ public:
 
 	/** Updates a descriptor set in a command encoder. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   std::vector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKVector<VkWriteDescriptorSet>& descriptorWrites,
 						   uint32_t set);
 
 	/** Updates a descriptor set from a template in a command encoder. */
@@ -82,9 +81,9 @@ public:
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
 protected:
-	std::vector<MVKDescriptorSetLayout> _descriptorSetLayouts;
-	std::vector<MVKShaderResourceBinding> _dslMTLResourceIndexOffsets;
-	std::vector<VkPushConstantRange> _pushConstants;
+	MVKVector<MVKDescriptorSetLayout> _descriptorSetLayouts;
+	MVKVector<MVKShaderResourceBinding> _dslMTLResourceIndexOffsets;
+	MVKVector<VkPushConstantRange> _pushConstants;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	MVKShaderAuxBufferBinding _auxBufferIndex;
 };
