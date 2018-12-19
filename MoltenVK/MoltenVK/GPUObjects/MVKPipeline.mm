@@ -375,6 +375,15 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     for (uint32_t i = 0; i < vaCnt; i++) {
         const VkVertexInputAttributeDescription* pVKVA = &pCreateInfo->pVertexInputState->pVertexAttributeDescriptions[i];
         if (shaderContext.isVertexAttributeLocationUsed(pVKVA->location)) {
+            // Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
+            const VkVertexInputBindingDescription* pVKVB = pCreateInfo->pVertexInputState->pVertexBindingDescriptions;
+            for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
+                if (pVKVB->binding == pVKVA->binding) { break; }
+            }
+            if (pVKVA->offset >= pVKVB->stride) {
+                setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute offsets must not exceed the vertex buffer stride."));
+                return nil;
+            }
             MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
             vaDesc.format = mvkMTLVertexFormatFromVkFormat(pVKVA->format);
             vaDesc.bufferIndex = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
