@@ -193,6 +193,11 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 
 	if ( !pImageFormatProperties ) { return VK_SUCCESS; }
 
+	// Metal does not support creating uncompressed views of compressed formats.
+	if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) {
+		return VK_ERROR_FORMAT_NOT_SUPPORTED;
+	}
+
     VkPhysicalDeviceLimits* pLimits = &_properties.limits;
     VkExtent3D maxExt;
     uint32_t maxLayers;
