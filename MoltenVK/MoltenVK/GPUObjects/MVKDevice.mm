@@ -1757,6 +1757,20 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
 
 	initPerformanceTracking();
+    
+#if MVK_MACOS
+    //on mac OS, the wrong GPU will drive the screen (graphics switching will not occur)
+    //unless we call this specific MTLCreateSystemDefaultDevice method to create the metal device
+    id<MTLDevice> device = physicalDevice->getMTLDevice();
+    if (!device.headless && !device.lowPower) {
+        id<MTLDevice> sysDefaultDevice = MTLCreateSystemDefaultDevice();
+        
+        //lets be 100% sure this is the device the user asked for
+        if (sysDefaultDevice.registryID == device.registryID) {
+            physicalDevice->replaceMTLDevice(sysDefaultDevice);
+        }
+    }
+#endif
 
 	_physicalDevice = physicalDevice;
 	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
