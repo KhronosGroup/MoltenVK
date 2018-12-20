@@ -54,6 +54,7 @@ typedef enum {
     kMVKFormatColorInt32,       /**< A signed 32-bit integer color. */
     kMVKFormatColorUInt32,		/**< An unsigned 32-bit integer color. */
     kMVKFormatDepthStencil,     /**< A depth and stencil value. */
+    kMVKFormatCompressed,       /**< A block-compressed color. */
 } MVKFormatType;
 
 /** Returns whether the VkFormat is supported by this implementation. */

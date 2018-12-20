@@ -214,7 +214,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			}
 			// Metal does not allow compressed or depth/stencil formats on 1D textures
 			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt.width = pLimits->maxImageDimension1D;
@@ -231,7 +231,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				// Linear textures have additional restrictions under Metal:
 				// - They may not be depth/stencil or compressed textures.
 				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-					mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+					mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 					return VK_ERROR_FORMAT_NOT_SUPPORTED;
 				}
 #if MVK_MACOS
@@ -248,7 +248,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 			} else {
 				// Compressed multisampled textures aren't supported.
-				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 					sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 				}
 				maxLevels = mvkMipmapLevels3D(maxExt);
@@ -262,7 +262,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
             }
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
 			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt.width = pLimits->maxImageDimension3D;
@@ -278,7 +278,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			}
 			// Metal does not allow compressed or depth/stencil formats on anything but 2D textures
 			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt = { 1, 1, 1};

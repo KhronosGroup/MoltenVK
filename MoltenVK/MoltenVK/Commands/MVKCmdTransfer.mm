@@ -91,8 +91,8 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
     if ( !srcMTLTex || !dstMTLTex ) { return; }
 
     if (srcMTLTex.pixelFormat != dstMTLTex.pixelFormat &&
-        mvkFormatTypeFromVkFormat(_dstImage->getVkFormat()) != kMVKFormatNone &&
-        mvkFormatTypeFromVkFormat(_srcImage->getVkFormat()) != kMVKFormatNone) {
+        mvkFormatTypeFromVkFormat(_dstImage->getVkFormat()) != kMVKFormatCompressed &&
+        mvkFormatTypeFromVkFormat(_srcImage->getVkFormat()) != kMVKFormatCompressed) {
         // If the pixel formats don't match, Metal won't abort, but it won't
         // do the copy either. But we can easily work around that... unless the
         // source format is compressed.
