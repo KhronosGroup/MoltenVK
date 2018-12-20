@@ -391,14 +391,10 @@ protected:
         }
     }
 
-    struct AuxBuffer {
-        uint32_t swizzleConst[1];
-    };
-
-    // Updates the swizzle for an image in the given buffer.
-    void updateSwizzle(id<MTLBuffer> buffer, uint32_t index, uint32_t swizzle) {
-        auto* aux = (AuxBuffer*)buffer.contents;
-        aux->swizzleConst[index] = swizzle;
+    // Updates the swizzle for an image in the given vector.
+    void updateSwizzle(MVKVector<uint32_t> &constants, uint32_t index, uint32_t swizzle) {
+        if (index >= constants.size()) { constants.resize(index + 1); }
+        constants[index] = swizzle;
     }
 };
 
@@ -438,7 +434,7 @@ public:
     }
 
     /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(id<MTLBuffer> buffer, const MVKShaderAuxBufferBinding& binding, bool needVertexAuxBuffer, bool needFragmentAuxBuffer);
+    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needVertexAuxBuffer, bool needFragmentAuxBuffer);
 
 
 #pragma mark Construction
@@ -457,6 +453,8 @@ protected:
     MVKVector<MVKMTLTextureBinding> _fragmentTextureBindings;
     MVKVector<MVKMTLSamplerStateBinding> _vertexSamplerStateBindings;
     MVKVector<MVKMTLSamplerStateBinding> _fragmentSamplerStateBindings;
+    MVKVector<uint32_t> _vertexSwizzleConstants;
+    MVKVector<uint32_t> _fragmentSwizzleConstants;
     MVKMTLBufferBinding _vertexAuxBufferBinding;
     MVKMTLBufferBinding _fragmentAuxBufferBinding;
 
@@ -487,7 +485,7 @@ public:
     void bindSamplerState(const MVKMTLSamplerStateBinding& binding);
 
     /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(id<MTLBuffer> buffer, const MVKShaderAuxBufferBinding& binding);
+    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding);
 
 #pragma mark Construction
 
@@ -502,6 +500,7 @@ protected:
     MVKVector<MVKMTLBufferBinding> _bufferBindings;
     MVKVector<MVKMTLTextureBinding> _textureBindings;
     MVKVector<MVKMTLSamplerStateBinding> _samplerStateBindings;
+    MVKVector<uint32_t> _swizzleConstants;
     MVKMTLBufferBinding _auxBufferBinding;
 
     bool _areBufferBindingsDirty = false;
