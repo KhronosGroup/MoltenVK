@@ -284,6 +284,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		try {
 #endif
 			pGLSLCompiler = new spirv_cross::CompilerGLSL(_spirv);
+			auto options = pGLSLCompiler->get_common_options();
+			options.vulkan_semantics = true;
+			options.separate_shader_objects = true;
+			pGLSLCompiler->set_common_options(options);
 			string glsl = pGLSLCompiler->compile();
             logSource(glsl, "GLSL", "Estimated original");
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS

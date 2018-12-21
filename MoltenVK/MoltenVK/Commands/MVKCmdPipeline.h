@@ -184,7 +184,7 @@ private:
 	MVKDescriptorUpdateTemplate* _descUpdateTemplate;
 	MVKPipelineLayout* _pipelineLayout;
 	uint32_t _set;
-	void* _pData;
+	void* _pData = nullptr;
 };
 
 

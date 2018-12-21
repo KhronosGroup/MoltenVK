@@ -437,11 +437,28 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDescriptorSetLay
             _immutableSamplers.reserve(pBinding->descriptorCount);
             for (uint32_t i = 0; i < pBinding->descriptorCount; i++) {
                 _immutableSamplers.push_back((MVKSampler*)pBinding->pImmutableSamplers[i]);
+                _immutableSamplers.back()->retain();
             }
         }
 
     _info = *pBinding;
     _info.pImmutableSamplers = nullptr;     // Remove dangling pointer
+}
+
+MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding) :
+	MVKConfigurableObject(), _info(binding._info), _immutableSamplers(binding._immutableSamplers),
+	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets),
+	_applyToVertexStage(binding._applyToVertexStage), _applyToFragmentStage(binding._applyToFragmentStage),
+	_applyToComputeStage(binding._applyToComputeStage) {
+	for (MVKSampler* sampler : _immutableSamplers) {
+		sampler->retain();
+	}
+}
+
+MVKDescriptorSetLayoutBinding::~MVKDescriptorSetLayoutBinding() {
+	for (MVKSampler* sampler : _immutableSamplers) {
+		sampler->release();
+	}
 }
 
 /**
@@ -647,6 +664,8 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 					auto* mvkSampler = (MVKSampler*)pImgInfo->sampler;
 					mvkSampler->retain();
 					_mtlSamplers[dstIdx] = mvkSampler ? mvkSampler->getMTLSamplerState() : nil;
+				} else {
+					_imageBindings[dstIdx].sampler = nullptr;	// Guard against app not explicitly clearing Sampler.
 				}
 				if (oldSampler) {
 					oldSampler->release();
@@ -668,6 +687,8 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 					auto* mvkSampler = (MVKSampler*)pImgInfo->sampler;
 					mvkSampler->retain();
 					_mtlSamplers[dstIdx] = mvkSampler ? mvkSampler->getMTLSamplerState() : nil;
+				} else {
+					_imageBindings[dstIdx].sampler = nullptr;	// Guard against app not explicitly clearing Sampler.
 				}
 				if (oldImageView) {
 					oldImageView->release();

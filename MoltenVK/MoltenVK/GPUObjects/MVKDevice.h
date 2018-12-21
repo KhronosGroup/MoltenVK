@@ -244,6 +244,8 @@ public:
 	/** Returns the underlying Metal device. */
 	inline id<MTLDevice> getMTLDevice() { return _mtlDevice; }
 
+    /*** Replaces the underlying Metal device .*/
+    inline void replaceMTLDevice(id<MTLDevice> mtlDevice) { [_mtlDevice autorelease]; _mtlDevice = [mtlDevice retain]; }
 
 #pragma mark Construction
 

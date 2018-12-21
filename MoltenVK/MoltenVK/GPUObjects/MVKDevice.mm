@@ -175,10 +175,9 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties*
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format,
                                             VkFormatProperties2KHR* pFormatProperties) {
-	static VkFormatProperties noFmtFeats = { 0, 0, 0 };
 	if (pFormatProperties) {
 		pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
-		pFormatProperties->formatProperties = getFormatIsSupported(format) ? mvkVkFormatProperties(format) : noFmtFeats;
+		pFormatProperties->formatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
 	}
 }
 
@@ -192,6 +191,11 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 	if ( !getFormatIsSupported(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	if ( !pImageFormatProperties ) { return VK_SUCCESS; }
+
+	// Metal does not support creating uncompressed views of compressed formats.
+	if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) {
+		return VK_ERROR_FORMAT_NOT_SUPPORTED;
+	}
 
     VkPhysicalDeviceLimits* pLimits = &_properties.limits;
     VkExtent3D maxExt;
@@ -210,7 +214,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			}
 			// Metal does not allow compressed or depth/stencil formats on 1D textures
 			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt.width = pLimits->maxImageDimension1D;
@@ -227,7 +231,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				// Linear textures have additional restrictions under Metal:
 				// - They may not be depth/stencil or compressed textures.
 				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-					mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+					mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 					return VK_ERROR_FORMAT_NOT_SUPPORTED;
 				}
 #if MVK_MACOS
@@ -244,7 +248,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 			} else {
 				// Compressed multisampled textures aren't supported.
-				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 					sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 				}
 				maxLevels = mvkMipmapLevels3D(maxExt);
@@ -258,7 +262,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
             }
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
 			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt.width = pLimits->maxImageDimension3D;
@@ -274,7 +278,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			}
 			// Metal does not allow compressed or depth/stencil formats on anything but 2D textures
 			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatNone) {
+				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt = { 1, 1, 1};
@@ -1757,6 +1761,20 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
 
 	initPerformanceTracking();
+
+#if MVK_MACOS
+    //on mac OS, the wrong GPU will drive the screen (graphics switching will not occur)
+    //unless we call this specific MTLCreateSystemDefaultDevice method to create the metal device
+    id<MTLDevice> device = physicalDevice->getMTLDevice();
+    if (!device.headless && !device.lowPower) {
+        id<MTLDevice> sysDefaultDevice = MTLCreateSystemDefaultDevice();
+        
+        //lets be 100% sure this is the device the user asked for
+        if (sysDefaultDevice.registryID == device.registryID) {
+            physicalDevice->replaceMTLDevice(sysDefaultDevice);
+        }
+    }
+#endif
 
 	_physicalDevice = physicalDevice;
 	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();

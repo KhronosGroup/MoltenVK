@@ -181,7 +181,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder) {
         [mtlCmdEnc setDepthClipMode: _mtlDepthClipMode];
     }
 
-    cmdEncoder->_graphicsResourcesState.bindAuxBuffer(_auxBuffer, _auxBufferIndex, _needsVertexAuxBuffer, _needsFragmentAuxBuffer);
+    cmdEncoder->_graphicsResourcesState.bindAuxBuffer(_auxBufferIndex, _needsVertexAuxBuffer, _needsFragmentAuxBuffer);
 }
 
 bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
@@ -309,7 +309,6 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 
     auto* mvkLayout = (MVKPipelineLayout*)pCreateInfo->layout;
     _auxBufferIndex = mvkLayout->getAuxBufferIndex();
-    uint32_t auxBufferSize = sizeof(uint32_t) * mvkLayout->getTextureCount();
 
     // Retrieve the render subpass for which this pipeline is being constructed
     MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
@@ -366,15 +365,20 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 		}
 	}
 
-    if (_needsVertexAuxBuffer || _needsFragmentAuxBuffer) {
-        _auxBuffer = [_device->getMTLDevice() newBufferWithLength: auxBufferSize options: MTLResourceStorageModeShared];	// retained
-    }
-
     // Vertex attributes
     uint32_t vaCnt = pCreateInfo->pVertexInputState->vertexAttributeDescriptionCount;
     for (uint32_t i = 0; i < vaCnt; i++) {
         const VkVertexInputAttributeDescription* pVKVA = &pCreateInfo->pVertexInputState->pVertexAttributeDescriptions[i];
         if (shaderContext.isVertexAttributeLocationUsed(pVKVA->location)) {
+            // Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
+            const VkVertexInputBindingDescription* pVKVB = pCreateInfo->pVertexInputState->pVertexBindingDescriptions;
+            for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
+                if (pVKVB->binding == pVKVA->binding) { break; }
+            }
+            if (pVKVA->offset >= pVKVB->stride) {
+                setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute offsets must not exceed the vertex buffer stride."));
+                return nil;
+            }
             MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
             vaDesc.format = mvkMTLVertexFormatFromVkFormat(pVKVA->format);
             vaDesc.bufferIndex = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
@@ -565,7 +569,9 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 void MVKComputePipeline::encode(MVKCommandEncoder* cmdEncoder) {
     [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setComputePipelineState: _mtlPipelineState];
     cmdEncoder->_mtlThreadgroupSize = _mtlThreadgroupSize;
-    cmdEncoder->_computeResourcesState.bindAuxBuffer(_auxBuffer, _auxBufferIndex);
+    if (_needsAuxBuffer) {
+        cmdEncoder->_computeResourcesState.bindAuxBuffer(_auxBufferIndex);
+    }
 }
 
 MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
@@ -604,15 +610,11 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
     _auxBufferIndex = layout->getAuxBufferIndex();
-    uint32_t auxBufferSize = sizeof(uint32_t) * layout->getTextureCount();
     shaderContext.options.auxBufferIndex = _auxBufferIndex.compute;
 
     MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
     auto func = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache);
     _needsAuxBuffer = shaderContext.options.needsAuxBuffer;
-    if (_needsAuxBuffer) {
-        _auxBuffer = [_device->getMTLDevice() newBufferWithLength: auxBufferSize options: MTLResourceStorageModeShared];	// retained
-    }
     return func;
 }
 

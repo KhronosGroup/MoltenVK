@@ -90,6 +90,15 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
     if ( !srcMTLTex || !dstMTLTex ) { return; }
 
+    if (srcMTLTex.pixelFormat != dstMTLTex.pixelFormat &&
+        mvkFormatTypeFromVkFormat(_dstImage->getVkFormat()) != kMVKFormatCompressed &&
+        mvkFormatTypeFromVkFormat(_srcImage->getVkFormat()) != kMVKFormatCompressed) {
+        // If the pixel formats don't match, Metal won't abort, but it won't
+        // do the copy either. But we can easily work around that... unless the
+        // source format is compressed.
+        srcMTLTex = [[srcMTLTex newTextureViewWithPixelFormat: dstMTLTex.pixelFormat] autorelease];
+    }
+
     id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(_commandUse);
 
     for (auto& cpyRgn : _mtlTexCopyRegions) {

@@ -103,6 +103,11 @@ public:
 	MVKDescriptorSetLayoutBinding(MVKDescriptorSetLayout* layout,
 								  const VkDescriptorSetLayoutBinding* pBinding);
 
+	MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding);
+
+	/** Destuctor. */
+	~MVKDescriptorSetLayoutBinding() override;
+
 protected:
 	friend class MVKDescriptorBinding;
 	friend class MVKPipelineLayout;
