@@ -22,17 +22,23 @@
 #              build directory must be in the specified directory.
 #              It should be built the same way this script builds it.
 #
+#      -v      verbose output
 #
 
 
 # ----------------- Functions -------------------
 
+XC_BUILD_VERBOSITY="-quiet"
 V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
 GLSLANG_ROOT=""
 
 while (( "$#" )); do
   case "$1" in
+       -v)
+         XC_BUILD_VERBOSITY=""
+         shift 1
+         ;;
        --v-headers-root)
          V_HEADERS_ROOT=$2
          shift 2
@@ -235,7 +241,7 @@ xcodebuild 									\
 	-project "${EXT_DEPS}.xcodeproj"		\
 	-scheme "${EXT_DEPS}"					\
 	-derivedDataPath "${EXT_DIR}/build"		\
-	-quiet									\
+	${XC_BUILD_VERBOSITY}					\
 	build
 
 echo ========== Done! ==========
