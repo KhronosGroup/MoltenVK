@@ -89,8 +89,6 @@ build_repo() {
 		make -j
 	fi
 
-	make install
-
 	cd -
 }
 
@@ -98,7 +96,7 @@ build_repo() {
 # ----------------- Main -------------------
 
 EXT_DIR=External
-EXT_REV_DIR=ExternalRevisions
+EXT_REV_DIR=../ExternalRevisions
 
 echo
 echo ========== Retrieving MoltenVK dependencies into ${EXT_DIR} ==========
@@ -115,7 +113,7 @@ echo
 
 REPO_NAME=cereal
 REPO_URL="https://github.com/USCiLab/${REPO_NAME}.git"
-REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
@@ -135,7 +133,7 @@ if [ ! "$V_HEADERS_ROOT" = "" ]; then
 else
        REPO_NAME=Vulkan-Headers
        REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-       REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+       REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
        update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 fi
@@ -156,7 +154,7 @@ if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
 else
        REPO_NAME=SPIRV-Cross
        REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-       REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+       REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
        update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 fi
@@ -177,7 +175,7 @@ if [ ! "$GLSLANG_ROOT" = "" ]; then
 else
        REPO_NAME=glslang
        REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-       REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+       REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
        update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
@@ -185,7 +183,7 @@ else
        ./update_glslang_sources.py
        cd -
 
-       build_repo ${REPO_NAME}
+       build_repo "${REPO_NAME}/External/spirv-tools"
 fi
 
 
@@ -197,7 +195,7 @@ echo
 
 REPO_NAME=Vulkan-Tools
 REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
@@ -210,7 +208,7 @@ echo
 
 REPO_NAME=VulkanSamples
 REPO_URL="https://github.com/LunarG/${REPO_NAME}.git"
-REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
@@ -224,4 +222,21 @@ cd -
 # ----------------- Cleanup -------------------
 
 cd ..
+
+
+# -------------- Build MoltenVK dependencies -----------------
+echo
+echo ========== Building dependencies quietly. Please be patient on first build. ==========
+echo
+
+EXT_DEPS=ExternalDependencies
+
+xcodebuild 									\
+	-project "${EXT_DEPS}.xcodeproj"		\
+	-scheme "${EXT_DEPS}"					\
+	-derivedDataPath "${EXT_DIR}/build"		\
+	-quiet									\
+	build
+
+echo ========== Done! ==========
 
