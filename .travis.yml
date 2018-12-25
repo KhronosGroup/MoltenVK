@@ -14,6 +14,6 @@ cache:
     - External
 
 script:
-  - xcodebuild -scheme "MoltenVK Package"
+  - xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package"
   - xcodebuild -workspace Demos/Demos.xcworkspace -scheme "Cube-macOS"
 
