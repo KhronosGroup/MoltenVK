@@ -15,18 +15,18 @@ For best results, use a Markdown reader.*
 Table of Contents
 -----------------
 
-- [Fetching External Libraries](#fetching)
+- [Fetching and Building External Libraries](#fetching)
 - [Updating External Library Versions](#updating)
 - [Adding the *cereal* Library to the *MoltenVK Xcode* Project](#add_cereal)
-- [Adding the *SPIRV-Cross* Library to the *MoltenVKShaderConverter Xcode* Project](#add_spirv-cross)
-- [Adding the *glslang* Library to the *MoltenVKShaderConverter Xcode* Project](#add_glslang)
-- [Adding the *SPIRV-Tools* Library to the *MoltenVKShaderConverter Xcode* Project](#add_spirv-tools)
+- [Adding the *SPIRV-Cross* Library to the *ExternalDependencies Xcode* Project](#add_spirv-cross)
+- [Adding the *SPIRV-Tools* Library to the *ExternalDependencies Xcode* Project](#add_spirv-tools)
+- [Adding the *glslang* Library to the *ExternalDependencies Xcode* Project](#add_glslang)
 
 
 
 <a name="fetching"></a>
-Fetching External Libraries
----------------------------
+Fetching and Building External Libraries
+----------------------------------------
 
 **MoltenVK** uses technology from the following external open-source libraries:
 
@@ -40,8 +40,8 @@ Fetching External Libraries
 - [*VulkanSamples*](https://github.com/LunarG/VulkanSamples)
 
 These external open-source libraries are maintained in the `External` directory.
-To retrieve these libraries from their sources, run the `fetchDependencies`  script
-in the main repository directory:
+To retrieve and build these libraries from their sources, run the `fetchDependencies`
+script in the main repository directory:
 
 	./fetchDependencies
 
@@ -84,8 +84,8 @@ the value held in the corresponding `*_repo_revision` file listed above.
 The version of the *SPIRV-Tools* and *SPIRV-Headers* libraries is automatically 
 determined by the version of the *glslang* library you have retrieved.
 
-Once you have made changes to the `*_repo_revision` files, you can retrieve the 
-updated library versions by running the `fetchDependencies` script again.
+Once you have made changes to the `*_repo_revision` files, you can retrieve the updated 
+library versions by running the `fetchDependencies` script, as described above, again.
 
 >***Note:*** If, after updating to new versions of the external libraries, you encounter 
 >build errors when building **MoltenVK**, review the instructions in the sections below 
@@ -109,18 +109,18 @@ errors, you may need to re-add the *cereal* library to the `MoltenVK` *Xcode* pr
 
 
 <a name="add_spirv-cross"></a>
-Adding the *SPIRV-Cross* Library to the *MoltenVKShaderConverter Xcode* Project
--------------------------------------------------------------------------------
+Adding the *SPIRV-Cross* Library to the *ExternalDependencies Xcode* Project
+----------------------------------------------------------------------------
 
-The `MoltenVKShaderConverter` *Xcode* project is already configured to use the *SPIRV-Cross*
+The `ExternalDependencies` *Xcode* project is already configured to use the *SPIRV-Cross*
 library. However, after updating the version of *SPIRV-Cross*, as described [above](#updating),
 if you encounter any building errors, you may need to re-add the *SPIRV-Cross* library to the
-`MoltenVKShaderConverter` *Xcode* project as follows:
+`ExternalDependencies` *Xcode* project as follows:
 
 1. In the *Project Navigator*, remove all of the files under the *Group* named 
-   `MoltenVKSPIRVToMSLConverter/SPIRV-Cross`.
+   `External/SPIRV-Cross`.
 
-2. Drag the following files from the `External/SPIRV-Cross` directory to the `SPIRV-Cross` 
+2. Drag the following files from the `External/SPIRV-Cross` directory to the `External/SPIRV-Cross` 
    group in the *Project Navigator* panel:
 
 		spirv_cfg.cpp
@@ -137,24 +137,20 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Cross* l
 		spirv_parser.cpp
 		spirv_parser.hpp
 
-   In the ***Choose options for adding these files*** dialog that opens, select the 
-   ***Create groups*** option, add the files to *both* the `MoltenVKSPIRVToMSLConverter-iOS` 
-   and `MoltenVKSPIRVToMSLConverter-macOS` targets, and click the ***Finish*** button.
-
-3. ***(Optional)*** To simplify the paths used within *Xcode* to reference the added files,
-   perform the following steps:
-   
-   1. **Create a backup of your project!** This is an intrusive and dangerous operation!
-   2. In the *Finder*, right-click your `MoltenVKShaderConverter.xcodeproj` file and select 
-      **_Show Package Contents_**.
-   3. Open the `project.pbxproj` file in a text editor.
-   4. Remove all occurrences of `path-to-SPIRV-Cross-repo-folder` from the paths to the files added above.
+   In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 
+   add the files to *both* the `SPIRV-Cross-macOS` and `SPIRV-Cross-iOS` targets, and click the ***Finish*** button.
 
 
 ### Regression Testing Your Changes to *SPIRV-Cross*
 
-If you make changes to the `SPIRV-Cross` repository, you can regression test your changes
- using the following steps:
+The *SPIRV-Cross* library plays an important part in providing features for **_MoltenVK_**, and if 
+you are developing features for **_MoltenVK_**, you may end up making changes to *SPIRV-Cross*. 
+
+If you make changes to the `SPIRV-Cross` repository, you can build a new version of the `libSPIRVCross.a`
+static library by opening the `ExternalDependencies.xcodeproj` *Xcode* project, and running the **_ExternalDependencies_** *Xcode* scheme. You can then rebuild **MoltenVK** to include the new library.
+
+While makng changes to the `SPIRV-Cross` repository, you can regression test your changes using the
+following steps:
 
 1. Load and build the versions of `SPRIV-Tools` and `glslang` that are used by the `SPIRV-Cross` tests:
 
@@ -170,88 +166,62 @@ If you make changes to the `SPIRV-Cross` repository, you can regression test you
 
 		./test_shaders.sh
 
-4. If your changes result in different expected output for a reference shader, and the new results
-   are correct, you can update the reference shader for a particular regression test by deleting
-   that reference shader, in either `External/SPIRV-Cross/reference/shaders-msl` or 
-   `External/SPIRV-Cross/reference/opt/shaders-msl`, and running the test again. The test will
-   replace the deleted reference shader.
+
+
+<a name="add_spirv-tools"></a>
+Adding the *SPIRV-Tools* Library to the *ExternalDependencies Xcode* Project
+----------------------------------------------------------------------------
+
+The `ExternalDependencies` *Xcode* project is already configured to use the *SPIRV-Tools*
+library. However, after updating the version of *glslang* (which adds *SPIRV-Tools*), 
+as described [above](#updating), if you encounter any building errors, you may need to re-add 
+the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follows:
+
+1. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
+   `External/SPIRV-Tools`.
+
+2. Drag the `External/glslang/Extermal/spirv-tools/source` file folder to the `External/SPIRV-Tools` 
+   group in the *Project Navigator* panel. In the _**Choose options for adding these files**_ dialog 
+   that opens, select the _**Create groups**_ option, add the files to *both* the `SPIRV-Tools-macOS` 
+   and `SPIRV-Tools-iOS` targets, and click the ***Finish*** button.
+
+3. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
+   select the `SPIRV-Tools-macOS` target, and open the *Build Settings* tab. Locate the build 
+   setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
+
+		$(inherited) 
+		"$(SRCROOT)/External/glslang/External/spirv-tools/"
+		"$(SRCROOT)/External/glslang/External/spirv-tools/include"
+		"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include"
+		"$(SRCROOT)/External/glslang/External/spirv-tools/build"
+
+4. Repeat *Step 3* for the `SPIRV-Tools-iOS` target within the `ExternalDependencies` *Xcode* project
 
 
 
 <a name="add_glslang"></a>
-Adding the *glslang* Library to the *MoltenVKShaderConverter Xcode* Project
----------------------------------------------------------------------------
+Adding the *glslang* Library to the *ExternalDependencies Xcode* Project
+------------------------------------------------------------------------
 
-The `MoltenVKShaderConverter` *Xcode* project is already configured to use the *glslang*
+The `ExternalDependencies` *Xcode* project is already configured to use the *glslang*
 library. However, after updating the version of *glslang*, as described [above](#updating),
 if you encounter any building errors, you may need to re-add the *glslang* library to the
-`MoltenVKShaderConverter` *Xcode* project as follows:
+`ExternalDependencies` *Xcode* project as follows:
 
 1. In the *Project Navigator*, remove all *Groups* from under the *Group* named
-   `MoltenVKGLSLToSPIRVConverter/glslang`.
+   `External/glslang`.
 
-2. Drag the following folders from the `External/glslang` file folder to the `glslang` *Group* in
-   the *Project Navigator* panel:
+2. Drag the following folders from the `External/glslang` file folder to the `External/glslang` 
+   *Group* in the *Project Navigator* panel:
 
 		glslang
 		OGLCompilersDLL
 		SPIRV
 
-   In the ***Choose options for adding these files*** dialog that opens, select the 
-   ***Create groups*** option, add the files to *both* the `MoltenVKGLSLToSPIRVConverter-iOS` 
-   and `MoltenVKGLSLToSPIRVConverter-macOS` targets, and click the ***Finish*** button.
+   In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 
+   add the files to *both* the `glslang-macOS` and `glslang-iOS` targets, and click the ***Finish*** button.
 
 3. In the *Project Navigator* panel, remove the references to the following files and folders:
 
-		glslang/glslang/MachineIndependant/glslang.y
-		glslang/glslang/OSDependent/Windows
-
-4. ***(Optional)*** To simplify the paths used within *Xcode* to reference the added files,
-   perform the following steps:
-   
-   1. **Create a backup of your project!** This is an intrusive and dangerous operation!
-   2. In the *Finder*, right-click your `MoltenVKShaderConverter.xcodeproj` file and select 
-      **_Show Package Contents_**.
-   3. Open the `project.pbxproj` file in a text editor.
-   4. Remove all occurrences of `path-to-glslang-repo-folder` from the paths to the 
-      `glslang`, `OGLCompilersDLL`, and `SPIRV` directories added above.
-
-
-
-<a name="add_spirv-tools"></a>
-Adding the *SPIRV-Tools* Library to the *MoltenVKShaderConverter Xcode* Project
--------------------------------------------------------------------------------
-
-The `MoltenVKShaderConverter` *Xcode* project is already configured to use the *SPIRV-Tools*
-library. However, after updating the version of *SPIRV-Tools*, as described [above](#updating),
-if you encounter any building errors, you may need to re-add the *SPIRV-Tools* library to the
-`MoltenVKShaderConverter` *Xcode* project as follows:
-
-1. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
-   `MoltenVKSPIRVToMSLConverter/SPIRV-Tools`.
-
-2. Drag the `External/glslang/Extermal/spirv-tools/source` file folder to the `SPIRV-Tools` group in the *Project Navigator* panel.
-   In the _**Choose options for adding these files**_ dialog that opens, select the 
-   _**Create groups**_ option, add the files to *both* the `MoltenVKSPIRVToMSLConverter-iOS` 
-   and `MoltenVKSPIRVToMSLConverter-macOS` targets, and click the ***Finish*** button.
-
-3. In the *Project Navigator* panel, select the `MoltenVKShaderConverter` *Xcode* project, then select the 
-   `MoltenVKSPIRVToMSLConverter-macOS` target, and open the *Build Settings* tab. Locate the build setting 
-   entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
-   
-		"$(SRCROOT)/glslang/External/spirv-tools"
-		"$(SRCROOT)/glslang/External/spirv-tools/include"
-		"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include"
-		"$(SRCROOT)/glslang/build/External/spirv-tools"
-
-4. Repeat *Step 3* for the `MoltenVKSPIRVToMSLConverter-iOS` target within the `MoltenVKShaderConverter` *Xcode* project
-
-5. ***(Optional)*** To simplify the paths used within *Xcode* to reference the added files,
-   perform the following steps:
-   
-   1. **Create a backup of your project!** This is an intrusive and dangerous operation!
-   2. In the *Finder*, right-click your `MoltenVKShaderConverter.xcodeproj` file and select 
-      **_Show Package Contents_**.
-   3. Open the `project.pbxproj` file in a text editor.
-   4. Remove all occurrences of `path-to-SPIRV-Tools-repo-folder` from the paths to the 
-      `source` directory added above.
+		External/glslang/glslang/MachineIndependant/glslang.y
+		External/glslang/glslang/OSDependent/Windows

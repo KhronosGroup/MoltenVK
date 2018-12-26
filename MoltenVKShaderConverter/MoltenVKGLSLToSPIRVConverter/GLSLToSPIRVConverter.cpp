@@ -20,9 +20,9 @@
 #include "MVKCommonEnvironment.h"
 #include "SPIRVToMSLConverter.h"
 #include "MVKStrings.h"
-#include "GlslangToSpv.h"
+#include "../glslang/SPIRV/GlslangToSpv.h"
 #include "../glslang/SPIRV/disassemble.h"
-#include "doc.h"
+#include "../glslang/SPIRV/doc.h"
 #include <sstream>
 
 using namespace std;
