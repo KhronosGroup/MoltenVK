@@ -85,12 +85,12 @@
 		A964BD5F1C57EFBD00D930D8 /* MoltenVKShaderConverter */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MoltenVKShaderConverter; sourceTree = BUILT_PRODUCTS_DIR; };
 		A964BD601C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKGLSLToSPIRVConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		A964BD611C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKGLSLToSPIRVConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		A972AD2A21CEE6A90013AB25 /* libglslang.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libglslang.a; path = "../External/build/Build/Products/Release-iphoneos/libglslang.a"; sourceTree = "<group>"; };
-		A972AD2F21CEE7040013AB25 /* libSPIRVCross.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVCross.a; path = "../External/build/Build/Products/Release-iphoneos/libSPIRVCross.a"; sourceTree = "<group>"; };
-		A972AD3021CEE7040013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVTools.a; path = "../External/build/Build/Products/Release-iphoneos/libSPIRVTools.a"; sourceTree = "<group>"; };
-		A972AD3421CEE7330013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVTools.a; path = ../External/build/Build/Products/Release/libSPIRVTools.a; sourceTree = "<group>"; };
-		A972AD3521CEE7330013AB25 /* libSPIRVCross.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVCross.a; path = ../External/build/Build/Products/Release/libSPIRVCross.a; sourceTree = "<group>"; };
-		A972AD3821CEE7480013AB25 /* libglslang.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libglslang.a; path = ../External/build/Build/Products/Release/libglslang.a; sourceTree = "<group>"; };
+		A972AD2A21CEE6A90013AB25 /* libglslang.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libglslang.a; path = "../External/build/iOS/libglslang.a"; sourceTree = "<group>"; };
+		A972AD2F21CEE7040013AB25 /* libSPIRVCross.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVCross.a; path = "../External/build/iOS/libSPIRVCross.a"; sourceTree = "<group>"; };
+		A972AD3021CEE7040013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVTools.a; path = "../External/build/iOS/libSPIRVTools.a"; sourceTree = "<group>"; };
+		A972AD3421CEE7330013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVTools.a; path = ../External/build/macOS/libSPIRVTools.a; sourceTree = "<group>"; };
+		A972AD3521CEE7330013AB25 /* libSPIRVCross.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVCross.a; path = ../External/build/macOS/libSPIRVCross.a; sourceTree = "<group>"; };
+		A972AD3821CEE7480013AB25 /* libglslang.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libglslang.a; path = ../External/build/macOS/libglslang.a; sourceTree = "<group>"; };
 		A97CC73D1C7527F3004A5C7E /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		A97CC73E1C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MoltenVKShaderConverterTool.cpp; sourceTree = "<group>"; };
 		A97CC73F1C7527F3004A5C7E /* MoltenVKShaderConverterTool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MoltenVKShaderConverterTool.h; sourceTree = "<group>"; };
@@ -516,7 +516,7 @@
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Build/Products/Release-iphoneos\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/iOS\"";
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
@@ -536,7 +536,7 @@
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Build/Products/Release-iphoneos\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/iOS\"";
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
@@ -554,7 +554,7 @@
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Build/Products/Release\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/macOS\"";
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = macosx;
@@ -570,7 +570,7 @@
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Build/Products/Release\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/macOS\"";
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = macosx;
@@ -592,7 +592,7 @@
 					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Build/Products/Release-iphoneos\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/iOS\"";
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
@@ -616,7 +616,7 @@
 					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Build/Products/Release-iphoneos\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/iOS\"";
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
@@ -638,7 +638,7 @@
 					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Build/Products/Release\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/macOS\"";
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = macosx;
@@ -658,7 +658,7 @@
 					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Build/Products/Release\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/macOS\"";
 				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = macosx;

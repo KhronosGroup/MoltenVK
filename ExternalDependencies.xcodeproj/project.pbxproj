@@ -11,6 +11,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7E721CEC72F0013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-macOS" */;
 			buildPhases = (
+				A9679AB021D26C7000856BF7 /* Package External Libraries */,
 			);
 			dependencies = (
 				A972A7E921CEC76A0013AB25 /* PBXTargetDependency */,
@@ -24,6 +25,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7ED21CEC8030013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-iOS" */;
 			buildPhases = (
+				A9679AAF21D26C1400856BF7 /* Package External Libraries */,
 			);
 			dependencies = (
 				A972A7F121CEC8140013AB25 /* PBXTargetDependency */,
@@ -954,6 +956,9 @@
 /* Begin PBXFileReference section */
 		A90FD89F21CC4EAB00B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A90FD9E421CC4EB900B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9679AAC21D269D900856BF7 /* package_ext_libs_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_macos.sh; sourceTree = "<group>"; };
+		A9679AAD21D269D900856BF7 /* package_ext_libs_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_ios.sh; sourceTree = "<group>"; };
+		A9679AAE21D269D900856BF7 /* package_ext_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs.sh; sourceTree = "<group>"; };
 		A972A80F21CECBBF0013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A972A82321CECBE90013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A972A82A21CED2720013AB25 /* spirv_target_env.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_target_env.cpp; sourceTree = "<group>"; };
@@ -1394,6 +1399,16 @@
 				A972ABC821CED6F90013AB25 /* glslang */,
 			);
 			path = External;
+			sourceTree = "<group>";
+		};
+		A9679AAB21D2699800856BF7 /* Scripts */ = {
+			isa = PBXGroup;
+			children = (
+				A9679AAD21D269D900856BF7 /* package_ext_libs_ios.sh */,
+				A9679AAC21D269D900856BF7 /* package_ext_libs_macos.sh */,
+				A9679AAE21D269D900856BF7 /* package_ext_libs.sh */,
+			);
+			path = Scripts;
 			sourceTree = "<group>";
 		};
 		A972A82421CECC410013AB25 /* SPIRV-Tools */ = {
@@ -1988,6 +2003,7 @@
 				A9C2104521D14FD7006BA2D3 /* fetchDependencies */,
 				A9C2104721D15843006BA2D3 /* ExternalRevisions */,
 				A90FD9E921CC519E00B92BB2 /* External */,
+				A9679AAB21D2699800856BF7 /* Scripts */,
 				A972AD2421CEE30F0013AB25 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -2603,6 +2619,45 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		A9679AAF21D26C1400856BF7 /* Package External Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Package External Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Scripts/package_ext_libs_ios.sh\"\n";
+		};
+		A9679AB021D26C7000856BF7 /* Package External Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Package External Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Scripts/package_ext_libs_macos.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		A972A80521CECBBF0013AB25 /* Sources */ = {

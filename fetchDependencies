@@ -232,7 +232,7 @@ cd ..
 
 # -------------- Build MoltenVK dependencies -----------------
 echo
-echo ========== Building dependencies quietly. Please be patient on first build. ==========
+echo ========== Building dependency libraries quietly. Please be patient on first build. ==========
 echo
 
 EXT_DEPS=ExternalDependencies

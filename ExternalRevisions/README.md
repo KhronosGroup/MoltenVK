@@ -143,9 +143,14 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Cross* l
 
 ### Regression Testing Your Changes to *SPIRV-Cross*
 
-The *SPIRV-Cross* library plays an important part in providing features for **_MoltenVK_**, and if you are 
-developing features for **_MoltenVK_**, you may end up making changes to *SPIRV-Cross*. If you make changes 
-to the `SPIRV-Cross` repository, you can regression test your changes using the following steps:
+The *SPIRV-Cross* library plays an important part in providing features for **_MoltenVK_**, and if 
+you are developing features for **_MoltenVK_**, you may end up making changes to *SPIRV-Cross*. 
+
+If you make changes to the `SPIRV-Cross` repository, you can build a new version of the `libSPIRVCross.a`
+static library by opening the `ExternalDependencies.xcodeproj` *Xcode* project, and running the **_ExternalDependencies_** *Xcode* scheme. You can then rebuild **MoltenVK** to include the new library.
+
+While makng changes to the `SPIRV-Cross` repository, you can regression test your changes using the
+following steps:
 
 1. Load and build the versions of `SPRIV-Tools` and `glslang` that are used by the `SPIRV-Cross` tests:
 
