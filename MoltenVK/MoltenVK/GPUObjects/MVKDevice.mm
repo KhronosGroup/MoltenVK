@@ -341,10 +341,9 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(MVKSurface* surface,
 
     VkExtent2D surfExtnt = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
 
-	// Metal supports 3 concurrent drawables, but if the swapchain is destroyed and
-	// rebuilt as part of resizing, one will be held by the current display image.
-	pSurfaceCapabilities->minImageCount = 2;
-	pSurfaceCapabilities->maxImageCount = 2;
+	// Metal supports 3 concurrent drawables.
+	pSurfaceCapabilities->minImageCount = 3;
+	pSurfaceCapabilities->maxImageCount = 3;
 
 	pSurfaceCapabilities->currentExtent = surfExtnt;
 	pSurfaceCapabilities->minImageExtent = surfExtnt;
