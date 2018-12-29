@@ -341,10 +341,6 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 		}
 	}
 
-  // bug fix by aerofly -> if no fragment shader is used and _needsFragmentAuxBuffer was true newBufferWithLength was trying to allocate zero bytes
-  // please verify this fix
-  _needsFragmentAuxBuffer = false;
-
   // Fragment shader - only add if rasterization is enabled
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
