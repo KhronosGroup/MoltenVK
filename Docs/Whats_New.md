@@ -20,6 +20,7 @@ Released 2018/12/31
 
 - Allow 2 or 3 swapchain images to support both double and triple buffering.
 - Force display to switch to GPU selected by vkCreateDevice() to avoid system view compositor having to copy from that GPU to display GPU.
+- Add support for uploading 3D S3TC-compressed images.
 - Use inline buffer for pipeline auxiliary buffer.
 - vkCmdCopyImage: Cast source image to the destination format.
 - Result of vkGetPhysicalDeviceFormatProperties2KHR match vkGetPhysicalDeviceFormatProperties.
