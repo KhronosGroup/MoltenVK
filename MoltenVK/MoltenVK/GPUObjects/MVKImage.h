@@ -238,6 +238,7 @@ protected:
     bool _hasExpectedTexelSize;
 	bool _usesTexelBuffer;
 	bool _isLinear;
+	bool _is3DCompressed;
 };
 
 

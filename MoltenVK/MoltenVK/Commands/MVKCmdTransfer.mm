@@ -617,6 +617,21 @@ void MVKCmdCopyBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdBufferImageCopy
 
+// Matches shader struct.
+typedef struct {
+    uint32_t srcRowStride;
+    uint32_t srcRowStrideHigh;
+    uint32_t srcDepthStride;
+    uint32_t srcDepthStrideHigh;
+    uint32_t destRowStride;
+    uint32_t destRowStrideHigh;
+    uint32_t destDepthStride;
+    uint32_t destDepthStrideHigh;
+    VkFormat format;
+    VkOffset3D offset;
+    VkExtent3D extent;
+} MVKCmdCopyBufferToImageInfo;
+
 void MVKCmdBufferImageCopy::setContent(VkBuffer buffer,
                                        VkImage image,
                                        VkImageLayout imageLayout,
@@ -649,9 +664,8 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
     if ( !mtlBuffer || !mtlTexture ) { return; }
 
 	NSUInteger mtlBuffOffset = _buffer->getMTLBufferOffset();
-    MTLPixelFormat mtlPixFmt = mtlTexture.pixelFormat;
+    MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat();
     MVKCommandUse cmdUse = _toImage ? kMVKCommandUseCopyBufferToImage : kMVKCommandUseCopyImageToBuffer;
-    id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(cmdUse);
 
     for (auto& cpyRgn : _mtlBuffImgCopyRegions) {
 
@@ -689,11 +703,87 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
                 blitOptions |= MTLBlitOptionStencilFromDepthStencil;
             }
         }
+#if MVK_MACOS
+        if (_toImage && mvkFormatTypeFromMTLPixelFormat(mtlPixFmt) == kMVKFormatCompressed &&
+            mtlTexture.textureType == MTLTextureType3D) {
+            // If we're copying to a compressed 3D image, the image data need to be decompressed.
+            // If we're copying to mip level 0, we can skip the copy and just decode
+            // directly into the image. Otherwise, we need to use an intermediate
+            // buffer.
+            MVKCmdCopyBufferToImageInfo info;
+            info.srcRowStride = bytesPerRow & 0xffffffff;
+            info.srcRowStrideHigh = bytesPerRow >> 32;
+            info.srcDepthStride = bytesPerImg & 0xffffffff;
+            info.srcDepthStrideHigh = bytesPerImg >> 32;
+            info.destRowStride = info.destRowStrideHigh = 0;
+            info.destDepthStride = info.destDepthStrideHigh = 0;
+            info.format = _image->getVkFormat();
+            info.offset = cpyRgn.imageOffset;
+            info.extent = cpyRgn.imageExtent;
+            bool needsTempBuff = cpyRgn.imageSubresource.mipLevel != 0;
+            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse);
+            id<MTLComputePipelineState> mtlComputeState = getCommandEncodingPool()->getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff);
+            [mtlComputeEnc pushDebugGroup: @"vkCmdCopyBufferToImage"];
+            [mtlComputeEnc setComputePipelineState: mtlComputeState];
+            [mtlComputeEnc setBuffer: mtlBuffer offset: mtlBuffOffset + cpyRgn.bufferOffset atIndex: 0];
+            MVKBuffer* tempBuff;
+            if (needsTempBuff) {
+                NSUInteger bytesPerDestRow = mvkMTLPixelFormatBytesPerRow(mtlTexture.pixelFormat, info.extent.width);
+                NSUInteger bytesPerDestImg = mvkMTLPixelFormatBytesPerLayer(mtlTexture.pixelFormat, bytesPerDestRow, info.extent.height);
+                // We're going to copy from the temporary buffer now, so use the
+                // temp buffer parameters in the copy below.
+                bytesPerRow = bytesPerDestRow;
+                bytesPerImg = bytesPerDestImg;
+                MVKBufferDescriptorData tempBuffData;
+                tempBuffData.size = bytesPerDestImg * mtlTxtSize.depth;
+                tempBuffData.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+                tempBuff = getCommandEncodingPool()->getTransferMVKBuffer(tempBuffData);
+                mtlBuffer = tempBuff->getMTLBuffer();
+                mtlBuffOffset = tempBuff->getMTLBufferOffset();
+                info.destRowStride = bytesPerDestRow & 0xffffffff;
+                info.destRowStrideHigh = bytesPerDestRow >> 32;
+                info.destDepthStride = bytesPerDestImg & 0xffffffff;
+                info.destDepthStrideHigh = bytesPerDestImg >> 32;
+                [mtlComputeEnc setBuffer: mtlBuffer offset: mtlBuffOffset atIndex: 1];
+            } else {
+                [mtlComputeEnc setTexture: mtlTexture atIndex: 0];
+            }
+            cmdEncoder->setComputeBytes(mtlComputeEnc, &info, sizeof(info), 2);
+
+            // Now work out how big to make the grid, and from there, the size and number of threadgroups.
+            // One thread is run per block. Each block decompresses to an m x n array of texels.
+            // So the size of the grid is (ceil(width/m), ceil(height/n), depth).
+            VkExtent2D blockExtent = mvkMTLPixelFormatBlockTexelSize(mtlPixFmt);
+            MTLSize mtlGridSize = MTLSizeMake(mvkCeilingDivide(mtlTxtSize.width, blockExtent.width),
+                                              mvkCeilingDivide(mtlTxtSize.height, blockExtent.height),
+                                              mtlTxtSize.depth);
+            // Use four times the thread execution width as the threadgroup size.
+            MTLSize mtlTgrpSize = MTLSizeMake(2, 2, mtlComputeState.threadExecutionWidth);
+            // Then the number of threadgroups is (ceil(x/2), ceil(y/2), ceil(z/t)),
+            // where 't' is the thread execution width.
+            mtlGridSize.width = mvkCeilingDivide(mtlGridSize.width, 2);
+            mtlGridSize.height = mvkCeilingDivide(mtlGridSize.height, 2);
+            mtlGridSize.depth = mvkCeilingDivide(mtlGridSize.depth, mtlTgrpSize.depth);
+            // There may be extra threads, but that's OK; the shader does bounds checking to
+            // ensure it doesn't try to write out of bounds.
+            // Alternatively, we could use the newer -[MTLComputeCommandEncoder dispatchThreads:threadsPerThreadgroup:] method,
+            // but that needs Metal 2.0.
+            [mtlComputeEnc dispatchThreadgroups: mtlGridSize threadsPerThreadgroup: mtlTgrpSize];
+            [mtlComputeEnc popDebugGroup];
+
+            if (!needsTempBuff) { continue; }
+        } else {
+            mtlBuffOffset += cpyRgn.bufferOffset;
+        }
+#else
+        mtlBuffOffset += cpyRgn.bufferOffset;
+#endif
+        id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(cmdUse);
 
         for (uint32_t lyrIdx = 0; lyrIdx < cpyRgn.imageSubresource.layerCount; lyrIdx++) {
             if (_toImage) {
                 [mtlBlitEnc copyFromBuffer: mtlBuffer
-                              sourceOffset: (mtlBuffOffset + cpyRgn.bufferOffset + (bytesPerImg * lyrIdx))
+                              sourceOffset: (mtlBuffOffset + (bytesPerImg * lyrIdx))
                          sourceBytesPerRow: bytesPerRow
                        sourceBytesPerImage: bytesPerImg
                                 sourceSize: mtlTxtSize
@@ -709,7 +799,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
                                sourceOrigin: mtlTxtOrigin
                                  sourceSize: mtlTxtSize
                                    toBuffer: mtlBuffer
-                          destinationOffset: (mtlBuffOffset + cpyRgn.bufferOffset + (bytesPerImg * lyrIdx))
+                          destinationOffset: (mtlBuffOffset + (bytesPerImg * lyrIdx))
                      destinationBytesPerRow: bytesPerRow
                    destinationBytesPerImage: bytesPerImg
                                     options: blitOptions];

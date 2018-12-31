@@ -23,6 +23,7 @@
 #include "MVKFoundation.h"
 #include "MVKEnvironment.h"
 #include "MVKLogging.h"
+#include "MVKCodec.h"
 #import "MTLTextureDescriptor+MoltenVK.h"
 #import "MTLSamplerDescriptor+MoltenVK.h"
 
@@ -387,13 +388,30 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 		mvkDisableFlag(usage, MTLTextureUsageRenderTarget);
 	}
 
+#if MVK_MACOS
+	// If this is a 3D compressed texture, tell Metal we might write to it.
+	if (_is3DCompressed) {
+		mvkEnableFlag(usage, MTLTextureUsageShaderWrite);
+	}
+#endif
+
 	return usage;
 }
 
 // Returns an autoreleased Metal texture descriptor constructed from the properties of this image.
 MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
 	MTLTextureDescriptor* mtlTexDesc = [[MTLTextureDescriptor alloc] init];
+#if MVK_MACOS
+	if (_is3DCompressed) {
+		// Metal doesn't yet support 3D compressed textures, so we'll decompress
+		// the texture ourselves. This, then, is the *uncompressed* format.
+		mtlTexDesc.pixelFormat = MTLPixelFormatBGRA8Unorm;
+	} else {
+		mtlTexDesc.pixelFormat = _mtlPixelFormat;
+	}
+#else
 	mtlTexDesc.pixelFormat = _mtlPixelFormat;
+#endif
 	mtlTexDesc.textureType = _mtlTextureType;
 	mtlTexDesc.width = _extent.width;
 	mtlTexDesc.height = _extent.height;
@@ -447,6 +465,27 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
     mtlRegion.origin = MTLOriginMake(0, 0, 0);
     mtlRegion.size = mvkMTLSizeFromVkExtent3D(mipExtent);
 
+#if MVK_MACOS
+    std::unique_ptr<char[]> decompBuffer;
+    if (_is3DCompressed) {
+        // We cannot upload the texture data directly in this case. But we
+        // can upload the decompressed image data.
+        std::unique_ptr<MVKCodec> codec = mvkCreateCodec(getVkFormat());
+        if (!codec) {
+            mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "A 3D texture used a compressed format that MoltenVK does not yet support.");
+            return;
+        }
+        VkSubresourceLayout destLayout;
+        destLayout.rowPitch = 4 * mipExtent.width;
+        destLayout.depthPitch = destLayout.rowPitch * mipExtent.height;
+        destLayout.size = destLayout.depthPitch * mipExtent.depth;
+        decompBuffer = std::unique_ptr<char[]>(new char[destLayout.size]);
+        codec->decompress(decompBuffer.get(), pImgBytes, destLayout, imgLayout, mipExtent);
+        pImgBytes = decompBuffer.get();
+        imgLayout = destLayout;
+    }
+#endif
+
     [getMTLTexture() replaceRegion: mtlRegion
                        mipmapLevel: imgSubRez.mipLevel
                              slice: imgSubRez.arrayLayer
@@ -499,9 +538,15 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not allow uncompressed views of compressed images."));
     }
 
+#if MVK_IOS
     if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) ) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
     }
+#else
+    if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !mvkCanDecodeFormat(pCreateInfo->format) ) {
+        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
+    }
+#endif
     if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) ) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
     }
@@ -552,6 +597,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     _hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
 	_isLinear = validateLinear(pCreateInfo);
 	_usesTexelBuffer = false;
+	_is3DCompressed = _mtlTextureType == MTLTextureType3D && mvkFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
 
 	_byteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format) : mvkEnsurePowerOfTwo(mvkVkFormatBytesPerBlock(pCreateInfo->format));
 

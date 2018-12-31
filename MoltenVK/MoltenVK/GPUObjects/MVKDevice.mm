@@ -30,6 +30,7 @@
 #include "MVKRenderPass.h"
 #include "MVKCommandPool.h"
 #include "MVKFoundation.h"
+#include "MVKCodec.h"
 #include "MVKEnvironment.h"
 #include "MVKOSExtensions.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
@@ -261,10 +262,22 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
                 return VK_ERROR_FORMAT_NOT_SUPPORTED;
             }
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
+			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil
+#if MVK_IOS
+				|| mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed
+#endif
+				) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
+#if MVK_MACOS
+			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
+				// If this is a compressed format and there's no codec, it isn't
+				// supported.
+				if (!mvkCanDecodeFormat(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+				// Compressed multisampled textures aren't supported.
+				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+			}
+#endif
             maxExt.width = pLimits->maxImageDimension3D;
             maxExt.height = pLimits->maxImageDimension3D;
             maxExt.depth = pLimits->maxImageDimension3D;

@@ -30,6 +30,7 @@ Released 2018/12/31
 - Return VK_TIMEOUT even on zero wait if fences not signalled.
 - Improvements to building external libraries.
 - Print Vulkan semantics when logging converted GLSL.
+- Support uploading S3TC-compressed 3D images.
 
 
 
