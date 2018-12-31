@@ -12,6 +12,27 @@ Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 For best results, use a Markdown reader.*
 
 
+
+MoltenVK 1.0.30
+---------------
+
+Released 2018/12/31
+
+- Allow 2 or 3 swapchain images to support both double and triple buffering.
+- Force display to switch to GPU selected by vkCreateDevice() to avoid system view compositor having to copy from that GPU to display GPU.
+- Use inline buffer for pipeline auxiliary buffer.
+- vkCmdCopyImage: Cast source image to the destination format.
+- Result of vkGetPhysicalDeviceFormatProperties2KHR match vkGetPhysicalDeviceFormatProperties.
+- MVKImage: Return error for BLOCK_TEXEL_VIEW.
+- MVKDescriptorSet: Fix handling of immutable samplers.
+- MVKPipeline: Forbid vertex attribute offsets >= stride.
+- Fix handling of case where vertex bindings and binding indices don't match up.
+- Return VK_TIMEOUT even on zero wait if fences not signalled.
+- Improvements to building external libraries.
+- Print Vulkan semantics when logging converted GLSL.
+
+
+
 MoltenVK 1.0.29
 ---------------
 

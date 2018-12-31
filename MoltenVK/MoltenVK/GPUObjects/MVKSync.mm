@@ -150,8 +150,11 @@ VkResult mvkWaitForFences(uint32_t fenceCount,
 		((MVKFence*)pFences[i])->addSitter(&fenceSitter);
 	}
 
-	if ( !fenceSitter.wait(timeout) && timeout > 0 ) {
-		rslt = mvkNotifyErrorWithText(VK_TIMEOUT, "Vulkan fence timeout after %llu nanoseconds.", timeout);
+	if ( !fenceSitter.wait(timeout) ) {
+		rslt = VK_TIMEOUT;
+		if (timeout > 0) {
+			mvkNotifyErrorWithText(rslt, "Vulkan fence timeout after %llu nanoseconds.", timeout);
+		}
 	}
 
 	for (uint32_t i = 0; i < fenceCount; i++) {

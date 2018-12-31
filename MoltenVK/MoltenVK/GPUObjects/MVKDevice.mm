@@ -341,10 +341,8 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(MVKSurface* surface,
 
     VkExtent2D surfExtnt = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
 
-	// Metal supports 3 concurrent drawables, but if the swapchain is destroyed and
-	// rebuilt as part of resizing, one will be held by the current display image.
-	pSurfaceCapabilities->minImageCount = 2;
-	pSurfaceCapabilities->maxImageCount = 2;
+	pSurfaceCapabilities->minImageCount = _metalFeatures.minSwapchainImageCount;
+	pSurfaceCapabilities->maxImageCount = _metalFeatures.maxSwapchainImageCount;
 
 	pSurfaceCapabilities->currentExtent = surfExtnt;
 	pSurfaceCapabilities->minImageExtent = surfExtnt;
@@ -406,31 +404,26 @@ VkResult MVKPhysicalDevice::getSurfacePresentModes(MVKSurface* surface,
 	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
 	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
 
-	vector<VkPresentModeKHR> presentModes;
-	presentModes.push_back(VK_PRESENT_MODE_FIFO_KHR);
+#define ADD_VK_PRESENT_MODE(VK_PM)																	\
+	do {																							\
+		if (pPresentModes && presentModesCnt < *pCount) { pPresentModes[presentModesCnt] = VK_PM; }	\
+		presentModesCnt++;																			\
+	} while(false)
+
+	uint32_t presentModesCnt = 0;
+
+	ADD_VK_PRESENT_MODE(VK_PRESENT_MODE_FIFO_KHR);
 
 	if (_metalFeatures.presentModeImmediate) {
-		presentModes.push_back(VK_PRESENT_MODE_IMMEDIATE_KHR);
+		ADD_VK_PRESENT_MODE(VK_PRESENT_MODE_IMMEDIATE_KHR);
 	}
 
-	uint32_t presentModesCnt = uint32_t(presentModes.size());
-
-	// If properties aren't actually being requested yet, simply update the returned count
-	if ( !pPresentModes ) {
-		*pCount = presentModesCnt;
-		return VK_SUCCESS;
+	if (pPresentModes && *pCount < presentModesCnt) {
+		return VK_INCOMPLETE;
 	}
 
-	// Determine how many results we'll return, and return that number
-	VkResult result = (*pCount <= presentModesCnt) ? VK_SUCCESS : VK_INCOMPLETE;
-	*pCount = min(*pCount, presentModesCnt);
-
-	// Now populate the supplied array
-	for (uint fmtIdx = 0; fmtIdx < *pCount; fmtIdx++) {
-		pPresentModes[fmtIdx] = presentModes[fmtIdx];
-	}
-
-	return result;
+	*pCount = presentModesCnt;
+	return VK_SUCCESS;
 }
 
 
@@ -517,6 +510,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.maxQueryBufferSize = (64 * KIBI);
 
 	_metalFeatures.ioSurfaces = MVK_SUPPORT_IOSURFACE_BOOL;
+
+	// Metal supports 2 or 3 concurrent CAMetalLayer drawables.
+	_metalFeatures.minSwapchainImageCount = 2;
+	_metalFeatures.maxSwapchainImageCount = 3;
 
 #if MVK_IOS
     _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1);
