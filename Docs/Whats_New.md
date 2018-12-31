@@ -28,6 +28,7 @@ Released 2018/12/31
 - MVKPipeline: Forbid vertex attribute offsets >= stride.
 - Fix handling of case where vertex bindings and binding indices don't match up.
 - Return VK_TIMEOUT even on zero wait if fences not signalled.
+- Support iOS builds for arm64e architecture.
 - Improvements to building external libraries.
 - Print Vulkan semantics when logging converted GLSL.
 
