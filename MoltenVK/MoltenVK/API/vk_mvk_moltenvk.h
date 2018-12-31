@@ -48,13 +48,12 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   29
+#define MVK_VERSION_PATCH   30
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-
-#define VK_MVK_MOLTENVK_SPEC_VERSION            14
+#define VK_MVK_MOLTENVK_SPEC_VERSION            15
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -77,6 +76,10 @@ extern "C" {
  * than your app was, the size of this structure in your app may be larger or smaller than the
  * struct in MoltenVK. See the description of the vkGetMoltenVKConfigurationMVK() and
  * vkSetMoltenVKConfigurationMVK() functions for information about how to handle this.
+ *
+ * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
+ * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * SHOULD NOT BE CHANGED.
  */
 typedef struct {
 
@@ -248,6 +251,10 @@ typedef struct {
  * than your app was, the size of this structure in your app may be larger or smaller than the
  * struct in MoltenVK. See the description of the vkGetPhysicalDeviceMetalFeaturesMVK() function
  * for information about how to handle this.
+ *
+ * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
+ * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * SHOULD NOT BE CHANGED.
  */
 typedef struct {
     uint32_t mslVersion;                        /**< The version of the Metal Shading Language available on this device. The format of the integer is MMmmpp, with two decimal digts each for Major, minor, and patch version values (eg. MSL 1.2 would appear as 010200). */
@@ -271,6 +278,8 @@ typedef struct {
     VkDeviceSize maxQueryBufferSize;            /**< The maximum size of an occlusion query buffer (in bytes). */
 	VkDeviceSize mtlCopyBufferAlignment;        /**< The alignment required during buffer copy operations (in bytes). */
     VkSampleCountFlags supportedSampleCounts;   /**< A bitmask identifying the sample counts supported by the device. */
+	uint32_t minSwapchainImageCount;	 	  	/**< The minimum number of swapchain images that can be supported by a surface. */
+	uint32_t maxSwapchainImageCount;	 	  	/**< The maximum number of swapchain images that can be supported by a surface. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**
@@ -282,6 +291,10 @@ typedef struct {
  * than your app was, the size of this structure in your app may be larger or smaller than the
  * struct in MoltenVK. See the description of the vkGetSwapchainPerformanceMVK() function for
  * information about how to handle this.
+ *
+ * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
+ * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * SHOULD NOT BE CHANGED.
  */
 typedef struct {
     double lastFrameInterval;           /**< The time interval between this frame and the immediately previous frame, in milliseconds. */
@@ -330,6 +343,10 @@ typedef struct {
  * than your app was, the size of this structure in your app may be larger or smaller than the
  * struct in MoltenVK. See the description of the vkGetPerformanceStatisticsMVK() function for
  * information about how to handle this.
+ *
+ * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
+ * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * SHOULD NOT BE CHANGED.
  */
 typedef struct {
 	MVKShaderCompilationPerformance shaderCompilation;	/** Shader compilations activities. */

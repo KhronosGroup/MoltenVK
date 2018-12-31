@@ -273,7 +273,7 @@ const bool mvkFits(const Tval& val) {
 /** Clamps the value between the lower and upper bounds, inclusive. */
 template<typename T>
 const T& mvkClamp(const T& val, const T& lower, const T& upper) {
-    return std::min(upper, std::max(val, lower));
+    return std::min(std::max(val, lower), upper);
 }
 
 /**

@@ -53,4 +53,13 @@
 #endif
 }
 
+-(NSUInteger) maximumDrawableCountMVK {
+	if ( [self respondsToSelector: @selector(maximumDrawableCount)] ) { return self.maximumDrawableCount; }
+	return 0;
+}
+
+-(void) setMaximumDrawableCountMVK: (NSUInteger) count {
+	if ( [self respondsToSelector: @selector(setMaximumDrawableCount:)] ) { self.maximumDrawableCount = count; }
+}
+
 @end
