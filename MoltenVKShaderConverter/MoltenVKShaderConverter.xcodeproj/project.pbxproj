@@ -508,6 +508,7 @@
 		A93747401A9A8B2900F29B34 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
@@ -521,13 +522,14 @@
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				VALID_ARCHS = "arm64 arm64e";
+				VALID_ARCHS = arm64;
 			};
 			name = Debug;
 		};
 		A93747411A9A8B2900F29B34 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
@@ -541,7 +543,7 @@
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				VALID_ARCHS = "arm64 arm64e";
+				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};
@@ -580,6 +582,7 @@
 		A93903BD1C57E9D700FE90DC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -597,13 +600,14 @@
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				VALID_ARCHS = "arm64 arm64e";
+				VALID_ARCHS = arm64;
 			};
 			name = Debug;
 		};
 		A93903BE1C57E9D700FE90DC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -621,7 +625,7 @@
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				VALID_ARCHS = "arm64 arm64e";
+				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};

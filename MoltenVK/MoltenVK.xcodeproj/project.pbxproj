@@ -1043,22 +1043,24 @@
 		A9B8EE1E1A98D796009C5A02 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				VALID_ARCHS = "arm64 arm64e";
+				VALID_ARCHS = arm64;
 			};
 			name = Debug;
 		};
 		A9B8EE1F1A98D796009C5A02 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
-				VALID_ARCHS = "arm64 arm64e";
+				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};
