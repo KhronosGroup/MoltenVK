@@ -663,7 +663,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLTexture> mtlTexture = _image->getMTLTexture();
     if ( !mtlBuffer || !mtlTexture ) { return; }
 
-	NSUInteger mtlBuffOffset = _buffer->getMTLBufferOffset();
+	NSUInteger mtlBuffOffsetBase = _buffer->getMTLBufferOffset();
     MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat();
     MVKCommandUse cmdUse = _toImage ? kMVKCommandUseCopyBufferToImage : kMVKCommandUseCopyImageToBuffer;
 
@@ -671,6 +671,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
 
         MTLOrigin mtlTxtOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.imageOffset);
         MTLSize mtlTxtSize = mvkMTLSizeFromVkExtent3D(cpyRgn.imageExtent);
+		NSUInteger mtlBuffOffset = mtlBuffOffsetBase + cpyRgn.bufferOffset;
 
         uint32_t buffImgWd = cpyRgn.bufferRowLength;
         if (buffImgWd == 0) { buffImgWd = cpyRgn.imageExtent.width; }
@@ -725,7 +726,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             id<MTLComputePipelineState> mtlComputeState = getCommandEncodingPool()->getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff);
             [mtlComputeEnc pushDebugGroup: @"vkCmdCopyBufferToImage"];
             [mtlComputeEnc setComputePipelineState: mtlComputeState];
-            [mtlComputeEnc setBuffer: mtlBuffer offset: mtlBuffOffset + cpyRgn.bufferOffset atIndex: 0];
+            [mtlComputeEnc setBuffer: mtlBuffer offset: mtlBuffOffset atIndex: 0];
             MVKBuffer* tempBuff;
             if (needsTempBuff) {
                 NSUInteger bytesPerDestRow = mvkMTLPixelFormatBytesPerRow(mtlTexture.pixelFormat, info.extent.width);
@@ -772,11 +773,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             [mtlComputeEnc popDebugGroup];
 
             if (!needsTempBuff) { continue; }
-        } else {
-            mtlBuffOffset += cpyRgn.bufferOffset;
         }
-#else
-        mtlBuffOffset += cpyRgn.bufferOffset;
 #endif
         id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(cmdUse);
 
