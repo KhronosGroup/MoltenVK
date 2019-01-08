@@ -1273,18 +1273,36 @@ void MVKPhysicalDevice::logGPUInfo() {
 }
 
 // Initializes the queue families supported by this instance.
+// Metal does not distinguish functionality between queues, which would normally lead us
+// to create only only one general-purpose queue family. However, Vulkan associates command
+// buffers with a queue family, whereas Metal associates command buffers with a Metal queue.
+// In order to allow a Metal command buffer to be prefilled before is is formally submitted to
+// a Vulkan queue, we need to enforce that each Vulkan queue family can have only one Metal queue.
+// In order to provide parallel queue operations, we therefore provide multiple queue families.
 void MVKPhysicalDevice::initQueueFamilies() {
 	VkQueueFamilyProperties qfProps;
-	uint32_t qfIdx;
+	bool specialize = _mvkInstance->getMoltenVKConfiguration()->specializedQueueFamilies;
+	uint32_t qfIdx = 0;
 
-	qfProps.queueCount = 1;		// In Metal, each family must have a single queue
-
-	qfIdx = 0;
-	qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT);
+	qfProps.queueCount = 1;		// Each queue family must have a single Metal queue (see above)
 	qfProps.timestampValidBits = 64;
 	qfProps.minImageTransferGranularity = { 1, 1, 1};
 
-	_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx, &qfProps));
+	// General-purpose queue family
+	qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT);
+	_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+
+	// Dedicated graphics queue family...or another general-purpose queue family.
+	if (specialize) { qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT); }
+	_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+
+	// Dedicated compute queue family...or another general-purpose queue family.
+	if (specialize) { qfProps.queueFlags = (VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT); }
+	_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+
+	// Dedicated transfer queue family...or another general-purpose queue family.
+	if (specialize) { qfProps.queueFlags = VK_QUEUE_TRANSFER_BIT; }
+	_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
 }
 
 MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) {

@@ -48,12 +48,12 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   30
+#define MVK_VERSION_PATCH   31
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            15
+#define VK_MVK_MOLTENVK_SPEC_VERSION            16
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -78,7 +78,7 @@ extern "C" {
  * vkSetMoltenVKConfigurationMVK() functions for information about how to handle this.
  *
  * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
  * SHOULD NOT BE CHANGED.
  */
 typedef struct {
@@ -240,6 +240,28 @@ typedef struct {
 	 */
 	VkBool32 displayWatermark;
 
+	/**
+	 * Metal does not distinguish functionality between queues, which would normally mean only
+	 * a single general-purpose queue family with multiple queues is needed. However, Vulkan
+	 * associates command buffers with a queue family, whereas Metal associates command buffers
+	 * with a specific Metal queue. In order to allow a Metal command buffer to be prefilled
+	 * before is is formally submitted to a Vulkan queue, each Vulkan queue family can support
+	 * only a single Metal queue. As a result, in order to provide parallel queue operations,
+	 * MoltenVK provides multiple queue families, each with a single queue.
+	 *
+	 * If this parameter is disabled, all queue families will be advertised as having general-purpose
+	 * graphics + compute + transfer functionality, which is how the actual Metal queues behave.
+	 *
+	 * If this parameter is enabled, one queue family will be advertised as having general-purpose
+	 * graphics + compute + transfer functionality, and the remaining queue families will be advertised
+	 * as having specialized graphics OR compute OR transfer functionality, to make it easier for some
+	 * apps to select a queue family with the appropriate requirements.
+	 *
+	 * Initial value is set by the MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES build setting when MoltenVK
+	 * is compiled. By default the MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES build setting is set to false.
+	 */
+	VkBool32 specializedQueueFamilies;
+
 } MVKConfiguration;
 
 /**
@@ -253,7 +275,7 @@ typedef struct {
  * for information about how to handle this.
  *
  * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
  * SHOULD NOT BE CHANGED.
  */
 typedef struct {
@@ -293,7 +315,7 @@ typedef struct {
  * information about how to handle this.
  *
  * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
  * SHOULD NOT BE CHANGED.
  */
 typedef struct {
@@ -345,7 +367,7 @@ typedef struct {
  * information about how to handle this.
  *
  * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
  * SHOULD NOT BE CHANGED.
  */
 typedef struct {

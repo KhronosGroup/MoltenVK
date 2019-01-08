@@ -87,6 +87,12 @@
 #   define MVK_CONFIG_METAL_COMPILE_TIMEOUT    INT64_MAX
 #endif
 
+/** Advertise specialized queue families. Disabled by default. */
+#ifndef MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES
+#   define MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES    0
+#endif
+
+
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.
  *

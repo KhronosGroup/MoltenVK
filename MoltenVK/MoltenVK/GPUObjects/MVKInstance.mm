@@ -359,10 +359,11 @@ void MVKInstance::initConfig() {
 	_mvkConfig.supportLargeQueryPools				= MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS;
 	_mvkConfig.presentWithCommandBuffer				= MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER;
 	_mvkConfig.swapchainMagFilterUseNearest			= MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST;
-	_mvkConfig.displayWatermark						= MVK_CONFIG_DISPLAY_WATERMARK;
+	_mvkConfig.metalCompileTimeout					= MVK_CONFIG_METAL_COMPILE_TIMEOUT;
 	_mvkConfig.performanceTracking					= MVK_DEBUG;
 	_mvkConfig.performanceLoggingFrameCount			= MVK_DEBUG ? 300 : 0;
-	_mvkConfig.metalCompileTimeout					= MVK_CONFIG_METAL_COMPILE_TIMEOUT;
+	_mvkConfig.displayWatermark						= MVK_CONFIG_DISPLAY_WATERMARK;
+	_mvkConfig.specializedQueueFamilies				= MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES;
 }
 
 VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {
