@@ -1789,27 +1789,7 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
 
 	initPerformanceTracking();
-    
-#if MVK_MACOS
-    //on mac OS, the wrong GPU will drive the screen (graphics switching will not occur)
-    //unless we call this specific MTLCreateSystemDefaultDevice method to create the metal device
-    id<MTLDevice> device = physicalDevice->getMTLDevice();
-    if (!device.headless && !device.lowPower) {
-        id<MTLDevice> sysDefaultDevice = MTLCreateSystemDefaultDevice();
-        
-        //lets be 100% sure this is the device the user asked for
-        if (sysDefaultDevice.registryID == device.registryID) {
-            physicalDevice->replaceMTLDevice(sysDefaultDevice);
-        }
-    }
-#endif
-
-	_physicalDevice = physicalDevice;
-	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
-	_pFeatures = &_physicalDevice->_features;
-	_pMetalFeatures = _physicalDevice->getMetalFeatures();
-	_pProperties = &_physicalDevice->_properties;
-	_pMemoryProperties = &_physicalDevice->_memoryProperties;
+	initPhysicalDevice(physicalDevice);
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;
@@ -1847,6 +1827,30 @@ void MVKDevice::initPerformanceTracking() {
 	_performanceStatistics.pipelineCache.writePipelineCache = initPerf;
 	_performanceStatistics.pipelineCache.readPipelineCache = initPerf;
 	_performanceStatistics.queue.mtlQueueAccess = initPerf;
+}
+
+void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice) {
+
+	_physicalDevice = physicalDevice;
+	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
+	_pFeatures = &_physicalDevice->_features;
+	_pMetalFeatures = _physicalDevice->getMetalFeatures();
+	_pProperties = &_physicalDevice->_properties;
+	_pMemoryProperties = &_physicalDevice->_memoryProperties;
+
+#if MVK_MACOS
+	// If we have selected a high-power GPU and want to force the window system
+	// to use it, force the window system to use a high-power GPU by calling the
+	// MTLCreateSystemDefaultDevice function, and if that GPU is the same as the
+	// selected GPU, update the MTLDevice instance used by the MVKPhysicalDevice.
+	id<MTLDevice> mtlDevice = _physicalDevice->getMTLDevice();
+	if (_pMVKConfig->switchSystemGPU && !(mtlDevice.lowPower || mtlDevice.headless) ) {
+		id<MTLDevice> sysMTLDevice = MTLCreateSystemDefaultDevice();
+		if (sysMTLDevice.registryID == mtlDevice.registryID) {
+			_physicalDevice->replaceMTLDevice(sysMTLDevice);
+		}
+	}
+#endif
 }
 
 // Create the command queues

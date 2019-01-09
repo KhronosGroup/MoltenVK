@@ -581,6 +581,7 @@ protected:
 	MVKResource* addResource(MVKResource* rez);
 	MVKResource* removeResource(MVKResource* rez);
     void initPerformanceTracking();
+	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& shaderCompilationEvent);
 	uint64_t getPerformanceTimestampImpl();
