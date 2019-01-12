@@ -35,17 +35,13 @@ class MVKPipelineCache;
 
 
 #pragma mark -
-#pragma mark MVKShaderAuxBufferBinding
+#pragma mark MVKPipelineLayout
 
 struct MVKShaderAuxBufferBinding {
-	uint32_t vertex;
-	uint32_t fragment;
-	uint32_t compute;
+	uint32_t vertex = 0;
+	uint32_t fragment = 0;
+	uint32_t compute = 0;
 };
-
-
-#pragma mark -
-#pragma mark MVKPipelineLayout
 
 /** Represents a Vulkan pipeline layout. */
 class MVKPipelineLayout : public MVKBaseDeviceObject {
@@ -129,12 +125,6 @@ public:
     /** Returns whether this pipeline permits dynamic setting of the specifie state. */
     bool supportsDynamicState(VkDynamicState state);
 
-    /** Returns whether or not the vertex shader needs a buffer to hold auxiliary state. */
-    bool needsVertexAuxBuffer() { return _needsVertexAuxBuffer; }
-
-    /** Returns whether or not the fragment shader needs a buffer to hold auxiliary state. */
-    bool needsFragmentAuxBuffer() { return _needsFragmentAuxBuffer; }
-
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
 						MVKPipelineCache* pipelineCache,
@@ -167,8 +157,8 @@ protected:
 
 	bool _dynamicStateEnabled[VK_DYNAMIC_STATE_RANGE_SIZE];
 	bool _hasDepthStencilInfo;
-	bool _needsVertexAuxBuffer;
-	bool _needsFragmentAuxBuffer;
+	bool _needsVertexAuxBuffer = false;
+	bool _needsFragmentAuxBuffer = false;
 };
 
 
@@ -183,9 +173,6 @@ public:
 	/** Binds this pipeline to the specified command encoder. */
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	/** Returns whether or not the compute shader needs a buffer to hold auxiliary state. */
-	bool needsAuxBuffer() { return _needsAuxBuffer; }
-
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKComputePipeline(MVKDevice* device,
 					   MVKPipelineCache* pipelineCache,
@@ -199,7 +186,7 @@ protected:
 
     id<MTLComputePipelineState> _mtlPipelineState;
     MTLSize _mtlThreadgroupSize;
-    bool _needsAuxBuffer;
+    bool _needsAuxBuffer = false;
 };
 
 

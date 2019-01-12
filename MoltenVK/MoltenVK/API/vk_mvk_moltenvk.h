@@ -59,16 +59,22 @@ extern "C" {
 /**
  * MoltenVK configuration settings.
  *
- * To change the MoltenVK configuration settings, use the vkGetMoltenVKConfigurationMVK() and
- * vkSetMoltenVKConfigurationMVK() functions to retrieve, modify, and set a copy of this structure.
- *
  * To be active, some configuration settings must be set before a VkDevice is created.
  * See the description of the individual configuration structure members for more information.
  *
- * The initial value of each of the configuration settings is established at runtime by a
- * corresponding environment variable, or if the environment variable is not set, by a
- * corresponding build setting at the time MoltenVK is compiled. The environment variable
- * and build setting for each configuration setting share the same name.
+ * There are three mechanisms for setting the values of the MoltenVK configuration parameters:
+ *   - Runtime API via the vkGetMoltenVKConfigurationMVK()/vkSetMoltenVKConfigurationMVK() functions.
+ *   - Application runtime environment variables.
+ *   - Build settings at MoltenVK build time.
+ *
+ * To change the MoltenVK configuration settings at runtime using a programmatic API,
+ * use the vkGetMoltenVKConfigurationMVK() and vkSetMoltenVKConfigurationMVK() functions
+ * to retrieve, modify, and set a copy of the MVKConfiguration structure.
+ *
+ * The initial value of each of the configuration settings can established at runtime
+ * by a corresponding environment variable, or if the environment variable is not set,
+ * by a corresponding build setting at the time MoltenVK is compiled. The environment
+ * variable and build setting for each configuration parameter share the same name.
  *
  * For example, the initial value of the shaderConversionFlipVertexY configuration setting
  * is set by the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y at runtime, or by the
@@ -90,6 +96,9 @@ typedef struct {
 	 * If enabled, debugging capabilities will be enabled, including logging
 	 * shader code during runtime shader conversion.
 	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_DEBUG
 	 * runtime environment variable or MoltenVK compile-time build setting.
@@ -101,8 +110,15 @@ typedef struct {
 	/**
 	 * If enabled, MSL vertex shader code created during runtime shader conversion will
 	 * flip the Y-axis of each vertex, as the Vulkan Y-axis is the inverse of OpenGL.
+	 *
 	 * An alternate way to reverse the Y-axis is to employ a negative Y-axis value on
 	 * the viewport, in which case this parameter can be disabled.
+	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 * Specifically, this parameter can be enabled when compiling some pipelines,
+	 * and disabled when compiling others. Existing pipelines are not automatically
+	 * re-compiled when this parameter is changed.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
@@ -117,7 +133,7 @@ typedef struct {
 	 * will be dispatched to a GCD dispatch_queue whose priority is determined by
 	 * VkDeviceQueueCreateInfo::pQueuePriorities during vkCreateDevice().
 	 *
-	 * Changing the value of this parameter must be done before creating a VkDevice,
+	 * The value of this parameter may be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
@@ -157,6 +173,11 @@ typedef struct {
 	 * command buffers do not support the concept of being reset after being filled. Depending on when
 	 * and how often you do this, it may cause unexpected visual artifacts and unnecessary GPU load.
 	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 * Specifically, this parameter can be enabled when filling some command buffers,
+	 * and disabled when filling others.
+	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS
 	 * runtime environment variable or MoltenVK compile-time build setting.
@@ -172,7 +193,7 @@ typedef struct {
 	 * is required per command buffer queue submission, which may be significantly less than the
 	 * number of Vulkan command buffers.
 	 *
-	 * Changing the value of this parameter must be done before creating a VkDevice,
+	 * The value of this parameter may be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
@@ -190,6 +211,11 @@ typedef struct {
 	 * within a renderpass. If disabled, one MTLBuffer will be shared by all query pools,
 	 * which improves performance, but limits the total device queries to 8192.
 	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 * Specifically, this parameter can be enabled when creating some query pools,
+	 * and disabled when creating others.
+	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
 	 * runtime environment variable or MoltenVK compile-time build setting.
@@ -200,6 +226,9 @@ typedef struct {
 	/**
 	 * If enabled, each surface presentation is scheduled using a command buffer. Enabling this
 	 * setting may improve rendering frame synchronization, but may result in reduced frame rates.
+	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER
@@ -216,6 +245,9 @@ typedef struct {
 	 * multiples of display pixels (eg- macOS Retina, and typical of graphics apps and games),
 	 * but may cause aliasing effects when using non-integer display scaling.
 	 *
+	 * The value of this parameter may be changed before creating a VkSwapchain,
+	 * for the change to take effect.
+	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST
 	 * runtime environment variable or MoltenVK compile-time build setting.
@@ -229,6 +261,9 @@ typedef struct {
 	 * within the Metal compiler can stall the thread for up to 30 seconds. Setting this value
 	 * limits that delay to a specified amount of time, allowing shader compilations to fail fast.
 	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_METAL_COMPILE_TIMEOUT
 	 * runtime environment variable or MoltenVK compile-time build setting.
@@ -241,6 +276,9 @@ typedef struct {
 	 * retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics
 	 * are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function.
 	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_PERFORMANCE_TRACKING
 	 * runtime environment variable or MoltenVK compile-time build setting.
@@ -252,6 +290,9 @@ typedef struct {
 	 * If non-zero, performance statistics will be periodically logged to the console, on a repeating
 	 * cycle of this many frames per swapchain. The performanceTracking capability must also be enabled.
 	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT
 	 * runtime environment variable or MoltenVK compile-time build setting.
@@ -262,6 +303,9 @@ typedef struct {
 	/**
 	 * If enabled, a MoltenVK logo watermark will be rendered on top of the scene.
 	 * This can be enabled for publicity during demos.
+	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_DISPLAY_WATERMARK
@@ -286,6 +330,9 @@ typedef struct {
 	 * graphics + compute + transfer functionality, and the remaining queue families will be advertised
 	 * as having specialized graphics OR compute OR transfer functionality, to make it easier for some
 	 * apps to select a queue family with the appropriate requirements.
+	 *
+	 * The value of this parameter may be changed before creating a VkDevice, and before
+	 * querying a VkPhysicalDevice for queue family properties, for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES
@@ -317,7 +364,7 @@ typedef struct {
 	 * system window compositor to determine how best to blend content with the windowing
 	 * system, and as a result, may want to disable this parameter.
 	 *
-	 * Changing the value of this parameter must be done before creating a VkDevice,
+	 * The value of this parameter may be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
@@ -326,6 +373,44 @@ typedef struct {
 	 * If neither is set, the value of this parameter defaults to true.
 	 */
 	VkBool32 switchSystemGPU;
+
+	/**
+	 * If enabled, arbitrary per-texture swizzles are supported, as defined in
+	 * VkImageViewCreateInfo::components when creating a VkImageView.
+	 *
+	 * If disabled, a very limited set of per-texture swizzles are supported
+	 * via format substitutions.
+	 *
+	 * Metal does not natively support per-texture swizzling. If this parameter is enabled,
+	 * per-texture swizzling is performed in shader code during textures sampling and reading,
+	 * regardless of whether a swizzle has been specified, which may result in reduced performance.
+	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 * Specifically, this parameter can be enabled when compiling some pipelines,
+	 * and disabled when compiling others. Existing pipelines are not automatically
+	 * re-compiled when this parameter is changed.
+	 *
+	 * If this parameter is disabled, the following limited set of per-texture swizzles
+	 * are supported by MoltenVK, via automatic format substitution:
+	 *
+	 * Texture format			       Swizzle
+	 * --------------                  -------
+	 * VK_FORMAT_R8_UNORM              ZERO, ANY, ANY, RED
+	 * VK_FORMAT_A8_UNORM              ALPHA, ANY, ANY, ZERO
+	 * VK_FORMAT_R8G8B8A8_UNORM        BLUE, GREEN, RED, ALPHA
+	 * VK_FORMAT_R8G8B8A8_SRGB         BLUE, GREEN, RED, ALPHA
+	 * VK_FORMAT_B8G8R8A8_UNORM        BLUE, GREEN, RED, ALPHA
+	 * VK_FORMAT_B8G8R8A8_SRGB         BLUE, GREEN, RED, ALPHA
+	 * VK_FORMAT_D32_SFLOAT_S8_UINT    RED, ANY, ANY, ANY (stencil only)
+	 * VK_FORMAT_D24_UNORM_S8_UINT     RED, ANY, ANY, ANY (stencil only)
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_FULL_TEXTURE_SWIZZLE
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to false.
+	 */
+	VkBool32 fullTextureSwizzle;
 
 } MVKConfiguration;
 

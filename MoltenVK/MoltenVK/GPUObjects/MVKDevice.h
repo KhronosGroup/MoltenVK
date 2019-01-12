@@ -277,7 +277,7 @@ protected:
 	void initFeatures();
 	void initProperties();
 	void initMemoryProperties();
-	void initQueueFamilies();
+	std::vector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
 	MTLFeatureSet getHighestMTLFeatureSet();
 	void logGPUInfo();

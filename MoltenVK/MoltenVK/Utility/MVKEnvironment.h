@@ -107,6 +107,11 @@
 #   define MVK_CONFIG_SWITCH_SYSTEM_GPU    1
 #endif
 
+/** Support full per-texture swizzles. Disabled by default. */
+#ifndef MVK_CONFIG_FULL_TEXTURE_SWIZZLE
+#   define MVK_CONFIG_FULL_TEXTURE_SWIZZLE    0
+#endif
+
 
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.

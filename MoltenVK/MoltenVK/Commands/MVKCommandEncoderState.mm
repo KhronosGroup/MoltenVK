@@ -425,7 +425,9 @@ void MVKGraphicsResourcesCommandEncoderState::bindFragmentSamplerState(const MVK
     bind(binding, _fragmentSamplerStateBindings, _areFragmentSamplerStateBindingsDirty);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needVertexAuxBuffer, bool needFragmentAuxBuffer) {
+void MVKGraphicsResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderAuxBufferBinding& binding,
+															bool needVertexAuxBuffer,
+															bool needFragmentAuxBuffer) {
     _vertexAuxBufferBinding.index = binding.vertex;
     _vertexAuxBufferBinding.isDirty = needVertexAuxBuffer;
     _fragmentAuxBufferBinding.index = binding.fragment;
@@ -548,9 +550,10 @@ void MVKComputeResourcesCommandEncoderState::bindSamplerState(const MVKMTLSample
     bind(binding, _samplerStateBindings, _areSamplerStateBindingsDirty);
 }
 
-void MVKComputeResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderAuxBufferBinding& binding) {
+void MVKComputeResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderAuxBufferBinding& binding,
+														   bool needAuxBuffer) {
     _auxBufferBinding.index = binding.compute;
-    _auxBufferBinding.isDirty = true;
+    _auxBufferBinding.isDirty = needAuxBuffer;
 }
 
 // Mark everything as dirty

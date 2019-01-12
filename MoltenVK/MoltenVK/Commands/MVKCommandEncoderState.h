@@ -434,7 +434,9 @@ public:
     }
 
     /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needVertexAuxBuffer, bool needFragmentAuxBuffer);
+    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding,
+					   bool needVertexAuxBuffer,
+					   bool needFragmentAuxBuffer);
 
 
 #pragma mark Construction
@@ -485,7 +487,7 @@ public:
     void bindSamplerState(const MVKMTLSamplerStateBinding& binding);
 
     /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding);
+	void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needAuxBuffer);
 
 #pragma mark Construction
 
