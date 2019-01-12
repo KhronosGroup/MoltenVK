@@ -13,6 +13,29 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.31
+---------------
+
+Released 2018/01/12
+
+- Support runtime config via runtime environment variables
+- Add full texture swizzling to config, and disable it by default.
+- Add GPU switching to config, and enable it by default.
+- Add queue family specialization to config, and disable it by default.
+- Enable synchronous queue submits as config default.
+- Support 4 queue families.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 16.
+- Update copyright to 2019.
+- Update to latest SPIRV-Cross version:
+	- MSL: Support SPV_KHR_variable_pointers.
+	- MSL: Workaround missing gradient2d() on macOS for typical cascaded shadow mapping.
+	- MSL: Fix mapping of identity-swizzled components.
+	- MSL: Support composites inside I/O blocks
+	- Performance improvements on iterating internal constructs.
+	- Update copyright to 2019.
+
+
+
 MoltenVK 1.0.30
 ---------------
 
