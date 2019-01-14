@@ -375,15 +375,17 @@ typedef struct {
 	VkBool32 switchSystemGPU;
 
 	/**
-	 * If enabled, arbitrary per-texture swizzles are supported, as defined in
-	 * VkImageViewCreateInfo::components when creating a VkImageView.
+	 * If enabled, arbitrary ImageView component swizzles are supported, as defined
+	 * in VkImageViewCreateInfo::components when creating a VkImageView.
 	 *
-	 * If disabled, a very limited set of per-texture swizzles are supported
+	 * If disabled, a very limited set of ImageView component swizzles are supported
 	 * via format substitutions.
 	 *
-	 * Metal does not natively support per-texture swizzling. If this parameter is enabled,
-	 * per-texture swizzling is performed in shader code during textures sampling and reading,
-	 * regardless of whether a swizzle has been specified, which may result in reduced performance.
+	 * Metal does not natively support per-texture swizzling. If this parameter is enabled
+	 * when a pipeline is compiled, ImageView swizzling is automatically performed in the
+	 * converted Metal shader code during all texture sampling and reading operations,
+	 * regardless of whether a swizzle has been specified for the ImageView associated
+	 * with the Metal texture. This may result in reduced performance.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -391,7 +393,7 @@ typedef struct {
 	 * and disabled when compiling others. Existing pipelines are not automatically
 	 * re-compiled when this parameter is changed.
 	 *
-	 * If this parameter is disabled, the following limited set of per-texture swizzles
+	 * If this parameter is disabled, the following limited set of ImageView swizzles
 	 * are supported by MoltenVK, via automatic format substitution:
 	 *
 	 * Texture format			       Swizzle
@@ -406,11 +408,11 @@ typedef struct {
 	 * VK_FORMAT_D24_UNORM_S8_UINT     RED, ANY, ANY, ANY (stencil only)
 	 *
 	 * The initial value or this parameter is set by the
-	 * MVK_CONFIG_FULL_TEXTURE_SWIZZLE
+	 * MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, the value of this parameter defaults to false.
 	 */
-	VkBool32 fullTextureSwizzle;
+	VkBool32 fullImageViewSwizzle;
 
 } MVKConfiguration;
 

@@ -107,9 +107,9 @@
 #   define MVK_CONFIG_SWITCH_SYSTEM_GPU    1
 #endif
 
-/** Support full per-texture swizzles. Disabled by default. */
-#ifndef MVK_CONFIG_FULL_TEXTURE_SWIZZLE
-#   define MVK_CONFIG_FULL_TEXTURE_SWIZZLE    0
+/** Support full ImageView swizzles. Disabled by default. */
+#ifndef MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE
+#   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    0
 #endif
 
 

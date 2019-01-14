@@ -324,7 +324,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 			shaderContext.options.entryPointName = pSS->pName;
 			id<MTLFunction> mtlFunction = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 			if ( !mtlFunction ) {
-				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader function could not be compiled into pipeline. See previous error."));
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader function could not be compiled into pipeline. See previous logged error."));
 				return nil;
 			}
 			plDesc.vertexFunction = mtlFunction;
@@ -347,7 +347,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 			shaderContext.options.entryPointName = pSS->pName;
 			id<MTLFunction> mtlFunction = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 			if ( !mtlFunction ) {
-				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader function could not be compiled into pipeline. See previous error."));
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader function could not be compiled into pipeline. See previous logged error."));
 			}
 			plDesc.fragmentFunction = mtlFunction;
 			_needsFragmentAuxBuffer = shaderContext.options.needsAuxBuffer;
@@ -484,7 +484,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
     shaderContext.options.isRenderingPoints = isRenderingPoints(pCreateInfo);
 	shaderContext.options.isRasterizationDisabled = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
-	shaderContext.options.shouldSwizzleTextureSamples = _device->_pMVKConfig->fullTextureSwizzle;
+	shaderContext.options.shouldSwizzleTextureSamples = _device->_pMVKConfig->fullImageViewSwizzle;
 
     // Set the shader context vertex attribute information
     shaderContext.vertexAttributes.clear();
@@ -581,7 +581,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		setConfigurationResult(plc->getConfigurationResult());
 		plc->destroy();
 	} else {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous error."));
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous logged error."));
 	}
 
 	if (_needsAuxBuffer && _auxBufferIndex.compute == ~0u) {
@@ -599,7 +599,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.entryPointName = pCreateInfo->stage.pName;
 	shaderContext.options.entryPointStage = spv::ExecutionModelGLCompute;
     shaderContext.options.mslVersion = _device->_pMetalFeatures->mslVersion;
-	shaderContext.options.shouldSwizzleTextureSamples = _device->_pMVKConfig->fullTextureSwizzle;
+	shaderContext.options.shouldSwizzleTextureSamples = _device->_pMVKConfig->fullImageViewSwizzle;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);

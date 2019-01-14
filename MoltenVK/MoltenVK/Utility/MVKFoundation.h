@@ -100,13 +100,11 @@ typedef enum {
 	kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
 } MVKCommandUse;
 
-/**
- * Copies the name of the specified VkResult code to the specified string.
- *
- * Returns a pointer to that string. 
- */
-#define MVKResultNameMaxLen		64
-char* mvkResultName(VkResult vkResult, char* name);
+/** Returns the name of the result value. */
+const char* mvkVkResultName(VkResult vkResult);
+
+/** Returns the name of the component swizzle. */
+const char* mvkVkComponentSwizzleName(VkComponentSwizzle swizzle);
 
 /**
  * Notifies the app of an error code and error message, via the following methods:
@@ -258,6 +256,22 @@ static inline VkOffset3D mvkVkOffset3DDifference(VkOffset3D minuend, VkOffset3D 
 	rslt.y = minuend.y - subtrahend.y;
 	rslt.z = minuend.z - subtrahend.z;
 	return rslt;
+}
+
+/** Packs the four swizzle components into a single 32-bit word. */
+static inline uint32_t mvkPackSwizzle(VkComponentMapping components) {
+	return ((components.r & 0xFF) << 0) | ((components.g & 0xFF) << 8) |
+	((components.b & 0xFF) << 16) | ((components.a & 0xFF) << 24);
+}
+
+/** Unpacks a single 32-bit word containing four swizzle components. */
+static inline VkComponentMapping mvkUnpackSwizzle(uint32_t packed) {
+	VkComponentMapping components;
+	components.r = (VkComponentSwizzle)((packed >> 0) & 0xFF);
+	components.g = (VkComponentSwizzle)((packed >> 8) & 0xFF);
+	components.b = (VkComponentSwizzle)((packed >> 16) & 0xFF);
+	components.a = (VkComponentSwizzle)((packed >> 24) & 0xFF);
+	return components;
 }
 
 
