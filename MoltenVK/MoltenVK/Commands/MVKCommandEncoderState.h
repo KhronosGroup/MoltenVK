@@ -374,6 +374,13 @@ protected:
         bindings.push_back(db);
     }
 
+	// For texture bindings, we also keep track of whether any bindings need a texture swizzle
+	void bind(const MVKMTLTextureBinding& tb, MVKVector<MVKMTLTextureBinding>& texBindings,
+			  bool& bindingsDirtyFlag, bool& needsSwizzleFlag) {
+		bind(tb, texBindings, bindingsDirtyFlag);
+		if (tb.swizzle != 0) { needsSwizzleFlag = true; }
+	}
+
     // Template function that executes a lambda expression on each dirty element of
     // a vector of bindings, and marks the bindings and the vector as no longer dirty.
     template<class T>
@@ -391,11 +398,6 @@ protected:
         }
     }
 
-    // Updates the swizzle for an image in the given vector.
-    void updateSwizzle(MVKVector<uint32_t> &constants, uint32_t index, uint32_t swizzle) {
-        if (index >= constants.size()) { constants.resize(index + 1); }
-        constants[index] = swizzle;
-    }
 };
 
 
@@ -434,7 +436,9 @@ public:
     }
 
     /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needVertexAuxBuffer, bool needFragmentAuxBuffer);
+    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding,
+					   bool needVertexAuxBuffer,
+					   bool needFragmentAuxBuffer);
 
 
 #pragma mark Construction
@@ -464,6 +468,9 @@ protected:
     bool _areFragmentTextureBindingsDirty = false;
     bool _areVertexSamplerStateBindingsDirty = false;
     bool _areFragmentSamplerStateBindingsDirty = false;
+	
+	bool _needsVertexSwizzle = false;
+	bool _needsFragmentSwizzle = false;
 };
 
 
@@ -485,7 +492,7 @@ public:
     void bindSamplerState(const MVKMTLSamplerStateBinding& binding);
 
     /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding);
+	void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needAuxBuffer);
 
 #pragma mark Construction
 
@@ -506,6 +513,8 @@ protected:
     bool _areBufferBindingsDirty = false;
     bool _areTextureBindingsDirty = false;
     bool _areSamplerStateBindingsDirty = false;
+
+	bool _needsSwizzle = false;
 };
 
 

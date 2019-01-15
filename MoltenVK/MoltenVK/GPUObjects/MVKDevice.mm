@@ -442,10 +442,47 @@ VkResult MVKPhysicalDevice::getSurfacePresentModes(MVKSurface* surface,
 
 #pragma mark Queues
 
+// Returns the queue families supported by this instance, lazily creating them if necessary.
+// Metal does not distinguish functionality between queues, which would normally lead us
+// to create only only one general-purpose queue family. However, Vulkan associates command
+// buffers with a queue family, whereas Metal associates command buffers with a Metal queue.
+// In order to allow a Metal command buffer to be prefilled before is is formally submitted to
+// a Vulkan queue, we need to enforce that each Vulkan queue family can have only one Metal queue.
+// In order to provide parallel queue operations, we therefore provide multiple queue families.
+vector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
+	if (_queueFamilies.empty()) {
+		VkQueueFamilyProperties qfProps;
+		bool specialize = _mvkInstance->getMoltenVKConfiguration()->specializedQueueFamilies;
+		uint32_t qfIdx = 0;
+
+		qfProps.queueCount = 1;		// Each queue family must have a single Metal queue (see above)
+		qfProps.timestampValidBits = 64;
+		qfProps.minImageTransferGranularity = { 1, 1, 1};
+
+		// General-purpose queue family
+		qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT);
+		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+
+		// Dedicated graphics queue family...or another general-purpose queue family.
+		if (specialize) { qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_TRANSFER_BIT); }
+		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+
+		// Dedicated compute queue family...or another general-purpose queue family.
+		if (specialize) { qfProps.queueFlags = (VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT); }
+		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+
+		// Dedicated transfer queue family...or another general-purpose queue family.
+		if (specialize) { qfProps.queueFlags = VK_QUEUE_TRANSFER_BIT; }
+		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+	}
+	return _queueFamilies;
+}
+
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 													 VkQueueFamilyProperties* queueProperties) {
 
-	uint32_t qfCnt = uint32_t(_queueFamilies.size());
+	vector<MVKQueueFamily*> qFams = getQueueFamilies();
+	uint32_t qfCnt = uint32_t(qFams.size());
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !queueProperties ) {
@@ -459,7 +496,7 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 	// Now populate the queue families
 	if (queueProperties) {
 		for (uint32_t qfIdx = 0; qfIdx < *pCount; qfIdx++) {
-			_queueFamilies[qfIdx]->getProperties(&queueProperties[qfIdx]);
+			qFams[qfIdx]->getProperties(&queueProperties[qfIdx]);
 		}
 	}
 
@@ -469,7 +506,8 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 													 VkQueueFamilyProperties2KHR* queueProperties) {
 
-	uint32_t qfCnt = uint32_t(_queueFamilies.size());
+	vector<MVKQueueFamily*> qFams = getQueueFamilies();
+	uint32_t qfCnt = uint32_t(qFams.size());
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !queueProperties ) {
@@ -484,7 +522,7 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 	if (queueProperties) {
 		for (uint32_t qfIdx = 0; qfIdx < *pCount; qfIdx++) {
 			queueProperties[qfIdx].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR;
-			_queueFamilies[qfIdx]->getProperties(&queueProperties[qfIdx].queueFamilyProperties);
+			qFams[qfIdx]->getProperties(&queueProperties[qfIdx].queueFamilyProperties);
 		}
 	}
 
@@ -510,6 +548,17 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 
 
 #pragma mark Construction
+
+MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) {
+	_mvkInstance = mvkInstance;
+	_mtlDevice = [mtlDevice retain];
+
+	initMetalFeatures();        // Call first.
+	initFeatures();             // Call second.
+	initProperties();           // Call third.
+	initMemoryProperties();
+	logGPUInfo();
+}
 
 /** Initializes the Metal-specific physical device features of this instance. */
 void MVKPhysicalDevice::initMetalFeatures() {
@@ -1272,33 +1321,6 @@ void MVKPhysicalDevice::logGPUInfo() {
 			   SPIRVToMSLConverterOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
 }
 
-// Initializes the queue families supported by this instance.
-void MVKPhysicalDevice::initQueueFamilies() {
-	VkQueueFamilyProperties qfProps;
-	uint32_t qfIdx;
-
-	qfProps.queueCount = 1;		// In Metal, each family must have a single queue
-
-	qfIdx = 0;
-	qfProps.queueFlags = (VK_QUEUE_GRAPHICS_BIT | VK_QUEUE_COMPUTE_BIT | VK_QUEUE_TRANSFER_BIT);
-	qfProps.timestampValidBits = 64;
-	qfProps.minImageTransferGranularity = { 1, 1, 1};
-
-	_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx, &qfProps));
-}
-
-MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) {
-	_mvkInstance = mvkInstance;
-	_mtlDevice = [mtlDevice retain];
-
-    initMetalFeatures();        // Call first.
-	initFeatures();             // Call second.
-	initProperties();           // Call third.
-	initMemoryProperties();
-	initQueueFamilies();
-	logGPUInfo();
-}
-
 MVKPhysicalDevice::~MVKPhysicalDevice() {
 	mvkDestroyContainerContents(_queueFamilies);
 	[_mtlDevice release];
@@ -1771,27 +1793,7 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
 MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
 
 	initPerformanceTracking();
-    
-#if MVK_MACOS
-    //on mac OS, the wrong GPU will drive the screen (graphics switching will not occur)
-    //unless we call this specific MTLCreateSystemDefaultDevice method to create the metal device
-    id<MTLDevice> device = physicalDevice->getMTLDevice();
-    if (!device.headless && !device.lowPower) {
-        id<MTLDevice> sysDefaultDevice = MTLCreateSystemDefaultDevice();
-        
-        //lets be 100% sure this is the device the user asked for
-        if (sysDefaultDevice.registryID == device.registryID) {
-            physicalDevice->replaceMTLDevice(sysDefaultDevice);
-        }
-    }
-#endif
-
-	_physicalDevice = physicalDevice;
-	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
-	_pFeatures = &_physicalDevice->_features;
-	_pMetalFeatures = _physicalDevice->getMetalFeatures();
-	_pProperties = &_physicalDevice->_properties;
-	_pMemoryProperties = &_physicalDevice->_memoryProperties;
+	initPhysicalDevice(physicalDevice);
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;
@@ -1831,13 +1833,38 @@ void MVKDevice::initPerformanceTracking() {
 	_performanceStatistics.queue.mtlQueueAccess = initPerf;
 }
 
+void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice) {
+
+	_physicalDevice = physicalDevice;
+	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
+	_pFeatures = &_physicalDevice->_features;
+	_pMetalFeatures = _physicalDevice->getMetalFeatures();
+	_pProperties = &_physicalDevice->_properties;
+	_pMemoryProperties = &_physicalDevice->_memoryProperties;
+
+#if MVK_MACOS
+	// If we have selected a high-power GPU and want to force the window system
+	// to use it, force the window system to use a high-power GPU by calling the
+	// MTLCreateSystemDefaultDevice function, and if that GPU is the same as the
+	// selected GPU, update the MTLDevice instance used by the MVKPhysicalDevice.
+	id<MTLDevice> mtlDevice = _physicalDevice->getMTLDevice();
+	if (_pMVKConfig->switchSystemGPU && !(mtlDevice.lowPower || mtlDevice.headless) ) {
+		id<MTLDevice> sysMTLDevice = MTLCreateSystemDefaultDevice();
+		if (sysMTLDevice.registryID == mtlDevice.registryID) {
+			_physicalDevice->replaceMTLDevice(sysMTLDevice);
+		}
+	}
+#endif
+}
+
 // Create the command queues
 void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
+	vector<MVKQueueFamily*> qFams = _physicalDevice->getQueueFamilies();
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
 	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
 		const VkDeviceQueueCreateInfo* pQFInfo = &pCreateInfo->pQueueCreateInfos[qrIdx];
 		uint32_t qfIdx = pQFInfo->queueFamilyIndex;
-		MVKQueueFamily* qFam = _physicalDevice->_queueFamilies[qfIdx];
+		MVKQueueFamily* qFam = qFams[qfIdx];
 		_queuesByQueueFamilyIndex.resize(qfIdx + 1);	// Ensure an entry for this queue family exists
 		auto& queues = _queuesByQueueFamilyIndex[qfIdx];
 		for (uint32_t qIdx = 0; qIdx < pQFInfo->queueCount; qIdx++) {

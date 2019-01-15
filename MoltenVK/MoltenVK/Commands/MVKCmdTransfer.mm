@@ -704,6 +704,13 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
                 blitOptions |= MTLBlitOptionStencilFromDepthStencil;
             }
         }
+
+#if MVK_IOS
+		if (mvkMTLPixelFormatIsPVRTCFormat(mtlPixFmt)) {
+			blitOptions |= MTLBlitOptionRowLinearPVRTC;
+		}
+#endif
+
 #if MVK_MACOS
         if (_toImage && mvkFormatTypeFromMTLPixelFormat(mtlPixFmt) == kMVKFormatCompressed &&
             mtlTexture.textureType == MTLTextureType3D) {
