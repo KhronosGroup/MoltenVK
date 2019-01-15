@@ -24,6 +24,7 @@ Released 2018/01/15
 - Add queue family specialization to config, and disable it by default.
 - Enable synchronous queue submits as config default.
 - Support 4 queue families.
+- Pad fragment shader output to 4 components when needed.
 - Log Vulkan versions in human readable form when reporting version error.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 16.
 - Update copyright to 2019.
@@ -31,7 +32,10 @@ Released 2018/01/15
 	- MSL: Support SPV_KHR_variable_pointers.
 	- MSL: Workaround missing gradient2d() on macOS for typical cascaded shadow mapping.
 	- MSL: Fix mapping of identity-swizzled components.
-	- MSL: Support composites inside I/O blocks
+	- MSL: Support composites inside I/O blocks.
+	- MSL: Fix case where we pass arrays to functions by value.
+	- MSL: Add option to pad fragment outputs.
+	- MSL: Fix passing a sampled image to a function.
 	- Performance improvements on iterating internal constructs.
 	- Update copyright to 2019.
 

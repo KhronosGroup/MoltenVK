@@ -239,6 +239,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
 		mslOpts.disable_rasterization = context.options.isRasterizationDisabled;
 		mslOpts.swizzle_texture_samples = context.options.shouldSwizzleTextureSamples;
+		mslOpts.pad_fragment_output_components = true;
 		pMSLCompiler->set_msl_options(mslOpts);
 
 		auto scOpts = pMSLCompiler->get_common_options();
