@@ -368,6 +368,10 @@ void MVKInstance::initConfig() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.specializedQueueFamilies,             MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.switchSystemGPU,                      MVK_CONFIG_SWITCH_SYSTEM_GPU);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.fullImageViewSwizzle,                 MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE);
+
+	if (_appInfo.pEngineName && strcmp(_appInfo.pEngineName, "idTech") == 0) {
+		_mvkConfig.fullImageViewSwizzle = VK_TRUE;
+	}
 }
 
 VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {

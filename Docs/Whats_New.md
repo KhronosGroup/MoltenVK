@@ -20,6 +20,7 @@ Released 2018/01/15
 
 - Support runtime config via runtime environment variables
 - Add full ImageView swizzling to config, and disable it by default.
+- For idTech 6, always enable full image view swizzling.
 - Add GPU switching to config, and enable it by default.
 - Add queue family specialization to config, and disable it by default.
 - Enable synchronous queue submits as config default.
