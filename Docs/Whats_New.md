@@ -16,7 +16,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.31
 ---------------
 
-Released 2018/01/15
+Released 2019/01/15
 
 - Support runtime config via runtime environment variables
 - Add full ImageView swizzling to config, and disable it by default.
@@ -29,6 +29,7 @@ Released 2018/01/15
 - Log Vulkan versions in human readable form when reporting version error.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 16.
 - Update copyright to 2019.
+- Advertise the `VK_AMD_gpu_shader_half_float` extension.
 - Update to latest SPIRV-Cross version:
 	- MSL: Support SPV_KHR_variable_pointers.
 	- MSL: Workaround missing gradient2d() on macOS for typical cascaded shadow mapping.
