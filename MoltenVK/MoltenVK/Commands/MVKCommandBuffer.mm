@@ -351,7 +351,7 @@ void MVKCommandEncoder::clearRenderArea() {
 }
 
 void MVKCommandEncoder::finalizeDispatchState() {
-    _computePipelineState.encode();
+    _computePipelineState.encode();    // Must do first..it sets others
     _computeResourcesState.encode();
     _computePushConstants.encode();
 }

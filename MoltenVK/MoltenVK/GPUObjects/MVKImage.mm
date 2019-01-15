@@ -798,7 +798,7 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
     _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components, useSwizzle);
 	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType, (_image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT));
 	initMTLTextureViewSupport();
-	_packedSwizzle = useSwizzle ? packSwizzle(pCreateInfo->components) : 0;
+	_packedSwizzle = useSwizzle ? mvkPackSwizzle(pCreateInfo->components) : 0;
 }
 
 // Validate whether the image view configuration can be supported
@@ -896,19 +896,6 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkCompon
     return mtlPF;
 }
 
-const char*  MVKImageView::getSwizzleName(VkComponentSwizzle swizzle) {
-    switch (swizzle) {
-        case VK_COMPONENT_SWIZZLE_IDENTITY: return "VK_COMPONENT_SWIZZLE_IDENTITY";
-        case VK_COMPONENT_SWIZZLE_ZERO:     return "VK_COMPONENT_SWIZZLE_ZERO";
-        case VK_COMPONENT_SWIZZLE_ONE:      return "VK_COMPONENT_SWIZZLE_ONE";
-        case VK_COMPONENT_SWIZZLE_R:        return "VK_COMPONENT_SWIZZLE_R";
-        case VK_COMPONENT_SWIZZLE_G:        return "VK_COMPONENT_SWIZZLE_G";
-        case VK_COMPONENT_SWIZZLE_B:        return "VK_COMPONENT_SWIZZLE_B";
-        case VK_COMPONENT_SWIZZLE_A:        return "VK_COMPONENT_SWIZZLE_A";
-        default:                            return "VK_COMPONENT_SWIZZLE_UNKNOWN";
-    }
-}
-
 // Returns whether the swizzle components of the internal VkComponentMapping matches the
 // swizzle pattern, by comparing corresponding elements of the two structures. The pattern
 // supports wildcards, in that any element of pattern can be set to VK_COMPONENT_SWIZZLE_MAX_ENUM
@@ -924,12 +911,6 @@ bool MVKImageView::matchesSwizzle(VkComponentMapping components, VkComponentMapp
            ((pattern.a == VK_COMPONENT_SWIZZLE_A) && (components.a == VK_COMPONENT_SWIZZLE_IDENTITY))) ) { return false; }
 
     return true;
-}
-
-// Packs a VkComponentMapping structure into a single 32-bit word.
-uint32_t MVKImageView::packSwizzle(VkComponentMapping components) {
-    return ((components.r & 0xFF) << 0) | ((components.g & 0xFF) << 8) |
-           ((components.b & 0xFF) << 16) | ((components.a & 0xFF) << 24);
 }
 
 // Determine whether this image view should use a Metal texture view,

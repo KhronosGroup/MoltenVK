@@ -277,7 +277,7 @@ protected:
 	void initFeatures();
 	void initProperties();
 	void initMemoryProperties();
-	void initQueueFamilies();
+	std::vector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
 	MTLFeatureSet getHighestMTLFeatureSet();
 	void logGPUInfo();
@@ -581,6 +581,7 @@ protected:
 	MVKResource* addResource(MVKResource* rez);
 	MVKResource* removeResource(MVKResource* rez);
     void initPerformanceTracking();
+	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& shaderCompilationEvent);
 	uint64_t getPerformanceTimestampImpl();

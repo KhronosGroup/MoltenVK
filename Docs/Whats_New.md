@@ -13,6 +13,35 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.31
+---------------
+
+Released 2018/01/15
+
+- Support runtime config via runtime environment variables
+- Add full ImageView swizzling to config, and disable it by default.
+- Add GPU switching to config, and enable it by default.
+- Add queue family specialization to config, and disable it by default.
+- Enable synchronous queue submits as config default.
+- Support 4 queue families.
+- Pad fragment shader output to 4 components when needed.
+- Add support for copying to and from PVRTC images.
+- Log Vulkan versions in human readable form when reporting version error.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 16.
+- Update copyright to 2019.
+- Update to latest SPIRV-Cross version:
+	- MSL: Support SPV_KHR_variable_pointers.
+	- MSL: Workaround missing gradient2d() on macOS for typical cascaded shadow mapping.
+	- MSL: Fix mapping of identity-swizzled components.
+	- MSL: Support composites inside I/O blocks.
+	- MSL: Fix case where we pass arrays to functions by value.
+	- MSL: Add option to pad fragment outputs.
+	- MSL: Fix passing a sampled image to a function.
+	- Performance improvements on iterating internal constructs.
+	- Update copyright to 2019.
+
+
+
 MoltenVK 1.0.30
 ---------------
 

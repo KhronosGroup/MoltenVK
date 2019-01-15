@@ -48,28 +48,37 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   30
+#define MVK_VERSION_PATCH   31
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            15
+#define VK_MVK_MOLTENVK_SPEC_VERSION            16
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
  * MoltenVK configuration settings.
  *
- * To change the MoltenVK configuration settings, use the vkGetMoltenVKConfigurationMVK() and
- * vkSetMoltenVKConfigurationMVK() functions to retrieve, modify, and set a copy of this structure.
- *
  * To be active, some configuration settings must be set before a VkDevice is created.
  * See the description of the individual configuration structure members for more information.
  *
- * The initial value of several of these settings is deterined when MolttenVK is compiled by the
- * presence of a DEBUG build setting, By default the DEBUG build setting is present when MoltenVK
- * is compiled in Debug mode, and not present when compiled in Release mode. The initial values
- * of the other settings are determined by other build settings when MoltenVK is compiled.
- * See the description of the individual configuration structure members for more information.
+ * There are three mechanisms for setting the values of the MoltenVK configuration parameters:
+ *   - Runtime API via the vkGetMoltenVKConfigurationMVK()/vkSetMoltenVKConfigurationMVK() functions.
+ *   - Application runtime environment variables.
+ *   - Build settings at MoltenVK build time.
+ *
+ * To change the MoltenVK configuration settings at runtime using a programmatic API,
+ * use the vkGetMoltenVKConfigurationMVK() and vkSetMoltenVKConfigurationMVK() functions
+ * to retrieve, modify, and set a copy of the MVKConfiguration structure.
+ *
+ * The initial value of each of the configuration settings can established at runtime
+ * by a corresponding environment variable, or if the environment variable is not set,
+ * by a corresponding build setting at the time MoltenVK is compiled. The environment
+ * variable and build setting for each configuration parameter share the same name.
+ *
+ * For example, the initial value of the shaderConversionFlipVertexY configuration setting
+ * is set by the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y at runtime, or by the
+ * MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting when MoltenVK is compiled.
  *
  * This structure may be extended as new features are added to MoltenVK. If you are linking to
  * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
@@ -78,28 +87,43 @@ extern "C" {
  * vkSetMoltenVKConfigurationMVK() functions for information about how to handle this.
  *
  * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
  * SHOULD NOT BE CHANGED.
  */
 typedef struct {
 
 	/**
-	 * If enabled, debugging capabilities will be enabled, including logging shader code
-	 * during runtime shader conversion.
+	 * If enabled, debugging capabilities will be enabled, including logging
+	 * shader code during runtime shader conversion.
 	 *
-	 * Initial value is true in the presence of the DEBUG build setting, and false otherwise.
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_DEBUG
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter is false if MoltenVK was
+	 * built in Release mode, and true if MoltenVK was built in Debug mode.
 	 */
     VkBool32 debugMode;
 
 	/**
 	 * If enabled, MSL vertex shader code created during runtime shader conversion will
 	 * flip the Y-axis of each vertex, as the Vulkan Y-axis is the inverse of OpenGL.
+	 *
 	 * An alternate way to reverse the Y-axis is to employ a negative Y-axis value on
 	 * the viewport, in which case this parameter can be disabled.
 	 *
-	 * Initial value is set by the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting
-	 * when MoltenVK is compiled. By default the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
-	 * build setting is set to true.
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 * Specifically, this parameter can be enabled when compiling some pipelines,
+	 * and disabled when compiling others. Existing pipelines are not automatically
+	 * re-compiled when this parameter is changed.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to true.
 	 */
     VkBool32 shaderConversionFlipVertexY;
 
@@ -109,10 +133,13 @@ typedef struct {
 	 * will be dispatched to a GCD dispatch_queue whose priority is determined by
 	 * VkDeviceQueueCreateInfo::pQueuePriorities during vkCreateDevice().
 	 *
-	 * Initial value is set by the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting when MoltenVK
-	 * is compiled. By default the MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS build setting is set to false,
-	 * and command processing will be handled on a prioritizable queue thread. Changing the value of
-	 * this parameter must be done before creating a VkDevice, for the change to take effect.
+	 * The value of this parameter may be changed before creating a VkDevice,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to true.
 	 */
 	VkBool32 synchronousQueueSubmits;
 
@@ -146,8 +173,15 @@ typedef struct {
 	 * command buffers do not support the concept of being reset after being filled. Depending on when
 	 * and how often you do this, it may cause unexpected visual artifacts and unnecessary GPU load.
 	 *
-	 * Initial value is set by the MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS build setting when MoltenVK
-	 * is compiled. By default the MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS build setting is set to false.
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 * Specifically, this parameter can be enabled when filling some command buffers,
+	 * and disabled when filling others.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to false.
 	 */
 	VkBool32 prefillMetalCommandBuffers;
 
@@ -159,10 +193,13 @@ typedef struct {
 	 * is required per command buffer queue submission, which may be significantly less than the
 	 * number of Vulkan command buffers.
 	 *
-	 * Initial value is set by the MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL build setting
-	 * when MoltenVK is compiled. By default the MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL
-	 * build setting is set to 64. Changing the value of this parameter must be done before creating
-	 * a VkDevice, for the change to take effect.
+	 * The value of this parameter may be changed before creating a VkDevice,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to 64.
 	 */
 	uint32_t maxActiveMetalCommandBuffersPerQueue;
 
@@ -174,9 +211,15 @@ typedef struct {
 	 * within a renderpass. If disabled, one MTLBuffer will be shared by all query pools,
 	 * which improves performance, but limits the total device queries to 8192.
 	 *
-	 * Initial value is set by the MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS build setting
-	 * when MoltenVK is compiled. By default the MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
-	 * build setting is set to true.
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 * Specifically, this parameter can be enabled when creating some query pools,
+	 * and disabled when creating others.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to true.
 	 */
 	VkBool32 supportLargeQueryPools;
 
@@ -184,8 +227,13 @@ typedef struct {
 	 * If enabled, each surface presentation is scheduled using a command buffer. Enabling this
 	 * setting may improve rendering frame synchronization, but may result in reduced frame rates.
 	 *
-	 * Initial value is set by the MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER build setting when MoltenVK
-	 * is compiled. By default the MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER build setting is set to true.
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to true.
 	 */
 	VkBool32 presentWithCommandBuffer;
 
@@ -197,9 +245,13 @@ typedef struct {
 	 * multiples of display pixels (eg- macOS Retina, and typical of graphics apps and games),
 	 * but may cause aliasing effects when using non-integer display scaling.
 	 *
-	 * Initial value is set by the MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST build setting
-	 * when MoltenVK is compiled. By default the MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST
-	 * build setting is set to true.
+	 * The value of this parameter may be changed before creating a VkSwapchain,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to true.
 	 */
 	VkBool32 swapchainMagFilterUseNearest;
 
@@ -209,8 +261,13 @@ typedef struct {
 	 * within the Metal compiler can stall the thread for up to 30 seconds. Setting this value
 	 * limits that delay to a specified amount of time, allowing shader compilations to fail fast.
 	 *
-	 * Initial value is set by the MVK_CONFIG_METAL_COMPILE_TIMEOUT build setting when MoltenVK
-	 * is compiled. By default the MVK_CONFIG_METAL_COMPILE_TIMEOUT build setting is infinite.
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_METAL_COMPILE_TIMEOUT
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to infinite.
 	 */
 	uint64_t metalCompileTimeout;
 
@@ -219,7 +276,13 @@ typedef struct {
 	 * retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics
 	 * are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function.
 	 *
-	 * Initial value is true in the presence of the DEBUG build setting, and false otherwise.
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_PERFORMANCE_TRACKING
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to false.
 	 */
 	VkBool32 performanceTracking;
 
@@ -227,7 +290,13 @@ typedef struct {
 	 * If non-zero, performance statistics will be periodically logged to the console, on a repeating
 	 * cycle of this many frames per swapchain. The performanceTracking capability must also be enabled.
 	 *
-	 * Initial value is 300 in the presence of the DEBUG build setting, and zero otherwise.
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to zero.
 	 */
 	uint32_t performanceLoggingFrameCount;
 
@@ -235,10 +304,115 @@ typedef struct {
 	 * If enabled, a MoltenVK logo watermark will be rendered on top of the scene.
 	 * This can be enabled for publicity during demos.
 	 *
-	 * Initial value is set by the MVK_CONFIG_DISPLAY_WATERMARK build setting when MoltenVK
-	 * is compiled. By default the MVK_CONFIG_DISPLAY_WATERMARK build setting is set to false.
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_DISPLAY_WATERMARK
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to false.
 	 */
 	VkBool32 displayWatermark;
+
+	/**
+	 * Metal does not distinguish functionality between queues, which would normally mean only
+	 * a single general-purpose queue family with multiple queues is needed. However, Vulkan
+	 * associates command buffers with a queue family, whereas Metal associates command buffers
+	 * with a specific Metal queue. In order to allow a Metal command buffer to be prefilled
+	 * before is is formally submitted to a Vulkan queue, each Vulkan queue family can support
+	 * only a single Metal queue. As a result, in order to provide parallel queue operations,
+	 * MoltenVK provides multiple queue families, each with a single queue.
+	 *
+	 * If this parameter is disabled, all queue families will be advertised as having general-purpose
+	 * graphics + compute + transfer functionality, which is how the actual Metal queues behave.
+	 *
+	 * If this parameter is enabled, one queue family will be advertised as having general-purpose
+	 * graphics + compute + transfer functionality, and the remaining queue families will be advertised
+	 * as having specialized graphics OR compute OR transfer functionality, to make it easier for some
+	 * apps to select a queue family with the appropriate requirements.
+	 *
+	 * The value of this parameter may be changed before creating a VkDevice, and before
+	 * querying a VkPhysicalDevice for queue family properties, for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to false.
+	 */
+	VkBool32 specializedQueueFamilies;
+
+	/**
+	 * If enabled, when the app creates a VkDevice from a VkPhysicalDevice (GPU) that is neither
+	 * headless nor low-power, and is different than the GPU used by the windowing system, the
+	 * windowing system will be forced to switch to use the GPU selected by the Vulkan app.
+	 * When the Vulkan app is ended, the windowing system will automatically switch back to
+	 * using the previous GPU, depending on the usage requirements of other running apps.
+	 *
+	 * If disabled, the Vulkan app will render using its selected GPU, and if the windowing
+	 * system uses a different GPU, the windowing system compositor will automatically copy
+	 * framebuffer content from the app GPU to the windowing system GPU.
+	 *
+	 * The value of this parmeter has no effect on systems with a single GPU, or when the
+	 * Vulkan app creates a VkDevice from a low-power or headless VkPhysicalDevice (GPU).
+	 *
+	 * Switching the windowing system GPU to match the Vulkan app GPU maximizes app performance,
+	 * because it avoids the windowing system compositor from having to copy framebuffer content
+	 * between GPUs on each rendered frame. However, doing so forces the entire system to
+	 * potentially switch to using a GPU that may consume more power while the app is running.
+	 *
+	 * Some Vulkan apps may want to render using a high-power GPU, but leave it up to the
+	 * system window compositor to determine how best to blend content with the windowing
+	 * system, and as a result, may want to disable this parameter.
+	 *
+	 * The value of this parameter may be changed before creating a VkDevice,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_SWITCH_SYSTEM_GPU
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to true.
+	 */
+	VkBool32 switchSystemGPU;
+
+	/**
+	 * If enabled, arbitrary ImageView component swizzles are supported, as defined
+	 * in VkImageViewCreateInfo::components when creating a VkImageView.
+	 *
+	 * If disabled, a very limited set of ImageView component swizzles are supported
+	 * via format substitutions.
+	 *
+	 * Metal does not natively support per-texture swizzling. If this parameter is enabled
+	 * when a pipeline is compiled, ImageView swizzling is automatically performed in the
+	 * converted Metal shader code during all texture sampling and reading operations,
+	 * regardless of whether a swizzle has been specified for the ImageView associated
+	 * with the Metal texture. This may result in reduced performance.
+	 *
+	 * The value of this parameter may be changed at any time during application runtime,
+	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
+	 * Specifically, this parameter can be enabled when compiling some pipelines,
+	 * and disabled when compiling others. Existing pipelines are not automatically
+	 * re-compiled when this parameter is changed.
+	 *
+	 * If this parameter is disabled, the following limited set of ImageView swizzles
+	 * are supported by MoltenVK, via automatic format substitution:
+	 *
+	 * Texture format			       Swizzle
+	 * --------------                  -------
+	 * VK_FORMAT_R8_UNORM              ZERO, ANY, ANY, RED
+	 * VK_FORMAT_A8_UNORM              ALPHA, ANY, ANY, ZERO
+	 * VK_FORMAT_R8G8B8A8_UNORM        BLUE, GREEN, RED, ALPHA
+	 * VK_FORMAT_R8G8B8A8_SRGB         BLUE, GREEN, RED, ALPHA
+	 * VK_FORMAT_B8G8R8A8_UNORM        BLUE, GREEN, RED, ALPHA
+	 * VK_FORMAT_B8G8R8A8_SRGB         BLUE, GREEN, RED, ALPHA
+	 * VK_FORMAT_D32_SFLOAT_S8_UINT    RED, ANY, ANY, ANY (stencil only)
+	 * VK_FORMAT_D24_UNORM_S8_UINT     RED, ANY, ANY, ANY (stencil only)
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to false.
+	 */
+	VkBool32 fullImageViewSwizzle;
 
 } MVKConfiguration;
 
@@ -253,7 +427,7 @@ typedef struct {
  * for information about how to handle this.
  *
  * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
  * SHOULD NOT BE CHANGED.
  */
 typedef struct {
@@ -293,7 +467,7 @@ typedef struct {
  * information about how to handle this.
  *
  * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
  * SHOULD NOT BE CHANGED.
  */
 typedef struct {
@@ -345,7 +519,7 @@ typedef struct {
  * information about how to handle this.
  *
  * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGE EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
+ * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
  * SHOULD NOT BE CHANGED.
  */
 typedef struct {

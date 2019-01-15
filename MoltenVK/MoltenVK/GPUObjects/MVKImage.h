@@ -289,8 +289,6 @@ protected:
 	void initMTLTextureViewSupport();
     MTLPixelFormat getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components, bool& useSwizzle);
     bool matchesSwizzle(VkComponentMapping components, VkComponentMapping pattern);
-    const char* getSwizzleName(VkComponentSwizzle swizzle);
-    uint32_t packSwizzle(VkComponentMapping components);
 	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
 
     MVKImage* _image;

@@ -40,6 +40,7 @@ namespace mvk {
 		uint32_t auxBufferIndex = 0;
 		bool shouldFlipVertexY = true;
 		bool isRenderingPoints = false;
+		bool shouldSwizzleTextureSamples = false;
 
 		bool isRasterizationDisabled = false;
 		bool needsAuxBuffer = false;

@@ -23,7 +23,8 @@ Table of Contents
 	- [Build and Runtime Requirements](#requirements)
 	- [Install as Static Framework, Static Library, or Dynamic Library](#install_lib)
 - [Interacting with the **MoltenVK** Runtime](#interaction)
-	- [MoltenVK Extension](#moltenvk_extension)
+	- [MoltenVK `VK_MVK_moltenvk` Extension](#moltenvk_extension)
+	- [Configuring MoltenVK](#moltenvk_config)
 - [*Metal Shading Language* Shaders](#shaders)
 	- [MoltenVKShaderConverter Shader Converter Tool](#shader_converter_tool)
 	- [Troubleshooting Shader Conversion](#spv_vs_msl)
@@ -243,9 +244,9 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_KHR_swapchain_mutable_format`
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_vertex_attribute_divisor`
-- `VK_MVK_moltenvk`
 - `VK_MVK_macos_surface` (macOS)
 - `VK_MVK_ios_surface` (iOS)
+- `VK_MVK_moltenvk`
 - `VK_AMD_negative_viewport_height`
 - `VK_IMG_format_pvrtc` (iOS)
 
@@ -259,9 +260,9 @@ of the `mvk_vulkan.h` file below for a convenient way to enable these extensions
 
 When using the `VK_MVK_macos_surface ` extension, the `pView` member of the `VkMacOSSurfaceCreateInfoMVK` 
 structure passed in the `vkCreateMacOSSurfaceMVK` function can be either an `NSView` whose layer is a 
-`CAMetalLayer`, or the `CAMetalLayer` itself. Passing the `CAMetalLayer` itself is recommended when calling
-the `vkCreateMacOSSurfaceMVK` function from outside the main application thread, as `NSView` should only be
-accessed from the main application thread.
+`CAMetalLayer`, or the `CAMetalLayer` itself. Passing the `CAMetalLayer` itself is recommended when 
+calling the `vkCreateMacOSSurfaceMVK` function from outside the main application thread, as `NSView` 
+should only be accessed from the main application thread.
 
 When using the `VK_MVK_ios_surface ` extension, the `pView` member of the `VkIOSSurfaceCreateInfoMVK` 
 structure passed in the `vkCreateIOSSurfaceMVK` function can be either a `UIView` whose layer is a 
@@ -269,14 +270,14 @@ structure passed in the `vkCreateIOSSurfaceMVK` function can be either a `UIView
 calling the `vkCreateIOSSurfaceMVK ` function from outside the main application thread, as `UIView` 
 should only be accessed from the main application thread.
 
-<a name="moltenvk_extension"></a>
-### MoltenVK Extension
 
-The `VK_MVK_moltenvk` *Vulkan* extension provides functionality beyond the standard *Vulkan*
-API, to support configuration options, license registration, and behaviour that is specific 
-to the **MoltenVK** implementation of *Vulkan*. You can access this functionality by including
-the `vk_mvk_moltenvk.h` header file in your code. The `vk_mvk_moltenvk.h` file also includes 
-the API documentation for this `VK_MVK_moltenvk` extension.
+<a name="moltenvk_extension"></a>
+### MoltenVK `VK_MVK_moltenvk` Extension
+
+The `VK_MVK_moltenvk` *Vulkan* extension provides functionality beyond the standard *Vulkan* API, to 
+support configuration options and behaviour that is specific to the **MoltenVK** implementation of *Vulkan*. 
+You can access this functionality by including the `vk_mvk_moltenvk.h` header file in your code. 
+The `vk_mvk_moltenvk.h` file also includes the API documentation for this `VK_MVK_moltenvk` extension.
 
 The following API header files are included in the **MoltenVK** package, each of which 
 can be included in your application source code as follows:
@@ -304,6 +305,30 @@ where `HEADER_FILE` is one of the following:
   These functions are exposed in this header for your own purposes such as interacting with *Metal* 
   directly, or simply logging data values.
 
+
+<a name="moltenvk_config"></a>
+### Configuring MoltenVK
+
+The `VK_MVK_moltenvk` *Vulkan* extension provides the ability to configure and optimize 
+**MoltenVK** for your particular application runtime requirements.
+
+There are three mechanisms for setting the values of the **MoltenVK** configuration parameters:
+
+- Runtime API via the `vkGetMoltenVKConfigurationMVK()/vkSetMoltenVKConfigurationMVK()` functions.
+- Application runtime environment variables.
+- Build settings at **MoltenVK** build time.
+
+To change the **MoltenVK** configuration settings at runtime using a programmatic API, use the 
+`vkGetMoltenVKConfigurationMVK()` and `vkSetMoltenVKConfigurationMVK()` functions to retrieve, 
+modify, and set a copy of the `MVKConfiguration` structure.
+
+The initial value of each of the configuration settings can established at runtime 
+by a corresponding environment variable, or if the environment variable is not set, 
+by a corresponding build setting at the time **MoltenVK** is compiled. The environment 
+variable and build setting for each configuration parameter share the same name.
+
+See the description of the `MVKConfiguration` structure parameters in the `vk_mvk_moltenvk.h` 
+file for more info about configuring and optimizing **MoltenVK** at build time or runtime.
 
 
 <a name="shaders"></a>
@@ -376,21 +401,16 @@ you can address the issue as follows:
 
 - Errors encountered during **Runtime Shader Conversion** are logged to the console.
 
-- To help understand conversion issues during **Runtime Shader Conversion**, you can enable
-  the logging of the *SPIR-V* and *MSL* shader source code during conversion as follows:
-  
-  		#include <MoltenVK/vk_mvk_moltenvk.h>
-  		...
-  		MVKConfiguration mvkConfig;
-  		size_t appConfigSize = sizeof(mvkConfig);
-  		vkGetMoltenVKConfigurationMVK(vkInstance, &mvkConfig, &appConfigSize);
-  		mvkConfig.debugMode = true;
-  		vkSetMoltenVKConfigurationMVK(vkInstance, &mvkConfig, &appConfigSize);
+- To help understand conversion issues during **Runtime Shader Conversion**, you can enable the 
+  logging of the *SPIR-V* and *MSL* shader source code during shader conversion, by turning on 
+  the `MVKConfiguration::debugMode` configuration parameter, or setting the value of the `MVK_DEBUG` 
+  runtime environment variable to `1`. See the [*MoltenVK Configuration*](#moltenvk_config) 
+  description above.
 
-  Performing these steps will enable debug mode in **MoltenVK**, which includes shader conversion 
-  logging, and causes both the incoming *SPIR-V* code and the converted *MSL* source code to be 
-  logged to the console (in human-readable form). This allows you to manually verify the conversions, 
-  and can help you diagnose issues that might occur during shader conversion.
+  Enabling debug mode in **MoltenVK** includes shader conversion logging, which causes both 
+  the incoming *SPIR-V* code and the converted *MSL* source code to be logged to the console 
+  in human-readable form. This allows you to manually verify the conversions, and can help 
+  you diagnose issues that might occur during shader conversion.
 
 - For minor issues, you may be able to adjust your *SPIR-V* code so that it behaves the same 
   under *Vulkan*, but is easier to automatically convert to *MSL*.

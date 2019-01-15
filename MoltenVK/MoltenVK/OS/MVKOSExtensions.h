@@ -19,6 +19,8 @@
 #pragma once
 
 #include "mvk_vulkan.h"
+#include "MVKFoundation.h"
+#include <string>
 
 #import <Metal/Metal.h>
 
@@ -65,6 +67,69 @@ inline void mvkDispatchToMainAndWait(dispatch_block_t block) {
 		dispatch_sync(dispatch_get_main_queue(), block);
 	}
 }
+
+
+#pragma mark -
+#pragma mark Process environment
+
+
+/**
+ * Returns the value of the environment variable at the given name,
+ * or an empty string if no environment variable with that name exists.
+ *
+ * If pWasFound is not null, it's value is set to true if the environment
+ * variable exists, or false if not.
+ */
+inline std::string mvkGetEnvVar(std::string varName, bool* pWasFound = nullptr) {
+	NSDictionary* env = [[NSProcessInfo processInfo] environment];
+	NSString* envStr = env[@(varName.c_str())];
+	if (pWasFound) { *pWasFound = envStr != nil; }
+	return envStr ? envStr.UTF8String : "";
+}
+
+/**
+ * Returns the value of the environment variable at the given name,
+ * or zero if no environment variable with that name exists.
+ *
+ * If pWasFound is not null, it's value is set to true if the environment
+ * variable exists, or false if not.
+ */
+inline int64_t mvkGetEnvVarInt64(std::string varName, bool* pWasFound = nullptr) {
+	return strtoll(mvkGetEnvVar(varName, pWasFound).c_str(), NULL, 0);
+}
+
+/**
+ * Returns the value of the environment variable at the given name,
+ * or false if no environment variable with that name exists.
+ *
+ * If pWasFound is not null, it's value is set to true if the environment
+ * variable exists, or false if not.
+ */
+inline bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr) {
+	return mvkGetEnvVarInt64(varName, pWasFound) != 0;
+}
+
+#define MVK_SET_FROM_ENV_OR_BUILD_BOOL(cfgVal, EV)	\
+	do {											\
+		bool wasFound = false;						\
+		bool ev = mvkGetEnvVarBool(#EV, &wasFound);	\
+		cfgVal = wasFound ? ev : EV;				\
+	} while(false)
+
+#define MVK_SET_FROM_ENV_OR_BUILD_INT64(cfgVal, EV)		\
+	do {												\
+		bool wasFound = false;							\
+		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);	\
+		cfgVal = wasFound ? ev : EV;					\
+	} while(false)
+
+#define MVK_SET_FROM_ENV_OR_BUILD_INT32(cfgVal, EV)				\
+	do {														\
+		bool wasFound = false;									\
+		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);			\
+		int64_t val = wasFound ? ev : EV;						\
+		cfgVal = (int32_t)mvkClamp(val, (int64_t)INT32_MIN, (int64_t)INT32_MAX);	\
+	} while(false)
 
 
 #pragma mark -
