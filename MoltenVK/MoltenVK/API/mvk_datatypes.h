@@ -204,6 +204,9 @@ bool mvkMTLPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat);
 /** Returns whether the specified Metal MTLPixelFormat can be used as a stencil format. */
 bool mvkMTLPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat);
 
+/** Returns whether the specified Metal MTLPixelFormat is a PVRTC format. */
+bool mvkMTLPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat);
+
 /** Returns the Metal texture type from the specified Vulkan image properties. */
 MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vkImageType,
 												uint32_t arraySize,

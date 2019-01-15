@@ -25,6 +25,7 @@ Released 2018/01/15
 - Enable synchronous queue submits as config default.
 - Support 4 queue families.
 - Pad fragment shader output to 4 components when needed.
+- Add support for copying to and from PVRTC images.
 - Log Vulkan versions in human readable form when reporting version error.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 16.
 - Update copyright to 2019.
