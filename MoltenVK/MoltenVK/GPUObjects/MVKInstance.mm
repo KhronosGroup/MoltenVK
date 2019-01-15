@@ -126,7 +126,10 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 
 	if (MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <
 		MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion)) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER, "Request for driver version %x is not compatible with provided version %x.", _appInfo.apiVersion, MVK_VULKAN_API_VERSION));
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER,
+													  "Request for Vulkan version %s is not compatible with supported version %s.",
+													  mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
+													  mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str()));
 	}
 
 	// Populate the array of physical GPU devices
@@ -339,15 +342,13 @@ void MVKInstance::initProcAddrs() {
 }
 
 void MVKInstance::logVersions() {
-    uint32_t buffLen = 32;
-    char mvkVer[buffLen];
-    char vkVer[buffLen];
-    vkGetVersionStringsMVK(mvkVer, buffLen, vkVer, buffLen);
-
-	string logMsg = "MoltenVK version %s. Vulkan version %s.";
-	logMsg += "\n\tThe following Vulkan extensions are supported:";
+	string logMsg = "MoltenVK version ";
+	logMsg += mvkGetMoltenVKVersionString(MVK_VERSION);
+	logMsg += ". Vulkan version ";
+	logMsg += mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION);
+	logMsg += ".\n\tThe following Vulkan extensions are supported:";
 	logMsg += getDriverLayer()->getSupportedExtensions()->enabledNamesString("\n\t\t", true);
-	MVKLogInfo(logMsg.c_str(), mvkVer, vkVer);
+	MVKLogInfo("%s", logMsg.c_str());
 }
 
 // Init config.

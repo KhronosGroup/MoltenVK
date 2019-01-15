@@ -24,6 +24,7 @@ Released 2018/01/15
 - Add queue family specialization to config, and disable it by default.
 - Enable synchronous queue submits as config default.
 - Support 4 queue families.
+- Log Vulkan versions in human readable form when reporting version error.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 16.
 - Update copyright to 2019.
 - Update to latest SPIRV-Cross version:

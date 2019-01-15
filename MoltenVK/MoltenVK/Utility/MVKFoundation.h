@@ -23,6 +23,7 @@
 #include "mvk_vulkan.h"
 #include "MVKLogging.h"
 #include <algorithm>
+#include <string>
 #include <simd/simd.h>
 
 
@@ -105,6 +106,28 @@ const char* mvkVkResultName(VkResult vkResult);
 
 /** Returns the name of the component swizzle. */
 const char* mvkVkComponentSwizzleName(VkComponentSwizzle swizzle);
+
+/** Returns the Vulkan API version number as a string. */
+static inline std::string mvkGetVulkanVersionString(uint32_t vkVersion) {
+	std::string verStr;
+	verStr += std::to_string(VK_VERSION_MAJOR(vkVersion));
+	verStr += ".";
+	verStr += std::to_string(VK_VERSION_MINOR(vkVersion));
+	verStr += ".";
+	verStr += std::to_string(VK_VERSION_PATCH(vkVersion));
+	return verStr;
+}
+
+/** Returns the MoltenVK API version number as a string. */
+static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
+	std::string verStr;
+	verStr += std::to_string(mvkVersion / 10000);
+	verStr += ".";
+	verStr += std::to_string((mvkVersion % 10000) / 100);
+	verStr += ".";
+	verStr += std::to_string(mvkVersion % 100);
+	return verStr;
+}
 
 /**
  * Notifies the app of an error code and error message, via the following methods:
