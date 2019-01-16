@@ -27,9 +27,9 @@ using namespace mvk;
 
 template <typename FileProcessor>
 bool mvk::iterateDirectory(const string& dirPath,
-							  FileProcessor& fileProcessor,
-							  bool isRecursive,
-							  string& errMsg) {
+						   FileProcessor& fileProcessor,
+						   bool isRecursive,
+						   string& errMsg) {
 	NSString* nsAbsDirPath = @(absolutePath(dirPath).data());
 	NSFileManager* fileMgr = NSFileManager.defaultManager;
 	BOOL isDir = false;
@@ -43,14 +43,15 @@ bool mvk::iterateDirectory(const string& dirPath,
 		return false;
 	}
 
+	bool success = true;
 	NSDirectoryEnumerator* dirEnum = [fileMgr enumeratorAtPath: nsAbsDirPath];
 	NSString* filePath;
 	while ((filePath = dirEnum.nextObject)) {
 		if ( !isRecursive ) { [dirEnum skipDescendants]; }
 		NSString* absFilePath = [nsAbsDirPath stringByAppendingPathComponent: filePath];
-		if(fileProcessor.processFile(absFilePath.UTF8String)) { return true; }
+		if( !fileProcessor.processFile(absFilePath.UTF8String) ) { success = false; }
 	}
-	return true;
+	return success;
 }
 
 /** Concrete template implementation to allow MoltenVKShaderConverterTool to iterate the files in a directory. */

@@ -67,12 +67,12 @@ bool MoltenVKShaderConverterTool::processFile(string filePath) {
 
 	string pathExtn = pathExtension(absPath);
 	if (_shouldReadGLSL && isGLSLFileExtension(pathExtn)) {
-		convertGLSL(absPath, emptyPath, emptyPath, kMVKShaderStageAuto);
+		return convertGLSL(absPath, emptyPath, emptyPath, kMVKShaderStageAuto);
 	} else if (_shouldReadSPIRV && isSPIRVFileExtension(pathExtn)) {
-		convertSPIRV(absPath, emptyPath);
+		return convertSPIRV(absPath, emptyPath);
 	}
 
-	return false;
+	return true;
 }
 
 // Read GLSL code from a GLSL file, convert to SPIR-V, and optionally MSL,
