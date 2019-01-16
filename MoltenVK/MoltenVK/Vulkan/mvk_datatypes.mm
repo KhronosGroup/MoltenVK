@@ -1,7 +1,7 @@
 /*
  * mvk_datatypes.mm
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -454,14 +454,14 @@ static const MVKFormatDesc _formatDescriptions[] {
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_ASTC_12x12_UNORM_BLOCK, MTLPixelFormatASTC_12x12_LDR, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 12, 12, 16, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_ASTC_12x12_SRGB_BLOCK, MTLPixelFormatASTC_12x12_sRGB, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 12, 12, 16, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS ),
 
-    // Extension VK_IMG_format_pvrtc
+	// Extension VK_IMG_format_pvrtc
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_2BPP, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 8, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_4BPP, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 8, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 4, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_4BPP, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 4, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 8, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 4, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_2BPP_sRGB, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 8, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_4BPP_sRGB, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 8, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS ),
-	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 4, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_4BPP_sRGB, MTLPixelFormatInvalid, 8.0, kMTLFmtNA, 4, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS ),
+	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 8, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 4, 4, 8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 
     // Future extension VK_KHX_color_conversion and Vulkan 1.1.
@@ -758,6 +758,24 @@ MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat
 		case MTLPixelFormatDepth32Float_Stencil8:
         case MTLPixelFormatX32_Stencil8:
 			return true;
+		default:
+			return false;
+	}
+}
+
+MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) {
+	switch (mtlFormat) {
+#if MVK_IOS
+		case MTLPixelFormatPVRTC_RGBA_2BPP:
+		case MTLPixelFormatPVRTC_RGBA_2BPP_sRGB:
+		case MTLPixelFormatPVRTC_RGBA_4BPP:
+		case MTLPixelFormatPVRTC_RGBA_4BPP_sRGB:
+		case MTLPixelFormatPVRTC_RGB_2BPP:
+		case MTLPixelFormatPVRTC_RGB_2BPP_sRGB:
+		case MTLPixelFormatPVRTC_RGB_4BPP:
+		case MTLPixelFormatPVRTC_RGB_4BPP_sRGB:
+			return true;
+#endif
 		default:
 			return false;
 	}

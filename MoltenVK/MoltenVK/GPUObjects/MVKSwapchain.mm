@@ -1,7 +1,7 @@
 /*
  * MVKSwapchain.mm
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -179,39 +179,43 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
 	MVKSwapchain* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
 	if (oldSwapchain) { oldSwapchain->releaseUndisplayedSurfaces(); }
 
-	initCAMetalLayer(pCreateInfo);
-    initSurfaceImages(pCreateInfo);
+	uint32_t imgCnt = mvkClamp(pCreateInfo->minImageCount,
+							   _device->_pMetalFeatures->minSwapchainImageCount,
+							   _device->_pMetalFeatures->maxSwapchainImageCount);
+	initCAMetalLayer(pCreateInfo, imgCnt);
+    initSurfaceImages(pCreateInfo, imgCnt);		// After initCAMetalLayer()
     initFrameIntervalTracking();
 
     _licenseWatermark = NULL;
 }
 
 // Initializes the CAMetalLayer underlying the surface of this swapchain.
-void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo) {
+void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt) {
 
 	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
 	_mtlLayer = mvkSrfc->getCAMetalLayer();
 	_mtlLayer.device = getMTLDevice();
 	_mtlLayer.pixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->imageFormat);
+	_mtlLayer.maximumDrawableCountMVK = imgCnt;
 	_mtlLayer.displaySyncEnabledMVK = (pCreateInfo->presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 	_mtlLayer.magnificationFilter = _device->_pMVKConfig->swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
 	_mtlLayer.framebufferOnly = !mvkIsAnyFlagEnabled(pCreateInfo->imageUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			   VK_IMAGE_USAGE_SAMPLED_BIT |
 																			   VK_IMAGE_USAGE_STORAGE_BIT));
+	_mtlLayerOrigDrawSize = _mtlLayer.updatedDrawableSizeMVK;
 
 	// TODO: set additional CAMetalLayer properties before extracting drawables:
 	//	- presentsWithTransaction
-	//  - maximumDrawableCount (maybe for MAILBOX?)
 	//	- drawsAsynchronously
 	//  - colorspace (macOS only) Vulkan only supports sRGB colorspace for now.
 	//  - wantsExtendedDynamicRangeContent (macOS only)
 }
 
 // Initializes the array of images used for the surface of this swapchain.
-void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo) {
+// The CAMetalLayer should already be initialized when this is called.
+void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt) {
 
-    _mtlLayerOrigDrawSize = _mtlLayer.updatedDrawableSizeMVK;
     VkExtent2D imgExtent = mvkVkExtent2DFromCGSize(_mtlLayerOrigDrawSize);
 
     VkImageCreateInfo imgInfo = {
@@ -229,14 +233,9 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
     };
 
 	if (mvkAreFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)) {
-		mvkEnableFlag(imgInfo.flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT|VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
+		mvkEnableFlag(imgInfo.flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
 	}
 
-	VkSurfaceCapabilitiesKHR srfcProps;
-	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
-	_device->getPhysicalDevice()->getSurfaceCapabilities(mvkSrfc, &srfcProps);
-
-	uint32_t imgCnt = srfcProps.maxImageCount;
 	_surfaceImages.reserve(imgCnt);
     for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
         _surfaceImages.push_back(_device->createSwapchainImage(&imgInfo, this, NULL));

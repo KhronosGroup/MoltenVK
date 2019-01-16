@@ -1,7 +1,7 @@
 /*
  * DirectorySupport.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,10 +29,12 @@ namespace mvk {
 	 * or absolute path, and calls the processFile(std::string filePath) member function
 	 * on the fileProcessor for each file in the directory. If the isRecursive parameter
 	 * is true, the iteration will include all files in all sub-directories as well.
+	 *
 	 * The processFile(std::string filePath) member function on the fileProcessor should
-	 * return true to cause the processing of any further files to halt, and this function
-	 * to return, or should return false to allow further files to be iterated.
-	 * Returns false if the directory could not be found or iterated. Returns true otherwise.
+	 * return whether that file was successfully processed.
+	 *
+	 * Returns false if the directory could not be found or iterated, or if an error
+	 * occurs with the conversion of any file. Returns true otherwise.
 	 */
 	template <typename FileProcessor>
 	bool iterateDirectory(const std::string& dirPath,

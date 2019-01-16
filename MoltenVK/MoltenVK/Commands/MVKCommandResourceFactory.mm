@@ -1,7 +1,7 @@
 /*
  * MVKCommandResourceFactory.mm
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@
 #include "MVKCommandPipelineStateFactoryShaderSource.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
+#include "MVKBuffer.h"
 #include "NSString+MoltenVK.h"
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
 #include "MVKLogging.h"
@@ -342,12 +343,46 @@ MVKImage* MVKCommandResourceFactory::newMVKImage(MVKImageDescriptorData& imgData
 	return mvkImg;
 }
 
+MVKBuffer* MVKCommandResourceFactory::newMVKBuffer(MVKBufferDescriptorData& buffData, MVKDeviceMemory*& buffMem) {
+    const VkBufferCreateInfo createInfo = {
+        .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
+        .pNext = nullptr,
+        .flags = 0,
+        .size = buffData.size,
+        .usage = buffData.usage,
+        .sharingMode = VK_SHARING_MODE_EXCLUSIVE,
+        .queueFamilyIndexCount = 0,
+        .pQueueFamilyIndices = nullptr,
+    };
+    MVKBuffer* mvkBuff = _device->createBuffer(&createInfo, nullptr);
+    const VkMemoryDedicatedAllocateInfo dedicatedInfo = {
+        .sType = VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO,
+        .pNext = nullptr,
+        .image = VK_NULL_HANDLE,
+        .buffer = (VkBuffer)mvkBuff,
+    };
+    const VkMemoryAllocateInfo allocInfo = {
+    	.sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+    	.pNext = &dedicatedInfo,
+    	.allocationSize = buffData.size,
+    	.memoryTypeIndex = _device->getVulkanMemoryTypeIndex(MTLStorageModePrivate),
+    };
+    buffMem = _device->allocateMemory(&allocInfo, nullptr);
+    mvkBuff->bindDeviceMemory(buffMem, 0);
+    return mvkBuff;
+}
+
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferBytesMTLComputePipelineState() {
 	return newMTLComputePipelineState(getFunctionNamed("cmdCopyBufferBytes"));
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdFillBufferMTLComputePipelineState() {
 	return newMTLComputePipelineState(getFunctionNamed("cmdFillBuffer"));
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf) {
+	return newMTLComputePipelineState(getFunctionNamed(needTempBuf ? "cmdCopyBufferToImage3DDecompressTempBufferDXTn" :
+																	 "cmdCopyBufferToImage3DDecompressDXTn"));
 }
 
 

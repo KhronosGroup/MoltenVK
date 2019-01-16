@@ -1,7 +1,7 @@
 /*
  * MoltenVKShaderConverterTool.cpp
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,12 +67,12 @@ bool MoltenVKShaderConverterTool::processFile(string filePath) {
 
 	string pathExtn = pathExtension(absPath);
 	if (_shouldReadGLSL && isGLSLFileExtension(pathExtn)) {
-		convertGLSL(absPath, emptyPath, emptyPath, kMVKShaderStageAuto);
+		return convertGLSL(absPath, emptyPath, emptyPath, kMVKShaderStageAuto);
 	} else if (_shouldReadSPIRV && isSPIRVFileExtension(pathExtn)) {
-		convertSPIRV(absPath, emptyPath);
+		return convertSPIRV(absPath, emptyPath);
 	}
 
-	return false;
+	return true;
 }
 
 // Read GLSL code from a GLSL file, convert to SPIR-V, and optionally MSL,

@@ -1,7 +1,7 @@
 /*
  * MVKExtensions.def
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,11 +50,13 @@ MVK_EXTENSION(KHR_storage_buffer_storage_class, KHR_STORAGE_BUFFER_STORAGE_CLASS
 MVK_EXTENSION(KHR_surface, KHR_SURFACE)
 MVK_EXTENSION(KHR_swapchain, KHR_SWAPCHAIN)
 MVK_EXTENSION(KHR_swapchain_mutable_format, KHR_SWAPCHAIN_MUTABLE_FORMAT)
+MVK_EXTENSION(KHR_variable_pointers, KHR_VARIABLE_POINTERS)
 MVK_EXTENSION(EXT_shader_viewport_index_layer, EXT_SHADER_VIEWPORT_INDEX_LAYER)
 MVK_EXTENSION(EXT_vertex_attribute_divisor, EXT_VERTEX_ATTRIBUTE_DIVISOR)
 MVK_EXTENSION(MVK_ios_surface, MVK_IOS_SURFACE)
 MVK_EXTENSION(MVK_macos_surface, MVK_MACOS_SURFACE)
 MVK_EXTENSION(MVK_moltenvk, MVK_MOLTENVK)
+MVK_EXTENSION(AMD_gpu_shader_half_float, AMD_GPU_SHADER_HALF_FLOAT)
 MVK_EXTENSION(AMD_negative_viewport_height, AMD_NEGATIVE_VIEWPORT_HEIGHT)
 MVK_EXTENSION_LAST(IMG_format_pvrtc, IMG_FORMAT_PVRTC)
 

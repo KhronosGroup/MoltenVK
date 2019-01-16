@@ -1,7 +1,7 @@
 /*
  * MVKCommandEncodingPool.mm
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,12 +97,20 @@ MVKImage* MVKCommandEncodingPool::getTransferMVKImage(MVKImageDescriptorData& im
 	MVK_ENC_REZ_ACCESS(_transferImages[imgData], newMVKImage(imgData));
 }
 
+MVKBuffer* MVKCommandEncodingPool::getTransferMVKBuffer(MVKBufferDescriptorData& buffData) {
+	MVK_ENC_REZ_ACCESS(_transferBuffers[buffData], newMVKBuffer(buffData, _transferBufferMemory[buffData]));
+}
+
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferBytesMTLComputePipelineState() {
 	MVK_ENC_REZ_ACCESS(_mtlCopyBufferBytesComputePipelineState, newCmdCopyBufferBytesMTLComputePipelineState());
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdFillBufferMTLComputePipelineState() {
 	MVK_ENC_REZ_ACCESS(_mtlFillBufferComputePipelineState, newCmdFillBufferMTLComputePipelineState());
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff) {
+	MVK_ENC_REZ_ACCESS(_mtlCopyBufferToImage3DDecompressComputePipelineState[needsTempBuff ? 1 : 0], newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff));
 }
 
 void MVKCommandEncodingPool::clear() {
@@ -135,6 +143,12 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     for (auto& pair : _transferImages) { _device->destroyImage(pair.second, nullptr); }
     _transferImages.clear();
 
+    for (auto& pair : _transferBuffers) { _device->destroyBuffer(pair.second, nullptr); }
+    _transferBuffers.clear();
+
+    for (auto& pair : _transferBufferMemory) { _device->freeMemory(pair.second, nullptr); }
+    _transferBufferMemory.clear();
+
     [_cmdBlitImageLinearMTLSamplerState release];
     _cmdBlitImageLinearMTLSamplerState = nil;
 
@@ -155,5 +169,13 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 
     [_mtlCopyBufferBytesComputePipelineState release];
     _mtlCopyBufferBytesComputePipelineState = nil;
+
+    [_mtlFillBufferComputePipelineState release];
+    _mtlFillBufferComputePipelineState = nil;
+
+    [_mtlCopyBufferToImage3DDecompressComputePipelineState[0] release];
+    [_mtlCopyBufferToImage3DDecompressComputePipelineState[1] release];
+    _mtlCopyBufferToImage3DDecompressComputePipelineState[0] = nil;
+    _mtlCopyBufferToImage3DDecompressComputePipelineState[1] = nil;
 }
 

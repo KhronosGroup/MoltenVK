@@ -1,7 +1,7 @@
 /*
  * MVKCommandResourceFactory.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -259,6 +259,43 @@ namespace std {
 
 
 #pragma mark -
+#pragma mark MVKBufferDescriptorData
+
+/**
+ * Key to use for looking up cached MVKBuffer instances, and to create a new MVKBuffer when needed.
+ * The contents of this structure is a subset of the contents of the VkBufferCreateInfo structure.
+ *
+ * This structure can be used as a key in a std::map and std::unordered_map.
+ */
+typedef struct MVKBufferDescriptorData_t {
+    VkDeviceSize             size;
+    VkBufferUsageFlags       usage;
+
+    bool operator==(const MVKBufferDescriptorData_t& rhs) const {
+        return (memcmp(this, &rhs, sizeof(*this)) == 0);
+    }
+
+	std::size_t hash() const {
+		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
+	}
+
+    MVKBufferDescriptorData_t() { memset(this, 0, sizeof(*this)); }
+
+} __attribute__((aligned(sizeof(uint64_t)))) MVKBufferDescriptorData;
+
+/**
+ * Hash structure implementation for MVKBufferDescriptorData in std namespace, so
+ * MVKBufferDescriptorData can be used as a key in a std::map and std::unordered_map.
+ */
+namespace std {
+    template <>
+    struct hash<MVKBufferDescriptorData> {
+        std::size_t operator()(const MVKBufferDescriptorData& k) const { return k.hash(); }
+    };
+}
+
+
+#pragma mark -
 #pragma mark MVKCommandResourceFactory
 
 /** 
@@ -308,11 +345,22 @@ public:
      */
     MVKImage* newMVKImage(MVKImageDescriptorData& imgData);
     
+    /**
+     * Returns a new MVKBuffer configured with content held in Private storage.
+     * The buffer returned is bound to a new device memory, also returned, and
+     * can be used as a temporary buffer during buffer-image transfers.
+     */
+    MVKBuffer* newMVKBuffer(MVKBufferDescriptorData& buffData, MVKDeviceMemory*& buffMem);
+    
     /** Returns a new MTLComputePipelineState for copying between two buffers with byte-aligned copy regions. */
     id<MTLComputePipelineState> newCmdCopyBufferBytesMTLComputePipelineState();
 
 	/** Returns a new MTLComputePipelineState for filling a buffer. */
 	id<MTLComputePipelineState> newCmdFillBufferMTLComputePipelineState();
+
+	/** Returns a new MTLComputePipelineState for copying between a buffer holding compressed data and a 3D image. */
+	id<MTLComputePipelineState> newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf);
+
 
 #pragma mark Construction
 

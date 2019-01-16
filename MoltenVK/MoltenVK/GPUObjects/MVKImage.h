@@ -1,7 +1,7 @@
 /*
  * MVKImage.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -238,6 +238,7 @@ protected:
     bool _hasExpectedTexelSize;
 	bool _usesTexelBuffer;
 	bool _isLinear;
+	bool _is3DCompressed;
 };
 
 
@@ -288,8 +289,6 @@ protected:
 	void initMTLTextureViewSupport();
     MTLPixelFormat getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components, bool& useSwizzle);
     bool matchesSwizzle(VkComponentMapping components, VkComponentMapping pattern);
-    const char* getSwizzleName(VkComponentSwizzle swizzle);
-    uint32_t packSwizzle(VkComponentMapping components);
 	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
 
     MVKImage* _image;
@@ -397,7 +396,7 @@ protected:
 	uint32_t _swapchainIndex;
 	id<CAMetalDrawable> _mtlDrawable;
 	std::mutex _availabilityLock;
-	MVKVector<MVKSwapchainSignaler> _availabilitySignalers;
+	MVKVectorInline<MVKSwapchainSignaler, 4> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaled;
 	MVKSwapchainImageAvailability _availability;
 };

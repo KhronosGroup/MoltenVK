@@ -1,7 +1,7 @@
 /*
  * MVKInstance.mm
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,6 +22,7 @@
 #include "MVKFoundation.h"
 #include "MVKEnvironment.h"
 #include "MVKSurface.h"
+#include "MVKOSExtensions.h"
 
 using namespace std;
 
@@ -125,7 +126,10 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 
 	if (MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <
 		MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion)) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER, "Request for driver version %x is not compatible with provided version %x.", _appInfo.apiVersion, MVK_VULKAN_API_VERSION));
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER,
+													  "Request for Vulkan version %s is not compatible with supported version %s.",
+													  mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
+													  mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str()));
 	}
 
 	// Populate the array of physical GPU devices
@@ -338,31 +342,32 @@ void MVKInstance::initProcAddrs() {
 }
 
 void MVKInstance::logVersions() {
-    uint32_t buffLen = 32;
-    char mvkVer[buffLen];
-    char vkVer[buffLen];
-    vkGetVersionStringsMVK(mvkVer, buffLen, vkVer, buffLen);
-
-	string logMsg = "MoltenVK version %s. Vulkan version %s.";
-	logMsg += "\n\tThe following Vulkan extensions are supported:";
+	string logMsg = "MoltenVK version ";
+	logMsg += mvkGetMoltenVKVersionString(MVK_VERSION);
+	logMsg += ". Vulkan version ";
+	logMsg += mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION);
+	logMsg += ".\n\tThe following Vulkan extensions are supported:";
 	logMsg += getDriverLayer()->getSupportedExtensions()->enabledNamesString("\n\t\t", true);
-	MVKLogInfo(logMsg.c_str(), mvkVer, vkVer);
+	MVKLogInfo("%s", logMsg.c_str());
 }
 
 // Init config.
 void MVKInstance::initConfig() {
-	_mvkConfig.debugMode							= MVK_DEBUG;
-	_mvkConfig.shaderConversionFlipVertexY			= MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y;
-	_mvkConfig.synchronousQueueSubmits				= MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS;
-	_mvkConfig.prefillMetalCommandBuffers			= MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS;
-	_mvkConfig.maxActiveMetalCommandBuffersPerQueue	= MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_POOL;
-	_mvkConfig.supportLargeQueryPools				= MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS;
-	_mvkConfig.presentWithCommandBuffer				= MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER;
-	_mvkConfig.swapchainMagFilterUseNearest			= MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST;
-	_mvkConfig.displayWatermark						= MVK_CONFIG_DISPLAY_WATERMARK;
-	_mvkConfig.performanceTracking					= MVK_DEBUG;
-	_mvkConfig.performanceLoggingFrameCount			= MVK_DEBUG ? 300 : 0;
-	_mvkConfig.metalCompileTimeout					= MVK_CONFIG_METAL_COMPILE_TIMEOUT;
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.debugMode,                            MVK_DEBUG);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.shaderConversionFlipVertexY,          MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.synchronousQueueSubmits,              MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.prefillMetalCommandBuffers,           MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS);
+	MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkConfig.maxActiveMetalCommandBuffersPerQueue, MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.supportLargeQueryPools,               MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.presentWithCommandBuffer,             MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.swapchainMagFilterUseNearest,         MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST);
+	MVK_SET_FROM_ENV_OR_BUILD_INT64(_mvkConfig.metalCompileTimeout,                  MVK_CONFIG_METAL_COMPILE_TIMEOUT);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.performanceTracking,                  MVK_CONFIG_PERFORMANCE_TRACKING);
+	MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkConfig.performanceLoggingFrameCount,         MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.displayWatermark,                     MVK_CONFIG_DISPLAY_WATERMARK);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.specializedQueueFamilies,             MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.switchSystemGPU,                      MVK_CONFIG_SWITCH_SYSTEM_GPU);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.fullImageViewSwizzle,                 MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE);
 }
 
 VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {

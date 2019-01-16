@@ -1,7 +1,7 @@
 /*
  * MVKPipeline.mm
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -138,7 +138,7 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 		_pushConstants.push_back(pCreateInfo->pPushConstantRanges[i]);
 	}
 
-	// Set auxiliary buffer offsets
+	// Set auxiliary buffer indices
 	_auxBufferIndex.vertex = _pushConstantsMTLResourceIndexes.vertexStage.bufferIndex + 1;
 	_auxBufferIndex.fragment = _pushConstantsMTLResourceIndexes.fragmentStage.bufferIndex + 1;
 	_auxBufferIndex.compute = _pushConstantsMTLResourceIndexes.computeStage.bufferIndex + 1;
@@ -307,9 +307,6 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     SPIRVToMSLConverterContext shaderContext;
     initMVKShaderConverterContext(shaderContext, pCreateInfo);
 
-    auto* mvkLayout = (MVKPipelineLayout*)pCreateInfo->layout;
-    _auxBufferIndex = mvkLayout->getAuxBufferIndex();
-
     // Retrieve the render subpass for which this pipeline is being constructed
     MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
     MVKRenderSubpass* mvkRenderSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
@@ -318,7 +315,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 
     uint32_t vbCnt = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
 
-	// Add shader stages. Compile vertex shder before others just in case conversion changes anything...like rasterizaion disable.
+	// Add shader stages. Compile vertex shader before others just in case conversion changes anything...like rasterizaion disable.
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
 		if (mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_VERTEX_BIT)) {
@@ -327,7 +324,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 			shaderContext.options.entryPointName = pSS->pName;
 			id<MTLFunction> mtlFunction = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 			if ( !mtlFunction ) {
-				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader function could not be compiled into pipeline. See previous error."));
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader function could not be compiled into pipeline. See previous logged error."));
 				return nil;
 			}
 			plDesc.vertexFunction = mtlFunction;
@@ -341,10 +338,6 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 		}
 	}
 
-  // bug fix by aerofly -> if no fragment shader is used and _needsFragmentAuxBuffer was true newBufferWithLength was trying to allocate zero bytes
-  // please verify this fix
-  _needsFragmentAuxBuffer = false;
-
   // Fragment shader - only add if rasterization is enabled
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
 		const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->pStages[i];
@@ -354,7 +347,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 			shaderContext.options.entryPointName = pSS->pName;
 			id<MTLFunction> mtlFunction = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 			if ( !mtlFunction ) {
-				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader function could not be compiled into pipeline. See previous error."));
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader function could not be compiled into pipeline. See previous logged error."));
 			}
 			plDesc.fragmentFunction = mtlFunction;
 			_needsFragmentAuxBuffer = shaderContext.options.needsAuxBuffer;
@@ -486,10 +479,12 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
+	_auxBufferIndex = layout->getAuxBufferIndex();
 
     shaderContext.options.isRenderingPoints = isRenderingPoints(pCreateInfo);
 	shaderContext.options.isRasterizationDisabled = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
+	shaderContext.options.shouldSwizzleTextureSamples = _device->_pMVKConfig->fullImageViewSwizzle;
 
     // Set the shader context vertex attribute information
     shaderContext.vertexAttributes.clear();
@@ -569,9 +564,7 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 void MVKComputePipeline::encode(MVKCommandEncoder* cmdEncoder) {
     [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setComputePipelineState: _mtlPipelineState];
     cmdEncoder->_mtlThreadgroupSize = _mtlThreadgroupSize;
-    if (_needsAuxBuffer) {
-        cmdEncoder->_computeResourcesState.bindAuxBuffer(_auxBufferIndex);
-    }
+	cmdEncoder->_computeResourcesState.bindAuxBuffer(_auxBufferIndex, _needsAuxBuffer);
 }
 
 MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
@@ -588,7 +581,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		setConfigurationResult(plc->getConfigurationResult());
 		plc->destroy();
 	} else {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous error."));
+		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous logged error."));
 	}
 
 	if (_needsAuxBuffer && _auxBufferIndex.compute == ~0u) {
@@ -606,6 +599,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.entryPointName = pCreateInfo->stage.pName;
 	shaderContext.options.entryPointStage = spv::ExecutionModelGLCompute;
     shaderContext.options.mslVersion = _device->_pMetalFeatures->mslVersion;
+	shaderContext.options.shouldSwizzleTextureSamples = _device->_pMVKConfig->fullImageViewSwizzle;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -613,11 +607,10 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     shaderContext.options.auxBufferIndex = _auxBufferIndex.compute;
 
     MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
-    auto func = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache);
+    MVKMTLFunction func = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache);
     _needsAuxBuffer = shaderContext.options.needsAuxBuffer;
     return func;
 }
-
 
 MVKComputePipeline::~MVKComputePipeline() {
     [_mtlPipelineState release];
@@ -686,6 +679,7 @@ namespace mvk {
 				opt.auxBufferIndex,
 				opt.shouldFlipVertexY,
 				opt.isRenderingPoints,
+				opt.shouldSwizzleTextureSamples,
 				opt.isRasterizationDisabled,
 				opt.needsAuxBuffer);
 	}

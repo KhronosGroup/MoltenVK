@@ -1,7 +1,7 @@
 /*
  * MVKFoundation.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@
 #include "mvk_vulkan.h"
 #include "MVKLogging.h"
 #include <algorithm>
+#include <string>
 #include <simd/simd.h>
 
 
@@ -100,13 +101,33 @@ typedef enum {
 	kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
 } MVKCommandUse;
 
-/**
- * Copies the name of the specified VkResult code to the specified string.
- *
- * Returns a pointer to that string. 
- */
-#define MVKResultNameMaxLen		64
-char* mvkResultName(VkResult vkResult, char* name);
+/** Returns the name of the result value. */
+const char* mvkVkResultName(VkResult vkResult);
+
+/** Returns the name of the component swizzle. */
+const char* mvkVkComponentSwizzleName(VkComponentSwizzle swizzle);
+
+/** Returns the Vulkan API version number as a string. */
+static inline std::string mvkGetVulkanVersionString(uint32_t vkVersion) {
+	std::string verStr;
+	verStr += std::to_string(VK_VERSION_MAJOR(vkVersion));
+	verStr += ".";
+	verStr += std::to_string(VK_VERSION_MINOR(vkVersion));
+	verStr += ".";
+	verStr += std::to_string(VK_VERSION_PATCH(vkVersion));
+	return verStr;
+}
+
+/** Returns the MoltenVK API version number as a string. */
+static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
+	std::string verStr;
+	verStr += std::to_string(mvkVersion / 10000);
+	verStr += ".";
+	verStr += std::to_string((mvkVersion % 10000) / 100);
+	verStr += ".";
+	verStr += std::to_string(mvkVersion % 100);
+	return verStr;
+}
 
 /**
  * Notifies the app of an error code and error message, via the following methods:
@@ -260,6 +281,22 @@ static inline VkOffset3D mvkVkOffset3DDifference(VkOffset3D minuend, VkOffset3D 
 	return rslt;
 }
 
+/** Packs the four swizzle components into a single 32-bit word. */
+static inline uint32_t mvkPackSwizzle(VkComponentMapping components) {
+	return ((components.r & 0xFF) << 0) | ((components.g & 0xFF) << 8) |
+	((components.b & 0xFF) << 16) | ((components.a & 0xFF) << 24);
+}
+
+/** Unpacks a single 32-bit word containing four swizzle components. */
+static inline VkComponentMapping mvkUnpackSwizzle(uint32_t packed) {
+	VkComponentMapping components;
+	components.r = (VkComponentSwizzle)((packed >> 0) & 0xFF);
+	components.g = (VkComponentSwizzle)((packed >> 8) & 0xFF);
+	components.b = (VkComponentSwizzle)((packed >> 16) & 0xFF);
+	components.a = (VkComponentSwizzle)((packed >> 24) & 0xFF);
+	return components;
+}
+
 
 #pragma mark -
 #pragma mark Template functions
@@ -273,7 +310,7 @@ const bool mvkFits(const Tval& val) {
 /** Clamps the value between the lower and upper bounds, inclusive. */
 template<typename T>
 const T& mvkClamp(const T& val, const T& lower, const T& upper) {
-    return std::min(upper, std::max(val, lower));
+    return std::min(std::max(val, lower), upper);
 }
 
 /**

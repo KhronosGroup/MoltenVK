@@ -1,7 +1,7 @@
 /*
  * MVKSwapchain.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -87,8 +87,8 @@ public:
 protected:
 	friend class MVKSwapchainImage;
 
-	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo);
-	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo);
+	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
+	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
     void initFrameIntervalTracking();
 	void releaseUndisplayedSurfaces();
 	uint64_t getNextAcquisitionID();

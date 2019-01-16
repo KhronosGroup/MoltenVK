@@ -1,7 +1,7 @@
 /*
  * SPIRVToMSLConverter.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 #ifndef __SPIRVToMSLConverter_h_
 #define __SPIRVToMSLConverter_h_ 1
 
-#include "spirv.hpp"
+#include "../SPIRV-Cross/spirv.hpp"
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -40,6 +40,7 @@ namespace mvk {
 		uint32_t auxBufferIndex = 0;
 		bool shouldFlipVertexY = true;
 		bool isRenderingPoints = false;
+		bool shouldSwizzleTextureSamples = false;
 
 		bool isRasterizationDisabled = false;
 		bool needsAuxBuffer = false;

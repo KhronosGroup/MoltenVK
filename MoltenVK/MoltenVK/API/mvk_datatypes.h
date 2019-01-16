@@ -1,7 +1,7 @@
 /*
  * mvk_datatypes.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -203,6 +203,9 @@ bool mvkMTLPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat);
 
 /** Returns whether the specified Metal MTLPixelFormat can be used as a stencil format. */
 bool mvkMTLPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat);
+
+/** Returns whether the specified Metal MTLPixelFormat is a PVRTC format. */
+bool mvkMTLPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat);
 
 /** Returns the Metal texture type from the specified Vulkan image properties. */
 MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vkImageType,

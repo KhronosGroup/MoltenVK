@@ -1,7 +1,7 @@
 /*
  * MVKDescriptorSet.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -171,7 +171,7 @@ protected:
 	friend class MVKPipelineLayout;
 	friend class MVKDescriptorSet;
 
-	MVKVector<MVKDescriptorSetLayoutBinding> _bindings;
+	MVKVectorInline<MVKDescriptorSetLayoutBinding, 8> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	bool _isPushDescriptorLayout : 1;

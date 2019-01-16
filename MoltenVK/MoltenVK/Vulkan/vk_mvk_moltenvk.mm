@@ -1,7 +1,7 @@
 /*
  * vk_mvk_moltenvk.mm
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,30 +92,20 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
 }
 
 MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(
-    char* pMoltenVersionStringBuffer,
-    uint32_t moltenVersionStringBufferLength,
-    char* pVulkanVersionStringBuffer,
-    uint32_t vulkanVersionStringBufferLength) {
+	char*										pMoltenVersionStringBuffer,
+	uint32_t									moltenVersionStringBufferLength,
+	char*										pVulkanVersionStringBuffer,
+	uint32_t									vulkanVersionStringBufferLength) {
 
-    size_t len;
+	size_t len;
 
-    string mvkVer;
-    mvkVer += to_string(MVK_VERSION / 10000);
-    mvkVer += ".";
-    mvkVer += to_string((MVK_VERSION % 10000) / 100);
-    mvkVer += ".";
-    mvkVer += to_string(MVK_VERSION % 100);
-    len = mvkVer.copy(pMoltenVersionStringBuffer, moltenVersionStringBufferLength - 1);
-    pMoltenVersionStringBuffer[len] = 0;    // terminator
+	string mvkVer = mvkGetMoltenVKVersionString(MVK_VERSION);
+	len = mvkVer.copy(pMoltenVersionStringBuffer, moltenVersionStringBufferLength - 1);
+	pMoltenVersionStringBuffer[len] = 0;    // terminator
 
-    string vkVer;
-    vkVer += to_string(VK_VERSION_MAJOR(MVK_VULKAN_API_VERSION));
-    vkVer += ".";
-    vkVer += to_string(VK_VERSION_MINOR(MVK_VULKAN_API_VERSION));
-    vkVer += ".";
-    vkVer += to_string(VK_VERSION_PATCH(MVK_VULKAN_API_VERSION));
-    len = vkVer.copy(pVulkanVersionStringBuffer, vulkanVersionStringBufferLength - 1);
-    pVulkanVersionStringBuffer[len] = 0;    // terminator
+	string vkVer = mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION);
+	len = vkVer.copy(pVulkanVersionStringBuffer, vulkanVersionStringBufferLength - 1);
+	pVulkanVersionStringBuffer[len] = 0;    // terminator
 }
 
 MVK_PUBLIC_SYMBOL void vkGetMTLDeviceMVK(

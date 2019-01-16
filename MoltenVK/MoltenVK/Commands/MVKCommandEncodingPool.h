@@ -1,7 +1,7 @@
 /*
  * MVKCommandEncodingPool.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -91,11 +91,27 @@ public:
      */
     MVKImage* getTransferMVKImage(MVKImageDescriptorData& imgData);
     
+    /**
+     * Returns an MVKBuffer configured from the specified MTLBuffer configuration,
+     * with content held in Private storage. The object returned can be used as a
+     * temporary buffer during buffer-image transfers.
+     *
+     * The same buffer instance will be returned for two calls to this funciton with
+     * the same buffer descriptor data. This implies that the same buffer instance could 
+     * be used by two transfers within the same encoder or queue. This is acceptable 
+     * becuase the content only needs to be valid during the transfer, and it can be 
+     * reused by subsequent transfers in the same encoding run.
+     */
+    MVKBuffer* getTransferMVKBuffer(MVKBufferDescriptorData& buffData);
+    
 	/** Returns a MTLComputePipelineState for copying between two buffers with byte-aligned copy regions. */
     id<MTLComputePipelineState> getCmdCopyBufferBytesMTLComputePipelineState();
 
 	/** Returns a MTLComputePipelineState for filling a buffer. */
 	id<MTLComputePipelineState> getCmdFillBufferMTLComputePipelineState();
+
+	/** Returns a MTLComputePipelineState for decompressing a buffer into a 3D image. */
+	id<MTLComputePipelineState> getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff);
 
 	/** Deletes all the internal resources. */
 	void clear();
@@ -114,6 +130,8 @@ private:
 	std::unordered_map<MVKRPSKeyClearAtt, id<MTLRenderPipelineState>> _cmdClearMTLRenderPipelineStates;
     std::unordered_map<MVKMTLDepthStencilDescriptorData, id<MTLDepthStencilState>> _mtlDepthStencilStates;
     std::unordered_map<MVKImageDescriptorData, MVKImage*> _transferImages;
+    std::unordered_map<MVKBufferDescriptorData, MVKBuffer*> _transferBuffers;
+    std::unordered_map<MVKBufferDescriptorData, MVKDeviceMemory*> _transferBufferMemory;
     MVKMTLBufferAllocator _mtlBufferAllocator;
     id<MTLSamplerState> _cmdBlitImageLinearMTLSamplerState = nil;
     id<MTLSamplerState> _cmdBlitImageNearestMTLSamplerState = nil;
@@ -123,5 +141,6 @@ private:
     id<MTLDepthStencilState> _cmdClearDefaultDepthStencilState = nil;
     id<MTLComputePipelineState> _mtlCopyBufferBytesComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlFillBufferComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlCopyBufferToImage3DDecompressComputePipelineState[2] = {nil, nil};
 };
 

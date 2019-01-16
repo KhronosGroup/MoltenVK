@@ -1,7 +1,7 @@
 /*
  * MVKCommandEncoderState.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -147,7 +147,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MVKVector<MTLViewport> _mtlViewports;
+    MVKVectorInline<MTLViewport, 8> _mtlViewports;
 };
 
 
@@ -176,7 +176,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MVKVector<MTLScissorRect> _mtlScissors;
+    MVKVectorInline<MTLScissorRect, 8> _mtlScissors;
 };
 
 
@@ -189,7 +189,7 @@ class MVKPushConstantsCommandEncoderState : public MVKCommandEncoderState {
 public:
 
     /** Sets the specified push constants. */
-    void setPushConstants(uint32_t offset, MVKVector128<char>& pushConstants);
+    void setPushConstants(uint32_t offset, MVKVector<char>& pushConstants);
 
     /** Sets the index of the Metal buffer used to hold the push constants. */
     void setMTLBufferIndex(uint32_t mtlBufferIndex);
@@ -203,7 +203,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MVKVector128<char> _pushConstants;
+    MVKVectorInline<char, 128> _pushConstants;
     VkShaderStageFlagBits _shaderStage;
     uint32_t _mtlBufferIndex = 0;
 };
@@ -374,6 +374,13 @@ protected:
         bindings.push_back(db);
     }
 
+	// For texture bindings, we also keep track of whether any bindings need a texture swizzle
+	void bind(const MVKMTLTextureBinding& tb, MVKVector<MVKMTLTextureBinding>& texBindings,
+			  bool& bindingsDirtyFlag, bool& needsSwizzleFlag) {
+		bind(tb, texBindings, bindingsDirtyFlag);
+		if (tb.swizzle != 0) { needsSwizzleFlag = true; }
+	}
+
     // Template function that executes a lambda expression on each dirty element of
     // a vector of bindings, and marks the bindings and the vector as no longer dirty.
     template<class T>
@@ -391,11 +398,6 @@ protected:
         }
     }
 
-    // Updates the swizzle for an image in the given vector.
-    void updateSwizzle(MVKVector<uint32_t> &constants, uint32_t index, uint32_t swizzle) {
-        if (index >= constants.size()) { constants.resize(index + 1); }
-        constants[index] = swizzle;
-    }
 };
 
 
@@ -434,7 +436,9 @@ public:
     }
 
     /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needVertexAuxBuffer, bool needFragmentAuxBuffer);
+    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding,
+					   bool needVertexAuxBuffer,
+					   bool needFragmentAuxBuffer);
 
 
 #pragma mark Construction
@@ -447,14 +451,14 @@ protected:
     void resetImpl() override;
     void markDirty() override;
 
-    MVKVector<MVKMTLBufferBinding> _vertexBufferBindings;
-    MVKVector<MVKMTLBufferBinding> _fragmentBufferBindings;
-    MVKVector<MVKMTLTextureBinding> _vertexTextureBindings;
-    MVKVector<MVKMTLTextureBinding> _fragmentTextureBindings;
-    MVKVector<MVKMTLSamplerStateBinding> _vertexSamplerStateBindings;
-    MVKVector<MVKMTLSamplerStateBinding> _fragmentSamplerStateBindings;
-    MVKVector<uint32_t> _vertexSwizzleConstants;
-    MVKVector<uint32_t> _fragmentSwizzleConstants;
+    MVKVectorInline<MVKMTLBufferBinding, 8> _vertexBufferBindings;
+    MVKVectorInline<MVKMTLBufferBinding, 8> _fragmentBufferBindings;
+    MVKVectorInline<MVKMTLTextureBinding, 8> _vertexTextureBindings;
+    MVKVectorInline<MVKMTLTextureBinding, 8> _fragmentTextureBindings;
+    MVKVectorInline<MVKMTLSamplerStateBinding, 8> _vertexSamplerStateBindings;
+    MVKVectorInline<MVKMTLSamplerStateBinding, 8> _fragmentSamplerStateBindings;
+    MVKVectorInline<uint32_t, 8> _vertexSwizzleConstants;
+    MVKVectorInline<uint32_t, 8> _fragmentSwizzleConstants;
     MVKMTLBufferBinding _vertexAuxBufferBinding;
     MVKMTLBufferBinding _fragmentAuxBufferBinding;
 
@@ -464,6 +468,9 @@ protected:
     bool _areFragmentTextureBindingsDirty = false;
     bool _areVertexSamplerStateBindingsDirty = false;
     bool _areFragmentSamplerStateBindingsDirty = false;
+	
+	bool _needsVertexSwizzle = false;
+	bool _needsFragmentSwizzle = false;
 };
 
 
@@ -485,7 +492,7 @@ public:
     void bindSamplerState(const MVKMTLSamplerStateBinding& binding);
 
     /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding);
+	void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needAuxBuffer);
 
 #pragma mark Construction
 
@@ -497,15 +504,17 @@ protected:
     void resetImpl() override;
     void markDirty() override;
 
-    MVKVector<MVKMTLBufferBinding> _bufferBindings;
-    MVKVector<MVKMTLTextureBinding> _textureBindings;
-    MVKVector<MVKMTLSamplerStateBinding> _samplerStateBindings;
-    MVKVector<uint32_t> _swizzleConstants;
+    MVKVectorDefault<MVKMTLBufferBinding> _bufferBindings;
+    MVKVectorDefault<MVKMTLTextureBinding> _textureBindings;
+    MVKVectorDefault<MVKMTLSamplerStateBinding> _samplerStateBindings;
+    MVKVectorDefault<uint32_t> _swizzleConstants;
     MVKMTLBufferBinding _auxBufferBinding;
 
     bool _areBufferBindingsDirty = false;
     bool _areTextureBindingsDirty = false;
     bool _areSamplerStateBindingsDirty = false;
+
+	bool _needsSwizzle = false;
 };
 
 

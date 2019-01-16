@@ -1,7 +1,7 @@
 /*
  * CAMetalLayer+MoltenVK.m
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -51,6 +51,15 @@
 #if MVK_MACOS
     if ( [self respondsToSelector: @selector(setDisplaySyncEnabled:)] ) { self.displaySyncEnabled = enabled; }
 #endif
+}
+
+-(NSUInteger) maximumDrawableCountMVK {
+	if ( [self respondsToSelector: @selector(maximumDrawableCount)] ) { return self.maximumDrawableCount; }
+	return 0;
+}
+
+-(void) setMaximumDrawableCountMVK: (NSUInteger) count {
+	if ( [self respondsToSelector: @selector(setMaximumDrawableCount:)] ) { self.maximumDrawableCount = count; }
 }
 
 @end

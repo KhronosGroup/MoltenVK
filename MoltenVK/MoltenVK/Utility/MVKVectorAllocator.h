@@ -1,7 +1,7 @@
 /*
  * MVKVectorAllocator.h
  *
- * Copyright (c) 2012-2018 Dr. Torsten Hans (hans@ipacs.de)
+ * Copyright (c) 2012-2019 Dr. Torsten Hans (hans@ipacs.de)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,16 +37,42 @@ namespace mvk_memory_allocator
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// mvk_vector_allocator_default -> malloc based allocator for MVKVector
+// mvk_vector_allocator_base -> base class so we can use MVKVector with template parameter
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-template <typename T>
-class mvk_vector_allocator_default final
+template<typename T>
+class mvk_vector_allocator_base
 {
 public:
   T      *ptr;
   size_t  num_elements_used;
 
+public:
+  mvk_vector_allocator_base()                                           : ptr{ nullptr }, num_elements_used{ 0 }                  { }
+  mvk_vector_allocator_base( T *_ptr, const size_t _num_elements_used ) : ptr{ _ptr },    num_elements_used{ _num_elements_used } { }
+  virtual ~mvk_vector_allocator_base() { }
+
+  const T &operator[]( const size_t i ) const { return ptr[i]; }
+  T       &operator[]( const size_t i )       { return ptr[i]; }
+
+  size_t size() const { return num_elements_used; }
+
+  virtual size_t get_capacity() const = 0;
+  virtual void   allocate( const size_t num_elements_to_reserve ) = 0;
+  virtual void   re_allocate( const size_t num_elements_to_reserve ) = 0;
+  virtual void   shrink_to_fit() = 0;
+  virtual void   deallocate() = 0;
+};
+
+
+//////////////////////////////////////////////////////////////////////////////////////////
+//
+// mvk_vector_allocator_default -> malloc based allocator for MVKVector
+//
+//////////////////////////////////////////////////////////////////////////////////////////
+template <typename T>
+class mvk_vector_allocator_default final : public mvk_vector_allocator_base<T>
+{
 private:
   size_t  num_elements_reserved;
 
@@ -77,38 +103,38 @@ public:
   template<class S> typename std::enable_if< !std::is_trivially_destructible<S>::value >::type
     destruct_all()
   {
-    for( size_t i = 0; i < num_elements_used; ++i )
+    for( size_t i = 0; i < mvk_vector_allocator_base<S>::num_elements_used; ++i )
     {
-      ptr[i].~S();
+      mvk_vector_allocator_base<S>::ptr[i].~S();
     }
 
-    num_elements_used = 0;
+    mvk_vector_allocator_base<S>::num_elements_used = 0;
   }
 
   template<class S> typename std::enable_if< std::is_trivially_destructible<S>::value >::type
     destruct_all()
   {
-    num_elements_used = 0;
+    mvk_vector_allocator_base<T>::num_elements_used = 0;
   }
 
 public:
-  constexpr mvk_vector_allocator_default() : ptr{ nullptr }, num_elements_used{ 0 }, num_elements_reserved{ 0 }
+  constexpr mvk_vector_allocator_default() : mvk_vector_allocator_base<T>{}, num_elements_reserved{ 0 }
   {
   }
 
-  mvk_vector_allocator_default( mvk_vector_allocator_default &&a ) : ptr{ a.ptr }, num_elements_used{ a.num_elements_used }, num_elements_reserved{ a.num_elements_reserved }
+  mvk_vector_allocator_default( mvk_vector_allocator_default &&a ) : mvk_vector_allocator_base<T>{ a.ptr, a.num_elements_used }, num_elements_reserved{ a.num_elements_reserved }
   {
-    a.ptr = nullptr;
-    a.num_elements_used = 0;
+    a.ptr                   = nullptr;
+    a.num_elements_used     = 0;
     a.num_elements_reserved = 0;
   }
 
-  ~mvk_vector_allocator_default()
+  virtual ~mvk_vector_allocator_default()
   {
     deallocate();
   }
 
-  size_t get_capacity() const
+  size_t get_capacity() const override
   {
     return num_elements_reserved;
   }
@@ -119,25 +145,25 @@ public:
     const auto copy_num_elements_used     = a.num_elements_used;
     const auto copy_num_elements_reserved = a.num_elements_reserved;
 
-    a.ptr                   = ptr;
-    a.num_elements_used     = num_elements_used;
+    a.ptr                   = mvk_vector_allocator_base<T>::ptr;
+    a.num_elements_used     = mvk_vector_allocator_base<T>::num_elements_used;
     a.num_elements_reserved = num_elements_reserved;
 
-    ptr                   = copy_ptr;
-    num_elements_used     = copy_num_elements_used;
+    mvk_vector_allocator_base<T>::ptr                = copy_ptr;
+    mvk_vector_allocator_base<T>::num_elements_used  = copy_num_elements_used;
     num_elements_reserved = copy_num_elements_reserved;
   }
 
-  void allocate( const size_t num_elements_to_reserve )
+  void allocate( const size_t num_elements_to_reserve ) override
   {
     deallocate();
 
-    ptr                   = reinterpret_cast< T* >( mvk_memory_allocator::alloc( num_elements_to_reserve * sizeof( T ) ) );
-    num_elements_used     = 0;
+    mvk_vector_allocator_base<T>::ptr                = reinterpret_cast< T* >( mvk_memory_allocator::alloc( num_elements_to_reserve * sizeof( T ) ) );
+    mvk_vector_allocator_base<T>::num_elements_used  = 0;
     num_elements_reserved = num_elements_to_reserve;
   }
 
-  void re_allocate( const size_t num_elements_to_reserve )
+  void re_allocate( const size_t num_elements_to_reserve ) override
   {
     //if constexpr( std::is_trivially_copyable<T>::value )
     //{
@@ -147,53 +173,53 @@ public:
     {
       auto *new_ptr = reinterpret_cast< T* >( mvk_memory_allocator::alloc( num_elements_to_reserve * sizeof( T ) ) );
 
-      for( size_t i = 0; i < num_elements_used; ++i )
+      for( size_t i = 0; i < mvk_vector_allocator_base<T>::num_elements_used; ++i )
       {
-        construct( &new_ptr[i], std::move( ptr[i] ) );
-        destruct( &ptr[i] );
+        construct( &new_ptr[i], std::move( mvk_vector_allocator_base<T>::ptr[i] ) );
+        destruct( &mvk_vector_allocator_base<T>::ptr[i] );
       }
 
       //if ( ptr != nullptr )
       {
-        mvk_memory_allocator::free( ptr );
+        mvk_memory_allocator::free( mvk_vector_allocator_base<T>::ptr );
       }
 
-      ptr = new_ptr;
+      mvk_vector_allocator_base<T>::ptr = new_ptr;
     }
 
     num_elements_reserved = num_elements_to_reserve;
   }
 
-  void shrink_to_fit()
+  void shrink_to_fit() override
   {
-    if( num_elements_used == 0 )
+    if( mvk_vector_allocator_base<T>::num_elements_used == 0 )
     {
       deallocate();
     }
     else
     {
-      auto *new_ptr = reinterpret_cast< T* >( mvk_memory_allocator::alloc( num_elements_used * sizeof( T ) ) );
+      auto *new_ptr = reinterpret_cast< T* >( mvk_memory_allocator::alloc( mvk_vector_allocator_base<T>::num_elements_used * sizeof( T ) ) );
 
-      for( size_t i = 0; i < num_elements_used; ++i )
+      for( size_t i = 0; i < mvk_vector_allocator_base<T>::num_elements_used; ++i )
       {
-        construct( &new_ptr[i], std::move( ptr[i] ) );
-        destruct( &ptr[i] );
+        construct( &new_ptr[i], std::move( mvk_vector_allocator_base<T>::ptr[i] ) );
+        destruct( &mvk_vector_allocator_base<T>::ptr[i] );
       }
 
-      mvk_memory_allocator::free( ptr );
+      mvk_memory_allocator::free( mvk_vector_allocator_base<T>::ptr );
 
-      ptr = new_ptr;
-      num_elements_reserved = num_elements_used;
+      mvk_vector_allocator_base<T>::ptr = new_ptr;
+      num_elements_reserved = mvk_vector_allocator_base<T>::num_elements_used;
     }
   }
 
-  void deallocate()
+  void deallocate() override
   {
     destruct_all<T>();
 
-    mvk_memory_allocator::free( ptr );
+    mvk_memory_allocator::free( mvk_vector_allocator_base<T>::ptr );
 
-    ptr = nullptr;
+    mvk_vector_allocator_base<T>::ptr = nullptr;
     num_elements_reserved = 0;
   }
 };
@@ -201,16 +227,12 @@ public:
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// mvk_vector_allocator_with_stack -> malloc based MVKVector allocator with stack storage
+// mvk_vector_allocator_with_stack -> malloc based MVKVector allocator with preallocated storage
 //
 //////////////////////////////////////////////////////////////////////////////////////////
 template <typename T, int N>
-class mvk_vector_allocator_with_stack
+class mvk_vector_allocator_with_stack final : public mvk_vector_allocator_base<T>
 {
-public:
-  T      *ptr;
-  size_t  num_elements_used;
-
 private:
   //size_t  num_elements_reserved; // uhh, num_elements_reserved is mapped onto the stack elements, let the fun begin
   alignas( alignof( T ) ) unsigned char   elements_stack[N * sizeof( T )];
@@ -219,9 +241,8 @@ private:
 
   void set_num_elements_reserved( const size_t num_elements_reserved )
   {
-    *reinterpret_cast< size_t* >( &elements_stack[0] ) = num_elements_reserved;
+    *reinterpret_cast<size_t*>( &elements_stack[0] ) = num_elements_reserved;
   }
-
 
 public:
   //
@@ -253,18 +274,18 @@ public:
   template<class S> typename std::enable_if< !std::is_trivially_destructible<S>::value >::type
     destruct_all()
   {
-    for( size_t i = 0; i < num_elements_used; ++i )
+    for( size_t i = 0; i < mvk_vector_allocator_base<S>::num_elements_used; ++i )
     {
-      ptr[i].~S();
+      mvk_vector_allocator_base<S>::ptr[i].~S();
     }
 
-    num_elements_used = 0;
+    mvk_vector_allocator_base<S>::num_elements_used = 0;
   }
 
   template<class S> typename std::enable_if< std::is_trivially_destructible<S>::value >::type
     destruct_all()
   {
-    num_elements_used = 0;
+    mvk_vector_allocator_base<S>::num_elements_used = 0;
   }
 
   template<class S> typename std::enable_if< !std::is_trivially_destructible<S>::value >::type
@@ -272,19 +293,19 @@ public:
   {
     T stack_copy[N];
 
-    for( size_t i = 0; i < num_elements_used; ++i )
+    for( size_t i = 0; i < mvk_vector_allocator_base<S>::num_elements_used; ++i )
     {
-      construct( &stack_copy[i], std::move( ptr[i] ) );
-      destruct( &ptr[i] );
+      construct( &stack_copy[i], std::move( S::ptr[i] ) );
+      destruct( &mvk_vector_allocator_base<S>::ptr[i] );
     }
 
     for( size_t i = 0; i < a.num_elements_used; ++i )
     {
-      construct( &ptr[i], std::move( a.ptr[i] ) );
-      destruct( &ptr[i] );
+      construct( &mvk_vector_allocator_base<S>::ptr[i], std::move( a.ptr[i] ) );
+      destruct( &mvk_vector_allocator_base<S>::ptr[i] );
     }
 
-    for( size_t i = 0; i < num_elements_used; ++i )
+    for( size_t i = 0; i < mvk_vector_allocator_base<S>::num_elements_used; ++i )
     {
       construct( &a.ptr[i], std::move( stack_copy[i] ) );
       destruct( &stack_copy[i] );
@@ -304,26 +325,26 @@ public:
   }
 
 public:
-  mvk_vector_allocator_with_stack() : ptr{ reinterpret_cast< T* >( &elements_stack[0] ) }, num_elements_used{ 0 }
+  mvk_vector_allocator_with_stack() : mvk_vector_allocator_base<T>{ reinterpret_cast<T*>( &elements_stack[0] ), 0 }
   {
   }
 
-  mvk_vector_allocator_with_stack( mvk_vector_allocator_with_stack &&a ) : num_elements_used{ a.num_elements_used }
+  mvk_vector_allocator_with_stack( mvk_vector_allocator_with_stack &&a ) : mvk_vector_allocator_base<T>{ nullptr, a.num_elements_used }
   {
     // is a heap based -> steal ptr from a
     if( !a.get_data_on_stack() )
     {
-      ptr = a.ptr;
+      mvk_vector_allocator_base<T>::ptr = a.ptr;
       set_num_elements_reserved( a.get_capacity() );
 
       a.ptr = a.get_default_ptr();
     }
     else
     {
-      ptr = get_default_ptr();
+      mvk_vector_allocator_base<T>::ptr = get_default_ptr();
       for( size_t i = 0; i < a.num_elements_used; ++i )
       {
-        construct( &ptr[i], std::move( a.ptr[i] ) );
+        construct( &mvk_vector_allocator_base<T>::ptr[i], std::move( a.ptr[i] ) );
         destruct( &a.ptr[i] );
       }
     }
@@ -336,9 +357,9 @@ public:
     deallocate();
   }
 
-  size_t get_capacity() const
+  size_t get_capacity() const override
   {
-    return get_data_on_stack() ? N : *reinterpret_cast< const size_t* >( &elements_stack[0] );
+    return get_data_on_stack() ? N : *reinterpret_cast<const size_t*>( &elements_stack[0] );
   }
 
   constexpr T *get_default_ptr() const
@@ -348,7 +369,7 @@ public:
 
   bool get_data_on_stack() const
   {
-    return ptr == get_default_ptr();
+    return mvk_vector_allocator_base<T>::ptr == get_default_ptr();
   }
 
   void swap( mvk_vector_allocator_with_stack &a )
@@ -356,9 +377,9 @@ public:
     // both allocators on heap -> easy case
     if( !get_data_on_stack() && !a.get_data_on_stack() )
     {
-      auto copy_ptr = ptr;
+      auto copy_ptr = mvk_vector_allocator_base<T>::ptr;
       auto copy_num_elements_reserved = get_capacity();
-      ptr = a.ptr;
+      mvk_vector_allocator_base<T>::ptr = a.ptr;
       set_num_elements_reserved( a.get_capacity() );
       a.ptr = copy_ptr;
       a.set_num_elements_reserved( copy_num_elements_reserved );
@@ -374,24 +395,24 @@ public:
       auto copy_num_elements_reserved = a.get_capacity();
 
       a.ptr = a.get_default_ptr();
-      for( size_t i = 0; i < num_elements_used; ++i )
+      for( size_t i = 0; i < mvk_vector_allocator_base<T>::num_elements_used; ++i )
       {
-        construct( &a.ptr[i], std::move( ptr[i] ) );
-        destruct( &ptr[i] );
+        construct( &a.ptr[i], std::move( mvk_vector_allocator_base<T>::ptr[i] ) );
+        destruct( &mvk_vector_allocator_base<T>::ptr[i] );
       }
 
-      ptr = copy_ptr;
+      mvk_vector_allocator_base<T>::ptr = copy_ptr;
       set_num_elements_reserved( copy_num_elements_reserved );
     }
     else if( !get_data_on_stack() && a.get_data_on_stack() )
     {
-      auto copy_ptr = ptr;
+      auto copy_ptr = mvk_vector_allocator_base<T>::ptr;
       auto copy_num_elements_reserved = get_capacity();
 
-      ptr = get_default_ptr();
+      mvk_vector_allocator_base<T>::ptr = get_default_ptr();
       for( size_t i = 0; i < a.num_elements_used; ++i )
       {
-        construct( &ptr[i], std::move( a.ptr[i] ) );
+        construct( &mvk_vector_allocator_base<T>::ptr[i], std::move( a.ptr[i] ) );
         destruct( &a.ptr[i] );
       }
 
@@ -399,15 +420,15 @@ public:
       a.set_num_elements_reserved( copy_num_elements_reserved );
     }
 
-    auto copy_num_elements_used = num_elements_used;
-    num_elements_used = a.num_elements_used;
+    auto copy_num_elements_used = mvk_vector_allocator_base<T>::num_elements_used;
+    mvk_vector_allocator_base<T>::num_elements_used = a.num_elements_used;
     a.num_elements_used = copy_num_elements_used;
   }
 
   //
   // allocates rounded up to the defined alignment the number of bytes / if the system cannot allocate the specified amount of memory then a null block is returned
   //
-  void allocate( const size_t num_elements_to_reserve )
+  void allocate( const size_t num_elements_to_reserve ) override
   {
     deallocate();
 
@@ -417,8 +438,8 @@ public:
       return;
     }
 
-    ptr               = reinterpret_cast< T* >( mvk_memory_allocator::alloc( num_elements_to_reserve * sizeof( T ) ) );
-    num_elements_used = 0;
+    mvk_vector_allocator_base<T>::ptr               = reinterpret_cast< T* >( mvk_memory_allocator::alloc( num_elements_to_reserve * sizeof( T ) ) );
+    mvk_vector_allocator_base<T>::num_elements_used = 0;
     set_num_elements_reserved( num_elements_to_reserve );
   }
 
@@ -427,18 +448,18 @@ public:
   {
     auto *new_ptr = reinterpret_cast< T* >( mvk_memory_allocator::alloc( num_elements_to_reserve * sizeof( T ) ) );
 
-    for( size_t i = 0; i < num_elements_used; ++i )
+    for( size_t i = 0; i < mvk_vector_allocator_base<T>::num_elements_used; ++i )
     {
-      construct( &new_ptr[i], std::move( ptr[i] ) );
-      destruct( &ptr[i] );
+      construct( &new_ptr[i], std::move( mvk_vector_allocator_base<T>::ptr[i] ) );
+      destruct( &mvk_vector_allocator_base<T>::ptr[i] );
     }
 
-    if( ptr != get_default_ptr() )
+    if( mvk_vector_allocator_base<T>::ptr != get_default_ptr() )
     {
-      mvk_memory_allocator::free( ptr );
+      mvk_memory_allocator::free( mvk_vector_allocator_base<T>::ptr );
     }
 
-    ptr = new_ptr;
+    mvk_vector_allocator_base<T>::ptr = new_ptr;
     set_num_elements_reserved( num_elements_to_reserve );
   }
 
@@ -460,7 +481,7 @@ public:
   //  set_num_elements_reserved( num_elements_to_reserve );
   //}
 
-  void re_allocate( const size_t num_elements_to_reserve )
+  void re_allocate( const size_t num_elements_to_reserve ) override
   {
     //TM_ASSERT( num_elements_to_reserve > get_capacity() );
 
@@ -470,56 +491,56 @@ public:
     }
   }
 
-  void shrink_to_fit()
+  void shrink_to_fit() override
   {
     // nothing to do if data is on stack already
     if( get_data_on_stack() )
       return;
 
     // move elements to stack space
-    if( num_elements_used <= N )
+    if( mvk_vector_allocator_base<T>::num_elements_used <= N )
     {
-      const auto num_elements_reserved = get_capacity();
+      //const auto num_elements_reserved = get_capacity();
 
       auto *stack_ptr = get_default_ptr();
-      for( size_t i = 0; i < num_elements_used; ++i )
+      for( size_t i = 0; i < mvk_vector_allocator_base<T>::num_elements_used; ++i )
       {
-        construct( &stack_ptr[i], std::move( ptr[i] ) );
-        destruct( &ptr[i] );
+        construct( &stack_ptr[i], std::move( mvk_vector_allocator_base<T>::ptr[i] ) );
+        destruct( &mvk_vector_allocator_base<T>::ptr[i] );
       }
 
-      mvk_memory_allocator::free( ptr );
+      mvk_memory_allocator::free( mvk_vector_allocator_base<T>::ptr );
 
-      ptr = stack_ptr;
+      mvk_vector_allocator_base<T>::ptr = stack_ptr;
     }
     else
     {
-      auto *new_ptr = reinterpret_cast< T* >( mvk_memory_allocator::alloc( ptr, num_elements_used * sizeof( T ) ) );
+      auto *new_ptr = reinterpret_cast< T* >( mvk_memory_allocator::alloc( mvk_vector_allocator_base<T>::num_elements_used * sizeof( T ) ) );
 
-      for( size_t i = 0; i < num_elements_used; ++i )
+      for( size_t i = 0; i < mvk_vector_allocator_base<T>::num_elements_used; ++i )
       {
-        construct( &new_ptr[i], std::move( ptr[i] ) );
-        destruct( &ptr[i] );
+        construct( &new_ptr[i], std::move( mvk_vector_allocator_base<T>::ptr[i] ) );
+        destruct( &mvk_vector_allocator_base<T>::ptr[i] );
       }
 
-      mvk_memory_allocator::free( ptr );
+      mvk_memory_allocator::free( mvk_vector_allocator_base<T>::ptr );
 
-      ptr = new_ptr;
-      set_num_elements_reserved( num_elements_used );
+      mvk_vector_allocator_base<T>::ptr = new_ptr;
+      set_num_elements_reserved( mvk_vector_allocator_base<T>::num_elements_used );
     }
   }
 
-  void deallocate()
+  void deallocate() override
   {
     destruct_all<T>();
 
     if( !get_data_on_stack() )
     {
-      mvk_memory_allocator::free( ptr );
+      mvk_memory_allocator::free( mvk_vector_allocator_base<T>::ptr );
     }
 
-    ptr = get_default_ptr();
-    num_elements_used = 0;
+    mvk_vector_allocator_base<T>::ptr = get_default_ptr();
+    mvk_vector_allocator_base<T>::num_elements_used = 0;
   }
 };
 

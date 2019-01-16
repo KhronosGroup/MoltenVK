@@ -1,7 +1,7 @@
 /*
  * MoltenVKShaderConverterTool.h
  *
- * Copyright (c) 2014-2018 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,7 +38,9 @@ namespace mvk {
 		/**
 		 * Called automatically during the conversion of all the files in a directory. 
 		 * Processes the specified file (which can contain either GLSL or SPIR-V code.
-		 * Always returns false.
+		 *
+		 * Returns false if the file is of the right type to be converted, but failed
+		 * to be converted correctly. Returns true otherwise.
 		 */
 		bool processFile(std::string filePath);
 
