@@ -29,10 +29,12 @@ namespace mvk {
 	 * or absolute path, and calls the processFile(std::string filePath) member function
 	 * on the fileProcessor for each file in the directory. If the isRecursive parameter
 	 * is true, the iteration will include all files in all sub-directories as well.
+	 *
 	 * The processFile(std::string filePath) member function on the fileProcessor should
-	 * return true to cause the processing of any further files to halt, and this function
-	 * to return, or should return false to allow further files to be iterated.
-	 * Returns false if the directory could not be found or iterated. Returns true otherwise.
+	 * return whether that file was successfully processed.
+	 *
+	 * Returns false if the directory could not be found or iterated, or if an error
+	 * occurs with the conversion of any file. Returns true otherwise.
 	 */
 	template <typename FileProcessor>
 	bool iterateDirectory(const std::string& dirPath,

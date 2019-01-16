@@ -38,7 +38,9 @@ namespace mvk {
 		/**
 		 * Called automatically during the conversion of all the files in a directory. 
 		 * Processes the specified file (which can contain either GLSL or SPIR-V code.
-		 * Always returns false.
+		 *
+		 * Returns false if the file is of the right type to be converted, but failed
+		 * to be converted correctly. Returns true otherwise.
 		 */
 		bool processFile(std::string filePath);
 
