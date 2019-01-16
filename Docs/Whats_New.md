@@ -30,6 +30,7 @@ Released 2019/01/15
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 16.
 - Update copyright to 2019.
 - Advertise the `VK_AMD_gpu_shader_half_float` extension.
+- Support the `VK_KHR_variable_pointers` extension.
 - Update to latest SPIRV-Cross version:
 	- MSL: Support SPV_KHR_variable_pointers.
 	- MSL: Workaround missing gradient2d() on macOS for typical cascaded shadow mapping.
