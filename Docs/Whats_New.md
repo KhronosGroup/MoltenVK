@@ -6,10 +6,65 @@
 
 #What's New in MoltenVK
 
-Copyright (c) 2014-2018 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2014-2019 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 *This document is written in [Markdown](http://en.wikipedia.org/wiki/Markdown) format.
 For best results, use a Markdown reader.*
+
+
+
+MoltenVK 1.0.31
+---------------
+
+Released 2019/01/16
+
+- Support runtime config via runtime environment variables
+- Add full ImageView swizzling to config, and disable it by default.
+- Add GPU switching to config, and enable it by default.
+- Add queue family specialization to config, and disable it by default.
+- Enable synchronous queue submits as config default.
+- Support 4 queue families.
+- Pad fragment shader output to 4 components when needed.
+- Add support for copying to and from PVRTC images.
+- Log Vulkan versions in human readable form when reporting version error.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 16.
+- Update copyright to 2019.
+- Advertise the `VK_AMD_gpu_shader_half_float` extension.
+- Support the `VK_KHR_variable_pointers` extension.
+- MoltenVKShaderConverter tool exit with fail code on any file conversion fail.
+- Update to latest SPIRV-Cross version:
+	- MSL: Support SPV_KHR_variable_pointers.
+	- MSL: Workaround missing gradient2d() on macOS for typical cascaded shadow mapping.
+	- MSL: Fix mapping of identity-swizzled components.
+	- MSL: Support composites inside I/O blocks.
+	- MSL: Fix case where we pass arrays to functions by value.
+	- MSL: Add option to pad fragment outputs.
+	- MSL: Fix passing a sampled image to a function.
+	- Performance improvements on iterating internal constructs.
+	- Update copyright to 2019.
+
+
+
+MoltenVK 1.0.30
+---------------
+
+Released 2018/12/31
+
+- Allow 2 or 3 swapchain images to support both double and triple buffering.
+- Force display to switch to GPU selected by vkCreateDevice() to avoid system view compositor having to copy from that GPU to display GPU.
+- Use inline buffer for pipeline auxiliary buffer.
+- vkCmdCopyImage: Cast source image to the destination format.
+- Result of vkGetPhysicalDeviceFormatProperties2KHR match vkGetPhysicalDeviceFormatProperties.
+- MVKImage: Return error for BLOCK_TEXEL_VIEW.
+- MVKDescriptorSet: Fix handling of immutable samplers.
+- MVKPipeline: Forbid vertex attribute offsets >= stride.
+- Fix handling of case where vertex bindings and binding indices don't match up.
+- Return VK_TIMEOUT even on zero wait if fences not signalled.
+- Support iOS builds for arm64e architecture.
+- Improvements to building external libraries.
+- Print Vulkan semantics when logging converted GLSL.
+- Support uploading S3TC-compressed 3D images.
+
 
 
 MoltenVK 1.0.29
