@@ -16,7 +16,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.31
 ---------------
 
-Released 2019/01/16
+Released 2019/01/17
 
 - Support runtime config via runtime environment variables
 - Add full ImageView swizzling to config, and disable it by default.
@@ -32,6 +32,7 @@ Released 2019/01/16
 - Advertise the `VK_AMD_gpu_shader_half_float` extension.
 - Support the `VK_KHR_variable_pointers` extension.
 - MoltenVKShaderConverter tool exit with fail code on any file conversion fail.
+- Update to latest dependency libraries for Vulkan SDK 1.1.97.
 - Update to latest SPIRV-Cross version:
 	- MSL: Support SPV_KHR_variable_pointers.
 	- MSL: Workaround missing gradient2d() on macOS for typical cascaded shadow mapping.
@@ -40,6 +41,8 @@ Released 2019/01/16
 	- MSL: Fix case where we pass arrays to functions by value.
 	- MSL: Add option to pad fragment outputs.
 	- MSL: Fix passing a sampled image to a function.
+	- MSL: Support std140 packing rules for float[] and float2[].
+	- MSL: Fix image load/store for short vectors.
 	- Performance improvements on iterating internal constructs.
 	- Update copyright to 2019.
 
