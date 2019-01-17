@@ -147,7 +147,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MVKVectorInline<MTLViewport, 8> _mtlViewports;
+    MVKVectorInline<MTLViewport, kMVKCachedViewportCount> _mtlViewports;
 };
 
 
@@ -176,7 +176,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MVKVectorInline<MTLScissorRect, 8> _mtlScissors;
+    MVKVectorInline<MTLScissorRect, kMVKCachedScissorCount> _mtlScissors;
 };
 
 

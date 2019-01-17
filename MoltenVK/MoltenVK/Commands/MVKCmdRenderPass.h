@@ -115,7 +115,7 @@ public:
 
 private:
 	uint32_t _firstViewport;
-	MVKVectorInline<MTLViewport, 8> _mtlViewports;
+	MVKVectorInline<MTLViewport, kMVKCachedViewportCount> _mtlViewports;
 };
 
 
@@ -134,7 +134,7 @@ public:
 
 private:
 	uint32_t _firstScissor;
-	MVKVectorInline<MTLScissorRect, 8> _mtlScissors;
+	MVKVectorInline<MTLScissorRect, kMVKCachedScissorCount> _mtlScissors;
 };
 
 

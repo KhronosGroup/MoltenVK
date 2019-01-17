@@ -65,6 +65,10 @@ class MVKCommandResourceFactory;
 /** The buffer index to use for vertex content. */
 const static uint32_t kMVKVertexContentBufferIndex = 0;
 
+// Parameters to define the sizing of inline collections
+const static uint32_t kMVKCachedViewportCount = 16;
+const static uint32_t kMVKCachedScissorCount = 16;
+
 
 #pragma mark -
 #pragma mark MVKPhysicalDevice
