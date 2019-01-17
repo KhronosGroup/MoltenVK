@@ -147,7 +147,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MVKVector<MTLViewport> _mtlViewports;
+    MVKVectorInline<MTLViewport, 8> _mtlViewports;
 };
 
 
@@ -176,7 +176,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MVKVector<MTLScissorRect> _mtlScissors;
+    MVKVectorInline<MTLScissorRect, 8> _mtlScissors;
 };
 
 
@@ -203,7 +203,7 @@ protected:
     void encodeImpl() override;
     void resetImpl() override;
 
-    MVKVector<char> _pushConstants;
+    MVKVectorInline<char, 128> _pushConstants;
     VkShaderStageFlagBits _shaderStage;
     uint32_t _mtlBufferIndex = 0;
 };
@@ -451,14 +451,14 @@ protected:
     void resetImpl() override;
     void markDirty() override;
 
-    MVKVector<MVKMTLBufferBinding> _vertexBufferBindings;
-    MVKVector<MVKMTLBufferBinding> _fragmentBufferBindings;
-    MVKVector<MVKMTLTextureBinding> _vertexTextureBindings;
-    MVKVector<MVKMTLTextureBinding> _fragmentTextureBindings;
-    MVKVector<MVKMTLSamplerStateBinding> _vertexSamplerStateBindings;
-    MVKVector<MVKMTLSamplerStateBinding> _fragmentSamplerStateBindings;
-    MVKVector<uint32_t> _vertexSwizzleConstants;
-    MVKVector<uint32_t> _fragmentSwizzleConstants;
+    MVKVectorInline<MVKMTLBufferBinding, 8> _vertexBufferBindings;
+    MVKVectorInline<MVKMTLBufferBinding, 8> _fragmentBufferBindings;
+    MVKVectorInline<MVKMTLTextureBinding, 8> _vertexTextureBindings;
+    MVKVectorInline<MVKMTLTextureBinding, 8> _fragmentTextureBindings;
+    MVKVectorInline<MVKMTLSamplerStateBinding, 8> _vertexSamplerStateBindings;
+    MVKVectorInline<MVKMTLSamplerStateBinding, 8> _fragmentSamplerStateBindings;
+    MVKVectorInline<uint32_t, 8> _vertexSwizzleConstants;
+    MVKVectorInline<uint32_t, 8> _fragmentSwizzleConstants;
     MVKMTLBufferBinding _vertexAuxBufferBinding;
     MVKMTLBufferBinding _fragmentAuxBufferBinding;
 
@@ -504,10 +504,10 @@ protected:
     void resetImpl() override;
     void markDirty() override;
 
-    MVKVector<MVKMTLBufferBinding> _bufferBindings;
-    MVKVector<MVKMTLTextureBinding> _textureBindings;
-    MVKVector<MVKMTLSamplerStateBinding> _samplerStateBindings;
-    MVKVector<uint32_t> _swizzleConstants;
+    MVKVectorDefault<MVKMTLBufferBinding> _bufferBindings;
+    MVKVectorDefault<MVKMTLTextureBinding> _textureBindings;
+    MVKVectorDefault<MVKMTLSamplerStateBinding> _samplerStateBindings;
+    MVKVectorDefault<uint32_t> _swizzleConstants;
     MVKMTLBufferBinding _auxBufferBinding;
 
     bool _areBufferBindingsDirty = false;

@@ -25,7 +25,6 @@
 #include "MVKVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
-#include <vector>
 #include <ostream>
 
 #import <Metal/Metal.h>
@@ -59,7 +58,7 @@ public:
 
 	/** Updates a descriptor set in a command encoder. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   std::vector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKVector<VkWriteDescriptorSet>& descriptorWrites,
 						   uint32_t set);
 
 	/** Updates a descriptor set from a template in a command encoder. */
@@ -78,9 +77,9 @@ public:
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
 protected:
-	std::vector<MVKDescriptorSetLayout> _descriptorSetLayouts;
-	std::vector<MVKShaderResourceBinding> _dslMTLResourceIndexOffsets;
-	std::vector<VkPushConstantRange> _pushConstants;
+	MVKVectorInline<MVKDescriptorSetLayout, 8> _descriptorSetLayouts;
+	MVKVectorInline<MVKShaderResourceBinding, 8> _dslMTLResourceIndexOffsets;
+	MVKVectorInline<VkPushConstantRange, 8> _pushConstants;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	MVKShaderAuxBufferBinding _auxBufferIndex;
 };
@@ -143,8 +142,8 @@ protected:
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 
-  MVKVector<MTLViewport> _mtlViewports;
-  MVKVector<MTLScissorRect> _mtlScissors;
+  MVKVectorInline<MTLViewport, 8> _mtlViewports;
+  MVKVectorInline<MTLScissorRect, 8> _mtlScissors;
 
 	id<MTLRenderPipelineState> _mtlPipelineState;
 	MTLCullMode _mtlCullMode;

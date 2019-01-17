@@ -143,7 +143,7 @@ public:
 
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   std::vector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKVector<VkWriteDescriptorSet>& descriptorWrites,
 						   MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
 
@@ -171,7 +171,7 @@ protected:
 	friend class MVKPipelineLayout;
 	friend class MVKDescriptorSet;
 
-	MVKVector<MVKDescriptorSetLayoutBinding> _bindings;
+	MVKVectorInline<MVKDescriptorSetLayoutBinding, 8> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	bool _isPushDescriptorLayout : 1;

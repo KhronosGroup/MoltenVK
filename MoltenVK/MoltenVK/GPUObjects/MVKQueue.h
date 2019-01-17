@@ -170,7 +170,7 @@ protected:
 	MVKQueueSubmission* _prev;
 	MVKQueueSubmission* _next;
 	VkResult _submissionResult;
-	MVKVector<MVKSemaphore*> _waitSemaphores;
+	MVKVectorInline<MVKSemaphore*, 8> _waitSemaphores;
 	bool _isAwaitingSemaphores;
 };
 
@@ -205,8 +205,8 @@ protected:
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
 	void finish();
 
-	MVKVector<MVKCommandBuffer*> _cmdBuffers;
-	MVKVector<MVKSemaphore*> _signalSemaphores;
+	MVKVectorInline<MVKCommandBuffer*, 16> _cmdBuffers;
+	MVKVectorInline<MVKSemaphore*, 16> _signalSemaphores;
 	MVKFence* _fence;
     MVKCommandUse _cmdBuffUse;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
@@ -228,6 +228,6 @@ public:
 									 const VkPresentInfoKHR* pPresentInfo);
 
 protected:
-	MVKVector<MVKSwapchainImage*> _surfaceImages;
+	MVKVectorInline<MVKSwapchainImage*, 4> _surfaceImages;
 };
 

@@ -1027,7 +1027,8 @@ void MVKSwapchainImage::makeAvailable() {
 		// If this image is not yet available, extract and signal the first semaphore and fence.
 
 		signaler = _availabilitySignalers.front();
-		_availabilitySignalers.pop_front();
+    _availabilitySignalers.erase( _availabilitySignalers.begin() );
+		//_availabilitySignalers.pop_front();
 	}
 
 	// Signal the semaphore and fence, and let them know they are no longer being tracked.

@@ -48,7 +48,7 @@ private:
 	VkSubpassContents _contents;
 	MVKRenderPass* _renderPass;
 	MVKFramebuffer* _framebuffer;
-	MVKVector<VkClearValue> _clearValues;
+	MVKVectorInline<VkClearValue, 8> _clearValues;
 };
 
 
@@ -115,7 +115,7 @@ public:
 
 private:
 	uint32_t _firstViewport;
-	MVKVector<MTLViewport> _mtlViewports;
+	MVKVectorInline<MTLViewport, 8> _mtlViewports;
 };
 
 
@@ -134,7 +134,7 @@ public:
 
 private:
 	uint32_t _firstScissor;
-	MVKVector<MTLScissorRect> _mtlScissors;
+	MVKVectorInline<MTLScissorRect, 8> _mtlScissors;
 };
 
 

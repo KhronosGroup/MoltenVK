@@ -559,7 +559,7 @@ static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorI
 }
 
 void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-                                               vector<VkWriteDescriptorSet>& descriptorWrites,
+                                               MVKVector<VkWriteDescriptorSet>& descriptorWrites,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
 
     if (!_isPushDescriptorLayout) return;

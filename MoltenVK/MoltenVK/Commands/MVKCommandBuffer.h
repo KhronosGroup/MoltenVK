@@ -403,7 +403,7 @@ protected:
 	uint32_t _renderSubpassIndex;
 	VkRect2D _renderArea;
     MVKActivatedQueries* _pActivatedQueries;
-	MVKVector<VkClearValue> _clearValues;
+	MVKVectorInline<VkClearValue, 8> _clearValues;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	MVKCommandUse _mtlComputeEncoderUse;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;

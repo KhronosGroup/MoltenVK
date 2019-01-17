@@ -44,7 +44,7 @@ public:
     MVKCmdBindVertexBuffers(MVKCommandTypePool<MVKCmdBindVertexBuffers>* pool);
 
 protected:
-    MVKVector<MVKMTLBufferBinding> _bindings;
+    MVKVectorInline<MVKMTLBufferBinding, 8> _bindings;
 };
 
 
