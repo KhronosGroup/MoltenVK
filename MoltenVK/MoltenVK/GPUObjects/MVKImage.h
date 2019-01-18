@@ -20,8 +20,8 @@
 
 #include "MVKResource.h"
 #include "MVKSync.h"
+#include "MVKVector.h"
 #include <mutex>
-#include <list>
 
 #import <IOSurface/IOSurfaceRef.h>
 
@@ -396,7 +396,7 @@ protected:
 	uint32_t _swapchainIndex;
 	id<CAMetalDrawable> _mtlDrawable;
 	std::mutex _availabilityLock;
-	std::list<MVKSwapchainSignaler> _availabilitySignalers;
+	MVKVectorInline<MVKSwapchainSignaler, 4> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaled;
 	MVKSwapchainImageAvailability _availability;
 };
