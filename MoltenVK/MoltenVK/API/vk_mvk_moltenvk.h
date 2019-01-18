@@ -53,7 +53,7 @@ extern "C" {
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            16
+#define VK_MVK_MOLTENVK_SPEC_VERSION            17
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -454,6 +454,8 @@ typedef struct {
     VkSampleCountFlags supportedSampleCounts;   /**< A bitmask identifying the sample counts supported by the device. */
 	uint32_t minSwapchainImageCount;	 	  	/**< The minimum number of swapchain images that can be supported by a surface. */
 	uint32_t maxSwapchainImageCount;	 	  	/**< The maximum number of swapchain images that can be supported by a surface. */
+	// v17
+	VkBool32 combinedStoreResolveAction;		/**< If true, the device supports VK_ATTACHMENT_STORE_OP_STORE with a simultaneous resolve attachment. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**

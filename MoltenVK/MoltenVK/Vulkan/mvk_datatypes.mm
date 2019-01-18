@@ -1138,10 +1138,10 @@ MVK_PUBLIC_SYMBOL MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachm
 	}
 }
 
-MVK_PUBLIC_SYMBOL MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkStoreOp) {
+MVK_PUBLIC_SYMBOL MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment) {
 	switch (vkStoreOp) {
-		case VK_ATTACHMENT_STORE_OP_STORE:		return MTLStoreActionStore;
-		case VK_ATTACHMENT_STORE_OP_DONT_CARE:	return MTLStoreActionDontCare;
+		case VK_ATTACHMENT_STORE_OP_STORE:		return hasResolveAttachment ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
+		case VK_ATTACHMENT_STORE_OP_DONT_CARE:	return hasResolveAttachment ? MTLStoreActionMultisampleResolve : MTLStoreActionDontCare;
 
 		default:
 			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkAttachmentStoreOp value %d is not supported.", vkStoreOp);
