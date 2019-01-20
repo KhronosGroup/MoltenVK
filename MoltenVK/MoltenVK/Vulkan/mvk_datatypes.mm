@@ -823,9 +823,7 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageVie
             return MTLTextureType2DArray;
         case VK_IMAGE_VIEW_TYPE_3D:             return MTLTextureType3D;
         case VK_IMAGE_VIEW_TYPE_CUBE:           return MTLTextureTypeCube;
-#if MVK_MACOS
         case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:    return MTLTextureTypeCubeArray;
-#endif
         default:                            return MTLTextureType2D;
     }
 }
@@ -1031,19 +1029,10 @@ MVK_PUBLIC_SYMBOL MTLBlendFactor mvkMTLBlendFactorFromVkBlendFactor(VkBlendFacto
 		case VK_BLEND_FACTOR_ONE_MINUS_CONSTANT_ALPHA:	return MTLBlendFactorOneMinusBlendAlpha;
 		case VK_BLEND_FACTOR_SRC_ALPHA_SATURATE:		return MTLBlendFactorSourceAlphaSaturated;
 
-#if MVK_IOS
-        case VK_BLEND_FACTOR_SRC1_COLOR:				return MTLBlendFactorSourceColor;
-        case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:		return MTLBlendFactorOneMinusSourceColor;
-        case VK_BLEND_FACTOR_SRC1_ALPHA:				return MTLBlendFactorSourceAlpha;
-        case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:		return MTLBlendFactorOneMinusSourceAlpha;
-#endif
-
-#if MVK_MACOS
         case VK_BLEND_FACTOR_SRC1_COLOR:				return MTLBlendFactorSource1Color;
 		case VK_BLEND_FACTOR_ONE_MINUS_SRC1_COLOR:		return MTLBlendFactorOneMinusSource1Color;
 		case VK_BLEND_FACTOR_SRC1_ALPHA:				return MTLBlendFactorSource1Alpha;
 		case VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA:		return MTLBlendFactorOneMinusSource1Alpha;
-#endif
 
         default:										return MTLBlendFactorZero;
 	}
