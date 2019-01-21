@@ -483,6 +483,8 @@ typedef struct {
     VkSampleCountFlags supportedSampleCounts;   /**< A bitmask identifying the sample counts supported by the device. */
 	uint32_t minSwapchainImageCount;	 	  	/**< The minimum number of swapchain images that can be supported by a surface. */
 	uint32_t maxSwapchainImageCount;	 	  	/**< The maximum number of swapchain images that can be supported by a surface. */
+	VkBool32 arrayOfTextures;			 	  	/**< If true, arrays of textures is supported. */
+	VkBool32 arrayOfSamplers;			 	  	/**< If true, arrays of texture samplers is supported. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**

@@ -90,6 +90,9 @@ public:
 	/** Populates the specified structure with the properties of this device. */
 	void getProperties(VkPhysicalDeviceProperties2* properties);
 
+	/** Returns the name of this device. */
+	inline const char* getName() { return _properties.deviceName; }
+
 	/** Returns whether the specified format is supported on this device. */
 	bool getFormatIsSupported(VkFormat format);
 
@@ -314,6 +317,9 @@ public:
 
 	/** Returns the physical device underlying this logical device. */
 	inline MVKPhysicalDevice* getPhysicalDevice() { return _physicalDevice; }
+
+	/** Returns the name of this device. */
+	inline const char* getName() { return _pProperties->deviceName; }
 
     /** Returns the common resource factory for creating command resources. */
     inline MVKCommandResourceFactory* getCommandResourceFactory() { return _commandResourceFactory; }
