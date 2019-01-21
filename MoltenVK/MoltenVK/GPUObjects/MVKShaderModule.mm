@@ -224,6 +224,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConverterContext* pCont
 											   const VkSpecializationInfo* pSpecializationInfo,
 											   MVKPipelineCache* pipelineCache) {
 	lock_guard<mutex> lock(_accessLock);
+	
 	MVKShaderLibrary* mvkLib = _defaultLibrary;
 	if ( !mvkLib ) {
 		uint64_t startTime = _device->getPerformanceTimestamp();
@@ -233,7 +234,10 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConverterContext* pCont
 			mvkLib = _shaderLibraryCache.getShaderLibrary(pContext, this);
 		}
 		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
+	} else {
+		pContext->markAllAttributesAndResourcesUsed();
 	}
+
 	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo) : MVKMTLFunctionNull;
 }
 
