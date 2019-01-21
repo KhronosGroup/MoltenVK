@@ -48,12 +48,12 @@ extern "C" {
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   31
+#define MVK_VERSION_PATCH   32
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            16
+#define VK_MVK_MOLTENVK_SPEC_VERSION            17
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -133,7 +133,7 @@ typedef struct {
 	 * will be dispatched to a GCD dispatch_queue whose priority is determined by
 	 * VkDeviceQueueCreateInfo::pQueuePriorities during vkCreateDevice().
 	 *
-	 * The value of this parameter may be changed before creating a VkDevice,
+	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
@@ -193,7 +193,7 @@ typedef struct {
 	 * is required per command buffer queue submission, which may be significantly less than the
 	 * number of Vulkan command buffers.
 	 *
-	 * The value of this parameter may be changed before creating a VkDevice,
+	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
@@ -331,7 +331,7 @@ typedef struct {
 	 * as having specialized graphics OR compute OR transfer functionality, to make it easier for some
 	 * apps to select a queue family with the appropriate requirements.
 	 *
-	 * The value of this parameter may be changed before creating a VkDevice, and before
+	 * The value of this parameter must be changed before creating a VkDevice, and before
 	 * querying a VkPhysicalDevice for queue family properties, for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
@@ -364,7 +364,7 @@ typedef struct {
 	 * system window compositor to determine how best to blend content with the windowing
 	 * system, and as a result, may want to disable this parameter.
 	 *
-	 * The value of this parameter may be changed before creating a VkDevice,
+	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
 	 * The initial value or this parameter is set by the
@@ -413,6 +413,35 @@ typedef struct {
 	 * If neither is set, the value of this parameter defaults to false.
 	 */
 	VkBool32 fullImageViewSwizzle;
+
+	/**
+	 * The index of the queue family whose presentation submissions will
+	 * be used as the default GPU Capture Scope during debugging in Xcode.
+	 *
+	 * The value of this parameter must be changed before creating a VkDevice,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to zero (the first queue family).
+	 */
+	uint32_t defaultGPUCaptureScopeQueueFamilyIndex;
+
+	/**
+	 * The index of the queue, within the queue family identified by the
+	 * defaultGPUCaptureScopeQueueFamilyIndex parameter, whose presentation submissions
+	 * will be used as the default GPU Capture Scope during debugging in Xcode.
+	 *
+	 * The value of this parameter must be changed before creating a VkDevice,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to zero (the first queue).
+	 */
+	uint32_t defaultGPUCaptureScopeQueueIndex;
 
 } MVKConfiguration;
 

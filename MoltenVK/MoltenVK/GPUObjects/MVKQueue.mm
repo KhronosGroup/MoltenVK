@@ -174,9 +174,15 @@ void MVKQueue::initMTLCommandQueue() {
 
 // Initializes Xcode GPU capture scopes
 void MVKQueue::initGPUCaptureScopes() {
+	const MVKConfiguration* pMVKConfig = _device->getInstance()->getMoltenVKConfiguration();
+
 	_submissionCaptureScope = new MVKGPUCaptureScope(this, "CommandBuffer-Submission");
+
 	_presentationCaptureScope = new MVKGPUCaptureScope(this, "Surface-Presentation");
-	_presentationCaptureScope->makeDefault();
+	if (_queueFamily->getIndex() == pMVKConfig->defaultGPUCaptureScopeQueueFamilyIndex &&
+		_index == pMVKConfig->defaultGPUCaptureScopeQueueIndex) {
+		_presentationCaptureScope->makeDefault();
+	}
 	_presentationCaptureScope->beginScope();	// Allow Xcode to capture the first frame if desired.
 }
 

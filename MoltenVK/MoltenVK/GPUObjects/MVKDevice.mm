@@ -1872,9 +1872,13 @@ void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 		const VkDeviceQueueCreateInfo* pQFInfo = &pCreateInfo->pQueueCreateInfos[qrIdx];
 		uint32_t qfIdx = pQFInfo->queueFamilyIndex;
 		MVKQueueFamily* qFam = qFams[qfIdx];
+		VkQueueFamilyProperties qfProps;
+		qFam->getProperties(&qfProps);
+
 		_queuesByQueueFamilyIndex.resize(qfIdx + 1);	// Ensure an entry for this queue family exists
 		auto& queues = _queuesByQueueFamilyIndex[qfIdx];
-		for (uint32_t qIdx = 0; qIdx < pQFInfo->queueCount; qIdx++) {
+		uint32_t qCnt = min(pQFInfo->queueCount, qfProps.queueCount);
+		for (uint32_t qIdx = 0; qIdx < qCnt; qIdx++) {
 			queues.push_back(new MVKQueue(this, qFam, qIdx, pQFInfo->pQueuePriorities[qIdx]));
 		}
 	}
