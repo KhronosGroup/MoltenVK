@@ -405,30 +405,31 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLCon
     }
 }
 
-MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDescriptorSetLayout* layout,
-                                                             const VkDescriptorSetLayoutBinding* pBinding) : MVKConfigurableObject() {
+MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
+															 MVKDescriptorSetLayout* layout,
+                                                             const VkDescriptorSetLayoutBinding* pBinding) : MVKBaseDeviceObject(device) {
     // Determine the shader stages used by this binding
     _applyToVertexStage = mvkAreFlagsEnabled(pBinding->stageFlags, VK_SHADER_STAGE_VERTEX_BIT);
     _applyToFragmentStage = mvkAreFlagsEnabled(pBinding->stageFlags, VK_SHADER_STAGE_FRAGMENT_BIT);
     _applyToComputeStage = mvkAreFlagsEnabled(pBinding->stageFlags, VK_SHADER_STAGE_COMPUTE_BIT);
 
-    // If this binding is used by the vertex shader, set the Metal resource index
-    if (_applyToVertexStage) {
-        setConfigurationResult(initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.vertexStage,
-                                                             &layout->_mtlResourceCounts.vertexStage, pBinding));
-    }
+	// If this binding is used by the vertex shader, set the Metal resource index
+	if (_applyToVertexStage) {
+		initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.vertexStage,
+									  &layout->_mtlResourceCounts.vertexStage, pBinding);
+	}
 
-    // If this binding is used by the fragment shader, set the Metal resource index
-    if (_applyToFragmentStage) {
-        setConfigurationResult(initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.fragmentStage,
-                                                             &layout->_mtlResourceCounts.fragmentStage, pBinding));
-    }
+	// If this binding is used by the fragment shader, set the Metal resource index
+	if (_applyToFragmentStage) {
+		initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.fragmentStage,
+									  &layout->_mtlResourceCounts.fragmentStage, pBinding);
+	}
 
-    // If this binding is used by a compute shader, set the Metal resource index
-    if (_applyToComputeStage) {
-        setConfigurationResult(initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.computeStage,
-                                                             &layout->_mtlResourceCounts.computeStage, pBinding));
-    }
+	// If this binding is used by a compute shader, set the Metal resource index
+	if (_applyToComputeStage) {
+		initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.computeStage,
+									  &layout->_mtlResourceCounts.computeStage, pBinding);
+	}
 
     // If immutable samplers are defined, copy them in
     if ( pBinding->pImmutableSamplers &&
@@ -446,7 +447,7 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDescriptorSetLay
 }
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding) :
-	MVKConfigurableObject(), _info(binding._info), _immutableSamplers(binding._immutableSamplers),
+	MVKBaseDeviceObject(binding._device), _info(binding._info), _immutableSamplers(binding._immutableSamplers),
 	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets),
 	_applyToVertexStage(binding._applyToVertexStage), _applyToFragmentStage(binding._applyToFragmentStage),
 	_applyToComputeStage(binding._applyToComputeStage) {
@@ -461,17 +462,19 @@ MVKDescriptorSetLayoutBinding::~MVKDescriptorSetLayoutBinding() {
 	}
 }
 
-/**
- * Sets the appropriate Metal resource indexes within this binding from the 
- * specified descriptor set binding counts, and updates those counts accordingly.
- */
-VkResult MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
-                                                                      MVKShaderStageResourceBinding* pDescSetCounts,
-                                                                      const VkDescriptorSetLayoutBinding* pBinding) {
+// Sets the appropriate Metal resource indexes within this binding from the
+// specified descriptor set binding counts, and updates those counts accordingly.
+void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
+																  MVKShaderStageResourceBinding* pDescSetCounts,
+																  const VkDescriptorSetLayoutBinding* pBinding) {
     switch (pBinding->descriptorType) {
         case VK_DESCRIPTOR_TYPE_SAMPLER:
             pBindingIndexes->samplerIndex = pDescSetCounts->samplerIndex;
             pDescSetCounts->samplerIndex += pBinding->descriptorCount;
+
+			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfSamplers) {
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
+			}
             break;
 
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
@@ -479,6 +482,15 @@ VkResult MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderS
             pDescSetCounts->textureIndex += pBinding->descriptorCount;
             pBindingIndexes->samplerIndex = pDescSetCounts->samplerIndex;
             pDescSetCounts->samplerIndex += pBinding->descriptorCount;
+
+			if (pBinding->descriptorCount > 1) {
+				if ( !_device->_pMetalFeatures->arrayOfTextures ) {
+					setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
+				}
+				if ( !_device->_pMetalFeatures->arrayOfSamplers ) {
+					setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
+				}
+			}
             break;
 
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -488,6 +500,10 @@ VkResult MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderS
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             pBindingIndexes->textureIndex = pDescSetCounts->textureIndex;
             pDescSetCounts->textureIndex += pBinding->descriptorCount;
+
+			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
+				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
+			}
             break;
 
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -501,7 +517,6 @@ VkResult MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderS
         default:
             break;
     }
-    return VK_SUCCESS;
 }
 
 
@@ -634,7 +649,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
     // Create the descriptor bindings
     _bindings.reserve(pCreateInfo->bindingCount);
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
-        _bindings.emplace_back(this, &pCreateInfo->pBindings[i]);
+        _bindings.emplace_back(_device, this, &pCreateInfo->pBindings[i]);
         _bindingToIndex[pCreateInfo->pBindings[i].binding] = i;
         setConfigurationResult(_bindings.back().getConfigurationResult());
     }

@@ -618,6 +618,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
 		_metalFeatures.maxTextureDimension = (16 * KIBI);
 	}
+
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) {
+		_metalFeatures.arrayOfTextures = true;
+	}
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) {
+		_metalFeatures.arrayOfSamplers = true;
+	}
+
 #endif
 
 #if MVK_MACOS
@@ -642,6 +650,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
         _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2);
         _metalFeatures.texelBuffers = true;
+		_metalFeatures.arrayOfTextures = true;
+		_metalFeatures.arrayOfSamplers = true;
 		_metalFeatures.presentModeImmediate = true;
     }
 
@@ -683,6 +693,9 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderInt16 = true;
 	_features.multiDrawIndirect = true;
 
+	_features.shaderSampledImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
+	_features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
+
     if (_metalFeatures.indirectDrawing && _metalFeatures.baseVertexInstanceDrawing) {
         _features.drawIndirectFirstInstance = true;
     }
@@ -697,19 +710,19 @@ void MVKPhysicalDevice::initFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
         _features.occlusionQueryPrecise = true;
     }
-    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) {
-        _features.shaderSampledImageArrayDynamicIndexing = true;
-        _features.shaderStorageImageArrayDynamicIndexing = true;
-    }
-	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
+
+  if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
 		_features.dualSrcBlend = true;
 	}
-	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
+
+  if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
 		_features.depthClamp = true;
 	}
+  
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) {
 		_features.imageCubeArray = true;
 	}
+  
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
 		_features.multiViewport = true;
 	}
@@ -729,8 +742,6 @@ void MVKPhysicalDevice::initFeatures() {
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
         _features.multiViewport = true;
-        _features.shaderSampledImageArrayDynamicIndexing = true;
-        _features.shaderStorageImageArrayDynamicIndexing = true;
     }
 
 #endif
@@ -1894,9 +1905,13 @@ void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 		const VkDeviceQueueCreateInfo* pQFInfo = &pCreateInfo->pQueueCreateInfos[qrIdx];
 		uint32_t qfIdx = pQFInfo->queueFamilyIndex;
 		MVKQueueFamily* qFam = qFams[qfIdx];
+		VkQueueFamilyProperties qfProps;
+		qFam->getProperties(&qfProps);
+
 		_queuesByQueueFamilyIndex.resize(qfIdx + 1);	// Ensure an entry for this queue family exists
 		auto& queues = _queuesByQueueFamilyIndex[qfIdx];
-		for (uint32_t qIdx = 0; qIdx < pQFInfo->queueCount; qIdx++) {
+		uint32_t qCnt = min(pQFInfo->queueCount, qfProps.queueCount);
+		for (uint32_t qIdx = 0; qIdx < qCnt; qIdx++) {
 			queues.push_back(new MVKQueue(this, qFam, qIdx, pQFInfo->pQueuePriorities[qIdx]));
 		}
 	}
