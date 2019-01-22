@@ -33,7 +33,6 @@ using namespace std;
 
 #define MVK_FMT_IMAGE_FEATS			(VK_FORMAT_FEATURE_SAMPLED_IMAGE_BIT                    \
 									| VK_FORMAT_FEATURE_STORAGE_IMAGE_BIT                   \
-									| VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT            \
                                     | VK_FORMAT_FEATURE_BLIT_SRC_BIT                        \
 									| VK_FORMAT_FEATURE_TRANSFER_SRC_BIT                    \
 									| VK_FORMAT_FEATURE_TRANSFER_DST_BIT)
@@ -79,8 +78,7 @@ using namespace std;
 #endif
 
 #define MVK_FMT_BUFFER_FEATS		(VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT             \
-									| VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT            \
-									| VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT)
+									| VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)
 
 #define MVK_FMT_BUFFER_VTX_FEATS	(MVK_FMT_BUFFER_FEATS | VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT)
 
