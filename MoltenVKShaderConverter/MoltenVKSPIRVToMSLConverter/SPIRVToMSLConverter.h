@@ -143,6 +143,9 @@ namespace mvk {
         /** Returns whether the vertex buffer at the specified Metal binding index is used by the shader. */
         bool isVertexBufferUsed(uint32_t mslBuffer) const;
 
+		/** Marks all vertex attributes and resources as being used by the shader. */
+		void markAllAttributesAndResourcesUsed();
+
         /**
          * Returns whether this context matches the other context. It does if the respective 
          * options match and any vertex attributes and resource bindings used by this context

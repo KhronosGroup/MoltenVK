@@ -105,6 +105,15 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::isVertexBufferUsed(uint32_t m
     return false;
 }
 
+MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::markAllAttributesAndResourcesUsed() {
+
+	if (options.entryPointStage == spv::ExecutionModelVertex) {
+		for (auto& va : vertexAttributes) { va.isUsedByShader = true; }
+	}
+
+	for (auto& rb : resourceBindings) { rb.isUsedByShader = true; }
+}
+
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::matches(const SPIRVToMSLConverterContext& other) const {
 
     if ( !options.matches(other.options) ) { return false; }
