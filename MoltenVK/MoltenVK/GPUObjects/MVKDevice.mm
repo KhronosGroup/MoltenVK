@@ -615,6 +615,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
 		_metalFeatures.indirectDrawing = true;
 		_metalFeatures.baseVertexInstanceDrawing = true;
+		_metalFeatures.combinedStoreResolveAction = true;
 		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
 		_metalFeatures.maxTextureDimension = (16 * KIBI);
 	}
@@ -644,6 +645,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
         _metalFeatures.samplerClampToBorder = true;
+        _metalFeatures.combinedStoreResolveAction = true;
         _metalFeatures.maxMTLBufferSize = (1 * GIBI);
     }
 

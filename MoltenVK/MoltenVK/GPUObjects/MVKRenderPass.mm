@@ -269,13 +269,13 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
     // If a resolve attachment exists, this attachment must resolve once complete.
     // Otherwise only allow the attachment to be discarded if we're actually rendering
     // to the entire attachment and we're in the last subpass.
-    if (hasResolveAttachment) {
+    if (hasResolveAttachment && !_renderPass->getDevice()->getPhysicalDevice()->getMetalFeatures()->combinedStoreResolveAction) {
         mtlAttDesc.storeAction = MTLStoreActionMultisampleResolve;
     } else if ( isRenderingEntireAttachment && (subpass->_subpassIndex == _lastUseSubpassIdx) ) {
         VkAttachmentStoreOp storeOp = isStencil ? _info.stencilStoreOp : _info.storeOp;
-        mtlAttDesc.storeAction = mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp);
+        mtlAttDesc.storeAction = mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp, hasResolveAttachment);
     } else {
-        mtlAttDesc.storeAction = MTLStoreActionStore;
+        mtlAttDesc.storeAction = hasResolveAttachment ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
     }
     return willClear;
 }
