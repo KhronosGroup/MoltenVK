@@ -112,6 +112,23 @@
 #   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    0
 #endif
 
+/**
+ * The index of the queue family whose presentation submissions will
+ * be used as the default GPU Capture Scope during debugging in Xcode.
+ */
+#ifndef MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX
+#   define MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX    0
+#endif
+
+/**
+ * The index of the queue, within the queue family identified by the
+ * MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX setting, whose presentation
+ * submissions will be used as the default GPU Capture Scope during debugging in Xcode.
+ */
+#ifndef MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX
+#   define MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX    0
+#endif
+
 
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.

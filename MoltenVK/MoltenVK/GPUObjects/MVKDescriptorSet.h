@@ -73,7 +73,7 @@ typedef struct MVKShaderResourceBinding {
 #pragma mark MVKDescriptorSetLayoutBinding
 
 /** Represents a Vulkan descriptor set layout binding. */
-class MVKDescriptorSetLayoutBinding : public MVKConfigurableObject {
+class MVKDescriptorSetLayoutBinding : public MVKBaseDeviceObject {
 
 public:
 
@@ -100,7 +100,8 @@ public:
                                         uint32_t dslIndex);
 
 	/** Constructs an instance. */
-	MVKDescriptorSetLayoutBinding(MVKDescriptorSetLayout* layout,
+	MVKDescriptorSetLayoutBinding(MVKDevice* device,
+								  MVKDescriptorSetLayout* layout,
 								  const VkDescriptorSetLayoutBinding* pBinding);
 
 	MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding);
@@ -112,9 +113,9 @@ protected:
 	friend class MVKDescriptorBinding;
 	friend class MVKPipelineLayout;
 
-	VkResult initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
-                                           MVKShaderStageResourceBinding* pDescSetCounts,
-                                           const VkDescriptorSetLayoutBinding* pBinding);
+	void initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
+									   MVKShaderStageResourceBinding* pDescSetCounts,
+									   const VkDescriptorSetLayoutBinding* pBinding);
 
 	VkDescriptorSetLayoutBinding _info;
 	std::vector<MVKSampler*> _immutableSamplers;
