@@ -72,15 +72,11 @@ void MVKViewportCommandEncoderState::setViewports(const MVKVector<MTLViewport> &
 
 void MVKViewportCommandEncoderState::encodeImpl() {
     MVKAssert(!_mtlViewports.empty(), "Must specify at least one viewport");
-#if MVK_MACOS
     if (_cmdEncoder->getDevice()->_pFeatures->multiViewport) {
         [_cmdEncoder->_mtlRenderEncoder setViewports: &_mtlViewports[0] count: _mtlViewports.size()];
     } else {
         [_cmdEncoder->_mtlRenderEncoder setViewport: _mtlViewports[0]];
     }
-#else
-    [_cmdEncoder->_mtlRenderEncoder setViewport: _mtlViewports[0]];
-#endif
 }
 
 void MVKViewportCommandEncoderState::resetImpl() {
@@ -117,15 +113,11 @@ void MVKScissorCommandEncoderState::encodeImpl() {
 	std::for_each(clippedScissors.begin(), clippedScissors.end(), [this](MTLScissorRect& scissor) {
 		scissor = _cmdEncoder->clipToRenderArea(scissor);
 	});
-#if MVK_MACOS
 	if (_cmdEncoder->getDevice()->_pFeatures->multiViewport) {
 		[_cmdEncoder->_mtlRenderEncoder setScissorRects: &clippedScissors[0] count: clippedScissors.size()];
 	} else {
 		[_cmdEncoder->_mtlRenderEncoder setScissorRect: clippedScissors[0]];
 	}
-#else
-	[_cmdEncoder->_mtlRenderEncoder setScissorRect: clippedScissors[0]];
-#endif
 }
 
 void MVKScissorCommandEncoderState::resetImpl() {

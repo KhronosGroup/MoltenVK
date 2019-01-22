@@ -712,8 +712,21 @@ void MVKPhysicalDevice::initFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
         _features.occlusionQueryPrecise = true;
     }
-	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
+
+  if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
+		_features.dualSrcBlend = true;
+	}
+
+  if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
 		_features.depthClamp = true;
+	}
+  
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) {
+		_features.imageCubeArray = true;
+	}
+  
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
+		_features.multiViewport = true;
 	}
 #endif
 
@@ -837,7 +850,15 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxImageDimensionCube = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxFramebufferWidth = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxFramebufferHeight = _metalFeatures.maxTextureDimension;
+#if MVK_IOS
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
+		_properties.limits.maxFramebufferLayers = 256;
+	} else {
+		_properties.limits.maxFramebufferLayers = 1;
+	}
+#else
 	_properties.limits.maxFramebufferLayers = 256;
+#endif
 
     _properties.limits.maxViewportDimensions[0] = _metalFeatures.maxTextureDimension;
     _properties.limits.maxViewportDimensions[1] = _metalFeatures.maxTextureDimension;
@@ -853,8 +874,13 @@ void MVKPhysicalDevice::initProperties() {
 	} else {
 		_properties.limits.maxViewports = 1;
 	}
-#else
-	_properties.limits.maxViewports = 1;
+#endif
+#if MVK_IOS
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
+		_properties.limits.maxViewports = 16;
+	} else {
+		_properties.limits.maxViewports = 1;
+	}
 #endif
 	_properties.limits.maxSamplerAnisotropy = 16;
 
