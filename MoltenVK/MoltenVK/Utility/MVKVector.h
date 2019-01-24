@@ -62,8 +62,6 @@ using MVKVector = std::vector<T>;
 // parameters that have been used for declaration. To avoid this MVKVectorInline
 // is derived from MVKVector. If you want to pass MVKVectorInline to a function
 // use MVKVector.
-// Keep in mind MVKVector only supports iterating over the MVKVector, no other
-// operation is supported.
 //
 #include "MVKVectorAllocator.h"
 #include <type_traits>
@@ -105,14 +103,33 @@ public:
   MVKVector( mvk_vector_allocator_base<Type> *a ) : alc_ptr{ a } { }
   virtual ~MVKVector() { }
 
-  iterator begin()    const { return iterator( 0,               *this ); }
-  iterator end()      const { return iterator( alc_ptr->size(), *this ); }
-  size_t   size()     const { return alc_ptr->size(); }
-  bool     empty()    const { return alc_ptr->size() == 0; }
-  size_t   capacity() const { return alc_ptr->get_capacity(); }
+  iterator begin() const { return iterator( 0,               *this ); }
+  iterator end()   const { return iterator( alc_ptr->size(), *this ); }
 
-  virtual const Type &operator[]( const size_t i ) const = 0;
-  virtual void push_back( const Type &t ) = 0;
+  virtual const Type &operator[]( const size_t i ) const                  = 0;
+  virtual       Type &operator[]( const size_t i )                        = 0;
+  virtual const Type &at( const size_t i ) const                          = 0;
+  virtual       Type &at( const size_t i )                                = 0;
+  virtual const Type &front() const                                       = 0;
+  virtual       Type &front()                                             = 0;
+  virtual const Type &back() const                                        = 0;
+  virtual       Type &back()                                              = 0;
+  virtual const Type *data() const                                        = 0;
+  virtual       Type *data()                                              = 0;
+
+  virtual size_t      size()     const                                    = 0;
+  virtual bool        empty()    const                                    = 0;
+  virtual size_t      capacity() const                                    = 0;
+
+  virtual void        pop_back()                                          = 0;
+  virtual void        clear()                                             = 0;
+  virtual void        reset()                                             = 0;
+  virtual void        reserve( const size_t new_size )                    = 0;
+  virtual void        assign( const size_t new_size, const Type &t )      = 0;
+  virtual void        resize( const size_t new_size, const Type t = { } ) = 0;
+  virtual void        shrink_to_fit()                                     = 0;
+  virtual void        push_back( const Type &t )                          = 0;
+  virtual void        push_back( Type &&t )                               = 0;
 };
 
 
@@ -132,7 +149,7 @@ public:
     iterator &operator=( const iterator &it ) = delete;
 
     Type *operator->() const { return vector->alc_ptr->ptr[index]; }
-    Type &operator*()  const { return vector->alc_ptr->ptr[index]; }
+    Type *&operator*()       { return vector->alc_ptr->ptr[index]; }
     operator Type*&()  const { return &vector->alc_ptr->ptr[index]; }
 
     bool operator==( const iterator &it ) const { return vector == it.vector && index == it.index; }
@@ -150,14 +167,31 @@ public:
   MVKVector( mvk_vector_allocator_base<Type*> *a ) : alc_ptr{ a } { }
   virtual ~MVKVector() { }
 
-  iterator begin()    const { return iterator( 0,               *this ); }
-  iterator end()      const { return iterator( alc_ptr->size(), *this ); }
-  size_t   size()     const { return alc_ptr->size(); }
-  bool     empty()    const { return alc_ptr->size() == 0; }
-  size_t   capacity() const { return alc_ptr->get_capacity(); }
+  iterator begin() const { return iterator( 0,               *this ); }
+  iterator end()   const { return iterator( alc_ptr->size(), *this ); }
 
-  virtual Type * const &operator[]( const size_t i ) const = 0;
-  virtual void push_back( const Type *t ) = 0;
+  virtual const Type * const  operator[]( const size_t i ) const             = 0;
+  virtual       Type *       &operator[]( const size_t i )                   = 0;
+  virtual const Type * const  at( const size_t i ) const                     = 0;
+  virtual       Type *       &at( const size_t i )                           = 0;
+  virtual const Type * const  front() const                                  = 0;
+  virtual       Type *       &front()                                        = 0;
+  virtual const Type * const  back() const                                   = 0;
+  virtual       Type *       &back()                                         = 0;
+  virtual const Type * const *data() const                                   = 0;
+
+  virtual size_t              size() const                                   = 0;
+  virtual bool                empty() const                                  = 0;
+  virtual size_t              capacity() const                               = 0;
+
+  virtual void                pop_back()                                     = 0;
+  virtual void                clear()                                        = 0;
+  virtual void                reset()                                        = 0;
+  virtual void                reserve( const size_t new_size )               = 0;
+  virtual void                assign( const size_t new_size, const Type *t ) = 0;
+  virtual void                resize( const size_t new_size, const Type *t ) = 0;
+  virtual void                shrink_to_fit()                                = 0;
+  virtual void                push_back( const Type *t )                     = 0;
 };
 
 
@@ -211,7 +245,7 @@ private:
 
   void vector_Allocate( const size_t s )
   {
-    const auto new_reserved_size = tm_max( s, size() );
+    const auto new_reserved_size = s > size() ? s : size();
 
     alc.allocate( new_reserved_size );
   }
@@ -373,72 +407,25 @@ public:
     alc.swap( a.alc );
   }
 
-  void clear()
-  {
-    alc.template destruct_all<Type>();
-  }
+  iterator begin() const { return iterator( 0, *this ); }
+  iterator end()   const { return iterator( alc.num_elements_used, *this ); }
 
-  void reset()
-  {
-    alc.deallocate();
-  }
+  const Type &operator[]( const size_t i ) const override { return alc.ptr[i]; }
+        Type &operator[]( const size_t i )       override { return alc.ptr[i]; }
+  const Type &at( const size_t i )         const override { return alc.ptr[i]; }
+        Type &at( const size_t i )               override { return alc.ptr[i]; }
+  const Type &front()                      const override { return alc.ptr[0]; }
+        Type &front()                            override { return alc.ptr[0]; }
+  const Type &back()                       const override { return alc.ptr[alc.num_elements_used - 1]; }
+        Type &back()                             override { return alc.ptr[alc.num_elements_used - 1]; }
+  const Type *data()                       const override { return alc.ptr; }
+        Type *data()                             override { return alc.ptr; }
 
-  iterator         begin()  const { return iterator( 0, *this ); }
-  iterator         end()    const { return iterator( alc.num_elements_used, *this ); }
-  size_t           size()   const { return alc.num_elements_used; }
-  bool             empty()  const { return alc.num_elements_used == 0; }
+  size_t      size()                       const override { return alc.num_elements_used; }
+  bool        empty()                      const override { return alc.num_elements_used == 0; }
+  size_t      capacity()                   const override { return alc.get_capacity(); }
 
-  Type &at( const size_t i ) const
-  {
-    return alc.ptr[i];
-  }
-
-  const Type &operator[]( const size_t i ) const override
-  {
-    return alc.ptr[i];
-  }
-
-  Type &operator[]( const size_t i )
-  {
-    return alc.ptr[i];
-  }
-
-  const Type *data() const
-  {
-    return alc.ptr;
-  }
-
-  Type *data()
-  {
-    return alc.ptr;
-  }
-
-  size_t capacity() const
-  {
-    return alc.get_capacity();
-  }
-
-  const Type &front() const
-  {
-    return alc.ptr[0];
-  }
-
-  Type &front()
-  {
-    return alc.ptr[0];
-  }
-
-  const Type &back() const
-  {
-    return alc.ptr[alc.num_elements_used - 1];
-  }
-
-  Type &back()
-  {
-    return alc.ptr[alc.num_elements_used - 1];
-  }
-
-  void pop_back()
+  void pop_back() override
   {
     if( alc.num_elements_used > 0 )
     {
@@ -447,7 +434,17 @@ public:
     }
   }
 
-  void reserve( const size_t new_size )
+  void clear() override
+  {
+    alc.template destruct_all<Type>();
+  }
+
+  void reset() override
+  {
+    alc.deallocate();
+  }
+
+  void reserve( const size_t new_size ) override
   {
     if( new_size > capacity() )
     {
@@ -455,7 +452,7 @@ public:
     }
   }
 
-  void assign( const size_t new_size, const Type &t )
+  void assign( const size_t new_size, const Type &t ) override
   {
     if( new_size <= capacity() )
     {
@@ -486,7 +483,7 @@ public:
     }
   }
 
-  void resize( const size_t new_size, const Type t = { } )
+  void resize( const size_t new_size, const Type t = { } ) override
   {
     if( new_size == alc.num_elements_used )
     {
@@ -530,7 +527,7 @@ public:
   }
 
   // trims the capacity of the slist to the number of alc.ptr
-  void shrink_to_fit()
+  void shrink_to_fit() override
   {
     alc.shrink_to_fit();
   }
@@ -587,7 +584,7 @@ public:
     ++alc.num_elements_used;
   }
 
-  void push_back( Type &&t )
+  void push_back( Type &&t ) override
   {
     if( alc.num_elements_used == capacity() )
       vector_ReAllocate( vector_GetNextCapacity() );
@@ -657,7 +654,7 @@ private:
 
   void vector_Allocate( const size_t s )
   {
-    const auto new_reserved_size = tm_max( s, size() );
+    const auto new_reserved_size = s > size() ? s : size();
 
     alc.allocate( new_reserved_size );
   }
@@ -797,62 +794,24 @@ public:
     alc.swap( a.alc );
   }
 
-  void clear()
-  {
-    alc.num_elements_used = 0;
-  }
-
-  void reset()
-  {
-    alc.deallocate();
-  }
-
   iterator begin()        { return iterator( 0, *this ); }
   iterator end()          { return iterator( alc.num_elements_used, *this ); }
-  size_t   size()   const { return alc.num_elements_used; }
-  bool     empty()  const { return alc.num_elements_used == 0; }
 
-  Type *at( const size_t i ) const
-  {
-    return alc.ptr[i];
-  }
+  const Type * const  at( const size_t i )         const override { return alc.ptr[i]; }
+        Type *       &at( const size_t i )               override { return alc.ptr[i]; }
+  const Type * const  operator[]( const size_t i ) const override { return alc.ptr[i]; }
+        Type *       &operator[]( const size_t i )       override { return alc.ptr[i]; }
+  const Type * const  front()                      const override { return alc.ptr[0]; }
+        Type *       &front()                            override { return alc.ptr[0]; }
+  const Type * const  back()                       const override { return alc.ptr[alc.num_elements_used - 1]; }
+        Type *       &back()                             override { return alc.ptr[alc.num_elements_used - 1]; }
+  const Type * const *data()                       const override { return &alc.ptr[0]; }
 
-  Type * const &operator[]( const size_t i ) const override
-  {
-    return alc.ptr[i];
-  }
+  size_t   size()                                  const override { return alc.num_elements_used; }
+  bool     empty()                                 const override { return alc.num_elements_used == 0; }
+  size_t   capacity()                              const override { return alc.get_capacity(); }
 
-  Type *&operator[]( const size_t i )
-  {
-    return alc.ptr[i];
-  }
-
-  const Type * const *data() const
-  {
-    return &alc.ptr[0];
-  }
-
-  Type **data()
-  {
-    return &alc.ptr[0];
-  }
-
-  size_t capacity() const
-  {
-    return alc.get_capacity();
-  }
-
-  const Type *back() const
-  {
-    return alc.ptr[alc.num_elements_used - 1];
-  }
-
-  Type *back()
-  {
-    return alc.ptr[alc.num_elements_used - 1];
-  }
-
-  void pop_back()
+  void pop_back() override
   {
     if ( alc.num_elements_used > 0 )
     {
@@ -860,7 +819,17 @@ public:
     }
   }
 
-  void reserve( const size_t new_size )
+  void clear() override
+  {
+    alc.num_elements_used = 0;
+  }
+
+  void reset() override
+  {
+    alc.deallocate();
+  }
+
+  void reserve( const size_t new_size ) override
   {
     if ( new_size > capacity() )
     {
@@ -868,7 +837,7 @@ public:
     }
   }
 
-  void assign( const size_t new_size, const Type *t )
+  void assign( const size_t new_size, const Type *t ) override
   {
     if ( new_size <= capacity() )
     {
@@ -887,7 +856,7 @@ public:
     alc.num_elements_used = new_size;
   }
 
-  void resize( const size_t new_size )
+  void resize( const size_t new_size, const Type *t ) override
   {
     if ( new_size == alc.num_elements_used )
     {
@@ -909,7 +878,7 @@ public:
 
       while ( alc.num_elements_used < new_size )
       {
-        alc.ptr[alc.num_elements_used] = nullptr;
+        alc.ptr[alc.num_elements_used] = const_cast< Type* >( t );
         ++alc.num_elements_used;
       }
     }
@@ -920,7 +889,7 @@ public:
   }
 
   // trims the capacity of the MVKVector to the number of used elements
-  void shrink_to_fit()
+  void shrink_to_fit() override
   {
     alc.shrink_to_fit();
   }
