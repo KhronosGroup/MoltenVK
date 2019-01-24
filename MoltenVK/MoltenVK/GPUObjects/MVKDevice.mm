@@ -230,10 +230,16 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
             maxExt.depth = 1;
 			maxLevels = 1;
             maxLayers = pLimits->maxImageArrayLayers;
+            sampleCounts = VK_SAMPLE_COUNT_1_BIT;
             break;
         case VK_IMAGE_TYPE_2D:
-            maxExt.width = pLimits->maxImageDimension2D;
-            maxExt.height = pLimits->maxImageDimension2D;
+            if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ) {
+                maxExt.width = pLimits->maxImageDimensionCube;
+                maxExt.height = pLimits->maxImageDimensionCube;
+            } else {
+                maxExt.width = pLimits->maxImageDimension2D;
+                maxExt.height = pLimits->maxImageDimension2D;
+            }
             maxExt.depth = 1;
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
 				// Linear textures have additional restrictions under Metal:
@@ -255,8 +261,14 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				// - They may not be multisampled.
 				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 			} else {
+				VkFormatProperties fmtProps;
+				getFormatProperties(format, &fmtProps);
 				// Compressed multisampled textures aren't supported.
-				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
+				// Multisampled cube textures aren't supported.
+				// Non-renderable multisampled textures aren't supported.
+				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed ||
+					mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ||
+					!mvkIsAnyFlagEnabled(fmtProps.optimalTilingFeatures, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT|VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
 					sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 				}
 				maxLevels = mvkMipmapLevels3D(maxExt);
@@ -281,8 +293,6 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				// If this is a compressed format and there's no codec, it isn't
 				// supported.
 				if (!mvkCanDecodeFormat(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
-				// Compressed multisampled textures aren't supported.
-				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 			}
 #endif
             maxExt.width = pLimits->maxImageDimension3D;
@@ -290,6 +300,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
             maxExt.depth = pLimits->maxImageDimension3D;
 			maxLevels = mvkMipmapLevels3D(maxExt);
             maxLayers = 1;
+            sampleCounts = VK_SAMPLE_COUNT_1_BIT;
             break;
         default:
 			// Metal does not allow linear tiling on anything but 2D textures
@@ -304,6 +315,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
             maxExt = { 1, 1, 1};
             maxLayers = 1;
 			maxLevels = 1;
+			sampleCounts = VK_SAMPLE_COUNT_1_BIT;
             break;
     }
 
