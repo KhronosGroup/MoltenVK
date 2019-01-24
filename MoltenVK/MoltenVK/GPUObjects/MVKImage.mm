@@ -1028,7 +1028,6 @@ void MVKSwapchainImage::makeAvailable() {
 
 		signaler = _availabilitySignalers.front();
 		_availabilitySignalers.erase( _availabilitySignalers.begin() );
-		//_availabilitySignalers.pop_front();
 	}
 
 	// Signal the semaphore and fence, and let them know they are no longer being tracked.

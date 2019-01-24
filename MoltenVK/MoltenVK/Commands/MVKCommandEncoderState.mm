@@ -394,8 +394,7 @@ void MVKBlendColorCommandEncoderState::resetImpl() {
 #pragma mark MVKResourcesCommandEncoderState
 
 // Updates the swizzle for an image in the given vector.
-template<typename T>
-static void updateSwizzle(T &constants, uint32_t index, uint32_t swizzle) {
+static void updateSwizzle(MVKVector<uint32_t> &constants, uint32_t index, uint32_t swizzle) {
 	if (index >= constants.size()) { constants.resize(index + 1); }
 	constants[index] = swizzle;
 }
