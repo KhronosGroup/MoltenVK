@@ -330,6 +330,7 @@ Functionality added with `MVK_USE_METAL_PRIVATE_API` enabled includes:
 - `VkPhysicalDeviceFeatures::wideLines`
 - `VkPhysicalDeviceFeatures::logicOp`
 - `VkPhysicalDevicePortabilitySubsetFeaturesKHR::samplerMipLodBias`
+- `VkGraphicsPipelineRasterizationCreateInfo::sampleMask`, using `MTLRenderPipelineDescriptor.sampleMask` instead of emulating it in the fragment shader
 
 
 <a name="demos"></a>

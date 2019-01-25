@@ -1302,9 +1302,15 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 			shaderConfig.options.mslOptions.sample_dref_lod_array_as_grad = true;
 		}
 		if (_isRasterizing && pCreateInfo->pMultisampleState) {		// Must ignore allowed bad pMultisampleState pointer if rasterization disabled
-			if (pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
-				shaderConfig.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
+#if MVK_USE_METAL_PRIVATE_API
+			if (!getMVKConfig().useMetalPrivateAPI) {
+#endif
+				if (pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
+					shaderConfig.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
+				}
+#if MVK_USE_METAL_PRIVATE_API
 			}
+#endif
 			shaderConfig.options.mslOptions.force_sample_rate_shading = pCreateInfo->pMultisampleState->sampleShadingEnable && pCreateInfo->pMultisampleState->minSampleShading != 0.0f;
 		}
 		if (std::any_of(shaderOutputs.begin(), shaderOutputs.end(), [](const SPIRVShaderOutput& output) { return output.builtin == spv::BuiltInLayer; })) {
@@ -1651,6 +1657,11 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
     // Multisampling - must ignore allowed bad pMultisampleState pointer if rasterization disabled
     if (_isRasterizing && pCreateInfo->pMultisampleState) {
         plDesc.rasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(pCreateInfo->pMultisampleState->rasterizationSamples);
+#if MVK_USE_METAL_PRIVATE_API
+        if (getMVKConfig().useMetalPrivateAPI && pCreateInfo->pMultisampleState->pSampleMask) {
+            plDesc.sampleMaskMVK = pCreateInfo->pMultisampleState->pSampleMask[0];
+        }
+#endif
         plDesc.alphaToCoverageEnabled = pCreateInfo->pMultisampleState->alphaToCoverageEnable;
         plDesc.alphaToOneEnabled = pCreateInfo->pMultisampleState->alphaToOneEnable;
 
