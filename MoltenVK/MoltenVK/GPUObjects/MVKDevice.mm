@@ -694,6 +694,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.arrayOfSamplers = true;
 	}
 
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
+		_metalFeatures.layeredRendering = true;
+	}
+
 #endif
 
 #if MVK_MACOS
@@ -731,6 +735,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 #endif
 
+    if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
+        _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
+    }
+
     for (uint32_t sc = VK_SAMPLE_COUNT_1_BIT; sc <= VK_SAMPLE_COUNT_64_BIT; sc <<= 1) {
         if ([_mtlDevice supportsTextureSampleCount: mvkSampleCountFromVkSampleCountFlagBits((VkSampleCountFlagBits)sc)]) {
             _metalFeatures.supportedSampleCounts |= sc;
@@ -760,7 +768,9 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderStorageBufferArrayDynamicIndexing = true;
     _features.shaderClipDistance = true;
     _features.shaderInt16 = true;
-	_features.multiDrawIndirect = true;
+    _features.multiDrawIndirect = true;
+    _features.variableMultisampleRate = true;
+    _features.inheritedQueries = true;
 
 	_features.shaderSampledImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
 	_features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
@@ -780,11 +790,11 @@ void MVKPhysicalDevice::initFeatures() {
         _features.occlusionQueryPrecise = true;
     }
 
-  if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
 		_features.dualSrcBlend = true;
 	}
 
-  if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v4] ) {
 		_features.depthClamp = true;
 	}
   
@@ -873,8 +883,8 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    sparseResidency8Samples;
 //    VkBool32    sparseResidency16Samples;
 //    VkBool32    sparseResidencyAliased;
-//    VkBool32    variableMultisampleRate;
-//    VkBool32    inheritedQueries;
+//    VkBool32    variableMultisampleRate;                      // done
+//    VkBool32    inheritedQueries;                             // done
 //} VkPhysicalDeviceFeatures;
 
 /** Initializes the physical device properties of this instance. */
@@ -900,7 +910,16 @@ void MVKPhysicalDevice::initProperties() {
 #endif
 
     _properties.limits.maxFragmentOutputAttachments = _properties.limits.maxColorAttachments;
-    _properties.limits.maxFragmentDualSrcAttachments = _properties.limits.maxFragmentOutputAttachments;
+#if MVK_IOS
+    if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
+        _properties.limits.maxFragmentDualSrcAttachments = 1;
+    } else {
+        _properties.limits.maxFragmentDualSrcAttachments = 0;
+    }
+#endif
+#if MVK_MACOS
+    _properties.limits.maxFragmentDualSrcAttachments = 1;
+#endif
 
 	_properties.limits.framebufferColorSampleCounts = _metalFeatures.supportedSampleCounts;
 	_properties.limits.framebufferDepthSampleCounts = _metalFeatures.supportedSampleCounts;
@@ -917,15 +936,11 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxImageDimensionCube = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxFramebufferWidth = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxFramebufferHeight = _metalFeatures.maxTextureDimension;
-#if MVK_IOS
-	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
+	if ( _metalFeatures.layeredRendering ) {
 		_properties.limits.maxFramebufferLayers = 256;
 	} else {
 		_properties.limits.maxFramebufferLayers = 1;
 	}
-#else
-	_properties.limits.maxFramebufferLayers = 256;
-#endif
 
     _properties.limits.maxViewportDimensions[0] = _metalFeatures.maxTextureDimension;
     _properties.limits.maxViewportDimensions[1] = _metalFeatures.maxTextureDimension;
@@ -1016,7 +1031,7 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.lineWidthRange[1] = 1;
     _properties.limits.pointSizeGranularity = 1;
 
-    _properties.limits.standardSampleLocations = VK_FALSE;
+    _properties.limits.standardSampleLocations = VK_TRUE;
     _properties.limits.strictLines = VK_FALSE;
 
 	VkExtent3D wgSize = mvkVkExtent3DFromMTLSize(_mtlDevice.maxThreadsPerThreadgroup);
