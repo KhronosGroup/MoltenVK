@@ -277,7 +277,7 @@ VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
     resetMTLTexture();
     resetIOSurface();
 
-    _mtlTexture = mtlTexture;
+    _mtlTexture = [mtlTexture retain];		// retained
 
     _mtlPixelFormat = _mtlTexture.pixelFormat;
     _mtlTextureType = _mtlTexture.textureType;
