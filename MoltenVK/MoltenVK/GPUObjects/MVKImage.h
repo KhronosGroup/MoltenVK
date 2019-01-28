@@ -280,15 +280,19 @@ public:
 
 #pragma mark Construction
 
-	MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo);
+	MVKImageView(MVKDevice* device,
+				 const VkImageViewCreateInfo* pCreateInfo,
+				 const MVKConfiguration* pAltMVKConfig = nullptr);
 
 	~MVKImageView() override;
 
 protected:
 	id<MTLTexture> newMTLTexture();
 	void initMTLTextureViewSupport();
-    MTLPixelFormat getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components, bool& useSwizzle);
-    bool matchesSwizzle(VkComponentMapping components, VkComponentMapping pattern);
+    MTLPixelFormat getSwizzledMTLPixelFormat(VkFormat format,
+											 VkComponentMapping components,
+											 bool& useSwizzle,
+											 const MVKConfiguration* pMVKConfig);
 	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
 
     MVKImage* _image;

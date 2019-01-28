@@ -18,7 +18,7 @@
 
 #import "DemoViewController.h"
 
-#include "mvk_vulkan.h"
+#include <MoltenVK/mvk_vulkan.h>
 #include "../../Vulkan-Tools/cube/cube.c"
 
 

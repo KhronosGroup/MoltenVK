@@ -6,6 +6,7 @@ External/cereal
 External/glslang
 External/SPIRV-Cross
 External/Vulkan-Headers
+External/Vulkan-Portability
 External/Vulkan-Tools
 External/VulkanSamples
 

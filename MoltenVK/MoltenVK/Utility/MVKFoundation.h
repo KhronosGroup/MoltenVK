@@ -297,6 +297,40 @@ static inline VkComponentMapping mvkUnpackSwizzle(uint32_t packed) {
 	return components;
 }
 
+/**
+ * Returns whether the two component swizzles, cs1 and cs2 match. Positional identity matches
+ * and wildcard matches are allowed. The two values match under any of the following conditions:
+ *   1) cs1 and cs2 are equal to each other.
+ *   2) Either cs1 or cs2 is equal to VK_COMPONENT_SWIZZLE_IDENTITY and the other value
+ *      is equal to the positional value csPos, which is one of VK_COMPONENT_SWIZZLE_R,
+ *      VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, or VK_COMPONENT_SWIZZLE_A.
+ *   3) Either cs1 or cs2 is VK_COMPONENT_SWIZZLE_MAX_ENUM, which is considered a wildcard,
+ *      and matches any value.
+ */
+static inline bool mvkVKComponentSwizzlesMatch(VkComponentSwizzle cs1,
+											   VkComponentSwizzle cs2,
+											   VkComponentSwizzle csPos) {
+	return ((cs1 == cs2) ||
+			((cs1 == VK_COMPONENT_SWIZZLE_IDENTITY) && (cs2 == csPos)) ||
+			((cs2 == VK_COMPONENT_SWIZZLE_IDENTITY) && (cs1 == csPos)) ||
+			(cs1 == VK_COMPONENT_SWIZZLE_MAX_ENUM) || (cs2 == VK_COMPONENT_SWIZZLE_MAX_ENUM));
+}
+
+/**
+ * Returns whether the two swizzle component mappings match each other, by comparing the
+ * corresponding elements of the two mappings. A component value of VK_COMPONENT_SWIZZLE_IDENTITY
+ * on either mapping matches the VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B,
+ * or VK_COMPONENT_SWIZZLE_A value in the other mapping if it is the correct position.
+ * A component value of VK_COMPONENT_SWIZZLE_MAX_ENUM is considered a wildcard and matches
+ * any value in the corresponding component in the other mapping.
+ */
+static inline bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkComponentMapping cm2) {
+	return (mvkVKComponentSwizzlesMatch(cm1.r, cm2.r, VK_COMPONENT_SWIZZLE_R) &&
+			mvkVKComponentSwizzlesMatch(cm1.g, cm2.g, VK_COMPONENT_SWIZZLE_G) &&
+			mvkVKComponentSwizzlesMatch(cm1.b, cm2.b, VK_COMPONENT_SWIZZLE_B) &&
+			mvkVKComponentSwizzlesMatch(cm1.a, cm2.a, VK_COMPONENT_SWIZZLE_A));
+}
+
 
 #pragma mark -
 #pragma mark Template functions

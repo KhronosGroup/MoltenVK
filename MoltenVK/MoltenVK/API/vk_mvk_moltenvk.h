@@ -375,26 +375,38 @@ typedef struct {
 	VkBool32 switchSystemGPU;
 
 	/**
-	 * If enabled, arbitrary ImageView component swizzles are supported, as defined
+	 * If enabled, arbitrary VkImageView component swizzles are supported, as defined
 	 * in VkImageViewCreateInfo::components when creating a VkImageView.
 	 *
-	 * If disabled, a very limited set of ImageView component swizzles are supported
+	 * If disabled, a very limited set of VkImageView component swizzles are supported
 	 * via format substitutions.
 	 *
 	 * Metal does not natively support per-texture swizzling. If this parameter is enabled
-	 * when a pipeline is compiled, ImageView swizzling is automatically performed in the
-	 * converted Metal shader code during all texture sampling and reading operations,
-	 * regardless of whether a swizzle has been specified for the ImageView associated
-	 * with the Metal texture. This may result in reduced performance.
+	 * both when a VkImageView is created, and when any pipeline that uses that VkImageView
+	 * is compiled, VkImageView swizzling is automatically performed in the converted Metal
+	 * shader code during all texture sampling and reading operations, regardless of whether
+	 * a swizzle is required for the VkImageView associated with the Metal texture.
+	 * This may result in reduced performance.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
-	 * Specifically, this parameter can be enabled when compiling some pipelines,
-	 * and disabled when compiling others. Existing pipelines are not automatically
-	 * re-compiled when this parameter is changed.
+	 * Specifically, this parameter can be enabled when creating VkImageViews that need it,
+	 * and compiling pipelines that use those VkImageViews, and can be disabled when creating
+	 * VkImageViews that don't need it, and compiling pipelines that use those VkImageViews.
 	 *
-	 * If this parameter is disabled, the following limited set of ImageView swizzles
-	 * are supported by MoltenVK, via automatic format substitution:
+	 * Existing pipelines are not automatically re-compiled when this parameter is changed.
+	 *
+	 * An error is logged and returned during VkImageView creation if that VkImageView
+	 * requires full image view swizzling and this feature is not enabled. An error is
+	 * also logged when a pipeline that was not compiled with full image view swizzling
+	 * is presented with a VkImageView that is expecting it.
+	 *
+	 * An error is also retuned and logged when a VkPhysicalDeviceImageFormatInfo2KHR is passed
+	 * in a call to vkGetPhysicalDeviceImageFormatProperties2KHR() to query for an VkImageView
+	 * format that will require full swizzling to be enabled, and this feature is not enabled.
+	 *
+	 * If this parameter is disabled, the following limited set of VkImageView swizzles are
+	 * supported by MoltenVK, via automatic format substitution:
 	 *
 	 * Texture format			       Swizzle
 	 * --------------                  -------

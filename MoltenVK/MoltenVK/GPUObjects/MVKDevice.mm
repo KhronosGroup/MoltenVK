@@ -65,7 +65,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
         features->features = _features;
         auto* next = (MVKVkAPIStructHeader*)features->pNext;
         while (next) {
-            switch (next->sType) {
+            switch ((uint32_t)next->sType) {
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
                 auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
                 storageFeatures->storageBuffer16BitAccess = true;
@@ -104,6 +104,16 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                 next = (MVKVkAPIStructHeader*)divisorFeatures->pNext;
                 break;
             }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
+				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
+				portabilityFeatures->triangleFans = false;
+				portabilityFeatures->separateStencilMaskRef = false;
+				portabilityFeatures->events = false;
+				portabilityFeatures->standardImageViews = false;
+				portabilityFeatures->samplerMipLodBias = false;
+				next = (MVKVkAPIStructHeader*)portabilityFeatures->pNext;
+				break;
+			}
             default:
                 next = (MVKVkAPIStructHeader*)next->pNext;
                 break;
@@ -120,36 +130,42 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
     if (properties) {
         properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         properties->properties = _properties;
-        auto* next = (VkStructureType*)properties->pNext;
-        while (next) {
-            switch (*next) {
+		auto* next = (MVKVkAPIStructHeader*)properties->pNext;
+		while (next) {
+			switch ((uint32_t)next->sType) {
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
                 auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
                 pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-                next = (VkStructureType*)pointClipProps->pNext;
+                next = (MVKVkAPIStructHeader*)pointClipProps->pNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
                 auto* maint3Props = (VkPhysicalDeviceMaintenance3Properties*)next;
                 maint3Props->maxPerSetDescriptors = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount + _metalFeatures.maxPerStageSamplerCount) * 2;
                 maint3Props->maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
-                next = (VkStructureType*)maint3Props->pNext;
+                next = (MVKVkAPIStructHeader*)maint3Props->pNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
                 auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
                 pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
-                next = (VkStructureType*)pushDescProps->pNext;
+                next = (MVKVkAPIStructHeader*)pushDescProps->pNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
                 auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
                 divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
-                next = (VkStructureType*)divisorProps->pNext;
+                next = (MVKVkAPIStructHeader*)divisorProps->pNext;
                 break;
             }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
+				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
+				portabilityProps->minVertexInputBindingStrideAlignment = 4;
+				next = (MVKVkAPIStructHeader*)portabilityProps->pNext;
+				break;
+			}
             default:
-                next = (VkStructureType*)((VkPhysicalDeviceProperties2*)next)->pNext;
+                next = (MVKVkAPIStructHeader*)((VkPhysicalDeviceProperties2*)next)->pNext;
                 break;
             }
         }
@@ -334,17 +350,56 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
     if ( !pImageFormatInfo || pImageFormatInfo->sType != VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR ) {
         return VK_ERROR_FORMAT_NOT_SUPPORTED;
     }
+
     if ( !getFormatIsSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
-    if ( !pImageFormatProperties ) {
-        return VK_SUCCESS;
-    }
+	if ( !getImageViewIsSupported(pImageFormatInfo) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
-    pImageFormatProperties->sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR;
-    return getImageFormatProperties(pImageFormatInfo->format, pImageFormatInfo->type,
-                                    pImageFormatInfo->tiling, pImageFormatInfo->usage,
-                                    pImageFormatInfo->flags,
-                                    &pImageFormatProperties->imageFormatProperties);
+	if (pImageFormatProperties) {
+		pImageFormatProperties->sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR;
+		return getImageFormatProperties(pImageFormatInfo->format, pImageFormatInfo->type,
+										pImageFormatInfo->tiling, pImageFormatInfo->usage,
+										pImageFormatInfo->flags,
+										&pImageFormatProperties->imageFormatProperties);
+	}
+
+	return VK_SUCCESS;
+}
+
+// If the image format info links portability image view info, test if an image view of that configuration is supported
+bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo) {
+	auto* next = (VkStructureType*)pImageFormatInfo->pNext;
+	while (next) {
+		switch ((int32_t)*next) {
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_SUPPORT_EXTX: {
+				auto* portImgViewInfo = (VkPhysicalDeviceImageViewSupportEXTX*)next;
+
+				// Create an image view and test whether it could be configured
+				VkImageViewCreateInfo viewInfo = {
+					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+					.pNext = (VkStructureType*)portImgViewInfo->pNext,
+					.flags = portImgViewInfo->flags,
+					.image = VK_NULL_HANDLE,
+					.viewType = portImgViewInfo->viewType,
+					.format = portImgViewInfo->format,
+					.components = portImgViewInfo->components,
+					.subresourceRange = {
+						.aspectMask = portImgViewInfo->aspectMask,
+						.baseMipLevel = 0,
+						.levelCount = 1,
+						.baseArrayLayer = 0,
+						.layerCount = 1},
+				};
+				MVKImageView imgView(VK_NULL_HANDLE, &viewInfo, _mvkInstance->getMoltenVKConfiguration());
+				return imgView.getConfigurationResult() == VK_SUCCESS;
+			}
+			default:
+				next = (VkStructureType*)((VkPhysicalDeviceFeatures2*)next)->pNext;
+				break;
+		}
+	}
+
+	return true;
 }
 
 

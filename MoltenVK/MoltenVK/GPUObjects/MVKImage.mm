@@ -761,10 +761,13 @@ id<MTLTexture> MVKImageView::newMTLTexture() {
 
 #pragma mark Construction
 
-MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo) : MVKRefCountedDeviceObject(device) {
-
+// device and _image may be nil when a temporary instance
+// is constructed to validate image view capabilities
+MVKImageView::MVKImageView(MVKDevice* device,
+						   const VkImageViewCreateInfo* pCreateInfo,
+						   const MVKConfiguration* pAltMVKConfig) : MVKRefCountedDeviceObject(device) {
 	_image = (MVKImage*)pCreateInfo->image;
-	_usage = _image->_usage;
+	_usage = _image ? _image->_usage : 0;
 
 	auto* next = (VkStructureType*)pCreateInfo->pNext;
 	while (next) {
@@ -787,23 +790,30 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 	// Remember the subresource range, and determine the actual number of mip levels and texture slices
     _subresourceRange = pCreateInfo->subresourceRange;
 	if (_subresourceRange.levelCount == VK_REMAINING_MIP_LEVELS) {
-		_subresourceRange.levelCount = _image->getMipLevelCount() - _subresourceRange.baseMipLevel;
+		_subresourceRange.levelCount = _image ? (_image->getMipLevelCount() - _subresourceRange.baseMipLevel) : 1;
 	}
 	if (_subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS) {
-		_subresourceRange.layerCount = _image->getLayerCount() - _subresourceRange.baseArrayLayer;
+		_subresourceRange.layerCount = _image ? (_image->getLayerCount() - _subresourceRange.baseArrayLayer) : 1;
 	}
 
-	bool useSwizzle;
+	bool useShaderSwizzle;
+	bool isMultisample = _image ? _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT : false;
 	_mtlTexture = nil;
-    _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components, useSwizzle);
-	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType, (_image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT));
+    _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components, useShaderSwizzle,
+												(_device ? _device->_pMVKConfig : pAltMVKConfig));
+	_packedSwizzle = useShaderSwizzle ? mvkPackSwizzle(pCreateInfo->components) : 0;
+	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType, isMultisample);
+
 	initMTLTextureViewSupport();
-	_packedSwizzle = useSwizzle ? mvkPackSwizzle(pCreateInfo->components) : 0;
 }
 
 // Validate whether the image view configuration can be supported
 void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo) {
+
+	// No image if we are just validating view config
 	MVKImage* image = (MVKImage*)pCreateInfo->image;
+	if ( !image ) { return; }
+
 	VkImageType imgType = image->getImageType();
 	VkImageViewType viewType = pCreateInfo->viewType;
 
@@ -820,102 +830,117 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 	}
 }
 
-// Returns a MTLPixelFormat, based on the original MTLPixelFormat, as converted from the VkFormat,
-// but possibly modified by the swizzles defined in the VkComponentMapping of the VkImageViewCreateInfo.
-// Metal does not support general per-texture swizzles, and so this function relies on a few coincidental
-// alignments of existing MTLPixelFormats of the same structure. If swizzling is not possible for a
-// particular combination of format and swizzle spec, the original MTLPixelFormat is returned.
-MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format, VkComponentMapping components, bool& useSwizzle) {
-    MTLPixelFormat mtlPF = getMTLPixelFormatFromVkFormat(format);
+// Returns a MTLPixelFormat, based on the MTLPixelFormat converted from the VkFormat, but possibly
+// modified by the swizzles defined in the VkComponentMapping of the VkImageViewCreateInfo.
+// Metal does not support general per-texture swizzles, so if the swizzle is not an identity swizzle, this
+// function attempts to find an alternate MTLPixelFormat that coincidentally matches the swizzled format.
+// If a replacement MTLFormat was found, it is returned and useShaderSwizzle is set to false.
+// If a replacement MTLFormat could not be found, the original MTLPixelFormat is returned, and the
+// useShaderSwizzle is set to true, indicating that shader swizzling should be used for this image view.
+// The config is used to test whether full shader swizzle support is available, and to report an error if not.
+MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
+													   VkComponentMapping components,
+													   bool& useShaderSwizzle,
+													   const MVKConfiguration* pMVKConfig) {
 
-    useSwizzle = false;
-    switch (mtlPF) {
-        case MTLPixelFormatR8Unorm:
-            if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_R} ) ) {
-                return MTLPixelFormatA8Unorm;
-            }
-            break;
+	// Attempt to find a valid format transformation swizzle first.
+	MTLPixelFormat mtlPF = getMTLPixelFormatFromVkFormat(format);
+	useShaderSwizzle = false;
 
-        case MTLPixelFormatA8Unorm:
-            if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_A, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_ZERO} ) ) {
-                return MTLPixelFormatR8Unorm;
-            }
-            break;
+	#define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(components, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )
+	#define VK_COMPONENT_SWIZZLE_ANY       VK_COMPONENT_SWIZZLE_MAX_ENUM
 
-        case MTLPixelFormatRGBA8Unorm:
-            if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A} ) ) {
-                return MTLPixelFormatBGRA8Unorm;
-            }
-            break;
+	switch (mtlPF) {
+		case MTLPixelFormatR8Unorm:
+			if (SWIZZLE_MATCHES(ZERO, ANY, ANY, R)) {
+				return MTLPixelFormatA8Unorm;
+			}
+			break;
 
-        case MTLPixelFormatRGBA8Unorm_sRGB:
-            if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A} ) ) {
-                return MTLPixelFormatBGRA8Unorm_sRGB;
-            }
-            break;
+		case MTLPixelFormatA8Unorm:
+			if (SWIZZLE_MATCHES(A, ANY, ANY, ZERO)) {
+				return MTLPixelFormatR8Unorm;
+			}
+			break;
 
-        case MTLPixelFormatBGRA8Unorm:
-            if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A} ) ) {
-                return MTLPixelFormatRGBA8Unorm;
-            }
-            break;
+		case MTLPixelFormatRGBA8Unorm:
+			if (SWIZZLE_MATCHES(B, G, R, A)) {
+				return MTLPixelFormatBGRA8Unorm;
+			}
+			break;
 
-        case MTLPixelFormatBGRA8Unorm_sRGB:
-            if (matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_A} ) ) {
-                return MTLPixelFormatRGBA8Unorm_sRGB;
-            }
-            break;
+		case MTLPixelFormatRGBA8Unorm_sRGB:
+			if (SWIZZLE_MATCHES(B, G, R, A)) {
+				return MTLPixelFormatBGRA8Unorm_sRGB;
+			}
+			break;
 
-        case MTLPixelFormatDepth32Float_Stencil8:
-            if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-                if (!matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM} ) ) {
-                    useSwizzle = true;
-                }
-                return MTLPixelFormatX32_Stencil8;
-            }
-            break;
+		case MTLPixelFormatBGRA8Unorm:
+			if (SWIZZLE_MATCHES(B, G, R, A)) {
+				return MTLPixelFormatRGBA8Unorm;
+			}
+			break;
+
+		case MTLPixelFormatBGRA8Unorm_sRGB:
+			if (SWIZZLE_MATCHES(B, G, R, A)) {
+				return MTLPixelFormatRGBA8Unorm_sRGB;
+			}
+			break;
+
+		case MTLPixelFormatDepth32Float_Stencil8:
+			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
+			if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+				mtlPF = MTLPixelFormatX32_Stencil8;
+				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+					return mtlPF;
+				}
+			}
+			break;
 
 #if MVK_MACOS
-        case MTLPixelFormatDepth24Unorm_Stencil8:
-            if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-                if (!matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM, VK_COMPONENT_SWIZZLE_MAX_ENUM} ) ) {
-                    useSwizzle = true;
-                }
-                return MTLPixelFormatX24_Stencil8;
-            }
-            break;
+		case MTLPixelFormatDepth24Unorm_Stencil8:
+			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
+			if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+				mtlPF = MTLPixelFormatX24_Stencil8;
+				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+					return mtlPF;
+				}
+			}
+			break;
 #endif
 
-        default:
-            break;
-    }
+		default:
+			break;
+	}
 
-    if ( !matchesSwizzle(components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A} ) ) {
-        useSwizzle = true;
-    }
-    return mtlPF;
-}
+	// No format transformation swizzles were found, so unless we have an identity swizzle, we'll need to use shader swizzling.
+	if ( !SWIZZLE_MATCHES(R, G, B, A)) {
+		useShaderSwizzle = true;
 
-// Returns whether the swizzle components of the internal VkComponentMapping matches the
-// swizzle pattern, by comparing corresponding elements of the two structures. The pattern
-// supports wildcards, in that any element of pattern can be set to VK_COMPONENT_SWIZZLE_MAX_ENUM
-// to indicate that any value in the corresponding element of components.
-bool MVKImageView::matchesSwizzle(VkComponentMapping components, VkComponentMapping pattern) {
-    if ( !((pattern.r == VK_COMPONENT_SWIZZLE_MAX_ENUM) || (pattern.r == components.r) ||
-           ((pattern.r == VK_COMPONENT_SWIZZLE_R) && (components.r == VK_COMPONENT_SWIZZLE_IDENTITY))) ) { return false; }
-    if ( !((pattern.g == VK_COMPONENT_SWIZZLE_MAX_ENUM) || (pattern.g == components.g) ||
-           ((pattern.g == VK_COMPONENT_SWIZZLE_G) && (components.g == VK_COMPONENT_SWIZZLE_IDENTITY))) ) { return false; }
-    if ( !((pattern.b == VK_COMPONENT_SWIZZLE_MAX_ENUM) || (pattern.b == components.b) ||
-           ((pattern.b == VK_COMPONENT_SWIZZLE_B) && (components.b == VK_COMPONENT_SWIZZLE_IDENTITY))) ) { return false; }
-    if ( !((pattern.a == VK_COMPONENT_SWIZZLE_MAX_ENUM) || (pattern.a == components.a) ||
-           ((pattern.a == VK_COMPONENT_SWIZZLE_A) && (components.a == VK_COMPONENT_SWIZZLE_IDENTITY))) ) { return false; }
+		if ( !pMVKConfig->fullImageViewSwizzle ) {
+			const char* vkCmd = _image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX";
+			const char* errMsg = ("The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
+								  " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
+								  " be enabled via the MVKConfiguration::fullImageViewSwizzle config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable.");
+			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, errMsg, vkCmd,
+														  mvkVkComponentSwizzleName(components.r), mvkVkComponentSwizzleName(components.g),
+														  mvkVkComponentSwizzleName(components.b), mvkVkComponentSwizzleName(components.a)));
+		}
+	}
 
-    return true;
+	return mtlPF;
 }
 
 // Determine whether this image view should use a Metal texture view,
 // and set the _useMTLTextureView variable appropriately.
 void MVKImageView::initMTLTextureViewSupport() {
+
+	// If no image we're just validating image iview config
+	if ( !_image ) {
+		_useMTLTextureView = false;
+		return;
+	}
+
 	_useMTLTextureView = _image->_canSupportMTLTextureView;
 
 	bool is3D = _image->_mtlTextureType == MTLTextureType3D;

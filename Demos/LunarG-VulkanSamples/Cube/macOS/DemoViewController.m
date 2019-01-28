@@ -19,7 +19,7 @@
 #import "DemoViewController.h"
 #import <QuartzCore/CAMetalLayer.h>
 
-#include "mvk_vulkan.h"
+#include <MoltenVK/mvk_vulkan.h>
 #include "../../Vulkan-Tools/cube/cube.c"
 
 
