@@ -178,6 +178,8 @@ if [ ! "$GLSLANG_ROOT" = "" ]; then
        REPO_NAME=glslang
        rm -rf ${REPO_NAME}
        ln -sfn ${GLSLANG_ROOT} ${REPO_NAME}
+
+       build_repo "${REPO_NAME}/External/spirv-tools"
 else
        REPO_NAME=glslang
        REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
