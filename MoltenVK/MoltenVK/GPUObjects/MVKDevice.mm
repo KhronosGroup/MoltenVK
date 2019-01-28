@@ -109,7 +109,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->triangleFans = false;
 				portabilityFeatures->separateStencilMaskRef = true;
 				portabilityFeatures->events = false;
-				portabilityFeatures->standardImageViews = false;
+				portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle;
 				portabilityFeatures->samplerMipLodBias = false;
 				next = (MVKVkAPIStructHeader*)portabilityFeatures->pNext;
 				break;
