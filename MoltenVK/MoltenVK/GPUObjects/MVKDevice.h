@@ -287,6 +287,7 @@ protected:
 	std::vector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
 	MTLFeatureSet getHighestMTLFeatureSet();
+	bool getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo);
 	void logGPUInfo();
 
 	id<MTLDevice> _mtlDevice;

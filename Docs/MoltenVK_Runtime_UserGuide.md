@@ -245,8 +245,9 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_KHR_variable_pointers`
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_vertex_attribute_divisor`
-- `VK_MVK_macos_surface` (macOS)
+- `VK_EXTX_portability_subset`
 - `VK_MVK_ios_surface` (iOS)
+- `VK_MVK_macos_surface` (macOS)
 - `VK_MVK_moltenvk`
 - `VK_AMD_gpu_shader_half_float`
 - `VK_AMD_negative_viewport_height`

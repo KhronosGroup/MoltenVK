@@ -132,17 +132,30 @@ echo
 
 # When MoltenVK is built by something that already has
 # a copy of this repo, use it by creating a symlink.
-if [ ! "$V_HEADERS_ROOT" = "" ]; then
-       REPO_NAME=Vulkan-Headers
-       rm -rf ${REPO_NAME}
-       ln -sfn ${V_HEADERS_ROOT} ${REPO_NAME}
-else
-       REPO_NAME=Vulkan-Headers
-       REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-       REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-       update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+REPO_NAME=Vulkan-Headers
+
+if [ ! "$V_HEADERS_ROOT" = "" ]; then
+	rm -rf ${REPO_NAME}
+	ln -sfn ${V_HEADERS_ROOT} ${REPO_NAME}
+else
+	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+	REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+
+	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 fi
+
+# ----------------- Vulkan-Portability -------------------
+
+echo
+echo ========== Vulkan-Portability ==========
+echo
+
+REPO_NAME=Vulkan-Portability
+REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+REPO_REV=$(cat "../${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+
+update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
 # ----------------- SPIRV-Cross -------------------
@@ -153,16 +166,17 @@ echo
 
 # When MoltenVK is built by something that already has
 # a copy of this repo, use it by creating a symlink.
-if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
-       REPO_NAME=SPIRV-Cross
-       rm -rf ${REPO_NAME}
-       ln -sfn ${SPIRV_CROSS_ROOT} ${REPO_NAME}
-else
-       REPO_NAME=SPIRV-Cross
-       REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-       REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-       update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+REPO_NAME=SPIRV-Cross
+
+if [ ! "$SPIRV_CROSS_ROOT" = "" ]; then
+	rm -rf ${REPO_NAME}
+	ln -sfn ${SPIRV_CROSS_ROOT} ${REPO_NAME}
+else
+	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+	REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+
+	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 fi
 
 
@@ -174,25 +188,25 @@ echo
 
 # When MoltenVK is built by something that already has
 # a copy of this repo, use it by creating a symlink.
+
+REPO_NAME=glslang
+
 if [ ! "$GLSLANG_ROOT" = "" ]; then
-       REPO_NAME=glslang
-       rm -rf ${REPO_NAME}
-       ln -sfn ${GLSLANG_ROOT} ${REPO_NAME}
-
-       build_repo "${REPO_NAME}/External/spirv-tools"
+	rm -rf ${REPO_NAME}
+	ln -sfn ${GLSLANG_ROOT} ${REPO_NAME}
 else
-       REPO_NAME=glslang
-       REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-       REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
+	REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
+	REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
-       update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
-       cd ${REPO_NAME}
-       ./update_glslang_sources.py
-       cd -
-
-       build_repo "${REPO_NAME}/External/spirv-tools"
+	cd ${REPO_NAME}
+	./update_glslang_sources.py
+	cd -
 fi
+
+#Make sure the embedded spirv-tools is built
+build_repo "${REPO_NAME}/External/spirv-tools"
 
 
 # ----------------- Vulkan-Tools -------------------

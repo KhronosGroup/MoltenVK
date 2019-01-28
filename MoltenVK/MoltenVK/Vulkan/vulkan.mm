@@ -1480,33 +1480,31 @@ MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
 #pragma mark VK_KHR_bind_memory2 extension
 
 MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory2KHR(
-    VkDevice                                       device,
-    uint32_t                                       bindInfoCount,
-    const VkBindBufferMemoryInfoKHR*               pBindInfos) {
-    VkResult res;
-    for (uint32_t i = 0; i < bindInfoCount; ++i) {
-        MVKBuffer* mvkBuff = (MVKBuffer*)pBindInfos[i].buffer;
-        res = mvkBuff->bindDeviceMemory2(&pBindInfos[i]);
-        if (res != VK_SUCCESS) {
-            break;
-        }
-    }
-    return res;
+	VkDevice									device,
+	uint32_t									bindInfoCount,
+	const VkBindBufferMemoryInfoKHR*			pBindInfos) {
+
+	VkResult rslt = VK_SUCCESS;
+	for (uint32_t i = 0; i < bindInfoCount; ++i) {
+		MVKBuffer* mvkBuff = (MVKBuffer*)pBindInfos[i].buffer;
+		VkResult r = mvkBuff->bindDeviceMemory2(&pBindInfos[i]);
+		if (rslt == VK_SUCCESS) { rslt = r; }
+	}
+	return rslt;
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory2KHR(
-    VkDevice                                       device,
-    uint32_t                                       bindInfoCount,
-    const VkBindImageMemoryInfoKHR*                pBindInfos) {
-    VkResult res;
-    for (uint32_t i = 0; i < bindInfoCount; ++i) {
-        MVKImage* mvkImg = (MVKImage*)pBindInfos[i].image;
-        res = mvkImg->bindDeviceMemory2(&pBindInfos[i]);
-        if (res != VK_SUCCESS) {
-            break;
-        }
-    }
-    return res;
+	VkDevice									device,
+	uint32_t									bindInfoCount,
+	const VkBindImageMemoryInfoKHR*				pBindInfos) {
+
+	VkResult rslt = VK_SUCCESS;
+	for (uint32_t i = 0; i < bindInfoCount; ++i) {
+		MVKImage* mvkImg = (MVKImage*)pBindInfos[i].image;
+		VkResult r = mvkImg->bindDeviceMemory2(&pBindInfos[i]);
+		if (rslt == VK_SUCCESS) { rslt = r; }
+	}
+	return rslt;
 }
 
 
