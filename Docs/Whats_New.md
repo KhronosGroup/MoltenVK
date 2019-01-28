@@ -13,6 +13,33 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.32
+---------------
+
+Released 2019/01/28
+
+- Add support for `VK_EXTX_portability_subset` extension.
+- iOS: Support dual-source blending with iOS 11.
+- iOS: Support cube arrays with A11. 
+- iOS: Support layered rendering and multiple viewports with A12.
+- Use combined store-resolve ops when supported and requested in renderpass.
+- Fixes to values returned from `vkGetPhysicalDeviceImageFormatProperties()` 
+  and `vkGetPhysicalDeviceImageFormatProperties2KHR()`.
+- Log and return `VK_ERROR_FEATURE_NOT_PRESENT` error if `vkCreateImageView()` 
+  requires shader swizzling but it is not enabled.
+- Log and return `VK_ERROR_FEATURE_NOT_PRESENT` error if array of textures or 
+  array of samplers requested but not supported.
+- Treat all attributes & resources as used by shader when using pre-converted MSL.
+- Allow default GPU Capture scope to be assigned to any queue in any queue family.
+- Stop advertising atomic image support.
+- Enhancements to `MVKVector`, and set appropriate inline sizing usages.
+- `fetchDependencies`: build `spirv-tools` when attached via symlink.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 17.
+- Update to latest SPIRV-Cross version:
+	- MSL: Deal with resource name aliasing.
+
+
+
 MoltenVK 1.0.31
 ---------------
 
