@@ -107,7 +107,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
 				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
 				portabilityFeatures->triangleFans = false;
-				portabilityFeatures->separateStencilMaskRef = false;
+				portabilityFeatures->separateStencilMaskRef = true;
 				portabilityFeatures->events = false;
 				portabilityFeatures->standardImageViews = false;
 				portabilityFeatures->samplerMipLodBias = false;
