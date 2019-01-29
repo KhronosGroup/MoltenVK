@@ -31,9 +31,12 @@ Released 2019/01/28
   array of samplers requested but not supported.
 - Treat all attributes & resources as used by shader when using pre-converted MSL.
 - Allow default GPU Capture scope to be assigned to any queue in any queue family.
+- VkPhysicalDevice: Correct some features and limits.
 - Stop advertising atomic image support.
-- Enhancements to `MVKVector`, and set appropriate inline sizing usages.
+- vkSetMTLTextureMVK() function retains texture object.
+- Log to stderr instead of stdout.
 - `fetchDependencies`: build `spirv-tools` when attached via symlink.
+- Enhancements to `MVKVector`, and set appropriate inline sizing usages.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 17.
 - Update to latest SPIRV-Cross version:
 	- MSL: Deal with resource name aliasing.
