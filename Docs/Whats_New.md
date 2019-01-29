@@ -39,6 +39,8 @@ Released 2019/01/28
 - Enhancements to `MVKVector`, and set appropriate inline sizing usages.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 17.
 - Update to latest SPIRV-Cross version:
+	- MSL: Use correct size and alignment rules for structs.
+	- MSL: Fix texture projection with Dref.
 	- MSL: Deal with resource name aliasing.
 
 
