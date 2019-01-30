@@ -62,9 +62,6 @@ double mvkGetElapsedMilliseconds(uint64_t startTimestamp, uint64_t endTimestamp)
 	return (double)(endTimestamp - startTimestamp) * _mvkTimestampPeriod / 1e6;
 }
 
-
-#pragma mark Library initialization
-
 /**
  * Initialize timestamping capabilities on app startup.
  * Called automatically when the framework is loaded and initialized.
@@ -79,7 +76,25 @@ __attribute__((constructor)) static void MVKInitTimestamps() {
 	mach_timebase_info(&timebase);
 	_mvkTimestampPeriod = (double)timebase.numer / (double)timebase.denom;
 	MVKLogDebug("Initializing MoltenVK timestamping. Mach time: %llu. Time period: %d / %d = %.6f.", _mvkTimestampBase, timebase.numer, timebase.denom, _mvkTimestampPeriod);
+}
 
+
+#pragma mark -
+#pragma mark Process environment
+
+string mvkGetEnvVar(string varName, bool* pWasFound) {
+	NSDictionary* env = [[NSProcessInfo processInfo] environment];
+	NSString* envStr = env[@(varName.c_str())];
+	if (pWasFound) { *pWasFound = envStr != nil; }
+	return envStr ? envStr.UTF8String : "";
+}
+
+int64_t mvkGetEnvVarInt64(string varName, bool* pWasFound) {
+	return strtoll(mvkGetEnvVar(varName, pWasFound).c_str(), NULL, 0);
+}
+
+bool mvkGetEnvVarBool(std::string varName, bool* pWasFound) {
+	return mvkGetEnvVarInt64(varName, pWasFound) != 0;
 }
 
 

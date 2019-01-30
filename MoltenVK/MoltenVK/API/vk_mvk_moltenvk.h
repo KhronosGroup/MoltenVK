@@ -80,6 +80,14 @@ extern "C" {
  * is set by the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y at runtime, or by the
  * MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting when MoltenVK is compiled.
  *
+ * In addition to the configuration parmeters in this structure, the level of logging
+ * performned by MoltenVK can be controlled by the MVK_LOG_LEVEL runtime environment
+ * variable or MoltenVK compile-time build setting using the following numberic values:
+ *   0: No logging.
+ *   1: Log errors only.
+ *   2: Log errors and informational messages.
+ * If neither is set, errors and informational messages are logged.
+ *
  * This structure may be extended as new features are added to MoltenVK. If you are linking to
  * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
  * than your app was, the size of this structure in your app may be larger or smaller than the
