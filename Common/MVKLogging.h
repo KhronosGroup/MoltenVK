@@ -176,28 +176,13 @@ extern "C" {
  * Combine the specified log level and format string, then log
  * the specified args to one or both of ASL and printf.
  */
-static inline void MVKLogImplV(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, va_list args) __printflike(5, 0);
-static inline void MVKLogImplV(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, va_list args) {
-
-	// Combine the level and format string
-	char lvlFmt[strlen(lvlStr) + strlen(format) + 5];
-	sprintf(lvlFmt, "[%s] %s\n", lvlStr, format);
-
-	if (logToPrintf) { vfprintf(stderr, lvlFmt, args); }
-//	if (logToASL) { asl_vlog(NULL, NULL, aslLvl, lvlFmt, args); }       // Multi-threaded ASL support requires a separate ASL client to be opened per thread!
-}
+void MVKLogImplV(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, va_list args) __printflike(5, 0);
 
 /** 
  * Combine the specified log level and format string, then log 
  * the specified args to one or both of ASL and printf.
  */
-static inline void MVKLogImpl(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, ...) __printflike(5, 6);
-static inline void MVKLogImpl(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, ...) {
-	va_list args;
-	va_start(args, format);
-	MVKLogImplV(logToPrintf, logToASL, aslLvl, lvlStr, format, args);
-	va_end(args);
-}
+void MVKLogImpl(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, ...) __printflike(5, 6);
 
 #define MVKLogErrorImpl(fmt, ...)	MVKLogImpl(true, !(MVK_DEBUG), ASL_LEVEL_ERR, "***MoltenVK ERROR***", fmt, ##__VA_ARGS__)
 #define MVKLogInfoImpl(fmt, ...)	MVKLogImpl(true, !(MVK_DEBUG), ASL_LEVEL_NOTICE, "mvk-info", fmt, ##__VA_ARGS__)

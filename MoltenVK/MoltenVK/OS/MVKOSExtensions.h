@@ -80,12 +80,7 @@ inline void mvkDispatchToMainAndWait(dispatch_block_t block) {
  * If pWasFound is not null, it's value is set to true if the environment
  * variable exists, or false if not.
  */
-inline std::string mvkGetEnvVar(std::string varName, bool* pWasFound = nullptr) {
-	NSDictionary* env = [[NSProcessInfo processInfo] environment];
-	NSString* envStr = env[@(varName.c_str())];
-	if (pWasFound) { *pWasFound = envStr != nil; }
-	return envStr ? envStr.UTF8String : "";
-}
+std::string mvkGetEnvVar(std::string varName, bool* pWasFound = nullptr);
 
 /**
  * Returns the value of the environment variable at the given name,
@@ -94,9 +89,7 @@ inline std::string mvkGetEnvVar(std::string varName, bool* pWasFound = nullptr) 
  * If pWasFound is not null, it's value is set to true if the environment
  * variable exists, or false if not.
  */
-inline int64_t mvkGetEnvVarInt64(std::string varName, bool* pWasFound = nullptr) {
-	return strtoll(mvkGetEnvVar(varName, pWasFound).c_str(), NULL, 0);
-}
+int64_t mvkGetEnvVarInt64(std::string varName, bool* pWasFound = nullptr);
 
 /**
  * Returns the value of the environment variable at the given name,
@@ -105,9 +98,7 @@ inline int64_t mvkGetEnvVarInt64(std::string varName, bool* pWasFound = nullptr)
  * If pWasFound is not null, it's value is set to true if the environment
  * variable exists, or false if not.
  */
-inline bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr) {
-	return mvkGetEnvVarInt64(varName, pWasFound) != 0;
-}
+bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
 
 #define MVK_SET_FROM_ENV_OR_BUILD_BOOL(cfgVal, EV)	\
 	do {											\
