@@ -18,6 +18,7 @@
 
 #include "MVKExtensions.h"
 #include "MVKFoundation.h"
+#include "MVKOSExtensions.h"
 #include "vk_mvk_moltenvk.h"
 #include <vulkan/vulkan_ios.h>
 #include <vulkan/vulkan_macos.h>
@@ -103,11 +104,17 @@ string MVKExtensionList::enabledNamesString(const char* separator, bool prefixFi
 // Returns whether the specified properties are valid for this platform
 static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #if !(MVK_IOS)
+	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
+		return mvkOSVersion() >= 10.13;
+	}
 	if (pProperties == &kVkExtProps_MVK_IOS_SURFACE) { return false; }
 	if (pProperties == &kVkExtProps_IMG_FORMAT_PVRTC) { return false; }
 #endif
 #if !(MVK_MACOS)
 	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
+	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
+		return mvkOSVersion() >= 11.0;
+	}
 	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
 #endif
 

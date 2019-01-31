@@ -165,7 +165,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				break;
 			}
             default:
-                next = (MVKVkAPIStructHeader*)((VkPhysicalDeviceProperties2*)next)->pNext;
+                next = (MVKVkAPIStructHeader*)next->pNext;
                 break;
             }
         }
@@ -612,10 +612,29 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 	return VK_SUCCESS;
 }
 
-VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties2KHR* pMemoryProperties) {
+VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties2* pMemoryProperties) {
 	if (pMemoryProperties) {
-		pMemoryProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2_KHR;
+		pMemoryProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
 		pMemoryProperties->memoryProperties = _memoryProperties;
+		auto* next = (MVKVkAPIStructHeader*)pMemoryProperties->pNext;
+		while (next) {
+			switch ((uint32_t)next->sType) {
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
+				auto* budgetProps = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)next;
+				memset(budgetProps->heapBudget, 0, sizeof(budgetProps->heapBudget));
+				memset(budgetProps->heapUsage, 0, sizeof(budgetProps->heapUsage));
+				budgetProps->heapBudget[0] = (VkDeviceSize)mvkRecommendedMaxWorkingSetSize(_mtlDevice);
+				if ( [_mtlDevice respondsToSelector: @selector(currentAllocatedSize)] ) {
+					budgetProps->heapUsage[0] = (VkDeviceSize)_mtlDevice.currentAllocatedSize;
+				}
+				next = (MVKVkAPIStructHeader*)budgetProps->pNext;
+				break;
+			}
+			default:
+				next = (MVKVkAPIStructHeader*)next->pNext;
+				break;
+			}
+		}
 	}
 	return VK_SUCCESS;
 }
