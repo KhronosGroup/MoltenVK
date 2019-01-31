@@ -210,7 +210,7 @@ public:
 	VkResult getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties* pMemoryProperties);
 
 	/** Populates the specified memory properties with the memory characteristics of this device. */
-	VkResult getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties2KHR* pMemoryProperties);
+	VkResult getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties2* pMemoryProperties);
 
 	/**
 	 * Returns a bit mask of all memory type indices. 

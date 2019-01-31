@@ -22,7 +22,9 @@
 #include "MVKFoundation.h"
 #include <string>
 
+#ifdef __OBJC__
 #import <Metal/Metal.h>
+#endif
 
 
 typedef float MVKOSVersion;
@@ -59,6 +61,7 @@ double mvkGetTimestampPeriod();
  */
 double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
 
+#ifdef __OBJC__
 /** Ensures the block is executed on the main thread. */
 inline void mvkDispatchToMainAndWait(dispatch_block_t block) {
 	if (NSThread.isMainThread) {
@@ -67,12 +70,14 @@ inline void mvkDispatchToMainAndWait(dispatch_block_t block) {
 		dispatch_sync(dispatch_get_main_queue(), block);
 	}
 }
+#endif
 
 
 #pragma mark -
 #pragma mark Process environment
 
 
+#ifdef __OBJC__
 /**
  * Returns the value of the environment variable at the given name,
  * or an empty string if no environment variable with that name exists.
@@ -121,11 +126,13 @@ bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
 		int64_t val = wasFound ? ev : EV;						\
 		cfgVal = (int32_t)mvkClamp(val, (int64_t)INT32_MIN, (int64_t)INT32_MAX);	\
 	} while(false)
+#endif
 
 
 #pragma mark -
 #pragma mark MTLDevice
 
+#ifdef __OBJC__
 /** Returns an approximation of how much memory, in bytes, the device can use with good performance. */
 uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice);
 
@@ -138,3 +145,4 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
  * The format must support linear texture memory (must not be depth, stencil, or compressed).
  */
 VkDeviceSize mvkMTLPixelFormatLinearTextureAlignment(MTLPixelFormat mtlPixelFormat, id<MTLDevice> mtlDevice);
+#endif
