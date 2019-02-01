@@ -155,13 +155,30 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
 	devProps.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	strlcpy(devProps.deviceName, mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 
+	// If the device has an associated registry ID, we can use that to get the associated IOKit node.
+	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
+	io_registry_entry_t entry;
+	if ( [mtlDevice respondsToSelector: @selector(registryID)] ) {
+		entry = IOServiceGetMatchingService(kIOMasterPortDefault, IORegistryEntryIDMatching(mtlDevice.registryID));
+		if (entry) {
+			// That returned the IOGraphicsAccelerator nub. Its parent, then, is the actual
+			// PCI device.
+			io_registry_entry_t parent;
+			if (IORegistryEntryGetParentEntry(entry, kIOServicePlane, &parent) == kIOReturnSuccess) {
+				isFound = true;
+				devProps.vendorID = mvkGetEntryProperty(parent, CFSTR("vendor-id"));
+				devProps.deviceID = mvkGetEntryProperty(parent, CFSTR("device-id"));
+				IOObjectRelease(parent);
+			}
+			IOObjectRelease(entry);
+		}
+	}
 	// Iterate all GPU's, looking for a match.
-	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released
+	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
 	io_iterator_t entryIterator;
-	if (IOServiceGetMatchingServices(kIOMasterPortDefault,
-									 IOServiceMatching("IOPCIDevice"),
-									 &entryIterator) == kIOReturnSuccess) {
-		io_registry_entry_t entry;
+	if (!isFound && IOServiceGetMatchingServices(kIOMasterPortDefault,
+												 IOServiceMatching("IOPCIDevice"),
+												 &entryIterator) == kIOReturnSuccess) {
 		while ( !isFound && (entry = IOIteratorNext(entryIterator)) ) {
 			if (mvkGetEntryProperty(entry, CFSTR("class-code")) == 0x30000) {	// 0x30000 : DISPLAY_VGA
 
