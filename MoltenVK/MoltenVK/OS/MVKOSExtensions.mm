@@ -205,7 +205,9 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
 	//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
 	NSUInteger coreCnt = NSProcessInfo.processInfo.processorCount;
 	uint32_t devID = 0xa070;
-	if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1]) {
+	if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1]) {
+		devID = 0xa120;
+	} else if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1]) {
 		devID = 0xa110;
 	} else if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
 		devID = coreCnt > 2 ? 0xa101 : 0xa100;
