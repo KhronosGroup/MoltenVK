@@ -466,6 +466,11 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl() {
 
+    bool fullImageViewSwizzle = false;
+    MVKPipeline* pipeline = _cmdEncoder->_graphicsPipelineState.getPipeline();
+    if (pipeline)
+        fullImageViewSwizzle = pipeline->fullImageViewSwizzle();
+
     encodeBinding<MVKMTLBufferBinding>(_vertexBufferBindings, _areVertexBufferBindingsDirty,
                                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                                            [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
@@ -492,7 +497,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl() {
                                     _vertexAuxBufferBinding.index);
 
 	} else {
-		assertMissingSwizzles(_needsVertexSwizzle, "vertex", _vertexTextureBindings);
+		assertMissingSwizzles(_needsVertexSwizzle && !fullImageViewSwizzle, "vertex", _vertexTextureBindings);
 	}
 
     if (_fragmentAuxBufferBinding.isDirty) {
@@ -507,7 +512,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl() {
                                       _fragmentAuxBufferBinding.index);
 
 	} else {
-		assertMissingSwizzles(_needsFragmentSwizzle, "fragment", _fragmentTextureBindings);
+		assertMissingSwizzles(_needsFragmentSwizzle && !fullImageViewSwizzle, "fragment", _fragmentTextureBindings);
     }
 
     encodeBinding<MVKMTLTextureBinding>(_vertexTextureBindings, _areVertexTextureBindingsDirty,
@@ -590,6 +595,11 @@ void MVKComputeResourcesCommandEncoderState::markDirty() {
 
 void MVKComputeResourcesCommandEncoderState::encodeImpl() {
 
+    bool fullImageViewSwizzle = false;
+    MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
+    if (pipeline)
+        fullImageViewSwizzle = pipeline->fullImageViewSwizzle();
+
     encodeBinding<MVKMTLBufferBinding>(_bufferBindings, _areBufferBindingsDirty,
                                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                                            [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setBuffer: b.mtlBuffer
@@ -609,7 +619,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl() {
                                      _auxBufferBinding.index);
 
 	} else {
-		assertMissingSwizzles(_needsSwizzle, "compute", _textureBindings);
+		assertMissingSwizzles(_needsSwizzle && !fullImageViewSwizzle, "compute", _textureBindings);
     }
 
     encodeBinding<MVKMTLTextureBinding>(_textureBindings, _areTextureBindingsDirty,

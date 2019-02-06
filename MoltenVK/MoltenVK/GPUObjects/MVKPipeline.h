@@ -99,13 +99,18 @@ public:
 	/** Returns the current auxiliary buffer bindings. */
 	const MVKShaderAuxBufferBinding& getAuxBufferIndex() { return _auxBufferIndex; }
 
+	/** Returns whether or not full image view swizzling is enabled for this pipeline. */
+	bool fullImageViewSwizzle() const { return _fullImageViewSwizzle; }
+
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKBaseDeviceObject(device),
-																						   _pipelineCache(pipelineCache) {}
+																						   _pipelineCache(pipelineCache),
+	   																					   _fullImageViewSwizzle(device->_pMVKConfig->fullImageViewSwizzle)	{}
 
 protected:
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderAuxBufferBinding _auxBufferIndex;
+	bool _fullImageViewSwizzle;
 
 };
 
