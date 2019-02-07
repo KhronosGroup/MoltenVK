@@ -484,7 +484,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
     shaderContext.options.isRenderingPoints = isRenderingPoints(pCreateInfo);
 	shaderContext.options.isRasterizationDisabled = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
-	shaderContext.options.shouldSwizzleTextureSamples = _device->_pMVKConfig->fullImageViewSwizzle;
+	shaderContext.options.shouldSwizzleTextureSamples = _fullImageViewSwizzle;
 
     // Set the shader context vertex attribute information
     shaderContext.vertexAttributes.clear();
@@ -599,7 +599,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.entryPointName = pCreateInfo->stage.pName;
 	shaderContext.options.entryPointStage = spv::ExecutionModelGLCompute;
     shaderContext.options.mslVersion = _device->_pMetalFeatures->mslVersion;
-	shaderContext.options.shouldSwizzleTextureSamples = _device->_pMVKConfig->fullImageViewSwizzle;
+	shaderContext.options.shouldSwizzleTextureSamples = _fullImageViewSwizzle;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);

@@ -404,12 +404,14 @@ static void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKV
 	if (needsSwizzle) {
 		for (MVKMTLTextureBinding& tb : texBindings) {
 			VkComponentMapping vkcm = mvkUnpackSwizzle(tb.swizzle);
-			MVKLogError("Pipeline does not support component swizzle (%s, %s, %s, %s) required by a VkImageView used in the %s shader."
-						" Full VkImageView component swizzling will be supported by a pipeline if the MVKConfiguration::fullImageViewSwizzle"
-						" config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable was enabled when the pipeline is compiled.",
-						mvkVkComponentSwizzleName(vkcm.r), mvkVkComponentSwizzleName(vkcm.g),
-						mvkVkComponentSwizzleName(vkcm.b), mvkVkComponentSwizzleName(vkcm.a), stageName);
-			MVKAssert(false, "See previous logged error.");
+			if (!mvkVkComponentMappingsMatch(vkcm, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A})) {
+				MVKLogError("Pipeline does not support component swizzle (%s, %s, %s, %s) required by a VkImageView used in the %s shader."
+							" Full VkImageView component swizzling will be supported by a pipeline if the MVKConfiguration::fullImageViewSwizzle"
+							" config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable was enabled when the pipeline is compiled.",
+							mvkVkComponentSwizzleName(vkcm.r), mvkVkComponentSwizzleName(vkcm.g),
+							mvkVkComponentSwizzleName(vkcm.b), mvkVkComponentSwizzleName(vkcm.a), stageName);
+				MVKAssert(false, "See previous logged error.");
+			}
 		}
 	}
 }
@@ -464,6 +466,11 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl() {
 
+    bool fullImageViewSwizzle = false;
+    MVKPipeline* pipeline = _cmdEncoder->_graphicsPipelineState.getPipeline();
+    if (pipeline)
+        fullImageViewSwizzle = pipeline->fullImageViewSwizzle();
+
     encodeBinding<MVKMTLBufferBinding>(_vertexBufferBindings, _areVertexBufferBindingsDirty,
                                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                                            [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
@@ -490,7 +497,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl() {
                                     _vertexAuxBufferBinding.index);
 
 	} else {
-		assertMissingSwizzles(_needsVertexSwizzle, "vertex", _vertexTextureBindings);
+		assertMissingSwizzles(_needsVertexSwizzle && !fullImageViewSwizzle, "vertex", _vertexTextureBindings);
 	}
 
     if (_fragmentAuxBufferBinding.isDirty) {
@@ -505,7 +512,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl() {
                                       _fragmentAuxBufferBinding.index);
 
 	} else {
-		assertMissingSwizzles(_needsFragmentSwizzle, "fragment", _fragmentTextureBindings);
+		assertMissingSwizzles(_needsFragmentSwizzle && !fullImageViewSwizzle, "fragment", _fragmentTextureBindings);
     }
 
     encodeBinding<MVKMTLTextureBinding>(_vertexTextureBindings, _areVertexTextureBindingsDirty,
@@ -588,6 +595,11 @@ void MVKComputeResourcesCommandEncoderState::markDirty() {
 
 void MVKComputeResourcesCommandEncoderState::encodeImpl() {
 
+    bool fullImageViewSwizzle = false;
+    MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
+    if (pipeline)
+        fullImageViewSwizzle = pipeline->fullImageViewSwizzle();
+
     encodeBinding<MVKMTLBufferBinding>(_bufferBindings, _areBufferBindingsDirty,
                                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                                            [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setBuffer: b.mtlBuffer
@@ -607,7 +619,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl() {
                                      _auxBufferBinding.index);
 
 	} else {
-		assertMissingSwizzles(_needsSwizzle, "compute", _textureBindings);
+		assertMissingSwizzles(_needsSwizzle && !fullImageViewSwizzle, "compute", _textureBindings);
     }
 
     encodeBinding<MVKMTLTextureBinding>(_textureBindings, _areTextureBindingsDirty,
