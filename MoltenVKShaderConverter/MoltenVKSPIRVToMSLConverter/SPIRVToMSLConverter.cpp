@@ -27,6 +27,12 @@
 using namespace mvk;
 using namespace std;
 
+// Verify that the spvAux structure used to pass auxilliary info between MoltenVK and SPIRV-Cross has not changed.
+#define MVK_SUPPORTED_MSL_AUX_BUFFER_STRUCT_VERSION		1
+#if MVK_SUPPORTED_MSL_AUX_BUFFER_STRUCT_VERSION != SPIRV_CROSS_MSL_AUX_BUFFER_STRUCT_VERSION
+#	error "The version number of the MSL spvAux struct used to pass auxilliary info to shaders does not match between MoltenVK and SPIRV-Cross. If the spvAux struct definition is not the same between MoltenVK and shaders created by SPRIV-Cross, memory errors will occur."
+#endif
+
 
 #pragma mark -
 #pragma mark SPIRVToMSLConverterContext

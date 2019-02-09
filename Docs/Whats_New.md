@@ -13,6 +13,27 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.33
+---------------
+
+Released TBD
+
+- Support the `VK_EXT_memory_budget` extension.
+- Use the `MTLDevice registryID` property to locate it in `IOKit`.
+- Add GPU device ID for *iOS A12* SoC.
+- Allow logging level to be controlled with `MVK_LOG_LEVEL` runtime environment variable.
+- Don't warn on identity swizzles when `fullImageViewSwizzle` config setting is enabled.
+- Track version of spvAux buffer struct in SPRIV-Cross and fail build if different
+  than version expected by MoltenVK.
+- Modify README.md to direct developers to Vulkan SDK.
+- Update to latest SPIRV-Cross version:
+	- MSL: Implement 8-bit part of VK_KHR_shader_float16_int8.
+	- MSL: Add a setting to capture vertex shader output to a buffer.
+	- MSL: Stop passing the aux buffer around.
+	- Support LUTs in single-function CFGs on Private storage class.
+
+
+
 MoltenVK 1.0.32
 ---------------
 
