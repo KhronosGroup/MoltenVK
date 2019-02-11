@@ -86,7 +86,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
                 auto* f16Features = (VkPhysicalDeviceFloat16Int8FeaturesKHR*)next;
                 f16Features->shaderFloat16 = true;
-                f16Features->shaderInt8 = false;  // FIXME Needs SPIRV-Cross update
+                f16Features->shaderInt8 = true;
                 next = (MVKVkAPIStructHeader*)f16Features->pNext;
                 break;
             }
