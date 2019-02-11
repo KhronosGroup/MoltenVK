@@ -20,11 +20,8 @@
 
 #include "mvk_vulkan.h"
 #include "MVKFoundation.h"
+#include <dispatch/dispatch.h>
 #include <string>
-
-#ifdef __OBJC__
-#import <Metal/Metal.h>
-#endif
 
 
 typedef float MVKOSVersion;
@@ -61,23 +58,13 @@ double mvkGetTimestampPeriod();
  */
 double mvkGetElapsedMilliseconds(uint64_t startTimestamp = 0, uint64_t endTimestamp = 0);
 
-#ifdef __OBJC__
 /** Ensures the block is executed on the main thread. */
-inline void mvkDispatchToMainAndWait(dispatch_block_t block) {
-	if (NSThread.isMainThread) {
-		block();
-	} else {
-		dispatch_sync(dispatch_get_main_queue(), block);
-	}
-}
-#endif
+void mvkDispatchToMainAndWait(dispatch_block_t block);
 
 
 #pragma mark -
 #pragma mark Process environment
 
-
-#ifdef __OBJC__
 /**
  * Returns the value of the environment variable at the given name,
  * or an empty string if no environment variable with that name exists.
@@ -126,18 +113,24 @@ bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
 		int64_t val = wasFound ? ev : EV;						\
 		cfgVal = (int32_t)mvkClamp(val, (int64_t)INT32_MIN, (int64_t)INT32_MAX);	\
 	} while(false)
-#endif
+
+
+#ifdef __OBJC__
+
+#import <Metal/Metal.h>
 
 
 #pragma mark -
 #pragma mark MTLDevice
 
-#ifdef __OBJC__
 /** Returns an approximation of how much memory, in bytes, the device can use with good performance. */
 uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice);
 
 /** Populate the propertes with info about the GPU represented by the MTLDevice. */
 void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice);
+
+/** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
+uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
 
 /**
  * If the MTLDevice defines a texture memory alignment for the format, it is retrieved from
@@ -145,4 +138,5 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
  * The format must support linear texture memory (must not be depth, stencil, or compressed).
  */
 VkDeviceSize mvkMTLPixelFormatLinearTextureAlignment(MTLPixelFormat mtlPixelFormat, id<MTLDevice> mtlDevice);
-#endif
+
+#endif	// __OBJC__

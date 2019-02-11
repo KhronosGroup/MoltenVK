@@ -80,14 +80,6 @@ extern "C" {
  * is set by the MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y at runtime, or by the
  * MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y build setting when MoltenVK is compiled.
  *
- * In addition to the configuration parmeters in this structure, the level of logging
- * performned by MoltenVK can be controlled by the MVK_LOG_LEVEL runtime environment
- * variable or MoltenVK compile-time build setting using the following numberic values:
- *   0: No logging.
- *   1: Log errors only.
- *   2: Log errors and informational messages.
- * If neither is set, errors and informational messages are logged.
- *
  * This structure may be extended as new features are added to MoltenVK. If you are linking to
  * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
  * than your app was, the size of this structure in your app may be larger or smaller than the
@@ -97,6 +89,20 @@ extern "C" {
  * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
  * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
  * SHOULD NOT BE CHANGED.
+ *
+ * In addition to the configuration parmeters in this structure, there are several settings that
+ * can be configured through runtime environment variables or MoltenVK compile-time build settings:
+ *
+ * 1. The MVK_CONFIG_LOG_LEVEL runtime environment variable or MoltenVK compile-time build setting
+ *    controls the level of logging performned by MoltenVK using the following numeric values:
+ *      0: No logging.
+ *      1: Log errors only.
+ *      2: Log errors and informational messages.
+ *    If neither is set, errors and informational messages are logged.
+ *
+ * 2. Setting the MVK_CONFIG_FORCE_LOW_POWER_GPU runtime environment variable or MoltenVK compile-time
+ *    build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.
+ *
  */
 typedef struct {
 
