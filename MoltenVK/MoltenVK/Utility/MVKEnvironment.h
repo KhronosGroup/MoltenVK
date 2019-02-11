@@ -129,6 +129,11 @@
 #   define MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX    0
 #endif
 
+/** Force the use of a low-power GPU if it exists. Disabled by default. */
+#ifndef MVK_CONFIG_FORCE_LOW_POWER_GPU
+#   define MVK_CONFIG_FORCE_LOW_POWER_GPU    0
+#endif
+
 
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.

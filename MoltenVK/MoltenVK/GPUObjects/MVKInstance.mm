@@ -68,41 +68,46 @@ void MVKInstance::destroySurface(MVKSurface* mvkSrfc,
 
 // Returns an autoreleased array containing the MTLDevices available on this system,
 // sorted according to power, with higher power GPU's at the front of the array.
-// This ensures that a lazy app that simply grabs the first GPU will get a high-power one by default.
-// If the MVK_FORCE_LOW_POWER_GPU is defined, the returned array will only include low-power devices.
+// This ensures that a lazy app that simply grabs the first GPU will get a high-power
+// one by default. If the MVK_CONFIG_FORCE_LOW_POWER_GPU env var or build setting is set,
+// the returned array will only include low-power devices.
 // If Metal is not supported, ensure we return an empty array.
 static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
 #if MVK_MACOS
 	NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
 	if ( !mtlDevs ) { return @[]; }
 
-#ifdef MVK_FORCE_LOW_POWER_GPU
-	NSMutableArray* lpDevs = [[NSMutableArray new] autorelease];
-	for (id<MTLDevice> md in mtlDevs) {
-		if (md.isLowPower) { [lpDevs addObject: md]; }
-	}
-	return lpDevs;
-#else
-	return [mtlDevs sortedArrayUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
-		BOOL md1IsLP = md1.isLowPower;
-		BOOL md2IsLP = md2.isLowPower;
+	bool forceLowPower = MVK_CONFIG_FORCE_LOW_POWER_GPU;
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL(forceLowPower, MVK_CONFIG_FORCE_LOW_POWER_GPU);
 
-		if (md1IsLP == md2IsLP) {
-			// If one device is headless and the other one is not, select the
-			// one that is not headless first.
-			BOOL md1IsHeadless = md1.isHeadless;
-			BOOL md2IsHeadless = md2.isHeadless;
-			if (md1IsHeadless == md2IsHeadless ) {
-				return NSOrderedSame;
-			}
-			return md2IsHeadless ? NSOrderedAscending : NSOrderedDescending;
+	if (forceLowPower) {
+		NSMutableArray* lpDevs = [[NSMutableArray new] autorelease];
+		for (id<MTLDevice> md in mtlDevs) {
+			if (md.isLowPower) { [lpDevs addObject: md]; }
 		}
+		return lpDevs;
+	} else {
+		return [mtlDevs sortedArrayUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
+			BOOL md1IsLP = md1.isLowPower;
+			BOOL md2IsLP = md2.isLowPower;
 
-		return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
-	}];
+			if (md1IsLP == md2IsLP) {
+				// If one device is headless and the other one is not, select the
+				// one that is not headless first.
+				BOOL md1IsHeadless = md1.isHeadless;
+				BOOL md2IsHeadless = md2.isHeadless;
+				if (md1IsHeadless == md2IsHeadless ) {
+					return NSOrderedSame;
+				}
+				return md2IsHeadless ? NSOrderedAscending : NSOrderedDescending;
+			}
+
+			return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
+		}];
+	}
+
 #endif	// MVK_MACOS
 
-#endif
 #if MVK_IOS
 	id<MTLDevice> mtlDev = MTLCreateSystemDefaultDevice();
 	return mtlDev ? [NSArray arrayWithObject: mtlDev] : @[];

@@ -179,8 +179,8 @@
 		A9C96DD11DDC20C20053187F /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
 		A9C96DD21DDC20C20053187F /* MVKMTLBufferAllocation.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */; };
 		A9C96DD31DDC20C20053187F /* MVKMTLBufferAllocation.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */; };
-		A9E337B5220129DD00363D2A /* MVKLogging.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9E337B1220129DD00363D2A /* MVKLogging.mm */; };
-		A9E337B6220129DD00363D2A /* MVKLogging.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9E337B1220129DD00363D2A /* MVKLogging.mm */; };
+		A9E337B5220129DD00363D2A /* MVKLogging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9E337B1220129DD00363D2A /* MVKLogging.cpp */; };
+		A9E337B6220129DD00363D2A /* MVKLogging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9E337B1220129DD00363D2A /* MVKLogging.cpp */; };
 		A9E4B7891E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */; };
 		A9E4B78A1E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */; };
 		A9E53DD72100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DCD2100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m */; };
@@ -363,7 +363,7 @@
 		A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKMTLBufferAllocation.mm; sourceTree = "<group>"; };
 		A9CBEE011B6299D800E45FDC /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9DE1083200598C500F18F80 /* icd */ = {isa = PBXFileReference; lastKnownFileType = folder; path = icd; sourceTree = "<group>"; };
-		A9E337B1220129DD00363D2A /* MVKLogging.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKLogging.mm; sourceTree = "<group>"; };
+		A9E337B1220129DD00363D2A /* MVKLogging.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKLogging.cpp; sourceTree = "<group>"; };
 		A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKMTLResourceBindings.h; sourceTree = "<group>"; };
 		A9E53DCD2100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MTLSamplerDescriptor+MoltenVK.m"; sourceTree = "<group>"; };
 		A9E53DCE2100B197002781DD /* MVKOSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKOSExtensions.h; sourceTree = "<group>"; };
@@ -575,7 +575,7 @@
 			isa = PBXGroup;
 			children = (
 				A9F0429D1FB4CF82009FCCB8 /* MVKCommonEnvironment.h */,
-				A9E337B1220129DD00363D2A /* MVKLogging.mm */,
+				A9E337B1220129DD00363D2A /* MVKLogging.cpp */,
 				A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */,
 				A981496A1FB6A998005F00B4 /* MVKStrings.h */,
 			);
@@ -963,7 +963,7 @@
 				A94FB8301C7DFB4800632CA3 /* vk_mvk_moltenvk.mm in Sources */,
 				A94FB8161C7DFB4800632CA3 /* MVKSwapchain.mm in Sources */,
 				A95B7D6B1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */,
-				A9E337B5220129DD00363D2A /* MVKLogging.mm in Sources */,
+				A9E337B5220129DD00363D2A /* MVKLogging.cpp in Sources */,
 				A93E83352121F0C8001FEBD4 /* MVKGPUCapture.mm in Sources */,
 				A94FB7CE1C7DFB4800632CA3 /* MVKCommand.mm in Sources */,
 				A94FB80E1C7DFB4800632CA3 /* MVKShaderModule.mm in Sources */,
@@ -1017,7 +1017,7 @@
 				A94FB8311C7DFB4800632CA3 /* vk_mvk_moltenvk.mm in Sources */,
 				A94FB8171C7DFB4800632CA3 /* MVKSwapchain.mm in Sources */,
 				A95B7D6C1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */,
-				A9E337B6220129DD00363D2A /* MVKLogging.mm in Sources */,
+				A9E337B6220129DD00363D2A /* MVKLogging.cpp in Sources */,
 				A93E83362121F0C8001FEBD4 /* MVKGPUCapture.mm in Sources */,
 				A94FB7CF1C7DFB4800632CA3 /* MVKCommand.mm in Sources */,
 				A94FB80F1C7DFB4800632CA3 /* MVKShaderModule.mm in Sources */,

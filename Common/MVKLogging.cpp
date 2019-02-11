@@ -24,11 +24,11 @@
 // 0 = None
 // 1 = Errors only
 // 2 = All
-#ifndef MVK_LOG_LEVEL
-#   define MVK_LOG_LEVEL    2
+#ifndef MVK_CONFIG_LOG_LEVEL
+#   define MVK_CONFIG_LOG_LEVEL    2
 #endif
 
-static uint32_t _mvkLogLevel = MVK_LOG_LEVEL;
+static uint32_t _mvkLogLevel = MVK_CONFIG_LOG_LEVEL;
 
 void MVKLogImplV(bool logToPrintf, bool /*logToASL*/, int aslLvl, const char* lvlStr, const char* format, va_list args) {
 
@@ -56,6 +56,6 @@ __attribute__((constructor)) static void MVKInitLogging() {
 	if (_mvkLoggingInitialized ) { return; }
 	_mvkLoggingInitialized = true;
 
-	MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkLogLevel, MVK_LOG_LEVEL);
+	MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkLogLevel, MVK_CONFIG_LOG_LEVEL);
 }
 #endif

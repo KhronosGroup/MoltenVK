@@ -78,6 +78,14 @@ __attribute__((constructor)) static void MVKInitTimestamps() {
 	MVKLogDebug("Initializing MoltenVK timestamping. Mach time: %llu. Time period: %d / %d = %.6f.", _mvkTimestampBase, timebase.numer, timebase.denom, _mvkTimestampPeriod);
 }
 
+void mvkDispatchToMainAndWait(dispatch_block_t block) {
+	if (NSThread.isMainThread) {
+		block();
+	} else {
+		dispatch_sync(dispatch_get_main_queue(), block);
+	}
+}
+
 
 #pragma mark -
 #pragma mark Process environment
@@ -158,8 +166,9 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
 	// If the device has an associated registry ID, we can use that to get the associated IOKit node.
 	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
 	io_registry_entry_t entry;
-	if ( [mtlDevice respondsToSelector: @selector(registryID)] ) {
-		entry = IOServiceGetMatchingService(kIOMasterPortDefault, IORegistryEntryIDMatching(mtlDevice.registryID));
+	uint64_t regID = mvkGetRegistryID(mtlDevice);
+	if (regID) {
+		entry = IOServiceGetMatchingService(kIOMasterPortDefault, IORegistryEntryIDMatching(regID));
 		if (entry) {
 			// That returned the IOGraphicsAccelerator nub. Its parent, then, is the actual
 			// PCI device.
@@ -221,6 +230,10 @@ void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlD
 	strlcpy(devProps.deviceName, mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 }
 #endif	//MVK_IOS
+
+uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
+	return [mtlDevice respondsToSelector: @selector(registryID)] ? mtlDevice.registryID : 0;
+}
 
 VkDeviceSize mvkMTLPixelFormatLinearTextureAlignment(MTLPixelFormat mtlPixelFormat,
 													 id<MTLDevice> mtlDevice) {

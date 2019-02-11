@@ -1991,9 +1991,9 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice) {
 	// MTLCreateSystemDefaultDevice function, and if that GPU is the same as the
 	// selected GPU, update the MTLDevice instance used by the MVKPhysicalDevice.
 	id<MTLDevice> mtlDevice = _physicalDevice->getMTLDevice();
-	if (_pMVKConfig->switchSystemGPU && !(mtlDevice.lowPower || mtlDevice.headless) ) {
+	if (_pMVKConfig->switchSystemGPU && !(mtlDevice.isLowPower || mtlDevice.isHeadless) ) {
 		id<MTLDevice> sysMTLDevice = MTLCreateSystemDefaultDevice();
-		if (sysMTLDevice.registryID == mtlDevice.registryID) {
+		if (mvkGetRegistryID(sysMTLDevice) == mvkGetRegistryID(mtlDevice)) {
 			_physicalDevice->replaceMTLDevice(sysMTLDevice);
 		}
 	}
