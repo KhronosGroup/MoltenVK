@@ -122,21 +122,20 @@ see the [`ExternalRevisions/README.md`](ExternalRevisions/README.md) document.
 Building **MoltenVK**
 -------------------
 
-At development time, **MoltenVK** references advanced OS frameworks during building.
- 
-- *Xcode 9* or above is required to build and link **MoltenVK** projects.
-
-Once built, **MoltenVK** can be run on *iOS* or *macOS* devices that support *Metal*.
-
-- **MoltenVK** requires at least *macOS 10.11* or  *iOS 9*.
-- Information on *macOS* devices that are compatible with *Metal* can be found in 
-  [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
-- Information on compatible *iOS* devices that are compatible with *Metal* can be found in 
-  [this article](https://developer.apple.com/library/content/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/HardwareGPUInformation/HardwareGPUInformation.html).
+During building, **MoltenVK** references the latest *Apple SDK* frameworks. To access these frameworks, 
+and to avoid build errors, be sure to use the latest publicly available version of *Xcode*.
 
 >***Note:*** To support `IOSurfaces` on *iOS*, **MoltenVK**, and any app that uses **MoltenVK**, 
 must be built with a minimum **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET `) build 
 setting of `iOS 11.0` or greater.
+
+Once built, the **MoltenVK** libraries can be run on *iOS* or *macOS* devices that support *Metal*.
+
+- At runtime, **MoltenVK** requires at least *macOS 10.11* or *iOS 9* (or *iOS 11* if using `IOSurfaces`).
+- Information on *macOS* devices that are compatible with *Metal* can be found in 
+  [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
+- Information on *iOS* devices that are compatible with *Metal* can be found in 
+  [this article](https://developer.apple.com/library/content/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/HardwareGPUInformation/HardwareGPUInformation.html).
 
 The `MoltenVKPackaging.xcodeproj` *Xcode* project contains targets and schemes to build 
 and package the entire **MoltenVK** runtime distribution package, or to build individual 
