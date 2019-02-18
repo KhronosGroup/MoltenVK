@@ -531,10 +531,10 @@
 			isa = PBXGroup;
 			children = (
 				A981497C1FB6B566005F00B4 /* MoltenVKShaderConverter */,
-				A981497E1FB6B566005F00B4 /* MoltenVKGLSLToSPIRVConverter.framework */,
-				A98149801FB6B566005F00B4 /* MoltenVKGLSLToSPIRVConverter.framework */,
-				A98149821FB6B566005F00B4 /* MoltenVKSPIRVToMSLConverter.framework */,
-				A98149841FB6B566005F00B4 /* MoltenVKSPIRVToMSLConverter.framework */,
+				A981497E1FB6B566005F00B4 /* libMoltenVKGLSLToSPIRVConverter.a */,
+				A98149801FB6B566005F00B4 /* libMoltenVKGLSLToSPIRVConverter.a */,
+				A98149821FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */,
+				A98149841FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -745,7 +745,7 @@
 				A9B8EE071A98D796009C5A02 /* Headers */,
 				A9B8EE051A98D796009C5A02 /* Sources */,
 				A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */,
-				A92EF79721854B3300C8B91B /* Create  Framework */,
+				A92EF79721854B3300C8B91B /* Create Framework */,
 			);
 			buildRules = (
 			);
@@ -826,31 +826,31 @@
 			remoteRef = A981497B1FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A981497E1FB6B566005F00B4 /* MoltenVKGLSLToSPIRVConverter.framework */ = {
+		A981497E1FB6B566005F00B4 /* libMoltenVKGLSLToSPIRVConverter.a */ = {
 			isa = PBXReferenceProxy;
-			fileType = wrapper.framework;
-			path = MoltenVKGLSLToSPIRVConverter.framework;
+			fileType = archive.ar;
+			path = libMoltenVKGLSLToSPIRVConverter.a;
 			remoteRef = A981497D1FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A98149801FB6B566005F00B4 /* MoltenVKGLSLToSPIRVConverter.framework */ = {
+		A98149801FB6B566005F00B4 /* libMoltenVKGLSLToSPIRVConverter.a */ = {
 			isa = PBXReferenceProxy;
-			fileType = wrapper.framework;
-			path = MoltenVKGLSLToSPIRVConverter.framework;
+			fileType = archive.ar;
+			path = libMoltenVKGLSLToSPIRVConverter.a;
 			remoteRef = A981497F1FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A98149821FB6B566005F00B4 /* MoltenVKSPIRVToMSLConverter.framework */ = {
+		A98149821FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */ = {
 			isa = PBXReferenceProxy;
-			fileType = wrapper.framework;
-			path = MoltenVKSPIRVToMSLConverter.framework;
+			fileType = archive.ar;
+			path = libMoltenVKSPIRVToMSLConverter.a;
 			remoteRef = A98149811FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A98149841FB6B566005F00B4 /* MoltenVKSPIRVToMSLConverter.framework */ = {
+		A98149841FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */ = {
 			isa = PBXReferenceProxy;
-			fileType = wrapper.framework;
-			path = MoltenVKSPIRVToMSLConverter.framework;
+			fileType = archive.ar;
+			path = libMoltenVKSPIRVToMSLConverter.a;
 			remoteRef = A98149831FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
@@ -873,9 +873,9 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"macOS\"\nexport MVK_FRWK_SUBPATH=\"/Versions/A\"\n\n\"${SRCROOT}/scripts/create_framework.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_macos.sh\"\n";
 		};
-		A92EF79721854B3300C8B91B /* Create  Framework */ = {
+		A92EF79721854B3300C8B91B /* Create Framework */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -884,14 +884,14 @@
 			);
 			inputPaths = (
 			);
-			name = "Create  Framework";
+			name = "Create Framework";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_FRWK_SUBPATH=\"\"\n\n\"${SRCROOT}/scripts/create_framework.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_ios.sh\"\n";
 		};
 		A93F47C91D7E389E002AF700 /* Create Dynamic Library */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -905,7 +905,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"macosx\"\nexport MVK_UX_FWK=\"AppKit\"\nexport MVK_MIN_OS_VERSION=${MACOSX_DEPLOYMENT_TARGET}\nexport MVK_IOSURFACE_FWK=\"-framework IOSurface\"\n\n\"${SRCROOT}/scripts/create_dylib.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_macos.sh\"\n";
 		};
 		A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -919,7 +919,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"ios\"\nexport MVK_UX_FWK=\"UIKit\"\nexport MVK_MIN_OS_VERSION=${IPHONEOS_DEPLOYMENT_TARGET}\nexport MVK_IOSURFACE_FWK=\"-framework IOSurface\"\n\n# Do not link to IOSurface if deploying to iOS versions below 11.0, doing so will\n# link IOSurface as a private framework, which will trigger App Store rejection.\nif [ $(echo \"${MVK_MIN_OS_VERSION} < 11.0\" | bc) -eq 1 ]; then\n    MVK_IOSURFACE_FWK=\"\"\nfi\n\n\"${SRCROOT}/scripts/create_dylib.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_ios.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -1116,6 +1116,7 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -1144,7 +1145,7 @@
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/MoltenVKSPIRVToMSLConverter.framework/MoltenVKSPIRVToMSLConverter";
+				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKSPIRVToMSLConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
 			};
@@ -1177,6 +1178,7 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = fast;
 				GCC_PREPROCESSOR_DEFINITIONS = MVK_ENV_LOG_LEVEL;
@@ -1200,7 +1202,7 @@
 				);
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/MoltenVKSPIRVToMSLConverter.framework/MoltenVKSPIRVToMSLConverter";
+				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKSPIRVToMSLConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
 				VALIDATE_PRODUCT = YES;

@@ -19,6 +19,7 @@
 #include "GLSLToSPIRVConverter.h"
 #include "MVKCommonEnvironment.h"
 #include "SPIRVToMSLConverter.h"
+#include "SPIRVSupport.h"
 #include "MVKStrings.h"
 #include "../glslang/SPIRV/GlslangToSpv.h"
 #include "../glslang/SPIRV/disassemble.h"

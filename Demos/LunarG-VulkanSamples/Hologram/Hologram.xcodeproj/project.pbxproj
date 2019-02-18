@@ -88,8 +88,8 @@
 		A9B67B8A1C3AAEA200373FFD /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = macOS.xcassets; sourceTree = "<group>"; };
 		A9C2AB97218503A400DDBC03 /* libMoltenVK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMoltenVK.a; path = ../../../MoltenVK/iOS/static/libMoltenVK.a; sourceTree = "<group>"; };
-		A9C2AB98218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
-		A9C2AB9B218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
+		A9C2AB98218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/framework/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
+		A9C2AB9B218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/framework/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
 		A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMoltenVK.a; path = ../../../MoltenVK/macOS/static/libMoltenVK.a; sourceTree = "<group>"; };
 		A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HelpersDispatchTable.cpp; sourceTree = "<group>"; };
 		A9D516F71CD575E300097D96 /* HelpersDispatchTable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HelpersDispatchTable.h; sourceTree = "<group>"; };
@@ -378,7 +378,7 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "";
-				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS\"";
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/framework\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
@@ -395,7 +395,7 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "";
-				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS\"";
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/framework\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
@@ -412,7 +412,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS\"";
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/framework\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
@@ -427,7 +427,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS\"";
+				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/framework\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
@@ -462,7 +462,7 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../MoltenVK/include\"",
 					"\"$(SRCROOT)/../VulkanSamples/API-Samples/utils\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter\"",
+					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/include\"",
 				);
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-ObjC";
@@ -491,7 +491,7 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../MoltenVK/include\"",
 					"\"$(SRCROOT)/../VulkanSamples/API-Samples/utils\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter\"",
+					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/include\"",
 				);
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.moltenvk.${PRODUCT_NAME:identifier}";

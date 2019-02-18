@@ -9,20 +9,20 @@
 /* Begin PBXBuildFile section */
 		A909408A1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
 		A909408B1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
-		A909408C1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		A909408D1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A909408C1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */; };
+		A909408D1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */; };
 		A90940A71C5808BB0094110D /* GLSLToSPIRVConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A90940A31C5808BB0094110D /* GLSLToSPIRVConverter.cpp */; };
 		A90940A81C5808BB0094110D /* GLSLToSPIRVConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A90940A31C5808BB0094110D /* GLSLToSPIRVConverter.cpp */; };
-		A90940A91C5808BB0094110D /* GLSLToSPIRVConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A90940A41C5808BB0094110D /* GLSLToSPIRVConverter.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		A90940AA1C5808BB0094110D /* GLSLToSPIRVConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A90940A41C5808BB0094110D /* GLSLToSPIRVConverter.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A90940A91C5808BB0094110D /* GLSLToSPIRVConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A90940A41C5808BB0094110D /* GLSLToSPIRVConverter.h */; };
+		A90940AA1C5808BB0094110D /* GLSLToSPIRVConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A90940A41C5808BB0094110D /* GLSLToSPIRVConverter.h */; };
 		A90941A31C581F840094110D /* GLSLConversion.mm in Sources */ = {isa = PBXBuildFile; fileRef = A90941A11C581F840094110D /* GLSLConversion.mm */; };
 		A90941A41C581F840094110D /* GLSLConversion.mm in Sources */ = {isa = PBXBuildFile; fileRef = A90941A11C581F840094110D /* GLSLConversion.mm */; };
-		A90941A51C581F840094110D /* GLSLConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A90941A21C581F840094110D /* GLSLConversion.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		A90941A61C581F840094110D /* GLSLConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A90941A21C581F840094110D /* GLSLConversion.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		A925B71A1C78DEB2006E7ECD /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A964BD601C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */; };
-		A925B71B1C78DEB2006E7ECD /* MoltenVKSPIRVToMSLConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A93903C71C57E9ED00FE90DC /* MoltenVKSPIRVToMSLConverter.framework */; };
-		A928C9191D0488DC00071B88 /* SPIRVConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A928C9171D0488DC00071B88 /* SPIRVConversion.h */; settings = {ATTRIBUTES = (Public, ); }; };
-		A928C91A1D0488DC00071B88 /* SPIRVConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A928C9171D0488DC00071B88 /* SPIRVConversion.h */; settings = {ATTRIBUTES = (Public, ); }; };
+		A90941A51C581F840094110D /* GLSLConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A90941A21C581F840094110D /* GLSLConversion.h */; };
+		A90941A61C581F840094110D /* GLSLConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A90941A21C581F840094110D /* GLSLConversion.h */; };
+		A925B71A1C78DEB2006E7ECD /* libMoltenVKGLSLToSPIRVConverter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A964BD601C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */; };
+		A925B71B1C78DEB2006E7ECD /* libMoltenVKSPIRVToMSLConverter.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A93903C71C57E9ED00FE90DC /* libMoltenVKSPIRVToMSLConverter.a */; };
+		A928C9191D0488DC00071B88 /* SPIRVConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A928C9171D0488DC00071B88 /* SPIRVConversion.h */; };
+		A928C91A1D0488DC00071B88 /* SPIRVConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A928C9171D0488DC00071B88 /* SPIRVConversion.h */; };
 		A928C91B1D0488DC00071B88 /* SPIRVConversion.mm in Sources */ = {isa = PBXBuildFile; fileRef = A928C9181D0488DC00071B88 /* SPIRVConversion.mm */; };
 		A928C91C1D0488DC00071B88 /* SPIRVConversion.mm in Sources */ = {isa = PBXBuildFile; fileRef = A928C9181D0488DC00071B88 /* SPIRVConversion.mm */; };
 		A95096BB2003D00300F10950 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
@@ -40,6 +40,17 @@
 		A98149671FB6A98A005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
 		A98149681FB6A98A005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
 		A98149691FB6A98A005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
+		A9C70F5A221B2F6500FBA31A /* libSPIRVTools.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD3021CEE7040013AB25 /* libSPIRVTools.a */; };
+		A9C70F5B221B2F8100FBA31A /* libSPIRVTools.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD3421CEE7330013AB25 /* libSPIRVTools.a */; };
+		A9C70F5F221B321700FBA31A /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
+		A9C70F60221B321700FBA31A /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
+		A9C70F61221B321700FBA31A /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
+		A9C70F62221B321700FBA31A /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
+		A9C70F63221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
+		A9C70F64221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
+		A9C70F65221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
+		A9C70F66221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
+		A9C70F67221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
 		A9E337B8220129ED00363D2A /* MVKLogging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9E337B7220129ED00363D2A /* MVKLogging.cpp */; };
 		A9F042B01FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
 		A9F042B11FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
@@ -79,13 +90,13 @@
 		A925B70B1C7754B2006E7ECD /* FileSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = FileSupport.h; sourceTree = "<group>"; };
 		A928C9171D0488DC00071B88 /* SPIRVConversion.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVConversion.h; sourceTree = "<group>"; };
 		A928C9181D0488DC00071B88 /* SPIRVConversion.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SPIRVConversion.mm; sourceTree = "<group>"; };
-		A93903BF1C57E9D700FE90DC /* MoltenVKSPIRVToMSLConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKSPIRVToMSLConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		A93903C71C57E9ED00FE90DC /* MoltenVKSPIRVToMSLConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKSPIRVToMSLConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A93903BF1C57E9D700FE90DC /* libMoltenVKSPIRVToMSLConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKSPIRVToMSLConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		A93903C71C57E9ED00FE90DC /* libMoltenVKSPIRVToMSLConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKSPIRVToMSLConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A95096BD2003D32400F10950 /* DirectorySupport.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = DirectorySupport.mm; sourceTree = "<group>"; };
 		A95096BE2003D32400F10950 /* DirectorySupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DirectorySupport.h; sourceTree = "<group>"; };
 		A964BD5F1C57EFBD00D930D8 /* MoltenVKShaderConverter */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MoltenVKShaderConverter; sourceTree = BUILT_PRODUCTS_DIR; };
-		A964BD601C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKGLSLToSPIRVConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
-		A964BD611C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = MoltenVKGLSLToSPIRVConverter.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		A964BD601C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKGLSLToSPIRVConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		A964BD611C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKGLSLToSPIRVConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A972AD2A21CEE6A90013AB25 /* libglslang.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libglslang.a; path = ../External/build/iOS/libglslang.a; sourceTree = "<group>"; };
 		A972AD2F21CEE7040013AB25 /* libSPIRVCross.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVCross.a; path = ../External/build/iOS/libSPIRVCross.a; sourceTree = "<group>"; };
 		A972AD3021CEE7040013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVTools.a; path = ../External/build/iOS/libSPIRVTools.a; sourceTree = "<group>"; };
@@ -96,6 +107,8 @@
 		A97CC73E1C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MoltenVKShaderConverterTool.cpp; sourceTree = "<group>"; };
 		A97CC73F1C7527F3004A5C7E /* MoltenVKShaderConverterTool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MoltenVKShaderConverterTool.h; sourceTree = "<group>"; };
 		A98149651FB6A98A005F00B4 /* MVKStrings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKStrings.h; sourceTree = "<group>"; };
+		A9C70F5D221B321600FBA31A /* SPIRVSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SPIRVSupport.h; path = Common/SPIRVSupport.h; sourceTree = SOURCE_ROOT; };
+		A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SPIRVSupport.cpp; path = Common/SPIRVSupport.cpp; sourceTree = SOURCE_ROOT; };
 		A9E337B7220129ED00363D2A /* MVKLogging.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKLogging.cpp; sourceTree = "<group>"; };
 		A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommonEnvironment.h; sourceTree = "<group>"; };
 		A9F042AB1FB4D060009FCCB8 /* MVKLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKLogging.h; sourceTree = "<group>"; };
@@ -106,8 +119,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A925B71A1C78DEB2006E7ECD /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */,
-				A925B71B1C78DEB2006E7ECD /* MoltenVKSPIRVToMSLConverter.framework in Frameworks */,
+				A925B71A1C78DEB2006E7ECD /* libMoltenVKGLSLToSPIRVConverter.a in Frameworks */,
+				A925B71B1C78DEB2006E7ECD /* libMoltenVKSPIRVToMSLConverter.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -116,6 +129,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A972AD2B21CEE6A90013AB25 /* libglslang.a in Frameworks */,
+				A9C70F5A221B2F6500FBA31A /* libSPIRVTools.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -124,6 +138,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A972AD3921CEE7480013AB25 /* libglslang.a in Frameworks */,
+				A9C70F5B221B2F8100FBA31A /* libSPIRVTools.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -131,8 +146,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A972AD3121CEE7040013AB25 /* libSPIRVCross.a in Frameworks */,
 				A972AD3221CEE7040013AB25 /* libSPIRVTools.a in Frameworks */,
+				A972AD3121CEE7040013AB25 /* libSPIRVCross.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -175,11 +190,11 @@
 		A964B28D1C57EBC400D930D8 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				A93903C71C57E9ED00FE90DC /* MoltenVKSPIRVToMSLConverter.framework */,
-				A93903BF1C57E9D700FE90DC /* MoltenVKSPIRVToMSLConverter.framework */,
+				A93903C71C57E9ED00FE90DC /* libMoltenVKSPIRVToMSLConverter.a */,
+				A93903BF1C57E9D700FE90DC /* libMoltenVKSPIRVToMSLConverter.a */,
 				A964BD5F1C57EFBD00D930D8 /* MoltenVKShaderConverter */,
-				A964BD601C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */,
-				A964BD611C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */,
+				A964BD601C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */,
+				A964BD611C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -216,6 +231,8 @@
 				A9E337B7220129ED00363D2A /* MVKLogging.cpp */,
 				A9F042AB1FB4D060009FCCB8 /* MVKLogging.h */,
 				A98149651FB6A98A005F00B4 /* MVKStrings.h */,
+				A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */,
+				A9C70F5D221B321600FBA31A /* SPIRVSupport.h */,
 			);
 			name = Common;
 			path = ../Common;
@@ -240,8 +257,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A90941A51C581F840094110D /* GLSLConversion.h in Headers */,
 				A9F042B41FB4D060009FCCB8 /* MVKLogging.h in Headers */,
+				A9C70F5F221B321700FBA31A /* SPIRVSupport.h in Headers */,
+				A90941A51C581F840094110D /* GLSLConversion.h in Headers */,
 				A90940A91C5808BB0094110D /* GLSLToSPIRVConverter.h in Headers */,
 				A9F042B01FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */,
 				A98149661FB6A98A005F00B4 /* MVKStrings.h in Headers */,
@@ -252,8 +270,9 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A90941A61C581F840094110D /* GLSLConversion.h in Headers */,
 				A9F042B51FB4D060009FCCB8 /* MVKLogging.h in Headers */,
+				A9C70F60221B321700FBA31A /* SPIRVSupport.h in Headers */,
+				A90941A61C581F840094110D /* GLSLConversion.h in Headers */,
 				A90940AA1C5808BB0094110D /* GLSLToSPIRVConverter.h in Headers */,
 				A9F042B11FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */,
 				A98149671FB6A98A005F00B4 /* MVKStrings.h in Headers */,
@@ -265,6 +284,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A98149681FB6A98A005F00B4 /* MVKStrings.h in Headers */,
+				A9C70F61221B321700FBA31A /* SPIRVSupport.h in Headers */,
 				A928C9191D0488DC00071B88 /* SPIRVConversion.h in Headers */,
 				A9F042B61FB4D060009FCCB8 /* MVKLogging.h in Headers */,
 				A909408C1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */,
@@ -277,9 +297,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				A98149691FB6A98A005F00B4 /* MVKStrings.h in Headers */,
+				A9C70F62221B321700FBA31A /* SPIRVSupport.h in Headers */,
 				A928C91A1D0488DC00071B88 /* SPIRVConversion.h in Headers */,
-				A9F042B71FB4D060009FCCB8 /* MVKLogging.h in Headers */,
 				A909408D1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */,
+				A9F042B71FB4D060009FCCB8 /* MVKLogging.h in Headers */,
 				A9F042B31FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -312,6 +333,8 @@
 				A93747291A9A8B2900F29B34 /* Headers */,
 				A93747271A9A8B2900F29B34 /* Sources */,
 				A972AD2821CEE6310013AB25 /* Frameworks */,
+				A9C70F49221B075700FBA31A /* Create Dynamic Library */,
+				A941E2A7221AC9C300890C56 /* Create Framework */,
 			);
 			buildRules = (
 			);
@@ -319,8 +342,8 @@
 			);
 			name = "MoltenVKGLSLToSPIRVConverter-iOS";
 			productName = "MetalGLShaderConverter-iOS";
-			productReference = A964BD611C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */;
-			productType = "com.apple.product-type.framework";
+			productReference = A964BD611C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */;
+			productType = "com.apple.product-type.library.static";
 		};
 		A93747701A9A98D000F29B34 /* MoltenVKGLSLToSPIRVConverter-macOS */ = {
 			isa = PBXNativeTarget;
@@ -329,6 +352,8 @@
 				A937476E1A9A98D000F29B34 /* Headers */,
 				A937476C1A9A98D000F29B34 /* Sources */,
 				A972AD2C21CEE6C30013AB25 /* Frameworks */,
+				A9C70F4A221B076D00FBA31A /* Create Dynamic Library */,
+				A941E2A9221ACA2C00890C56 /* Create Framework */,
 			);
 			buildRules = (
 			);
@@ -336,8 +361,8 @@
 			);
 			name = "MoltenVKGLSLToSPIRVConverter-macOS";
 			productName = "MetalGLShaderConverter-macOS";
-			productReference = A964BD601C57EFBD00D930D8 /* MoltenVKGLSLToSPIRVConverter.framework */;
-			productType = "com.apple.product-type.framework";
+			productReference = A964BD601C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */;
+			productType = "com.apple.product-type.library.static";
 		};
 		A93903B81C57E9D700FE90DC /* MoltenVKSPIRVToMSLConverter-iOS */ = {
 			isa = PBXNativeTarget;
@@ -346,6 +371,8 @@
 				A93903B91C57E9D700FE90DC /* Headers */,
 				A93903BA1C57E9D700FE90DC /* Sources */,
 				A972AD2E21CEE6F50013AB25 /* Frameworks */,
+				A9C70F4B221B077C00FBA31A /* Create Dynamic Library */,
+				A941E2A8221AC9E800890C56 /* Create Framework */,
 			);
 			buildRules = (
 			);
@@ -353,8 +380,8 @@
 			);
 			name = "MoltenVKSPIRVToMSLConverter-iOS";
 			productName = "MetalGLShaderConverter-iOS";
-			productReference = A93903BF1C57E9D700FE90DC /* MoltenVKSPIRVToMSLConverter.framework */;
-			productType = "com.apple.product-type.framework";
+			productReference = A93903BF1C57E9D700FE90DC /* libMoltenVKSPIRVToMSLConverter.a */;
+			productType = "com.apple.product-type.library.static";
 		};
 		A93903C01C57E9ED00FE90DC /* MoltenVKSPIRVToMSLConverter-macOS */ = {
 			isa = PBXNativeTarget;
@@ -363,6 +390,8 @@
 				A93903C11C57E9ED00FE90DC /* Headers */,
 				A93903C21C57E9ED00FE90DC /* Sources */,
 				A972AD3321CEE7230013AB25 /* Frameworks */,
+				A9C70F4C221B078C00FBA31A /* Create Dynamic Library */,
+				A941E2AA221ACA4C00890C56 /* Create Framework */,
 			);
 			buildRules = (
 			);
@@ -370,8 +399,8 @@
 			);
 			name = "MoltenVKSPIRVToMSLConverter-macOS";
 			productName = "MetalGLShaderConverter-macOS";
-			productReference = A93903C71C57E9ED00FE90DC /* MoltenVKSPIRVToMSLConverter.framework */;
-			productType = "com.apple.product-type.framework";
+			productReference = A93903C71C57E9ED00FE90DC /* libMoltenVKSPIRVToMSLConverter.a */;
+			productType = "com.apple.product-type.library.static";
 		};
 /* End PBXNativeTarget section */
 
@@ -423,6 +452,153 @@
 		};
 /* End PBXProject section */
 
+/* Begin PBXShellScriptBuildPhase section */
+		A941E2A7221AC9C300890C56 /* Create Framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_ios.sh\"\n";
+		};
+		A941E2A8221AC9E800890C56 /* Create Framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_ios.sh\"\n";
+		};
+		A941E2A9221ACA2C00890C56 /* Create Framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_macos.sh\"\n";
+		};
+		A941E2AA221ACA4C00890C56 /* Create Framework */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Framework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_macos.sh\"\n";
+		};
+		A9C70F49221B075700FBA31A /* Create Dynamic Library */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Dynamic Library";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_ios.sh\"\n";
+		};
+		A9C70F4A221B076D00FBA31A /* Create Dynamic Library */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Dynamic Library";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_macos.sh\"\n";
+		};
+		A9C70F4B221B077C00FBA31A /* Create Dynamic Library */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Dynamic Library";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_ios.sh\"\n";
+		};
+		A9C70F4C221B078C00FBA31A /* Create Dynamic Library */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Dynamic Library";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_macos.sh\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 		A9092A891A81717B00051823 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
@@ -430,6 +606,7 @@
 			files = (
 				A9E337B8220129ED00363D2A /* MVKLogging.cpp in Sources */,
 				A97CC7411C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp in Sources */,
+				A9C70F63221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A95096BF2003D32400F10950 /* DirectorySupport.mm in Sources */,
 				A97CC7401C7527F3004A5C7E /* main.cpp in Sources */,
 			);
@@ -440,6 +617,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A90941A31C581F840094110D /* GLSLConversion.mm in Sources */,
+				A9C70F64221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A90940A71C5808BB0094110D /* GLSLToSPIRVConverter.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -449,6 +627,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A90941A41C581F840094110D /* GLSLConversion.mm in Sources */,
+				A9C70F65221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A90940A81C5808BB0094110D /* GLSLToSPIRVConverter.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -459,6 +638,7 @@
 			files = (
 				A95096BB2003D00300F10950 /* FileSupport.mm in Sources */,
 				A909408A1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
+				A9C70F66221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A928C91B1D0488DC00071B88 /* SPIRVConversion.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -469,6 +649,7 @@
 			files = (
 				A95096BC2003D00300F10950 /* FileSupport.mm in Sources */,
 				A909408B1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
+				A9C70F67221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A928C91C1D0488DC00071B88 /* SPIRVConversion.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -493,6 +674,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_MASTER_OBJECT_FILE = NO;
+				MACH_O_TYPE = mh_execute;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SDKROOT = macosx;
@@ -503,6 +685,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GENERATE_MASTER_OBJECT_FILE = NO;
+				MACH_O_TYPE = mh_execute;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SDKROOT = macosx;
@@ -516,13 +699,10 @@
 				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/iOS\"";
-				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -537,13 +717,10 @@
 				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/iOS\"";
-				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -556,12 +733,14 @@
 			buildSettings = {
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
-				COMBINE_HIDPI_IMAGES = YES;
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+				);
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/macOS\"";
-				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = macosx;
 			};
@@ -572,12 +751,14 @@
 			buildSettings = {
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
-				COMBINE_HIDPI_IMAGES = YES;
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+				);
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/macOS\"";
-				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = macosx;
 			};
@@ -588,19 +769,14 @@
 			buildSettings = {
 				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/iOS\"";
-				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -613,19 +789,14 @@
 			buildSettings = {
 				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/iOS\"";
-				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -636,18 +807,14 @@
 		A93903C51C57E9ED00FE90DC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/macOS\"";
-				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = macosx;
 			};
@@ -656,18 +823,14 @@
 		A93903C61C57E9ED00FE90DC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
-					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 					"\"$(SRCROOT)/glslang/build/External/spirv-tools\"",
 				);
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/macOS\"";
-				MACH_O_TYPE = staticlib;
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = macosx;
 			};
@@ -697,6 +860,7 @@
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -715,7 +879,13 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_PARAMETER = YES;
 				GCC_WARN_UNUSED_VARIABLE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
+				);
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				ONLY_ACTIVE_ARCH = YES;
 				SKIP_INSTALL = YES;
@@ -748,6 +918,7 @@
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
+				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = fast;
 				GCC_PREPROCESSOR_DEFINITIONS = "SPIRV_CROSS_FLT_FMT=\\\"%.6g\\\"";
@@ -762,7 +933,13 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				GCC_WARN_UNUSED_PARAMETER = YES;
 				GCC_WARN_UNUSED_VARIABLE = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
+					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
+				);
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
+				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SKIP_INSTALL = YES;
 				VALIDATE_PRODUCT = YES;

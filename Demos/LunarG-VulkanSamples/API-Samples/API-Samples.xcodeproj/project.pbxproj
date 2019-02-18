@@ -646,7 +646,7 @@
 				DEVELOPMENT_TEAM = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../MoltenVK/iOS/framework\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS\"",
+					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/framework\"",
 				);
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -672,7 +672,7 @@
 				DEVELOPMENT_TEAM = "";
 				FRAMEWORK_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../MoltenVK/iOS/framework\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS\"",
+					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/framework\"",
 				);
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
@@ -694,7 +694,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../MoltenVK/macOS/framework\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS\"",
+					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/framework\"",
 				);
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = (
@@ -717,7 +717,7 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				FRAMEWORK_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../MoltenVK/macOS/framework\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS\"",
+					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/framework\"",
 				);
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
