@@ -98,8 +98,16 @@ typedef enum {
     kMVKCommandUseClearColorImage,          /**< vkCmdClearColorImage. */
     kMVKCommandUseClearDepthStencilImage,   /**< vkCmdClearDepthStencilImage. */
     kMVKCommandUseResetQueryPool,           /**< vkCmdResetQueryPool. */
-	kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
+    kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
+    kMVKCommandUseTessellationControl       /**< vkCmdDraw* - tessellation control stage. */
 } MVKCommandUse;
+
+/** Represents a given stage of a graphics pipeline. */
+enum MVKGraphicsStage {
+	kMVKGraphicsStageVertex = 0,	/**< The vertex shader stage. */
+	kMVKGraphicsStageTessControl,	/**< The tessellation control shader stage. */
+	kMVKGraphicsStageRasterization	/**< The rest of the pipeline. */
+};
 
 /** Returns the name of the result value. */
 const char* mvkVkResultName(VkResult vkResult);

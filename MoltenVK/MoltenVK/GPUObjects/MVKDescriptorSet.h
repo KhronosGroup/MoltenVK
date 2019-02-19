@@ -21,6 +21,7 @@
 #include "MVKDevice.h"
 #include "MVKImage.h"
 #include "MVKVector.h"
+#include "mvk_datatypes.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
 #include <unordered_map>
@@ -55,9 +56,7 @@ typedef struct MVKShaderStageResourceBinding {
 
 /** Indicates the Metal resource indexes used by each shader stage in a descriptor binding. */
 typedef struct MVKShaderResourceBinding {
-	MVKShaderStageResourceBinding vertexStage;
-	MVKShaderStageResourceBinding fragmentStage;
-    MVKShaderStageResourceBinding computeStage;
+	MVKShaderStageResourceBinding stages[kMVKShaderStageMax];
 
 	uint32_t getMaxBufferIndex();
 	uint32_t getMaxTextureIndex();
@@ -120,9 +119,7 @@ protected:
 	VkDescriptorSetLayoutBinding _info;
 	std::vector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
-    bool _applyToVertexStage;
-    bool _applyToFragmentStage;
-    bool _applyToComputeStage;
+	bool _applyToStage[kMVKShaderStageMax];
 };
 
 

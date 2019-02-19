@@ -50,6 +50,10 @@
 /* End PBXAggregateTarget section */
 
 /* Begin PBXBuildFile section */
+		450A4F65221C5A95007203D7 /* spirv_reflect.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F63221C5A95007203D7 /* spirv_reflect.hpp */; };
+		450A4F66221C5A95007203D7 /* spirv_reflect.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F63221C5A95007203D7 /* spirv_reflect.hpp */; };
+		450A4F67221C5A95007203D7 /* spirv_reflect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 450A4F64221C5A95007203D7 /* spirv_reflect.cpp */; };
+		450A4F68221C5A95007203D7 /* spirv_reflect.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 450A4F64221C5A95007203D7 /* spirv_reflect.cpp */; };
 		A92C86AA2226CC3600102DD6 /* spirv_target_env.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A92C85312226CC3600102DD6 /* spirv_target_env.cpp */; };
 		A92C86AB2226CC3600102DD6 /* spirv_target_env.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A92C85312226CC3600102DD6 /* spirv_target_env.cpp */; };
 		A92C86AC2226CC3600102DD6 /* assembly_grammar.h in Headers */ = {isa = PBXBuildFile; fileRef = A92C85332226CC3600102DD6 /* assembly_grammar.h */; };
@@ -1042,6 +1046,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		450A4F63221C5A95007203D7 /* spirv_reflect.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_reflect.hpp; sourceTree = "<group>"; };
+		450A4F64221C5A95007203D7 /* spirv_reflect.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_reflect.cpp; sourceTree = "<group>"; };
 		A90FD89F21CC4EAB00B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A90FD9E421CC4EB900B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A92C85312226CC3600102DD6 /* spirv_target_env.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_target_env.cpp; sourceTree = "<group>"; };
@@ -2205,6 +2211,8 @@
 				A976290221CC60BC00B52A68 /* spirv_msl.hpp */,
 				A976290421CC60BC00B52A68 /* spirv_parser.cpp */,
 				A976290C21CC60BC00B52A68 /* spirv_parser.hpp */,
+				450A4F64221C5A95007203D7 /* spirv_reflect.cpp */,
+				450A4F63221C5A95007203D7 /* spirv_reflect.hpp */,
 			);
 			path = "SPIRV-Cross";
 			sourceTree = "<group>";
@@ -2714,6 +2722,7 @@
 				A976292421CC60BC00B52A68 /* spirv_parser.hpp in Headers */,
 				A976291221CC60BC00B52A68 /* spirv_cross.hpp in Headers */,
 				A976291021CC60BC00B52A68 /* spirv_msl.hpp in Headers */,
+				450A4F66221C5A95007203D7 /* spirv_reflect.hpp in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -2728,6 +2737,7 @@
 				A976292321CC60BC00B52A68 /* spirv_parser.hpp in Headers */,
 				A976291121CC60BC00B52A68 /* spirv_cross.hpp in Headers */,
 				A976290F21CC60BC00B52A68 /* spirv_msl.hpp in Headers */,
+				450A4F65221C5A95007203D7 /* spirv_reflect.hpp in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -3404,6 +3414,7 @@
 				A976291421CC60BC00B52A68 /* spirv_parser.cpp in Sources */,
 				A976292221CC60BC00B52A68 /* spirv_cfg.cpp in Sources */,
 				A976291621CC60BC00B52A68 /* spirv_cross.cpp in Sources */,
+				450A4F68221C5A95007203D7 /* spirv_reflect.cpp in Sources */,
 				A976291821CC60BC00B52A68 /* spirv_glsl.cpp in Sources */,
 				A976292821CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp in Sources */,
 			);
@@ -3417,6 +3428,7 @@
 				A976291321CC60BC00B52A68 /* spirv_parser.cpp in Sources */,
 				A976292121CC60BC00B52A68 /* spirv_cfg.cpp in Sources */,
 				A976291521CC60BC00B52A68 /* spirv_cross.cpp in Sources */,
+				450A4F67221C5A95007203D7 /* spirv_reflect.cpp in Sources */,
 				A976291721CC60BC00B52A68 /* spirv_glsl.cpp in Sources */,
 				A976292721CC60BC00B52A68 /* spirv_cross_parsed_ir.cpp in Sources */,
 			);

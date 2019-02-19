@@ -155,7 +155,7 @@ protected:
 // + vkCmdBindDescriptorSets() : _graphicsResourcesState & _computeResourcesState
 // + vkCmdBindVertexBuffers() : _graphicsResourcesState
 // + vkCmdBindIndexBuffer() : _graphicsResourcesState
-// + vkCmdPushConstants() : _vertexPushConstants & _fragmentPushConstants & _computePushConstants
+// + vkCmdPushConstants() : _vertexPushConstants & _tessCtlPushConstants & _tessEvalPushConstants & _fragmentPushConstants & _computePushConstants
 // + vkCmdSetViewport() : _viewportState
 // + vkCmdSetDepthBias() : _depthBiasState
 // + vkCmdSetScissor() : _scissorState
@@ -186,9 +186,9 @@ protected:
 // + setTriangleFillMode : _graphicsPipelineState
 // + setViewport : _viewportState
 // + setVisibilityResultMode : _occlusionQueryState
-// + setVertexBuffer : _graphicsResourcesState & _vertexPushConstants
+// + setVertexBuffer : _graphicsResourcesState & _vertexPushConstants & _tessEvalPushConstants
 // + setVertexBuffers (unused) : _graphicsResourcesState
-// + setVertexBytes : _vertexPushConstants
+// + setVertexBytes : _vertexPushConstants & _tessEvalPushConstants
 // + setVertexBufferOffset (unused) : _graphicsResourcesState
 // + setVertexTexture : _graphicsResourcesState
 // + setVertexTextures (unused) : _graphicsResourcesState
@@ -204,15 +204,15 @@ protected:
 // + setFragmentSamplerStates : (unused) : _graphicsResourcesState
 
 // The above list of Vulkan commands covers the following corresponding MTLComputeCommandEncoder state:
-// + setComputePipelineState : _computePipelineState
-// + setBuffer : _computeResourcesState & _computePushConstants
-// + setBuffers (unused) : _computeResourcesState
-// + setBytes : _computePushConstants
-// + setBufferOffset (unused) : _computeResourcesState
-// + setTexture : _computeResourcesState
-// + setTextures (unused) : _computeResourcesState
-// + setSamplerState : _computeResourcesState
-// + setSamplerStates : (unused) : _computeResourcesState
+// + setComputePipelineState : _computePipelineState & _graphicsPipelineState
+// + setBuffer : _computeResourcesState & _computePushConstants & _graphicsResourcesState & _tessCtlPushConstants
+// + setBuffers (unused) : _computeResourcesState & _graphicsResourcesState
+// + setBytes : _computePushConstants & _tessCtlPushConstants
+// + setBufferOffset (unused) : _computeResourcesState & _graphicsResourcesState
+// + setTexture : _computeResourcesState & _graphicsResourcesState
+// + setTextures (unused) : _computeResourcesState & _graphicsResourcesState
+// + setSamplerState : _computeResourcesState & _graphicsResourcesState
+// + setSamplerStates : (unused) : _computeResourcesState & _graphicsResourcesState
 
 
 /*** Holds a collection of active queries for each query pool. */
@@ -245,6 +245,9 @@ public:
 	/** Begins the next render subpass. */
 	void beginNextSubpass(VkSubpassContents renderpassContents);
 
+	/** Begins a Metal render pass for the current render subpass. */
+	void beginMetalRenderPass();
+
 	/** Returns the render subpass that is currently active. */
 	MVKRenderSubpass* getSubpass();
 
@@ -261,7 +264,7 @@ public:
 	MTLScissorRect clipToRenderArea(MTLScissorRect mtlScissor);
 
 	/** Called by each graphics draw command to establish any outstanding state just prior to performing the draw. */
-	void finalizeDrawState();
+	void finalizeDrawState(MVKGraphicsStage stage);
 
     /** Called by each compute dispatch command to establish any outstanding state just prior to performing the dispatch. */
     void finalizeDispatchState();
@@ -306,6 +309,9 @@ public:
 
     /** Copy bytes into the Metal encoder at a Metal compute buffer index. */
     void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes, NSUInteger length, uint32_t mtlBuffIndex);
+
+    /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
+    const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length);
 
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
@@ -393,7 +399,6 @@ protected:
     void addActivatedQuery(MVKQueryPool* pQueryPool, uint32_t query);
     void finishQueries();
 	void setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex);
-    void beginMetalRenderPass();
 	void clearRenderArea();
     const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length);
     NSString* getMTLRenderCommandEncoderName();
@@ -409,6 +414,8 @@ protected:
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
     MVKCommandUse _mtlBlitEncoderUse;
 	MVKPushConstantsCommandEncoderState _vertexPushConstants;
+	MVKPushConstantsCommandEncoderState _tessCtlPushConstants;
+	MVKPushConstantsCommandEncoderState _tessEvalPushConstants;
 	MVKPushConstantsCommandEncoderState _fragmentPushConstants;
 	MVKPushConstantsCommandEncoderState _computePushConstants;
     MVKOcclusionQueryCommandEncoderState _occlusionQueryState;

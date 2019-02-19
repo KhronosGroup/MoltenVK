@@ -265,6 +265,8 @@ void MVKCommandEncoder::beginMetalRenderPass() {
     _depthBiasState.beginMetalRenderPass();
     _blendColorState.beginMetalRenderPass();
     _vertexPushConstants.beginMetalRenderPass();
+    _tessCtlPushConstants.beginMetalRenderPass();
+    _tessEvalPushConstants.beginMetalRenderPass();
     _fragmentPushConstants.beginMetalRenderPass();
     _depthStencilState.beginMetalRenderPass();
     _stencilReferenceValueState.beginMetalRenderPass();
@@ -314,18 +316,20 @@ MTLScissorRect MVKCommandEncoder::clipToRenderArea(MTLScissorRect mtlScissor) {
 	return mtlScissor;
 }
 
-void MVKCommandEncoder::finalizeDrawState() {
-    _graphicsPipelineState.encode();    // Must do first..it sets others
-    _graphicsResourcesState.encode();
-    _viewportState.encode();
-    _scissorState.encode();
-    _depthBiasState.encode();
-    _blendColorState.encode();
-    _vertexPushConstants.encode();
-    _fragmentPushConstants.encode();
-    _depthStencilState.encode();
-    _stencilReferenceValueState.encode();
-    _occlusionQueryState.encode();
+void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
+    _graphicsPipelineState.encode(stage);    // Must do first..it sets others
+    _graphicsResourcesState.encode(stage);
+    _viewportState.encode(stage);
+    _scissorState.encode(stage);
+    _depthBiasState.encode(stage);
+    _blendColorState.encode(stage);
+    _vertexPushConstants.encode(stage);
+    _tessCtlPushConstants.encode(stage);
+    _tessEvalPushConstants.encode(stage);
+    _fragmentPushConstants.encode(stage);
+    _depthStencilState.encode(stage);
+    _stencilReferenceValueState.encode(stage);
+    _occlusionQueryState.encode(stage);
 }
 
 // Clears the render area of the framebuffer attachments.
@@ -399,9 +403,11 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 }
 MVKPushConstantsCommandEncoderState* MVKCommandEncoder::getPushConstants(VkShaderStageFlagBits shaderStage) {
 	switch (shaderStage) {
-		case VK_SHADER_STAGE_VERTEX_BIT:	return &_vertexPushConstants;
-		case VK_SHADER_STAGE_FRAGMENT_BIT:	return &_fragmentPushConstants;
-		case VK_SHADER_STAGE_COMPUTE_BIT:	return &_computePushConstants;
+		case VK_SHADER_STAGE_VERTEX_BIT:					return &_vertexPushConstants;
+		case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:		return &_tessCtlPushConstants;
+		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	return &_tessEvalPushConstants;
+		case VK_SHADER_STAGE_FRAGMENT_BIT:					return &_fragmentPushConstants;
+		case VK_SHADER_STAGE_COMPUTE_BIT:					return &_computePushConstants;
 		default:
 			MVKAssert(false, "Invalid shader stage: %u", shaderStage);
 			return nullptr;
@@ -444,18 +450,24 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
     }
 }
 
-MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _cmdBuffer->_commandPool->getCommandEncodingPool(); }
-
-// Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
-const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {
+const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length) {
     const MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length);
-    void* pBuffData = mtlBuffAlloc->getContents();
-    memcpy(pBuffData, bytes, length);
 
     // Return the MTLBuffer allocation to the pool once the command buffer is done with it
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
         ((MVKMTLBufferAllocation*)mtlBuffAlloc)->returnToPool();
     }];
+
+    return mtlBuffAlloc;
+}
+
+MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _cmdBuffer->_commandPool->getCommandEncodingPool(); }
+
+// Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
+const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {
+    const MVKMTLBufferAllocation* mtlBuffAlloc = getTempMTLBuffer(length);
+    void* pBuffData = mtlBuffAlloc->getContents();
+    memcpy(pBuffData, bytes, length);
 
     return mtlBuffAlloc;
 }
@@ -509,6 +521,8 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
         _depthBiasState(this),
         _blendColorState(this),
         _vertexPushConstants(this, VK_SHADER_STAGE_VERTEX_BIT),
+        _tessCtlPushConstants(this, VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT),
+        _tessEvalPushConstants(this, VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT),
         _fragmentPushConstants(this, VK_SHADER_STAGE_FRAGMENT_BIT),
         _computePushConstants(this, VK_SHADER_STAGE_COMPUTE_BIT),
         _depthStencilState(this),
@@ -573,11 +587,14 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse) {
 }
 
 NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
-	switch (cmdUse) {
-		case kMVKCommandUseDispatch:          	return @"vkCmdDispatch ComputeEncoder";
-		case kMVKCommandUseCopyBuffer:          return @"vkCmdCopyBuffer ComputeEncoder";
-		case kMVKCommandUseFillBuffer:          return @"vkCmdFillBuffer ComputeEncoder";
-		default:                                return @"Unknown Use ComputeEncoder";
-	}
+    switch (cmdUse) {
+        case kMVKCommandUseDispatch:            return @"vkCmdDispatch ComputeEncoder";
+        case kMVKCommandUseCopyBuffer:          return @"vkCmdCopyBuffer ComputeEncoder";
+        case kMVKCommandUseCopyBufferToImage:   return @"vkCmdCopyBufferToImage ComputeEncoder";
+        case kMVKCommandUseCopyImageToBuffer:   return @"vkCmdCopyImageToBuffer ComputeEncoder";
+        case kMVKCommandUseFillBuffer:          return @"vkCmdFillBuffer ComputeEncoder";
+        case kMVKCommandUseTessellationControl: return @"vkCmdDraw (tess control stage) ComputeEncoder";
+        default:                                return @"Unknown Use ComputeEncoder";
+    }
 }
 

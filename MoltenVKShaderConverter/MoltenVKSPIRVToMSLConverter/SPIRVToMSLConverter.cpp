@@ -48,9 +48,18 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterOptions::matches(const SPIRVToMSLConve
     if (mslVersion != other.mslVersion) { return false; }
 	if (texelBufferTextureWidth != other.texelBufferTextureWidth) { return false; }
 	if (auxBufferIndex != other.auxBufferIndex) { return false; }
+	if (indirectParamsBufferIndex != other.indirectParamsBufferIndex) { return false; }
+	if (outputBufferIndex != other.outputBufferIndex) { return false; }
+	if (patchOutputBufferIndex != other.patchOutputBufferIndex) { return false; }
+	if (tessLevelBufferIndex != other.tessLevelBufferIndex) { return false; }
+	if (inputThreadgroupMemIndex != other.inputThreadgroupMemIndex) { return false; }
     if (!!shouldFlipVertexY != !!other.shouldFlipVertexY) { return false; }
     if (!!isRenderingPoints != !!other.isRenderingPoints) { return false; }
 	if (!!shouldSwizzleTextureSamples != !!other.shouldSwizzleTextureSamples) { return false; }
+	if (!!shouldCaptureOutput != !!other.shouldCaptureOutput) { return false; }
+	if (!!tessDomainOriginInLowerLeft != !!other.tessDomainOriginInLowerLeft) { return false; }
+	if (tessPatchKind != other.tessPatchKind) { return false; }
+	if (numTessControlPoints != other.numTessControlPoints) { return false; }
 	if (entryPointName != other.entryPointName) { return false; }
     return true;
 }
@@ -80,6 +89,7 @@ MVK_PUBLIC_SYMBOL bool MSLVertexAttribute::matches(const MSLVertexAttribute& oth
     if (mslOffset != other.mslOffset) { return false; }
     if (mslStride != other.mslStride) { return false; }
     if (format != other.format) { return false; }
+	if (builtin != other.builtin) { return false; }
     if (!!isPerInstance != !!other.isPerInstance) { return false; }
     return true;
 }
@@ -140,8 +150,13 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignWith(const SPIRVToMSLCon
 
 	options.isRasterizationDisabled = srcContext.options.isRasterizationDisabled;
 	options.needsAuxBuffer = srcContext.options.needsAuxBuffer;
+	options.needsOutputBuffer = srcContext.options.needsOutputBuffer;
+	options.needsPatchOutputBuffer = srcContext.options.needsPatchOutputBuffer;
+	options.needsInputThreadgroupMem = srcContext.options.needsInputThreadgroupMem;
 
-	if (options.entryPointStage == spv::ExecutionModelVertex) {
+	if (options.entryPointStage == spv::ExecutionModelVertex ||
+		options.entryPointStage == spv::ExecutionModelTessellationControl ||
+		options.entryPointStage == spv::ExecutionModelTessellationEvaluation) {
 		for (auto& va : vertexAttributes) {
 			va.isUsedByShader = false;
 			for (auto& srcVA : srcContext.vertexAttributes) {
@@ -207,6 +222,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
             va.format = spirv_cross::MSL_VERTEX_FORMAT_UINT16;
             break;
         }
+		va.builtin = ctxVA.builtin;
         va.used_by_shader = ctxVA.isUsedByShader;
 		vtxAttrs.push_back(va);
 	}
@@ -236,6 +252,17 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 			pMSLCompiler->set_entry_point(context.options.entryPointName, context.options.entryPointStage);
 		}
 
+		// Set up tessellation parameters if needed.
+		if (context.options.entryPointStage == spv::ExecutionModelTessellationControl ||
+			context.options.entryPointStage == spv::ExecutionModelTessellationEvaluation) {
+			if (context.options.tessPatchKind != spv::ExecutionModeMax) {
+				pMSLCompiler->set_execution_mode(context.options.tessPatchKind);
+			}
+			if (context.options.numTessControlPoints != 0) {
+				pMSLCompiler->set_execution_mode(spv::ExecutionModeOutputVertices, context.options.numTessControlPoints);
+			}
+		}
+
 		// Establish the MSL options for the compiler
 		// This needs to be done in two steps...for CompilerMSL and its superclass.
 		auto mslOpts = pMSLCompiler->get_msl_options();
@@ -250,9 +277,16 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		mslOpts.msl_version = context.options.mslVersion;
 		mslOpts.texel_buffer_texture_width = context.options.texelBufferTextureWidth;
 		mslOpts.aux_buffer_index = context.options.auxBufferIndex;
+		mslOpts.indirect_params_buffer_index = context.options.indirectParamsBufferIndex;
+		mslOpts.shader_output_buffer_index = context.options.outputBufferIndex;
+		mslOpts.shader_patch_output_buffer_index = context.options.patchOutputBufferIndex;
+		mslOpts.shader_tess_factor_buffer_index = context.options.tessLevelBufferIndex;
+		mslOpts.shader_input_wg_index = context.options.inputThreadgroupMemIndex;
 		mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
 		mslOpts.disable_rasterization = context.options.isRasterizationDisabled;
 		mslOpts.swizzle_texture_samples = context.options.shouldSwizzleTextureSamples;
+		mslOpts.capture_output_to_buffer = context.options.shouldCaptureOutput;
+		mslOpts.tess_domain_origin_lower_left = context.options.tessDomainOriginInLowerLeft;
 		mslOpts.pad_fragment_output_components = true;
 		pMSLCompiler->set_msl_options(mslOpts);
 
@@ -280,6 +314,9 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 	populateEntryPoint(_entryPoint, pMSLCompiler, context.options);
 	context.options.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
 	context.options.needsAuxBuffer = pMSLCompiler && pMSLCompiler->needs_aux_buffer();
+	context.options.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
+	context.options.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
+	context.options.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
 	delete pMSLCompiler;
 
 	// Copy whether the vertex attributes and resource bindings are used by the shader

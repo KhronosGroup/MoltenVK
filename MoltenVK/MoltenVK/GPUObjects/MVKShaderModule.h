@@ -151,6 +151,9 @@ public:
 	/** Convert the SPIR-V to MSL, using the specified shader conversion context. */
 	bool convert(SPIRVToMSLConverterContext* pContext);
 
+	/** Returns the original SPIR-V code that was specified when this object was created. */
+	inline const std::vector<uint32_t>& getSPIRV() { return _converter.getSPIRV(); }
+
 	/**
 	 * Returns the Metal Shading Language source code as converted by the most recent
 	 * call to convert() function, or set directly using the setMSL() function.

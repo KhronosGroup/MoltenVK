@@ -38,8 +38,8 @@ void MVKPipelineCommandEncoderState::setPipeline(MVKPipeline* pipeline) {
 
 MVKPipeline* MVKPipelineCommandEncoderState::getPipeline() { return _pipeline; }
 
-void MVKPipelineCommandEncoderState::encodeImpl() {
-    if (_pipeline) { _pipeline->encode(_cmdEncoder); }
+void MVKPipelineCommandEncoderState::encodeImpl(uint32_t stage) {
+    if (_pipeline) { _pipeline->encode(_cmdEncoder, stage); }
 }
 
 void MVKPipelineCommandEncoderState::resetImpl() {
@@ -57,7 +57,7 @@ void MVKViewportCommandEncoderState::setViewports(const MVKVector<MTLViewport> &
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 
 	uint32_t maxViewports = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
-	if ((mustSetDynamically == isSettingDynamically) &&
+	if ((mustSetDynamically == isSettingDynamically) && mtlViewports.size() > 0 &&
 		(firstViewport + mtlViewports.size() <= maxViewports) &&
 		(firstViewport < maxViewports)) {
 
@@ -70,7 +70,8 @@ void MVKViewportCommandEncoderState::setViewports(const MVKVector<MTLViewport> &
 	}
 }
 
-void MVKViewportCommandEncoderState::encodeImpl() {
+void MVKViewportCommandEncoderState::encodeImpl(uint32_t stage) {
+    if (stage != kMVKGraphicsStageRasterization) { return; }
     MVKAssert(!_mtlViewports.empty(), "Must specify at least one viewport");
     if (_cmdEncoder->getDevice()->_pFeatures->multiViewport) {
         [_cmdEncoder->_mtlRenderEncoder setViewports: &_mtlViewports[0] count: _mtlViewports.size()];
@@ -94,7 +95,7 @@ void MVKScissorCommandEncoderState::setScissors(const MVKVector<MTLScissorRect> 
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 
 	uint32_t maxScissors = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
-	if ((mustSetDynamically == isSettingDynamically) &&
+	if ((mustSetDynamically == isSettingDynamically) && mtlScissors.size() > 0 &&
 		(firstScissor + mtlScissors.size() <= maxScissors) &&
 		(firstScissor < maxScissors)) {
 
@@ -107,7 +108,8 @@ void MVKScissorCommandEncoderState::setScissors(const MVKVector<MTLScissorRect> 
 	}
 }
 
-void MVKScissorCommandEncoderState::encodeImpl() {
+void MVKScissorCommandEncoderState::encodeImpl(uint32_t stage) {
+	if (stage != kMVKGraphicsStageRasterization) { return; }
 	MVKAssert(!_mtlScissors.empty(), "Must specify at least one scissor rect");
 	auto clippedScissors(_mtlScissors);
 	std::for_each(clippedScissors.begin(), clippedScissors.end(), [this](MTLScissorRect& scissor) {
@@ -142,21 +144,42 @@ void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIn
     }
 }
 
-void MVKPushConstantsCommandEncoderState::encodeImpl() {
+void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
     if (_pushConstants.empty() ) { return; }
 
+    bool forTessellation = ((MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline())->isTessellationPipeline();
     switch (_shaderStage) {
         case VK_SHADER_STAGE_VERTEX_BIT:
-            _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
-                                        _pushConstants.data(),
-                                        _pushConstants.size(),
-                                        _mtlBufferIndex);
+            if (stage == (forTessellation ? kMVKGraphicsStageVertex : kMVKGraphicsStageRasterization)) {
+                _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
+                                            _pushConstants.data(),
+                                            _pushConstants.size(),
+                                            _mtlBufferIndex);
+            }
+            break;
+        case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
+            if (stage == kMVKGraphicsStageTessControl) {
+                _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl),
+                                             _pushConstants.data(),
+                                             _pushConstants.size(),
+                                             _mtlBufferIndex);
+            }
+            break;
+        case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
+            if (forTessellation && stage == kMVKGraphicsStageRasterization) {
+                _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
+                                            _pushConstants.data(),
+                                            _pushConstants.size(),
+                                            _mtlBufferIndex);
+            }
             break;
         case VK_SHADER_STAGE_FRAGMENT_BIT:
-            _cmdEncoder->setFragmentBytes(_cmdEncoder->_mtlRenderEncoder,
-                                          _pushConstants.data(),
-                                          _pushConstants.size(),
-                                          _mtlBufferIndex);
+            if (stage == kMVKGraphicsStageRasterization) {
+                _cmdEncoder->setFragmentBytes(_cmdEncoder->_mtlRenderEncoder,
+                                              _pushConstants.data(),
+                                              _pushConstants.size(),
+                                              _mtlBufferIndex);
+            }
             break;
         case VK_SHADER_STAGE_COMPUTE_BIT:
             _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
@@ -249,7 +272,8 @@ void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags 
     markDirty();
 }
 
-void MVKDepthStencilCommandEncoderState::encodeImpl() {
+void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
+    if (stage != kMVKGraphicsStageRasterization) { return; }
     MVKRenderSubpass *subpass = _cmdEncoder->getSubpass();
     id<MTLDepthStencilState> mtlDSS = nil;
     if (subpass->getDepthStencilFormat() != VK_FORMAT_UNDEFINED) {
@@ -301,7 +325,8 @@ void MVKStencilReferenceValueCommandEncoderState::setReferenceValues(VkStencilFa
     markDirty();
 }
 
-void MVKStencilReferenceValueCommandEncoderState::encodeImpl() {
+void MVKStencilReferenceValueCommandEncoderState::encodeImpl(uint32_t stage) {
+    if (stage != kMVKGraphicsStageRasterization) { return; }
     [_cmdEncoder->_mtlRenderEncoder setStencilFrontReferenceValue: _frontFaceValue
                                                backReferenceValue: _backFaceValue];
 }
@@ -342,7 +367,8 @@ void MVKDepthBiasCommandEncoderState::setDepthBias(float depthBiasConstantFactor
     markDirty();
 }
 
-void MVKDepthBiasCommandEncoderState::encodeImpl() {
+void MVKDepthBiasCommandEncoderState::encodeImpl(uint32_t stage) {
+    if (stage != kMVKGraphicsStageRasterization) { return; }
     if (_isEnabled) {
         [_cmdEncoder->_mtlRenderEncoder setDepthBias: _depthBiasConstantFactor
                                           slopeScale: _depthBiasSlopeFactor
@@ -378,7 +404,8 @@ void MVKBlendColorCommandEncoderState::setBlendColor(float red, float green,
     markDirty();
 }
 
-void MVKBlendColorCommandEncoderState::encodeImpl() {
+void MVKBlendColorCommandEncoderState::encodeImpl(uint32_t stage) {
+    if (stage != kMVKGraphicsStageRasterization) { return; }
     [_cmdEncoder->_mtlRenderEncoder setBlendColorRed: _red green: _green blue: _blue alpha: _alpha];
 }
 
@@ -420,147 +447,184 @@ static void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKV
 #pragma mark -
 #pragma mark MVKGraphicsResourcesCommandEncoderState
 
-void MVKGraphicsResourcesCommandEncoderState::bindVertexBuffer(const MVKMTLBufferBinding& binding) {
-    bind(binding, _vertexBufferBindings, _areVertexBufferBindingsDirty);
+void MVKGraphicsResourcesCommandEncoderState::bindBuffer(MVKShaderStage stage, const MVKMTLBufferBinding& binding) {
+    bind(binding, _shaderStages[stage].bufferBindings, _shaderStages[stage].areBufferBindingsDirty);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::bindFragmentBuffer(const MVKMTLBufferBinding& binding) {
-    bind(binding, _fragmentBufferBindings, _areFragmentBufferBindingsDirty);
+void MVKGraphicsResourcesCommandEncoderState::bindTexture(MVKShaderStage stage, const MVKMTLTextureBinding& binding) {
+    bind(binding, _shaderStages[stage].textureBindings, _shaderStages[stage].areTextureBindingsDirty, _shaderStages[stage].needsSwizzle);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::bindVertexTexture(const MVKMTLTextureBinding& binding) {
-    bind(binding, _vertexTextureBindings, _areVertexTextureBindingsDirty, _needsVertexSwizzle);
+void MVKGraphicsResourcesCommandEncoderState::bindSamplerState(MVKShaderStage stage, const MVKMTLSamplerStateBinding& binding) {
+    bind(binding, _shaderStages[stage].samplerStateBindings, _shaderStages[stage].areSamplerStateBindingsDirty);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::bindFragmentTexture(const MVKMTLTextureBinding& binding) {
-    bind(binding, _fragmentTextureBindings, _areFragmentTextureBindingsDirty, _needsFragmentSwizzle);
-}
-
-void MVKGraphicsResourcesCommandEncoderState::bindVertexSamplerState(const MVKMTLSamplerStateBinding& binding) {
-    bind(binding, _vertexSamplerStateBindings, _areVertexSamplerStateBindingsDirty);
-}
-
-void MVKGraphicsResourcesCommandEncoderState::bindFragmentSamplerState(const MVKMTLSamplerStateBinding& binding) {
-    bind(binding, _fragmentSamplerStateBindings, _areFragmentSamplerStateBindingsDirty);
-}
-
-void MVKGraphicsResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderAuxBufferBinding& binding,
+void MVKGraphicsResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderImplicitRezBinding& binding,
 															bool needVertexAuxBuffer,
+															bool needTessCtlAuxBuffer,
+															bool needTessEvalAuxBuffer,
 															bool needFragmentAuxBuffer) {
-    _vertexAuxBufferBinding.index = binding.vertex;
-    _vertexAuxBufferBinding.isDirty = needVertexAuxBuffer;
-    _fragmentAuxBufferBinding.index = binding.fragment;
-    _fragmentAuxBufferBinding.isDirty = needFragmentAuxBuffer;
+    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCompute; i++) {
+        _shaderStages[i].auxBufferBinding.index = binding.stages[i];
+    }
+    _shaderStages[kMVKShaderStageVertex].auxBufferBinding.isDirty = needVertexAuxBuffer;
+    _shaderStages[kMVKShaderStageTessCtl].auxBufferBinding.isDirty = needTessCtlAuxBuffer;
+    _shaderStages[kMVKShaderStageTessEval].auxBufferBinding.isDirty = needTessEvalAuxBuffer;
+    _shaderStages[kMVKShaderStageFragment].auxBufferBinding.isDirty = needFragmentAuxBuffer;
+}
+
+void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stage,
+                                                             const char* pStageName,
+                                                             bool fullImageViewSwizzle,
+                                                             std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
+                                                             std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKVector<uint32_t>&)> bindAuxBuffer,
+                                                             std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
+                                                             std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler) {
+    auto& shaderStage = _shaderStages[stage];
+    encodeBinding<MVKMTLBufferBinding>(shaderStage.bufferBindings, shaderStage.areBufferBindingsDirty, bindBuffer);
+
+    if (shaderStage.auxBufferBinding.isDirty) {
+
+        for (auto& b : shaderStage.textureBindings) {
+            if (b.isDirty) { updateSwizzle(shaderStage.swizzleConstants, b.index, b.swizzle); }
+        }
+
+        bindAuxBuffer(_cmdEncoder, shaderStage.auxBufferBinding, shaderStage.swizzleConstants);
+
+    } else {
+        assertMissingSwizzles(shaderStage.needsSwizzle && !fullImageViewSwizzle, pStageName, shaderStage.textureBindings);
+    }
+
+    encodeBinding<MVKMTLTextureBinding>(shaderStage.textureBindings, shaderStage.areTextureBindingsDirty, bindTexture);
+    encodeBinding<MVKMTLSamplerStateBinding>(shaderStage.samplerStateBindings, shaderStage.areSamplerStateBindingsDirty, bindSampler);
 }
 
 // Mark everything as dirty
 void MVKGraphicsResourcesCommandEncoderState::markDirty() {
     MVKCommandEncoderState::markDirty();
-    MVKResourcesCommandEncoderState::markDirty(_vertexBufferBindings, _areVertexBufferBindingsDirty);
-    MVKResourcesCommandEncoderState::markDirty(_fragmentBufferBindings, _areFragmentBufferBindingsDirty);
-    MVKResourcesCommandEncoderState::markDirty(_vertexTextureBindings, _areVertexTextureBindingsDirty);
-    MVKResourcesCommandEncoderState::markDirty(_fragmentTextureBindings, _areFragmentTextureBindingsDirty);
-    MVKResourcesCommandEncoderState::markDirty(_vertexSamplerStateBindings, _areVertexSamplerStateBindingsDirty);
-    MVKResourcesCommandEncoderState::markDirty(_fragmentSamplerStateBindings, _areFragmentSamplerStateBindingsDirty);
+    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCompute; i++) {
+        MVKResourcesCommandEncoderState::markDirty(_shaderStages[i].bufferBindings, _shaderStages[i].areBufferBindingsDirty);
+        MVKResourcesCommandEncoderState::markDirty(_shaderStages[i].textureBindings, _shaderStages[i].areTextureBindingsDirty);
+        MVKResourcesCommandEncoderState::markDirty(_shaderStages[i].samplerStateBindings, _shaderStages[i].areSamplerStateBindingsDirty);
+    }
 }
 
-void MVKGraphicsResourcesCommandEncoderState::encodeImpl() {
+void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
-    bool fullImageViewSwizzle = false;
     MVKPipeline* pipeline = _cmdEncoder->_graphicsPipelineState.getPipeline();
-    if (pipeline)
-        fullImageViewSwizzle = pipeline->fullImageViewSwizzle();
+    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle();
+    bool forTessellation = ((MVKGraphicsPipeline*)pipeline)->isTessellationPipeline();
 
-    encodeBinding<MVKMTLBufferBinding>(_vertexBufferBindings, _areVertexBufferBindingsDirty,
-                                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-                                           [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
-                                                                                   offset: b.offset
-                                                                                  atIndex: b.index];
-                                       });
+    if (stage == (forTessellation ? kMVKGraphicsStageVertex : kMVKGraphicsStageRasterization)) {
+        encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+                           [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+                                                                   offset: b.offset
+                                                                  atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKVector<uint32_t>& s)->void {
+                           cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
+                                                      s.data(),
+                                                      s.size() * sizeof(uint32_t),
+                                                      b.index);
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
+                           [cmdEncoder->_mtlRenderEncoder setVertexTexture: b.mtlTexture
+                                                                   atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
+                           [cmdEncoder->_mtlRenderEncoder setVertexSamplerState: b.mtlSamplerState
+                                                                        atIndex: b.index];
+                       });
 
-    encodeBinding<MVKMTLBufferBinding>(_fragmentBufferBindings, _areFragmentBufferBindingsDirty,
-                                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-                                           [cmdEncoder->_mtlRenderEncoder setFragmentBuffer: b.mtlBuffer
-                                                                                     offset: b.offset
-                                                                                    atIndex: b.index];
-                                       });
-
-    if (_vertexAuxBufferBinding.isDirty) {
-
-		for (auto& b : _vertexTextureBindings) {
-			if (b.isDirty) { updateSwizzle(_vertexSwizzleConstants, b.index, b.swizzle); }
-		}
-
-		_cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
-                                    _vertexSwizzleConstants.data(),
-                                    _vertexSwizzleConstants.size() * sizeof(uint32_t),
-                                    _vertexAuxBufferBinding.index);
-
-	} else {
-		assertMissingSwizzles(_needsVertexSwizzle && !fullImageViewSwizzle, "vertex", _vertexTextureBindings);
-	}
-
-    if (_fragmentAuxBufferBinding.isDirty) {
-
-		for (auto& b : _fragmentTextureBindings) {
-			if (b.isDirty) { updateSwizzle(_fragmentSwizzleConstants, b.index, b.swizzle); }
-		}
-
-		_cmdEncoder->setFragmentBytes(_cmdEncoder->_mtlRenderEncoder,
-                                      _fragmentSwizzleConstants.data(),
-                                      _fragmentSwizzleConstants.size() * sizeof(uint32_t),
-                                      _fragmentAuxBufferBinding.index);
-
-	} else {
-		assertMissingSwizzles(_needsFragmentSwizzle && !fullImageViewSwizzle, "fragment", _fragmentTextureBindings);
     }
 
-    encodeBinding<MVKMTLTextureBinding>(_vertexTextureBindings, _areVertexTextureBindingsDirty,
-                                        [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
-                                            [cmdEncoder->_mtlRenderEncoder setVertexTexture: b.mtlTexture
-                                                                                    atIndex: b.index];
-                                        });
+    if (stage == kMVKGraphicsStageTessControl) {
+        encodeBindings(kMVKShaderStageTessCtl, "tessellation control", fullImageViewSwizzle,
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl) setBuffer: b.mtlBuffer
+                                                                                                   offset: b.offset
+                                                                                                  atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKVector<uint32_t>& s)->void {
+                           cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl),
+                                                       s.data(),
+                                                       s.size() * sizeof(uint32_t),
+                                                       b.index);
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
+                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl) setTexture: b.mtlTexture
+                                                                                                   atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
+                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl) setSamplerState: b.mtlSamplerState
+                                                                                                        atIndex: b.index];
+                       });
 
-    encodeBinding<MVKMTLTextureBinding>(_fragmentTextureBindings, _areFragmentTextureBindingsDirty,
-                                        [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
-                                            [cmdEncoder->_mtlRenderEncoder setFragmentTexture: b.mtlTexture
-                                                                                      atIndex: b.index];
-                                        });
+    }
 
-    encodeBinding<MVKMTLSamplerStateBinding>(_vertexSamplerStateBindings, _areVertexSamplerStateBindingsDirty,
-                                             [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
-                                                 [cmdEncoder->_mtlRenderEncoder setVertexSamplerState: b.mtlSamplerState
-                                                                                              atIndex: b.index];
-                                             });
+    if (forTessellation && stage == kMVKGraphicsStageRasterization) {
+        encodeBindings(kMVKShaderStageTessEval, "tessellation evaluation", fullImageViewSwizzle,
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+                           [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+                                                                   offset: b.offset
+                                                                  atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKVector<uint32_t>& s)->void {
+                           cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
+                                                      s.data(),
+                                                      s.size() * sizeof(uint32_t),
+                                                      b.index);
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
+                           [cmdEncoder->_mtlRenderEncoder setVertexTexture: b.mtlTexture
+                                                                   atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
+                           [cmdEncoder->_mtlRenderEncoder setVertexSamplerState: b.mtlSamplerState
+                                                                        atIndex: b.index];
+                       });
 
-    encodeBinding<MVKMTLSamplerStateBinding>(_fragmentSamplerStateBindings, _areFragmentSamplerStateBindingsDirty,
-                                             [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
-                                                 [cmdEncoder->_mtlRenderEncoder setFragmentSamplerState: b.mtlSamplerState
-                                                                                                atIndex: b.index];
-                                             });
+    }
+
+    if (stage == kMVKGraphicsStageRasterization) {
+        encodeBindings(kMVKShaderStageFragment, "fragment", fullImageViewSwizzle,
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+                           [cmdEncoder->_mtlRenderEncoder setFragmentBuffer: b.mtlBuffer
+                                                                     offset: b.offset
+                                                                    atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKVector<uint32_t>& s)->void {
+		                   cmdEncoder->setFragmentBytes(cmdEncoder->_mtlRenderEncoder,
+                                                        s.data(),
+                                                        s.size() * sizeof(uint32_t),
+                                                        b.index);
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
+                           [cmdEncoder->_mtlRenderEncoder setFragmentTexture: b.mtlTexture
+                                                                     atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
+                           [cmdEncoder->_mtlRenderEncoder setFragmentSamplerState: b.mtlSamplerState
+                                                                          atIndex: b.index];
+                       });
+    }
 }
 
 void MVKGraphicsResourcesCommandEncoderState::resetImpl() {
-    _vertexBufferBindings.clear();
-    _fragmentBufferBindings.clear();
-    _vertexTextureBindings.clear();
-    _fragmentTextureBindings.clear();
-    _vertexSamplerStateBindings.clear();
-    _fragmentSamplerStateBindings.clear();
-    _vertexSwizzleConstants.clear();
-    _fragmentSwizzleConstants.clear();
+    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCompute; i++) {
+        _shaderStages[i].bufferBindings.clear();
+        _shaderStages[i].textureBindings.clear();
+        _shaderStages[i].samplerStateBindings.clear();
+        _shaderStages[i].swizzleConstants.clear();
 
-    _areVertexBufferBindingsDirty = false;
-    _areFragmentBufferBindingsDirty = false;
-    _areVertexTextureBindingsDirty = false;
-    _areFragmentTextureBindingsDirty = false;
-    _areVertexSamplerStateBindingsDirty = false;
-    _areFragmentSamplerStateBindingsDirty = false;
-    _vertexAuxBufferBinding.isDirty = false;
-    _fragmentAuxBufferBinding.isDirty = false;
+        _shaderStages[i].areBufferBindingsDirty = false;
+        _shaderStages[i].areTextureBindingsDirty = false;
+        _shaderStages[i].areSamplerStateBindingsDirty = false;
+        _shaderStages[i].auxBufferBinding.isDirty = false;
 
-	_needsVertexSwizzle = false;
-	_needsFragmentSwizzle = false;
+        _shaderStages[i].needsSwizzle = false;
+    }
 }
 
 
@@ -579,9 +643,9 @@ void MVKComputeResourcesCommandEncoderState::bindSamplerState(const MVKMTLSample
     bind(binding, _samplerStateBindings, _areSamplerStateBindingsDirty);
 }
 
-void MVKComputeResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderAuxBufferBinding& binding,
+void MVKComputeResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderImplicitRezBinding& binding,
 														   bool needAuxBuffer) {
-    _auxBufferBinding.index = binding.compute;
+    _auxBufferBinding.index = binding.stages[kMVKShaderStageCompute];
     _auxBufferBinding.isDirty = needAuxBuffer;
 }
 
@@ -593,7 +657,7 @@ void MVKComputeResourcesCommandEncoderState::markDirty() {
     MVKResourcesCommandEncoderState::markDirty(_samplerStateBindings, _areSamplerStateBindingsDirty);
 }
 
-void MVKComputeResourcesCommandEncoderState::encodeImpl() {
+void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
     bool fullImageViewSwizzle = false;
     MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
@@ -677,7 +741,8 @@ void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPo
 // If the MTLBuffer has not yet been set, see if the command buffer is configured with it
 id<MTLBuffer> MVKOcclusionQueryCommandEncoderState::getVisibilityResultMTLBuffer() { return _visibilityResultMTLBuffer; }
 
-void MVKOcclusionQueryCommandEncoderState::encodeImpl() {
+void MVKOcclusionQueryCommandEncoderState::encodeImpl(uint32_t stage) {
+    if (stage != kMVKGraphicsStageRasterization) { return; }
     [_cmdEncoder->_mtlRenderEncoder setVisibilityResultMode: _mtlVisibilityResultMode
                                                      offset: _mtlVisibilityResultOffset];
 }

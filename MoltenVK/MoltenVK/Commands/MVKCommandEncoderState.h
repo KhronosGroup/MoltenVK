@@ -25,7 +25,7 @@
 class MVKCommandEncoder;
 class MVKOcclusionQueryPool;
 
-struct MVKShaderAuxBufferBinding;
+struct MVKShaderImplicitRezBinding;
 
 
 #pragma mark -
@@ -65,11 +65,11 @@ public:
      * and calls the encodeImpl() function to encode the content onto the Metal encoder.
      * Subclasses must override the encodeImpl() function to do the actual work.
      */
-    void encode() {
+    void encode(uint32_t stage = 0) {
         if ( !_isDirty ) { return; }
 
         _isDirty = false;
-        encodeImpl();
+        encodeImpl(stage);
     }
 
     /**
@@ -87,7 +87,7 @@ public:
     MVKCommandEncoderState(MVKCommandEncoder* cmdEncoder) : _cmdEncoder(cmdEncoder) {}
 
 protected:
-    virtual void encodeImpl() = 0;
+    virtual void encodeImpl(uint32_t stage) = 0;
     virtual void resetImpl() = 0;
 
     MVKCommandEncoder* _cmdEncoder;
@@ -115,7 +115,7 @@ public:
         : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
     MVKPipeline* _pipeline = nullptr;
@@ -144,7 +144,7 @@ public:
         : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
     MVKVectorInline<MTLViewport, kMVKCachedViewportCount> _mtlViewports;
@@ -173,7 +173,7 @@ public:
         : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
     MVKVectorInline<MTLScissorRect, kMVKCachedScissorCount> _mtlScissors;
@@ -200,7 +200,7 @@ public:
         : MVKCommandEncoderState(cmdEncoder), _shaderStage(shaderStage) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
     MVKVectorInline<char, 128> _pushConstants;
@@ -237,7 +237,7 @@ public:
         : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
     void setStencilState(MVKMTLStencilDescriptorData& stencilInfo,
                          const VkStencilOpState& vkStencil,
@@ -266,7 +266,7 @@ public:
         : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
     uint32_t _frontFaceValue = 0;
@@ -295,7 +295,7 @@ public:
         : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
     float _depthBiasConstantFactor = 0;
@@ -323,7 +323,7 @@ public:
         : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
     float _red = 0;
@@ -409,23 +409,14 @@ class MVKGraphicsResourcesCommandEncoderState : public MVKResourcesCommandEncode
 
 public:
 
-    /** Binds the specified vertex buffer. */
-    void bindVertexBuffer(const MVKMTLBufferBinding& binding);
+    /** Binds the specified buffer for the specified shader stage. */
+    void bindBuffer(MVKShaderStage stage, const MVKMTLBufferBinding& binding);
 
-    /** Binds the specified fragment buffer. */
-    void bindFragmentBuffer(const MVKMTLBufferBinding& binding);
+    /** Binds the specified texture for the specified shader stage. */
+    void bindTexture(MVKShaderStage stage, const MVKMTLTextureBinding& binding);
 
-    /** Binds the specified vertex texture. */
-    void bindVertexTexture(const MVKMTLTextureBinding& binding);
-
-    /** Binds the specified fragment texture. */
-    void bindFragmentTexture(const MVKMTLTextureBinding& binding);
-
-    /** Binds the specified vertex sampler state. */
-    void bindVertexSamplerState(const MVKMTLSamplerStateBinding& binding);
-
-    /** Binds the specified fragment sampler state. */
-    void bindFragmentSamplerState(const MVKMTLSamplerStateBinding& binding);
+    /** Binds the specified sampler state for the specified shader stage. */
+    void bindSamplerState(MVKShaderStage stage, const MVKMTLSamplerStateBinding& binding);
 
     /** The type of index that will be used to render primitives. Exposed directly. */
     MVKIndexMTLBufferBinding _mtlIndexBufferBinding;
@@ -436,10 +427,19 @@ public:
     }
 
     /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding,
-					   bool needVertexAuxBuffer,
-					   bool needFragmentAuxBuffer);
+    void bindAuxBuffer(const MVKShaderImplicitRezBinding& binding,
+                       bool needVertexAuxBuffer,
+                       bool needTessCtlAuxBuffer,
+                       bool needTessEvalAuxBuffer,
+                       bool needFragmentAuxBuffer);
 
+    void encodeBindings(MVKShaderStage stage,
+                        const char* pStageName,
+                        bool fullImageViewSwizzle,
+                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
+                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKVector<uint32_t>&)> bindAuxBuffer,
+                        std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
+                        std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 
 #pragma mark Construction
     
@@ -447,30 +447,25 @@ public:
     MVKGraphicsResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKResourcesCommandEncoderState(cmdEncoder) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
     void markDirty() override;
 
-    MVKVectorInline<MVKMTLBufferBinding, 8> _vertexBufferBindings;
-    MVKVectorInline<MVKMTLBufferBinding, 8> _fragmentBufferBindings;
-    MVKVectorInline<MVKMTLTextureBinding, 8> _vertexTextureBindings;
-    MVKVectorInline<MVKMTLTextureBinding, 8> _fragmentTextureBindings;
-    MVKVectorInline<MVKMTLSamplerStateBinding, 8> _vertexSamplerStateBindings;
-    MVKVectorInline<MVKMTLSamplerStateBinding, 8> _fragmentSamplerStateBindings;
-    MVKVectorInline<uint32_t, 8> _vertexSwizzleConstants;
-    MVKVectorInline<uint32_t, 8> _fragmentSwizzleConstants;
-    MVKMTLBufferBinding _vertexAuxBufferBinding;
-    MVKMTLBufferBinding _fragmentAuxBufferBinding;
+    struct ShaderStage {
+        MVKVectorInline<MVKMTLBufferBinding, 8> bufferBindings;
+        MVKVectorInline<MVKMTLTextureBinding, 8> textureBindings;
+        MVKVectorInline<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
+        MVKVectorInline<uint32_t, 8> swizzleConstants;
+        MVKMTLBufferBinding auxBufferBinding;
 
-    bool _areVertexBufferBindingsDirty = false;
-    bool _areFragmentBufferBindingsDirty = false;
-    bool _areVertexTextureBindingsDirty = false;
-    bool _areFragmentTextureBindingsDirty = false;
-    bool _areVertexSamplerStateBindingsDirty = false;
-    bool _areFragmentSamplerStateBindingsDirty = false;
-	
-	bool _needsVertexSwizzle = false;
-	bool _needsFragmentSwizzle = false;
+        bool areBufferBindingsDirty = false;
+        bool areTextureBindingsDirty = false;
+        bool areSamplerStateBindingsDirty = false;
+
+        bool needsSwizzle = false;
+    };
+
+    ShaderStage _shaderStages[4];
 };
 
 
@@ -492,7 +487,7 @@ public:
     void bindSamplerState(const MVKMTLSamplerStateBinding& binding);
 
     /** Sets the current auxiliary buffer state. */
-	void bindAuxBuffer(const MVKShaderAuxBufferBinding& binding, bool needAuxBuffer);
+	void bindAuxBuffer(const MVKShaderImplicitRezBinding& binding, bool needAuxBuffer);
 
 #pragma mark Construction
 
@@ -500,7 +495,7 @@ public:
     MVKComputeResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKResourcesCommandEncoderState(cmdEncoder) {}
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t) override;
     void resetImpl() override;
     void markDirty() override;
 
@@ -539,7 +534,7 @@ public:
     MVKOcclusionQueryCommandEncoderState(MVKCommandEncoder* cmdEncoder);
 
 protected:
-    void encodeImpl() override;
+    void encodeImpl(uint32_t) override;
     void resetImpl() override;
 
     id<MTLBuffer> _visibilityResultMTLBuffer = nil;

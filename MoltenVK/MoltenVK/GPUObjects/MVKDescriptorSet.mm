@@ -47,29 +47,29 @@ MVK_PUBLIC_SYMBOL MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::
 #pragma mark MVKShaderResourceBinding
 
 MVK_PUBLIC_SYMBOL uint32_t MVKShaderResourceBinding::getMaxBufferIndex() {
-	return max({vertexStage.bufferIndex, fragmentStage.bufferIndex, computeStage.bufferIndex});
+	return max({stages[kMVKShaderStageVertex].bufferIndex, stages[kMVKShaderStageTessCtl].bufferIndex, stages[kMVKShaderStageTessEval].bufferIndex, stages[kMVKShaderStageFragment].bufferIndex, stages[kMVKShaderStageCompute].bufferIndex});
 }
 
 MVK_PUBLIC_SYMBOL uint32_t MVKShaderResourceBinding::getMaxTextureIndex() {
-	return max({vertexStage.textureIndex, fragmentStage.textureIndex, computeStage.textureIndex});
+	return max({stages[kMVKShaderStageVertex].textureIndex, stages[kMVKShaderStageTessCtl].textureIndex, stages[kMVKShaderStageTessEval].textureIndex, stages[kMVKShaderStageFragment].textureIndex, stages[kMVKShaderStageCompute].textureIndex});
 }
 
 MVK_PUBLIC_SYMBOL uint32_t MVKShaderResourceBinding::getMaxSamplerIndex() {
-	return max({vertexStage.samplerIndex, fragmentStage.samplerIndex, computeStage.samplerIndex});
+	return max({stages[kMVKShaderStageVertex].samplerIndex, stages[kMVKShaderStageTessCtl].samplerIndex, stages[kMVKShaderStageTessEval].samplerIndex, stages[kMVKShaderStageFragment].samplerIndex, stages[kMVKShaderStageCompute].samplerIndex});
 }
 
 MVK_PUBLIC_SYMBOL MVKShaderResourceBinding MVKShaderResourceBinding::operator+ (const MVKShaderResourceBinding& rhs) {
 	MVKShaderResourceBinding rslt;
-	rslt.vertexStage = this->vertexStage + rhs.vertexStage;
-	rslt.fragmentStage = this->fragmentStage + rhs.fragmentStage;
-    rslt.computeStage = this->computeStage + rhs.computeStage;
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+		rslt.stages[i] = this->stages[i] + rhs.stages[i];
+	}
 	return rslt;
 }
 
 MVK_PUBLIC_SYMBOL MVKShaderResourceBinding& MVKShaderResourceBinding::operator+= (const MVKShaderResourceBinding& rhs) {
-	this->vertexStage += rhs.vertexStage;
-	this->fragmentStage += rhs.fragmentStage;
-    this->computeStage += rhs.computeStage;
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+		this->stages[i] += rhs.stages[i];
+	}
 	return *this;
 }
 
@@ -102,17 +102,15 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
                 bb.mtlBuffer = descBinding._mtlBuffers[rezIdx];
                 bb.offset = descBinding._mtlBufferOffsets[rezIdx] + bufferDynamicOffset;
-                if (_applyToVertexStage) {
-                    bb.index = mtlIdxs.vertexStage.bufferIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexBuffer(bb);
-                }
-                if (_applyToFragmentStage) {
-                    bb.index = mtlIdxs.fragmentStage.bufferIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentBuffer(bb);
-                }
-                if (_applyToComputeStage) {
-                    bb.index = mtlIdxs.computeStage.bufferIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindBuffer(bb);
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            cmdEncoder->_computeResourcesState.bindBuffer(bb);
+                        } else {
+                            cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb);
+                        }
+                    }
                 }
                 break;
             }
@@ -128,34 +126,30 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                 } else {
                     tb.swizzle = 0;
                 }
-                if (_applyToVertexStage) {
-                    tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
-                }
-                if (_applyToFragmentStage) {
-                    tb.index = mtlIdxs.fragmentStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentTexture(tb);
-                }
-                if (_applyToComputeStage) {
-                    tb.index = mtlIdxs.computeStage.textureIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindTexture(tb);
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            cmdEncoder->_computeResourcesState.bindTexture(tb);
+                        } else {
+                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
+                        }
+                    }
                 }
                 break;
             }
 
             case VK_DESCRIPTOR_TYPE_SAMPLER: {
                 sb.mtlSamplerState = descBinding._mtlSamplers[rezIdx];
-                if (_applyToVertexStage) {
-                    sb.index = mtlIdxs.vertexStage.samplerIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexSamplerState(sb);
-                }
-                if (_applyToFragmentStage) {
-                    sb.index = mtlIdxs.fragmentStage.samplerIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentSamplerState(sb);
-                }
-                if (_applyToComputeStage) {
-                    sb.index = mtlIdxs.computeStage.samplerIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                        } else {
+                            cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb);
+                        }
+                    }
                 }
                 break;
             }
@@ -168,23 +162,18 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                     tb.swizzle = 0;
                 }
                 sb.mtlSamplerState = descBinding._mtlSamplers[rezIdx];
-                if (_applyToVertexStage) {
-                    tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
-                    sb.index = mtlIdxs.vertexStage.samplerIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexSamplerState(sb);
-                }
-                if (_applyToFragmentStage) {
-                    tb.index = mtlIdxs.fragmentStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentTexture(tb);
-                    sb.index = mtlIdxs.fragmentStage.samplerIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentSamplerState(sb);
-                }
-                if (_applyToComputeStage) {
-                    tb.index = mtlIdxs.computeStage.textureIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindTexture(tb);
-                    sb.index = mtlIdxs.computeStage.samplerIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
+                        sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            cmdEncoder->_computeResourcesState.bindTexture(tb);
+                            cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                        } else {
+                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
+                            cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb);
+                        }
+                    }
                 }
                 break;
             }
@@ -244,17 +233,15 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 MVKBuffer* buffer = (MVKBuffer*)bufferInfo.buffer;
                 bb.mtlBuffer = buffer->getMTLBuffer();
                 bb.offset = bufferInfo.offset;
-                if (_applyToVertexStage) {
-                    bb.index = mtlIdxs.vertexStage.bufferIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexBuffer(bb);
-                }
-                if (_applyToFragmentStage) {
-                    bb.index = mtlIdxs.fragmentStage.bufferIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentBuffer(bb);
-                }
-                if (_applyToComputeStage) {
-                    bb.index = mtlIdxs.computeStage.bufferIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindBuffer(bb);
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            cmdEncoder->_computeResourcesState.bindBuffer(bb);
+                        } else {
+                            cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb);
+                        }
+                    }
                 }
                 break;
             }
@@ -270,17 +257,15 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 } else {
                     tb.swizzle = 0;
                 }
-                if (_applyToVertexStage) {
-                    tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
-                }
-                if (_applyToFragmentStage) {
-                    tb.index = mtlIdxs.fragmentStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentTexture(tb);
-                }
-                if (_applyToComputeStage) {
-                    tb.index = mtlIdxs.computeStage.textureIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindTexture(tb);
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            cmdEncoder->_computeResourcesState.bindTexture(tb);
+                        } else {
+                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
+                        }
+                    }
                 }
                 break;
             }
@@ -290,17 +275,15 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 auto* bufferView = get<MVKBufferView*>(pData, stride, rezIdx - dstArrayElement);
                 tb.mtlTexture = bufferView->getMTLTexture();
                 tb.swizzle = 0;
-                if (_applyToVertexStage) {
-                    tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
-                }
-                if (_applyToFragmentStage) {
-                    tb.index = mtlIdxs.fragmentStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentTexture(tb);
-                }
-                if (_applyToComputeStage) {
-                    tb.index = mtlIdxs.computeStage.textureIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindTexture(tb);
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            cmdEncoder->_computeResourcesState.bindTexture(tb);
+                        } else {
+                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
+                        }
+                    }
                 }
                 break;
             }
@@ -312,17 +295,15 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 else
                     sampler = _immutableSamplers[rezIdx];
                 sb.mtlSamplerState = sampler->getMTLSamplerState();
-                if (_applyToVertexStage) {
-                    sb.index = mtlIdxs.vertexStage.samplerIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexSamplerState(sb);
-                }
-                if (_applyToFragmentStage) {
-                    sb.index = mtlIdxs.fragmentStage.samplerIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentSamplerState(sb);
-                }
-                if (_applyToComputeStage) {
-                    sb.index = mtlIdxs.computeStage.samplerIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                        } else {
+                            cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb);
+                        }
+                    }
                 }
                 break;
             }
@@ -338,23 +319,18 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                     tb.swizzle = 0;
                 }
                 sb.mtlSamplerState = sampler->getMTLSamplerState();
-                if (_applyToVertexStage) {
-                    tb.index = mtlIdxs.vertexStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexTexture(tb);
-                    sb.index = mtlIdxs.vertexStage.samplerIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindVertexSamplerState(sb);
-                }
-                if (_applyToFragmentStage) {
-                    tb.index = mtlIdxs.fragmentStage.textureIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentTexture(tb);
-                    sb.index = mtlIdxs.fragmentStage.samplerIndex + rezIdx;
-                    cmdEncoder->_graphicsResourcesState.bindFragmentSamplerState(sb);
-                }
-                if (_applyToComputeStage) {
-                    tb.index = mtlIdxs.computeStage.textureIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindTexture(tb);
-                    sb.index = mtlIdxs.computeStage.samplerIndex + rezIdx;
-                    cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
+                        sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            cmdEncoder->_computeResourcesState.bindTexture(tb);
+                            cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+                        } else {
+                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
+                            cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb);
+                        }
+                    }
                 }
                 break;
             }
@@ -380,56 +356,36 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLCon
     // Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
 
-    if (_applyToVertexStage) {
-        mvkPopulateShaderConverterContext(context,
-                                          mtlIdxs.vertexStage,
-                                          spv::ExecutionModelVertex,
-                                          dslIndex,
-                                          _info.binding);
-    }
-
-    if (_applyToFragmentStage) {
-        mvkPopulateShaderConverterContext(context,
-                                          mtlIdxs.fragmentStage,
-                                          spv::ExecutionModelFragment,
-                                          dslIndex,
-                                          _info.binding);
-    }
-
-    if (_applyToComputeStage) {
-        mvkPopulateShaderConverterContext(context,
-                                          mtlIdxs.computeStage,
-                                          spv::ExecutionModelGLCompute,
-                                          dslIndex,
-                                          _info.binding);
+    static const spv::ExecutionModel models[] = {
+        spv::ExecutionModelVertex,
+        spv::ExecutionModelTessellationControl,
+        spv::ExecutionModelTessellationEvaluation,
+        spv::ExecutionModelFragment,
+        spv::ExecutionModelGLCompute
+    };
+    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+        if (_applyToStage[i]) {
+            mvkPopulateShaderConverterContext(context,
+                                              mtlIdxs.stages[i],
+                                              models[i],
+                                              dslIndex,
+                                              _info.binding);
+        }
     }
 }
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 															 MVKDescriptorSetLayout* layout,
                                                              const VkDescriptorSetLayoutBinding* pBinding) : MVKBaseDeviceObject(device) {
-    // Determine the shader stages used by this binding
-    _applyToVertexStage = mvkAreFlagsEnabled(pBinding->stageFlags, VK_SHADER_STAGE_VERTEX_BIT);
-    _applyToFragmentStage = mvkAreFlagsEnabled(pBinding->stageFlags, VK_SHADER_STAGE_FRAGMENT_BIT);
-    _applyToComputeStage = mvkAreFlagsEnabled(pBinding->stageFlags, VK_SHADER_STAGE_COMPUTE_BIT);
-
-	// If this binding is used by the vertex shader, set the Metal resource index
-	if (_applyToVertexStage) {
-		initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.vertexStage,
-									  &layout->_mtlResourceCounts.vertexStage, pBinding);
-	}
-
-	// If this binding is used by the fragment shader, set the Metal resource index
-	if (_applyToFragmentStage) {
-		initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.fragmentStage,
-									  &layout->_mtlResourceCounts.fragmentStage, pBinding);
-	}
-
-	// If this binding is used by a compute shader, set the Metal resource index
-	if (_applyToComputeStage) {
-		initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.computeStage,
-									  &layout->_mtlResourceCounts.computeStage, pBinding);
-	}
+    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+        // Determine if this binding is used by this shader stage
+        _applyToStage[i] = mvkAreFlagsEnabled(pBinding->stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)));
+	    // If this binding is used by the shader, set the Metal resource index
+        if (_applyToStage[i]) {
+            initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.stages[i],
+                                          &layout->_mtlResourceCounts.stages[i], pBinding);
+        }
+    }
 
     // If immutable samplers are defined, copy them in
     if ( pBinding->pImmutableSamplers &&
@@ -448,9 +404,10 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding) :
 	MVKBaseDeviceObject(binding._device), _info(binding._info), _immutableSamplers(binding._immutableSamplers),
-	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets),
-	_applyToVertexStage(binding._applyToVertexStage), _applyToFragmentStage(binding._applyToFragmentStage),
-	_applyToComputeStage(binding._applyToComputeStage) {
+	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets) {
+    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+        _applyToStage[i] = binding._applyToStage[i];
+    }
 	for (MVKSampler* sampler : _immutableSamplers) {
 		sampler->retain();
 	}
