@@ -3,24 +3,22 @@
 set -e
 
 export MVK_PROD_BASE_NAME="MoltenVKShaderConverter"
-export MVK_PKG_CONFIG_BASE_PATH="${PROJECT_DIR}/Package/${CONFIGURATION}/${MVK_PROD_BASE_NAME}"
+export MVK_PKG_BASE_PATH="${PROJECT_DIR}/Package/${CONFIGURATION}/${MVK_PROD_BASE_NAME}"
+export MVK_PKG_INCLUDE_PATH="${MVK_PKG_BASE_PATH}/include"
 
-#-----------------------------------
-# MoltenVKGLSLToSPIRVConverter
-export MVK_PROD_NAME="MoltenVKGLSLToSPIRVConverter"
-export MVK_PKG_PROD_PATH_OS="${MVK_PKG_CONFIG_BASE_PATH}/${MVK_PROD_NAME}/${MVK_OS}"
-
-rm -rf "${MVK_PKG_PROD_PATH_OS}"
-mkdir -p "${MVK_PKG_PROD_PATH_OS}"
-cp -a "${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework" "${MVK_PKG_PROD_PATH_OS}"
-rm -rf "${MVK_PKG_PROD_PATH_OS}/${MVK_PROD_NAME}.framework/_CodeSignature"
+# Remove and replace header include folder
+rm -rf "${MVK_PKG_INCLUDE_PATH}"
+mkdir -p "${MVK_PKG_INCLUDE_PATH}"
+cp -pRL "${PROJECT_DIR}/${MVK_PROD_BASE_NAME}/include/" "${MVK_PKG_INCLUDE_PATH}"
 
 #-----------------------------------
 # MoltenVKSPIRVToMSLConverter
 export MVK_PROD_NAME="MoltenVKSPIRVToMSLConverter"
-export MVK_PKG_PROD_PATH_OS="${MVK_PKG_CONFIG_BASE_PATH}/${MVK_PROD_NAME}/${MVK_OS}"
 
-rm -rf "${MVK_PKG_PROD_PATH_OS}"
-mkdir -p "${MVK_PKG_PROD_PATH_OS}"
-cp -a "${MVK_BUILT_PROD_PATH}/${MVK_PROD_NAME}.framework" "${MVK_PKG_PROD_PATH_OS}"
-rm -rf "${MVK_PKG_PROD_PATH_OS}/${MVK_PROD_NAME}.framework/_CodeSignature"
+. "${SRCROOT}/Scripts/package_shader_converter_lib.sh"
+
+#-----------------------------------
+# MoltenVKGLSLToSPIRVConverter
+export MVK_PROD_NAME="MoltenVKGLSLToSPIRVConverter"
+
+. "${SRCROOT}/Scripts/package_shader_converter_lib.sh"

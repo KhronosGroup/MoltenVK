@@ -1,0 +1,74 @@
+/*
+ * SPIRVSupport.cpp
+ *
+ * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ * 
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ * 
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include "SPIRVSupport.h"
+#include <spirv/1.0/spirv.h>
+#include <spirv-tools/libspirv.h>
+#import <CoreFoundation/CFByteOrder.h>
+
+using namespace mvk;
+using namespace std;
+
+void mvk::logSPIRV(vector<uint32_t>& spirv, string& spvLog) {
+	if ( !((spirv.size() > 4) &&
+		   (spirv[0] == SpvMagicNumber) &&
+		   (spirv[4] == 0)) ) { return; }
+
+	uint32_t options = (SPV_BINARY_TO_TEXT_OPTION_INDENT);
+	spv_text text;
+	spv_diagnostic diagnostic = nullptr;
+	spv_context context = spvContextCreate(SPV_ENV_VULKAN_1_0);
+	spv_result_t error = spvBinaryToText(context, spirv.data(), spirv.size(), options, &text, &diagnostic);
+	spvContextDestroy(context);
+	if (error) {
+		spvDiagnosticPrint(diagnostic);
+		spvDiagnosticDestroy(diagnostic);
+		return;
+	}
+	spvLog.append(text->str, text->length);
+	spvTextDestroy(text);
+}
+
+void mvk::spirvToBytes(const vector<uint32_t>& spv, vector<char>& bytes) {
+	// Assumes desired endianness.
+	size_t byteCnt = spv.size() * sizeof(uint32_t);
+	char* cBytes = (char*)spv.data();
+	bytes.clear();
+	bytes.insert(bytes.end(), cBytes, cBytes + byteCnt);
+}
+
+void mvk::bytesToSPIRV(const vector<char>& bytes, vector<uint32_t>& spv) {
+	size_t spvCnt = bytes.size() / sizeof(uint32_t);
+	uint32_t* cSPV = (uint32_t*)bytes.data();
+	spv.clear();
+	spv.insert(spv.end(), cSPV, cSPV + spvCnt);
+	ensureSPIRVEndianness(spv);
+}
+
+bool mvk::ensureSPIRVEndianness(vector<uint32_t>& spv) {
+	if (spv.empty()) { return false; }					// Nothing to convert
+
+	uint32_t magNum = spv.front();
+	if (magNum == SpvMagicNumber) { return false; }	// No need to convert
+
+	if (CFSwapInt32(magNum) == SpvMagicNumber) {		// Yep, it's SPIR-V, but wrong endianness
+		for (auto& elem : spv) { elem = CFSwapInt32(elem); }
+		return true;
+	}
+	return false;		// Not SPIR-V, so don't convert
+}

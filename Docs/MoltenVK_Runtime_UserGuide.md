@@ -215,8 +215,8 @@ Interacting with the **MoltenVK** Runtime
 
 You programmatically configure and interact with the **MoltenVK** runtime through function 
 calls, enumeration values, and capabilities, in exactly the same way you do with other
-*Vulkan* implementations. The `MoltenVK.framework` contains several header files that define
-access to *Vulkan* and **MoltenVK** function calls.
+*Vulkan* implementations. **MoltenVK** contains several header files that define access 
+to *Vulkan* and **MoltenVK** function calls.
 
 In your application code, you access *Vulkan* features through the API defined in the standard 
 `vulkan.h` header file. This file is included in the **MoltenVK** framework, and can be included 

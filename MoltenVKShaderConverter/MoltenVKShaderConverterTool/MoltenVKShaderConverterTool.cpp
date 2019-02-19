@@ -21,6 +21,7 @@
 #include "DirectorySupport.h"
 #include "GLSLToSPIRVConverter.h"
 #include "SPIRVToMSLConverter.h"
+#include "SPIRVSupport.h"
 
 using namespace std;
 using namespace mvk;

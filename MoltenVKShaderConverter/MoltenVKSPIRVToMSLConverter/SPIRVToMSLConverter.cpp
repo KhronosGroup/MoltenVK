@@ -21,8 +21,7 @@
 #include "MVKStrings.h"
 #include "FileSupport.h"
 #include "spirv_msl.hpp"
-#include <spirv-tools/libspirv.h>
-#import <CoreFoundation/CFByteOrder.h>
+#include "SPIRVSupport.h"
 
 using namespace mvk;
 using namespace std;
@@ -426,54 +425,3 @@ void populateEntryPoint(SPIRVEntryPoint& entryPoint, spirv_cross::Compiler* pCom
 	populateWorkgroupDimension(entryPoint.workgroupSize.height, spvEP.workgroup_size.y, heightSC);
 	populateWorkgroupDimension(entryPoint.workgroupSize.depth, spvEP.workgroup_size.z, depthSC);
 }
-
-MVK_PUBLIC_SYMBOL void mvk::logSPIRV(vector<uint32_t>& spirv, string& spvLog) {
-	if ( !((spirv.size() > 4) &&
-		   (spirv[0] == spv::MagicNumber) &&
-		   (spirv[4] == 0)) ) { return; }
-
-	uint32_t options = (SPV_BINARY_TO_TEXT_OPTION_INDENT);
-	spv_text text;
-	spv_diagnostic diagnostic = nullptr;
-	spv_context context = spvContextCreate(SPV_ENV_VULKAN_1_0);
-	spv_result_t error = spvBinaryToText(context, spirv.data(), spirv.size(), options, &text, &diagnostic);
-	spvContextDestroy(context);
-	if (error) {
-		spvDiagnosticPrint(diagnostic);
-		spvDiagnosticDestroy(diagnostic);
-		return;
-	}
-	spvLog.append(text->str, text->length);
-	spvTextDestroy(text);
-}
-
-MVK_PUBLIC_SYMBOL void mvk::spirvToBytes(const vector<uint32_t>& spv, vector<char>& bytes) {
-	// Assumes desired endianness.
-	size_t byteCnt = spv.size() * sizeof(uint32_t);
-	char* cBytes = (char*)spv.data();
-	bytes.clear();
-	bytes.insert(bytes.end(), cBytes, cBytes + byteCnt);
-}
-
-MVK_PUBLIC_SYMBOL void mvk::bytesToSPIRV(const vector<char>& bytes, vector<uint32_t>& spv) {
-	size_t spvCnt = bytes.size() / sizeof(uint32_t);
-	uint32_t* cSPV = (uint32_t*)bytes.data();
-	spv.clear();
-	spv.insert(spv.end(), cSPV, cSPV + spvCnt);
-	ensureSPIRVEndianness(spv);
-}
-
-MVK_PUBLIC_SYMBOL bool mvk::ensureSPIRVEndianness(vector<uint32_t>& spv) {
-	if (spv.empty()) { return false; }					// Nothing to convert
-
-	uint32_t magNum = spv.front();
-	if (magNum == spv::MagicNumber) { return false; }	// No need to convert
-
-	if (CFSwapInt32(magNum) == spv::MagicNumber) {		// Yep, it's SPIR-V, but wrong endianness
-		for (auto& elem : spv) { elem = CFSwapInt32(elem); }
-		return true;
-	}
-	return false;		// Not SPIR-V, so don't convert
-}
-
-

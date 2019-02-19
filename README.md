@@ -160,8 +160,8 @@ or **_Debug_** build. Effectively, the `Package/Latest` directory points to whic
 or `Package/Debug` directories was most recently updated.
 
 With this packaging structure, you can follow the [instructions below](#using) to link your application 
-to the **MoltenVK** frameworks in the `Package/Latest` directory, to provide the flexibility to test your 
-app with either a **_Debug_** build, or a higher-performance **_Release_** build.
+to the **MoltenVK** libraries and frameworks in the `Package/Latest` directory, to provide the flexibility 
+to test your app with either a **_Debug_** build, or a higher-performance **_Release_** build.
 
 
 ### Building from the Command Line
@@ -214,8 +214,8 @@ Using **MoltenVK** in Your Application
 
 Once you have compiled and built the **MoltenVK** runtime distribution package from this **MoltenVK** repository, 
 as described in the [Building **MoltenVK**](#building) section, follow the instructions in the Installation 
-section of the [`Docs/MoltenVK_Runtime_UserGuide.md`](Docs/MoltenVK_Runtime_UserGuide.md#install) document in the
-`Docs` directory, to link the **MoltenVK** frameworks and libraries to your application.
+section of the [`Docs/MoltenVK_Runtime_UserGuide.md`](Docs/MoltenVK_Runtime_UserGuide.md#install) document 
+in the `Docs` directory, to link the **MoltenVK** libraries and frameworks to your application.
 
 The runtime distribution package in the `Package/Latest` directory is a stand-alone package, and you can copy 
 the contents of that directory out of this **MoltenVK** repository into your own application building environment.
