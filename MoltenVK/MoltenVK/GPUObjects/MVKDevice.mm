@@ -780,7 +780,6 @@ void MVKPhysicalDevice::initFeatures() {
     _features.samplerAnisotropy = true;
     _features.shaderImageGatherExtended = true;
     _features.shaderStorageImageExtendedFormats = true;
-    _features.shaderStorageImageMultisample = true;
     _features.shaderStorageImageReadWithoutFormat = true;
     _features.shaderStorageImageWriteWithoutFormat = true;
     _features.shaderUniformBufferArrayDynamicIndexing = true;
@@ -879,7 +878,7 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    shaderTessellationAndGeometryPointSize;
 //    VkBool32    shaderImageGatherExtended;                    // done
 //    VkBool32    shaderStorageImageExtendedFormats;            // done
-//    VkBool32    shaderStorageImageMultisample;                // done
+//    VkBool32    shaderStorageImageMultisample;
 //    VkBool32    shaderStorageImageReadWithoutFormat;          // done
 //    VkBool32    shaderStorageImageWriteWithoutFormat;         // done
 //    VkBool32    shaderUniformBufferArrayDynamicIndexing;      // done
@@ -948,7 +947,7 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.sampledImageIntegerSampleCounts = _metalFeatures.supportedSampleCounts;
 	_properties.limits.sampledImageDepthSampleCounts = _metalFeatures.supportedSampleCounts;
 	_properties.limits.sampledImageStencilSampleCounts = _metalFeatures.supportedSampleCounts;
-	_properties.limits.storageImageSampleCounts = _metalFeatures.supportedSampleCounts;
+	_properties.limits.storageImageSampleCounts = VK_SAMPLE_COUNT_1_BIT;
 
 	_properties.limits.maxImageDimension1D = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxImageDimension2D = _metalFeatures.maxTextureDimension;
