@@ -180,7 +180,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             // data when there are more output vertices than input vertices, we use an
             // indexed dispatch to force each instance to fetch the correct entry.
             MTLComputePipelineDescriptor* plDesc = [[_mtlTessControlStageDesc copy] autorelease];  // Use a copy to be thread-safe.
-            if (!indexBuff.mtlBuffer && getInputControlPointCount() <= getOutputControlPointCount()) {
+            if (!indexBuff.mtlBuffer && getInputControlPointCount() > getOutputControlPointCount()) {
                 plState = getOrCompilePipeline(plDesc, _mtlTessControlStageState);
             } else if (indexBuff.mtlIndexType == MTLIndexTypeUInt16) {
                 plDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt16;
