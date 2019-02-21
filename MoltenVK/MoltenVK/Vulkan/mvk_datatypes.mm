@@ -1247,8 +1247,9 @@ MVK_PUBLIC_SYMBOL VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderSta
 
 MVK_PUBLIC_SYMBOL MTLWinding mvkMTLWindingFromSpvExecutionMode(uint32_t spvMode) {
 	switch (spvMode) {
-		case spv::ExecutionModeVertexOrderCw:	return MTLWindingClockwise;
-		case spv::ExecutionModeVertexOrderCcw:	return MTLWindingCounterClockwise;
+		// These are reversed due to the vertex flip.
+		case spv::ExecutionModeVertexOrderCw:	return MTLWindingCounterClockwise;
+		case spv::ExecutionModeVertexOrderCcw:	return MTLWindingClockwise;
 		default:
 			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "spv::ExecutionMode %u is not a winding order mode.\n", spvMode);
 			return MTLWindingCounterClockwise;
