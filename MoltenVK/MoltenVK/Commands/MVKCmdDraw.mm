@@ -172,6 +172,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
                                          atIndex: kMVKTessCtlInputBufferIndex];
+                    [mtlTessCtlEncoder setStageInRegion: MTLRegionMake1D(0, _instanceCount * std::max(_vertexCount, outControlPointCount * patchCount))];
                 }
                 if (outControlPointCount > inControlPointCount) {
                     // In this case, we use an index buffer to avoid stepping over some of the input points.
@@ -397,6 +398,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                           offset: vtxOutBuff->_offset
                                          atIndex: kMVKTessCtlInputBufferIndex];
+                    [mtlTessCtlEncoder setStageInRegion: MTLRegionMake1D(0, _instanceCount * std::max(_indexCount, outControlPointCount * patchCount))];
                 }
                 if (outControlPointCount > inControlPointCount || _instanceCount > 1) {
                     [mtlTessCtlEncoder setBuffer: tcIndexBuff->_mtlBuffer
@@ -523,7 +525,11 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKDrawIndirectVertexCountUpperBound;
         patchCount = (uint32_t)mvkCeilingDivide(vertexCount, inControlPointCount);
-        tcIndirectBuff = cmdEncoder->getTempMTLBuffer((sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount);
+        VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount;
+        if (cmdEncoder->_pDeviceMetalFeatures->mslVersion >= 20100) {
+            indirectSize += sizeof(MTLStageInRegionIndirectArguments) * _drawCount;
+        }
+        tcIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize);
         if (pipeline->needsVertexOutputBuffer()) {
             vtxOutBuff = cmdEncoder->getTempMTLBuffer(vertexCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
         }
@@ -581,9 +587,13 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                             sizeof(inControlPointCount),
                                             3);
                 cmdEncoder->setComputeBytes(mtlTessCtlEncoder,
+                                            &outControlPointCount,
+                                            sizeof(inControlPointCount),
+                                            4);
+                cmdEncoder->setComputeBytes(mtlTessCtlEncoder,
                                             &_drawCount,
                                             sizeof(_drawCount),
-                                            4);
+                                            5);
                 [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
                                   threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 0, 0)];
             }
@@ -633,6 +643,14 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                               offset: vtxOutBuff->_offset
                                              atIndex: kMVKTessCtlInputBufferIndex];
+                        if ([mtlTessCtlEncoder respondsToSelector: @selector(setStageInRegionWithIndirectBuffer:indirectBufferOffset:)]) {
+                            [mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: tcIndirectBuff->_mtlBuffer
+                                                             indirectBufferOffset: mtlTCIndBuffOfst];
+                            mtlTCIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
+                        } else {
+                            // We must assume we can read up to the maximum number of vertices.
+                            [mtlTessCtlEncoder setStageInRegion: MTLRegionMake1D(0, std::max(inControlPointCount, outControlPointCount) * patchCount)];
+                        }
                     }
                     if (outControlPointCount > inControlPointCount) {
                         [mtlTessCtlEncoder setBuffer: tcIndexBuff->_mtlBuffer
@@ -738,7 +756,11 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKDrawIndirectVertexCountUpperBound;
         patchCount = (uint32_t)mvkCeilingDivide(vertexCount, inControlPointCount);
-        tcIndirectBuff = cmdEncoder->getTempMTLBuffer((sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount);
+        VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount;
+        if (cmdEncoder->_pDeviceMetalFeatures->mslVersion >= 20100) {
+            indirectSize += sizeof(MTLStageInRegionIndirectArguments) * _drawCount;
+        }
+        tcIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize);
         if (pipeline->needsVertexOutputBuffer()) {
             vtxOutBuff = cmdEncoder->getTempMTLBuffer(vertexCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
         }
@@ -785,9 +807,13 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                                 sizeof(inControlPointCount),
                                                 3);
                     cmdEncoder->setComputeBytes(mtlTessCtlEncoder,
+                                                &outControlPointCount,
+                                                sizeof(inControlPointCount),
+                                                4);
+                    cmdEncoder->setComputeBytes(mtlTessCtlEncoder,
                                                 &_drawCount,
                                                 sizeof(_drawCount),
-                                                4);
+                                                5);
                     [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
                                       threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
                 }
@@ -865,6 +891,14 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
                                               offset: vtxOutBuff->_offset
                                              atIndex: kMVKTessCtlInputBufferIndex];
+                        if ([mtlTessCtlEncoder respondsToSelector: @selector(setStageInRegionWithIndirectBuffer:indirectBufferOffset:)]) {
+                            [mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: tcIndirectBuff->_mtlBuffer
+                                                             indirectBufferOffset: mtlTCIndBuffOfst];
+                            mtlTCIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
+                        } else {
+                            // We must assume we can read up to the maximum number of vertices.
+                            [mtlTessCtlEncoder setStageInRegion: MTLRegionMake1D(0, std::max(inControlPointCount, outControlPointCount) * patchCount)];
+                        }
                     }
                     [mtlTessCtlEncoder setBuffer: tcIndexBuff->_mtlBuffer
                                           offset: tcIndexBuff->_offset

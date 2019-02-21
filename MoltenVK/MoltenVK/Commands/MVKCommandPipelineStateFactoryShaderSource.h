@@ -168,22 +168,40 @@ kernel void cmdCopyBufferToImage3DDecompressTempBufferDXTn(constant uint8_t* src
     }                                                                                                           \n\
 }                                                                                                               \n\
                                                                                                                 \n\
+#if __METAL_VERSION__ == 210                                                                                    \n\
+// This structure is missing from the MSL headers. :/                                                           \n\
+struct MTLStageInRegionIndirectArguments {                                                                      \n\
+    uint32_t stageInOrigin[3];                                                                                  \n\
+    uint32_t stageInSize[3];                                                                                    \n\
+};                                                                                                              \n\
+#endif                                                                                                          \n\
+                                                                                                                \n\
 kernel void cmdDrawIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],                             \n\
                                           device char* destBuff [[buffer(1)]],                                  \n\
                                           constant uint32_t& srcStride [[buffer(2)]],                           \n\
-                                          constant uint32_t& controlPointCount [[buffer(3)]],                   \n\
-                                          constant uint32_t& drawCount [[buffer(4)]],                           \n\
+                                          constant uint32_t& inControlPointCount [[buffer(3)]],                 \n\
+                                          constant uint32_t& outControlPointCount [[buffer(4)]],                \n\
+                                          constant uint32_t& drawCount [[buffer(5)]],                           \n\
                                           uint idx [[thread_position_in_grid]]) {                               \n\
     if (idx >= drawCount) { return; }                                                                           \n\
     const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
     device char* dest = destBuff + idx * (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments));\n\
+#if __METAL_VERSION__ >= 210                                                                                    \n\
+    device auto& destSI = *(device MTLStageInRegionIndirectArguments*)dest;                                     \n\
+    dest += sizeof(MTLStageInRegionIndirectArguments);                                                          \n\
+#endif                                                                                                          \n\
     device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;                              \n\
     device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));\n\
-    destTC.threadgroupsPerGrid[0] = (src.vertexCount * src.instanceCount + controlPointCount - 1) / controlPointCount;\n\
+    destTC.threadgroupsPerGrid[0] = (src.vertexCount * src.instanceCount + inControlPointCount - 1) / inControlPointCount;\n\
     destTC.threadgroupsPerGrid[1] = destTC.threadgroupsPerGrid[2] = 1;                                          \n\
     destTE.patchCount = destTC.threadgroupsPerGrid[0];                                                          \n\
     destTE.instanceCount = 1;                                                                                   \n\
     destTE.patchStart = destTE.baseInstance = 0;                                                                \n\
+#if __METAL_VERSION__ >= 210                                                                                    \n\
+    destSI.stageInOrigin[0] = destSI.stageInOrigin[1] = destSI.stageInOrigin[2] = 0;                            \n\
+    destSI.stageInSize[0] = src.instanceCount * max(src.vertexCount, outControlPointCount * destTE.patchCount); \n\
+    destSI.stageInSize[1] = destSI.stageInSize[2] = 1;                                                          \n\
+#endif                                                                                                          \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],                      \n\
