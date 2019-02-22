@@ -606,15 +606,36 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLTessRasterStageDescripto
 
 	// Stage input
 	plDesc.vertexDescriptor = [MTLVertexDescriptor vertexDescriptor];
-	uint32_t offset = 0, patchOffset = 0, levelOffset = 0;
+	uint32_t offset = 0, patchOffset = 0, outerLoc = -1, innerLoc = -1;
 	for (const SPIRVShaderOutput& output : tcOutputs) {
 		if (!shaderContext.isVertexAttributeLocationUsed(output.location)) { continue; }
 		if (output.perPatch && (output.builtin == spv::BuiltInTessLevelOuter || output.builtin == spv::BuiltInTessLevelInner) ) {
-			levelOffset = (uint32_t)mvkAlignByteOffset(levelOffset, sizeOfOutput(output));
-			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalLevelBufferIndex;
-			plDesc.vertexDescriptor.attributes[output.location].format = mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
-			plDesc.vertexDescriptor.attributes[output.location].offset = levelOffset;
-			levelOffset += sizeOfOutput(output);
+			uint32_t location = output.location;
+			if (output.builtin == spv::BuiltInTessLevelOuter) {
+				if (outerLoc != (uint32_t)(-1)) { continue; }
+				if (innerLoc != (uint32_t)(-1)) {
+					// For triangle tessellation, we use a single attribute. Don't add it more than once.
+					if (reflectData.patchKind == spv::ExecutionModeTriangles) { continue; }
+					// getShaderOutputs() assigned individual elements their own locations. Try to reduce the gap.
+					location = innerLoc + 1;
+				}
+				outerLoc = location;
+			} else {
+				if (innerLoc != (uint32_t)(-1)) { continue; }
+				if (outerLoc != (uint32_t)(-1)) {
+					if (reflectData.patchKind == spv::ExecutionModeTriangles) { continue; }
+					location = outerLoc + 1;
+				}
+				innerLoc = location;
+			}
+			plDesc.vertexDescriptor.attributes[location].bufferIndex = kMVKTessEvalLevelBufferIndex;
+			if (reflectData.patchKind == spv::ExecutionModeTriangles || output.builtin == spv::BuiltInTessLevelOuter) {
+				plDesc.vertexDescriptor.attributes[location].offset = 0;
+				plDesc.vertexDescriptor.attributes[location].format = MTLVertexFormatHalf4;	// FIXME Should use Float4
+			} else {
+				plDesc.vertexDescriptor.attributes[location].offset = 8;
+				plDesc.vertexDescriptor.attributes[location].format = MTLVertexFormatHalf2;	// FIXME Should use Float2
+			}
 		} else if (output.perPatch) {
 			patchOffset = (uint32_t)mvkAlignByteOffset(patchOffset, sizeOfOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalPatchInputBufferIndex;
@@ -637,9 +658,11 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLTessRasterStageDescripto
 		plDesc.vertexDescriptor.layouts[kMVKTessEvalPatchInputBufferIndex].stepFunction = MTLVertexStepFunctionPerPatch;
 		plDesc.vertexDescriptor.layouts[kMVKTessEvalPatchInputBufferIndex].stride = patchOffset;
 	}
-	if (levelOffset > 0) {
+	if (outerLoc != (uint32_t)(-1) || innerLoc != (uint32_t)(-1)) {
 		plDesc.vertexDescriptor.layouts[kMVKTessEvalLevelBufferIndex].stepFunction = MTLVertexStepFunctionPerPatch;
-		plDesc.vertexDescriptor.layouts[kMVKTessEvalLevelBufferIndex].stride = levelOffset;
+		plDesc.vertexDescriptor.layouts[kMVKTessEvalLevelBufferIndex].stride =
+			reflectData.patchKind == spv::ExecutionModeTriangles ? sizeof(MTLTriangleTessellationFactorsHalf) :
+																   sizeof(MTLQuadTessellationFactorsHalf);
 	}
 
 	// Tessellation state
