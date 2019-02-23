@@ -180,7 +180,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             // data when there are more output vertices than input vertices, we use an
             // indexed dispatch to force each instance to fetch the correct entry.
             MTLComputePipelineDescriptor* plDesc = [[_mtlTessControlStageDesc copy] autorelease];  // Use a copy to be thread-safe.
-            if (!indexBuff.mtlBuffer && getInputControlPointCount() > getOutputControlPointCount()) {
+            if (!indexBuff.mtlBuffer && getInputControlPointCount() >= getOutputControlPointCount()) {
                 plState = getOrCompilePipeline(plDesc, _mtlTessControlStageState);
             } else if (indexBuff.mtlIndexType == MTLIndexTypeUInt16) {
                 plDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt16;
@@ -402,7 +402,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		SPIRVToMSLConverterContext shaderContext;
 		initMVKShaderConverterContext(shaderContext, pCreateInfo, reflectData);
 		MTLRenderPipelineDescriptor* vtxPLDesc = getMTLTessVertexStageDescriptor(pCreateInfo, reflectData, shaderContext);
-		_mtlTessControlStageDesc = getMTLTessControlStageDescriptor(pCreateInfo, shaderContext);	// retained
+		_mtlTessControlStageDesc = getMTLTessControlStageDescriptor(pCreateInfo, reflectData, shaderContext);	// retained
 		MTLRenderPipelineDescriptor* rastPLDesc = getMTLTessRasterStageDescriptor(pCreateInfo, reflectData, shaderContext);
 		if (vtxPLDesc && _mtlTessControlStageDesc && rastPLDesc) {
 			if (getOrCompilePipeline(vtxPLDesc, _mtlTessVertexStageState)) {
@@ -544,7 +544,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 }
 
 // Returns a MTLComputePipelineDescriptor for the tess. control stage of a tessellated draw constructed from this instance, or nil if an error occurs.
-MTLComputePipelineDescriptor* MVKGraphicsPipeline::getMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext) {
+MTLComputePipelineDescriptor* MVKGraphicsPipeline::getMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConverterContext& shaderContext) {
 	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];
 
 	std::vector<SPIRVShaderOutput> vtxOutputs;
@@ -565,11 +565,13 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::getMTLTessControlStageDescrip
 	plDesc.stageInputDescriptor = [MTLStageInputOutputDescriptor stageInputOutputDescriptor];
 	uint32_t offset = 0;
 	for (const SPIRVShaderOutput& output : vtxOutputs) {
-		if (!shaderContext.isVertexAttributeLocationUsed(output.location)) { continue; }
+		if (output.builtin == spv::BuiltInPointSize && !reflectData.pointMode) { continue; }
 		offset = (uint32_t)mvkAlignByteOffset(offset, sizeOfOutput(output));
-		plDesc.stageInputDescriptor.attributes[output.location].bufferIndex = kMVKTessCtlInputBufferIndex;
-		plDesc.stageInputDescriptor.attributes[output.location].format = (MTLAttributeFormat)mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
-		plDesc.stageInputDescriptor.attributes[output.location].offset = offset;
+		if (shaderContext.isVertexAttributeLocationUsed(output.location)) {
+			plDesc.stageInputDescriptor.attributes[output.location].bufferIndex = kMVKTessCtlInputBufferIndex;
+			plDesc.stageInputDescriptor.attributes[output.location].format = (MTLAttributeFormat)mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.stageInputDescriptor.attributes[output.location].offset = offset;
+		}
 		offset += sizeOfOutput(output);
 	}
 	if (vtxOutputs.size() > 0) {
@@ -608,7 +610,15 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLTessRasterStageDescripto
 	plDesc.vertexDescriptor = [MTLVertexDescriptor vertexDescriptor];
 	uint32_t offset = 0, patchOffset = 0, outerLoc = -1, innerLoc = -1;
 	for (const SPIRVShaderOutput& output : tcOutputs) {
-		if (!shaderContext.isVertexAttributeLocationUsed(output.location)) { continue; }
+		if (output.builtin == spv::BuiltInPointSize && !reflectData.pointMode) { continue; }
+		if (!shaderContext.isVertexAttributeLocationUsed(output.location)) {
+			if (output.perPatch && !(output.builtin == spv::BuiltInTessLevelOuter || output.builtin == spv::BuiltInTessLevelInner) ) {
+				patchOffset += sizeOfOutput(output);
+			} else if (!output.perPatch) {
+				offset += sizeOfOutput(output);
+			}
+			continue;
+		}
 		if (output.perPatch && (output.builtin == spv::BuiltInTessLevelOuter || output.builtin == spv::BuiltInTessLevelInner) ) {
 			uint32_t location = output.location;
 			if (output.builtin == spv::BuiltInTessLevelOuter) {
