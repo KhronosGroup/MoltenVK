@@ -1,19 +1,20 @@
 XCODE_PROJ := MoltenVKPackaging.xcodeproj
+XCODE_SCHEME_BASE := MoltenVK Package
 
 .PHONY: all
 all:
-	xcodebuild -quiet -project $(XCODE_PROJ) -scheme "MoltenVK Package" build
+	xcodebuild -quiet -project "$(XCODE_PROJ)" -scheme "$(XCODE_SCHEME_BASE)" build
 
 .PHONY: macos
 macos:
-	xcodebuild -quiet -project $(XCODE_PROJ) -scheme "MoltenVK Package (macOS only)" build
+	xcodebuild -quiet -project "$(XCODE_PROJ)" -scheme "$(XCODE_SCHEME_BASE) (macOS only)" build
 
 .PHONY: ios
 ios:
-	xcodebuild -quiet -project $(XCODE_PROJ) -scheme "MoltenVK Package (iOS only)" build
+	xcodebuild -quiet -project "$(XCODE_PROJ)" -scheme "$(XCODE_SCHEME_BASE) (iOS only)" build
 
 .PHONY: clean
 clean:
-	xcodebuild -project $(XCODE_PROJ) -scheme "MoltenVK Package" clean
+	xcodebuild -quiet -project "$(XCODE_PROJ)" -scheme "$(XCODE_SCHEME_BASE)" clean
 	rm -rf Package
 

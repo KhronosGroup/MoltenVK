@@ -260,5 +260,10 @@ xcodebuild 									\
 	${XC_BUILD_VERBOSITY}					\
 	build
 
+echo ========== Cleaning MoltenVK build. Be sure to build MoltenVK again. ==========
+
+make --quiet clean
+
+echo
 echo ========== Done! ==========
 
