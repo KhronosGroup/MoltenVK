@@ -227,7 +227,7 @@ kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[bu
     destTE.patchStart = destTE.baseInstance = 0;                                                                \n\
 #if __METAL_VERSION__ >= 210                                                                                    \n\
     destSI.stageInOrigin[0] = destSI.stageInOrigin[1] = destSI.stageInOrigin[2] = 0;                            \n\
-    destSI.stageInSize[0] = src.instanceCount * max(src.vertexCount, outControlPointCount * destTE.patchCount); \n\
+    destSI.stageInSize[0] = src.instanceCount * max(src.indexCount, outControlPointCount * destTE.patchCount); \n\
     destSI.stageInSize[1] = destSI.stageInSize[2] = 1;                                                          \n\
 #endif                                                                                                          \n\
 }                                                                                                               \n\
