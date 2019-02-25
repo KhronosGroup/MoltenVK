@@ -671,7 +671,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxSwapchainImageCount = 3;
 
 #if MVK_IOS
-    _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1);
+	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_0;
     _metalFeatures.maxPerStageTextureCount = 31;
     _metalFeatures.mtlBufferAlignment = 64;
 	_metalFeatures.mtlCopyBufferAlignment = 1;
@@ -679,23 +679,23 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxTextureDimension = (4 * KIBI);
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) {
-        _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 1);
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
         _metalFeatures.dynamicMTLBuffers = true;
 		_metalFeatures.maxTextureDimension = (8 * KIBI);
     }
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3] ) {
-        _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 2);
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
     }
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
-        _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2);
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
     }
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v5] ) {
-		_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2, 1);
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
 	}
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
@@ -720,7 +720,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 
 #if MVK_MACOS
-    _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 1);
+	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
     _metalFeatures.maxPerStageTextureCount = 128;
     _metalFeatures.mtlBufferAlignment = 256;
 	_metalFeatures.mtlCopyBufferAlignment = 4;
@@ -730,7 +730,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxTextureDimension = (16 * KIBI);
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) {
-        _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 2);
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
         _metalFeatures.dynamicMTLBuffers = true;
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
@@ -740,7 +740,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     }
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v3] ) {
-        _metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2);
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
         _metalFeatures.texelBuffers = true;
 		_metalFeatures.arrayOfTextures = true;
 		_metalFeatures.arrayOfSamplers = true;
@@ -748,7 +748,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     }
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v4] ) {
-		_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2, 1);
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
         _metalFeatures.multisampleArrayTextures = true;
     }
 
@@ -763,6 +763,33 @@ void MVKPhysicalDevice::initMetalFeatures() {
             _metalFeatures.supportedSampleCounts |= sc;
         }
     }
+
+	switch (_metalFeatures.mslVersionEnum) {
+		case MTLLanguageVersion2_1:
+			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2, 1);
+			break;
+		case MTLLanguageVersion2_0:
+			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2, 0);
+			break;
+		case MTLLanguageVersion1_2:
+			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 2);
+			break;
+		case MTLLanguageVersion1_1:
+			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 1);
+			break;
+#if MVK_IOS
+		case MTLLanguageVersion1_0:
+			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 0);
+			break;
+#endif
+#if MVK_MACOS
+		// Silence compiler warning catch-22 on MTLLanguageVersion1_0.
+		// But allow iOS to be explicit so it warns on future enum values
+		default:
+			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 0);
+			break;
+#endif
+	}
 }
 
 /** Initializes the physical device features of this instance. */
@@ -1881,6 +1908,12 @@ void MVKDevice::getPerformanceStatistics(MVKPerformanceStatistics* pPerf) {
 
 
 #pragma mark Metal
+
+MTLCompileOptions* MVKDevice::getMTLCompileOptions() {
+	MTLCompileOptions* opts = [[MTLCompileOptions new] autorelease];
+	opts.languageVersion = _pMetalFeatures->mslVersionEnum;
+	return opts;
+}
 
 uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) {
 	return ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
