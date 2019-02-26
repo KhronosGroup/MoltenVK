@@ -443,7 +443,8 @@ void MVKCommandResourceFactory::initMTLLibrary() {
         _mtlLibrary = [getMTLDevice() newLibraryWithSource: _MVKStaticCmdShaderSource
                                                    options: getDevice()->getMTLCompileOptions()
                                                      error: &err];    // retained
-        MVKAssert( !err, "Could not compile command shaders %s (code %li) %s", err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
+		MVKAssert( !err, "Could not compile command shaders (code %li):\n%s\n%s",
+				  (long)err.code, err.localizedDescription.UTF8String, err.localizedFailureReason.UTF8String);
     }
     _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 }

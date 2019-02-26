@@ -31,6 +31,8 @@ extern "C" {
 #ifdef __OBJC__
 #import <Metal/Metal.h>
 #import <IOSurface/IOSurfaceRef.h>
+#else
+typedef unsigned long MTLLanguageVersion;
 #endif
 
 
@@ -53,7 +55,7 @@ extern "C" {
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            17
+#define VK_MVK_MOLTENVK_SPEC_VERSION            18
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -512,6 +514,7 @@ typedef struct {
 	VkBool32 combinedStoreResolveAction;		/**< If true, the device supports VK_ATTACHMENT_STORE_OP_STORE with a simultaneous resolve attachment. */
 	VkBool32 arrayOfTextures;			 	  	/**< If true, arrays of textures is supported. */
 	VkBool32 arrayOfSamplers;			 	  	/**< If true, arrays of texture samplers is supported. */
+	MTLLanguageVersion mslVersionEnum;			/**< The version of the Metal Shading Language available on this device, as a Metal enumeration. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**

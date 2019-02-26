@@ -190,15 +190,18 @@ void MVKLogImpl(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr,
 #define MVKLogDebugImpl(fmt, ...)	MVKLogImpl(true, !(MVK_DEBUG), ASL_LEVEL_DEBUG, "mvk-debug", fmt, ##__VA_ARGS__)
 
 // Assertions
-#if NS_BLOCK_ASSERTIONS
-#	define MVKAssert(test, fmt, ...)
+#ifdef NS_BLOCK_ASSERTIONS
+#	define MVK_BLOCK_ASSERTIONS		1
 #else
-#	define MVKAssert(test, fmt, ...)					\
-	if (!(test)) {										\
-		MVKLogError(fmt, ##__VA_ARGS__);				\
-		assert(false);									\
-	}
+#	define MVK_BLOCK_ASSERTIONS		0
 #endif
+
+#define MVKAssert(test, fmt, ...)				\
+do {											\
+	bool isErr = !(test);						\
+	MVKLogErrorIf(isErr, fmt, ##__VA_ARGS__);	\
+	assert(!isErr || MVK_BLOCK_ASSERTIONS);		\
+} while(0)
 
 #define MVKAssertUnimplemented(name) MVKAssert(false, "%s is not implemented!", name)
 
