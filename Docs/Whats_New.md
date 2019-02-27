@@ -20,7 +20,7 @@ Released 2019/02/28
 
 - Support the `VK_EXT_memory_budget` extension.
 - Support  8-bit part of `VK_KHR_shader_float16_int8`.
-- Disable the `shaderStageImageMultisample` feature.
+- Disable the `shaderStorageImageMultisample` feature.
 - Modify README.md to direct developers to Vulkan SDK.
 - Clarify Xcode version requirements in documentation.
 - Use the `MTLDevice registryID` property to locate the GPU in `IOKit`.
