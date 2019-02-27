@@ -452,10 +452,11 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
 
 const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length) {
     const MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length);
+	MVKMTLBufferAllocationPool* pool = mtlBuffAlloc->getPool();
 
     // Return the MTLBuffer allocation to the pool once the command buffer is done with it
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-        ((MVKMTLBufferAllocation*)mtlBuffAlloc)->returnToPool();
+        pool->returnObjectSafely((MVKMTLBufferAllocation*)mtlBuffAlloc);
     }];
 
     return mtlBuffAlloc;
