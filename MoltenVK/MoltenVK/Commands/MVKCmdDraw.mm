@@ -559,7 +559,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
-    VkDeviceSize mtlTCIndBuffOfst = tcIndirectBuff->_offset;
+    VkDeviceSize mtlTCIndBuffOfst = tcIndirectBuff ? tcIndirectBuff->_offset : 0;
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
@@ -778,7 +778,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
-    VkDeviceSize mtlTCIndBuffOfst = tcIndirectBuff->_offset;
+    VkDeviceSize mtlTCIndBuffOfst = tcIndirectBuff ? tcIndirectBuff->_offset : 0;
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
