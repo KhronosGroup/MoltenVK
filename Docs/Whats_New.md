@@ -13,6 +13,15 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.34
+---------------
+
+Released TBD
+
+- Increase shader float constant accuracy beyond 6 digits of precision.
+
+
+
 MoltenVK 1.0.33
 ---------------
 

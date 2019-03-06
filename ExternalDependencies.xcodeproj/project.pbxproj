@@ -3475,10 +3475,6 @@
 				BITCODE_GENERATION_MODE = bitcode;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_FLT_FMT=\\\"%.6g\\\"",
-				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = iphoneos;
 				VALID_ARCHS = arm64;
@@ -3492,10 +3488,6 @@
 				BITCODE_GENERATION_MODE = bitcode;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_FLT_FMT=\\\"%.6g\\\"",
-				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = iphoneos;
 				VALID_ARCHS = arm64;
@@ -3505,10 +3497,6 @@
 		A90FD9E221CC4EB900B92BB2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_FLT_FMT=\\\"%.6g\\\"",
-				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = macosx;
 			};
@@ -3517,10 +3505,6 @@
 		A90FD9E321CC4EB900B92BB2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_FLT_FMT=\\\"%.6g\\\"",
-				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = macosx;
 			};
