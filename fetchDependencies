@@ -25,6 +25,7 @@
 #      -v      verbose output
 #
 
+set -o errexit
 
 # ----------------- Functions -------------------
 
