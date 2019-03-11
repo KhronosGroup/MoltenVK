@@ -609,6 +609,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLTessRasterStageDescripto
 	// Stage input
 	plDesc.vertexDescriptor = [MTLVertexDescriptor vertexDescriptor];
 	uint32_t offset = 0, patchOffset = 0, outerLoc = -1, innerLoc = -1;
+	bool usedPerVertex = false, usedPerPatch = false;
 	const SPIRVShaderOutput* firstVertex = nullptr, * firstPatch = nullptr;
 	for (const SPIRVShaderOutput& output : tcOutputs) {
 		if (output.builtin == spv::BuiltInPointSize && !reflectData.pointMode) { continue; }
@@ -656,6 +657,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLTessRasterStageDescripto
 			plDesc.vertexDescriptor.attributes[output.location].offset = patchOffset;
 			patchOffset += sizeOfOutput(output);
 			if (!firstPatch) { firstPatch = &output; }
+			usedPerPatch = true;
 		} else {
 			offset = (uint32_t)mvkAlignByteOffset(offset, sizeOfOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalInputBufferIndex;
@@ -663,13 +665,14 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLTessRasterStageDescripto
 			plDesc.vertexDescriptor.attributes[output.location].offset = offset;
 			offset += sizeOfOutput(output);
 			if (!firstVertex) { firstVertex = &output; }
+			usedPerVertex = true;
 		}
 	}
-	if (offset > 0) {
+	if (usedPerVertex) {
 		plDesc.vertexDescriptor.layouts[kMVKTessEvalInputBufferIndex].stepFunction = MTLVertexStepFunctionPerPatchControlPoint;
 		plDesc.vertexDescriptor.layouts[kMVKTessEvalInputBufferIndex].stride = mvkAlignByteOffset(offset, sizeOfOutput(*firstVertex));
 	}
-	if (patchOffset > 0) {
+	if (usedPerPatch) {
 		plDesc.vertexDescriptor.layouts[kMVKTessEvalPatchInputBufferIndex].stepFunction = MTLVertexStepFunctionPerPatch;
 		plDesc.vertexDescriptor.layouts[kMVKTessEvalPatchInputBufferIndex].stride = mvkAlignByteOffset(patchOffset, sizeOfOutput(*firstPatch));
 	}
