@@ -63,6 +63,10 @@ MVKQueueFamily::~MVKQueueFamily() {
 
 #pragma mark Queue submissions
 
+// Execute the queue submission under an autorelease pool to ensure transient Metal objects are autoreleased.
+// This is critical for apps that don't use standard OS autoreleasing runloop threading.
+static inline void execute(MVKQueueSubmission* qSubmit) { @autoreleasepool { qSubmit->execute(); } }
+
 // Executes the submmission, either immediately, or by dispatching to an execution queue.
 // Submissions to the execution queue are wrapped in a dedicated autorelease pool.
 // Relying on the dispatch queue to find time to drain the autorelease pool can
@@ -72,9 +76,9 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 
 	VkResult rslt = qSubmit->_submissionResult;     // Extract result before submission to avoid race condition with early destruction
 	if (_execQueue) {
-		dispatch_async(_execQueue, ^{ @autoreleasepool { qSubmit->execute(); } } );
+		dispatch_async(_execQueue, ^{ execute(qSubmit); } );
 	} else {
-		qSubmit->execute();
+		execute(qSubmit);
 	}
 	return rslt;
 }
