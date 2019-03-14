@@ -363,16 +363,23 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
     for (uint32_t i = 0; i < vaCnt; i++) {
         const VkVertexInputAttributeDescription* pVKVA = &pCreateInfo->pVertexInputState->pVertexAttributeDescriptions[i];
         if (shaderContext.isVertexAttributeLocationUsed(pVKVA->location)) {
+
             // Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
-            const VkVertexInputBindingDescription* pVKVB = pCreateInfo->pVertexInputState->pVertexBindingDescriptions;
-            for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
-                if (pVKVB->binding == pVKVA->binding) { break; }
-            }
-            if (pVKVA->offset >= pVKVB->stride) {
-                setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute offsets must not exceed the vertex buffer stride."));
-                return nil;
-            }
-            MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
+			// Only check non-zero offsets, as it's common for both to be zero when step rate is instance.
+			if (pVKVA->offset > 0) {
+				const VkVertexInputBindingDescription* pVKVB = pCreateInfo->pVertexInputState->pVertexBindingDescriptions;
+				for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
+					if (pVKVB->binding == pVKVA->binding) {
+						if (pVKVA->offset >= pVKVB->stride) {
+							setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute offsets must not exceed the vertex buffer stride."));
+							return nil;
+						}
+						break;
+					}
+				}
+			}
+
+			MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
             vaDesc.format = mvkMTLVertexFormatFromVkFormat(pVKVA->format);
             vaDesc.bufferIndex = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
             vaDesc.offset = pVKVA->offset;
@@ -384,15 +391,16 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
         const VkVertexInputBindingDescription* pVKVB = &pCreateInfo->pVertexInputState->pVertexBindingDescriptions[i];
         uint32_t vbIdx = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
         if (shaderContext.isVertexBufferUsed(vbIdx)) {
-            MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
-            // Vulkan allows any stride, but Metal only allows multiples of 4.
-            // TODO: We should try to expand the buffer to the required alignment
-            // in that case.
+
+			// Vulkan allows any stride, but Metal only allows multiples of 4.
+            // TODO: We should try to expand the buffer to the required alignment in that case.
             if ((pVKVB->stride % 4) != 0) {
                 setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex buffer strides must be aligned to four bytes."));
                 return nil;
             }
-            vbDesc.stride = (pVKVB->stride == 0) ? sizeof(simd::float4) : pVKVB->stride;      // Vulkan allows zero stride but Metal doesn't. Default to float4
+
+			MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
+			vbDesc.stride = (pVKVB->stride == 0) ? sizeof(simd::float4) : pVKVB->stride;      // Vulkan allows zero stride but Metal doesn't. Default to float4
             vbDesc.stepFunction = mvkMTLVertexStepFunctionFromVkVertexInputRate(pVKVB->inputRate);
             vbDesc.stepRate = 1;
         }
