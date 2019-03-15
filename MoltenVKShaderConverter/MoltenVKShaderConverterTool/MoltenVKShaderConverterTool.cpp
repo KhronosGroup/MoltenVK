@@ -34,7 +34,7 @@ static const char* _defaultVertexShaderExtns = "vs vsh vert vertex";
 static const char* _defaultFragShaderExtns = "fs fsh frag fragment";
 
 // The default list of compute file extensions.
-static const char* _defaultCompShaderExtns = "cp cmp comp compute kn kl krn kern kernel";
+static const char* _defaultCompShaderExtns = "cs csh cp cmp comp compute kn kl krn kern kernel";
 
 // The default list of SPIR-V file extensions.
 static const char* _defaultSPIRVShaderExtns = "spv spirv";

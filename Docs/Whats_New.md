@@ -18,7 +18,11 @@ MoltenVK 1.0.34
 
 Released TBD
 
+- Allow zero offset and stride combo in VkVertexInputBindingDescription.
+- Fix potential memory leak on synchronous command buffer submission.
 - Increase shader float constant accuracy beyond 6 digits of precision.
+- MoltenVKShaderConverterTool support cs & csh for compute shader file extensions.
+- `fetchDependencies`: Stop on first error.
 
 
 
@@ -46,6 +50,7 @@ Released 2019/02/28
 - Fix crash from use of MTLDevice registryID on early OS versions.
 - `fetchDependencies`: Fix issue loading from `Vulkan-Portability_repo_revision`.
 - `fetchDependencies`: Clean MoltenVK build to ensure using latest dependency libs.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 18.
 - Update to latest dependency libraries to support SDK 1.1.101.
 - Update to latest SPIRV-Cross version:
 	- MSL: Implement 8-bit part of `VK_KHR_shader_float16_int8`.
