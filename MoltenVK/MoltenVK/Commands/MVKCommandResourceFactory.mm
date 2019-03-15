@@ -385,6 +385,16 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3D
 																	 "cmdCopyBufferToImage3DDecompressDXTn"));
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed) {
+	return newMTLComputePipelineState(getFunctionNamed(indexed ? "cmdDrawIndirectConvertBuffers" :
+                                                                 "cmdDrawIndexedIndirectConvertBuffers"));
+}
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type) {
+	return newMTLComputePipelineState(getFunctionNamed(type == MTLIndexTypeUInt16 ? "cmdDrawIndexedCopyIndex16Buffer" :
+    "cmdDrawIndexedCopyIndex32Buffer"));
+}
+
 
 #pragma mark Support methods
 

@@ -113,6 +113,14 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferToImage3DDec
 	MVK_ENC_REZ_ACCESS(_mtlCopyBufferToImage3DDecompressComputePipelineState[needsTempBuff ? 1 : 0], newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff));
 }
 
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed) {
+	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectConvertBuffersMTLComputePipelineState(indexed));
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type) {
+	MVK_ENC_REZ_ACCESS(_mtlDrawIndexedCopyIndexBufferComputePipelineState[type == MTLIndexTypeUInt16 ? 1 : 0], newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(type));
+}
+
 void MVKCommandEncodingPool::clear() {
 	lock_guard<mutex> lock(_lock);
 	destroyMetalResources();
@@ -177,5 +185,15 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     [_mtlCopyBufferToImage3DDecompressComputePipelineState[1] release];
     _mtlCopyBufferToImage3DDecompressComputePipelineState[0] = nil;
     _mtlCopyBufferToImage3DDecompressComputePipelineState[1] = nil;
+
+    [_mtlDrawIndirectConvertBuffersComputePipelineState[0] release];
+    [_mtlDrawIndirectConvertBuffersComputePipelineState[1] release];
+    _mtlDrawIndirectConvertBuffersComputePipelineState[0] = nil;
+    _mtlDrawIndirectConvertBuffersComputePipelineState[1] = nil;
+
+    [_mtlDrawIndexedCopyIndexBufferComputePipelineState[0] release];
+    [_mtlDrawIndexedCopyIndexBufferComputePipelineState[1] release];
+    _mtlDrawIndexedCopyIndexBufferComputePipelineState[0] = nil;
+    _mtlDrawIndexedCopyIndexBufferComputePipelineState[1] = nil;
 }
 

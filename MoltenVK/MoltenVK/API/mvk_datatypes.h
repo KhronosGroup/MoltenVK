@@ -323,6 +323,16 @@ MTLSamplerMipFilter mvkMTLSamplerMipFilterFromVkSamplerMipmapMode(VkSamplerMipma
 #pragma mark -
 #pragma mark Render pipeline
 
+/** Identifies a particular shading stage in a pipeline. */
+typedef enum {
+	kMVKShaderStageVertex = 0,
+	kMVKShaderStageTessCtl,
+	kMVKShaderStageTessEval,
+	kMVKShaderStageFragment,
+	kMVKShaderStageCompute,
+	kMVKShaderStageMax
+} MVKShaderStage;
+
 /** Returns the Metal MTLColorWriteMask corresponding to the specified Vulkan VkColorComponentFlags. */
 MTLColorWriteMask mvkMTLColorWriteMaskFromVkChannelFlags(VkColorComponentFlags vkWriteFlags);
 
@@ -380,6 +390,17 @@ MTLIndexType mvkMTLIndexTypeFromVkIndexType(VkIndexType vkIdxType);
 /** Returns the size, in bytes, of a vertex index of the specified type. */
 size_t mvkMTLIndexTypeSizeInBytes(MTLIndexType mtlIdxType);
 
+/** Returns the MVKShaderStage corresponding to the specified Vulkan VkShaderStageFlagBits. */
+MVKShaderStage mvkShaderStageFromVkShaderStageFlagBits(VkShaderStageFlagBits vkStage);
+
+/** Returns the VkShaderStageFlagBits corresponding to the specified MoltenVK MVKShaderStage. */
+VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage mvkStage);
+
+/** Returns the MTLWinding corresponding to the specified spv::ExecutionMode. */
+MTLWinding mvkMTLWindingFromSpvExecutionMode(uint32_t spvMode);
+
+/** Returns the MTLTessellationPartitionMode corresponding to the specified spv::ExecutionMode. */
+MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode(uint32_t spvMode);
 
 #pragma mark -
 #pragma mark Geometry conversions

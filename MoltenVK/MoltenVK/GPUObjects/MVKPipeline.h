@@ -23,6 +23,7 @@
 #include "MVKShaderModule.h"
 #include "MVKSync.h"
 #include "MVKVector.h"
+#include <MoltenVKSPIRVToMSLConverter/SPIRVReflection.h>
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
 #include <ostream>
@@ -36,10 +37,8 @@ class MVKPipelineCache;
 #pragma mark -
 #pragma mark MVKPipelineLayout
 
-struct MVKShaderAuxBufferBinding {
-	uint32_t vertex = 0;
-	uint32_t fragment = 0;
-	uint32_t compute = 0;
+struct MVKShaderImplicitRezBinding {
+	uint32_t stages[kMVKShaderStageMax];
 };
 
 /** Represents a Vulkan pipeline layout. */
@@ -68,7 +67,19 @@ public:
 						   const void* pData);
 
 	/** Returns the current auxiliary buffer bindings. */
-	const MVKShaderAuxBufferBinding& getAuxBufferIndex() { return _auxBufferIndex; }
+	const MVKShaderImplicitRezBinding& getAuxBufferIndex() { return _auxBufferIndex; }
+
+	/** Returns the current indirect parameter buffer bindings. */
+	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
+
+	/** Returns the current captured output buffer bindings. */
+	const MVKShaderImplicitRezBinding& getOutputBufferIndex() { return _outputBufferIndex; }
+
+	/** Returns the current captured per-patch output buffer binding for the tess. control shader. */
+	uint32_t getTessCtlPatchOutputBufferIndex() { return _tessCtlPatchOutputBufferIndex; }
+
+	/** Returns the current tessellation level buffer binding for the tess. control shader. */
+	uint32_t getTessCtlLevelBufferIndex() { return _tessCtlLevelBufferIndex; }
 
 	/** Returns the number of textures in this layout. This is used to calculate the size of the auxiliary buffer. */
 	uint32_t getTextureCount() { return _pushConstantsMTLResourceIndexes.getMaxTextureIndex(); }
@@ -81,23 +92,39 @@ protected:
 	MVKVectorInline<MVKShaderResourceBinding, 8> _dslMTLResourceIndexOffsets;
 	MVKVectorInline<VkPushConstantRange, 8> _pushConstants;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
-	MVKShaderAuxBufferBinding _auxBufferIndex;
+	MVKShaderImplicitRezBinding _auxBufferIndex;
+	MVKShaderImplicitRezBinding _indirectParamsIndex;
+	MVKShaderImplicitRezBinding _outputBufferIndex;
+	uint32_t _tessCtlPatchOutputBufferIndex = 0;
+	uint32_t _tessCtlLevelBufferIndex = 0;
 };
 
 
 #pragma mark -
 #pragma mark MVKPipeline
 
+static const uint32_t kMVKTessCtlInputBufferIndex = 30;
+static const uint32_t kMVKTessCtlIndexBufferIndex = 29;
+static const uint32_t kMVKTessCtlNumReservedBuffers = 2;
+
+static const uint32_t kMVKTessEvalInputBufferIndex = 30;
+static const uint32_t kMVKTessEvalPatchInputBufferIndex = 29;
+static const uint32_t kMVKTessEvalLevelBufferIndex = 28;
+static const uint32_t kMVKTessEvalNumReservedBuffers = 3;
+
 /** Represents an abstract Vulkan pipeline. */
 class MVKPipeline : public MVKBaseDeviceObject {
 
 public:
 
+	/** Returns the order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
+	virtual void getStages(MVKVector<uint32_t>& stages) = 0;
+
 	/** Binds this pipeline to the specified command encoder. */
-	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
+	virtual void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) = 0;
 
 	/** Returns the current auxiliary buffer bindings. */
-	const MVKShaderAuxBufferBinding& getAuxBufferIndex() { return _auxBufferIndex; }
+	const MVKShaderImplicitRezBinding& getAuxBufferIndex() { return _auxBufferIndex; }
 
 	/** Returns whether or not full image view swizzling is enabled for this pipeline. */
 	bool fullImageViewSwizzle() const { return _fullImageViewSwizzle; }
@@ -109,7 +136,7 @@ public:
 
 protected:
 	MVKPipelineCache* _pipelineCache;
-	MVKShaderAuxBufferBinding _auxBufferIndex;
+	MVKShaderImplicitRezBinding _auxBufferIndex;
 	bool _fullImageViewSwizzle;
 
 };
@@ -123,11 +150,44 @@ class MVKGraphicsPipeline : public MVKPipeline {
 
 public:
 
+	/** Returns the number and order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
+	void getStages(MVKVector<uint32_t>& stages) override;
+
 	/** Binds this pipeline to the specified command encoder. */
-	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) override;
 
     /** Returns whether this pipeline permits dynamic setting of the specifie state. */
     bool supportsDynamicState(VkDynamicState state);
+
+    /** Returns whether this pipeline has tessellation shaders. */
+    bool isTessellationPipeline() { return _tessInfo.patchControlPoints > 0; }
+
+    /** Returns the number of input tessellation patch control points. */
+    uint32_t getInputControlPointCount() { return _tessInfo.patchControlPoints; }
+
+    /** Returns the number of output tessellation patch control points. */
+    uint32_t getOutputControlPointCount() { return _outputControlPointCount; }
+
+	/** Returns the current indirect parameter buffer bindings. */
+	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
+
+	/** Returns the current captured output buffer bindings. */
+	const MVKShaderImplicitRezBinding& getOutputBufferIndex() { return _outputBufferIndex; }
+
+	/** Returns the current captured per-patch output buffer binding for the tess. control shader. */
+	uint32_t getTessCtlPatchOutputBufferIndex() { return _tessCtlPatchOutputBufferIndex; }
+
+	/** Returns the current tessellation level buffer binding for the tess. control shader. */
+	uint32_t getTessCtlLevelBufferIndex() { return _tessCtlLevelBufferIndex; }
+
+	/** Returns true if the vertex shader needs a buffer to store its output. */
+	bool needsVertexOutputBuffer() { return _needsVertexOutputBuffer; }
+
+	/** Returns true if the tessellation control shader needs a buffer to store its per-vertex output. */
+	bool needsTessCtlOutputBuffer() { return _needsTessCtlOutputBuffer; }
+
+	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
+	bool needsTessCtlPatchOutputBuffer() { return _needsTessCtlPatchOutputBuffer; }
 
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
@@ -138,30 +198,70 @@ public:
 	~MVKGraphicsPipeline() override;
 
 protected:
-    void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo);
+    id<MTLRenderPipelineState> getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState);
+    id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState);
+    void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
     void initMVKShaderConverterContext(SPIRVToMSLConverterContext& _shaderContext,
-                                       const VkGraphicsPipelineCreateInfo* pCreateInfo);
-	MTLRenderPipelineDescriptor* getMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo);
-	bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo);
+                                       const VkGraphicsPipelineCreateInfo* pCreateInfo,
+                                       const SPIRVTessReflectionData& reflectData);
+    void addVertexInputToShaderConverterContext(SPIRVToMSLConverterContext& shaderContext,
+                                                const VkGraphicsPipelineCreateInfo* pCreateInfo);
+    void addPrevStageOutputToShaderConverterContext(SPIRVToMSLConverterContext& shaderContext,
+                                                    std::vector<SPIRVShaderOutput>& outputs);
+    MTLRenderPipelineDescriptor* getMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
+    MTLRenderPipelineDescriptor* getMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConverterContext& shaderContext);
+    MTLComputePipelineDescriptor* getMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConverterContext& shaderContext);
+    MTLRenderPipelineDescriptor* getMTLTessRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConverterContext& shaderContext);
+    bool addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext);
+    bool addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext, std::vector<SPIRVShaderOutput>& prevOutput);
+    bool addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext, std::vector<SPIRVShaderOutput>& prevOutput);
+    bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext);
+    bool addVertexInputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConverterContext& shaderContext);
+    void addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS);
+    void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo);
+    bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
 
+	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* _pTessEvalSS = nullptr;
+	const VkPipelineShaderStageCreateInfo* _pFragmentSS = nullptr;
+
+	VkPipelineTessellationStateCreateInfo _tessInfo;
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 
-  MVKVectorInline<MTLViewport, kMVKCachedViewportCount> _mtlViewports;
-  MVKVectorInline<MTLScissorRect, kMVKCachedScissorCount> _mtlScissors;
+	MVKVectorInline<MTLViewport, kMVKCachedViewportCount> _mtlViewports;
+	MVKVectorInline<MTLScissorRect, kMVKCachedScissorCount> _mtlScissors;
 
-	id<MTLRenderPipelineState> _mtlPipelineState;
+	MTLComputePipelineDescriptor* _mtlTessControlStageDesc = nil;
+
+	id<MTLRenderPipelineState> _mtlTessVertexStageState = nil;
+	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
+	id<MTLComputePipelineState> _mtlTessControlStageIndex16State = nil;
+	id<MTLComputePipelineState> _mtlTessControlStageIndex32State = nil;
+	id<MTLRenderPipelineState> _mtlPipelineState = nil;
 	MTLCullMode _mtlCullMode;
 	MTLWinding _mtlFrontWinding;
 	MTLTriangleFillMode _mtlFillMode;
 	MTLDepthClipMode _mtlDepthClipMode;
-    MTLPrimitiveType _mtlPrimitiveType;
+	MTLPrimitiveType _mtlPrimitiveType;
 
     float _blendConstants[4] = { 0.0, 0.0, 0.0, 1.0 };
+    uint32_t _outputControlPointCount;
+	MVKShaderImplicitRezBinding _indirectParamsIndex;
+	MVKShaderImplicitRezBinding _outputBufferIndex;
+	uint32_t _tessCtlPatchOutputBufferIndex = 0;
+	uint32_t _tessCtlLevelBufferIndex = 0;
 
 	bool _dynamicStateEnabled[VK_DYNAMIC_STATE_RANGE_SIZE];
 	bool _hasDepthStencilInfo;
 	bool _needsVertexAuxBuffer = false;
+	bool _needsVertexOutputBuffer = false;
+	bool _needsTessCtlAuxBuffer = false;
+	bool _needsTessCtlOutputBuffer = false;
+	bool _needsTessCtlPatchOutputBuffer = false;
+	bool _needsTessCtlInput = false;
+	bool _needsTessEvalAuxBuffer = false;
 	bool _needsFragmentAuxBuffer = false;
 };
 
@@ -174,8 +274,11 @@ class MVKComputePipeline : public MVKPipeline {
 
 public:
 
+	/** Returns the number and order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
+	void getStages(MVKVector<uint32_t>& stages) override;
+
 	/** Binds this pipeline to the specified command encoder. */
-	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encode(MVKCommandEncoder* cmdEncoder, uint32_t = 0) override;
 
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKComputePipeline(MVKDevice* device,
@@ -290,6 +393,14 @@ public:
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
 	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction);
+
+	/**
+	 * Returns a new (retained) MTLComputePipelineState object compiled from the MTLComputePipelineDescriptor.
+	 *
+	 * If the Metal pipeline compiler does not return within MVKConfiguration::metalCompileTimeout
+	 * nanoseconds, an error will be generated and logged, and nil will be returned.
+	 */
+	id<MTLComputePipelineState> newMTLComputePipelineState(MTLComputePipelineDescriptor* plDesc);
 
 
 #pragma mark Construction

@@ -21,6 +21,7 @@
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKLogging.h"
+#include <MoltenVKSPIRVToMSLConverter/SPIRVReflection.h>
 #include <unordered_map>
 #include <string>
 #include <limits>
@@ -1059,6 +1060,7 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(Vk
 
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST:
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
+		case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
 			return MTLPrimitiveTypeTriangle;
 
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP:
@@ -1066,7 +1068,6 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(Vk
 			return MTLPrimitiveTypeTriangleStrip;
 
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
-		case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
 		default:
 			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for rendering.", vkTopology);
 			return MTLPrimitiveTypePoint;
@@ -1089,9 +1090,9 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPr
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST_WITH_ADJACENCY:
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_STRIP_WITH_ADJACENCY:
+		case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
 			return MTLPrimitiveTopologyClassTriangle;
 
-		case VK_PRIMITIVE_TOPOLOGY_PATCH_LIST:
 		default:
 			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for render pipelines.", vkTopology);
 			return MTLPrimitiveTopologyClassUnspecified;
@@ -1213,6 +1214,56 @@ MVK_PUBLIC_SYMBOL size_t mvkMTLIndexTypeSizeInBytes(MTLIndexType mtlIdxType) {
 	switch (mtlIdxType) {
 		case MTLIndexTypeUInt16:	return 2;
 		case MTLIndexTypeUInt32:	return 4;
+	}
+}
+
+MVK_PUBLIC_SYMBOL MVKShaderStage mvkShaderStageFromVkShaderStageFlagBits(VkShaderStageFlagBits vkStage) {
+	switch (vkStage) {
+		case VK_SHADER_STAGE_VERTEX_BIT:					return kMVKShaderStageVertex;
+		case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:		return kMVKShaderStageTessCtl;
+		case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:	return kMVKShaderStageTessEval;
+		/* FIXME: VK_SHADER_STAGE_GEOMETRY_BIT */
+		case VK_SHADER_STAGE_FRAGMENT_BIT:					return kMVKShaderStageFragment;
+		case VK_SHADER_STAGE_COMPUTE_BIT:					return kMVKShaderStageCompute;
+		default:
+			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkShaderStage %x is not supported.", vkStage);
+			return kMVKShaderStageMax;
+	}
+}
+
+MVK_PUBLIC_SYMBOL VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage mvkStage) {
+	switch (mvkStage) {
+		case kMVKShaderStageVertex:		return VK_SHADER_STAGE_VERTEX_BIT;
+		case kMVKShaderStageTessCtl:	return VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+		case kMVKShaderStageTessEval:	return VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+		/* FIXME: kMVKShaderStageGeometry */
+		case kMVKShaderStageFragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
+		case kMVKShaderStageCompute:	return VK_SHADER_STAGE_COMPUTE_BIT;
+		case kMVKShaderStageMax:
+			assert(!"This function should never be called with kMVKShaderStageMax!");
+			return VK_SHADER_STAGE_ALL;
+	}
+}
+
+MVK_PUBLIC_SYMBOL MTLWinding mvkMTLWindingFromSpvExecutionMode(uint32_t spvMode) {
+	switch (spvMode) {
+		// These are reversed due to the vertex flip.
+		case spv::ExecutionModeVertexOrderCw:	return MTLWindingCounterClockwise;
+		case spv::ExecutionModeVertexOrderCcw:	return MTLWindingClockwise;
+		default:
+			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "spv::ExecutionMode %u is not a winding order mode.\n", spvMode);
+			return MTLWindingCounterClockwise;
+	}
+}
+
+MVK_PUBLIC_SYMBOL MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode(uint32_t spvMode) {
+	switch (spvMode) {
+		case spv::ExecutionModeSpacingEqual:			return MTLTessellationPartitionModeInteger;
+		case spv::ExecutionModeSpacingFractionalEven:	return MTLTessellationPartitionModeFractionalEven;
+		case spv::ExecutionModeSpacingFractionalOdd:	return MTLTessellationPartitionModeFractionalOdd;
+		default:
+			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "spv::ExecutionMode %u is not a tessellation partition mode.\n", spvMode);
+			return MTLTessellationPartitionModePow2;
 	}
 }
 

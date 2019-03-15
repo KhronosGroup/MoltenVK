@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		450A4F5F220CB180007203D7 /* SPIRVReflection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 450A4F5D220CB180007203D7 /* SPIRVReflection.cpp */; };
+		450A4F60220CB180007203D7 /* SPIRVReflection.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 450A4F5D220CB180007203D7 /* SPIRVReflection.cpp */; };
+		450A4F61220CB180007203D7 /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
+		450A4F62220CB180007203D7 /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
 		A909408A1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
 		A909408B1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
 		A909408C1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */; };
@@ -80,6 +84,8 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		450A4F5D220CB180007203D7 /* SPIRVReflection.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVReflection.cpp; sourceTree = "<group>"; };
+		450A4F5E220CB180007203D7 /* SPIRVReflection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVReflection.h; sourceTree = "<group>"; };
 		A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVToMSLConverter.cpp; sourceTree = "<group>"; };
 		A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVToMSLConverter.h; sourceTree = "<group>"; };
 		A90940A31C5808BB0094110D /* GLSLToSPIRVConverter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = GLSLToSPIRVConverter.cpp; sourceTree = "<group>"; };
@@ -166,6 +172,8 @@
 		A9093C561C58013D0094110D /* MoltenVKSPIRVToMSLConverter */ = {
 			isa = PBXGroup;
 			children = (
+				450A4F5D220CB180007203D7 /* SPIRVReflection.cpp */,
+				450A4F5E220CB180007203D7 /* SPIRVReflection.h */,
 				A925B70B1C7754B2006E7ECD /* FileSupport.h */,
 				A925B70A1C7754B2006E7ECD /* FileSupport.mm */,
 				A928C9171D0488DC00071B88 /* SPIRVConversion.h */,
@@ -284,6 +292,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				450A4F61220CB180007203D7 /* SPIRVReflection.h in Headers */,
 				A98149681FB6A98A005F00B4 /* MVKStrings.h in Headers */,
 				A9C70F61221B321700FBA31A /* SPIRVSupport.h in Headers */,
 				A928C9191D0488DC00071B88 /* SPIRVConversion.h in Headers */,
@@ -297,6 +306,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				450A4F62220CB180007203D7 /* SPIRVReflection.h in Headers */,
 				A98149691FB6A98A005F00B4 /* MVKStrings.h in Headers */,
 				A9C70F62221B321700FBA31A /* SPIRVSupport.h in Headers */,
 				A928C91A1D0488DC00071B88 /* SPIRVConversion.h in Headers */,
@@ -641,6 +651,7 @@
 				A909408A1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
 				A9C70F66221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A928C91B1D0488DC00071B88 /* SPIRVConversion.mm in Sources */,
+				450A4F5F220CB180007203D7 /* SPIRVReflection.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -652,6 +663,7 @@
 				A909408B1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
 				A9C70F67221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A928C91C1D0488DC00071B88 /* SPIRVConversion.mm in Sources */,
+				450A4F60220CB180007203D7 /* SPIRVReflection.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -34,16 +34,28 @@ namespace mvk {
 	typedef struct SPIRVToMSLConverterOptions {
 		std::string entryPointName;
 		spv::ExecutionModel entryPointStage = spv::ExecutionModelMax;
+		spv::ExecutionMode tessPatchKind = spv::ExecutionModeMax;
 
         uint32_t mslVersion = makeMSLVersion(2);
 		uint32_t texelBufferTextureWidth = 4096;
 		uint32_t auxBufferIndex = 0;
+		uint32_t indirectParamsBufferIndex = 0;
+		uint32_t outputBufferIndex = 0;
+		uint32_t patchOutputBufferIndex = 0;
+		uint32_t tessLevelBufferIndex = 0;
+		uint32_t inputThreadgroupMemIndex = 0;
+		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;
 		bool isRenderingPoints = false;
 		bool shouldSwizzleTextureSamples = false;
+		bool shouldCaptureOutput = false;
+		bool tessDomainOriginInLowerLeft = false;
 
 		bool isRasterizationDisabled = false;
 		bool needsAuxBuffer = false;
+		bool needsOutputBuffer = false;
+		bool needsPatchOutputBuffer = false;
+		bool needsInputThreadgroupMem = false;
 
         /** 
          * Returns whether the specified options match this one.
@@ -93,6 +105,7 @@ namespace mvk {
         uint32_t mslOffset = 0;
         uint32_t mslStride = 0;
 		MSLVertexFormat format = MSLVertexFormat::Other;
+		spv::BuiltIn builtin = spv::BuiltInMax;
         bool isPerInstance = false;
 
 		bool isUsedByShader = false;

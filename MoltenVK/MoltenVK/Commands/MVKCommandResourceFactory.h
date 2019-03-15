@@ -361,6 +361,12 @@ public:
 	/** Returns a new MTLComputePipelineState for copying between a buffer holding compressed data and a 3D image. */
 	id<MTLComputePipelineState> newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf);
 
+	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
+	id<MTLComputePipelineState> newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed);
+
+	/** Returns a new MTLComputePipelineState for copying an index buffer for use in a tessellated draw. */
+	id<MTLComputePipelineState> newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type);
+
 
 #pragma mark Construction
 
