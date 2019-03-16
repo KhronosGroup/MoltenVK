@@ -18,11 +18,25 @@ MoltenVK 1.0.34
 
 Released TBD
 
+- Add support for tessellation.
 - Allow zero offset and stride combo in VkVertexInputBindingDescription.
 - Fix potential memory leak on synchronous command buffer submission.
 - Increase shader float constant accuracy beyond 6 digits of precision.
 - MoltenVKShaderConverterTool support cs & csh for compute shader file extensions.
 - `fetchDependencies`: Stop on first error.
+- Fix a possible race condition around MVKMTLBufferAllocation.
+- Fix memory overrun if no vertex buffer found with same binding as a vertex attribute.
+- Update to latest SPIRV-Cross version:
+	- MSL: Add support for Metal 2 indirect argument buffers.
+	- MSL: Add support for tessellation control & evaluation shaders.
+	- MSL: Force unnamed array builtin attributes to have a name.
+	- MSL: Set location of builtins based on client input.
+	- MSL: Ignore duplicate builtin vertex attributes.
+	- Add stable C API and ABI.
+	- Fix case where a struct is loaded which contains a row-major matrix.
+	- Ensure locale handling is safe for multi-threading.
+	- Add support for sanitizing address and threads.
+	- Deal more flexibly with for-loop & while-loop variations.
 
 
 
