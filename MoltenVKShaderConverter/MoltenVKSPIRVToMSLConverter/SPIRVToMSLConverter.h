@@ -150,6 +150,9 @@ namespace mvk {
 		std::vector<MSLVertexAttribute> vertexAttributes;
 		std::vector<MSLResourceBinding> resourceBindings;
 
+		/** Returns whether the pipeline stage being converted supports vertex attributes. */
+		bool stageSupportsVertexAttributes() const;
+
         /** Returns whether the vertex attribute at the specified location is used by the shader. */
         bool isVertexAttributeLocationUsed(uint32_t location) const;
 

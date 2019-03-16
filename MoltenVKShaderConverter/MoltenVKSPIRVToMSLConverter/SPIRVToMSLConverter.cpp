@@ -104,6 +104,12 @@ MVK_PUBLIC_SYMBOL bool MSLResourceBinding::matches(const MSLResourceBinding& oth
     return true;
 }
 
+MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::stageSupportsVertexAttributes() const {
+	return (options.entryPointStage == spv::ExecutionModelVertex ||
+			options.entryPointStage == spv::ExecutionModelTessellationControl ||
+			options.entryPointStage == spv::ExecutionModelTessellationEvaluation);
+}
+
 // Check them all in case inactive VA's duplicate locations used by active VA's.
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::isVertexAttributeLocationUsed(uint32_t location) const {
     for (auto& va : vertexAttributes) {
@@ -122,7 +128,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::isVertexBufferUsed(uint32_t m
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::markAllAttributesAndResourcesUsed() {
 
-	if (options.entryPointStage == spv::ExecutionModelVertex) {
+	if (stageSupportsVertexAttributes()) {
 		for (auto& va : vertexAttributes) { va.isUsedByShader = true; }
 	}
 
@@ -133,7 +139,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::matches(const SPIRVToMSLConve
 
     if ( !options.matches(other.options) ) { return false; }
 
-	if (options.entryPointStage == spv::ExecutionModelVertex) {
+	if (stageSupportsVertexAttributes()) {
 		for (const auto& va : vertexAttributes) {
 			if (va.isUsedByShader && !contains(other.vertexAttributes, va)) { return false; }
 		}
@@ -154,9 +160,7 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignWith(const SPIRVToMSLCon
 	options.needsPatchOutputBuffer = srcContext.options.needsPatchOutputBuffer;
 	options.needsInputThreadgroupMem = srcContext.options.needsInputThreadgroupMem;
 
-	if (options.entryPointStage == spv::ExecutionModelVertex ||
-		options.entryPointStage == spv::ExecutionModelTessellationControl ||
-		options.entryPointStage == spv::ExecutionModelTessellationEvaluation) {
+	if (stageSupportsVertexAttributes()) {
 		for (auto& va : vertexAttributes) {
 			va.isUsedByShader = false;
 			for (auto& srcVA : srcContext.vertexAttributes) {
@@ -201,45 +205,6 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 	_msl.clear();
 
 	if (shouldLogSPIRV) { logSPIRV("Converting"); }
-
-	// Add vertex attributes
-	vector<spirv_cross::MSLVertexAttr> vtxAttrs;
-	spirv_cross::MSLVertexAttr va;
-	for (auto& ctxVA : context.vertexAttributes) {
-		va.location = ctxVA.location;
-        va.msl_buffer = ctxVA.mslBuffer;
-        va.msl_offset = ctxVA.mslOffset;
-        va.msl_stride = ctxVA.mslStride;
-        va.per_instance = ctxVA.isPerInstance;
-        switch (ctxVA.format) {
-        case MSLVertexFormat::Other:
-            va.format = spirv_cross::MSL_VERTEX_FORMAT_OTHER;
-            break;
-        case MSLVertexFormat::UInt8:
-            va.format = spirv_cross::MSL_VERTEX_FORMAT_UINT8;
-            break;
-        case MSLVertexFormat::UInt16:
-            va.format = spirv_cross::MSL_VERTEX_FORMAT_UINT16;
-            break;
-        }
-		va.builtin = ctxVA.builtin;
-        va.used_by_shader = ctxVA.isUsedByShader;
-		vtxAttrs.push_back(va);
-	}
-
-	// Add resource bindings
-	vector<spirv_cross::MSLResourceBinding> resBindings;
-	spirv_cross::MSLResourceBinding rb;
-	for (auto& ctxRB : context.resourceBindings) {
-		rb.desc_set = ctxRB.descriptorSet;
-		rb.binding = ctxRB.binding;
-		rb.stage = ctxRB.stage;
-		rb.msl_buffer = ctxRB.mslBuffer;
-		rb.msl_texture = ctxRB.mslTexture;
-		rb.msl_sampler = ctxRB.mslSampler;
-        rb.used_by_shader = ctxRB.isUsedByShader;
-		resBindings.push_back(rb);
-	}
 
 	spirv_cross::CompilerMSL* pMSLCompiler = nullptr;
 
@@ -294,7 +259,43 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		scOpts.vertex.flip_vert_y = context.options.shouldFlipVertexY;
 		pMSLCompiler->set_common_options(scOpts);
 
-		_msl = pMSLCompiler->compile(&vtxAttrs, &resBindings);
+		// Add vertex attributes
+		if (context.stageSupportsVertexAttributes()) {
+			spirv_cross::MSLVertexAttr va;
+			for (auto& ctxVA : context.vertexAttributes) {
+				va.location = ctxVA.location;
+				va.msl_buffer = ctxVA.mslBuffer;
+				va.msl_offset = ctxVA.mslOffset;
+				va.msl_stride = ctxVA.mslStride;
+				va.per_instance = ctxVA.isPerInstance;
+				switch (ctxVA.format) {
+					case MSLVertexFormat::Other:
+						va.format = spirv_cross::MSL_VERTEX_FORMAT_OTHER;
+						break;
+					case MSLVertexFormat::UInt8:
+						va.format = spirv_cross::MSL_VERTEX_FORMAT_UINT8;
+						break;
+					case MSLVertexFormat::UInt16:
+						va.format = spirv_cross::MSL_VERTEX_FORMAT_UINT16;
+						break;
+				}
+				pMSLCompiler->add_msl_vertex_attribute(va);
+			}
+		}
+
+		// Add resource bindings
+		spirv_cross::MSLResourceBinding rb;
+		for (auto& ctxRB : context.resourceBindings) {
+			rb.desc_set = ctxRB.descriptorSet;
+			rb.binding = ctxRB.binding;
+			rb.stage = ctxRB.stage;
+			rb.msl_buffer = ctxRB.mslBuffer;
+			rb.msl_texture = ctxRB.mslTexture;
+			rb.msl_sampler = ctxRB.mslSampler;
+			pMSLCompiler->add_msl_resource_binding(rb);
+		}
+
+		_msl = pMSLCompiler->compile();
 
         if (shouldLogMSL) { logSource(_msl, "MSL", "Converted"); }
 
@@ -310,24 +311,25 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 	}
 #endif
 
-    // Populate content extracted from the SPRI-V compiler.
+	// Populate the shader context with info from the compilation run, including
+	// which vertex attributes and resource bindings are used by the shader
 	populateEntryPoint(_entryPoint, pMSLCompiler, context.options);
 	context.options.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
 	context.options.needsAuxBuffer = pMSLCompiler && pMSLCompiler->needs_aux_buffer();
 	context.options.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
 	context.options.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
 	context.options.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
-	delete pMSLCompiler;
 
-	// Copy whether the vertex attributes and resource bindings are used by the shader
-	uint32_t vaCnt = (uint32_t)vtxAttrs.size();
-	for (uint32_t vaIdx = 0; vaIdx < vaCnt; vaIdx++) {
-		context.vertexAttributes[vaIdx].isUsedByShader = vtxAttrs[vaIdx].used_by_shader;
+	if (context.stageSupportsVertexAttributes()) {
+		for (auto& ctxVA : context.vertexAttributes) {
+			ctxVA.isUsedByShader = pMSLCompiler->is_msl_vertex_attribute_used(ctxVA.location);
+		}
 	}
-	uint32_t rbCnt = (uint32_t)resBindings.size();
-	for (uint32_t rbIdx = 0; rbIdx < rbCnt; rbIdx++) {
-		context.resourceBindings[rbIdx].isUsedByShader = resBindings[rbIdx].used_by_shader;
+	for (auto& ctxRB : context.resourceBindings) {
+		ctxRB.isUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.stage, ctxRB.descriptorSet, ctxRB.binding);
 	}
+
+	delete pMSLCompiler;
 
     // To check GLSL conversion
     if (shouldLogGLSL) {
