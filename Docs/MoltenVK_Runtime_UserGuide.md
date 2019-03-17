@@ -247,6 +247,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_KHR_swapchain`
 - `VK_KHR_swapchain_mutable_format`
 - `VK_KHR_variable_pointers`
+- `VK_EXT_host_query_reset`
 - `VK_EXT_memory_budget`
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_vertex_attribute_divisor`

@@ -63,61 +63,60 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
     if (features) {
         features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         features->features = _features;
-        auto* next = (MVKVkAPIStructHeader*)features->pNext;
+        auto* next = (VkBaseOutStructure*)features->pNext;
         while (next) {
             switch ((uint32_t)next->sType) {
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
-                auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
-                storageFeatures->storageBuffer16BitAccess = true;
-                storageFeatures->uniformAndStorageBuffer16BitAccess = true;
-                storageFeatures->storagePushConstant16 = true;
-                storageFeatures->storageInputOutput16 = true;
-                next = (MVKVkAPIStructHeader*)storageFeatures->pNext;
-                break;
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+                    auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
+                    storageFeatures->storageBuffer16BitAccess = true;
+                    storageFeatures->uniformAndStorageBuffer16BitAccess = true;
+                    storageFeatures->storagePushConstant16 = true;
+                    storageFeatures->storageInputOutput16 = true;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
+                    auto* storageFeatures = (VkPhysicalDevice8BitStorageFeaturesKHR*)next;
+                    storageFeatures->storageBuffer8BitAccess = true;
+                    storageFeatures->uniformAndStorageBuffer8BitAccess = true;
+                    storageFeatures->storagePushConstant8 = true;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
+                    auto* f16Features = (VkPhysicalDeviceFloat16Int8FeaturesKHR*)next;
+                    f16Features->shaderFloat16 = true;
+                    f16Features->shaderInt8 = true;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
+                    auto* varPtrFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
+                    varPtrFeatures->variablePointersStorageBuffer = true;
+                    varPtrFeatures->variablePointers = true;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
+                    auto* hostQueryResetFeatures = (VkPhysicalDeviceHostQueryResetFeaturesEXT*)next;
+                    hostQueryResetFeatures->hostQueryReset = true;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+                    auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
+                    divisorFeatures->vertexAttributeInstanceRateDivisor = true;
+                    divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
+                    auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
+                    portabilityFeatures->triangleFans = false;
+                    portabilityFeatures->separateStencilMaskRef = true;
+                    portabilityFeatures->events = false;
+                    portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle;
+                    portabilityFeatures->samplerMipLodBias = false;
+                    break;
+                }
+                default:
+                    break;
             }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
-                auto* storageFeatures = (VkPhysicalDevice8BitStorageFeaturesKHR*)next;
-                storageFeatures->storageBuffer8BitAccess = true;
-                storageFeatures->uniformAndStorageBuffer8BitAccess = true;
-                storageFeatures->storagePushConstant8 = true;
-                next = (MVKVkAPIStructHeader*)storageFeatures->pNext;
-                break;
-            }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
-                auto* f16Features = (VkPhysicalDeviceFloat16Int8FeaturesKHR*)next;
-                f16Features->shaderFloat16 = true;
-                f16Features->shaderInt8 = true;
-                next = (MVKVkAPIStructHeader*)f16Features->pNext;
-                break;
-            }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
-                auto* varPtrFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
-                varPtrFeatures->variablePointersStorageBuffer = true;
-                varPtrFeatures->variablePointers = true;
-                next = (MVKVkAPIStructHeader*)varPtrFeatures->pNext;
-                break;
-            }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
-                auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
-                divisorFeatures->vertexAttributeInstanceRateDivisor = true;
-                divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
-                next = (MVKVkAPIStructHeader*)divisorFeatures->pNext;
-                break;
-            }
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
-				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
-				portabilityFeatures->triangleFans = false;
-				portabilityFeatures->separateStencilMaskRef = true;
-				portabilityFeatures->events = false;
-				portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle;
-				portabilityFeatures->samplerMipLodBias = false;
-				next = (MVKVkAPIStructHeader*)portabilityFeatures->pNext;
-				break;
-			}
-            default:
-                next = (MVKVkAPIStructHeader*)next->pNext;
-                break;
-            }
+            next = next->pNext;
         }
     }
 }

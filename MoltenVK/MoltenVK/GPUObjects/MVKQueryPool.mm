@@ -166,13 +166,19 @@ void MVKOcclusionQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncod
 void MVKOcclusionQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder) {
     MVKQueryPool::resetResults(firstQuery, queryCount, cmdEncoder);
 
-    id<MTLBlitCommandEncoder> blitEncoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseResetQueryPool);
     NSUInteger firstOffset = getVisibilityResultOffset(firstQuery);
     NSUInteger lastOffset = getVisibilityResultOffset(firstQuery + queryCount);
+    if (cmdEncoder) {
+        id<MTLBlitCommandEncoder> blitEncoder = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseResetQueryPool);
 
-    [blitEncoder fillBuffer: getVisibilityResultMTLBuffer()
-                      range: NSMakeRange(firstOffset, lastOffset - firstOffset)
-                      value: 0];
+        [blitEncoder fillBuffer: getVisibilityResultMTLBuffer()
+                          range: NSMakeRange(firstOffset, lastOffset - firstOffset)
+                          value: 0];
+    } else {  // Host-side reset
+        id<MTLBuffer> vizBuff = getVisibilityResultMTLBuffer();
+        size_t size = std::min(lastOffset, vizBuff.length) - firstOffset;
+        memset((char *)[vizBuff contents] + firstOffset, 0, size);
+    }
 }
 
 void MVKOcclusionQueryPool::getResult(uint32_t query, void* pQryData, bool shouldOutput64Bit) {

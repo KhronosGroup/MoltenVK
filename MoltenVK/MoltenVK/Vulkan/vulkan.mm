@@ -1806,6 +1806,20 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
 
 
 #pragma mark -
+#pragma mark VK_EXT_host_query_reset extension
+
+MVK_PUBLIC_SYMBOL void vkResetQueryPoolEXT(
+    VkDevice                                    device,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    firstQuery,
+    uint32_t                                    queryCount) {
+
+    auto* mvkQueryPool = (MVKQueryPool*)queryPool;
+    mvkQueryPool->resetResults(firstQuery, queryCount, nullptr);
+}
+
+
+#pragma mark -
 #pragma mark iOS & macOS surface extensions
 
 MVK_PUBLIC_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(
