@@ -30,6 +30,22 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKInstance
 
+MVKEntryPoint* MVKInstance::getEntryPoint(const char* pName) {
+	auto iter = _entryPoints.find(pName);
+	return (iter != _entryPoints.end()) ? &iter->second : nullptr;
+}
+
+// Returns core instance commands, enabled instance extension commands, and all device commands.
+PFN_vkVoidFunction MVKInstance::getProcAddr(const char* pName) {
+	MVKEntryPoint* pMVKPA = getEntryPoint(pName);
+
+	bool isSupported = (pMVKPA &&									// Command exists and...
+						(pMVKPA->isDevice ||						// ...is a device command or...
+						 pMVKPA->isEnabled(_enabledExtensions)));	// ...is a core or enabled extension command.
+
+	return isSupported ? pMVKPA->functionPointer : nullptr;
+}
+
 VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPhysicalDevices) {
 
 	// Get the number of physical devices
@@ -152,198 +168,214 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 	MVKLogInfo("%s", logMsg.c_str());
 }
 
-#define ADD_PROC_ADDR(entrypoint)	_procAddrMap[""#entrypoint] = (PFN_vkVoidFunction)&entrypoint;
+#define ADD_ENTRY_POINT(func, ext1, ext2, isDev)	_entryPoints[""#func] = { (PFN_vkVoidFunction)&func,  ext1,  ext2,  isDev }
+
+#define ADD_INST_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, nullptr, nullptr, false)
+#define ADD_DVC_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, nullptr, nullptr, true)
+
+#define ADD_INST_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, VK_ ##EXT ##_EXTENSION_NAME, nullptr, false)
+#define ADD_DVC_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, VK_ ##EXT ##_EXTENSION_NAME, nullptr, true)
+
+#define ADD_INST_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, false)
+#define ADD_DVC_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, true)
 
 /** Initializes the function pointer map. */
 void MVKInstance::initProcAddrs() {
 
 	// Instance functions
-	ADD_PROC_ADDR(vkDestroyInstance);
-	ADD_PROC_ADDR(vkEnumeratePhysicalDevices);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceFeatures);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceFormatProperties);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceImageFormatProperties);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceProperties);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceQueueFamilyProperties);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceMemoryProperties);
-	ADD_PROC_ADDR(vkGetInstanceProcAddr);
-	ADD_PROC_ADDR(vkGetDeviceProcAddr);
-	ADD_PROC_ADDR(vkCreateDevice);
-	ADD_PROC_ADDR(vkEnumerateDeviceExtensionProperties);
-	ADD_PROC_ADDR(vkEnumerateDeviceLayerProperties);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceSparseImageFormatProperties);
+	ADD_INST_ENTRY_POINT(vkDestroyInstance);
+	ADD_INST_ENTRY_POINT(vkEnumeratePhysicalDevices);
+	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceFeatures);
+	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceFormatProperties);
+	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceImageFormatProperties);
+	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceProperties);
+	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceQueueFamilyProperties);
+	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceMemoryProperties);
+	ADD_INST_ENTRY_POINT(vkGetInstanceProcAddr);
+	ADD_INST_ENTRY_POINT(vkCreateDevice);
+	ADD_INST_ENTRY_POINT(vkEnumerateDeviceExtensionProperties);
+	ADD_INST_ENTRY_POINT(vkEnumerateDeviceLayerProperties);
+	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceSparseImageFormatProperties);
 
 	// Device functions:
-	ADD_PROC_ADDR(vkDestroyDevice);
-	ADD_PROC_ADDR(vkGetDeviceQueue);
-	ADD_PROC_ADDR(vkQueueSubmit);
-	ADD_PROC_ADDR(vkQueueWaitIdle);
-	ADD_PROC_ADDR(vkDeviceWaitIdle);
-	ADD_PROC_ADDR(vkAllocateMemory);
-	ADD_PROC_ADDR(vkFreeMemory);
-	ADD_PROC_ADDR(vkMapMemory);
-	ADD_PROC_ADDR(vkUnmapMemory);
-	ADD_PROC_ADDR(vkFlushMappedMemoryRanges);
-	ADD_PROC_ADDR(vkInvalidateMappedMemoryRanges);
-	ADD_PROC_ADDR(vkGetDeviceMemoryCommitment);
-	ADD_PROC_ADDR(vkBindBufferMemory);
-	ADD_PROC_ADDR(vkBindImageMemory);
-	ADD_PROC_ADDR(vkGetBufferMemoryRequirements);
-	ADD_PROC_ADDR(vkGetImageMemoryRequirements);
-	ADD_PROC_ADDR(vkGetImageSparseMemoryRequirements);
-	ADD_PROC_ADDR(vkQueueBindSparse);
-	ADD_PROC_ADDR(vkCreateFence);
-	ADD_PROC_ADDR(vkDestroyFence);
-	ADD_PROC_ADDR(vkResetFences);
-	ADD_PROC_ADDR(vkGetFenceStatus);
-	ADD_PROC_ADDR(vkWaitForFences);
-	ADD_PROC_ADDR(vkCreateSemaphore);
-	ADD_PROC_ADDR(vkDestroySemaphore);
-	ADD_PROC_ADDR(vkCreateEvent);
-	ADD_PROC_ADDR(vkDestroyEvent);
-	ADD_PROC_ADDR(vkGetEventStatus);
-	ADD_PROC_ADDR(vkSetEvent);
-	ADD_PROC_ADDR(vkResetEvent);
-	ADD_PROC_ADDR(vkCreateQueryPool);
-	ADD_PROC_ADDR(vkDestroyQueryPool);
-	ADD_PROC_ADDR(vkGetQueryPoolResults);
-	ADD_PROC_ADDR(vkCreateBuffer);
-	ADD_PROC_ADDR(vkDestroyBuffer);
-	ADD_PROC_ADDR(vkCreateBufferView);
-	ADD_PROC_ADDR(vkDestroyBufferView);
-	ADD_PROC_ADDR(vkCreateImage);
-	ADD_PROC_ADDR(vkDestroyImage);
-	ADD_PROC_ADDR(vkGetImageSubresourceLayout);
-	ADD_PROC_ADDR(vkCreateImageView);
-	ADD_PROC_ADDR(vkDestroyImageView);
-	ADD_PROC_ADDR(vkCreateShaderModule);
-	ADD_PROC_ADDR(vkDestroyShaderModule);
-	ADD_PROC_ADDR(vkCreatePipelineCache);
-	ADD_PROC_ADDR(vkDestroyPipelineCache);
-	ADD_PROC_ADDR(vkGetPipelineCacheData);
-	ADD_PROC_ADDR(vkMergePipelineCaches);
-	ADD_PROC_ADDR(vkCreateGraphicsPipelines);
-	ADD_PROC_ADDR(vkCreateComputePipelines);
-	ADD_PROC_ADDR(vkDestroyPipeline);
-	ADD_PROC_ADDR(vkCreatePipelineLayout);
-	ADD_PROC_ADDR(vkDestroyPipelineLayout);
-	ADD_PROC_ADDR(vkCreateSampler);
-	ADD_PROC_ADDR(vkDestroySampler);
-	ADD_PROC_ADDR(vkCreateDescriptorSetLayout);
-	ADD_PROC_ADDR(vkDestroyDescriptorSetLayout);
-	ADD_PROC_ADDR(vkCreateDescriptorPool);
-	ADD_PROC_ADDR(vkDestroyDescriptorPool);
-	ADD_PROC_ADDR(vkResetDescriptorPool);
-	ADD_PROC_ADDR(vkAllocateDescriptorSets);
-	ADD_PROC_ADDR(vkFreeDescriptorSets);
-	ADD_PROC_ADDR(vkUpdateDescriptorSets);
-	ADD_PROC_ADDR(vkCreateFramebuffer);
-	ADD_PROC_ADDR(vkDestroyFramebuffer);
-	ADD_PROC_ADDR(vkCreateRenderPass);
-	ADD_PROC_ADDR(vkDestroyRenderPass);
-	ADD_PROC_ADDR(vkGetRenderAreaGranularity);
-	ADD_PROC_ADDR(vkCreateCommandPool);
-	ADD_PROC_ADDR(vkDestroyCommandPool);
-	ADD_PROC_ADDR(vkResetCommandPool);
-	ADD_PROC_ADDR(vkAllocateCommandBuffers);
-	ADD_PROC_ADDR(vkFreeCommandBuffers);
-	ADD_PROC_ADDR(vkBeginCommandBuffer);
-	ADD_PROC_ADDR(vkEndCommandBuffer);
-	ADD_PROC_ADDR(vkResetCommandBuffer);
-	ADD_PROC_ADDR(vkCmdBindPipeline);
-	ADD_PROC_ADDR(vkCmdSetViewport);
-	ADD_PROC_ADDR(vkCmdSetScissor);
-	ADD_PROC_ADDR(vkCmdSetLineWidth);
-	ADD_PROC_ADDR(vkCmdSetDepthBias);
-	ADD_PROC_ADDR(vkCmdSetBlendConstants);
-	ADD_PROC_ADDR(vkCmdSetDepthBounds);
-	ADD_PROC_ADDR(vkCmdSetStencilCompareMask);
-	ADD_PROC_ADDR(vkCmdSetStencilWriteMask);
-	ADD_PROC_ADDR(vkCmdSetStencilReference);
-	ADD_PROC_ADDR(vkCmdBindDescriptorSets);
-	ADD_PROC_ADDR(vkCmdBindIndexBuffer);
-	ADD_PROC_ADDR(vkCmdBindVertexBuffers);
-	ADD_PROC_ADDR(vkCmdDraw);
-	ADD_PROC_ADDR(vkCmdDrawIndexed);
-	ADD_PROC_ADDR(vkCmdDrawIndirect);
-	ADD_PROC_ADDR(vkCmdDrawIndexedIndirect);
-	ADD_PROC_ADDR(vkCmdDispatch);
-	ADD_PROC_ADDR(vkCmdDispatchIndirect);
-	ADD_PROC_ADDR(vkCmdCopyBuffer);
-	ADD_PROC_ADDR(vkCmdCopyImage);
-	ADD_PROC_ADDR(vkCmdBlitImage);
-	ADD_PROC_ADDR(vkCmdCopyBufferToImage);
-	ADD_PROC_ADDR(vkCmdCopyImageToBuffer);
-	ADD_PROC_ADDR(vkCmdUpdateBuffer);
-	ADD_PROC_ADDR(vkCmdFillBuffer);
-	ADD_PROC_ADDR(vkCmdClearColorImage);
-	ADD_PROC_ADDR(vkCmdClearDepthStencilImage);
-	ADD_PROC_ADDR(vkCmdClearAttachments);
-	ADD_PROC_ADDR(vkCmdResolveImage);
-	ADD_PROC_ADDR(vkCmdSetEvent);
-	ADD_PROC_ADDR(vkCmdResetEvent);
-	ADD_PROC_ADDR(vkCmdWaitEvents);
-	ADD_PROC_ADDR(vkCmdPipelineBarrier);
-	ADD_PROC_ADDR(vkCmdBeginQuery);
-	ADD_PROC_ADDR(vkCmdEndQuery);
-	ADD_PROC_ADDR(vkCmdResetQueryPool);
-	ADD_PROC_ADDR(vkCmdWriteTimestamp);
-	ADD_PROC_ADDR(vkCmdCopyQueryPoolResults);
-	ADD_PROC_ADDR(vkCmdPushConstants);
-	ADD_PROC_ADDR(vkCmdBeginRenderPass);
-	ADD_PROC_ADDR(vkCmdNextSubpass);
-	ADD_PROC_ADDR(vkCmdEndRenderPass);
-	ADD_PROC_ADDR(vkCmdExecuteCommands);
+	ADD_DVC_ENTRY_POINT(vkGetDeviceProcAddr);
+	ADD_DVC_ENTRY_POINT(vkDestroyDevice);
+	ADD_DVC_ENTRY_POINT(vkGetDeviceQueue);
+	ADD_DVC_ENTRY_POINT(vkQueueSubmit);
+	ADD_DVC_ENTRY_POINT(vkQueueWaitIdle);
+	ADD_DVC_ENTRY_POINT(vkDeviceWaitIdle);
+	ADD_DVC_ENTRY_POINT(vkAllocateMemory);
+	ADD_DVC_ENTRY_POINT(vkFreeMemory);
+	ADD_DVC_ENTRY_POINT(vkMapMemory);
+	ADD_DVC_ENTRY_POINT(vkUnmapMemory);
+	ADD_DVC_ENTRY_POINT(vkFlushMappedMemoryRanges);
+	ADD_DVC_ENTRY_POINT(vkInvalidateMappedMemoryRanges);
+	ADD_DVC_ENTRY_POINT(vkGetDeviceMemoryCommitment);
+	ADD_DVC_ENTRY_POINT(vkBindBufferMemory);
+	ADD_DVC_ENTRY_POINT(vkBindImageMemory);
+	ADD_DVC_ENTRY_POINT(vkGetBufferMemoryRequirements);
+	ADD_DVC_ENTRY_POINT(vkGetImageMemoryRequirements);
+	ADD_DVC_ENTRY_POINT(vkGetImageSparseMemoryRequirements);
+	ADD_DVC_ENTRY_POINT(vkQueueBindSparse);
+	ADD_DVC_ENTRY_POINT(vkCreateFence);
+	ADD_DVC_ENTRY_POINT(vkDestroyFence);
+	ADD_DVC_ENTRY_POINT(vkResetFences);
+	ADD_DVC_ENTRY_POINT(vkGetFenceStatus);
+	ADD_DVC_ENTRY_POINT(vkWaitForFences);
+	ADD_DVC_ENTRY_POINT(vkCreateSemaphore);
+	ADD_DVC_ENTRY_POINT(vkDestroySemaphore);
+	ADD_DVC_ENTRY_POINT(vkCreateEvent);
+	ADD_DVC_ENTRY_POINT(vkDestroyEvent);
+	ADD_DVC_ENTRY_POINT(vkGetEventStatus);
+	ADD_DVC_ENTRY_POINT(vkSetEvent);
+	ADD_DVC_ENTRY_POINT(vkResetEvent);
+	ADD_DVC_ENTRY_POINT(vkCreateQueryPool);
+	ADD_DVC_ENTRY_POINT(vkDestroyQueryPool);
+	ADD_DVC_ENTRY_POINT(vkGetQueryPoolResults);
+	ADD_DVC_ENTRY_POINT(vkCreateBuffer);
+	ADD_DVC_ENTRY_POINT(vkDestroyBuffer);
+	ADD_DVC_ENTRY_POINT(vkCreateBufferView);
+	ADD_DVC_ENTRY_POINT(vkDestroyBufferView);
+	ADD_DVC_ENTRY_POINT(vkCreateImage);
+	ADD_DVC_ENTRY_POINT(vkDestroyImage);
+	ADD_DVC_ENTRY_POINT(vkGetImageSubresourceLayout);
+	ADD_DVC_ENTRY_POINT(vkCreateImageView);
+	ADD_DVC_ENTRY_POINT(vkDestroyImageView);
+	ADD_DVC_ENTRY_POINT(vkCreateShaderModule);
+	ADD_DVC_ENTRY_POINT(vkDestroyShaderModule);
+	ADD_DVC_ENTRY_POINT(vkCreatePipelineCache);
+	ADD_DVC_ENTRY_POINT(vkDestroyPipelineCache);
+	ADD_DVC_ENTRY_POINT(vkGetPipelineCacheData);
+	ADD_DVC_ENTRY_POINT(vkMergePipelineCaches);
+	ADD_DVC_ENTRY_POINT(vkCreateGraphicsPipelines);
+	ADD_DVC_ENTRY_POINT(vkCreateComputePipelines);
+	ADD_DVC_ENTRY_POINT(vkDestroyPipeline);
+	ADD_DVC_ENTRY_POINT(vkCreatePipelineLayout);
+	ADD_DVC_ENTRY_POINT(vkDestroyPipelineLayout);
+	ADD_DVC_ENTRY_POINT(vkCreateSampler);
+	ADD_DVC_ENTRY_POINT(vkDestroySampler);
+	ADD_DVC_ENTRY_POINT(vkCreateDescriptorSetLayout);
+	ADD_DVC_ENTRY_POINT(vkDestroyDescriptorSetLayout);
+	ADD_DVC_ENTRY_POINT(vkCreateDescriptorPool);
+	ADD_DVC_ENTRY_POINT(vkDestroyDescriptorPool);
+	ADD_DVC_ENTRY_POINT(vkResetDescriptorPool);
+	ADD_DVC_ENTRY_POINT(vkAllocateDescriptorSets);
+	ADD_DVC_ENTRY_POINT(vkFreeDescriptorSets);
+	ADD_DVC_ENTRY_POINT(vkUpdateDescriptorSets);
+	ADD_DVC_ENTRY_POINT(vkCreateFramebuffer);
+	ADD_DVC_ENTRY_POINT(vkDestroyFramebuffer);
+	ADD_DVC_ENTRY_POINT(vkCreateRenderPass);
+	ADD_DVC_ENTRY_POINT(vkDestroyRenderPass);
+	ADD_DVC_ENTRY_POINT(vkGetRenderAreaGranularity);
+	ADD_DVC_ENTRY_POINT(vkCreateCommandPool);
+	ADD_DVC_ENTRY_POINT(vkDestroyCommandPool);
+	ADD_DVC_ENTRY_POINT(vkResetCommandPool);
+	ADD_DVC_ENTRY_POINT(vkAllocateCommandBuffers);
+	ADD_DVC_ENTRY_POINT(vkFreeCommandBuffers);
+	ADD_DVC_ENTRY_POINT(vkBeginCommandBuffer);
+	ADD_DVC_ENTRY_POINT(vkEndCommandBuffer);
+	ADD_DVC_ENTRY_POINT(vkResetCommandBuffer);
+	ADD_DVC_ENTRY_POINT(vkCmdBindPipeline);
+	ADD_DVC_ENTRY_POINT(vkCmdSetViewport);
+	ADD_DVC_ENTRY_POINT(vkCmdSetScissor);
+	ADD_DVC_ENTRY_POINT(vkCmdSetLineWidth);
+	ADD_DVC_ENTRY_POINT(vkCmdSetDepthBias);
+	ADD_DVC_ENTRY_POINT(vkCmdSetBlendConstants);
+	ADD_DVC_ENTRY_POINT(vkCmdSetDepthBounds);
+	ADD_DVC_ENTRY_POINT(vkCmdSetStencilCompareMask);
+	ADD_DVC_ENTRY_POINT(vkCmdSetStencilWriteMask);
+	ADD_DVC_ENTRY_POINT(vkCmdSetStencilReference);
+	ADD_DVC_ENTRY_POINT(vkCmdBindDescriptorSets);
+	ADD_DVC_ENTRY_POINT(vkCmdBindIndexBuffer);
+	ADD_DVC_ENTRY_POINT(vkCmdBindVertexBuffers);
+	ADD_DVC_ENTRY_POINT(vkCmdDraw);
+	ADD_DVC_ENTRY_POINT(vkCmdDrawIndexed);
+	ADD_DVC_ENTRY_POINT(vkCmdDrawIndirect);
+	ADD_DVC_ENTRY_POINT(vkCmdDrawIndexedIndirect);
+	ADD_DVC_ENTRY_POINT(vkCmdDispatch);
+	ADD_DVC_ENTRY_POINT(vkCmdDispatchIndirect);
+	ADD_DVC_ENTRY_POINT(vkCmdCopyBuffer);
+	ADD_DVC_ENTRY_POINT(vkCmdCopyImage);
+	ADD_DVC_ENTRY_POINT(vkCmdBlitImage);
+	ADD_DVC_ENTRY_POINT(vkCmdCopyBufferToImage);
+	ADD_DVC_ENTRY_POINT(vkCmdCopyImageToBuffer);
+	ADD_DVC_ENTRY_POINT(vkCmdUpdateBuffer);
+	ADD_DVC_ENTRY_POINT(vkCmdFillBuffer);
+	ADD_DVC_ENTRY_POINT(vkCmdClearColorImage);
+	ADD_DVC_ENTRY_POINT(vkCmdClearDepthStencilImage);
+	ADD_DVC_ENTRY_POINT(vkCmdClearAttachments);
+	ADD_DVC_ENTRY_POINT(vkCmdResolveImage);
+	ADD_DVC_ENTRY_POINT(vkCmdSetEvent);
+	ADD_DVC_ENTRY_POINT(vkCmdResetEvent);
+	ADD_DVC_ENTRY_POINT(vkCmdWaitEvents);
+	ADD_DVC_ENTRY_POINT(vkCmdPipelineBarrier);
+	ADD_DVC_ENTRY_POINT(vkCmdBeginQuery);
+	ADD_DVC_ENTRY_POINT(vkCmdEndQuery);
+	ADD_DVC_ENTRY_POINT(vkCmdResetQueryPool);
+	ADD_DVC_ENTRY_POINT(vkCmdWriteTimestamp);
+	ADD_DVC_ENTRY_POINT(vkCmdCopyQueryPoolResults);
+	ADD_DVC_ENTRY_POINT(vkCmdPushConstants);
+	ADD_DVC_ENTRY_POINT(vkCmdBeginRenderPass);
+	ADD_DVC_ENTRY_POINT(vkCmdNextSubpass);
+	ADD_DVC_ENTRY_POINT(vkCmdEndRenderPass);
+	ADD_DVC_ENTRY_POINT(vkCmdExecuteCommands);
 
-	// Supported extensions:
-	ADD_PROC_ADDR(vkBindBufferMemory2KHR);
-	ADD_PROC_ADDR(vkBindImageMemory2KHR);
-	ADD_PROC_ADDR(vkCreateDescriptorUpdateTemplateKHR);
-	ADD_PROC_ADDR(vkDestroyDescriptorUpdateTemplateKHR);
-	ADD_PROC_ADDR(vkUpdateDescriptorSetWithTemplateKHR);
-	ADD_PROC_ADDR(vkGetBufferMemoryRequirements2KHR);
-	ADD_PROC_ADDR(vkGetImageMemoryRequirements2KHR);
-	ADD_PROC_ADDR(vkGetImageSparseMemoryRequirements2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceFeatures2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceFormatProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceImageFormatProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceQueueFamilyProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceMemoryProperties2KHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceSparseImageFormatProperties2KHR);
-	ADD_PROC_ADDR(vkTrimCommandPoolKHR);
-	ADD_PROC_ADDR(vkGetDescriptorSetLayoutSupportKHR);
-	ADD_PROC_ADDR(vkCmdPushDescriptorSetKHR);
-	ADD_PROC_ADDR(vkCmdPushDescriptorSetWithTemplateKHR);
-	ADD_PROC_ADDR(vkDestroySurfaceKHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceSurfaceSupportKHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceSurfaceCapabilitiesKHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceSurfaceFormatsKHR);
-	ADD_PROC_ADDR(vkGetPhysicalDeviceSurfacePresentModesKHR);
-	ADD_PROC_ADDR(vkCreateSwapchainKHR);
-	ADD_PROC_ADDR(vkDestroySwapchainKHR);
-	ADD_PROC_ADDR(vkGetSwapchainImagesKHR);
-	ADD_PROC_ADDR(vkAcquireNextImageKHR);
-	ADD_PROC_ADDR(vkQueuePresentKHR);
-	ADD_PROC_ADDR(vkResetQueryPoolEXT);
-	ADD_PROC_ADDR(vkGetMoltenVKConfigurationMVK);
-	ADD_PROC_ADDR(vkSetMoltenVKConfigurationMVK);
-    ADD_PROC_ADDR(vkGetPhysicalDeviceMetalFeaturesMVK);
-    ADD_PROC_ADDR(vkGetSwapchainPerformanceMVK);
-    ADD_PROC_ADDR(vkGetPerformanceStatisticsMVK);
-    ADD_PROC_ADDR(vkGetVersionStringsMVK);
-    ADD_PROC_ADDR(vkGetMTLDeviceMVK);
-    ADD_PROC_ADDR(vkSetMTLTextureMVK);
-    ADD_PROC_ADDR(vkGetMTLTextureMVK);
-    ADD_PROC_ADDR(vkUseIOSurfaceMVK);
-    ADD_PROC_ADDR(vkGetIOSurfaceMVK);
+	// Instance extension functions:
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceFeatures2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceFormatProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceImageFormatProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceQueueFamilyProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceMemoryProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSparseImageFormatProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkDestroySurfaceKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceSupportKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceFormatsKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfacePresentModesKHR, KHR_SURFACE);
 
 #ifdef VK_USE_PLATFORM_IOS_MVK
-	ADD_PROC_ADDR(vkCreateIOSSurfaceMVK);
+	ADD_INST_EXT_ENTRY_POINT(vkCreateIOSSurfaceMVK, MVK_IOS_SURFACE);
 #endif
 #ifdef VK_USE_PLATFORM_MACOS_MVK
-	ADD_PROC_ADDR(vkCreateMacOSSurfaceMVK);
+	ADD_INST_EXT_ENTRY_POINT(vkCreateMacOSSurfaceMVK, MVK_MACOS_SURFACE);
 #endif
+
+	ADD_INST_EXT_ENTRY_POINT(vkGetMoltenVKConfigurationMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkSetMoltenVKConfigurationMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceMetalFeaturesMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetSwapchainPerformanceMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPerformanceStatisticsMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetVersionStringsMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLDeviceMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkSetMTLTextureMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetMTLTextureMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkUseIOSurfaceMVK, MVK_MOLTENVK);
+	ADD_INST_EXT_ENTRY_POINT(vkGetIOSurfaceMVK, MVK_MOLTENVK);
+
+	// Device extension functions:
+	ADD_DVC_EXT_ENTRY_POINT(vkBindBufferMemory2KHR, KHR_BIND_MEMORY_2);
+	ADD_DVC_EXT_ENTRY_POINT(vkBindImageMemory2KHR, KHR_BIND_MEMORY_2);
+	ADD_DVC_EXT_ENTRY_POINT(vkCreateDescriptorUpdateTemplateKHR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_EXT_ENTRY_POINT(vkDestroyDescriptorUpdateTemplateKHR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_EXT_ENTRY_POINT(vkUpdateDescriptorSetWithTemplateKHR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetBufferMemoryRequirements2KHR, KHR_GET_MEMORY_REQUIREMENTS_2);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetImageMemoryRequirements2KHR, KHR_GET_MEMORY_REQUIREMENTS_2);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetImageSparseMemoryRequirements2KHR, KHR_GET_MEMORY_REQUIREMENTS_2);
+	ADD_DVC_EXT_ENTRY_POINT(vkTrimCommandPoolKHR, KHR_MAINTENANCE1);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetDescriptorSetLayoutSupportKHR, KHR_MAINTENANCE3);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdPushDescriptorSetKHR, KHR_PUSH_DESCRIPTOR);
+	ADD_DVC_EXT2_ENTRY_POINT(vkCmdPushDescriptorSetWithTemplateKHR, KHR_PUSH_DESCRIPTOR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_EXT_ENTRY_POINT(vkCreateSwapchainKHR, KHR_SWAPCHAIN);
+	ADD_DVC_EXT_ENTRY_POINT(vkDestroySwapchainKHR, KHR_SWAPCHAIN);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetSwapchainImagesKHR, KHR_SWAPCHAIN);
+	ADD_DVC_EXT_ENTRY_POINT(vkAcquireNextImageKHR, KHR_SWAPCHAIN);
+	ADD_DVC_EXT_ENTRY_POINT(vkQueuePresentKHR, KHR_SWAPCHAIN);
+	ADD_DVC_EXT2_ENTRY_POINT(vkGetDeviceGroupPresentCapabilitiesKHR, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT2_ENTRY_POINT(vkGetDeviceGroupSurfacePresentModesKHR, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT2_ENTRY_POINT(vkGetPhysicalDevicePresentRectanglesKHR, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT2_ENTRY_POINT(vkAcquireNextImage2KHR, KHR_SWAPCHAIN, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT_ENTRY_POINT(vkResetQueryPoolEXT, EXT_HOST_QUERY_RESET);
 
 }
 

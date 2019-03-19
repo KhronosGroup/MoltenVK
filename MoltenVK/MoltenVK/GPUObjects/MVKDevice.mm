@@ -1508,8 +1508,15 @@ MVKPhysicalDevice::~MVKPhysicalDevice() {
 #pragma mark -
 #pragma mark MVKDevice
 
+// Returns core device commands and enabled extension device commands.
 PFN_vkVoidFunction MVKDevice::getProcAddr(const char* pName) {
-	return _physicalDevice->_mvkInstance->getProcAddr(pName);
+	MVKEntryPoint* pMVKPA = _physicalDevice->_mvkInstance->getEntryPoint(pName);
+
+	bool isSupported = (pMVKPA &&								// Command exists and...
+						pMVKPA->isDevice &&						// ...is a device command and...
+						pMVKPA->isEnabled(_enabledExtensions));	// ...is a core or enabled extension command.
+
+	return isSupported ? pMVKPA->functionPointer : nullptr;
 }
 
 MVKQueue* MVKDevice::getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex) {

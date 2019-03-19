@@ -27,6 +27,21 @@
 #include <string>
 
 class MVKPhysicalDevice;
+class MVKDevice;
+
+
+/** Tracks info about entry point function pointer addresses. */
+typedef struct {
+	PFN_vkVoidFunction functionPointer;
+	const char* ext1Name;
+	const char* ext2Name;
+	bool isDevice;
+
+	bool isCore() { return !ext1Name && !ext2Name; }
+	bool isEnabled(const MVKExtensionList& extList) {
+		return isCore() || extList.isEnabled(ext1Name) || extList.isEnabled(ext2Name);
+	}
+} MVKEntryPoint;
 
 
 #pragma mark -
@@ -37,8 +52,8 @@ class MVKInstance : public MVKDispatchableObject {
 
 public:
 
-	/** Returns the function pointer corresponding to the specified named entry point. */
-	inline PFN_vkVoidFunction getProcAddr(const char* pName) { return _procAddrMap[pName]; }
+	/** Returns the function pointer corresponding to the named entry point, or NULL if it doesn't exist. */
+	PFN_vkVoidFunction getProcAddr(const char* pName);
 
 	/**
 	 * If pPhysicalDevices is null, the value of pCount is updated with the number of 
@@ -97,7 +112,10 @@ public:
     }
 
 protected:
+	friend MVKDevice;
+
 	void initProcAddrs();
+	MVKEntryPoint* getEntryPoint(const char* pName);
 	void initConfig();
     void logVersions();
 	VkResult verifyLayers(uint32_t count, const char* const* names);
@@ -105,6 +123,6 @@ protected:
 	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
 	std::vector<MVKPhysicalDevice*> _physicalDevices;
-	std::unordered_map<std::string, PFN_vkVoidFunction> _procAddrMap;
+	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
 };
 

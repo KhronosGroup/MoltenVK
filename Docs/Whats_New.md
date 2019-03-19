@@ -19,6 +19,7 @@ MoltenVK 1.0.34
 Released TBD
 
 - Add support for tessellation.
+- Add correct function entry point handling.
 - Allow zero offset and stride combo in VkVertexInputBindingDescription.
 - Fix potential memory leak on synchronous command buffer submission.
 - Increase shader float constant accuracy beyond 6 digits of precision.

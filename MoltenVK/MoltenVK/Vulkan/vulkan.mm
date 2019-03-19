@@ -132,16 +132,14 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
     VkInstance                                  instance,
     const char*                                 pName) {
 
-	// Handle the function that creates an instance specially.
-	// In this case, the instance parameter is ignored and may be NULL.
+	// Handle the special platform functions where the instance parameter may be NULL.
 	if (strcmp(pName, "vkCreateInstance") == 0) { return (PFN_vkVoidFunction)vkCreateInstance; }
 	if (strcmp(pName, "vkEnumerateInstanceExtensionProperties") == 0) { return (PFN_vkVoidFunction)vkEnumerateInstanceExtensionProperties; }
 	if (strcmp(pName, "vkEnumerateInstanceLayerProperties") == 0) { return (PFN_vkVoidFunction)vkEnumerateInstanceLayerProperties; }
-    if (instance) {
-        MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-        return mvkInst->getProcAddr(pName);
-    }
-    return NULL;
+	if ( !instance ) { return nullptr; }
+
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+	return mvkInst->getProcAddr(pName);
 }
 
 MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetDeviceProcAddr(
@@ -1745,6 +1743,38 @@ MVK_PUBLIC_SYMBOL VkResult vkQueuePresentKHR(
 
     MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
     return mvkQ->submit(pPresentInfo);
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetDeviceGroupPresentCapabilitiesKHR(
+	VkDevice                                    device,
+	VkDeviceGroupPresentCapabilitiesKHR*        pDeviceGroupPresentCapabilities) {
+
+	return MVKLogUnimplemented("vkGetDeviceGroupPresentCapabilitiesKHR");
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetDeviceGroupSurfacePresentModesKHR(
+	VkDevice                                    device,
+	VkSurfaceKHR                                surface,
+	VkDeviceGroupPresentModeFlagsKHR*           pModes) {
+
+	return MVKLogUnimplemented("vkGetDeviceGroupSurfacePresentModesKHR");
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDevicePresentRectanglesKHR(
+	VkPhysicalDevice                            physicalDevice,
+	VkSurfaceKHR                                surface,
+	uint32_t*                                   pRectCount,
+	VkRect2D*                                   pRects) {
+
+	return MVKLogUnimplemented("vkGetPhysicalDevicePresentRectanglesKHR");
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkAcquireNextImage2KHR(
+	VkDevice                                    device,
+	const VkAcquireNextImageInfoKHR*            pAcquireInfo,
+	uint32_t*                                   pImageIndex) {
+
+	return MVKLogUnimplemented("vkAcquireNextImage2KHR");
 }
 
 
