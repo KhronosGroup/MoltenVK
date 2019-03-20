@@ -390,17 +390,23 @@ MTLIndexType mvkMTLIndexTypeFromVkIndexType(VkIndexType vkIdxType);
 /** Returns the size, in bytes, of a vertex index of the specified type. */
 size_t mvkMTLIndexTypeSizeInBytes(MTLIndexType mtlIdxType);
 
-/** Returns the MVKShaderStage corresponding to the specified Vulkan VkShaderStageFlagBits. */
+/** Returns the MoltenVK MVKShaderStage corresponding to the specified Vulkan VkShaderStageFlagBits. */
 MVKShaderStage mvkShaderStageFromVkShaderStageFlagBits(VkShaderStageFlagBits vkStage);
 
-/** Returns the VkShaderStageFlagBits corresponding to the specified MoltenVK MVKShaderStage. */
+/** Returns the Vulkan VkShaderStageFlagBits corresponding to the specified MoltenVK MVKShaderStage. */
 VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage mvkStage);
 
-/** Returns the MTLWinding corresponding to the specified spv::ExecutionMode. */
+/** Returns the Metal MTLWinding corresponding to the specified SPIR-V spv::ExecutionMode. */
 MTLWinding mvkMTLWindingFromSpvExecutionMode(uint32_t spvMode);
 
-/** Returns the MTLTessellationPartitionMode corresponding to the specified spv::ExecutionMode. */
+/** Returns the Metal MTLTessellationPartitionMode corresponding to the specified SPIR-V spv::ExecutionMode. */
 MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode(uint32_t spvMode);
+
+/** Returns the combination of Metal MTLRenderStage bits corresponding to the specified Vulkan VkPiplineStageFlags. */
+MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags vkStages);
+
+/** Returns the combination of Metal MTLBarrierScope bits corresponding to the specified Vulkan VkAccessFlags. */
+MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags vkAccess);
 
 #pragma mark -
 #pragma mark Geometry conversions

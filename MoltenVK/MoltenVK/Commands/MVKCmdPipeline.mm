@@ -65,8 +65,36 @@ void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
 
 #if MVK_MACOS
     // Calls below invoke MTLBlitCommandEncoder so must apply this first
-	if ( !(_memoryBarriers.empty() && _imageMemoryBarriers.empty()) ) {
-		[cmdEncoder->_mtlRenderEncoder textureBarrier];
+	if ( [cmdEncoder->_mtlRenderEncoder respondsToSelector: @selector(memoryBarrierWithScope:afterStages:beforeStages:)] ) {
+		MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_srcStageMask);
+		MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_dstStageMask);
+		for (auto& mb : _memoryBarriers) {
+			MTLBarrierScope scope = mvkMTLBarrierScopeFromVkAccessFlags(mb.dstAccessMask);
+			scope |= mvkMTLBarrierScopeFromVkAccessFlags(mb.srcAccessMask);
+			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithScope: scope
+													  afterStages: srcStages
+													 beforeStages: dstStages];
+		}
+		std::vector<id<MTLResource>> resources;
+		resources.reserve(_bufferMemoryBarriers.size() + _imageMemoryBarriers.size());
+		for (auto& mb : _bufferMemoryBarriers) {
+			auto* mvkBuff = (MVKBuffer*)mb.buffer;
+			resources.push_back(mvkBuff->getMTLBuffer());
+		}
+		for (auto& mb : _imageMemoryBarriers) {
+			auto* mvkImg = (MVKImage*)mb.image;
+			resources.push_back(mvkImg->getMTLTexture());
+		}
+		if ( !resources.empty() ) {
+			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: resources.data()
+																count: resources.size()
+														  afterStages: srcStages
+														 beforeStages: dstStages];
+		}
+	} else {
+		if ( !(_memoryBarriers.empty() && _imageMemoryBarriers.empty()) ) {
+			[cmdEncoder->_mtlRenderEncoder textureBarrier];
+		}
 	}
 #endif
 
