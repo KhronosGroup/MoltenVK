@@ -817,9 +817,6 @@ void MVKPhysicalDevice::initFeatures() {
     _features.inheritedQueries = true;
 
 	_features.shaderSampledImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
-#if MVK_MACOS
-	_features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
-#endif
 
     if (_metalFeatures.indirectDrawing && _metalFeatures.baseVertexInstanceDrawing) {
         _features.drawIndirectFirstInstance = true;
@@ -865,6 +862,8 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthClamp = true;
     _features.vertexPipelineStoresAndAtomics = true;
     _features.fragmentStoresAndAtomics = true;
+
+    _features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) {
         _features.tessellationShader = true;
