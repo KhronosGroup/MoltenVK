@@ -484,8 +484,8 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 
 	MVKVectorInline<VkColorSpaceKHR, 16> colorSpaces;
 	colorSpaces.push_back(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
-#if MVK_MACOS
 	if (getInstance()->_enabledExtensions.vk_EXT_swapchain_colorspace.enabled) {
+#if MVK_MACOS
 		// 10.11 supports some but not all of the color spaces specified by VK_EXT_swapchain_colorspace.
 		colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
 		colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT);
@@ -496,8 +496,38 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
 		}
-	}
+		if (mvkOSVersion() >= 10.14) {
+			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
+		}
 #endif
+#if MVK_IOS
+		// iOS 8 doesn't support anything but sRGB.
+		if (mvkOSVersion() >= 9.0) {
+			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_PASS_THROUGH_EXT);
+		}
+		if (mvkOSVersion() >= 10.0) {
+			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
+		}
+		if (mvkOSVersion() >= 12.0) {
+			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
+		}
+		if (mvkOSVersion() >= 12.3) {
+			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
+		}
+		if (mvkOSVersion() >= 13.0) {
+			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
+		}
+#endif
+	}
 
 	uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
 	if (!mvkMTLPixelFormatIsSupported(MTLPixelFormatBGR10A2Unorm)) { mtlFmtsCnt--; }
