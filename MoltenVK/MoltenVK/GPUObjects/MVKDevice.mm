@@ -817,7 +817,9 @@ void MVKPhysicalDevice::initFeatures() {
     _features.inheritedQueries = true;
 
 	_features.shaderSampledImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
+#if MVK_MACOS
 	_features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
+#endif
 
     if (_metalFeatures.indirectDrawing && _metalFeatures.baseVertexInstanceDrawing) {
         _features.drawIndirectFirstInstance = true;
