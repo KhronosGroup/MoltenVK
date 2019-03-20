@@ -164,14 +164,17 @@ void MVKCmdPushConstants::setContent(VkPipelineLayout layout,
 }
 
 void MVKCmdPushConstants::encode(MVKCommandEncoder* cmdEncoder) {
-    if (mvkAreFlagsEnabled(_stageFlags, VK_SHADER_STAGE_VERTEX_BIT)) {
-        cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->setPushConstants(_offset, _pushConstants);
-    }
-    if (mvkAreFlagsEnabled(_stageFlags, VK_SHADER_STAGE_FRAGMENT_BIT)) {
-        cmdEncoder->getPushConstants(VK_SHADER_STAGE_FRAGMENT_BIT)->setPushConstants(_offset, _pushConstants);
-    }
-    if (mvkAreFlagsEnabled(_stageFlags, VK_SHADER_STAGE_COMPUTE_BIT)) {
-        cmdEncoder->getPushConstants(VK_SHADER_STAGE_COMPUTE_BIT)->setPushConstants(_offset, _pushConstants);
+    VkShaderStageFlagBits stages[] = {
+        VK_SHADER_STAGE_VERTEX_BIT,
+        VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
+        VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT,
+        VK_SHADER_STAGE_FRAGMENT_BIT,
+        VK_SHADER_STAGE_COMPUTE_BIT
+    };
+    for (auto stage : stages) {
+        if (mvkAreFlagsEnabled(_stageFlags, stage)) {
+            cmdEncoder->getPushConstants(stage)->setPushConstants(_offset, _pushConstants);
+        }
     }
 }
 
