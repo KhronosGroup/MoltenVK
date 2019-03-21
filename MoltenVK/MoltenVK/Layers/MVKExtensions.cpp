@@ -47,6 +47,8 @@ MVKExtensionList::MVKExtensionList(bool enableForPlatform) :
 {}
 
 bool MVKExtensionList::isEnabled(const char* extnName) const {
+	if ( !extnName ) { return false; }
+
 	uint32_t extnCnt = getCount();
 	const MVKExtension* extnAry = &extensionArray;
 	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {

@@ -19,7 +19,11 @@ MoltenVK 1.0.34
 Released TBD
 
 - Add support for tessellation.
-- Allow zero offset and stride combo in VkVertexInputBindingDescription.
+- Add correct function entry point handling.
+- Add support for `VK_KHR_get_surface_capabilities2` extension.
+- Implement newer `VK_KHR_swapchain` extension functions.
+- Allow zero offset and stride combo in `VkVertexInputBindingDescription`.
+- Fix conditions when multiple functions return VK_INCOMPLETE.
 - Fix potential memory leak on synchronous command buffer submission.
 - Increase shader float constant accuracy beyond 6 digits of precision.
 - MoltenVKShaderConverterTool support cs & csh for compute shader file extensions.

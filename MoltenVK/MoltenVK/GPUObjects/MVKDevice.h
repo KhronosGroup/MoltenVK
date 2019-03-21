@@ -132,8 +132,7 @@ public:
 	VkResult getSurfaceCapabilities(MVKSurface* surface, VkSurfaceCapabilitiesKHR* pSurfaceCapabilities);
 
 	/**
-	 * Returns the pixel formats supported by the surface described by the specified
-	 * surface description.
+	 * Returns the pixel formats supported by the surface.
 	 *
 	 * If pSurfaceFormats is null, the value of pCount is updated with the number of
 	 * pixel formats supported by the surface.
@@ -148,8 +147,22 @@ public:
 	VkResult getSurfaceFormats(MVKSurface* surface, uint32_t* pCount, VkSurfaceFormatKHR* pSurfaceFormats);
 
 	/**
-	 * Returns the presentation modes supported by the surface described by the specified
-	 * surface description.
+	 * Returns the pixel formats supported by the surface.
+	 *
+	 * If pSurfaceFormats is null, the value of pCount is updated with the number of
+	 * pixel formats supported by the surface.
+	 *
+	 * If pSurfaceFormats is not null, then pCount formats are copied into the array.
+	 * If the number of available formats is less than pCount, the value of pCount is
+	 * updated to indicate the number of formats actually returned in the array.
+	 *
+	 * Returns VK_SUCCESS if successful. Returns VK_INCOMPLETE if the number of supported
+	 * formats is larger than pCount. Returns other values if an error occurs.
+	 */
+	VkResult getSurfaceFormats(MVKSurface* surface, uint32_t* pCount, VkSurfaceFormat2KHR* pSurfaceFormats);
+
+	/**
+	 * Returns the presentation modes supported by the surface.
 	 *
 	 * If pPresentModes is null, the value of pCount is updated with the number of
 	 * presentation modes supported by the surface.
@@ -163,36 +176,52 @@ public:
 	 */
 	VkResult getSurfacePresentModes(MVKSurface* surface, uint32_t* pCount, VkPresentModeKHR* pPresentModes);
 
+	/**
+	 * Returns the rectangles that will be used on the surface by this physical device
+	 * when the surface is presented.
+	 *
+	 * If pRects is null, the value of pRectCount is updated with the number of
+	 * rectangles used the surface by this physical device.
+	 *
+	 * If pRects is not null, then pCount rectangles are copied into the array.
+	 * If the number of rectangles is less than pCount, the value of pCount is updated
+	 * to indicate the number of rectangles actually returned in the array.
+	 *
+	 * Returns VK_SUCCESS if successful. Returns VK_INCOMPLETE if the number of rectangles
+	 * is larger than pCount. Returns other values if an error occurs.
+	 */
+	VkResult getPresentRectangles(MVKSurface* surface, uint32_t* pRectCount, VkRect2D* pRects);
+
 
 #pragma mark Queues
 
 	/**
-	 * If properties is null, the value of pCount is updated with the number of
+	 * If pQueueFamilyProperties is null, the value of pCount is updated with the number of
 	 * queue families supported by this instance.
 	 *
-	 * If properties is not null, then pCount queue family properties are copied into the 
-	 * array. If the number of available queue families is less than pCount, the value of 
+	 * If pQueueFamilyProperties is not null, then pCount queue family properties are copied into
+	 * the array. If the number of available queue families is less than pCount, the value of
 	 * pCount is updated to indicate the number of queue families actually returned in the array.
 	 *
 	 * Returns VK_SUCCESS if successful. Returns VK_INCOMPLETE if the number of queue families
 	 * available in this instance is larger than the specified pCount. Returns other values if
 	 * an error occurs.
 	 */
-	VkResult getQueueFamilyProperties(uint32_t* pCount, VkQueueFamilyProperties* properties);
+	VkResult getQueueFamilyProperties(uint32_t* pCount, VkQueueFamilyProperties* pQueueFamilyProperties);
 
 	/**
-	 * If properties is null, the value of pCount is updated with the number of
+	 * If pQueueFamilyProperties is null, the value of pCount is updated with the number of
 	 * queue families supported by this instance.
 	 *
-	 * If properties is not null, then pCount queue family properties are copied into the 
-	 * array. If the number of available queue families is less than pCount, the value of 
+	 * If pQueueFamilyProperties is not null, then pCount queue family properties are copied into
+	 * the array. If the number of available queue families is less than pCount, the value of 
 	 * pCount is updated to indicate the number of queue families actually returned in the array.
 	 *
 	 * Returns VK_SUCCESS if successful. Returns VK_INCOMPLETE if the number of queue families
 	 * available in this instance is larger than the specified pCount. Returns other values if
 	 * an error occurs.
 	 */
-	VkResult getQueueFamilyProperties(uint32_t* pCount, VkQueueFamilyProperties2KHR* properties);
+	VkResult getQueueFamilyProperties(uint32_t* pCount, VkQueueFamilyProperties2KHR* pQueueFamilyProperties);
 
 	/** Returns a pointer to the Vulkan instance. */
 	inline MVKInstance* getInstance() { return _mvkInstance; }
@@ -337,6 +366,12 @@ public:
 	/** Returns whether or not the given descriptor set layout is supported. */
 	void getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 									   VkDescriptorSetLayoutSupport* pSupport);
+
+	/** Populates the device group presentation capabilities. */
+	VkResult getDeviceGroupPresentCapabilities(VkDeviceGroupPresentCapabilitiesKHR* pDeviceGroupPresentCapabilities);
+
+	/** Populates the device group surface presentation modes. */
+	VkResult getDeviceGroupSurfacePresentModes(MVKSurface* surface, VkDeviceGroupPresentModeFlagsKHR* pModes);
 
 
 #pragma mark Object lifecycle

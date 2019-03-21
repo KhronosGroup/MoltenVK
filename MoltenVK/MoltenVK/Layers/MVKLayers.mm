@@ -100,7 +100,7 @@ VkResult MVKLayerManager::getLayerProperties(uint32_t* pCount, VkLayerProperties
 
 	// Othewise, determine how many layers we'll return, and return that count
 	uint32_t layerCnt = (uint32_t)_layers.size();
-	VkResult result = (*pCount <= layerCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	VkResult result = (*pCount >= layerCnt) ? VK_SUCCESS : VK_INCOMPLETE;
 	*pCount = min(layerCnt, *pCount);
 
 	// Now populate the layer properties

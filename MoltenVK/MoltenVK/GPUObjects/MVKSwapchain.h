@@ -57,6 +57,7 @@ public:
 	VkResult acquireNextImageKHR(uint64_t timeout,
 								 VkSemaphore semaphore,
 								 VkFence fence,
+								 uint32_t deviceMask,
 								 uint32_t* pImageIndex);
 
 	/** Returns whether the surface size has changed since the last time this function was called. */
