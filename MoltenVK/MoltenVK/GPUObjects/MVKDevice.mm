@@ -470,7 +470,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	}
 
 	// Determine how many results we'll return, and return that number
-	VkResult result = (*pCount <= mtlFmtsCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	VkResult result = (*pCount >= mtlFmtsCnt) ? VK_SUCCESS : VK_INCOMPLETE;
 	*pCount = min(*pCount, mtlFmtsCnt);
 
 	// Now populate the supplied array
@@ -480,6 +480,27 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	}
 
 	return result;
+}
+
+VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
+											  uint32_t* pCount,
+											  VkSurfaceFormat2KHR* pSurfaceFormats) {
+	VkResult rslt;
+	if (pSurfaceFormats) {
+		// Populate temp array of VkSurfaceFormatKHR then copy into array of VkSurfaceFormat2KHR.
+		// The value of *pCount may be reduced during call, but will always be <= size of temp array.
+		VkSurfaceFormatKHR surfFmts[*pCount];
+		rslt = getSurfaceFormats(surface, pCount, surfFmts);
+		for (uint32_t fmtIdx = 0; fmtIdx < *pCount; fmtIdx++) {
+			auto pSF = &pSurfaceFormats[fmtIdx];
+			pSF->sType = VK_STRUCTURE_TYPE_SURFACE_FORMAT_2_KHR;
+			pSF->pNext = nullptr;
+			pSF->surfaceFormat = surfFmts[fmtIdx];
+		}
+	} else {
+		rslt = getSurfaceFormats(surface, pCount, (VkSurfaceFormatKHR*)nullptr);
+	}
+	return rslt;
 }
 
 VkResult MVKPhysicalDevice::getSurfacePresentModes(MVKSurface* surface,
@@ -509,6 +530,29 @@ VkResult MVKPhysicalDevice::getSurfacePresentModes(MVKSurface* surface,
 	}
 
 	*pCount = presentModesCnt;
+	return VK_SUCCESS;
+}
+
+VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
+												 uint32_t* pRectCount,
+												 VkRect2D* pRects) {
+
+	// The layer underlying the surface view must be a CAMetalLayer.
+	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
+	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
+
+	if ( !pRects ) {
+		*pRectCount = 1;
+		return VK_SUCCESS;
+	}
+
+	if (*pRectCount == 0) { return VK_INCOMPLETE; }
+
+	*pRectCount = 1;
+
+	pRects[0].offset = { 0, 0 };
+	pRects[0].extent = mvkVkExtent2DFromCGSize(mtlLayer.naturalDrawableSizeMVK);
+
 	return VK_SUCCESS;
 }
 
@@ -552,54 +596,50 @@ vector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
 }
 
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
-													 VkQueueFamilyProperties* queueProperties) {
+													 VkQueueFamilyProperties* pQueueFamilyProperties) {
 
 	vector<MVKQueueFamily*> qFams = getQueueFamilies();
 	uint32_t qfCnt = uint32_t(qFams.size());
 
 	// If properties aren't actually being requested yet, simply update the returned count
-	if ( !queueProperties ) {
+	if ( !pQueueFamilyProperties ) {
 		*pCount = qfCnt;
 		return VK_SUCCESS;
 	}
 
 	// Determine how many families we'll return, and return that number
+	VkResult rslt = (*pCount >= qfCnt) ? VK_SUCCESS : VK_INCOMPLETE;
 	*pCount = min(*pCount, qfCnt);
 
 	// Now populate the queue families
-	if (queueProperties) {
+	if (pQueueFamilyProperties) {
 		for (uint32_t qfIdx = 0; qfIdx < *pCount; qfIdx++) {
-			qFams[qfIdx]->getProperties(&queueProperties[qfIdx]);
+			qFams[qfIdx]->getProperties(&pQueueFamilyProperties[qfIdx]);
 		}
 	}
 
-	return (*pCount <= qfCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	return rslt;
 }
 
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
-													 VkQueueFamilyProperties2KHR* queueProperties) {
+													 VkQueueFamilyProperties2KHR* pQueueFamilyProperties) {
 
-	vector<MVKQueueFamily*> qFams = getQueueFamilies();
-	uint32_t qfCnt = uint32_t(qFams.size());
-
-	// If properties aren't actually being requested yet, simply update the returned count
-	if ( !queueProperties ) {
-		*pCount = qfCnt;
-		return VK_SUCCESS;
-	}
-
-	// Determine how many families we'll return, and return that number
-	*pCount = min(*pCount, qfCnt);
-
-	// Now populate the queue families
-	if (queueProperties) {
-		for (uint32_t qfIdx = 0; qfIdx < *pCount; qfIdx++) {
-			queueProperties[qfIdx].sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR;
-			qFams[qfIdx]->getProperties(&queueProperties[qfIdx].queueFamilyProperties);
+	VkResult rslt;
+	if (pQueueFamilyProperties) {
+		// Populate temp array of VkQueueFamilyProperties then copy into array of VkQueueFamilyProperties2KHR.
+		// The value of *pCount may be reduced during call, but will always be <= size of temp array.
+		VkQueueFamilyProperties qProps[*pCount];
+		rslt = getQueueFamilyProperties(pCount, qProps);
+		for (uint32_t qpIdx = 0; qpIdx < *pCount; qpIdx++) {
+			auto pQP = &pQueueFamilyProperties[qpIdx];
+			pQP->sType = VK_STRUCTURE_TYPE_QUEUE_FAMILY_PROPERTIES_2_KHR;
+			pQP->pNext = nullptr;
+			pQP->queueFamilyProperties = qProps[qpIdx];
 		}
+	} else {
+		rslt = getQueueFamilyProperties(pCount, (VkQueueFamilyProperties*)nullptr);
 	}
-
-	return (*pCount <= qfCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	return rslt;
 }
 
 
@@ -1544,6 +1584,20 @@ void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateI
 		descriptorCount += pCreateInfo->pBindings[i].descriptorCount;
 	}
 	pSupport->supported = (descriptorCount < ((_physicalDevice->_metalFeatures.maxPerStageBufferCount + _physicalDevice->_metalFeatures.maxPerStageTextureCount + _physicalDevice->_metalFeatures.maxPerStageSamplerCount) * 2));
+}
+
+VkResult MVKDevice::getDeviceGroupPresentCapabilities(VkDeviceGroupPresentCapabilitiesKHR* pDeviceGroupPresentCapabilities) {
+	memset(pDeviceGroupPresentCapabilities->presentMask, 0, sizeof(pDeviceGroupPresentCapabilities->presentMask));
+	pDeviceGroupPresentCapabilities->presentMask[0] = 0x1;
+
+	pDeviceGroupPresentCapabilities->modes = VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_BIT_KHR;
+
+	return VK_SUCCESS;
+}
+
+VkResult MVKDevice::getDeviceGroupSurfacePresentModes(MVKSurface* surface, VkDeviceGroupPresentModeFlagsKHR* pModes) {
+	*pModes = VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_BIT_KHR;
+	return VK_SUCCESS;
 }
 
 

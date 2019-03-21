@@ -58,7 +58,7 @@ VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPh
 	}
 
 	// Othewise, determine how many physical devices we'll return, and return that count
-	VkResult result = (*pCount <= pdCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	VkResult result = (*pCount >= pdCnt) ? VK_SUCCESS : VK_INCOMPLETE;
 	*pCount = min(pdCnt, *pCount);
 
 	// Now populate the devices
@@ -333,6 +333,8 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, KHR_SURFACE);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceFormatsKHR, KHR_SURFACE);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfacePresentModesKHR, KHR_SURFACE);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceCapabilities2KHR, KHR_GET_SURFACE_CAPABILITIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceFormats2KHR, KHR_GET_SURFACE_CAPABILITIES_2);
 
 #ifdef VK_USE_PLATFORM_IOS_MVK
 	ADD_INST_EXT_ENTRY_POINT(vkCreateIOSSurfaceMVK, MVK_IOS_SURFACE);

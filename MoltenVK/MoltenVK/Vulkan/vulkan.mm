@@ -1646,6 +1646,7 @@ MVK_PUBLIC_SYMBOL void vkTrimCommandPoolKHR(
     VkDevice                                    device,
     VkCommandPool                               commandPool,
     VkCommandPoolTrimFlagsKHR                   flags) {
+
 	MVKCommandPool* mvkCmdPool = (MVKCommandPool*)commandPool;
     mvkCmdPool->trim();
 }
@@ -1658,7 +1659,8 @@ MVK_PUBLIC_SYMBOL void vkGetDescriptorSetLayoutSupportKHR(
     VkDevice                                    device,
     const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
     VkDescriptorSetLayoutSupportKHR*            pSupport) {
-    MVKDevice* mvkDevice = MVKDevice::getMVKDevice(device);
+
+	MVKDevice* mvkDevice = MVKDevice::getMVKDevice(device);
     mvkDevice->getDescriptorSetLayoutSupport(pCreateInfo, pSupport);
 }
 
@@ -1734,7 +1736,7 @@ MVK_PUBLIC_SYMBOL VkResult vkAcquireNextImageKHR(
     uint32_t*                                    pImageIndex) {
 
     MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
-    return mvkSwapchain->acquireNextImageKHR(timeout, semaphore, fence, pImageIndex);
+    return mvkSwapchain->acquireNextImageKHR(timeout, semaphore, fence, ~0u, pImageIndex);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkQueuePresentKHR(
@@ -1749,7 +1751,8 @@ MVK_PUBLIC_SYMBOL VkResult vkGetDeviceGroupPresentCapabilitiesKHR(
 	VkDevice                                    device,
 	VkDeviceGroupPresentCapabilitiesKHR*        pDeviceGroupPresentCapabilities) {
 
-	return MVKLogUnimplemented("vkGetDeviceGroupPresentCapabilitiesKHR");
+	MVKDevice* mvkDevice = MVKDevice::getMVKDevice(device);
+	return mvkDevice->getDeviceGroupPresentCapabilities(pDeviceGroupPresentCapabilities);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkGetDeviceGroupSurfacePresentModesKHR(
@@ -1757,7 +1760,9 @@ MVK_PUBLIC_SYMBOL VkResult vkGetDeviceGroupSurfacePresentModesKHR(
 	VkSurfaceKHR                                surface,
 	VkDeviceGroupPresentModeFlagsKHR*           pModes) {
 
-	return MVKLogUnimplemented("vkGetDeviceGroupSurfacePresentModesKHR");
+	MVKDevice* mvkDevice = MVKDevice::getMVKDevice(device);
+	MVKSurface* mvkSrfc = (MVKSurface*)surface;
+	return mvkDevice->getDeviceGroupSurfacePresentModes(mvkSrfc, pModes);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDevicePresentRectanglesKHR(
@@ -1766,7 +1771,9 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDevicePresentRectanglesKHR(
 	uint32_t*                                   pRectCount,
 	VkRect2D*                                   pRects) {
 
-	return MVKLogUnimplemented("vkGetPhysicalDevicePresentRectanglesKHR");
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	MVKSurface* mvkSrfc = (MVKSurface*)surface;
+	return mvkPD->getPresentRectangles(mvkSrfc, pRectCount, pRects);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkAcquireNextImage2KHR(
@@ -1774,7 +1781,12 @@ MVK_PUBLIC_SYMBOL VkResult vkAcquireNextImage2KHR(
 	const VkAcquireNextImageInfoKHR*            pAcquireInfo,
 	uint32_t*                                   pImageIndex) {
 
-	return MVKLogUnimplemented("vkAcquireNextImage2KHR");
+	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)pAcquireInfo->swapchain;
+	return mvkSwapchain->acquireNextImageKHR(pAcquireInfo->timeout,
+											 pAcquireInfo->semaphore,
+											 pAcquireInfo->fence,
+											 pAcquireInfo->deviceMask,
+											 pImageIndex);
 }
 
 
@@ -1832,6 +1844,31 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
     MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
     MVKSurface* mvkSrfc = (MVKSurface*)surface;
     return mvkPD->getSurfacePresentModes(mvkSrfc, pPresentModeCount, pPresentModes);
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_get_surface_capabilities2 extension
+
+MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceSurfaceInfo2KHR*      pSurfaceInfo,
+	VkSurfaceCapabilities2KHR*                  pSurfaceCapabilities) {
+
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	MVKSurface* mvkSrfc = (MVKSurface*)pSurfaceInfo->surface;
+	return mvkPD->getSurfaceCapabilities(mvkSrfc, &pSurfaceCapabilities->surfaceCapabilities);
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceSurfaceInfo2KHR*      pSurfaceInfo,
+	uint32_t*                                   pSurfaceFormatCount,
+	VkSurfaceFormat2KHR*                        pSurfaceFormats) {
+
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	MVKSurface* mvkSrfc = (MVKSurface*)pSurfaceInfo->surface;
+	return mvkPD->getSurfaceFormats(mvkSrfc, pSurfaceFormatCount, pSurfaceFormats);
 }
 
 

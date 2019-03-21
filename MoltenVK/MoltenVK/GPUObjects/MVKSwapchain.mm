@@ -49,7 +49,7 @@ VkResult MVKSwapchain::getImages(uint32_t* pCount, VkImage* pSwapchainImages) {
 	}
 
 	// Determine how many images we'll return, and return that number
-	VkResult result = (*pCount <= imgCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	VkResult result = (*pCount >= imgCnt) ? VK_SUCCESS : VK_INCOMPLETE;
 	*pCount = min(*pCount, imgCnt);
 
 	// Now populate the images
@@ -63,6 +63,7 @@ VkResult MVKSwapchain::getImages(uint32_t* pCount, VkImage* pSwapchainImages) {
 VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
                                            VkSemaphore semaphore,
                                            VkFence fence,
+										   uint32_t deviceMask,
                                            uint32_t* pImageIndex) {
     // Find the image that has the smallest availability measure
     uint32_t minWaitIndex = 0;
