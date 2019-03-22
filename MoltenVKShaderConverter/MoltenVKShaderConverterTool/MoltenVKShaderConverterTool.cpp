@@ -18,7 +18,7 @@
 
 #include "MoltenVKShaderConverterTool.h"
 #include "FileSupport.h"
-#include "DirectorySupport.h"
+#include "OSSupport.h"
 #include "GLSLToSPIRVConverter.h"
 #include "SPIRVToMSLConverter.h"
 #include "SPIRVSupport.h"
@@ -201,16 +201,27 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	string path = mslOutFile;
 	if (mslOutFile.empty()) { path = pathWithExtension(inFile, "metal", _shouldIncludeOrigPathExtn, _origPathExtnSep); }
 	const string& msl = spvConverter.getMSL();
+
+	string compileErrMsg;
+	bool wasCompiled = compile(msl, compileErrMsg);
+	if (compileErrMsg.size() > 0) {
+		string preamble = wasCompiled ? "is valid but the validation compilation produced warnings " : "failed a validation compilation ";
+		compileErrMsg = "Generated MSL " + preamble + compileErrMsg;
+		log(compileErrMsg.c_str());
+	} else {
+		log("Generated MSL was validated by a successful compilation with no warnings.");
+	}
+
 	vector<char> fileContents;
 	fileContents.insert(fileContents.end(), msl.begin(), msl.end());
-	string errMsg;
-	if (writeFile(path, fileContents, errMsg)) {
+	string writeErrMsg;
+	if (writeFile(path, fileContents, writeErrMsg)) {
 		string logMsg = "Saved MSL to file: " + lastPathComponent(path);
-		log(logMsg.data());
+		log(logMsg.c_str());
 		return true;
 	} else {
-		errMsg = "Could not write MSL file. " + errMsg;
-		log(errMsg.data());
+		writeErrMsg = "Could not write MSL file. " + writeErrMsg;
+		log(writeErrMsg.c_str());
 		return false;
 	}
 }

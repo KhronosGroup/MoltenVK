@@ -64,8 +64,8 @@ MVK_PUBLIC_SYMBOL bool mvkConvertSPIRVFileToMSL(const char* spvFilepath,
     NSData* spv = [NSData dataWithContentsOfFile: filePath options: 0 error: &err];
     if (err) {
         if (pResultLog) {
-            NSString* errMsg = [NSString stringWithFormat: @"Unable to convert SPIR-V in file %@ to MSL: %@ (code %li) %@",
-                                filePath, err.localizedDescription, (long)err.code, err.localizedFailureReason];
+			NSString* errMsg = [NSString stringWithFormat: @"Unable to convert SPIR-V in file %@ to MSL (Error code %li):\n%@",
+                                filePath, (long)err.code, err.localizedDescription];
             *pResultLog = (char*)malloc(errMsg.length + 1);
             strcpy(*pResultLog, errMsg.UTF8String);
         }

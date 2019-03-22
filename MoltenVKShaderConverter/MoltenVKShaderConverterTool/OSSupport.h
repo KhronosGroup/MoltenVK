@@ -1,5 +1,5 @@
 /*
- * DirectorySupport.h
+ * OSSupport.h
  *
  * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -41,5 +41,13 @@ namespace mvk {
 						  FileProcessor& fileProcessor,
 						  bool isRecursive,
 						  std::string& errMsg);
+
+	/**
+	 * Attempts to compile the MSL source code and returns whether it was successful.
+	 *
+	 * If unsuccessful, the return value will be false and the errMsg will contain an
+	 * error message. Otherwise the return value will be true and the errMsg will be empty.
+	 */
+	bool compile(const std::string& mslSourceCode, std::string& errMsg);
 
 }

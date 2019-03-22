@@ -406,21 +406,25 @@ id<MTLFunction> MVKCommandResourceFactory::getFunctionNamed(const char* funcName
 }
 
 id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, NSString* funcName) {
-	uint64_t startTime = _device->getPerformanceTimestamp();
-	NSError* err = nil;
-	id<MTLLibrary> mtlLib = [[getMTLDevice() newLibraryWithSource: mslSrcCode
-														  options: getDevice()->getMTLCompileOptions()
-															error: &err] autorelease];
-	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
-	if (err) {
-		mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Could not compile support shader from MSL source:\n%s\n %s (code %li) %s", mslSrcCode.UTF8String, err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
-		return nil;
-	}
+	@autoreleasepool {
+		NSError* err = nil;
+		uint64_t startTime = _device->getPerformanceTimestamp();
+		id<MTLLibrary> mtlLib = [[getMTLDevice() newLibraryWithSource: mslSrcCode
+															  options: getDevice()->getMTLCompileOptions()
+																error: &err] autorelease];
+		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
+		if (err) {
+			mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED,
+								   "Could not compile support shader from MSL source (Error code %li):\n%s\n%s",
+								   (long)err.code, mslSrcCode.UTF8String, err.localizedDescription.UTF8String);
+			return nil;
+		}
 
-	startTime = _device->getPerformanceTimestamp();
-	id<MTLFunction> mtlFunc = [mtlLib newFunctionWithName: funcName];
-	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
-	return mtlFunc;
+		startTime = _device->getPerformanceTimestamp();
+		id<MTLFunction> mtlFunc = [mtlLib newFunctionWithName: funcName];
+		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+		return mtlFunc;
+	}
 }
 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc) {
@@ -447,16 +451,15 @@ MVKCommandResourceFactory::MVKCommandResourceFactory(MVKDevice* device) : MVKBas
 
 // Initializes the Metal shaders used for command activity.
 void MVKCommandResourceFactory::initMTLLibrary() {
-    uint64_t startTime = _device->getPerformanceTimestamp();
     @autoreleasepool {
         NSError* err = nil;
+		uint64_t startTime = _device->getPerformanceTimestamp();
         _mtlLibrary = [getMTLDevice() newLibraryWithSource: _MVKStaticCmdShaderSource
                                                    options: getDevice()->getMTLCompileOptions()
                                                      error: &err];    // retained
-		MVKAssert( !err, "Could not compile command shaders (code %li):\n%s\n%s",
-				  (long)err.code, err.localizedDescription.UTF8String, err.localizedFailureReason.UTF8String);
+		MVKAssert( !err, "Could not compile command shaders (Error code %li):\n%s", (long)err.code, err.localizedDescription.UTF8String);
+		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
     }
-    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 }
 
 // Initializes the empty device memory used to back temporary VkImages.

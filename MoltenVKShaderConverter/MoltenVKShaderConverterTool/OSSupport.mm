@@ -1,5 +1,5 @@
 /*
- * DirectorySupport.mm
+ * OSSupport.mm
  *
  * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -16,11 +16,12 @@
  * limitations under the License.
  */
 
-#include "DirectorySupport.h"
+#include "OSSupport.h"
 #include "FileSupport.h"
 #include "MoltenVKShaderConverterTool.h"
 
 #import <Foundation/Foundation.h>
+#import <Metal/Metal.h>
 
 using namespace std;
 using namespace mvk;
@@ -60,3 +61,14 @@ template bool mvk::iterateDirectory<MoltenVKShaderConverterTool>(const string& d
 																  bool isRecursive,
 																  string& errMsg);
 
+bool mvk::compile(const string& mslSourceCode, string& errMsg) {
+	@autoreleasepool {
+		NSError* err = nil;
+		id<MTLLibrary> mtlLib = [[MTLCreateSystemDefaultDevice() newLibraryWithSource: @(mslSourceCode.c_str())
+																			  options: [[MTLCompileOptions new] autorelease]
+																				error: &err] autorelease];
+		errMsg = err ? [NSString stringWithFormat: @"(Error code %li):\n%@", (long)err.code, err.localizedDescription].UTF8String
+					 : "";
+		return !!mtlLib;
+	}
+}

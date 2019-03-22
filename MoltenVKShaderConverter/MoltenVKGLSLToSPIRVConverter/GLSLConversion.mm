@@ -75,8 +75,8 @@ MVK_PUBLIC_SYMBOL bool mvkConvertGLSLFileToSPIRV(const char* glslFilepath,
                                                         error: &err];
     if (err) {
         if (pResultLog) {
-            NSString* errMsg = [NSString stringWithFormat: @"Unable to convert GLSL in file %@ to SPIR-V: %@ (code %li) %@",
-                                filePath, err.localizedDescription, (long)err.code, err.localizedFailureReason];
+            NSString* errMsg = [NSString stringWithFormat: @"Unable to convert GLSL in file %@ to SPIR-V (Error code %li):\n%@",
+                                filePath, (long)err.code, err.localizedDescription];
             *pResultLog = (char*)malloc(errMsg.length + 1);
             strcpy(*pResultLog, errMsg.UTF8String);
         }

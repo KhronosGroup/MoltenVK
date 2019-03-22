@@ -194,7 +194,10 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 }
 
 void MVKMetalCompiler::handleError() {
-	setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "%s compile failed (error code %li):\n%s.", _compilerType.c_str(), (long)_compileError.code, _compileError.localizedDescription.UTF8String));
+	setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED,
+												  "%s compile failed (Error code %li):\n%s.",
+												  _compilerType.c_str(), (long)_compileError.code,
+												  _compileError.localizedDescription.UTF8String));
 }
 
 // Returns whether the compilation came in late, after the compiler was destroyed.

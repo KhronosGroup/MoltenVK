@@ -3,8 +3,10 @@
 set -e
 
 export MVK_TMPLT_PATH="${PROJECT_DIR}/../Templates/framework/${MVK_OS}"
-export MVK_BUILT_FRWK_PATH="${BUILT_PRODUCTS_DIR}/${PRODUCT_NAME}.framework"
+export MVK_BUILT_FRWK_PATH="${BUILT_PRODUCTS_DIR}/framework/${PRODUCT_NAME}.framework"
 export MVK_BUILT_FRWK_CONTENT_PATH="${MVK_BUILT_FRWK_PATH}/${MVK_FRWK_SUBPATH}"
+
+mkdir -p "${BUILT_PRODUCTS_DIR}/framework"
 
 rm -rf "${MVK_BUILT_FRWK_PATH}"
 cp -a  "${MVK_TMPLT_PATH}/Template.framework" "${MVK_BUILT_FRWK_PATH}"

@@ -6,6 +6,8 @@ export MVK_DYLIB_NAME="lib${PRODUCT_NAME}.dylib"
 export MVK_SYS_FWK_DIR="${SDK_DIR}/System/Library/Frameworks"
 export MVK_USR_LIB_DIR="${SDK_DIR}/usr/lib"
 
+mkdir -p "${BUILT_PRODUCTS_DIR}/dynamic"
+
 if test x"${ENABLE_BITCODE}" = xYES; then
 	MVK_EMBED_BITCODE="-fembed-bitcode"
 fi
@@ -30,9 +32,11 @@ ${MVK_SAN} \
 -iframework ${MVK_SYS_FWK_DIR}  \
 -framework Metal ${MVK_IOSURFACE_FWK} -framework ${MVK_UX_FWK} -framework QuartzCore -framework IOKit -framework Foundation \
 --library-directory ${MVK_USR_LIB_DIR} \
--o "${BUILT_PRODUCTS_DIR}/${MVK_DYLIB_NAME}" \
+-o "${BUILT_PRODUCTS_DIR}/dynamic/${MVK_DYLIB_NAME}" \
 -force_load "${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a"
 
 if test "$CONFIGURATION" = Debug; then
-	dsymutil "${BUILT_PRODUCTS_DIR}/${MVK_DYLIB_NAME}" -o "${DWARF_DSYM_FOLDER_PATH}/${MVK_DYLIB_NAME}.dSYM"
+	mkdir -p "${DWARF_DSYM_FOLDER_PATH}/dynamic"
+	dsymutil "${BUILT_PRODUCTS_DIR}/dynamic/${MVK_DYLIB_NAME}" \
+	-o "${DWARF_DSYM_FOLDER_PATH}/dynamic/${MVK_DYLIB_NAME}.dSYM"
 fi
