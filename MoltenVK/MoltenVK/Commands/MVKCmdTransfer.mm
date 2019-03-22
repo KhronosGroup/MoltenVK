@@ -175,9 +175,6 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
     if (_blitKey.isDepthFormat() && renderRegionCount > 0) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling of depth/stencil images is not supported."));
     }
-    if ((_srcImage->getMTLPixelFormat() != _mtlPixFmt) && mvkMTLPixelFormatIsStencilFormat(_mtlPixFmt)) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): The source and destination images must have the same format for depth/stencil images."));
-    }
     if ( !_mtlTexBlitRenders.empty() && mvkMTLPixelFormatIsStencilFormat(_mtlPixFmt)) {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Stencil image formats cannot be scaled or inverted."));
     }
