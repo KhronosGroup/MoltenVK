@@ -126,8 +126,7 @@ id<MTLRenderPipelineState> MVKWatermark::newRenderPipelineState() {
 
     NSError* err = nil;
     id<MTLRenderPipelineState> rps = [_mtlDevice newRenderPipelineStateWithDescriptor: plDesc error: &err];	// retained
-    MVKAssert( !err, "Could not create watermark pipeline state %s (code %li) %s",
-              err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
+    MVKAssert( !err, "Could not create watermark pipeline state (Error code %li)\n%s", (long)err.code, err.localizedDescription.UTF8String);
     return rps;
 }
 
@@ -307,8 +306,7 @@ void MVKWatermark::initShaders(const char* mslSourceCode) {
     id<MTLLibrary> mtlLib = [[_mtlDevice newLibraryWithSource: @(mslSourceCode)
                                                       options: nil
                                                         error: &err] autorelease];
-    MVKAssert( !err, "Could not compile watermark shaders %s (code %li) %s",
-              err.localizedDescription.UTF8String, (long)err.code, err.localizedFailureReason.UTF8String);
+	MVKAssert( !err, "Could not compile watermark shaders (Error code %li):\n%s", (long)err.code, err.localizedDescription.UTF8String);
 
     _mtlFunctionVertex = [mtlLib newFunctionWithName: @"watermarkVertex"];          // retained
     _mtlFunctionFragment = [mtlLib newFunctionWithName: @"watermarkFragment"];      // retained

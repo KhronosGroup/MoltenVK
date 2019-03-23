@@ -146,11 +146,10 @@ void MVKShaderLibrary::handleCompilationError(NSError* err, const char* opDesc) 
     if ( !err ) return;
 
     if (_mtlLibrary) {
-        MVKLogInfo("%s succeeded with warnings (code %li):\n\n%s", opDesc, (long)err.code,
-                   err.localizedDescription.UTF8String);
+        MVKLogInfo("%s succeeded with warnings (Error code %li):\n%s", opDesc, (long)err.code, err.localizedDescription.UTF8String);
     } else {
         setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED,
-                                                      "%s failed (code %li):\n\n%s",
+                                                      "%s failed (Error code %li):\n%s",
                                                       opDesc, (long)err.code,
                                                       err.localizedDescription.UTF8String));
     }
@@ -351,7 +350,7 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode) 
 
 void MVKShaderLibraryCompiler::handleError() {
 	if (_mtlLibrary) {
-		MVKLogInfo("%s compilation succeeded with warnings (code %li):\n\n%s", _compilerType.c_str(),
+		MVKLogInfo("%s compilation succeeded with warnings (Error code %li):\n%s", _compilerType.c_str(),
 				   (long)_compileError.code, _compileError.localizedDescription.UTF8String);
 	} else {
 		MVKMetalCompiler::handleError();

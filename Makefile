@@ -18,3 +18,8 @@ clean:
 	xcodebuild -quiet -project "$(XCODE_PROJ)" -scheme "$(XCODE_SCHEME_BASE)" clean
 	rm -rf Package
 
+#Likely requires 'sudo make install'
+.PHONY: install
+install:
+	/bin/cp -a Package/Latest/MoltenVK/macOS/framework/MoltenVK.framework /Library/Frameworks/
+

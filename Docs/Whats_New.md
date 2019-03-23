@@ -26,10 +26,13 @@ Released TBD
 - Fix conditions when multiple functions return VK_INCOMPLETE.
 - Fix potential memory leak on synchronous command buffer submission.
 - Increase shader float constant accuracy beyond 6 digits of precision.
-- MoltenVKShaderConverterTool support cs & csh for compute shader file extensions.
+- MoltenVKShaderConverter tool support cs & csh for compute shader file extensions.
+- MoltenVKShaderConverter tool validates converted MSL with a test compilation.
 - `fetchDependencies`: Stop on first error.
 - Fix a possible race condition around MVKMTLBufferAllocation.
 - Fix memory overrun if no vertex buffer found with same binding as a vertex attribute.
+- Debug build mode includes `dSYM` file for each `dylib` file.
+- `Makefile` supports `install` target to install `MoltenVK.framework` into `/Library/Frameworks/`.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for Metal 2 indirect argument buffers.
 	- MSL: Add support for tessellation control & evaluation shaders.
