@@ -159,7 +159,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDevice(
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	MVKDevice* mvkDev = new MVKDevice(mvkPD, pCreateInfo);
 	*pDevice = mvkDev->getVkDevice();
-	return VK_SUCCESS;
+	return mvkDev->getConfigurationResult();
 }
 
 MVK_PUBLIC_SYMBOL void vkDestroyDevice(
@@ -288,12 +288,14 @@ MVK_PUBLIC_SYMBOL VkResult vkFlushMappedMemoryRanges(
     uint32_t                                    memRangeCount,
     const VkMappedMemoryRange*                  pMemRanges) {
 
+	VkResult rslt = VK_SUCCESS;
 	for (uint32_t i = 0; i < memRangeCount; i++) {
 		const VkMappedMemoryRange* pMem = &pMemRanges[i];
 		MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMem->memory;
-		mvkMem->flushToDevice(pMem->offset, pMem->size);
+		VkResult r = mvkMem->flushToDevice(pMem->offset, pMem->size);
+		if (rslt == VK_SUCCESS) { rslt = r; }
 	}
-	return VK_SUCCESS;
+	return rslt;
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkInvalidateMappedMemoryRanges(
@@ -301,12 +303,14 @@ MVK_PUBLIC_SYMBOL VkResult vkInvalidateMappedMemoryRanges(
     uint32_t                                    memRangeCount,
     const VkMappedMemoryRange*                  pMemRanges) {
 	
+	VkResult rslt = VK_SUCCESS;
 	for (uint32_t i = 0; i < memRangeCount; i++) {
 		const VkMappedMemoryRange* pMem = &pMemRanges[i];
 		MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMem->memory;
-		mvkMem->pullFromDevice(pMem->offset, pMem->size);
+		VkResult r = mvkMem->pullFromDevice(pMem->offset, pMem->size);
+		if (rslt == VK_SUCCESS) { rslt = r; }
 	}
-	return VK_SUCCESS;
+	return rslt;
 }
 
 MVK_PUBLIC_SYMBOL void vkGetDeviceMemoryCommitment(
