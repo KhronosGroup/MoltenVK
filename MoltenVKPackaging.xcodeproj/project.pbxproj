@@ -248,7 +248,7 @@
 		A90B2B1D1A9B6170008EE819 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1010;
+				LastUpgradeCheck = 1020;
 				TargetAttributes = {
 					A9FEADBC1F3517480010240E = {
 						DevelopmentTeam = VU3TCKU48B;
@@ -257,10 +257,11 @@
 			};
 			buildConfigurationList = A90B2B201A9B6170008EE819 /* Build configuration list for PBXProject "MoltenVKPackaging" */;
 			compatibilityVersion = "Xcode 8.0";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				Base,
 			);
 			mainGroup = A90B2B1C1A9B6170008EE819;
 			projectDirPath = "";
