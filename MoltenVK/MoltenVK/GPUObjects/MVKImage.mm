@@ -439,7 +439,7 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 }
 
 // Updates the contents of the underlying MTLTexture, corresponding to the
-//specified subresource definition, from the underlying memory buffer.
+// specified subresource definition, from the underlying memory buffer.
 void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
                                        VkDeviceSize offset, VkDeviceSize size) {
 
@@ -486,12 +486,21 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
     }
 #endif
 
-    [getMTLTexture() replaceRegion: mtlRegion
-                       mipmapLevel: imgSubRez.mipLevel
-                             slice: imgSubRez.arrayLayer
-                         withBytes: pImgBytes
-                       bytesPerRow: (imgType != VK_IMAGE_TYPE_1D ? imgLayout.rowPitch : 0)
-                     bytesPerImage: (imgType == VK_IMAGE_TYPE_3D ? imgLayout.depthPitch : 0)];
+	VkDeviceSize bytesPerRow = (imgType != VK_IMAGE_TYPE_1D) ? imgLayout.rowPitch : 0;
+	VkDeviceSize bytesPerImage = (imgType == VK_IMAGE_TYPE_3D) ? imgLayout.depthPitch : 0;
+
+	id<MTLTexture> mtlTex = getMTLTexture();
+	if (mvkMTLPixelFormatIsPVRTCFormat(mtlTex.pixelFormat)) {
+		bytesPerRow = 0;
+		bytesPerImage = 0;
+	}
+
+	[mtlTex replaceRegion: mtlRegion
+			  mipmapLevel: imgSubRez.mipLevel
+					slice: imgSubRez.arrayLayer
+				withBytes: pImgBytes
+			  bytesPerRow: bytesPerRow
+			bytesPerImage: bytesPerImage];
 }
 
 // Updates the contents of the underlying memory buffer from the contents of

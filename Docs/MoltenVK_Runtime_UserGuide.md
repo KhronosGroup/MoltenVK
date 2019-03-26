@@ -505,28 +505,11 @@ This section documents the known limitations in this version of **MoltenVK**.
   In order to use Vulkan layers such as the validation layers, use the Vulkan loader and layers from the
   [LunarG Vulkan SDK](https://vulkan.lunarg.com).
 
-The following *Vulkan 1.0* features have not been implemented in this version of **MoltenVK**:
+- `VkEvents` are not supported.
 
-- Tessellation and Geometry shader stages.
+- Application-controlled memory allocations using `VkAllocationCallbacks` are ignored.
 
-- Events:
-	- `vkCreateEvent()`
-	- `vkDestroyEvent()`
-	- `vkGetEventStatus()`
-	- `vkSetEvent()`
-	- `vkResetEvent()`
-	- `vkCmdSetEvent()`
-	- `vkCmdResetEvent()`
-	- `vkCmdWaitEvents()`
+- Pipeline statistics query pool using `VK_QUERY_TYPE_PIPELINE_STATISTICS` is not supported.
 
-- Application-controlled memory allocations:
-	- `VkAllocationCallbacks` are ignored
-	 
-- Sparse memory:
-	- `vkGetImageSparseMemoryRequirements()`
-	- `vkGetPhysicalDeviceSparseImageFormatProperties()`
-	- `vkQueueBindSparse()`
-	 
-- Pipeline statistics query pool:
-	- `vkCreateQueryPool(VK_QUERY_TYPE_PIPELINE_STATISTICS)`
-
+- Image content in `PVRTC` compressed formats must be loaded directly into a `VkImage` using 
+  host-visible memory mapping. Loading via a staging buffer will result in malformed image content. 

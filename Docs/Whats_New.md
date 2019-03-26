@@ -32,6 +32,7 @@ Released TBD
 - `fetchDependencies`: Stop on first error.
 - Fix a possible race condition around MVKMTLBufferAllocation.
 - Fix memory overrun if no vertex buffer found with same binding as a vertex attribute.
+- Fix PVRTC texture content loading via memory mapping.
 - Debug build mode includes `dSYM` file for each `dylib` file.
 - `Makefile` supports `install` target to install `MoltenVK.framework` into `/Library/Frameworks/`.
 - Update to latest SPIRV-Cross version:
