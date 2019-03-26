@@ -782,7 +782,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1010;
+				LastUpgradeCheck = 1020;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9B8EE091A98D796009C5A02 = {
@@ -796,10 +796,11 @@
 			};
 			buildConfigurationList = A9F55D28198BE6A7004EC31B /* Build configuration list for PBXProject "MoltenVK" */;
 			compatibilityVersion = "Xcode 8.0";
-			developmentRegion = English;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
 				en,
+				Base,
 			);
 			mainGroup = A9F55D24198BE6A7004EC31B;
 			productRefGroup = A9F55D2E198BE6A7004EC31B /* Products */;
