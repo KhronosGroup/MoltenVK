@@ -532,7 +532,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
         _computeResourcesState(this),
         _occlusionQueryState(this) {
 
-            _pDeviceFeatures = _device->_pFeatures;
+            _pDeviceFeatures = &_device->_enabledFeatures;
             _pDeviceMetalFeatures = _device->_pMetalFeatures;
             _pDeviceProperties = _device->_pProperties;
             _pDeviceMemoryProperties = _device->_pMemoryProperties;

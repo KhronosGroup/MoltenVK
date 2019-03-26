@@ -583,8 +583,18 @@ public:
 	/** Pointer to the MoltenVK configuration settings. */
 	const MVKConfiguration* _pMVKConfig;
 
-	/** Pointer to the feature set of the underlying physical device. */
-	const VkPhysicalDeviceFeatures* _pFeatures;
+	/** Device features available and enabled. */
+	const VkPhysicalDeviceFeatures _enabledFeatures;
+	const VkPhysicalDevice16BitStorageFeatures _enabledStorage16Features;
+	const VkPhysicalDevice8BitStorageFeaturesKHR _enabledStorage8Features;
+	const VkPhysicalDeviceFloat16Int8FeaturesKHR _enabledF16I8Features;
+	const VkPhysicalDeviceVariablePointerFeatures _enabledVarPtrFeatures;
+	const VkPhysicalDeviceHostQueryResetFeaturesEXT _enabledHostQryResetFeatures;
+	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;
+	const VkPhysicalDevicePortabilitySubsetFeaturesEXTX _enabledPortabilityFeatures;
+
+	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
+	const MVKExtensionList _enabledExtensions;
 
 	/** Pointer to the Metal-specific features of the underlying physical device. */
 	const MVKPhysicalDeviceMetalFeatures* _pMetalFeatures;
@@ -594,9 +604,6 @@ public:
 
 	/** Pointer to the memory properties of the underlying physical device. */
 	const VkPhysicalDeviceMemoryProperties* _pMemoryProperties;
-
-	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
-	const MVKExtensionList _enabledExtensions;
 
     /** Performance statistics. */
     MVKPerformanceStatistics _performanceStatistics;
@@ -629,6 +636,9 @@ protected:
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
+	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
+	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
+	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& shaderCompilationEvent);
 	uint64_t getPerformanceTimestampImpl();
 	void addActivityPerformanceImpl(MVKPerformanceTracker& shaderCompilationEvent,

@@ -2036,20 +2036,26 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
 
 #pragma mark Construction
 
-MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
+MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) :
+	_enabledFeatures(),
+	_enabledStorage16Features(),
+	_enabledStorage8Features(),
+	_enabledF16I8Features(),
+	_enabledVarPtrFeatures(),
+	_enabledHostQryResetFeatures(),
+	_enabledVtxAttrDivFeatures(),
+	_enabledPortabilityFeatures()
+{
 
 	initPerformanceTracking();
 	initPhysicalDevice(physicalDevice);
+	enableFeatures(pCreateInfo);
+	enableExtensions(pCreateInfo);
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
-
-	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
-	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
-												  pCreateInfo->ppEnabledExtensionNames,
-												  getInstance()->getDriverLayer()->getSupportedExtensions()));
 
 	initQueues(pCreateInfo);
 
@@ -2083,7 +2089,6 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice) {
 
 	_physicalDevice = physicalDevice;
 	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
-	_pFeatures = &_physicalDevice->_features;
 	_pMetalFeatures = _physicalDevice->getMetalFeatures();
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
@@ -2101,6 +2106,142 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice) {
 		}
 	}
 #endif
+}
+
+void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
+
+	// Start with all features disabled
+	memset((void*)&_enabledFeatures, 0, sizeof(_enabledFeatures));
+	memset((void*)&_enabledStorage16Features, 0, sizeof(_enabledStorage16Features));
+	memset((void*)&_enabledStorage8Features, 0, sizeof(_enabledStorage8Features));
+	memset((void*)&_enabledF16I8Features, 0, sizeof(_enabledF16I8Features));
+	memset((void*)&_enabledVarPtrFeatures, 0, sizeof(_enabledVarPtrFeatures));
+	memset((void*)&_enabledHostQryResetFeatures, 0, sizeof(_enabledHostQryResetFeatures));
+	memset((void*)&_enabledVtxAttrDivFeatures, 0, sizeof(_enabledVtxAttrDivFeatures));
+	memset((void*)&_enabledPortabilityFeatures, 0, sizeof(_enabledPortabilityFeatures));
+
+	// Fetch the available physical device features.
+	VkPhysicalDevicePortabilitySubsetFeaturesEXTX pdPortabilityFeatures;
+	pdPortabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX;
+	pdPortabilityFeatures.pNext = NULL;
+
+	VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT pdVtxAttrDivFeatures;
+	pdVtxAttrDivFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
+	pdVtxAttrDivFeatures.pNext = &pdPortabilityFeatures;
+
+	VkPhysicalDeviceHostQueryResetFeaturesEXT pdHostQryResetFeatures;
+	pdHostQryResetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
+	pdHostQryResetFeatures.pNext = &pdVtxAttrDivFeatures;
+
+	VkPhysicalDeviceVariablePointerFeatures pdVarPtrFeatures;
+	pdVarPtrFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES;
+	pdVarPtrFeatures.pNext = &pdHostQryResetFeatures;
+
+	VkPhysicalDeviceFloat16Int8FeaturesKHR pdF16I8Features;
+	pdF16I8Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR;
+	pdF16I8Features.pNext = &pdVarPtrFeatures;
+
+	VkPhysicalDevice8BitStorageFeaturesKHR pdStorage8Features;
+	pdStorage8Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR;
+	pdStorage8Features.pNext = &pdF16I8Features;
+
+	VkPhysicalDevice16BitStorageFeatures pdStorage16Features;
+	pdStorage16Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES;
+	pdStorage16Features.pNext = &pdStorage8Features;
+
+	VkPhysicalDeviceFeatures2 pdFeats2;
+	pdFeats2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	pdFeats2.pNext = &pdStorage16Features;
+
+	_physicalDevice->getFeatures(&pdFeats2);
+
+	//Enable device features based on requested and available features
+	if (pCreateInfo->pEnabledFeatures) {
+		enableFeatures(&_enabledFeatures.robustBufferAccess,
+					   &pCreateInfo->pEnabledFeatures->robustBufferAccess,
+					   &pdFeats2.features.robustBufferAccess, 55);
+	}
+
+	auto* next = (MVKVkAPIStructHeader*)pCreateInfo->pNext;
+	while (next) {
+		switch ((uint32_t)next->sType) {
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
+				auto* requestedFeatures = (VkPhysicalDeviceFeatures2*)next;
+				enableFeatures(&_enabledFeatures.robustBufferAccess,
+							   &requestedFeatures->features.robustBufferAccess,
+							   &pdFeats2.features.robustBufferAccess, 55);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
+				enableFeatures(&_enabledStorage16Features.storageBuffer16BitAccess,
+							   &requestedFeatures->storageBuffer16BitAccess,
+							   &pdStorage16Features.storageBuffer16BitAccess, 4);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
+				auto* requestedFeatures = (VkPhysicalDevice8BitStorageFeaturesKHR*)next;
+				enableFeatures(&_enabledStorage8Features.storageBuffer8BitAccess,
+							   &requestedFeatures->storageBuffer8BitAccess,
+							   &pdStorage8Features.storageBuffer8BitAccess, 3);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
+				auto* requestedFeatures = (VkPhysicalDeviceFloat16Int8FeaturesKHR*)next;
+				enableFeatures(&_enabledF16I8Features.shaderFloat16,
+							   &requestedFeatures->shaderFloat16,
+							   &pdF16I8Features.shaderFloat16, 2);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
+				enableFeatures(&_enabledVarPtrFeatures.variablePointersStorageBuffer,
+							   &requestedFeatures->variablePointersStorageBuffer,
+							   &pdVarPtrFeatures.variablePointersStorageBuffer, 2);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDeviceHostQueryResetFeaturesEXT*)next;
+				enableFeatures(&_enabledHostQryResetFeatures.hostQueryReset,
+							   &requestedFeatures->hostQueryReset,
+							   &pdHostQryResetFeatures.hostQueryReset, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
+				enableFeatures(&_enabledVtxAttrDivFeatures.vertexAttributeInstanceRateDivisor,
+							   &requestedFeatures->vertexAttributeInstanceRateDivisor,
+							   &pdVtxAttrDivFeatures.vertexAttributeInstanceRateDivisor, 2);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
+				auto* requestedFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
+				enableFeatures(&_enabledPortabilityFeatures.triangleFans,
+							   &requestedFeatures->triangleFans,
+							   &pdPortabilityFeatures.triangleFans, 5);
+				break;
+			}
+			default:
+				break;
+		}
+		next = (MVKVkAPIStructHeader*)next->pNext;
+	}
+}
+
+void MVKDevice::enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count) {
+	for (uint32_t i = 0; i < count; i++) {
+		((VkBool32*)pEnable)[i] = pRequested[i] && pAvailable[i];
+		if (pRequested[i] && !pAvailable[i]) {
+			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateDevice(): Requested feature is not available on this device."));
+		}
+	}
+}
+
+void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
+	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
+	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
+												  pCreateInfo->ppEnabledExtensionNames,
+												  getInstance()->getDriverLayer()->getSupportedExtensions()));
 }
 
 // Create the command queues

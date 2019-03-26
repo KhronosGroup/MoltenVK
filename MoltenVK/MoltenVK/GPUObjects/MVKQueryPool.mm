@@ -244,7 +244,7 @@ MVKOcclusionQueryPool::~MVKOcclusionQueryPool() {
 
 MVKPipelineStatisticsQueryPool::MVKPipelineStatisticsQueryPool(MVKDevice* device,
 															   const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
-	if ( !_device->_pFeatures->pipelineStatisticsQuery ) {
+	if ( !_device->_enabledFeatures.pipelineStatisticsQuery ) {
 		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateQueryPool: VK_QUERY_TYPE_PIPELINE_STATISTICS is not supported."));
 	}
 }

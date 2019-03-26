@@ -159,7 +159,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDevice(
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
 	MVKDevice* mvkDev = new MVKDevice(mvkPD, pCreateInfo);
 	*pDevice = mvkDev->getVkDevice();
-	return VK_SUCCESS;
+	return mvkDev->getConfigurationResult();
 }
 
 MVK_PUBLIC_SYMBOL void vkDestroyDevice(
@@ -288,12 +288,14 @@ MVK_PUBLIC_SYMBOL VkResult vkFlushMappedMemoryRanges(
     uint32_t                                    memRangeCount,
     const VkMappedMemoryRange*                  pMemRanges) {
 
+	VkResult rslt = VK_SUCCESS;
 	for (uint32_t i = 0; i < memRangeCount; i++) {
 		const VkMappedMemoryRange* pMem = &pMemRanges[i];
 		MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMem->memory;
-		mvkMem->flushToDevice(pMem->offset, pMem->size);
+		VkResult r = mvkMem->flushToDevice(pMem->offset, pMem->size);
+		if (rslt == VK_SUCCESS) { rslt = r; }
 	}
-	return VK_SUCCESS;
+	return rslt;
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkInvalidateMappedMemoryRanges(
@@ -301,12 +303,14 @@ MVK_PUBLIC_SYMBOL VkResult vkInvalidateMappedMemoryRanges(
     uint32_t                                    memRangeCount,
     const VkMappedMemoryRange*                  pMemRanges) {
 	
+	VkResult rslt = VK_SUCCESS;
 	for (uint32_t i = 0; i < memRangeCount; i++) {
 		const VkMappedMemoryRange* pMem = &pMemRanges[i];
 		MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMem->memory;
-		mvkMem->pullFromDevice(pMem->offset, pMem->size);
+		VkResult r = mvkMem->pullFromDevice(pMem->offset, pMem->size);
+		if (rslt == VK_SUCCESS) { rslt = r; }
 	}
-	return VK_SUCCESS;
+	return rslt;
 }
 
 MVK_PUBLIC_SYMBOL void vkGetDeviceMemoryCommitment(
@@ -366,7 +370,10 @@ MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements(
     uint32_t*                                   pNumRequirements,
     VkSparseImageMemoryRequirements*            pSparseMemoryRequirements) {
 	
-	MVKLogUnimplemented("vkGetImageSparseMemoryRequirements");
+	// Metal does not support sparse images.
+	// Vulkan spec: "If the image was not created with VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT then
+	// pSparseMemoryRequirementCount will be set to zero and pSparseMemoryRequirements will not be written to.".
+
 	*pNumRequirements = 0;
 }
 
@@ -380,7 +387,10 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties(
 	uint32_t*                                   pPropertyCount,
 	VkSparseImageFormatProperties*              pProperties) {
 
-	MVKLogUnimplemented("vkGetPhysicalDeviceSparseImageFormatProperties");
+	// Metal does not support sparse images.
+	// Vulkan spec: "If VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT is not supported for the given arguments,
+	// pPropertyCount will be set to zero upon return, and no data will be written to pProperties.".
+
 	*pPropertyCount = 0;
 }
 
@@ -390,7 +400,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueueBindSparse(
 	const VkBindSparseInfo*                     pBindInfo,
 	VkFence                                     fence) {
 
-	return MVKLogUnimplemented("vkQueueBindSparse");
+	return mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkQueueBindSparse(): Sparse binding is not supported.");
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkCreateFence(
@@ -1569,7 +1579,10 @@ MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements2KHR(
     uint32_t*                                       pSparseMemoryRequirementCount,
     VkSparseImageMemoryRequirements2KHR*            pSparseMemoryRequirements) {
 
-    MVKLogUnimplemented("vkGetImageSparseMemoryRequirements2KHR");
+	// Metal does not support sparse images.
+	// Vulkan spec: "If the image was not created with VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT then
+	// pSparseMemoryRequirementCount will be set to zero and pSparseMemoryRequirements will not be written to.".
+
     *pSparseMemoryRequirementCount = 0;
 }
 
@@ -1634,7 +1647,10 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
     uint32_t*                                   pPropertyCount,
     VkSparseImageFormatProperties2KHR*          pProperties) {
 
-    MVKLogUnimplemented("vkGetPhysicalDeviceSparseImageFormatProperties");
+	// Metal does not support sparse images.
+	// Vulkan spec: "If VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT is not supported for the given arguments,
+	// pPropertyCount will be set to zero upon return, and no data will be written to pProperties.".
+
     *pPropertyCount = 0;
 }
 
