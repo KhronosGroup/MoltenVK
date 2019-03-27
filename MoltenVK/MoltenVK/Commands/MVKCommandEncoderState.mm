@@ -147,7 +147,10 @@ void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIn
 void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
     if (_pushConstants.empty() ) { return; }
 
-    bool forTessellation = ((MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline())->isTessellationPipeline();
+    bool forTessellation = false;
+    if (_cmdEncoder->_graphicsPipelineState.getPipeline())
+        forTessellation = ((MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline())->isTessellationPipeline();
+
     switch (_shaderStage) {
         case VK_SHADER_STAGE_VERTEX_BIT:
             if (stage == (forTessellation ? kMVKGraphicsStageVertex : kMVKGraphicsStageRasterization)) {
