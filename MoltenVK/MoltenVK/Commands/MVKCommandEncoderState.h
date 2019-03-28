@@ -202,6 +202,7 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
+	bool isTessellating();
 
     MVKVectorInline<char, 128> _pushConstants;
     VkShaderStageFlagBits _shaderStage;

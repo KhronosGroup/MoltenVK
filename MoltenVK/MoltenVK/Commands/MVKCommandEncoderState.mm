@@ -147,10 +147,9 @@ void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIn
 void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
     if (_pushConstants.empty() ) { return; }
 
-    bool forTessellation = ((MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline())->isTessellationPipeline();
     switch (_shaderStage) {
         case VK_SHADER_STAGE_VERTEX_BIT:
-            if (stage == (forTessellation ? kMVKGraphicsStageVertex : kMVKGraphicsStageRasterization)) {
+            if (stage == (isTessellating() ? kMVKGraphicsStageVertex : kMVKGraphicsStageRasterization)) {
                 _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
                                             _pushConstants.data(),
                                             _pushConstants.size(),
@@ -166,7 +165,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
             }
             break;
         case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
-            if (forTessellation && stage == kMVKGraphicsStageRasterization) {
+            if (isTessellating() && stage == kMVKGraphicsStageRasterization) {
                 _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
                                             _pushConstants.data(),
                                             _pushConstants.size(),
@@ -191,6 +190,11 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
             MVKAssert(false, "Unsupported shader stage: %d", _shaderStage);
             break;
     }
+}
+
+bool MVKPushConstantsCommandEncoderState::isTessellating() {
+	MVKGraphicsPipeline* gp = (MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline();
+	return gp ? gp->isTessellationPipeline() : false;
 }
 
 void MVKPushConstantsCommandEncoderState::resetImpl() {

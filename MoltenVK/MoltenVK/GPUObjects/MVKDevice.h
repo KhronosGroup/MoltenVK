@@ -22,6 +22,7 @@
 #include "MVKBaseObject.h"
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
+#include "mvk_datatypes.h"
 #include "vk_mvk_moltenvk.h"
 #include <vector>
 #include <string>
@@ -659,7 +660,10 @@ protected:
 #pragma mark -
 #pragma mark MVKBaseDeviceObject
 
-/** Represents an object that is spawned from a Vulkan device, and tracks that device. */
+/**
+ * Represents an object that is spawned from a Vulkan device, and tracks that device.
+ * Implementation supports an instance where the device is null.
+ */
 class MVKBaseDeviceObject : public MVKConfigurableObject {
 
 public:
@@ -668,7 +672,7 @@ public:
 	inline MVKDevice* getDevice() { return _device; }
 
 	/** Returns the underlying Metal device. */
-	inline id<MTLDevice> getMTLDevice() { return _device->getMTLDevice(); }
+	inline id<MTLDevice> getMTLDevice() { return _device ? _device->getMTLDevice() : nil; }
 
 	/**
 	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
@@ -679,7 +683,7 @@ public:
 	 * are managed for each platform device.
 	 */
     inline MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
-        return _device->getMTLPixelFormatFromVkFormat(vkFormat);
+		return _device ? _device->getMTLPixelFormatFromVkFormat(vkFormat) : mvkMTLPixelFormatFromVkFormat(vkFormat);
     }
 
 	/** Constructs an instance for the specified device. */
@@ -693,7 +697,10 @@ protected:
 #pragma mark -
 #pragma mark MVKDispatchableDeviceObject
 
-/** Represents a dispatchable object that is spawned from a Vulkan device, and tracks that device. */
+/**
+ * Represents a dispatchable object that is spawned from a Vulkan device, and tracks that device.
+ * Implementation supports an instance where the device is null.
+ */
 class MVKDispatchableDeviceObject : public MVKDispatchableObject {
 
 public:
@@ -702,7 +709,7 @@ public:
     inline MVKDevice* getDevice() { return _device; }
 
     /** Returns the underlying Metal device. */
-    inline id<MTLDevice> getMTLDevice() { return _device->getMTLDevice(); }
+	inline id<MTLDevice> getMTLDevice() { return _device ? _device->getMTLDevice() : nil; }
 
     /** Constructs an instance for the specified device. */
     MVKDispatchableDeviceObject(MVKDevice* device) : _device(device) {}
