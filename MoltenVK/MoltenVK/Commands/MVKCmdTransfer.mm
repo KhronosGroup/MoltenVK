@@ -1092,8 +1092,10 @@ void MVKCmdFillBuffer::setContent(VkBuffer dstBuffer,
 void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLBuffer> dstMTLBuff = _dstBuffer->getMTLBuffer();
     VkDeviceSize dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset();
-    VkDeviceSize byteCnt = (_size == VK_WHOLE_SIZE) ? (_dstBuffer->getByteCount() - (dstMTLBuffOffset + _dstOffset)) : _size;
-	VkDeviceSize wordCnt = byteCnt >> 2;
+    VkDeviceSize byteCnt = (_size == VK_WHOLE_SIZE) ? (_dstBuffer->getByteCount() - _dstOffset) : _size;
+
+    // Round up in case of VK_WHOLE_SIZE on a buffer size which is not aligned to 4 bytes.
+    VkDeviceSize wordCnt = (byteCnt + 3) >> 2;
 
 	MVKAssert(mvkFits<uint32_t>(wordCnt),
 			  "Buffer fill size must fit into a 32-bit unsigned integer.");
