@@ -22,6 +22,7 @@
 #include "FileSupport.h"
 #include "spirv_msl.hpp"
 #include "SPIRVSupport.h"
+#include <fstream>
 
 using namespace mvk;
 using namespace std;
@@ -200,6 +201,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 													bool shouldLogSPIRV,
 													bool shouldLogMSL,
                                                     bool shouldLogGLSL) {
+
+	// Uncomment to write SPIR-V to file as a debugging aid
+//	ofstream spvFile("spirv.spv", ios::binary);
+//	spvFile.write((char*)_spirv.data(), _spirv.size() << 2);
+//	spvFile.close();
+
 	_wasConverted = true;
 	_resultLog.clear();
 	_msl.clear();

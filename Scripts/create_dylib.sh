@@ -36,7 +36,7 @@ ${MVK_SAN} \
 -force_load "${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a"
 
 if test "$CONFIGURATION" = Debug; then
-	mkdir -p "${DWARF_DSYM_FOLDER_PATH}/dynamic"
+	mkdir -p "${BUILT_PRODUCTS_DIR}/dynamic"
 	dsymutil "${BUILT_PRODUCTS_DIR}/dynamic/${MVK_DYLIB_NAME}" \
-	-o "${DWARF_DSYM_FOLDER_PATH}/dynamic/${MVK_DYLIB_NAME}.dSYM"
+	-o "${BUILT_PRODUCTS_DIR}/dynamic/${MVK_DYLIB_NAME}.dSYM"
 fi
