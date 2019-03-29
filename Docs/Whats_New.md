@@ -30,17 +30,21 @@ Released TBD
 - MoltenVKShaderConverter tool support cs & csh for compute shader file extensions.
 - MoltenVKShaderConverter tool validates converted MSL with a test compilation.
 - `fetchDependencies`: Stop on first error.
-- Fix a possible race condition around MVKMTLBufferAllocation.
+- Fix a possible race condition around `MVKMTLBufferAllocation`.
 - Fix memory overrun if no vertex buffer found with same binding as a vertex attribute.
 - Fix PVRTC texture content loading via memory mapping.
 - Debug build mode includes `dSYM` file for each `dylib` file.
-- `Makefile` supports `install` target to install `MoltenVK.framework` into `/Library/Frameworks/`.
+- Explicitly build dSYM files in `BUILT_PRODUCTS_DIR` to avoid conflict between 
+  macOS and iOS build locations.
+- `Makefile` supports `install` target to install `MoltenVK.framework` 
+  into `/Library/Frameworks/`.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for Metal 2 indirect argument buffers.
 	- MSL: Add support for tessellation control & evaluation shaders.
 	- MSL: Force unnamed array builtin attributes to have a name.
 	- MSL: Set location of builtins based on client input.
 	- MSL: Ignore duplicate builtin vertex attributes.
+	- MSL: Fix crash where variable storage buffer pointers are passed down.
 	- Add stable C API and ABI.
 	- Fix case where a struct is loaded which contains a row-major matrix.
 	- Ensure locale handling is safe for multi-threading.
@@ -156,7 +160,8 @@ MoltenVK 1.0.30
 Released 2018/12/31
 
 - Allow 2 or 3 swapchain images to support both double and triple buffering.
-- Force display to switch to GPU selected by vkCreateDevice() to avoid system view compositor having to copy from that GPU to display GPU.
+- Force display to switch to GPU selected by vkCreateDevice() to avoid system 
+  view compositor having to copy from that GPU to display GPU.
 - Use inline buffer for pipeline auxiliary buffer.
 - vkCmdCopyImage: Cast source image to the destination format.
 - Result of vkGetPhysicalDeviceFormatProperties2KHR match vkGetPhysicalDeviceFormatProperties.

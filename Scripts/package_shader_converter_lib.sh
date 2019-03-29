@@ -14,7 +14,7 @@ cp -a "${MVK_BUILT_PROD_PATH}/lib${MVK_PROD_NAME}.a" "${MVK_PKG_PROD_PATH_OS}/st
 mkdir -p "${MVK_PKG_PROD_PATH_OS}/dynamic"
 cp -a "${MVK_BUILT_PROD_PATH}/dynamic/lib${MVK_PROD_NAME}.dylib" "${MVK_PKG_PROD_PATH_OS}/dynamic"
 if test "$CONFIGURATION" = Debug; then
-    cp -a "${DWARF_DSYM_FOLDER_PATH}/dynamic/lib${MVK_PROD_NAME}.dylib.dSYM" "${MVK_PKG_PROD_PATH_OS}/dynamic"
+    cp -a "${MVK_BUILT_PROD_PATH}/dynamic/lib${MVK_PROD_NAME}.dylib.dSYM" "${MVK_PKG_PROD_PATH_OS}/dynamic"
 fi
 
 mkdir -p "${MVK_PKG_PROD_PATH_OS}/framework"
