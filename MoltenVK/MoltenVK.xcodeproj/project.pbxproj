@@ -1054,6 +1054,7 @@
 			buildSettings = {
 				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
+				GCC_PREPROCESSOR_DEFINITIONS = "SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1066,6 +1067,7 @@
 			buildSettings = {
 				ARCHS = arm64;
 				BITCODE_GENERATION_MODE = bitcode;
+				GCC_PREPROCESSOR_DEFINITIONS = "SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1076,6 +1078,7 @@
 		A9CBEDFF1B6299D800E45FDC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = "SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SDKROOT = macosx;
 				VALID_ARCHS = x86_64;
@@ -1085,6 +1088,7 @@
 		A9CBEE001B6299D800E45FDC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = "SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SDKROOT = macosx;
 				VALID_ARCHS = x86_64;
