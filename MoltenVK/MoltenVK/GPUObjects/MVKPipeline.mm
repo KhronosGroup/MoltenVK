@@ -456,16 +456,16 @@ static uint32_t sizeOfOutput(const SPIRVShaderOutput& output) {
 	// Round up to 4 elements for 3-vectors, since that reflects how Metal lays them out.
 	if (vecWidth == 3) { vecWidth = 4; }
 	switch (output.baseType) {
-		case spirv_cross::SPIRType::SByte:
-		case spirv_cross::SPIRType::UByte:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:
 			return 1 * vecWidth;
-		case spirv_cross::SPIRType::Short:
-		case spirv_cross::SPIRType::UShort:
-		case spirv_cross::SPIRType::Half:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Short:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UShort:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Half:
 			return 2 * vecWidth;
-		case spirv_cross::SPIRType::Int:
-		case spirv_cross::SPIRType::UInt:
-		case spirv_cross::SPIRType::Float:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Int:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Float:
 		default:
 			return 4 * vecWidth;
 	}
@@ -473,7 +473,7 @@ static uint32_t sizeOfOutput(const SPIRVShaderOutput& output) {
 
 static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 	switch (output.baseType) {
-		case spirv_cross::SPIRType::SByte:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R8_SINT;
 				case 2: return VK_FORMAT_R8G8_SINT;
@@ -481,7 +481,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R8G8B8A8_SINT;
 			}
 			break;
-		case spirv_cross::SPIRType::UByte:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R8_UINT;
 				case 2: return VK_FORMAT_R8G8_UINT;
@@ -489,7 +489,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R8G8B8A8_UINT;
 			}
 			break;
-		case spirv_cross::SPIRType::Short:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Short:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R16_SINT;
 				case 2: return VK_FORMAT_R16G16_SINT;
@@ -497,7 +497,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R16G16B16A16_SINT;
 			}
 			break;
-		case spirv_cross::SPIRType::UShort:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UShort:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R16_UINT;
 				case 2: return VK_FORMAT_R16G16_UINT;
@@ -505,7 +505,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R16G16B16A16_UINT;
 			}
 			break;
-		case spirv_cross::SPIRType::Half:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Half:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R16_SFLOAT;
 				case 2: return VK_FORMAT_R16G16_SFLOAT;
@@ -513,7 +513,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R16G16B16A16_SFLOAT;
 			}
 			break;
-		case spirv_cross::SPIRType::Int:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Int:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R32_SINT;
 				case 2: return VK_FORMAT_R32G32_SINT;
@@ -521,7 +521,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R32G32B32A32_SINT;
 			}
 			break;
-		case spirv_cross::SPIRType::UInt:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R32_UINT;
 				case 2: return VK_FORMAT_R32G32_UINT;
@@ -529,7 +529,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R32G32B32A32_UINT;
 			}
 			break;
-		case spirv_cross::SPIRType::Float:
+		case SPIRV_CROSS_NAMESPACE::SPIRType::Float:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R32_SFLOAT;
 				case 2: return VK_FORMAT_R32G32_SFLOAT;

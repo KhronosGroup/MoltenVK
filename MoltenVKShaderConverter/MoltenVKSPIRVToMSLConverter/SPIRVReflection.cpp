@@ -32,8 +32,8 @@ bool getTessReflectionData(const std::vector<uint32_t>& tesc, const std::string&
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
 #endif
-		spirv_cross::CompilerReflection tescReflect(tesc);
-		spirv_cross::CompilerReflection teseReflect(tese);
+		SPIRV_CROSS_NAMESPACE::CompilerReflection tescReflect(tesc);
+		SPIRV_CROSS_NAMESPACE::CompilerReflection teseReflect(tese);
 
 		if (!tescEntryName.empty()) {
 			tescReflect.set_entry_point(tescEntryName, spv::ExecutionModelTessellationControl);
@@ -45,8 +45,8 @@ bool getTessReflectionData(const std::vector<uint32_t>& tesc, const std::string&
 		tescReflect.compile();
 		teseReflect.compile();
 
-		const spirv_cross::Bitset& tescModes = tescReflect.get_execution_mode_bitset();
-		const spirv_cross::Bitset& teseModes = teseReflect.get_execution_mode_bitset();
+		const SPIRV_CROSS_NAMESPACE::Bitset& tescModes = tescReflect.get_execution_mode_bitset();
+		const SPIRV_CROSS_NAMESPACE::Bitset& teseModes = teseReflect.get_execution_mode_bitset();
 
 		// Extract the parameters from the shaders.
 		if (tescModes.get(spv::ExecutionModeTriangles)) {
@@ -110,7 +110,7 @@ bool getTessReflectionData(const std::vector<uint32_t>& tesc, const std::string&
 		return true;
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
-	} catch (spirv_cross::CompilerError& ex) {
+	} catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
 		errorLog = ex.what();
 		return false;
 	}
@@ -122,9 +122,9 @@ bool getShaderOutputs(const std::vector<uint32_t>& spirv, spv::ExecutionModel mo
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
 #endif
-		spirv_cross::Parser parser(spirv);
+		SPIRV_CROSS_NAMESPACE::Parser parser(spirv);
 		parser.parse();
-		spirv_cross::CompilerReflection reflect(parser.get_parsed_ir());
+		SPIRV_CROSS_NAMESPACE::CompilerReflection reflect(parser.get_parsed_ir());
 		if (!entryName.empty()) {
 			reflect.set_entry_point(entryName, model);
 		}
@@ -133,7 +133,7 @@ bool getShaderOutputs(const std::vector<uint32_t>& spirv, spv::ExecutionModel mo
 		outputs.clear();
 
 		auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
-		parser.get_parsed_ir().for_each_typed_id<spirv_cross::SPIRVariable>([&reflect, &outputs, model, addSat](uint32_t varID, const spirv_cross::SPIRVariable& var) {
+		parser.get_parsed_ir().for_each_typed_id<SPIRV_CROSS_NAMESPACE::SPIRVariable>([&reflect, &outputs, model, addSat](uint32_t varID, const SPIRV_CROSS_NAMESPACE::SPIRVariable& var) {
 			if (var.storage != spv::StorageClassOutput) { return; }
 
 			const auto* type = &reflect.get_type(reflect.get_type_from_variable(varID).parent_type);
@@ -149,7 +149,7 @@ bool getShaderOutputs(const std::vector<uint32_t>& spirv, spv::ExecutionModel mo
 			if (model == spv::ExecutionModelTessellationControl && !patch)
 				type = &reflect.get_type(type->parent_type);
 
-			if (type->basetype == spirv_cross::SPIRType::Struct) {
+			if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
 				for (uint32_t i = 0; i < type->member_types.size(); i++) {
 					// Each member may have a location decoration. If not, each member
 					// gets an incrementing location.
@@ -161,7 +161,7 @@ bool getShaderOutputs(const std::vector<uint32_t>& spirv, spv::ExecutionModel mo
 					if (reflect.has_member_decoration(type->self, i, spv::DecorationBuiltIn)) {
 						biType = (spv::BuiltIn)reflect.get_member_decoration(type->self, i, spv::DecorationBuiltIn);
 					}
-					const spirv_cross::SPIRType& memberType = reflect.get_type(type->member_types[i]);
+					const SPIRV_CROSS_NAMESPACE::SPIRType& memberType = reflect.get_type(type->member_types[i]);
 					if (memberType.columns > 1) {
 						for (uint32_t i = 0; i < memberType.columns; i++) {
 							outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), patch, biType});
@@ -198,7 +198,7 @@ bool getShaderOutputs(const std::vector<uint32_t>& spirv, spv::ExecutionModel mo
 		}
 		return true;
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
-	} catch (spirv_cross::CompilerError& ex) {
+	} catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
 		errorLog = ex.what();
 		return false;
 	}

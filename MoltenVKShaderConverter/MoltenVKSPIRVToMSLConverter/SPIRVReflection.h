@@ -53,7 +53,7 @@ namespace mvk {
 	/** Reflection data on a single output of a shader. This contains the information needed to construct a stage-input descriptor for the next stage of a pipeline. */
 	struct SPIRVShaderOutput {
 		/** The type of the output. */
-		spirv_cross::SPIRType::BaseType baseType;
+		SPIRV_CROSS_NAMESPACE::SPIRType::BaseType baseType;
 
 		/** The vector size, if a vector. */
 		uint32_t vecWidth;
