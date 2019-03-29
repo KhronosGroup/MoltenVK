@@ -116,7 +116,7 @@ bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 
 #pragma mark Construction
 
-MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) : MVKResource(device) {
+MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) : MVKResource(device), _usage(pCreateInfo->usage) {
     _byteAlignment = _device->_pMetalFeatures->mtlBufferAlignment;
     _byteCount = pCreateInfo->size;
 }
@@ -142,6 +142,12 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
                                                                                               width: _textureSize.width
                                                                                              height: _textureSize.height
                                                                                           mipmapped: NO];
+        mtlTexDesc.storageMode = _buffer->getMTLBuffer().storageMode;
+        mtlTexDesc.cpuCacheMode = _buffer->getMTLBuffer().cpuCacheMode;
+        mtlTexDesc.usage = MTLTextureUsageShaderRead;
+        if ( mvkIsAnyFlagEnabled(_buffer->getUsage(), VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) ) {
+            mtlTexDesc.usage |= MTLTextureUsageShaderWrite;
+        }
 		_mtlTexture = [_buffer->getMTLBuffer() newTextureWithDescriptor: mtlTexDesc
 																 offset: _mtlBufferOffset
 															bytesPerRow: _mtlBytesPerRow];

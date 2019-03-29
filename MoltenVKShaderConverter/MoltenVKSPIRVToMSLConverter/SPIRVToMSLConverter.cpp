@@ -183,7 +183,7 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignWith(const SPIRVToMSLCon
 #pragma mark SPIRVToMSLConverter
 
 // Populates the entry point with info extracted from the SPRI-V compiler.
-void populateEntryPoint(SPIRVEntryPoint& entryPoint, spirv_cross::Compiler* pCompiler, SPIRVToMSLConverterOptions& options);
+void populateEntryPoint(SPIRVEntryPoint& entryPoint, SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConverterOptions& options);
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const vector<uint32_t>& spirv) { _spirv = spirv; }
 
@@ -213,12 +213,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 
 	if (shouldLogSPIRV) { logSPIRV("Converting"); }
 
-	spirv_cross::CompilerMSL* pMSLCompiler = nullptr;
+	SPIRV_CROSS_NAMESPACE::CompilerMSL* pMSLCompiler = nullptr;
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
 #endif
-		pMSLCompiler = new spirv_cross::CompilerMSL(_spirv);
+		pMSLCompiler = new SPIRV_CROSS_NAMESPACE::CompilerMSL(_spirv);
 
 		if (context.options.hasEntryPoint()) {
 			pMSLCompiler->set_entry_point(context.options.entryPointName, context.options.entryPointStage);
@@ -240,10 +240,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		auto mslOpts = pMSLCompiler->get_msl_options();
 
 #if MVK_MACOS
-		mslOpts.platform = spirv_cross::CompilerMSL::Options::macOS;
+		mslOpts.platform = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::macOS;
 #endif
 #if MVK_IOS
-		mslOpts.platform = spirv_cross::CompilerMSL::Options::iOS;
+		mslOpts.platform = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::iOS;
 #endif
 
 		mslOpts.msl_version = context.options.mslVersion;
@@ -268,7 +268,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 
 		// Add vertex attributes
 		if (context.stageSupportsVertexAttributes()) {
-			spirv_cross::MSLVertexAttr va;
+			SPIRV_CROSS_NAMESPACE::MSLVertexAttr va;
 			for (auto& ctxVA : context.vertexAttributes) {
 				va.location = ctxVA.location;
 				va.msl_buffer = ctxVA.mslBuffer;
@@ -277,13 +277,13 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 				va.per_instance = ctxVA.isPerInstance;
 				switch (ctxVA.format) {
 					case MSLVertexFormat::Other:
-						va.format = spirv_cross::MSL_VERTEX_FORMAT_OTHER;
+						va.format = SPIRV_CROSS_NAMESPACE::MSL_VERTEX_FORMAT_OTHER;
 						break;
 					case MSLVertexFormat::UInt8:
-						va.format = spirv_cross::MSL_VERTEX_FORMAT_UINT8;
+						va.format = SPIRV_CROSS_NAMESPACE::MSL_VERTEX_FORMAT_UINT8;
 						break;
 					case MSLVertexFormat::UInt16:
-						va.format = spirv_cross::MSL_VERTEX_FORMAT_UINT16;
+						va.format = SPIRV_CROSS_NAMESPACE::MSL_VERTEX_FORMAT_UINT16;
 						break;
 				}
 				pMSLCompiler->add_msl_vertex_attribute(va);
@@ -291,7 +291,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		}
 
 		// Add resource bindings
-		spirv_cross::MSLResourceBinding rb;
+		SPIRV_CROSS_NAMESPACE::MSLResourceBinding rb;
 		for (auto& ctxRB : context.resourceBindings) {
 			rb.desc_set = ctxRB.descriptorSet;
 			rb.binding = ctxRB.binding;
@@ -307,7 +307,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
         if (shouldLogMSL) { logSource(_msl, "MSL", "Converted"); }
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
-	} catch (spirv_cross::CompilerError& ex) {
+	} catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
 		string errMsg("MSL conversion error: ");
 		errMsg += ex.what();
 		logError(errMsg.data());
@@ -340,12 +340,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 
     // To check GLSL conversion
     if (shouldLogGLSL) {
-		spirv_cross::CompilerGLSL* pGLSLCompiler = nullptr;
+		SPIRV_CROSS_NAMESPACE::CompilerGLSL* pGLSLCompiler = nullptr;
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 		try {
 #endif
-			pGLSLCompiler = new spirv_cross::CompilerGLSL(_spirv);
+			pGLSLCompiler = new SPIRV_CROSS_NAMESPACE::CompilerGLSL(_spirv);
 			auto options = pGLSLCompiler->get_common_options();
 			options.vulkan_semantics = true;
 			options.separate_shader_objects = true;
@@ -353,7 +353,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 			string glsl = pGLSLCompiler->compile();
             logSource(glsl, "GLSL", "Estimated original");
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
-        } catch (spirv_cross::CompilerError& ex) {
+        } catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
             string errMsg("Original GLSL extraction error: ");
             errMsg += ex.what();
             logMsg(errMsg.data());
@@ -442,17 +442,17 @@ void SPIRVToMSLConverter::logSource(string& src, const char* srcLang, const char
 #pragma mark Support functions
 
 // Populate a workgroup size dimension.
-void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, spirv_cross::SpecializationConstant& spvSpecConst) {
+void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst) {
 	wgDim.size = max(size, 1u);
 	wgDim.isSpecialized = (spvSpecConst.id != 0);
 	wgDim.specializationID = spvSpecConst.constant_id;
 }
 
-void populateEntryPoint(SPIRVEntryPoint& entryPoint, spirv_cross::Compiler* pCompiler, SPIRVToMSLConverterOptions& options) {
+void populateEntryPoint(SPIRVEntryPoint& entryPoint, SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConverterOptions& options) {
 
 	if ( !pCompiler ) { return; }
 
-	spirv_cross::SPIREntryPoint spvEP;
+	SPIRV_CROSS_NAMESPACE::SPIREntryPoint spvEP;
 	if (options.hasEntryPoint()) {
 		spvEP = pCompiler->get_entry_point(options.entryPointName, options.entryPointStage);
 	} else {
@@ -463,7 +463,7 @@ void populateEntryPoint(SPIRVEntryPoint& entryPoint, spirv_cross::Compiler* pCom
 		}
 	}
 
-	spirv_cross::SpecializationConstant widthSC, heightSC, depthSC;
+	SPIRV_CROSS_NAMESPACE::SpecializationConstant widthSC, heightSC, depthSC;
 	pCompiler->get_work_group_size_specialization_constants(widthSC, heightSC, depthSC);
 
 	entryPoint.mtlFunctionName = spvEP.name;

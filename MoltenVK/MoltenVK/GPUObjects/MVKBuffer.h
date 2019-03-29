@@ -56,6 +56,9 @@ public:
                                   MVKCommandEncoder* cmdEncoder,
                                   MVKCommandUse cmdUse);
 
+    /** Returns the intended usage of this buffer. */
+    VkBufferUsageFlags getUsage() const { return _usage; }
+
 
 #pragma mark Metal
 
@@ -78,6 +81,8 @@ protected:
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   VkBufferMemoryBarrier* pBufferMemoryBarrier);
+
+	VkBufferUsageFlags _usage;
 };
 
 
