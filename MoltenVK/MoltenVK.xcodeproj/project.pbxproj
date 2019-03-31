@@ -9,6 +9,10 @@
 /* Begin PBXBuildFile section */
 		45003E73214AD4E500E989CB /* MVKExtensions.def in Headers */ = {isa = PBXBuildFile; fileRef = 45003E6F214AD4C900E989CB /* MVKExtensions.def */; };
 		45003E74214AD4E600E989CB /* MVKExtensions.def in Headers */ = {isa = PBXBuildFile; fileRef = 45003E6F214AD4C900E989CB /* MVKExtensions.def */; };
+		4553AEFB2251617100E8EBCD /* MVKBlockObserver.m in Sources */ = {isa = PBXBuildFile; fileRef = 4553AEF62251617100E8EBCD /* MVKBlockObserver.m */; };
+		4553AEFC2251617100E8EBCD /* MVKBlockObserver.m in Sources */ = {isa = PBXBuildFile; fileRef = 4553AEF62251617100E8EBCD /* MVKBlockObserver.m */; };
+		4553AEFD2251617100E8EBCD /* MVKBlockObserver.h in Headers */ = {isa = PBXBuildFile; fileRef = 4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */; };
+		4553AEFE2251617100E8EBCD /* MVKBlockObserver.h in Headers */ = {isa = PBXBuildFile; fileRef = 4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */; };
 		45557A5221C9EFF3008868BD /* MVKCodec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 45557A4D21C9EFF3008868BD /* MVKCodec.cpp */; };
 		45557A5321C9EFF3008868BD /* MVKCodec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 45557A4D21C9EFF3008868BD /* MVKCodec.cpp */; };
 		45557A5421C9EFF3008868BD /* MVKCodec.h in Headers */ = {isa = PBXBuildFile; fileRef = 45557A5121C9EFF3008868BD /* MVKCodec.h */; };
@@ -271,6 +275,8 @@
 
 /* Begin PBXFileReference section */
 		45003E6F214AD4C900E989CB /* MVKExtensions.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKExtensions.def; sourceTree = "<group>"; };
+		4553AEF62251617100E8EBCD /* MVKBlockObserver.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MVKBlockObserver.m; sourceTree = "<group>"; };
+		4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKBlockObserver.h; sourceTree = "<group>"; };
 		45557A4D21C9EFF3008868BD /* MVKCodec.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKCodec.cpp; sourceTree = "<group>"; };
 		45557A5121C9EFF3008868BD /* MVKCodec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCodec.h; sourceTree = "<group>"; };
 		45557A5721CD83C3008868BD /* MVKDXTnCodec.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKDXTnCodec.def; sourceTree = "<group>"; };
@@ -508,6 +514,8 @@
 		A98149401FB6A3F7005F00B4 /* Utility */ = {
 			isa = PBXGroup;
 			children = (
+				4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */,
+				4553AEF62251617100E8EBCD /* MVKBlockObserver.m */,
 				45557A5721CD83C3008868BD /* MVKDXTnCodec.def */,
 				45557A4D21C9EFF3008868BD /* MVKCodec.cpp */,
 				45557A5121C9EFF3008868BD /* MVKCodec.h */,
@@ -654,6 +662,7 @@
 				A94FB7BC1C7DFB4800632CA3 /* MVKCmdPipeline.h in Headers */,
 				A94FB7F81C7DFB4800632CA3 /* MVKPipeline.h in Headers */,
 				A94FB7F01C7DFB4800632CA3 /* MVKImage.h in Headers */,
+				4553AEFD2251617100E8EBCD /* MVKBlockObserver.h in Headers */,
 				A94FB7B81C7DFB4800632CA3 /* MVKCmdTransfer.h in Headers */,
 				A94FB7C81C7DFB4800632CA3 /* MVKCmdDraw.h in Headers */,
 				A94FB7D01C7DFB4800632CA3 /* MVKCommandBuffer.h in Headers */,
@@ -718,6 +727,7 @@
 				A94FB7BD1C7DFB4800632CA3 /* MVKCmdPipeline.h in Headers */,
 				A94FB7F91C7DFB4800632CA3 /* MVKPipeline.h in Headers */,
 				A94FB7F11C7DFB4800632CA3 /* MVKImage.h in Headers */,
+				4553AEFE2251617100E8EBCD /* MVKBlockObserver.h in Headers */,
 				A94FB7B91C7DFB4800632CA3 /* MVKCmdTransfer.h in Headers */,
 				A94FB7C91C7DFB4800632CA3 /* MVKCmdDraw.h in Headers */,
 				A94FB7D11C7DFB4800632CA3 /* MVKCommandBuffer.h in Headers */,
@@ -929,6 +939,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4553AEFB2251617100E8EBCD /* MVKBlockObserver.m in Sources */,
 				A9E53DFF21064F84002781DD /* MTLRenderPipelineDescriptor+MoltenVK.m in Sources */,
 				A94FB80A1C7DFB4800632CA3 /* MVKResource.mm in Sources */,
 				A94FB7E21C7DFB4800632CA3 /* MVKDescriptorSet.mm in Sources */,
@@ -983,6 +994,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4553AEFC2251617100E8EBCD /* MVKBlockObserver.m in Sources */,
 				A9E53E0021064F84002781DD /* MTLRenderPipelineDescriptor+MoltenVK.m in Sources */,
 				A94FB80B1C7DFB4800632CA3 /* MVKResource.mm in Sources */,
 				A94FB7E31C7DFB4800632CA3 /* MVKDescriptorSet.mm in Sources */,

@@ -27,6 +27,7 @@
 #include "mvk_datatypes.h"
 #include "MVKLogging.h"
 #import "CAMetalLayer+MoltenVK.h"
+#import "MVKBlockObserver.h"
 
 using namespace std;
 
@@ -65,6 +66,9 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
                                            VkFence fence,
 										   uint32_t deviceMask,
                                            uint32_t* pImageIndex) {
+
+    if ( getIsSurfaceLost() ) { return VK_ERROR_SURFACE_LOST_KHR; }
+
     // Find the image that has the smallest availability measure
     uint32_t minWaitIndex = 0;
     MVKSwapchainImageAvailability minAvailability = { .acquisitionID = kMVKUndefinedLargeUInt64,
@@ -173,7 +177,7 @@ id<CAMetalDrawable> MVKSwapchain::getNextCAMetalDrawable() {
 #pragma mark Construction
 
 MVKSwapchain::MVKSwapchain(MVKDevice* device,
-						   const VkSwapchainCreateInfoKHR* pCreateInfo) : MVKBaseDeviceObject(device) {
+						   const VkSwapchainCreateInfoKHR* pCreateInfo) : MVKBaseDeviceObject(device), _surfaceLost(false) {
 	_currentAcquisitionID = 0;
 
 	// If applicable, release any surfaces (not currently being displayed) from the old swapchain.
@@ -194,6 +198,12 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
 void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt) {
 
 	MVKSurface* mvkSrfc = (MVKSurface*)pCreateInfo->surface;
+	if ( !mvkSrfc->getCAMetalLayer() ) {
+		setConfigurationResult(mvkSrfc->getConfigurationResult());
+		_surfaceLost = true;
+		return;
+	}
+
 	_mtlLayer = mvkSrfc->getCAMetalLayer();
 	_mtlLayer.device = getMTLDevice();
 	_mtlLayer.pixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->imageFormat);
@@ -211,11 +221,28 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	//	- drawsAsynchronously
 	//  - colorspace (macOS only) Vulkan only supports sRGB colorspace for now.
 	//  - wantsExtendedDynamicRangeContent (macOS only)
+
+#if MVK_MACOS
+	if ( [_mtlLayer.delegate isKindOfClass: [NSView class]] ) {
+		// Sometimes, the owning view can replace its CAMetalLayer. In that case, the client
+		// needs to recreate the swapchain, or no content will be displayed.
+		_layerObserver = [MVKBlockObserver observerWithBlock: ^(NSString* path, id, NSDictionary*, void*) {
+			if ( ![path isEqualTo: @"layer"] ) { return; }
+			this->_surfaceLost = true;
+			[this->_layerObserver release];
+			this->_layerObserver = nil;
+		} forObject: _mtlLayer.delegate atKeyPath: @"layer"];
+	}
+#endif
 }
 
 // Initializes the array of images used for the surface of this swapchain.
 // The CAMetalLayer should already be initialized when this is called.
 void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt) {
+
+    if ( getIsSurfaceLost() ) {
+        return;
+    }
 
     VkExtent2D imgExtent = mvkVkExtent2DFromCGSize(_mtlLayerOrigDrawSize);
 
@@ -263,5 +290,6 @@ MVKSwapchain::~MVKSwapchain() {
 	for (auto& img : _surfaceImages) { _device->destroySwapchainImage(img, NULL); }
 
     if (_licenseWatermark) { _licenseWatermark->destroy(); }
+    [this->_layerObserver release];
 }
 

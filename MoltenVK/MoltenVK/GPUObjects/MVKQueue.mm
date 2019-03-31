@@ -390,7 +390,10 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKDevice* de
 	for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
 		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[i];
 		_surfaceImages.push_back(mvkSC->getImage(pPresentInfo->pImageIndices[i]));
-		if (mvkSC->getHasSurfaceSizeChanged()) {
+		// Surface loss takes precedence over out-of-date errors.
+		if (mvkSC->getIsSurfaceLost()) {
+			_submissionResult = VK_ERROR_SURFACE_LOST_KHR;
+		} else if (mvkSC->getHasSurfaceSizeChanged() && _submissionResult != VK_ERROR_SURFACE_LOST_KHR) {
 			_submissionResult = VK_ERROR_OUT_OF_DATE_KHR;
 		}
 	}
