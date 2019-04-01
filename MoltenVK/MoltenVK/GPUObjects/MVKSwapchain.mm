@@ -222,8 +222,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	//  - colorspace (macOS only) Vulkan only supports sRGB colorspace for now.
 	//  - wantsExtendedDynamicRangeContent (macOS only)
 
-#if MVK_MACOS
-	if ( [_mtlLayer.delegate isKindOfClass: [NSView class]] ) {
+	if ( [_mtlLayer.delegate isKindOfClass: [PLATFORM_VIEW_CLASS class]] ) {
 		// Sometimes, the owning view can replace its CAMetalLayer. In that case, the client
 		// needs to recreate the swapchain, or no content will be displayed.
 		_layerObserver = [MVKBlockObserver observerWithBlock: ^(NSString* path, id, NSDictionary*, void*) {
@@ -233,7 +232,6 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			this->_layerObserver = nil;
 		} forObject: _mtlLayer.delegate atKeyPath: @"layer"];
 	}
-#endif
 }
 
 // Initializes the array of images used for the surface of this swapchain.
