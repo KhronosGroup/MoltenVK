@@ -28,6 +28,8 @@
 	return self.renderTargetArrayLength;
 #endif
 #if MVK_IOS
+	if ( [self respondsToSelector: @selector(renderTargetArrayLength)] ) {
+		return self.renderTargetArrayLength;
 	return 0;
 #endif
 
@@ -37,6 +39,10 @@
 
 #if MVK_MACOS
 	self.renderTargetArrayLength = length;
+#endif
+#if MVK_IOS
+	if ( [self respondsToSelector: @selector(setRenderTargetArrayLength:)] ) {
+		self.renderTargetArrayLength = length;
 #endif
 
 }
