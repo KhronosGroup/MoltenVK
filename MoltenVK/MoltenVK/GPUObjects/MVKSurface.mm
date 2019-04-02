@@ -20,6 +20,7 @@
 #include "MVKInstance.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
+#import "MVKBlockObserver.h"
 
 
 #pragma mark MVKSurface
@@ -57,6 +58,19 @@ MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 	// Confirm that we were provided with a CAMetalLayer
 	if ([obj isKindOfClass: [CAMetalLayer class]]) {
 		_mtlCAMetalLayer = (CAMetalLayer*)[obj retain];		// retained
+		if ([_mtlCAMetalLayer.delegate isKindOfClass: [PLATFORM_VIEW_CLASS class]]) {
+			// Sometimes, the owning view can replace its CAMetalLayer. In that case, the client
+			// needs to recreate the surface.
+			_layerObserver = [MVKBlockObserver observerWithBlock: ^(NSString* path, id, NSDictionary*, void*) {
+				if ( ![path isEqualTo: @"layer"] ) { return; }
+				std::lock_guard<std::mutex> lock(this->_lock);
+				[this->_mtlCAMetalLayer release];
+				this->_mtlCAMetalLayer = nil;
+				this->setConfigurationResult(VK_ERROR_SURFACE_LOST_KHR);
+				[this->_layerObserver release];
+				this->_layerObserver = nil;
+			} forObject: _mtlCAMetalLayer.delegate atKeyPath: @"layer"];
+		}
 	} else {
 		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "%s(): On-screen rendering requires a layer of type CAMetalLayer.", mvkSurfaceCreateFuncName));
 		_mtlCAMetalLayer = nil;
@@ -64,6 +78,8 @@ MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 }
 
 MVKSurface::~MVKSurface() {
+	std::lock_guard<std::mutex> lock(_lock);
 	[_mtlCAMetalLayer release];
+	[_layerObserver release];
 }
 

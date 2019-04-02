@@ -20,6 +20,7 @@
 
 #include "mvk_vulkan.h"
 #include "MVKBaseObject.h"
+#include <mutex>
 
 
 // Expose MoltenVK Apple surface extension functionality
@@ -27,20 +28,22 @@
 #	define vkCreate_PLATFORM_SurfaceMVK			vkCreateIOSSurfaceMVK
 #	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkIOSSurfaceCreateInfoMVK
 #	define PLATFORM_VIEW_CLASS					UIView
-#	include <UIKit/UIView.h>
+#	import <UIKit/UIView.h>
 #endif
 
 #ifdef VK_USE_PLATFORM_MACOS_MVK
 #	define vkCreate_PLATFORM_SurfaceMVK			vkCreateMacOSSurfaceMVK
 #	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkMacOSSurfaceCreateInfoMVK
 #	define PLATFORM_VIEW_CLASS					NSView
-#	include <AppKit/NSView.h>
+#	import <AppKit/NSView.h>
 #endif
 
 #import <Metal/Metal.h>
 #import <QuartzCore/CAMetalLayer.h>
 
 class MVKInstance;
+
+@class MVKBlockObserver;
 
 
 #pragma mark MVKSurface
@@ -51,7 +54,10 @@ class MVKSurface : public MVKConfigurableObject {
 public:
 
     /** Returns the CAMetalLayer underlying this surface.  */
-    inline CAMetalLayer* getCAMetalLayer() { return _mtlCAMetalLayer; }
+    inline CAMetalLayer* getCAMetalLayer() {
+        std::lock_guard<std::mutex> lock(_lock);
+        return _mtlCAMetalLayer;
+    }
 
 
 #pragma mark Construction
@@ -64,5 +70,7 @@ public:
 
 protected:
 	CAMetalLayer* _mtlCAMetalLayer;
+	std::mutex _lock;
+	MVKBlockObserver* _layerObserver;
 };
 

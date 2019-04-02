@@ -24,6 +24,8 @@
 class MVKSwapchainImage;
 class MVKWatermark;
 
+@class MVKBlockObserver;
+
 
 #pragma mark MVKSwapchain
 
@@ -62,6 +64,9 @@ public:
 
 	/** Returns whether the surface size has changed since the last time this function was called. */
 	bool getHasSurfaceSizeChanged();
+
+	/** Returns whether the parent surface is now lost and this swapchain must be recreated. */
+	bool getIsSurfaceLost() { return _surfaceLost; }
 
 	/** Returns the specified performance stats structure. */
 	const MVKSwapchainPerformance* getPerformanceStatistics() { return &_performanceStatistics; }
@@ -106,5 +111,7 @@ protected:
     uint64_t _lastFrameTime;
     double _averageFrameIntervalFilterAlpha;
     uint32_t _currentPerfLogFrameCount;
+    std::atomic<bool> _surfaceLost;
+    MVKBlockObserver* _layerObserver;
 };
 
