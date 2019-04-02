@@ -23,21 +23,29 @@ Released TBD
 - Add support for `VK_KHR_get_surface_capabilities2` extension.
 - Implement newer `VK_KHR_swapchain` extension functions.
 - Add support for tracking device features enabled during `vkCreateDevice()`.
+- Handle surface loss due to window moved between screens or a window style change.
 - Allow zero offset and stride combo in `VkVertexInputBindingDescription`.
-- Fix conditions when multiple functions return VK_INCOMPLETE.
+- Fix conditions under which functions return `VK_INCOMPLETE`.
 - Fix potential memory leak on synchronous command buffer submission.
 - Increase shader float constant accuracy beyond 6 digits of precision.
 - MoltenVKShaderConverter tool support cs & csh for compute shader file extensions.
 - MoltenVKShaderConverter tool validates converted MSL with a test compilation.
 - `fetchDependencies`: Stop on first error.
+- Clean up behaviour of sparse binding functions.
 - Fix a possible race condition around `MVKMTLBufferAllocation`.
 - Fix memory overrun if no vertex buffer found with same binding as a vertex attribute.
 - Fix PVRTC texture content loading via memory mapping.
+- Fix wrong offset for `vkCmdFillBuffer()` on `VK_WHOLE_SIZE`.
+- Fixed crash within `MVKPushConstantsCommandEncoderState` when accessing absent
+  graphics pipeline during a compute stage.
+- Renderpass width/height clamped to the `renderArea` includes offset, not just the extent.
+- Set options properly on a buffer view's MTLTextureDescriptor.
 - Debug build mode includes `dSYM` file for each `dylib` file.
 - Explicitly build dSYM files in `BUILT_PRODUCTS_DIR` to avoid conflict between 
   macOS and iOS build locations.
 - `Makefile` supports `install` target to install `MoltenVK.framework` 
   into `/Library/Frameworks/`.
+  Support Xcode 10.2.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for Metal 2 indirect argument buffers.
 	- MSL: Add support for tessellation control & evaluation shaders.
@@ -50,6 +58,7 @@ Released TBD
 	- Ensure locale handling is safe for multi-threading.
 	- Add support for sanitizing address and threads.
 	- Deal more flexibly with for-loop & while-loop variations.
+	- Introduce customizable SPIRV-Cross namespaces and use `MVK_spirv_cross` in MoltenVK.
 
 
 
