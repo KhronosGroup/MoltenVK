@@ -226,7 +226,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 		// Sometimes, the owning view can replace its CAMetalLayer. In that case, the client
 		// needs to recreate the swapchain, or no content will be displayed.
 		_layerObserver = [MVKBlockObserver observerWithBlock: ^(NSString* path, id, NSDictionary*, void*) {
-			if ( ![path isEqualTo: @"layer"] ) { return; }
+			if ( ![path isEqualToString: @"layer"] ) { return; }
 			this->_surfaceLost = true;
 			[this->_layerObserver release];
 			this->_layerObserver = nil;

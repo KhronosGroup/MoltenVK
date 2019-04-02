@@ -62,7 +62,7 @@ MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 			// Sometimes, the owning view can replace its CAMetalLayer. In that case, the client
 			// needs to recreate the surface.
 			_layerObserver = [MVKBlockObserver observerWithBlock: ^(NSString* path, id, NSDictionary*, void*) {
-				if ( ![path isEqualTo: @"layer"] ) { return; }
+				if ( ![path isEqualToString: @"layer"] ) { return; }
 				std::lock_guard<std::mutex> lock(this->_lock);
 				[this->_mtlCAMetalLayer release];
 				this->_mtlCAMetalLayer = nil;

@@ -742,6 +742,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.combinedStoreResolveAction = true;
 		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
 		_metalFeatures.maxTextureDimension = (16 * KIBI);
+		_metalFeatures.depthSampleCompare = true;
 	}
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v2] ) {
@@ -766,6 +767,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.baseVertexInstanceDrawing = true;
 	_metalFeatures.layeredRendering = true;
 	_metalFeatures.maxTextureDimension = (16 * KIBI);
+	_metalFeatures.depthSampleCompare = true;
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;

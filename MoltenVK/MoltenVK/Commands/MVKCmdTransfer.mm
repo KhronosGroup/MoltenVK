@@ -1054,7 +1054,8 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPCADesc.level = mipLvl;
 			mtlRPDADesc.level = mipLvl;
 			mtlRPSADesc.level = mipLvl;
-			mtlRPDesc.renderTargetArrayLengthMVK = mvkMipmapLevelSizeFromBaseSize3D(imgBaseExtent, mipLvl).depth;
+			uint32_t imgLayerCount = mvkMipmapLevelSizeFromBaseSize3D(imgBaseExtent, mipLvl).depth;
+			mtlRPDesc.renderTargetArrayLengthMVK = getDevice()->_pMetalFeatures->layeredRendering ? imgLayerCount : 0;
 
             for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
                 mtlRPCADesc.slice = layer;
