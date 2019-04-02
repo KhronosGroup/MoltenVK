@@ -693,7 +693,10 @@
 			buildSettings = {
 				GENERATE_MASTER_OBJECT_FILE = NO;
 				MACH_O_TYPE = mh_execute;
-				OTHER_LDFLAGS = "-ObjC";
+				OTHER_LDFLAGS = (
+					"-ObjC",
+					"-w",
+				);
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SDKROOT = macosx;
 			};

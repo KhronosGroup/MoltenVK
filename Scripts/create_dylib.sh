@@ -28,6 +28,7 @@ $(printf -- "-arch %s " ${ARCHS}) \
 -Wno-incompatible-sysroot \
 ${MVK_EMBED_BITCODE} \
 ${MVK_SAN} \
+${MVK_LINK_WARN} \
 -isysroot ${SDK_DIR} \
 -iframework ${MVK_SYS_FWK_DIR}  \
 -framework Metal ${MVK_IOSURFACE_FWK} -framework ${MVK_UX_FWK} -framework QuartzCore -framework IOKit -framework Foundation \
