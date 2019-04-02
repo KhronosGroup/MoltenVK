@@ -25,6 +25,7 @@ Released TBD
 - Add support for tracking device features enabled during `vkCreateDevice()`.
 - Handle surface loss due to window moved between screens or a window style change.
 - Allow zero offset and stride combo in `VkVertexInputBindingDescription`.
+- API: Add MVKPhysicalDeviceMetalFeatures::depthSampleCompare.
 - Fix conditions under which functions return `VK_INCOMPLETE`.
 - Fix potential memory leak on synchronous command buffer submission.
 - Increase shader float constant accuracy beyond 6 digits of precision.
@@ -39,13 +40,15 @@ Released TBD
 - Fixed crash within `MVKPushConstantsCommandEncoderState` when accessing absent
   graphics pipeline during a compute stage.
 - Renderpass width/height clamped to the `renderArea` includes offset, not just the extent.
-- Set options properly on a buffer view's MTLTextureDescriptor.
+- Set options properly on a buffer view's `MTLTextureDescriptor`.
+- Don't set `MTLSamplerDescriptor.compareFunction` on devices that don't support it.
 - Debug build mode includes `dSYM` file for each `dylib` file.
 - Explicitly build dSYM files in `BUILT_PRODUCTS_DIR` to avoid conflict between 
   macOS and iOS build locations.
 - `Makefile` supports `install` target to install `MoltenVK.framework` 
   into `/Library/Frameworks/`.
   Support Xcode 10.2.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 19.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for Metal 2 indirect argument buffers.
 	- MSL: Add support for tessellation control & evaluation shaders.

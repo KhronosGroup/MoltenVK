@@ -993,9 +993,15 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 								 ? mvkClamp(pCreateInfo->maxAnisotropy, 1.0f, _device->_pProperties->limits.maxSamplerAnisotropy)
 								 : 1);
 	mtlSampDesc.normalizedCoordinates = !pCreateInfo->unnormalizedCoordinates;
-	mtlSampDesc.compareFunctionMVK = (pCreateInfo->compareEnable
-									  ? mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp)
-									  : MTLCompareFunctionNever);
+
+	if (pCreateInfo->compareEnable) {
+		if (_device->_pMetalFeatures->depthSampleCompare) {
+			mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
+		} else {
+			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateSampler(): Depth texture samplers do not support the comparison of the pixel value against a reference value."));
+		}
+	}
+
 #if MVK_MACOS
 	mtlSampDesc.borderColorMVK = mvkMTLSamplerBorderColorFromVkBorderColor(pCreateInfo->borderColor);
 	if (_device->getPhysicalDevice()->getMetalFeatures()->samplerClampToBorder) {
