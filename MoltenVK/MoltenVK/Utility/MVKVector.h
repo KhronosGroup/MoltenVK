@@ -74,7 +74,7 @@ template<class Type> class MVKVector
   mvk_vector_allocator_base<Type> *alc_ptr;
 
 public:
-  class iterator
+  class iterator : public std::iterator<std::forward_iterator_tag, Type>
   {
     const MVKVector *vector;
     size_t           index;
@@ -99,6 +99,8 @@ public:
   };
 
 public:
+  typedef Type value_type;
+
   MVKVector() = delete;
   MVKVector( mvk_vector_allocator_base<Type> *a ) : alc_ptr{ a } { }
   virtual ~MVKVector() { }
@@ -137,8 +139,7 @@ template<class Type> class MVKVector<Type *>
 {
   mvk_vector_allocator_base<Type*> *alc_ptr;
 
-public:
-  class iterator
+  class iterator : public std::iterator<std::forward_iterator_tag, Type*>
   {
     const MVKVector *vector;
     size_t           index;
@@ -163,6 +164,8 @@ public:
   };
 
 public:
+  typedef Type* value_type;
+
   MVKVector() = delete;
   MVKVector( mvk_vector_allocator_base<Type*> *a ) : alc_ptr{ a } { }
   virtual ~MVKVector() { }
@@ -203,7 +206,7 @@ template<class Type, typename Allocator = mvk_vector_allocator_default<Type>> cl
   Allocator  alc;
   
 public:
-  class iterator
+  class iterator : public std::iterator<std::forward_iterator_tag, Type>
   {
     const MVKVectorImpl *vector;
     size_t               index;
@@ -635,7 +638,7 @@ template<class Type, typename Allocator> class MVKVectorImpl<Type*, Allocator> :
   Allocator  alc;
 
 public:
-  class iterator
+  class iterator : public std::iterator<std::forward_iterator_tag, Type*>
   {
     MVKVectorImpl *vector;
     size_t         index;
