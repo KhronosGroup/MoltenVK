@@ -48,7 +48,8 @@ Released TBD
   macOS and iOS build locations.
 - `Makefile` supports `install` target to install `MoltenVK.framework` 
   into `/Library/Frameworks/`.
-  Support Xcode 10.2.
+- Add `MVK_CONFIG_TRACE_VULKAN_CALLS` env var and build setting to log Vulkan calls made by application.
+- Support Xcode 10.2.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 19.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for Metal 2 indirect argument buffers.
