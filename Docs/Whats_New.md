@@ -39,7 +39,8 @@ Released TBD
 - Fix wrong offset for `vkCmdFillBuffer()` on `VK_WHOLE_SIZE`.
 - Fixed crash within `MVKPushConstantsCommandEncoderState` when accessing absent
   graphics pipeline during a compute stage.
-- Renderpass width/height clamped to the `renderArea` includes offset, not just the extent.
+- Renderpass width/height clamped to the `renderArea` includes `offset`, not just `extent`, 
+  and are set only when layered rendering is supported on device.
 - Set options properly on a buffer view's `MTLTextureDescriptor`.
 - Don't set `MTLSamplerDescriptor.compareFunction` on devices that don't support it.
 - Debug build mode includes `dSYM` file for each `dylib` file.
