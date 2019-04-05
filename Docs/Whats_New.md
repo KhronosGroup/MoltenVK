@@ -48,7 +48,8 @@ Released TBD
   macOS and iOS build locations.
 - `Makefile` supports `install` target to install `MoltenVK.framework` 
   into `/Library/Frameworks/`.
-  Support Xcode 10.2.
+- Add `MVK_CONFIG_TRACE_VULKAN_CALLS` env var and build setting to log Vulkan calls made by application.
+- Support Xcode 10.2.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 19.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for Metal 2 indirect argument buffers.
@@ -57,11 +58,13 @@ Released TBD
 	- MSL: Set location of builtins based on client input.
 	- MSL: Ignore duplicate builtin vertex attributes.
 	- MSL: Fix crash where variable storage buffer pointers are passed down.
+	- MSL: Fix depth2d 4-component fixup.
 	- Add stable C API and ABI.
 	- Fix case where a struct is loaded which contains a row-major matrix.
 	- Ensure locale handling is safe for multi-threading.
 	- Add support for sanitizing address and threads.
 	- Deal more flexibly with for-loop & while-loop variations.
+	- Detect invalid DoWhileLoop early.
 	- Introduce customizable SPIRV-Cross namespaces and use `MVK_spirv_cross` in MoltenVK.
 
 
