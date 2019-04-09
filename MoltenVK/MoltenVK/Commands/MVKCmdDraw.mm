@@ -108,7 +108,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
     if (pipeline->isTessellationPipeline()) {
         inControlPointCount = pipeline->getInputControlPointCount();
         outControlPointCount = pipeline->getOutputControlPointCount();
-        patchCount = (uint32_t)mvkCeilingDivide(_vertexCount * _instanceCount, inControlPointCount);
+        patchCount = (uint32_t)mvkCeilingDivide(_vertexCount, inControlPointCount);
     }
     for (uint32_t s : stages) {
         auto stage = MVKGraphicsStage(s);
@@ -295,7 +295,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
     if (pipeline->isTessellationPipeline()) {
         inControlPointCount = pipeline->getInputControlPointCount();
         outControlPointCount = pipeline->getOutputControlPointCount();
-        patchCount = (uint32_t)mvkCeilingDivide(_indexCount * _instanceCount, inControlPointCount);
+        patchCount = (uint32_t)mvkCeilingDivide(_indexCount, inControlPointCount);
     }
     for (uint32_t s : stages) {
         auto stage = MVKGraphicsStage(s);
