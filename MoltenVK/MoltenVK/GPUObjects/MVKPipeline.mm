@@ -161,7 +161,7 @@ void MVKGraphicsPipeline::getStages(MVKVector<uint32_t>& stages) {
 void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) {
 
     id<MTLRenderCommandEncoder> mtlCmdEnc = cmdEncoder->_mtlRenderEncoder;
-    if ( !mtlCmdEnc ) { return; }   // Pre-renderpass. Come back later.
+    if ( stage != kMVKGraphicsStageTessControl && !mtlCmdEnc ) { return; }   // Pre-renderpass. Come back later.
 
     switch (stage) {
         case kMVKGraphicsStageVertex:
