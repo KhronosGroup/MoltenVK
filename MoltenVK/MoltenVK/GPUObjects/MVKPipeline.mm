@@ -446,7 +446,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLTessVertexStageDescripto
 
 	// Even though this won't be used for rasterization, we still have to set up the rasterization state to
 	// match the render pass, or Metal will complain.
-	addFragmentOutputToPipeline(plDesc, reflectData, pCreateInfo);
+	addFragmentOutputToPipeline(plDesc, reflectData, pCreateInfo, true);
 
 	return plDesc;
 }
@@ -935,7 +935,7 @@ void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor*
 	plDesc.tessellationPartitionMode = mvkMTLTessellationPartitionModeFromSpvExecutionMode(reflectData.partitionMode);
 }
 
-void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo, bool isTessellationVertexPipeline) {
 
     // Retrieve the render subpass for which this pipeline is being constructed
     MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
@@ -943,7 +943,7 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 
 	// Topology
 	if (pCreateInfo->pInputAssemblyState) {
-		plDesc.inputPrimitiveTopologyMVK = isRenderingPoints(pCreateInfo, reflectData)
+		plDesc.inputPrimitiveTopologyMVK = (isTessellationVertexPipeline || isRenderingPoints(pCreateInfo, reflectData))
 												? MTLPrimitiveTopologyClassPoint
 												: mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
 	}
