@@ -16,7 +16,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.34
 ---------------
 
-Released TBD
+Released 2019-04-10
 
 - Add support for tessellation.
 - Add correct function entry point handling.
@@ -46,9 +46,10 @@ Released TBD
 - Debug build mode includes `dSYM` file for each `dylib` file.
 - Explicitly build dSYM files in `BUILT_PRODUCTS_DIR` to avoid conflict between 
   macOS and iOS build locations.
-- `Makefile` supports `install` target to install `MoltenVK.framework` 
+- `Makefile` supports `install` target to install `MoltenVK.framework`.
   into `/Library/Frameworks/`.
 - Add `MVK_CONFIG_TRACE_VULKAN_CALLS` env var and build setting to log Vulkan calls made by application.
+- Log shader performance statistics in any runtime if `MVKConfiguration::performanceLoggingFrameCount` non-zero.
 - Support Xcode 10.2.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 19.
 - Update to latest SPIRV-Cross version:

@@ -1947,13 +1947,15 @@ void MVKDevice::addActivityPerformanceImpl(MVKPerformanceTracker& shaderCompilat
     double totalInterval = (shaderCompilationEvent.averageDuration * shaderCompilationEvent.count++) + currInterval;
     shaderCompilationEvent.averageDuration = totalInterval / shaderCompilationEvent.count;
 
-	MVKLogDebug("Performance to %s curr: %.3f ms, avg: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
-				getActivityPerformanceDescription(shaderCompilationEvent),
-				currInterval,
-				shaderCompilationEvent.averageDuration,
-				shaderCompilationEvent.minimumDuration,
-				shaderCompilationEvent.maximumDuration,
-				shaderCompilationEvent.count);
+	if (_pMVKConfig->performanceLoggingFrameCount) {
+		MVKLogInfo("Performance to %s curr: %.3f ms, avg: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
+				   getActivityPerformanceDescription(shaderCompilationEvent),
+				   currInterval,
+				   shaderCompilationEvent.averageDuration,
+				   shaderCompilationEvent.minimumDuration,
+				   shaderCompilationEvent.maximumDuration,
+				   shaderCompilationEvent.count);
+	}
 }
 
 const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& shaderCompilationEvent) {
