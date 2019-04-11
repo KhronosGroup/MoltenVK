@@ -841,6 +841,7 @@ MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImag
         mvkEnableFlag(mtlUsage, MTLTextureUsagePixelFormatView);
     }
     if ( mvkAreFlagsEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_STORAGE_BIT) ) {
+        mvkEnableFlag(mtlUsage, MTLTextureUsageShaderRead);
         mvkEnableFlag(mtlUsage, MTLTextureUsageShaderWrite);
         mvkEnableFlag(mtlUsage, MTLTextureUsagePixelFormatView);
     }

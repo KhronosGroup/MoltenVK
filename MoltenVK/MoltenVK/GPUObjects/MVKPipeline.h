@@ -218,7 +218,7 @@ protected:
     bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext);
     bool addVertexInputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConverterContext& shaderContext);
     void addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS);
-    void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo);
+    void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo, bool isTessellationVertexPipeline = false);
     bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;

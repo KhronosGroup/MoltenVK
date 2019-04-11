@@ -176,7 +176,7 @@ struct MTLStageInRegionIndirectArguments {                                      
 };                                                                                                              \n\
 #endif                                                                                                          \n\
                                                                                                                 \n\
-#if __METAL_VERSION >= 120                                                                                      \n\
+#if __METAL_VERSION__ >= 120                                                                                    \n\
 kernel void cmdDrawIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],                             \n\
                                           device char* destBuff [[buffer(1)]],                                  \n\
                                           constant uint32_t& srcStride [[buffer(2)]],                           \n\
