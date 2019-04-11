@@ -242,12 +242,12 @@ void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t s
 }
 
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
-void MVKCommandEncoder::beginMetalRenderPass() {
+void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
 
     endCurrentMetalEncoding();
 
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues, _isRenderingEntireAttachment);
+    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues, _isRenderingEntireAttachment, loadOverride);
     mtlRPDesc.visibilityResultBuffer = _occlusionQueryState.getVisibilityResultMTLBuffer();
 
 	if (_device->_pMetalFeatures->layeredRendering) {

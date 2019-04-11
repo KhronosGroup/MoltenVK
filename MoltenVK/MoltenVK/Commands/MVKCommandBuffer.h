@@ -246,7 +246,7 @@ public:
 	void beginNextSubpass(VkSubpassContents renderpassContents);
 
 	/** Begins a Metal render pass for the current render subpass. */
-	void beginMetalRenderPass();
+	void beginMetalRenderPass(bool loadOverride = false);
 
 	/** Returns the render subpass that is currently active. */
 	MVKRenderSubpass* getSubpass();

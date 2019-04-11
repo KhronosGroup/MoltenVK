@@ -194,7 +194,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                                   threadsPerThreadgroup: MTLSizeMake(std::max(inControlPointCount, outControlPointCount), 1, 1)];
                 // Running this stage prematurely ended the render pass, so we have to start it up again.
                 // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                cmdEncoder->beginMetalRenderPass();
+                cmdEncoder->beginMetalRenderPass(true);
                 break;
             case kMVKGraphicsStageRasterization:
                 if (pipeline->isTessellationPipeline()) {
@@ -413,7 +413,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                   threadsPerThreadgroup: MTLSizeMake(std::max(inControlPointCount, outControlPointCount), 1, 1)];
                 // Running this stage prematurely ended the render pass, so we have to start it up again.
                 // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                cmdEncoder->beginMetalRenderPass();
+                cmdEncoder->beginMetalRenderPass(true);
                 break;
             case kMVKGraphicsStageRasterization:
                 if (pipeline->isTessellationPipeline()) {
@@ -663,7 +663,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlTCIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Running this stage prematurely ended the render pass, so we have to start it up again.
                     // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                    cmdEncoder->beginMetalRenderPass();
+                    cmdEncoder->beginMetalRenderPass(true);
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {
@@ -909,7 +909,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlTCIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Running this stage prematurely ended the render pass, so we have to start it up again.
                     // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                    cmdEncoder->beginMetalRenderPass();
+                    cmdEncoder->beginMetalRenderPass(true);
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {
