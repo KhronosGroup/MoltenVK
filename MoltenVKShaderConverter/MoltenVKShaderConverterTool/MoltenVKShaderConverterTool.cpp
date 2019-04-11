@@ -22,6 +22,7 @@
 #include "GLSLToSPIRVConverter.h"
 #include "SPIRVToMSLConverter.h"
 #include "SPIRVSupport.h"
+#include "MVKOSExtensions.h"
 
 using namespace std;
 using namespace mvk;
@@ -38,6 +39,17 @@ static const char* _defaultCompShaderExtns = "cs csh cp cmp comp compute kn kl k
 
 // The default list of SPIR-V file extensions.
 static const char* _defaultSPIRVShaderExtns = "spv spirv";
+
+
+uint64_t MVKPerformanceTracker::getTimestamp() { return mvkGetTimestamp(); }
+
+void MVKPerformanceTracker::accumulate(uint64_t startTime, uint64_t endTime) {
+	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
+	minimumDuration = min(currInterval, minimumDuration);
+	maximumDuration = max(currInterval, maximumDuration);
+	double totalInterval = (averageDuration * count++) + currInterval;
+	averageDuration = totalInterval / count;
+}
 
 
 #pragma mark -
@@ -59,6 +71,8 @@ int MoltenVKShaderConverterTool::run() {
 			showUsage();
 		}
 	}
+	reportPerformance();
+
 	return success ? EXIT_SUCCESS : EXIT_FAILURE;
 }
 
@@ -117,7 +131,12 @@ bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 	// Convert GLSL to SPIR-V
 	GLSLToSPIRVConverter glslConverter;
 	glslConverter.setGLSL(glslCode);
-	if (glslConverter.convert(shaderStage, _shouldLogConversions, _shouldLogConversions)) {
+
+	uint64_t startTime = _glslConversionPerformance.getTimestamp();
+	bool wasConverted = glslConverter.convert(shaderStage, _shouldLogConversions, _shouldLogConversions);
+	_glslConversionPerformance.accumulate(startTime);
+
+	if (wasConverted) {
 		if (_shouldLogConversions) { log(glslConverter.getResultLog().data()); }
 	} else {
 		string logMsg = "Could not convert GLSL in file: " + absolutePath(path);
@@ -188,7 +207,12 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 
 	SPIRVToMSLConverter spvConverter;
 	spvConverter.setSPIRV(spv);
-	if (spvConverter.convert(mslContext, shouldLogSPV, _shouldLogConversions, (_shouldLogConversions && shouldLogSPV))) {
+
+	uint64_t startTime = _spvConversionPerformance.getTimestamp();
+	bool wasConverted = spvConverter.convert(mslContext, shouldLogSPV, _shouldLogConversions, (_shouldLogConversions && shouldLogSPV));
+	_spvConversionPerformance.accumulate(startTime);
+
+	if (wasConverted) {
 		if (_shouldLogConversions) { log(spvConverter.getResultLog().data()); }
 	} else {
 		string errMsg = "Could not convert SPIR-V in file: " + absolutePath(inFile);
@@ -302,7 +326,31 @@ void MoltenVKShaderConverterTool::showUsage() {
 	log("  -sx \"fileExtns\"    - List of SPIR-V shader file extensions.");
 	log("                       May be omitted for defaults (\"spv spirv\").");
 	log("  -l                 - Log the conversion results to the console (to aid debugging).");
+	log("  -p                 - Log the performance of the shader conversions.");
 	log("");
+}
+
+void MoltenVKShaderConverterTool::reportPerformance() {
+	if ( !_shouldReportPerformance ) { return; }
+
+	if (_shouldReadGLSL) { reportPerformance(_glslConversionPerformance, "GLSL to SPIR-V"); }
+	reportPerformance(_spvConversionPerformance, "SPIR-V to MSL");
+}
+
+void MoltenVKShaderConverterTool::reportPerformance(MVKPerformanceTracker& shaderCompilationEvent, string eventDescription) {
+	string logMsg;
+	logMsg += "Performance to convert ";
+	logMsg += eventDescription;
+	logMsg += " count: ";
+	logMsg += to_string(shaderCompilationEvent.count);
+	logMsg += ", min: ";
+	logMsg += to_string(shaderCompilationEvent.minimumDuration);
+	logMsg += " ms, max: ";
+	logMsg += to_string(shaderCompilationEvent.maximumDuration);
+	logMsg += " ms, avg: ";
+	logMsg += to_string(shaderCompilationEvent.averageDuration);
+	logMsg += " ms.\n";
+	log(logMsg.c_str());
 }
 
 
@@ -325,6 +373,7 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
     _shouldFlipVertexY = true;
 	_shouldIncludeOrigPathExtn = true;
 	_shouldLogConversions = false;
+	_shouldReportPerformance = false;
 
 	_isActive = parseArgs(argc, argv);
 	if ( !_isActive ) { showUsage(); }
@@ -460,6 +509,11 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 
 		if(equal(arg, "-l", true)) {
 			_shouldLogConversions = true;
+			continue;
+		}
+
+		if(equal(arg, "-p", true)) {
+			_shouldReportPerformance = true;
 			continue;
 		}
 

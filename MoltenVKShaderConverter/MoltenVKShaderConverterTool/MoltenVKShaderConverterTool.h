@@ -26,6 +26,15 @@
 
 namespace mvk {
 
+	typedef struct {
+		uint32_t count = 0;
+		double averageDuration = 0;
+		double minimumDuration = std::numeric_limits<double>::max();
+		double maximumDuration = 0;
+
+		uint64_t getTimestamp();
+		void accumulate(uint64_t startTime, uint64_t endTime = 0);
+	} MVKPerformanceTracker;
 
 #pragma mark -
 #pragma mark MoltenVKShaderConverterTool
@@ -75,6 +84,9 @@ namespace mvk {
 						  int optionArgIndex,
 						  int argc,
 						  const char* argv[]);
+		void reportPerformance();
+		void reportPerformance(MVKPerformanceTracker& shaderCompilationEvent,
+							   std::string eventDescription);
 
 		std::string _processName;
 		std::string _directoryPath;
@@ -88,6 +100,8 @@ namespace mvk {
         std::vector<std::string> _glslCompFileExtns;
 		std::vector<std::string> _spvFileExtns;
 		MVKShaderStage _shaderStage;
+		MVKPerformanceTracker _glslConversionPerformance;
+		MVKPerformanceTracker _spvConversionPerformance;
 		bool _isActive;
 		bool _shouldUseDirectoryRecursion;
 		bool _shouldReadGLSL;
@@ -98,6 +112,7 @@ namespace mvk {
         bool _shouldFlipVertexY;
 		bool _shouldIncludeOrigPathExtn;
 		bool _shouldLogConversions;
+		bool _shouldReportPerformance;
 	};
 
 

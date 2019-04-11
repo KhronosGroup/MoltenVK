@@ -290,9 +290,11 @@ typedef struct {
 	uint64_t metalCompileTimeout;
 
 	/**
-	 * If enabled, per-frame performance statistics are tracked, optionally logged, and can be
-	 * retrieved via the vkGetSwapchainPerformanceMVK() function, and various performance statistics
-	 * are tracked, logged, and can be retrieved via the vkGetPerformanceStatisticsMVK() function.
+	 * If enabled, performance statistics, as defined by the MVKPerformanceStatistics structure,
+	 * are collected, and can be retrieved via the vkGetPerformanceStatisticsMVK() function.
+	 *
+	 * You can also use the performanceLoggingFrameCount parameter to automatically log the
+	 * performance statistics collected by this parameter.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -305,8 +307,12 @@ typedef struct {
 	VkBool32 performanceTracking;
 
 	/**
-	 * If non-zero, performance statistics will be periodically logged to the console, on a repeating
-	 * cycle of this many frames per swapchain. The performanceTracking capability must also be enabled.
+	 * If non-zero, performance statistics, as defined by the MVKPerformanceStatistics structure,
+	 * will be logged to the console. Frame-based statistics will be logged, on a repeating cycle,
+	 * once per this many frames. Non-frame-based statistics will be logged as they occur.
+	 *
+	 * The performanceTracking parameter must also be enabled. If this parameter is zero, or
+	 * the performanceTracking parameter is disabled, no performance statistics will be logged.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
