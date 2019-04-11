@@ -793,3 +793,21 @@ protected:
 };
 
 
+#pragma mark -
+#pragma mark Support functions
+
+/** Returns an approximation of how much memory, in bytes, the device can use with good performance. */
+uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice);
+
+/** Populate the propertes with info about the GPU represented by the MTLDevice. */
+void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice);
+
+/** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
+uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
+
+/**
+ * If the MTLDevice defines a texture memory alignment for the format, it is retrieved from
+ * the MTLDevice and returned, or returns zero if the MTLDevice does not define an alignment.
+ * The format must support linear texture memory (must not be depth, stencil, or compressed).
+ */
+VkDeviceSize mvkMTLPixelFormatLinearTextureAlignment(MTLPixelFormat mtlPixelFormat, id<MTLDevice> mtlDevice);
