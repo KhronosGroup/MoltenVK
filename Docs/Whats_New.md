@@ -16,21 +16,20 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.34
 ---------------
 
-Released 2019-04-10
+Released 2019-04-12
 
 - Add support for tessellation.
 - Add correct function entry point handling.
 - Add support for `VK_KHR_get_surface_capabilities2` extension.
 - Implement newer `VK_KHR_swapchain` extension functions.
+- Support the `VK_EXT_host_query_reset` extension.
 - Add support for tracking device features enabled during `vkCreateDevice()`.
 - Handle surface loss due to window moved between screens or a window style change.
 - Allow zero offset and stride combo in `VkVertexInputBindingDescription`.
-- API: Add MVKPhysicalDeviceMetalFeatures::depthSampleCompare.
+- API: Add `MVKPhysicalDeviceMetalFeatures::depthSampleCompare`.
 - Fix conditions under which functions return `VK_INCOMPLETE`.
 - Fix potential memory leak on synchronous command buffer submission.
 - Increase shader float constant accuracy beyond 6 digits of precision.
-- MoltenVKShaderConverter tool support cs & csh for compute shader file extensions.
-- MoltenVKShaderConverter tool validates converted MSL with a test compilation.
 - `fetchDependencies`: Stop on first error.
 - Clean up behaviour of sparse binding functions.
 - Fix a possible race condition around `MVKMTLBufferAllocation`.
@@ -39,10 +38,13 @@ Released 2019-04-10
 - Fix wrong offset for `vkCmdFillBuffer()` on `VK_WHOLE_SIZE`.
 - Fixed crash within `MVKPushConstantsCommandEncoderState` when accessing absent
   graphics pipeline during a compute stage.
+- Fixed crash when `MTLRenderPassDescriptor renderTargetWidth` & `renderTargetHeight`
+  set on older devices.
 - Renderpass width/height clamped to the `renderArea` includes `offset`, not just `extent`, 
   and are set only when layered rendering is supported on device.
 - Set options properly on a buffer view's `MTLTextureDescriptor`.
 - Don't set `MTLSamplerDescriptor.compareFunction` on devices that don't support it.
+- Disable the `shaderStorageImageArrayDynamicIndexing` feature on iOS.
 - Debug build mode includes `dSYM` file for each `dylib` file.
 - Explicitly build dSYM files in `BUILT_PRODUCTS_DIR` to avoid conflict between 
   macOS and iOS build locations.
@@ -50,22 +52,47 @@ Released 2019-04-10
   into `/Library/Frameworks/`.
 - Add `MVK_CONFIG_TRACE_VULKAN_CALLS` env var and build setting to log Vulkan calls made by application.
 - Log shader performance statistics in any runtime if `MVKConfiguration::performanceLoggingFrameCount` non-zero.
+- Suppress visibility warning spam when building Debug macOS from SPIRV-Cross Release build.
 - Support Xcode 10.2.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 19.
+- MoltenVKShaderConverter tool:
+	- Support `cs` & `csh` for compute shader file extensions.
+	- Validate converted MSL with a test compilation.
+	- Add option to log shader conversion performance.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for Metal 2 indirect argument buffers.
 	- MSL: Add support for tessellation control & evaluation shaders.
+	- MSL: Support `VK_KHR_push_descriptor`.
 	- MSL: Force unnamed array builtin attributes to have a name.
 	- MSL: Set location of builtins based on client input.
 	- MSL: Ignore duplicate builtin vertex attributes.
 	- MSL: Fix crash where variable storage buffer pointers are passed down.
-	- MSL: Fix depth2d 4-component fixup.
+	- MSL: Fix infinite CAS loop on atomic_compare_exchange_weak_explicit().
+	- MSL: Fix `depth2d` 4-component fixup.
+	- MSL: Expand quad `gl_TessCoord` to a float3.
+	- MSL: Fix depth textures which are sampled and compared against.
+	- MSL: Emit proper name for optimized UBO/SSBO arrays.
+	- MSL: Support emit two layers of address space.
+	- MSL: Declare `gl_WorkGroupSize` constant with `[[maybe_unused]]`.
+	- MSL: Fix OpLoad of array which is forced to a temporary.
 	- Add stable C API and ABI.
+	- Performance improvements & reduce pressure on global allocation.
 	- Fix case where a struct is loaded which contains a row-major matrix.
+	- Fix edge case where opaque types can be declared on stack.
 	- Ensure locale handling is safe for multi-threading.
 	- Add support for sanitizing address and threads.
+	- Add support for `SPV_NV_ray_tracing`.
+	- Support -1 index in `OpVectorShuffle`.
 	- Deal more flexibly with for-loop & while-loop variations.
 	- Detect invalid DoWhileLoop early.
+	- Force complex loop in certain rare access chain scenarios.
+	- Make locale handling threadsafe.
+	- Support do-while where test is negative.
+	- Emit loop header variables even for while and dowhile.
+	- Properly deal with sign-dependent GLSL opcodes.
+	- Deal with mismatched signs in S/U/F conversion opcodes.
+	- Rewrite how we deal with locales and decimal point.
+	- Fix crash when `backend.int16_t_literal_suffix` set to null.
 	- Introduce customizable SPIRV-Cross namespaces and use `MVK_spirv_cross` in MoltenVK.
 
 
