@@ -110,9 +110,11 @@ void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
 	if (_prefilledMTLCmdBuffer) {
 		cmdBuffSubmit->setActiveMTLCommandBuffer(_prefilledMTLCmdBuffer);
 		clearPrefilledMTLCommandBuffer();
+		cmdBuffSubmit->addCmdBuffDoneEvent(std::move(_prefilledCmdBuffDoneEvent));
 	} else {
 		MVKCommandEncoder encoder(this);
 		encoder.encode(cmdBuffSubmit->getActiveMTLCommandBuffer());
+		cmdBuffSubmit->addCmdBuffDoneEvent(encoder.takeCmdBuffDoneEvent());
 	}
 
 	if ( !_supportsConcurrentExecution ) { _isExecutingNonConcurrently.clear(); }
@@ -150,6 +152,7 @@ void MVKCommandBuffer::prefill() {
 
 	MVKCommandEncoder encoder(this);
 	encoder.encode(_prefilledMTLCmdBuffer);
+	_prefilledCmdBuffDoneEvent = encoder.takeCmdBuffDoneEvent();
 }
 
 bool MVKCommandBuffer::canPrefill() {
@@ -505,11 +508,14 @@ void MVKCommandEncoder::finishQueries() {
     if ( !_pActivatedQueries ) { return; }
 
     MVKActivatedQueries* pAQs = _pActivatedQueries;
+    MVKCountingEvent* pCmdBuffDoneEvent = _cmdBuffDoneEvent.get();
+    pCmdBuffDoneEvent->lock();
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
         for (auto& qryPair : *pAQs) {
             qryPair.first->finishQueries(qryPair.second);
         }
         delete pAQs;
+        pCmdBuffDoneEvent->unlock();
     }];
     _pActivatedQueries = nullptr;
 }
@@ -519,6 +525,7 @@ void MVKCommandEncoder::finishQueries() {
 
 MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
         _cmdBuffer(cmdBuffer),
+        _cmdBuffDoneEvent(new MVKCountingEvent()),
         _graphicsPipelineState(this),
         _computePipelineState(this),
         _viewportState(this),

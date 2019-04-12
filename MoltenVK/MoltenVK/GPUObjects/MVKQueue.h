@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKCommandBuffer.h"
+#include "MVKCountingEvent.h"
 #include "MVKImage.h"
 #include "MVKSync.h"
 #include "MVKVector.h"
@@ -133,11 +134,13 @@ protected:
 	uint32_t _index;
 	float _priority;
 	dispatch_queue_t _execQueue;
+	dispatch_queue_t _fenceQueue;
 	id<MTLCommandQueue> _mtlQueue;
 	std::string _name;
 	MVKMTLCommandBufferID _nextMTLCmdBuffID;
 	MVKGPUCaptureScope* _submissionCaptureScope;
 	MVKGPUCaptureScope* _presentationCaptureScope;
+	MVKCountingEvent _queueIdleEvent;
 };
 
 
@@ -186,16 +189,14 @@ public:
 
 	/** 
      * Constructs an instance for the device and queue.
-     * pSubmit may be VK_NULL_HANDLE to create an instance that triggers a fence without submitting any actual command buffers.
      */
 	MVKQueueCommandBufferSubmission(MVKDevice* device,
 									MVKQueue* queue,
 									const VkSubmitInfo* pSubmit,
-									VkFence fence,
                                     MVKCommandUse cmdBuffUse);
 
-    /** Constructs an instance for the device and queue, with a fence, but without actual command buffers. */
-    MVKQueueCommandBufferSubmission(MVKDevice* device, MVKQueue* queue, VkFence fence);
+    /** Destructor. */
+    ~MVKQueueCommandBufferSubmission() override;
 
 protected:
 	friend MVKCommandBuffer;
@@ -203,13 +204,14 @@ protected:
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
+	void addCmdBuffDoneEvent(std::unique_ptr<MVKCountingEvent>&& event);
 	void finish();
 
 	MVKVectorInline<MVKCommandBuffer*, 16> _cmdBuffers;
 	MVKVectorInline<MVKSemaphore*, 16> _signalSemaphores;
-	MVKFence* _fence;
     MVKCommandUse _cmdBuffUse;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
+	std::vector<std::unique_ptr<MVKCountingEvent>> _pendingCmdBuffDoneEvents;
 };
 
 

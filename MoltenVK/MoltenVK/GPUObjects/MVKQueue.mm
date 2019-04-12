@@ -86,16 +86,17 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
                           VkFence fence, MVKCommandUse cmdBuffUse) {
 
-	// Fence-only submission
-	if (submitCount == 0 && fence) {
-		return submit(new MVKQueueCommandBufferSubmission(_device, this, VK_NULL_HANDLE, fence, cmdBuffUse));
-	}
-
 	VkResult rslt = VK_SUCCESS;
     for (uint32_t sIdx = 0; sIdx < submitCount; sIdx++) {
-        VkFence fenceOrNil = (sIdx == (submitCount - 1)) ? fence : VK_NULL_HANDLE;	// last one gets the fence
-        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(_device, this, &pSubmits[sIdx], fenceOrNil, cmdBuffUse));
+        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(_device, this, &pSubmits[sIdx], cmdBuffUse));
 		if (rslt == VK_SUCCESS) { rslt = subRslt; }
+    }
+    if (rslt == VK_SUCCESS && fence) {
+        // Fence must wait for all completion blocks to finish.
+        dispatch_async(_execQueue ? _execQueue : _fenceQueue, ^{
+            _queueIdleEvent.wait();
+            ((MVKFence*)fence)->signal();
+        });
     }
     return rslt;
 }
@@ -107,27 +108,23 @@ VkResult MVKQueue::submit(const VkPresentInfoKHR* pPresentInfo) {
 // Create an empty submit struct and fence, submit to queue and wait on fence.
 VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 
-	VkSubmitInfo vkSbmtInfo = {
-		.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-		.pNext = NULL,
-		.waitSemaphoreCount = 0,
-		.pWaitSemaphores = VK_NULL_HANDLE,
-		.commandBufferCount = 0,
-		.pCommandBuffers = VK_NULL_HANDLE,
-		.signalSemaphoreCount = 0,
-		.pSignalSemaphores = VK_NULL_HANDLE
-	};
-
 	VkFenceCreateInfo vkFenceInfo = {
 		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-		.pNext = NULL,
+		.pNext = nullptr,
 		.flags = 0,
 	};
 
 	MVKFence mvkFence(_device, &vkFenceInfo);
 	VkFence fence = (VkFence)&mvkFence;
-	submit(1, &vkSbmtInfo, fence, cmdBuffUse);
-	return mvkWaitForFences(1, &fence, false);
+	submit(0, nullptr, fence, cmdBuffUse);
+	VkResult rslt = mvkWaitForFences(1, &fence, false);
+	if (rslt != VK_SUCCESS)
+		return rslt;
+
+	// Wait for all completion routines across all submissions to execute.
+	_queueIdleEvent.wait();
+
+	return VK_SUCCESS;
 }
 
 
@@ -166,6 +163,11 @@ void MVKQueue::initExecQueue() {
 
 		// Create the dispatch queue
 		_execQueue = dispatch_queue_create((getName() + "-Dispatch").c_str(), dqAttr);		// retained
+	} else {
+		// Create a queue just for fence updates.
+		dispatch_queue_attr_t dqAttr = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_CONCURRENT, QOS_CLASS_UTILITY, QOS_MIN_RELATIVE_PRIORITY);
+
+		_fenceQueue = dispatch_queue_create((getName() + "-Fence").c_str(), dqAttr);	// retained
 	}
 }
 
@@ -241,9 +243,9 @@ void MVKQueueCommandBufferSubmission::execute() {
     // Submit each command buffer.
 	for (auto& cb : _cmdBuffers) { cb->submit(this); }
 
-	// If a fence or semaphores was provided, ensure that a MTLCommandBuffer
-	// is available to trigger them, in case no command buffers were provided.
-	if (_fence || !_signalSemaphores.empty()) { getActiveMTLCommandBuffer(); }
+	// If semaphores were provided, ensure that a MTLCommandBuffer is available
+	// to trigger them, in case no command buffers were provided.
+	if (!_signalSemaphores.empty()) { getActiveMTLCommandBuffer(); }
 
 	// Commit the last MTLCommandBuffer.
 	// Nothing after this because callback might destroy this instance before this function ends.
@@ -281,7 +283,10 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 
 	if (signalCompletion) {
 		[_activeMTLCommandBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-			this->finish();
+			// This can block, so it must not run on the Metal completion queue.
+			dispatch_async(dispatch_get_global_queue(MVK_DISPATCH_QUEUE_QOS_CLASS, 0), ^{
+				this->finish();
+			});
 		}];
 	}
 
@@ -291,9 +296,18 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	[mtlCmdBuff commit];
 }
 
+void MVKQueueCommandBufferSubmission::addCmdBuffDoneEvent(std::unique_ptr<MVKCountingEvent>&& cmdBuffDoneEvent) {
+	_pendingCmdBuffDoneEvents.emplace_back(std::move(cmdBuffDoneEvent));
+}
+
 void MVKQueueCommandBufferSubmission::finish() {
 
 //	MVKLogDebug("Finishing submission %p. Submission count %u.", this, _subCount--);
+
+	// Wait for all work to be completed.
+	for (auto& pEvent : _pendingCmdBuffDoneEvents) {
+		pEvent->wait();
+	}
 
 	// Performed here instead of as part of execute() for rare case where app destroys queue
 	// immediately after a waitIdle() is cleared by fence below, taking the capture scope with it.
@@ -302,21 +316,19 @@ void MVKQueueCommandBufferSubmission::finish() {
 	// Signal each of the signal semaphores.
     for (auto& ss : _signalSemaphores) { ss->signal(); }
 
-    // If a fence exists, signal it.
-    if (_fence) { _fence->signal(); }
-    
     this->destroy();
 }
 
 MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* device,
 																 MVKQueue* queue,
 																 const VkSubmitInfo* pSubmit,
-                                                                 VkFence fence,
                                                                  MVKCommandUse cmdBuffUse)
         : MVKQueueSubmission(device,
 							 queue,
 							 (pSubmit ? pSubmit->waitSemaphoreCount : 0),
 							 (pSubmit ? pSubmit->pWaitSemaphores : nullptr)) {
+
+    _queue->_queueIdleEvent.lock();
 
     // pSubmit can be null if just tracking the fence alone
     if (pSubmit) {
@@ -335,7 +347,6 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
         }
     }
 
-	_fence = (MVKFence*)fence;
     _cmdBuffUse= cmdBuffUse;
 	_activeMTLCommandBuffer = nil;
 
@@ -343,11 +354,13 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 //	MVKLogDebug("Creating submission %p. Submission count %u.", this, ++_subCount);
 }
 
+MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
+	_queue->_queueIdleEvent.unlock();
+}
+
 
 #pragma mark -
 #pragma mark MVKQueuePresentSurfaceSubmission
-
-#define MVK_PRESENT_VIA_CMD_BUFFER		0
 
 void MVKQueuePresentSurfaceSubmission::execute() {
     id<MTLCommandQueue> mtlQ = _queue->getMTLCommandQueue();
