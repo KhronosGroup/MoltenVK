@@ -100,6 +100,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
     pipeline->getStages(stages);
 
     const MVKMTLBufferAllocation* vtxOutBuff = nullptr;
+    const MVKMTLBufferAllocation* vtxParamsBuff = nullptr;
     const MVKMTLBufferAllocation* tcOutBuff = nullptr;
     const MVKMTLBufferAllocation* tcPatchOutBuff = nullptr;
     const MVKMTLBufferAllocation* tcLevelBuff = nullptr;
@@ -123,10 +124,13 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                                                             offset: vtxOutBuff->_offset
                                                            atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
                     // The shader only needs the number of vertices, so that's all we'll give it.
-                    cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
-                                               &_vertexCount,
-                                               sizeof(_vertexCount),
-                                               pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]);
+                    // It'd be nice to be able to use setVertexBytes(), but since we can't guarantee
+                    // more than 4 bytes alignment because of indirect draws, we're stuck doing this.
+                    vtxParamsBuff = cmdEncoder->getTempMTLBuffer(4);
+                    *(uint32_t*)vtxParamsBuff->getContents() = _vertexCount;
+                    [cmdEncoder->_mtlRenderEncoder setVertexBuffer: vtxParamsBuff->_mtlBuffer
+                                                            offset: vtxParamsBuff->_offset
+                                                           atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]];
                 }
                 if (cmdEncoder->_pDeviceMetalFeatures->baseVertexInstanceDrawing) {
                     [cmdEncoder->_mtlRenderEncoder drawPrimitives: MTLPrimitiveTypePoint
@@ -286,6 +290,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
     VkDeviceSize idxBuffOffset = ibb.offset + (_firstIndex * idxSize);
 
     const MVKMTLBufferAllocation* vtxOutBuff = nullptr;
+    const MVKMTLBufferAllocation* vtxParamsBuff = nullptr;
     const MVKMTLBufferAllocation* tcOutBuff = nullptr;
     const MVKMTLBufferAllocation* tcPatchOutBuff = nullptr;
     const MVKMTLBufferAllocation* tcLevelBuff = nullptr;
@@ -324,14 +329,14 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                         &outControlPointCount,
                                         sizeof(outControlPointCount),
                                         3);
-            MTLDrawIndexedPrimitivesIndirectArguments params;
-            params.indexCount = _indexCount;
-            params.instanceCount = _instanceCount;
-            params.indexStart = _firstIndex;
-            cmdEncoder->setComputeBytes(mtlTessCtlEncoder,
-                                        &params,
-                                        sizeof(params),
-                                        4);
+            const MVKMTLBufferAllocation* indexParamsBuff = cmdEncoder->getTempMTLBuffer(sizeof(MTLDrawIndexedPrimitivesIndirectArguments));
+            auto* params = (MTLDrawIndexedPrimitivesIndirectArguments*)indexParamsBuff->getContents();
+            params->indexCount = _indexCount;
+            params->instanceCount = _instanceCount;
+            params->indexStart = _firstIndex;
+            [mtlTessCtlEncoder setBuffer: indexParamsBuff->_mtlBuffer
+                                  offset: indexParamsBuff->_offset
+                                 atIndex: 4];
             [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
         }
         cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
@@ -344,10 +349,11 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                                             offset: vtxOutBuff->_offset
                                                            atIndex: pipeline->getOutputBufferIndex().stages[kMVKShaderStageVertex]];
                     // The shader only needs the number of vertices, so that's all we'll give it.
-                    cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
-                                               &_indexCount,
-                                               sizeof(_indexCount),
-                                               pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]);
+                    vtxParamsBuff = cmdEncoder->getTempMTLBuffer(4);
+                    *(uint32_t*)vtxParamsBuff->getContents() = _indexCount;
+                    [cmdEncoder->_mtlRenderEncoder setVertexBuffer: vtxParamsBuff->_mtlBuffer
+                                                            offset: vtxParamsBuff->_offset
+                                                           atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]];
                 }
                 if (cmdEncoder->_pDeviceMetalFeatures->baseVertexInstanceDrawing) {
                     [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: MTLPrimitiveTypePoint
