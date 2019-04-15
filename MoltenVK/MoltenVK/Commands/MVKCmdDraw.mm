@@ -601,7 +601,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                             sizeof(_drawCount),
                                             5);
                 [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
-                                  threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 0, 0)];
+                                  threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
             }
 
             cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
