@@ -115,6 +115,8 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
     }
     for (uint32_t s : stages) {
         auto stage = MVKGraphicsStage(s);
+        if (stage == kMVKGraphicsStageVertex)
+            cmdEncoder->_depthStencilState.markDirty();
         cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
         id<MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
 
@@ -150,6 +152,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                 // so I apply them during the next stage.
                 cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                 cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
+                cmdEncoder->_depthStencilState.markDirty();
                 cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                 break;
             case kMVKGraphicsStageTessControl:
@@ -343,6 +346,8 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                  atIndex: 4];
             [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
         }
+        if (stage == kMVKGraphicsStageVertex)
+            cmdEncoder->_depthStencilState.markDirty();
         cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
 
         switch (stage) {
@@ -380,6 +385,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                 // so I apply them during the next stage.
                 cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                 cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
+                cmdEncoder->_depthStencilState.markDirty();
                 cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                 break;
             case kMVKGraphicsStageTessControl:
@@ -610,6 +616,8 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                   threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
             }
 
+            if (stage == kMVKGraphicsStageVertex)
+                cmdEncoder->_depthStencilState.markDirty();
             cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
 
             switch (stage) {
@@ -630,6 +638,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     // so I apply them during the next stage.
                     cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                     cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
+                    cmdEncoder->_depthStencilState.markDirty();
                     cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                     break;
                 case kMVKGraphicsStageTessControl:
@@ -857,6 +866,8 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
             }
 
+            if (stage == kMVKGraphicsStageVertex)
+                cmdEncoder->_depthStencilState.markDirty();
 	        cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
 
             switch (stage) {
@@ -880,6 +891,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     // so I apply them during the next stage.
                     cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                     cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
+                    cmdEncoder->_depthStencilState.markDirty();
                     cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                     break;
                 case kMVKGraphicsStageTessControl:
