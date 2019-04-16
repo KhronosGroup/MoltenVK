@@ -25,6 +25,7 @@
 #include "MVKQueryPool.h"
 #include "MVKFoundation.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
+#include "MVKCmdDraw.h"
 
 using namespace std;
 
@@ -189,6 +190,44 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 
 
 #pragma mark -
+#pragma mark Constituent render pass management
+
+void MVKCommandBuffer::recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass) {
+    _lastBeginRenderPass = mvkBeginRenderPass;
+    _lastTessellationPipeline = nullptr;
+    _lastTessellationDraw = nullptr;
+}
+
+void MVKCommandBuffer::recordEndRenderPass(MVKCmdEndRenderPass* /*mvkEndRenderPass*/) {
+    // Unset the store override for the last draw call
+    if (_lastTessellationDraw != nullptr)
+    {
+        _lastTessellationDraw->setStoreOverride(false);
+        _lastBeginRenderPass->setStoreOverride(true);
+    }
+    _lastBeginRenderPass = nullptr;
+    _lastTessellationPipeline = nullptr;
+    _lastTessellationDraw = nullptr;
+}
+
+void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
+    if (mvkBindPipeline->isTessellationPipeline())
+        _lastTessellationPipeline = mvkBindPipeline;
+    else
+        _lastTessellationPipeline = nullptr;
+}
+
+void MVKCommandBuffer::recordDraw(MVKLoadStoreOverride* mvkDraw) {
+    if (_lastTessellationPipeline != nullptr) {
+        // If a multi-pass pipeline is bound and we've already drawn something, need to override load actions
+        mvkDraw->setLoadOverride(true);
+        mvkDraw->setStoreOverride(true);
+        _lastTessellationDraw = mvkDraw;
+    }
+}
+
+
+#pragma mark -
 #pragma mark MVKCommandEncoder
 
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
@@ -219,14 +258,16 @@ void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
 										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
-										MVKVector<VkClearValue>* clearValues) {
+										MVKVector<VkClearValue>* clearValues,
+                                        bool loadOverride,
+                                        bool storeOverride) {
 	_renderPass = renderPass;
 	_framebuffer = framebuffer;
 	_renderArea = renderArea;
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebuffer->getExtent2D()));
 	_clearValues.assign(clearValues->begin(), clearValues->end());
-	setSubpass(subpassContents, 0);
+    setSubpass(subpassContents, 0, loadOverride, storeOverride);
 }
 
 void MVKCommandEncoder::beginNextSubpass(VkSubpassContents contents) {
@@ -234,20 +275,20 @@ void MVKCommandEncoder::beginNextSubpass(VkSubpassContents contents) {
 }
 
 // Sets the current render subpass to the subpass with the specified index.
-void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex) {
+void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex, bool loadOverride, bool storeOverride) {
 	_subpassContents = subpassContents;
 	_renderSubpassIndex = subpassIndex;
 
-    beginMetalRenderPass();
+    beginMetalRenderPass(loadOverride, storeOverride);
 }
 
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
-void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
+void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride, bool storeOverride) {
 
     endCurrentMetalEncoding();
 
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues, _isRenderingEntireAttachment, loadOverride);
+    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues, _isRenderingEntireAttachment, loadOverride, storeOverride);
     mtlRPDesc.visibilityResultBuffer = _occlusionQueryState.getVisibilityResultMTLBuffer();
 
 	if (_device->_pMetalFeatures->layeredRendering) {

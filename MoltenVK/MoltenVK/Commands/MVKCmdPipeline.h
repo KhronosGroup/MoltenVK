@@ -73,6 +73,8 @@ public:
 
 	MVKCmdBindPipeline(MVKCommandTypePool<MVKCmdBindPipeline>* pool);
 
+    bool isTessellationPipeline();
+
 private:
 	VkPipelineBindPoint _bindPoint;
 	MVKPipeline* _pipeline;

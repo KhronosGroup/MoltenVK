@@ -84,6 +84,8 @@ void MVKCmdDraw::setContent(uint32_t vertexCount,
 	_instanceCount = instanceCount;
 	_firstVertex = firstVertex;
 	_firstInstance = firstInstance;
+    _loadOverride = false;
+    _storeOverride = false;
 
     // Validate
     clearConfigurationResult();
@@ -198,7 +200,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
                                   threadsPerThreadgroup: MTLSizeMake(std::max(inControlPointCount, outControlPointCount), 1, 1)];
                 // Running this stage prematurely ended the render pass, so we have to start it up again.
                 // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                cmdEncoder->beginMetalRenderPass(true);
+                cmdEncoder->beginMetalRenderPass(_loadOverride, _storeOverride);
                 break;
             case kMVKGraphicsStageRasterization:
                 if (pipeline->isTessellationPipeline()) {
@@ -267,6 +269,8 @@ void MVKCmdDrawIndexed::setContent(uint32_t indexCount,
 	_firstIndex = firstIndex;
 	_vertexOffset = vertexOffset;
 	_firstInstance = firstInstance;
+    _loadOverride = false;
+    _storeOverride = false;
 
     // Validate
     clearConfigurationResult();
@@ -419,7 +423,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                                   threadsPerThreadgroup: MTLSizeMake(std::max(inControlPointCount, outControlPointCount), 1, 1)];
                 // Running this stage prematurely ended the render pass, so we have to start it up again.
                 // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                cmdEncoder->beginMetalRenderPass(true);
+                cmdEncoder->beginMetalRenderPass(_loadOverride, _storeOverride);
                 break;
             case kMVKGraphicsStageRasterization:
                 if (pipeline->isTessellationPipeline()) {
@@ -493,6 +497,8 @@ void MVKCmdDrawIndirect::setContent(VkBuffer buffer,
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
 	_mtlIndirectBufferStride = stride;
 	_drawCount = drawCount;
+    _loadOverride = false;
+    _storeOverride = false;
 
     // Validate
     clearConfigurationResult();
@@ -669,7 +675,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlTCIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Running this stage prematurely ended the render pass, so we have to start it up again.
                     // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                    cmdEncoder->beginMetalRenderPass(true);
+                    cmdEncoder->beginMetalRenderPass(_loadOverride, _storeOverride);
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {
@@ -728,6 +734,8 @@ void MVKCmdDrawIndexedIndirect::setContent(VkBuffer buffer,
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
 	_mtlIndirectBufferStride = stride;
 	_drawCount = drawCount;
+    _loadOverride = false;
+    _storeOverride = false;
 
     // Validate
     clearConfigurationResult();
@@ -915,7 +923,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlTCIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Running this stage prematurely ended the render pass, so we have to start it up again.
                     // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                    cmdEncoder->beginMetalRenderPass(true);
+                    cmdEncoder->beginMetalRenderPass(_loadOverride, _storeOverride);
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {
@@ -985,6 +993,7 @@ void mvkCmdDraw(MVKCommandBuffer* cmdBuff,
 				uint32_t firstInstance) {
 	MVKCmdDraw* cmd = cmdBuff->_commandPool->_cmdDrawPool.acquireObject();
 	cmd->setContent(vertexCount, instanceCount, firstVertex, firstInstance);
+    cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -996,6 +1005,7 @@ void mvkCmdDrawIndexed(MVKCommandBuffer* cmdBuff,
 					   uint32_t firstInstance) {
 	MVKCmdDrawIndexed* cmd = cmdBuff->_commandPool->_cmdDrawIndexedPool.acquireObject();
 	cmd->setContent(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+    cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1015,6 +1025,7 @@ void mvkCmdDrawIndirect(MVKCommandBuffer* cmdBuff,
 						uint32_t stride) {
 	MVKCmdDrawIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndirectPool.acquireObject();
 	cmd->setContent(buffer, offset, drawCount, stride);
+    cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1025,6 +1036,7 @@ void mvkCmdDrawIndexedIndirect(MVKCommandBuffer* cmdBuff,
 							   uint32_t stride) {
 	MVKCmdDrawIndexedIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndexedIndirectPool.acquireObject();
 	cmd->setContent(buffer, offset, drawCount, stride);
+    cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
