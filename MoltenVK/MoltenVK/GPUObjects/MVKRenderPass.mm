@@ -69,8 +69,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 													   MVKFramebuffer* framebuffer,
 													   MVKVector<VkClearValue>& clearValues,
 													   bool isRenderingEntireAttachment,
-                                                       bool loadOverride,
-                                                       bool storeOverride) {
+													   bool loadOverride,
+													   bool storeOverride) {
 	// Populate the Metal color attachments
 	uint32_t caCnt = getColorAttachmentCount();
 	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {

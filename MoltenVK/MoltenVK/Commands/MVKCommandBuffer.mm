@@ -259,8 +259,8 @@ void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
 										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
 										MVKVector<VkClearValue>* clearValues,
-                                        bool loadOverride,
-                                        bool storeOverride) {
+										bool loadOverride,
+										bool storeOverride) {
 	_renderPass = renderPass;
 	_framebuffer = framebuffer;
 	_renderArea = renderArea;
