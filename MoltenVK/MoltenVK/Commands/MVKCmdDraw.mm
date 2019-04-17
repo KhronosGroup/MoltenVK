@@ -665,8 +665,10 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                               offset: vtxOutBuff->_offset
                                              atIndex: kMVKTessCtlInputBufferIndex];
                         if ([mtlTessCtlEncoder respondsToSelector: @selector(setStageInRegionWithIndirectBuffer:indirectBufferOffset:)]) {
-                            [mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: tcIndirectBuff->_mtlBuffer
-                                                             indirectBufferOffset: mtlTCIndBuffOfst];
+                            // setStageInRegionWithIndirectBuffer appears to be broken. We have a 1D linear region anyway, so size is irrelevant
+                            //[mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: tcIndirectBuff->_mtlBuffer
+                            //                                 indirectBufferOffset: mtlTCIndBuffOfst];
+                            [mtlTessCtlEncoder setStageInRegion: MTLRegionMake1D(0, std::max(inControlPointCount, outControlPointCount) * patchCount)];
                             mtlTCIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
                         } else {
                             // We must assume we can read up to the maximum number of vertices.
@@ -918,8 +920,10 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                               offset: vtxOutBuff->_offset
                                              atIndex: kMVKTessCtlInputBufferIndex];
                         if ([mtlTessCtlEncoder respondsToSelector: @selector(setStageInRegionWithIndirectBuffer:indirectBufferOffset:)]) {
-                            [mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: tcIndirectBuff->_mtlBuffer
-                                                             indirectBufferOffset: mtlTCIndBuffOfst];
+                            // setStageInRegionWithIndirectBuffer appears to be broken. We have a 1D linear region anyway, so size is irrelevant
+                            //[mtlTessCtlEncoder setStageInRegionWithIndirectBuffer: tcIndirectBuff->_mtlBuffer
+                            //                                 indirectBufferOffset: mtlTCIndBuffOfst];
+                            [mtlTessCtlEncoder setStageInRegion: MTLRegionMake1D(0, std::max(inControlPointCount, outControlPointCount) * patchCount)];
                             mtlTCIndBuffOfst += sizeof(MTLStageInRegionIndirectArguments);
                         } else {
                             // We must assume we can read up to the maximum number of vertices.
