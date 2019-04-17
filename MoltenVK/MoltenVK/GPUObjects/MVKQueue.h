@@ -20,7 +20,6 @@
 
 #include "MVKDevice.h"
 #include "MVKCommandBuffer.h"
-#include "MVKCountingEvent.h"
 #include "MVKImage.h"
 #include "MVKSync.h"
 #include "MVKVector.h"
@@ -140,7 +139,7 @@ protected:
 	MVKMTLCommandBufferID _nextMTLCmdBuffID;
 	MVKGPUCaptureScope* _submissionCaptureScope;
 	MVKGPUCaptureScope* _presentationCaptureScope;
-	MVKCountingEvent _queueIdleEvent;
+	MVKSemaphoreImpl _queueIdleEvent;
 };
 
 
@@ -204,14 +203,14 @@ protected:
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
-	void addCmdBuffDoneEvent(std::unique_ptr<MVKCountingEvent>&& event);
+	void addCmdBuffDoneEvent(std::unique_ptr<MVKSemaphoreImpl>&& event);
 	void finish();
 
 	MVKVectorInline<MVKCommandBuffer*, 16> _cmdBuffers;
 	MVKVectorInline<MVKSemaphore*, 16> _signalSemaphores;
     MVKCommandUse _cmdBuffUse;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
-	std::vector<std::unique_ptr<MVKCountingEvent>> _pendingCmdBuffDoneEvents;
+	std::vector<std::unique_ptr<MVKSemaphoreImpl>> _pendingCmdBuffDoneEvents;
 };
 
 

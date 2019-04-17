@@ -117,13 +117,13 @@ void MVKCmdCopyQueryPoolResults::setContent(VkQueryPool queryPool,
 }
 
 void MVKCmdCopyQueryPoolResults::encode(MVKCommandEncoder* cmdEncoder) {
-    MVKCountingEvent* pCmdBuffDoneEvent = cmdEncoder->_cmdBuffDoneEvent.get();
-    pCmdBuffDoneEvent->lock();
+    MVKSemaphoreImpl* pCmdBuffDoneEvent = cmdEncoder->_cmdBuffDoneEvent.get();
+    pCmdBuffDoneEvent->reserve();
     [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
         // This can block, so it must not run on the Metal completion queue.
         dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
             _queryPool->copyQueryPoolResults(_query, _queryCount, _destBuffer, _destOffset, _destStride, _flags);
-            pCmdBuffDoneEvent->unlock();
+            pCmdBuffDoneEvent->release();
         });
     }];
 }

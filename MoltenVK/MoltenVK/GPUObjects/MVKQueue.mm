@@ -296,7 +296,7 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	[mtlCmdBuff commit];
 }
 
-void MVKQueueCommandBufferSubmission::addCmdBuffDoneEvent(std::unique_ptr<MVKCountingEvent>&& cmdBuffDoneEvent) {
+void MVKQueueCommandBufferSubmission::addCmdBuffDoneEvent(std::unique_ptr<MVKSemaphoreImpl>&& cmdBuffDoneEvent) {
 	_pendingCmdBuffDoneEvents.emplace_back(std::move(cmdBuffDoneEvent));
 }
 
@@ -328,7 +328,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 							 (pSubmit ? pSubmit->waitSemaphoreCount : 0),
 							 (pSubmit ? pSubmit->pWaitSemaphores : nullptr)) {
 
-    _queue->_queueIdleEvent.lock();
+    _queue->_queueIdleEvent.reserve();
 
     // pSubmit can be null if just tracking the fence alone
     if (pSubmit) {
@@ -355,7 +355,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 }
 
 MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
-	_queue->_queueIdleEvent.unlock();
+	_queue->_queueIdleEvent.release();
 }
 
 

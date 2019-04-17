@@ -19,11 +19,11 @@
 #pragma once
 
 #include "MVKDevice.h"
+#include "MVKSync.h"
 #include "MVKCommand.h"
 #include "MVKCommandEncoderState.h"
 #include "MVKMTLBufferAllocation.h"
 #include "MVKCmdPipeline.h"
-#include "MVKCountingEvent.h"
 #include "MVKVector.h"
 #include <vector>
 #include <unordered_map>
@@ -40,7 +40,6 @@ class MVKQueryPool;
 class MVKPipeline;
 class MVKGraphicsPipeline;
 class MVKComputePipeline;
-class MVKCountingEvent;
 
 typedef uint64_t MVKMTLCommandBufferID;
 
@@ -81,7 +80,7 @@ public:
     inline bool getIsReusable() { return _isReusable; }
 
 	/** Transfers ownership of the completion event to the caller. */
-	std::unique_ptr<MVKCountingEvent> takeCmdBuffDoneEvent() { return std::move(_prefilledCmdBuffDoneEvent); }
+	std::unique_ptr<MVKSemaphoreImpl> takeCmdBuffDoneEvent() { return std::move(_prefilledCmdBuffDoneEvent); }
 
 	/** The command pool that is the source of commands for this buffer. */
 	MVKCommandPool* _commandPool;
@@ -140,7 +139,7 @@ protected:
 	VkResult _recordingResult;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
-	std::unique_ptr<MVKCountingEvent> _prefilledCmdBuffDoneEvent;
+	std::unique_ptr<MVKSemaphoreImpl> _prefilledCmdBuffDoneEvent;
 	bool _isSecondary;
 	bool _doesContinueRenderPass;
 	bool _canAcceptCommands;
@@ -287,7 +286,7 @@ public:
 	void endMetalRenderEncoding();
 
 	/** Transfers ownership of the completion event to the caller. */
-	std::unique_ptr<MVKCountingEvent> takeCmdBuffDoneEvent() { return std::move(_cmdBuffDoneEvent); }
+	std::unique_ptr<MVKSemaphoreImpl> takeCmdBuffDoneEvent() { return std::move(_cmdBuffDoneEvent); }
 
 	/** 
 	 * The current Metal compute encoder for the specified use,
@@ -361,7 +360,7 @@ public:
 	id<MTLCommandBuffer> _mtlCmdBuffer;
 
 	/** The completion event for the current command buffer. */
-	std::unique_ptr<MVKCountingEvent> _cmdBuffDoneEvent;
+	std::unique_ptr<MVKSemaphoreImpl> _cmdBuffDoneEvent;
 
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
