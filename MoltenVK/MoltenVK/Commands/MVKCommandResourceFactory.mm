@@ -386,8 +386,8 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3D
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed) {
-	return newMTLComputePipelineState(getFunctionNamed(indexed ? "cmdDrawIndirectConvertBuffers" :
-                                                                 "cmdDrawIndexedIndirectConvertBuffers"));
+	return newMTLComputePipelineState(getFunctionNamed(indexed ? "cmdDrawIndexedIndirectConvertBuffers" :
+                                                                 "cmdDrawIndirectConvertBuffers"));
 }
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type) {
