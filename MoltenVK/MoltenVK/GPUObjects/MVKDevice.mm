@@ -1943,7 +1943,9 @@ void MVKDevice::addActivityPerformanceImpl(MVKPerformanceTracker& shaderCompilat
     lock_guard<mutex> lock(_perfLock);
 
 	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
-    shaderCompilationEvent.minimumDuration = min(currInterval, shaderCompilationEvent.minimumDuration);
+	shaderCompilationEvent.minimumDuration = ((shaderCompilationEvent.minimumDuration == 0.0)
+											  ? currInterval :
+											  min(currInterval, shaderCompilationEvent.minimumDuration));
     shaderCompilationEvent.maximumDuration = max(currInterval, shaderCompilationEvent.maximumDuration);
     double totalInterval = (shaderCompilationEvent.averageDuration * shaderCompilationEvent.count++) + currInterval;
     shaderCompilationEvent.averageDuration = totalInterval / shaderCompilationEvent.count;
@@ -2072,7 +2074,7 @@ void MVKDevice::initPerformanceTracking() {
     MVKPerformanceTracker initPerf;
     initPerf.count = 0;
     initPerf.averageDuration = 0.0;
-    initPerf.minimumDuration = numeric_limits<double>::max();
+    initPerf.minimumDuration = 0.0;
     initPerf.maximumDuration = 0.0;
 
 	_performanceStatistics.shaderCompilation.hashShaderCode = initPerf;

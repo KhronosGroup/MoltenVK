@@ -20,6 +20,7 @@
 
 
 #include "GLSLConversion.h"
+#include "SPIRVToMSLConverter.h"
 #include <string>
 #include <vector>
 
@@ -28,9 +29,9 @@ namespace mvk {
 
 	typedef struct {
 		uint32_t count = 0;
-		double averageDuration = 0;
-		double minimumDuration = std::numeric_limits<double>::max();
-		double maximumDuration = 0;
+		double averageDuration = 0.0;
+		double minimumDuration = 0.0;
+		double maximumDuration = 0.0;
 
 		uint64_t getTimestamp();
 		void accumulate(uint64_t startTime, uint64_t endTime = 0);
@@ -102,6 +103,10 @@ namespace mvk {
 		MVKShaderStage _shaderStage;
 		MVKPerformanceTracker _glslConversionPerformance;
 		MVKPerformanceTracker _spvConversionPerformance;
+		uint32_t _mslVersionMajor;
+		uint32_t _mslVersionMinor;
+		uint32_t _mslVersionPatch;
+		SPIRVToMSLConverterOptions::Platform _mslPlatform;
 		bool _isActive;
 		bool _shouldUseDirectoryRecursion;
 		bool _shouldReadGLSL;
@@ -121,9 +126,15 @@ namespace mvk {
 
 	/**
 	 * Extracts whitespace-delimited tokens from the specified string and
-	 * appends them to the specified vector. The vector is not cleared first.
+	 * appends them to the specified vector. The vector is cleared first.
 	 */
 	void extractTokens(std::string str, std::vector<std::string>& tokens);
+
+	/**
+	 * Extracts period-delimited tokens from the specified string and
+	 * appends them to the specified vector. The vector is cleared first.
+	 */
+	void extractTokens(std::string str, std::vector<uint32_t>& tokens);
 
 	/** Compares the specified strings, with or without sensitivity to case. */
 	bool equal(std::string const& a, std::string const& b, bool checkCase = true);

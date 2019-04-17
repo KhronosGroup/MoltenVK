@@ -84,6 +84,15 @@ MVK_PUBLIC_SYMBOL std::string SPIRVToMSLConverterOptions::printMSLVersion(uint32
 	return verStr;
 }
 
+MVK_PUBLIC_SYMBOL mvk::SPIRVToMSLConverterOptions::Platform SPIRVToMSLConverterOptions::getNativePlatform() {
+#if MVK_MACOS
+	return SPIRVToMSLConverterOptions::macOS;
+#endif
+#if MVK_IOS
+	return SPIRVToMSLConverterOptions::iOS;
+#endif
+}
+
 MVK_PUBLIC_SYMBOL bool MSLVertexAttribute::matches(const MSLVertexAttribute& other) const {
     if (location != other.location) { return false; }
     if (mslBuffer != other.mslBuffer) { return false; }
@@ -182,6 +191,9 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignWith(const SPIRVToMSLCon
 #pragma mark -
 #pragma mark SPIRVToMSLConverter
 
+// Return the SPIRV-Cross platform enum corresponding to a SPIRVToMSLConverterOptions platform enum value.
+SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::Platform getCompilerMSLPlatform(SPIRVToMSLConverterOptions::Platform platform);
+
 // Populates the entry point with info extracted from the SPRI-V compiler.
 void populateEntryPoint(SPIRVEntryPoint& entryPoint, SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConverterOptions& options);
 
@@ -238,14 +250,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		// Establish the MSL options for the compiler
 		// This needs to be done in two steps...for CompilerMSL and its superclass.
 		auto mslOpts = pMSLCompiler->get_msl_options();
-
-#if MVK_MACOS
-		mslOpts.platform = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::macOS;
-#endif
-#if MVK_IOS
-		mslOpts.platform = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::iOS;
-#endif
-
+		mslOpts.platform = getCompilerMSLPlatform(context.options.platform);
 		mslOpts.msl_version = context.options.mslVersion;
 		mslOpts.texel_buffer_texture_width = context.options.texelBufferTextureWidth;
 		mslOpts.aux_buffer_index = context.options.auxBufferIndex;
@@ -440,6 +445,14 @@ void SPIRVToMSLConverter::logSource(string& src, const char* srcLang, const char
 
 
 #pragma mark Support functions
+
+// Return the SPIRV-Cross platform enum corresponding to a SPIRVToMSLConverterOptions platform enum value.
+SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::Platform getCompilerMSLPlatform(SPIRVToMSLConverterOptions::Platform platform) {
+	switch (platform) {
+		case SPIRVToMSLConverterOptions::macOS: return SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::macOS;
+		case SPIRVToMSLConverterOptions::iOS: return SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::iOS;
+	}
+}
 
 // Populate a workgroup size dimension.
 void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst) {

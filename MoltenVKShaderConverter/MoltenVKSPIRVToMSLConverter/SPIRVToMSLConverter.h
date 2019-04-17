@@ -19,7 +19,7 @@
 #ifndef __SPIRVToMSLConverter_h_
 #define __SPIRVToMSLConverter_h_ 1
 
-#include "../SPIRV-Cross/spirv.hpp"
+#include <SPIRV-Cross/spirv.hpp>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -32,11 +32,18 @@ namespace mvk {
 
 	/** Options for converting SPIR-V to Metal Shading Language */
 	typedef struct SPIRVToMSLConverterOptions {
+
+		enum Platform {
+			iOS = 0,
+			macOS = 1
+		};
+
 		std::string entryPointName;
 		spv::ExecutionModel entryPointStage = spv::ExecutionModelMax;
 		spv::ExecutionMode tessPatchKind = spv::ExecutionModeMax;
 
-        uint32_t mslVersion = makeMSLVersion(2);
+        uint32_t mslVersion = makeMSLVersion(2, 1);
+		Platform platform = getNativePlatform();
 		uint32_t texelBufferTextureWidth = 4096;
 		uint32_t auxBufferIndex = 0;
 		uint32_t indirectParamsBufferIndex = 0;
@@ -80,6 +87,8 @@ namespace mvk {
         }
 
 		static std::string printMSLVersion(uint32_t mslVersion, bool includePatch = false);
+
+		static Platform getNativePlatform();
 
     } SPIRVToMSLConverterOptions;
 

@@ -920,6 +920,7 @@
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
+					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 				);
@@ -973,6 +974,7 @@
 				GCC_WARN_UNUSED_VARIABLE = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
+					"\"$(SRCROOT)\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/external/spirv-headers/include\"",
 				);

@@ -55,20 +55,49 @@ bool mvk::iterateDirectory(const string& dirPath,
 	return success;
 }
 
-/** Concrete template implementation to allow MoltenVKShaderConverterTool to iterate the files in a directory. */
+// Concrete template implementation to allow MoltenVKShaderConverterTool to iterate the files in a directory.
 template bool mvk::iterateDirectory<MoltenVKShaderConverterTool>(const string& dirPath,
 																  MoltenVKShaderConverterTool& fileProcessor,
 																  bool isRecursive,
 																  string& errMsg);
 
-bool mvk::compile(const string& mslSourceCode, string& errMsg) {
+bool mvk::compile(const string& mslSourceCode,
+				  string& errMsg,
+				  uint32_t mslVersionMajor,
+				  uint32_t mslVersionMinor,
+				  uint32_t mslVersionPoint) {
+
+#define mslVer(MJ, MN, PT)	mslVersionMajor == MJ && mslVersionMinor == MN && mslVersionPoint == PT
+
+	MTLLanguageVersion mslVerEnum = (MTLLanguageVersion)0;
+	if (mslVer(2, 1, 0)) {
+		if (@available(macOS 10.14, *)) {
+			mslVerEnum = MTLLanguageVersion2_1;
+		}
+	} else if (mslVer(2, 0, 0)) {
+		if (@available(macOS 10.13, *)) {
+			mslVerEnum = MTLLanguageVersion2_0;
+		}
+	} else if (mslVer(1, 2, 0)) {
+		mslVerEnum = MTLLanguageVersion1_2;
+	} else if (mslVer(1, 1, 0)) {
+		mslVerEnum = MTLLanguageVersion1_1;
+	}
+
+	if ( !mslVerEnum ) {
+		errMsg = [NSString stringWithFormat: @"%d.%d.%d is not a valid MSL version number on this device",
+				  mslVersionMajor, mslVersionMinor, mslVersionPoint].UTF8String;
+		return false;
+	}
+
 	@autoreleasepool {
+		MTLCompileOptions* mtlCompileOptions  = [[MTLCompileOptions new] autorelease];
+		mtlCompileOptions.languageVersion = mslVerEnum;
 		NSError* err = nil;
 		id<MTLLibrary> mtlLib = [[MTLCreateSystemDefaultDevice() newLibraryWithSource: @(mslSourceCode.c_str())
-																			  options: [[MTLCompileOptions new] autorelease]
+																			  options: mtlCompileOptions
 																				error: &err] autorelease];
-		errMsg = err ? [NSString stringWithFormat: @"(Error code %li):\n%@", (long)err.code, err.localizedDescription].UTF8String
-					 : "";
+		errMsg = err ? [NSString stringWithFormat: @"(Error code %li):\n%@", (long)err.code, err.localizedDescription].UTF8String : "";
 		return !!mtlLib;
 	}
 }

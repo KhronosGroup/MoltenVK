@@ -13,6 +13,17 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.35
+---------------
+
+Released TBD
+
+- Don't use setVertexBytes() for passing tessellation vertex counts.
+- Fix zero local threadgroup size in indirect tessellated rendering.
+- MoltenVKShaderConverter tool add MSL version and platform command-line options.
+
+
+
 MoltenVK 1.0.34
 ---------------
 
@@ -115,7 +126,7 @@ Released 2019/02/28
   runtime environment variable.
   Set MSL version for shader compiling from Metal feature set.
 - Don't warn on identity swizzles when `fullImageViewSwizzle` config setting is enabled.
-- Track version of spvAux buffer struct in SPRIV-Cross and fail build if different
+- Track version of spvAux buffer struct in SPIRV-Cross and fail build if different
   than version expected by MoltenVK.
 - Add static and dynamic libraries to MoltenVKShaderConverter project.
 - Fix crash from use of MTLDevice registryID on early OS versions.
@@ -792,7 +803,7 @@ Released 2018/03/19
 - Add build and runtime OS and device requirements to documentation.
 - Add Compliance and Contribution sections to README.md.
 - Remove executable permissions from non-executable files.
-- Update to latest SPRIV-Cross.
+- Update to latest SPIRV-Cross.
 - Update copyright dates to 2018.
 
 
