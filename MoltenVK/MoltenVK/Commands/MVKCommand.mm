@@ -42,11 +42,11 @@ id<MTLDevice> MVKCommand::getMTLDevice() { return getCommandPool()->getMTLDevice
 #pragma mark MVKLoadStoreOverride
 
 void MVKLoadStoreOverride::setLoadOverride(bool loadOverride) {
-    _loadOverride = loadOverride;
+	_loadOverride = loadOverride;
 }
 
 void MVKLoadStoreOverride::setStoreOverride(bool storeOverride) {
-    _storeOverride = storeOverride;
+	_storeOverride = storeOverride;
 }
 
 

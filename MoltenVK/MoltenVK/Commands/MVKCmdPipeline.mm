@@ -110,10 +110,10 @@ MVKCmdBindPipeline::MVKCmdBindPipeline(MVKCommandTypePool<MVKCmdBindPipeline>* p
 	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 bool MVKCmdBindPipeline::isTessellationPipeline() {
-    if (_bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
-        return ((MVKGraphicsPipeline*)_pipeline)->isTessellationPipeline();
-    else
-        return false;
+	if (_bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
+		return ((MVKGraphicsPipeline*)_pipeline)->isTessellationPipeline();
+	else
+		return false;
 }
 
 
@@ -334,7 +334,7 @@ void mvkCmdBindPipeline(MVKCommandBuffer* cmdBuff,
 						VkPipeline pipeline) {
 	MVKCmdBindPipeline* cmd = cmdBuff->_commandPool->_cmdBindPipelinePool.acquireObject();
 	cmd->setContent(pipelineBindPoint, pipeline);
-    cmdBuff->recordBindPipeline(cmd);
+	cmdBuff->recordBindPipeline(cmd);
 	cmdBuff->addCommand(cmd);
 }
 

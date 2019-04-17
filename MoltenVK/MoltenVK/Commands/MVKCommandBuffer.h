@@ -103,25 +103,25 @@ public:
 
 #pragma mark Constituent render pass management
     /** Preps metadata for recording render pass */
-    void recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass);
-
-    /** Finishes metadata for recording render pass */
-    void recordEndRenderPass(MVKCmdEndRenderPass* mvkEndRenderPass);
-
-    /** Update the last recorded pipeline if it will end and start a new Metal render pass (ie, in tessellation) */
-    void recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline);
-
-    /** Update the last recorded drawcall to determine load/store actions */
-    void recordDraw(MVKLoadStoreOverride* mvkDraw);
-
-    /** The most recent recorded begin renderpass */
-    MVKCmdBeginRenderPass* _lastBeginRenderPass;
-
-    /** The most recent recorded multi-pass (ie, tessellation) pipeline */
-    MVKCmdBindPipeline* _lastTessellationPipeline;
-
-    /** The most recent recorded multi-pass (ie, tessellation) draw */
-    MVKLoadStoreOverride* _lastTessellationDraw;
+	void recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass);
+	
+	/** Finishes metadata for recording render pass */
+	void recordEndRenderPass(MVKCmdEndRenderPass* mvkEndRenderPass);
+	
+	/** Update the last recorded pipeline if it will end and start a new Metal render pass (ie, in tessellation) */
+	void recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline);
+	
+	/** Update the last recorded drawcall to determine load/store actions */
+	void recordDraw(MVKLoadStoreOverride* mvkDraw);
+	
+	/** The most recent recorded begin renderpass */
+	MVKCmdBeginRenderPass* _lastBeginRenderPass;
+	
+	/** The most recent recorded multi-pass (ie, tessellation) pipeline */
+	MVKCmdBindPipeline* _lastTessellationPipeline;
+	
+	/** The most recent recorded multi-pass (ie, tessellation) draw */
+	MVKLoadStoreOverride* _lastTessellationDraw;
 
 
 #pragma mark Construction
@@ -267,8 +267,8 @@ public:
 						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
 						 MVKVector<VkClearValue>* clearValues,
-                         bool loadOverride = false,
-                         bool storeOverride = false);
+						 bool loadOverride = false,
+						 bool storeOverride = false);
 
 	/** Begins the next render subpass. */
 	void beginNextSubpass(VkSubpassContents renderpassContents);
@@ -425,7 +425,7 @@ public:
 protected:
     void addActivatedQuery(MVKQueryPool* pQueryPool, uint32_t query);
     void finishQueries();
-    void setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex, bool loadOverride = false, bool storeOverride = false);
+	void setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex, bool loadOverride = false, bool storeOverride = false);
 	void clearRenderArea();
     const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length);
     NSString* getMTLRenderCommandEncoderName();

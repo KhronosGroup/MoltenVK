@@ -279,7 +279,7 @@ void mvkCmdBeginRenderPass(MVKCommandBuffer* cmdBuff,
 						   VkSubpassContents contents) {
 	MVKCmdBeginRenderPass* cmd = cmdBuff->_commandPool->_cmdBeginRenderPassPool.acquireObject();
 	cmd->setContent(pRenderPassBegin, contents);
-    cmdBuff->recordBeginRenderPass(cmd);
+	cmdBuff->recordBeginRenderPass(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -291,7 +291,7 @@ void mvkCmdNextSubpass(MVKCommandBuffer* cmdBuff, VkSubpassContents contents) {
 
 void mvkCmdEndRenderPass(MVKCommandBuffer* cmdBuff) {
 	MVKCmdEndRenderPass* cmd = cmdBuff->_commandPool->_cmdEndRenderPassPool.acquireObject();
-    cmdBuff->recordEndRenderPass(cmd);
+	cmdBuff->recordEndRenderPass(cmd);
 	cmdBuff->addCommand(cmd);
 }
 

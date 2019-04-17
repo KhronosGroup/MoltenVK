@@ -193,37 +193,37 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 #pragma mark Constituent render pass management
 
 void MVKCommandBuffer::recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass) {
-    _lastBeginRenderPass = mvkBeginRenderPass;
-    _lastTessellationPipeline = nullptr;
-    _lastTessellationDraw = nullptr;
+	_lastBeginRenderPass = mvkBeginRenderPass;
+	_lastTessellationPipeline = nullptr;
+	_lastTessellationDraw = nullptr;
 }
 
 void MVKCommandBuffer::recordEndRenderPass(MVKCmdEndRenderPass* /*mvkEndRenderPass*/) {
-    // Unset the store override for the last draw call
-    if (_lastTessellationDraw != nullptr)
-    {
-        _lastTessellationDraw->setStoreOverride(false);
-        _lastBeginRenderPass->setStoreOverride(true);
-    }
-    _lastBeginRenderPass = nullptr;
-    _lastTessellationPipeline = nullptr;
-    _lastTessellationDraw = nullptr;
+	// Unset the store override for the last draw call
+	if (_lastTessellationDraw != nullptr)
+	{
+		_lastTessellationDraw->setStoreOverride(false);
+		_lastBeginRenderPass->setStoreOverride(true);
+	}
+	_lastBeginRenderPass = nullptr;
+	_lastTessellationPipeline = nullptr;
+	_lastTessellationDraw = nullptr;
 }
 
 void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
-    if (mvkBindPipeline->isTessellationPipeline())
-        _lastTessellationPipeline = mvkBindPipeline;
-    else
-        _lastTessellationPipeline = nullptr;
+	if (mvkBindPipeline->isTessellationPipeline())
+		_lastTessellationPipeline = mvkBindPipeline;
+	else
+		_lastTessellationPipeline = nullptr;
 }
 
 void MVKCommandBuffer::recordDraw(MVKLoadStoreOverride* mvkDraw) {
-    if (_lastTessellationPipeline != nullptr) {
-        // If a multi-pass pipeline is bound and we've already drawn something, need to override load actions
-        mvkDraw->setLoadOverride(true);
-        mvkDraw->setStoreOverride(true);
-        _lastTessellationDraw = mvkDraw;
-    }
+	if (_lastTessellationPipeline != nullptr) {
+		// If a multi-pass pipeline is bound and we've already drawn something, need to override load actions
+		mvkDraw->setLoadOverride(true);
+		mvkDraw->setStoreOverride(true);
+		_lastTessellationDraw = mvkDraw;
+	}
 }
 
 
@@ -267,7 +267,7 @@ void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebuffer->getExtent2D()));
 	_clearValues.assign(clearValues->begin(), clearValues->end());
-    setSubpass(subpassContents, 0, loadOverride, storeOverride);
+	setSubpass(subpassContents, 0, loadOverride, storeOverride);
 }
 
 void MVKCommandEncoder::beginNextSubpass(VkSubpassContents contents) {
