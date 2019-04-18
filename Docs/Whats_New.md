@@ -18,10 +18,19 @@ MoltenVK 1.0.35
 
 Released TBD
 
-- Don't use setVertexBytes() for passing tessellation vertex counts.
+- Tessellation fixes:
+	- Don't use setVertexBytes() for passing tessellation vertex counts.
+	- Fix intermediate Metal renderpasses load and store actions maintaining 
+	  attachments appropriately.
+	- Use empty depth state for tessellation vertex pre-pass.
+	- Fix tessellated indirect draws using wrong kernels to map parameters.
+	- Work around potential Metal bug with stage-in indirect buffers.
 - Fix zero local threadgroup size in indirect tessellated rendering.
 - `MoltenVKShaderConverter` tool: Add MSL version and platform command-line options.
 - Allow building external dependency libraries in Debug mode.
+- Enable AMD and NV GLSL extensions when building glslang for MoltenVKGLSLToSPIRVConverter.
+- Update to latest SPIRV-Cross version:
+	- MSL: Only use constant address space for tessellation control shader.
 
 
 
