@@ -277,10 +277,10 @@ void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags 
 }
 
 void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (stage != kMVKGraphicsStageRasterization) { return; }
+    if (stage != kMVKGraphicsStageRasterization && stage != kMVKGraphicsStageVertex) { return; }
     MVKRenderSubpass *subpass = _cmdEncoder->getSubpass();
     id<MTLDepthStencilState> mtlDSS = nil;
-    if (subpass->getDepthStencilFormat() != VK_FORMAT_UNDEFINED) {
+    if (stage != kMVKGraphicsStageVertex && subpass->getDepthStencilFormat() != VK_FORMAT_UNDEFINED) {
         mtlDSS = _cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(_depthStencilData);
     } else {
         // If there is no depth attachment but the depth/stencil state contains a non-always depth

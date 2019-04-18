@@ -112,3 +112,19 @@ protected:
     MVKCommandPool* _commandPool;
 };
 
+
+#pragma mark -
+#pragma mark MVKLoadStoreOverride
+
+/** Shared state with all draw commands */
+class MVKLoadStoreOverride {
+public:
+    void setLoadOverride(bool loadOverride);
+    void setStoreOverride(bool storeOverride);
+
+protected:
+    bool _loadOverride;
+    bool _storeOverride;
+};
+
+

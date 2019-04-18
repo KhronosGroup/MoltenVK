@@ -59,7 +59,8 @@ public:
 										 MVKFramebuffer* framebuffer,
 										 MVKVector<VkClearValue>& clearValues,
 										 bool isRenderingEntireAttachment,
-                                         bool loadOverride = false);
+                                         bool loadOverride = false,
+                                         bool storeOverride = false);
 
 	/**
 	 * Populates the specified vector with the attachments that need to be cleared
@@ -113,7 +114,8 @@ public:
                                                    bool isRenderingEntireAttachment,
                                                    bool hasResolveAttachment,
                                                    bool isStencil,
-                                                   bool loadOverride = false);
+                                                   bool loadOverride = false,
+                                                   bool storeOverride = false);
 
     /** Returns whether this attachment should be cleared in the subpass. */
     bool shouldUseClearAttachment(MVKRenderSubpass* subpass);

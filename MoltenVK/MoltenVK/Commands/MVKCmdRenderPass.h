@@ -33,7 +33,7 @@ class MVKFramebuffer;
 #pragma mark MVKCmdBeginRenderPass
 
 /** Vulkan command to begin a render pass. */
-class MVKCmdBeginRenderPass : public MVKCommand {
+class MVKCmdBeginRenderPass : public MVKCommand, public MVKLoadStoreOverride {
 
 public:
 	void setContent(const VkRenderPassBeginInfo* pRenderPassBegin,
