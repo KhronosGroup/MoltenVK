@@ -4,7 +4,7 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
+# macOS usage: ./fetchDependencies [-v] [--debug] [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
 #
 #      --v-headers-root path
 #              "path" specifies a directory path to a
@@ -24,11 +24,16 @@
 #
 #      -v      verbose output
 #
+#      --debug
+#              Build the external libraries in Debug mode, which may be useful
+#              when debugging and tracing calls into those libraries.
+#
 
 set -o errexit
 
 # ----------------- Functions -------------------
 
+XC_SCHEME_SFX=""
 XC_BUILD_VERBOSITY="-quiet"
 V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
@@ -36,6 +41,10 @@ GLSLANG_ROOT=""
 
 while (( "$#" )); do
   case "$1" in
+       --debug)
+         XC_SCHEME_SFX=" (Debug)"
+         shift 1
+         ;;
        -v)
          XC_BUILD_VERBOSITY=""
          shift 1
@@ -253,12 +262,15 @@ echo ========== Building dependency libraries quietly. Please be patient on firs
 echo
 
 EXT_DEPS=ExternalDependencies
+XC_PROJ="${EXT_DEPS}.xcodeproj"
+XC_SCHEME="${EXT_DEPS}${XC_SCHEME_SFX}"
+XC_DD_PATH="${EXT_DIR}/build"
 
-xcodebuild 									\
-	-project "${EXT_DEPS}.xcodeproj"		\
-	-scheme "${EXT_DEPS}"					\
-	-derivedDataPath "${EXT_DIR}/build"		\
-	${XC_BUILD_VERBOSITY}					\
+xcodebuild 								\
+	-project "${XC_PROJ}"				\
+	-scheme "${XC_SCHEME}"				\
+	-derivedDataPath "${XC_DD_PATH}"	\
+	${XC_BUILD_VERBOSITY}				\
 	build
 
 echo ========== Done! ==========

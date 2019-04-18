@@ -20,7 +20,8 @@ Released TBD
 
 - Don't use setVertexBytes() for passing tessellation vertex counts.
 - Fix zero local threadgroup size in indirect tessellated rendering.
-- MoltenVKShaderConverter tool add MSL version and platform command-line options.
+- `MoltenVKShaderConverter` tool: Add MSL version and platform command-line options.
+- Allow building external dependency libraries in Debug mode.
 
 
 
