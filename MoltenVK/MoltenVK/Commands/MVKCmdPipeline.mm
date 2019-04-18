@@ -109,6 +109,13 @@ void MVKCmdBindPipeline::encode(MVKCommandEncoder* cmdEncoder) {
 MVKCmdBindPipeline::MVKCmdBindPipeline(MVKCommandTypePool<MVKCmdBindPipeline>* pool)
 	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
+bool MVKCmdBindPipeline::isTessellationPipeline() {
+	if (_bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
+		return ((MVKGraphicsPipeline*)_pipeline)->isTessellationPipeline();
+	else
+		return false;
+}
+
 
 #pragma mark -
 #pragma mark MVKCmdBindDescriptorSets
@@ -327,6 +334,7 @@ void mvkCmdBindPipeline(MVKCommandBuffer* cmdBuff,
 						VkPipeline pipeline) {
 	MVKCmdBindPipeline* cmd = cmdBuff->_commandPool->_cmdBindPipelinePool.acquireObject();
 	cmd->setContent(pipelineBindPoint, pipeline);
+	cmdBuff->recordBindPipeline(cmd);
 	cmdBuff->addCommand(cmd);
 }
 

@@ -168,7 +168,7 @@ kernel void cmdCopyBufferToImage3DDecompressTempBufferDXTn(constant uint8_t* src
     }                                                                                                           \n\
 }                                                                                                               \n\
                                                                                                                 \n\
-#if __METAL_VERSION__ == 210                                                                                    \n\
+#if __METAL_VERSION__ >= 210                                                                                    \n\
 // This structure is missing from the MSL headers. :/                                                           \n\
 struct MTLStageInRegionIndirectArguments {                                                                      \n\
     uint32_t stageInOrigin[3];                                                                                  \n\

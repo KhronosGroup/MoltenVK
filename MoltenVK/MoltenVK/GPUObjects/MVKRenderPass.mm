@@ -69,7 +69,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 													   MVKFramebuffer* framebuffer,
 													   MVKVector<VkClearValue>& clearValues,
 													   bool isRenderingEntireAttachment,
-                                                       bool loadOverride) {
+													   bool loadOverride,
+													   bool storeOverride) {
 	// Populate the Metal color attachments
 	uint32_t caCnt = getColorAttachmentCount();
 	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
@@ -91,7 +92,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			if (clrMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc, this,
                                                                        isRenderingEntireAttachment,
                                                                        hasResolveAttachment, false,
-                                                                       loadOverride)) {
+                                                                       loadOverride,
+                                                                       storeOverride)) {
 				mtlColorAttDesc.clearColor = mvkMTLClearColorFromVkClearValue(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
 			}
 
@@ -113,7 +115,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
                                                                       isRenderingEntireAttachment,
                                                                       false, false,
-                                                                      loadOverride)) {
+                                                                      loadOverride,
+                                                                      storeOverride)) {
                 mtlDepthAttDesc.clearDepth = mvkMTLClearDepthFromVkClearValue(clearValues[dsRPAttIdx]);
 			}
 		}
@@ -123,7 +126,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
                                                                       isRenderingEntireAttachment,
                                                                       false, true,
-                                                                      loadOverride)) {
+                                                                      loadOverride,
+                                                                      storeOverride)) {
 				mtlStencilAttDesc.clearStencil = mvkMTLClearStencilFromVkClearValue(clearValues[dsRPAttIdx]);
 			}
 		}
@@ -257,7 +261,8 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
                                                                         bool isRenderingEntireAttachment,
                                                                         bool hasResolveAttachment,
                                                                         bool isStencil,
-                                                                        bool loadOverride) {
+                                                                        bool loadOverride,
+                                                                        bool storeOverride) {
 
     bool willClear = false;		// Assume the attachment won't be cleared
 
@@ -278,6 +283,8 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
     // to the entire attachment and we're in the last subpass.
     if (hasResolveAttachment && !_renderPass->getDevice()->getPhysicalDevice()->getMetalFeatures()->combinedStoreResolveAction) {
         mtlAttDesc.storeAction = MTLStoreActionMultisampleResolve;
+    } else if ( storeOverride ) {
+        mtlAttDesc.storeAction = MTLStoreActionStore;
     } else if ( isRenderingEntireAttachment && (subpass->_subpassIndex == _lastUseSubpassIdx) ) {
         VkAttachmentStoreOp storeOp = isStencil ? _info.stencilStoreOp : _info.storeOp;
         mtlAttDesc.storeAction = mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp, hasResolveAttachment);
