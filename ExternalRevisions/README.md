@@ -43,8 +43,10 @@ These external open-source libraries are maintained in the `External` directory.
 To retrieve and build these libraries from their sources, run the `fetchDependencies`
 script in the main repository directory:
 
-	./fetchDependencies
+	./fetchDependencies [--debug]
 
+The `--debug` option will build the external libraries in Debug mode, which may
+be useful when debugging and tracing calls into those libraries.
 
 
 <a name="updating"></a>

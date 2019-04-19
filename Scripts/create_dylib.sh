@@ -18,6 +18,10 @@ elif test x"${ENABLE_ADDRESS_SANITIZER}" = xYES; then
 	MVK_SAN="-fsanitize=address"
 fi
 
+# Suppress visibility warning spam when linking in Release or Debug mode
+# and external libraries built in the other mode.
+MVK_LINK_WARN="-Xlinker -w"
+
 clang++ \
 -stdlib=${CLANG_CXX_LIBRARY} \
 -dynamiclib \

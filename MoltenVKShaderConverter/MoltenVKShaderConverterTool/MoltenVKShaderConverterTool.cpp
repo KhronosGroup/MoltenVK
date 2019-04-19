@@ -45,7 +45,7 @@ uint64_t MVKPerformanceTracker::getTimestamp() { return mvkGetTimestamp(); }
 
 void MVKPerformanceTracker::accumulate(uint64_t startTime, uint64_t endTime) {
 	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
-	minimumDuration = min(currInterval, minimumDuration);
+	minimumDuration = (minimumDuration == 0.0) ? currInterval : min(currInterval, minimumDuration);
 	maximumDuration = max(currInterval, maximumDuration);
 	double totalInterval = (averageDuration * count++) + currInterval;
 	averageDuration = totalInterval / count;
@@ -57,6 +57,8 @@ void MVKPerformanceTracker::accumulate(uint64_t startTime, uint64_t endTime) {
 
 
 int MoltenVKShaderConverterTool::run() {
+	if ( !_isActive ) { return EXIT_FAILURE; }
+
 	bool success = false;
 	if ( !_directoryPath.empty() ) {
 		string errMsg;
@@ -203,6 +205,8 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 
 	// Derive the context under which conversion will occur
 	SPIRVToMSLConverterContext mslContext;
+	mslContext.options.platform = _mslPlatform;
+	mslContext.options.setMSLVersion(_mslVersionMajor, _mslVersionMinor, _mslVersionPatch);
 	mslContext.options.shouldFlipVertexY = _shouldFlipVertexY;
 
 	SPIRVToMSLConverter spvConverter;
@@ -227,9 +231,9 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	const string& msl = spvConverter.getMSL();
 
 	string compileErrMsg;
-	bool wasCompiled = compile(msl, compileErrMsg);
+	bool wasCompiled = compile(msl, compileErrMsg, _mslVersionMajor, _mslVersionMinor, _mslVersionPatch);
 	if (compileErrMsg.size() > 0) {
-		string preamble = wasCompiled ? "is valid but the validation compilation produced warnings " : "failed a validation compilation ";
+		string preamble = wasCompiled ? "is valid but the validation compilation produced warnings: " : "failed a validation compilation: ";
 		compileErrMsg = "Generated MSL " + preamble + compileErrMsg;
 		log(compileErrMsg.c_str());
 	} else {
@@ -305,6 +309,12 @@ void MoltenVKShaderConverterTool::showUsage() {
 	log("                       The optional path parameter specifies the path to a single");
 	log("                       file to contain the MSL code. When using the -d option,");
 	log("                       the path parameter is ignored.");
+	log("  -mv mslVersion     - MSL version to output.");
+	log("                       Must be in form n[.n][.n] (eg. 2, 2.1, or 2.1.0).");
+	log("                       Defaults to the most recent MSL version for the platform");
+	log("                       on which this tool is executed.");
+	log("  -mp mslPlatform    - MSL platform. Must be one of macos or ios.");
+	log("                       Defaults to the platform on which this tool is executed (macos).");
 	log("  -t shaderType      - Shader type: vertex or fragment. Must be one of v, f, or c.");
 	log("                       May be omitted to auto-detect.");
 	log("  -c                 - Combine the GLSL and converted Metal Shader source code");
@@ -363,7 +373,6 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	extractTokens(_defaultSPIRVShaderExtns, _spvFileExtns);
 	_origPathExtnSep = "_";
 	_shaderStage = kMVKShaderStageAuto;
-	_isActive = false;
 	_shouldUseDirectoryRecursion = false;
 	_shouldReadGLSL = false;
 	_shouldReadSPIRV = false;
@@ -374,6 +383,11 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	_shouldIncludeOrigPathExtn = true;
 	_shouldLogConversions = false;
 	_shouldReportPerformance = false;
+
+	_mslVersionMajor = 2;
+	_mslVersionMinor = 1;
+	_mslVersionPatch = 0;
+	_mslPlatform = SPIRVToMSLConverterOptions::getNativePlatform();
 
 	_isActive = parseArgs(argc, argv);
 	if ( !_isActive ) { showUsage(); }
@@ -427,6 +441,39 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 			continue;
 		}
 
+		if (equal(arg, "-mv", true)) {
+			int optIdx = argIdx;
+			string mslVerStr;
+			argIdx = optionalParam(mslVerStr, argIdx, argc, argv);
+			if (argIdx == optIdx || mslVerStr.length() == 0) { return false; }
+			vector<uint32_t> mslVerTokens;
+			extractTokens(mslVerStr, mslVerTokens);
+			auto tknCnt = mslVerTokens.size();
+			_mslVersionMajor = (tknCnt > 0) ? mslVerTokens[0] : 0;
+			_mslVersionMinor = (tknCnt > 1) ? mslVerTokens[1] : 0;
+			_mslVersionPatch = (tknCnt > 2) ? mslVerTokens[2] : 0;
+			continue;
+		}
+
+		if (equal(arg, "-mp", true)) {
+			int optIdx = argIdx;
+			string shdrTypeStr;
+			argIdx = optionalParam(shdrTypeStr, argIdx, argc, argv);
+			if (argIdx == optIdx || shdrTypeStr.length() == 0) { return false; }
+
+			switch (shdrTypeStr.front()) {
+				case 'm':
+					_mslPlatform = SPIRVToMSLConverterOptions::macOS;
+					break;
+				case 'i':
+					_mslPlatform = SPIRVToMSLConverterOptions::iOS;
+					break;
+				default:
+					return false;
+			}
+			continue;
+		}
+
 		if (equal(arg, "-t", true)) {
 			int optIdx = argIdx;
 			string shdrTypeStr;
@@ -444,7 +491,7 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 					_shaderStage = kMVKShaderStageCompute;
 					break;
 				default:
-					break;
+					return false;
 			}
 			continue;
 		}
@@ -575,6 +622,14 @@ Container& split(Container& result,
 
 void mvk::extractTokens(string str, vector<string>& tokens) {
 	split(tokens, str, " \t\n\f", false);
+}
+
+void mvk::extractTokens(string str, vector<uint32_t>& tokens) {
+	vector<string> stringTokens;
+	split(stringTokens, str, ".", false);
+	for (auto& st : stringTokens) {
+		tokens.push_back((uint32_t)strtol(st.c_str(), nullptr, 0));
+	}
 }
 
 // Compares the specified characters ignoring case.

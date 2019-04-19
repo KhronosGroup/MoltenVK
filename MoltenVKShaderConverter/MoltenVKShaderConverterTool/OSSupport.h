@@ -48,6 +48,10 @@ namespace mvk {
 	 * If unsuccessful, the return value will be false and the errMsg will contain an
 	 * error message. Otherwise the return value will be true and the errMsg will be empty.
 	 */
-	bool compile(const std::string& mslSourceCode, std::string& errMsg);
+	bool compile(const std::string& mslSourceCode,
+				 std::string& errMsg,
+				 uint32_t mslVersionMajor,
+				 uint32_t mslVersionMinor = 0,
+				 uint32_t mslVersionPoint = 0);
 
 }
