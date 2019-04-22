@@ -73,9 +73,11 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 													   bool storeOverride) {
 	// Populate the Metal color attachments
 	uint32_t caCnt = getColorAttachmentCount();
+	uint32_t caUsedCnt = 0;
 	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
 		uint32_t clrRPAttIdx = _colorAttachments[caIdx].attachment;
         if (clrRPAttIdx != VK_ATTACHMENT_UNUSED) {
+			++caUsedCnt;
             MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[caIdx];
 
             // If it exists, configure the resolve attachment first,
@@ -96,9 +98,6 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                        storeOverride)) {
 				mtlColorAttDesc.clearColor = mvkMTLClearColorFromVkClearValue(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
 			}
-
-		} else {
-			caCnt--;
 		}
 	}
 
@@ -134,7 +133,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	}
 
 	_mtlDummyTex = nil;
-	if (caCnt == 0 && dsRPAttIdx == VK_ATTACHMENT_UNUSED) {
+	if (caUsedCnt == 0 && dsRPAttIdx == VK_ATTACHMENT_UNUSED) {
 		// Add a dummy attachment so this passes validation.
 		VkExtent2D fbExtent = framebuffer->getExtent2D();
 		MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
