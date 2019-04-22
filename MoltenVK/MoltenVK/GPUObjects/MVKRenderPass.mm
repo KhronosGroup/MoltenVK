@@ -73,11 +73,11 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 													   bool storeOverride) {
 	// Populate the Metal color attachments
 	uint32_t caCnt = getColorAttachmentCount();
-    uint32_t caUsedCnt = caCnt;
+	uint32_t caUsedCnt = caCnt;
 	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
 		uint32_t clrRPAttIdx = _colorAttachments[caIdx].attachment;
-        MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[caIdx];
         if (clrRPAttIdx != VK_ATTACHMENT_UNUSED) {
+            MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[caIdx];
 
             // If it exists, configure the resolve attachment first,
             // as it affects how the store action of the color attachment.
