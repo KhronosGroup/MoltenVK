@@ -56,7 +56,7 @@ void MVKViewportCommandEncoderState::setViewports(const MVKVector<MTLViewport> &
 
 	uint32_t maxViewports = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
 	if ((firstViewport + mtlViewports.size() > maxViewports) ||
-		(firstViewport <= maxViewports) ||
+		(firstViewport >= maxViewports) ||
 		(isSettingDynamically && mtlViewports.size() == 0))
 		return;
 
@@ -103,7 +103,7 @@ void MVKScissorCommandEncoderState::setScissors(const MVKVector<MTLScissorRect> 
 
 	uint32_t maxScissors = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
 	if ((firstScissor + mtlScissors.size() > maxScissors) ||
-		(firstScissor <= maxScissors) ||
+		(firstScissor >= maxScissors) ||
 		(isSettingDynamically && mtlScissors.size() == 0))
 		return;
 
