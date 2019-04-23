@@ -69,9 +69,9 @@ void MVKViewportCommandEncoderState::setViewports(const MVKVector<MTLViewport> &
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 
 	if (isSettingDynamically ||
-		(!isSettingDynamically && !mustSetDynamically && mtlViewports.size() > 0))
+		(!mustSetDynamically && mtlViewports.size() > 0))
 		std::copy(mtlViewports.begin(), mtlViewports.end(), usingMTLViewports.begin() + firstViewport);
-	else if (!isSettingDynamically && (mustSetDynamically || mtlViewports.size() == 0))
+	else
 		usingMTLViewports.clear();
 
 	markDirty();
@@ -116,9 +116,9 @@ void MVKScissorCommandEncoderState::setScissors(const MVKVector<MTLScissorRect> 
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 
 	if (isSettingDynamically ||
-		(!isSettingDynamically && !mustSetDynamically && mtlScissors.size() > 0))
+		(!mustSetDynamically && mtlScissors.size() > 0))
 		std::copy(mtlScissors.begin(), mtlScissors.end(), usingMTLScissors.begin() + firstScissor);
-	else if (!isSettingDynamically && (mustSetDynamically || mtlScissors.size() == 0))
+	else
 		usingMTLScissors.clear();
 
 	markDirty();
