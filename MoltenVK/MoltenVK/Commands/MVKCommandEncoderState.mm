@@ -54,34 +54,43 @@ void MVKViewportCommandEncoderState::setViewports(const MVKVector<MTLViewport> &
 												  uint32_t firstViewport,
 												  bool isSettingDynamically) {
 
+	uint32_t maxViewports = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
+	if ((firstViewport + mtlViewports.size() > maxViewports) ||
+		(firstViewport >= maxViewports) ||
+		(isSettingDynamically && mtlViewports.size() == 0))
+		return;
+
+	auto& usingMTLViewports = isSettingDynamically ? _mtlDynamicViewports : _mtlViewports;
+
+	if (firstViewport + mtlViewports.size() > usingMTLViewports.size()) {
+		usingMTLViewports.resize(firstViewport + mtlViewports.size());
+	}
+
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
 
-	uint32_t maxViewports = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
-	if ((mustSetDynamically == isSettingDynamically) && mtlViewports.size() > 0 &&
-		(firstViewport + mtlViewports.size() <= maxViewports) &&
-		(firstViewport < maxViewports)) {
+	if (isSettingDynamically ||
+		(!mustSetDynamically && mtlViewports.size() > 0))
+		std::copy(mtlViewports.begin(), mtlViewports.end(), usingMTLViewports.begin() + firstViewport);
+	else
+		usingMTLViewports.clear();
 
-		if (firstViewport + mtlViewports.size() > _mtlViewports.size()) {
-			_mtlViewports.resize(firstViewport + mtlViewports.size());
-		}
-
-		std::copy(mtlViewports.begin(), mtlViewports.end(), _mtlViewports.begin() + firstViewport);
-		markDirty();
-	}
+	markDirty();
 }
 
 void MVKViewportCommandEncoderState::encodeImpl(uint32_t stage) {
     if (stage != kMVKGraphicsStageRasterization) { return; }
-    MVKAssert(!_mtlViewports.empty(), "Must specify at least one viewport");
+	auto& usingMTLViewports = _mtlViewports.size() > 0 ? _mtlViewports : _mtlDynamicViewports;
+	MVKAssert(!usingMTLViewports.empty(), "Must specify at least one viewport");
     if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
-        [_cmdEncoder->_mtlRenderEncoder setViewports: &_mtlViewports[0] count: _mtlViewports.size()];
+        [_cmdEncoder->_mtlRenderEncoder setViewports: &usingMTLViewports[0] count: usingMTLViewports.size()];
     } else {
-        [_cmdEncoder->_mtlRenderEncoder setViewport: _mtlViewports[0]];
+        [_cmdEncoder->_mtlRenderEncoder setViewport: usingMTLViewports[0]];
     }
 }
 
 void MVKViewportCommandEncoderState::resetImpl() {
     _mtlViewports.clear();
+	_mtlDynamicViewports.clear();
 }
 
 
@@ -92,26 +101,34 @@ void MVKScissorCommandEncoderState::setScissors(const MVKVector<MTLScissorRect> 
                                                 uint32_t firstScissor,
 												bool isSettingDynamically) {
 
+	uint32_t maxScissors = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
+	if ((firstScissor + mtlScissors.size() > maxScissors) ||
+		(firstScissor >= maxScissors) ||
+		(isSettingDynamically && mtlScissors.size() == 0))
+		return;
+
+	auto& usingMTLScissors = isSettingDynamically ? _mtlDynamicScissors : _mtlScissors;
+
+	if (firstScissor + mtlScissors.size() > usingMTLScissors.size()) {
+		usingMTLScissors.resize(firstScissor + mtlScissors.size());
+	}
+
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR);
 
-	uint32_t maxScissors = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
-	if ((mustSetDynamically == isSettingDynamically) && mtlScissors.size() > 0 &&
-		(firstScissor + mtlScissors.size() <= maxScissors) &&
-		(firstScissor < maxScissors)) {
+	if (isSettingDynamically ||
+		(!mustSetDynamically && mtlScissors.size() > 0))
+		std::copy(mtlScissors.begin(), mtlScissors.end(), usingMTLScissors.begin() + firstScissor);
+	else
+		usingMTLScissors.clear();
 
-		if (firstScissor + mtlScissors.size() > _mtlScissors.size()) {
-			_mtlScissors.resize(firstScissor + mtlScissors.size());
-		}
-
-		std::copy(mtlScissors.begin(), mtlScissors.end(), _mtlScissors.begin() + firstScissor);
-		markDirty();
-	}
+	markDirty();
 }
 
 void MVKScissorCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
-	MVKAssert(!_mtlScissors.empty(), "Must specify at least one scissor rect");
-	auto clippedScissors(_mtlScissors);
+	auto& usingMTLScissors = _mtlScissors.size() > 0 ? _mtlScissors : _mtlDynamicScissors;
+	MVKAssert(!usingMTLScissors.empty(), "Must specify at least one scissor rect");
+	auto clippedScissors(usingMTLScissors);
 	std::for_each(clippedScissors.begin(), clippedScissors.end(), [this](MTLScissorRect& scissor) {
 		scissor = _cmdEncoder->clipToRenderArea(scissor);
 	});
@@ -124,6 +141,7 @@ void MVKScissorCommandEncoderState::encodeImpl(uint32_t stage) {
 
 void MVKScissorCommandEncoderState::resetImpl() {
     _mtlScissors.clear();
+	_mtlDynamicScissors.clear();
 }
 
 
