@@ -121,6 +121,10 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndexedCopyIndexBu
 	MVK_ENC_REZ_ACCESS(_mtlDrawIndexedCopyIndexBufferComputePipelineState[type == MTLIndexTypeUInt16 ? 1 : 0], newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(type));
 }
 
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyQueryPoolResultsMTLComputePipelineState() {
+	MVK_ENC_REZ_ACCESS(_mtlCopyQueryPoolResultsComputePipelineState, newCmdCopyQueryPoolResultsMTLComputePipelineState());
+}
+
 void MVKCommandEncodingPool::clear() {
 	lock_guard<mutex> lock(_lock);
 	destroyMetalResources();
@@ -195,5 +199,8 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     [_mtlDrawIndexedCopyIndexBufferComputePipelineState[1] release];
     _mtlDrawIndexedCopyIndexBufferComputePipelineState[0] = nil;
     _mtlDrawIndexedCopyIndexBufferComputePipelineState[1] = nil;
+
+    [_mtlCopyQueryPoolResultsComputePipelineState release];
+    _mtlCopyQueryPoolResultsComputePipelineState = nil;
 }
 

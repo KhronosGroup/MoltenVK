@@ -273,5 +273,46 @@ kernel void cmdDrawIndexedCopyIndex32Buffer(const device uint32_t* srcBuff [[buf
                                                                                                                 \n\
 #endif                                                                                                          \n\
                                                                                                                 \n\
+typedef struct {                                                                                                \n\
+    uint32_t count;                                                                                             \n\
+    uint32_t countHigh;                                                                                         \n\
+} VisibilityBuffer;                                                                                             \n\
+                                                                                                                \n\
+typedef enum {                                                                                                  \n\
+    Initial,                                                                                                    \n\
+    DeviceAvailable,                                                                                            \n\
+    Available                                                                                                   \n\
+} QueryStatus;                                                                                                  \n\
+                                                                                                                \n\
+typedef enum {                                                                                                  \n\
+    VK_QUERY_RESULT_64_BIT                = 0x00000001,                                                         \n\
+    VK_QUERY_RESULT_WAIT_BIT              = 0x00000002,                                                         \n\
+    VK_QUERY_RESULT_WITH_AVAILABILITY_BIT = 0x00000004,                                                         \n\
+    VK_QUERY_RESULT_PARTIAL_BIT           = 0x00000008,                                                         \n\
+} VkQueryResultFlagBits;                                                                                        \n\
+                                                                                                                \n\
+kernel void cmdCopyQueryPoolResultsToBuffer(const device VisibilityBuffer* src [[buffer(0)]],                   \n\
+                                            device uint8_t* dest [[buffer(1)]],                                 \n\
+                                            constant uint& stride [[buffer(2)]],                                \n\
+                                            constant uint& numQueries [[buffer(3)]],                            \n\
+                                            constant uint& flags [[buffer(4)]],                                 \n\
+                                            constant QueryStatus* availability [[buffer(5)]],                   \n\
+                                            uint query [[thread_position_in_grid]]) {                           \n\
+    if (query >= numQueries) { return; }                                                                        \n\
+    device uint32_t* destCount = (device uint32_t*)(dest + stride * query);                                     \n\
+    if (availability[query] != Initial || flags & VK_QUERY_RESULT_PARTIAL_BIT) {                                \n\
+        destCount[0] = src[query].count;                                                                        \n\
+        if (flags & VK_QUERY_RESULT_64_BIT) { destCount[1] = src[query].countHigh; }                            \n\
+    }                                                                                                           \n\
+    if (flags & VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) {                                                        \n\
+        if (flags & VK_QUERY_RESULT_64_BIT) {                                                                   \n\
+            destCount[2] = availability[query] != Initial ? 1 : 0;                                              \n\
+            destCount[3] = 0;                                                                                   \n\
+        } else {                                                                                                \n\
+            destCount[1] = availability[query] != Initial ? 1 : 0;                                              \n\
+        }                                                                                                       \n\
+    }                                                                                                           \n\
+}                                                                                                               \n\
+                                                                                                                \n\
 ";
 

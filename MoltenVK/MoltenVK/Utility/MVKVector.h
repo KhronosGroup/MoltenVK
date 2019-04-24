@@ -548,6 +548,27 @@ public:
     }
   }
 
+  void erase( const iterator first, const iterator last )
+  {
+    if( first.is_valid() )
+    {
+      size_t last_pos = last.is_valid() ? last.get_position() : size();
+      size_t n = last_pos - first.get_position();
+      alc.num_elements_used -= n;
+
+      for( size_t i = first.get_position(), e = last_pos; i < alc.num_elements_used && e < alc.num_elements_used + n; ++i, ++e )
+      {
+        alc.ptr[i] = std::move( alc.ptr[e] );
+      }
+
+      // this is required for types with a destructor
+      for( size_t i = alc.num_elements_used; i < alc.num_elements_used + n; ++i )
+      {
+        alc.destruct( &alc.ptr[i] );
+      }
+    }
+  }
+
   // adds t before it and automatically resizes vector if necessary
   void insert( const iterator it, Type t )
   {
