@@ -86,7 +86,8 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
                           VkFence fence, MVKCommandUse cmdBuffUse) {
 
-	VkResult rslt = VK_SUCCESS;
+    VkResult rslt = VK_SUCCESS;
+    MVKSemaphoreImpl* submitDoneEvent = addNewEvent(submitCount);
     for (uint32_t sIdx = 0; sIdx < submitCount; sIdx++) {
         VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(_device, this, &pSubmits[sIdx], cmdBuffUse));
 		if (rslt == VK_SUCCESS) { rslt = subRslt; }
@@ -94,8 +95,10 @@ VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
     if (rslt == VK_SUCCESS && fence) {
         // Fence must wait for all completion blocks to finish.
         dispatch_async(_execQueue ? _execQueue : _fenceQueue, ^{
-            _queueIdleEvent.wait();
+            submitDoneEvent->wait();
             ((MVKFence*)fence)->signal();
+            this->removeEvent(submitDoneEvent);
+            delete submitDoneEvent;
         });
     }
     return rslt;
@@ -103,6 +106,34 @@ VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
 
 VkResult MVKQueue::submit(const VkPresentInfoKHR* pPresentInfo) {
 	return submit(new MVKQueuePresentSurfaceSubmission(_device, this, pPresentInfo));
+}
+
+// Decrements the queue activation count and all known events.
+void MVKQueue::unlockQueue() {
+	lock_guard<mutex> lock(_activeCountLock);
+	for (auto iter = _pendingSubmitDoneEvents.begin(), end = _pendingSubmitDoneEvents.end(); iter != end; ) {
+		if ((*iter)->release()) {
+			iter = _pendingSubmitDoneEvents.erase(iter);
+		} else {
+			++iter;
+		}
+	}
+	--_activeCount;
+}
+
+// Adds a new event with the current active count plus any additional submissions.
+MVKSemaphoreImpl* MVKQueue::addNewEvent(uint32_t submitCount) {
+    lock_guard<mutex> lock(_activeCountLock);
+    _activeCount += submitCount;
+    auto* submitDoneEvent = new MVKSemaphoreImpl(true, _activeCount);
+    _pendingSubmitDoneEvents.insert(submitDoneEvent);
+    return submitDoneEvent;
+}
+
+// Removes an event from the set of pending submission completion events.
+void MVKQueue::removeEvent(MVKSemaphoreImpl* event) {
+    lock_guard<mutex> lock(_activeCountLock);
+    _pendingSubmitDoneEvents.erase(event);
 }
 
 // Create an empty submit struct and fence, submit to queue and wait on fence.
@@ -121,9 +152,6 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 	if (rslt != VK_SUCCESS)
 		return rslt;
 
-	// Wait for all completion routines across all submissions to execute.
-	_queueIdleEvent.wait();
-
 	return VK_SUCCESS;
 }
 
@@ -133,7 +161,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 #define MVK_DISPATCH_QUEUE_QOS_CLASS		QOS_CLASS_USER_INITIATED
 
 MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority)
-        : MVKDispatchableDeviceObject(device) {
+        : MVKDispatchableDeviceObject(device), _activeCount(0) {
 
 	_queueFamily = queueFamily;
 	_index = index;
@@ -328,8 +356,6 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 							 (pSubmit ? pSubmit->waitSemaphoreCount : 0),
 							 (pSubmit ? pSubmit->pWaitSemaphores : nullptr)) {
 
-    _queue->_queueIdleEvent.reserve();
-
     // pSubmit can be null if just tracking the fence alone
     if (pSubmit) {
         uint32_t cbCnt = pSubmit->commandBufferCount;
@@ -355,7 +381,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 }
 
 MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
-	_queue->_queueIdleEvent.release();
+	_queue->unlockQueue();
 }
 
 

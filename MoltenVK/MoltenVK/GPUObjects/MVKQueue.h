@@ -127,6 +127,9 @@ protected:
 	void initMTLCommandQueue();
 	void initGPUCaptureScopes();
 	void destroyExecQueue();
+	void unlockQueue();
+	MVKSemaphoreImpl* addNewEvent(uint32_t submitCount);
+	void removeEvent(MVKSemaphoreImpl* event);
 	VkResult submit(MVKQueueSubmission* qSubmit);
 
 	MVKQueueFamily* _queueFamily;
@@ -139,7 +142,9 @@ protected:
 	MVKMTLCommandBufferID _nextMTLCmdBuffID;
 	MVKGPUCaptureScope* _submissionCaptureScope;
 	MVKGPUCaptureScope* _presentationCaptureScope;
-	MVKSemaphoreImpl _queueIdleEvent;
+	std::mutex _activeCountLock;
+	std::atomic<uint32_t> _activeCount;
+	std::unordered_set<MVKSemaphoreImpl*> _pendingSubmitDoneEvents;
 };
 
 
