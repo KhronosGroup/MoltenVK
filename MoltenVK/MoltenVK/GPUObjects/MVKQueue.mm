@@ -311,10 +311,7 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 
 	if (signalCompletion) {
 		[_activeMTLCommandBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-			// This can block, so it must not run on the Metal completion queue.
-			dispatch_async(dispatch_get_global_queue(MVK_DISPATCH_QUEUE_QOS_CLASS, 0), ^{
-				this->finish();
-			});
+			this->finish();
 		}];
 	}
 
@@ -324,18 +321,9 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	[mtlCmdBuff commit];
 }
 
-void MVKQueueCommandBufferSubmission::addCmdBuffDoneEvent(std::unique_ptr<MVKSemaphoreImpl>&& cmdBuffDoneEvent) {
-	_pendingCmdBuffDoneEvents.emplace_back(std::move(cmdBuffDoneEvent));
-}
-
 void MVKQueueCommandBufferSubmission::finish() {
 
 //	MVKLogDebug("Finishing submission %p. Submission count %u.", this, _subCount--);
-
-	// Wait for all work to be completed.
-	for (auto& pEvent : _pendingCmdBuffDoneEvents) {
-		pEvent->wait();
-	}
 
 	// Performed here instead of as part of execute() for rare case where app destroys queue
 	// immediately after a waitIdle() is cleared by fence below, taking the capture scope with it.

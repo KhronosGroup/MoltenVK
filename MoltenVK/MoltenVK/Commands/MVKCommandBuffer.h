@@ -79,9 +79,6 @@ public:
     /** Returns whether this command buffer can be submitted to a queue more than once. */
     inline bool getIsReusable() { return _isReusable; }
 
-	/** Transfers ownership of the completion event to the caller. */
-	std::unique_ptr<MVKSemaphoreImpl> takeCmdBuffDoneEvent() { return std::move(_prefilledCmdBuffDoneEvent); }
-
 	/** The command pool that is the source of commands for this buffer. */
 	MVKCommandPool* _commandPool;
 
@@ -139,7 +136,6 @@ protected:
 	VkResult _recordingResult;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
-	std::unique_ptr<MVKSemaphoreImpl> _prefilledCmdBuffDoneEvent;
 	bool _isSecondary;
 	bool _doesContinueRenderPass;
 	bool _canAcceptCommands;
@@ -285,9 +281,6 @@ public:
 	/** Ends encoding operations on the current Metal command encoder if it is a rendering encoder. */
 	void endMetalRenderEncoding();
 
-	/** Transfers ownership of the completion event to the caller. */
-	std::unique_ptr<MVKSemaphoreImpl> takeCmdBuffDoneEvent() { return std::move(_cmdBuffDoneEvent); }
-
 	/** 
 	 * The current Metal compute encoder for the specified use,
 	 * which determines the label assigned to the returned encoder.
@@ -358,9 +351,6 @@ public:
 
 	/** The current Metal command buffer. */
 	id<MTLCommandBuffer> _mtlCmdBuffer;
-
-	/** The completion event for the current command buffer. */
-	std::unique_ptr<MVKSemaphoreImpl> _cmdBuffDoneEvent;
 
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
