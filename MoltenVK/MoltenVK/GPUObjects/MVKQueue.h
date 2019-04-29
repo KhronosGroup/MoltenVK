@@ -127,24 +127,17 @@ protected:
 	void initMTLCommandQueue();
 	void initGPUCaptureScopes();
 	void destroyExecQueue();
-	void unlockQueue();
-	MVKSemaphoreImpl* addNewEvent(uint32_t submitCount);
-	void removeEvent(MVKSemaphoreImpl* event);
 	VkResult submit(MVKQueueSubmission* qSubmit);
 
 	MVKQueueFamily* _queueFamily;
 	uint32_t _index;
 	float _priority;
 	dispatch_queue_t _execQueue;
-	dispatch_queue_t _fenceQueue;
 	id<MTLCommandQueue> _mtlQueue;
 	std::string _name;
 	MVKMTLCommandBufferID _nextMTLCmdBuffID;
 	MVKGPUCaptureScope* _submissionCaptureScope;
 	MVKGPUCaptureScope* _presentationCaptureScope;
-	std::mutex _activeCountLock;
-	std::atomic<uint32_t> _activeCount;
-	std::unordered_set<MVKSemaphoreImpl*> _pendingSubmitDoneEvents;
 };
 
 
@@ -197,10 +190,8 @@ public:
 	MVKQueueCommandBufferSubmission(MVKDevice* device,
 									MVKQueue* queue,
 									const VkSubmitInfo* pSubmit,
+									VkFence fence,
                                     MVKCommandUse cmdBuffUse);
-
-    /** Destructor. */
-    ~MVKQueueCommandBufferSubmission() override;
 
 protected:
 	friend MVKCommandBuffer;
@@ -212,6 +203,7 @@ protected:
 
 	MVKVectorInline<MVKCommandBuffer*, 16> _cmdBuffers;
 	MVKVectorInline<MVKSemaphore*, 16> _signalSemaphores;
+	MVKFence* _fence;
     MVKCommandUse _cmdBuffUse;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
 };

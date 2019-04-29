@@ -86,54 +86,22 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
                           VkFence fence, MVKCommandUse cmdBuffUse) {
 
-    VkResult rslt = VK_SUCCESS;
-    MVKSemaphoreImpl* submitDoneEvent = addNewEvent(submitCount);
-    for (uint32_t sIdx = 0; sIdx < submitCount; sIdx++) {
-        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(_device, this, &pSubmits[sIdx], cmdBuffUse));
-		if (rslt == VK_SUCCESS) { rslt = subRslt; }
+    // Fence-only submission
+    if (submitCount == 0 && fence) {
+        return submit(new MVKQueueCommandBufferSubmission(_device, this, nullptr, fence, cmdBuffUse));
     }
-    if (rslt == VK_SUCCESS && fence) {
-        // Fence must wait for all completion blocks to finish.
-        dispatch_async(_execQueue ? _execQueue : _fenceQueue, ^{
-            submitDoneEvent->wait();
-            ((MVKFence*)fence)->signal();
-            this->removeEvent(submitDoneEvent);
-            delete submitDoneEvent;
-        });
+
+    VkResult rslt = VK_SUCCESS;
+    for (uint32_t sIdx = 0; sIdx < submitCount; sIdx++) {
+        VkFence fenceOrNil = (sIdx == (submitCount - 1)) ? fence : VK_NULL_HANDLE; // last one gets the fence
+        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(_device, this, &pSubmits[sIdx], fenceOrNil, cmdBuffUse));
+        if (rslt == VK_SUCCESS) { rslt = subRslt; }
     }
     return rslt;
 }
 
 VkResult MVKQueue::submit(const VkPresentInfoKHR* pPresentInfo) {
 	return submit(new MVKQueuePresentSurfaceSubmission(_device, this, pPresentInfo));
-}
-
-// Decrements the queue activation count and all known events.
-void MVKQueue::unlockQueue() {
-	lock_guard<mutex> lock(_activeCountLock);
-	for (auto iter = _pendingSubmitDoneEvents.begin(), end = _pendingSubmitDoneEvents.end(); iter != end; ) {
-		if ((*iter)->release()) {
-			iter = _pendingSubmitDoneEvents.erase(iter);
-		} else {
-			++iter;
-		}
-	}
-	--_activeCount;
-}
-
-// Adds a new event with the current active count plus any additional submissions.
-MVKSemaphoreImpl* MVKQueue::addNewEvent(uint32_t submitCount) {
-    lock_guard<mutex> lock(_activeCountLock);
-    _activeCount += submitCount;
-    auto* submitDoneEvent = new MVKSemaphoreImpl(true, _activeCount);
-    _pendingSubmitDoneEvents.insert(submitDoneEvent);
-    return submitDoneEvent;
-}
-
-// Removes an event from the set of pending submission completion events.
-void MVKQueue::removeEvent(MVKSemaphoreImpl* event) {
-    lock_guard<mutex> lock(_activeCountLock);
-    _pendingSubmitDoneEvents.erase(event);
 }
 
 // Create an empty submit struct and fence, submit to queue and wait on fence.
@@ -148,11 +116,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 	MVKFence mvkFence(_device, &vkFenceInfo);
 	VkFence fence = (VkFence)&mvkFence;
 	submit(0, nullptr, fence, cmdBuffUse);
-	VkResult rslt = mvkWaitForFences(1, &fence, false);
-	if (rslt != VK_SUCCESS)
-		return rslt;
-
-	return VK_SUCCESS;
+	return mvkWaitForFences(1, &fence, false);
 }
 
 
@@ -161,7 +125,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 #define MVK_DISPATCH_QUEUE_QOS_CLASS		QOS_CLASS_USER_INITIATED
 
 MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority)
-        : MVKDispatchableDeviceObject(device), _activeCount(0) {
+        : MVKDispatchableDeviceObject(device) {
 
 	_queueFamily = queueFamily;
 	_index = index;
@@ -191,11 +155,6 @@ void MVKQueue::initExecQueue() {
 
 		// Create the dispatch queue
 		_execQueue = dispatch_queue_create((getName() + "-Dispatch").c_str(), dqAttr);		// retained
-	} else {
-		// Create a queue just for fence updates.
-		dispatch_queue_attr_t dqAttr = dispatch_queue_attr_make_with_qos_class(DISPATCH_QUEUE_CONCURRENT, QOS_CLASS_UTILITY, QOS_MIN_RELATIVE_PRIORITY);
-
-		_fenceQueue = dispatch_queue_create((getName() + "-Fence").c_str(), dqAttr);	// retained
 	}
 }
 
@@ -271,9 +230,9 @@ void MVKQueueCommandBufferSubmission::execute() {
     // Submit each command buffer.
 	for (auto& cb : _cmdBuffers) { cb->submit(this); }
 
-	// If semaphores were provided, ensure that a MTLCommandBuffer is available
-	// to trigger them, in case no command buffers were provided.
-	if (!_signalSemaphores.empty()) { getActiveMTLCommandBuffer(); }
+	// If a fence or semaphores were provided, ensure that a MTLCommandBuffer
+	// is available to trigger them, in case no command buffers were provided.
+	if (_fence || !_signalSemaphores.empty()) { getActiveMTLCommandBuffer(); }
 
 	// Commit the last MTLCommandBuffer.
 	// Nothing after this because callback might destroy this instance before this function ends.
@@ -332,12 +291,16 @@ void MVKQueueCommandBufferSubmission::finish() {
 	// Signal each of the signal semaphores.
     for (auto& ss : _signalSemaphores) { ss->signal(); }
 
+	// If a fence exists, signal it.
+	if (_fence) { _fence->signal(); }
+
     this->destroy();
 }
 
 MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* device,
 																 MVKQueue* queue,
 																 const VkSubmitInfo* pSubmit,
+																 VkFence fence,
                                                                  MVKCommandUse cmdBuffUse)
         : MVKQueueSubmission(device,
 							 queue,
@@ -361,15 +324,12 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
         }
     }
 
+	_fence = (MVKFence*)fence;
     _cmdBuffUse= cmdBuffUse;
 	_activeMTLCommandBuffer = nil;
 
 //	static std::atomic<uint32_t> _subCount;
 //	MVKLogDebug("Creating submission %p. Submission count %u.", this, ++_subCount);
-}
-
-MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
-	_queue->unlockQueue();
 }
 
 
