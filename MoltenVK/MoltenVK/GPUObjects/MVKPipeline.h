@@ -160,7 +160,7 @@ public:
     bool supportsDynamicState(VkDynamicState state);
 
     /** Returns whether this pipeline has tessellation shaders. */
-    bool isTessellationPipeline() { return _tessInfo.patchControlPoints > 0; }
+    bool isTessellationPipeline() { return _pTessCtlSS && _pTessEvalSS && _tessInfo.patchControlPoints > 0; }
 
     /** Returns the number of input tessellation patch control points. */
     uint32_t getInputControlPointCount() { return _tessInfo.patchControlPoints; }
