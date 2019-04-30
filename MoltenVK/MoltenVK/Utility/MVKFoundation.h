@@ -89,7 +89,7 @@ typedef enum {
     kMVKCommandUseCopyImage,                /**< vkCmdCopyImage. */
     kMVKCommandUseResolveImage,             /**< vkCmdResolveImage - resolve stage. */
     kMVKCommandUseResolveExpandImage,       /**< vkCmdResolveImage - expand stage. */
-    kMVKCommandUseResolveCopyImage,         /**< vkCmdResolveImage - expand stage. */
+    kMVKCommandUseResolveCopyImage,         /**< vkCmdResolveImage - copy stage. */
     kMVKCommandUseCopyBuffer,               /**< vkCmdCopyBuffer. */
     kMVKCommandUseCopyBufferToImage,        /**< vkCmdCopyBufferToImage. */
     kMVKCommandUseCopyImageToBuffer,        /**< vkCmdCopyImageToBuffer. */
@@ -99,7 +99,8 @@ typedef enum {
     kMVKCommandUseClearDepthStencilImage,   /**< vkCmdClearDepthStencilImage. */
     kMVKCommandUseResetQueryPool,           /**< vkCmdResetQueryPool. */
     kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
-    kMVKCommandUseTessellationControl       /**< vkCmdDraw* - tessellation control stage. */
+    kMVKCommandUseTessellationControl,      /**< vkCmdDraw* - tessellation control stage. */
+    kMVKCommandUseCopyQueryPoolResults      /**< vkCmdCopyQueryPoolResults. */
 } MVKCommandUse;
 
 /** Represents a given stage of a graphics pipeline. */

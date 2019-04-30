@@ -395,6 +395,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndexedCopyInde
     "cmdDrawIndexedCopyIndex32Buffer"));
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyQueryPoolResultsMTLComputePipelineState() {
+	return newMTLComputePipelineState(getFunctionNamed("cmdCopyQueryPoolResultsToBuffer"));
+}
+
 
 #pragma mark Support methods
 

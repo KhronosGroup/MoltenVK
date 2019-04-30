@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
+#include "MVKSync.h"
 #include "MVKCommand.h"
 #include "MVKCommandEncoderState.h"
 #include "MVKMTLBufferAllocation.h"

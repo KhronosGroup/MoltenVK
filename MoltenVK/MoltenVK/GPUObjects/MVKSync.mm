@@ -25,9 +25,9 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKSemaphoreImpl
 
-void MVKSemaphoreImpl::release() {
+bool MVKSemaphoreImpl::release() {
 	lock_guard<mutex> lock(_lock);
-    if (isClear()) { return; }
+    if (isClear()) { return true; }
 
     // Either decrement the reservation counter, or clear it altogether
     if (_shouldWaitAll) {
@@ -37,6 +37,7 @@ void MVKSemaphoreImpl::release() {
     }
     // If all reservations have been released, unblock all waiting threads
     if ( isClear() ) { _blocker.notify_all(); }
+    return isClear();
 }
 
 void MVKSemaphoreImpl::reserve() {
@@ -62,6 +63,11 @@ bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
 
 	if (reserveAgain) { _reservationCount++; }
     return isDone;
+}
+
+MVKSemaphoreImpl::~MVKSemaphoreImpl() {
+    // Acquire the lock to ensure proper ordering.
+    lock_guard<mutex> lock(_lock);
 }
 
 

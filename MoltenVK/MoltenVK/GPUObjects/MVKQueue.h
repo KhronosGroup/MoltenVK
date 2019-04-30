@@ -186,16 +186,12 @@ public:
 
 	/** 
      * Constructs an instance for the device and queue.
-     * pSubmit may be VK_NULL_HANDLE to create an instance that triggers a fence without submitting any actual command buffers.
      */
 	MVKQueueCommandBufferSubmission(MVKDevice* device,
 									MVKQueue* queue,
 									const VkSubmitInfo* pSubmit,
 									VkFence fence,
                                     MVKCommandUse cmdBuffUse);
-
-    /** Constructs an instance for the device and queue, with a fence, but without actual command buffers. */
-    MVKQueueCommandBufferSubmission(MVKDevice* device, MVKQueue* queue, VkFence fence);
 
 protected:
 	friend MVKCommandBuffer;

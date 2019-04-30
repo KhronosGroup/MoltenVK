@@ -367,6 +367,9 @@ public:
 	/** Returns a new MTLComputePipelineState for copying an index buffer for use in a tessellated draw. */
 	id<MTLComputePipelineState> newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type);
 
+	/** Returns a new MTLComputePipelineState for copying query results to a buffer. */
+	id<MTLComputePipelineState> newCmdCopyQueryPoolResultsMTLComputePipelineState();
+
 
 #pragma mark Construction
 
