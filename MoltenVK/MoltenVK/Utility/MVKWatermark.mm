@@ -21,6 +21,7 @@
 #include "MVKOSExtensions.h"
 #include "MVKLogging.h"
 #include "MTLTextureDescriptor+MoltenVK.h"
+#include "MVKEnvironment.h"
 
 
 /** The structure to hold shader uniforms. */

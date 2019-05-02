@@ -42,9 +42,12 @@ struct MVKShaderImplicitRezBinding {
 };
 
 /** Represents a Vulkan pipeline layout. */
-class MVKPipelineLayout : public MVKBaseDeviceObject {
+class MVKPipelineLayout : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT; }
 
 	/** Binds descriptor sets to a command encoder. */
     void bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
@@ -113,9 +116,12 @@ static const uint32_t kMVKTessEvalLevelBufferIndex = 28;
 static const uint32_t kMVKTessEvalNumReservedBuffers = 3;
 
 /** Represents an abstract Vulkan pipeline. */
-class MVKPipeline : public MVKBaseDeviceObject {
+class MVKPipeline : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT; }
 
 	/** Returns the order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
 	virtual void getStages(MVKVector<uint32_t>& stages) = 0;
@@ -130,7 +136,7 @@ public:
 	bool fullImageViewSwizzle() const { return _fullImageViewSwizzle; }
 
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
-	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKBaseDeviceObject(device),
+	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKVulkanAPIDeviceObject(device),
 																						   _pipelineCache(pipelineCache),
 	   																					   _fullImageViewSwizzle(device->_pMVKConfig->fullImageViewSwizzle)	{}
 
@@ -301,9 +307,12 @@ protected:
 #pragma mark MVKPipelineCache
 
 /** Represents a Vulkan pipeline cache. */
-class MVKPipelineCache : public MVKBaseDeviceObject {
+class MVKPipelineCache : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT; }
 
 	/** 
 	 * If pData is not null, serializes at most pDataSize bytes of the contents of the cache into that
@@ -360,9 +369,9 @@ public:
 
 #pragma mark Construction
 
-	MVKRenderPipelineCompiler(MVKDevice* device) : MVKMetalCompiler(device) {
+	MVKRenderPipelineCompiler(MVKVulkanAPIDeviceObject* owner) : MVKMetalCompiler(owner) {
 		_compilerType = "Render pipeline";
-		_pPerformanceTracker = &_device->_performanceStatistics.shaderCompilation.pipelineCompile;
+		_pPerformanceTracker = &_owner->getDevice()->_performanceStatistics.shaderCompilation.pipelineCompile;
 	}
 
 	~MVKRenderPipelineCompiler() override;
@@ -405,9 +414,9 @@ public:
 
 #pragma mark Construction
 
-	MVKComputePipelineCompiler(MVKDevice* device) : MVKMetalCompiler(device) {
+	MVKComputePipelineCompiler(MVKVulkanAPIDeviceObject* owner) : MVKMetalCompiler(owner) {
 		_compilerType = "Compute pipeline";
-		_pPerformanceTracker = &_device->_performanceStatistics.shaderCompilation.pipelineCompile;
+		_pPerformanceTracker = &_owner->getDevice()->_performanceStatistics.shaderCompilation.pipelineCompile;
 	}
 
 	~MVKComputePipelineCompiler() override;

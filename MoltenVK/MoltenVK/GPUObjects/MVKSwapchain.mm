@@ -24,7 +24,7 @@
 #include "MVKWatermark.h"
 #include "MVKWatermarkTextureContent.h"
 #include "MVKWatermarkShaderSource.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 #include "MVKLogging.h"
 #import "CAMetalLayer+MoltenVK.h"
 #import "MVKBlockObserver.h"
@@ -177,7 +177,7 @@ id<CAMetalDrawable> MVKSwapchain::getNextCAMetalDrawable() {
 #pragma mark Construction
 
 MVKSwapchain::MVKSwapchain(MVKDevice* device,
-						   const VkSwapchainCreateInfoKHR* pCreateInfo) : MVKBaseDeviceObject(device), _surfaceLost(false) {
+						   const VkSwapchainCreateInfoKHR* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _surfaceLost(false) {
 	_currentAcquisitionID = 0;
 
 	// If applicable, release any surfaces (not currently being displayed) from the old swapchain.

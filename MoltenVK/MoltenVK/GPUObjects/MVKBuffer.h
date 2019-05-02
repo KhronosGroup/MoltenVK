@@ -31,6 +31,9 @@ class MVKBuffer : public MVKResource {
 
 public:
 
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT; }
+
 #pragma mark Resource memory
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
@@ -89,9 +92,12 @@ protected:
 #pragma mark MVKBufferView
 
 /** Represents a Vulkan buffer view. */
-class MVKBufferView : public MVKRefCountedDeviceObject {
+class MVKBufferView : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT; }
 
 #pragma mark Metal
 

@@ -31,7 +31,8 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKCommandResourceFactory
 
-id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey) {
+id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey,
+																							MVKVulkanAPIDeviceObject* owner) {
     MTLRenderPipelineDescriptor* plDesc = [[[MTLRenderPipelineDescriptor alloc] init] autorelease];
     plDesc.label = @"CmdBlitImage";
 
@@ -69,7 +70,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPi
     vbDesc.stepRate = 1;
     vbDesc.stride = vtxStride;
 
-    return newMTLRenderPipelineState(plDesc);
+    return newMTLRenderPipelineState(plDesc, owner);
 }
 
 id<MTLSamplerState> MVKCommandResourceFactory::newCmdBlitImageMTLSamplerState(MTLSamplerMinMagFilter mtlFilter) {
@@ -85,7 +86,8 @@ id<MTLSamplerState> MVKCommandResourceFactory::newCmdBlitImageMTLSamplerState(MT
     return [getMTLDevice() newSamplerStateWithDescriptor: sDesc];
 }
 
-id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipelineState(MVKRPSKeyClearAtt& attKey) {
+id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipelineState(MVKRPSKeyClearAtt& attKey,
+																						MVKVulkanAPIDeviceObject* owner) {
     MTLRenderPipelineDescriptor* plDesc = [[[MTLRenderPipelineDescriptor alloc] init] autorelease];
     plDesc.label = @"CmdClearAttachments";
 	plDesc.vertexFunction = getClearVertFunction(attKey);
@@ -124,7 +126,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
     vbDesc.stepRate = 1;
     vbDesc.stride = vtxStride;
 
-    return newMTLRenderPipelineState(plDesc);
+    return newMTLRenderPipelineState(plDesc, owner);
 }
 
 id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg& blitKey) {
@@ -372,27 +374,33 @@ MVKBuffer* MVKCommandResourceFactory::newMVKBuffer(MVKBufferDescriptorData& buff
     return mvkBuff;
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferBytesMTLComputePipelineState() {
-	return newMTLComputePipelineState(getFunctionNamed("cmdCopyBufferBytes"));
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferBytesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(getFunctionNamed("cmdCopyBufferBytes"), owner);
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdFillBufferMTLComputePipelineState() {
-	return newMTLComputePipelineState(getFunctionNamed("cmdFillBuffer"));
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdFillBufferMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(getFunctionNamed("cmdFillBuffer"), owner);
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf) {
-	return newMTLComputePipelineState(getFunctionNamed(needTempBuf ? "cmdCopyBufferToImage3DDecompressTempBufferDXTn" :
-																	 "cmdCopyBufferToImage3DDecompressDXTn"));
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf,
+																												  MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(getFunctionNamed(needTempBuf
+													   ? "cmdCopyBufferToImage3DDecompressTempBufferDXTn"
+													   : "cmdCopyBufferToImage3DDecompressDXTn"), owner);
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed) {
-	return newMTLComputePipelineState(getFunctionNamed(indexed ? "cmdDrawIndexedIndirectConvertBuffers" :
-                                                                 "cmdDrawIndirectConvertBuffers"));
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
+																											   MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(getFunctionNamed(indexed
+													   ? "cmdDrawIndexedIndirectConvertBuffers"
+													   : "cmdDrawIndirectConvertBuffers"), owner);
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type) {
-	return newMTLComputePipelineState(getFunctionNamed(type == MTLIndexTypeUInt16 ? "cmdDrawIndexedCopyIndex16Buffer" :
-    "cmdDrawIndexedCopyIndex32Buffer"));
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type,
+																											   MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(getFunctionNamed(type == MTLIndexTypeUInt16
+													   ? "cmdDrawIndexedCopyIndex16Buffer"
+													   : "cmdDrawIndexedCopyIndex32Buffer"), owner);
 }
 
 
@@ -414,9 +422,9 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 																error: &err] autorelease];
 		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslCompile, startTime);
 		if (err) {
-			mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED,
-								   "Could not compile support shader from MSL source (Error code %li):\n%s\n%s",
-								   (long)err.code, mslSrcCode.UTF8String, err.localizedDescription.UTF8String);
+			reportError(VK_ERROR_INITIALIZATION_FAILED,
+						"Could not compile support shader from MSL source (Error code %li):\n%s\n%s",
+						(long)err.code, mslSrcCode.UTF8String, err.localizedDescription.UTF8String);
 			return nil;
 		}
 
@@ -427,15 +435,17 @@ id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, 
 	}
 }
 
-id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc) {
-	MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(_device);
+id<MTLRenderPipelineState> MVKCommandResourceFactory::newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc,
+																				MVKVulkanAPIDeviceObject* owner) {
+	MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(owner);
 	id<MTLRenderPipelineState> rps = plc->newMTLRenderPipelineState(plDesc);	// retained
 	plc->destroy();
     return rps;
 }
 
-id<MTLComputePipelineState> MVKCommandResourceFactory::newMTLComputePipelineState(id<MTLFunction> mtlFunction) {
-	MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(_device);
+id<MTLComputePipelineState> MVKCommandResourceFactory::newMTLComputePipelineState(id<MTLFunction> mtlFunction,
+																				  MVKVulkanAPIDeviceObject* owner) {
+	MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(owner);
 	id<MTLComputePipelineState> cps = plc->newMTLComputePipelineState(mtlFunction);		// retained
 	plc->destroy();
     return cps;

@@ -17,7 +17,6 @@
  */
 
 #include "MVKFoundation.h"
-#include "MVKLogging.h"
 
 
 #define CASE_STRINGIFY(V)  case V: return #V
@@ -73,23 +72,6 @@ const char* mvkVkComponentSwizzleName(VkComponentSwizzle swizzle) {
 
 		default: return "VK_UNKNOWN_VKComponentSwizzle";
 	}
-}
-
-VkResult mvkNotifyErrorWithText(VkResult vkErr, const char* errFmt, ...) {
-	va_list args;
-	va_start(args, errFmt);
-
-	// Prepend the error code to the format string
-	const char* vkRsltName = mvkVkResultName(vkErr);
-	char fmtStr[strlen(vkRsltName) + strlen(errFmt) + 4];
-	sprintf(fmtStr, "%s: %s", vkRsltName, errFmt);
-
-	// Log the error
-	MVKLogImplV(true, !(MVK_DEBUG), ASL_LEVEL_ERR, "***MoltenVK ERROR***", fmtStr, args);
-
-	va_end(args);
-
-	return vkErr;
 }
 
 

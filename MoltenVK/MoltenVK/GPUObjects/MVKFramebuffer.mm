@@ -24,7 +24,7 @@
 #pragma mark Construction
 
 MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
-							   const VkFramebufferCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+							   const VkFramebufferCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
     _extent = { .width = pCreateInfo->width, .height = pCreateInfo->height };
 	_layerCount = pCreateInfo->layers;
 

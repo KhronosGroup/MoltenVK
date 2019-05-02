@@ -74,7 +74,7 @@ static inline void execute(MVKQueueSubmission* qSubmit) { @autoreleasepool { qSu
 VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	if ( !qSubmit ) { return VK_SUCCESS; }     // Ignore nils
 
-	VkResult rslt = qSubmit->_submissionResult;     // Extract result before submission to avoid race condition with early destruction
+	VkResult rslt = qSubmit->getConfigurationResult();     // Extract result before submission to avoid race condition with early destruction
 	if (_execQueue) {
 		dispatch_async(_execQueue, ^{ execute(qSubmit); } );
 	} else {
@@ -88,20 +88,20 @@ VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
 
 	// Fence-only submission
 	if (submitCount == 0 && fence) {
-		return submit(new MVKQueueCommandBufferSubmission(_device, this, VK_NULL_HANDLE, fence, cmdBuffUse));
+		return submit(new MVKQueueCommandBufferSubmission(this, VK_NULL_HANDLE, fence, cmdBuffUse));
 	}
 
 	VkResult rslt = VK_SUCCESS;
     for (uint32_t sIdx = 0; sIdx < submitCount; sIdx++) {
         VkFence fenceOrNil = (sIdx == (submitCount - 1)) ? fence : VK_NULL_HANDLE;	// last one gets the fence
-        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(_device, this, &pSubmits[sIdx], fenceOrNil, cmdBuffUse));
+        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(this, &pSubmits[sIdx], fenceOrNil, cmdBuffUse));
 		if (rslt == VK_SUCCESS) { rslt = subRslt; }
     }
     return rslt;
 }
 
 VkResult MVKQueue::submit(const VkPresentInfoKHR* pPresentInfo) {
-	return submit(new MVKQueuePresentSurfaceSubmission(_device, this, pPresentInfo));
+	return submit(new MVKQueuePresentSurfaceSubmission(this, pPresentInfo));
 }
 
 // Create an empty submit struct and fence, submit to queue and wait on fence.
@@ -127,7 +127,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 	MVKFence mvkFence(_device, &vkFenceInfo);
 	VkFence fence = (VkFence)&mvkFence;
 	submit(1, &vkSbmtInfo, fence, cmdBuffUse);
-	return mvkWaitForFences(1, &fence, false);
+	return mvkWaitForFences(_device, 1, &fence, false);
 }
 
 
@@ -136,7 +136,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 #define MVK_DISPATCH_QUEUE_QOS_CLASS		QOS_CLASS_USER_INITIATED
 
 MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t index, float priority)
-        : MVKDispatchableDeviceObject(device) {
+        : MVKDeviceTrackingMixin(device) {
 
 	_queueFamily = queueFamily;
 	_index = index;
@@ -178,7 +178,7 @@ void MVKQueue::initMTLCommandQueue() {
 
 // Initializes Xcode GPU capture scopes
 void MVKQueue::initGPUCaptureScopes() {
-	const MVKConfiguration* pMVKConfig = _device->getInstance()->getMoltenVKConfiguration();
+	const MVKConfiguration* pMVKConfig = getInstance()->getMoltenVKConfiguration();
 
 	_submissionCaptureScope = new MVKGPUCaptureScope(this, "CommandBuffer-Submission");
 
@@ -208,24 +208,18 @@ void MVKQueue::destroyExecQueue() {
 #pragma mark -
 #pragma mark MVKQueueSubmission
 
-MVKQueueSubmission::MVKQueueSubmission(MVKDevice* device,
-									   MVKQueue* queue,
+MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   uint32_t waitSemaphoreCount,
-									   const VkSemaphore* pWaitSemaphores) : MVKBaseDeviceObject(device) {
+									   const VkSemaphore* pWaitSemaphores) {
 	_queue = queue;
 	_prev = VK_NULL_HANDLE;
 	_next = VK_NULL_HANDLE;
-	_submissionResult = VK_SUCCESS;
 
 	_isAwaitingSemaphores = waitSemaphoreCount > 0;
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
 		_waitSemaphores.push_back((MVKSemaphore*)pWaitSemaphores[i]);
 	}
-}
-
-void MVKQueueSubmission::recordResult(VkResult vkResult) {
-    if (_submissionResult == VK_SUCCESS) { _submissionResult = vkResult; }
 }
 
 
@@ -308,13 +302,11 @@ void MVKQueueCommandBufferSubmission::finish() {
     this->destroy();
 }
 
-MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* device,
-																 MVKQueue* queue,
+MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue,
 																 const VkSubmitInfo* pSubmit,
                                                                  VkFence fence,
                                                                  MVKCommandUse cmdBuffUse)
-        : MVKQueueSubmission(device,
-							 queue,
+        : MVKQueueSubmission(queue,
 							 (pSubmit ? pSubmit->waitSemaphoreCount : 0),
 							 (pSubmit ? pSubmit->pWaitSemaphores : nullptr)) {
 
@@ -325,7 +317,7 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
         for (uint32_t i = 0; i < cbCnt; i++) {
             MVKCommandBuffer* cb = MVKCommandBuffer::getMVKCommandBuffer(pSubmit->pCommandBuffers[i]);
             _cmdBuffers.push_back(cb);
-            recordResult(cb->getRecordingResult());
+            setConfigurationResult(cb->getConfigurationResult());
         }
 
         uint32_t ssCnt = pSubmit->signalSemaphoreCount;
@@ -352,7 +344,8 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKDevice* devi
 void MVKQueuePresentSurfaceSubmission::execute() {
     id<MTLCommandQueue> mtlQ = _queue->getMTLCommandQueue();
 
-	if (_device->_pMVKConfig->presentWithCommandBuffer || _device->_pMVKConfig->displayWatermark) {
+	MVKDevice* mvkDev = _queue->getDevice();
+	if (mvkDev->_pMVKConfig->presentWithCommandBuffer || mvkDev->_pMVKConfig->displayWatermark) {
 		// Create a command buffer, present surfaces via the command buffer,
 		// then wait on the semaphores before committing.
 		id<MTLCommandBuffer> mtlCmdBuff = [mtlQ commandBufferWithUnretainedReferences];
@@ -377,13 +370,9 @@ void MVKQueuePresentSurfaceSubmission::execute() {
     this->destroy();
 }
 
-MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKDevice* device,
-																   MVKQueue* queue,
+MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* queue,
 																   const VkPresentInfoKHR* pPresentInfo)
-		: MVKQueueSubmission(device,
-							 queue,
-							 pPresentInfo->waitSemaphoreCount,
-							 pPresentInfo->pWaitSemaphores) {
+		: MVKQueueSubmission(queue, pPresentInfo->waitSemaphoreCount, pPresentInfo->pWaitSemaphores) {
 
 	// Populate the array of swapchain images, testing each one for a change in surface size
 	_surfaceImages.reserve(pPresentInfo->swapchainCount);
@@ -392,9 +381,9 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKDevice* de
 		_surfaceImages.push_back(mvkSC->getImage(pPresentInfo->pImageIndices[i]));
 		// Surface loss takes precedence over out-of-date errors.
 		if (mvkSC->getIsSurfaceLost()) {
-			_submissionResult = VK_ERROR_SURFACE_LOST_KHR;
-		} else if (mvkSC->getHasSurfaceSizeChanged() && _submissionResult != VK_ERROR_SURFACE_LOST_KHR) {
-			_submissionResult = VK_ERROR_OUT_OF_DATE_KHR;
+			setConfigurationResult(VK_ERROR_SURFACE_LOST_KHR);
+		} else if (mvkSC->getHasSurfaceSizeChanged() && getConfigurationResult() != VK_ERROR_SURFACE_LOST_KHR) {
+			setConfigurationResult(VK_ERROR_OUT_OF_DATE_KHR);
 		}
 	}
 }

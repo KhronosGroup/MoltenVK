@@ -22,7 +22,7 @@
 #include "MVKQueue.h"
 #include "MVKDeviceMemory.h"
 #include "MVKFoundation.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 #include "MVKLogging.h"
 
 using namespace std;
@@ -56,7 +56,10 @@ VkResult MVKCommandPool::allocateCommandBuffers(const VkCommandBufferAllocateInf
 		mvkCmdBuff->init(pAllocateInfo);
 		_allocatedCommandBuffers.insert(mvkCmdBuff);
         pCmdBuffer[cbIdx] = mvkCmdBuff->getVkCommandBuffer();
-		if (rslt == VK_SUCCESS) { rslt = mvkCmdBuff->getConfigurationResult(); }
+
+		// Command buffers start out in a VK_NOT_READY config result
+		VkResult cbRslt = mvkCmdBuff->getConfigurationResult();
+		if (rslt == VK_SUCCESS && cbRslt != VK_NOT_READY) { rslt = cbRslt; }
 	}
 	return rslt;
 }
@@ -127,9 +130,9 @@ void MVKCommandPool::trim() {
 
 MVKCommandPool::MVKCommandPool(MVKDevice* device,
 							   const VkCommandPoolCreateInfo* pCreateInfo) :
-	MVKBaseDeviceObject(device),
+	MVKVulkanAPIDeviceObject(device),
 	_commandBufferPool(device),
-	_commandEncodingPool(device),
+	_commandEncodingPool(this),
 	_queueFamilyIndex(pCreateInfo->queueFamilyIndex),
 	_cmdPipelineBarrierPool(this, true),
 	_cmdBindPipelinePool(this, true),

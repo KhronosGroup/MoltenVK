@@ -32,6 +32,7 @@
 #include "MVKFoundation.h"
 #include "MVKCodec.h"
 #include "MVKEnvironment.h"
+#include "MVKLogging.h"
 #include "MVKOSExtensions.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include "vk_mvk_moltenvk.h"
@@ -2028,7 +2029,7 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
     _globalVisibilityQueryCount = uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes);
 
     if (reqBuffLen > maxBuffLen) {
-        mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): A maximum of %d total queries are available on this device in its current configuration. See the API notes for the MVKConfiguration.supportLargeQueryPools configuration parameter for more info.", _globalVisibilityQueryCount);
+        reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): A maximum of %d total queries are available on this device in its current configuration. See the API notes for the MVKConfiguration.supportLargeQueryPools configuration parameter for more info.", _globalVisibilityQueryCount);
     }
 
     NSUInteger mtlBuffLen = mvkAlignByteOffset(newBuffLen, _pMetalFeatures->mtlBufferAlignment);
@@ -2050,7 +2051,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledVarPtrFeatures(),
 	_enabledHostQryResetFeatures(),
 	_enabledVtxAttrDivFeatures(),
-	_enabledPortabilityFeatures()
+	_enabledPortabilityFeatures(),
+	_enabledExtensions(this)
 {
 
 	initPerformanceTracking();
@@ -2065,9 +2067,10 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
 	initQueues(pCreateInfo);
 
-	string logMsg = "Created VkDevice to run on GPU %s with the following Vulkan extensions enabled:";
-	logMsg += _enabledExtensions.enabledNamesString("\n\t\t", true);
-	MVKLogInfo(logMsg.c_str(), _pProperties->deviceName);
+	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
+			   _pProperties->deviceName,
+			   _enabledExtensions.getEnabledCount(),
+			   _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
 }
 
 void MVKDevice::initPerformanceTracking() {
@@ -2238,7 +2241,7 @@ void MVKDevice::enableFeatures(const VkBool32* pEnable, const VkBool32* pRequest
 	for (uint32_t i = 0; i < count; i++) {
 		((VkBool32*)pEnable)[i] = pRequested[i] && pAvailable[i];
 		if (pRequested[i] && !pAvailable[i]) {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateDevice(): Requested feature is not available on this device."));
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateDevice(): Requested feature is not available on this device."));
 		}
 	}
 }
@@ -2276,40 +2279,6 @@ MVKDevice::~MVKDevice() {
 	}
     [_globalVisibilityResultMTLBuffer release];
 	_commandResourceFactory->destroy();
-}
-
-
-#pragma mark -
-#pragma mark MVKRefCountedDeviceObject
-
-void MVKRefCountedDeviceObject::retain() {
-	lock_guard<mutex> lock(_refLock);
-
-	_refCount++;
-}
-
-void MVKRefCountedDeviceObject::release() {
-	if (decrementRetainCount()) { destroy(); }
-}
-
-// Decrements the reference count, and returns whether it's time to destroy this object.
-bool MVKRefCountedDeviceObject::decrementRetainCount() {
-	lock_guard<mutex> lock(_refLock);
-
-	if (_refCount > 0) { _refCount--; }
-	return (_isDestroyed && _refCount == 0);
-}
-
-void MVKRefCountedDeviceObject::destroy() {
-	if (markDestroyed()) { MVKBaseDeviceObject::destroy(); }
-}
-
-// Marks this object as destroyed, and returns whether no references are left outstanding.
-bool MVKRefCountedDeviceObject::markDestroyed() {
-	lock_guard<mutex> lock(_refLock);
-
-	_isDestroyed = true;
-	return _refCount == 0;
 }
 
 

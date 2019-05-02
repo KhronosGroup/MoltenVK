@@ -20,6 +20,7 @@
 
 #include "MVKMTLResourceBindings.h"
 #include "MVKCommandResourceFactory.h"
+#include "MVKDevice.h"
 #include "MVKVector.h"
 
 class MVKCommandEncoder;
@@ -42,6 +43,9 @@ struct MVKShaderImplicitRezBinding;
 class MVKCommandEncoderState : public MVKBaseObject {
 
 public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
     /**
      * Marks the content of this instance as dirty, relative to the
@@ -398,6 +402,9 @@ protected:
             }
         }
     }
+
+	void updateSwizzle(MVKVector<uint32_t> &constants, uint32_t index, uint32_t swizzle);
+	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKVector<MVKMTLTextureBinding>& texBindings);
 
 };
 

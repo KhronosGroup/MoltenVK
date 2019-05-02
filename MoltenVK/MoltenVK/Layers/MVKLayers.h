@@ -26,9 +26,12 @@
 #pragma mark MVKLayer
 
 /** Represents a single Vulkan layer. */
-class MVKLayer : public MVKConfigurableObject {
+class MVKLayer : public MVKBaseObject {
 
 public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
 
 	/** Returns the name of this layer. */
 	const char* getName();
@@ -66,9 +69,12 @@ protected:
 #pragma mark MVKLayerManager
 
 /** Manages a set of Vulkan layers. */
-class MVKLayerManager : public MVKConfigurableObject {
+class MVKLayerManager : public MVKBaseObject {
 
 public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
 
 	/** Returns the driver layer. */
 	MVKLayer* getDriverLayer();

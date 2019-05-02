@@ -49,9 +49,12 @@
  * of this pool should be done during the setContent() function of each MVKCommand, and NOT 
  * during the execution of the command via the MVKCommand::encode() member function.
  */
-class MVKCommandPool : public MVKBaseDeviceObject {
+class MVKCommandPool : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT; }
 
 #pragma mark Command type pools
 

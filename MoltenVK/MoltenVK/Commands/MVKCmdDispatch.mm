@@ -21,7 +21,7 @@
 #include "MVKCommandPool.h"
 #include "MVKBuffer.h"
 #include "MVKFoundation.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 
 
 #pragma mark -

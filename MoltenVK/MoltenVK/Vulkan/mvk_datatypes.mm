@@ -17,10 +17,10 @@
  */
 
 #include "MVKEnvironment.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
-#include "MVKLogging.h"
+#include "MVKBaseObject.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVReflection.h>
 #include <unordered_map>
 #include <string>
@@ -489,8 +489,8 @@ static uint16_t _fmtDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
  * Populates the lookup maps that map Vulkan and Metal pixel formats to one-another.
  *
  * Because both Metal and core Vulkan format value are enumerations that start at zero and are 
- * more or less consecutively enumerated, we can use a simple lookup array in each direction 
- * to map the value in one architecture (as an array index) to the corresponding value in the 
+ * more or less consecutively enumerated, we can use a simple lookup array in each direction
+ * to map the value in one architecture (as an array index) to the corresponding value in the
  * other architecture. Values that exist in one API but not the other are given a default value.
  *
  * Vulkan extension formats have very large values, and are tracked in a separate map.
@@ -563,7 +563,12 @@ MVK_PUBLIC_SYMBOL MVKFormatType mvkFormatTypeFromMTLPixelFormat(MTLPixelFormat m
 	return formatDescForMTLPixelFormat(mtlFormat).formatType;
 }
 
+#undef mvkMTLPixelFormatFromVkFormat
 MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
+	return mvkMTLPixelFormatFromVkFormatInObj(vkFormat, nullptr);
+}
+
+MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj) {
     MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
 
     const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
@@ -585,7 +590,7 @@ MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat
             errMsg += (fmtDescSubs.vkName) ? fmtDescSubs.vkName : to_string(fmtDescSubs.vk);
             errMsg += " instead.";
         }
-		mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
+		MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
     }
 
     return mtlPixFmt;
@@ -660,7 +665,12 @@ MVK_PUBLIC_SYMBOL const char* mvkMTLPixelFormatName(MTLPixelFormat mtlFormat) {
     return formatDescForMTLPixelFormat(mtlFormat).mtlName;
 }
 
+#undef mvkMTLVertexFormatFromVkFormat
 MVK_PUBLIC_SYMBOL MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
+	return mvkMTLVertexFormatFromVkFormatInObj(vkFormat, nullptr);
+}
+
+MTLVertexFormat mvkMTLVertexFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj) {
     MTLVertexFormat mtlVtxFmt = MTLVertexFormatInvalid;
 
     const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
@@ -682,7 +692,7 @@ MVK_PUBLIC_SYMBOL MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkForm
             errMsg += (fmtDescSubs.vkName) ? fmtDescSubs.vkName : to_string(fmtDescSubs.vk);
             errMsg += " instead.";
         }
-		mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
+		MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
     }
 
     return mtlVtxFmt;
@@ -1046,7 +1056,12 @@ MVK_PUBLIC_SYMBOL MTLVertexStepFunction mvkMTLVertexStepFunctionFromVkVertexInpu
 	}
 }
 
+#undef mvkMTLPrimitiveTypeFromVkPrimitiveTopology
 MVK_PUBLIC_SYMBOL MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology) {
+	return mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(vkTopology, nullptr);
+}
+
+MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(VkPrimitiveTopology vkTopology, MVKBaseObject* mvkObj) {
 	switch (vkTopology) {
 		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
 			return MTLPrimitiveTypePoint;
@@ -1070,12 +1085,17 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(Vk
 
 		case VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN:
 		default:
-			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for rendering.", vkTopology);
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for rendering.", vkTopology);
 			return MTLPrimitiveTypePoint;
 	}
 }
 
+#undef mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology
 MVK_PUBLIC_SYMBOL MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology) {
+	return mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopologyInObj(vkTopology, nullptr);
+}
+
+MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopologyInObj(VkPrimitiveTopology vkTopology, MVKBaseObject* mvkObj) {
 	switch (vkTopology) {
 		case VK_PRIMITIVE_TOPOLOGY_POINT_LIST:
 			return MTLPrimitiveTopologyClassPoint;
@@ -1095,12 +1115,17 @@ MVK_PUBLIC_SYMBOL MTLPrimitiveTopologyClass mvkMTLPrimitiveTopologyClassFromVkPr
 			return MTLPrimitiveTopologyClassTriangle;
 
 		default:
-			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for render pipelines.", vkTopology);
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPrimitiveTopology value %d is not supported for render pipelines.", vkTopology);
 			return MTLPrimitiveTopologyClassUnspecified;
 	}
 }
 
+#undef mvkMTLTriangleFillModeFromVkPolygonMode
 MVK_PUBLIC_SYMBOL MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(VkPolygonMode vkFillMode) {
+	return mvkMTLTriangleFillModeFromVkPolygonModeInObj(vkFillMode, nullptr);
+}
+
+MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonModeInObj(VkPolygonMode vkFillMode, MVKBaseObject* mvkObj) {
 	switch (vkFillMode) {
 		case VK_POLYGON_MODE_FILL:
 		case VK_POLYGON_MODE_POINT:
@@ -1110,30 +1135,40 @@ MVK_PUBLIC_SYMBOL MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(Vk
 			return MTLTriangleFillModeLines;
 
 		default:
-			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPolygonMode value %d is not supported for render pipelines.", vkFillMode);
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPolygonMode value %d is not supported for render pipelines.", vkFillMode);
 			return MTLTriangleFillModeFill;
 	}
 }
 
+#undef mvkMTLLoadActionFromVkAttachmentLoadOp
 MVK_PUBLIC_SYMBOL MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachmentLoadOp vkLoadOp) {
+	return mvkMTLLoadActionFromVkAttachmentLoadOpInObj(vkLoadOp, nullptr);
+}
+
+MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOpInObj(VkAttachmentLoadOp vkLoadOp, MVKBaseObject* mvkObj) {
 	switch (vkLoadOp) {
 		case VK_ATTACHMENT_LOAD_OP_LOAD:		return MTLLoadActionLoad;
 		case VK_ATTACHMENT_LOAD_OP_CLEAR:		return MTLLoadActionClear;
 		case VK_ATTACHMENT_LOAD_OP_DONT_CARE:	return MTLLoadActionDontCare;
 
 		default:
-			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkAttachmentLoadOp value %d is not supported.", vkLoadOp);
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkAttachmentLoadOp value %d is not supported.", vkLoadOp);
 			return MTLLoadActionLoad;
 	}
 }
 
+#undef mvkMTLStoreActionFromVkAttachmentStoreOp
 MVK_PUBLIC_SYMBOL MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment) {
+	return mvkMTLStoreActionFromVkAttachmentStoreOpInObj(vkStoreOp, hasResolveAttachment, nullptr);
+}
+
+MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOpInObj(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment, MVKBaseObject* mvkObj) {
 	switch (vkStoreOp) {
 		case VK_ATTACHMENT_STORE_OP_STORE:		return hasResolveAttachment ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
 		case VK_ATTACHMENT_STORE_OP_DONT_CARE:	return hasResolveAttachment ? MTLStoreActionMultisampleResolve : MTLStoreActionDontCare;
 
 		default:
-			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkAttachmentStoreOp value %d is not supported.", vkStoreOp);
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkAttachmentStoreOp value %d is not supported.", vkStoreOp);
 			return MTLStoreActionStore;
 	}
 }
@@ -1218,7 +1253,12 @@ MVK_PUBLIC_SYMBOL size_t mvkMTLIndexTypeSizeInBytes(MTLIndexType mtlIdxType) {
 	}
 }
 
+#undef mvkShaderStageFromVkShaderStageFlagBits
 MVK_PUBLIC_SYMBOL MVKShaderStage mvkShaderStageFromVkShaderStageFlagBits(VkShaderStageFlagBits vkStage) {
+	return mvkShaderStageFromVkShaderStageFlagBitsInObj(vkStage, nullptr);
+}
+
+MVKShaderStage mvkShaderStageFromVkShaderStageFlagBitsInObj(VkShaderStageFlagBits vkStage, MVKBaseObject* mvkObj) {
 	switch (vkStage) {
 		case VK_SHADER_STAGE_VERTEX_BIT:					return kMVKShaderStageVertex;
 		case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:		return kMVKShaderStageTessCtl;
@@ -1227,7 +1267,7 @@ MVK_PUBLIC_SYMBOL MVKShaderStage mvkShaderStageFromVkShaderStageFlagBits(VkShade
 		case VK_SHADER_STAGE_FRAGMENT_BIT:					return kMVKShaderStageFragment;
 		case VK_SHADER_STAGE_COMPUTE_BIT:					return kMVKShaderStageCompute;
 		default:
-			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "VkShaderStage %x is not supported.", vkStage);
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkShaderStage %x is not supported.", vkStage);
 			return kMVKShaderStageMax;
 	}
 }
@@ -1246,24 +1286,34 @@ MVK_PUBLIC_SYMBOL VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderSta
 	}
 }
 
+#undef mvkMTLWindingFromSpvExecutionMode
 MVK_PUBLIC_SYMBOL MTLWinding mvkMTLWindingFromSpvExecutionMode(uint32_t spvMode) {
+	return mvkMTLWindingFromSpvExecutionModeInObj(spvMode, nullptr);
+}
+
+MTLWinding mvkMTLWindingFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObject* mvkObj) {
 	switch (spvMode) {
 		// These are reversed due to the vertex flip.
 		case spv::ExecutionModeVertexOrderCw:	return MTLWindingCounterClockwise;
 		case spv::ExecutionModeVertexOrderCcw:	return MTLWindingClockwise;
 		default:
-			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "spv::ExecutionMode %u is not a winding order mode.\n", spvMode);
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "spv::ExecutionMode %u is not a winding order mode.\n", spvMode);
 			return MTLWindingCounterClockwise;
 	}
 }
 
+#undef mvkMTLTessellationPartitionModeFromSpvExecutionMode
 MVK_PUBLIC_SYMBOL MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode(uint32_t spvMode) {
+	return mvkMTLTessellationPartitionModeFromSpvExecutionModeInObj(spvMode, nullptr);
+}
+
+MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObject* mvkObj) {
 	switch (spvMode) {
 		case spv::ExecutionModeSpacingEqual:			return MTLTessellationPartitionModeInteger;
 		case spv::ExecutionModeSpacingFractionalEven:	return MTLTessellationPartitionModeFractionalEven;
 		case spv::ExecutionModeSpacingFractionalOdd:	return MTLTessellationPartitionModeFractionalOdd;
 		default:
-			mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "spv::ExecutionMode %u is not a tessellation partition mode.\n", spvMode);
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "spv::ExecutionMode %u is not a tessellation partition mode.\n", spvMode);
 			return MTLTessellationPartitionModePow2;
 	}
 }

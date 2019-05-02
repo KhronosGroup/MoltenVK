@@ -37,6 +37,7 @@ MVKCmdQuery::MVKCmdQuery(MVKCommandTypePool<MVKCommand>* pool) : MVKCommand::MVK
 #pragma mark MVKCmdBeginQuery
 
 void MVKCmdBeginQuery::added(MVKCommandBuffer* cmdBuffer) {
+	MVKCommand::added(cmdBuffer);
     _queryPool->beginQueryAddedTo(_query, cmdBuffer);
 };
 

@@ -18,11 +18,9 @@
 
 #pragma once
 
-#include "MVKDevice.h"
+#include "MVKQueue.h"
 
 #import <Metal/Metal.h>
-
-class MVKQueue;
 
 
 #pragma mark -
@@ -34,9 +32,12 @@ class MVKQueue;
  * If the OS supports the MTLCaptureScope protocol, this class creates and wraps an MTLCaptureScope
  * instance for a MTLQueue, otherwise it interacts directly with the MTLQueue to define capture boundaries.
  */
-class MVKGPUCaptureScope : public MVKBaseDeviceObject {
+class MVKGPUCaptureScope : public MVKBaseObject {
 
 public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _queue->getVulkanAPIObject(); };
 
 	/** Marks the beginning boundary of a capture scope. */
 	void beginScope();
@@ -58,6 +59,7 @@ public:
 	~MVKGPUCaptureScope() override;
 
 protected:
+	MVKQueue* _queue;
 	id<MTLCaptureScope> _mtlCaptureScope = nil;
 	id<MTLCommandQueue> _mtlQueue = nil;
 	bool _isFirstBoundary = true;

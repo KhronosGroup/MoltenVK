@@ -18,6 +18,9 @@ MoltenVK 1.0.35
 
 Released TBD
 
+- Support the `VK_EXT_debug_report` extension.
+- Change log indication of error in logs from `[***MoltenVK ERROR***]` to 
+  `[mvk-error]`, for consistency with other log level indications. 
 - Tessellation fixes:
 	- Don't use setVertexBytes() for passing tessellation vertex counts.
 	- Fix intermediate Metal renderpasses load and store actions maintaining 

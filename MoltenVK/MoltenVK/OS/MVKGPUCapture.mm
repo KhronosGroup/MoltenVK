@@ -19,6 +19,7 @@
 #include "MVKGPUCapture.h"
 #include "MVKQueue.h"
 #include "MVKOSExtensions.h"
+#include "MVKEnvironment.h"
 
 
 #pragma mark -
@@ -55,11 +56,11 @@ void MVKGPUCaptureScope::makeDefault() {
 	}
 }
 
-MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue, const char* purpose) : MVKBaseDeviceObject(mvkQueue->getDevice()) {
-	_mtlQueue = [mvkQueue->getMTLCommandQueue() retain];	// retained
+MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue, const char* purpose) : _queue(mvkQueue) {
+	_mtlQueue = [_queue->getMTLCommandQueue() retain];	// retained
 	if (mvkOSVersion() >= kMinOSVersionMTLCaptureScope) {
 		_mtlCaptureScope = [[MTLCaptureManager sharedCaptureManager] newCaptureScopeWithCommandQueue: _mtlQueue];	// retained
-		_mtlCaptureScope.label = @((mvkQueue->getName() + "-" + purpose).c_str());
+		_mtlCaptureScope.label = @((_queue->getName() + "-" + purpose).c_str());
 	}
 }
 

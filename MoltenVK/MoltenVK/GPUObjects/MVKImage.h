@@ -48,6 +48,9 @@ class MVKImage : public MVKResource {
 
 public:
 
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT; }
+
 	/** Returns the Vulkan image type of this image. */
     VkImageType getImageType();
 
@@ -246,10 +249,12 @@ protected:
 #pragma mark MVKImageView
 
 /** Represents a Vulkan image view. */
-class MVKImageView : public MVKRefCountedDeviceObject {
+class MVKImageView : public MVKVulkanAPIDeviceObject {
 
 public:
 
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT; }
 
 #pragma mark Metal
 
@@ -311,9 +316,12 @@ protected:
 #pragma mark MVKSampler
 
 /** Represents a Vulkan sampler. */
-class MVKSampler : public MVKRefCountedDeviceObject {
+class MVKSampler : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT; }
 
 	/** Returns the Metal sampler state. */
 	inline id<MTLSamplerState> getMTLSamplerState() { return _mtlSamplerState; }

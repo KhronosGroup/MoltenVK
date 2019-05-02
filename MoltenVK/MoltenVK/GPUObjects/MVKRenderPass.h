@@ -36,6 +36,10 @@ class MVKRenderSubpass : public MVKBaseObject {
 
 public:
 
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
+
 	/** Returns the number of color attachments, which may be zero for depth-only rendering. */
 	inline uint32_t getColorAttachmentCount() { return uint32_t(_colorAttachments.size()); }
 
@@ -97,7 +101,9 @@ private:
 class MVKRenderPassAttachment : public MVKBaseObject {
 
 public:
-    friend MVKRenderSubpass;
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
     /** Returns the Vulkan format of this attachment. */
     VkFormat getFormat();
@@ -137,9 +143,12 @@ protected:
 #pragma mark MVKRenderPass
 
 /** Represents a Vulkan render pass. */
-class MVKRenderPass : public MVKBaseDeviceObject {
+class MVKRenderPass : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_RENDER_PASS_EXT; }
 
     /** Returns the granularity of the render area of this instance.  */
     VkExtent2D getRenderAreaGranularity();
@@ -150,7 +159,7 @@ public:
 	/** Constructs an instance for the specified device. */
 	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo* pCreateInfo);
 
-private:
+protected:
 
 	friend class MVKRenderSubpass;
 	friend class MVKRenderPassAttachment;

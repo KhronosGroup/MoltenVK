@@ -25,7 +25,9 @@
 #include "MVKFramebuffer.h"
 #include "MVKRenderPass.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
-#include "mvk_datatypes.h"
+#include "MVKEnvironment.h"
+#include "MVKLogging.h"
+#include "mvk_datatypes.hpp"
 
 
 #pragma mark -
@@ -58,9 +60,8 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	}
 
     // Validate
-    clearConfigurationResult();
     if ((_srcImage->getMTLTextureType() == MTLTextureType3D) != (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture."));
     }
 }
 
@@ -171,12 +172,11 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 	}
 
     // Validate
-    clearConfigurationResult();
     if (_blitKey.isDepthFormat() && renderRegionCount > 0) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling of depth/stencil images is not supported."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling of depth/stencil images is not supported."));
     }
     if ( !_mtlTexBlitRenders.empty() && mvkMTLPixelFormatIsStencilFormat(_mtlPixFmt)) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Stencil image formats cannot be scaled or inverted."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Stencil image formats cannot be scaled or inverted."));
     }
 }
 
@@ -648,10 +648,9 @@ void MVKCmdBufferImageCopy::setContent(VkBuffer buffer,
     }
 
     // Validate
-    clearConfigurationResult();
     if ( !_image->hasExpectedTexelSize() ) {
         const char* cmdName = _toImage ? "vkCmdCopyBufferToImage" : "vkCmdCopyImageToBuffer";
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, mvkMTLPixelFormatName(_image->getMTLPixelFormat()), mvkVkFormatName(_image->getVkFormat())));
+        setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, mvkMTLPixelFormatName(_image->getMTLPixelFormat()), mvkVkFormatName(_image->getVkFormat())));
     }
 }
 

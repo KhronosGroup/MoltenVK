@@ -21,6 +21,7 @@
 #include "MVKBuffer.h"
 #include "MVKFoundation.h"
 #include "MVKLogging.h"
+#include "mvk_datatypes.hpp"
 #include <stdlib.h>
 
 using namespace std;
@@ -28,7 +29,7 @@ using namespace std;
 
 #pragma mark MVKShaderStageResourceBinding
 
-MVK_PUBLIC_SYMBOL MVKShaderStageResourceBinding MVKShaderStageResourceBinding::operator+ (const MVKShaderStageResourceBinding& rhs) {
+MVKShaderStageResourceBinding MVKShaderStageResourceBinding::operator+ (const MVKShaderStageResourceBinding& rhs) {
 	MVKShaderStageResourceBinding rslt;
 	rslt.bufferIndex = this->bufferIndex + rhs.bufferIndex;
 	rslt.textureIndex = this->textureIndex + rhs.textureIndex;
@@ -36,7 +37,7 @@ MVK_PUBLIC_SYMBOL MVKShaderStageResourceBinding MVKShaderStageResourceBinding::o
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::operator+= (const MVKShaderStageResourceBinding& rhs) {
+MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::operator+= (const MVKShaderStageResourceBinding& rhs) {
 	this->bufferIndex += rhs.bufferIndex;
 	this->textureIndex += rhs.textureIndex;
 	this->samplerIndex += rhs.samplerIndex;
@@ -46,19 +47,19 @@ MVK_PUBLIC_SYMBOL MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::
 
 #pragma mark MVKShaderResourceBinding
 
-MVK_PUBLIC_SYMBOL uint32_t MVKShaderResourceBinding::getMaxBufferIndex() {
+uint32_t MVKShaderResourceBinding::getMaxBufferIndex() {
 	return max({stages[kMVKShaderStageVertex].bufferIndex, stages[kMVKShaderStageTessCtl].bufferIndex, stages[kMVKShaderStageTessEval].bufferIndex, stages[kMVKShaderStageFragment].bufferIndex, stages[kMVKShaderStageCompute].bufferIndex});
 }
 
-MVK_PUBLIC_SYMBOL uint32_t MVKShaderResourceBinding::getMaxTextureIndex() {
+uint32_t MVKShaderResourceBinding::getMaxTextureIndex() {
 	return max({stages[kMVKShaderStageVertex].textureIndex, stages[kMVKShaderStageTessCtl].textureIndex, stages[kMVKShaderStageTessEval].textureIndex, stages[kMVKShaderStageFragment].textureIndex, stages[kMVKShaderStageCompute].textureIndex});
 }
 
-MVK_PUBLIC_SYMBOL uint32_t MVKShaderResourceBinding::getMaxSamplerIndex() {
+uint32_t MVKShaderResourceBinding::getMaxSamplerIndex() {
 	return max({stages[kMVKShaderStageVertex].samplerIndex, stages[kMVKShaderStageTessCtl].samplerIndex, stages[kMVKShaderStageTessEval].samplerIndex, stages[kMVKShaderStageFragment].samplerIndex, stages[kMVKShaderStageCompute].samplerIndex});
 }
 
-MVK_PUBLIC_SYMBOL MVKShaderResourceBinding MVKShaderResourceBinding::operator+ (const MVKShaderResourceBinding& rhs) {
+MVKShaderResourceBinding MVKShaderResourceBinding::operator+ (const MVKShaderResourceBinding& rhs) {
 	MVKShaderResourceBinding rslt;
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
 		rslt.stages[i] = this->stages[i] + rhs.stages[i];
@@ -66,7 +67,7 @@ MVK_PUBLIC_SYMBOL MVKShaderResourceBinding MVKShaderResourceBinding::operator+ (
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL MVKShaderResourceBinding& MVKShaderResourceBinding::operator+= (const MVKShaderResourceBinding& rhs) {
+MVKShaderResourceBinding& MVKShaderResourceBinding::operator+= (const MVKShaderResourceBinding& rhs) {
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
 		this->stages[i] += rhs.stages[i];
 	}
@@ -76,6 +77,8 @@ MVK_PUBLIC_SYMBOL MVKShaderResourceBinding& MVKShaderResourceBinding::operator+=
 
 #pragma mark -
 #pragma mark MVKDescriptorSetLayoutBinding
+
+MVKVulkanAPIObject* MVKDescriptorSetLayoutBinding::getVulkanAPIObject() { return _layout; };
 
 void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                                          MVKDescriptorBinding& descBinding,
@@ -376,8 +379,9 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLCon
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 															 MVKDescriptorSetLayout* layout,
-                                                             const VkDescriptorSetLayoutBinding* pBinding) : MVKBaseDeviceObject(device) {
-    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                                                             const VkDescriptorSetLayoutBinding* pBinding) : MVKBaseDeviceObject(device), _layout(layout) {
+
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
         // Determine if this binding is used by this shader stage
         _applyToStage[i] = mvkAreFlagsEnabled(pBinding->stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)));
 	    // If this binding is used by the shader, set the Metal resource index
@@ -403,9 +407,11 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 }
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding) :
-	MVKBaseDeviceObject(binding._device), _info(binding._info), _immutableSamplers(binding._immutableSamplers),
+	MVKBaseDeviceObject(binding._device), _layout(binding._layout),
+	_info(binding._info), _immutableSamplers(binding._immutableSamplers),
 	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets) {
-    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
         _applyToStage[i] = binding._applyToStage[i];
     }
 	for (MVKSampler* sampler : _immutableSamplers) {
@@ -430,7 +436,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
             pDescSetCounts->samplerIndex += pBinding->descriptorCount;
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfSamplers) {
-				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
+				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
 			}
             break;
 
@@ -442,10 +448,10 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
 
 			if (pBinding->descriptorCount > 1) {
 				if ( !_device->_pMetalFeatures->arrayOfTextures ) {
-					setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
+					_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
 				}
 				if ( !_device->_pMetalFeatures->arrayOfSamplers ) {
-					setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
+					_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
 				}
 			}
             break;
@@ -459,7 +465,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
             pDescSetCounts->textureIndex += pBinding->descriptorCount;
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
-				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
+				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
 			}
             break;
 
@@ -601,20 +607,21 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(SPIRVToMSLConverterC
 }
 
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
-                                               const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+                                               const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
     _isPushDescriptorLayout = (pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) != 0;
     // Create the descriptor bindings
     _bindings.reserve(pCreateInfo->bindingCount);
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
         _bindings.emplace_back(_device, this, &pCreateInfo->pBindings[i]);
         _bindingToIndex[pCreateInfo->pBindings[i].binding] = i;
-        setConfigurationResult(_bindings.back().getConfigurationResult());
     }
 }
 
 
 #pragma mark -
 #pragma mark MVKDescriptorBinding
+
+MVKVulkanAPIObject* MVKDescriptorBinding::getVulkanAPIObject() { return _pDescSet->getVulkanAPIObject(); };
 
 uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 											 uint32_t dstStartIndex,
@@ -785,7 +792,7 @@ bool MVKDescriptorBinding::hasBinding(uint32_t binding) {
     return _pBindingLayout->_info.binding == binding;
 }
 
-MVKDescriptorBinding::MVKDescriptorBinding(MVKDescriptorSetLayoutBinding* pBindingLayout) : MVKBaseObject() {
+MVKDescriptorBinding::MVKDescriptorBinding(MVKDescriptorSet* pDescSet, MVKDescriptorSetLayoutBinding* pBindingLayout) : _pDescSet(pDescSet) {
 
 	uint32_t descCnt = pBindingLayout->_info.descriptorCount;
 
@@ -941,7 +948,7 @@ void MVKDescriptorSet::setLayout(MVKDescriptorSetLayout* layout) {
 		_bindings.clear();
 		_bindings.reserve(bindCnt);
 		for (uint32_t i = 0; i < bindCnt; i++) {
-			_bindings.emplace_back(&layout->_bindings[i]);
+			_bindings.emplace_back(this, &layout->_bindings[i]);
 		}
 	}
 }
@@ -957,7 +964,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 		if (_device->_enabledExtensions.vk_KHR_maintenance1.enabled) {
 			return VK_ERROR_OUT_OF_POOL_MEMORY;		// Failure is an acceptable test...don't log as error.
 		} else {
-			return mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "The maximum number of descriptor sets that can be allocated by this descriptor pool is %d.", _maxSets);
+			return reportError(VK_ERROR_INITIALIZATION_FAILED, "The maximum number of descriptor sets that can be allocated by this descriptor pool is %d.", _maxSets);
 		}
 	}
 
@@ -1004,7 +1011,7 @@ MVKDescriptorSetPool* MVKDescriptorPool::getDescriptorSetPool(MVKDescriptorSetLa
 }
 
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device,
-									 const VkDescriptorPoolCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+									 const VkDescriptorPoolCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_maxSets = pCreateInfo->maxSets;
 }
 
@@ -1030,8 +1037,9 @@ VkDescriptorUpdateTemplateTypeKHR MVKDescriptorUpdateTemplate::getType() const {
 	return _type;
 }
 
-MVKDescriptorUpdateTemplate::MVKDescriptorUpdateTemplate(MVKDevice* device, const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo) :
-	MVKConfigurableObject(), _type(pCreateInfo->templateType) {
+MVKDescriptorUpdateTemplate::MVKDescriptorUpdateTemplate(MVKDevice* device,
+														 const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo) :
+	MVKVulkanAPIDeviceObject(device), _type(pCreateInfo->templateType) {
 
 	for (uint32_t i = 0; i < pCreateInfo->descriptorUpdateEntryCount; i++)
 		_entries.push_back(pCreateInfo->pDescriptorUpdateEntries[i]);

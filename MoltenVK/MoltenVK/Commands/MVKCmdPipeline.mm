@@ -23,7 +23,8 @@
 #include "MVKBuffer.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
-#include "mvk_datatypes.h"
+#include "MVKEnvironment.h"
+#include "mvk_datatypes.hpp"
 
 
 #pragma mark -

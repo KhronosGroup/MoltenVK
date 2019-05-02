@@ -18,6 +18,7 @@
 
 #include "MVKSync.h"
 #include "MVKFoundation.h"
+#include "MVKLogging.h"
 
 using namespace std;
 
@@ -70,7 +71,7 @@ bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
 
 bool MVKSemaphore::wait(uint64_t timeout) {
 	bool isDone = _blocker.wait(timeout, true);
-	if ( !isDone && timeout > 0 ) { mvkNotifyErrorWithText(VK_TIMEOUT, "Vulkan semaphore timeout after %llu nanoseconds.", timeout); }
+	if ( !isDone && timeout > 0 ) { reportError(VK_TIMEOUT, "Vulkan semaphore timeout after %llu nanoseconds.", timeout); }
 	return isDone;
 }
 
@@ -138,7 +139,8 @@ VkResult mvkResetFences(uint32_t fenceCount, const VkFence* pFences) {
 }
 
 // Create a blocking fence sitter, add it to each fence, wait, then remove it.
-VkResult mvkWaitForFences(uint32_t fenceCount,
+VkResult mvkWaitForFences(MVKDevice* device,
+						  uint32_t fenceCount,
 						  const VkFence* pFences,
 						  VkBool32 waitAll,
 						  uint64_t timeout) {
@@ -153,7 +155,7 @@ VkResult mvkWaitForFences(uint32_t fenceCount,
 	if ( !fenceSitter.wait(timeout) ) {
 		rslt = VK_TIMEOUT;
 		if (timeout > 0) {
-			mvkNotifyErrorWithText(rslt, "Vulkan fence timeout after %llu nanoseconds.", timeout);
+			device->reportError(rslt, "Vulkan fence timeout after %llu nanoseconds.", timeout);
 		}
 	}
 
@@ -175,12 +177,14 @@ VkResult mvkWaitForFences(uint32_t fenceCount,
 // over a second to return when a compiler failure occurs!
 void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block) {
 	MVKAssert( _startTime == 0, "%s compile occurred already in this instance. Instances of %s should only be used for a single compile activity.", _compilerType.c_str(), getClassName().c_str());
-	_startTime = _device->getPerformanceTimestamp();
+
+	MVKDevice* mvkDev = _owner->getDevice();
+	_startTime = mvkDev->getPerformanceTimestamp();
 
 	dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), block);
 
 	// Limit timeout to avoid overflow since wait_for() uses wait_until()
-	chrono::nanoseconds nanoTimeout(min(_device->_pMVKConfig->metalCompileTimeout, kMVKUndefinedLargeUInt64));
+	chrono::nanoseconds nanoTimeout(min(mvkDev->_pMVKConfig->metalCompileTimeout, kMVKUndefinedLargeUInt64));
 	_blocker.wait_for(lock, nanoTimeout, [this]{ return _isCompileDone; });
 
 	if ( !_isCompileDone ) {
@@ -190,14 +194,14 @@ void MVKMetalCompiler::compile(unique_lock<mutex>& lock, dispatch_block_t block)
 
 	if (_compileError) { handleError(); }
 
-	_device->addActivityPerformance(*_pPerformanceTracker, _startTime);
+	mvkDev->addActivityPerformance(*_pPerformanceTracker, _startTime);
 }
 
 void MVKMetalCompiler::handleError() {
-	setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED,
-												  "%s compile failed (Error code %li):\n%s.",
-												  _compilerType.c_str(), (long)_compileError.code,
-												  _compileError.localizedDescription.UTF8String));
+	_owner->setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+											   "%s compile failed (Error code %li):\n%s.",
+											   _compilerType.c_str(), (long)_compileError.code,
+											   _compileError.localizedDescription.UTF8String));
 }
 
 // Returns whether the compilation came in late, after the compiler was destroyed.
@@ -209,7 +213,7 @@ bool MVKMetalCompiler::endCompile(NSError* compileError) {
 }
 
 void MVKMetalCompiler::destroy() {
-	if (markDestroyed()) { MVKBaseDeviceObject::destroy(); }
+	if (markDestroyed()) { MVKBaseObject::destroy(); }
 }
 
 // Marks this object as destroyed, and returns whether the compilation is complete.

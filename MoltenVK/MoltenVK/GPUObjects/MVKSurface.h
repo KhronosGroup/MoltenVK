@@ -18,28 +18,22 @@
 
 #pragma once
 
-#include "mvk_vulkan.h"
 #include "MVKBaseObject.h"
+#include "MVKEnvironment.h"
 #include <mutex>
 
+#import <Metal/Metal.h>
+#import <QuartzCore/CAMetalLayer.h>
 
-// Expose MoltenVK Apple surface extension functionality
 #ifdef VK_USE_PLATFORM_IOS_MVK
-#	define vkCreate_PLATFORM_SurfaceMVK			vkCreateIOSSurfaceMVK
-#	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkIOSSurfaceCreateInfoMVK
-#	define PLATFORM_VIEW_CLASS					UIView
+#	define PLATFORM_VIEW_CLASS	UIView
 #	import <UIKit/UIView.h>
 #endif
 
 #ifdef VK_USE_PLATFORM_MACOS_MVK
-#	define vkCreate_PLATFORM_SurfaceMVK			vkCreateMacOSSurfaceMVK
-#	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkMacOSSurfaceCreateInfoMVK
-#	define PLATFORM_VIEW_CLASS					NSView
+#	define PLATFORM_VIEW_CLASS	NSView
 #	import <AppKit/NSView.h>
 #endif
-
-#import <Metal/Metal.h>
-#import <QuartzCore/CAMetalLayer.h>
 
 class MVKInstance;
 
@@ -49,9 +43,15 @@ class MVKInstance;
 #pragma mark MVKSurface
 
 /** Represents a Vulkan WSI surface. */
-class MVKSurface : public MVKConfigurableObject {
+class MVKSurface : public MVKVulkanAPIObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SURFACE_KHR_EXT; }
+
+	/** Returns a pointer to the Vulkan instance. */
+	MVKInstance* getInstance() override { return _mvkInstance; }
 
     /** Returns the CAMetalLayer underlying this surface.  */
     inline CAMetalLayer* getCAMetalLayer() {
@@ -69,6 +69,7 @@ public:
 	~MVKSurface() override;
 
 protected:
+	MVKInstance* _mvkInstance;
 	CAMetalLayer* _mtlCAMetalLayer;
 	std::mutex _lock;
 	MVKBlockObserver* _layerObserver;

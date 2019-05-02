@@ -19,12 +19,16 @@
 #include "MVKExtensions.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
+#include "MVKEnvironment.h"
 #include "vk_mvk_moltenvk.h"
 #include <vulkan/vulkan_ios.h>
 #include <vulkan/vulkan_macos.h>
 
 using namespace std;
 
+
+#pragma mark -
+#pragma mark MVKExtension
 
 // Returns a VkExtensionProperties struct populated with a name and version
 static VkExtensionProperties mvkMakeExtProps(const char* extensionName, uint32_t specVersion) {
@@ -40,11 +44,62 @@ static VkExtensionProperties mvkMakeExtProps(const char* extensionName, uint32_t
 static VkExtensionProperties kVkExtProps_ ##EXT = mvkMakeExtProps(VK_ ##EXT ##_EXTENSION_NAME, VK_ ##EXT ##_SPEC_VERSION);
 #include "MVKExtensions.def"
 
-MVKExtensionList::MVKExtensionList(bool enableForPlatform) :
+// Returns whether the specified properties are valid for this platform
+static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
+#if !(MVK_IOS)
+	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
+		return mvkOSVersion() >= 10.13;
+	}
+	if (pProperties == &kVkExtProps_MVK_IOS_SURFACE) { return false; }
+	if (pProperties == &kVkExtProps_IMG_FORMAT_PVRTC) { return false; }
+#endif
+#if !(MVK_MACOS)
+	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
+	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
+		return mvkOSVersion() >= 11.0;
+	}
+	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
+#endif
+
+	return true;
+}
+
+// Disable by default unless asked to enable for platform and the extension is valid for this platform
+MVKExtension::MVKExtension(VkExtensionProperties* pProperties, bool enableForPlatform) {
+	this->pProperties = pProperties;
+	this->enabled = enableForPlatform && mvkIsSupportedOnPlatform(pProperties);
+}
+
+
+#pragma mark -
+#pragma mark MVKExtensionList
+
+MVKExtensionList::MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableForPlatform) : _apiObject(apiObject),
 #define MVK_EXTENSION_LAST(var, EXT)	vk_ ##var(&kVkExtProps_ ##EXT, enableForPlatform)
 #define MVK_EXTENSION(var, EXT)			MVK_EXTENSION_LAST(var, EXT),
 #include "MVKExtensions.def"
-{}
+{
+	initCount();
+}
+
+// We can't determine size of annonymous struct, and can't rely on size of this class, since
+// it can contain additional member variables. So we need to explicitly count the extensions.
+void MVKExtensionList::initCount() {
+	_count = 0;
+
+#define MVK_EXTENSION(var, EXT) _count++;
+#include "MVKExtensions.def"
+}
+
+uint32_t MVKExtensionList::getEnabledCount() const {
+	uint32_t enabledCnt = 0;
+	uint32_t extnCnt = getCount();
+	const MVKExtension* extnAry = &extensionArray;
+	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {
+		if (extnAry[extnIdx].enabled) { enabledCnt++; }
+	}
+	return enabledCnt;
+}
 
 bool MVKExtensionList::isEnabled(const char* extnName) const {
 	if ( !extnName ) { return false; }
@@ -77,7 +132,7 @@ VkResult MVKExtensionList::enable(uint32_t count, const char* const* names, MVKE
 	for (uint32_t i = 0; i < count; i++) {
 		auto extnName = names[i];
 		if (parent && !parent->isEnabled(extnName)) {
-			result = mvkNotifyErrorWithText(VK_ERROR_EXTENSION_NOT_PRESENT, "Vulkan extension %s is not supported.", extnName);
+			result = reportError(VK_ERROR_EXTENSION_NOT_PRESENT, "Vulkan extension %s is not supported.", extnName);
 		} else {
 			enable(extnName);
 		}
@@ -101,30 +156,4 @@ string MVKExtensionList::enabledNamesString(const char* separator, bool prefixFi
 		}
 	}
 	return logMsg;
-}
-
-// Returns whether the specified properties are valid for this platform
-static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
-#if !(MVK_IOS)
-	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
-		return mvkOSVersion() >= 10.13;
-	}
-	if (pProperties == &kVkExtProps_MVK_IOS_SURFACE) { return false; }
-	if (pProperties == &kVkExtProps_IMG_FORMAT_PVRTC) { return false; }
-#endif
-#if !(MVK_MACOS)
-	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
-	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
-		return mvkOSVersion() >= 11.0;
-	}
-	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
-#endif
-
-	return true;
-}
-
-// Disable by default unless asked to enable for platform and the extension is valid for this platform
-MVKExtension::MVKExtension(VkExtensionProperties* pProperties, bool enableForPlatform) {
-	this->pProperties = pProperties;
-	this->enabled = enableForPlatform && mvkIsSupportedOnPlatform(pProperties);
 }

@@ -18,8 +18,12 @@
 
 #pragma once
 
-#include "mvk_vulkan.h"
+#include "MVKBaseObject.h"
 #include <string>
+
+
+#pragma mark -
+#pragma mark MVKExtension
 
 /** Describes a Vulkan extension and whether or not it is enabled or supported. */
 struct MVKExtension {
@@ -29,13 +33,23 @@ struct MVKExtension {
 	MVKExtension(VkExtensionProperties* pProperties, bool enableForPlatform = false);
 };
 
+
+#pragma mark -
+#pragma mark MVKExtensionList
+
 /**
  * A fixed list of the Vulkan extensions known to MoltenVK, with
  * an indication of whether each extension is supported/enabled.
  *
  * To add support for a Vulkan extension, add a variable to this list.
  */
-struct MVKExtensionList {
+class MVKExtensionList : public MVKBaseObject {
+
+public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _apiObject->getVulkanAPIObject(); };
+
 	union {
 		struct {
 #define MVK_EXTENSION(var, EXT) MVKExtension vk_ ##var;
@@ -45,7 +59,10 @@ struct MVKExtensionList {
 	};
 
 	/** Returns the total number of extensions that are tracked by this object. */
-	static uint32_t getCount() { return sizeof(MVKExtensionList) / sizeof(MVKExtension); }
+	uint32_t getCount() const { return _count; }
+
+	/** Returns the number of extensions that are enabled. */
+	uint32_t getEnabledCount() const;
 
 	/** Returns whether the named extension is enabled. */
 	bool isEnabled(const char* extnName) const;
@@ -68,6 +85,13 @@ struct MVKExtensionList {
 	 */
 	std::string enabledNamesString(const char* separator = " ", bool prefixFirstWithSeparator = false) const;
 
-	MVKExtensionList(bool enableForPlatform = false);
+	MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableForPlatform = false);
+
+protected:
+	void initCount();
+
+	MVKVulkanAPIObject* _apiObject;
+	uint32_t _count;
+
 };
 

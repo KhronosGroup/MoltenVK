@@ -19,8 +19,10 @@
 #include "MVKDeviceMemory.h"
 #include "MVKBuffer.h"
 #include "MVKImage.h"
-#include "mvk_datatypes.h"
+#include "MVKEnvironment.h"
+#include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
+#include "MVKLogging.h"
 #include <cstdlib>
 #include <stdlib.h>
 
@@ -31,15 +33,15 @@ using namespace std;
 VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData) {
 
 	if ( !isMemoryHostAccessible() ) {
-		return mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be mapped to host memory.");
+		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be mapped to host memory.");
 	}
 
 	if (_isMapped) {
-		return mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Memory is already mapped. Call vkUnmapMemory() first.");
+		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is already mapped. Call vkUnmapMemory() first.");
 	}
 
 	if ( !ensureMTLBuffer() && !ensureHostMemory() ) {
-		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_HOST_MEMORY, "Could not allocate %llu bytes of host-accessible device memory.", _allocationSize);
+		return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Could not allocate %llu bytes of host-accessible device memory.", _allocationSize);
 	}
 
 	_mapOffset = offset;
@@ -57,7 +59,7 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 void MVKDeviceMemory::unmap() {
 
 	if ( !_isMapped ) {
-		mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
+		reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
 		return;
 	}
 
@@ -108,11 +110,11 @@ VkResult MVKDeviceMemory::addBuffer(MVKBuffer* mvkBuff) {
 	// If a dedicated alloc, ensure this buffer is the one and only buffer
 	// I am dedicated to.
 	if (_isDedicated && (_buffers.empty() || _buffers[0] != mvkBuff) ) {
-		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkBuffer %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkBuff, getDedicatedResource() );
+		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkBuffer %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkBuff, getDedicatedResource() );
 	}
 
 	if (!ensureMTLBuffer() ) {
-		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind a VkBuffer to a VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a VkDeviceMemory that supports a VkBuffer is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize);
+		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind a VkBuffer to a VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a VkDeviceMemory that supports a VkBuffer is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize);
 	}
 
 	// In the dedicated case, we already saved the buffer we're going to use.
@@ -133,7 +135,7 @@ VkResult MVKDeviceMemory::addImage(MVKImage* mvkImg) {
 	// If a dedicated alloc, ensure this image is the one and only image
 	// I am dedicated to.
 	if (_isDedicated && (_images.empty() || _images[0] != mvkImg) ) {
-		return mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
+		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
 	}
 
 	if (!_isDedicated)
@@ -201,7 +203,7 @@ MVKResource* MVKDeviceMemory::getDedicatedResource() {
 
 MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkMemoryAllocateInfo* pAllocateInfo,
-								 const VkAllocationCallbacks* pAllocator) : MVKBaseDeviceObject(device) {
+								 const VkAllocationCallbacks* pAllocator) : MVKVulkanAPIDeviceObject(device) {
 	// Set Metal memory parameters
 	VkMemoryPropertyFlags vkMemProps = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
 	_mtlResourceOptions = mvkMTLResourceOptionsFromVkMemoryPropertyFlags(vkMemProps);
@@ -233,13 +235,13 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 #if MVK_MACOS
 		if (isMemoryHostCoherent() ) {
 			if (!((MVKImage*)dedicatedImage)->_isLinear) {
-				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Host-coherent VkDeviceMemory objects cannot be associated with optimal-tiling images."));
+				setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Host-coherent VkDeviceMemory objects cannot be associated with optimal-tiling images."));
 			} else {
 				// Need to use the managed mode for images.
 				_mtlStorageMode = MTLStorageModeManaged;
 				// Nonetheless, we need a buffer to be able to map the memory at will.
 				if (!ensureMTLBuffer() ) {
-					setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+					setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
 				}
 			}
 		}
@@ -251,7 +253,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 
 	// If memory needs to be coherent it must reside in an MTLBuffer, since an open-ended map() must work.
 	if (isMemoryHostCoherent() && !ensureMTLBuffer() ) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
+		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
 	}
 
 	if (dedicatedBuffer) {

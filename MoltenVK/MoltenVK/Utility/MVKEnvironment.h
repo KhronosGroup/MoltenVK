@@ -20,7 +20,19 @@
 #pragma once
 
 #include "MVKCommonEnvironment.h"
+#include "mvk_vulkan.h"
 
+
+// Expose MoltenVK Apple surface extension functionality
+#ifdef VK_USE_PLATFORM_IOS_MVK
+#	define vkCreate_PLATFORM_SurfaceMVK			vkCreateIOSSurfaceMVK
+#	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkIOSSurfaceCreateInfoMVK
+#endif
+
+#ifdef VK_USE_PLATFORM_MACOS_MVK
+#	define vkCreate_PLATFORM_SurfaceMVK			vkCreateMacOSSurfaceMVK
+#	define Vk_PLATFORM_SurfaceCreateInfoMVK		VkMacOSSurfaceCreateInfoMVK
+#endif
 
 /** Macro to determine the Vulkan version supported by MoltenVK. */
 #define MVK_VULKAN_API_VERSION		VK_MAKE_VERSION(VK_VERSION_MAJOR(VK_API_VERSION_1_0),	\

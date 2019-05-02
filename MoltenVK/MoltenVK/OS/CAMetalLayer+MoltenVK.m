@@ -17,8 +17,8 @@
  */
 
 
-#include "MVKCommonEnvironment.h"
 #include "CAMetalLayer+MoltenVK.h"
+#include "MVKEnvironment.h"
 
 @implementation CAMetalLayer (MoltenVK)
 

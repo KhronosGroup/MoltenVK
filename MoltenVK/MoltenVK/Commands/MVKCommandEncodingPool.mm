@@ -17,12 +17,17 @@
  */
 
 #include "MVKCommandEncodingPool.h"
+#include "MVKCommandPool.h"
 #include "MVKImage.h"
 
 using namespace std;
 
+
 #pragma mark -
 #pragma mark MVKCommandEncodingPool
+
+MVKVulkanAPIObject* MVKCommandEncodingPool::getVulkanAPIObject() { return _commandPool->getVulkanAPIObject(); };
+
 
 // In order to provide thread-safety with minimal performance impact, each of these access
 // functions follows a 3-step pattern:
@@ -34,25 +39,25 @@ using namespace std;
 // Step 1 handles the common case where the resource exists, without the expense of a lock.
 // Step 2 guards against a potential race condition where two threads get past Step 1 at
 // the same time, and then both barrel ahead onto Step 3.
-#define MVK_ENC_REZ_ACCESS(rezAccess, rezFactoryFunc)				\
-	auto rez = rezAccess;											\
-	if (rez) { return rez; }										\
-																	\
-	lock_guard<mutex> lock(_lock);									\
-	rez = rezAccess;												\
-	if (rez) { return rez; }										\
-																	\
-	rez = _device->getCommandResourceFactory()->rezFactoryFunc;		\
-	rezAccess = rez;												\
+#define MVK_ENC_REZ_ACCESS(rezAccess, rezFactoryFunc)								\
+	auto rez = rezAccess;															\
+	if (rez) { return rez; }														\
+																					\
+	lock_guard<mutex> lock(_lock);													\
+	rez = rezAccess;																\
+	if (rez) { return rez; }														\
+																					\
+	rez = _commandPool->getDevice()->getCommandResourceFactory()->rezFactoryFunc;	\
+	rezAccess = rez;																\
 	return rez
 
 
 id<MTLRenderPipelineState> MVKCommandEncodingPool::getCmdClearMTLRenderPipelineState(MVKRPSKeyClearAtt& attKey) {
-	MVK_ENC_REZ_ACCESS(_cmdClearMTLRenderPipelineStates[attKey], newCmdClearMTLRenderPipelineState(attKey));
+	MVK_ENC_REZ_ACCESS(_cmdClearMTLRenderPipelineStates[attKey], newCmdClearMTLRenderPipelineState(attKey, _commandPool));
 }
 
 id<MTLRenderPipelineState> MVKCommandEncodingPool::getCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey) {
-	MVK_ENC_REZ_ACCESS(_cmdBlitImageMTLRenderPipelineStates[blitKey], newCmdBlitImageMTLRenderPipelineState(blitKey));
+	MVK_ENC_REZ_ACCESS(_cmdBlitImageMTLRenderPipelineStates[blitKey], newCmdBlitImageMTLRenderPipelineState(blitKey, _commandPool));
 }
 
 id<MTLSamplerState> MVKCommandEncodingPool::getCmdBlitImageMTLSamplerState(MTLSamplerMinMagFilter mtlFilter) {
@@ -102,23 +107,23 @@ MVKBuffer* MVKCommandEncodingPool::getTransferMVKBuffer(MVKBufferDescriptorData&
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferBytesMTLComputePipelineState() {
-	MVK_ENC_REZ_ACCESS(_mtlCopyBufferBytesComputePipelineState, newCmdCopyBufferBytesMTLComputePipelineState());
+	MVK_ENC_REZ_ACCESS(_mtlCopyBufferBytesComputePipelineState, newCmdCopyBufferBytesMTLComputePipelineState(_commandPool));
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdFillBufferMTLComputePipelineState() {
-	MVK_ENC_REZ_ACCESS(_mtlFillBufferComputePipelineState, newCmdFillBufferMTLComputePipelineState());
+	MVK_ENC_REZ_ACCESS(_mtlFillBufferComputePipelineState, newCmdFillBufferMTLComputePipelineState(_commandPool));
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff) {
-	MVK_ENC_REZ_ACCESS(_mtlCopyBufferToImage3DDecompressComputePipelineState[needsTempBuff ? 1 : 0], newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff));
+	MVK_ENC_REZ_ACCESS(_mtlCopyBufferToImage3DDecompressComputePipelineState[needsTempBuff ? 1 : 0], newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff, _commandPool));
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed) {
-	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectConvertBuffersMTLComputePipelineState(indexed));
+	MVK_ENC_REZ_ACCESS(_mtlDrawIndirectConvertBuffersComputePipelineState[indexed ? 1 : 0], newCmdDrawIndirectConvertBuffersMTLComputePipelineState(indexed, _commandPool));
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type) {
-	MVK_ENC_REZ_ACCESS(_mtlDrawIndexedCopyIndexBufferComputePipelineState[type == MTLIndexTypeUInt16 ? 1 : 0], newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(type));
+	MVK_ENC_REZ_ACCESS(_mtlDrawIndexedCopyIndexBufferComputePipelineState[type == MTLIndexTypeUInt16 ? 1 : 0], newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(type, _commandPool));
 }
 
 void MVKCommandEncodingPool::clear() {
@@ -129,8 +134,8 @@ void MVKCommandEncodingPool::clear() {
 
 #pragma mark Construction
 
-MVKCommandEncodingPool::MVKCommandEncodingPool(MVKDevice* device) : MVKBaseDeviceObject(device),
-    _mtlBufferAllocator(device, device->_pMetalFeatures->maxMTLBufferSize, true) {
+MVKCommandEncodingPool::MVKCommandEncodingPool(MVKCommandPool* commandPool) : _commandPool(commandPool),
+    _mtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxMTLBufferSize, true) {
 }
 
 MVKCommandEncodingPool::~MVKCommandEncodingPool() {
@@ -139,6 +144,8 @@ MVKCommandEncodingPool::~MVKCommandEncodingPool() {
 
 /**  Ensure all cached Metal components are released. */
 void MVKCommandEncodingPool::destroyMetalResources() {
+	MVKDevice* mvkDev = _commandPool->getDevice();
+
     for (auto& pair : _cmdBlitImageMTLRenderPipelineStates) { [pair.second release]; }
     _cmdBlitImageMTLRenderPipelineStates.clear();
 
@@ -148,13 +155,13 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     for (auto& pair : _mtlDepthStencilStates) { [pair.second release]; }
     _mtlDepthStencilStates.clear();
 
-    for (auto& pair : _transferImages) { _device->destroyImage(pair.second, nullptr); }
+    for (auto& pair : _transferImages) { mvkDev->destroyImage(pair.second, nullptr); }
     _transferImages.clear();
 
-    for (auto& pair : _transferBuffers) { _device->destroyBuffer(pair.second, nullptr); }
+    for (auto& pair : _transferBuffers) { mvkDev->destroyBuffer(pair.second, nullptr); }
     _transferBuffers.clear();
 
-    for (auto& pair : _transferBufferMemory) { _device->freeMemory(pair.second, nullptr); }
+    for (auto& pair : _transferBufferMemory) { mvkDev->freeMemory(pair.second, nullptr); }
     _transferBufferMemory.clear();
 
     [_cmdBlitImageLinearMTLSamplerState release];

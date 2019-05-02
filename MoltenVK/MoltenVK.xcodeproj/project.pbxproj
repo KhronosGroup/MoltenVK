@@ -187,8 +187,8 @@
 		A9C96DD11DDC20C20053187F /* MVKMTLBufferAllocation.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */; };
 		A9C96DD21DDC20C20053187F /* MVKMTLBufferAllocation.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */; };
 		A9C96DD31DDC20C20053187F /* MVKMTLBufferAllocation.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */; };
-		A9E337B5220129DD00363D2A /* MVKLogging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9E337B1220129DD00363D2A /* MVKLogging.cpp */; };
-		A9E337B6220129DD00363D2A /* MVKLogging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9E337B1220129DD00363D2A /* MVKLogging.cpp */; };
+		A9CEAAD5227378D400FAF779 /* mvk_datatypes.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A9CEAAD1227378D400FAF779 /* mvk_datatypes.hpp */; };
+		A9CEAAD6227378D400FAF779 /* mvk_datatypes.hpp in Headers */ = {isa = PBXBuildFile; fileRef = A9CEAAD1227378D400FAF779 /* mvk_datatypes.hpp */; };
 		A9E4B7891E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */; };
 		A9E4B78A1E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */; };
 		A9E53DD72100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m in Sources */ = {isa = PBXBuildFile; fileRef = A9E53DCD2100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m */; };
@@ -370,8 +370,8 @@
 		A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKMTLBufferAllocation.h; sourceTree = "<group>"; };
 		A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKMTLBufferAllocation.mm; sourceTree = "<group>"; };
 		A9CBEE011B6299D800E45FDC /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		A9CEAAD1227378D400FAF779 /* mvk_datatypes.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = mvk_datatypes.hpp; sourceTree = "<group>"; };
 		A9DE1083200598C500F18F80 /* icd */ = {isa = PBXFileReference; lastKnownFileType = folder; path = icd; sourceTree = "<group>"; };
-		A9E337B1220129DD00363D2A /* MVKLogging.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKLogging.cpp; sourceTree = "<group>"; };
 		A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKMTLResourceBindings.h; sourceTree = "<group>"; };
 		A9E53DCD2100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = "MTLSamplerDescriptor+MoltenVK.m"; sourceTree = "<group>"; };
 		A9E53DD02100B197002781DD /* MTLTextureDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLTextureDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
@@ -504,6 +504,7 @@
 		A94FB7A81C7DFB4800632CA3 /* Vulkan */ = {
 			isa = PBXGroup;
 			children = (
+				A9CEAAD1227378D400FAF779 /* mvk_datatypes.hpp */,
 				A94FB7A91C7DFB4800632CA3 /* mvk_datatypes.mm */,
 				A94FB7AC1C7DFB4800632CA3 /* vk_mvk_moltenvk.mm */,
 				A94FB7AD1C7DFB4800632CA3 /* vulkan.mm */,
@@ -581,7 +582,6 @@
 			isa = PBXGroup;
 			children = (
 				A9F0429D1FB4CF82009FCCB8 /* MVKCommonEnvironment.h */,
-				A9E337B1220129DD00363D2A /* MVKLogging.cpp */,
 				A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */,
 				A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */,
 				A9B51BD2225E986A00AC74D2 /* MVKOSExtensions.mm */,
@@ -672,6 +672,7 @@
 				A94FB7E81C7DFB4800632CA3 /* MVKDeviceMemory.h in Headers */,
 				A9E4B7891E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */,
 				45003E73214AD4E500E989CB /* MVKExtensions.def in Headers */,
+				A9CEAAD5227378D400FAF779 /* mvk_datatypes.hpp in Headers */,
 				A90C8DEA1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
 				A94FB8081C7DFB4800632CA3 /* MVKResource.h in Headers */,
 				A9E53DDD2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */,
@@ -737,6 +738,7 @@
 				A94FB7E91C7DFB4800632CA3 /* MVKDeviceMemory.h in Headers */,
 				A9E4B78A1E1D8AF10046A4CE /* MVKMTLResourceBindings.h in Headers */,
 				45003E74214AD4E600E989CB /* MVKExtensions.def in Headers */,
+				A9CEAAD6227378D400FAF779 /* mvk_datatypes.hpp in Headers */,
 				A90C8DEB1F45354D009CB32C /* MVKCommandEncodingPool.h in Headers */,
 				A94FB8091C7DFB4800632CA3 /* MVKResource.h in Headers */,
 				A9E53DDE2100B197002781DD /* MTLTextureDescriptor+MoltenVK.h in Headers */,
@@ -974,7 +976,6 @@
 				A94FB8301C7DFB4800632CA3 /* vk_mvk_moltenvk.mm in Sources */,
 				A94FB8161C7DFB4800632CA3 /* MVKSwapchain.mm in Sources */,
 				A95B7D6B1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */,
-				A9E337B5220129DD00363D2A /* MVKLogging.cpp in Sources */,
 				A93E83352121F0C8001FEBD4 /* MVKGPUCapture.mm in Sources */,
 				A9B51BD7225E986A00AC74D2 /* MVKOSExtensions.mm in Sources */,
 				A94FB7CE1C7DFB4800632CA3 /* MVKCommand.mm in Sources */,
@@ -1029,7 +1030,6 @@
 				A94FB8311C7DFB4800632CA3 /* vk_mvk_moltenvk.mm in Sources */,
 				A94FB8171C7DFB4800632CA3 /* MVKSwapchain.mm in Sources */,
 				A95B7D6C1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */,
-				A9E337B6220129DD00363D2A /* MVKLogging.cpp in Sources */,
 				A93E83362121F0C8001FEBD4 /* MVKGPUCapture.mm in Sources */,
 				A9B51BD8225E986A00AC74D2 /* MVKOSExtensions.mm in Sources */,
 				A94FB7CF1C7DFB4800632CA3 /* MVKCommand.mm in Sources */,
@@ -1134,7 +1134,6 @@
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
-					MVK_ENV_LOG_LEVEL,
 					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
@@ -1194,10 +1193,7 @@
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = fast;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					MVK_ENV_LOG_LEVEL,
-					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
-				);
+				GCC_PREPROCESSOR_DEFINITIONS = "SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross";
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = YES;

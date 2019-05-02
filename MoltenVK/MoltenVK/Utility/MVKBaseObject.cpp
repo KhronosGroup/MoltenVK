@@ -17,10 +17,55 @@
  */
 
 #include "MVKBaseObject.h"
+#include "MVKInstance.h"
+#include "MVKFoundation.h"
+#include "MVKOSExtensions.h"
+#include "MVKLogging.h"
 #include <stdlib.h>
 #include <cxxabi.h>
 
 using namespace std;
+
+
+// The logging level
+// 0 = None
+// 1 = Errors only
+// 2 = All
+#ifndef MVK_CONFIG_LOG_LEVEL
+#   define MVK_CONFIG_LOG_LEVEL    2
+#endif
+
+static uint32_t _mvkLogLevel = MVK_CONFIG_LOG_LEVEL;
+
+// Initialize log level from environment
+static bool _mvkLoggingInitialized = false;
+__attribute__((constructor)) static void MVKInitLogging() {
+	if (_mvkLoggingInitialized ) { return; }
+	_mvkLoggingInitialized = true;
+
+	MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkLogLevel, MVK_CONFIG_LOG_LEVEL);
+}
+
+static const char* getReportingLevelString(int aslLvl) {
+	switch (aslLvl) {
+		case ASL_LEVEL_DEBUG:
+			return "mvk-debug";
+
+		case ASL_LEVEL_INFO:
+		case ASL_LEVEL_NOTICE:
+			return "mvk-info";
+
+		case ASL_LEVEL_WARNING:
+			return "mvk-warn";
+
+		case ASL_LEVEL_ERR:
+		case ASL_LEVEL_CRIT:
+		case ASL_LEVEL_ALERT:
+		case ASL_LEVEL_EMERG:
+		default:
+			return "mvk-error";
+	}
+}
 
 
 #pragma mark -
@@ -32,4 +77,126 @@ string MVKBaseObject::getClassName() {
     string clzName = demangled;
     free(demangled);
     return clzName;
+}
+
+void MVKBaseObject::reportMessage(int aslLvl, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	reportMessage(this, aslLvl, format, args);
+	va_end(args);
+}
+
+void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	reportMessage(mvkObj, aslLvl, format, args);
+	va_end(args);
+}
+
+// This is the core reporting implementation. Other similar functions delegate here.
+void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char* format, va_list args) {
+
+	MVKVulkanAPIObject* mvkAPIObj = mvkObj ? mvkObj->getVulkanAPIObject() : nullptr;
+	MVKInstance* mvkInst = mvkAPIObj ? mvkAPIObj->getInstance() : nullptr;
+	bool hasDebugReportCallbacks = mvkInst && mvkInst->hasDebugReportCallbacks();
+	bool shouldLog = (aslLvl < (_mvkLogLevel << 2));
+
+	// Fail fast to avoid further unnecessary processing.
+	if ( !(shouldLog || hasDebugReportCallbacks) ) { return; }
+
+	va_list origArgs, redoArgs;
+	va_copy(origArgs, args);
+	va_copy(redoArgs, args);
+
+	// Choose a buffer size suitable for most messages and attempt to write it out.
+	const int kOrigBuffSize = 2 * KIBI;
+	char origBuff[kOrigBuffSize];
+	char* pMessage = origBuff;
+	int msgLen = vsnprintf(origBuff, kOrigBuffSize, format, origArgs);
+
+	// If message is too big for original buffer, allocate a buffer big enough to hold it and
+	// write the message out again. We only want to do this double writing if we have to.
+	// Create the redoBuff outside scope of if block to allow it to be referencable by pMessage later below.
+	int redoBuffSize = (msgLen >= kOrigBuffSize) ? msgLen + 1 : 0;
+	char redoBuff[redoBuffSize];
+	if (redoBuffSize > 0) {
+		pMessage = redoBuff;
+		vsnprintf(redoBuff, redoBuffSize, format, redoArgs);
+	}
+
+	va_end(redoArgs);
+	va_end(origArgs);
+
+	// Log the message to the standard error stream
+	if (shouldLog) { fprintf(stderr, "[%s] %s\n", getReportingLevelString(aslLvl), pMessage); }
+
+	// Broadcast the message to any Vulkan debug report callbacks
+	if (hasDebugReportCallbacks) { mvkInst->debugReportMessage(mvkAPIObj, aslLvl, pMessage); }
+}
+
+VkResult MVKBaseObject::reportError(VkResult vkErr, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	VkResult rslt = reportError(this, vkErr, format, args);
+	va_end(args);
+	return rslt;
+}
+
+VkResult MVKBaseObject::reportError(MVKBaseObject* mvkObj, VkResult vkErr, const char* format, ...) {
+	va_list args;
+	va_start(args, format);
+	VkResult rslt = reportError(mvkObj, vkErr, format, args);
+	va_end(args);
+	return rslt;
+}
+
+// This is the core reporting implementation. Other similar functions delegate here.
+VkResult MVKBaseObject::reportError(MVKBaseObject* mvkObj, VkResult vkErr, const char* format, va_list args) {
+
+	// Prepend the error code to the format string
+	const char* vkRsltName = mvkVkResultName(vkErr);
+	char fmtStr[strlen(vkRsltName) + strlen(format) + 4];
+	sprintf(fmtStr, "%s: %s", vkRsltName, format);
+
+	// Report the error
+	va_list lclArgs;
+	va_copy(lclArgs, args);
+	reportMessage(mvkObj, ASL_LEVEL_ERR, fmtStr, lclArgs);
+	va_end(lclArgs);
+
+	return vkErr;
+}
+
+
+#pragma mark -
+#pragma mark MVKVulkanAPIObject
+
+void MVKVulkanAPIObject::retain() {
+	lock_guard<mutex> lock(_refLock);
+
+	_refCount++;
+}
+
+void MVKVulkanAPIObject::release() {
+	if (decrementRetainCount()) { destroy(); }
+}
+
+void MVKVulkanAPIObject::destroy() {
+	if (markDestroyed()) { MVKConfigurableObject::destroy(); }
+}
+
+// Decrements the reference count, and returns whether it's time to destroy this object.
+bool MVKVulkanAPIObject::decrementRetainCount() {
+	lock_guard<mutex> lock(_refLock);
+
+	if (_refCount > 0) { _refCount--; }
+	return (_isDestroyed && _refCount == 0);
+}
+
+// Marks this object as destroyed, and returns whether no references are left outstanding.
+bool MVKVulkanAPIObject::markDestroyed() {
+	lock_guard<mutex> lock(_refLock);
+
+	_isDestroyed = true;
+	return _refCount == 0;
 }

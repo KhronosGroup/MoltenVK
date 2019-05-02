@@ -110,7 +110,7 @@ void MVKQueryPool::copyQueryPoolResults(uint32_t firstQuery,
         size_t dataSize = destStride * queryCount;
         getResults(firstQuery, queryCount, dataSize, pData, destStride, flags);
     } else {
-        mvkNotifyErrorWithText(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be used for query pool results.");
+        reportError(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be used for query pool results.");
     }
 }
 
@@ -196,7 +196,7 @@ void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* 
     NSUInteger offset = getVisibilityResultOffset(query);
     NSUInteger maxOffset = getDevice()->_pMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes;
     if (offset > maxOffset) {
-        cmdBuffer->recordResult(mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The query offset value %lu is larger than the maximum offset value %lu available on this device.", offset, maxOffset));
+        cmdBuffer->setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The query offset value %lu is larger than the maximum offset value %lu available on this device.", offset, maxOffset));
     }
 
     if (cmdBuffer->_initialVisibilityResultMTLBuffer == nil) {
@@ -221,7 +221,7 @@ MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
         queryCount = uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes);
 
         if (reqBuffLen > maxBuffLen) {
-            mvkNotifyErrorWithText(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): Each query pool can support a maximum of %d queries.", queryCount);
+            reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): Each query pool can support a maximum of %d queries.", queryCount);
         }
 
         NSUInteger mtlBuffLen = mvkAlignByteOffset(newBuffLen, _device->_pMetalFeatures->mtlBufferAlignment);
@@ -245,7 +245,7 @@ MVKOcclusionQueryPool::~MVKOcclusionQueryPool() {
 MVKPipelineStatisticsQueryPool::MVKPipelineStatisticsQueryPool(MVKDevice* device,
 															   const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
 	if ( !_device->_enabledFeatures.pipelineStatisticsQuery ) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateQueryPool: VK_QUERY_TYPE_PIPELINE_STATISTICS is not supported."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateQueryPool: VK_QUERY_TYPE_PIPELINE_STATISTICS is not supported."));
 	}
 }
 
@@ -255,5 +255,5 @@ MVKPipelineStatisticsQueryPool::MVKPipelineStatisticsQueryPool(MVKDevice* device
 
 MVKUnsupportedQueryPool::MVKUnsupportedQueryPool(MVKDevice* device,
 												 const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
-	setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "vkCreateQueryPool: Unsupported query pool type: %d.", pCreateInfo->queryType));
+	setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkCreateQueryPool: Unsupported query pool type: %d.", pCreateInfo->queryType));
 }

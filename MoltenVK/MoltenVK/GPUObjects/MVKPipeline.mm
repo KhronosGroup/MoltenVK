@@ -24,7 +24,7 @@
 #include "MVKOSExtensions.h"
 #include "MVKStrings.h"
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 
 #include <cereal/archives/binary.hpp>
 #include <cereal/types/string.hpp>
@@ -107,7 +107,7 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConverterContex
 }
 
 MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
-                                     const VkPipelineLayoutCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+                                     const VkPipelineLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
     // Add descriptor set layouts, accumulating the resource index offsets used by the
     // corresponding DSL, and associating the current accumulated resource index offsets
@@ -277,12 +277,12 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	std::string reflectErrorLog;
 	if (_pTessCtlSS && _pTessEvalSS) {
 		if (!getTessReflectionData(((MVKShaderModule*)_pTessCtlSS->module)->getSPIRV(), _pTessCtlSS->pName, ((MVKShaderModule*)_pTessEvalSS->module)->getSPIRV(), _pTessEvalSS->pName, reflectData, reflectErrorLog) ) {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect tessellation shaders: %s", reflectErrorLog.c_str()));
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to reflect tessellation shaders: %s", reflectErrorLog.c_str()));
 			return;
 		}
 		// Unfortunately, we can't support line tessellation at this time.
 		if (reflectData.patchKind == spv::ExecutionModeIsolines) {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support isoline tessellation."));
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support isoline tessellation."));
 			return;
 		}
 	}
@@ -326,7 +326,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 			if (_device->_enabledFeatures.depthClamp) {
 				_mtlDepthClipMode = MTLDepthClipModeClamp;
 			} else {
-				setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "This device does not support depth clamping."));
+				setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "This device does not support depth clamping."));
 			}
 		}
 	}
@@ -363,9 +363,8 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 // Either returns an existing pipeline state or compiles a new one.
 id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState) {
 	if (!plState) {
-		MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(_device);
+		MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(this);
 		plState = plc->newMTLRenderPipelineState(plDesc);	// retained
-		setConfigurationResult(plc->getConfigurationResult());
 		plc->destroy();
 	}
 	return plState;
@@ -374,9 +373,8 @@ id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPi
 // Either returns an existing pipeline state or compiles a new one.
 id<MTLComputePipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState) {
 	if (!plState) {
-		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(_device);
+		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
 		plState = plc->newMTLComputePipelineState(plDesc);	// retained
-		setConfigurationResult(plc->getConfigurationResult());
 		plc->destroy();
 	}
 	return plState;
@@ -551,7 +549,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::getMTLTessControlStageDescrip
 	std::string errorLog;
 	// Unfortunately, MoltenVKShaderConverter doesn't know about MVKVector, so we can't use that here.
 	if (!getShaderOutputs(((MVKShaderModule*)_pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, _pVertexSS->pName, vtxOutputs, errorLog) ) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
 		return nil;
 	}
 
@@ -590,7 +588,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLTessRasterStageDescripto
 	std::vector<SPIRVShaderOutput> tcOutputs;
 	std::string errorLog;
 	if (!getShaderOutputs(((MVKShaderModule*)_pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, _pTessCtlSS->pName, tcOutputs, errorLog) ) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control outputs: %s", errorLog.c_str()));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control outputs: %s", errorLog.c_str()));
 		return nil;
 	}
 
@@ -705,7 +703,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
     addVertexInputToShaderConverterContext(shaderContext, pCreateInfo);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pVertexSS->module)->getMTLFunction(&shaderContext, _pVertexSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 	if ( !mtlFunction ) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader function could not be compiled into pipeline. See previous logged error."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader function could not be compiled into pipeline. See previous logged error."));
 		return false;
 	}
 	plDesc.vertexFunction = mtlFunction;
@@ -714,16 +712,16 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	_needsVertexOutputBuffer = shaderContext.options.needsOutputBuffer;
 	// If we need the auxiliary buffer and there's no place to put it, we're in serious trouble.
 	if (_needsVertexAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageVertex] >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires auxiliary buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires auxiliary buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	// Ditto captured output buffer.
 	if (_needsVertexOutputBuffer && _outputBufferIndex.stages[kMVKShaderStageVertex] >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires output buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires output buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_needsVertexOutputBuffer && _indirectParamsIndex.stages[kMVKShaderStageVertex] >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires indirect parameters buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires indirect parameters buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	return true;
@@ -741,7 +739,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	addPrevStageOutputToShaderConverterContext(shaderContext, vtxOutputs);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pTessCtlSS->module)->getMTLFunction(&shaderContext, _pTessCtlSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 	if ( !mtlFunction ) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader function could not be compiled into pipeline. See previous logged error."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader function could not be compiled into pipeline. See previous logged error."));
 		return false;
 	}
 	plDesc.computeFunction = mtlFunction;
@@ -750,23 +748,23 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	_needsTessCtlPatchOutputBuffer = shaderContext.options.needsPatchOutputBuffer;
 	_needsTessCtlInput = shaderContext.options.needsInputThreadgroupMem;
 	if (_needsTessCtlAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageTessCtl] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires auxiliary buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires auxiliary buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_indirectParamsIndex.stages[kMVKShaderStageTessCtl] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires indirect parameters buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires indirect parameters buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_needsTessCtlOutputBuffer && _outputBufferIndex.stages[kMVKShaderStageTessCtl] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires per-vertex output buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires per-vertex output buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_needsTessCtlPatchOutputBuffer && _tessCtlPatchOutputBufferIndex >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires per-patch output buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires per-patch output buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_tessCtlLevelBufferIndex >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires tessellation level output buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires tessellation level output buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	return true;
@@ -781,7 +779,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	addPrevStageOutputToShaderConverterContext(shaderContext, tcOutputs);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pTessEvalSS->module)->getMTLFunction(&shaderContext, _pTessEvalSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 	if ( !mtlFunction ) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Tessellation evaluation shader function could not be compiled into pipeline. See previous logged error."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation evaluation shader function could not be compiled into pipeline. See previous logged error."));
 		return false;
 	}
 	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
@@ -790,7 +788,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	_needsTessEvalAuxBuffer = shaderContext.options.needsAuxBuffer;
 	// If we need the auxiliary buffer and there's no place to put it, we're in serious trouble.
 	if (_needsTessEvalAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageTessEval] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessEvalNumReservedBuffers) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Tessellation evaluation shader requires auxiliary buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation evaluation shader requires auxiliary buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	return true;
@@ -804,13 +802,13 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderContext.options.shouldCaptureOutput = false;
 		id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pFragmentSS->module)->getMTLFunction(&shaderContext, _pFragmentSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 		if ( !mtlFunction ) {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader function could not be compiled into pipeline. See previous logged error."));
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader function could not be compiled into pipeline. See previous logged error."));
 			return false;
 		}
 		plDesc.fragmentFunction = mtlFunction;
 		_needsFragmentAuxBuffer = shaderContext.options.needsAuxBuffer;
 		if (_needsFragmentAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageFragment] >= _device->_pMetalFeatures->maxPerStageBufferCount) {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader requires auxiliary buffer, but there is no free slot to pass it."));
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader requires auxiliary buffer, but there is no free slot to pass it."));
 			return false;
 		}
 	}
@@ -847,7 +845,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 				for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
 					if (pVKVB->binding == pVKVA->binding) {
 						if (pVKVA->offset >= pVKVB->stride) {
-							setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute offsets must not exceed the vertex buffer stride."));
+							setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute offsets must not exceed the vertex buffer stride."));
 							return false;
 						}
 						break;
@@ -871,7 +869,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 			// Vulkan allows any stride, but Metal only allows multiples of 4.
             // TODO: We should try to expand the buffer to the required alignment in that case.
             if ((pVKVB->stride % 4) != 0) {
-                setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex buffer strides must be aligned to four bytes."));
+                setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex buffer strides must be aligned to four bytes."));
                 return false;
             }
 
@@ -1168,16 +1166,15 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 	_mtlPipelineState = nil;
 
 	if (shaderFunc.mtlFunction) {
-		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(_device);
+		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
 		_mtlPipelineState = plc->newMTLComputePipelineState(shaderFunc.mtlFunction);	// retained
-		setConfigurationResult(plc->getConfigurationResult());
 		plc->destroy();
 	} else {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous logged error."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous logged error."));
 	}
 
 	if (_needsAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageCompute] > _device->_pMetalFeatures->maxPerStageBufferCount) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Compute shader requires auxiliary buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Compute shader requires auxiliary buffer, but there is no free slot to pass it."));
 	}
 }
 
@@ -1227,7 +1224,7 @@ MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConverterContext*
 MVKShaderLibraryCache* MVKPipelineCache::getShaderLibraryCache(MVKShaderModuleKey smKey) {
 	MVKShaderLibraryCache* slCache = _shaderCache[smKey];
 	if ( !slCache ) {
-		slCache = new MVKShaderLibraryCache(_device);
+		slCache = new MVKShaderLibraryCache(this);
 		_shaderCache[smKey] = slCache;
 	}
 	return slCache;
@@ -1311,7 +1308,11 @@ void serialize(Archive & archive, MVKShaderModuleKey& k) {
 
 // Helper class to iterate through the shader libraries in a shader library cache in order to serialize them.
 // Needs to support input of null shader library cache.
-class MVKShaderCacheIterator : MVKBaseObject {
+class MVKShaderCacheIterator : public MVKBaseObject {
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _pSLCache->getVulkanAPIObject(); };
+
 protected:
 	friend MVKPipelineCache;
 
@@ -1361,7 +1362,7 @@ VkResult MVKPipelineCache::writeData(size_t* pDataSize, void* pData) {
 
 	} catch (cereal::Exception& ex) {
 		*pDataSize = 0;
-		return mvkNotifyErrorWithText(VK_INCOMPLETE, "Error writing pipeline cache data: %s", ex.what());
+		return reportError(VK_INCOMPLETE, "Error writing pipeline cache data: %s", ex.what());
 	}
 }
 
@@ -1475,7 +1476,7 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 		}
 
 	} catch (cereal::Exception& ex) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_SUCCESS, "Error reading pipeline cache data: %s", ex.what()));
+		setConfigurationResult(reportError(VK_SUCCESS, "Error reading pipeline cache data: %s", ex.what()));
 	}
 }
 
@@ -1499,7 +1500,7 @@ VkResult MVKPipelineCache::mergePipelineCaches(uint32_t srcCacheCount, const VkP
 
 #pragma mark Construction
 
-MVKPipelineCache::MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+MVKPipelineCache::MVKPipelineCache(MVKDevice* device, const VkPipelineCacheCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	readData(pCreateInfo);
 }
 
@@ -1516,11 +1517,11 @@ id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		[getMTLDevice() newRenderPipelineStateWithDescriptor: mtlRPLDesc
-										   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
-											   bool isLate = compileComplete(ps, error);
-											   if (isLate) { destroy(); }
-										   }];
+		[_owner->getMTLDevice() newRenderPipelineStateWithDescriptor: mtlRPLDesc
+												   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
+													   bool isLate = compileComplete(ps, error);
+													   if (isLate) { destroy(); }
+												   }];
 	});
 
 	return [_mtlRenderPipelineState retain];
@@ -1547,11 +1548,11 @@ id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineSta
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		[getMTLDevice() newComputePipelineStateWithFunction: mtlFunction
-										  completionHandler: ^(id<MTLComputePipelineState> ps, NSError* error) {
-											  bool isLate = compileComplete(ps, error);
-											  if (isLate) { destroy(); }
-										  }];
+		[_owner->getMTLDevice() newComputePipelineStateWithFunction: mtlFunction
+												  completionHandler: ^(id<MTLComputePipelineState> ps, NSError* error) {
+													  bool isLate = compileComplete(ps, error);
+													  if (isLate) { destroy(); }
+												  }];
 	});
 
 	return [_mtlComputePipelineState retain];
@@ -1561,12 +1562,12 @@ id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineSta
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		[getMTLDevice() newComputePipelineStateWithDescriptor: plDesc
-													  options: MTLPipelineOptionNone
-											completionHandler: ^(id<MTLComputePipelineState> ps, MTLComputePipelineReflection*, NSError* error) {
-												bool isLate = compileComplete(ps, error);
-												if (isLate) { destroy(); }
-											}];
+		[_owner->getMTLDevice() newComputePipelineStateWithDescriptor: plDesc
+															  options: MTLPipelineOptionNone
+													completionHandler: ^(id<MTLComputePipelineState> ps, MTLComputePipelineReflection*, NSError* error) {
+														bool isLate = compileComplete(ps, error);
+														if (isLate) { destroy(); }
+													}];
 	});
 
 	return [_mtlComputePipelineState retain];

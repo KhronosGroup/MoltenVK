@@ -26,9 +26,12 @@
 #pragma mark MVKFramebuffer
 
 /** Represents a Vulkan framebuffer. */
-class MVKFramebuffer : public MVKBaseDeviceObject {
+class MVKFramebuffer : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT; }
 
 	/** Returns the dimensions of this framebuffer. */
 	inline VkExtent2D getExtent2D() { return _extent; }

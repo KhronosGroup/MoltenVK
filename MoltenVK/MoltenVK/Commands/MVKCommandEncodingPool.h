@@ -18,13 +18,15 @@
 
 #pragma once
 
-#include "MVKDevice.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKMTLBufferAllocation.h"
 #include <unordered_map>
 #include <mutex>
 
 #import <Metal/Metal.h>
+
+
+class MVKCommandPool;
 
 
 #pragma mark -
@@ -37,11 +39,14 @@
  *
  * Access to the content within this pool is thread-safe.
  */
-class MVKCommandEncodingPool : public MVKBaseDeviceObject {
+class MVKCommandEncodingPool : public MVKBaseObject {
 
 public:
 
 #pragma mark Command resources
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
 	/** Returns a MTLRenderPipelineState to support certain Vulkan BLIT commands. */
     id<MTLRenderPipelineState> getCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey);
@@ -124,13 +129,14 @@ public:
 
 #pragma mark Construction
 
-	MVKCommandEncodingPool(MVKDevice* device);
+	MVKCommandEncodingPool(MVKCommandPool* commandPool);
 
 	~MVKCommandEncodingPool() override;
 
-private:
+protected:
 	void destroyMetalResources();
 
+	MVKCommandPool* _commandPool;
 	std::mutex _lock;
     std::unordered_map<MVKRPSKeyBlitImg, id<MTLRenderPipelineState>> _cmdBlitImageMTLRenderPipelineStates;
 	std::unordered_map<MVKRPSKeyClearAtt, id<MTLRenderPipelineState>> _cmdClearMTLRenderPipelineStates;

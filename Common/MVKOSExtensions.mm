@@ -18,7 +18,6 @@
 
 
 #include "MVKOSExtensions.h"
-#include "MVKLogging.h"
 #include <mach/mach_time.h>
 
 #import <Foundation/Foundation.h>
@@ -51,10 +50,8 @@ double mvkGetElapsedMilliseconds(uint64_t startTimestamp, uint64_t endTimestamp)
 	return (double)(endTimestamp - startTimestamp) * _mvkTimestampPeriod / 1e6;
 }
 
-/**
- * Initialize timestamping capabilities on app startup.
- * Called automatically when the framework is loaded and initialized.
- */
+// Initialize timestamping capabilities on app startup.
+//Called automatically when the framework is loaded and initialized.
 static bool _mvkTimestampsInitialized = false;
 __attribute__((constructor)) static void MVKInitTimestamps() {
 	if (_mvkTimestampsInitialized ) { return; }
@@ -64,8 +61,6 @@ __attribute__((constructor)) static void MVKInitTimestamps() {
 	mach_timebase_info_data_t timebase;
 	mach_timebase_info(&timebase);
 	_mvkTimestampPeriod = (double)timebase.numer / (double)timebase.denom;
-	MVKLogDebug("Initializing MoltenVK timestamping. Mach time: %llu. Time period: %d / %d = %.6f.",
-				_mvkTimestampBase, timebase.numer, timebase.denom, _mvkTimestampPeriod);
 }
 
 void mvkDispatchToMainAndWait(dispatch_block_t block) {
