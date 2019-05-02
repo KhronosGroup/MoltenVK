@@ -44,6 +44,7 @@ template<typename T>
 class mvk_vector_allocator_base
 {
 public:
+  typedef T value_type;
   T      *ptr;
   size_t  num_elements_used;
 

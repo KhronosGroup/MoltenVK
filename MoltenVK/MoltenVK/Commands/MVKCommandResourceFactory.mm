@@ -403,6 +403,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdDrawIndexedCopyInde
 													   : "cmdDrawIndexedCopyIndex32Buffer"), owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyQueryPoolResultsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState(getFunctionNamed("cmdCopyQueryPoolResultsToBuffer"), owner);
+}
+
 
 #pragma mark Support methods
 

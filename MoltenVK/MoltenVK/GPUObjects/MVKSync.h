@@ -56,8 +56,9 @@ public:
 	/**
 	 * Depending on configuration, releases one or all reservations. When all reservations
 	 * have been released, unblocks all waiting threads to continue processing.
+	 * Returns true if the last reservation was released.
 	 */
-	void release();
+	bool release();
 
 	/**
 	 * Blocks processing on the current thread until any or all (depending on configuration) outstanding
@@ -86,6 +87,9 @@ public:
 	 */
     MVKSemaphoreImpl(bool waitAll = true, uint32_t reservationCount = 0)
         : _shouldWaitAll(waitAll), _reservationCount(reservationCount) {}
+
+    /** Destructor. */
+    ~MVKSemaphoreImpl();
 
 
 private:

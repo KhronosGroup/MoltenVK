@@ -375,6 +375,9 @@ public:
 	id<MTLComputePipelineState> newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type,
 																						MVKVulkanAPIDeviceObject* owner);
 
+	/** Returns a new MTLComputePipelineState for copying query results to a buffer. */
+	id<MTLComputePipelineState> newCmdCopyQueryPoolResultsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
 
 #pragma mark Construction
 

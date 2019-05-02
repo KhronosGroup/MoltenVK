@@ -19,6 +19,7 @@
 #include "MVKQueryPool.h"
 #include "MVKBuffer.h"
 #include "MVKCommandBuffer.h"
+#include "MVKCommandEncodingPool.h"
 #include "MVKOSExtensions.h"
 #include "MVKFoundation.h"
 #include "MVKLogging.h"
@@ -28,10 +29,27 @@ using namespace std;
 
 #pragma mark MVKQueryPool
 
+void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
+    lock_guard<mutex> lock(_availabilityLock);
+    _availability[query] = DeviceAvailable;
+    lock_guard<mutex> copyLock(_deferredCopiesLock);
+    if (!_deferredCopies.empty()) {
+        // Partition by readiness.
+        auto ready = std::partition(_deferredCopies.begin(), _deferredCopies.end(), [this](const DeferredCopy& copy) {
+            return !areQueriesDeviceAvailable(copy.firstQuery, copy.queryCount);
+        });
+        // Execute the ready copies, then remove them.
+        for (auto i = ready; i != _deferredCopies.end(); ++i) {
+            encodeCopyResults(cmdEncoder, i->firstQuery, i->queryCount, i->destBuffer, i->destOffset, i->stride, i->flags);
+        }
+        _deferredCopies.erase(ready, _deferredCopies.end());
+    }
+}
+
 // Mark queries as available
 void MVKQueryPool::finishQueries(vector<uint32_t>& queries) {
     lock_guard<mutex> lock(_availabilityLock);
-    for (uint32_t qry : queries) { _availability[qry] = true; }
+    for (uint32_t qry : queries) { _availability[qry] = Available; }
     _availabilityBlocker.notify_all();      // Predicate of each wait() call will check whether all required queries are available
 }
 
@@ -39,7 +57,7 @@ void MVKQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCom
     lock_guard<mutex> lock(_availabilityLock);
     uint32_t endQuery = firstQuery + queryCount;
     for (uint32_t query = firstQuery; query < endQuery; query++) {
-        _availability[query] = false;
+        _availability[query] = Initial;
     }
 }
 
@@ -55,7 +73,7 @@ VkResult MVKQueryPool::getResults(uint32_t firstQuery,
 
 	if (mvkAreFlagsEnabled(flags, VK_QUERY_RESULT_WAIT_BIT)) {
 		_availabilityBlocker.wait(lock, [this, firstQuery, endQuery]{
-			return areQueriesAvailable(firstQuery, endQuery);
+			return areQueriesHostAvailable(firstQuery, endQuery);
 		});
 	}
 
@@ -68,17 +86,24 @@ VkResult MVKQueryPool::getResults(uint32_t firstQuery,
 	return rqstRslt;
 }
 
-// Returns whether all the queries between the start (inclusive) and end (exclusive) queries are available.
-bool MVKQueryPool::areQueriesAvailable(uint32_t firstQuery, uint32_t endQuery) {
+bool MVKQueryPool::areQueriesDeviceAvailable(uint32_t firstQuery, uint32_t endQuery) {
     for (uint32_t query = firstQuery; query < endQuery; query++) {
-        if ( !_availability[query] ) { return false; }
+        if ( _availability[query] < DeviceAvailable ) { return false; }
+    }
+    return true;
+}
+
+// Returns whether all the queries between the start (inclusive) and end (exclusive) queries are available.
+bool MVKQueryPool::areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuery) {
+    for (uint32_t query = firstQuery; query < endQuery; query++) {
+        if ( _availability[query] < Available ) { return false; }
     }
     return true;
 }
 
 VkResult MVKQueryPool::getResult(uint32_t query, void* pQryData, VkQueryResultFlags flags) {
 
-	bool isAvailable = _availability[query];
+	bool isAvailable = _availability[query] == Available;
 	bool shouldOutput = (isAvailable || mvkAreFlagsEnabled(flags, VK_QUERY_RESULT_PARTIAL_BIT));
 	bool shouldOutput64Bit = mvkAreFlagsEnabled(flags, VK_QUERY_RESULT_64_BIT);
 
@@ -99,19 +124,59 @@ VkResult MVKQueryPool::getResult(uint32_t query, void* pQryData, VkQueryResultFl
 	return shouldOutput ? VK_SUCCESS : VK_NOT_READY;
 }
 
-void MVKQueryPool::copyQueryPoolResults(uint32_t firstQuery,
-                                        uint32_t queryCount,
-                                        MVKBuffer* destBuffer,
-                                        VkDeviceSize destOffset,
-                                        VkDeviceSize destStride,
-                                        VkQueryResultFlags flags) {
-    if (destBuffer->isMemoryHostAccessible()) {
-        void* pData = (void*)((uintptr_t)destBuffer->getMTLBuffer().contents + destBuffer->getMTLBufferOffset() + destOffset);
-        size_t dataSize = destStride * queryCount;
-        getResults(firstQuery, queryCount, dataSize, pData, destStride, flags);
-    } else {
-        reportError(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be used for query pool results.");
-    }
+void MVKQueryPool::encodeCopyResults(MVKCommandEncoder* cmdEncoder,
+									 uint32_t firstQuery,
+									 uint32_t queryCount,
+									 MVKBuffer* destBuffer,
+									 VkDeviceSize destOffset,
+									 VkDeviceSize stride,
+									 VkQueryResultFlags flags) {
+
+	// If this asked for 64-bit results with no availability and packed stride, then we can do
+	// a straight copy. Otherwise, we need a shader.
+	if (mvkIsAnyFlagEnabled(flags, VK_QUERY_RESULT_64_BIT) &&
+		!mvkIsAnyFlagEnabled(flags, VK_QUERY_RESULT_WITH_AVAILABILITY_BIT) &&
+		stride == _queryElementCount * sizeof(uint64_t) &&
+		areQueriesDeviceAvailable(firstQuery, queryCount)) {
+
+		id<MTLBlitCommandEncoder> mtlBlitCmdEnc = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyQueryPoolResults);
+		NSUInteger srcOffset;
+		id<MTLBuffer> srcBuff = getResultBuffer(cmdEncoder, firstQuery, queryCount, srcOffset);
+		[mtlBlitCmdEnc copyFromBuffer: srcBuff
+						 sourceOffset: srcOffset
+							 toBuffer: destBuffer->getMTLBuffer()
+					destinationOffset: destBuffer->getMTLBufferOffset() + destOffset
+								 size: stride * queryCount];
+		// TODO: In the case where none of the queries is ready, we can fill with 0.
+	} else {
+		id<MTLComputeCommandEncoder> mtlComputeCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+		id<MTLComputePipelineState> mtlCopyResultsState = cmdEncoder->getCommandEncodingPool()->getCmdCopyQueryPoolResultsMTLComputePipelineState();
+		[mtlComputeCmdEnc setComputePipelineState: mtlCopyResultsState];
+		encodeSetResultBuffer(cmdEncoder, firstQuery, queryCount, 0);
+		[mtlComputeCmdEnc setBuffer: destBuffer->getMTLBuffer()
+							 offset: destBuffer->getMTLBufferOffset() + destOffset
+							atIndex: 1];
+		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, &stride, sizeof(uint32_t), 2);
+		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, &queryCount, sizeof(uint32_t), 3);
+		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, &flags, sizeof(VkQueryResultFlags), 4);
+		_availabilityLock.lock();
+		cmdEncoder->setComputeBytes(mtlComputeCmdEnc, _availability.data(), _availability.size() * sizeof(Status), 5);
+		_availabilityLock.unlock();
+		// Run one thread per query. Try to fill up a subgroup.
+		[mtlComputeCmdEnc dispatchThreadgroups: MTLSizeMake(max(queryCount / mtlCopyResultsState.threadExecutionWidth, NSUInteger(1)), 1, 1)
+						  threadsPerThreadgroup: MTLSizeMake(min(NSUInteger(queryCount), mtlCopyResultsState.threadExecutionWidth), 1, 1)];
+	}
+}
+
+void MVKQueryPool::deferCopyResults(uint32_t firstQuery,
+									uint32_t queryCount,
+									MVKBuffer* destBuffer,
+									VkDeviceSize destOffset,
+									VkDeviceSize stride,
+									VkQueryResultFlags flags) {
+
+	lock_guard<mutex> lock(_deferredCopiesLock);
+	_deferredCopies.push_back({firstQuery, queryCount, destBuffer, destOffset, stride, flags});
 }
 
 
@@ -132,6 +197,18 @@ void MVKTimestampQueryPool::getResult(uint32_t query, void* pQryData, bool shoul
 	} else {
 		*(uint32_t*)pQryData = (uint32_t)_timestamps[query];
 	}
+}
+
+id<MTLBuffer> MVKTimestampQueryPool::getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) {
+	const MVKMTLBufferAllocation* tempBuff = cmdEncoder->getTempMTLBuffer(queryCount * _queryElementCount * sizeof(uint64_t));
+	memcpy(tempBuff->getContents(), &_timestamps[firstQuery], queryCount * _queryElementCount * sizeof(uint64_t));
+	offset = tempBuff->_offset;
+	return tempBuff->_mtlBuffer;
+}
+
+void MVKTimestampQueryPool::encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) {
+	// No need to create a temp buffer here.
+	cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults), &_timestamps[firstQuery], queryCount * _queryElementCount * sizeof(uint64_t), index);
 }
 
 
@@ -156,11 +233,13 @@ NSUInteger MVKOcclusionQueryPool::getVisibilityResultOffset(uint32_t query) {
 }
 
 void MVKOcclusionQueryPool::beginQuery(uint32_t query, VkQueryControlFlags flags, MVKCommandEncoder* cmdEncoder) {
+    MVKQueryPool::beginQuery(query, flags, cmdEncoder);
     cmdEncoder->beginOcclusionQuery(this, query, flags);
 }
 
 void MVKOcclusionQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->endOcclusionQuery(this, query);
+    MVKQueryPool::endQuery(query, cmdEncoder);
 }
 
 void MVKOcclusionQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder) {
@@ -190,6 +269,17 @@ void MVKOcclusionQueryPool::getResult(uint32_t query, void* pQryData, bool shoul
     } else {
         *(uint32_t*)pQryData = (uint32_t)(*pData);
     }
+}
+
+id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_t firstQuery, uint32_t, NSUInteger& offset) {
+	offset = getVisibilityResultOffset(firstQuery);
+	return getVisibilityResultMTLBuffer();
+}
+
+void MVKOcclusionQueryPool::encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t, uint32_t index) {
+	[cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults) setBuffer: getVisibilityResultMTLBuffer()
+																			 offset: getVisibilityResultOffset(firstQuery)
+																			atIndex: index];
 }
 
 void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* cmdBuffer) {

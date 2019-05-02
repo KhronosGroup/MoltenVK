@@ -143,7 +143,16 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
                                                                                               width: _textureSize.width
                                                                                              height: _textureSize.height
                                                                                           mipmapped: NO];
+#if MVK_MACOS
+        // Textures on Mac cannot use shared storage, so force managed.
+        if (_buffer->getMTLBuffer().storageMode == MTLStorageModeShared) {
+            mtlTexDesc.storageMode = MTLStorageModeManaged;
+        } else {
+            mtlTexDesc.storageMode = _buffer->getMTLBuffer().storageMode;
+        }
+#else
         mtlTexDesc.storageMode = _buffer->getMTLBuffer().storageMode;
+#endif
         mtlTexDesc.cpuCacheMode = _buffer->getMTLBuffer().cpuCacheMode;
         mtlTexDesc.usage = MTLTextureUsageShaderRead;
         if ( mvkIsAnyFlagEnabled(_buffer->getUsage(), VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) ) {

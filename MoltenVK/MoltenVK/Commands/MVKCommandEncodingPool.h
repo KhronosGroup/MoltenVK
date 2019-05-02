@@ -124,6 +124,9 @@ public:
 	/** Returns a MTLComputePipelineState for copying an index buffer for use in an indirect tessellated draw. */
 	id<MTLComputePipelineState> getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type);
 
+	/** Returns a MTLComputePipelineState for copying query results to a buffer. */
+	id<MTLComputePipelineState> getCmdCopyQueryPoolResultsMTLComputePipelineState();
+
 	/** Deletes all the internal resources. */
 	void clear();
 
@@ -156,5 +159,6 @@ protected:
 	id<MTLComputePipelineState> _mtlCopyBufferToImage3DDecompressComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};
+	id<MTLComputePipelineState> _mtlCopyQueryPoolResultsComputePipelineState = nil;
 };
 

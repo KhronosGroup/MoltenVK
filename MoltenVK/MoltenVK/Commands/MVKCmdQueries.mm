@@ -118,12 +118,13 @@ void MVKCmdCopyQueryPoolResults::setContent(VkQueryPool queryPool,
 }
 
 void MVKCmdCopyQueryPoolResults::encode(MVKCommandEncoder* cmdEncoder) {
-    [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-        // This can block, so it must not run on the Metal completion queue.
-        dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            _queryPool->copyQueryPoolResults(_query, _queryCount, _destBuffer, _destOffset, _destStride, _flags);
-        });
-    }];
+    // What happens now depends on whether or not I was added before or after the query ended.
+    if (!_queryPool->areQueriesDeviceAvailable(_query, _queryCount) && mvkIsAnyFlagEnabled(_flags, VK_QUERY_RESULT_WAIT_BIT)) {
+        // Defer this until the queries will be done.
+        _queryPool->deferCopyResults(_query, _queryCount, _destBuffer, _destOffset, _destStride, _flags);
+    } else {
+        _queryPool->encodeCopyResults(cmdEncoder, _query, _queryCount, _destBuffer, _destOffset, _destStride, _flags);
+    }
 }
 
 MVKCmdCopyQueryPoolResults::MVKCmdCopyQueryPoolResults(MVKCommandTypePool<MVKCmdCopyQueryPoolResults>* pool)

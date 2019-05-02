@@ -193,17 +193,11 @@ class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 public:
 	void execute() override;
 
-	/** 
-     * Constructs an instance for the queue.
-     * pSubmit may be VK_NULL_HANDLE to create an instance that triggers a fence without submitting any actual command buffers.
-     */
+	/** Constructs an instance for the queue. */
 	MVKQueueCommandBufferSubmission(MVKQueue* queue,
 									const VkSubmitInfo* pSubmit,
 									VkFence fence,
                                     MVKCommandUse cmdBuffUse);
-
-    /** Constructs an instance for the queue, with a fence, but without actual command buffers. */
-    MVKQueueCommandBufferSubmission(MVKQueue* queue, VkFence fence);
 
 protected:
 	friend MVKCommandBuffer;
