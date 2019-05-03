@@ -1930,6 +1930,8 @@ void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								   VkMemoryBarrier* pMemoryBarrier,
                                    MVKCommandEncoder* cmdEncoder,
                                    MVKCommandUse cmdUse) {
+	if (!mvkIsAnyFlagEnabled(dstStageMask, VK_PIPELINE_STAGE_HOST_BIT) ||
+		!mvkIsAnyFlagEnabled(pMemoryBarrier->dstAccessMask, VK_ACCESS_HOST_READ_BIT) ) { return; }
 	lock_guard<mutex> lock(_rezLock);
     for (auto& rez : _resources) {
 		rez->applyMemoryBarrier(srcStageMask, dstStageMask, pMemoryBarrier, cmdEncoder, cmdUse);
