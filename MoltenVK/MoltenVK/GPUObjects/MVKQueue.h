@@ -206,6 +206,7 @@ protected:
 	MVKFence* _fence;
     MVKCommandUse _cmdBuffUse;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
+	bool _isSignalingSemaphores;
 };
 
 

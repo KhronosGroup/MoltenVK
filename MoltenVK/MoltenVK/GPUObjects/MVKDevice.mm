@@ -735,6 +735,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v5] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
+		_metalFeatures.events = true;
 	}
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
@@ -789,8 +790,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
     }
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v4] ) {
-		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
+        _metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
         _metalFeatures.multisampleArrayTextures = true;
+        _metalFeatures.events = true;
     }
 
 #endif
