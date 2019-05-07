@@ -793,6 +793,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
         _metalFeatures.multisampleArrayTextures = true;
         _metalFeatures.events = true;
+        _metalFeatures.memoryBarriers = true;
     }
 
 #endif

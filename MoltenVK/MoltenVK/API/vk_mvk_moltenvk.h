@@ -525,6 +525,7 @@ typedef struct {
 	MTLLanguageVersion mslVersionEnum;			/**< The version of the Metal Shading Language available on this device, as a Metal enumeration. */
 	VkBool32 depthSampleCompare;				/**< If true, depth texture samplers support the comparison of the pixel value against a reference value. */
 	VkBool32 events;							/**< If true, Metal synchronization events are supported. */
+	VkBool32 memoryBarriers;					/**< If true, full memory barriers within Metal render passes are supported. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**
