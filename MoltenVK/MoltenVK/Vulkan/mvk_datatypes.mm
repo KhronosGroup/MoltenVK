@@ -1287,9 +1287,11 @@ MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFl
 	if ( mvkIsAnyFlagEnabled(vkAccess, VK_ACCESS_SHADER_READ_BIT | VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT) ) {
 		mtlScope |= MTLBarrierScopeBuffers | MTLBarrierScopeTextures;
 	}
+#if MVK_MACOS
 	if ( mvkIsAnyFlagEnabled(vkAccess, VK_ACCESS_INPUT_ATTACHMENT_READ_BIT | VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT | VK_ACCESS_MEMORY_READ_BIT | VK_ACCESS_MEMORY_WRITE_BIT) ) {
 		mtlScope |= MTLBarrierScopeRenderTargets;
 	}
+#endif
 	return mtlScope;
 }
 
