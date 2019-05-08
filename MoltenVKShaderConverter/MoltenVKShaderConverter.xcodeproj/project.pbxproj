@@ -57,15 +57,10 @@
 		A9C70F65221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
 		A9C70F66221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
 		A9C70F67221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
-		A9E337B8220129ED00363D2A /* MVKLogging.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9E337B7220129ED00363D2A /* MVKLogging.cpp */; };
 		A9F042B01FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
 		A9F042B11FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
 		A9F042B21FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
 		A9F042B31FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
-		A9F042B41FB4D060009FCCB8 /* MVKLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AB1FB4D060009FCCB8 /* MVKLogging.h */; };
-		A9F042B51FB4D060009FCCB8 /* MVKLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AB1FB4D060009FCCB8 /* MVKLogging.h */; };
-		A9F042B61FB4D060009FCCB8 /* MVKLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AB1FB4D060009FCCB8 /* MVKLogging.h */; };
-		A9F042B71FB4D060009FCCB8 /* MVKLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AB1FB4D060009FCCB8 /* MVKLogging.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -120,9 +115,7 @@
 		A9B51BDC225E98BB00AC74D2 /* MVKOSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKOSExtensions.h; sourceTree = "<group>"; };
 		A9C70F5D221B321600FBA31A /* SPIRVSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SPIRVSupport.h; path = Common/SPIRVSupport.h; sourceTree = SOURCE_ROOT; };
 		A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SPIRVSupport.cpp; path = Common/SPIRVSupport.cpp; sourceTree = SOURCE_ROOT; };
-		A9E337B7220129ED00363D2A /* MVKLogging.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKLogging.cpp; sourceTree = "<group>"; };
 		A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommonEnvironment.h; sourceTree = "<group>"; };
-		A9F042AB1FB4D060009FCCB8 /* MVKLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKLogging.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -244,8 +237,6 @@
 			isa = PBXGroup;
 			children = (
 				A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */,
-				A9E337B7220129ED00363D2A /* MVKLogging.cpp */,
-				A9F042AB1FB4D060009FCCB8 /* MVKLogging.h */,
 				A9B51BDC225E98BB00AC74D2 /* MVKOSExtensions.h */,
 				A9B51BDB225E98BB00AC74D2 /* MVKOSExtensions.mm */,
 				A98149651FB6A98A005F00B4 /* MVKStrings.h */,
@@ -275,7 +266,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9F042B41FB4D060009FCCB8 /* MVKLogging.h in Headers */,
 				A9C70F5F221B321700FBA31A /* SPIRVSupport.h in Headers */,
 				A90941A51C581F840094110D /* GLSLConversion.h in Headers */,
 				A90940A91C5808BB0094110D /* GLSLToSPIRVConverter.h in Headers */,
@@ -288,7 +278,6 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9F042B51FB4D060009FCCB8 /* MVKLogging.h in Headers */,
 				A9C70F60221B321700FBA31A /* SPIRVSupport.h in Headers */,
 				A90941A61C581F840094110D /* GLSLConversion.h in Headers */,
 				A90940AA1C5808BB0094110D /* GLSLToSPIRVConverter.h in Headers */,
@@ -305,7 +294,6 @@
 				A98149681FB6A98A005F00B4 /* MVKStrings.h in Headers */,
 				A9C70F61221B321700FBA31A /* SPIRVSupport.h in Headers */,
 				A928C9191D0488DC00071B88 /* SPIRVConversion.h in Headers */,
-				A9F042B61FB4D060009FCCB8 /* MVKLogging.h in Headers */,
 				A909408C1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */,
 				A9F042B21FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */,
 			);
@@ -320,7 +308,6 @@
 				A9C70F62221B321700FBA31A /* SPIRVSupport.h in Headers */,
 				A928C91A1D0488DC00071B88 /* SPIRVConversion.h in Headers */,
 				A909408D1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */,
-				A9F042B71FB4D060009FCCB8 /* MVKLogging.h in Headers */,
 				A9F042B31FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -625,7 +612,6 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9E337B8220129ED00363D2A /* MVKLogging.cpp in Sources */,
 				A97CC7411C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp in Sources */,
 				A9C70F63221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A95096BF2003D32400F10950 /* OSSupport.mm in Sources */,

@@ -22,7 +22,7 @@
 #include "MVKRenderPass.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 
 
 #pragma mark -
@@ -149,9 +149,8 @@ void MVKCmdSetLineWidth::setContent(float lineWidth) {
     _lineWidth = lineWidth;
 
     // Validate
-    clearConfigurationResult();
     if (_lineWidth != 1.0 || getDevice()->_enabledFeatures.wideLines) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetLineWidth(): The current device does not support wide lines."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetLineWidth(): The current device does not support wide lines."));
     }
 }
 
@@ -208,9 +207,8 @@ void MVKCmdSetDepthBounds::setContent(float minDepthBounds, float maxDepthBounds
     _maxDepthBounds = maxDepthBounds;
 
     // Validate
-    clearConfigurationResult();
     if (getDevice()->_enabledFeatures.depthBounds) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBounds(): The current device does not support setting depth bounds."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBounds(): The current device does not support setting depth bounds."));
     }
 }
 

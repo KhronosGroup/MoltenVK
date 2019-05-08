@@ -70,7 +70,7 @@ protected:
 #pragma mark MVKCmdDraw
 
 /** Vulkan command to draw vertices. */
-class MVKCmdDraw : public MVKCommand, public MVKLoadStoreOverride {
+class MVKCmdDraw : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
 	void setContent(uint32_t vertexCount,
@@ -94,7 +94,7 @@ protected:
 #pragma mark MVKCmdDrawIndexed
 
 /** Vulkan command to draw indexed vertices. */
-class MVKCmdDrawIndexed : public MVKCommand, public MVKLoadStoreOverride {
+class MVKCmdDrawIndexed : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
 	void setContent(uint32_t indexCount,
@@ -120,7 +120,7 @@ protected:
 #pragma mark MVKCmdDrawIndirect
 
 /** Vulkan command to draw vertices indirectly. */
-class MVKCmdDrawIndirect : public MVKCommand, public MVKLoadStoreOverride {
+class MVKCmdDrawIndirect : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
 	void setContent(VkBuffer buffer,
@@ -144,7 +144,7 @@ protected:
 #pragma mark MVKCmdDrawIndexedIndirect
 
 /** Vulkan command to draw indexed vertices indirectly. */
-class MVKCmdDrawIndexedIndirect : public MVKCommand, public MVKLoadStoreOverride {
+class MVKCmdDrawIndexedIndirect : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
 	void setContent(VkBuffer buffer,

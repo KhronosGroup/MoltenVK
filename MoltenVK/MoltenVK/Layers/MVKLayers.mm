@@ -60,7 +60,7 @@ VkResult MVKLayer::getExtensionProperties(uint32_t* pCount, VkExtensionPropertie
 
 #pragma mark Object Creation
 
-MVKLayer::MVKLayer() : _supportedExtensions(true) {
+MVKLayer::MVKLayer() : _supportedExtensions(nullptr, true) {
 
 	// The core driver layer
 	memset(_layerProperties.layerName, 0, sizeof(_layerProperties.layerName));
@@ -116,7 +116,7 @@ VkResult MVKLayerManager::getLayerProperties(uint32_t* pCount, VkLayerProperties
 
 // Populate the layers
 MVKLayerManager::MVKLayerManager() {
-	_layers.push_back(MVKLayer());
+	_layers.emplace_back();
 }
 
 static mutex _lock;

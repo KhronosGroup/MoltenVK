@@ -30,9 +30,12 @@ class MVKWatermark;
 #pragma mark MVKSwapchain
 
 /** Represents a Vulkan swapchain. */
-class MVKSwapchain : public MVKBaseDeviceObject {
+class MVKSwapchain : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT; }
 
 	/** Returns the number of images in this swapchain. */
 	uint32_t getImageCount();

@@ -38,6 +38,9 @@ public:
     NSUInteger _offset;
     NSUInteger _length;
 
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
+
     /**
      * Returns a pointer to the begining of this allocation memory, taking into
      * consideration this allocation's offset into the underlying MTLBuffer.
@@ -83,6 +86,9 @@ class MVKMTLBufferAllocationPool : public MVKObjectPool<MVKMTLBufferAllocation> 
 
 public:
 
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device->getVulkanAPIObject(); };
+
     /** Returns a new MVKMTLBufferAllocation instance. */
     MVKMTLBufferAllocation* newObject() override;
 
@@ -118,6 +124,9 @@ protected:
 class MVKMTLBufferAllocator : public MVKBaseDeviceObject {
 
 public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device->getVulkanAPIObject(); };
 
     /** 
      * Returns a MVKMTLBufferAllocation instance with a size that is the next 

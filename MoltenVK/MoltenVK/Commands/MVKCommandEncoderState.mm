@@ -23,9 +23,14 @@
 #include "MVKPipeline.h"
 #include "MVKQueryPool.h"
 #include "MVKLogging.h"
-#include "mvk_datatypes.h"
 
 using namespace std;
+
+
+#pragma mark -
+#pragma mark MVKCommandEncoderState
+
+MVKVulkanAPIObject* MVKCommandEncoderState::getVulkanAPIObject() { return _cmdEncoder->getVulkanAPIObject(); };
 
 
 #pragma mark -
@@ -443,13 +448,13 @@ void MVKBlendColorCommandEncoderState::resetImpl() {
 #pragma mark MVKResourcesCommandEncoderState
 
 // Updates the swizzle for an image in the given vector.
-static void updateSwizzle(MVKVector<uint32_t> &constants, uint32_t index, uint32_t swizzle) {
+void MVKResourcesCommandEncoderState::updateSwizzle(MVKVector<uint32_t> &constants, uint32_t index, uint32_t swizzle) {
 	if (index >= constants.size()) { constants.resize(index + 1); }
 	constants[index] = swizzle;
 }
 
 // If a swizzle is needed for this stage, iterates all the bindings and logs errors for those that need texture swizzling.
-static void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKVector<MVKMTLTextureBinding>& texBindings) {
+void MVKResourcesCommandEncoderState::assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKVector<MVKMTLTextureBinding>& texBindings) {
 	if (needsSwizzle) {
 		for (MVKMTLTextureBinding& tb : texBindings) {
 			VkComponentMapping vkcm = mvkUnpackSwizzle(tb.swizzle);

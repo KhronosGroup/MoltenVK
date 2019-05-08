@@ -19,7 +19,8 @@
 #include "MVKBuffer.h"
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"
-#include "mvk_datatypes.h"
+#include "MVKEnvironment.h"
+#include "mvk_datatypes.hpp"
 
 using namespace std;
 
@@ -167,7 +168,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 
 #pragma mark Construction
 
-MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pCreateInfo) : MVKRefCountedDeviceObject(device) {
+MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
     _buffer = (MVKBuffer*)pCreateInfo->buffer;
     _mtlBufferOffset = _buffer->getMTLBufferOffset() + pCreateInfo->offset;
     _mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
@@ -193,7 +194,7 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 	_textureSize.height = uint32_t(rowCount * fmtBlockSize.height);
 
     if ( !_device->_pMetalFeatures->texelBuffers ) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "Texel buffers are not supported on this device."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Texel buffers are not supported on this device."));
     }
 }
 

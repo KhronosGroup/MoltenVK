@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include <vector>
+#include <mutex>
 
 #import <Metal/Metal.h>
 
@@ -30,9 +31,12 @@ class MVKImage;
 #pragma mark MVKDeviceMemory
 
 /** Represents a Vulkan device-space memory allocation. */
-class MVKDeviceMemory : public MVKBaseDeviceObject {
+class MVKDeviceMemory : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_MEMORY_EXT; }
 
 	/** Returns whether the memory is accessible from the host. */
     inline bool isMemoryHostAccessible() {

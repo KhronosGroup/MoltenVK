@@ -22,7 +22,7 @@
 #include "MVKBaseObject.h"
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 #include "vk_mvk_moltenvk.h"
 #include <vector>
 #include <string>
@@ -75,9 +75,15 @@ const static uint32_t kMVKCachedScissorCount = 16;
 #pragma mark MVKPhysicalDevice
 
 /** Represents a Vulkan physical GPU device. */
-class MVKPhysicalDevice : public MVKDispatchableObject {
+class MVKPhysicalDevice : public MVKDispatchableVulkanAPIObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT; }
+
+	/** Returns a pointer to the Vulkan instance. */
+	MVKInstance* getInstance() override { return _mvkInstance; }
 
 	/** Populates the specified structure with the features of this device. */
 	void getFeatures(VkPhysicalDeviceFeatures* features);
@@ -224,12 +230,6 @@ public:
 	 */
 	VkResult getQueueFamilyProperties(uint32_t* pCount, VkQueueFamilyProperties2KHR* pQueueFamilyProperties);
 
-	/** Returns a pointer to the Vulkan instance. */
-	inline MVKInstance* getInstance() { return _mvkInstance; }
-
-	/** Returns a pointer to the layer manager. */
-	inline MVKLayerManager* getLayerManager() { return MVKLayerManager::globalManager(); }
-
 
 #pragma mark Memory models
 
@@ -339,12 +339,15 @@ protected:
 #pragma mark MVKDevice
 
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
-class MVKDevice : public MVKDispatchableObject {
+class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
 public:
 
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT; }
+
 	/** Returns a pointer to the Vulkan instance. */
-	inline MVKInstance* getInstance() { return _physicalDevice->_mvkInstance; }
+	MVKInstance* getInstance() override { return _physicalDevice->getInstance(); }
 
 	/** Returns the physical device underlying this logical device. */
 	inline MVKPhysicalDevice* getPhysicalDevice() { return _physicalDevice; }
@@ -658,13 +661,17 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKBaseDeviceObject
+#pragma mark MVKDeviceTrackingMixin
 
 /**
- * Represents an object that is spawned from a Vulkan device, and tracks that device.
+ * This mixin class adds the ability for an object to track the device that created it.
  * Implementation supports an instance where the device is null.
+ *
+ * As a mixin, this class should only be used as a component of multiple inheritance.
+ * Any class that inherits from this class should also inherit from MVKBaseObject.
+ * This requirement is to avoid the diamond problem of multiple inheritance.
  */
-class MVKBaseDeviceObject : public MVKConfigurableObject {
+class MVKDeviceTrackingMixin {
 
 public:
 
@@ -682,91 +689,54 @@ public:
 	 * See the notes for that function for more information about how MTLPixelFormats
 	 * are managed for each platform device.
 	 */
-    inline MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
-		return _device ? _device->getMTLPixelFormatFromVkFormat(vkFormat) : mvkMTLPixelFormatFromVkFormat(vkFormat);
-    }
+	inline MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
+		return _device ? _device->getMTLPixelFormatFromVkFormat(vkFormat)
+					   : mvkMTLPixelFormatFromVkFormatInObj(vkFormat, getBaseObject());
+	}
 
 	/** Constructs an instance for the specified device. */
-    MVKBaseDeviceObject(MVKDevice* device) : _device(device) {}
+    MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) {}
+
+	virtual ~MVKDeviceTrackingMixin() {}
 
 protected:
+	virtual MVKBaseObject* getBaseObject() = 0;
 	MVKDevice* _device;
 };
 
 
 #pragma mark -
-#pragma mark MVKDispatchableDeviceObject
+#pragma mark MVKBaseDeviceObject
 
-/**
- * Represents a dispatchable object that is spawned from a Vulkan device, and tracks that device.
- * Implementation supports an instance where the device is null.
- */
-class MVKDispatchableDeviceObject : public MVKDispatchableObject {
+/** Represents an object that is spawned from a Vulkan device, and tracks that device. */
+class MVKBaseDeviceObject : public MVKBaseObject, public MVKDeviceTrackingMixin {
 
 public:
 
-    /** Returns the device for which this object was created. */
-    inline MVKDevice* getDevice() { return _device; }
-
-    /** Returns the underlying Metal device. */
-	inline id<MTLDevice> getMTLDevice() { return _device ? _device->getMTLDevice() : nil; }
-
-    /** Constructs an instance for the specified device. */
-    MVKDispatchableDeviceObject(MVKDevice* device) : _device(device) {}
+	/** Constructs an instance for the specified device. */
+	MVKBaseDeviceObject(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
 
 protected:
-    MVKDevice* _device;
+	MVKBaseObject* getBaseObject() override { return this; };
 };
 
 
 #pragma mark -
-#pragma mark MVKRefCountedDeviceObject
+#pragma mark MVKVulkanAPIDeviceObject
 
-/**
- * Represents a device-spawned object that supports basic reference counting.
- *
- * An object of this type will automatically be deleted iff it has been destroyed
- * by the client, and all references have been released. An object of this type is
- * therefore allowed to live past its destruction by the client, until it is no
- * longer referenced by other objects.
- */
-class MVKRefCountedDeviceObject : public MVKBaseDeviceObject {
+/** Abstract class that represents an opaque Vulkan API handle object spawned from a Vulkan device. */
+class MVKVulkanAPIDeviceObject : public MVKVulkanAPIObject, public MVKDeviceTrackingMixin {
 
 public:
 
-    /**
-	 * Called when this instance has been retained as a reference by another object,
-	 * indicating that this instance will not be deleted until that reference is released.
-	 */
-    void retain();
+	/** Returns a pointer to the Vulkan instance. */
+	MVKInstance* getInstance() override { return _device ? _device->getInstance() : nullptr; }
 
-    /**
-	 * Called when this instance has been released as a reference from another object.
-	 * Once all references have been released, this object is free to be deleted.
-	 * If the destroy() function has already been called on this instance by the time
-	 * this function is called, this instance will be deleted.
-	 */
-    void release();
+	/** Constructs an instance for the specified device. */
+	MVKVulkanAPIDeviceObject(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
 
-	/**
-	 * Marks this instance as destroyed. If all previous references to this instance
-	 * have been released, this instance will be deleted, otherwise deletion of this
-	 * instance will automatically be deferred until all references have been released.
-	 */
-    void destroy() override;
-
-#pragma mark Construction
-
-	MVKRefCountedDeviceObject(MVKDevice* device) : MVKBaseDeviceObject(device) {}
-
-private:
-
-    bool decrementRetainCount();
-    bool markDestroyed();
-
-	std::mutex _refLock;
-    unsigned _refCount = 0;
-    bool _isDestroyed = false;
+protected:
+	MVKBaseObject* getBaseObject() override { return this; };
 };
 
 
@@ -778,6 +748,10 @@ template <class T>
 class MVKDeviceObjectPool : public MVKObjectPool<T> {
 
 public:
+
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device; };
 
 	/** Returns a new instance. */
 	T* newObject() override { return new T(_device); }

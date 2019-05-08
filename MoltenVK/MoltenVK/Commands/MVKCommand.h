@@ -37,8 +37,11 @@ class MVKCommand : public MVKConfigurableObject {
 
 public:
 
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
+
     /** Called when this command is added to a command buffer. */
-    virtual void added(MVKCommandBuffer* cmdBuffer) {};
+	virtual void added(MVKCommandBuffer* cmdBuffer) { _commandBuffer = cmdBuffer; };
 
     /** Indicates that this command has a valid configuration and can be encoded. */
     inline bool canEncode() { return _configurationResult == VK_SUCCESS; }
@@ -84,17 +87,30 @@ public:
 
 protected:
     MVKCommandTypePool<MVKCommand>* _pool;
+	MVKCommandBuffer* _commandBuffer = nullptr;
 };
 
 
 #pragma mark -
 #pragma mark MVKCommandTypePool
 
+/**
+ * Static function for MVKCommandTypePool template to call to resolve getVulkanAPIObject().
+ * Needed because MVKCommandTypePool template cannot have function implementation outside
+ * the template, and MVKCommandPool is not completely defined in this header file.
+ */
+MVKVulkanAPIObject* mvkCommandTypePoolGetVulkanAPIObject(MVKCommandPool* cmdPool);
+
+
 /** A pool of MVKCommand instances of a particular type. */
 template <class T>
 class MVKCommandTypePool : public MVKObjectPool<T> {
 
 public:
+
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return mvkCommandTypePoolGetVulkanAPIObject(_commandPool); };
 
     /** Some commands require access to the command pool to access resources. */
     MVKCommandPool* getCommandPool() { return _commandPool; }
@@ -114,10 +130,16 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKLoadStoreOverride
+#pragma mark MVKLoadStoreOverrideMixin
 
-/** Shared state with all draw commands */
-class MVKLoadStoreOverride {
+/**
+ * Shared state mixin for draw commands.
+ *
+ * As a mixin, this class should only be used as a component of multiple inheritance.
+ * Any class that inherits from this class should also inherit from MVKBaseObject.
+ * This requirement is to avoid the diamond problem of multiple inheritance.
+ */
+class MVKLoadStoreOverrideMixin {
 public:
     void setLoadOverride(bool loadOverride);
     void setStoreOverride(bool storeOverride);

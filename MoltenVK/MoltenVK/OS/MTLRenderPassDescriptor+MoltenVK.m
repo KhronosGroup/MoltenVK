@@ -18,7 +18,7 @@
 
 
 #include "MTLRenderPassDescriptor+MoltenVK.h"
-#include "MVKCommonEnvironment.h"
+#include "MVKEnvironment.h"
 
 @implementation MTLRenderPassDescriptor (MoltenVK)
 

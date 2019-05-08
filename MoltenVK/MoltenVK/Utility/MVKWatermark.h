@@ -58,6 +58,10 @@ class MVKWatermark : public MVKBaseObject {
 
 public:
 
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
+
     /** Sets the clip-space position (0.0 - 1.0) of this watermark. */
     void setPosition(MVKWatermarkPosition position);
 

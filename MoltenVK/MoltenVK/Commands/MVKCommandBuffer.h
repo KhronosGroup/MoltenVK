@@ -19,7 +19,6 @@
 #pragma once
 
 #include "MVKDevice.h"
-#include "MVKSync.h"
 #include "MVKCommand.h"
 #include "MVKCommandEncoderState.h"
 #include "MVKMTLBufferAllocation.h"
@@ -42,7 +41,7 @@ class MVKGraphicsPipeline;
 class MVKComputePipeline;
 class MVKCmdBeginRenderPass;
 class MVKCmdEndRenderPass;
-class MVKLoadStoreOverride;
+class MVKLoadStoreOverrideMixin;
 
 typedef uint64_t MVKMTLCommandBufferID;
 
@@ -51,9 +50,15 @@ typedef uint64_t MVKMTLCommandBufferID;
 #pragma mark MVKCommandBuffer
 
 /** Represents a Vulkan command pool. */
-class MVKCommandBuffer : public MVKDispatchableDeviceObject {
+class MVKCommandBuffer : public MVKDispatchableVulkanAPIObject, public MVKDeviceTrackingMixin {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_BUFFER_EXT; }
+
+	/** Returns a pointer to the Vulkan instance. */
+	MVKInstance* getInstance() override { return _device->getInstance(); }
 
 	/** Prepares this instance to receive commands. */
 	VkResult begin(const VkCommandBufferBeginInfo* pBeginInfo);
@@ -72,12 +77,6 @@ public:
 
 	/** Submit the commands in this buffer as part of the queue submission. */
 	void submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit);
-
-	/*** If no error has occured yet, records the specified result. */
-    inline void recordResult(VkResult vkResult) { if (_recordingResult == VK_SUCCESS) { _recordingResult = vkResult; } }
-
-    /** Returns the first abnormal VkResult that occured during command recording. */
-    inline VkResult getRecordingResult() { return _recordingResult; }
 
     /** Returns whether this command buffer can be submitted to a queue more than once. */
     inline bool getIsReusable() { return _isReusable; }
@@ -113,7 +112,7 @@ public:
 	void recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline);
 	
 	/** Update the last recorded drawcall to determine load/store actions */
-	void recordDraw(MVKLoadStoreOverride* mvkDraw);
+	void recordDraw(MVKLoadStoreOverrideMixin* mvkDraw);
 	
 	/** The most recent recorded begin renderpass */
 	MVKCmdBeginRenderPass* _lastBeginRenderPass;
@@ -122,12 +121,12 @@ public:
 	MVKCmdBindPipeline* _lastTessellationPipeline;
 	
 	/** The most recent recorded multi-pass (ie, tessellation) draw */
-	MVKLoadStoreOverride* _lastTessellationDraw;
+	MVKLoadStoreOverrideMixin* _lastTessellationDraw;
 
 
 #pragma mark Construction
 
-	MVKCommandBuffer(MVKDevice* device) : MVKDispatchableDeviceObject(device) {}
+	MVKCommandBuffer(MVKDevice* device) : MVKDeviceTrackingMixin(device) {}
 
 	~MVKCommandBuffer() override;
 
@@ -149,6 +148,7 @@ protected:
 	friend class MVKCommandEncoder;
 	friend class MVKCommandPool;
 
+	MVKBaseObject* getBaseObject() override { return this; };
 	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();
 	bool canPrefill();
@@ -159,7 +159,6 @@ protected:
 	MVKCommand* _tail = nullptr;
 	uint32_t _commandCount;
 	std::atomic_flag _isExecutingNonConcurrently;
-	VkResult _recordingResult;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
 	bool _isSecondary;
@@ -255,6 +254,9 @@ typedef std::unordered_map<MVKQueryPool*, std::vector<uint32_t>> MVKActivatedQue
 class MVKCommandEncoder : public MVKBaseDeviceObject {
 
 public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _cmdBuffer->getVulkanAPIObject(); };
 
 	/** Encode commands from the command buffer onto the Metal command buffer. */
 	void encode(id<MTLCommandBuffer> mtlCmdBuff);

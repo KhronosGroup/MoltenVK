@@ -40,9 +40,12 @@ class MVKCommandEncoder;
  * Subclasses are specialized for specific query types.
  * Subclasses will generally override the beginQuery(), endQuery(), and getResult(uint32_t, void*, bool) member functions.
  */
-class MVKQueryPool : public MVKBaseDeviceObject {
+class MVKQueryPool : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_QUERY_POOL_EXT; }
 
     /** Begins the specified query. */
     virtual void beginQuery(uint32_t query, VkQueryControlFlags flags, MVKCommandEncoder* cmdEncoder) {}
@@ -94,7 +97,7 @@ public:
 
 	MVKQueryPool(MVKDevice* device,
 				 const VkQueryPoolCreateInfo* pCreateInfo,
-				 const uint32_t queryElementCount) : MVKBaseDeviceObject(device),
+				 const uint32_t queryElementCount) : MVKVulkanAPIDeviceObject(device),
                     _availability(pCreateInfo->queryCount),
                     _queryElementCount(queryElementCount) {}
 

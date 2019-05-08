@@ -22,7 +22,7 @@
 #include "MVKBuffer.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 
 
 #pragma mark -
@@ -88,9 +88,8 @@ void MVKCmdDraw::setContent(uint32_t vertexCount,
 	_storeOverride = false;
 
     // Validate
-    clearConfigurationResult();
     if ((_firstInstance != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance."));
     }
 }
 
@@ -276,12 +275,11 @@ void MVKCmdDrawIndexed::setContent(uint32_t indexCount,
 	_storeOverride = false;
 
     // Validate
-    clearConfigurationResult();
     if ((_firstInstance != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base instance."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base instance."));
     }
     if ((_vertexOffset != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex."));
     }
 }
 
@@ -507,9 +505,8 @@ void MVKCmdDrawIndirect::setContent(VkBuffer buffer,
 	_storeOverride = false;
 
     // Validate
-    clearConfigurationResult();
     if ( !(getDevice()->_pMetalFeatures->indirectDrawing) ) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing."));
     }
 }
 
@@ -749,9 +746,8 @@ void MVKCmdDrawIndexedIndirect::setContent(VkBuffer buffer,
 	_storeOverride = false;
 
     // Validate
-    clearConfigurationResult();
     if ( !(getDevice()->_pMetalFeatures->indirectDrawing) ) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing."));
     }
 }
 

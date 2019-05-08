@@ -23,7 +23,6 @@
 extern "C" {
 #endif	//  __cplusplus
 
-#include "MVKCommonEnvironment.h"
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
@@ -92,12 +91,6 @@ extern "C" {
  * compiler setting to 0. Doing so completely removes the corresponding assertion invocations
  * from the compiled code, thus eliminating both the memory and CPU overhead that the assertion
  * calls would add
- *
- * A special MVKAssertUnimplemented(name) and MVKAssertCUnimplemented(name) assertion functions
- * are provided to conveniently raise an assertion exception when some expected functionality
- * is unimplemented. Either functions may be used as a temporary placeholder for functionalty
- * that will be added at a later time. MVKAssertUnimplemented(name) may also be used in a method
- * body by a superclass that requires each subclass to implement that method
  *
  * Although you can directly edit this file to turn on or off the switches below, the preferred
  * technique is to set these switches via the compiler build setting GCC_PREPROCESSOR_DEFINITIONS
@@ -172,22 +165,10 @@ extern "C" {
 #	define MVKLogDebugIf(cond, fmt, ...)
 #endif
 
-/**
- * Combine the specified log level and format string, then log
- * the specified args to one or both of ASL and printf.
- */
-void MVKLogImplV(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, va_list args) __printflike(5, 0);
-
-/** 
- * Combine the specified log level and format string, then log 
- * the specified args to one or both of ASL and printf.
- */
-void MVKLogImpl(bool logToPrintf, bool logToASL, int aslLvl, const char* lvlStr, const char* format, ...) __printflike(5, 6);
-
-#define MVKLogErrorImpl(fmt, ...)	MVKLogImpl(true, !(MVK_DEBUG), ASL_LEVEL_ERR, "***MoltenVK ERROR***", fmt, ##__VA_ARGS__)
-#define MVKLogInfoImpl(fmt, ...)	MVKLogImpl(true, !(MVK_DEBUG), ASL_LEVEL_NOTICE, "mvk-info", fmt, ##__VA_ARGS__)
-#define MVKLogTraceImpl(fmt, ...)	MVKLogImpl(true, !(MVK_DEBUG), ASL_LEVEL_DEBUG, "mvk-trace", fmt, ##__VA_ARGS__)
-#define MVKLogDebugImpl(fmt, ...)	MVKLogImpl(true, !(MVK_DEBUG), ASL_LEVEL_DEBUG, "mvk-debug", fmt, ##__VA_ARGS__)
+#define MVKLogErrorImpl(fmt, ...)		reportMessage(ASL_LEVEL_ERR, fmt, ##__VA_ARGS__)
+#define MVKLogInfoImpl(fmt, ...)		reportMessage(ASL_LEVEL_NOTICE, fmt, ##__VA_ARGS__)
+#define MVKLogTraceImpl(fmt, ...)		reportMessage(ASL_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
+#define MVKLogDebugImpl(fmt, ...)		reportMessage(ASL_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
 
 // Assertions
 #ifdef NS_BLOCK_ASSERTIONS
@@ -202,8 +183,6 @@ do {											\
 	MVKLogErrorIf(isErr, fmt, ##__VA_ARGS__);	\
 	assert(!isErr || MVK_BLOCK_ASSERTIONS);		\
 } while(0)
-
-#define MVKAssertUnimplemented(name) MVKAssert(false, "%s is not implemented!", name)
 
 // Use this macro to open a break-point programmatically.
 #ifndef MVK_DEBUGGER

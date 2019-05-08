@@ -21,7 +21,6 @@
 
 
 #include "mvk_vulkan.h"
-#include "MVKLogging.h"
 #include <algorithm>
 #include <string>
 #include <simd/simd.h>
@@ -138,13 +137,6 @@ static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
 	return verStr;
 }
 
-/**
- * Notifies the app of an error code and error message, via the following methods:
- *
- * - Logs the error code and message to the console
- */
-VkResult mvkNotifyErrorWithText(VkResult vkErr, const char* errFmt, ...) __printflike(2, 3);
-
 
 #pragma mark -
 #pragma mark Alignment functions
@@ -204,7 +196,7 @@ static inline uint32_t mvkPowerOfTwoExponent(uintptr_t value) {
 static inline uintptr_t mvkAlignByteRef(uintptr_t byteRef, uintptr_t byteAlignment, bool alignDown = false) {
 	if (byteAlignment == 0) { return byteRef; }
 
-	MVKAssert(mvkIsPowerOfTwo(byteAlignment), "Byte alignment %lu is not a power-of-two value.", byteAlignment);
+	assert(mvkIsPowerOfTwo(byteAlignment));
 
 	uintptr_t mask = byteAlignment - 1;
 	uintptr_t alignedRef = (byteRef + mask) & ~mask;

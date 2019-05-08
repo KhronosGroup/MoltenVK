@@ -38,9 +38,12 @@ class MVKGPUCaptureScope;
 #pragma mark MVKQueueFamily
 
 /** Represents a Vulkan queue family. */
-class MVKQueueFamily : public MVKConfigurableObject {
+class MVKQueueFamily : public MVKBaseObject {
 
 public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _physicalDevice->getVulkanAPIObject(); }
 
 	/** Returns the index of this queue family. */
 	inline uint32_t getIndex() { return _queueFamilyIndex; }
@@ -71,9 +74,15 @@ protected:
 #pragma mark MVKQueue
 
 /** Represents a Vulkan queue. */
-class MVKQueue : public MVKDispatchableDeviceObject {
+class MVKQueue : public MVKDispatchableVulkanAPIObject, public MVKDeviceTrackingMixin {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_QUEUE_EXT; }
+
+	/** Returns a pointer to the Vulkan instance. */
+	MVKInstance* getInstance() override { return _device->getInstance(); }
 
 #pragma mark Queue submissions
 
@@ -122,6 +131,7 @@ protected:
 	friend class MVKQueueCommandBufferSubmission;
 	friend class MVKQueuePresentSurfaceSubmission;
 
+	MVKBaseObject* getBaseObject() override { return this; };
 	void initName();
 	void initExecQueue();
 	void initMTLCommandQueue();
@@ -145,31 +155,30 @@ protected:
 #pragma mark MVKQueueSubmission
 
 /** This is an abstract class for an operation that can be submitted to an MVKQueue. */
-class MVKQueueSubmission : public MVKBaseDeviceObject {
+class MVKQueueSubmission : public MVKConfigurableObject {
 
 public:
 
-	/** 
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _queue->getVulkanAPIObject(); }
+
+	/**
 	 * Executes this action on the queue and then disposes of this instance.
 	 *
 	 * Upon completion of this function, no further calls should be made to this instance.
 	 */
 	virtual void execute() = 0;
 
-	MVKQueueSubmission(MVKDevice* device,
-					   MVKQueue* queue,
+	MVKQueueSubmission(MVKQueue* queue,
 					   uint32_t waitSemaphoreCount,
 					   const VkSemaphore* pWaitSemaphores);
 
 protected:
 	friend class MVKQueue;
 
-   void recordResult(VkResult vkResult);
-
 	MVKQueue* _queue;
 	MVKQueueSubmission* _prev;
 	MVKQueueSubmission* _next;
-	VkResult _submissionResult;
 	MVKVectorInline<MVKSemaphore*, 8> _waitSemaphores;
 	bool _isAwaitingSemaphores;
 };
@@ -184,11 +193,8 @@ class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 public:
 	void execute() override;
 
-	/** 
-     * Constructs an instance for the device and queue.
-     */
-	MVKQueueCommandBufferSubmission(MVKDevice* device,
-									MVKQueue* queue,
+	/** Constructs an instance for the queue. */
+	MVKQueueCommandBufferSubmission(MVKQueue* queue,
 									const VkSubmitInfo* pSubmit,
 									VkFence fence,
                                     MVKCommandUse cmdBuffUse);
@@ -219,9 +225,7 @@ class MVKQueuePresentSurfaceSubmission : public MVKQueueSubmission {
 public:
 	void execute() override;
 
-	/** Constructs an instance for the device and queue. */
-	MVKQueuePresentSurfaceSubmission(MVKDevice* device,
-									 MVKQueue* queue,
+	MVKQueuePresentSurfaceSubmission(MVKQueue* queue,
 									 const VkPresentInfoKHR* pPresentInfo);
 
 protected:

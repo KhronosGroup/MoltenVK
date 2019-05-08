@@ -23,6 +23,8 @@
 #pragma mark -
 #pragma mark MVKMTLBufferAllocation
 
+MVKVulkanAPIObject* MVKMTLBufferAllocation::getVulkanAPIObject() { return _pool->getVulkanAPIObject(); };
+
 void MVKMTLBufferAllocation::returnToPool() { _pool->returnObjectSafely(this); }
 
 

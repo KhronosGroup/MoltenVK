@@ -19,30 +19,19 @@
 #include "MVKSurface.h"
 #include "MVKInstance.h"
 #include "MVKFoundation.h"
+#include "MVKLogging.h"
 #include "MVKOSExtensions.h"
 #import "MVKBlockObserver.h"
+
+#define STR(NAME) #NAME
 
 
 #pragma mark MVKSurface
 
-#pragma mark Construction
-
-#ifdef VK_USE_PLATFORM_IOS_MVK
-static const char* mvkSurfaceCreateFuncName = "vkCreateIOSSurfaceMVK";
-static const char* mvkSurfaceCreateStructName = "VkIOSSurfaceCreateInfoMVK";
-static const char* mvkViewClassName = "UIView";
-#endif
-
-#ifdef VK_USE_PLATFORM_MACOS_MVK
-static const char* mvkSurfaceCreateFuncName = "vkCreateMacOSSurfaceMVK";
-static const char* mvkSurfaceCreateStructName = "VkMacOSSurfaceCreateInfoMVK";
-static const char* mvkViewClassName = "NSView";
-#endif
-
 // pCreateInfo->pView can be either a CAMetalLayer or a view (NSView/UIView).
 MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 					   const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
-					   const VkAllocationCallbacks* pAllocator) {
+					   const VkAllocationCallbacks* pAllocator) : _mvkInstance(mvkInstance) {
 
 	// Get the platform object contained in pView
 	id<NSObject> obj = (id<NSObject>)pCreateInfo->pView;
@@ -50,7 +39,8 @@ MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 	// If it's a view (NSView/UIView), extract the layer, otherwise assume it's already a CAMetalLayer.
 	if ([obj isKindOfClass: [PLATFORM_VIEW_CLASS class]]) {
 		if ( !NSThread.isMainThread ) {
-			MVKLogInfo("%s(): You are not calling this function from the main thread. %s should only be accessed from the main thread. When using this function outside the main thread, consider passing the CAMetalLayer itself in %s::pView, instead of the %s.", mvkSurfaceCreateFuncName, mvkViewClassName, mvkSurfaceCreateStructName, mvkViewClassName);
+			MVKLogInfo("%s(): You are not calling this function from the main thread. %s should only be accessed from the main thread. When using this function outside the main thread, consider passing the CAMetalLayer itself in %s::pView, instead of the %s.",
+					   STR(vkCreate_PLATFORM_SurfaceMVK), STR(PLATFORM_VIEW_CLASS), STR(Vk_PLATFORM_SurfaceCreateInfoMVK), STR(PLATFORM_VIEW_CLASS));
 		}
 		obj = ((PLATFORM_VIEW_CLASS*)obj).layer;
 	}
@@ -72,7 +62,9 @@ MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 			} forObject: _mtlCAMetalLayer.delegate atKeyPath: @"layer"];
 		}
 	} else {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "%s(): On-screen rendering requires a layer of type CAMetalLayer.", mvkSurfaceCreateFuncName));
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+										   "%s(): On-screen rendering requires a layer of type CAMetalLayer.",
+										   STR(vkCreate_PLATFORM_SurfaceMVK)));
 		_mtlCAMetalLayer = nil;
 	}
 }

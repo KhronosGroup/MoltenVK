@@ -19,6 +19,7 @@
 #include "MVKShaderModule.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
+#include "MVKLogging.h"
 #include "vk_mvk_moltenvk.h"
 #include <string>
 
@@ -53,15 +54,17 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
     // as a function name), and retrieve the unspecialized Metal function with that name.
     NSString* mtlFuncName = @(_entryPoint.mtlFunctionName.c_str());
 
-    uint64_t startTime = _device->getPerformanceTimestamp();
+
+	MVKDevice* mvkDev = _owner->getDevice();
+    uint64_t startTime = mvkDev->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
-    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+    mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
 
     if (mtlFunc) {
         // If the Metal device supports shader specialization, and the Metal function expects to be
         // specialized, populate Metal function constant values from the Vulkan specialization info,
         // and compiled a specialized Metal function, otherwise simply use the unspecialized Metal function.
-        if (_device->_pMetalFeatures->shaderSpecialization) {
+        if (mvkDev->_pMetalFeatures->shaderSpecialization) {
             NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
             if (mtlFCs.count) {
                 // The Metal shader contains function constants and expects to be specialized
@@ -83,14 +86,13 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
                 }
 
                 // Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
-				MVKFunctionSpecializer* fs = new MVKFunctionSpecializer(_device);
+				MVKFunctionSpecializer* fs = new MVKFunctionSpecializer(_owner);
 				mtlFunc = [fs->newMTLFunction(_mtlLibrary, mtlFuncName, mtlFCVals) autorelease];
-				setConfigurationResult(fs->getConfigurationResult());
 				fs->destroy();
             }
         }
     } else {
-        mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
+        reportError(VK_ERROR_INITIALIZATION_FAILED, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
     }
 
 	return { mtlFunc, MTLSizeMake(getWorkgroupDimensionSize(_entryPoint.workgroupSize.width, pSpecializationInfo),
@@ -106,34 +108,34 @@ MTLFunctionConstant* MVKShaderLibrary::getFunctionConstant(NSArray<MTLFunctionCo
     return nil;
 }
 
-MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device, const string& mslSourceCode, const SPIRVEntryPoint& entryPoint) : MVKBaseDeviceObject(device) {
-	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_device);
+MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner, const string& mslSourceCode, const SPIRVEntryPoint& entryPoint) : _owner(owner) {
+	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_owner);
 	_mtlLibrary = slc->newMTLLibrary(@(mslSourceCode.c_str()));	// retained
-	setConfigurationResult(slc->getConfigurationResult());
 	slc->destroy();
 
 	_entryPoint = entryPoint;
 	_msl = mslSourceCode;
 }
 
-MVKShaderLibrary::MVKShaderLibrary(MVKDevice* device,
+MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
                                    const void* mslCompiledCodeData,
-                                   size_t mslCompiledCodeLength) : MVKBaseDeviceObject(device) {
-    uint64_t startTime = _device->getPerformanceTimestamp();
+                                   size_t mslCompiledCodeLength) : _owner(owner) {
+	MVKDevice* mvkDev = _owner->getDevice();
+    uint64_t startTime = mvkDev->getPerformanceTimestamp();
     @autoreleasepool {
         dispatch_data_t shdrData = dispatch_data_create(mslCompiledCodeData,
                                                         mslCompiledCodeLength,
                                                         NULL,
                                                         DISPATCH_DATA_DESTRUCTOR_DEFAULT);
         NSError* err = nil;
-        _mtlLibrary = [getMTLDevice() newLibraryWithData: shdrData error: &err];    // retained
+        _mtlLibrary = [mvkDev->getMTLDevice() newLibraryWithData: shdrData error: &err];    // retained
         handleCompilationError(err, "Compiled shader module creation");
         [shdrData release];
     }
-    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.mslLoad, startTime);
+    mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.mslLoad, startTime);
 }
 
-MVKShaderLibrary::MVKShaderLibrary(MVKShaderLibrary& other) : MVKBaseDeviceObject(other._device) {
+MVKShaderLibrary::MVKShaderLibrary(MVKShaderLibrary& other) : _owner(other._owner) {
 	_mtlLibrary = [other._mtlLibrary retain];
 	_entryPoint = other._entryPoint;
 	_msl = other._msl;
@@ -148,10 +150,10 @@ void MVKShaderLibrary::handleCompilationError(NSError* err, const char* opDesc) 
     if (_mtlLibrary) {
         MVKLogInfo("%s succeeded with warnings (Error code %li):\n%s", opDesc, (long)err.code, err.localizedDescription.UTF8String);
     } else {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED,
-                                                      "%s failed (Error code %li):\n%s",
-                                                      opDesc, (long)err.code,
-                                                      err.localizedDescription.UTF8String));
+		_owner->setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+												   "%s failed (Error code %li):\n%s",
+												   opDesc, (long)err.code,
+												   err.localizedDescription.UTF8String));
     }
 }
 
@@ -196,7 +198,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConverterCo
 MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(SPIRVToMSLConverterContext* pContext,
 														  const string& mslSourceCode,
 														  const SPIRVEntryPoint& entryPoint) {
-	MVKShaderLibrary* shLib = new MVKShaderLibrary(_device, mslSourceCode, entryPoint);
+	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, mslSourceCode, entryPoint);
 	_shaderLibraries.emplace_back(*pContext, shLib);
 	return shLib;
 }
@@ -250,7 +252,7 @@ bool MVKShaderModule::convert(SPIRVToMSLConverterContext* pContext) {
 	if (wasConverted) {
 		if (shouldLogCode) { MVKLogInfo("%s", _converter.getResultLog().data()); }
 	} else {
-		mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "Unable to convert SPIR-V to MSL:\n%s", _converter.getResultLog().data());
+		reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Unable to convert SPIR-V to MSL:\n%s", _converter.getResultLog().data());
 	}
 	return wasConverted;
 }
@@ -259,7 +261,7 @@ bool MVKShaderModule::convert(SPIRVToMSLConverterContext* pContext) {
 #pragma mark Construction
 
 MVKShaderModule::MVKShaderModule(MVKDevice* device,
-								 const VkShaderModuleCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device), _shaderLibraryCache(device) {
+								 const VkShaderModuleCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _shaderLibraryCache(this) {
 
 	_defaultLibrary = nullptr;
 
@@ -268,7 +270,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
     // Ensure something is there.
     if ( (pCreateInfo->pCode == VK_NULL_HANDLE) || (codeSize < 4) ) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_INCOMPLETE, "Shader module contains no SPIR-V code."));
+		setConfigurationResult(reportError(VK_INCOMPLETE, "Shader module contains no SPIR-V code."));
 		return;
 	}
 
@@ -299,7 +301,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
 			_converter.setMSL(pMSLCode, nullptr);
-			_defaultLibrary = new MVKShaderLibrary(_device, _converter.getMSL().c_str(), _converter.getEntryPoint());
+			_defaultLibrary = new MVKShaderLibrary(this, _converter.getMSL().c_str(), _converter.getEntryPoint());
 
 			break;
 		}
@@ -313,12 +315,12 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
 			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
-			_defaultLibrary = new MVKShaderLibrary(_device, (void*)(pMSLCode), mslCodeLen);
+			_defaultLibrary = new MVKShaderLibrary(this, (void*)(pMSLCode), mslCodeLen);
 
 			break;
 		}
 		default:
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "SPIR-V contains invalid magic number %x.", magicNum));
+			setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "SPIR-V contains invalid magic number %x.", magicNum));
 			break;
 	}
 
@@ -337,12 +339,12 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode) 
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		[getMTLDevice() newLibraryWithSource: mslSourceCode
-									 options: getDevice()->getMTLCompileOptions()
-						   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
-							   bool isLate = compileComplete(mtlLib, error);
-							   if (isLate) { destroy(); }
-						   }];
+		[_owner->getMTLDevice() newLibraryWithSource: mslSourceCode
+											 options: _owner->getDevice()->getMTLCompileOptions()
+								   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
+									   bool isLate = compileComplete(mtlLib, error);
+									   if (isLate) { destroy(); }
+								   }];
 	});
 
 	return [_mtlLibrary retain];

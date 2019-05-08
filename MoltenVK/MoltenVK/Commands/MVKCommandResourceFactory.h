@@ -20,7 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKFoundation.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 #include <string>
 
 #import <Metal/Metal.h>
@@ -306,10 +306,14 @@ class MVKCommandResourceFactory : public MVKBaseDeviceObject {
 
 public:
 
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device->getVulkanAPIObject(); };
+
 #pragma mark Command resources
 
 	/** Returns a new MTLRenderPipelineState to support certain Vulkan BLIT commands. */
-	id<MTLRenderPipelineState> newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey);
+	id<MTLRenderPipelineState> newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey,
+																	 MVKVulkanAPIDeviceObject* owner);
 
 	/**
 	 * Returns a new MTLSamplerState dedicated to rendering to a texture using the
@@ -321,7 +325,8 @@ public:
 	 * Returns a new MTLRenderPipelineState dedicated to rendering to several 
 	 * attachments to support clearing regions of those attachments.
 	 */
-	id<MTLRenderPipelineState> newCmdClearMTLRenderPipelineState(MVKRPSKeyClearAtt& attKey);
+	id<MTLRenderPipelineState> newCmdClearMTLRenderPipelineState(MVKRPSKeyClearAtt& attKey,
+																 MVKVulkanAPIDeviceObject* owner);
 
 	/**
 	 * Returns a new MTLDepthStencilState dedicated to rendering to several 
@@ -353,22 +358,25 @@ public:
     MVKBuffer* newMVKBuffer(MVKBufferDescriptorData& buffData, MVKDeviceMemory*& buffMem);
     
     /** Returns a new MTLComputePipelineState for copying between two buffers with byte-aligned copy regions. */
-    id<MTLComputePipelineState> newCmdCopyBufferBytesMTLComputePipelineState();
+    id<MTLComputePipelineState> newCmdCopyBufferBytesMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for filling a buffer. */
-	id<MTLComputePipelineState> newCmdFillBufferMTLComputePipelineState();
+	id<MTLComputePipelineState> newCmdFillBufferMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for copying between a buffer holding compressed data and a 3D image. */
-	id<MTLComputePipelineState> newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf);
+	id<MTLComputePipelineState> newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf,
+																						   MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
-	id<MTLComputePipelineState> newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed);
+	id<MTLComputePipelineState> newCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed,
+																						MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for copying an index buffer for use in a tessellated draw. */
-	id<MTLComputePipelineState> newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type);
+	id<MTLComputePipelineState> newCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type,
+																						MVKVulkanAPIDeviceObject* owner);
 
 	/** Returns a new MTLComputePipelineState for copying query results to a buffer. */
-	id<MTLComputePipelineState> newCmdCopyQueryPoolResultsMTLComputePipelineState();
+	id<MTLComputePipelineState> newCmdCopyQueryPoolResultsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
 
 #pragma mark Construction
@@ -386,8 +394,10 @@ protected:
 	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
     id<MTLFunction> getFunctionNamed(const char* funcName);
 	id<MTLFunction> newMTLFunction(NSString* mslSrcCode, NSString* funcName);
-    id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc);
-	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction);
+	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc,
+														 MVKVulkanAPIDeviceObject* owner);
+	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction,
+														   MVKVulkanAPIDeviceObject* owner);
 
 	id<MTLLibrary> _mtlLibrary;
 	MVKDeviceMemory* _transferImageMemory;

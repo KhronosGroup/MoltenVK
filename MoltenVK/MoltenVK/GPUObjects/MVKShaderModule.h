@@ -45,17 +45,23 @@ typedef struct {
 extern const MVKMTLFunction MVKMTLFunctionNull;
 
 /** Wraps a single MTLLibrary. */
-class MVKShaderLibrary : public MVKBaseDeviceObject {
+class MVKShaderLibrary : public MVKBaseObject {
 
 public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _owner->getVulkanAPIObject(); };
+
 	/** Returns the Metal shader function, possibly specialized. */
 	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo);
 
 	/** Constructs an instance from the specified MSL source code. */
-	MVKShaderLibrary(MVKDevice* device, const std::string& mslSourceCode, const SPIRVEntryPoint& entryPoint);
+	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
+					 const std::string& mslSourceCode,
+					 const SPIRVEntryPoint& entryPoint);
 
 	/** Constructs an instance from the specified compiled MSL code data. */
-	MVKShaderLibrary(MVKDevice* device,
+	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const void* mslCompiledCodeData,
 					 size_t mslCompiledCodeLength);
 
@@ -70,6 +76,7 @@ protected:
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
 
+	MVKVulkanAPIDeviceObject* _owner;
 	id<MTLLibrary> _mtlLibrary;
 	SPIRVEntryPoint _entryPoint;
 	std::string _msl;
@@ -80,9 +87,12 @@ protected:
 #pragma mark MVKShaderLibraryCache
 
 /** Represents a cache of shader libraries for one shader module. */
-class MVKShaderLibraryCache : public MVKBaseDeviceObject {
+class MVKShaderLibraryCache : public MVKBaseObject {
 
 public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _owner->getVulkanAPIObject(); };
 
 	/**
 	 * Returns a shader library from the specified shader context sourced from the specified shader module,
@@ -95,7 +105,7 @@ public:
 									   MVKShaderModule* shaderModule,
 									   bool* pWasAdded = nullptr);
 
-	MVKShaderLibraryCache(MVKDevice* device) : MVKBaseDeviceObject(device) {};
+	MVKShaderLibraryCache(MVKVulkanAPIDeviceObject* owner) : _owner(owner) {};
 
 	~MVKShaderLibraryCache() override;
 
@@ -109,6 +119,7 @@ protected:
 									   const SPIRVEntryPoint& entryPoint);
 	void merge(MVKShaderLibraryCache* other);
 
+	MVKVulkanAPIDeviceObject* _owner;
 	std::mutex _accessLock;
 	std::vector<std::pair<SPIRVToMSLConverterContext, MVKShaderLibrary*>> _shaderLibraries;
 };
@@ -140,9 +151,13 @@ namespace std {
 }
 
 /** Represents a Vulkan shader module. */
-class MVKShaderModule : public MVKBaseDeviceObject {
+class MVKShaderModule : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT; }
+
 	/** Returns the Metal shader function, possibly specialized. */
 	MVKMTLFunction getMTLFunction(SPIRVToMSLConverterContext* pContext,
 								  const VkSpecializationInfo* pSpecializationInfo,
@@ -207,9 +222,9 @@ public:
 
 #pragma mark Construction
 
-	MVKShaderLibraryCompiler(MVKDevice* device) : MVKMetalCompiler(device) {
+	MVKShaderLibraryCompiler(MVKVulkanAPIDeviceObject* owner) : MVKMetalCompiler(owner) {
 		_compilerType = "Shader library";
-		_pPerformanceTracker = &_device->_performanceStatistics.shaderCompilation.mslCompile;
+		_pPerformanceTracker = &_owner->getDevice()->_performanceStatistics.shaderCompilation.mslCompile;
 	}
 
 	~MVKShaderLibraryCompiler() override;
@@ -245,9 +260,9 @@ public:
 
 #pragma mark Construction
 
-	MVKFunctionSpecializer(MVKDevice* device) : MVKMetalCompiler(device) {
+	MVKFunctionSpecializer(MVKVulkanAPIDeviceObject* owner) : MVKMetalCompiler(owner) {
 		_compilerType = "Function specialization";
-		_pPerformanceTracker = &_device->_performanceStatistics.shaderCompilation.functionSpecialization;
+		_pPerformanceTracker = &_owner->getDevice()->_performanceStatistics.shaderCompilation.functionSpecialization;
 	}
 
 	~MVKFunctionSpecializer() override;

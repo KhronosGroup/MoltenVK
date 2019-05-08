@@ -20,13 +20,15 @@
 #include "MVKFramebuffer.h"
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 
 using namespace std;
 
 
 #pragma mark -
 #pragma mark MVKRenderSubpass
+
+MVKVulkanAPIObject* MVKRenderSubpass::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); };
 
 VkFormat MVKRenderSubpass::getColorAttachmentFormat(uint32_t colorAttIdx) {
 	if (colorAttIdx < _colorAttachments.size()) {
@@ -213,7 +215,7 @@ bool MVKRenderSubpass::isUsingAttachmentAt(uint32_t rpAttIdx) {
 }
 
 MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
-								   const VkSubpassDescription* pCreateInfo) : MVKBaseObject() {
+								   const VkSubpassDescription* pCreateInfo) {
 	_renderPass = renderPass;
 	_subpassIndex = (uint32_t)_renderPass->_subpasses.size();
 
@@ -250,6 +252,8 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 
 #pragma mark -
 #pragma mark MVKRenderPassAttachment
+
+MVKVulkanAPIObject* MVKRenderPassAttachment::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); };
 
 VkFormat MVKRenderPassAttachment::getFormat() { return _info.format; }
 
@@ -302,7 +306,7 @@ bool MVKRenderPassAttachment::shouldUseClearAttachment(MVKRenderSubpass* subpass
 }
 
 MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
-												 const VkAttachmentDescription* pCreateInfo) : MVKBaseObject() {
+												 const VkAttachmentDescription* pCreateInfo) {
 	_renderPass = renderPass;
 	_attachmentIndex = uint32_t(_renderPass->_attachments.size());
 
@@ -329,7 +333,7 @@ VkExtent2D MVKRenderPass::getRenderAreaGranularity() { return { 1, 1 }; }
 MVKRenderSubpass* MVKRenderPass::getSubpass(uint32_t subpassIndex) { return &_subpasses[subpassIndex]; }
 
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
-							 const VkRenderPassCreateInfo* pCreateInfo) : MVKBaseDeviceObject(device) {
+							 const VkRenderPassCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
     // Add subpasses and dependencies first
 	_subpasses.reserve(pCreateInfo->subpassCount);

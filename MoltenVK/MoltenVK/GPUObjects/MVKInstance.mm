@@ -23,6 +23,7 @@
 #include "MVKEnvironment.h"
 #include "MVKSurface.h"
 #include "MVKOSExtensions.h"
+#include "MVKLogging.h"
 
 using namespace std;
 
@@ -79,6 +80,78 @@ void MVKInstance::destroySurface(MVKSurface* mvkSrfc,
 	mvkSrfc->destroy();
 }
 
+MVKDebugReportCallback* MVKInstance::createDebugReportCallback(const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
+															   const VkAllocationCallbacks* pAllocator) {
+	lock_guard<mutex> lock(_drcbLock);
+
+	MVKDebugReportCallback* mvkDRCB = new MVKDebugReportCallback(this, pCreateInfo, _useCreationCallbacks);
+	_debugReportCallbacks.push_back(mvkDRCB);
+	_hasDebugReportCallbacks = true;
+	return mvkDRCB;
+}
+
+void MVKInstance::destroyDebugReportCallback(MVKDebugReportCallback* mvkDRCB,
+								const VkAllocationCallbacks* pAllocator) {
+	lock_guard<mutex> lock(_drcbLock);
+
+	mvkRemoveAllOccurances(_debugReportCallbacks, mvkDRCB);
+	_hasDebugReportCallbacks = (_debugReportCallbacks.size() != 0);
+	mvkDRCB->destroy();
+}
+
+void MVKInstance::debugReportMessage(VkDebugReportFlagsEXT flags,
+									 VkDebugReportObjectTypeEXT objectType,
+									 uint64_t object,
+									 size_t location,
+									 int32_t messageCode,
+									 const char* pLayerPrefix,
+									 const char* pMessage) {
+
+	// Fail fast to avoid further unnecessary processing and locking.
+	if ( !(_hasDebugReportCallbacks) ) { return; }
+
+	lock_guard<mutex> lock(_drcbLock);
+
+	for (auto mvkDRCB : _debugReportCallbacks) {
+		auto& drbcInfo = mvkDRCB->_info;
+		if (drbcInfo.pfnCallback && mvkIsAnyFlagEnabled(drbcInfo.flags, flags) && (mvkDRCB->_isCreationCallback == _useCreationCallbacks)) {
+			drbcInfo.pfnCallback(flags, objectType, object, location, messageCode, pLayerPrefix, pMessage, drbcInfo.pUserData);
+		}
+	}
+}
+
+void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, int aslLvl, const char* pMessage) {
+
+	// Fail fast to avoid further unnecessary processing and locking.
+	if ( !(_hasDebugReportCallbacks) ) { return; }
+
+	VkDebugReportFlagsEXT flags = getVkDebugReportFlagsFromASLLevel(aslLvl);
+	uint64_t object = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr);
+	VkDebugReportObjectTypeEXT objectType = mvkAPIObj ? mvkAPIObj->getVkDebugReportObjectType() : VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT;
+	debugReportMessage(flags, objectType, object, 0, 0, _debugReportCallbackLayerPrefix, pMessage);
+}
+
+VkDebugReportFlagsEXT MVKInstance::getVkDebugReportFlagsFromASLLevel(int aslLvl) {
+	switch (aslLvl) {
+		case ASL_LEVEL_DEBUG:
+			return VK_DEBUG_REPORT_DEBUG_BIT_EXT;
+
+		case ASL_LEVEL_INFO:
+		case ASL_LEVEL_NOTICE:
+			return VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
+
+		case ASL_LEVEL_WARNING:
+			return VK_DEBUG_REPORT_WARNING_BIT_EXT;
+
+		case ASL_LEVEL_ERR:
+		case ASL_LEVEL_CRIT:
+		case ASL_LEVEL_ALERT:
+		case ASL_LEVEL_EMERG:
+		default:
+			return VK_DEBUG_REPORT_ERROR_BIT_EXT;
+	}
+}
+
 
 #pragma mark Object Creation
 
@@ -130,7 +203,9 @@ static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
 #endif	// MVK_IOS
 }
 
-MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
+MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
+
+	initCreationDebugReportCallbacks(pCreateInfo);	// Do before any creation activities
 
 	_appInfo.apiVersion = MVK_VULKAN_API_VERSION;	// Default
 	mvkSetOrClear(&_appInfo, pCreateInfo->pApplicationInfo);
@@ -147,10 +222,10 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 
 	if (MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <
 		MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion)) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER,
-													  "Request for Vulkan version %s is not compatible with supported version %s.",
-													  mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
-													  mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str()));
+		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER,
+										   "Request for Vulkan version %s is not compatible with supported version %s.",
+										   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
+										   mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str()));
 	}
 
 	// Populate the array of physical GPU devices
@@ -160,18 +235,38 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 		_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
 	}
 	if (_physicalDevices.empty()) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
+		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
 	}
 
-	string logMsg = "Created VkInstance with the following Vulkan extensions enabled:";
-	logMsg += _enabledExtensions.enabledNamesString("\n\t\t", true);
-	MVKLogInfo("%s", logMsg.c_str());
+	MVKLogInfo("Created VkInstance with the following %d Vulkan extensions enabled:%s",
+			   _enabledExtensions.getEnabledCount(),
+			   _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
+
+	_useCreationCallbacks = false;
+}
+
+void MVKInstance::initCreationDebugReportCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
+	_useCreationCallbacks = true;
+	_hasDebugReportCallbacks = false;
+	_debugReportCallbackLayerPrefix = getDriverLayer()->getName();
+
+	MVKVkAPIStructHeader* next = (MVKVkAPIStructHeader*)pCreateInfo->pNext;
+	while (next) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT:
+				createDebugReportCallback((VkDebugReportCallbackCreateInfoEXT*)next, nullptr);
+				break;
+			default:
+				break;
+		}
+		next = (MVKVkAPIStructHeader*)next->pNext;
+	}
 }
 
 #define ADD_ENTRY_POINT(func, ext1, ext2, isDev)	_entryPoints[""#func] = { (PFN_vkVoidFunction)&func,  ext1,  ext2,  isDev }
 
 #define ADD_INST_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, nullptr, nullptr, false)
-#define ADD_DVC_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, nullptr, nullptr, true)
+#define ADD_DVC_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, nullptr, nullptr, true)
 
 #define ADD_INST_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, VK_ ##EXT ##_EXTENSION_NAME, nullptr, false)
 #define ADD_DVC_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, VK_ ##EXT ##_EXTENSION_NAME, nullptr, true)
@@ -179,7 +274,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) {
 #define ADD_INST_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, false)
 #define ADD_DVC_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, true)
 
-/** Initializes the function pointer map. */
+// Initializes the function pointer map.
 void MVKInstance::initProcAddrs() {
 
 	// Instance functions
@@ -335,6 +430,9 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfacePresentModesKHR, KHR_SURFACE);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceCapabilities2KHR, KHR_GET_SURFACE_CAPABILITIES_2);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceFormats2KHR, KHR_GET_SURFACE_CAPABILITIES_2);
+	ADD_INST_EXT_ENTRY_POINT(vkCreateDebugReportCallbackEXT, EXT_DEBUG_REPORT);
+	ADD_INST_EXT_ENTRY_POINT(vkDestroyDebugReportCallbackEXT, EXT_DEBUG_REPORT);
+	ADD_INST_EXT_ENTRY_POINT(vkDebugReportMessageEXT, EXT_DEBUG_REPORT);
 
 #ifdef VK_USE_PLATFORM_IOS_MVK
 	ADD_INST_EXT_ENTRY_POINT(vkCreateIOSSurfaceMVK, MVK_IOS_SURFACE);
@@ -382,16 +480,14 @@ void MVKInstance::initProcAddrs() {
 }
 
 void MVKInstance::logVersions() {
-	string logMsg = "MoltenVK version ";
-	logMsg += mvkGetMoltenVKVersionString(MVK_VERSION);
-	logMsg += ". Vulkan version ";
-	logMsg += mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION);
-	logMsg += ".\n\tThe following Vulkan extensions are supported:";
-	logMsg += getDriverLayer()->getSupportedExtensions()->enabledNamesString("\n\t\t", true);
-	MVKLogInfo("%s", logMsg.c_str());
+	MVKExtensionList* pExtns  = getDriverLayer()->getSupportedExtensions();
+	MVKLogInfo("MoltenVK version %s. Vulkan version %s.\n\tThe following %d Vulkan extensions are supported:%s",
+			   mvkGetMoltenVKVersionString(MVK_VERSION).c_str(),
+			   mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str(),
+			   pExtns->getEnabledCount(),
+			   pExtns->enabledNamesString("\n\t\t", true).c_str());
 }
 
-// Init config.
 void MVKInstance::initConfig() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.debugMode,                              MVK_DEBUG);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.shaderConversionFlipVertexY,            MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y);
@@ -416,13 +512,17 @@ VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {
     VkResult result = VK_SUCCESS;
     for (uint32_t i = 0; i < count; i++) {
         if ( !MVKLayerManager::globalManager()->getLayerNamed(names[i]) ) {
-            result = mvkNotifyErrorWithText(VK_ERROR_LAYER_NOT_PRESENT, "Vulkan layer %s is not supported.", names[i]);
+            result = reportError(VK_ERROR_LAYER_NOT_PRESENT, "Vulkan layer %s is not supported.", names[i]);
         }
     }
     return result;
 }
 
 MVKInstance::~MVKInstance() {
+	_useCreationCallbacks = true;
 	mvkDestroyContainerContents(_physicalDevices);
+
+	lock_guard<mutex> lock(_drcbLock);
+	mvkDestroyContainerContents(_debugReportCallbacks);
 }
 

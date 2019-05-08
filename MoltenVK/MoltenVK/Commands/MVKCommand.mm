@@ -27,7 +27,13 @@
 //	Opt 1: Leave arrays & rezs allocated in command, per current practice
 //  Opt 2: Allocate arrays & rezs from pools in Command pool, and return in returnToPool
 
-void MVKCommand::returnToPool() { _pool->returnObject(this); }
+void MVKCommand::returnToPool() {
+	clearConfigurationResult();
+	_commandBuffer = nullptr;
+	_pool->returnObject(this);
+}
+
+MVKVulkanAPIObject* MVKCommand::getVulkanAPIObject() { return _commandBuffer ? _commandBuffer->getVulkanAPIObject() : getCommandPool()->getVulkanAPIObject(); };
 
 MVKCommandPool* MVKCommand::getCommandPool() { return _pool->getCommandPool(); }
 
@@ -39,13 +45,19 @@ id<MTLDevice> MVKCommand::getMTLDevice() { return getCommandPool()->getMTLDevice
 
 
 #pragma mark -
-#pragma mark MVKLoadStoreOverride
+#pragma mark MVKCommandTypePool
 
-void MVKLoadStoreOverride::setLoadOverride(bool loadOverride) {
+MVKVulkanAPIObject* mvkCommandTypePoolGetVulkanAPIObject(MVKCommandPool* cmdPool) { return cmdPool->getVulkanAPIObject(); }
+
+
+#pragma mark -
+#pragma mark MVKLoadStoreOverrideMixin
+
+void MVKLoadStoreOverrideMixin::setLoadOverride(bool loadOverride) {
 	_loadOverride = loadOverride;
 }
 
-void MVKLoadStoreOverride::setStoreOverride(bool storeOverride) {
+void MVKLoadStoreOverrideMixin::setStoreOverride(bool storeOverride) {
 	_storeOverride = storeOverride;
 }
 

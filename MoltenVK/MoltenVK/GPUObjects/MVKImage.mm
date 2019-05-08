@@ -20,8 +20,9 @@
 #include "MVKQueue.h"
 #include "MVKSwapchain.h"
 #include "MVKCommandBuffer.h"
-#include "mvk_datatypes.h"
+#include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
+#include "MVKLogging.h"
 #include "MVKEnvironment.h"
 #include "MVKLogging.h"
 #include "MVKCodec.h"
@@ -330,7 +331,7 @@ IOSurfaceRef MVKImage::getIOSurface() { return _ioSurface; }
 
 VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 
-    if (!_device->_pMetalFeatures->ioSurfaces) { return mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
+    if (!_device->_pMetalFeatures->ioSurfaces) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
 
 #if MVK_SUPPORT_IOSURFACE_BOOL
 
@@ -338,11 +339,11 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     resetIOSurface();
 
     if (ioSurface) {
-		if (IOSurfaceGetWidth(ioSurface) != _extent.width) { return mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface width %zu does not match VkImage width %d.", IOSurfaceGetWidth(ioSurface), _extent.width); }
-		if (IOSurfaceGetHeight(ioSurface) != _extent.height) { return mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface height %zu does not match VkImage height %d.", IOSurfaceGetHeight(ioSurface), _extent.height); }
-		if (IOSurfaceGetBytesPerElement(ioSurface) != mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)) { return mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface bytes per element %zu does not match VkImage bytes per element %d.", IOSurfaceGetBytesPerElement(ioSurface), mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)); }
-		if (IOSurfaceGetElementWidth(ioSurface) != mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width) { return mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element width %zu does not match VkImage element width %d.", IOSurfaceGetElementWidth(ioSurface), mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width); }
-		if (IOSurfaceGetElementHeight(ioSurface) != mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height) { return mvkNotifyErrorWithText(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element height %zu does not match VkImage element height %d.", IOSurfaceGetElementHeight(ioSurface), mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height); }
+		if (IOSurfaceGetWidth(ioSurface) != _extent.width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface width %zu does not match VkImage width %d.", IOSurfaceGetWidth(ioSurface), _extent.width); }
+		if (IOSurfaceGetHeight(ioSurface) != _extent.height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface height %zu does not match VkImage height %d.", IOSurfaceGetHeight(ioSurface), _extent.height); }
+		if (IOSurfaceGetBytesPerElement(ioSurface) != mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface bytes per element %zu does not match VkImage bytes per element %d.", IOSurfaceGetBytesPerElement(ioSurface), mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)); }
+		if (IOSurfaceGetElementWidth(ioSurface) != mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element width %zu does not match VkImage element width %d.", IOSurfaceGetElementWidth(ioSurface), mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width); }
+		if (IOSurfaceGetElementHeight(ioSurface) != mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element height %zu does not match VkImage element height %d.", IOSurfaceGetElementHeight(ioSurface), mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height); }
 
         _ioSurface = ioSurface;
         CFRetain(_ioSurface);
@@ -473,7 +474,7 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
         // can upload the decompressed image data.
         std::unique_ptr<MVKCodec> codec = mvkCreateCodec(getVkFormat());
         if (!codec) {
-            mvkNotifyErrorWithText(VK_ERROR_FORMAT_NOT_SUPPORTED, "A 3D texture used a compressed format that MoltenVK does not yet support.");
+            reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "A 3D texture used a compressed format that MoltenVK does not yet support.");
             return;
         }
         VkSubresourceLayout destLayout;
@@ -545,20 +546,20 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
 MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKResource(device) {
 
     if (pCreateInfo->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not allow uncompressed views of compressed images."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not allow uncompressed views of compressed images."));
     }
 
 #if MVK_IOS
     if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) ) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
     }
 #else
     if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !mvkCanDecodeFormat(pCreateInfo->format) ) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
     }
 #endif
     if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) ) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
     }
 
     // Adjust the info components to be compatible with Metal, then use the modified versions
@@ -573,7 +574,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
     _mipLevels = max(pCreateInfo->mipLevels, minDim);
     if ( (_mipLevels > 1) && (pCreateInfo->imageType == VK_IMAGE_TYPE_1D) ) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, 1D images cannot use mipmaps. Setting mip levels to 1."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, 1D images cannot use mipmaps. Setting mip levels to 1."));
         _mipLevels = 1;
     }
 
@@ -587,9 +588,9 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     if ( (_samples > 1) && (_mtlTextureType != MTLTextureType2DMultisample) &&
          (pCreateInfo->imageType != VK_IMAGE_TYPE_2D || !_device->_pMetalFeatures->multisampleArrayTextures) ) {
         if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
-            setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
+            setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
         } else {
-            setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This version of Metal does not support multisampled array textures. Setting sample count to 1."));
+            setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This version of Metal does not support multisampled array textures. Setting sample count to 1."));
         }
         _samples = VK_SAMPLE_COUNT_1_BIT;
         if (pCreateInfo->imageType == VK_IMAGE_TYPE_2D) {
@@ -597,7 +598,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
         }
     }
     if ( (_samples > 1) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) ) {
-        setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with compressed images. Setting sample count to 1."));
+        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with compressed images. Setting sample count to 1."));
         _samples = VK_SAMPLE_COUNT_1_BIT;
     }
 
@@ -623,33 +624,33 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
 	if (pCreateInfo->tiling != VK_IMAGE_TILING_LINEAR) { return false; }
 
 	if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, imageType must be VK_IMAGE_TYPE_2D."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, imageType must be VK_IMAGE_TYPE_2D."));
 		return false;
 	}
 
 	if (_isDepthStencilAttachment) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a depth/stencil format."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a depth/stencil format."));
 		return false;
 	}
 
 	if (_mipLevels > 1) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, mipLevels must be 1."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, mipLevels must be 1."));
 		return false;
 	}
 
 	if (_arrayLayers > 1) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, arrayLayers must be 1."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, arrayLayers must be 1."));
 		return false;
 	}
 
 	if (_samples > 1) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, samples must be VK_SAMPLE_COUNT_1_BIT."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, samples must be VK_SAMPLE_COUNT_1_BIT."));
 		return false;
 	}
 
 #if MVK_MACOS
 	if ( mvkIsAnyFlagEnabled(_usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) ) {
-		setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, usage must not include VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, and/or VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, usage must not include VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, and/or VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT."));
 		return false;
 	}
 #endif
@@ -775,7 +776,7 @@ id<MTLTexture> MVKImageView::newMTLTexture() {
 // is constructed to validate image view capabilities
 MVKImageView::MVKImageView(MVKDevice* device,
 						   const VkImageViewCreateInfo* pCreateInfo,
-						   const MVKConfiguration* pAltMVKConfig) : MVKRefCountedDeviceObject(device) {
+						   const MVKConfiguration* pAltMVKConfig) : MVKVulkanAPIDeviceObject(device) {
 	_image = (MVKImage*)pCreateInfo->image;
 	_usage = _image ? _image->_usage : 0;
 
@@ -830,12 +831,12 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 	// VK_KHR_maintenance1 supports taking 2D image views of 3D slices. No dice in Metal.
 	if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
 		if (pCreateInfo->subresourceRange.layerCount != image->_extent.depth) {
-			mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
+			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
 		}
 		if (!mvkAreFlagsEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments."));
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments."));
 		} else if (mvkIsAnyFlagEnabled(_usage, ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-			mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments.");
+			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments.");
 		}
 	}
 }
@@ -932,9 +933,9 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
 			const char* errMsg = ("The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
 								  " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
 								  " be enabled via the MVKConfiguration::fullImageViewSwizzle config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable.");
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, errMsg, vkCmd,
-														  mvkVkComponentSwizzleName(components.r), mvkVkComponentSwizzleName(components.g),
-														  mvkVkComponentSwizzleName(components.b), mvkVkComponentSwizzleName(components.a)));
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, errMsg, vkCmd,
+											   mvkVkComponentSwizzleName(components.r), mvkVkComponentSwizzleName(components.g),
+											   mvkVkComponentSwizzleName(components.b), mvkVkComponentSwizzleName(components.a)));
 		}
 	}
 
@@ -999,7 +1000,7 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 		if (_device->_pMetalFeatures->depthSampleCompare) {
 			mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 		} else {
-			setConfigurationResult(mvkNotifyErrorWithText(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateSampler(): Depth texture samplers do not support the comparison of the pixel value against a reference value."));
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateSampler(): Depth texture samplers do not support the comparison of the pixel value against a reference value."));
 		}
 	}
 
@@ -1021,7 +1022,7 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 }
 
 // Constructs an instance on the specified image.
-MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKRefCountedDeviceObject(device) {
+MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
     _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: getMTLSamplerDescriptor(pCreateInfo)];
 }
 

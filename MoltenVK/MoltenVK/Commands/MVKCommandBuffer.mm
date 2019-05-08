@@ -24,6 +24,7 @@
 #include "MVKFramebuffer.h"
 #include "MVKQueryPool.h"
 #include "MVKFoundation.h"
+#include "MVKLogging.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "MVKCmdDraw.h"
 
@@ -37,7 +38,7 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 
 	reset(0);
 
-	_recordingResult = VK_SUCCESS;
+	clearConfigurationResult();
 	_canAcceptCommands = true;
 
 	VkCommandBufferUsageFlags usage = pBeginInfo->flags;
@@ -50,7 +51,7 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	bool hasInheritInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
 	_doesContinueRenderPass = mvkAreFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
 
-	return _recordingResult;
+	return getConfigurationResult();
 }
 
 VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
@@ -71,9 +72,9 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_supportsConcurrentExecution = false;
 	_wasExecuted = false;
 	_isExecutingNonConcurrently.clear();
-	_recordingResult = VK_NOT_READY;
 	_commandCount = 0;
 	_initialVisibilityResultMTLBuffer = nil;		// not retained
+	setConfigurationResult(VK_NOT_READY);
 
 	if (mvkAreFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
 		// TODO: what are we releasing or returning here?
@@ -85,12 +86,12 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 VkResult MVKCommandBuffer::end() {
 	_canAcceptCommands = false;
 	prefill();
-	return _recordingResult;
+	return getConfigurationResult();
 }
 
 void MVKCommandBuffer::addCommand(MVKCommand* command) {
 	if ( !_canAcceptCommands ) {
-		recordResult(mvkNotifyErrorWithText(VK_NOT_READY, "Command buffer cannot accept commands before vkBeginCommandBuffer() is called."));
+		setConfigurationResult(reportError(VK_NOT_READY, "Command buffer cannot accept commands before vkBeginCommandBuffer() is called."));
 		return;
 	}
 
@@ -102,7 +103,7 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
 
     command->added(this);
 
-    recordResult(command->getConfigurationResult());
+    setConfigurationResult(command->getConfigurationResult());
 }
 
 void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
@@ -121,17 +122,17 @@ void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
 
 bool MVKCommandBuffer::canExecute() {
 	if (_isSecondary) {
-		recordResult(mvkNotifyErrorWithText(VK_NOT_READY, "Secondary command buffers may not be submitted directly to a queue."));
+		setConfigurationResult(reportError(VK_NOT_READY, "Secondary command buffers may not be submitted directly to a queue."));
 		return false;
 	}
 	if ( !_isReusable && _wasExecuted ) {
-		recordResult(mvkNotifyErrorWithText(VK_NOT_READY, "Command buffer does not support execution more that once."));
+		setConfigurationResult(reportError(VK_NOT_READY, "Command buffer does not support execution more that once."));
 		return false;
 	}
 
 	// Do this test last so that _isExecutingNonConcurrently is only set if everything else passes
 	if ( !_supportsConcurrentExecution && _isExecutingNonConcurrently.test_and_set()) {
-		recordResult(mvkNotifyErrorWithText(VK_NOT_READY, "Command buffer does not support concurrent execution."));
+		setConfigurationResult(reportError(VK_NOT_READY, "Command buffer does not support concurrent execution."));
 		return false;
 	}
 
@@ -217,7 +218,7 @@ void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 		_lastTessellationPipeline = nullptr;
 }
 
-void MVKCommandBuffer::recordDraw(MVKLoadStoreOverride* mvkDraw) {
+void MVKCommandBuffer::recordDraw(MVKLoadStoreOverrideMixin* mvkDraw) {
 	if (_lastTessellationPipeline != nullptr) {
 		// If a multi-pass pipeline is bound and we've already drawn something, need to override load actions
 		mvkDraw->setLoadOverride(true);
