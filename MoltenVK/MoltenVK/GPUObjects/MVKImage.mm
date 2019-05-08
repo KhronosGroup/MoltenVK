@@ -17,6 +17,7 @@
  */
 
 #include "MVKImage.h"
+#include "MVKQueue.h"
 #include "MVKSwapchain.h"
 #include "MVKCommandBuffer.h"
 #include "mvk_datatypes.hpp"
@@ -1084,6 +1085,19 @@ void MVKSwapchainImage::signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* f
 	if (_availability.isAvailable) {
 		_availability.isAvailable = false;
 		signal(signaler);
+		if (_device->_pMetalFeatures->events) {
+			// Unfortunately, we can't assume we have an MTLSharedEvent here.
+			// This means we need to execute a command on the device to signal
+			// the semaphore. Alternatively, we could always use an MTLSharedEvent,
+			// but that might impose unacceptable performance costs just to handle
+			// this one case.
+			MVKQueue* queue = _device->getQueue(0, 0);	
+			id<MTLCommandQueue> mtlQ = queue->getMTLCommandQueue();
+			id<MTLCommandBuffer> mtlCmdBuff = [mtlQ commandBufferWithUnretainedReferences];
+			[mtlCmdBuff enqueue];
+			signaler.first->encodeSignal(mtlCmdBuff);
+			[mtlCmdBuff commit];
+		}
 		_preSignaled = signaler;
 	} else {
 		_availabilitySignalers.push_back(signaler);
@@ -1095,7 +1109,7 @@ void MVKSwapchainImage::signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* f
 
 // Signal either or both of the semaphore and fence in the specified tracker pair.
 void MVKSwapchainImage::signal(MVKSwapchainSignaler& signaler) {
-	if (signaler.first) { signaler.first->signal(); }
+	if (signaler.first && !_device->_pMetalFeatures->events) { signaler.first->signal(); }
 	if (signaler.second) { signaler.second->signal(); }
 }
 
@@ -1148,6 +1162,10 @@ void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) 
     if (mtlCmdBuff) {
         [mtlCmdBuff presentDrawable: mtlDrawable];
         resetMetalSurface();
+        if (_device->_pMetalFeatures->events && !_availabilitySignalers.empty()) {
+            // Signal the semaphore device-side.
+            _availabilitySignalers.front().first->encodeSignal(mtlCmdBuff);
+        }
         [mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { makeAvailable(); }];
     } else {
         [mtlDrawable present];

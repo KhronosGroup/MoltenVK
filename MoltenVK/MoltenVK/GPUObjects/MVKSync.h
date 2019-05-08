@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
+#include <atomic>
 #include <mutex>
 #include <condition_variable>
 #include <unordered_set>
@@ -127,14 +128,23 @@ public:
 	/** Signals the semaphore. Unblocks all waiting threads to continue processing. */
 	void signal();
 
+	/** Encodes an operation to block command buffer operation until this semaphore is signaled. */
+	void encodeWait(id<MTLCommandBuffer> cmdBuff);
+
+	/** Encodes an operation to signal the semaphore. */
+	void encodeSignal(id<MTLCommandBuffer> cmdBuff);
+
 
 #pragma mark Construction
 
-    MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo)
-        : MVKVulkanAPIDeviceObject(device), _blocker(false, 1) {}
+    MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
+
+    ~MVKSemaphore() override;
 
 protected:
 	MVKSemaphoreImpl _blocker;
+	id<MTLEvent> _mtlEvent;
+	std::atomic<uint64_t> _mtlEventValue;
 };
 
 

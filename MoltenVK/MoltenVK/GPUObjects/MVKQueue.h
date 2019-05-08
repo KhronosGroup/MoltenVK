@@ -162,7 +162,7 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _queue->getVulkanAPIObject(); }
 
-	/** 
+	/**
 	 * Executes this action on the queue and then disposes of this instance.
 	 *
 	 * Upon completion of this function, no further calls should be made to this instance.
@@ -212,6 +212,7 @@ protected:
 	MVKFence* _fence;
     MVKCommandUse _cmdBuffUse;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
+	bool _isSignalingSemaphores;
 };
 
 

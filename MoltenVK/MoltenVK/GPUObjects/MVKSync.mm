@@ -85,6 +85,27 @@ void MVKSemaphore::signal() {
     _blocker.release();
 }
 
+void MVKSemaphore::encodeWait(id<MTLCommandBuffer> cmdBuff) {
+    [cmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue];
+    ++_mtlEventValue;
+}
+
+void MVKSemaphore::encodeSignal(id<MTLCommandBuffer> cmdBuff) {
+    [cmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventValue];
+}
+
+MVKSemaphore::MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo)
+    : MVKVulkanAPIDeviceObject(device), _blocker(false, 1), _mtlEvent(nil), _mtlEventValue(1) {
+
+    if (device->_pMetalFeatures->events) {
+        _mtlEvent = [device->getMTLDevice() newEvent];
+    }
+}
+
+MVKSemaphore::~MVKSemaphore() {
+    [_mtlEvent release];
+}
+
 
 #pragma mark -
 #pragma mark MVKFence
