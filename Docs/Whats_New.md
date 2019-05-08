@@ -34,6 +34,11 @@ Released TBD
 - Enable AMD and NV GLSL extensions when building glslang for MoltenVKGLSLToSPIRVConverter.
 - Update to latest SPIRV-Cross version:
 	- MSL: Only use constant address space for tessellation control shader.
+	- MSL: Support native texture_buffer type, throw error on atomics.
+	- MSL: Add native texture buffer support.
+	- MSL: Cast texture_buffer index to uint.
+	- Fix infinite loop when OpAtomic* temporaries are used in other blocks.
+	- Accept SPIR-V 1.4 version.
 
 
 
