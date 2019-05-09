@@ -1318,14 +1318,34 @@ MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode
 	}
 }
 
-MVK_PUBLIC_SYMBOL MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags vkStages) {
+MVK_PUBLIC_SYMBOL MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags vkStages,
+																			 bool placeBarrierBefore) {
+	// First see if the Vulkan stages maps directly to a specific Metal render stage.
 	MTLRenderStages mtlStages = MTLRenderStages(0);
-	if ( mvkIsAnyFlagEnabled(vkStages, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) ) {
+	if ( mvkIsAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
+										VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+										VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+										VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+										VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+										VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT)) ) {
 		mtlStages |= MTLRenderStageVertex;
 	}
-	if ( mvkIsAnyFlagEnabled(vkStages, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT ) ) {
+	if ( mvkIsAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+										VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+										VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+										VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+										VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT)) ) {
 		mtlStages |= MTLRenderStageFragment;
 	}
+
+	// Although there are many combined render/compute/host stages in Vulkan, there are only two render
+	// stages in Metal. If the Vulkan stage did not map to a specific Metal render stage, then if the
+	// barrier is to be placed before the render stages, it should come before the vertex stage, otherwise
+	// if the barrier is to be placed after the render stages, it should come after the fragment stage.
+	if ( !mtlStages ) {
+		mtlStages = placeBarrierBefore ? MTLRenderStageVertex : MTLRenderStageFragment;
+	}
+
 	return mtlStages;
 }
 
