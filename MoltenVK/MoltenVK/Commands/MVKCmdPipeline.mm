@@ -65,8 +65,9 @@ void MVKCmdPipelineBarrier::setContent(VkPipelineStageFlags srcStageMask,
 void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
 
 #if MVK_MACOS
-    // Calls below invoke MTLBlitCommandEncoder so must apply this first
-	if ( getDevice()->_pMetalFeatures->memoryBarriers ) {
+    // Calls below invoke MTLBlitCommandEncoder so must apply this first.
+	// Check if pipeline barriers are available and we are in a renderpass.
+	if (getDevice()->_pMetalFeatures->memoryBarriers && cmdEncoder->_mtlRenderEncoder) {
 		MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_srcStageMask, false);
 		MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_dstStageMask, true);
 		for (auto& mb : _memoryBarriers) {
