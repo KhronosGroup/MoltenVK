@@ -1318,15 +1318,28 @@ MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode
 	}
 }
 
-MVK_PUBLIC_SYMBOL MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags vkStages) {
-	MTLRenderStages mtlStages = MTLRenderStages(0);
-	if ( mvkIsAnyFlagEnabled(vkStages, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT | VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT | VK_PIPELINE_STAGE_VERTEX_INPUT_BIT | VK_PIPELINE_STAGE_VERTEX_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT | VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT) ) {
-		mtlStages |= MTLRenderStageVertex;
+MVK_PUBLIC_SYMBOL MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags vkStages,
+																			 bool placeBarrierBefore) {
+	// Although there are many combined render/compute/host stages in Vulkan, there are only two render
+	// stages in Metal. If the Vulkan stage did not map ONLY to a specific Metal render stage, then if the
+	// barrier is to be placed before the render stages, it should come before the vertex stage, otherwise
+	// if the barrier is to be placed after the render stages, it should come after the fragment stage.
+	if (placeBarrierBefore) {
+		bool placeBeforeFragment = mvkAreOnlyAnyFlagsEnabled(vkStages, (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+																		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
+																		VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
+																		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
+																		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
+		return placeBeforeFragment ? MTLRenderStageFragment : MTLRenderStageVertex;
+	} else {
+		bool placeAfterVertex = mvkAreOnlyAnyFlagsEnabled(vkStages, (VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
+																	 VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
+																	 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
+																	 VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
+																	 VK_PIPELINE_STAGE_TESSELLATION_CONTROL_SHADER_BIT |
+																	 VK_PIPELINE_STAGE_TESSELLATION_EVALUATION_SHADER_BIT));
+		return placeAfterVertex ? MTLRenderStageVertex : MTLRenderStageFragment;
 	}
-	if ( mvkIsAnyFlagEnabled(vkStages, VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT | VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT | VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT ) ) {
-		mtlStages |= MTLRenderStageFragment;
-	}
-	return mtlStages;
 }
 
 MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags vkAccess) {

@@ -402,8 +402,11 @@ MTLWinding mvkMTLWindingFromSpvExecutionMode(uint32_t spvMode);
 /** Returns the Metal MTLTessellationPartitionMode corresponding to the specified SPIR-V spv::ExecutionMode. */
 MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode(uint32_t spvMode);
 
-/** Returns the combination of Metal MTLRenderStage bits corresponding to the specified Vulkan VkPiplineStageFlags. */
-MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags vkStages);
+/**
+ * Returns the combination of Metal MTLRenderStage bits corresponding to the specified Vulkan VkPiplineStageFlags,
+ * taking into consideration whether the barrier is to be placed before or after the specified pipeline stages.
+ */
+MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkPipelineStageFlags vkStages, bool placeBarrierBefore);
 
 /** Returns the combination of Metal MTLBarrierScope bits corresponding to the specified Vulkan VkAccessFlags. */
 MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFlags vkAccess);
