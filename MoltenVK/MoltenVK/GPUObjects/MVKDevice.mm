@@ -1343,35 +1343,36 @@ void MVKPhysicalDevice::initProperties() {
 
 
 void MVKPhysicalDevice::initPipelineCacheUUID() {
-	size_t uuidSize = sizeof(_properties.pipelineCacheUUID);
 
 	// Clear the UUID
-	memset(&_properties.pipelineCacheUUID, 0, uuidSize);
+	memset(&_properties.pipelineCacheUUID, 0, sizeof(_properties.pipelineCacheUUID));
 
-	uint32_t uuidComponent;
-	size_t uuidComponentSize = sizeof(uint32_t);
+	size_t uuidComponentOffset = 0;
 
-	size_t uuidComponentOffset = uuidSize;
-
-	// Lower 4 bytes contains MoltenVK version
-	uuidComponent = MVK_VERSION;
-	uuidComponentOffset -= uuidComponentSize;
-	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(uuidComponent);
+	// First 4 bytes contains MoltenVK version
+	uint32_t mvkVersion = MVK_VERSION;
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mvkVersion);
+	uuidComponentOffset += sizeof(mvkVersion);
 
 	// Next 4 bytes contains hightest Metal feature set supported by this device
-	uuidComponent = (uint32_t)getHighestMTLFeatureSet();
-	uuidComponentOffset -= uuidComponentSize;
-	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(uuidComponent);
+	uint32_t mtlFeatSet = (uint32_t)getHighestMTLFeatureSet();
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
+	uuidComponentOffset += sizeof(mtlFeatSet);
+
+	// Last 8 bytes contain the first part of the SPIRV-Cross Git revision
+	uint64_t spvxRev = getSpirvCrossRevision();
+	*(uint64_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostLongLongToBig(spvxRev);
+	uuidComponentOffset += sizeof(spvxRev);
 }
 
 MTLFeatureSet MVKPhysicalDevice::getHighestMTLFeatureSet() {
 #if MVK_IOS
-	MTLFeatureSet maxFS = MTLFeatureSet_iOS_GPUFamily4_v1;
+	MTLFeatureSet maxFS = MTLFeatureSet_iOS_GPUFamily4_v2;
 	MTLFeatureSet minFS = MTLFeatureSet_iOS_GPUFamily1_v1;
 #endif
 
 #if MVK_MACOS
-	MTLFeatureSet maxFS = MTLFeatureSet_macOS_GPUFamily1_v3;
+	MTLFeatureSet maxFS = MTLFeatureSet_macOS_GPUFamily2_v1;
 	MTLFeatureSet minFS = MTLFeatureSet_macOS_GPUFamily1_v1;
 #endif
 
@@ -1383,6 +1384,25 @@ MTLFeatureSet MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	}
 
 	return minFS;
+}
+
+// Retrieve the SPIRV-Cross Git revision hash from a derived header file that was created in the fetchDependencies script.
+uint64_t MVKPhysicalDevice::getSpirvCrossRevision() {
+
+#include "../External/SPIRV-Cross/mvkSpirvCrossRevisionDerived.h"
+
+	static const string revStr(spirvCrossRevisionString, 0, 16);	// We just need the first 16 chars
+	static const string lut("0123456789ABCDEF");
+
+	uint64_t revVal = 0;
+	for (char c : revStr) {
+		size_t cVal = lut.find(toupper(c));
+		if (cVal != string::npos) {
+			revVal <<= 4;
+			revVal += cVal;
+		}
+	}
+	return revVal;
 }
 
 /** Initializes the memory properties of this instance. */
