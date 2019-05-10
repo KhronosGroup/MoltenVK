@@ -195,7 +195,12 @@ public:
 	/** Returns the Metal CPU cache mode used by this image. */
 	inline MTLCPUCacheMode getMTLCPUCacheMode() { return _deviceMemory->getMTLCPUCacheMode(); }
 
-	
+	/** 
+	 * Returns whether the memory is automatically coherent between device and host. 
+	 * On macOS, this always returns false because textures cannot use Shared storage mode.
+	 */
+	bool isMemoryHostCoherent();
+
 #pragma mark Construction
 
 	MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo);

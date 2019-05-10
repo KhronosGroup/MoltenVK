@@ -440,6 +440,10 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
     return stgMode;
 }
 
+bool MVKImage::isMemoryHostCoherent() {
+    return (getMTLStorageMode() == MTLStorageModeShared);
+}
+
 // Updates the contents of the underlying MTLTexture, corresponding to the
 // specified subresource definition, from the underlying memory buffer.
 void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
