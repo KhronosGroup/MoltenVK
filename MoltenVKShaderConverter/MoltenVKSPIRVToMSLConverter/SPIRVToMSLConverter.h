@@ -225,7 +225,7 @@ namespace mvk {
 	public:
 
 		/** Sets the SPIRV code. */
-		void setSPIRV(const std::vector<uint32_t>& spirv);
+		void setSPIRV(const std::vector<uint32_t>& spirv) { _spirv = spirv; }
 
 		/**
 		 * Sets the SPIRV code from the specified array of values.
@@ -234,7 +234,10 @@ namespace mvk {
 		void setSPIRV(const uint32_t* spirvCode, size_t length);
 
 		/** Returns a reference to the SPIRV code, set by one of the setSPIRV() functions. */
-		const std::vector<uint32_t>& getSPIRV();
+		const std::vector<uint32_t>& getSPIRV() { return _spirv; }
+
+		/** Returns whether the SPIR-V code has been set. */
+		bool hasSPIRV() { return !_spirv.empty(); }
 
 		/**
 		 * Converts SPIR-V code, set using setSPIRV() to MSL code, which can be retrieved using getMSL().
@@ -249,6 +252,13 @@ namespace mvk {
                      bool shouldLogGLSL = false);
 
 		/**
+		 * Returns whether the most recent conversion was successful.
+		 *
+		 * The initial value of this property is NO. It is set to YES upon successful conversion.
+		 */
+		bool wasConverted() { return _wasConverted; }
+
+		/**
 		 * Returns the Metal Shading Language source code most recently converted
          * by the convert() function, or set directly using the setMSL() function.
 		 */
@@ -256,13 +266,6 @@ namespace mvk {
 
         /** Returns information about the shader entry point. */
         const SPIRVEntryPoint& getEntryPoint() { return _entryPoint; }
-
-		/**
-		 * Returns whether the most recent conversion was successful.
-		 *
-		 * The initial value of this property is NO. It is set to YES upon successful conversion.
-		 */
-		bool getWasConverted() { return _wasConverted; }
 
 		/**
 		 * Returns a human-readable log of the most recent conversion activity.

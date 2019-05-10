@@ -197,8 +197,6 @@ SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::Platform getCompilerMSLPlatform(SPI
 // Populates the entry point with info extracted from the SPRI-V compiler.
 void populateEntryPoint(SPIRVEntryPoint& entryPoint, SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConverterOptions& options);
 
-MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const vector<uint32_t>& spirv) { _spirv = spirv; }
-
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const uint32_t* spirvCode, size_t length) {
 	_spirv.clear();			// Clear for reuse
 	_spirv.reserve(length);
@@ -206,8 +204,6 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const uint32_t* spirvCode, 
 		_spirv.push_back(spirvCode[i]);
 	}
 }
-
-MVK_PUBLIC_SYMBOL const vector<uint32_t>& SPIRVToMSLConverter::getSPIRV() { return _spirv; }
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& context,
 													bool shouldLogSPIRV,

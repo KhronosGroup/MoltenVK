@@ -222,6 +222,20 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
+		A96B8156227BF6FD008A772B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A937472B1A9A8B2900F29B34;
+			remoteInfo = "MoltenVKGLSLToSPIRVConverter-iOS";
+		};
+		A96B8158227BF715008A772B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A93747701A9A98D000F29B34;
+			remoteInfo = "MoltenVKGLSLToSPIRVConverter-macOS";
+		};
 		A981497B1FB6B566005F00B4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */;
@@ -763,6 +777,7 @@
 			);
 			dependencies = (
 				A981499B1FB6B9CF005F00B4 /* PBXTargetDependency */,
+				A96B8157227BF6FD008A772B /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-iOS";
 			productName = MoltenVK;
@@ -782,6 +797,7 @@
 			);
 			dependencies = (
 				A98149A41FB6B9EB005F00B4 /* PBXTargetDependency */,
+				A96B8159227BF715008A772B /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-macOS";
 			productName = MoltenVK;
@@ -1048,6 +1064,16 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
+		A96B8157227BF6FD008A772B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVKGLSLToSPIRVConverter-iOS";
+			targetProxy = A96B8156227BF6FD008A772B /* PBXContainerItemProxy */;
+		};
+		A96B8159227BF715008A772B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "MoltenVKGLSLToSPIRVConverter-macOS";
+			targetProxy = A96B8158227BF715008A772B /* PBXContainerItemProxy */;
+		};
 		A981499B1FB6B9CF005F00B4 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = "MVKSPIRVToMSLConverter-iOS";
@@ -1157,7 +1183,7 @@
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				ONLY_ACTIVE_ARCH = YES;
-				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKSPIRVToMSLConverter.a";
+				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKSPIRVToMSLConverter.a ${CONFIGURATION_BUILD_DIR}/libMoltenVKGLSLToSPIRVConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
 			};
@@ -1214,7 +1240,7 @@
 				);
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = NO;
-				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKSPIRVToMSLConverter.a";
+				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKSPIRVToMSLConverter.a ${CONFIGURATION_BUILD_DIR}/libMoltenVKGLSLToSPIRVConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
 				VALIDATE_PRODUCT = YES;

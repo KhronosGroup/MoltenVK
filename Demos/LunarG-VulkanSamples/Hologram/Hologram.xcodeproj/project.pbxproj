@@ -9,12 +9,6 @@
 /* Begin PBXBuildFile section */
 		A99789AF1CD3D4E2005E7DAC /* Hologram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A99789831CD3D4E2005E7DAC /* Hologram.cpp */; };
 		A99789B01CD3D4E2005E7DAC /* Hologram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A99789831CD3D4E2005E7DAC /* Hologram.cpp */; };
-		A99789B11CD3D4E2005E7DAC /* Hologram.frag in Resources */ = {isa = PBXBuildFile; fileRef = A99789841CD3D4E2005E7DAC /* Hologram.frag */; };
-		A99789B21CD3D4E2005E7DAC /* Hologram.frag in Resources */ = {isa = PBXBuildFile; fileRef = A99789841CD3D4E2005E7DAC /* Hologram.frag */; };
-		A99789B31CD3D4E2005E7DAC /* Hologram.push_constant.vert in Resources */ = {isa = PBXBuildFile; fileRef = A99789861CD3D4E2005E7DAC /* Hologram.push_constant.vert */; };
-		A99789B41CD3D4E2005E7DAC /* Hologram.push_constant.vert in Resources */ = {isa = PBXBuildFile; fileRef = A99789861CD3D4E2005E7DAC /* Hologram.push_constant.vert */; };
-		A99789B51CD3D4E2005E7DAC /* Hologram.vert in Resources */ = {isa = PBXBuildFile; fileRef = A99789871CD3D4E2005E7DAC /* Hologram.vert */; };
-		A99789B61CD3D4E2005E7DAC /* Hologram.vert in Resources */ = {isa = PBXBuildFile; fileRef = A99789871CD3D4E2005E7DAC /* Hologram.vert */; };
 		A99789B71CD3D4E2005E7DAC /* Main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A99789881CD3D4E2005E7DAC /* Main.cpp */; };
 		A99789B81CD3D4E2005E7DAC /* Main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A99789881CD3D4E2005E7DAC /* Main.cpp */; };
 		A99789B91CD3D4E2005E7DAC /* Meshes.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A99789891CD3D4E2005E7DAC /* Meshes.cpp */; };
@@ -38,8 +32,6 @@
 		A9B67B901C3AAEA200373FFD /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B8A1C3AAEA200373FFD /* Main.storyboard */; };
 		A9B67B911C3AAEA200373FFD /* macOS.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */; };
 		A9C2AB99218503A400DDBC03 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB97218503A400DDBC03 /* libMoltenVK.a */; };
-		A9C2AB9A218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB98218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */; };
-		A9C2AB9D218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB9B218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */; };
 		A9C2AB9E218503BA00DDBC03 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */; };
 		A9D516F81CD575E300097D96 /* HelpersDispatchTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */; };
 		A9D516F91CD575E300097D96 /* HelpersDispatchTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */; };
@@ -47,16 +39,16 @@
 
 /* Begin PBXFileReference section */
 		1D6058910D05DD3D006BFB54 /* Hologram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hologram.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A93374642284CD260059D36E /* Hologram.vert.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Hologram.vert.h; path = android/src/main/jni/Hologram.vert.h; sourceTree = "<group>"; };
+		A93374652284CD260059D36E /* Hologram.push_constant.vert.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Hologram.push_constant.vert.h; path = android/src/main/jni/Hologram.push_constant.vert.h; sourceTree = "<group>"; };
+		A93374662284CD260059D36E /* Hologram.frag.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Hologram.frag.h; path = android/src/main/jni/Hologram.frag.h; sourceTree = "<group>"; };
 		A93CC3701CD56B8F00EB8A56 /* generate-dispatch-table */ = {isa = PBXFileReference; explicitFileType = text.script.python; path = "generate-dispatch-table"; sourceTree = "<group>"; };
 		A93CC3711CD56FD600EB8A56 /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		A977BCFE1B66BB010067E5BF /* Hologram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hologram.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A997897F1CD3D4E2005E7DAC /* Game.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Game.h; sourceTree = "<group>"; };
 		A99789821CD3D4E2005E7DAC /* Helpers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Helpers.h; sourceTree = "<group>"; };
 		A99789831CD3D4E2005E7DAC /* Hologram.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Hologram.cpp; sourceTree = "<group>"; };
-		A99789841CD3D4E2005E7DAC /* Hologram.frag */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Hologram.frag; sourceTree = "<group>"; };
 		A99789851CD3D4E2005E7DAC /* Hologram.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Hologram.h; sourceTree = "<group>"; };
-		A99789861CD3D4E2005E7DAC /* Hologram.push_constant.vert */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Hologram.push_constant.vert; sourceTree = "<group>"; };
-		A99789871CD3D4E2005E7DAC /* Hologram.vert */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.glsl; path = Hologram.vert; sourceTree = "<group>"; };
 		A99789881CD3D4E2005E7DAC /* Main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Main.cpp; sourceTree = "<group>"; };
 		A99789891CD3D4E2005E7DAC /* Meshes.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Meshes.cpp; sourceTree = "<group>"; };
 		A997898A1CD3D4E2005E7DAC /* Meshes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Meshes.h; sourceTree = "<group>"; };
@@ -88,8 +80,6 @@
 		A9B67B8A1C3AAEA200373FFD /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = macOS.xcassets; sourceTree = "<group>"; };
 		A9C2AB97218503A400DDBC03 /* libMoltenVK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMoltenVK.a; path = ../../../MoltenVK/iOS/static/libMoltenVK.a; sourceTree = "<group>"; };
-		A9C2AB98218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/framework/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
-		A9C2AB9B218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MoltenVKGLSLToSPIRVConverter.framework; path = ../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/framework/MoltenVKGLSLToSPIRVConverter.framework; sourceTree = "<group>"; };
 		A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMoltenVK.a; path = ../../../MoltenVK/macOS/static/libMoltenVK.a; sourceTree = "<group>"; };
 		A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HelpersDispatchTable.cpp; sourceTree = "<group>"; };
 		A9D516F71CD575E300097D96 /* HelpersDispatchTable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HelpersDispatchTable.h; sourceTree = "<group>"; };
@@ -101,7 +91,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				A9C2AB99218503A400DDBC03 /* libMoltenVK.a in Frameworks */,
-				A9C2AB9A218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -110,7 +99,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				A9C2AB9E218503BA00DDBC03 /* libMoltenVK.a in Frameworks */,
-				A9C2AB9D218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -147,10 +135,10 @@
 				A997897F1CD3D4E2005E7DAC /* Game.h */,
 				A99789821CD3D4E2005E7DAC /* Helpers.h */,
 				A99789831CD3D4E2005E7DAC /* Hologram.cpp */,
-				A99789841CD3D4E2005E7DAC /* Hologram.frag */,
 				A99789851CD3D4E2005E7DAC /* Hologram.h */,
-				A99789861CD3D4E2005E7DAC /* Hologram.push_constant.vert */,
-				A99789871CD3D4E2005E7DAC /* Hologram.vert */,
+				A93374662284CD260059D36E /* Hologram.frag.h */,
+				A93374652284CD260059D36E /* Hologram.push_constant.vert.h */,
+				A93374642284CD260059D36E /* Hologram.vert.h */,
 				A99789881CD3D4E2005E7DAC /* Main.cpp */,
 				A99789891CD3D4E2005E7DAC /* Meshes.cpp */,
 				A997898A1CD3D4E2005E7DAC /* Meshes.h */,
@@ -220,9 +208,7 @@
 			isa = PBXGroup;
 			children = (
 				A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */,
-				A9C2AB9B218503BA00DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */,
 				A9C2AB97218503A400DDBC03 /* libMoltenVK.a */,
-				A9C2AB98218503A400DDBC03 /* MoltenVKGLSLToSPIRVConverter.framework */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -312,12 +298,9 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A99789B51CD3D4E2005E7DAC /* Hologram.vert in Resources */,
 				A9B67B7F1C3AAE9800373FFD /* Icon.png in Resources */,
-				A99789B31CD3D4E2005E7DAC /* Hologram.push_constant.vert in Resources */,
 				A9B67B801C3AAE9800373FFD /* Main.storyboard in Resources */,
 				A9B67B7E1C3AAE9800373FFD /* Default~ipad.png in Resources */,
-				A99789B11CD3D4E2005E7DAC /* Hologram.frag in Resources */,
 				A9B67B7D1C3AAE9800373FFD /* Default-568h@2x.png in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -327,10 +310,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A9B67B911C3AAEA200373FFD /* macOS.xcassets in Resources */,
-				A99789B21CD3D4E2005E7DAC /* Hologram.frag in Resources */,
 				A9B67B901C3AAEA200373FFD /* Main.storyboard in Resources */,
-				A99789B41CD3D4E2005E7DAC /* Hologram.push_constant.vert in Resources */,
-				A99789B61CD3D4E2005E7DAC /* Hologram.vert in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -379,9 +359,7 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "";
-				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/framework\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
-				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS/static\"";
@@ -396,9 +374,7 @@
 			buildSettings = {
 				CODE_SIGN_IDENTITY = "iPhone Developer";
 				DEVELOPMENT_TEAM = "";
-				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/iOS/framework\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
-				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS/static\"";
@@ -413,9 +389,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/framework\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
-				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS/static\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
@@ -432,9 +406,7 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				COMBINE_HIDPI_IMAGES = YES;
-				FRAMEWORK_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVKShaderConverter/MoltenVKGLSLToSPIRVConverter/macOS/framework\"";
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
-				GCC_PREPROCESSOR_DEFINITIONS = "$(inherited)";
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS/static\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
@@ -463,7 +435,6 @@
 					"DEBUG=1",
 					_DEBUG,
 					GLM_FORCE_RADIANS,
-					MVK_USE_MOLTENVK_SHADER_CONVERTER,
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
@@ -471,7 +442,6 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../MoltenVK/include\"",
 					"\"$(SRCROOT)/../VulkanSamples/API-Samples/utils\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/include\"",
 				);
 				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-ObjC";
@@ -490,17 +460,13 @@
 				ENABLE_BITCODE = NO;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					GLM_FORCE_RADIANS,
-					MVK_USE_MOLTENVK_SHADER_CONVERTER,
-				);
+				GCC_PREPROCESSOR_DEFINITIONS = GLM_FORCE_RADIANS;
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/../../../MoltenVK/include\"",
 					"\"$(SRCROOT)/../VulkanSamples/API-Samples/utils\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/include\"",
 				);
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.moltenvk.${PRODUCT_NAME:identifier}";

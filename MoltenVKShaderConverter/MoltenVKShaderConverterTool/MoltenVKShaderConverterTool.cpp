@@ -84,7 +84,7 @@ bool MoltenVKShaderConverterTool::processFile(string filePath) {
 
 	string pathExtn = pathExtension(absPath);
 	if (_shouldReadGLSL && isGLSLFileExtension(pathExtn)) {
-		return convertGLSL(absPath, emptyPath, emptyPath, kMVKShaderStageAuto);
+		return convertGLSL(absPath, emptyPath, emptyPath, kMVKGLSLConversionShaderStageAuto);
 	} else if (_shouldReadSPIRV && isSPIRVFileExtension(pathExtn)) {
 		return convertSPIRV(absPath, emptyPath);
 	}
@@ -97,7 +97,7 @@ bool MoltenVKShaderConverterTool::processFile(string filePath) {
 bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 											string& spvOutFile,
 											string& mslOutFile,
-											MVKShaderStage shaderStage) {
+											MVKGLSLConversionShaderStage shaderStage) {
 	string path;
 	vector<char> fileContents;
 	string glslCode;
@@ -120,11 +120,11 @@ bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 	}
 	glslCode.append(fileContents.begin(), fileContents.end());
 
-	if (shaderStage == kMVKShaderStageAuto) {
+	if (shaderStage == kMVKGLSLConversionShaderStageAuto) {
 		string pathExtn = pathExtension(glslInFile);
 		shaderStage = shaderStageFromFileExtension(pathExtn);
 	}
-	if (shaderStage == kMVKShaderStageAuto) {
+	if (shaderStage == kMVKGLSLConversionShaderStageAuto) {
 		errMsg = "Could not determine shader type from GLSL file: " + absolutePath(path);
 		log(errMsg.data());
 		return false;
@@ -254,11 +254,11 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	}
 }
 
-MVKShaderStage MoltenVKShaderConverterTool::shaderStageFromFileExtension(string& pathExtension) {
-    for (auto& fx : _glslVtxFileExtns) { if (fx == pathExtension) { return kMVKShaderStageVertex; } }
-    for (auto& fx : _glslFragFileExtns) { if (fx == pathExtension) { return kMVKShaderStageFragment; } }
-    for (auto& fx : _glslCompFileExtns) { if (fx == pathExtension) { return kMVKShaderStageCompute; } }
-	return kMVKShaderStageAuto;
+MVKGLSLConversionShaderStage MoltenVKShaderConverterTool::shaderStageFromFileExtension(string& pathExtension) {
+    for (auto& fx : _glslVtxFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageVertex; } }
+    for (auto& fx : _glslFragFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageFragment; } }
+    for (auto& fx : _glslCompFileExtns) { if (fx == pathExtension) { return kMVKGLSLConversionShaderStageCompute; } }
+	return kMVKGLSLConversionShaderStageAuto;
 }
 
 bool MoltenVKShaderConverterTool::isGLSLFileExtension(string& pathExtension) {
@@ -372,7 +372,7 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
     extractTokens(_defaultCompShaderExtns, _glslCompFileExtns);
 	extractTokens(_defaultSPIRVShaderExtns, _spvFileExtns);
 	_origPathExtnSep = "_";
-	_shaderStage = kMVKShaderStageAuto;
+	_shaderStage = kMVKGLSLConversionShaderStageAuto;
 	_shouldUseDirectoryRecursion = false;
 	_shouldReadGLSL = false;
 	_shouldReadSPIRV = false;
@@ -482,13 +482,13 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 
 			switch (shdrTypeStr.front()) {
 				case 'v':
-					_shaderStage = kMVKShaderStageVertex;
+					_shaderStage = kMVKGLSLConversionShaderStageVertex;
 					break;
 				case 'f':
-					_shaderStage = kMVKShaderStageFragment;
+					_shaderStage = kMVKGLSLConversionShaderStageFragment;
 					break;
 				case 'c':
-					_shaderStage = kMVKShaderStageCompute;
+					_shaderStage = kMVKGLSLConversionShaderStageCompute;
 					break;
 				default:
 					return false;

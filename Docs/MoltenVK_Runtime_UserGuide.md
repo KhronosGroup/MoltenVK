@@ -260,6 +260,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_AMD_gpu_shader_half_float`
 - `VK_AMD_negative_viewport_height`
 - `VK_IMG_format_pvrtc` (iOS)
+- `VK_NV_glsl_shader`
 
 In order to visibly display your content on *iOS* or *macOS*, you must enable the `VK_MVK_ios_surface` 
 or `VK_MVK_macos_surface` extension, respectively, and use the functions defined for that extension

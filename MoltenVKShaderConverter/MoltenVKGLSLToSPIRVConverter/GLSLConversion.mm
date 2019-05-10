@@ -26,7 +26,7 @@ using namespace mvk;
 
 
 MVK_PUBLIC_SYMBOL bool mvkConvertGLSLToSPIRV(const char* glslSource,
-                                             MVKShaderStage shaderStage,
+                                             MVKGLSLConversionShaderStage shaderStage,
                                              uint32_t** pSPIRVCode,
                                              size_t *pSPIRVLength,
                                              char** pResultLog,
@@ -59,7 +59,7 @@ MVK_PUBLIC_SYMBOL bool mvkConvertGLSLToSPIRV(const char* glslSource,
 }
 
 MVK_PUBLIC_SYMBOL bool mvkConvertGLSLFileToSPIRV(const char* glslFilepath,
-                                                 MVKShaderStage shaderStage,
+                                                 MVKGLSLConversionShaderStage shaderStage,
                                                  uint32_t** pSPIRVCode,
                                                  size_t *pSPIRVLength,
                                                  char** pResultLog,
