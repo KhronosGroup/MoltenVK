@@ -92,7 +92,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
             }
         }
     } else {
-        reportError(VK_ERROR_INITIALIZATION_FAILED, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
+        reportError(VK_ERROR_INVALID_SHADER_NV, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
     }
 
 	return { mtlFunc, MTLSizeMake(getWorkgroupDimensionSize(_entryPoint.workgroupSize.width, pSpecializationInfo),
@@ -150,7 +150,7 @@ void MVKShaderLibrary::handleCompilationError(NSError* err, const char* opDesc) 
     if (_mtlLibrary) {
         MVKLogInfo("%s succeeded with warnings (Error code %li):\n%s", opDesc, (long)err.code, err.localizedDescription.UTF8String);
     } else {
-		_owner->setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+		_owner->setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV,
 												   "%s failed (Error code %li):\n%s",
 												   opDesc, (long)err.code,
 												   err.localizedDescription.UTF8String));
@@ -244,19 +244,53 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConverterContext* pCont
 
 bool MVKShaderModule::convert(SPIRVToMSLConverterContext* pContext) {
 	bool shouldLogCode = _device->_pMVKConfig->debugMode;
+	bool shouldLogEstimatedGLSL = shouldLogCode;
+
+	// If the SPIR-V converter does not have any code, but the GLSL converter does,
+	// convert the GLSL code to SPIR-V and set it into the SPIR-V conveter.
+	if ( !_spvConverter.hasSPIRV() && _glslConverter.hasGLSL() ) {
+
+		uint64_t startTime = _device->getPerformanceTimestamp();
+		bool wasConverted = _glslConverter.convert(getMVKGLSLConversionShaderStage(pContext), shouldLogCode, false);
+		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.glslToSPRIV, startTime);
+
+		if (wasConverted) {
+			if (shouldLogCode) { MVKLogInfo("%s", _glslConverter.getResultLog().c_str()); }
+			_spvConverter.setSPIRV(_glslConverter.getSPIRV());
+		} else {
+			reportError(VK_ERROR_INVALID_SHADER_NV, "Unable to convert GLSL to SPIR-V:\n%s", _glslConverter.getResultLog().c_str());
+		}
+		shouldLogEstimatedGLSL = false;
+	}
 
 	uint64_t startTime = _device->getPerformanceTimestamp();
-	bool wasConverted = _converter.convert(*pContext, shouldLogCode, shouldLogCode, shouldLogCode);
+	bool wasConverted = _spvConverter.convert(*pContext, shouldLogCode, shouldLogCode, shouldLogEstimatedGLSL);
 	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.spirvToMSL, startTime);
 
 	if (wasConverted) {
-		if (shouldLogCode) { MVKLogInfo("%s", _converter.getResultLog().data()); }
+		if (shouldLogCode) { MVKLogInfo("%s", _spvConverter.getResultLog().c_str()); }
 	} else {
-		reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Unable to convert SPIR-V to MSL:\n%s", _converter.getResultLog().data());
+		reportError(VK_ERROR_INVALID_SHADER_NV, "Unable to convert SPIR-V to MSL:\n%s", _spvConverter.getResultLog().c_str());
 	}
 	return wasConverted;
 }
 
+// Returns the MVKGLSLConversionShaderStage corresponding to the shader stage in the SPIR-V converter context.
+MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SPIRVToMSLConverterContext* pContext) {
+	switch (pContext->options.entryPointStage) {
+		case spv::ExecutionModelVertex:						return kMVKGLSLConversionShaderStageVertex;
+		case spv::ExecutionModelTessellationControl:		return kMVKGLSLConversionShaderStageTessControl;
+		case spv::ExecutionModelTessellationEvaluation:		return kMVKGLSLConversionShaderStageTessEval;
+		case spv::ExecutionModelGeometry:					return kMVKGLSLConversionShaderStageGeometry;
+		case spv::ExecutionModelFragment:					return kMVKGLSLConversionShaderStageFragment;
+		case spv::ExecutionModelGLCompute:					return kMVKGLSLConversionShaderStageCompute;
+		case spv::ExecutionModelKernel:						return kMVKGLSLConversionShaderStageCompute;
+
+		default:
+			MVKAssert(false, "Bad shader stage provided for GLSL to SPIR-V conversion.");
+			return kMVKGLSLConversionShaderStageAuto;
+	}
+}
 
 #pragma mark Construction
 
@@ -270,7 +304,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
     // Ensure something is there.
     if ( (pCreateInfo->pCode == VK_NULL_HANDLE) || (codeSize < 4) ) {
-		setConfigurationResult(reportError(VK_INCOMPLETE, "Shader module contains no SPIR-V code."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "vkCreateShaderModule(): Shader module contains no shader code."));
 		return;
 	}
 
@@ -279,36 +313,36 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 	// Retrieve the magic number to determine what type of shader code has been loaded.
 	uint32_t magicNum = *pCreateInfo->pCode;
 	switch (magicNum) {
-		case kMVKMagicNumberSPIRVCode: {                        // SPIR-V code
-			size_t spvCount = (pCreateInfo->codeSize + 3) >> 2; // Round up if byte length not exactly on uint32_t boundary
+		case kMVKMagicNumberSPIRVCode: {					// SPIR-V code
+			size_t spvCount = (codeSize + 3) >> 2;			// Round up if byte length not exactly on uint32_t boundary
 
 			uint64_t startTime = _device->getPerformanceTimestamp();
 			codeHash = mvkHash(pCreateInfo->pCode, spvCount);
 			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
-			_converter.setSPIRV(pCreateInfo->pCode, spvCount);
+			_spvConverter.setSPIRV(pCreateInfo->pCode, spvCount);
 
 			break;
 		}
-		case kMVKMagicNumberMSLSourceCode: {                    // MSL source code
+		case kMVKMagicNumberMSLSourceCode: {				// MSL source code
 			size_t hdrSize = sizeof(MVKMSLSPIRVHeader);
 			char* pMSLCode = (char*)(uintptr_t(pCreateInfo->pCode) + hdrSize);
-			size_t mslCodeLen = pCreateInfo->codeSize - hdrSize;
+			size_t mslCodeLen = codeSize - hdrSize;
 
 			uint64_t startTime = _device->getPerformanceTimestamp();
 			codeHash = mvkHash(&magicNum);
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
 			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
-			_converter.setMSL(pMSLCode, nullptr);
-			_defaultLibrary = new MVKShaderLibrary(this, _converter.getMSL().c_str(), _converter.getEntryPoint());
+			_spvConverter.setMSL(pMSLCode, nullptr);
+			_defaultLibrary = new MVKShaderLibrary(this, _spvConverter.getMSL().c_str(), _spvConverter.getEntryPoint());
 
 			break;
 		}
-		case kMVKMagicNumberMSLCompiledCode: {                  // MSL compiled binary code
+		case kMVKMagicNumberMSLCompiledCode: {				// MSL compiled binary code
 			size_t hdrSize = sizeof(MVKMSLSPIRVHeader);
 			char* pMSLCode = (char*)(uintptr_t(pCreateInfo->pCode) + hdrSize);
-			size_t mslCodeLen = pCreateInfo->codeSize - hdrSize;
+			size_t mslCodeLen = codeSize - hdrSize;
 
 			uint64_t startTime = _device->getPerformanceTimestamp();
 			codeHash = mvkHash(&magicNum);
@@ -319,8 +353,19 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
 			break;
 		}
-		default:
-			setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "SPIR-V contains invalid magic number %x.", magicNum));
+		default:											// Could be GLSL source code
+			if (_device->_enabledExtensions.vk_NV_glsl_shader.enabled) {
+				const char* pGLSL = (char*)pCreateInfo->pCode;
+				size_t glslLen = codeSize - 1;
+
+				uint64_t startTime = _device->getPerformanceTimestamp();
+				codeHash = mvkHash(pGLSL, codeSize);
+				_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
+
+				_glslConverter.setGLSL(pGLSL, glslLen);
+			} else {
+				setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "vkCreateShaderModule(): The SPIR-V contains an invalid magic number %x.", magicNum));
+			}
 			break;
 	}
 

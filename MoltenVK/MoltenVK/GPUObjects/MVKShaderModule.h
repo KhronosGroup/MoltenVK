@@ -21,6 +21,7 @@
 #include "MVKDevice.h"
 #include "MVKSync.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include <MoltenVKGLSLToSPIRVConverter/GLSLToSPIRVConverter.h>
 #include <vector>
 #include <mutex>
 
@@ -167,22 +168,22 @@ public:
 	bool convert(SPIRVToMSLConverterContext* pContext);
 
 	/** Returns the original SPIR-V code that was specified when this object was created. */
-	inline const std::vector<uint32_t>& getSPIRV() { return _converter.getSPIRV(); }
+	const std::vector<uint32_t>& getSPIRV() { return _spvConverter.getSPIRV(); }
 
 	/**
 	 * Returns the Metal Shading Language source code as converted by the most recent
 	 * call to convert() function, or set directly using the setMSL() function.
 	 */
-	inline const std::string& getMSL() { return _converter.getMSL(); }
+	const std::string& getMSL() { return _spvConverter.getMSL(); }
 
 	/**
 	 * Returns information about the shader entry point as converted by the most recent
 	 * call to convert() function, or set directly using the setMSL() function.
 	 */
-	inline const SPIRVEntryPoint& getEntryPoint() { return _converter.getEntryPoint(); }
+	const SPIRVEntryPoint& getEntryPoint() { return _spvConverter.getEntryPoint(); }
 
 	/** Returns a key as a means of identifying this shader module in a pipeline cache. */
-	inline MVKShaderModuleKey getKey() { return _key; }
+	MVKShaderModuleKey getKey() { return _key; }
 
 	MVKShaderModule(MVKDevice* device, const VkShaderModuleCreateInfo* pCreateInfo);
 
@@ -191,8 +192,11 @@ public:
 protected:
 	friend MVKShaderCacheIterator;
 
+	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConverterContext* pContext);
+
 	MVKShaderLibraryCache _shaderLibraryCache;
-	SPIRVToMSLConverter _converter;
+	SPIRVToMSLConverter _spvConverter;
+	GLSLToSPIRVConverter _glslConverter;
 	MVKShaderLibrary* _defaultLibrary;
 	MVKShaderModuleKey _key;
     std::mutex _accessLock;

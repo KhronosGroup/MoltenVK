@@ -703,7 +703,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
     addVertexInputToShaderConverterContext(shaderContext, pCreateInfo);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pVertexSS->module)->getMTLFunction(&shaderContext, _pVertexSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 	if ( !mtlFunction ) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader function could not be compiled into pipeline. See previous logged error."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Vertex shader function could not be compiled into pipeline. See previous logged error."));
 		return false;
 	}
 	plDesc.vertexFunction = mtlFunction;
@@ -712,16 +712,16 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	_needsVertexOutputBuffer = shaderContext.options.needsOutputBuffer;
 	// If we need the auxiliary buffer and there's no place to put it, we're in serious trouble.
 	if (_needsVertexAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageVertex] >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires auxiliary buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Vertex shader requires auxiliary buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	// Ditto captured output buffer.
 	if (_needsVertexOutputBuffer && _outputBufferIndex.stages[kMVKShaderStageVertex] >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires output buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Vertex shader requires output buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_needsVertexOutputBuffer && _indirectParamsIndex.stages[kMVKShaderStageVertex] >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Vertex shader requires indirect parameters buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Vertex shader requires indirect parameters buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	return true;
@@ -739,7 +739,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	addPrevStageOutputToShaderConverterContext(shaderContext, vtxOutputs);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pTessCtlSS->module)->getMTLFunction(&shaderContext, _pTessCtlSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 	if ( !mtlFunction ) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader function could not be compiled into pipeline. See previous logged error."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader function could not be compiled into pipeline. See previous logged error."));
 		return false;
 	}
 	plDesc.computeFunction = mtlFunction;
@@ -748,23 +748,23 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	_needsTessCtlPatchOutputBuffer = shaderContext.options.needsPatchOutputBuffer;
 	_needsTessCtlInput = shaderContext.options.needsInputThreadgroupMem;
 	if (_needsTessCtlAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageTessCtl] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires auxiliary buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader requires auxiliary buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_indirectParamsIndex.stages[kMVKShaderStageTessCtl] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires indirect parameters buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader requires indirect parameters buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_needsTessCtlOutputBuffer && _outputBufferIndex.stages[kMVKShaderStageTessCtl] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires per-vertex output buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader requires per-vertex output buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_needsTessCtlPatchOutputBuffer && _tessCtlPatchOutputBufferIndex >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires per-patch output buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader requires per-patch output buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	if (_tessCtlLevelBufferIndex >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation control shader requires tessellation level output buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader requires tessellation level output buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	return true;
@@ -779,7 +779,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	addPrevStageOutputToShaderConverterContext(shaderContext, tcOutputs);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pTessEvalSS->module)->getMTLFunction(&shaderContext, _pTessEvalSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 	if ( !mtlFunction ) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation evaluation shader function could not be compiled into pipeline. See previous logged error."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation evaluation shader function could not be compiled into pipeline. See previous logged error."));
 		return false;
 	}
 	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
@@ -788,7 +788,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	_needsTessEvalAuxBuffer = shaderContext.options.needsAuxBuffer;
 	// If we need the auxiliary buffer and there's no place to put it, we're in serious trouble.
 	if (_needsTessEvalAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageTessEval] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessEvalNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Tessellation evaluation shader requires auxiliary buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation evaluation shader requires auxiliary buffer, but there is no free slot to pass it."));
 		return false;
 	}
 	return true;
@@ -802,13 +802,13 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderContext.options.shouldCaptureOutput = false;
 		id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pFragmentSS->module)->getMTLFunction(&shaderContext, _pFragmentSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 		if ( !mtlFunction ) {
-			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader function could not be compiled into pipeline. See previous logged error."));
+			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Fragment shader function could not be compiled into pipeline. See previous logged error."));
 			return false;
 		}
 		plDesc.fragmentFunction = mtlFunction;
 		_needsFragmentAuxBuffer = shaderContext.options.needsAuxBuffer;
 		if (_needsFragmentAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageFragment] >= _device->_pMetalFeatures->maxPerStageBufferCount) {
-			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Fragment shader requires auxiliary buffer, but there is no free slot to pass it."));
+			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Fragment shader requires auxiliary buffer, but there is no free slot to pass it."));
 			return false;
 		}
 	}
@@ -1170,11 +1170,11 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		_mtlPipelineState = plc->newMTLComputePipelineState(shaderFunc.mtlFunction);	// retained
 		plc->destroy();
 	} else {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Compute shader function could not be compiled into pipeline. See previous logged error."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader function could not be compiled into pipeline. See previous logged error."));
 	}
 
 	if (_needsAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageCompute] > _device->_pMetalFeatures->maxPerStageBufferCount) {
-		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Compute shader requires auxiliary buffer, but there is no free slot to pass it."));
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader requires auxiliary buffer, but there is no free slot to pass it."));
 	}
 }
 

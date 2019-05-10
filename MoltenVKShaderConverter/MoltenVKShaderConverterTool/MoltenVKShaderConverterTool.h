@@ -64,13 +64,13 @@ namespace mvk {
 		MoltenVKShaderConverterTool(int argc, const char* argv[]);
 
 	protected:
-		MVKShaderStage shaderStageFromFileExtension(std::string& pathExtension);
+		MVKGLSLConversionShaderStage shaderStageFromFileExtension(std::string& pathExtension);
 		bool isGLSLFileExtension(std::string& pathExtension);
 		bool isSPIRVFileExtension(std::string& pathExtension);
 		bool convertGLSL(std::string& glslInFile,
 						 std::string& spvOutFile,
 						 std::string& mslOutFile,
-						 MVKShaderStage shaderStage);
+						 MVKGLSLConversionShaderStage shaderStage);
 		bool convertSPIRV(std::string& spvInFile,
 						  std::string& mslOutFile);
 		bool convertSPIRV(const std::vector<uint32_t>& spv,
@@ -100,7 +100,7 @@ namespace mvk {
 		std::vector<std::string> _glslFragFileExtns;
         std::vector<std::string> _glslCompFileExtns;
 		std::vector<std::string> _spvFileExtns;
-		MVKShaderStage _shaderStage;
+		MVKGLSLConversionShaderStage _shaderStage;
 		MVKPerformanceTracker _glslConversionPerformance;
 		MVKPerformanceTracker _spvConversionPerformance;
 		uint32_t _mslVersionMajor;

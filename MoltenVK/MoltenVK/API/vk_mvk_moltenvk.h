@@ -566,6 +566,7 @@ typedef struct {
     MVKPerformanceTracker functionRetrieval;			/** Retrieve a MTLFunction from a MTLLibrary. */
     MVKPerformanceTracker functionSpecialization;		/** Specialize a retrieved MTLFunction. */
     MVKPerformanceTracker pipelineCompile;				/** Compile MTLFunctions into a pipeline. */
+	MVKPerformanceTracker glslToSPRIV;					/** Convert GLSL to SPIR-V code. */
 } MVKShaderCompilationPerformance;
 
 
