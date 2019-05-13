@@ -429,6 +429,8 @@ MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
 }
 
 MTLStorageMode MVKImage::getMTLStorageMode() {
+    if ( !_deviceMemory ) return MTLStorageModePrivate;
+
     // For macOS, textures cannot use Shared storage mode, so change to Managed storage mode.
     MTLStorageMode stgMode = _deviceMemory->getMTLStorageMode();
 
