@@ -213,6 +213,9 @@ protected:
 	using MVKResource::needsHostReadSync;
 
 	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
+	void validateConfig(const VkImageCreateInfo* pCreateInfo);
+	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo);
+	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo);
 	bool validateLinear(const VkImageCreateInfo* pCreateInfo);
 	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);

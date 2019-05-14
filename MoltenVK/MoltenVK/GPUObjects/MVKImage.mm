@@ -551,74 +551,36 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
 
 MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKResource(device) {
 
-    if (pCreateInfo->flags & VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not allow uncompressed views of compressed images."));
-    }
+	_mtlTexture = nil;
+	_ioSurface = nil;
+	_usesTexelBuffer = false;
 
-#if MVK_IOS
-    if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) ) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
-    }
-#else
-    if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !mvkCanDecodeFormat(pCreateInfo->format) ) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
-    }
-#endif
-    if ( (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) ) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
-    }
-
-    // Adjust the info components to be compatible with Metal, then use the modified versions
-    // to set other config info. Vulkan allows unused extent dimensions to be zero, but Metal
-    // requires minimum of one. Adjust samples and miplevels for the right texture type.
+    // Adjust the info components to be compatible with Metal, then use the modified versions to set other
+	// config info. Vulkan allows unused extent dimensions to be zero, but Metal requires minimum of one.
     uint32_t minDim = 1;
-    _usage = pCreateInfo->usage;
     _extent.width = max(pCreateInfo->extent.width, minDim);
 	_extent.height = max(pCreateInfo->extent.height, minDim);
 	_extent.depth = max(pCreateInfo->extent.depth, minDim);
     _arrayLayers = max(pCreateInfo->arrayLayers, minDim);
 
-    _mipLevels = max(pCreateInfo->mipLevels, minDim);
-    if ( (_mipLevels > 1) && (pCreateInfo->imageType == VK_IMAGE_TYPE_1D) ) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, 1D images cannot use mipmaps. Setting mip levels to 1."));
-        _mipLevels = 1;
-    }
-
-    _mtlTexture = nil;
-    _ioSurface = nil;
-    _mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
-    _mtlTextureType = mvkMTLTextureTypeFromVkImageType(pCreateInfo->imageType,
-                                                       _arrayLayers,
-                                                       (pCreateInfo->samples > 1));
-    _samples = pCreateInfo->samples;
-    if ( (_samples > 1) && (_mtlTextureType != MTLTextureType2DMultisample) &&
-         (pCreateInfo->imageType != VK_IMAGE_TYPE_2D || !_device->_pMetalFeatures->multisampleArrayTextures) ) {
-        if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
-            setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
-        } else {
-            setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This version of Metal does not support multisampled array textures. Setting sample count to 1."));
-        }
-        _samples = VK_SAMPLE_COUNT_1_BIT;
-        if (pCreateInfo->imageType == VK_IMAGE_TYPE_2D) {
-            _mtlTextureType = MTLTextureType2DArray;
-        }
-    }
-    if ( (_samples > 1) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) ) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with compressed images. Setting sample count to 1."));
-        _samples = VK_SAMPLE_COUNT_1_BIT;
-    }
-
-    _isDepthStencilAttachment = (mvkAreFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
-                                 mvkAreFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
-	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
-    _hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
+	// Perform validation and adjustments before configuring other settings
+	validateConfig(pCreateInfo);
+	_samples = validateSamples(pCreateInfo);
+	_mipLevels = validateMipLevels(pCreateInfo);
 	_isLinear = validateLinear(pCreateInfo);
-	_usesTexelBuffer = false;
-	_is3DCompressed = _mtlTextureType == MTLTextureType3D && mvkFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
 
+	_mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
+	_mtlTextureType = mvkMTLTextureTypeFromVkImageType(pCreateInfo->imageType, _arrayLayers, _samples > VK_SAMPLE_COUNT_1_BIT);
+	_usage = pCreateInfo->usage;
+
+	_is3DCompressed = (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed);
+	_isDepthStencilAttachment = (mvkAreFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
+								 mvkAreFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
+	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
+	_hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
+
+	// Calc _byteCount after _byteAlignment
 	_byteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format) : mvkEnsurePowerOfTwo(mvkVkFormatBytesPerBlock(pCreateInfo->format));
-
-    // Calc _byteCount after _mtlTexture & _byteAlignment
     for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
         _byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
     }
@@ -626,42 +588,116 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     initSubresources(pCreateInfo);
 }
 
-bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
-	if (pCreateInfo->tiling != VK_IMAGE_TILING_LINEAR) { return false; }
+void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo) {
 
-	if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, imageType must be VK_IMAGE_TYPE_2D."));
-		return false;
+	bool is2D = pCreateInfo->imageType == VK_IMAGE_TYPE_2D;
+	bool isCompressed = mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed;
+
+#if MVK_IOS
+	if (isCompressed && !is2D) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
 	}
-
-	if (_isDepthStencilAttachment) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a depth/stencil format."));
-		return false;
-	}
-
-	if (_mipLevels > 1) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, mipLevels must be 1."));
-		return false;
-	}
-
-	if (_arrayLayers > 1) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, arrayLayers must be 1."));
-		return false;
-	}
-
-	if (_samples > 1) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, samples must be VK_SAMPLE_COUNT_1_BIT."));
-		return false;
-	}
-
+#endif
 #if MVK_MACOS
-	if ( mvkIsAnyFlagEnabled(_usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) ) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, usage must not include VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, and/or VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT."));
-		return false;
+	if (isCompressed && !is2D && !mvkCanDecodeFormat(pCreateInfo->format)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", mvkVkFormatName(pCreateInfo->format)));
 	}
 #endif
 
-	return true;
+	if ((mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
+	}
+
+	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not allow uncompressed views of compressed images."));
+	}
+}
+
+VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo) {
+
+	VkSampleCountFlagBits validSamples = pCreateInfo->samples;
+
+	if (validSamples == VK_SAMPLE_COUNT_1_BIT) { return validSamples; }
+
+	if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
+		validSamples = VK_SAMPLE_COUNT_1_BIT;
+	}
+
+	if (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with compressed images. Setting sample count to 1."));
+		validSamples = VK_SAMPLE_COUNT_1_BIT;
+	}
+
+	if (pCreateInfo->arrayLayers > 1) {
+		if ( !_device->_pMetalFeatures->multisampleArrayTextures ) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support multisampled array textures. Setting sample count to 1."));
+			validSamples = VK_SAMPLE_COUNT_1_BIT;
+		}
+
+		if ( !_device->_pMetalFeatures->multisampleLayeredRendering && mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+																												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to multisampled array (layered) attachments. Setting sample count to 1."));
+			validSamples = VK_SAMPLE_COUNT_1_BIT;
+		}
+	}
+
+	return validSamples;
+}
+
+uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo) {
+	uint32_t minDim = 1;
+	uint32_t validMipLevels = max(pCreateInfo->mipLevels, minDim);
+
+	if (validMipLevels == 1) { return validMipLevels; }
+
+	if (pCreateInfo->imageType == VK_IMAGE_TYPE_1D) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, 1D images cannot use mipmaps. Setting mip levels to 1."));
+		validMipLevels = 1;
+	}
+
+	return validMipLevels;
+}
+
+bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
+
+	if (pCreateInfo->tiling != VK_IMAGE_TILING_LINEAR ) { return false; }
+
+	bool isLin = true;
+
+	if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, imageType must be VK_IMAGE_TYPE_2D."));
+		isLin = false;
+	}
+
+	if (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a depth/stencil format."));
+		isLin = false;
+	}
+
+	if (pCreateInfo->mipLevels > 1) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, mipLevels must be 1."));
+		isLin = false;
+	}
+
+	if (pCreateInfo->arrayLayers > 1) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, arrayLayers must be 1."));
+		isLin = false;
+	}
+
+	if (pCreateInfo->samples > VK_SAMPLE_COUNT_1_BIT) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, samples must be VK_SAMPLE_COUNT_1_BIT."));
+		isLin = false;
+	}
+
+#if MVK_MACOS
+	if ( mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) ) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, usage must not include VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, or VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT."));
+		isLin = false;
+	}
+#endif
+
+	return isLin;
 }
 
 
@@ -767,8 +803,9 @@ id<MTLTexture> MVKImageView::newMTLTexture() {
     MTLTextureType mtlTextureType = _mtlTextureType;
     // Fake support for 2D views of 3D textures.
     if (_image->getImageType() == VK_IMAGE_TYPE_3D &&
-        (mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray))
+		(mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray)) {
         mtlTextureType = MTLTextureType3D;
+	}
     return [_image->getMTLTexture() newTextureViewWithPixelFormat: _mtlPixelFormat
                                                       textureType: mtlTextureType
                                                            levels: NSMakeRange(_subresourceRange.baseMipLevel, _subresourceRange.levelCount)

@@ -23,16 +23,18 @@ Released TBD
 - Change log indication of error in logs from `[***MoltenVK ERROR***]` to 
   `[mvk-error]`, for consistency with other log level indications. 
 - Tessellation fixes:
-	- Don't use setVertexBytes() for passing tessellation vertex counts.
+	- Don't use `setVertexBytes()` for passing tessellation vertex counts.
 	- Fix intermediate Metal renderpasses load and store actions maintaining 
 	  attachments appropriately.
 	- Use empty depth state for tessellation vertex pre-pass.
 	- Fix tessellated indirect draws using wrong kernels to map parameters.
 	- Work around potential Metal bug with stage-in indirect buffers.
-- Fix zero local threadgroup size in indirect tessellated rendering.
+	- Fix zero local threadgroup size in indirect tessellated rendering.
+- Fix crash with multisample layered rendering on older macOS devices.
 - `MoltenVKShaderConverter` tool: Add MSL version and platform command-line options.
-- Allow building external dependency libraries in Debug mode.
-- Enable AMD and NV GLSL extensions when building glslang for MoltenVKGLSLToSPIRVConverter.
+- Allow building external dependency libraries in `Debug` mode.
+- Enable AMD and NV GLSL extensions when building `glslang` for `MoltenVKGLSLToSPIRVConverter`.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 20.
 - Update to latest SPIRV-Cross version:
 	- MSL: Only use constant address space for tessellation control shader.
 	- MSL: Support native texture_buffer type, throw error on atomics.

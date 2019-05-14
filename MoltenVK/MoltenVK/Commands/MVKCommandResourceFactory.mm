@@ -181,7 +181,7 @@ id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg&
 
 id<MTLFunction> MVKCommandResourceFactory::getClearVertFunction(MVKRPSKeyClearAtt& attKey) {
 	id<MTLFunction> mtlFunc = nil;
-	bool allowLayers = _device->_pMetalFeatures->layeredRendering && (attKey.mtlSampleCount == 1 || _device->_pMetalFeatures->multisampleArrayTextures);
+	bool allowLayers = _device->_pMetalFeatures->layeredRendering && (attKey.mtlSampleCount == 1 || _device->_pMetalFeatures->multisampleLayeredRendering);
 	@autoreleasepool {
 		NSMutableString* msl = [NSMutableString stringWithCapacity: (2 * KIBI) ];
 		[msl appendLineMVK: @"#include <metal_stdlib>"];
