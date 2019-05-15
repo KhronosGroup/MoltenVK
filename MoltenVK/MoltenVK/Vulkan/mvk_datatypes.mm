@@ -798,7 +798,7 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vk
 		case VK_IMAGE_TYPE_3D: return MTLTextureType3D;
 		case VK_IMAGE_TYPE_2D:
 		default: {
-#if !MVK_IOS  // This is marked unavailable on iOS :/
+#if MVK_MACOS
 			if (arraySize > 1 && isMultisample) { return MTLTextureType2DMultisampleArray; }
 #endif
 			if (arraySize > 1) { return MTLTextureType2DArray; }

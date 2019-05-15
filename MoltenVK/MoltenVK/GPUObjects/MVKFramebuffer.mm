@@ -28,7 +28,7 @@ MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
     _extent = { .width = pCreateInfo->width, .height = pCreateInfo->height };
 	_layerCount = pCreateInfo->layers;
 
-	// Add clear values
+	// Add attachments
 	_attachments.reserve(pCreateInfo->attachmentCount);
 	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
 		_attachments.push_back((MVKImageView*)pCreateInfo->pAttachments[i]);

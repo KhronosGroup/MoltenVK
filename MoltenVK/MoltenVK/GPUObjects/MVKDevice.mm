@@ -797,6 +797,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.memoryBarriers = true;
     }
 
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1] ) {
+		_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
+	}
+
 #endif
 
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
