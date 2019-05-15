@@ -31,6 +31,7 @@ Released TBD
 	- Work around potential Metal bug with stage-in indirect buffers.
 	- Fix zero local threadgroup size in indirect tessellated rendering.
 - Fix crash with multisample layered rendering on older macOS devices.
+- Fixes to Metal renderpass layered rendering settings.
 - `MoltenVKShaderConverter` tool: Add MSL version and platform command-line options.
 - Allow building external dependency libraries in `Debug` mode.
 - Enable AMD and NV GLSL extensions when building `glslang` for `MoltenVKGLSLToSPIRVConverter`.

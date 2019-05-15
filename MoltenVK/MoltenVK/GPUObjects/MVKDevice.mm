@@ -1371,7 +1371,7 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 MTLFeatureSet MVKPhysicalDevice::getHighestMTLFeatureSet() {
 #if MVK_IOS
-	MTLFeatureSet maxFS = MTLFeatureSet_iOS_GPUFamily4_v2;
+	MTLFeatureSet maxFS = MTLFeatureSet_iOS_GPUFamily5_v1;
 	MTLFeatureSet minFS = MTLFeatureSet_iOS_GPUFamily1_v1;
 #endif
 
