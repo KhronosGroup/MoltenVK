@@ -74,8 +74,9 @@ namespace std {
 #pragma mark -
 #pragma mark MVKRPSKeyClearAtt
 
-#define kMVKAttachmentFormatCount					9
-#define kMVKAttachmentFormatDepthStencilIndex		(kMVKAttachmentFormatCount - 1)
+#define kMVKClearAttachmentCount						(kMVKCachedColorAttachmentCount + 1)
+#define kMVKClearAttachmentDepthStencilIndex			(kMVKClearAttachmentCount - 1)
+#define kMVKClearAttachmentLayeredRenderingBitIndex		kMVKClearAttachmentCount
 
 /**
  * Key to use for looking up cached MTLRenderPipelineState instances.
@@ -85,37 +86,40 @@ namespace std {
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
 typedef struct MVKRPSKeyClearAtt_t {
-    uint16_t attachmentMTLPixelFormats[kMVKAttachmentFormatCount];
+    uint16_t attachmentMTLPixelFormats[kMVKClearAttachmentCount];
 	uint16_t mtlSampleCount;
-    uint32_t enabledFlags;
+    uint16_t flags;			// bitcount > kMVKClearAttachmentLayeredRenderingBitIndex
 
     const static uint32_t bitFlag = 1;
 
-    void enable(uint32_t attIdx) { mvkEnableFlag(enabledFlags, bitFlag << attIdx); }
+    void enableAttachment(uint32_t attIdx) { mvkEnableFlag(flags, bitFlag << attIdx); }
 
-    bool isEnabled(uint32_t attIdx) { return mvkIsAnyFlagEnabled(enabledFlags, bitFlag << attIdx); }
+    bool isAttachmentEnabled(uint32_t attIdx) { return mvkIsAnyFlagEnabled(flags, bitFlag << attIdx); }
+
+	void enableLayeredRendering() { mvkEnableFlag(flags, bitFlag << kMVKClearAttachmentLayeredRenderingBitIndex); }
+
+	bool isLayeredRenderingEnabled() { return mvkIsAnyFlagEnabled(flags, bitFlag << kMVKClearAttachmentLayeredRenderingBitIndex); }
 
     bool operator==(const MVKRPSKeyClearAtt_t& rhs) const {
-        return ((enabledFlags == rhs.enabledFlags) &&
+        return ((flags == rhs.flags) &&
 				(mtlSampleCount == rhs.mtlSampleCount) &&
                 (memcmp(attachmentMTLPixelFormats, rhs.attachmentMTLPixelFormats, sizeof(attachmentMTLPixelFormats)) == 0));
     }
 
 	std::size_t hash() const {
-		std::size_t hash = mvkHash(&enabledFlags);
+		std::size_t hash = mvkHash(&flags);
 		hash = mvkHash(&mtlSampleCount, 1, hash);
-		return mvkHash(attachmentMTLPixelFormats, kMVKAttachmentFormatCount, hash);
+		return mvkHash(attachmentMTLPixelFormats, kMVKClearAttachmentCount, hash);
 	}
 
-	MVKRPSKeyClearAtt_t() {
+	void reset() {
 		memset(this, 0, sizeof(*this));
 		mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 	}
 
-} MVKRPSKeyClearAtt;
+	MVKRPSKeyClearAtt_t() { reset(); }
 
-/** An instance populated with default values, for use in resetting other instances to default state. */
-const MVKRPSKeyClearAtt kMVKRPSKeyClearAttDefault;
+} MVKRPSKeyClearAtt;
 
 /**
  * Hash structure implementation for MVKRPSKeyClearAtt in std namespace,

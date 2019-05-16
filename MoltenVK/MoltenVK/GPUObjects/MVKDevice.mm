@@ -1002,13 +1002,13 @@ void MVKPhysicalDevice::initProperties() {
 	// Limits
 #if MVK_IOS
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1] ) {
-        _properties.limits.maxColorAttachments = 8;
+        _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
     } else {
-        _properties.limits.maxColorAttachments = 4;
+        _properties.limits.maxColorAttachments = 4;		// < kMVKCachedColorAttachmentCount
     }
 #endif
 #if MVK_MACOS
-    _properties.limits.maxColorAttachments = 8;
+    _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
 #endif
 
     _properties.limits.maxFragmentOutputAttachments = _properties.limits.maxColorAttachments;
@@ -1038,7 +1038,7 @@ void MVKPhysicalDevice::initProperties() {
     float maxVPDim = max(_properties.limits.maxViewportDimensions[0], _properties.limits.maxViewportDimensions[1]);
     _properties.limits.viewportBoundsRange[0] = (-2.0 * maxVPDim);
     _properties.limits.viewportBoundsRange[1] = (2.0 * maxVPDim) - 1;
-    _properties.limits.maxViewports = _features.multiViewport ? 16 : 1;
+    _properties.limits.maxViewports = _features.multiViewport ? kMVKCachedViewportScissorCount : 1;
 
 	_properties.limits.maxImageDimension3D = (2 * KIBI);
 	_properties.limits.maxImageArrayLayers = (2 * KIBI);

@@ -20,7 +20,6 @@
 
 #include "MVKDevice.h"
 #include "MVKCommandBuffer.h"
-#include "MVKCommandResourceFactory.h"
 #include "MVKCommandEncodingPool.h"
 #include "MVKCommand.h"
 #include "MVKCmdPipeline.h"

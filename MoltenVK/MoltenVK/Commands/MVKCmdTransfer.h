@@ -243,8 +243,8 @@ protected:
 
     std::vector<VkClearRect> _clearRects;
     std::vector<simd::float4> _vertices;
-    simd::float4 _clearColors[kMVKAttachmentFormatCount];
-    VkClearValue _vkClearValues[kMVKAttachmentFormatCount];
+    simd::float4 _clearColors[kMVKClearAttachmentCount];
+    VkClearValue _vkClearValues[kMVKClearAttachmentCount];
     MVKRPSKeyClearAtt _rpsKey;
     uint32_t _mtlStencilValue;
     bool _isClearingDepth;
