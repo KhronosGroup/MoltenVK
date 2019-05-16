@@ -816,7 +816,7 @@ void MVKCmdClearAttachments::setContent(uint32_t attachmentCount,
                                         const VkClearAttachment* pAttachments,
                                         uint32_t rectCount,
                                         const VkClearRect* pRects) {
-    _rpsKey = kMVKRPSKeyClearAttDefault;
+	_rpsKey.reset();
     _mtlStencilValue = 0;
     _isClearingDepth = false;
     _isClearingStencil = false;
@@ -831,26 +831,26 @@ void MVKCmdClearAttachments::setContent(uint32_t attachmentCount,
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_COLOR_BIT)) {
             uint32_t caIdx = clrAtt.colorAttachment;        // Might be VK_ATTACHMENT_UNUSED
             if (caIdx != VK_ATTACHMENT_UNUSED) {
-                _rpsKey.enable(caIdx);
+                _rpsKey.enableAttachment(caIdx);
                 _vkClearValues[caIdx] = clrAtt.clearValue;
             }
         }
 
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT)) {
             _isClearingDepth = true;
-            _rpsKey.enable(kMVKAttachmentFormatDepthStencilIndex);
+            _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
             mtlDepthVal = mvkMTLClearDepthFromVkClearValue(clrAtt.clearValue);
         }
 
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT)) {
             _isClearingStencil = true;
-            _rpsKey.enable(kMVKAttachmentFormatDepthStencilIndex);
+            _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
             _mtlStencilValue = mvkMTLClearStencilFromVkClearValue(clrAtt.clearValue);
         }
     }
 
     // The depth value (including vertex position Z value) is held in the last index.
-    _clearColors[kMVKAttachmentFormatDepthStencilIndex] = { mtlDepthVal, mtlDepthVal, mtlDepthVal, mtlDepthVal };
+    _clearColors[kMVKClearAttachmentDepthStencilIndex] = { mtlDepthVal, mtlDepthVal, mtlDepthVal, mtlDepthVal };
 
     _clearRects.clear();
     _clearRects.reserve(rectCount);
@@ -932,8 +932,9 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t vtxCnt = (uint32_t)_vertices.size();
     uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 
-    // Populate the render pipeline state attachment key with attachment info from the subpass.
+    // Populate the render pipeline state attachment key with info from the subpass and framebuffer.
 	_rpsKey.mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getSampleCount());
+	if (cmdEncoder->_isUsingLayeredRendering) { _rpsKey.enableLayeredRendering(); }
 
     uint32_t caCnt = subpass->getColorAttachmentCount();
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
@@ -945,7 +946,7 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
 
     VkFormat vkAttFmt = subpass->getDepthStencilFormat();
 	MTLPixelFormat mtlAttFmt = cmdPool->getMTLPixelFormatFromVkFormat(vkAttFmt);
-    _rpsKey.attachmentMTLPixelFormats[kMVKAttachmentFormatDepthStencilIndex] = mtlAttFmt;
+    _rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = mtlAttFmt;
 	bool isClearingDepth = _isClearingDepth && mvkMTLPixelFormatIsDepthFormat(mtlAttFmt);
 	bool isClearingStencil = _isClearingStencil && mvkMTLPixelFormatIsStencilFormat(mtlAttFmt);
 

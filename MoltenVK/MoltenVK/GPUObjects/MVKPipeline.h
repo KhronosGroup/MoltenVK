@@ -236,8 +236,8 @@ protected:
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 
-	MVKVectorInline<MTLViewport, kMVKCachedViewportCount> _mtlViewports;
-	MVKVectorInline<MTLScissorRect, kMVKCachedScissorCount> _mtlScissors;
+	MVKVectorInline<MTLViewport, kMVKCachedViewportScissorCount> _mtlViewports;
+	MVKVectorInline<MTLScissorRect, kMVKCachedViewportScissorCount> _mtlScissors;
 
 	MTLComputePipelineDescriptor* _mtlTessControlStageDesc = nil;
 

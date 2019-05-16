@@ -67,8 +67,8 @@ class MVKCommandResourceFactory;
 const static uint32_t kMVKVertexContentBufferIndex = 0;
 
 // Parameters to define the sizing of inline collections
-const static uint32_t kMVKCachedViewportCount = 16;
-const static uint32_t kMVKCachedScissorCount = 16;
+const static uint32_t kMVKCachedViewportScissorCount = 16;
+const static uint32_t kMVKCachedColorAttachmentCount = 8;
 
 
 #pragma mark -
