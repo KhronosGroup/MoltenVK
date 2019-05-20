@@ -32,6 +32,7 @@ Released TBD
 	- Fix zero local threadgroup size in indirect tessellated rendering.
 - Fix crash when clearing attachments using layered rendering on older macOS devices.
 - Fixes to Metal renderpass layered rendering settings.
+- Fix sporadic crash on `vkDestroySwapchainKHR()`.
 - `MoltenVKShaderConverter` tool: Add MSL version and platform command-line options.
 - Allow building external dependency libraries in `Debug` mode.
 - Enable AMD and NV GLSL extensions when building `glslang` for `MoltenVKGLSLToSPIRVConverter`.

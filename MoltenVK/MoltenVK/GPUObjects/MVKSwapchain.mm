@@ -179,6 +179,7 @@ id<CAMetalDrawable> MVKSwapchain::getNextCAMetalDrawable() {
 MVKSwapchain::MVKSwapchain(MVKDevice* device,
 						   const VkSwapchainCreateInfoKHR* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _surfaceLost(false) {
 	_currentAcquisitionID = 0;
+	_layerObserver = nil;
 
 	// If applicable, release any surfaces (not currently being displayed) from the old swapchain.
 	MVKSwapchain* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
