@@ -45,6 +45,8 @@ MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 		obj = ((PLATFORM_VIEW_CLASS*)obj).layer;
 	}
 
+	_layerObserver = nil;
+
 	// Confirm that we were provided with a CAMetalLayer
 	if ([obj isKindOfClass: [CAMetalLayer class]]) {
 		_mtlCAMetalLayer = (CAMetalLayer*)[obj retain];		// retained
