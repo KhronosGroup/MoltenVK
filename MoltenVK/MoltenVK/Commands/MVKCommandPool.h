@@ -28,6 +28,7 @@
 #include "MVKCmdDraw.h"
 #include "MVKCmdTransfer.h"
 #include "MVKCmdQueries.h"
+#include "MVKCmdDebug.h"
 #include "MVKMTLBufferAllocation.h"
 #include <unordered_set>
 
@@ -139,6 +140,12 @@ public:
 
     MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate> _cmdPushSetWithTemplatePool;
 
+	MVKCommandTypePool<MVKCmdDebugMarkerBegin> _cmdDebugMarkerBeginPool;
+
+	MVKCommandTypePool<MVKCmdDebugMarkerEnd> _cmdDebugMarkerEndPool;
+
+	MVKCommandTypePool<MVKCmdDebugMarkerInsert> _cmdDebugMarkerInsertPool;
+
 
 #pragma mark Command resources
 
@@ -173,6 +180,7 @@ public:
 	~MVKCommandPool() override;
 
 protected:
+	void propogateDebugName() override {}
 	MVKDeviceObjectPool<MVKCommandBuffer> _commandBufferPool;
 	std::unordered_set<MVKCommandBuffer*> _allocatedCommandBuffers;
 	MVKCommandEncodingPool _commandEncodingPool;

@@ -1597,7 +1597,7 @@ MVKQueue* MVKDevice::getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex) {
 VkResult MVKDevice::waitIdle() {
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		for (MVKQueue* q : queues) {
-			q->waitIdle(kMVKCommandUseDeviceWaitIdle);
+			q->waitIdle();
 		}
 	}
 	return VK_SUCCESS;
@@ -1718,8 +1718,9 @@ void MVKDevice::destroySwapchain(MVKSwapchain* mvkSwpChn,
 
 MVKSwapchainImage* MVKDevice::createSwapchainImage(const VkImageCreateInfo* pCreateInfo,
 												   MVKSwapchain* swapchain,
+												   uint32_t swapchainIndex,
 												   const VkAllocationCallbacks* pAllocator) {
-	return (MVKSwapchainImage*)addResource(new MVKSwapchainImage(this, pCreateInfo, swapchain));
+	return (MVKSwapchainImage*)addResource(new MVKSwapchainImage(this, pCreateInfo, swapchain, swapchainIndex));
 }
 
 void MVKDevice::destroySwapchainImage(MVKSwapchainImage* mvkImg,

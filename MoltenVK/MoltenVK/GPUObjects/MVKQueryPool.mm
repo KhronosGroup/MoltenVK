@@ -222,6 +222,8 @@ MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device,
 #pragma mark -
 #pragma mark MVKOcclusionQueryPool
 
+void MVKOcclusionQueryPool::propogateDebugName() { setLabelIfNotNil(_visibilityResultMTLBuffer, _debugName); }
+
 // If a dedicated visibility buffer has been established, use it, otherwise fetch the
 // current global visibility buffer, but don't cache it because it could be replaced later.
 id<MTLBuffer> MVKOcclusionQueryPool::getVisibilityResultMTLBuffer() {

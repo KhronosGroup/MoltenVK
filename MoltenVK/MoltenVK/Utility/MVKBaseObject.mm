@@ -1,5 +1,5 @@
 /*
- * MVKBaseObject.cpp
+ * MVKBaseObject.mm
  *
  * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -17,11 +17,11 @@
  */
 
 #include "MVKBaseObject.h"
+#include "MVKVulkanAPIObject.h"
 #include "MVKInstance.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKLogging.h"
-#include <stdlib.h>
 #include <cxxabi.h>
 
 using namespace std;
@@ -165,38 +165,4 @@ VkResult MVKBaseObject::reportError(MVKBaseObject* mvkObj, VkResult vkErr, const
 	va_end(lclArgs);
 
 	return vkErr;
-}
-
-
-#pragma mark -
-#pragma mark MVKVulkanAPIObject
-
-void MVKVulkanAPIObject::retain() {
-	lock_guard<mutex> lock(_refLock);
-
-	_refCount++;
-}
-
-void MVKVulkanAPIObject::release() {
-	if (decrementRetainCount()) { destroy(); }
-}
-
-void MVKVulkanAPIObject::destroy() {
-	if (markDestroyed()) { MVKConfigurableObject::destroy(); }
-}
-
-// Decrements the reference count, and returns whether it's time to destroy this object.
-bool MVKVulkanAPIObject::decrementRetainCount() {
-	lock_guard<mutex> lock(_refLock);
-
-	if (_refCount > 0) { _refCount--; }
-	return (_isDestroyed && _refCount == 0);
-}
-
-// Marks this object as destroyed, and returns whether no references are left outstanding.
-bool MVKVulkanAPIObject::markDestroyed() {
-	lock_guard<mutex> lock(_refLock);
-
-	_isDestroyed = true;
-	return _refCount == 0;
 }

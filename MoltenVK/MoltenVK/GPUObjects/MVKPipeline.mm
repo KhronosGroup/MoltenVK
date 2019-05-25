@@ -429,6 +429,8 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 	// Output
 	addFragmentOutputToPipeline(plDesc, reflectData, pCreateInfo);
 
+	setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+
 	return plDesc;
 }
 
@@ -577,6 +579,8 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::getMTLTessControlStageDescrip
 		plDesc.stageInputDescriptor.layouts[kMVKTessCtlInputBufferIndex].stride = mvkAlignByteOffset(offset, sizeOfOutput(vtxOutputs[0]));
 	}
 	plDesc.stageInputDescriptor.indexBufferIndex = kMVKTessCtlIndexBufferIndex;
+
+	setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
 }
@@ -1166,8 +1170,12 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 	_mtlPipelineState = nil;
 
 	if (shaderFunc.mtlFunction) {
+		MTLComputePipelineDescriptor* plDesc = [[MTLComputePipelineDescriptor new] autorelease];
+		plDesc.computeFunction = shaderFunc.mtlFunction;
+		setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+
 		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
-		_mtlPipelineState = plc->newMTLComputePipelineState(shaderFunc.mtlFunction);	// retained
+		_mtlPipelineState = plc->newMTLComputePipelineState(plDesc);	// retained
 		plc->destroy();
 	} else {
 		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader function could not be compiled into pipeline. See previous logged error."));
@@ -1208,6 +1216,13 @@ MVKComputePipeline::~MVKComputePipeline() {
 
 #pragma mark -
 #pragma mark MVKPipelineCache
+
+
+void MVKPipelineCache::propogateDebugName() {
+	lock_guard<mutex> lock(_shaderCacheLock);
+
+	for (auto& slPair : _shaderCache) { slPair.second->propogateDebugName(); }
+}
 
 // Return a shader library from the specified shader context sourced from the specified shader module.
 MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConverterContext* pContext, MVKShaderModule* shaderModule) {

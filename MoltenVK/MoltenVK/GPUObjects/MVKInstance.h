@@ -20,7 +20,7 @@
 
 #include "MVKEnvironment.h"
 #include "MVKLayers.h"
-#include "MVKBaseObject.h"
+#include "MVKVulkanAPIObject.h"
 #include "vk_mvk_moltenvk.h"
 #include <vector>
 #include <unordered_map>
@@ -143,6 +143,7 @@ public:
 protected:
 	friend MVKDevice;
 
+	void propogateDebugName() override {}
 	void initProcAddrs();
 	void initCreationDebugReportCallbacks(const VkInstanceCreateInfo* pCreateInfo);
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromASLLevel(int aslLvl);
@@ -187,6 +188,8 @@ public:
 protected:
 	friend MVKInstance;
 	
+	void propogateDebugName() override {}
+
 	MVKInstance* _mvkInstance;
 	VkDebugReportCallbackCreateInfoEXT _info;
 	bool _isCreationCallback;

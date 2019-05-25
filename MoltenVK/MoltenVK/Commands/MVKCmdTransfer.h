@@ -26,7 +26,6 @@
 
 #import <Metal/Metal.h>
 
-class MVKCommandBuffer;
 class MVKImage;
 class MVKBuffer;
 

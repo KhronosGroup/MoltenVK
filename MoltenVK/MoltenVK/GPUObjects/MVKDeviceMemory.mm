@@ -28,7 +28,10 @@
 
 using namespace std;
 
+
 #pragma mark MVKDeviceMemory
+
+void MVKDeviceMemory::propogateDebugName() { setLabelIfNotNil(_mtlBuffer, _debugName); }
 
 VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData) {
 
@@ -118,8 +121,7 @@ VkResult MVKDeviceMemory::addBuffer(MVKBuffer* mvkBuff) {
 	}
 
 	// In the dedicated case, we already saved the buffer we're going to use.
-	if (!_isDedicated)
-		_buffers.push_back(mvkBuff);
+	if (!_isDedicated) { _buffers.push_back(mvkBuff); }
 
 	return VK_SUCCESS;
 }
@@ -167,6 +169,8 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 		_mtlBuffer = [getMTLDevice() newBufferWithLength: memLen options: _mtlResourceOptions];     // retained
 	}
 	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
+
+	propogateDebugName();
 
 	return true;
 }

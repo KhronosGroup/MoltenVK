@@ -29,6 +29,8 @@
 
 class MVKPipelineCache;
 class MVKShaderCacheIterator;
+class MVKShaderLibraryCache;
+class MVKShaderModule;
 
 using namespace mvk;
 
@@ -73,7 +75,10 @@ public:
 
 protected:
 	friend MVKShaderCacheIterator;
+	friend MVKShaderLibraryCache;
+	friend MVKShaderModule;
 
+	void propogateDebugName();
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
 
@@ -113,7 +118,9 @@ public:
 protected:
 	friend MVKShaderCacheIterator;
 	friend MVKPipelineCache;
+	friend MVKShaderModule;
 
+	void propogateDebugName();
 	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConverterContext* pContext);
 	MVKShaderLibrary* addShaderLibrary(SPIRVToMSLConverterContext* pContext,
 									   const std::string& mslSourceCode,
@@ -121,7 +128,6 @@ protected:
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
-	std::mutex _accessLock;
 	std::vector<std::pair<SPIRVToMSLConverterContext, MVKShaderLibrary*>> _shaderLibraries;
 };
 
@@ -192,6 +198,7 @@ public:
 protected:
 	friend MVKShaderCacheIterator;
 
+	void propogateDebugName() override;
 	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConverterContext* pContext);
 
 	MVKShaderLibraryCache _shaderLibraryCache;

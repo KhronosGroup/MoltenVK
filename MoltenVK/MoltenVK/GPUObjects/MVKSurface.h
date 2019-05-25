@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "MVKBaseObject.h"
+#include "MVKVulkanAPIObject.h"
 #include "MVKEnvironment.h"
 #include <mutex>
 
@@ -69,6 +69,8 @@ public:
 	~MVKSurface() override;
 
 protected:
+	void propogateDebugName() override {}
+
 	MVKInstance* _mvkInstance;
 	CAMetalLayer* _mtlCAMetalLayer;
 	std::mutex _lock;

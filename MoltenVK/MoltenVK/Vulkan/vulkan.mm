@@ -242,7 +242,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueueSubmit(
 
 	MVKTraceVulkanCall();
 	MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
-	return mvkQ->submit(submitCount, pSubmits, fence, kMVKCommandUseQueueSubmit);
+	return mvkQ->submit(submitCount, pSubmits, fence);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkQueueWaitIdle(
@@ -250,7 +250,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueueWaitIdle(
 	
 	MVKTraceVulkanCall();
 	MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
-	return mvkQ->waitIdle(kMVKCommandUseQueueWaitIdle);
+	return mvkQ->waitIdle();
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkDeviceWaitIdle(
@@ -2130,6 +2130,53 @@ MVK_PUBLIC_SYMBOL void vkDebugReportMessageEXT(
 	MVKTraceVulkanCall();
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
 	mvkInst->debugReportMessage(flags, objectType, object, location, messageCode, pLayerPrefix, pMessage);
+}
+
+
+#pragma mark -
+#pragma mark VK_EXT_debug_marker extension
+
+MVK_PUBLIC_SYMBOL VkResult vkDebugMarkerSetObjectTagEXT(
+	VkDevice                                    device,
+	const VkDebugMarkerObjectTagInfoEXT*        pTagInfo) {
+
+	MVKTraceVulkanCall();
+	return VK_SUCCESS;
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkDebugMarkerSetObjectNameEXT(
+	VkDevice                                    device,
+	const VkDebugMarkerObjectNameInfoEXT*       pNameInfo) {
+
+	MVKTraceVulkanCall();
+	MVKVulkanAPIObject* mvkObj = MVKVulkanAPIObject::getMVKVulkanAPIObject(pNameInfo->objectType, pNameInfo->object);
+	return mvkObj ? mvkObj->setDebugName(pNameInfo->pObjectName) : VK_SUCCESS;
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerBeginEXT(
+	VkCommandBuffer                             commandBuffer,
+	const VkDebugMarkerMarkerInfoEXT*           pMarkerInfo) {
+
+	MVKTraceVulkanCall();
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDebugMarkerBegin(cmdBuff, pMarkerInfo);
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerEndEXT(
+	VkCommandBuffer                             commandBuffer) {
+
+	MVKTraceVulkanCall();
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDebugMarkerEnd(cmdBuff);
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerInsertEXT(
+	VkCommandBuffer                             commandBuffer,
+	const VkDebugMarkerMarkerInfoEXT*           pMarkerInfo) {
+
+	MVKTraceVulkanCall();
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDebugMarkerInsert(cmdBuff, pMarkerInfo);
 }
 
 

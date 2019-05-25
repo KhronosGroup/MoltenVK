@@ -1,5 +1,5 @@
 /*
- * MVKMVKCmdDispatch.h
+ * MVKCmdDispatch.h
  *
  * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -23,8 +23,6 @@
 #include <vector>
 
 #import <Metal/Metal.h>
-
-class MVKDevice;
 
 
 #pragma mark -

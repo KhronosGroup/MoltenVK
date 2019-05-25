@@ -24,7 +24,6 @@
 
 #import <Metal/Metal.h>
 
-class MVKCommandBuffer;
 class MVKRenderPass;
 class MVKFramebuffer;
 

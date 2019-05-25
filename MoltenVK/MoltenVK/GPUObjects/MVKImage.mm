@@ -34,6 +34,8 @@ using namespace std;
 
 #pragma mark MVKImage
 
+void MVKImage::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
+
 VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_mtlTextureType); }
 
 VkFormat MVKImage::getVkFormat() { return mvkVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
@@ -270,6 +272,8 @@ id<MTLTexture> MVKImage::getMTLTexture() {
 		if (_mtlTexture) { return _mtlTexture; }
 
 		_mtlTexture = newMTLTexture();   // retained
+
+		propogateDebugName();
 	}
 	return _mtlTexture;
 }
@@ -758,6 +762,8 @@ MVKImage::~MVKImage() {
 #pragma mark -
 #pragma mark MVKImageView
 
+void MVKImageView::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
+
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     mtlAttDesc.texture = getMTLTexture();           // Use image view, necessary if image view format differs from image format
     mtlAttDesc.level = _useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
@@ -795,6 +801,8 @@ id<MTLTexture> MVKImageView::getMTLTexture() {
 			if (_mtlTexture) { return _mtlTexture; }
 
 			_mtlTexture = newMTLTexture(); // retained
+
+			propogateDebugName();
 		}
 		return _mtlTexture;
 	} else {
@@ -1208,8 +1216,12 @@ void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) 
     // and make myself available only once the command buffer has completed.
     // Otherwise, immediately present the drawable and make myself available.
     if (mtlCmdBuff) {
-        [mtlCmdBuff presentDrawable: mtlDrawable];
-        resetMetalSurface();
+		NSString* scName = _swapchain->getDebugName();
+		if (scName) { [mtlCmdBuff pushDebugGroup: scName]; }
+		[mtlCmdBuff presentDrawable: mtlDrawable];
+		if (scName) { [mtlCmdBuff popDebugGroup]; }
+
+		resetMetalSurface();
         if (_device->_pMetalFeatures->events && !_availabilitySignalers.empty()) {
             // Signal the semaphore device-side.
             _availabilitySignalers.front().first->encodeSignal(mtlCmdBuff);
@@ -1239,9 +1251,10 @@ void MVKSwapchainImage::resetMetalSurface() {
 
 MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
 									 const VkImageCreateInfo* pCreateInfo,
-									 MVKSwapchain* swapchain) : MVKImage(device, pCreateInfo) {
+									 MVKSwapchain* swapchain,
+									 uint32_t swapchainIndex) : MVKImage(device, pCreateInfo) {
 	_swapchain = swapchain;
-	_swapchainIndex = _swapchain->getImageCount();
+	_swapchainIndex = swapchainIndex;
 	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
 	_availability.isAvailable = true;
 	_preSignaled = make_pair(nullptr, nullptr);

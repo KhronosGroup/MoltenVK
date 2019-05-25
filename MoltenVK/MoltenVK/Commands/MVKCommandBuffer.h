@@ -149,6 +149,7 @@ protected:
 	friend class MVKCommandPool;
 
 	MVKBaseObject* getBaseObject() override { return this; };
+	void propogateDebugName() override {}
 	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();
 	bool canPrefill();
@@ -312,7 +313,7 @@ public:
 	void endMetalRenderEncoding();
 
 	/** 
-	 * The current Metal compute encoder for the specified use,
+	 * Returns trhe current Metal compute encoder for the specified use,
 	 * which determines the label assigned to the returned encoder.
 	 *
 	 * If the current encoder is not a compute encoder, this function ends current before 
@@ -321,13 +322,19 @@ public:
 	id<MTLComputeCommandEncoder> getMTLComputeEncoder(MVKCommandUse cmdUse);
 
 	/**
-	 * The current Metal BLIT encoder for the specified use,
+	 * Returns the current Metal BLIT encoder for the specified use,
      * which determines the label assigned to the returned encoder.
 	 *
 	 * If the current encoder is not a BLIT encoder, this function ends 
      * the current encoder before beginning BLIT encoding.
 	 */
 	id<MTLBlitCommandEncoder> getMTLBlitEncoder(MVKCommandUse cmdUse);
+
+	/**
+	 * Returns the current Metal encoder, which may be any of the Metal render,
+	 * comupte, or Blit encoders, or nil if no encoding is currently occurring.
+	 */
+	id<MTLCommandEncoder> getMTLEncoder();
 
 	/** Returns the push constants associated with the specified shader stage. */
 	MVKPushConstantsCommandEncoderState* getPushConstants(VkShaderStageFlagBits shaderStage);
@@ -459,9 +466,6 @@ protected:
 
 #pragma mark -
 #pragma mark Support functions
-
-/** Returns a name, suitable for use as a MTLCommandBuffer label, based on the MVKCommandUse. */
-NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLRenderCommandEncoder label, based on the MVKCommandUse. */
 NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse);

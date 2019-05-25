@@ -91,6 +91,8 @@ public:
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
 protected:
+	void propogateDebugName() override {}
+
 	MVKVectorInline<MVKDescriptorSetLayout, 8> _descriptorSetLayouts;
 	MVKVectorInline<MVKShaderResourceBinding, 8> _dslMTLResourceIndexOffsets;
 	MVKVectorInline<VkPushConstantRange, 8> _pushConstants;
@@ -141,6 +143,8 @@ public:
 	   																					   _fullImageViewSwizzle(device->_pMVKConfig->fullImageViewSwizzle)	{}
 
 protected:
+	void propogateDebugName() override {}
+
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _auxBufferIndex;
 	bool _fullImageViewSwizzle;
@@ -335,6 +339,7 @@ public:
 	~MVKPipelineCache() override;
 
 protected:
+	void propogateDebugName() override;
 	MVKShaderLibraryCache* getShaderLibraryCache(MVKShaderModuleKey smKey);
 	void readData(const VkPipelineCacheCreateInfo* pCreateInfo);
 	void writeData(std::ostream& outstream, bool isCounting = false);

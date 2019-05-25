@@ -175,6 +175,7 @@ protected:
 	friend class MVKPipelineLayout;
 	friend class MVKDescriptorSet;
 
+	void propogateDebugName() override {}
 	MVKVectorInline<MVKDescriptorSetLayoutBinding, 8> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
@@ -314,6 +315,7 @@ protected:
 	friend class MVKDescriptorSetLayout;
 	friend class MVKDescriptorPool;
 
+	void propogateDebugName() override {}
 	void setLayout(MVKDescriptorSetLayout* layout);
     MVKDescriptorBinding* getBinding(uint32_t binding);
 
@@ -353,6 +355,7 @@ public:
 	~MVKDescriptorPool() override;
 
 protected:
+	void propogateDebugName() override {}
 	MVKDescriptorSetPool* getDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout);
 
 	uint32_t _maxSets;
@@ -387,7 +390,9 @@ public:
 	/** Destructor. */
 	~MVKDescriptorUpdateTemplate() override = default;
 
-private:
+protected:
+	void propogateDebugName() override {}
+
 	VkDescriptorUpdateTemplateTypeKHR _type;
 	std::vector<VkDescriptorUpdateTemplateEntryKHR> _entries;
 };

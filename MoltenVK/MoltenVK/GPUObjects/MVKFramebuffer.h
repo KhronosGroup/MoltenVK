@@ -49,7 +49,9 @@ public:
 	MVKFramebuffer(MVKDevice* device, const VkFramebufferCreateInfo* pCreateInfo);
 
 protected:
-    VkExtent2D _extent;
+	void propogateDebugName() override {}
+
+	VkExtent2D _extent;
 	uint32_t _layerCount;
 	std::vector<MVKImageView*> _attachments;
 };

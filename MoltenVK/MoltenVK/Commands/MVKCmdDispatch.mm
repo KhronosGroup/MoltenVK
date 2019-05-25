@@ -1,5 +1,5 @@
 /*
- * MVKMVKCmdDispatch.mm
+ * MVKCmdDispatch.mm
  *
  * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -25,7 +25,7 @@
 
 
 #pragma mark -
-#pragma mark MVKCmdDraw
+#pragma mark MVKCmdDispatch
 
 void MVKCmdDispatch::setContent(uint32_t x, uint32_t y, uint32_t z) {
     _mtlThreadgroupCount.width = x;

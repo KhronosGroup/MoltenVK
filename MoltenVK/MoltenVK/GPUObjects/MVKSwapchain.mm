@@ -34,6 +34,13 @@ using namespace std;
 
 #pragma mark MVKSwapchain
 
+void MVKSwapchain::propogateDebugName() {
+	size_t imgCnt = _surfaceImages.size();
+	for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
+		_surfaceImages[imgIdx]->setDebugName([NSString stringWithFormat: @"%@(%lu)", _debugName, imgIdx].UTF8String);
+	}
+}
+
 uint32_t MVKSwapchain::getImageCount() { return (uint32_t)_surfaceImages.size(); }
 
 MVKSwapchainImage* MVKSwapchain::getImage(uint32_t index) { return _surfaceImages[index]; }
@@ -265,7 +272,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 
 	_surfaceImages.reserve(imgCnt);
     for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-        _surfaceImages.push_back(_device->createSwapchainImage(&imgInfo, this, NULL));
+        _surfaceImages.push_back(_device->createSwapchainImage(&imgInfo, this, imgIdx, NULL));
     }
 
     MVKLogInfo("Created %d swapchain images with initial size (%d, %d).", imgCnt, imgExtent.width, imgExtent.height);

@@ -24,8 +24,6 @@
 
 #import <Metal/Metal.h>
 
-class MVKDevice;
-
 
 #pragma mark -
 #pragma mark MVKCmdBindVertexBuffers

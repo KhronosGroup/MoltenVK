@@ -31,6 +31,8 @@ const MVKMTLFunction MVKMTLFunctionNull = { nil, MTLSizeMake(1, 1, 1) };
 #pragma mark -
 #pragma mark MVKShaderLibrary
 
+void MVKShaderLibrary::propogateDebugName() { setLabelIfNotNil(_mtlLibrary, _owner->getDebugName()); }
+
 // If the size of the workgroup dimension is specialized, extract it from the
 // specialization info, otherwise use the value specified in the SPIR-V shader code.
 static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgDim, const VkSpecializationInfo* pSpecInfo) {
@@ -50,11 +52,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
     if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
-    // Ensure the function name is compatible with Metal (Metal does not allow main()
-    // as a function name), and retrieve the unspecialized Metal function with that name.
     NSString* mtlFuncName = @(_entryPoint.mtlFunctionName.c_str());
-
-
 	MVKDevice* mvkDev = _owner->getDevice();
     uint64_t startTime = mvkDev->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
@@ -91,6 +89,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 				fs->destroy();
             }
         }
+		setLabelIfNotNil(mtlFunc, _owner->getDebugName());
     } else {
         reportError(VK_ERROR_INVALID_SHADER_NV, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
     }
@@ -112,6 +111,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner, const string
 	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_owner);
 	_mtlLibrary = slc->newMTLLibrary(@(mslSourceCode.c_str()));	// retained
 	slc->destroy();
+	propogateDebugName();
 
 	_entryPoint = entryPoint;
 	_msl = mslSourceCode;
@@ -132,6 +132,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
         handleCompilationError(err, "Compiled shader module creation");
         [shdrData release];
     }
+	propogateDebugName();
     mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.mslLoad, startTime);
 }
 
@@ -164,6 +165,10 @@ MVKShaderLibrary::~MVKShaderLibrary() {
 
 #pragma mark -
 #pragma mark MVKShaderLibraryCache
+
+void MVKShaderLibraryCache::propogateDebugName() {
+	for (auto& slPair : _shaderLibraries) { slPair.second->propogateDebugName(); }
+}
 
 MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConverterContext* pContext,
 														  MVKShaderModule* shaderModule,
@@ -220,6 +225,13 @@ MVKShaderLibraryCache::~MVKShaderLibraryCache() {
 
 #pragma mark -
 #pragma mark MVKShaderModule
+
+void MVKShaderModule::propogateDebugName() {
+	lock_guard<mutex> lock(_accessLock);
+
+	_shaderLibraryCache.propogateDebugName();
+	if (_defaultLibrary) { _defaultLibrary->propogateDebugName(); }
+}
 
 MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConverterContext* pContext,
 											   const VkSpecializationInfo* pSpecializationInfo,
