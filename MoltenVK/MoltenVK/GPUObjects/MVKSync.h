@@ -142,6 +142,8 @@ public:
     ~MVKSemaphore() override;
 
 protected:
+	void propogateDebugName() override {}
+
 	MVKSemaphoreImpl _blocker;
 	id<MTLEvent> _mtlEvent;
 	std::atomic<uint64_t> _mtlEventValue;
@@ -192,6 +194,7 @@ public:
 		MVKVulkanAPIDeviceObject(device), _isSignaled(mvkAreFlagsEnabled(pCreateInfo->flags, VK_FENCE_CREATE_SIGNALED_BIT)) {}
 
 protected:
+	void propogateDebugName() override {}
 	void notifySitters();
 
 	std::mutex _lock;

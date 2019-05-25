@@ -212,6 +212,7 @@ protected:
 	friend class MVKImageView;
 	using MVKResource::needsHostReadSync;
 
+	void propogateDebugName() override;
 	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
 	void validateConfig(const VkImageCreateInfo* pCreateInfo);
 	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo);
@@ -300,6 +301,7 @@ public:
 	~MVKImageView() override;
 
 protected:
+	void propogateDebugName() override;
 	id<MTLTexture> newMTLTexture();
 	void initMTLTextureViewSupport();
     MTLPixelFormat getSwizzledMTLPixelFormat(VkFormat format,
@@ -339,6 +341,7 @@ public:
 	~MVKSampler() override;
 
 protected:
+	void propogateDebugName() override {}
 	MTLSamplerDescriptor* getMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
 
 	id<MTLSamplerState> _mtlSamplerState;
@@ -364,6 +367,9 @@ typedef struct MVKSwapchainImageAvailability_t {
 class MVKSwapchainImage : public MVKImage {
 
 public:
+
+	/** Returns the encompassing swapchain. */
+	inline MVKSwapchain* getSwapchain() { return _swapchain; }
 
 	/** Returns the index of this image within the encompassing swapchain. */
 	inline uint32_t getSwapchainIndex() { return _swapchainIndex; }
@@ -397,7 +403,8 @@ public:
 	/** Constructs an instance for the specified device and swapchain. */
 	MVKSwapchainImage(MVKDevice* device,
 					  const VkImageCreateInfo* pCreateInfo,
-					  MVKSwapchain* swapchain);
+					  MVKSwapchain* swapchain,
+					  uint32_t swapchainIndex);
 
 	~MVKSwapchainImage() override;
 

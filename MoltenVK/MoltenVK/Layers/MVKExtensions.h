@@ -48,7 +48,7 @@ class MVKExtensionList : public MVKBaseObject {
 public:
 
 	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override { return _apiObject->getVulkanAPIObject(); };
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _apiObject; };
 
 	union {
 		struct {

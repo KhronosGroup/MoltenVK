@@ -19,11 +19,8 @@
 #pragma once
 
 #include "mvk_vulkan.h"
-#include <vulkan/vk_icd.h>
 #include <string>
-#include <mutex>
 
-class MVKInstance;
 class MVKVulkanAPIObject;
 
 
@@ -125,106 +122,4 @@ public:
 
 protected:
 	VkResult _configurationResult = VK_SUCCESS;
-};
-
-
-#pragma mark -
-#pragma mark MVKVulkanAPIObject
-
-/**
- * Abstract class that represents an opaque Vulkan API handle object.
- *
- * API objects can sometimes be destroyed by the client before the GPU is done with them.
- * To support this, an object of this type will automatically be deleted iff it has been
- * destroyed by the client, and all references have been released. An object of this type
- * is therefore allowed to live past its destruction by the client, until it is no longer
- * referenced by other objects.
- */
-class MVKVulkanAPIObject : public MVKConfigurableObject {
-
-public:
-
-	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override { return this; };
-
-	/** Returns a reference to this object suitable for use as a Vulkan API handle. */
-	virtual void* getVkHandle() { return this; }
-
-	/** Returns the debug report object type of this object. */
-	virtual VkDebugReportObjectTypeEXT getVkDebugReportObjectType() = 0;
-
-	/** Returns the Vulkan instance. */
-	virtual MVKInstance* getInstance() = 0;
-
-	/**
-	 * Called when this instance has been retained as a reference by another object,
-	 * indicating that this instance will not be deleted until that reference is released.
-	 */
-	void retain();
-
-	/**
-	 * Called when this instance has been released as a reference from another object.
-	 * Once all references have been released, this object is free to be deleted.
-	 * If the destroy() function has already been called on this instance by the time
-	 * this function is called, this instance will be deleted.
-	 */
-	void release();
-
-	/**
-	 * Marks this instance as destroyed. If all previous references to this instance
-	 * have been released, this instance will be deleted, otherwise deletion of this
-	 * instance will automatically be deferred until all references have been released.
-	 */
-	void destroy() override;
-
-	/** Construct an empty instance. Declared here to support copy constructor. */
-	MVKVulkanAPIObject() {}
-
-	/**
-	 * Construct an instance from a copy. Default copy constructor disallowed due to mutex.
-	 * Copies start with fresh reference counts.
-	 */
-	MVKVulkanAPIObject(const MVKVulkanAPIObject& other) {}
-
-protected:
-
-	bool decrementRetainCount();
-	bool markDestroyed();
-
-	std::mutex _refLock;
-	unsigned _refCount = 0;
-	bool _isDestroyed = false;
-};
-
-
-#pragma mark -
-#pragma mark MVKDispatchableVulkanAPIObject
-
-/** Abstract class that represents a dispatchable opaque Vulkan API handle object. */
-class MVKDispatchableVulkanAPIObject : public MVKVulkanAPIObject {
-
-    typedef struct {
-        VK_LOADER_DATA loaderData;
-        MVKDispatchableVulkanAPIObject* mvkObject;
-    } MVKDispatchableObjectICDRef;
-
-public:
-
-    /**
-     * Returns a reference to this object suitable for use as a Vulkan API handle.
-     * This is the compliment of the getDispatchableObject() method.
-     */
-    void* getVkHandle() override { return &_icdRef; }
-
-    /**
-     * Retrieves the MVKDispatchableVulkanAPIObject instance referenced by the dispatchable Vulkan handle.
-     * This is the compliment of the getVkHandle() method.
-     */
-    static inline MVKDispatchableVulkanAPIObject* getDispatchableObject(void* vkHandle) {
-		return vkHandle ? ((MVKDispatchableObjectICDRef*)vkHandle)->mvkObject : nullptr;
-    }
-
-protected:
-    MVKDispatchableObjectICDRef _icdRef = { ICD_LOADER_MAGIC, this };
-
 };

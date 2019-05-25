@@ -238,6 +238,8 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 
 	_mtlCmdBuffer = mtlCmdBuff;		// not retained
 
+	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
+
     MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
         if (cmd->canEncode()) { cmd->encode(this); }
@@ -307,7 +309,7 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride, bool storeOverri
 	}
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
-    _mtlRenderEncoder.label = getMTLRenderCommandEncoderName();
+	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName());
 
     if ( !_isRenderingEntireAttachment ) { clearRenderArea(); }
 
@@ -330,8 +332,11 @@ MVKRenderSubpass* MVKCommandEncoder::getSubpass() { return _renderPass->getSubpa
 
 // Returns a name for use as a MTLRenderCommandEncoder label
 NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName() {
-    MVKCommandUse cmdUse = (_renderSubpassIndex == 0) ? kMVKCommandUseBeginRenderPass : kMVKCommandUseNextSubpass;
-    return mvkMTLRenderCommandEncoderLabel(cmdUse);
+	NSString* rpName = _renderPass ? _renderPass->getDebugName() : nil;
+	if (rpName) { return rpName; }
+
+	MVKCommandUse cmdUse = (_renderSubpassIndex == 0) ? kMVKCommandUseBeginRenderPass : kMVKCommandUseNextSubpass;
+	return mvkMTLRenderCommandEncoderLabel(cmdUse);
 }
 
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
@@ -438,7 +443,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	}
 	if (_mtlComputeEncoderUse != cmdUse) {
 		_mtlComputeEncoderUse = cmdUse;
-		_mtlComputeEncoder.label = mvkMTLComputeCommandEncoderLabel(cmdUse);
+		setLabelIfNotNil(_mtlComputeEncoder, mvkMTLComputeCommandEncoderLabel(cmdUse));
 	}
 	return _mtlComputeEncoder;
 }
@@ -450,10 +455,18 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 	}
     if (_mtlBlitEncoderUse != cmdUse) {
         _mtlBlitEncoderUse = cmdUse;
-        _mtlBlitEncoder.label = mvkMTLBlitCommandEncoderLabel(cmdUse);
+		setLabelIfNotNil(_mtlBlitEncoder, mvkMTLBlitCommandEncoderLabel(cmdUse));
     }
 	return _mtlBlitEncoder;
 }
+
+id<MTLCommandEncoder> MVKCommandEncoder::getMTLEncoder(){
+	if (_mtlRenderEncoder) { return _mtlRenderEncoder; }
+	if (_mtlComputeEncoder) { return _mtlComputeEncoder; }
+	if (_mtlBlitEncoder) { return _mtlBlitEncoder; }
+	return nil;
+}
+
 MVKPushConstantsCommandEncoderState* MVKCommandEncoder::getPushConstants(VkShaderStageFlagBits shaderStage) {
 	switch (shaderStage) {
 		case VK_SHADER_STAGE_VERTEX_BIT:					return &_vertexPushConstants;
@@ -601,16 +614,6 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
 
 #pragma mark -
 #pragma mark Support functions
-
-NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse) {
-    switch (cmdUse) {
-        case kMVKCommandUseQueueSubmit:     return @"vkQueueSubmit CommandBuffer";
-        case kMVKCommandUseQueuePresent:    return @"vkQueuePresentKHR CommandBuffer";
-        case kMVKCommandUseQueueWaitIdle:   return @"vkQueueWaitIdle CommandBuffer";
-        case kMVKCommandUseDeviceWaitIdle:  return @"vkDeviceWaitIdle CommandBuffer";
-        default:                            return @"Unknown Use CommandBuffer";
-    }
-}
 
 NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse) {
     switch (cmdUse) {

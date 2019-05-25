@@ -322,7 +322,7 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
             mtlColorAttDesc.level = bltRend.dstLevel;
             mtlColorAttDesc.slice = bltRend.dstSlice;
             id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: _mtlRenderPassDescriptor];
-            mtlRendEnc.label = mvkMTLRenderCommandEncoderLabel(_commandUse);
+			setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(_commandUse));
 
             [mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
             [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdBlitImageMTLRenderPipelineState(_blitKey)];
@@ -517,7 +517,7 @@ void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
         mtlColorAttDesc.resolveLevel = rslvSlice.level;
         mtlColorAttDesc.resolveSlice = rslvSlice.slice;
         id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: _mtlRenderPassDescriptor];
-        mtlRendEnc.label = mvkMTLRenderCommandEncoderLabel(kMVKCommandUseResolveImage);
+		setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(kMVKCommandUseResolveImage));
 
         [mtlRendEnc pushDebugGroup: @"vkCmdResolveImage"];
         [mtlRendEnc popDebugGroup];
@@ -1060,7 +1060,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 				mtlRPSADesc.slice = layer;
 
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
-                mtlRendEnc.label = mtlRendEncName;
+				setLabelIfNotNil(mtlRendEnc, mtlRendEncName);
                 [mtlRendEnc endEncoding];
             }
         }

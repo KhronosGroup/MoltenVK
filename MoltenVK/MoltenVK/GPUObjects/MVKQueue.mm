@@ -60,6 +60,8 @@ MVKQueueFamily::~MVKQueueFamily() {
 #pragma mark -
 #pragma mark MVKQueue
 
+void MVKQueue::propogateDebugName() { setLabelIfNotNil(_mtlQueue, _debugName); }
+
 
 #pragma mark Queue submissions
 
@@ -83,18 +85,17 @@ VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	return rslt;
 }
 
-VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
-                          VkFence fence, MVKCommandUse cmdBuffUse) {
+VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence) {
 
     // Fence-only submission
     if (submitCount == 0 && fence) {
-        return submit(new MVKQueueCommandBufferSubmission(this, nullptr, fence, cmdBuffUse));
+        return submit(new MVKQueueCommandBufferSubmission(this, nullptr, fence));
     }
 
     VkResult rslt = VK_SUCCESS;
     for (uint32_t sIdx = 0; sIdx < submitCount; sIdx++) {
         VkFence fenceOrNil = (sIdx == (submitCount - 1)) ? fence : VK_NULL_HANDLE; // last one gets the fence
-        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(this, &pSubmits[sIdx], fenceOrNil, cmdBuffUse));
+        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(this, &pSubmits[sIdx], fenceOrNil));
         if (rslt == VK_SUCCESS) { rslt = subRslt; }
     }
     return rslt;
@@ -105,7 +106,7 @@ VkResult MVKQueue::submit(const VkPresentInfoKHR* pPresentInfo) {
 }
 
 // Create an empty submit struct and fence, submit to queue and wait on fence.
-VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
+VkResult MVKQueue::waitIdle() {
 
 	VkFenceCreateInfo vkFenceInfo = {
 		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -115,7 +116,7 @@ VkResult MVKQueue::waitIdle(MVKCommandUse cmdBuffUse) {
 
 	MVKFence mvkFence(_device, &vkFenceInfo);
 	VkFence fence = (VkFence)&mvkFence;
-	submit(0, nullptr, fence, cmdBuffUse);
+	submit(0, nullptr, fence);
 	return mvkWaitForFences(_device, 1, &fence, false);
 }
 
@@ -265,7 +266,6 @@ void MVKQueueCommandBufferSubmission::setActiveMTLCommandBuffer(id<MTLCommandBuf
 	if (_activeMTLCommandBuffer) { commitActiveMTLCommandBuffer(); }
 
 	_activeMTLCommandBuffer = mtlCmdBuff;	// not retained
-	_activeMTLCommandBuffer.label = mvkMTLCommandBufferLabel(_cmdBuffUse);
 	[_activeMTLCommandBuffer enqueue];
 }
 
@@ -313,8 +313,7 @@ void MVKQueueCommandBufferSubmission::finish() {
 
 MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue,
 																 const VkSubmitInfo* pSubmit,
-																 VkFence fence,
-                                                                 MVKCommandUse cmdBuffUse)
+																 VkFence fence)
         : MVKQueueSubmission(queue,
 							 (pSubmit ? pSubmit->waitSemaphoreCount : 0),
 							 (pSubmit ? pSubmit->pWaitSemaphores : nullptr)) {
@@ -338,7 +337,6 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
     }
 
 	_fence = (MVKFence*)fence;
-    _cmdBuffUse= cmdBuffUse;
 	_activeMTLCommandBuffer = nil;
 
 //	static std::atomic<uint32_t> _subCount;
@@ -350,18 +348,13 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
 #pragma mark MVKQueuePresentSurfaceSubmission
 
 void MVKQueuePresentSurfaceSubmission::execute() {
-    id<MTLCommandQueue> mtlQ = _queue->getMTLCommandQueue();
-
 	// If there are semaphores and this device supports MTLEvent, we must present
 	// with a command buffer in order to synchronize with the semaphores.
 	MVKDevice* mvkDev = _queue->getDevice();
 	if (mvkDev->_pMetalFeatures->events && !_waitSemaphores.empty()) {
 		// Create a command buffer, have it wait for the semaphores, then present
 		// surfaces via the command buffer.
-		id<MTLCommandBuffer> mtlCmdBuff = [mtlQ commandBufferWithUnretainedReferences];
-		mtlCmdBuff.label = mvkMTLCommandBufferLabel(kMVKCommandUseQueuePresent);
-		[mtlCmdBuff enqueue];
-
+		id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();
 		for (auto& ws : _waitSemaphores) { ws->encodeWait(mtlCmdBuff); }
 		for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
 
@@ -369,10 +362,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	} else if (mvkDev->_pMVKConfig->presentWithCommandBuffer || mvkDev->_pMVKConfig->displayWatermark) {
 		// Create a command buffer, present surfaces via the command buffer,
 		// then wait on the semaphores before committing.
-		id<MTLCommandBuffer> mtlCmdBuff = [mtlQ commandBufferWithUnretainedReferences];
-		mtlCmdBuff.label = mvkMTLCommandBufferLabel(kMVKCommandUseQueuePresent);
-		[mtlCmdBuff enqueue];
-
+		id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();
 		for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
 		for (auto& ws : _waitSemaphores) { ws->wait(); }
 
@@ -389,6 +379,13 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	cs->beginScope();
 
     this->destroy();
+}
+
+id<MTLCommandBuffer> MVKQueuePresentSurfaceSubmission::getMTLCommandBuffer() {
+	id<MTLCommandBuffer> mtlCmdBuff = [_queue->getMTLCommandQueue() commandBufferWithUnretainedReferences];
+	setLabelIfNotNil(mtlCmdBuff, @"vkQueuePresentKHR CommandBuffer");
+	[mtlCmdBuff enqueue];
+	return mtlCmdBuff;
 }
 
 MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* queue,

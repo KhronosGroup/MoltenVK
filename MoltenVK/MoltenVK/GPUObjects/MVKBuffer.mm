@@ -28,6 +28,16 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKBuffer
 
+void MVKBuffer::propogateDebugName() {
+	if (_deviceMemory &&
+		_deviceMemory->isDedicatedAllocation() &&
+		_deviceMemory->_debugName.length == 0) {
+
+		_deviceMemory->setDebugName(_debugName.UTF8String);
+	}
+}
+
+
 #pragma mark Resource memory
 
 VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) {
@@ -69,6 +79,8 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
 
 	MVKResource::bindDeviceMemory(mvkMem, memOffset);
+
+	propogateDebugName();
 
 	return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
 }
@@ -130,6 +142,10 @@ MVKBuffer::~MVKBuffer() {
 #pragma mark -
 #pragma mark MVKBufferView
 
+void MVKBufferView::propogateDebugName() {
+	setLabelIfNotNil(_mtlTexture, _debugName);
+}
+
 #pragma mark Metal
 
 id<MTLTexture> MVKBufferView::getMTLTexture() {
@@ -161,6 +177,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 		_mtlTexture = [_buffer->getMTLBuffer() newTextureWithDescriptor: mtlTexDesc
 																 offset: _mtlBufferOffset
 															bytesPerRow: _mtlBytesPerRow];
+		propogateDebugName();
     }
     return _mtlTexture;
 }

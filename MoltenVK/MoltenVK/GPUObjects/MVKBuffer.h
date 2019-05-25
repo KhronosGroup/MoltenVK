@@ -81,6 +81,7 @@ public:
 protected:
 	using MVKResource::needsHostReadSync;
 
+	void propogateDebugName() override;
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   VkBufferMemoryBarrier* pBufferMemoryBarrier);
@@ -112,6 +113,8 @@ public:
     ~MVKBufferView() override;
 
 protected:
+	void propogateDebugName() override;
+
     MVKBuffer* _buffer;
 	id<MTLTexture> _mtlTexture;
 	MTLPixelFormat _mtlPixelFormat;

@@ -19,7 +19,7 @@
 #pragma once
 
 #include "MVKFoundation.h"
-#include "MVKBaseObject.h"
+#include "MVKVulkanAPIObject.h"
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
 #include "mvk_datatypes.hpp"
@@ -309,6 +309,7 @@ public:
 protected:
 	friend class MVKDevice;
 
+	void propogateDebugName() override {}
 	MTLFeatureSet getMaximalMTLFeatureSet();
     void initMetalFeatures();
 	void initFeatures();
@@ -407,6 +408,7 @@ public:
 
 	MVKSwapchainImage* createSwapchainImage(const VkImageCreateInfo* pCreateInfo,
 											MVKSwapchain* swapchain,
+											uint32_t swapchainIndex,
 											const VkAllocationCallbacks* pAllocator);
 	void destroySwapchainImage(MVKSwapchainImage* mvkImg,
 							   const VkAllocationCallbacks* pAllocator);
@@ -636,6 +638,7 @@ public:
     }
 
 protected:
+	void propogateDebugName() override  {}
 	MVKResource* addResource(MVKResource* rez);
 	MVKResource* removeResource(MVKResource* rez);
     void initPerformanceTracking();

@@ -1,5 +1,5 @@
 /*
- * MVKExtensions.cpp
+ * MVKExtensions.mm
  *
  * Copyright (c) 2014-2019 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *

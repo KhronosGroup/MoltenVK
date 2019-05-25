@@ -160,9 +160,10 @@ public:
 	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo* pCreateInfo);
 
 protected:
-
 	friend class MVKRenderSubpass;
 	friend class MVKRenderPassAttachment;
+
+	void propogateDebugName() override {}
 
 	std::vector<MVKRenderSubpass> _subpasses;
 	std::vector<MVKRenderPassAttachment> _attachments;

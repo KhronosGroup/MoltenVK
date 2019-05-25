@@ -87,14 +87,13 @@ public:
 #pragma mark Queue submissions
 
 	/** Submits the specified command buffers to the queue. */
-	VkResult submit(uint32_t submitCount, const VkSubmitInfo* pSubmits,
-                    VkFence fence, MVKCommandUse cmdBuffUse);
+	VkResult submit(uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence);
 
 	/** Submits the specified presentation command to the queue. */
 	VkResult submit(const VkPresentInfoKHR* pPresentInfo);
 
 	/** Block the current thread until this queue is idle. */
-	VkResult waitIdle(MVKCommandUse cmdBuffUse);
+	VkResult waitIdle();
 
 	/** Return the name of this queue. */
 	inline const std::string& getName() { return _name; }
@@ -132,6 +131,7 @@ protected:
 	friend class MVKQueuePresentSurfaceSubmission;
 
 	MVKBaseObject* getBaseObject() override { return this; };
+	void propogateDebugName() override;
 	void initName();
 	void initExecQueue();
 	void initMTLCommandQueue();
@@ -196,8 +196,7 @@ public:
 	/** Constructs an instance for the queue. */
 	MVKQueueCommandBufferSubmission(MVKQueue* queue,
 									const VkSubmitInfo* pSubmit,
-									VkFence fence,
-                                    MVKCommandUse cmdBuffUse);
+									VkFence fence);
 
 protected:
 	friend MVKCommandBuffer;
@@ -210,7 +209,6 @@ protected:
 	MVKVectorInline<MVKCommandBuffer*, 16> _cmdBuffers;
 	MVKVectorInline<MVKSemaphore*, 16> _signalSemaphores;
 	MVKFence* _fence;
-    MVKCommandUse _cmdBuffUse;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
 	bool _isSignalingSemaphores;
 };
@@ -229,6 +227,8 @@ public:
 									 const VkPresentInfoKHR* pPresentInfo);
 
 protected:
+	id<MTLCommandBuffer> getMTLCommandBuffer();
+
 	MVKVectorInline<MVKSwapchainImage*, 4> _surfaceImages;
 };
 
