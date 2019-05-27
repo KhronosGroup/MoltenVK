@@ -429,6 +429,9 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLRenderPipelineDescriptor
 	// Output
 	addFragmentOutputToPipeline(plDesc, reflectData, pCreateInfo);
 
+	// Metal does not allow the name of the pipeline to be changed after it has been created,
+	// and we need to create the Metal pipeline immediately to provide error feedback to app.
+	// The best we can do at this point is set the pipeline name from the layout.
 	setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
@@ -580,6 +583,9 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::getMTLTessControlStageDescrip
 	}
 	plDesc.stageInputDescriptor.indexBufferIndex = kMVKTessCtlIndexBufferIndex;
 
+	// Metal does not allow the name of the pipeline to be changed after it has been created,
+	// and we need to create the Metal pipeline immediately to provide error feedback to app.
+	// The best we can do at this point is set the pipeline name from the layout.
 	setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 	return plDesc;
@@ -1172,6 +1178,10 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 	if (shaderFunc.mtlFunction) {
 		MTLComputePipelineDescriptor* plDesc = [[MTLComputePipelineDescriptor new] autorelease];
 		plDesc.computeFunction = shaderFunc.mtlFunction;
+
+		// Metal does not allow the name of the pipeline to be changed after it has been created,
+		// and we need to create the Metal pipeline immediately to provide error feedback to app.
+		// The best we can do at this point is set the pipeline name from the layout.
 		setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
 
 		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);

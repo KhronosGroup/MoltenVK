@@ -29,7 +29,8 @@ using namespace std;
 #pragma mark MVKBuffer
 
 void MVKBuffer::propogateDebugName() {
-	if (_deviceMemory &&
+	if (_debugName &&
+		_deviceMemory &&
 		_deviceMemory->isDedicatedAllocation() &&
 		_deviceMemory->_debugName.length == 0) {
 

@@ -55,9 +55,11 @@ bool MVKVulkanAPIObject::markDestroyed() {
 }
 
 VkResult MVKVulkanAPIObject::setDebugName(const char* pObjectName) {
-	[_debugName release];
-	_debugName = [[NSString stringWithUTF8String: pObjectName] retain];		// retained
-	propogateDebugName();
+	if (pObjectName) {
+		[_debugName release];
+		_debugName = [[NSString stringWithUTF8String: pObjectName] retain];		// retained
+		propogateDebugName();
+	}
 	return VK_SUCCESS;
 }
 
