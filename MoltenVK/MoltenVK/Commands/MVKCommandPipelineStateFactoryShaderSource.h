@@ -119,7 +119,7 @@ typedef struct {                                                                
     VkExtent3D extent;                                                                                          \n\
 } CmdCopyBufferToImageInfo;                                                                                     \n\
                                                                                                                 \n\
-kernel void cmdCopyBufferToImage3DDecompressDXTn(constant uint8_t* src [[buffer(0)]],                           \n\
+kernel void cmdCopyBufferToImage3DDecompressDXTn(const device uint8_t* src [[buffer(0)]],                       \n\
                                                  texture3d<float, access::write> dest [[texture(0)]],           \n\
                                                  constant CmdCopyBufferToImageInfo& info [[buffer(2)]],         \n\
                                                  uint3 pos [[thread_position_in_grid]]) {                       \n\
@@ -144,7 +144,7 @@ kernel void cmdCopyBufferToImage3DDecompressDXTn(constant uint8_t* src [[buffer(
     }                                                                                                           \n\
 }                                                                                                               \n\
                                                                                                                 \n\
-kernel void cmdCopyBufferToImage3DDecompressTempBufferDXTn(constant uint8_t* src [[buffer(0)]],                 \n\
+kernel void cmdCopyBufferToImage3DDecompressTempBufferDXTn(const device uint8_t* src [[buffer(0)]],             \n\
                                                            device uint8_t* dest [[buffer(1)]],                  \n\
                                                            constant CmdCopyBufferToImageInfo& info [[buffer(2)]],\n\
                                                            uint3 pos [[thread_position_in_grid]]) {             \n\
