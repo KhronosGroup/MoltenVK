@@ -196,7 +196,7 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 
     // Layout texture as a 1D array of texel blocks (which are texels for non-compressed textures) that covers the bytes
     VkDeviceSize byteCount = pCreateInfo->range;
-    if (byteCount == VK_WHOLE_SIZE) { byteCount = _buffer->getByteCount() - _mtlBufferOffset; }    // Remaining bytes in buffer
+    if (byteCount == VK_WHOLE_SIZE) { byteCount = _buffer->getByteCount() - pCreateInfo->offset; }    // Remaining bytes in buffer
     size_t blockCount = byteCount / bytesPerBlock;
 
 	// But Metal requires the texture to be a 2D texture. Determine the number of 2D rows we need and their width.
