@@ -35,9 +35,11 @@ using namespace std;
 #pragma mark MVKSwapchain
 
 void MVKSwapchain::propogateDebugName() {
-	size_t imgCnt = _surfaceImages.size();
-	for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-		_surfaceImages[imgIdx]->setDebugName([NSString stringWithFormat: @"%@(%lu)", _debugName, imgIdx].UTF8String);
+	if (_debugName) {
+		size_t imgCnt = _surfaceImages.size();
+		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
+			_surfaceImages[imgIdx]->setDebugName([NSString stringWithFormat: @"%@(%lu)", _debugName, imgIdx].UTF8String);
+		}
 	}
 }
 
