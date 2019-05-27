@@ -75,8 +75,8 @@ MVK_DECOMPRESS_CODE(
 		return select(pow((colour + 0.055)/1.055, float3(2.4)), colour/12.92, colour <= 0.04045);
 	}
 
-	static void decompressDXTnBlock(constant void* pSrc, thread void* pDest, VkExtent2D extent, VkDeviceSize destRowPitch, VkFormat format) {
-		constant uint32_t* pSrcBlock = (constant uint32_t *)pSrc;
+	static void decompressDXTnBlock(const device void* pSrc, thread void* pDest, VkExtent2D extent, VkDeviceSize destRowPitch, VkFormat format) {
+		const device uint32_t* pSrcBlock = (const device uint32_t *)pSrc;
 		bool isBC1Alpha = false;
 		float3 colourTable[4];
 		float alphaTable[8];
