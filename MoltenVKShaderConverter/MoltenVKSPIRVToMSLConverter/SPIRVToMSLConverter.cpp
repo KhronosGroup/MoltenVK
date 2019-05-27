@@ -272,6 +272,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 			SPIRV_CROSS_NAMESPACE::MSLVertexAttr va;
 			for (auto& ctxVA : context.vertexAttributes) {
 				va.location = ctxVA.location;
+				va.builtin = ctxVA.builtin;
 				va.msl_buffer = ctxVA.mslBuffer;
 				va.msl_offset = ctxVA.mslOffset;
 				va.msl_stride = ctxVA.mslStride;
