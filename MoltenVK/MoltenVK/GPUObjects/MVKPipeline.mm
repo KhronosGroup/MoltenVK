@@ -135,9 +135,14 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 	}
 
 	// Set implicit buffer indices
+	// FIXME: Many of these are optional. We shouldn't set the ones that aren't
+	// present--or at least, we should move the ones that are down to avoid
+	// running over the limit of available buffers. But we can't know that
+	// until we compile the shaders.
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-		_auxBufferIndex.stages[i] = _pushConstantsMTLResourceIndexes.stages[i].bufferIndex + 1;
-		_indirectParamsIndex.stages[i] = _auxBufferIndex.stages[i] + 1;
+		_swizzleBufferIndex.stages[i] = _pushConstantsMTLResourceIndexes.stages[i].bufferIndex + 1;
+		_bufferSizeBufferIndex.stages[i] = _swizzleBufferIndex.stages[i] + 1;
+		_indirectParamsIndex.stages[i] = _bufferSizeBufferIndex.stages[i] + 1;
 		_outputBufferIndex.stages[i] = _indirectParamsIndex.stages[i] + 1;
 		if (i == kMVKShaderStageTessCtl) {
 			_tessCtlPatchOutputBufferIndex = _outputBufferIndex.stages[i] + 1;
@@ -232,7 +237,8 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 
             break;
     }
-    cmdEncoder->_graphicsResourcesState.bindAuxBuffer(_auxBufferIndex, _needsVertexAuxBuffer, _needsTessCtlAuxBuffer, _needsTessEvalAuxBuffer, _needsFragmentAuxBuffer);
+    cmdEncoder->_graphicsResourcesState.bindSwizzleBuffer(_swizzleBufferIndex, _needsVertexSwizzleBuffer, _needsTessCtlSwizzleBuffer, _needsTessEvalSwizzleBuffer, _needsFragmentSwizzleBuffer);
+    cmdEncoder->_graphicsResourcesState.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsVertexBufferSizeBuffer, _needsTessCtlBufferSizeBuffer, _needsTessEvalBufferSizeBuffer, _needsFragmentBufferSizeBuffer);
 }
 
 bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
@@ -700,14 +706,29 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::getMTLTessRasterStageDescripto
 	return plDesc;
 }
 
+bool MVKGraphicsPipeline::verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name, uint32_t reservedBuffers) {
+	const char* stageNames[] = {
+		"Vertex",
+		"Tessellation control",
+		"Tessellation evaluation",
+		"Fragment"
+	};
+	if (needsBuffer && index.stages[stage] >= _device->_pMetalFeatures->maxPerStageBufferCount - reservedBuffers) {
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "%s shader requires %s buffer, but there is no free slot to pass it.", stageNames[stage], name));
+		return false;
+	}
+	return true;
+}
+
 // Adds a vertex shader to the pipeline description.
 bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext) {
 	uint32_t vbCnt = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
 	shaderContext.options.entryPointStage = spv::ExecutionModelVertex;
 	shaderContext.options.entryPointName = _pVertexSS->pName;
-	shaderContext.options.auxBufferIndex = _auxBufferIndex.stages[kMVKShaderStageVertex];
+	shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
 	shaderContext.options.indirectParamsBufferIndex = _indirectParamsIndex.stages[kMVKShaderStageVertex];
 	shaderContext.options.outputBufferIndex = _outputBufferIndex.stages[kMVKShaderStageVertex];
+	shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageVertex];
 	shaderContext.options.shouldCaptureOutput = isTessellationPipeline();
 	shaderContext.options.isRasterizationDisabled = isTessellationPipeline() || (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
     addVertexInputToShaderConverterContext(shaderContext, pCreateInfo);
@@ -718,20 +739,22 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	}
 	plDesc.vertexFunction = mtlFunction;
 	plDesc.rasterizationEnabled = !shaderContext.options.isRasterizationDisabled;
-	_needsVertexAuxBuffer = shaderContext.options.needsAuxBuffer;
+	_needsVertexSwizzleBuffer = shaderContext.options.needsSwizzleBuffer;
+	_needsVertexBufferSizeBuffer = shaderContext.options.needsBufferSizeBuffer;
 	_needsVertexOutputBuffer = shaderContext.options.needsOutputBuffer;
-	// If we need the auxiliary buffer and there's no place to put it, we're in serious trouble.
-	if (_needsVertexAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageVertex] >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Vertex shader requires auxiliary buffer, but there is no free slot to pass it."));
+	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
+	if (!verifyImplicitBuffer(_needsVertexSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageVertex, "swizzle", vbCnt)) {
+		return false;
+	}
+	// Ditto buffer size buffer.
+	if (!verifyImplicitBuffer(_needsVertexBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageVertex, "buffer size", vbCnt)) {
 		return false;
 	}
 	// Ditto captured output buffer.
-	if (_needsVertexOutputBuffer && _outputBufferIndex.stages[kMVKShaderStageVertex] >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Vertex shader requires output buffer, but there is no free slot to pass it."));
+	if (!verifyImplicitBuffer(_needsVertexOutputBuffer, _outputBufferIndex, kMVKShaderStageVertex, "output", vbCnt)) {
 		return false;
 	}
-	if (_needsVertexOutputBuffer && _indirectParamsIndex.stages[kMVKShaderStageVertex] >= _device->_pMetalFeatures->maxPerStageBufferCount - vbCnt) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Vertex shader requires indirect parameters buffer, but there is no free slot to pass it."));
+	if (!verifyImplicitBuffer(_needsVertexOutputBuffer, _indirectParamsIndex, kMVKShaderStageVertex, "indirect parameters", vbCnt)) {
 		return false;
 	}
 	return true;
@@ -740,11 +763,12 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext, std::vector<SPIRVShaderOutput>& vtxOutputs) {
 	shaderContext.options.entryPointStage = spv::ExecutionModelTessellationControl;
 	shaderContext.options.entryPointName = _pTessCtlSS->pName;
-	shaderContext.options.auxBufferIndex = _auxBufferIndex.stages[kMVKShaderStageTessCtl];
+	shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageTessCtl];
 	shaderContext.options.indirectParamsBufferIndex = _indirectParamsIndex.stages[kMVKShaderStageTessCtl];
 	shaderContext.options.outputBufferIndex = _outputBufferIndex.stages[kMVKShaderStageTessCtl];
 	shaderContext.options.patchOutputBufferIndex = _tessCtlPatchOutputBufferIndex;
 	shaderContext.options.tessLevelBufferIndex = _tessCtlLevelBufferIndex;
+	shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageTessCtl];
 	shaderContext.options.shouldCaptureOutput = true;
 	addPrevStageOutputToShaderConverterContext(shaderContext, vtxOutputs);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pTessCtlSS->module)->getMTLFunction(&shaderContext, _pTessCtlSS->pSpecializationInfo, _pipelineCache).mtlFunction;
@@ -753,20 +777,21 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 		return false;
 	}
 	plDesc.computeFunction = mtlFunction;
-	_needsTessCtlAuxBuffer = shaderContext.options.needsAuxBuffer;
+	_needsTessCtlSwizzleBuffer = shaderContext.options.needsSwizzleBuffer;
+	_needsTessCtlBufferSizeBuffer = shaderContext.options.needsBufferSizeBuffer;
 	_needsTessCtlOutputBuffer = shaderContext.options.needsOutputBuffer;
 	_needsTessCtlPatchOutputBuffer = shaderContext.options.needsPatchOutputBuffer;
 	_needsTessCtlInput = shaderContext.options.needsInputThreadgroupMem;
-	if (_needsTessCtlAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageTessCtl] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader requires auxiliary buffer, but there is no free slot to pass it."));
+	if (!verifyImplicitBuffer(_needsTessCtlSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTessCtl, "swizzle", kMVKTessCtlNumReservedBuffers)) {
 		return false;
 	}
-	if (_indirectParamsIndex.stages[kMVKShaderStageTessCtl] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader requires indirect parameters buffer, but there is no free slot to pass it."));
+	if (!verifyImplicitBuffer(_needsTessCtlBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageTessCtl, "buffer size", kMVKTessCtlNumReservedBuffers)) {
 		return false;
 	}
-	if (_needsTessCtlOutputBuffer && _outputBufferIndex.stages[kMVKShaderStageTessCtl] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader requires per-vertex output buffer, but there is no free slot to pass it."));
+	if (!verifyImplicitBuffer(true, _indirectParamsIndex, kMVKShaderStageTessCtl, "indirect parameters", kMVKTessCtlNumReservedBuffers)) {
+		return false;
+	}
+	if (!verifyImplicitBuffer(_needsTessCtlOutputBuffer, _outputBufferIndex, kMVKShaderStageTessCtl, "per-vertex output", kMVKTessCtlNumReservedBuffers)) {
 		return false;
 	}
 	if (_needsTessCtlPatchOutputBuffer && _tessCtlPatchOutputBufferIndex >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessCtlNumReservedBuffers) {
@@ -783,7 +808,8 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext, std::vector<SPIRVShaderOutput>& tcOutputs) {
 	shaderContext.options.entryPointStage = spv::ExecutionModelTessellationEvaluation;
 	shaderContext.options.entryPointName = _pTessEvalSS->pName;
-	shaderContext.options.auxBufferIndex = _auxBufferIndex.stages[kMVKShaderStageTessEval];
+	shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageTessEval];
+	shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderContext.options.shouldCaptureOutput = false;
 	shaderContext.options.isRasterizationDisabled = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
 	addPrevStageOutputToShaderConverterContext(shaderContext, tcOutputs);
@@ -795,10 +821,12 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
 	plDesc.vertexFunction = mtlFunction;
 	plDesc.rasterizationEnabled = !shaderContext.options.isRasterizationDisabled;
-	_needsTessEvalAuxBuffer = shaderContext.options.needsAuxBuffer;
-	// If we need the auxiliary buffer and there's no place to put it, we're in serious trouble.
-	if (_needsTessEvalAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageTessEval] >= _device->_pMetalFeatures->maxPerStageBufferCount - kMVKTessEvalNumReservedBuffers) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation evaluation shader requires auxiliary buffer, but there is no free slot to pass it."));
+	_needsTessEvalSwizzleBuffer = shaderContext.options.needsSwizzleBuffer;
+	_needsTessEvalBufferSizeBuffer = shaderContext.options.needsBufferSizeBuffer;
+	if (!verifyImplicitBuffer(_needsTessEvalSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTessEval, "swizzle", kMVKTessEvalNumReservedBuffers)) {
+		return false;
+	}
+	if (!verifyImplicitBuffer(_needsTessEvalBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageTessEval, "buffer size", kMVKTessEvalNumReservedBuffers)) {
 		return false;
 	}
 	return true;
@@ -807,7 +835,8 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext) {
 	if (_pFragmentSS) {
 		shaderContext.options.entryPointStage = spv::ExecutionModelFragment;
-		shaderContext.options.auxBufferIndex = _auxBufferIndex.stages[kMVKShaderStageFragment];
+		shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageFragment];
+		shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageFragment];
 		shaderContext.options.entryPointName = _pFragmentSS->pName;
 		shaderContext.options.shouldCaptureOutput = false;
 		id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pFragmentSS->module)->getMTLFunction(&shaderContext, _pFragmentSS->pSpecializationInfo, _pipelineCache).mtlFunction;
@@ -816,9 +845,12 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 			return false;
 		}
 		plDesc.fragmentFunction = mtlFunction;
-		_needsFragmentAuxBuffer = shaderContext.options.needsAuxBuffer;
-		if (_needsFragmentAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageFragment] >= _device->_pMetalFeatures->maxPerStageBufferCount) {
-			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Fragment shader requires auxiliary buffer, but there is no free slot to pass it."));
+		_needsFragmentSwizzleBuffer = shaderContext.options.needsSwizzleBuffer;
+		_needsFragmentBufferSizeBuffer = shaderContext.options.needsBufferSizeBuffer;
+		if (!verifyImplicitBuffer(_needsFragmentSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageFragment, "swizzle", 0)) {
+			return false;
+		}
+		if (!verifyImplicitBuffer(_needsFragmentBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageFragment, "buffer size", 0)) {
 			return false;
 		}
 	}
@@ -1029,7 +1061,8 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
-    _auxBufferIndex = layout->getAuxBufferIndex();
+    _swizzleBufferIndex = layout->getSwizzleBufferIndex();
+    _bufferSizeBufferIndex = layout->getBufferSizeBufferIndex();
     _indirectParamsIndex = layout->getIndirectParamsIndex();
     _outputBufferIndex = layout->getOutputBufferIndex();
     _tessCtlPatchOutputBufferIndex = layout->getTessCtlPatchOutputBufferIndex();
@@ -1164,7 +1197,8 @@ void MVKComputePipeline::getStages(MVKVector<uint32_t>& stages) {
 void MVKComputePipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t) {
     [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setComputePipelineState: _mtlPipelineState];
     cmdEncoder->_mtlThreadgroupSize = _mtlThreadgroupSize;
-	cmdEncoder->_computeResourcesState.bindAuxBuffer(_auxBufferIndex, _needsAuxBuffer);
+	cmdEncoder->_computeResourcesState.bindSwizzleBuffer(_swizzleBufferIndex, _needsSwizzleBuffer);
+	cmdEncoder->_computeResourcesState.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsBufferSizeBuffer);
 }
 
 MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
@@ -1191,8 +1225,11 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader function could not be compiled into pipeline. See previous logged error."));
 	}
 
-	if (_needsAuxBuffer && _auxBufferIndex.stages[kMVKShaderStageCompute] > _device->_pMetalFeatures->maxPerStageBufferCount) {
-		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader requires auxiliary buffer, but there is no free slot to pass it."));
+	if (_needsSwizzleBuffer && _swizzleBufferIndex.stages[kMVKShaderStageCompute] > _device->_pMetalFeatures->maxPerStageBufferCount) {
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader requires swizzle buffer, but there is no free slot to pass it."));
+	}
+	if (_needsBufferSizeBuffer && _bufferSizeBufferIndex.stages[kMVKShaderStageCompute] > _device->_pMetalFeatures->maxPerStageBufferCount) {
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader requires buffer size buffer, but there is no free slot to pass it."));
 	}
 }
 
@@ -1211,12 +1248,15 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
-    _auxBufferIndex = layout->getAuxBufferIndex();
-    shaderContext.options.auxBufferIndex = _auxBufferIndex.stages[kMVKShaderStageCompute];
+    _swizzleBufferIndex = layout->getSwizzleBufferIndex();
+    _bufferSizeBufferIndex = layout->getBufferSizeBufferIndex();
+    shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageCompute];
+    shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageCompute];
 
     MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
     MVKMTLFunction func = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache);
-    _needsAuxBuffer = shaderContext.options.needsAuxBuffer;
+    _needsSwizzleBuffer = shaderContext.options.needsSwizzleBuffer;
+    _needsBufferSizeBuffer = shaderContext.options.needsBufferSizeBuffer;
     return func;
 }
 
@@ -1289,14 +1329,28 @@ namespace mvk {
 	void serialize(Archive & archive, SPIRVToMSLConverterOptions& opt) {
 		archive(opt.entryPointName,
 				opt.entryPointStage,
+				opt.tessPatchKind,
 				opt.mslVersion,
 				opt.texelBufferTextureWidth,
-				opt.auxBufferIndex,
+				opt.swizzleBufferIndex,
+				opt.indirectParamsBufferIndex,
+				opt.outputBufferIndex,
+				opt.patchOutputBufferIndex,
+				opt.tessLevelBufferIndex,
+				opt.bufferSizeBufferIndex,
+				opt.inputThreadgroupMemIndex,
+				opt.numTessControlPoints,
 				opt.shouldFlipVertexY,
 				opt.isRenderingPoints,
 				opt.shouldSwizzleTextureSamples,
+				opt.shouldCaptureOutput,
+				opt.tessDomainOriginInLowerLeft,
 				opt.isRasterizationDisabled,
-				opt.needsAuxBuffer);
+				opt.needsSwizzleBuffer,
+				opt.needsOutputBuffer,
+				opt.needsPatchOutputBuffer,
+				opt.needsBufferSizeBuffer,
+				opt.needsInputThreadgroupMem);
 	}
 
 	template<class Archive>

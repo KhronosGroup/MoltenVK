@@ -403,7 +403,7 @@ protected:
         }
     }
 
-	void updateSwizzle(MVKVector<uint32_t> &constants, uint32_t index, uint32_t swizzle);
+	void updateImplicitBuffer(MVKVector<uint32_t> &contents, uint32_t index, uint32_t value);
 	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKVector<MVKMTLTextureBinding>& texBindings);
 
 };
@@ -434,18 +434,25 @@ public:
         _mtlIndexBufferBinding = binding;   // No need to track dirty state
     }
 
-    /** Sets the current auxiliary buffer state. */
-    void bindAuxBuffer(const MVKShaderImplicitRezBinding& binding,
-                       bool needVertexAuxBuffer,
-                       bool needTessCtlAuxBuffer,
-                       bool needTessEvalAuxBuffer,
-                       bool needFragmentAuxBuffer);
+    /** Sets the current swizzle buffer state. */
+    void bindSwizzleBuffer(const MVKShaderImplicitRezBinding& binding,
+                           bool needVertexSwizzleBuffer,
+                           bool needTessCtlSwizzleBuffer,
+                           bool needTessEvalSwizzleBuffer,
+                           bool needFragmentSwizzleBuffer);
+
+    /** Sets the current buffer size buffer state. */
+    void bindBufferSizeBuffer(const MVKShaderImplicitRezBinding& binding,
+                              bool needVertexSizeBuffer,
+                              bool needTessCtlSizeBuffer,
+                              bool needTessEvalSizeBuffer,
+                              bool needFragmentSizeBuffer);
 
     void encodeBindings(MVKShaderStage stage,
                         const char* pStageName,
                         bool fullImageViewSwizzle,
                         std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
-                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKVector<uint32_t>&)> bindAuxBuffer,
+                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKVector<uint32_t>&)> bindImplicitBuffer,
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 
@@ -464,7 +471,9 @@ protected:
         MVKVectorInline<MVKMTLTextureBinding, 8> textureBindings;
         MVKVectorInline<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
         MVKVectorInline<uint32_t, 8> swizzleConstants;
-        MVKMTLBufferBinding auxBufferBinding;
+        MVKVectorInline<uint32_t, 8> bufferSizes;
+        MVKMTLBufferBinding swizzleBufferBinding;
+        MVKMTLBufferBinding bufferSizeBufferBinding;
 
         bool areBufferBindingsDirty = false;
         bool areTextureBindingsDirty = false;
@@ -494,8 +503,11 @@ public:
     /** Binds the specified sampler state. */
     void bindSamplerState(const MVKMTLSamplerStateBinding& binding);
 
-    /** Sets the current auxiliary buffer state. */
-	void bindAuxBuffer(const MVKShaderImplicitRezBinding& binding, bool needAuxBuffer);
+    /** Sets the current swizzle buffer state. */
+    void bindSwizzleBuffer(const MVKShaderImplicitRezBinding& binding, bool needSwizzleBuffer);
+
+    /** Sets the current buffer size buffer state. */
+    void bindBufferSizeBuffer(const MVKShaderImplicitRezBinding& binding, bool needSizeBuffer);
 
 #pragma mark Construction
 
@@ -511,13 +523,15 @@ protected:
     MVKVectorDefault<MVKMTLTextureBinding> _textureBindings;
     MVKVectorDefault<MVKMTLSamplerStateBinding> _samplerStateBindings;
     MVKVectorDefault<uint32_t> _swizzleConstants;
-    MVKMTLBufferBinding _auxBufferBinding;
+    MVKVectorDefault<uint32_t> _bufferSizes;
+    MVKMTLBufferBinding _swizzleBufferBinding;
+    MVKMTLBufferBinding _bufferSizeBufferBinding;
 
     bool _areBufferBindingsDirty = false;
     bool _areTextureBindingsDirty = false;
     bool _areSamplerStateBindingsDirty = false;
 
-	bool _needsSwizzle = false;
+    bool _needsSwizzle = false;
 };
 
 

@@ -50,11 +50,12 @@ namespace mvk {
         uint32_t mslVersion = makeMSLVersion(2, 1);
 		Platform platform = getNativePlatform();
 		uint32_t texelBufferTextureWidth = 4096;
-		uint32_t auxBufferIndex = 0;
+		uint32_t swizzleBufferIndex = 0;
 		uint32_t indirectParamsBufferIndex = 0;
 		uint32_t outputBufferIndex = 0;
 		uint32_t patchOutputBufferIndex = 0;
 		uint32_t tessLevelBufferIndex = 0;
+		uint32_t bufferSizeBufferIndex = 0;
 		uint32_t inputThreadgroupMemIndex = 0;
 		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;
@@ -64,9 +65,10 @@ namespace mvk {
 		bool tessDomainOriginInLowerLeft = false;
 
 		bool isRasterizationDisabled = false;
-		bool needsAuxBuffer = false;
+		bool needsSwizzleBuffer = false;
 		bool needsOutputBuffer = false;
 		bool needsPatchOutputBuffer = false;
+		bool needsBufferSizeBuffer = false;
 		bool needsInputThreadgroupMem = false;
 
         /** 
