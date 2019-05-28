@@ -85,7 +85,7 @@ void MVKViewportCommandEncoderState::setViewports(const MVKVector<MTLViewport> &
 void MVKViewportCommandEncoderState::encodeImpl(uint32_t stage) {
     if (stage != kMVKGraphicsStageRasterization) { return; }
 	auto& usingMTLViewports = _mtlViewports.size() > 0 ? _mtlViewports : _mtlDynamicViewports;
-	MVKAssert(!usingMTLViewports.empty(), "Must specify at least one viewport");
+	if (usingMTLViewports.empty()) { return; }
     if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
         [_cmdEncoder->_mtlRenderEncoder setViewports: &usingMTLViewports[0] count: usingMTLViewports.size()];
     } else {
@@ -132,7 +132,7 @@ void MVKScissorCommandEncoderState::setScissors(const MVKVector<MTLScissorRect> 
 void MVKScissorCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
 	auto& usingMTLScissors = _mtlScissors.size() > 0 ? _mtlScissors : _mtlDynamicScissors;
-	MVKAssert(!usingMTLScissors.empty(), "Must specify at least one scissor rect");
+	if (usingMTLScissors.empty()) { return; }
 	auto clippedScissors(usingMTLScissors);
 	std::for_each(clippedScissors.begin(), clippedScissors.end(), [this](MTLScissorRect& scissor) {
 		scissor = _cmdEncoder->clipToRenderArea(scissor);
