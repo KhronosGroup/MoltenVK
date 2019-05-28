@@ -30,7 +30,12 @@ namespace mvk {
 #pragma mark -
 #pragma mark SPIRVToMSLConverterContext
 
-	/** Options for converting SPIR-V to Metal Shading Language */
+	/**
+	 * Options for converting SPIR-V to Metal Shading Language
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
+	 */
 	typedef struct SPIRVToMSLConverterOptions {
 
 		enum Platform {
@@ -107,6 +112,9 @@ namespace mvk {
 	 * Defines MSL characteristics of a vertex attribute at a particular location.
 	 * The isUsedByShader flag is set to true during conversion of SPIR-V to MSL
 	 * if the shader makes use of this vertex attribute.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
 	typedef struct MSLVertexAttribute {
 		uint32_t location = 0;
@@ -133,6 +141,9 @@ namespace mvk {
 	 * descriptor used in a particular shading stage. Generally, only one of the buffer, texture,
 	 * or sampler elements will be populated. The isUsedByShader flag is set to true during
 	 * compilation of SPIR-V to MSL if the shader makes use of this vertex attribute.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
 	typedef struct MSLResourceBinding {
 		spv::ExecutionModel stage;
@@ -153,7 +164,12 @@ namespace mvk {
 
     } MSLResourceBinding;
 
-	/** Context passed to the SPIRVToMSLConverter to map SPIR-V descriptors to Metal resource indices. */
+	/**
+	 * Context passed to the SPIRVToMSLConverter to map SPIR-V descriptors to Metal resource indices.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
+	 */
 	typedef struct SPIRVToMSLConverterContext {
 		SPIRVToMSLConverterOptions options;
 		std::vector<MSLVertexAttribute> vertexAttributes;
@@ -188,6 +204,9 @@ namespace mvk {
      * Describes one dimension of the workgroup size of a SPIR-V entry point, including whether
 	 * it is specialized, and if so, the value of the corresponding specialization ID, which
 	 * is used to map to a value which will be provided when the MSL is compiled into a pipeline.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
      */
 	typedef struct {
 		uint32_t size = 1;
@@ -199,6 +218,9 @@ namespace mvk {
      * Describes a SPIRV entry point, including the Metal function name (which may be
      * different than the Vulkan entry point name if the original name was illegal in Metal),
      * and the size of each workgroup, if the shader is a compute shader.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
      */
 	typedef struct {
 		std::string mtlFunctionName = "main0";
