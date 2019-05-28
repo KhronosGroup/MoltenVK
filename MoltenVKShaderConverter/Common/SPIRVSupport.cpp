@@ -17,32 +17,11 @@
  */
 
 #include "SPIRVSupport.h"
-#include <spirv/1.0/spirv.h>
-#include <spirv-tools/libspirv.h>
+#include <SPIRV-Cross/spirv.hpp>
 #import <CoreFoundation/CFByteOrder.h>
 
 using namespace mvk;
 using namespace std;
-
-void mvk::logSPIRV(vector<uint32_t>& spirv, string& spvLog) {
-	if ( !((spirv.size() > 4) &&
-		   (spirv[0] == SpvMagicNumber) &&
-		   (spirv[4] == 0)) ) { return; }
-
-	uint32_t options = (SPV_BINARY_TO_TEXT_OPTION_INDENT);
-	spv_text text;
-	spv_diagnostic diagnostic = nullptr;
-	spv_context context = spvContextCreate(SPV_ENV_VULKAN_1_0);
-	spv_result_t error = spvBinaryToText(context, spirv.data(), spirv.size(), options, &text, &diagnostic);
-	spvContextDestroy(context);
-	if (error) {
-		spvDiagnosticPrint(diagnostic);
-		spvDiagnosticDestroy(diagnostic);
-		return;
-	}
-	spvLog.append(text->str, text->length);
-	spvTextDestroy(text);
-}
 
 void mvk::spirvToBytes(const vector<uint32_t>& spv, vector<char>& bytes) {
 	// Assumes desired endianness.
@@ -64,11 +43,47 @@ bool mvk::ensureSPIRVEndianness(vector<uint32_t>& spv) {
 	if (spv.empty()) { return false; }					// Nothing to convert
 
 	uint32_t magNum = spv.front();
-	if (magNum == SpvMagicNumber) { return false; }	// No need to convert
+	if (magNum == spv::MagicNumber) { return false; }	// No need to convert
 
-	if (CFSwapInt32(magNum) == SpvMagicNumber) {		// Yep, it's SPIR-V, but wrong endianness
+	if (CFSwapInt32(magNum) == spv::MagicNumber) {		// Yep, it's SPIR-V, but wrong endianness
 		for (auto& elem : spv) { elem = CFSwapInt32(elem); }
 		return true;
 	}
 	return false;		// Not SPIR-V, so don't convert
 }
+
+// Optionally exclude including SPIRV-Tools components.
+#ifdef MVK_EXCLUDE_SPIRV_TOOLS
+
+void mvk::logSPIRV(vector<uint32_t>& /*spirv*/, string& spvLog) {
+	spvLog.append("\n");
+	spvLog.append("Decompiled SPIR-V is unavailable. To log decompiled SPIR-V code,\n");
+	spvLog.append("build MoltenVK without the MVK_EXCLUDE_SPIRV_TOOLS build setting.");
+	spvLog.append("\n");
+}
+
+#else
+
+#include <spirv-tools/libspirv.h>
+
+void mvk::logSPIRV(vector<uint32_t>& spirv, string& spvLog) {
+	if ( !((spirv.size() > 4) &&
+		   (spirv[0] == spv::MagicNumber) &&
+		   (spirv[4] == 0)) ) { return; }
+
+	uint32_t options = (SPV_BINARY_TO_TEXT_OPTION_INDENT);
+	spv_text text;
+	spv_diagnostic diagnostic = nullptr;
+	spv_context context = spvContextCreate(SPV_ENV_VULKAN_1_0);
+	spv_result_t error = spvBinaryToText(context, spirv.data(), spirv.size(), options, &text, &diagnostic);
+	spvContextDestroy(context);
+	if (error) {
+		spvDiagnosticPrint(diagnostic);
+		spvDiagnosticDestroy(diagnostic);
+		return;
+	}
+	spvLog.append(text->str, text->length);
+	spvTextDestroy(text);
+}
+
+#endif

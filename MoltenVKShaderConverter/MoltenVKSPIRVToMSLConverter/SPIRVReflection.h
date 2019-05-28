@@ -19,8 +19,8 @@
 #ifndef __SPIRVReflection_h_
 #define __SPIRVReflection_h_ 1
 
-#include "../SPIRV-Cross/spirv.hpp"
-#include "../SPIRV-Cross/spirv_common.hpp"
+#include <SPIRV-Cross/spirv.hpp>
+#include <SPIRV-Cross/spirv_common.hpp>
 #include <string>
 #include <vector>
 

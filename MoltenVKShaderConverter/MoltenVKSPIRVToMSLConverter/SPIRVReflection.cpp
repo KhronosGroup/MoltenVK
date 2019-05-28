@@ -17,8 +17,8 @@
  */
 
 #include "SPIRVReflection.h"
-#include "../SPIRV-Cross/spirv_parser.hpp"
-#include "../SPIRV-Cross/spirv_reflect.hpp"
+#include <SPIRV-Cross/spirv_parser.hpp>
+#include <SPIRV-Cross/spirv_reflect.hpp>
 
 namespace mvk {
 

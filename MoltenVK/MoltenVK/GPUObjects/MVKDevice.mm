@@ -1393,7 +1393,7 @@ MTLFeatureSet MVKPhysicalDevice::getHighestMTLFeatureSet() {
 // Retrieve the SPIRV-Cross Git revision hash from a derived header file that was created in the fetchDependencies script.
 uint64_t MVKPhysicalDevice::getSpirvCrossRevision() {
 
-#include "../External/SPIRV-Cross/mvkSpirvCrossRevisionDerived.h"
+#include <SPIRV-Cross/mvkSpirvCrossRevisionDerived.h>
 
 	static const string revStr(spirvCrossRevisionString, 0, 16);	// We just need the first 16 chars
 	static const string lut("0123456789ABCDEF");

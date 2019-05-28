@@ -20,8 +20,8 @@
 #include "MVKCommonEnvironment.h"
 #include "MVKStrings.h"
 #include "FileSupport.h"
-#include "spirv_msl.hpp"
 #include "SPIRVSupport.h"
+#include <SPIRV-Cross/spirv_msl.hpp>
 #include <fstream>
 
 using namespace mvk;
