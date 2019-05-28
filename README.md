@@ -195,6 +195,21 @@ Building from the command line creates the same `Package` folder structure descr
 from within *Xcode*.
 
 
+### Building Within a Larger External Build Environment
+
+If you build **MoltenVK** as part of a larger build environment, that does not use the scripts or *Xcode* 
+projects provided by **MoltenVK**, you may be interested in certain build options designed to allow you to 
+customize the use of **MoltenVK** within your custom build environment. These options are not available
+in the default **MoltenVK** build environment described in the previous sections.
+
+- `MoltenVKShaderConverter` uses the `SPIRV-Tools` external library to log SPIR-V code for diagnostics. 
+  If this is not useful to you, you can define the `MVK_EXCLUDE_SPIRV_TOOLS` when building the 
+  `MoltenVKShaderConverter` code base, and **MoltenVK** will not attempt to use code from the `SPIRV-Tools` 
+  repository. In this way, you will not need to retrieve or build the `SPIRV-Tools` repository, or link to 
+  a `SPIRV-Tools` external library.
+
+
+
 <a name="demos"></a>
 Running the **MoltenVK** Demo Applications
 ------------------------------------------

@@ -38,6 +38,7 @@ Released TBD
 - `MoltenVKShaderConverter` tool: Add MSL version and platform command-line options.
 - Allow building external dependency libraries in `Debug` mode.
 - Enable AMD and NV GLSL extensions when building `glslang` for `MoltenVKGLSLToSPIRVConverter`.
+- Make external library header references consistent and add `MVK_EXCLUDE_SPIRV_TOOLS` option.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 20.
 - Update to latest SPIRV-Cross version:
 	- MSL: Only use constant address space for tessellation control shader.
