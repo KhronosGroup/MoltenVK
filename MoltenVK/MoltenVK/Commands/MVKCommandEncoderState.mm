@@ -447,10 +447,10 @@ void MVKBlendColorCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKResourcesCommandEncoderState
 
-// Updates the swizzle for an image in the given vector.
-void MVKResourcesCommandEncoderState::updateSwizzle(MVKVector<uint32_t> &constants, uint32_t index, uint32_t swizzle) {
-	if (index >= constants.size()) { constants.resize(index + 1); }
-	constants[index] = swizzle;
+// Updates a value at the given index in the given vector.
+void MVKResourcesCommandEncoderState::updateImplicitBuffer(MVKVector<uint32_t> &contents, uint32_t index, uint32_t value) {
+	if (index >= contents.size()) { contents.resize(index + 1); }
+	contents[index] = value;
 }
 
 // If a swizzle is needed for this stage, iterates all the bindings and logs errors for those that need texture swizzling.
@@ -486,40 +486,62 @@ void MVKGraphicsResourcesCommandEncoderState::bindSamplerState(MVKShaderStage st
     bind(binding, _shaderStages[stage].samplerStateBindings, _shaderStages[stage].areSamplerStateBindingsDirty);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderImplicitRezBinding& binding,
-															bool needVertexAuxBuffer,
-															bool needTessCtlAuxBuffer,
-															bool needTessEvalAuxBuffer,
-															bool needFragmentAuxBuffer) {
+void MVKGraphicsResourcesCommandEncoderState::bindSwizzleBuffer(const MVKShaderImplicitRezBinding& binding,
+																bool needVertexSwizzleBuffer,
+																bool needTessCtlSwizzleBuffer,
+																bool needTessEvalSwizzleBuffer,
+																bool needFragmentSwizzleBuffer) {
     for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCompute; i++) {
-        _shaderStages[i].auxBufferBinding.index = binding.stages[i];
+        _shaderStages[i].swizzleBufferBinding.index = binding.stages[i];
     }
-    _shaderStages[kMVKShaderStageVertex].auxBufferBinding.isDirty = needVertexAuxBuffer;
-    _shaderStages[kMVKShaderStageTessCtl].auxBufferBinding.isDirty = needTessCtlAuxBuffer;
-    _shaderStages[kMVKShaderStageTessEval].auxBufferBinding.isDirty = needTessEvalAuxBuffer;
-    _shaderStages[kMVKShaderStageFragment].auxBufferBinding.isDirty = needFragmentAuxBuffer;
+    _shaderStages[kMVKShaderStageVertex].swizzleBufferBinding.isDirty = needVertexSwizzleBuffer;
+    _shaderStages[kMVKShaderStageTessCtl].swizzleBufferBinding.isDirty = needTessCtlSwizzleBuffer;
+    _shaderStages[kMVKShaderStageTessEval].swizzleBufferBinding.isDirty = needTessEvalSwizzleBuffer;
+    _shaderStages[kMVKShaderStageFragment].swizzleBufferBinding.isDirty = needFragmentSwizzleBuffer;
+}
+
+void MVKGraphicsResourcesCommandEncoderState::bindBufferSizeBuffer(const MVKShaderImplicitRezBinding& binding,
+																   bool needVertexSizeBuffer,
+																   bool needTessCtlSizeBuffer,
+																   bool needTessEvalSizeBuffer,
+																   bool needFragmentSizeBuffer) {
+    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCompute; i++) {
+        _shaderStages[i].bufferSizeBufferBinding.index = binding.stages[i];
+    }
+    _shaderStages[kMVKShaderStageVertex].bufferSizeBufferBinding.isDirty = needVertexSizeBuffer;
+    _shaderStages[kMVKShaderStageTessCtl].bufferSizeBufferBinding.isDirty = needTessCtlSizeBuffer;
+    _shaderStages[kMVKShaderStageTessEval].bufferSizeBufferBinding.isDirty = needTessEvalSizeBuffer;
+    _shaderStages[kMVKShaderStageFragment].bufferSizeBufferBinding.isDirty = needFragmentSizeBuffer;
 }
 
 void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stage,
                                                              const char* pStageName,
                                                              bool fullImageViewSwizzle,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
-                                                             std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKVector<uint32_t>&)> bindAuxBuffer,
+                                                             std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKVector<uint32_t>&)> bindImplicitBuffer,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler) {
     auto& shaderStage = _shaderStages[stage];
     encodeBinding<MVKMTLBufferBinding>(shaderStage.bufferBindings, shaderStage.areBufferBindingsDirty, bindBuffer);
 
-    if (shaderStage.auxBufferBinding.isDirty) {
+    if (shaderStage.swizzleBufferBinding.isDirty) {
 
         for (auto& b : shaderStage.textureBindings) {
-            if (b.isDirty) { updateSwizzle(shaderStage.swizzleConstants, b.index, b.swizzle); }
+            if (b.isDirty) { updateImplicitBuffer(shaderStage.swizzleConstants, b.index, b.swizzle); }
         }
 
-        bindAuxBuffer(_cmdEncoder, shaderStage.auxBufferBinding, shaderStage.swizzleConstants);
+        bindImplicitBuffer(_cmdEncoder, shaderStage.swizzleBufferBinding, shaderStage.swizzleConstants);
 
     } else {
         assertMissingSwizzles(shaderStage.needsSwizzle && !fullImageViewSwizzle, pStageName, shaderStage.textureBindings);
+    }
+
+    if (shaderStage.bufferSizeBufferBinding.isDirty) {
+        for (auto& b : shaderStage.bufferBindings) {
+            if (b.isDirty) { updateImplicitBuffer(shaderStage.bufferSizes, b.index, b.size); }
+        }
+
+        bindImplicitBuffer(_cmdEncoder, shaderStage.bufferSizeBufferBinding, shaderStage.bufferSizes);
     }
 
     encodeBinding<MVKMTLTextureBinding>(shaderStage.textureBindings, shaderStage.areTextureBindingsDirty, bindTexture);
@@ -622,7 +644,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                                                                     atIndex: b.index];
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, MVKVector<uint32_t>& s)->void {
-		                   cmdEncoder->setFragmentBytes(cmdEncoder->_mtlRenderEncoder,
+                           cmdEncoder->setFragmentBytes(cmdEncoder->_mtlRenderEncoder,
                                                         s.data(),
                                                         s.size() * sizeof(uint32_t),
                                                         b.index);
@@ -644,11 +666,13 @@ void MVKGraphicsResourcesCommandEncoderState::resetImpl() {
         _shaderStages[i].textureBindings.clear();
         _shaderStages[i].samplerStateBindings.clear();
         _shaderStages[i].swizzleConstants.clear();
+        _shaderStages[i].bufferSizes.clear();
 
         _shaderStages[i].areBufferBindingsDirty = false;
         _shaderStages[i].areTextureBindingsDirty = false;
         _shaderStages[i].areSamplerStateBindingsDirty = false;
-        _shaderStages[i].auxBufferBinding.isDirty = false;
+        _shaderStages[i].swizzleBufferBinding.isDirty = false;
+        _shaderStages[i].bufferSizeBufferBinding.isDirty = false;
 
         _shaderStages[i].needsSwizzle = false;
     }
@@ -663,17 +687,23 @@ void MVKComputeResourcesCommandEncoderState::bindBuffer(const MVKMTLBufferBindin
 }
 
 void MVKComputeResourcesCommandEncoderState::bindTexture(const MVKMTLTextureBinding& binding) {
-	bind(binding, _textureBindings, _areTextureBindingsDirty, _needsSwizzle);
+    bind(binding, _textureBindings, _areTextureBindingsDirty, _needsSwizzle);
 }
 
 void MVKComputeResourcesCommandEncoderState::bindSamplerState(const MVKMTLSamplerStateBinding& binding) {
     bind(binding, _samplerStateBindings, _areSamplerStateBindingsDirty);
 }
 
-void MVKComputeResourcesCommandEncoderState::bindAuxBuffer(const MVKShaderImplicitRezBinding& binding,
-														   bool needAuxBuffer) {
-    _auxBufferBinding.index = binding.stages[kMVKShaderStageCompute];
-    _auxBufferBinding.isDirty = needAuxBuffer;
+void MVKComputeResourcesCommandEncoderState::bindSwizzleBuffer(const MVKShaderImplicitRezBinding& binding,
+															   bool needSwizzleBuffer) {
+    _swizzleBufferBinding.index = binding.stages[kMVKShaderStageCompute];
+    _swizzleBufferBinding.isDirty = needSwizzleBuffer;
+}
+
+void MVKComputeResourcesCommandEncoderState::bindBufferSizeBuffer(const MVKShaderImplicitRezBinding& binding,
+																  bool needBufferSizeBuffer) {
+    _bufferSizeBufferBinding.index = binding.stages[kMVKShaderStageCompute];
+    _bufferSizeBufferBinding.isDirty = needBufferSizeBuffer;
 }
 
 // Mark everything as dirty
@@ -698,19 +728,31 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 																									   atIndex: b.index];
                                        });
 
-    if (_auxBufferBinding.isDirty) {
+    if (_swizzleBufferBinding.isDirty) {
 
 		for (auto& b : _textureBindings) {
-			if (b.isDirty) { updateSwizzle(_swizzleConstants, b.index, b.swizzle); }
+			if (b.isDirty) { updateImplicitBuffer(_swizzleConstants, b.index, b.swizzle); }
 		}
 
 		_cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
                                      _swizzleConstants.data(),
                                      _swizzleConstants.size() * sizeof(uint32_t),
-                                     _auxBufferBinding.index);
+                                     _swizzleBufferBinding.index);
 
 	} else {
 		assertMissingSwizzles(_needsSwizzle && !fullImageViewSwizzle, "compute", _textureBindings);
+    }
+
+    if (_bufferSizeBufferBinding.isDirty) {
+		for (auto& b : _bufferBindings) {
+			if (b.isDirty) { updateImplicitBuffer(_bufferSizes, b.index, b.size); }
+		}
+
+		_cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
+                                     _bufferSizes.data(),
+                                     _bufferSizes.size() * sizeof(uint32_t),
+                                     _bufferSizeBufferBinding.index);
+
     }
 
     encodeBinding<MVKMTLTextureBinding>(_textureBindings, _areTextureBindingsDirty,
@@ -731,11 +773,13 @@ void MVKComputeResourcesCommandEncoderState::resetImpl() {
     _textureBindings.clear();
     _samplerStateBindings.clear();
     _swizzleConstants.clear();
+    _bufferSizes.clear();
 
     _areBufferBindingsDirty = false;
     _areTextureBindingsDirty = false;
     _areSamplerStateBindingsDirty = false;
-    _auxBufferBinding.isDirty = false;
+    _swizzleBufferBinding.isDirty = false;
+    _bufferSizeBufferBinding.isDirty = false;
 
 	_needsSwizzle = false;
 }

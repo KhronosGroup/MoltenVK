@@ -105,6 +105,7 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
                 bb.mtlBuffer = descBinding._mtlBuffers[rezIdx];
                 bb.offset = descBinding._mtlBufferOffsets[rezIdx] + bufferDynamicOffset;
+				bb.size = (uint32_t)((MVKBuffer*)descBinding._bufferBindings[rezIdx].buffer)->getByteCount();
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
                         bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
@@ -236,6 +237,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 MVKBuffer* buffer = (MVKBuffer*)bufferInfo.buffer;
                 bb.mtlBuffer = buffer->getMTLBuffer();
                 bb.offset = bufferInfo.offset;
+				bb.size = (uint32_t)buffer->getByteCount();
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
                         bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;

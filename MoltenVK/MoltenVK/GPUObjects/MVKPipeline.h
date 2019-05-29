@@ -69,8 +69,11 @@ public:
 						   uint32_t set,
 						   const void* pData);
 
-	/** Returns the current auxiliary buffer bindings. */
-	const MVKShaderImplicitRezBinding& getAuxBufferIndex() { return _auxBufferIndex; }
+	/** Returns the current swizzle buffer bindings. */
+	const MVKShaderImplicitRezBinding& getSwizzleBufferIndex() { return _swizzleBufferIndex; }
+
+	/** Returns the current buffer size buffer bindings. */
+	const MVKShaderImplicitRezBinding& getBufferSizeBufferIndex() { return _bufferSizeBufferIndex; }
 
 	/** Returns the current indirect parameter buffer bindings. */
 	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
@@ -84,8 +87,11 @@ public:
 	/** Returns the current tessellation level buffer binding for the tess. control shader. */
 	uint32_t getTessCtlLevelBufferIndex() { return _tessCtlLevelBufferIndex; }
 
-	/** Returns the number of textures in this layout. This is used to calculate the size of the auxiliary buffer. */
+	/** Returns the number of textures in this layout. This is used to calculate the size of the swizzle buffer. */
 	uint32_t getTextureCount() { return _pushConstantsMTLResourceIndexes.getMaxTextureIndex(); }
+
+	/** Returns the number of buffers in this layout. This is used to calculate the size of the buffer size buffer. */
+	uint32_t getBufferCount() { return _pushConstantsMTLResourceIndexes.getMaxBufferIndex(); }
 
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
@@ -97,7 +103,8 @@ protected:
 	MVKVectorInline<MVKShaderResourceBinding, 8> _dslMTLResourceIndexOffsets;
 	MVKVectorInline<VkPushConstantRange, 8> _pushConstants;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
-	MVKShaderImplicitRezBinding _auxBufferIndex;
+	MVKShaderImplicitRezBinding _swizzleBufferIndex;
+	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
@@ -131,8 +138,11 @@ public:
 	/** Binds this pipeline to the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) = 0;
 
-	/** Returns the current auxiliary buffer bindings. */
-	const MVKShaderImplicitRezBinding& getAuxBufferIndex() { return _auxBufferIndex; }
+	/** Returns the current swizzle buffer bindings. */
+	const MVKShaderImplicitRezBinding& getSwizzleBufferIndex() { return _swizzleBufferIndex; }
+
+	/** Returns the current buffer size buffer bindings. */
+	const MVKShaderImplicitRezBinding& getBufferSizeBufferIndex() { return _bufferSizeBufferIndex; }
 
 	/** Returns whether or not full image view swizzling is enabled for this pipeline. */
 	bool fullImageViewSwizzle() const { return _fullImageViewSwizzle; }
@@ -146,7 +156,8 @@ protected:
 	void propogateDebugName() override {}
 
 	MVKPipelineCache* _pipelineCache;
-	MVKShaderImplicitRezBinding _auxBufferIndex;
+	MVKShaderImplicitRezBinding _swizzleBufferIndex;
+	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
 	bool _fullImageViewSwizzle;
 
 };
@@ -230,6 +241,7 @@ protected:
     void addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS);
     void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo, bool isTessellationVertexPipeline = false);
     bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
+	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name, uint32_t reservedBuffers);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
@@ -265,14 +277,18 @@ protected:
 
 	bool _dynamicStateEnabled[VK_DYNAMIC_STATE_RANGE_SIZE];
 	bool _hasDepthStencilInfo;
-	bool _needsVertexAuxBuffer = false;
+	bool _needsVertexSwizzleBuffer = false;
+	bool _needsVertexBufferSizeBuffer = false;
 	bool _needsVertexOutputBuffer = false;
-	bool _needsTessCtlAuxBuffer = false;
+	bool _needsTessCtlSwizzleBuffer = false;
+	bool _needsTessCtlBufferSizeBuffer = false;
 	bool _needsTessCtlOutputBuffer = false;
 	bool _needsTessCtlPatchOutputBuffer = false;
 	bool _needsTessCtlInput = false;
-	bool _needsTessEvalAuxBuffer = false;
-	bool _needsFragmentAuxBuffer = false;
+	bool _needsTessEvalSwizzleBuffer = false;
+	bool _needsTessEvalBufferSizeBuffer = false;
+	bool _needsFragmentSwizzleBuffer = false;
+	bool _needsFragmentBufferSizeBuffer = false;
 };
 
 
@@ -303,7 +319,8 @@ protected:
 
     id<MTLComputePipelineState> _mtlPipelineState;
     MTLSize _mtlThreadgroupSize;
-    bool _needsAuxBuffer = false;
+    bool _needsSwizzleBuffer = false;
+    bool _needsBufferSizeBuffer = false;
 };
 
 

@@ -27,12 +27,6 @@
 using namespace mvk;
 using namespace std;
 
-// Verify that the spvAux structure used to pass auxilliary info between MoltenVK and SPIRV-Cross has not changed.
-#define MVK_SUPPORTED_MSL_AUX_BUFFER_STRUCT_VERSION		1
-#if MVK_SUPPORTED_MSL_AUX_BUFFER_STRUCT_VERSION != SPIRV_CROSS_MSL_AUX_BUFFER_STRUCT_VERSION
-#	error "The version number of the MSL spvAux struct used to pass auxilliary info to shaders does not match between MoltenVK and SPIRV-Cross. If the spvAux struct definition is not the same between MoltenVK and shaders created by SPRIV-Cross, memory errors will occur."
-#endif
-
 
 #pragma mark -
 #pragma mark SPIRVToMSLConverterContext
@@ -48,11 +42,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterOptions::matches(const SPIRVToMSLConve
 	if (entryPointStage != other.entryPointStage) { return false; }
     if (mslVersion != other.mslVersion) { return false; }
 	if (texelBufferTextureWidth != other.texelBufferTextureWidth) { return false; }
-	if (auxBufferIndex != other.auxBufferIndex) { return false; }
+	if (swizzleBufferIndex != other.swizzleBufferIndex) { return false; }
 	if (indirectParamsBufferIndex != other.indirectParamsBufferIndex) { return false; }
 	if (outputBufferIndex != other.outputBufferIndex) { return false; }
 	if (patchOutputBufferIndex != other.patchOutputBufferIndex) { return false; }
 	if (tessLevelBufferIndex != other.tessLevelBufferIndex) { return false; }
+	if (bufferSizeBufferIndex != other.bufferSizeBufferIndex) { return false; }
 	if (inputThreadgroupMemIndex != other.inputThreadgroupMemIndex) { return false; }
     if (!!shouldFlipVertexY != !!other.shouldFlipVertexY) { return false; }
     if (!!isRenderingPoints != !!other.isRenderingPoints) { return false; }
@@ -165,9 +160,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::matches(const SPIRVToMSLConve
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignWith(const SPIRVToMSLConverterContext& srcContext) {
 
 	options.isRasterizationDisabled = srcContext.options.isRasterizationDisabled;
-	options.needsAuxBuffer = srcContext.options.needsAuxBuffer;
+	options.needsSwizzleBuffer = srcContext.options.needsSwizzleBuffer;
 	options.needsOutputBuffer = srcContext.options.needsOutputBuffer;
 	options.needsPatchOutputBuffer = srcContext.options.needsPatchOutputBuffer;
+	options.needsBufferSizeBuffer = srcContext.options.needsBufferSizeBuffer;
 	options.needsInputThreadgroupMem = srcContext.options.needsInputThreadgroupMem;
 
 	if (stageSupportsVertexAttributes()) {
@@ -249,11 +245,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 		mslOpts.platform = getCompilerMSLPlatform(context.options.platform);
 		mslOpts.msl_version = context.options.mslVersion;
 		mslOpts.texel_buffer_texture_width = context.options.texelBufferTextureWidth;
-		mslOpts.aux_buffer_index = context.options.auxBufferIndex;
+		mslOpts.swizzle_buffer_index = context.options.swizzleBufferIndex;
 		mslOpts.indirect_params_buffer_index = context.options.indirectParamsBufferIndex;
 		mslOpts.shader_output_buffer_index = context.options.outputBufferIndex;
 		mslOpts.shader_patch_output_buffer_index = context.options.patchOutputBufferIndex;
 		mslOpts.shader_tess_factor_buffer_index = context.options.tessLevelBufferIndex;
+		mslOpts.buffer_size_buffer_index = context.options.bufferSizeBufferIndex;
 		mslOpts.shader_input_wg_index = context.options.inputThreadgroupMemIndex;
 		mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
 		mslOpts.disable_rasterization = context.options.isRasterizationDisabled;
@@ -324,9 +321,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 	// which vertex attributes and resource bindings are used by the shader
 	populateEntryPoint(_entryPoint, pMSLCompiler, context.options);
 	context.options.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
-	context.options.needsAuxBuffer = pMSLCompiler && pMSLCompiler->needs_aux_buffer();
+	context.options.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();
 	context.options.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
 	context.options.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
+	context.options.needsBufferSizeBuffer = pMSLCompiler && pMSLCompiler->needs_buffer_size_buffer();
 	context.options.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
 
 	if (context.stageSupportsVertexAttributes()) {

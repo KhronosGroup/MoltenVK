@@ -40,6 +40,7 @@ typedef struct {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases
     NSUInteger offset = 0;
     uint32_t index = 0;
+    uint32_t size = 0;
     bool isDirty = true;
 } MVKMTLBufferBinding;
 
