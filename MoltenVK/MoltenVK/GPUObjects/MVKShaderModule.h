@@ -55,9 +55,6 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _owner->getVulkanAPIObject(); };
 
-	/** Returns the Metal shader function, possibly specialized. */
-	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo);
-
 	/** Constructs an instance from the specified MSL source code. */
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const std::string& mslSourceCode,
@@ -79,10 +76,14 @@ protected:
 	friend MVKShaderModule;
 
 	void propogateDebugName();
+	NSString* getDebugName();
+	void setShaderModule(MVKShaderModule* shaderModule);
+	MVKMTLFunction getMTLFunction(const VkSpecializationInfo* pSpecializationInfo);
 	void handleCompilationError(NSError* err, const char* opDesc);
     MTLFunctionConstant* getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID);
 
 	MVKVulkanAPIDeviceObject* _owner;
+	MVKShaderModule* _shaderModule = nullptr;
 	id<MTLLibrary> _mtlLibrary;
 	SPIRVEntryPoint _entryPoint;
 	std::string _msl;
@@ -110,6 +111,11 @@ public:
 	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConverterContext* pContext,
 									   MVKShaderModule* shaderModule,
 									   bool* pWasAdded = nullptr);
+	/**
+	 * Sets the shader module associated with this library cache.
+	 * This is set after creation because libraries can be loaded from a pipeline cache.
+	 */
+	void setShaderModule(MVKShaderModule* shaderModule);
 
 	MVKShaderLibraryCache(MVKVulkanAPIDeviceObject* owner) : _owner(owner) {};
 
@@ -128,6 +134,7 @@ protected:
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
+	MVKShaderModule* _shaderModule = nullptr;
 	std::vector<std::pair<SPIRVToMSLConverterContext, MVKShaderLibrary*>> _shaderLibraries;
 };
 

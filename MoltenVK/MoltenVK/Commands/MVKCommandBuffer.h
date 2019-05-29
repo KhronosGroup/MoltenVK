@@ -301,6 +301,9 @@ public:
     /** Called by each compute dispatch command to establish any outstanding state just prior to performing the dispatch. */
     void finalizeDispatchState();
 
+	/** Ends the current renderpass. */
+	void endRenderpass();
+
 	/** 
 	 * Ends all encoding operations on the current Metal command encoder.
 	 *

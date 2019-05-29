@@ -74,7 +74,7 @@ MVKCmdNextSubpass::MVKCmdNextSubpass(MVKCommandTypePool<MVKCmdNextSubpass>* pool
 
 void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdEndRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-	cmdEncoder->endMetalRenderEncoding();
+	cmdEncoder->endRenderpass();
 }
 
 MVKCmdEndRenderPass::MVKCmdEndRenderPass(MVKCommandTypePool<MVKCmdEndRenderPass>* pool)

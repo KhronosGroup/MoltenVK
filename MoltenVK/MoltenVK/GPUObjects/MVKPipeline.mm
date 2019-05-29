@@ -1241,6 +1241,7 @@ MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConverterContext*
 
 	bool wasAdded = false;
 	MVKShaderLibraryCache* slCache = getShaderLibraryCache(shaderModule->getKey());
+	slCache->setShaderModule(shaderModule);
 	MVKShaderLibrary* shLib = slCache->getShaderLibrary(pContext, shaderModule, &wasAdded);
 	if (wasAdded) { markDirty(); }
 	return shLib;
