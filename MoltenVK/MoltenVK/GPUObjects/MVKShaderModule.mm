@@ -31,7 +31,15 @@ const MVKMTLFunction MVKMTLFunctionNull = { nil, MTLSizeMake(1, 1, 1) };
 #pragma mark -
 #pragma mark MVKShaderLibrary
 
-void MVKShaderLibrary::propogateDebugName() { setLabelIfNotNil(_mtlLibrary, _owner->getDebugName()); }
+void MVKShaderLibrary::propogateDebugName() { setLabelIfNotNil(_mtlLibrary, getDebugName()); }
+
+// First choice is to name after shader module if it exists, otherwise name after owner.
+NSString* MVKShaderLibrary::getDebugName() {
+	NSString* dbName = _shaderModule ? _shaderModule-> getDebugName() : nil;
+	if (dbName) { return dbName; }
+
+	return _owner ? _owner-> getDebugName() : nil;
+}
 
 // If the size of the workgroup dimension is specialized, extract it from the
 // specialization info, otherwise use the value specified in the SPIR-V shader code.
@@ -89,10 +97,11 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 				fs->destroy();
             }
         }
-		setLabelIfNotNil(mtlFunc, _owner->getDebugName());
     } else {
         reportError(VK_ERROR_INVALID_SHADER_NV, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
     }
+
+	setLabelIfNotNil(mtlFunc, getDebugName());
 
 	return { mtlFunc, MTLSizeMake(getWorkgroupDimensionSize(_entryPoint.workgroupSize.width, pSpecializationInfo),
 								  getWorkgroupDimensionSize(_entryPoint.workgroupSize.height, pSpecializationInfo),
@@ -105,6 +114,13 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 MTLFunctionConstant* MVKShaderLibrary::getFunctionConstant(NSArray<MTLFunctionConstant*>* mtlFCs, NSUInteger mtlFCID) {
     for (MTLFunctionConstant* mfc in mtlFCs) { if (mfc.index == mtlFCID) { return mfc; } }
     return nil;
+}
+
+void MVKShaderLibrary::setShaderModule(MVKShaderModule* shaderModule) {
+	if (shaderModule == _shaderModule) { return; }
+
+	_shaderModule = shaderModule;
+	propogateDebugName();
 }
 
 MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner, const string& mslSourceCode, const SPIRVEntryPoint& entryPoint) : _owner(owner) {
@@ -140,6 +156,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKShaderLibrary& other) : _owner(other._owne
 	_mtlLibrary = [other._mtlLibrary retain];
 	_entryPoint = other._entryPoint;
 	_msl = other._msl;
+	setShaderModule(other._shaderModule);
 }
 
 // If err object is nil, the compilation succeeded without any warnings.
@@ -204,6 +221,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(SPIRVToMSLConverterCon
 														  const string& mslSourceCode,
 														  const SPIRVEntryPoint& entryPoint) {
 	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, mslSourceCode, entryPoint);
+	shLib->setShaderModule(_shaderModule);
 	_shaderLibraries.emplace_back(*pContext, shLib);
 	return shLib;
 }
@@ -216,6 +234,13 @@ void MVKShaderLibraryCache::merge(MVKShaderLibraryCache* other) {
 			_shaderLibraries.emplace_back(otherPair.first, new MVKShaderLibrary(*otherPair.second));
 		}
 	}
+}
+
+void MVKShaderLibraryCache::setShaderModule(MVKShaderModule* shaderModule) {
+	if (shaderModule == _shaderModule) { return; }
+
+	_shaderModule = shaderModule;
+	for (auto& slPair : _shaderLibraries) { slPair.second->setShaderModule(_shaderModule); }
 }
 
 MVKShaderLibraryCache::~MVKShaderLibraryCache() {
@@ -310,6 +335,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 								 const VkShaderModuleCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _shaderLibraryCache(this) {
 
 	_defaultLibrary = nullptr;
+	_shaderLibraryCache.setShaderModule(this);
 
 
 	size_t codeSize = pCreateInfo->codeSize;
@@ -348,6 +374,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
 			_spvConverter.setMSL(pMSLCode, nullptr);
 			_defaultLibrary = new MVKShaderLibrary(this, _spvConverter.getMSL().c_str(), _spvConverter.getEntryPoint());
+			_defaultLibrary->setShaderModule(this);
 
 			break;
 		}
@@ -362,6 +389,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
 			_defaultLibrary = new MVKShaderLibrary(this, (void*)(pMSLCode), mslCodeLen);
+			_defaultLibrary->setShaderModule(this);
 
 			break;
 		}

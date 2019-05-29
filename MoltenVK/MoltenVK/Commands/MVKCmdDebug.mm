@@ -41,9 +41,14 @@ MVKCmdDebugMarker::~MVKCmdDebugMarker() {
 #pragma mark MVKCmdDebugMarkerBegin
 
 // Vulkan debug groups are more general than Metal's.
-// Always push on command buffer instead of the encoder.
+// If a renderpass is active, push on the render command encoder, otherwise push on the command buffer.
 void MVKCmdDebugMarkerBegin::encode(MVKCommandEncoder* cmdEncoder) {
-	[cmdEncoder->_mtlCmdBuffer pushDebugGroup: _markerName];
+	id<MTLRenderCommandEncoder> mtlCmdEnc = cmdEncoder->_mtlRenderEncoder;
+	if (mtlCmdEnc) {
+		[mtlCmdEnc pushDebugGroup: _markerName];
+	} else {
+		[cmdEncoder->_mtlCmdBuffer pushDebugGroup: _markerName];
+	}
 }
 
 MVKCmdDebugMarkerBegin::MVKCmdDebugMarkerBegin(MVKCommandTypePool<MVKCmdDebugMarkerBegin>* pool)
@@ -54,9 +59,14 @@ MVKCmdDebugMarkerBegin::MVKCmdDebugMarkerBegin(MVKCommandTypePool<MVKCmdDebugMar
 #pragma mark MVKCmdDebugMarkerEnd
 
 // Vulkan debug groups are more general than Metal's.
-// Always pop from command buffer instead of the encoder.
+// If a renderpass is active, pop from the render command encoder, otherwise pop from the command buffer.
 void MVKCmdDebugMarkerEnd::encode(MVKCommandEncoder* cmdEncoder) {
-	[cmdEncoder->_mtlCmdBuffer popDebugGroup];
+	id<MTLRenderCommandEncoder> mtlCmdEnc = cmdEncoder->_mtlRenderEncoder;
+	if (mtlCmdEnc) {
+		[mtlCmdEnc popDebugGroup];
+	} else {
+		[cmdEncoder->_mtlCmdBuffer popDebugGroup];
+	}
 }
 
 MVKCmdDebugMarkerEnd::MVKCmdDebugMarkerEnd(MVKCommandTypePool<MVKCmdDebugMarkerEnd>* pool)

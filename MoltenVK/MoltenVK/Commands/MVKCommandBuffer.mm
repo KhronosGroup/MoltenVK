@@ -332,7 +332,12 @@ MVKRenderSubpass* MVKCommandEncoder::getSubpass() { return _renderPass->getSubpa
 
 // Returns a name for use as a MTLRenderCommandEncoder label
 NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName() {
-	NSString* rpName = _renderPass ? _renderPass->getDebugName() : nil;
+	NSString* rpName;
+
+	rpName = _renderPass->getDebugName();
+	if (rpName) { return rpName; }
+
+	rpName = _cmdBuffer->getDebugName();
 	if (rpName) { return rpName; }
 
 	MVKCommandUse cmdUse = (_renderSubpassIndex == 0) ? kMVKCommandUseBeginRenderPass : kMVKCommandUseNextSubpass;
@@ -416,6 +421,14 @@ void MVKCommandEncoder::finalizeDispatchState() {
     _computePipelineState.encode();    // Must do first..it sets others
     _computeResourcesState.encode();
     _computePushConstants.encode();
+}
+
+void MVKCommandEncoder::endRenderpass() {
+	endMetalRenderEncoding();
+
+	_renderPass = nullptr;
+	_framebuffer = nullptr;
+	_renderSubpassIndex = 0;
 }
 
 void MVKCommandEncoder::endMetalRenderEncoding() {
