@@ -2027,8 +2027,8 @@ uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t bindin
 	return ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
 }
 
-MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
-	MTLPixelFormat mtlPixFmt = mvkMTLPixelFormatFromVkFormat(vkFormat);
+MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBaseObject* mvkObj) {
+	MTLPixelFormat mtlPixFmt = mvkMTLPixelFormatFromVkFormatInObj(vkFormat, mvkObj);
 #if MVK_MACOS
 	if (mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8 &&
 		!getMTLDevice().isDepth24Stencil8PixelFormatSupported) {
@@ -2038,8 +2038,8 @@ MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
 	return mtlPixFmt;
 }
 
-VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format) {
-	VkDeviceSize deviceAlignment = mvkMTLPixelFormatLinearTextureAlignment(getMTLPixelFormatFromVkFormat(format), getMTLDevice());
+VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {
+	VkDeviceSize deviceAlignment = mvkMTLPixelFormatLinearTextureAlignment(getMTLPixelFormatFromVkFormat(format, mvkObj), getMTLDevice());
 	return deviceAlignment ? deviceAlignment : _pProperties->limits.minTexelBufferOffsetAlignment;
 }
 

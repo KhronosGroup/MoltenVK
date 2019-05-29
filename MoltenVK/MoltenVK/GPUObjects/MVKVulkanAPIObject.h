@@ -50,6 +50,9 @@ public:
 	/** Returns a reference to this object suitable for use as a Vulkan API handle. */
 	virtual void* getVkHandle() { return this; }
 
+	/** Returns the Vulkan type of this object. */
+	virtual VkObjectType getVkObjectType() = 0;
+
 	/** Returns the debug report object type of this object. */
 	virtual VkDebugReportObjectTypeEXT getVkDebugReportObjectType() = 0;
 
@@ -85,6 +88,9 @@ public:
 
 	/** Returns the MVKVulkanAPIObject instance referenced by the object of the given type. */
 	static MVKVulkanAPIObject* getMVKVulkanAPIObject(VkDebugReportObjectTypeEXT objType, uint64_t object);
+
+	/** Returns the MVKVulkanAPIObject instance referenced by the object of the given type. */
+	static MVKVulkanAPIObject* getMVKVulkanAPIObject(VkObjectType objType, uint64_t objectHandle);
 
 	/** Construct an empty instance. Declared here to support copy constructor. */
 	MVKVulkanAPIObject() {}

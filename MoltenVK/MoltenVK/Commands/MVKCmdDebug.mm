@@ -104,4 +104,20 @@ void mvkCmdDebugMarkerInsert(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarke
 	cmdBuff->addCommand(cmd);
 }
 
+void mvkCmdBeginDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo) {
+	MVKCmdDebugMarkerBegin* cmd = cmdBuff->_commandPool->_cmdDebugMarkerBeginPool.acquireObject();
+	cmd->setContent(pLabelInfo->pLabelName, pLabelInfo->color);
+	cmdBuff->addCommand(cmd);
+}
+
+void mvkCmdEndDebugUtilsLabel(MVKCommandBuffer* cmdBuff) {
+	MVKCmdDebugMarkerEnd* cmd = cmdBuff->_commandPool->_cmdDebugMarkerEndPool.acquireObject();
+	cmdBuff->addCommand(cmd);
+}
+
+void mvkCmdInsertDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo) {
+	MVKCmdDebugMarkerInsert* cmd = cmdBuff->_commandPool->_cmdDebugMarkerInsertPool.acquireObject();
+	cmd->setContent(pLabelInfo->pLabelName, pLabelInfo->color);
+	cmdBuff->addCommand(cmd);
+}
 

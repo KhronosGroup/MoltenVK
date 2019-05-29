@@ -98,11 +98,11 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char*
 
 	MVKVulkanAPIObject* mvkAPIObj = mvkObj ? mvkObj->getVulkanAPIObject() : nullptr;
 	MVKInstance* mvkInst = mvkAPIObj ? mvkAPIObj->getInstance() : nullptr;
-	bool hasDebugReportCallbacks = mvkInst && mvkInst->hasDebugReportCallbacks();
+	bool hasDebugCallbacks = mvkInst && mvkInst->hasDebugCallbacks();
 	bool shouldLog = (aslLvl < (_mvkLogLevel << 2));
 
 	// Fail fast to avoid further unnecessary processing.
-	if ( !(shouldLog || hasDebugReportCallbacks) ) { return; }
+	if ( !(shouldLog || hasDebugCallbacks) ) { return; }
 
 	va_list origArgs, redoArgs;
 	va_copy(origArgs, args);
@@ -131,7 +131,7 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char*
 	if (shouldLog) { fprintf(stderr, "[%s] %s\n", getReportingLevelString(aslLvl), pMessage); }
 
 	// Broadcast the message to any Vulkan debug report callbacks
-	if (hasDebugReportCallbacks) { mvkInst->debugReportMessage(mvkAPIObj, aslLvl, pMessage); }
+	if (hasDebugCallbacks) { mvkInst->debugReportMessage(mvkAPIObj, aslLvl, pMessage); }
 }
 
 VkResult MVKBaseObject::reportError(VkResult vkErr, const char* format, ...) {

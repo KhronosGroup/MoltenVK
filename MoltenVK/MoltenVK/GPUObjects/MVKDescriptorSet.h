@@ -134,6 +134,9 @@ class MVKDescriptorSetLayout : public MVKVulkanAPIDeviceObject {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT; }
+
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT; }
 
@@ -283,6 +286,9 @@ class MVKDescriptorSet : public MVKVulkanAPIDeviceObject {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DESCRIPTOR_SET; }
+
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT; }
 
@@ -334,6 +340,9 @@ class MVKDescriptorPool : public MVKVulkanAPIDeviceObject {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DESCRIPTOR_POOL; }
+
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT; }
 
@@ -371,6 +380,9 @@ protected:
 class MVKDescriptorUpdateTemplate : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE; }
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_UPDATE_TEMPLATE_EXT; }

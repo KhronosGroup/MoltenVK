@@ -48,6 +48,9 @@ class MVKImage : public MVKResource {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_IMAGE; }
+
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT; }
 
@@ -262,6 +265,9 @@ class MVKImageView : public MVKVulkanAPIDeviceObject {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_IMAGE_VIEW; }
+
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT; }
 
@@ -329,6 +335,9 @@ protected:
 class MVKSampler : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_SAMPLER; }
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_EXT; }

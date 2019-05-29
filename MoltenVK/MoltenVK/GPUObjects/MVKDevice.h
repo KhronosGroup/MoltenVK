@@ -79,6 +79,9 @@ class MVKPhysicalDevice : public MVKDispatchableVulkanAPIObject {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PHYSICAL_DEVICE; }
+
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PHYSICAL_DEVICE_EXT; }
 
@@ -345,6 +348,9 @@ class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DEVICE; }
+
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DEVICE_EXT; }
 
@@ -561,10 +567,10 @@ public:
 	 *
 	 * All other pixel formats are returned unchanged.
 	 */
-	MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat);
+	MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBaseObject* mvkObj);
 
 	/** Returns the memory alignment required for the format when used in a texel buffer. */
-	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format);
+	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj);
 
     /** 
      * Returns the MTLBuffer used to hold occlusion query results, 
@@ -694,7 +700,7 @@ public:
 	 * are managed for each platform device.
 	 */
 	inline MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
-		return _device ? _device->getMTLPixelFormatFromVkFormat(vkFormat)
+		return _device ? _device->getMTLPixelFormatFromVkFormat(vkFormat, getBaseObject())
 					   : mvkMTLPixelFormatFromVkFormatInObj(vkFormat, getBaseObject());
 	}
 

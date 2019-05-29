@@ -31,6 +31,9 @@ class MVKBuffer : public MVKResource {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_BUFFER; }
+
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_EXT; }
 
@@ -96,6 +99,9 @@ protected:
 class MVKBufferView : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_BUFFER_VIEW; }
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_BUFFER_VIEW_EXT; }

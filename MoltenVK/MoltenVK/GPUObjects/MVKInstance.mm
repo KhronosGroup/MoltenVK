@@ -82,7 +82,7 @@ void MVKInstance::destroySurface(MVKSurface* mvkSrfc,
 
 MVKDebugReportCallback* MVKInstance::createDebugReportCallback(const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
 															   const VkAllocationCallbacks* pAllocator) {
-	lock_guard<mutex> lock(_drcbLock);
+	lock_guard<mutex> lock(_dcbLock);
 
 	MVKDebugReportCallback* mvkDRCB = new MVKDebugReportCallback(this, pCreateInfo, _useCreationCallbacks);
 	_debugReportCallbacks.push_back(mvkDRCB);
@@ -92,7 +92,7 @@ MVKDebugReportCallback* MVKInstance::createDebugReportCallback(const VkDebugRepo
 
 void MVKInstance::destroyDebugReportCallback(MVKDebugReportCallback* mvkDRCB,
 								const VkAllocationCallbacks* pAllocator) {
-	lock_guard<mutex> lock(_drcbLock);
+	lock_guard<mutex> lock(_dcbLock);
 
 	mvkRemoveAllOccurances(_debugReportCallbacks, mvkDRCB);
 	_hasDebugReportCallbacks = (_debugReportCallbacks.size() != 0);
@@ -110,25 +110,96 @@ void MVKInstance::debugReportMessage(VkDebugReportFlagsEXT flags,
 	// Fail fast to avoid further unnecessary processing and locking.
 	if ( !(_hasDebugReportCallbacks) ) { return; }
 
-	lock_guard<mutex> lock(_drcbLock);
+	lock_guard<mutex> lock(_dcbLock);
 
 	for (auto mvkDRCB : _debugReportCallbacks) {
 		auto& drbcInfo = mvkDRCB->_info;
-		if (drbcInfo.pfnCallback && mvkIsAnyFlagEnabled(drbcInfo.flags, flags) && (mvkDRCB->_isCreationCallback == _useCreationCallbacks)) {
+		if (drbcInfo.pfnCallback &&
+			mvkIsAnyFlagEnabled(drbcInfo.flags, flags) &&
+			(mvkDRCB->_isCreationCallback == _useCreationCallbacks)) {
+
 			drbcInfo.pfnCallback(flags, objectType, object, location, messageCode, pLayerPrefix, pMessage, drbcInfo.pUserData);
+		}
+	}
+}
+
+MVKDebugUtilsMessenger* MVKInstance::createDebugUtilsMessenger(const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+															   const VkAllocationCallbacks* pAllocator) {
+	lock_guard<mutex> lock(_dcbLock);
+
+	MVKDebugUtilsMessenger* mvkDUM = new MVKDebugUtilsMessenger(this, pCreateInfo, _useCreationCallbacks);
+	_debugUtilMessengers.push_back(mvkDUM);
+	_hasDebugUtilsMessengers = true;
+	return mvkDUM;
+}
+
+void MVKInstance::destroyDebugUtilsMessenger(MVKDebugUtilsMessenger* mvkDUM,
+											 const VkAllocationCallbacks* pAllocator) {
+	lock_guard<mutex> lock(_dcbLock);
+
+	mvkRemoveAllOccurances(_debugUtilMessengers, mvkDUM);
+	_hasDebugUtilsMessengers = (_debugUtilMessengers.size() != 0);
+	mvkDUM->destroy();
+}
+
+void MVKInstance::debugUtilsMessage(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+									VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+									const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData) {
+
+	// Fail fast to avoid further unnecessary processing and locking.
+	if ( !(_hasDebugUtilsMessengers) ) { return; }
+
+	lock_guard<mutex> lock(_dcbLock);
+
+	for (auto mvkDUM : _debugUtilMessengers) {
+		auto& dumInfo = mvkDUM->_info;
+		if (dumInfo.pfnUserCallback &&
+			mvkIsAnyFlagEnabled(dumInfo.messageSeverity, messageSeverity) &&
+			mvkIsAnyFlagEnabled(dumInfo.messageType, messageTypes) &&
+			(mvkDUM->_isCreationCallback == _useCreationCallbacks)) {
+
+			dumInfo.pfnUserCallback(messageSeverity, messageTypes, pCallbackData, dumInfo.pUserData);
 		}
 	}
 }
 
 void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, int aslLvl, const char* pMessage) {
 
-	// Fail fast to avoid further unnecessary processing and locking.
-	if ( !(_hasDebugReportCallbacks) ) { return; }
+	if (_hasDebugReportCallbacks) {
+		VkDebugReportFlagsEXT flags = getVkDebugReportFlagsFromASLLevel(aslLvl);
+		uint64_t object = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr);
+		VkDebugReportObjectTypeEXT objectType = mvkAPIObj ? mvkAPIObj->getVkDebugReportObjectType() : VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT;
+		debugReportMessage(flags, objectType, object, 0, 0, _debugReportCallbackLayerPrefix, pMessage);
+	}
 
-	VkDebugReportFlagsEXT flags = getVkDebugReportFlagsFromASLLevel(aslLvl);
-	uint64_t object = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr);
-	VkDebugReportObjectTypeEXT objectType = mvkAPIObj ? mvkAPIObj->getVkDebugReportObjectType() : VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT;
-	debugReportMessage(flags, objectType, object, 0, 0, _debugReportCallbackLayerPrefix, pMessage);
+	if (_hasDebugUtilsMessengers) {
+		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity = getVkDebugUtilsMessageSeverityFlagBitsFromASLLevel(aslLvl);
+		uint64_t objectHandle = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr);
+		VkObjectType objectType = mvkAPIObj ? mvkAPIObj->getVkObjectType() : VK_OBJECT_TYPE_UNKNOWN;
+
+		VkDebugUtilsObjectNameInfoEXT duObjName = {
+			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_OBJECT_NAME_INFO_EXT,
+			.pNext = nullptr,
+			.objectType = objectType,
+			.objectHandle = objectHandle,
+			.pObjectName = mvkAPIObj ? mvkAPIObj->getDebugName().UTF8String : nullptr
+		};
+		VkDebugUtilsMessengerCallbackDataEXT dumcbd = {
+			.sType = VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CALLBACK_DATA_EXT,
+			.pNext = nullptr,
+			.flags = 0,
+			.pMessageIdName = nullptr,
+			.messageIdNumber = 0,
+			.pMessage = pMessage,
+			.queueLabelCount = 0,
+			.pQueueLabels = nullptr,
+			.cmdBufLabelCount = 0,
+			.pCmdBufLabels = nullptr,
+			.objectCount = 1,
+			.pObjects = &duObjName
+		};
+		debugUtilsMessage(messageSeverity, VK_DEBUG_UTILS_MESSAGE_TYPE_FLAG_BITS_MAX_ENUM_EXT, &dumcbd);
+	}
 }
 
 VkDebugReportFlagsEXT MVKInstance::getVkDebugReportFlagsFromASLLevel(int aslLvl) {
@@ -149,6 +220,27 @@ VkDebugReportFlagsEXT MVKInstance::getVkDebugReportFlagsFromASLLevel(int aslLvl)
 		case ASL_LEVEL_EMERG:
 		default:
 			return VK_DEBUG_REPORT_ERROR_BIT_EXT;
+	}
+}
+
+VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeverityFlagBitsFromASLLevel(int aslLvl) {
+	switch (aslLvl) {
+		case ASL_LEVEL_DEBUG:
+			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
+
+		case ASL_LEVEL_INFO:
+		case ASL_LEVEL_NOTICE:
+			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
+
+		case ASL_LEVEL_WARNING:
+			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
+
+		case ASL_LEVEL_ERR:
+		case ASL_LEVEL_CRIT:
+		case ASL_LEVEL_ALERT:
+		case ASL_LEVEL_EMERG:
+		default:
+			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 	}
 }
 
@@ -205,7 +297,7 @@ static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
 
 MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
 
-	initCreationDebugReportCallbacks(pCreateInfo);	// Do before any creation activities
+	initDebugCallbacks(pCreateInfo);	// Do before any creation activities
 
 	_appInfo.apiVersion = MVK_VULKAN_API_VERSION;	// Default
 	mvkSetOrClear(&_appInfo, pCreateInfo->pApplicationInfo);
@@ -245,9 +337,10 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	_useCreationCallbacks = false;
 }
 
-void MVKInstance::initCreationDebugReportCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
+void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 	_useCreationCallbacks = true;
 	_hasDebugReportCallbacks = false;
+	_hasDebugUtilsMessengers = false;
 	_debugReportCallbackLayerPrefix = getDriverLayer()->getName();
 
 	MVKVkAPIStructHeader* next = (MVKVkAPIStructHeader*)pCreateInfo->pNext;
@@ -255,6 +348,9 @@ void MVKInstance::initCreationDebugReportCallbacks(const VkInstanceCreateInfo* p
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT:
 				createDebugReportCallback((VkDebugReportCallbackCreateInfoEXT*)next, nullptr);
+				break;
+			case VK_STRUCTURE_TYPE_DEBUG_UTILS_MESSENGER_CREATE_INFO_EXT:
+				createDebugUtilsMessenger((VkDebugUtilsMessengerCreateInfoEXT*)next, nullptr);
 				break;
 			default:
 				break;
@@ -433,6 +529,17 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_EXT_ENTRY_POINT(vkCreateDebugReportCallbackEXT, EXT_DEBUG_REPORT);
 	ADD_INST_EXT_ENTRY_POINT(vkDestroyDebugReportCallbackEXT, EXT_DEBUG_REPORT);
 	ADD_INST_EXT_ENTRY_POINT(vkDebugReportMessageEXT, EXT_DEBUG_REPORT);
+	ADD_INST_EXT_ENTRY_POINT(vkSetDebugUtilsObjectNameEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkSetDebugUtilsObjectTagEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkQueueBeginDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkQueueEndDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkQueueInsertDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkCmdBeginDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkCmdEndDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkCmdInsertDebugUtilsLabelEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkCreateDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkDestroyDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkSubmitDebugUtilsMessageEXT, EXT_DEBUG_UTILS);
 
 #ifdef VK_USE_PLATFORM_IOS_MVK
 	ADD_INST_EXT_ENTRY_POINT(vkCreateIOSSurfaceMVK, MVK_IOS_SURFACE);
@@ -527,7 +634,7 @@ MVKInstance::~MVKInstance() {
 	_useCreationCallbacks = true;
 	mvkDestroyContainerContents(_physicalDevices);
 
-	lock_guard<mutex> lock(_drcbLock);
+	lock_guard<mutex> lock(_dcbLock);
 	mvkDestroyContainerContents(_debugReportCallbacks);
 }
 

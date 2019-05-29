@@ -203,7 +203,7 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 	// Multiple rows will automatically align with PoT max texture dimension, but need to align upwards if less than full single row.
 	size_t maxBlocksPerRow = _device->_pMetalFeatures->maxTextureDimension / fmtBlockSize.width;
 	size_t blocksPerRow = min(blockCount, maxBlocksPerRow);
-	_mtlBytesPerRow = mvkAlignByteOffset(blocksPerRow * bytesPerBlock, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format));
+	_mtlBytesPerRow = mvkAlignByteOffset(blocksPerRow * bytesPerBlock, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
 
 	size_t rowCount = blockCount / blocksPerRow;
 	if (blockCount % blocksPerRow) { rowCount++; }

@@ -46,6 +46,9 @@ class MVKPipelineLayout : public MVKVulkanAPIDeviceObject {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PIPELINE_LAYOUT; }
+
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_LAYOUT_EXT; }
 
@@ -128,6 +131,9 @@ static const uint32_t kMVKTessEvalNumReservedBuffers = 3;
 class MVKPipeline : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PIPELINE; }
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT; }
@@ -331,6 +337,9 @@ protected:
 class MVKPipelineCache : public MVKVulkanAPIDeviceObject {
 
 public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PIPELINE_CACHE; }
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_CACHE_EXT; }

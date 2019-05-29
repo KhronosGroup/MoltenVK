@@ -89,3 +89,9 @@ void mvkCmdDebugMarkerEnd(MVKCommandBuffer* cmdBuff);
 
 void mvkCmdDebugMarkerInsert(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo);
 
+void mvkCmdBeginDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo);
+
+void mvkCmdEndDebugUtilsLabel(MVKCommandBuffer* cmdBuff);
+
+void mvkCmdInsertDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo);
+

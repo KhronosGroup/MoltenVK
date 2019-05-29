@@ -2181,6 +2181,108 @@ MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerInsertEXT(
 
 
 #pragma mark -
+#pragma mark VK_EXT_debug_utils extension
+
+MVK_PUBLIC_SYMBOL VkResult vkSetDebugUtilsObjectNameEXT(
+	VkDevice                                    device,
+	const VkDebugUtilsObjectNameInfoEXT*        pNameInfo) {
+
+	MVKTraceVulkanCall();
+	MVKVulkanAPIObject* mvkObj = MVKVulkanAPIObject::getMVKVulkanAPIObject(pNameInfo->objectType, pNameInfo->objectHandle);
+	return mvkObj ? mvkObj->setDebugName(pNameInfo->pObjectName) : VK_SUCCESS;
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkSetDebugUtilsObjectTagEXT(
+	VkDevice                                    device,
+	const VkDebugUtilsObjectTagInfoEXT*         pTagInfo) {
+
+	MVKTraceVulkanCall();
+	return VK_SUCCESS;
+}
+
+MVK_PUBLIC_SYMBOL void vkQueueBeginDebugUtilsLabelEXT(
+	VkQueue                                     queue,
+	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
+
+	MVKTraceVulkanCall();
+}
+
+MVK_PUBLIC_SYMBOL void vkQueueEndDebugUtilsLabelEXT(
+	VkQueue                                     queue) {
+
+	MVKTraceVulkanCall();
+}
+
+MVK_PUBLIC_SYMBOL void vkQueueInsertDebugUtilsLabelEXT(
+	VkQueue                                     queue,
+	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
+
+	MVKTraceVulkanCall();
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdBeginDebugUtilsLabelEXT(
+	VkCommandBuffer                             commandBuffer,
+	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
+
+	MVKTraceVulkanCall();
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdBeginDebugUtilsLabel(cmdBuff, pLabelInfo);
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdEndDebugUtilsLabelEXT(
+	VkCommandBuffer                             commandBuffer) {
+
+	MVKTraceVulkanCall();
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdEndDebugUtilsLabel(cmdBuff);
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdInsertDebugUtilsLabelEXT(
+	VkCommandBuffer                             commandBuffer,
+	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
+
+	MVKTraceVulkanCall();
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdInsertDebugUtilsLabel(cmdBuff, pLabelInfo);
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkCreateDebugUtilsMessengerEXT(
+	VkInstance                                  instance,
+	const VkDebugUtilsMessengerCreateInfoEXT*   pCreateInfo,
+	const VkAllocationCallbacks*                pAllocator,
+	VkDebugUtilsMessengerEXT*                   pMessenger) {
+
+	MVKTraceVulkanCall();
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+	MVKDebugUtilsMessenger* mvkDUM = mvkInst->createDebugUtilsMessenger(pCreateInfo, pAllocator);
+	*pMessenger = (VkDebugUtilsMessengerEXT)mvkDUM;
+	return mvkDUM->getConfigurationResult();
+}
+
+MVK_PUBLIC_SYMBOL void vkDestroyDebugUtilsMessengerEXT(
+	VkInstance                                  instance,
+	VkDebugUtilsMessengerEXT                    messenger,
+	const VkAllocationCallbacks*                pAllocator) {
+
+	MVKTraceVulkanCall();
+	if ( !messenger ) { return; }
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+	mvkInst->destroyDebugUtilsMessenger((MVKDebugUtilsMessenger*)messenger, pAllocator);
+}
+
+MVK_PUBLIC_SYMBOL void vkSubmitDebugUtilsMessageEXT(
+	VkInstance                                  instance,
+	VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
+	VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
+	const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData) {
+
+	MVKTraceVulkanCall();
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+	mvkInst->debugUtilsMessage(messageSeverity, messageTypes, pCallbackData);
+}
+
+
+#pragma mark -
 #pragma mark iOS & macOS surface extensions
 
 MVK_PUBLIC_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(

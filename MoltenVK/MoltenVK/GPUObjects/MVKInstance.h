@@ -31,6 +31,7 @@ class MVKPhysicalDevice;
 class MVKDevice;
 class MVKSurface;
 class MVKDebugReportCallback;
+class MVKDebugUtilsMessenger;
 
 
 /** Tracks info about entry point function pointer addresses. */
@@ -54,6 +55,9 @@ typedef struct {
 class MVKInstance : public MVKDispatchableVulkanAPIObject {
 
 public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_INSTANCE; }
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_INSTANCE_EXT; }
@@ -104,10 +108,21 @@ public:
 							const char* pLayerPrefix,
 							const char* pMessage);
 
+
+	MVKDebugUtilsMessenger* createDebugUtilsMessenger(const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+													  const VkAllocationCallbacks* pAllocator);
+
+	void destroyDebugUtilsMessenger(MVKDebugUtilsMessenger* mvkDUM,
+									const VkAllocationCallbacks* pAllocator);
+
+	void debugUtilsMessage(VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+						   VkDebugUtilsMessageTypeFlagsEXT messageTypes,
+						   const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData);
+
 	void debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, int aslLvl, const char* pMessage);
 
-	/** Returns whether debug report callbacks are being used. */
-	bool hasDebugReportCallbacks() { return _hasDebugReportCallbacks; }
+	/** Returns whether debug callbacks are being used. */
+	bool hasDebugCallbacks() { return _hasDebugReportCallbacks || _hasDebugUtilsMessengers; }
 
 	/** Returns the MoltenVK configuration settings. */
 	const MVKConfiguration* getMoltenVKConfiguration() { return &_mvkConfig; }
@@ -145,8 +160,9 @@ protected:
 
 	void propogateDebugName() override {}
 	void initProcAddrs();
-	void initCreationDebugReportCallbacks(const VkInstanceCreateInfo* pCreateInfo);
+	void initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo);
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromASLLevel(int aslLvl);
+	VkDebugUtilsMessageSeverityFlagBitsEXT getVkDebugUtilsMessageSeverityFlagBitsFromASLLevel(int aslLvl);
 	MVKEntryPoint* getEntryPoint(const char* pName);
 	void initConfig();
     void logVersions();
@@ -157,8 +173,10 @@ protected:
 	std::vector<MVKPhysicalDevice*> _physicalDevices;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
 	std::vector<MVKDebugReportCallback*> _debugReportCallbacks;
-	std::mutex _drcbLock;
+	std::vector<MVKDebugUtilsMessenger*> _debugUtilMessengers;
+	std::mutex _dcbLock;
 	bool _hasDebugReportCallbacks;
+	bool _hasDebugUtilsMessengers;
 	bool _useCreationCallbacks;
 	const char* _debugReportCallbackLayerPrefix;
 };
@@ -172,8 +190,11 @@ class MVKDebugReportCallback : public MVKVulkanAPIObject {
 
 public:
 
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT; }
+
 	/** Returns the debug report object type of this object. */
-	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_CALLBACK_EXT_EXT; }
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DEBUG_REPORT_EXT; }
 
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return _mvkInstance; }
@@ -181,7 +202,10 @@ public:
 	MVKDebugReportCallback(MVKInstance* mvkInstance,
 						   const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
 						   bool isCreationCallback) :
-	_mvkInstance(mvkInstance), _info(*pCreateInfo), _isCreationCallback(isCreationCallback) {
+	_mvkInstance(mvkInstance),
+	_info(*pCreateInfo),
+	_isCreationCallback(isCreationCallback) {
+
 		_info.pNext = nullptr;
 	}
 
@@ -192,6 +216,44 @@ protected:
 
 	MVKInstance* _mvkInstance;
 	VkDebugReportCallbackCreateInfoEXT _info;
+	bool _isCreationCallback;
+};
+
+
+#pragma mark -
+#pragma mark MVKDebugUtilsMessenger
+
+/** Represents a Vulkan Debug Utils callback. */
+class MVKDebugUtilsMessenger : public MVKVulkanAPIObject {
+
+public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_DEBUG_UTILS_MESSENGER_EXT; }
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }
+
+	/** Returns a pointer to the Vulkan instance. */
+	MVKInstance* getInstance() override { return _mvkInstance; }
+
+	MVKDebugUtilsMessenger(MVKInstance* mvkInstance,
+						   const VkDebugUtilsMessengerCreateInfoEXT* pCreateInfo,
+						   bool isCreationCallback) :
+	_mvkInstance(mvkInstance),
+	_info(*pCreateInfo),
+	_isCreationCallback(isCreationCallback) {
+
+		_info.pNext = nullptr;
+	}
+
+protected:
+	friend MVKInstance;
+
+	void propogateDebugName() override {}
+
+	MVKInstance* _mvkInstance;
+	VkDebugUtilsMessengerCreateInfoEXT _info;
 	bool _isCreationCallback;
 };
 
