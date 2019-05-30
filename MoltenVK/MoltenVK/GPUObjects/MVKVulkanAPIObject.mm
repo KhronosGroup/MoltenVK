@@ -77,6 +77,20 @@ MVKVulkanAPIObject* MVKVulkanAPIObject::getMVKVulkanAPIObject(VkDebugReportObjec
 	}
 }
 
+MVKVulkanAPIObject* MVKVulkanAPIObject::getMVKVulkanAPIObject(VkObjectType objType, uint64_t objectHandle) {
+	void* pVkObj = (void*)objectHandle;
+	switch (objType) {
+		case VK_OBJECT_TYPE_INSTANCE:
+		case VK_OBJECT_TYPE_PHYSICAL_DEVICE:
+		case VK_OBJECT_TYPE_DEVICE:
+		case VK_OBJECT_TYPE_QUEUE:
+		case VK_OBJECT_TYPE_COMMAND_BUFFER:
+			return MVKDispatchableVulkanAPIObject::getDispatchableObject(pVkObj);
+		default:
+			return (MVKVulkanAPIObject*)pVkObj;
+	}
+}
+
 MVKVulkanAPIObject::~MVKVulkanAPIObject() {
 	[_debugName release];
 }
