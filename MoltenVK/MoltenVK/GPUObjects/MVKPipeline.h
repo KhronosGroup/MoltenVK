@@ -365,7 +365,7 @@ public:
 	~MVKPipelineCache() override;
 
 protected:
-	void propogateDebugName() override;
+	void propogateDebugName() override {}
 	MVKShaderLibraryCache* getShaderLibraryCache(MVKShaderModuleKey smKey);
 	void readData(const VkPipelineCacheCreateInfo* pCreateInfo);
 	void writeData(std::ostream& outstream, bool isCounting = false);

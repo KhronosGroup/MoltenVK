@@ -1268,20 +1268,12 @@ MVKComputePipeline::~MVKComputePipeline() {
 #pragma mark -
 #pragma mark MVKPipelineCache
 
-
-void MVKPipelineCache::propogateDebugName() {
-	lock_guard<mutex> lock(_shaderCacheLock);
-
-	for (auto& slPair : _shaderCache) { slPair.second->propogateDebugName(); }
-}
-
 // Return a shader library from the specified shader context sourced from the specified shader module.
 MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConverterContext* pContext, MVKShaderModule* shaderModule) {
 	lock_guard<mutex> lock(_shaderCacheLock);
 
 	bool wasAdded = false;
 	MVKShaderLibraryCache* slCache = getShaderLibraryCache(shaderModule->getKey());
-	slCache->setShaderModule(shaderModule);
 	MVKShaderLibrary* shLib = slCache->getShaderLibrary(pContext, shaderModule, &wasAdded);
 	if (wasAdded) { markDirty(); }
 	return shLib;

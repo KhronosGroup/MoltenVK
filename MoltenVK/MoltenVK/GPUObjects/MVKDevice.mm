@@ -1839,7 +1839,7 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
 }
 
 // Create concrete implementations of the two variations of the mvkCreatePipelines() function
-// that we will be using. This is required since the template definition is location in this
+// that we will be using. This is required since the template definition is located in this
 // implementation file instead of in the header file. This is a realistic approach if the
 // universe of possible template implementation variations is small and known in advance.
 template VkResult MVKDevice::createPipelines<MVKGraphicsPipeline, VkGraphicsPipelineCreateInfo>(VkPipelineCache pipelineCache,
