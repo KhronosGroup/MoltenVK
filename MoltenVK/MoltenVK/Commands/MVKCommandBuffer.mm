@@ -177,7 +177,7 @@ void MVKCommandBuffer::clearPrefilledMTLCommandBuffer() {
 
 #pragma mark Construction
 
-// Initializes this instance after it has been created retrieved from a pool.
+// Initializes this instance after it has been created or retrieved from a pool.
 void MVKCommandBuffer::init(const VkCommandBufferAllocateInfo* pAllocateInfo) {
 	_commandPool = (MVKCommandPool*)pAllocateInfo->commandPool;
 	_isSecondary = (pAllocateInfo->level == VK_COMMAND_BUFFER_LEVEL_SECONDARY);
