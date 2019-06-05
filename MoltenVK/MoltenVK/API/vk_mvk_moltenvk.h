@@ -107,6 +107,10 @@ typedef unsigned long MTLLanguageVersion;
  *
  * 3. Setting the MVK_CONFIG_FORCE_LOW_POWER_GPU runtime environment variable or MoltenVK compile-time
  *    build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.
+ *
+ * 4. Setting the MVK_ALLOW_METAL_EVENTS runtime environment variable or MoltenVK compile-time build
+ *    setting to 1 will cause MoltenVK to use Metal events, if they are available on the device, for
+ *    Vulkan sychronization components such as VkSemaphore. This is disabled by default.
  */
 typedef struct {
 
