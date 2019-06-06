@@ -23,6 +23,7 @@
 #include "MVKSwapchain.h"
 #include "MVKImage.h"
 #include "MVKFoundation.h"
+#include "MVKShaderModule.h"
 #include <string>
 
 using namespace std;
@@ -147,3 +148,14 @@ MVK_PUBLIC_SYMBOL void vkGetIOSurfaceMVK(
     MVKImage* mvkImg = (MVKImage*)image;
     *pIOSurface = mvkImg->getIOSurface();
 }
+
+MVK_PUBLIC_SYMBOL void vkSetThreadgroupSizeMVK(
+    VkShaderModule                              shaderModule,
+    uint32_t                                    x,
+    uint32_t                                    y,
+    uint32_t                                    z) {
+
+    MVKShaderModule* mvkShaderModule = (MVKShaderModule*)shaderModule;
+    mvkShaderModule->setWorkgroupSize(x, y, z);
+}
+
