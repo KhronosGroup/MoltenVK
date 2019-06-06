@@ -158,6 +158,12 @@ void MVKShaderLibrary::handleCompilationError(NSError* err, const char* opDesc) 
     }
 }
 
+void MVKShaderLibrary::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
+    _entryPoint.workgroupSize.width.size = x;
+    _entryPoint.workgroupSize.height.size = y;
+    _entryPoint.workgroupSize.depth.size = z;
+}
+
 MVKShaderLibrary::~MVKShaderLibrary() {
 	[_mtlLibrary release];
 }
@@ -374,6 +380,11 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 
 MVKShaderModule::~MVKShaderModule() {
 	if (_defaultLibrary) { _defaultLibrary->destroy(); }
+}
+
+void MVKShaderModule::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
+    _spvConverter.setWorkgroupSize(x, y, z);
+    if(_defaultLibrary) { _defaultLibrary->setWorkgroupSize(x, y, z); }
 }
 
 

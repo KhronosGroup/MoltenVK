@@ -291,6 +291,13 @@ namespace mvk {
         /** Returns information about the shader entry point. */
         const SPIRVEntryPoint& getEntryPoint() { return _entryPoint; }
 
+        /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
+        void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
+            _entryPoint.workgroupSize.width.size = x;
+            _entryPoint.workgroupSize.height.size = y;
+            _entryPoint.workgroupSize.depth.size = z;
+        }
+        
 		/**
 		 * Returns a human-readable log of the most recent conversion activity.
 		 * This may be empty if the conversion was successful.

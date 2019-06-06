@@ -55,6 +55,9 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _owner->getVulkanAPIObject(); };
 
+    /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
+    void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
+    
 	/** Constructs an instance from the specified MSL source code. */
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const std::string& mslSourceCode,
@@ -186,7 +189,10 @@ public:
 	 * call to convert() function, or set directly using the setMSL() function.
 	 */
 	const SPIRVEntryPoint& getEntryPoint() { return _spvConverter.getEntryPoint(); }
-
+    
+    /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
+    void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
+    
 	/** Returns a key as a means of identifying this shader module in a pipeline cache. */
 	MVKShaderModuleKey getKey() { return _key; }
 
