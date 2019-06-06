@@ -153,6 +153,9 @@ public:
 	/** Returns whether or not full image view swizzling is enabled for this pipeline. */
 	bool fullImageViewSwizzle() const { return _fullImageViewSwizzle; }
 
+	/** Returns whether all internal Metal pipeline states are valid. */
+	bool hasValidMTLPipelineStates() { return _hasValidMTLPipelineStates; }
+
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKVulkanAPIDeviceObject(device),
 																						   _pipelineCache(pipelineCache),
@@ -165,6 +168,7 @@ protected:
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
 	bool _fullImageViewSwizzle;
+	bool _hasValidMTLPipelineStates = true;
 
 };
 
@@ -226,7 +230,7 @@ public:
 
 protected:
     id<MTLRenderPipelineState> getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState);
-    id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState);
+    id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState, const char* compilerType);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
     void initMVKShaderConverterContext(SPIRVToMSLConverterContext& _shaderContext,
                                        const VkGraphicsPipelineCreateInfo* pCreateInfo,
@@ -445,8 +449,8 @@ public:
 
 #pragma mark Construction
 
-	MVKComputePipelineCompiler(MVKVulkanAPIDeviceObject* owner) : MVKMetalCompiler(owner) {
-		_compilerType = "Compute pipeline";
+	MVKComputePipelineCompiler(MVKVulkanAPIDeviceObject* owner, const char* compilerType = nullptr) : MVKMetalCompiler(owner) {
+		_compilerType = compilerType ? compilerType : "Compute pipeline";
 		_pPerformanceTracker = &_owner->getDevice()->_performanceStatistics.shaderCompilation.pipelineCompile;
 	}
 

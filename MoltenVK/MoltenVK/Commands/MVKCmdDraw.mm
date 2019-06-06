@@ -117,9 +117,12 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
         if (stage == kMVKGraphicsStageVertex)
             cmdEncoder->_depthStencilState.markDirty();
         cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
-        id<MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
 
-        switch (stage) {
+		if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
+
+		id<MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
+
+		switch (stage) {
             case kMVKGraphicsStageVertex:
                 if (pipeline->needsVertexOutputBuffer()) {
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_vertexCount * _instanceCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
@@ -347,6 +350,8 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
         if (stage == kMVKGraphicsStageVertex)
             cmdEncoder->_depthStencilState.markDirty();
         cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
+
+		if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
 
         switch (stage) {
             case kMVKGraphicsStageVertex:
@@ -617,6 +622,8 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 cmdEncoder->_depthStencilState.markDirty();
             cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
 
+			if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
+
             switch (stage) {
                 case kMVKGraphicsStageVertex:
                     if (pipeline->needsVertexOutputBuffer()) {
@@ -867,6 +874,8 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
             if (stage == kMVKGraphicsStageVertex)
                 cmdEncoder->_depthStencilState.markDirty();
 	        cmdEncoder->finalizeDrawState(stage);	// Ensure all updated state has been submitted to Metal
+
+			if ( !pipeline->hasValidMTLPipelineStates() ) { return; }	// Abort if this pipeline stage could not be compiled.
 
             switch (stage) {
                 case kMVKGraphicsStageVertex:
