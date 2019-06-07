@@ -23,8 +23,8 @@ Released TBD
 	- `VK_EXT_debug_marker`
 	- `VK_EXT_debug_utils`
 	- `VK_NV_glsl_shader`
-- Change log indication of error in logs from `[***MoltenVK ERROR***]` to 
-  `[mvk-error]`, for consistency with other log level indications. 
+- Support setting workgroup size for shader modules that use 
+  MSL directly instead of converting from SPIR-V.
 - Tessellation fixes:
 	- Don't use `setVertexBytes()` for passing tessellation vertex counts.
 	- Fix intermediate Metal renderpasses load and store actions maintaining 
@@ -35,10 +35,13 @@ Released TBD
 	- Fix zero local threadgroup size in indirect tessellated rendering.
 - `VkSemaphore` optionally uses `MTLEvent`, if available and 
   `MVK_ALLOW_METAL_EVENTS` environment variable is enabled.
+- Change log indication of error in logs from `[***MoltenVK ERROR***]` to 
+  `[mvk-error]`, for consistency with other log level indications. 
 - Fix crash when clearing attachments using layered rendering on older macOS devices.
 - Fixes to Metal renderpass layered rendering settings.
 - Fix sporadic crash on `vkDestroySwapchainKHR()`.
 - `MoltenVKShaderConverter` tool: Add MSL version and platform command-line options.
+- Guard against missing Metal pipeline states when pipeline compilation fails.
 - Allow building external dependency libraries in `Debug` mode.
 - Enable AMD and NV GLSL extensions when building `glslang` for `MoltenVKGLSLToSPIRVConverter`.
 - Make external library header references consistent and add `MVK_EXCLUDE_SPIRV_TOOLS` option.

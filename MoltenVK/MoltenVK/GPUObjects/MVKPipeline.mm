@@ -164,38 +164,45 @@ void MVKGraphicsPipeline::getStages(MVKVector<uint32_t>& stages) {
 }
 
 void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) {
+	if ( !_hasValidMTLPipelineStates ) { return; }
 
     id<MTLRenderCommandEncoder> mtlCmdEnc = cmdEncoder->_mtlRenderEncoder;
     if ( stage != kMVKGraphicsStageTessControl && !mtlCmdEnc ) { return; }   // Pre-renderpass. Come back later.
 
     switch (stage) {
-        case kMVKGraphicsStageVertex:
-            // Stage 1 of a tessellated draw: vertex-only pipeline with rasterization disabled.
+
+		case kMVKGraphicsStageVertex:
+			// Stage 1 of a tessellated draw: vertex-only pipeline with rasterization disabled.
+
             [mtlCmdEnc setRenderPipelineState: _mtlTessVertexStageState];
             break;
 
         case kMVKGraphicsStageTessControl: {
-            // Stage 2 of a tessellated draw: compute pipeline to run the tess. control shader.
-            // N.B. This will prematurely terminate the current subpass. We'll have to remember to start it back up again.
-            const MVKIndexMTLBufferBinding& indexBuff = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
+			// Stage 2 of a tessellated draw: compute pipeline to run the tess. control shader.
+
+			// N.B. This will prematurely terminate the current subpass. We'll have to remember to start it back up again.
+			// Due to yet another impedance mismatch between Metal and Vulkan, which pipeline
+			// state we use depends on whether or not we have an index buffer, and if we do,
+			// the kind of indices in it. Furthermore, to avoid fetching the wrong attribute
+			// data when there are more output vertices than input vertices, we use an
+			// indexed dispatch to force each instance to fetch the correct entry.
             id<MTLComputePipelineState> plState;
-            // Due to yet another impedance mismatch between Metal and Vulkan, which pipeline
-            // state we use depends on whether or not we have an index buffer, and if we do,
-            // the kind of indices in it. Furthermore, to avoid fetching the wrong attribute
-            // data when there are more output vertices than input vertices, we use an
-            // indexed dispatch to force each instance to fetch the correct entry.
+			const char* compilerType = "Tessellation control stage pipeline";
+			const MVKIndexMTLBufferBinding& indexBuff = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
             MTLComputePipelineDescriptor* plDesc = [[_mtlTessControlStageDesc copy] autorelease];  // Use a copy to be thread-safe.
             if (!indexBuff.mtlBuffer && getInputControlPointCount() >= getOutputControlPointCount()) {
-                plState = getOrCompilePipeline(plDesc, _mtlTessControlStageState);
+                plState = getOrCompilePipeline(plDesc, _mtlTessControlStageState, compilerType);
             } else if (indexBuff.mtlIndexType == MTLIndexTypeUInt16) {
                 plDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt16;
                 plDesc.stageInputDescriptor.layouts[kMVKTessCtlInputBufferIndex].stepFunction = MTLStepFunctionThreadPositionInGridXIndexed;
-                plState = getOrCompilePipeline(plDesc, _mtlTessControlStageIndex16State);
+                plState = getOrCompilePipeline(plDesc, _mtlTessControlStageIndex16State, compilerType);
             } else {
                 plDesc.stageInputDescriptor.indexType = MTLIndexTypeUInt32;
                 plDesc.stageInputDescriptor.layouts[kMVKTessCtlInputBufferIndex].stepFunction = MTLStepFunctionThreadPositionInGridXIndexed;
-                plState = getOrCompilePipeline(plDesc, _mtlTessControlStageIndex32State);
+                plState = getOrCompilePipeline(plDesc, _mtlTessControlStageIndex32State, compilerType);
             }
+			if ( !_hasValidMTLPipelineStates ) { return; }
+
             id<MTLComputeCommandEncoder> tessCtlEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl);
             [tessCtlEnc setComputePipelineState: plState];
             if (_needsTessCtlInput) {
@@ -204,9 +211,10 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             break;
         }
 
-        // Stage 3 of a tessellated draw:
         case kMVKGraphicsStageRasterization:
+			// Stage 3 of a tessellated draw:
 
+			if ( !_mtlPipelineState ) { return; }		// Abort if pipeline could not be created.
             // Render pipeline state
             [mtlCmdEnc setRenderPipelineState: _mtlPipelineState];
 
@@ -367,21 +375,26 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 }
 
 // Either returns an existing pipeline state or compiles a new one.
-id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState) {
-	if (!plState) {
+id<MTLRenderPipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc,
+																	 id<MTLRenderPipelineState>& plState) {
+	if ( !plState ) {
 		MVKRenderPipelineCompiler* plc = new MVKRenderPipelineCompiler(this);
 		plState = plc->newMTLRenderPipelineState(plDesc);	// retained
 		plc->destroy();
+		if ( !plState ) { _hasValidMTLPipelineStates = false; }
 	}
 	return plState;
 }
 
 // Either returns an existing pipeline state or compiles a new one.
-id<MTLComputePipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState) {
-	if (!plState) {
-		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
+id<MTLComputePipelineState> MVKGraphicsPipeline::getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc,
+																	  id<MTLComputePipelineState>& plState,
+																	  const char* compilerType) {
+	if ( !plState ) {
+		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this, compilerType);
 		plState = plc->newMTLComputePipelineState(plDesc);	// retained
 		plc->destroy();
+		if ( !plState ) { _hasValidMTLPipelineStates = false; }
 	}
 	return plState;
 }
@@ -1195,7 +1208,9 @@ void MVKComputePipeline::getStages(MVKVector<uint32_t>& stages) {
 }
 
 void MVKComputePipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t) {
-    [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setComputePipelineState: _mtlPipelineState];
+	if ( !_hasValidMTLPipelineStates ) { return; }
+
+	[cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setComputePipelineState: _mtlPipelineState];
     cmdEncoder->_mtlThreadgroupSize = _mtlThreadgroupSize;
 	cmdEncoder->_computeResourcesState.bindSwizzleBuffer(_swizzleBufferIndex, _needsSwizzleBuffer);
 	cmdEncoder->_computeResourcesState.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsBufferSizeBuffer);
@@ -1221,6 +1236,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 		MVKComputePipelineCompiler* plc = new MVKComputePipelineCompiler(this);
 		_mtlPipelineState = plc->newMTLComputePipelineState(plDesc);	// retained
 		plc->destroy();
+		if ( !_mtlPipelineState ) { _hasValidMTLPipelineStates = false; }
 	} else {
 		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader function could not be compiled into pipeline. See previous logged error."));
 	}
