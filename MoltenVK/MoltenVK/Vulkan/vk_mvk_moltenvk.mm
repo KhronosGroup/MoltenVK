@@ -149,7 +149,7 @@ MVK_PUBLIC_SYMBOL void vkGetIOSurfaceMVK(
     *pIOSurface = mvkImg->getIOSurface();
 }
 
-MVK_PUBLIC_SYMBOL void vkSetThreadgroupSizeMVK(
+MVK_PUBLIC_SYMBOL void vkSetWorkgroupSizeMVK(
     VkShaderModule                              shaderModule,
     uint32_t                                    x,
     uint32_t                                    y,

@@ -796,13 +796,13 @@ VKAPI_ATTR void VKAPI_CALL vkGetVersionStringsMVK(
     uint32_t                                    vulkanVersionStringBufferLength);
 
 /**
- * Sets the number of threads in a threadgroup for a compute kernel.
+ * Sets the number of threads in a workgroup for a compute kernel.
  *
  * This needs to be called if you are creating compute shader modules from MSL
- * source code or MSL compiled code. Threadgroup size is determined automatically
+ * source code or MSL compiled code. Workgroup size is determined automatically
  * if you're using SPIR-V.
  */
-VKAPI_ATTR void VKAPI_CALL vkSetThreadgroupSizeMVK(
+VKAPI_ATTR void VKAPI_CALL vkSetWorkgroupSizeMVK(
     VkShaderModule                              shaderModule,
     uint32_t                                    x,
     uint32_t                                    y,
