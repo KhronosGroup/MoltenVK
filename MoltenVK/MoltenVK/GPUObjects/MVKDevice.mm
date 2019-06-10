@@ -663,7 +663,7 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 				auto* budgetProps = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)next;
 				memset(budgetProps->heapBudget, 0, sizeof(budgetProps->heapBudget));
 				memset(budgetProps->heapUsage, 0, sizeof(budgetProps->heapUsage));
-				budgetProps->heapBudget[0] = (VkDeviceSize)mvkRecommendedMaxWorkingSetSize(_mtlDevice);
+				budgetProps->heapBudget[0] = (VkDeviceSize)getRecommendedMaxWorkingSetSize();
 				if ( [_mtlDevice respondsToSelector: @selector(currentAllocatedSize)] ) {
 					budgetProps->heapUsage[0] = (VkDeviceSize)_mtlDevice.currentAllocatedSize;
 				}
@@ -803,6 +803,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 #endif
 
+	if (getSupportsMetalVersion(MTLSoftwareVersion3_0)) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
+	}
+
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
         _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
     }
@@ -814,6 +818,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
     }
 
 	switch (_metalFeatures.mslVersionEnum) {
+		case MTLLanguageVersion2_2:
+			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2, 2);
+			break;
 		case MTLLanguageVersion2_1:
 			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2, 1);
 			break;
@@ -841,7 +848,17 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 }
 
-/** Initializes the physical device features of this instance. */
+bool MVKPhysicalDevice::getSupportsMetalVersion(MTLSoftwareVersion mtlVersion) {
+	return ([_mtlDevice respondsToSelector: @selector(supportsVersion:)] &&
+			[_mtlDevice supportsVersion: mtlVersion]);
+}
+
+bool MVKPhysicalDevice::getSupportsGPUFamily(MTLGPUFamily gpuFamily) {
+	return ([_mtlDevice respondsToSelector: @selector(supportsFamily:)] &&
+			[_mtlDevice supportsFamily: gpuFamily]);
+}
+
+// Initializes the physical device features of this instance.
 void MVKPhysicalDevice::initFeatures() {
 	memset(&_features, 0, sizeof(_features));	// Start with everything cleared
 
@@ -996,7 +1013,7 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.apiVersion = MVK_VULKAN_API_VERSION;
 	_properties.driverVersion = MVK_VERSION;
 
-	mvkPopulateGPUInfo(_properties, _mtlDevice);
+	initGPUInfoProperties();
 	initPipelineCacheUUID();
 
 	// Limits
@@ -1224,6 +1241,104 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.maxGeometryTotalOutputComponents = 0;
 }
 
+#if MVK_MACOS
+
+static uint32_t mvkGetEntryProperty(io_registry_entry_t entry, CFStringRef propertyName) {
+
+	uint32_t value = 0;
+
+	CFTypeRef cfProp = IORegistryEntrySearchCFProperty(entry,
+													   kIOServicePlane,
+													   propertyName,
+													   kCFAllocatorDefault,
+													   kIORegistryIterateRecursively |
+													   kIORegistryIterateParents);
+	if (cfProp) {
+		const uint32_t* pValue = reinterpret_cast<const uint32_t*>(CFDataGetBytePtr((CFDataRef)cfProp));
+		if (pValue) { value = *pValue; }
+		CFRelease(cfProp);
+	}
+
+	return value;
+}
+
+void MVKPhysicalDevice::initGPUInfoProperties() {
+
+	static const uint32_t kIntelVendorId = 0x8086;
+	bool isFound = false;
+
+	bool isIntegrated = _mtlDevice.isLowPower;
+	_properties.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
+	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
+
+	// If the device has an associated registry ID, we can use that to get the associated IOKit node.
+	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
+	io_registry_entry_t entry;
+	uint64_t regID = mvkGetRegistryID(_mtlDevice);
+	if (regID) {
+		entry = IOServiceGetMatchingService(kIOMasterPortDefault, IORegistryEntryIDMatching(regID));
+		if (entry) {
+			// That returned the IOGraphicsAccelerator nub. Its parent, then, is the actual
+			// PCI device.
+			io_registry_entry_t parent;
+			if (IORegistryEntryGetParentEntry(entry, kIOServicePlane, &parent) == kIOReturnSuccess) {
+				isFound = true;
+				_properties.vendorID = mvkGetEntryProperty(parent, CFSTR("vendor-id"));
+				_properties.deviceID = mvkGetEntryProperty(parent, CFSTR("device-id"));
+				IOObjectRelease(parent);
+			}
+			IOObjectRelease(entry);
+		}
+	}
+	// Iterate all GPU's, looking for a match.
+	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
+	io_iterator_t entryIterator;
+	if (!isFound && IOServiceGetMatchingServices(kIOMasterPortDefault,
+												 IOServiceMatching("IOPCIDevice"),
+												 &entryIterator) == kIOReturnSuccess) {
+		while ( !isFound && (entry = IOIteratorNext(entryIterator)) ) {
+			if (mvkGetEntryProperty(entry, CFSTR("class-code")) == 0x30000) {	// 0x30000 : DISPLAY_VGA
+
+				// The Intel GPU will always be marked as integrated.
+				// Return on a match of either Intel && low power, or non-Intel and non-low-power.
+				uint32_t vendorID = mvkGetEntryProperty(entry, CFSTR("vendor-id"));
+				if ( (vendorID == kIntelVendorId) == isIntegrated) {
+					isFound = true;
+					_properties.vendorID = vendorID;
+					_properties.deviceID = mvkGetEntryProperty(entry, CFSTR("device-id"));
+				}
+			}
+		}
+		IOObjectRelease(entryIterator);
+	}
+}
+
+#endif	//MVK_MACOS
+
+#if MVK_IOS
+
+// For iOS devices, the Device ID is the SoC model (A8, A10X...), in the hex form 0xaMMX, where
+//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
+void MVKPhysicalDevice::initGPUInfoProperties() {
+	NSUInteger coreCnt = NSProcessInfo.processInfo.processorCount;
+	uint32_t devID = 0xa070;
+	if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1]) {
+		devID = 0xa120;
+	} else if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1]) {
+		devID = 0xa110;
+	} else if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
+		devID = coreCnt > 2 ? 0xa101 : 0xa100;
+	} else if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1]) {
+		devID = coreCnt > 2 ? 0xa081 : 0xa080;
+	}
+
+	_properties.vendorID = 0x0000106b;	// Apple's PCI ID
+	_properties.deviceID = devID;
+	_properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
+}
+#endif	//MVK_IOS
+
 
 #pragma mark VkPhysicalDeviceLimits - List of feature limits available on the device
 
@@ -1359,7 +1474,7 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	uuidComponentOffset += sizeof(mvkVersion);
 
 	// Next 4 bytes contains hightest Metal feature set supported by this device
-	uint32_t mtlFeatSet = (uint32_t)getHighestMTLFeatureSet();
+	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
 	uuidComponentOffset += sizeof(mtlFeatSet);
 
@@ -1369,24 +1484,41 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	uuidComponentOffset += sizeof(spvxRev);
 }
 
-MTLFeatureSet MVKPhysicalDevice::getHighestMTLFeatureSet() {
+uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
+
+	// On newer OS's, combine highest Metal version with highest GPU family
+	// (Mac & Apple GPU lists should be mutex on platform)
+	MTLSoftwareVersion mtlVer = MTLSoftwareVersion(0);
+	if (getSupportsMetalVersion(MTLSoftwareVersion3_0)) { mtlVer = MTLSoftwareVersion3_0; }
+
+	MTLGPUFamily mtlFam = MTLGPUFamily(0);
+	if (getSupportsGPUFamily(MTLGPUFamilyMac1)) { mtlFam = MTLGPUFamilyMac1; }
+	if (getSupportsGPUFamily(MTLGPUFamilyMac2)) { mtlFam = MTLGPUFamilyMac2; }
+
+	if (getSupportsGPUFamily(MTLGPUFamilyApple1)) { mtlFam = MTLGPUFamilyApple1; }
+	if (getSupportsGPUFamily(MTLGPUFamilyApple2)) { mtlFam = MTLGPUFamilyApple2; }
+	if (getSupportsGPUFamily(MTLGPUFamilyApple3)) { mtlFam = MTLGPUFamilyApple3; }
+	if (getSupportsGPUFamily(MTLGPUFamilyApple4)) { mtlFam = MTLGPUFamilyApple4; }
+	if (getSupportsGPUFamily(MTLGPUFamilyApple5)) { mtlFam = MTLGPUFamilyApple5; }
+
+	// Not explicitly guaranteed to be unique...but close enough without spilling over
+	uint32_t mtlFS = ((uint32_t)mtlVer << 8) + (uint32_t)mtlFam;
+	if (mtlFS) { return mtlFS; }
+
+	// Fall back to legacy feature sets on older OS's
 #if MVK_IOS
-	MTLFeatureSet maxFS = MTLFeatureSet_iOS_GPUFamily5_v1;
-	MTLFeatureSet minFS = MTLFeatureSet_iOS_GPUFamily1_v1;
+	uint32_t maxFS = (uint32_t)MTLFeatureSet_iOS_GPUFamily5_v1;
+	uint32_t minFS = (uint32_t)MTLFeatureSet_iOS_GPUFamily1_v1;
 #endif
 
 #if MVK_MACOS
-	MTLFeatureSet maxFS = MTLFeatureSet_macOS_GPUFamily2_v1;
-	MTLFeatureSet minFS = MTLFeatureSet_macOS_GPUFamily1_v1;
+	uint32_t maxFS = (uint32_t)MTLFeatureSet_macOS_GPUFamily2_v1;
+	uint32_t minFS = (uint32_t)MTLFeatureSet_macOS_GPUFamily1_v1;
 #endif
 
-	for (NSUInteger fs = maxFS; fs > minFS; fs--) {
-		MTLFeatureSet mtlFS = (MTLFeatureSet)fs;
-		if ( [_mtlDevice supportsFeatureSet: mtlFS] ) {
-			return mtlFS;
-		}
+	for (uint32_t fs = maxFS; fs > minFS; fs--) {
+		if ( [_mtlDevice supportsFeatureSet: (MTLFeatureSet)fs] ) { return fs; }
 	}
-
 	return minFS;
 }
 
@@ -1449,7 +1581,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
         .memoryHeaps = {
             {
                 .flags = (VK_MEMORY_HEAP_DEVICE_LOCAL_BIT),
-                .size = (VkDeviceSize)mvkRecommendedMaxWorkingSetSize(_mtlDevice),
+                .size = (VkDeviceSize)getRecommendedMaxWorkingSetSize(),
             },
         },
         // NB this list needs to stay sorted by propertyFlags (as bit sets)
@@ -1501,6 +1633,29 @@ void MVKPhysicalDevice::initMemoryProperties() {
 #endif
 }
 
+uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
+#if MVK_MACOS
+	if ( [_mtlDevice respondsToSelector: @selector(recommendedMaxWorkingSetSize)]) {
+		return _mtlDevice.recommendedMaxWorkingSetSize;
+	}
+#endif
+#if MVK_IOS
+	// GPU and CPU use shared memory. Estimate the current free memory in the system.
+	mach_port_t host_port;
+	mach_msg_type_number_t host_size;
+	vm_size_t pagesize;
+	host_port = mach_host_self();
+	host_size = sizeof(vm_statistics_data_t) / sizeof(integer_t);
+	host_page_size(host_port, &pagesize);
+	vm_statistics_data_t vm_stat;
+	if (host_statistics(host_port, HOST_VM_INFO, (host_info_t)&vm_stat, &host_size) == KERN_SUCCESS ) {
+		return vm_stat.free_count * pagesize;
+	}
+#endif
+
+	return 128 * MEBI;		// Conservative minimum for macOS GPU's & iOS shared memory
+}
+
 void MVKPhysicalDevice::logGPUInfo() {
 	string devTypeStr;
 	switch (_properties.deviceType) {
@@ -1527,7 +1682,26 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\t\tvendorID: %#06x";
 	logMsg += "\n\t\tdeviceID: %#06x";
 	logMsg += "\n\t\tpipelineCacheUUID: %s";
-	logMsg += "\n\tsupports Metal Shading Language version %s and the following Metal Feature Sets:";
+	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
+	logMsg += "\n\t\tMetal Shading Language %s";
+
+	if (getSupportsMetalVersion(MTLSoftwareVersion3_0)) { logMsg += "\n\t\tMetal 3.0"; }
+
+	if (getSupportsGPUFamily(MTLGPUFamilyApple5)) { logMsg += "\n\t\tGPU Family Apple 5"; }
+	if (getSupportsGPUFamily(MTLGPUFamilyApple4)) { logMsg += "\n\t\tGPU Family Apple 4"; }
+	if (getSupportsGPUFamily(MTLGPUFamilyApple3)) { logMsg += "\n\t\tGPU Family Apple 3"; }
+	if (getSupportsGPUFamily(MTLGPUFamilyApple2)) { logMsg += "\n\t\tGPU Family Apple 2"; }
+	if (getSupportsGPUFamily(MTLGPUFamilyApple1)) { logMsg += "\n\t\tGPU Family Apple 1"; }
+
+	if (getSupportsGPUFamily(MTLGPUFamilyMac2)) { logMsg += "\n\t\tGPU Family Mac 2"; }
+	if (getSupportsGPUFamily(MTLGPUFamilyMac1)) { logMsg += "\n\t\tGPU Family Mac 1"; }
+
+	if (getSupportsGPUFamily(MTLGPUFamilyCommon3)) { logMsg += "\n\t\tGPU Family Common 3"; }
+	if (getSupportsGPUFamily(MTLGPUFamilyCommon2)) { logMsg += "\n\t\tGPU Family Common 2"; }
+	if (getSupportsGPUFamily(MTLGPUFamilyCommon1)) { logMsg += "\n\t\tGPU Family Common 1"; }
+
+	if (getSupportsGPUFamily(MTLGPUFamilyiOSMac2)) { logMsg += "\n\t\tGPU Family iOS-Mac 2"; }
+	if (getSupportsGPUFamily(MTLGPUFamilyiOSMac1)) { logMsg += "\n\t\tGPU Family iOS-Mac 1"; }
 
 #if MVK_IOS
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) { logMsg += "\n\t\tiOS GPU Family 5 v1"; }
@@ -2039,7 +2213,11 @@ MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBa
 }
 
 VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {
-	VkDeviceSize deviceAlignment = mvkMTLPixelFormatLinearTextureAlignment(getMTLPixelFormatFromVkFormat(format, mvkObj), getMTLDevice());
+	VkDeviceSize deviceAlignment = 0;
+	id<MTLDevice> mtlDev = getMTLDevice();
+	if ([mtlDev respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
+		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: getMTLPixelFormatFromVkFormat(format, mvkObj)];
+	}
 	return deviceAlignment ? deviceAlignment : _pProperties->limits.minTexelBufferOffsetAlignment;
 }
 
@@ -2315,139 +2493,6 @@ MVKDevice::~MVKDevice() {
 #pragma mark -
 #pragma mark Support functions
 
-uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice) {
-
-#if MVK_MACOS
-	if ( [mtlDevice respondsToSelector: @selector(recommendedMaxWorkingSetSize)]) {
-		return mtlDevice.recommendedMaxWorkingSetSize;
-	}
-#endif
-#if MVK_IOS
-	// GPU and CPU use shared memory. Estimate the current free memory in the system.
-	mach_port_t host_port;
-	mach_msg_type_number_t host_size;
-	vm_size_t pagesize;
-	host_port = mach_host_self();
-	host_size = sizeof(vm_statistics_data_t) / sizeof(integer_t);
-	host_page_size(host_port, &pagesize);
-	vm_statistics_data_t vm_stat;
-	if (host_statistics(host_port, HOST_VM_INFO, (host_info_t)&vm_stat, &host_size) == KERN_SUCCESS ) {
-		return vm_stat.free_count * pagesize;
-	}
-#endif
-
-	return 128 * MEBI;		// Conservative minimum for macOS GPU's & iOS shared memory
-}
-
-#if MVK_MACOS
-
-static uint32_t mvkGetEntryProperty(io_registry_entry_t entry, CFStringRef propertyName) {
-
-	uint32_t value = 0;
-
-	CFTypeRef cfProp = IORegistryEntrySearchCFProperty(entry,
-													   kIOServicePlane,
-													   propertyName,
-													   kCFAllocatorDefault,
-													   kIORegistryIterateRecursively |
-													   kIORegistryIterateParents);
-	if (cfProp) {
-		const uint32_t* pValue = reinterpret_cast<const uint32_t*>(CFDataGetBytePtr((CFDataRef)cfProp));
-		if (pValue) { value = *pValue; }
-		CFRelease(cfProp);
-	}
-
-	return value;
-}
-
-void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice) {
-
-	static const uint32_t kIntelVendorId = 0x8086;
-	bool isFound = false;
-
-	bool isIntegrated = mtlDevice.isLowPower;
-	devProps.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
-	strlcpy(devProps.deviceName, mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
-
-	// If the device has an associated registry ID, we can use that to get the associated IOKit node.
-	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
-	io_registry_entry_t entry;
-	uint64_t regID = mvkGetRegistryID(mtlDevice);
-	if (regID) {
-		entry = IOServiceGetMatchingService(kIOMasterPortDefault, IORegistryEntryIDMatching(regID));
-		if (entry) {
-			// That returned the IOGraphicsAccelerator nub. Its parent, then, is the actual
-			// PCI device.
-			io_registry_entry_t parent;
-			if (IORegistryEntryGetParentEntry(entry, kIOServicePlane, &parent) == kIOReturnSuccess) {
-				isFound = true;
-				devProps.vendorID = mvkGetEntryProperty(parent, CFSTR("vendor-id"));
-				devProps.deviceID = mvkGetEntryProperty(parent, CFSTR("device-id"));
-				IOObjectRelease(parent);
-			}
-			IOObjectRelease(entry);
-		}
-	}
-	// Iterate all GPU's, looking for a match.
-	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
-	io_iterator_t entryIterator;
-	if (!isFound && IOServiceGetMatchingServices(kIOMasterPortDefault,
-												 IOServiceMatching("IOPCIDevice"),
-												 &entryIterator) == kIOReturnSuccess) {
-		while ( !isFound && (entry = IOIteratorNext(entryIterator)) ) {
-			if (mvkGetEntryProperty(entry, CFSTR("class-code")) == 0x30000) {	// 0x30000 : DISPLAY_VGA
-
-				// The Intel GPU will always be marked as integrated.
-				// Return on a match of either Intel && low power, or non-Intel and non-low-power.
-				uint32_t vendorID = mvkGetEntryProperty(entry, CFSTR("vendor-id"));
-				if ( (vendorID == kIntelVendorId) == isIntegrated) {
-					isFound = true;
-					devProps.vendorID = vendorID;
-					devProps.deviceID = mvkGetEntryProperty(entry, CFSTR("device-id"));
-				}
-			}
-		}
-		IOObjectRelease(entryIterator);
-	}
-}
-
-#endif	//MVK_MACOS
-
-#if MVK_IOS
-
-void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice) {
-	// For iOS devices, the Device ID is the SoC model (A8, A10X...), in the hex form 0xaMMX, where
-	//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
-	NSUInteger coreCnt = NSProcessInfo.processInfo.processorCount;
-	uint32_t devID = 0xa070;
-	if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1]) {
-		devID = 0xa120;
-	} else if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1]) {
-		devID = 0xa110;
-	} else if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
-		devID = coreCnt > 2 ? 0xa101 : 0xa100;
-	} else if ([mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily2_v1]) {
-		devID = coreCnt > 2 ? 0xa081 : 0xa080;
-	}
-
-	devProps.vendorID = 0x0000106b;	// Apple's PCI ID
-	devProps.deviceID = devID;
-	devProps.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
-	strlcpy(devProps.deviceName, mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
-}
-#endif	//MVK_IOS
-
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
 	return [mtlDevice respondsToSelector: @selector(registryID)] ? mtlDevice.registryID : 0;
 }
-
-VkDeviceSize mvkMTLPixelFormatLinearTextureAlignment(MTLPixelFormat mtlPixelFormat,
-													 id<MTLDevice> mtlDevice) {
-	if ([mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
-		return [mtlDevice minimumLinearTextureAlignmentForPixelFormat: mtlPixelFormat];
-	} else {
-		return 0;
-	}
-}
-
-
