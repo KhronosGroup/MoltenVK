@@ -962,6 +962,8 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->setVertexBytes(mtlRendEnc, _vertices.data(), vtxCnt * sizeof(_vertices[0]), vtxBuffIdx);
     [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: vtxCnt];
     [mtlRendEnc popDebugGroup];
+
+	cmdEncoder->_stencilReferenceValueState.markDirty();
 }
 
 
