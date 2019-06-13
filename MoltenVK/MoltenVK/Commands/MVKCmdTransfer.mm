@@ -963,7 +963,11 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: vtxCnt];
     [mtlRendEnc popDebugGroup];
 
+	// Return to the previous rendering state on the next render activity
+	cmdEncoder->_graphicsPipelineState.markDirty();
+	cmdEncoder->_depthStencilState.markDirty();
 	cmdEncoder->_stencilReferenceValueState.markDirty();
+	cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
 }
 
 
