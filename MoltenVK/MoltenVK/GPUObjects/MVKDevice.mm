@@ -221,21 +221,25 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		return VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 
+	bool hasAttachmentUsage = mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+														  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+														  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+														  VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
+
     VkPhysicalDeviceLimits* pLimits = &_properties.limits;
     VkExtent3D maxExt;
-    uint32_t maxLayers;
 	uint32_t maxLevels;
+	uint32_t maxLayers = hasAttachmentUsage ? pLimits->maxFramebufferLayers : pLimits->maxImageArrayLayers;
+
 	VkSampleCountFlags sampleCounts = _metalFeatures.supportedSampleCounts;
     switch (type) {
         case VK_IMAGE_TYPE_1D:
 			// Metal does not allow 1D textures to be used as attachments
-			if (mvkIsAnyFlagEnabled(usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
-				return VK_ERROR_FORMAT_NOT_SUPPORTED;
-			}
+			if (hasAttachmentUsage) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+
 			// Metal does not allow linear tiling on 1D textures
-			if (tiling == VK_IMAGE_TILING_LINEAR) {
-				return VK_ERROR_FORMAT_NOT_SUPPORTED;
-			}
+			if (tiling == VK_IMAGE_TILING_LINEAR) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+
 			// Metal does not allow compressed or depth/stencil formats on 1D textures
 			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
 				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
@@ -245,7 +249,6 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
             maxExt.height = 1;
             maxExt.depth = 1;
 			maxLevels = 1;
-            maxLayers = pLimits->maxImageArrayLayers;
             sampleCounts = VK_SAMPLE_COUNT_1_BIT;
             break;
         case VK_IMAGE_TYPE_2D:
@@ -265,16 +268,12 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 					return VK_ERROR_FORMAT_NOT_SUPPORTED;
 				}
 #if MVK_MACOS
-				// - On macOS, they may not be used as framebuffer attachments.
-				if (mvkIsAnyFlagEnabled(usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT|VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT|VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) ) {
-					return VK_ERROR_FORMAT_NOT_SUPPORTED;
-				}
+				// - On macOS, Linear textures may not be used as framebuffer attachments.
+				if (hasAttachmentUsage) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 #endif
-				// - They may only have one mip level.
+				// Linear textures may only have one mip level. layer & sample
 				maxLevels = 1;
-				// - They may only have one layer.
 				maxLayers = 1;
-				// - They may not be multisampled.
 				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 			} else {
 				VkFormatProperties fmtProps;
@@ -288,7 +287,6 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 					sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 				}
 				maxLevels = mvkMipmapLevels3D(maxExt);
-				maxLayers = pLimits->maxImageArrayLayers;
 			}
             break;
         case VK_IMAGE_TYPE_3D:
@@ -320,9 +318,8 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
             break;
         default:
 			// Metal does not allow linear tiling on anything but 2D textures
-			if (tiling == VK_IMAGE_TILING_LINEAR) {
-				return VK_ERROR_FORMAT_NOT_SUPPORTED;
-			}
+			if (tiling == VK_IMAGE_TILING_LINEAR) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+
 			// Metal does not allow compressed or depth/stencil formats on anything but 2D textures
 			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
 				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {

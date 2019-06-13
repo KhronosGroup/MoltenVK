@@ -103,9 +103,10 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                 (*pDynamicOffsetIndex)++;           // Move on to next dynamic offset (and feedback to caller)
             case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
             case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
+				MVKBuffer* mvkBuff = (MVKBuffer*)descBinding._bufferBindings[rezIdx].buffer;
                 bb.mtlBuffer = descBinding._mtlBuffers[rezIdx];
                 bb.offset = descBinding._mtlBufferOffsets[rezIdx] + bufferDynamicOffset;
-				bb.size = (uint32_t)((MVKBuffer*)descBinding._bufferBindings[rezIdx].buffer)->getByteCount();
+				bb.size = mvkBuff ? (uint32_t)mvkBuff->getByteCount() : 0;
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
                         bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
