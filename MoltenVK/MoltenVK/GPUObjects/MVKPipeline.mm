@@ -31,50 +31,65 @@
 #include <cereal/types/vector.hpp>
 
 using namespace std;
+using namespace SPIRV_CROSS_NAMESPACE;
 
 
 #pragma mark MVKPipelineLayout
 
+// A null cmdEncoder can be passed to perform a validation pass
 void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
                                            MVKVector<MVKDescriptorSet*>& descriptorSets,
                                            uint32_t firstSet,
                                            MVKVector<uint32_t>& dynamicOffsets) {
-
+	clearConfigurationResult();
 	uint32_t pDynamicOffsetIndex = 0;
 	uint32_t dsCnt = (uint32_t)descriptorSets.size();
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 		MVKDescriptorSet* descSet = descriptorSets[dsIdx];
 		uint32_t dslIdx = firstSet + dsIdx;
-        _descriptorSetLayouts[dslIdx].bindDescriptorSet(cmdEncoder, descSet,
-                                                        _dslMTLResourceIndexOffsets[dslIdx],
-                                                        dynamicOffsets, &pDynamicOffsetIndex);
+		auto& dsl = _descriptorSetLayouts[dslIdx];
+		dsl.bindDescriptorSet(cmdEncoder, descSet,
+							  _dslMTLResourceIndexOffsets[dslIdx],
+							  dynamicOffsets, &pDynamicOffsetIndex);
+		setConfigurationResult(dsl.getConfigurationResult());
 	}
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-		cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
+	if (cmdEncoder) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
+		}
 	}
 }
 
+// A null cmdEncoder can be passed to perform a validation pass
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                           MVKVector<VkWriteDescriptorSet>& descriptorWrites,
                                           uint32_t set) {
+	clearConfigurationResult();
+	auto& dsl = _descriptorSetLayouts[set];
+	dsl.pushDescriptorSet(cmdEncoder, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
+	setConfigurationResult(dsl.getConfigurationResult());
 
-    _descriptorSetLayouts[set].pushDescriptorSet(cmdEncoder, descriptorWrites,
-                                                 _dslMTLResourceIndexOffsets[set]);
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-		cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
+	if (cmdEncoder) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
+		}
 	}
 }
 
+// A null cmdEncoder can be passed to perform a validation pass
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                           MVKDescriptorUpdateTemplate* descUpdateTemplate,
                                           uint32_t set,
                                           const void* pData) {
+	clearConfigurationResult();
+	auto& dsl = _descriptorSetLayouts[set];
+	dsl.pushDescriptorSet(cmdEncoder, descUpdateTemplate, pData, _dslMTLResourceIndexOffsets[set]);
+	setConfigurationResult(dsl.getConfigurationResult());
 
-    _descriptorSetLayouts[set].pushDescriptorSet(cmdEncoder, descUpdateTemplate,
-                                                 pData,
-                                                 _dslMTLResourceIndexOffsets[set]);
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-		cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
+	if (cmdEncoder) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
+		}
 	}
 }
 
@@ -102,7 +117,8 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConverterContex
 										  _pushConstantsMTLResourceIndexes.stages[i],
 										  models[i],
 										  kPushConstDescSet,
-										  kPushConstBinding);
+										  kPushConstBinding,
+										  nullptr);
 	}
 }
 
@@ -478,16 +494,16 @@ static uint32_t sizeOfOutput(const SPIRVShaderOutput& output) {
 	// Round up to 4 elements for 3-vectors, since that reflects how Metal lays them out.
 	if (vecWidth == 3) { vecWidth = 4; }
 	switch (output.baseType) {
-		case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:
-		case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:
+		case SPIRType::SByte:
+		case SPIRType::UByte:
 			return 1 * vecWidth;
-		case SPIRV_CROSS_NAMESPACE::SPIRType::Short:
-		case SPIRV_CROSS_NAMESPACE::SPIRType::UShort:
-		case SPIRV_CROSS_NAMESPACE::SPIRType::Half:
+		case SPIRType::Short:
+		case SPIRType::UShort:
+		case SPIRType::Half:
 			return 2 * vecWidth;
-		case SPIRV_CROSS_NAMESPACE::SPIRType::Int:
-		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:
-		case SPIRV_CROSS_NAMESPACE::SPIRType::Float:
+		case SPIRType::Int:
+		case SPIRType::UInt:
+		case SPIRType::Float:
 		default:
 			return 4 * vecWidth;
 	}
@@ -495,7 +511,7 @@ static uint32_t sizeOfOutput(const SPIRVShaderOutput& output) {
 
 static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 	switch (output.baseType) {
-		case SPIRV_CROSS_NAMESPACE::SPIRType::SByte:
+		case SPIRType::SByte:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R8_SINT;
 				case 2: return VK_FORMAT_R8G8_SINT;
@@ -503,7 +519,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R8G8B8A8_SINT;
 			}
 			break;
-		case SPIRV_CROSS_NAMESPACE::SPIRType::UByte:
+		case SPIRType::UByte:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R8_UINT;
 				case 2: return VK_FORMAT_R8G8_UINT;
@@ -511,7 +527,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R8G8B8A8_UINT;
 			}
 			break;
-		case SPIRV_CROSS_NAMESPACE::SPIRType::Short:
+		case SPIRType::Short:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R16_SINT;
 				case 2: return VK_FORMAT_R16G16_SINT;
@@ -519,7 +535,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R16G16B16A16_SINT;
 			}
 			break;
-		case SPIRV_CROSS_NAMESPACE::SPIRType::UShort:
+		case SPIRType::UShort:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R16_UINT;
 				case 2: return VK_FORMAT_R16G16_UINT;
@@ -527,7 +543,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R16G16B16A16_UINT;
 			}
 			break;
-		case SPIRV_CROSS_NAMESPACE::SPIRType::Half:
+		case SPIRType::Half:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R16_SFLOAT;
 				case 2: return VK_FORMAT_R16G16_SFLOAT;
@@ -535,7 +551,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R16G16B16A16_SFLOAT;
 			}
 			break;
-		case SPIRV_CROSS_NAMESPACE::SPIRType::Int:
+		case SPIRType::Int:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R32_SINT;
 				case 2: return VK_FORMAT_R32G32_SINT;
@@ -543,7 +559,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R32G32B32A32_SINT;
 			}
 			break;
-		case SPIRV_CROSS_NAMESPACE::SPIRType::UInt:
+		case SPIRType::UInt:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R32_UINT;
 				case 2: return VK_FORMAT_R32G32_UINT;
@@ -551,7 +567,7 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 				case 4: return VK_FORMAT_R32G32B32A32_UINT;
 			}
 			break;
-		case SPIRV_CROSS_NAMESPACE::SPIRType::Float:
+		case SPIRType::Float:
 			switch (output.vecWidth) {
 				case 1: return VK_FORMAT_R32_SFLOAT;
 				case 2: return VK_FORMAT_R32G32_SFLOAT;
@@ -738,12 +754,12 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	uint32_t vbCnt = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
 	shaderContext.options.entryPointStage = spv::ExecutionModelVertex;
 	shaderContext.options.entryPointName = _pVertexSS->pName;
-	shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
-	shaderContext.options.indirectParamsBufferIndex = _indirectParamsIndex.stages[kMVKShaderStageVertex];
-	shaderContext.options.outputBufferIndex = _outputBufferIndex.stages[kMVKShaderStageVertex];
-	shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageVertex];
-	shaderContext.options.shouldCaptureOutput = isTessellationPipeline();
-	shaderContext.options.isRasterizationDisabled = isTessellationPipeline() || (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
+	shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageVertex];
+	shaderContext.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageVertex];
+	shaderContext.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageVertex];
+	shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageVertex];
+	shaderContext.options.mslOptions.capture_output_to_buffer = isTessellationPipeline();
+	shaderContext.options.mslOptions.disable_rasterization = isTessellationPipeline() || (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
     addVertexInputToShaderConverterContext(shaderContext, pCreateInfo);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pVertexSS->module)->getMTLFunction(&shaderContext, _pVertexSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 	if ( !mtlFunction ) {
@@ -751,7 +767,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 		return false;
 	}
 	plDesc.vertexFunction = mtlFunction;
-	plDesc.rasterizationEnabled = !shaderContext.options.isRasterizationDisabled;
+	plDesc.rasterizationEnabled = !shaderContext.options.mslOptions.disable_rasterization;
 	_needsVertexSwizzleBuffer = shaderContext.options.needsSwizzleBuffer;
 	_needsVertexBufferSizeBuffer = shaderContext.options.needsBufferSizeBuffer;
 	_needsVertexOutputBuffer = shaderContext.options.needsOutputBuffer;
@@ -773,16 +789,19 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	return true;
 }
 
-bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext, std::vector<SPIRVShaderOutput>& vtxOutputs) {
+bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc,
+													 const VkGraphicsPipelineCreateInfo* pCreateInfo,
+													 SPIRVToMSLConverterContext& shaderContext,
+													 std::vector<SPIRVShaderOutput>& vtxOutputs) {
 	shaderContext.options.entryPointStage = spv::ExecutionModelTessellationControl;
 	shaderContext.options.entryPointName = _pTessCtlSS->pName;
-	shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageTessCtl];
-	shaderContext.options.indirectParamsBufferIndex = _indirectParamsIndex.stages[kMVKShaderStageTessCtl];
-	shaderContext.options.outputBufferIndex = _outputBufferIndex.stages[kMVKShaderStageTessCtl];
-	shaderContext.options.patchOutputBufferIndex = _tessCtlPatchOutputBufferIndex;
-	shaderContext.options.tessLevelBufferIndex = _tessCtlLevelBufferIndex;
-	shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageTessCtl];
-	shaderContext.options.shouldCaptureOutput = true;
+	shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessCtl];
+	shaderContext.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageTessCtl];
+	shaderContext.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageTessCtl];
+	shaderContext.options.mslOptions.shader_patch_output_buffer_index = _tessCtlPatchOutputBufferIndex;
+	shaderContext.options.mslOptions.shader_tess_factor_buffer_index = _tessCtlLevelBufferIndex;
+	shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageTessCtl];
+	shaderContext.options.mslOptions.capture_output_to_buffer = true;
 	addPrevStageOutputToShaderConverterContext(shaderContext, vtxOutputs);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pTessCtlSS->module)->getMTLFunction(&shaderContext, _pTessCtlSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 	if ( !mtlFunction ) {
@@ -818,13 +837,16 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	return true;
 }
 
-bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext, std::vector<SPIRVShaderOutput>& tcOutputs) {
+bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
+													  const VkGraphicsPipelineCreateInfo* pCreateInfo,
+													  SPIRVToMSLConverterContext& shaderContext,
+													  std::vector<SPIRVShaderOutput>& tcOutputs) {
 	shaderContext.options.entryPointStage = spv::ExecutionModelTessellationEvaluation;
 	shaderContext.options.entryPointName = _pTessEvalSS->pName;
-	shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageTessEval];
-	shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageTessEval];
-	shaderContext.options.shouldCaptureOutput = false;
-	shaderContext.options.isRasterizationDisabled = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
+	shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessEval];
+	shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageTessEval];
+	shaderContext.options.mslOptions.capture_output_to_buffer = false;
+	shaderContext.options.mslOptions.disable_rasterization = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
 	addPrevStageOutputToShaderConverterContext(shaderContext, tcOutputs);
 	id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pTessEvalSS->module)->getMTLFunction(&shaderContext, _pTessEvalSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 	if ( !mtlFunction ) {
@@ -833,7 +855,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	}
 	// Yeah, you read that right. Tess. eval functions are a kind of vertex function in Metal.
 	plDesc.vertexFunction = mtlFunction;
-	plDesc.rasterizationEnabled = !shaderContext.options.isRasterizationDisabled;
+	plDesc.rasterizationEnabled = !shaderContext.options.mslOptions.disable_rasterization;
 	_needsTessEvalSwizzleBuffer = shaderContext.options.needsSwizzleBuffer;
 	_needsTessEvalBufferSizeBuffer = shaderContext.options.needsBufferSizeBuffer;
 	if (!verifyImplicitBuffer(_needsTessEvalSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTessEval, "swizzle", kMVKTessEvalNumReservedBuffers)) {
@@ -845,13 +867,15 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	return true;
 }
 
-bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext) {
+bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
+													  const VkGraphicsPipelineCreateInfo* pCreateInfo,
+													  SPIRVToMSLConverterContext& shaderContext) {
 	if (_pFragmentSS) {
 		shaderContext.options.entryPointStage = spv::ExecutionModelFragment;
-		shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageFragment];
-		shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageFragment];
+		shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageFragment];
+		shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageFragment];
 		shaderContext.options.entryPointName = _pFragmentSS->pName;
-		shaderContext.options.shouldCaptureOutput = false;
+		shaderContext.options.mslOptions.capture_output_to_buffer = false;
 		id<MTLFunction> mtlFunction = ((MVKShaderModule*)_pFragmentSS->module)->getMTLFunction(&shaderContext, _pFragmentSS->pSpecializationInfo, _pipelineCache).mtlFunction;
 		if ( !mtlFunction ) {
 			setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Fragment shader function could not be compiled into pipeline. See previous logged error."));
@@ -870,7 +894,9 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 	return true;
 }
 
-bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConverterContext& shaderContext) {
+bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* plDesc,
+												   const VkPipelineVertexInputStateCreateInfo* pVI,
+												   const SPIRVToMSLConverterContext& shaderContext) {
     // Collect extension structures
     VkPipelineVertexInputDivisorStateCreateInfoEXT* pVertexInputDivisorState = nullptr;
     auto* next = (MVKVkAPIStructHeader*)pVI->pNext;
@@ -955,7 +981,9 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 	return true;
 }
 
-void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS) {
+void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc,
+													const SPIRVTessReflectionData& reflectData,
+													const VkPipelineTessellationStateCreateInfo* pTS) {
 
 	VkPipelineTessellationDomainOriginStateCreateInfo* pTessDomainOriginState = nullptr;
 	if (reflectData.patchKind == spv::ExecutionModeTriangles) {
@@ -988,7 +1016,10 @@ void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor*
 	plDesc.tessellationPartitionMode = mvkMTLTessellationPartitionModeFromSpvExecutionMode(reflectData.partitionMode);
 }
 
-void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo, bool isTessellationVertexPipeline) {
+void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc,
+													  const SPIRVTessReflectionData& reflectData,
+													  const VkGraphicsPipelineCreateInfo* pCreateInfo,
+													  bool isTessellationVertexPipeline) {
 
     // Retrieve the render subpass for which this pipeline is being constructed
     MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
@@ -1069,8 +1100,8 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
         }
     }
 
-    shaderContext.options.mslVersion = _device->_pMetalFeatures->mslVersion;
-    shaderContext.options.texelBufferTextureWidth = _device->_pMetalFeatures->maxTextureDimension;
+    shaderContext.options.mslOptions.msl_version = _device->_pMetalFeatures->mslVersion;
+    shaderContext.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -1081,10 +1112,10 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConverterConte
     _tessCtlPatchOutputBufferIndex = layout->getTessCtlPatchOutputBufferIndex();
     _tessCtlLevelBufferIndex = layout->getTessCtlLevelBufferIndex();
 
-    shaderContext.options.isRenderingPoints = isRenderingPoints(pCreateInfo, reflectData);
+    shaderContext.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo, reflectData);
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
-    shaderContext.options.shouldSwizzleTextureSamples = _fullImageViewSwizzle;
-    shaderContext.options.tessDomainOriginInLowerLeft = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
+    shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle;
+    shaderContext.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
 
     shaderContext.options.tessPatchKind = reflectData.patchKind;
     shaderContext.options.numTessControlPoints = reflectData.numControlPoints;
@@ -1101,9 +1132,9 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
 
         // Set binding and offset from Vulkan vertex attribute
         MSLVertexAttribute va;
-        va.location = pVKVA->location;
-        va.mslBuffer = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
-        va.mslOffset = pVKVA->offset;
+        va.vertexAttribute.location = pVKVA->location;
+        va.vertexAttribute.msl_buffer = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
+        va.vertexAttribute.msl_offset = pVKVA->offset;
 
         // Metal can't do signedness conversions on vertex buffers (rdar://45922847). If the shader
         // and the vertex attribute have mismatched signedness, we have to fix the shader
@@ -1112,11 +1143,11 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
         // declared type. Programs that try to invoke undefined behavior are on their own.
         switch (mvkFormatTypeFromVkFormat(pVKVA->format) ) {
         case kMVKFormatColorUInt8:
-            va.format = MSLVertexFormat::UInt8;
+            va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT8;
             break;
 
         case kMVKFormatColorUInt16:
-            va.format = MSLVertexFormat::UInt16;
+            va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT16;
             break;
 
         case kMVKFormatDepthStencil:
@@ -1126,7 +1157,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
             case VK_FORMAT_D16_UNORM_S8_UINT:
             case VK_FORMAT_D24_UNORM_S8_UINT:
             case VK_FORMAT_D32_SFLOAT_S8_UINT:
-                va.format = MSLVertexFormat::UInt8;
+                va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT8;
                 break;
 
             default:
@@ -1144,8 +1175,8 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
         for (uint32_t vbIdx = 0; vbIdx < vbCnt; vbIdx++) {
             const VkVertexInputBindingDescription* pVKVB = &pCreateInfo->pVertexInputState->pVertexBindingDescriptions[vbIdx];
             if (pVKVB->binding == pVKVA->binding) {
-                va.mslStride = pVKVB->stride;
-                va.isPerInstance = (pVKVB->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE);
+                va.vertexAttribute.msl_stride = pVKVB->stride;
+                va.vertexAttribute.per_instance = (pVKVB->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE);
                 break;
             }
         }
@@ -1162,16 +1193,16 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConverterContext(SPIRVToMSLC
     uint32_t vaCnt = (uint32_t)shaderOutputs.size();
     for (uint32_t vaIdx = 0; vaIdx < vaCnt; vaIdx++) {
         MSLVertexAttribute va;
-        va.location = shaderOutputs[vaIdx].location;
-        va.builtin = shaderOutputs[vaIdx].builtin;
+        va.vertexAttribute.location = shaderOutputs[vaIdx].location;
+        va.vertexAttribute.builtin = shaderOutputs[vaIdx].builtin;
 
         switch (mvkFormatTypeFromVkFormat(mvkFormatFromOutput(shaderOutputs[vaIdx]) ) ) {
             case kMVKFormatColorUInt8:
-                va.format = MSLVertexFormat::UInt8;
+                va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT8;
                 break;
 
             case kMVKFormatColorUInt16:
-                va.format = MSLVertexFormat::UInt16;
+                va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT16;
                 break;
 
             default:
@@ -1258,16 +1289,16 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     SPIRVToMSLConverterContext shaderContext;
 	shaderContext.options.entryPointName = pCreateInfo->stage.pName;
 	shaderContext.options.entryPointStage = spv::ExecutionModelGLCompute;
-    shaderContext.options.mslVersion = _device->_pMetalFeatures->mslVersion;
-    shaderContext.options.texelBufferTextureWidth = _device->_pMetalFeatures->maxTextureDimension;
-	shaderContext.options.shouldSwizzleTextureSamples = _fullImageViewSwizzle;
+    shaderContext.options.mslOptions.msl_version = _device->_pMetalFeatures->mslVersion;
+    shaderContext.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
+	shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
     _swizzleBufferIndex = layout->getSwizzleBufferIndex();
     _bufferSizeBufferIndex = layout->getBufferSizeBufferIndex();
-    shaderContext.options.swizzleBufferIndex = _swizzleBufferIndex.stages[kMVKShaderStageCompute];
-    shaderContext.options.bufferSizeBufferIndex = _bufferSizeBufferIndex.stages[kMVKShaderStageCompute];
+    shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageCompute];
+    shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageCompute];
 
     MVKShaderModule* mvkShdrMod = (MVKShaderModule*)pSS->module;
     MVKMTLFunction func = mvkShdrMod->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache);
@@ -1315,85 +1346,6 @@ typedef enum {
 	MVKPipelineCacheEntryTypeEOF = 0,
 	MVKPipelineCacheEntryTypeShaderLibrary = 1,
 } MVKPipelineCacheEntryType;
-
-// Ceral archive definitions
-namespace mvk {
-
-	template<class Archive>
-	void serialize(Archive & archive, SPIRVWorkgroupSizeDimension& wsd) {
-		archive(wsd.size,
-				wsd.specializationID,
-				wsd.isSpecialized);
-	}
-
-	template<class Archive>
-	void serialize(Archive & archive, SPIRVEntryPoint& ep) {
-		archive(ep.mtlFunctionName,
-				ep.workgroupSize.width,
-				ep.workgroupSize.height,
-				ep.workgroupSize.depth);
-	}
-
-	template<class Archive>
-	void serialize(Archive & archive, SPIRVToMSLConverterOptions& opt) {
-		archive(opt.entryPointName,
-				opt.entryPointStage,
-				opt.tessPatchKind,
-				opt.mslVersion,
-				opt.texelBufferTextureWidth,
-				opt.swizzleBufferIndex,
-				opt.indirectParamsBufferIndex,
-				opt.outputBufferIndex,
-				opt.patchOutputBufferIndex,
-				opt.tessLevelBufferIndex,
-				opt.bufferSizeBufferIndex,
-				opt.inputThreadgroupMemIndex,
-				opt.numTessControlPoints,
-				opt.shouldFlipVertexY,
-				opt.isRenderingPoints,
-				opt.shouldSwizzleTextureSamples,
-				opt.shouldCaptureOutput,
-				opt.tessDomainOriginInLowerLeft,
-				opt.isRasterizationDisabled,
-				opt.needsSwizzleBuffer,
-				opt.needsOutputBuffer,
-				opt.needsPatchOutputBuffer,
-				opt.needsBufferSizeBuffer,
-				opt.needsInputThreadgroupMem);
-	}
-
-	template<class Archive>
-	void serialize(Archive & archive, MSLVertexAttribute& va) {
-		archive(va.location,
-				va.mslBuffer,
-				va.mslOffset,
-				va.mslStride,
-				va.isPerInstance,
-				va.isUsedByShader);
-	}
-
-	template<class Archive>
-	void serialize(Archive & archive, MSLResourceBinding& rb) {
-		archive(rb.stage,
-				rb.descriptorSet,
-				rb.binding,
-				rb.mslBuffer,
-				rb.mslTexture,
-				rb.mslSampler,
-				rb.isUsedByShader);
-	}
-
-	template<class Archive>
-	void serialize(Archive & archive, SPIRVToMSLConverterContext& ctx) {
-		archive(ctx.options, ctx.vertexAttributes, ctx.resourceBindings);
-	}
-
-}
-
-template<class Archive>
-void serialize(Archive & archive, MVKShaderModuleKey& k) {
-	archive(k.codeSize, k.codeHash);
-}
 
 // Helper class to iterate through the shader libraries in a shader library cache in order to serialize them.
 // Needs to support input of null shader library cache.
@@ -1584,6 +1536,133 @@ VkResult MVKPipelineCache::mergePipelineCaches(uint32_t srcCacheCount, const VkP
 	markDirty();
 
 	return VK_SUCCESS;
+}
+
+
+#pragma mark Cereal archive definitions
+
+namespace SPIRV_CROSS_NAMESPACE {
+
+	template<class Archive>
+	void serialize(Archive & archive, CompilerMSL::Options& opt) {
+		archive(opt.platform,
+				opt.msl_version,
+				opt.texel_buffer_texture_width,
+				opt.swizzle_buffer_index,
+				opt.indirect_params_buffer_index,
+				opt.shader_output_buffer_index,
+				opt.shader_patch_output_buffer_index,
+				opt.shader_tess_factor_buffer_index,
+				opt.buffer_size_buffer_index,
+				opt.shader_input_wg_index,
+				opt.enable_point_size_builtin,
+				opt.disable_rasterization,
+				opt.capture_output_to_buffer,
+				opt.swizzle_texture_samples,
+				opt.tess_domain_origin_lower_left,
+				opt.argument_buffers,
+				opt.pad_fragment_output_components,
+				opt.texture_buffer_native);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLVertexAttr& va) {
+		archive(va.location,
+				va.msl_buffer,
+				va.msl_offset,
+				va.msl_stride,
+				va.per_instance,
+				va.format,
+				va.builtin);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLResourceBinding& rb) {
+		archive(rb.stage,
+				rb.desc_set,
+				rb.binding,
+				rb.msl_buffer,
+				rb.msl_texture,
+				rb.msl_sampler);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLConstexprSampler& cs) {
+		archive(cs.coord,
+				cs.min_filter,
+				cs.mag_filter,
+				cs.mip_filter,
+				cs.s_address,
+				cs.t_address,
+				cs.r_address,
+				cs.compare_func,
+				cs.border_color,
+				cs.lod_clamp_min,
+				cs.lod_clamp_max,
+				cs.max_anisotropy,
+				cs.compare_enable,
+				cs.lod_clamp_enable,
+				cs.anisotropy_enable);
+	}
+
+}
+
+namespace mvk {
+
+	template<class Archive>
+	void serialize(Archive & archive, SPIRVWorkgroupSizeDimension& wsd) {
+		archive(wsd.size,
+				wsd.specializationID,
+				wsd.isSpecialized);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, SPIRVEntryPoint& ep) {
+		archive(ep.mtlFunctionName,
+				ep.workgroupSize.width,
+				ep.workgroupSize.height,
+				ep.workgroupSize.depth);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, SPIRVToMSLConverterOptions& opt) {
+		archive(opt.mslOptions,
+				opt.entryPointName,
+				opt.entryPointStage,
+				opt.tessPatchKind,
+				opt.numTessControlPoints,
+				opt.shouldFlipVertexY,
+				opt.needsSwizzleBuffer,
+				opt.needsOutputBuffer,
+				opt.needsPatchOutputBuffer,
+				opt.needsBufferSizeBuffer,
+				opt.needsInputThreadgroupMem);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLVertexAttribute& va) {
+		archive(va.vertexAttribute,
+				va.isUsedByShader);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, MSLResourceBinding& rb) {
+		archive(rb.resourceBinding,
+				rb.constExprSampler,
+				rb.requiresConstExprSampler,
+				rb.isUsedByShader);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, SPIRVToMSLConverterContext& ctx) {
+		archive(ctx.options, ctx.vertexAttributes, ctx.resourceBindings);
+	}
+
+}
+
+template<class Archive>
+void serialize(Archive & archive, MVKShaderModuleKey& k) {
+	archive(k.codeSize, k.codeHash);
 }
 
 
