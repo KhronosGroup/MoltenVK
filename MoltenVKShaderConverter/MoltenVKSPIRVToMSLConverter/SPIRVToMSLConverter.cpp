@@ -21,11 +21,11 @@
 #include "MVKStrings.h"
 #include "FileSupport.h"
 #include "SPIRVSupport.h"
-#include <SPIRV-Cross/spirv_msl.hpp>
 #include <fstream>
 
 using namespace mvk;
 using namespace std;
+using namespace SPIRV_CROSS_NAMESPACE;
 
 
 #pragma mark -
@@ -40,24 +40,36 @@ bool contains(const vector<T>& vec, const T& val) {
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterOptions::matches(const SPIRVToMSLConverterOptions& other) const {
 	if (entryPointStage != other.entryPointStage) { return false; }
-    if (mslVersion != other.mslVersion) { return false; }
-	if (texelBufferTextureWidth != other.texelBufferTextureWidth) { return false; }
-	if (swizzleBufferIndex != other.swizzleBufferIndex) { return false; }
-	if (indirectParamsBufferIndex != other.indirectParamsBufferIndex) { return false; }
-	if (outputBufferIndex != other.outputBufferIndex) { return false; }
-	if (patchOutputBufferIndex != other.patchOutputBufferIndex) { return false; }
-	if (tessLevelBufferIndex != other.tessLevelBufferIndex) { return false; }
-	if (bufferSizeBufferIndex != other.bufferSizeBufferIndex) { return false; }
-	if (inputThreadgroupMemIndex != other.inputThreadgroupMemIndex) { return false; }
-    if (!!shouldFlipVertexY != !!other.shouldFlipVertexY) { return false; }
-    if (!!isRenderingPoints != !!other.isRenderingPoints) { return false; }
-	if (!!shouldSwizzleTextureSamples != !!other.shouldSwizzleTextureSamples) { return false; }
-	if (!!shouldCaptureOutput != !!other.shouldCaptureOutput) { return false; }
-	if (!!tessDomainOriginInLowerLeft != !!other.tessDomainOriginInLowerLeft) { return false; }
+	if (entryPointName != other.entryPointName) { return false; }
 	if (tessPatchKind != other.tessPatchKind) { return false; }
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
-	if (entryPointName != other.entryPointName) { return false; }
-    return true;
+	if (!!shouldFlipVertexY != !!other.shouldFlipVertexY) { return false; }
+	if (!!needsSwizzleBuffer != !!other.needsSwizzleBuffer) { return false; }
+	if (!!needsOutputBuffer != !!other.needsOutputBuffer) { return false; }
+	if (!!needsPatchOutputBuffer != !!other.needsPatchOutputBuffer) { return false; }
+	if (!!needsBufferSizeBuffer != !!other.needsBufferSizeBuffer) { return false; }
+	if (!!needsInputThreadgroupMem != !!other.needsInputThreadgroupMem) { return false; }
+
+	if (mslOptions.platform != other.mslOptions.platform) { return false; }
+	if (mslOptions.msl_version != other.mslOptions.msl_version) { return false; }
+	if (mslOptions.texel_buffer_texture_width != other.mslOptions.texel_buffer_texture_width) { return false; }
+	if (mslOptions.swizzle_buffer_index != other.mslOptions.swizzle_buffer_index) { return false; }
+	if (mslOptions.indirect_params_buffer_index != other.mslOptions.indirect_params_buffer_index) { return false; }
+	if (mslOptions.shader_output_buffer_index != other.mslOptions.shader_output_buffer_index) { return false; }
+	if (mslOptions.shader_patch_output_buffer_index != other.mslOptions.shader_patch_output_buffer_index) { return false; }
+	if (mslOptions.shader_tess_factor_buffer_index != other.mslOptions.shader_tess_factor_buffer_index) { return false; }
+	if (mslOptions.buffer_size_buffer_index != other.mslOptions.buffer_size_buffer_index) { return false; }
+	if (mslOptions.shader_input_wg_index != other.mslOptions.shader_input_wg_index) { return false; }
+	if (!!mslOptions.enable_point_size_builtin != !!other.mslOptions.enable_point_size_builtin) { return false; }
+	if (!!mslOptions.disable_rasterization != !!other.mslOptions.disable_rasterization) { return false; }
+	if (!!mslOptions.capture_output_to_buffer != !!other.mslOptions.capture_output_to_buffer) { return false; }
+	if (!!mslOptions.swizzle_texture_samples != !!other.mslOptions.swizzle_texture_samples) { return false; }
+	if (!!mslOptions.tess_domain_origin_lower_left != !!other.mslOptions.tess_domain_origin_lower_left) { return false; }
+	if (mslOptions.argument_buffers != other.mslOptions.argument_buffers) { return false; }
+	if (mslOptions.pad_fragment_output_components != other.mslOptions.pad_fragment_output_components) { return false; }
+	if (mslOptions.texture_buffer_native != other.mslOptions.texture_buffer_native) { return false; }
+
+	return true;
 }
 
 MVK_PUBLIC_SYMBOL std::string SPIRVToMSLConverterOptions::printMSLVersion(uint32_t mslVersion, bool includePatch) {
@@ -66,12 +78,12 @@ MVK_PUBLIC_SYMBOL std::string SPIRVToMSLConverterOptions::printMSLVersion(uint32
 	uint32_t major = mslVersion / 10000;
 	verStr += to_string(major);
 
-	uint32_t minor = (mslVersion - makeMSLVersion(major)) / 100;
+	uint32_t minor = (mslVersion - CompilerMSL::Options::make_msl_version(major)) / 100;
 	verStr += ".";
 	verStr += to_string(minor);
 
 	if (includePatch) {
-		uint32_t patch = mslVersion - makeMSLVersion(major, minor);
+		uint32_t patch = mslVersion - CompilerMSL::Options::make_msl_version(major, minor);
 		verStr += ".";
 		verStr += to_string(patch);
 	}
@@ -79,34 +91,56 @@ MVK_PUBLIC_SYMBOL std::string SPIRVToMSLConverterOptions::printMSLVersion(uint32
 	return verStr;
 }
 
-MVK_PUBLIC_SYMBOL mvk::SPIRVToMSLConverterOptions::Platform SPIRVToMSLConverterOptions::getNativePlatform() {
+MVK_PUBLIC_SYMBOL SPIRVToMSLConverterOptions::SPIRVToMSLConverterOptions() {
 #if MVK_MACOS
-	return SPIRVToMSLConverterOptions::macOS;
+	mslOptions.platform = CompilerMSL::Options::macOS;
 #endif
 #if MVK_IOS
-	return SPIRVToMSLConverterOptions::iOS;
+	mslOptions.platform = CompilerMSL::Options::iOS;
 #endif
 }
 
 MVK_PUBLIC_SYMBOL bool MSLVertexAttribute::matches(const MSLVertexAttribute& other) const {
-    if (location != other.location) { return false; }
-    if (mslBuffer != other.mslBuffer) { return false; }
-    if (mslOffset != other.mslOffset) { return false; }
-    if (mslStride != other.mslStride) { return false; }
-    if (format != other.format) { return false; }
-	if (builtin != other.builtin) { return false; }
-    if (!!isPerInstance != !!other.isPerInstance) { return false; }
-    return true;
+	if (vertexAttribute.location != other.vertexAttribute.location) { return false; }
+	if (vertexAttribute.msl_buffer != other.vertexAttribute.msl_buffer) { return false; }
+	if (vertexAttribute.msl_offset != other.vertexAttribute.msl_offset) { return false; }
+	if (vertexAttribute.msl_stride != other.vertexAttribute.msl_stride) { return false; }
+	if (vertexAttribute.format != other.vertexAttribute.format) { return false; }
+	if (vertexAttribute.builtin != other.vertexAttribute.builtin) { return false; }
+	if (!!vertexAttribute.per_instance != !!other.vertexAttribute.per_instance) { return false; }
+	return true;
 }
 
-MVK_PUBLIC_SYMBOL bool MSLResourceBinding::matches(const MSLResourceBinding& other) const {
-    if (stage != other.stage) { return false; }
-    if (descriptorSet != other.descriptorSet) { return false; }
-    if (binding != other.binding) { return false; }
-    if (mslBuffer != other.mslBuffer) { return false; }
-    if (mslTexture != other.mslTexture) { return false; }
-    if (mslSampler != other.mslSampler) { return false; }
-    return true;
+MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding& other) const {
+	if (resourceBinding.stage != other.resourceBinding.stage) { return false; }
+	if (resourceBinding.desc_set != other.resourceBinding.desc_set) { return false; }
+	if (resourceBinding.binding != other.resourceBinding.binding) { return false; }
+	if (resourceBinding.msl_buffer != other.resourceBinding.msl_buffer) { return false; }
+	if (resourceBinding.msl_texture != other.resourceBinding.msl_texture) { return false; }
+	if (resourceBinding.msl_sampler != other.resourceBinding.msl_sampler) { return false; }
+
+	if (requiresConstExprSampler != other.requiresConstExprSampler) { return false; }
+
+	// If requiresConstExprSampler is false, constExprSampler can be ignored
+	if (requiresConstExprSampler) {
+		if (constExprSampler.coord != other.constExprSampler.coord) { return false; }
+		if (constExprSampler.min_filter != other.constExprSampler.min_filter) { return false; }
+		if (constExprSampler.mag_filter != other.constExprSampler.mag_filter) { return false; }
+		if (constExprSampler.mip_filter != other.constExprSampler.mip_filter) { return false; }
+		if (constExprSampler.s_address != other.constExprSampler.s_address) { return false; }
+		if (constExprSampler.t_address != other.constExprSampler.t_address) { return false; }
+		if (constExprSampler.r_address != other.constExprSampler.r_address) { return false; }
+		if (constExprSampler.compare_func != other.constExprSampler.compare_func) { return false; }
+		if (constExprSampler.border_color != other.constExprSampler.border_color) { return false; }
+		if (constExprSampler.lod_clamp_min != other.constExprSampler.lod_clamp_min) { return false; }
+		if (constExprSampler.lod_clamp_max != other.constExprSampler.lod_clamp_max) { return false; }
+		if (constExprSampler.max_anisotropy != other.constExprSampler.max_anisotropy) { return false; }
+		if (constExprSampler.compare_enable != other.constExprSampler.compare_enable) { return false; }
+		if (constExprSampler.lod_clamp_enable != other.constExprSampler.lod_clamp_enable) { return false; }
+		if (constExprSampler.anisotropy_enable != other.constExprSampler.anisotropy_enable) { return false; }
+	}
+
+	return true;
 }
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::stageSupportsVertexAttributes() const {
@@ -118,7 +152,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::stageSupportsVertexAttributes
 // Check them all in case inactive VA's duplicate locations used by active VA's.
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::isVertexAttributeLocationUsed(uint32_t location) const {
     for (auto& va : vertexAttributes) {
-        if ((va.location == location) && va.isUsedByShader) { return true; }
+        if ((va.vertexAttribute.location == location) && va.isUsedByShader) { return true; }
     }
     return false;
 }
@@ -126,7 +160,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::isVertexAttributeLocationUsed
 // Check them all in case inactive VA's duplicate buffers used by active VA's.
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::isVertexBufferUsed(uint32_t mslBuffer) const {
     for (auto& va : vertexAttributes) {
-        if ((va.mslBuffer == mslBuffer) && va.isUsedByShader) { return true; }
+        if ((va.vertexAttribute.msl_buffer == mslBuffer) && va.isUsedByShader) { return true; }
     }
     return false;
 }
@@ -159,7 +193,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterContext::matches(const SPIRVToMSLConve
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignWith(const SPIRVToMSLConverterContext& srcContext) {
 
-	options.isRasterizationDisabled = srcContext.options.isRasterizationDisabled;
+	options.mslOptions.disable_rasterization = srcContext.options.mslOptions.disable_rasterization;
 	options.needsSwizzleBuffer = srcContext.options.needsSwizzleBuffer;
 	options.needsOutputBuffer = srcContext.options.needsOutputBuffer;
 	options.needsPatchOutputBuffer = srcContext.options.needsPatchOutputBuffer;
@@ -186,9 +220,6 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverterContext::alignWith(const SPIRVToMSLCon
 
 #pragma mark -
 #pragma mark SPIRVToMSLConverter
-
-// Return the SPIRV-Cross platform enum corresponding to a SPIRVToMSLConverterOptions platform enum value.
-SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::Platform getCompilerMSLPlatform(SPIRVToMSLConverterOptions::Platform platform);
 
 // Populates the entry point with info extracted from the SPRI-V compiler.
 void populateEntryPoint(SPIRVEntryPoint& entryPoint, SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConverterOptions& options);
@@ -241,24 +272,8 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 
 		// Establish the MSL options for the compiler
 		// This needs to be done in two steps...for CompilerMSL and its superclass.
-		auto mslOpts = pMSLCompiler->get_msl_options();
-		mslOpts.platform = getCompilerMSLPlatform(context.options.platform);
-		mslOpts.msl_version = context.options.mslVersion;
-		mslOpts.texel_buffer_texture_width = context.options.texelBufferTextureWidth;
-		mslOpts.swizzle_buffer_index = context.options.swizzleBufferIndex;
-		mslOpts.indirect_params_buffer_index = context.options.indirectParamsBufferIndex;
-		mslOpts.shader_output_buffer_index = context.options.outputBufferIndex;
-		mslOpts.shader_patch_output_buffer_index = context.options.patchOutputBufferIndex;
-		mslOpts.shader_tess_factor_buffer_index = context.options.tessLevelBufferIndex;
-		mslOpts.buffer_size_buffer_index = context.options.bufferSizeBufferIndex;
-		mslOpts.shader_input_wg_index = context.options.inputThreadgroupMemIndex;
-		mslOpts.enable_point_size_builtin = context.options.isRenderingPoints;
-		mslOpts.disable_rasterization = context.options.isRasterizationDisabled;
-		mslOpts.swizzle_texture_samples = context.options.shouldSwizzleTextureSamples;
-		mslOpts.capture_output_to_buffer = context.options.shouldCaptureOutput;
-		mslOpts.tess_domain_origin_lower_left = context.options.tessDomainOriginInLowerLeft;
-		mslOpts.pad_fragment_output_components = true;
-		pMSLCompiler->set_msl_options(mslOpts);
+		context.options.mslOptions.pad_fragment_output_components = true;
+		pMSLCompiler->set_msl_options(context.options.mslOptions);
 
 		auto scOpts = pMSLCompiler->get_common_options();
 		scOpts.vertex.flip_vert_y = context.options.shouldFlipVertexY;
@@ -266,39 +281,19 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 
 		// Add vertex attributes
 		if (context.stageSupportsVertexAttributes()) {
-			SPIRV_CROSS_NAMESPACE::MSLVertexAttr va;
-			for (auto& ctxVA : context.vertexAttributes) {
-				va.location = ctxVA.location;
-				va.builtin = ctxVA.builtin;
-				va.msl_buffer = ctxVA.mslBuffer;
-				va.msl_offset = ctxVA.mslOffset;
-				va.msl_stride = ctxVA.mslStride;
-				va.per_instance = ctxVA.isPerInstance;
-				switch (ctxVA.format) {
-					case MSLVertexFormat::Other:
-						va.format = SPIRV_CROSS_NAMESPACE::MSL_VERTEX_FORMAT_OTHER;
-						break;
-					case MSLVertexFormat::UInt8:
-						va.format = SPIRV_CROSS_NAMESPACE::MSL_VERTEX_FORMAT_UINT8;
-						break;
-					case MSLVertexFormat::UInt16:
-						va.format = SPIRV_CROSS_NAMESPACE::MSL_VERTEX_FORMAT_UINT16;
-						break;
-				}
-				pMSLCompiler->add_msl_vertex_attribute(va);
+			for (auto& va : context.vertexAttributes) {
+				pMSLCompiler->add_msl_vertex_attribute(va.vertexAttribute);
 			}
 		}
 
-		// Add resource bindings
-		SPIRV_CROSS_NAMESPACE::MSLResourceBinding rb;
-		for (auto& ctxRB : context.resourceBindings) {
-			rb.desc_set = ctxRB.descriptorSet;
-			rb.binding = ctxRB.binding;
-			rb.stage = ctxRB.stage;
-			rb.msl_buffer = ctxRB.mslBuffer;
-			rb.msl_texture = ctxRB.mslTexture;
-			rb.msl_sampler = ctxRB.mslSampler;
-			pMSLCompiler->add_msl_resource_binding(rb);
+		// Add resource bindings and hardcoded constexpr samplers
+		for (auto& rb : context.resourceBindings) {
+			auto& rbb = rb.resourceBinding;
+			pMSLCompiler->add_msl_resource_binding(rbb);
+
+			if (rb.requiresConstExprSampler) {
+				pMSLCompiler->remap_constexpr_sampler_by_binding(rbb.desc_set, rbb.binding, rb.constExprSampler);
+			}
 		}
 
 		_msl = pMSLCompiler->compile();
@@ -320,7 +315,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 	// Populate the shader context with info from the compilation run, including
 	// which vertex attributes and resource bindings are used by the shader
 	populateEntryPoint(_entryPoint, pMSLCompiler, context.options);
-	context.options.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
+	context.options.mslOptions.disable_rasterization = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
 	context.options.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();
 	context.options.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
 	context.options.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
@@ -329,11 +324,13 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 
 	if (context.stageSupportsVertexAttributes()) {
 		for (auto& ctxVA : context.vertexAttributes) {
-			ctxVA.isUsedByShader = pMSLCompiler->is_msl_vertex_attribute_used(ctxVA.location);
+			ctxVA.isUsedByShader = pMSLCompiler->is_msl_vertex_attribute_used(ctxVA.vertexAttribute.location);
 		}
 	}
 	for (auto& ctxRB : context.resourceBindings) {
-		ctxRB.isUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.stage, ctxRB.descriptorSet, ctxRB.binding);
+		ctxRB.isUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
+																		  ctxRB.resourceBinding.desc_set,
+																		  ctxRB.resourceBinding.binding);
 	}
 
 	delete pMSLCompiler;
@@ -369,7 +366,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConverterContext& 
 	return _wasConverted;
 }
 
-/** Appends the message text to the result log. */
+// Appends the message text to the result log.
 void SPIRVToMSLConverter::logMsg(const char* logMsg) {
 	string trimMsg = trim(logMsg);
 	if ( !trimMsg.empty() ) {
@@ -378,14 +375,14 @@ void SPIRVToMSLConverter::logMsg(const char* logMsg) {
 	}
 }
 
-/** Appends the error text to the result log, sets the wasConverted property to false, and returns it. */
+// Appends the error text to the result log, sets the wasConverted property to false, and returns it.
 bool SPIRVToMSLConverter::logError(const char* errMsg) {
 	logMsg(errMsg);
 	_wasConverted = false;
 	return _wasConverted;
 }
 
-/** Appends the SPIR-V to the result log, indicating whether it is being converted or was converted. */
+// Appends the SPIR-V to the result log, indicating whether it is being converted or was converted.
 void SPIRVToMSLConverter::logSPIRV(const char* opDesc) {
 
 	string spvLog;
@@ -403,10 +400,8 @@ void SPIRVToMSLConverter::logSPIRV(const char* opDesc) {
 //	printf("\n%s\n", getResultLog().c_str());
 }
 
-/**
- * Writes the SPIR-V code to a file. This can be useful for debugging
- * when the SPRIR-V did not originally come from a known file
- */
+// Writes the SPIR-V code to a file. This can be useful for debugging
+// when the SPRIR-V did not originally come from a known file
 void SPIRVToMSLConverter::writeSPIRVToFile(string spvFilepath) {
 	vector<char> fileContents;
 	spirvToBytes(_spirv, fileContents);
@@ -418,7 +413,7 @@ void SPIRVToMSLConverter::writeSPIRVToFile(string spvFilepath) {
 	}
 }
 
-/** Validates that the SPIR-V code will disassemble during logging. */
+// Validates that the SPIR-V code will disassemble during logging.
 bool SPIRVToMSLConverter::validateSPIRV() {
 	if (_spirv.size() < 5) { return false; }
 	if (_spirv[0] != spv::MagicNumber) { return false; }
@@ -426,7 +421,7 @@ bool SPIRVToMSLConverter::validateSPIRV() {
 	return true;
 }
 
-/** Appends the source to the result log, prepending with the operation. */
+// Appends the source to the result log, prepending with the operation.
 void SPIRVToMSLConverter::logSource(string& src, const char* srcLang, const char* opDesc) {
     _resultLog += opDesc;
     _resultLog += " ";
@@ -440,14 +435,6 @@ void SPIRVToMSLConverter::logSource(string& src, const char* srcLang, const char
 
 
 #pragma mark Support functions
-
-// Return the SPIRV-Cross platform enum corresponding to a SPIRVToMSLConverterOptions platform enum value.
-SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::Platform getCompilerMSLPlatform(SPIRVToMSLConverterOptions::Platform platform) {
-	switch (platform) {
-		case SPIRVToMSLConverterOptions::macOS: return SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::macOS;
-		case SPIRVToMSLConverterOptions::iOS: return SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::iOS;
-	}
-}
 
 // Populate a workgroup size dimension.
 void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst) {

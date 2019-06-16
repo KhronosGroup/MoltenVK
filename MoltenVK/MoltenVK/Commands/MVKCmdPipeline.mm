@@ -254,6 +254,10 @@ void MVKCmdPushDescriptorSet::setContent(VkPipelineBindPoint pipelineBindPoint,
 			descWrite.pTexelBufferView = pNewTexelBufferView;
 		}
 	}
+
+	// Validate by encoding on a null encoder
+	encode(nullptr);
+	setConfigurationResult(_pipelineLayout->getConfigurationResult());
 }
 
 void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
@@ -323,6 +327,10 @@ void MVKCmdPushDescriptorSetWithTemplate::setContent(VkDescriptorUpdateTemplateK
 	}
 	_pData = new char[size];
 	memcpy(_pData, pData, size);
+
+	// Validate by encoding on a null encoder
+	encode(nullptr);
+	setConfigurationResult(_pipelineLayout->getConfigurationResult());
 }
 
 void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) {

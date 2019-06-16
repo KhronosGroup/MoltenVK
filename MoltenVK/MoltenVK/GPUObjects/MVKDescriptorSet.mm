@@ -25,6 +25,7 @@
 #include <stdlib.h>
 
 using namespace std;
+using namespace mvk;
 
 
 #pragma mark MVKShaderStageResourceBinding
@@ -80,6 +81,7 @@ MVKShaderResourceBinding& MVKShaderResourceBinding::operator+= (const MVKShaderR
 
 MVKVulkanAPIObject* MVKDescriptorSetLayoutBinding::getVulkanAPIObject() { return _layout; };
 
+// A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                                          MVKDescriptorBinding& descBinding,
                                          MVKShaderResourceBinding& dslMTLRezIdxOffsets,
@@ -111,9 +113,9 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                     if (_applyToStage[i]) {
                         bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            cmdEncoder->_computeResourcesState.bindBuffer(bb);
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
                         } else {
-                            cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb);
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
                         }
                     }
                 }
@@ -135,9 +137,9 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                     if (_applyToStage[i]) {
                         tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            cmdEncoder->_computeResourcesState.bindTexture(tb);
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
                         } else {
-                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
                         }
                     }
                 }
@@ -150,9 +152,9 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                     if (_applyToStage[i]) {
                         sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindSamplerState(sb); }
                         } else {
-                            cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb);
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb); }
                         }
                     }
                 }
@@ -172,11 +174,11 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
                         tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
                         sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            cmdEncoder->_computeResourcesState.bindTexture(tb);
-                            cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindSamplerState(sb); }
                         } else {
-                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
-                            cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb);
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb); }
                         }
                     }
                 }
@@ -194,6 +196,7 @@ static const T& get(const void* pData, size_t stride, uint32_t index) {
     return *(T*)((const char*)pData + stride * index);
 }
 
+// A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                                          uint32_t& dstArrayElement,
                                          uint32_t& descriptorCount,
@@ -243,9 +246,9 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                     if (_applyToStage[i]) {
                         bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            cmdEncoder->_computeResourcesState.bindBuffer(bb);
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
                         } else {
-                            cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb);
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
                         }
                     }
                 }
@@ -267,9 +270,9 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                     if (_applyToStage[i]) {
                         tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            cmdEncoder->_computeResourcesState.bindTexture(tb);
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
                         } else {
-                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
                         }
                     }
                 }
@@ -285,9 +288,9 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                     if (_applyToStage[i]) {
                         tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            cmdEncoder->_computeResourcesState.bindTexture(tb);
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
                         } else {
-                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
                         }
                     }
                 }
@@ -296,18 +299,20 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
 
             case VK_DESCRIPTOR_TYPE_SAMPLER: {
                 MVKSampler* sampler;
-                if (_immutableSamplers.empty())
+				if (_immutableSamplers.empty()) {
                     sampler = (MVKSampler*)get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement).sampler;
-                else
+					validate(sampler);
+				} else {
                     sampler = _immutableSamplers[rezIdx];
+				}
                 sb.mtlSamplerState = sampler->getMTLSamplerState();
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
                         sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindSamplerState(sb); }
                         } else {
-                            cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb);
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb); }
                         }
                     }
                 }
@@ -317,24 +322,30 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
-                MVKSampler* sampler = _immutableSamplers.empty() ? (MVKSampler*)imageInfo.sampler : _immutableSamplers[rezIdx];
                 tb.mtlTexture = imageView->getMTLTexture();
                 if (imageView) {
                     tb.swizzle = imageView->getPackedSwizzle();
                 } else {
                     tb.swizzle = 0;
                 }
+				MVKSampler* sampler;
+				if (_immutableSamplers.empty()) {
+					sampler = (MVKSampler*)imageInfo.sampler;
+					validate(sampler);
+				} else {
+					sampler = _immutableSamplers[rezIdx];
+				}
                 sb.mtlSamplerState = sampler->getMTLSamplerState();
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
                         tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
                         sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            cmdEncoder->_computeResourcesState.bindTexture(tb);
-                            cmdEncoder->_computeResourcesState.bindSamplerState(sb);
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindSamplerState(sb); }
                         } else {
-                            cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb);
-                            cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb);
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb); }
                         }
                     }
                 }
@@ -355,9 +366,20 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
     }
 }
 
+// If depth compare is required, but unavailable on the device, the sampler can only be used as an immutable sampler
+bool MVKDescriptorSetLayoutBinding::validate(MVKSampler* mvkSampler) {
+	if (mvkSampler->getRequiresConstExprSampler()) {
+		_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUpdateDescriptorSets(): Depth texture samplers using a compare operation can only be used as immutable samplers on this device."));
+		return false;
+	}
+	return true;
+}
+
 void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLConverterContext& context,
                                                                    MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                                                    uint32_t dslIndex) {
+
+	MVKSampler* mvkSamp = !_immutableSamplers.empty() ? _immutableSamplers.front() : nullptr;
 
     // Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
@@ -375,7 +397,8 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLCon
                                               mtlIdxs.stages[i],
                                               models[i],
                                               dslIndex,
-                                              _info.binding);
+                                              _info.binding,
+											  mvkSamp);
         }
     }
 }
@@ -489,6 +512,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
+// A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                MVKDescriptorSet* descSet,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets,
@@ -496,6 +520,8 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                uint32_t* pDynamicOffsetIndex) {
 
     if (_isPushDescriptorLayout) return;
+
+	clearConfigurationResult();
     uint32_t bindCnt = (uint32_t)_bindings.size();
     for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
         _bindings[bindIdx].bind(cmdEncoder, descSet->_bindings[bindIdx],
@@ -539,11 +565,14 @@ static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorI
     return pData;
 }
 
+// A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                MVKVector<VkWriteDescriptorSet>& descriptorWrites,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
 
     if (!_isPushDescriptorLayout) return;
+
+	clearConfigurationResult();
     for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
         uint32_t dstBinding = descWrite.dstBinding;
         uint32_t dstArrayElement = descWrite.dstArrayElement;
@@ -571,6 +600,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     }
 }
 
+// A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                MVKDescriptorUpdateTemplate* descUpdateTemplate,
                                                const void* pData,
@@ -579,6 +609,8 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     if (!_isPushDescriptorLayout ||
         descUpdateTemplate->getType() != VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR)
         return;
+
+	clearConfigurationResult();
     for (uint32_t i = 0; i < descUpdateTemplate->getNumberOfEntries(); i++) {
         const VkDescriptorUpdateTemplateEntryKHR* pEntry = descUpdateTemplate->getEntry(i);
         uint32_t dstBinding = pEntry->dstBinding;
@@ -644,6 +676,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 				_imageBindings[dstIdx].imageView = nullptr;		// Sampler only. Guard against app not explicitly clearing ImageView.
 				if (_hasDynamicSamplers) {
 					auto* mvkSampler = (MVKSampler*)pImgInfo->sampler;
+					validate(mvkSampler);
 					mvkSampler->retain();
 					_mtlSamplers[dstIdx] = mvkSampler ? mvkSampler->getMTLSamplerState() : nil;
 				} else {
@@ -667,6 +700,7 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 				_mtlTextures[dstIdx] = mvkImageView ? mvkImageView->getMTLTexture() : nil;
 				if (_hasDynamicSamplers) {
 					auto* mvkSampler = (MVKSampler*)pImgInfo->sampler;
+					validate(mvkSampler);
 					mvkSampler->retain();
 					_mtlSamplers[dstIdx] = mvkSampler ? mvkSampler->getMTLSamplerState() : nil;
 				} else {
@@ -808,7 +842,7 @@ MVKDescriptorBinding::MVKDescriptorBinding(MVKDescriptorSet* pDescSet, MVKDescri
 
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 			_imageBindings.resize(descCnt, VkDescriptorImageInfo());
-			_mtlTextures.resize(descCnt, VK_NULL_HANDLE);
+			_mtlTextures.resize(descCnt, nil);
 			initMTLSamplers(pBindingLayout);
 			break;
 
@@ -816,7 +850,7 @@ MVKDescriptorBinding::MVKDescriptorBinding(MVKDescriptorSet* pDescSet, MVKDescri
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 			_imageBindings.resize(descCnt, VkDescriptorImageInfo());
-			_mtlTextures.resize(descCnt, VK_NULL_HANDLE);
+			_mtlTextures.resize(descCnt, nil);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -824,14 +858,14 @@ MVKDescriptorBinding::MVKDescriptorBinding(MVKDescriptorSet* pDescSet, MVKDescri
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 			_bufferBindings.resize(descCnt, VkDescriptorBufferInfo());
-			_mtlBuffers.resize(descCnt, VK_NULL_HANDLE);
+			_mtlBuffers.resize(descCnt, nil);
 			_mtlBufferOffsets.resize(descCnt, 0);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			_texelBufferBindings.resize(descCnt, VK_NULL_HANDLE);
-            _mtlTextures.resize(descCnt, VK_NULL_HANDLE);
+			_texelBufferBindings.resize(descCnt, nil);
+            _mtlTextures.resize(descCnt, nil);
 			break;
 
 		default:
@@ -878,7 +912,7 @@ void MVKDescriptorBinding::initMTLSamplers(MVKDescriptorSetLayoutBinding* pBindi
 
     _mtlSamplers.reserve(descCnt);
     for (uint32_t i = 0; i < descCnt; i++) {
-        _mtlSamplers.push_back(_hasDynamicSamplers ? VK_NULL_HANDLE : imtblSamps[i]->getMTLSamplerState());
+		_mtlSamplers.push_back(_hasDynamicSamplers ? nil : imtblSamps[i]->getMTLSamplerState());
     }
 }
 
@@ -1052,7 +1086,7 @@ MVKDescriptorUpdateTemplate::MVKDescriptorUpdateTemplate(MVKDevice* device,
 #pragma mark -
 #pragma mark Support functions
 
-/** Updates the resource bindings in the descriptor sets inditified in the specified content. */
+// Updates the resource bindings in the descriptor sets inditified in the specified content.
 void mvkUpdateDescriptorSets(uint32_t writeCount,
 							 const VkWriteDescriptorSet* pDescriptorWrites,
 							 uint32_t copyCount,
@@ -1089,7 +1123,7 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 	}
 }
 
-/** Updates the resource bindings in the given descriptor set from the specified template. */
+// Updates the resource bindings in the given descriptor set from the specified template.
 void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 										VkDescriptorUpdateTemplateKHR updateTemplate,
 										const void* pData) {
@@ -1112,13 +1146,19 @@ void mvkPopulateShaderConverterContext(SPIRVToMSLConverterContext& context,
 									   MVKShaderStageResourceBinding& ssRB,
 									   spv::ExecutionModel stage,
 									   uint32_t descriptorSetIndex,
-									   uint32_t bindingIndex) {
-	MSLResourceBinding ctxRB;
-    ctxRB.stage = stage;
-    ctxRB.descriptorSet = descriptorSetIndex;
-    ctxRB.binding = bindingIndex;
-    ctxRB.mslBuffer = ssRB.bufferIndex;
-    ctxRB.mslTexture = ssRB.textureIndex;
-    ctxRB.mslSampler = ssRB.samplerIndex;
-    context.resourceBindings.push_back(ctxRB);
+									   uint32_t bindingIndex,
+									   MVKSampler* immutableSampler) {
+	MSLResourceBinding rb;
+
+	auto& rbb = rb.resourceBinding;
+	rbb.stage = stage;
+	rbb.desc_set = descriptorSetIndex;
+	rbb.binding = bindingIndex;
+	rbb.msl_buffer = ssRB.bufferIndex;
+	rbb.msl_texture = ssRB.textureIndex;
+	rbb.msl_sampler = ssRB.samplerIndex;
+
+	if (immutableSampler) { immutableSampler->getConstexprSampler(rb); }
+
+	context.resourceBindings.push_back(rb);
 }

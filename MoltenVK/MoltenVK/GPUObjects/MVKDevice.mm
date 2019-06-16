@@ -810,32 +810,36 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
     }
 
+#define setMSLVersion(maj, min)	\
+	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
+
 	switch (_metalFeatures.mslVersionEnum) {
 		case MTLLanguageVersion2_1:
-			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2, 1);
+			setMSLVersion(2, 1);
 			break;
 		case MTLLanguageVersion2_0:
-			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2, 0);
+			setMSLVersion(2, 0);
 			break;
 		case MTLLanguageVersion1_2:
-			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 2);
+			setMSLVersion(1, 2);
 			break;
 		case MTLLanguageVersion1_1:
-			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 1);
+			setMSLVersion(1, 1);
 			break;
 #if MVK_IOS
 		case MTLLanguageVersion1_0:
-			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 0);
+			setMSLVersion(1, 0);
 			break;
 #endif
 #if MVK_MACOS
 		// Silence compiler warning catch-22 on MTLLanguageVersion1_0.
 		// But allow iOS to be explicit so it warns on future enum values
 		default:
-			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(1, 0);
+			setMSLVersion(1, 0);
 			break;
 #endif
 	}
+
 }
 
 /** Initializes the physical device features of this instance. */

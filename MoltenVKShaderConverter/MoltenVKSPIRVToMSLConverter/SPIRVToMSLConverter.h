@@ -20,6 +20,7 @@
 #define __SPIRVToMSLConverter_h_ 1
 
 #include <SPIRV-Cross/spirv.hpp>
+#include <SPIRV-Cross/spirv_msl.hpp>
 #include <string>
 #include <vector>
 #include <unordered_map>
@@ -37,78 +38,33 @@ namespace mvk {
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
 	typedef struct SPIRVToMSLConverterOptions {
-
-		enum Platform {
-			iOS = 0,
-			macOS = 1
-		};
-
+		SPIRV_CROSS_NAMESPACE::CompilerMSL::Options mslOptions;
 		std::string entryPointName;
 		spv::ExecutionModel entryPointStage = spv::ExecutionModelMax;
 		spv::ExecutionMode tessPatchKind = spv::ExecutionModeMax;
-
-        uint32_t mslVersion = makeMSLVersion(2, 1);
-		Platform platform = getNativePlatform();
-		uint32_t texelBufferTextureWidth = 4096;
-		uint32_t swizzleBufferIndex = 0;
-		uint32_t indirectParamsBufferIndex = 0;
-		uint32_t outputBufferIndex = 0;
-		uint32_t patchOutputBufferIndex = 0;
-		uint32_t tessLevelBufferIndex = 0;
-		uint32_t bufferSizeBufferIndex = 0;
-		uint32_t inputThreadgroupMemIndex = 0;
 		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;
-		bool isRenderingPoints = false;
-		bool shouldSwizzleTextureSamples = false;
-		bool shouldCaptureOutput = false;
-		bool tessDomainOriginInLowerLeft = false;
-
-		bool isRasterizationDisabled = false;
 		bool needsSwizzleBuffer = false;
 		bool needsOutputBuffer = false;
 		bool needsPatchOutputBuffer = false;
 		bool needsBufferSizeBuffer = false;
 		bool needsInputThreadgroupMem = false;
 
-        /** 
-         * Returns whether the specified options match this one.
-         * It does if all corresponding elements are equal.
-         */
-        bool matches(const SPIRVToMSLConverterOptions& other) const;
+		/**
+		 * Returns whether the specified options match this one.
+		 * It does if all corresponding elements are equal.
+		 */
+		bool matches(const SPIRVToMSLConverterOptions& other) const;
 
 		bool hasEntryPoint() const {
 			return !entryPointName.empty() && entryPointStage != spv::ExecutionModelMax;
 		}
 
-        void setMSLVersion(uint32_t major, uint32_t minor = 0, uint32_t point = 0) {
-            mslVersion = makeMSLVersion(major, minor, point);
-        }
-
-        bool supportsMSLVersion(uint32_t major, uint32_t minor = 0, uint32_t point = 0) const {
-            return mslVersion >= makeMSLVersion(major, minor, point);
-        }
-
-        static uint32_t makeMSLVersion(uint32_t major, uint32_t minor = 0, uint32_t patch = 0) {
-            return (major * 10000) + (minor * 100) + patch;
-        }
-
 		static std::string printMSLVersion(uint32_t mslVersion, bool includePatch = false);
 
-		static Platform getNativePlatform();
+		SPIRVToMSLConverterOptions();
 
-    } SPIRVToMSLConverterOptions;
-
-	/**
-	 * Defines the format of a vertex attribute. Currently limited to describing
-	 * whether or not the attribute is of an 8-bit unsigned format, a 16-bit
-	 * unsigned format, or some other format.
-	 */
-	enum class MSLVertexFormat {
-		Other,
-		UInt8,
-		UInt16
-	};
+	} SPIRVToMSLConverterOptions;
 
 	/**
 	 * Defines MSL characteristics of a vertex attribute at a particular location.
@@ -119,22 +75,16 @@ namespace mvk {
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
 	typedef struct MSLVertexAttribute {
-		uint32_t location = 0;
-		uint32_t mslBuffer = 0;
-        uint32_t mslOffset = 0;
-        uint32_t mslStride = 0;
-		MSLVertexFormat format = MSLVertexFormat::Other;
-		spv::BuiltIn builtin = spv::BuiltInMax;
-        bool isPerInstance = false;
+		SPIRV_CROSS_NAMESPACE::MSLVertexAttr vertexAttribute;
 
 		bool isUsedByShader = false;
 
-        /**
-         * Returns whether the specified vertex attribute match this one.
-         * It does if all corresponding elements except isUsedByShader are equal.
-         */
-        bool matches(const MSLVertexAttribute& other) const;
-        
+		/**
+		 * Returns whether the specified vertex attribute match this one.
+		 * It does if all corresponding elements except isUsedByShader are equal.
+		 */
+		bool matches(const MSLVertexAttribute& other) const;
+
 	} MSLVertexAttribute;
 
 	/**
@@ -144,27 +94,27 @@ namespace mvk {
 	 * or sampler elements will be populated. The isUsedByShader flag is set to true during
 	 * compilation of SPIR-V to MSL if the shader makes use of this vertex attribute.
 	 *
+	 * If requiresConstExprSampler is true, the resource is a sampler whose content must be
+	 * hardcoded into the MSL as a constexpr type, instead of passed in as a runtime-bound variable.
+	 * The content of that constexpr sampler is defined in the constExprSampler parameter.
+	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
 	typedef struct MSLResourceBinding {
-		spv::ExecutionModel stage;
-		uint32_t descriptorSet = 0;
-		uint32_t binding = 0;
-
-		uint32_t mslBuffer = 0;
-		uint32_t mslTexture = 0;
-		uint32_t mslSampler = 0;
+		SPIRV_CROSS_NAMESPACE::MSLResourceBinding resourceBinding;
+		SPIRV_CROSS_NAMESPACE::MSLConstexprSampler constExprSampler;
+		bool requiresConstExprSampler = false;
 
 		bool isUsedByShader = false;
 
-        /**
-         * Returns whether the specified resource binding match this one.
-         * It does if all corresponding elements except isUsedByShader are equal.
-         */
-        bool matches(const MSLResourceBinding& other) const;
+		/**
+		 * Returns whether the specified resource binding match this one.
+		 * It does if all corresponding elements except isUsedByShader are equal.
+		 */
+		bool matches(const MSLResourceBinding& other) const;
 
-    } MSLResourceBinding;
+	} MSLResourceBinding;
 
 	/**
 	 * Context passed to the SPIRVToMSLConverter to map SPIR-V descriptors to Metal resource indices.
@@ -232,12 +182,6 @@ namespace mvk {
 			SPIRVWorkgroupSizeDimension depth;
 		} workgroupSize;
 	} SPIRVEntryPoint;
-
-	/** Special constant used in a MSLResourceBinding descriptorSet element to indicate the bindings for the push constants. */
-    static const uint32_t kPushConstDescSet = std::numeric_limits<uint32_t>::max();
-
-	/** Special constant used in a MSLResourceBinding binding element to indicate the bindings for the push constants. */
-	static const uint32_t kPushConstBinding = 0;
 
 
 #pragma mark -

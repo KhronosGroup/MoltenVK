@@ -13,6 +13,17 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.36
+---------------
+
+Released TBD
+
+- On iOS GPU family 2 and earlier, support immutable depth-compare samplers 
+  as constexpr samplers hardcoded in MSL.
+- Skip SPIRV-Tools build in Travis.
+
+
+
 MoltenVK 1.0.35
 ---------------
 
