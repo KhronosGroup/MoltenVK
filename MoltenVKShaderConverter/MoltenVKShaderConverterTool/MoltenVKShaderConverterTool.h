@@ -106,7 +106,7 @@ namespace mvk {
 		uint32_t _mslVersionMajor;
 		uint32_t _mslVersionMinor;
 		uint32_t _mslVersionPatch;
-		SPIRVToMSLConverterOptions::Platform _mslPlatform;
+		SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::Platform _mslPlatform;
 		bool _isActive;
 		bool _shouldUseDirectoryRecursion;
 		bool _shouldReadGLSL;

@@ -21,6 +21,7 @@
 #include "MVKResource.h"
 #include "MVKSync.h"
 #include "MVKVector.h"
+#include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <mutex>
 
 #import <IOSurface/IOSurfaceRef.h>
@@ -345,6 +346,15 @@ public:
 	/** Returns the Metal sampler state. */
 	inline id<MTLSamplerState> getMTLSamplerState() { return _mtlSamplerState; }
 
+	/**
+	 * If this sampler requires hardcoding in MSL, populates the hardcoded sampler in the resource binding.
+	 * Returns whether this sampler requires hardcoding in MSL, and the constant sampler was populated.
+	 */
+	bool getConstexprSampler(mvk::MSLResourceBinding& resourceBinding);
+
+	/** Returns whether this sampler must be implemented as a hardcoded constant sampler in the shader MSL code. */
+	inline 	bool getRequiresConstExprSampler() { return _requiresConstExprSampler; }
+
 	MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo);
 
 	~MVKSampler() override;
@@ -352,8 +362,11 @@ public:
 protected:
 	void propogateDebugName() override {}
 	MTLSamplerDescriptor* getMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
+	void initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo);
 
 	id<MTLSamplerState> _mtlSamplerState;
+	SPIRV_CROSS_NAMESPACE::MSLConstexprSampler _constExprSampler;
+	bool _requiresConstExprSampler;
 };
 
 

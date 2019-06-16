@@ -26,9 +26,6 @@
 #include <unordered_map>
 #include <vector>
 
-using namespace mvk;
-
-
 class MVKDescriptorPool;
 class MVKDescriptorBinding;
 class MVKDescriptorSet;
@@ -96,7 +93,7 @@ public:
               MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
 	/** Populates the specified shader converter context, at the specified descriptor set binding. */
-	void populateShaderConverterContext(SPIRVToMSLConverterContext& context,
+	void populateShaderConverterContext(mvk::SPIRVToMSLConverterContext& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
 
@@ -117,6 +114,7 @@ protected:
 	void initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
 									   MVKShaderStageResourceBinding* pDescSetCounts,
 									   const VkDescriptorSetLayoutBinding* pBinding);
+	bool validate(MVKSampler* mvkSampler);
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
@@ -162,7 +160,7 @@ public:
 
 
 	/** Populates the specified shader converter context, at the specified DSL index. */
-	void populateShaderConverterContext(SPIRVToMSLConverterContext& context,
+	void populateShaderConverterContext(mvk::SPIRVToMSLConverterContext& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
 
@@ -179,6 +177,7 @@ protected:
 	friend class MVKDescriptorSet;
 
 	void propogateDebugName() override {}
+	
 	MVKVectorInline<MVKDescriptorSetLayoutBinding, 8> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
@@ -264,6 +263,7 @@ protected:
 	friend class MVKDescriptorSetLayoutBinding;
 
 	void initMTLSamplers(MVKDescriptorSetLayoutBinding* pBindingLayout);
+	bool validate(MVKSampler* mvkSampler) { return _pBindingLayout->validate(mvkSampler); }
 
 	MVKDescriptorSet* _pDescSet;
 	MVKDescriptorSetLayoutBinding* _pBindingLayout;
@@ -427,11 +427,12 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
  * If the shader stage binding has a binding defined for the specified stage, populates
  * the context at the descriptor set binding from the shader stage resource binding.
  */
-void mvkPopulateShaderConverterContext(SPIRVToMSLConverterContext& context,
+void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConverterContext& context,
 									   MVKShaderStageResourceBinding& ssRB,
 									   spv::ExecutionModel stage,
 									   uint32_t descriptorSetIndex,
-									   uint32_t bindingIndex);
+									   uint32_t bindingIndex,
+									   MVKSampler* immutableSampler);
 
 
 
