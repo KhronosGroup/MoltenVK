@@ -6,6 +6,8 @@ osx_image: xcode10
 # Build dependencies
 install:
   - brew install python3
+  - pip3 install virtualenv
+  - virtualenv -p python3 .
   - ./fetchDependencies -v
 
 # Cache built deps
