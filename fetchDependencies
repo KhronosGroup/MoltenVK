@@ -4,29 +4,32 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [-v] [--debug] [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
+# macOS usage: ./fetchDependencies [-v] [--debug] [--skip-spirv-tools-build]
+#                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
 #
-#      --v-headers-root path
-#              "path" specifies a directory path to a
-#              KhronosGroup/Vulkan-Headers repository.
-#              This repository does not have to be built.
-#
-#      --spirv-cross-root path
-#              "path" specifies a directory path to a
-#              KhronosGroup/SPIRV-Cross repository.
-#              This repository does not have to be built.
+#      --debug
+#              Build the external libraries in Debug mode, which may be useful when debugging
+#              and tracing calls into those libraries.
 #
 #      --glslang-root path
-#              "path" specifies a directory path to a KhronosGroup/glslang
-#              repository.  This repository does need to be built and the
-#              build directory must be in the specified directory.
-#              It should be built the same way this script builds it.
+#              "path" specifies a directory path to a KhronosGroup/glslang repository.
+#              This repository does need to be built and the build directory must be in the
+#              specified directory. It should be built the same way this script builds it.
+#
+#      --skip-spirv-tools-build
+#              Skip the spirv-tools build and install a template of pre-generated SPIRV-Tools header files
+#              instead. The primary purpose of this is to allow Travis CI to skip the SPIRV-Tools build
+#              because Travis cannot support the required use of Python3 by the SPIRV-Tools build.
+#
+#      --spirv-cross-root path
+#              "path" specifies a directory path to a KhronosGroup/SPIRV-Cross repository.
+#              This repository does not have to be built.
 #
 #      -v      verbose output
 #
-#      --debug
-#              Build the external libraries in Debug mode, which may be useful
-#              when debugging and tracing calls into those libraries.
+#      --v-headers-root path
+#              "path" specifies a directory path to a KhronosGroup/Vulkan-Headers repository.
+#              This repository does not have to be built.
 #
 
 set -o errexit
@@ -38,6 +41,7 @@ XC_BUILD_VERBOSITY="-quiet"
 V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
 GLSLANG_ROOT=""
+SKIP_SPV_TLS_BLD=""
 
 while (( "$#" )); do
   case "$1" in
@@ -47,6 +51,10 @@ while (( "$#" )); do
          ;;
        -v)
          XC_BUILD_VERBOSITY=""
+         shift 1
+         ;;
+       --skip-spirv-tools-build)
+         SKIP_SPV_TLS_BLD="Y"
          shift 1
          ;;
        --v-headers-root)
@@ -220,8 +228,15 @@ else
 	cd -  > /dev/null
 fi
 
-#Make sure the embedded spirv-tools is built
-build_repo "${REPO_NAME}/External/spirv-tools"
+# Build the embedded spirv-tools, or use option of pre-generated headers
+SPV_TLS_DIR="${REPO_NAME}/External/spirv-tools"
+if [ ! "$SKIP_SPV_TLS_BLD" = "" ]; then
+	unzip -o -q -d "${SPV_TLS_DIR}" ../Templates/spirv-tools/build.zip
+	rm -rf "${SPV_TLS_DIR}/__MACOSX"
+else
+	build_repo "${SPV_TLS_DIR}"
+fi
+
 
 
 # ----------------- Vulkan-Tools -------------------
