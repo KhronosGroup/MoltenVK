@@ -7,7 +7,7 @@ osx_image: xcode10
 # Travis has trouble with python3, which SPIRV-Tools requires,
 # so skip the SPIRV-Tools build, and use templeted headers instead.
 install:
-  - ./fetchDependencies --skip-spirv-tools-build
+  - ./fetchDependencies -v --skip-spirv-tools-build
 
 # Cache built deps
 cache:
