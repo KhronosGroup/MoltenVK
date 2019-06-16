@@ -13,10 +13,21 @@ For best results, use a Markdown reader.*
 
 
 
-MoltenVK 1.0.35
+MoltenVK 1.0.36
 ---------------
 
 Released TBD
+
+- On iOS GPU family 2 and earlier, support immutable depth-compare samplers 
+  as constexpr samplers hardcoded in MSL.
+- Skip SPIRV-Tools build in Travis.
+
+
+
+MoltenVK 1.0.35
+---------------
+
+Released 2019/06/13
 
 - Add support for extensions:
 	- `VK_EXT_debug_report`
@@ -33,25 +44,61 @@ Released TBD
 	- Fix tessellated indirect draws using wrong kernels to map parameters.
 	- Work around potential Metal bug with stage-in indirect buffers.
 	- Fix zero local threadgroup size in indirect tessellated rendering.
+	- Fix [[attribute]] assignment for tessellation evaluation shaders.
 - `VkSemaphore` optionally uses `MTLEvent`, if available and 
   `MVK_ALLOW_METAL_EVENTS` environment variable is enabled.
+- Add `vkSetWorkgroupSizeMVK()` to set compute kernel workgroup size 
+  when using MSL source code or MSL compiled code.
+- Allow zero count of viewports and scissors.
+- Report image layer limits for attachments in `vkGetPhysicalDeviceImageFormatProperties()`.
 - Change log indication of error in logs from `[***MoltenVK ERROR***]` to 
-  `[mvk-error]`, for consistency with other log level indications. 
+  `[mvk-error]`, for consistency with other log level indications.
+- Allow `mvkMTLRenderStagesFromVkPipelineStageFlags()` to map to all Vulkan stages,
+  by indicating whether the pipeline barrier should come before or after the stages.
+- Automatically update `VkPhysicalDeviceProperties::pipelineCacheUUID` when SPIRV-Cross revision changes. 
 - Fix crash when clearing attachments using layered rendering on older macOS devices.
 - Fixes to Metal renderpass layered rendering settings.
+- `vkCmdClearAttachments()` returns encoder to previous pipeline, depth-stencil & resource state after execution.
+- Fix issue clearing stencil attachment via renderpass when depth attachment is not being cleared.
 - Fix sporadic crash on `vkDestroySwapchainKHR()`.
 - `MoltenVKShaderConverter` tool: Add MSL version and platform command-line options.
+- Fix crash on pipeline cache merge after `VkShaderModule` destroyed.
+- Fix case where viewport/scissor doesn't get set properly when mixing dynamic and 
+  static-configured pipelines in the same command buffer.
+- Fix a race condition between sync objects and queries.
+- Fix unused attachments terminating loop early.
+- Fix offset of buffer view relative to buffer offset within device memory.
 - Guard against missing Metal pipeline states when pipeline compilation fails.
+- MVKBuffer: Force managed storage for linear textures on shared buffers.
+- Use device address space when decompressing DXT image data.
+- Added missing `texelBufferTextureWidth` setting in `MVKComputePipeline::getMTLFunction()`.
+- Fixes and consolidation of external library header references.
 - Allow building external dependency libraries in `Debug` mode.
 - Enable AMD and NV GLSL extensions when building `glslang` for `MoltenVKGLSLToSPIRVConverter`.
 - Make external library header references consistent and add `MVK_EXCLUDE_SPIRV_TOOLS` option.
+- MVKVector improvements.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 20.
 - Update to latest SPIRV-Cross version:
+	- MSL: Add support for subgroup operations.
+	- MSL: Support argument buffers and image swizzling.
+	- MSL: Add support for `OpArrayLength`.
 	- MSL: Only use constant address space for tessellation control shader.
 	- MSL: Support native texture_buffer type, throw error on atomics.
 	- MSL: Add native texture buffer support.
+	- MSL: Deal with texture swizzle on arrays of images.
+	- MSL: Fix complex type alias declaration order.
+	- MSL: Fix declaration of unused input variables.
+	- MSL: Use correct address space when passing array-of-buffers.
+	- MSL: Deal correctly with nonuniformEXT qualifier.
 	- MSL: Cast texture_buffer index to uint.
+	- MSL: Fix nonuniform test.
+	- MSL: Fix regression with Private parameter declaration.
+	- MSL: Support remapping constexpr samplers by set/binding.
+	- MSL: Support Invariant qualifier on position.
+	- MSL: Support stencil export.
+	- Deal with case where a block is somehow emitted in a duplicated fashion.
 	- Fix infinite loop when OpAtomic* temporaries are used in other blocks.
+	- Fix tests for device->constant address space change in MSL tessellation control shader generation.
 	- Accept SPIR-V 1.4 version.
 
 

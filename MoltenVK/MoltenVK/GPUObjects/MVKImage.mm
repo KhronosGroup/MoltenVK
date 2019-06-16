@@ -30,6 +30,7 @@
 #import "MTLSamplerDescriptor+MoltenVK.h"
 
 using namespace std;
+using namespace SPIRV_CROSS_NAMESPACE;
 
 
 #pragma mark MVKImage
@@ -1019,6 +1020,7 @@ void MVKImageView::initMTLTextureViewSupport() {
 		_subresourceRange.layerCount == (is3D ? _image->_extent.depth : _image->_arrayLayers)) {
 		_useMTLTextureView = false;
 	}
+
 	// Never use views for subsets of 3D textures. Metal doesn't support them yet.
 	if (is3D && _subresourceRange.layerCount != _image->_extent.depth) {
 		_useMTLTextureView = false;
@@ -1032,6 +1034,14 @@ MVKImageView::~MVKImageView() {
 
 #pragma mark -
 #pragma mark MVKSampler
+
+bool MVKSampler::getConstexprSampler(mvk::MSLResourceBinding& resourceBinding) {
+	resourceBinding.requiresConstExprSampler = _requiresConstExprSampler;
+	if (_requiresConstExprSampler) {
+		resourceBinding.constExprSampler = _constExprSampler;
+	}
+	return _requiresConstExprSampler;
+}
 
 // Returns an autoreleased Metal sampler descriptor constructed from the properties of this image.
 MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo) {
@@ -1052,12 +1062,12 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 								 : 1);
 	mtlSampDesc.normalizedCoordinates = !pCreateInfo->unnormalizedCoordinates;
 
-	if (pCreateInfo->compareEnable) {
-		if (_device->_pMetalFeatures->depthSampleCompare) {
-			mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
-		} else {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateSampler(): Depth texture samplers do not support the comparison of the pixel value against a reference value."));
-		}
+	// If compareEnable is true, but dynamic samplers with depth compare are not available
+	// on this device, this sampler must only be used as an immutable sampler, and will
+	// be automatically hardcoded into the shader MSL. An error will be triggered if this
+	// sampler is used to update or push a descriptor binding.
+	if (pCreateInfo->compareEnable && !_requiresConstExprSampler) {
+		mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 	}
 
 #if MVK_MACOS
@@ -1077,9 +1087,96 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 	return [mtlSampDesc autorelease];
 }
 
-// Constructs an instance on the specified image.
 MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+	_requiresConstExprSampler = pCreateInfo->compareEnable && !_device->_pMetalFeatures->depthSampleCompare;
     _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: getMTLSamplerDescriptor(pCreateInfo)];
+	initConstExprSampler(pCreateInfo);
+}
+
+static MSLSamplerFilter getSpvMinMagFilterFromVkFilter(VkFilter vkFilter) {
+	switch (vkFilter) {
+		case VK_FILTER_LINEAR:	return MSL_SAMPLER_FILTER_LINEAR;
+
+		case VK_FILTER_NEAREST:
+		default:
+			return MSL_SAMPLER_FILTER_NEAREST;
+	}
+}
+
+static MSLSamplerMipFilter getSpvMipFilterFromVkMipMode(VkSamplerMipmapMode vkMipMode) {
+	switch (vkMipMode) {
+		case VK_SAMPLER_MIPMAP_MODE_LINEAR:		return MSL_SAMPLER_MIP_FILTER_LINEAR;
+		case VK_SAMPLER_MIPMAP_MODE_NEAREST:	return MSL_SAMPLER_MIP_FILTER_NEAREST;
+
+		default:
+			return MSL_SAMPLER_MIP_FILTER_NONE;
+	}
+}
+
+static MSLSamplerAddress getSpvAddressModeFromVkAddressMode(VkSamplerAddressMode vkAddrMode) {
+	switch (vkAddrMode) {
+		case VK_SAMPLER_ADDRESS_MODE_REPEAT:			return MSL_SAMPLER_ADDRESS_REPEAT;
+		case VK_SAMPLER_ADDRESS_MODE_MIRRORED_REPEAT:	return MSL_SAMPLER_ADDRESS_MIRRORED_REPEAT;
+		case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER:	return MSL_SAMPLER_ADDRESS_CLAMP_TO_BORDER;
+
+		case VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE:
+		case VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_EDGE:
+		default:
+			return MSL_SAMPLER_ADDRESS_CLAMP_TO_EDGE;
+	}
+}
+
+static MSLSamplerCompareFunc getSpvCompFuncFromVkCompOp(VkCompareOp vkCompOp) {
+	switch (vkCompOp) {
+		case VK_COMPARE_OP_LESS:				return MSL_SAMPLER_COMPARE_FUNC_LESS;
+		case VK_COMPARE_OP_EQUAL:				return MSL_SAMPLER_COMPARE_FUNC_EQUAL;
+		case VK_COMPARE_OP_LESS_OR_EQUAL:		return MSL_SAMPLER_COMPARE_FUNC_LESS_EQUAL;
+		case VK_COMPARE_OP_GREATER:				return MSL_SAMPLER_COMPARE_FUNC_GREATER;
+		case VK_COMPARE_OP_NOT_EQUAL:			return MSL_SAMPLER_COMPARE_FUNC_NOT_EQUAL;
+		case VK_COMPARE_OP_GREATER_OR_EQUAL:	return MSL_SAMPLER_COMPARE_FUNC_GREATER_EQUAL;
+		case VK_COMPARE_OP_ALWAYS:				return MSL_SAMPLER_COMPARE_FUNC_ALWAYS;
+
+		case VK_COMPARE_OP_NEVER:
+		default:
+			return MSL_SAMPLER_COMPARE_FUNC_NEVER;
+	}
+}
+
+static MSLSamplerBorderColor getSpvBorderColorFromVkBorderColor(VkBorderColor vkBorderColor) {
+	switch (vkBorderColor) {
+		case VK_BORDER_COLOR_FLOAT_OPAQUE_BLACK:
+		case VK_BORDER_COLOR_INT_OPAQUE_BLACK:
+			return MSL_SAMPLER_BORDER_COLOR_OPAQUE_BLACK;
+
+		case VK_BORDER_COLOR_FLOAT_OPAQUE_WHITE:
+		case VK_BORDER_COLOR_INT_OPAQUE_WHITE:
+			return MSL_SAMPLER_BORDER_COLOR_OPAQUE_WHITE;
+
+		case VK_BORDER_COLOR_FLOAT_TRANSPARENT_BLACK:
+		case VK_BORDER_COLOR_INT_TRANSPARENT_BLACK:
+		default:
+			return MSL_SAMPLER_BORDER_COLOR_TRANSPARENT_BLACK;
+	}
+}
+\
+void MVKSampler::initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo) {
+	if ( !_requiresConstExprSampler ) { return; }
+
+	_constExprSampler.coord = pCreateInfo->unnormalizedCoordinates ? MSL_SAMPLER_COORD_PIXEL : MSL_SAMPLER_COORD_NORMALIZED;
+	_constExprSampler.min_filter = getSpvMinMagFilterFromVkFilter(pCreateInfo->minFilter);
+	_constExprSampler.mag_filter = getSpvMinMagFilterFromVkFilter(pCreateInfo->magFilter);
+	_constExprSampler.mip_filter = getSpvMipFilterFromVkMipMode(pCreateInfo->mipmapMode);
+	_constExprSampler.s_address = getSpvAddressModeFromVkAddressMode(pCreateInfo->addressModeU);
+	_constExprSampler.t_address = getSpvAddressModeFromVkAddressMode(pCreateInfo->addressModeV);
+	_constExprSampler.r_address = getSpvAddressModeFromVkAddressMode(pCreateInfo->addressModeW);
+	_constExprSampler.compare_func = getSpvCompFuncFromVkCompOp(pCreateInfo->compareOp);
+	_constExprSampler.border_color = getSpvBorderColorFromVkBorderColor(pCreateInfo->borderColor);
+	_constExprSampler.lod_clamp_min = pCreateInfo->minLod;
+	_constExprSampler.lod_clamp_max = pCreateInfo->maxLod;
+	_constExprSampler.max_anisotropy = pCreateInfo->maxAnisotropy;
+	_constExprSampler.compare_enable = pCreateInfo->compareEnable;
+	_constExprSampler.lod_clamp_enable = false;
+	_constExprSampler.anisotropy_enable = pCreateInfo->anisotropyEnable;
 }
 
 MVKSampler::~MVKSampler() {

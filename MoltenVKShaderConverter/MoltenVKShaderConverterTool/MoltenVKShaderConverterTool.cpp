@@ -205,8 +205,8 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 
 	// Derive the context under which conversion will occur
 	SPIRVToMSLConverterContext mslContext;
-	mslContext.options.platform = _mslPlatform;
-	mslContext.options.setMSLVersion(_mslVersionMajor, _mslVersionMinor, _mslVersionPatch);
+	mslContext.options.mslOptions.platform = _mslPlatform;
+	mslContext.options.mslOptions.set_msl_version(_mslVersionMajor, _mslVersionMinor, _mslVersionPatch);
 	mslContext.options.shouldFlipVertexY = _shouldFlipVertexY;
 
 	SPIRVToMSLConverter spvConverter;
@@ -387,7 +387,7 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	_mslVersionMajor = 2;
 	_mslVersionMinor = 1;
 	_mslVersionPatch = 0;
-	_mslPlatform = SPIRVToMSLConverterOptions::getNativePlatform();
+	_mslPlatform = SPIRVToMSLConverterOptions().mslOptions.platform;
 
 	_isActive = parseArgs(argc, argv);
 	if ( !_isActive ) { showUsage(); }
@@ -463,10 +463,10 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 
 			switch (shdrTypeStr.front()) {
 				case 'm':
-					_mslPlatform = SPIRVToMSLConverterOptions::macOS;
+					_mslPlatform = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::macOS;
 					break;
 				case 'i':
-					_mslPlatform = SPIRVToMSLConverterOptions::iOS;
+					_mslPlatform = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::iOS;
 					break;
 				default:
 					return false;

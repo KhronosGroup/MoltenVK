@@ -276,7 +276,7 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
     } else if ( isRenderingEntireAttachment && (subpass->_subpassIndex == _firstUseSubpassIdx) ) {
         VkAttachmentLoadOp loadOp = isStencil ? _info.stencilLoadOp : _info.loadOp;
         mtlAttDesc.loadAction = mvkMTLLoadActionFromVkAttachmentLoadOp(loadOp);
-        willClear = (_info.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
+        willClear = (loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
     } else {
         mtlAttDesc.loadAction = MTLLoadActionLoad;
     }

@@ -187,7 +187,10 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
    that opens, select the _**Create groups**_ option, add the files to *both* the `SPIRV-Tools-macOS` 
    and `SPIRV-Tools-iOS` targets, and click the ***Finish*** button.
 
-3. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
+
+3. Remove the *Group* named `fuzz` from under the *Group* named `External/SPIRV-Tools/source`.
+
+4. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
    select the `SPIRV-Tools-macOS` target, and open the *Build Settings* tab. Locate the build 
    setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
 
