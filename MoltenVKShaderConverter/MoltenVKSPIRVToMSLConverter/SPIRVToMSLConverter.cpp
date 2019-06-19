@@ -44,13 +44,13 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterOptions::matches(const SPIRVToMSLConve
 	if (tessPatchKind != other.tessPatchKind) { return false; }
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
 	if (!!shouldFlipVertexY != !!other.shouldFlipVertexY) { return false; }
-	if (!!needsSwizzleBuffer != !!other.needsSwizzleBuffer) { return false; }
-	if (!!needsOutputBuffer != !!other.needsOutputBuffer) { return false; }
-	if (!!needsPatchOutputBuffer != !!other.needsPatchOutputBuffer) { return false; }
-	if (!!needsBufferSizeBuffer != !!other.needsBufferSizeBuffer) { return false; }
-	if (!!needsInputThreadgroupMem != !!other.needsInputThreadgroupMem) { return false; }
+//	if (!!needsSwizzleBuffer != !!other.needsSwizzleBuffer) { return false; }
+//	if (!!needsOutputBuffer != !!other.needsOutputBuffer) { return false; }
+//	if (!!needsPatchOutputBuffer != !!other.needsPatchOutputBuffer) { return false; }
+//	if (!!needsBufferSizeBuffer != !!other.needsBufferSizeBuffer) { return false; }
+//	if (!!needsInputThreadgroupMem != !!other.needsInputThreadgroupMem) { return false; }
 
-	if (mslOptions.platform != other.mslOptions.platform) { return false; }
+//	if (mslOptions.platform != other.mslOptions.platform) { return false; }
 	if (mslOptions.msl_version != other.mslOptions.msl_version) { return false; }
 	if (mslOptions.texel_buffer_texture_width != other.mslOptions.texel_buffer_texture_width) { return false; }
 	if (mslOptions.swizzle_buffer_index != other.mslOptions.swizzle_buffer_index) { return false; }
@@ -61,13 +61,13 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverterOptions::matches(const SPIRVToMSLConve
 	if (mslOptions.buffer_size_buffer_index != other.mslOptions.buffer_size_buffer_index) { return false; }
 	if (mslOptions.shader_input_wg_index != other.mslOptions.shader_input_wg_index) { return false; }
 	if (!!mslOptions.enable_point_size_builtin != !!other.mslOptions.enable_point_size_builtin) { return false; }
-	if (!!mslOptions.disable_rasterization != !!other.mslOptions.disable_rasterization) { return false; }
+//	if (!!mslOptions.disable_rasterization != !!other.mslOptions.disable_rasterization) { return false; }
 	if (!!mslOptions.capture_output_to_buffer != !!other.mslOptions.capture_output_to_buffer) { return false; }
 	if (!!mslOptions.swizzle_texture_samples != !!other.mslOptions.swizzle_texture_samples) { return false; }
 	if (!!mslOptions.tess_domain_origin_lower_left != !!other.mslOptions.tess_domain_origin_lower_left) { return false; }
-	if (mslOptions.argument_buffers != other.mslOptions.argument_buffers) { return false; }
-	if (mslOptions.pad_fragment_output_components != other.mslOptions.pad_fragment_output_components) { return false; }
-	if (mslOptions.texture_buffer_native != other.mslOptions.texture_buffer_native) { return false; }
+//	if (mslOptions.argument_buffers != other.mslOptions.argument_buffers) { return false; }
+//	if (mslOptions.pad_fragment_output_components != other.mslOptions.pad_fragment_output_components) { return false; }
+//	if (mslOptions.texture_buffer_native != other.mslOptions.texture_buffer_native) { return false; }
 
 	return true;
 }
