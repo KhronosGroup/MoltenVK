@@ -530,10 +530,10 @@ public:
      *
      * If endTime is zero or not supplied, the current time is used.
      */
-    inline void addActivityPerformance(MVKPerformanceTracker& shaderCompilationEvent,
+    inline void addActivityPerformance(MVKPerformanceTracker& activityTracker,
 									   uint64_t startTime, uint64_t endTime = 0) {
 		if (_pMVKConfig->performanceTracking) {
-			addActivityPerformanceImpl(shaderCompilationEvent, startTime, endTime);
+			addActivityPerformanceImpl(activityTracker, startTime, endTime);
 		}
 	};
 
@@ -653,9 +653,9 @@ protected:
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
-    const char* getActivityPerformanceDescription(MVKPerformanceTracker& shaderCompilationEvent);
+    const char* getActivityPerformanceDescription(MVKPerformanceTracker& activityTracker);
 	uint64_t getPerformanceTimestampImpl();
-	void addActivityPerformanceImpl(MVKPerformanceTracker& shaderCompilationEvent,
+	void addActivityPerformanceImpl(MVKPerformanceTracker& activityTracker,
 									uint64_t startTime, uint64_t endTime);
 
 	MVKPhysicalDevice* _physicalDevice;
