@@ -102,8 +102,14 @@ typedef unsigned long MTLLanguageVersion;
  *      2: Log errors and informational messages.
  *    If neither is set, errors and informational messages are logged.
  *
- * 2. Setting the MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time
- *    build setting to 1 will cause MoltenVK to log the name of each Vulkan call made by the application.
+ * 2. Setting the MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time build
+ *    setting will cause MoltenVK to log the name of each Vulkan call made by the application. The logging
+ *    format options can be controlled by setting the value of MVK_CONFIG_TRACE_VULKAN_CALLS as follows:
+ *        0: No Vulkan call logging.
+ *        1: Log the name of each Vulkan call when the call is entered.
+ *        2: Log the name of each Vulkan call when the call is entered and exited. This effectively
+ *           brackets any other logging activity within the scope of the Vulkan call.
+ *        3: Same as option 2, plus logs the time spent inside the Vulkan function.
  *
  * 3. Setting the MVK_CONFIG_FORCE_LOW_POWER_GPU runtime environment variable or MoltenVK compile-time
  *    build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.

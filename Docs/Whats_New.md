@@ -20,7 +20,9 @@ Released TBD
 
 - On iOS GPU family 2 and earlier, support immutable depth-compare samplers 
   as constexpr samplers hardcoded in MSL.
-- Skip SPIRV-Tools build in Travis.
+- Add MTLCommandBuffer completion timing performance tracking option.
+- Expand `MVK_CONFIG_TRACE_VULKAN_CALLS` to optionally log Vulkan call timings.
+- Skip `SPIRV-Tools` build in Travis because Travis does not support the required Python 3.
 
 
 
