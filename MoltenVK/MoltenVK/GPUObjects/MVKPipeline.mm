@@ -1410,7 +1410,7 @@ VkResult MVKPipelineCache::writeData(size_t* pDataSize, void* pData) {
 // Serializes the data in this cache to a stream
 void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 
-	MVKPerformanceTracker& shaderCompilationEvent = isCounting
+	MVKPerformanceTracker& activityTracker = isCounting
 		? _device->_performanceStatistics.pipelineCache.sizePipelineCache
 		: _device->_performanceStatistics.pipelineCache.writePipelineCache;
 
@@ -1438,7 +1438,7 @@ void MVKPipelineCache::writeData(ostream& outstream, bool isCounting) {
 			writer(cacheIter.getShaderContext());
 			writer(cacheIter.getEntryPoint());
 			writer(cacheIter.getMSL());
-			_device->addActivityPerformance(shaderCompilationEvent, startTime);
+			_device->addActivityPerformance(activityTracker, startTime);
 		}
 	}
 

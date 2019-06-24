@@ -202,8 +202,9 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   uint32_t waitSemaphoreCount,
 									   const VkSemaphore* pWaitSemaphores) {
 	_queue = queue;
-	_prev = VK_NULL_HANDLE;
-	_next = VK_NULL_HANDLE;
+	_prev = nullptr;
+	_next = nullptr;
+	_trackPerformance = _queue->_device->_pMVKConfig->performanceTracking;
 
 	_isAwaitingSemaphores = waitSemaphoreCount > 0;
 	_waitSemaphores.reserve(waitSemaphoreCount);
@@ -280,9 +281,13 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 		for (auto& ws : _waitSemaphores) { ws->wait(); }
 	}
 
-	if (signalCompletion) {
+	MVKDevice* mkvDev = _queue->_device;
+	uint64_t startTime = mkvDev->getPerformanceTimestamp();
+
+	if (signalCompletion || _trackPerformance) {
 		[_activeMTLCommandBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-			this->finish();
+			_queue->_device->addActivityPerformance(mkvDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
+			if (signalCompletion) { this->finish(); }
 		}];
 	}
 
