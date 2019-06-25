@@ -62,4 +62,18 @@
 	if ( [self respondsToSelector: @selector(setMaximumDrawableCount:)] ) { self.maximumDrawableCount = count; }
 }
 
+-(BOOL) wantsExtendedDynamicRangeContentMVK {
+#if MVK_MACOS
+    return self.wantsExtendedDynamicRangeContent;
+#else
+    return NO;
+#endif
+}
+
+-(void) setWantsExtendedDynamicRangeContentMVK: (BOOL) edr {
+#if MVK_MACOS
+    self.wantsExtendedDynamicRangeContent = edr;
+#endif
+}
+
 @end

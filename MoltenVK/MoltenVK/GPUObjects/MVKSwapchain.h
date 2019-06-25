@@ -77,6 +77,9 @@ public:
 	/** Returns the specified performance stats structure. */
 	const MVKSwapchainPerformance* getPerformanceStatistics() { return &_performanceStatistics; }
 
+	/** Adds HDR metadata to this swapchain. */
+	void setHDRMetadataEXT(const VkHdrMetadataEXT& metadata);
+
 
 #pragma mark Metal
 
