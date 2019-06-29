@@ -18,6 +18,8 @@ MoltenVK 1.0.36
 
 Released TBD
 
+- For shaders created directly from MSL, set function name from 
+  `VkPipelineShaderStageCreateInfo::pName`.
 - On iOS GPU family 2 and earlier, support immutable depth-compare samplers 
   as constexpr samplers hardcoded in MSL.
 - Add `MTLCommandBuffer` completion timing performance tracking option.

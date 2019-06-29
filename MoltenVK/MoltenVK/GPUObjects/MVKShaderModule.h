@@ -56,7 +56,22 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _owner->getVulkanAPIObject(); };
 
-    /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
+	/**
+	 * Sets the entry point function name.
+	 *
+	 * This is usually set automatically during shader conversion from SPIR-V to MSL.
+	 * For a library that was created directly from MSL, this function can be used to
+	 * set the name of the function if it has a different name than the default main0().
+	 */
+	void setEntryPointName(std::string& funcName);
+
+    /**
+	 * Sets the number of threads in a single compute kernel workgroup, per dimension.
+	 *
+	 * This is usually set automatically during shader conversion from SPIR-V to MSL.
+	 * For a library that was created directly from MSL, this function can be used to
+	 * set the workgroup size..
+	 */
     void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
     
 	/** Constructs an instance from the specified MSL source code. */
@@ -207,7 +222,7 @@ protected:
 	MVKShaderLibraryCache _shaderLibraryCache;
 	SPIRVToMSLConverter _spvConverter;
 	GLSLToSPIRVConverter _glslConverter;
-	MVKShaderLibrary* _defaultLibrary;
+	MVKShaderLibrary* _directMSLLibrary;
 	MVKShaderModuleKey _key;
     std::mutex _accessLock;
 };

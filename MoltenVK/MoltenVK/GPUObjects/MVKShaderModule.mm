@@ -109,6 +109,17 @@ MTLFunctionConstant* MVKShaderLibrary::getFunctionConstant(NSArray<MTLFunctionCo
     return nil;
 }
 
+void MVKShaderLibrary::setEntryPointName(string& funcName) {
+	_shaderConversionResults.entryPoint.mtlFunctionName = funcName;
+}
+
+void MVKShaderLibrary::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
+	auto& wgSize = _shaderConversionResults.entryPoint.workgroupSize;
+	wgSize.width.size = x;
+	wgSize.height.size = y;
+	wgSize.depth.size = z;
+}
+
 MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 								   const string& mslSourceCode,
 								   const SPIRVToMSLConversionResults& shaderConversionResults) : _owner(owner) {
@@ -158,13 +169,6 @@ void MVKShaderLibrary::handleCompilationError(NSError* err, const char* opDesc) 
 												   opDesc, (long)err.code,
 												   err.localizedDescription.UTF8String));
     }
-}
-
-void MVKShaderLibrary::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
-	auto& wgSize = _shaderConversionResults.entryPoint.workgroupSize;
-    wgSize.width.size = x;
-    wgSize.height.size = y;
-    wgSize.depth.size = z;
 }
 
 MVKShaderLibrary::~MVKShaderLibrary() {
@@ -236,7 +240,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 											   MVKPipelineCache* pipelineCache) {
 	lock_guard<mutex> lock(_accessLock);
 	
-	MVKShaderLibrary* mvkLib = _defaultLibrary;
+	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
 		uint64_t startTime = _device->getPerformanceTimestamp();
 		if (pipelineCache) {
@@ -246,6 +250,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 		}
 		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
 	} else {
+		mvkLib->setEntryPointName(pContext->options.entryPointName);
 		pContext->markAllAttributesAndResourcesUsed();
 	}
 
@@ -302,12 +307,18 @@ MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SP
 	}
 }
 
+void MVKShaderModule::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
+	_spvConverter.setWorkgroupSize(x, y, z);
+	if(_directMSLLibrary) { _directMSLLibrary->setWorkgroupSize(x, y, z); }
+}
+
+
 #pragma mark Construction
 
 MVKShaderModule::MVKShaderModule(MVKDevice* device,
 								 const VkShaderModuleCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _shaderLibraryCache(this) {
 
-	_defaultLibrary = nullptr;
+	_directMSLLibrary = nullptr;
 
 	size_t codeSize = pCreateInfo->codeSize;
 
@@ -344,7 +355,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
 			_spvConverter.setMSL(pMSLCode, nullptr);
-			_defaultLibrary = new MVKShaderLibrary(this, _spvConverter.getMSL().c_str(), _spvConverter.getConversionResults());
+			_directMSLLibrary = new MVKShaderLibrary(this, _spvConverter.getMSL().c_str(), _spvConverter.getConversionResults());
 
 			break;
 		}
@@ -358,7 +369,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
 			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
-			_defaultLibrary = new MVKShaderLibrary(this, (void*)(pMSLCode), mslCodeLen);
+			_directMSLLibrary = new MVKShaderLibrary(this, (void*)(pMSLCode), mslCodeLen);
 
 			break;
 		}
@@ -382,12 +393,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 }
 
 MVKShaderModule::~MVKShaderModule() {
-	if (_defaultLibrary) { _defaultLibrary->destroy(); }
-}
-
-void MVKShaderModule::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
-    _spvConverter.setWorkgroupSize(x, y, z);
-    if(_defaultLibrary) { _defaultLibrary->setWorkgroupSize(x, y, z); }
+	if (_directMSLLibrary) { _directMSLLibrary->destroy(); }
 }
 
 
