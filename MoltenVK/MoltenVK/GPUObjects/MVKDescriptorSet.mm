@@ -375,7 +375,7 @@ bool MVKDescriptorSetLayoutBinding::validate(MVKSampler* mvkSampler) {
 	return true;
 }
 
-void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLConverterContext& context,
+void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context,
                                                                    MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                                                    uint32_t dslIndex) {
 
@@ -632,7 +632,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     }
 }
 
-void MVKDescriptorSetLayout::populateShaderConverterContext(SPIRVToMSLConverterContext& context,
+void MVKDescriptorSetLayout::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context,
                                                             MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 															uint32_t dslIndex) {
 	uint32_t bindCnt = (uint32_t)_bindings.size();
@@ -1142,7 +1142,7 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 	}
 }
 
-void mvkPopulateShaderConverterContext(SPIRVToMSLConverterContext& context,
+void mvkPopulateShaderConverterContext(SPIRVToMSLConversionConfiguration& context,
 									   MVKShaderStageResourceBinding& ssRB,
 									   spv::ExecutionModel stage,
 									   uint32_t descriptorSetIndex,

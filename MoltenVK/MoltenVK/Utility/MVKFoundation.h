@@ -391,6 +391,13 @@ void mvkReleaseContainerContents(C& container) {
 }
 #endif
 
+/** Returns whether the container contains an item equal to the value. */
+template<class C, class T>
+bool contains(const C& container, const T& val) {
+	for (const T& cVal : container) { if (cVal == val) { return true; } }
+	return false;
+}
+
 /** Removes the first occurance of the specified value from the specified container. */
 template<class C, class T>
 void mvkRemoveFirstOccurance(C& container, T val) {

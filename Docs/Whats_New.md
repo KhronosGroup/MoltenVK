@@ -20,9 +20,23 @@ Released TBD
 
 - On iOS GPU family 2 and earlier, support immutable depth-compare samplers 
   as constexpr samplers hardcoded in MSL.
-- Add MTLCommandBuffer completion timing performance tracking option.
+- Add `MTLCommandBuffer` completion timing performance tracking option.
 - Expand `MVK_CONFIG_TRACE_VULKAN_CALLS` to optionally log Vulkan call timings.
 - Skip `SPIRV-Tools` build in Travis because Travis does not support the required Python 3.
+- Separate `SPIRVToMSLConverterContext` into input config and output results.
+- Fix pipeline cache lookups.
+- Update to latest SPIRV-Cross version:
+	- MSL: Add support for `SubgroupSize` / `SubgroupInvocationID` in fragment.
+	- MSL: Support `OpImageQueryLod`.
+	- MSL: Support `MinLod` operand.
+	- MSL: Support `PrimitiveID` in fragment and barycentrics.
+	- MSL: Support 64-bit integers.
+	- MSL: New SDK errors out on cull distance.
+	- MSL: Conditionally validate MSL 2.2 shaders.
+	- MSL: Rewrite how resource indices are fallback-assigned.
+	- MSL: Support custom bindings for argument buffers.
+	- MSL: Fix sampling with FP16 coordinates.
+	- MSL: Deal with scalar input values for distance/length/normalize.
 
 
 
@@ -570,7 +584,7 @@ MoltenVK 1.0.17
 Released 2018/07/31
 
 - Disable rasterization and return void from vertex shaders that write to resources.
-- Add SPIRVToMSLConverterOptions::isRasterizationDisabled to allow pipeline and 
+- Add SPIRVToMSLConversionOptions::isRasterizationDisabled to allow pipeline and 
   vertex shader to communicate rasterization status.
 - Track layered rendering capability.    
 - Add MVKPhysicalDeviceMetalFeatures::layeredRendering.

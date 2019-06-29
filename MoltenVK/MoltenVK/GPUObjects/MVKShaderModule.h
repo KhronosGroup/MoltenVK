@@ -38,10 +38,11 @@ using namespace mvk;
 #pragma mark -
 #pragma mark MVKShaderLibrary
 
-/** Specifies the SPIRV LocalSize, which is the number of threads in a compute shader workgroup. */
+/** A MTLFunction and corresponding result information resulting from a shader conversion. */
 typedef struct {
-    id<MTLFunction> mtlFunction;
-    MTLSize threadGroupSize;
+	id<MTLFunction> mtlFunction;
+	const SPIRVToMSLConversionResults shaderConversionResults;
+	MTLSize threadGroupSize;
 } MVKMTLFunction;
 
 /** A MVKMTLFunction indicating an invalid MTLFunction. The mtlFunction member is nil. */
@@ -61,7 +62,7 @@ public:
 	/** Constructs an instance from the specified MSL source code. */
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 					 const std::string& mslSourceCode,
-					 const SPIRVEntryPoint& entryPoint);
+					 const SPIRVToMSLConversionResults& shaderConversionResults);
 
 	/** Constructs an instance from the specified compiled MSL code data. */
 	MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
@@ -84,7 +85,7 @@ protected:
 
 	MVKVulkanAPIDeviceObject* _owner;
 	id<MTLLibrary> _mtlLibrary;
-	SPIRVEntryPoint _entryPoint;
+	SPIRVToMSLConversionResults _shaderConversionResults;
 	std::string _msl;
 };
 
@@ -107,7 +108,7 @@ public:
 	 * If pWasAdded is not nil, this function will set it to true if a new shader library was created,
 	 * and to false if an existing shader library was found and returned.
 	 */
-	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConverterContext* pContext,
+	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext,
 									   MVKShaderModule* shaderModule,
 									   bool* pWasAdded = nullptr);
 
@@ -120,14 +121,14 @@ protected:
 	friend MVKPipelineCache;
 	friend MVKShaderModule;
 
-	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConverterContext* pContext);
-	MVKShaderLibrary* addShaderLibrary(SPIRVToMSLConverterContext* pContext,
+	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pContext);
+	MVKShaderLibrary* addShaderLibrary(SPIRVToMSLConversionConfiguration* pContext,
 									   const std::string& mslSourceCode,
-									   const SPIRVEntryPoint& entryPoint);
+									   const SPIRVToMSLConversionResults& shaderConversionResults);
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
-	std::vector<std::pair<SPIRVToMSLConverterContext, MVKShaderLibrary*>> _shaderLibraries;
+	std::vector<std::pair<SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>> _shaderLibraries;
 };
 
 
@@ -168,12 +169,12 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT; }
 
 	/** Returns the Metal shader function, possibly specialized. */
-	MVKMTLFunction getMTLFunction(SPIRVToMSLConverterContext* pContext,
+	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration* pContext,
 								  const VkSpecializationInfo* pSpecializationInfo,
 								  MVKPipelineCache* pipelineCache);
 
 	/** Convert the SPIR-V to MSL, using the specified shader conversion context. */
-	bool convert(SPIRVToMSLConverterContext* pContext);
+	bool convert(SPIRVToMSLConversionConfiguration* pContext);
 
 	/** Returns the original SPIR-V code that was specified when this object was created. */
 	const std::vector<uint32_t>& getSPIRV() { return _spvConverter.getSPIRV(); }
@@ -184,12 +185,9 @@ public:
 	 */
 	const std::string& getMSL() { return _spvConverter.getMSL(); }
 
-	/**
-	 * Returns information about the shader entry point as converted by the most recent
-	 * call to convert() function, or set directly using the setMSL() function.
-	 */
-	const SPIRVEntryPoint& getEntryPoint() { return _spvConverter.getEntryPoint(); }
-    
+	/** Returns information about the shader conversion results. */
+	const SPIRVToMSLConversionResults& getConversionResults() { return _spvConverter.getConversionResults(); }
+
     /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
     void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z);
     
@@ -204,7 +202,7 @@ protected:
 	friend MVKShaderCacheIterator;
 
 	void propogateDebugName() override {}
-	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConverterContext* pContext);
+	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConversionConfiguration* pContext);
 
 	MVKShaderLibraryCache _shaderLibraryCache;
 	SPIRVToMSLConverter _spvConverter;

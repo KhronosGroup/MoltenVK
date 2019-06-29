@@ -59,7 +59,7 @@ public:
                             MVKVector<uint32_t>& dynamicOffsets);
 
 	/** Populates the specified shader converter context. */
-	void populateShaderConverterContext(SPIRVToMSLConverterContext& context);
+	void populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context);
 
 	/** Updates a descriptor set in a command encoder. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
@@ -232,22 +232,18 @@ protected:
     id<MTLRenderPipelineState> getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState);
     id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState, const char* compilerType);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
-    void initMVKShaderConverterContext(SPIRVToMSLConverterContext& _shaderContext,
-                                       const VkGraphicsPipelineCreateInfo* pCreateInfo,
-                                       const SPIRVTessReflectionData& reflectData);
-    void addVertexInputToShaderConverterContext(SPIRVToMSLConverterContext& shaderContext,
-                                                const VkGraphicsPipelineCreateInfo* pCreateInfo);
-    void addPrevStageOutputToShaderConverterContext(SPIRVToMSLConverterContext& shaderContext,
-                                                    std::vector<SPIRVShaderOutput>& outputs);
+    void initMVKShaderConverterContext(SPIRVToMSLConversionConfiguration& _shaderContext, const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
+    void addVertexInputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderContext, const VkGraphicsPipelineCreateInfo* pCreateInfo);
+    void addPrevStageOutputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderContext, std::vector<SPIRVShaderOutput>& outputs);
     MTLRenderPipelineDescriptor* getMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
-    MTLRenderPipelineDescriptor* getMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConverterContext& shaderContext);
-    MTLComputePipelineDescriptor* getMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConverterContext& shaderContext);
-    MTLRenderPipelineDescriptor* getMTLTessRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConverterContext& shaderContext);
-    bool addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext);
-    bool addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext, std::vector<SPIRVShaderOutput>& prevOutput);
-    bool addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext, std::vector<SPIRVShaderOutput>& prevOutput);
-    bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConverterContext& shaderContext);
-    bool addVertexInputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConverterContext& shaderContext);
+    MTLRenderPipelineDescriptor* getMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
+	MTLComputePipelineDescriptor* getMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
+	MTLRenderPipelineDescriptor* getMTLTessRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
+	bool addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext);
+	bool addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, std::vector<SPIRVShaderOutput>& prevOutput);
+	bool addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, std::vector<SPIRVShaderOutput>& prevOutput);
+    bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext);
+	bool addVertexInputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConversionConfiguration& shaderContext);
     void addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS);
     void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo, bool isTessellationVertexPipeline = false);
     bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
@@ -356,7 +352,7 @@ public:
 	VkResult writeData(size_t* pDataSize, void* pData);
 
 	/** Return a shader library from the specified shader context sourced from the specified shader module. */
-	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConverterContext* pContext, MVKShaderModule* shaderModule);
+	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext, MVKShaderModule* shaderModule);
 
 	/** Merges the contents of the specified number of pipeline caches into this cache. */
 	VkResult mergePipelineCaches(uint32_t srcCacheCount, const VkPipelineCache* pSrcCaches);
