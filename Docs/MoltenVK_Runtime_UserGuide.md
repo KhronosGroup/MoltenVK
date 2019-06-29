@@ -317,6 +317,13 @@ where `HEADER_FILE` is one of the following:
   These functions are exposed in this header for your own purposes such as interacting with *Metal* 
   directly, or simply logging data values.
 
+>***Note:*** The functions in `vk_mvk_moltenvk.h` are not supported by the *Vulkan SDK Loader and Layers*
+ framework. The opaque Vulkan objects used by the functions in `vk_mvk_moltenvk.h` (`VkInstance`, 
+ `VkPhysicalDevice`, `VkShaderModule`, `VKImage`, ...), must have been retrieved directly from **MoltenVK**, 
+ and not through the *Vulkan SDK Loader and Layers* framework. The *Vulkan SDK Loader and Layers* framework 
+ often changes these opaque objects, and passing them from a higher layer directly to **MoltenVK** will 
+ result in undefined behaviour.
+
 
 <a name="moltenvk_config"></a>
 ### Configuring MoltenVK
