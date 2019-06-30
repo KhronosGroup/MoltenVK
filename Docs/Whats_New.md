@@ -27,8 +27,9 @@ Released TBD
 - Skip `SPIRV-Tools` build in Travis because Travis does not support the required Python 3.
 - Separate `SPIRVToMSLConverterContext` into input config and output results.
 - Fix pipeline cache lookups.
-- Add note in `MoltenVK_Runtime_UserGuide.md` that the functions in `vk_mvk_moltenvk.h` 
-  cannot be used with objects retrieved through the *Vulkan SDK Loader and Layers* framework.
+- Doument that the functions in `vk_mvk_moltenvk.h` cannot be used with objects 
+  retrieved through the *Vulkan SDK Loader and Layers* framework.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 21.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for `SubgroupSize` / `SubgroupInvocationID` in fragment.
 	- MSL: Support `OpImageQueryLod`.
