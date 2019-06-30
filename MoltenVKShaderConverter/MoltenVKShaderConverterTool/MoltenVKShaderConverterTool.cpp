@@ -204,7 +204,7 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	if ( !_shouldWriteMSL ) { return true; }
 
 	// Derive the context under which conversion will occur
-	SPIRVToMSLConverterContext mslContext;
+	SPIRVToMSLConversionConfiguration mslContext;
 	mslContext.options.mslOptions.platform = _mslPlatform;
 	mslContext.options.mslOptions.set_msl_version(_mslVersionMajor, _mslVersionMinor, _mslVersionPatch);
 	mslContext.options.shouldFlipVertexY = _shouldFlipVertexY;
@@ -387,7 +387,7 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	_mslVersionMajor = 2;
 	_mslVersionMinor = 1;
 	_mslVersionPatch = 0;
-	_mslPlatform = SPIRVToMSLConverterOptions().mslOptions.platform;
+	_mslPlatform = SPIRVToMSLConversionOptions().mslOptions.platform;
 
 	_isActive = parseArgs(argc, argv);
 	if ( !_isActive ) { showUsage(); }

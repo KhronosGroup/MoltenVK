@@ -26,7 +26,7 @@
 using namespace std;
 
 
-const MVKMTLFunction MVKMTLFunctionNull = { nil, MTLSizeMake(1, 1, 1) };
+const MVKMTLFunction MVKMTLFunctionNull = { nil, SPIRVToMSLConversionResults(), MTLSizeMake(1, 1, 1) };
 
 #pragma mark -
 #pragma mark MVKShaderLibrary
@@ -42,7 +42,6 @@ static uint32_t getWorkgroupDimensionSize(const SPIRVWorkgroupSizeDimension& wgD
 			}
 		}
 	}
-
 	return wgDim.size;
 }
 
@@ -50,7 +49,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
     if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
-    NSString* mtlFuncName = @(_entryPoint.mtlFunctionName.c_str());
+    NSString* mtlFuncName = @(_shaderConversionResults.entryPoint.mtlFunctionName.c_str());
 	MVKDevice* mvkDev = _owner->getDevice();
     uint64_t startTime = mvkDev->getPerformanceTimestamp();
     id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
@@ -96,10 +95,11 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 	if ( !dbName ) { dbName = _owner-> getDebugName(); }
 	setLabelIfNotNil(mtlFunc, dbName);
 
-	return { mtlFunc, MTLSizeMake(getWorkgroupDimensionSize(_entryPoint.workgroupSize.width, pSpecializationInfo),
-								  getWorkgroupDimensionSize(_entryPoint.workgroupSize.height, pSpecializationInfo),
-								  getWorkgroupDimensionSize(_entryPoint.workgroupSize.depth, pSpecializationInfo)) };
 
+	auto& wgSize = _shaderConversionResults.entryPoint.workgroupSize;
+	return { mtlFunc, _shaderConversionResults, MTLSizeMake(getWorkgroupDimensionSize(wgSize.width, pSpecializationInfo),
+															getWorkgroupDimensionSize(wgSize.height, pSpecializationInfo),
+															getWorkgroupDimensionSize(wgSize.depth, pSpecializationInfo))};
 }
 
 // Returns the MTLFunctionConstant with the specified ID from the specified array of function constants.
@@ -109,12 +109,25 @@ MTLFunctionConstant* MVKShaderLibrary::getFunctionConstant(NSArray<MTLFunctionCo
     return nil;
 }
 
-MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner, const string& mslSourceCode, const SPIRVEntryPoint& entryPoint) : _owner(owner) {
+void MVKShaderLibrary::setEntryPointName(string& funcName) {
+	_shaderConversionResults.entryPoint.mtlFunctionName = funcName;
+}
+
+void MVKShaderLibrary::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
+	auto& wgSize = _shaderConversionResults.entryPoint.workgroupSize;
+	wgSize.width.size = x;
+	wgSize.height.size = y;
+	wgSize.depth.size = z;
+}
+
+MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
+								   const string& mslSourceCode,
+								   const SPIRVToMSLConversionResults& shaderConversionResults) : _owner(owner) {
 	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_owner);
 	_mtlLibrary = slc->newMTLLibrary(@(mslSourceCode.c_str()));	// retained
 	slc->destroy();
 
-	_entryPoint = entryPoint;
+	_shaderConversionResults = shaderConversionResults;
 	_msl = mslSourceCode;
 }
 
@@ -138,7 +151,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 
 MVKShaderLibrary::MVKShaderLibrary(MVKShaderLibrary& other) : _owner(other._owner) {
 	_mtlLibrary = [other._mtlLibrary retain];
-	_entryPoint = other._entryPoint;
+	_shaderConversionResults = other._shaderConversionResults;
 	_msl = other._msl;
 }
 
@@ -158,12 +171,6 @@ void MVKShaderLibrary::handleCompilationError(NSError* err, const char* opDesc) 
     }
 }
 
-void MVKShaderLibrary::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
-    _entryPoint.workgroupSize.width.size = x;
-    _entryPoint.workgroupSize.height.size = y;
-    _entryPoint.workgroupSize.depth.size = z;
-}
-
 MVKShaderLibrary::~MVKShaderLibrary() {
 	[_mtlLibrary release];
 }
@@ -172,14 +179,14 @@ MVKShaderLibrary::~MVKShaderLibrary() {
 #pragma mark -
 #pragma mark MVKShaderLibraryCache
 
-MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConverterContext* pContext,
+MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext,
 														  MVKShaderModule* shaderModule,
 														  bool* pWasAdded) {
 	bool wasAdded = false;
 	MVKShaderLibrary* shLib = findShaderLibrary(pContext);
 	if ( !shLib ) {
 		if (shaderModule->convert(pContext)) {
-			shLib = addShaderLibrary(pContext, shaderModule->getMSL(), shaderModule->getEntryPoint());
+			shLib = addShaderLibrary(pContext, shaderModule->getMSL(), shaderModule->getConversionResults());
 			wasAdded = true;
 		}
 	}
@@ -191,7 +198,7 @@ MVKShaderLibrary* MVKShaderLibraryCache::getShaderLibrary(SPIRVToMSLConverterCon
 
 // Finds and returns a shader library matching the specified context, or returns nullptr if it doesn't exist.
 // If a match is found, the specified context is aligned with the context of the matching library.
-MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConverterContext* pContext) {
+MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConversionConfiguration* pContext) {
 	for (auto& slPair : _shaderLibraries) {
 		if (slPair.first.matches(*pContext)) {
 			pContext->alignWith(slPair.first);
@@ -202,10 +209,10 @@ MVKShaderLibrary* MVKShaderLibraryCache::findShaderLibrary(SPIRVToMSLConverterCo
 }
 
 // Adds and returns a new shader library configured from the specified context.
-MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(SPIRVToMSLConverterContext* pContext,
+MVKShaderLibrary* MVKShaderLibraryCache::addShaderLibrary(SPIRVToMSLConversionConfiguration* pContext,
 														  const string& mslSourceCode,
-														  const SPIRVEntryPoint& entryPoint) {
-	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, mslSourceCode, entryPoint);
+														  const SPIRVToMSLConversionResults& shaderConversionResults) {
+	MVKShaderLibrary* shLib = new MVKShaderLibrary(_owner, mslSourceCode, shaderConversionResults);
 	_shaderLibraries.emplace_back(*pContext, shLib);
 	return shLib;
 }
@@ -228,12 +235,12 @@ MVKShaderLibraryCache::~MVKShaderLibraryCache() {
 #pragma mark -
 #pragma mark MVKShaderModule
 
-MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConverterContext* pContext,
+MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration* pContext,
 											   const VkSpecializationInfo* pSpecializationInfo,
 											   MVKPipelineCache* pipelineCache) {
 	lock_guard<mutex> lock(_accessLock);
 	
-	MVKShaderLibrary* mvkLib = _defaultLibrary;
+	MVKShaderLibrary* mvkLib = _directMSLLibrary;
 	if ( !mvkLib ) {
 		uint64_t startTime = _device->getPerformanceTimestamp();
 		if (pipelineCache) {
@@ -243,13 +250,14 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConverterContext* pCont
 		}
 		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
 	} else {
+		mvkLib->setEntryPointName(pContext->options.entryPointName);
 		pContext->markAllAttributesAndResourcesUsed();
 	}
 
 	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, this) : MVKMTLFunctionNull;
 }
 
-bool MVKShaderModule::convert(SPIRVToMSLConverterContext* pContext) {
+bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pContext) {
 	bool shouldLogCode = _device->_pMVKConfig->debugMode;
 	bool shouldLogEstimatedGLSL = shouldLogCode;
 
@@ -283,7 +291,7 @@ bool MVKShaderModule::convert(SPIRVToMSLConverterContext* pContext) {
 }
 
 // Returns the MVKGLSLConversionShaderStage corresponding to the shader stage in the SPIR-V converter context.
-MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SPIRVToMSLConverterContext* pContext) {
+MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SPIRVToMSLConversionConfiguration* pContext) {
 	switch (pContext->options.entryPointStage) {
 		case spv::ExecutionModelVertex:						return kMVKGLSLConversionShaderStageVertex;
 		case spv::ExecutionModelTessellationControl:		return kMVKGLSLConversionShaderStageTessControl;
@@ -299,12 +307,18 @@ MVKGLSLConversionShaderStage MVKShaderModule::getMVKGLSLConversionShaderStage(SP
 	}
 }
 
+void MVKShaderModule::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
+	_spvConverter.setWorkgroupSize(x, y, z);
+	if(_directMSLLibrary) { _directMSLLibrary->setWorkgroupSize(x, y, z); }
+}
+
+
 #pragma mark Construction
 
 MVKShaderModule::MVKShaderModule(MVKDevice* device,
 								 const VkShaderModuleCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _shaderLibraryCache(this) {
 
-	_defaultLibrary = nullptr;
+	_directMSLLibrary = nullptr;
 
 	size_t codeSize = pCreateInfo->codeSize;
 
@@ -341,7 +355,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
 			_spvConverter.setMSL(pMSLCode, nullptr);
-			_defaultLibrary = new MVKShaderLibrary(this, _spvConverter.getMSL().c_str(), _spvConverter.getEntryPoint());
+			_directMSLLibrary = new MVKShaderLibrary(this, _spvConverter.getMSL().c_str(), _spvConverter.getConversionResults());
 
 			break;
 		}
@@ -355,7 +369,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 			codeHash = mvkHash(pMSLCode, mslCodeLen, codeHash);
 			_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.hashShaderCode, startTime);
 
-			_defaultLibrary = new MVKShaderLibrary(this, (void*)(pMSLCode), mslCodeLen);
+			_directMSLLibrary = new MVKShaderLibrary(this, (void*)(pMSLCode), mslCodeLen);
 
 			break;
 		}
@@ -379,12 +393,7 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 }
 
 MVKShaderModule::~MVKShaderModule() {
-	if (_defaultLibrary) { _defaultLibrary->destroy(); }
-}
-
-void MVKShaderModule::setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
-    _spvConverter.setWorkgroupSize(x, y, z);
-    if(_defaultLibrary) { _defaultLibrary->setWorkgroupSize(x, y, z); }
+	if (_directMSLLibrary) { _directMSLLibrary->destroy(); }
 }
 
 

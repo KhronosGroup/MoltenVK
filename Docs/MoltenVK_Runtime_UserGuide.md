@@ -248,7 +248,9 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_KHR_swapchain`
 - `VK_KHR_swapchain_mutable_format`
 - `VK_KHR_variable_pointers`
+- `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
+- `VK_EXT_debug_utils`
 - `VK_EXT_host_query_reset`
 - `VK_EXT_memory_budget`
 - `VK_EXT_shader_viewport_index_layer`
@@ -316,6 +318,13 @@ where `HEADER_FILE` is one of the following:
   *Vulkan* and *Metal* datatypes automatically (using the functions declared in this header). 
   These functions are exposed in this header for your own purposes such as interacting with *Metal* 
   directly, or simply logging data values.
+
+>***Note:*** The functions in `vk_mvk_moltenvk.h` are not supported by the *Vulkan SDK Loader and Layers*
+ framework. The opaque Vulkan objects used by the functions in `vk_mvk_moltenvk.h` (`VkInstance`, 
+ `VkPhysicalDevice`, `VkShaderModule`, `VKImage`, ...), must have been retrieved directly from **MoltenVK**, 
+ and not through the *Vulkan SDK Loader and Layers* framework. The *Vulkan SDK Loader and Layers* framework 
+ often changes these opaque objects, and passing them from a higher layer directly to **MoltenVK** will 
+ result in undefined behaviour.
 
 
 <a name="moltenvk_config"></a>

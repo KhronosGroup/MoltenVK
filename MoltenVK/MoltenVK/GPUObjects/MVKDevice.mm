@@ -1568,7 +1568,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 
 	MVKLogInfo(logMsg.c_str(), _properties.deviceName, devTypeStr.c_str(), _properties.vendorID, _properties.deviceID,
 			   [[[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID] autorelease].UUIDString.UTF8String,
-			   SPIRVToMSLConverterOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
+			   SPIRVToMSLConversionOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
 }
 
 MVKPhysicalDevice::~MVKPhysicalDevice() {

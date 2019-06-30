@@ -93,7 +93,7 @@ public:
               MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
 	/** Populates the specified shader converter context, at the specified descriptor set binding. */
-	void populateShaderConverterContext(mvk::SPIRVToMSLConverterContext& context,
+	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
 
@@ -160,7 +160,7 @@ public:
 
 
 	/** Populates the specified shader converter context, at the specified DSL index. */
-	void populateShaderConverterContext(mvk::SPIRVToMSLConverterContext& context,
+	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
 
@@ -427,7 +427,7 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
  * If the shader stage binding has a binding defined for the specified stage, populates
  * the context at the descriptor set binding from the shader stage resource binding.
  */
-void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConverterContext& context,
+void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
 									   MVKShaderStageResourceBinding& ssRB,
 									   spv::ExecutionModel stage,
 									   uint32_t descriptorSetIndex,
