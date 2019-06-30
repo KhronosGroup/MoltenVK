@@ -27,7 +27,8 @@ Released TBD
 - Skip `SPIRV-Tools` build in Travis because Travis does not support the required Python 3.
 - Separate `SPIRVToMSLConverterContext` into input config and output results.
 - Fix pipeline cache lookups.
-- Doument that the functions in `vk_mvk_moltenvk.h` cannot be used with objects 
+- Fix race condition between swapchain image destruction and presentation completion callback.
+- Document that the functions in `vk_mvk_moltenvk.h` cannot be used with objects 
   retrieved through the *Vulkan SDK Loader and Layers* framework.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 21.
 - Update to latest SPIRV-Cross version:
