@@ -1323,7 +1323,12 @@ void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) 
             // Signal the semaphore device-side.
             _availabilitySignalers.front().first->encodeSignal(mtlCmdBuff);
         }
-        [mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { makeAvailable(); }];
+
+		retain();	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
+        [mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+			makeAvailable();
+			release();
+		}];
     } else {
         [mtlDrawable present];
         resetMetalSurface();
