@@ -282,7 +282,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateDeviceExtensionProperties(
 
 	MVKTraceVulkanCallStart();
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	VkResult rslt = mvkPD->getInstance()->getLayerManager()->getLayerNamed(pLayerName)->getExtensionProperties(pCount, pProperties);
+	VkResult rslt = mvkPD->getExtensionProperties(pLayerName, pCount, pProperties);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }

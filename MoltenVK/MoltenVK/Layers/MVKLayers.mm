@@ -32,29 +32,7 @@ VkLayerProperties* const MVKLayer::getLayerProperties() { return &_layerProperti
 
 VkResult MVKLayer::getExtensionProperties(uint32_t* pCount, VkExtensionProperties* pProperties) {
 
-	uint32_t enabledCnt = 0;
-
-	// Iterate extensions and handle those that are enabled. Count them,
-	// and if they are to be returned, and there is room, do so.
-	uint32_t extnCnt = _supportedExtensions.getCount();
-	MVKExtension* extnAry = &_supportedExtensions.extensionArray;
-	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {
-		if (extnAry[extnIdx].enabled) {
-			if (pProperties) {
-				if (enabledCnt < *pCount) {
-					pProperties[enabledCnt] = *(extnAry[extnIdx].pProperties);
-				} else {
-					return VK_INCOMPLETE;
-				}
-			}
-			enabledCnt++;
-		}
-	}
-
-	// Return the count of enabled extensions. This will either be a
-	// count of all enabled extensions, or a count of those returned.
-	*pCount = enabledCnt;
-	return VK_SUCCESS;
+	return _supportedExtensions.getProperties(pCount, pProperties);
 }
 
 

@@ -85,6 +85,20 @@ public:
 	 */
 	std::string enabledNamesString(const char* separator = " ", bool prefixFirstWithSeparator = false) const;
 
+	/**
+	 * If pProperties is null, the value of pCount is updated with the number of extensions
+	 * enabled in this list.
+	 *
+	 * If pProperties is not null, then pCount extension properties are copied into the array.
+	 * If the number of available extensions is less than pCount, the value of pCount is updated
+	 * to indicate the number of extension properties actually returned in the array.
+	 *
+	 * Returns VK_SUCCESS if successful. Returns VK_INCOMPLETE if the number of extensions
+	 * enabled in this list is larger than the specified pCount. Returns other values
+	 * if an error occurs.
+	 */
+	VkResult getProperties(uint32_t* pCount, VkExtensionProperties* pProperties);
+
 	MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableForPlatform = false);
 
 protected:
