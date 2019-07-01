@@ -862,15 +862,25 @@ id<MTLTexture> MVKImageView::getMTLTexture() {
 // overlay on the Metal texture of the underlying image.
 id<MTLTexture> MVKImageView::newMTLTexture() {
     MTLTextureType mtlTextureType = _mtlTextureType;
+    NSRange sliceRange = NSMakeRange(_subresourceRange.baseArrayLayer, _subresourceRange.layerCount);
     // Fake support for 2D views of 3D textures.
     if (_image->getImageType() == VK_IMAGE_TYPE_3D &&
-		(mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray)) {
+        (mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray)) {
         mtlTextureType = MTLTextureType3D;
-	}
-    return [_image->getMTLTexture() newTextureViewWithPixelFormat: _mtlPixelFormat
-                                                      textureType: mtlTextureType
-                                                           levels: NSMakeRange(_subresourceRange.baseMipLevel, _subresourceRange.levelCount)
-                                                           slices: NSMakeRange(_subresourceRange.baseArrayLayer, _subresourceRange.layerCount)];	// retained
+        sliceRange = NSMakeRange(0, 1);
+    }
+    if (getDevice()->_pMetalFeatures->nativeTextureSwizzle && _packedSwizzle) {
+        return [_image->getMTLTexture() newTextureViewWithPixelFormat: _mtlPixelFormat
+                                                          textureType: mtlTextureType
+                                                               levels: NSMakeRange(_subresourceRange.baseMipLevel, _subresourceRange.levelCount)
+                                                               slices: sliceRange
+                                                              swizzle: mvkMTLTextureSwizzleChannelsFromVkComponentMapping(mvkUnpackSwizzle(_packedSwizzle))];	// retained
+    } else {
+        return [_image->getMTLTexture() newTextureViewWithPixelFormat: _mtlPixelFormat
+                                                          textureType: mtlTextureType
+                                                               levels: NSMakeRange(_subresourceRange.baseMipLevel, _subresourceRange.levelCount)
+                                                               slices: sliceRange];	// retained
+    }
 }
 
 
@@ -911,12 +921,12 @@ MVKImageView::MVKImageView(MVKDevice* device,
 		_subresourceRange.layerCount = _image ? (_image->getLayerCount() - _subresourceRange.baseArrayLayer) : 1;
 	}
 
-	bool useShaderSwizzle;
+	bool useSwizzle;
 	bool isMultisample = _image ? _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT : false;
 	_mtlTexture = nil;
-    _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components, useShaderSwizzle,
+    _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components, useSwizzle,
 												(_device ? _device->_pMVKConfig : pAltMVKConfig));
-	_packedSwizzle = useShaderSwizzle ? mvkPackSwizzle(pCreateInfo->components) : 0;
+	_packedSwizzle = useSwizzle ? mvkPackSwizzle(pCreateInfo->components) : 0;
 	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType, isMultisample);
 
 	initMTLTextureViewSupport();
@@ -947,20 +957,22 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 
 // Returns a MTLPixelFormat, based on the MTLPixelFormat converted from the VkFormat, but possibly
 // modified by the swizzles defined in the VkComponentMapping of the VkImageViewCreateInfo.
-// Metal does not support general per-texture swizzles, so if the swizzle is not an identity swizzle, this
-// function attempts to find an alternate MTLPixelFormat that coincidentally matches the swizzled format.
-// If a replacement MTLFormat was found, it is returned and useShaderSwizzle is set to false.
+// Metal prior to version 3.0 does not support general per-texture swizzles, so if the swizzle is not an
+// identity swizzle, this function attempts to find an alternate MTLPixelFormat that coincidentally
+// matches the swizzled format.
+// If a replacement MTLFormat was found, it is returned and useSwizzle is set to false.
 // If a replacement MTLFormat could not be found, the original MTLPixelFormat is returned, and the
-// useShaderSwizzle is set to true, indicating that shader swizzling should be used for this image view.
+// useSwizzle is set to true, indicating that either native or shader swizzling should be used for
+// this image view.
 // The config is used to test whether full shader swizzle support is available, and to report an error if not.
 MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
 													   VkComponentMapping components,
-													   bool& useShaderSwizzle,
+													   bool& useSwizzle,
 													   const MVKConfiguration* pMVKConfig) {
 
 	// Attempt to find a valid format transformation swizzle first.
 	MTLPixelFormat mtlPF = getMTLPixelFormatFromVkFormat(format);
-	useShaderSwizzle = false;
+	useSwizzle = false;
 
 	#define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(components, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )
 	#define VK_COMPONENT_SWIZZLE_ANY       VK_COMPONENT_SWIZZLE_MAX_ENUM
@@ -1030,9 +1042,9 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
 
 	// No format transformation swizzles were found, so unless we have an identity swizzle, we'll need to use shader swizzling.
 	if ( !SWIZZLE_MATCHES(R, G, B, A)) {
-		useShaderSwizzle = true;
+		useSwizzle = true;
 
-		if ( !pMVKConfig->fullImageViewSwizzle ) {
+		if ( !pMVKConfig->fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle ) {
 			const char* vkCmd = _image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX";
 			const char* errMsg = ("The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
 								  " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
@@ -1064,12 +1076,8 @@ void MVKImageView::initMTLTextureViewSupport() {
 		(_mtlTextureType == _image->_mtlTextureType ||
 		 ((_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray) && is3D)) &&
 		_subresourceRange.levelCount == _image->_mipLevels &&
-		_subresourceRange.layerCount == (is3D ? _image->_extent.depth : _image->_arrayLayers)) {
-		_useMTLTextureView = false;
-	}
-
-	// Never use views for subsets of 3D textures. Metal doesn't support them yet.
-	if (is3D && _subresourceRange.layerCount != _image->_extent.depth) {
+		(is3D || _subresourceRange.layerCount == _image->_arrayLayers) &&
+		(!getDevice()->_pMetalFeatures->nativeTextureSwizzle || !_packedSwizzle)) {
 		_useMTLTextureView = false;
 	}
 }

@@ -541,6 +541,7 @@ typedef struct {
 	VkBool32 textureBuffers;					/**< If true, textures of type MTLTextureTypeBuffer are supported. */
 	VkBool32 postDepthCoverage;					/**< If true, coverage masks in fragment shaders post-depth-test are supported. */
 	VkBool32 native3DCompressedTextures;		/**< If true, 3D compressed images are supported natively, without manual decompression. */
+	VkBool32 nativeTextureSwizzle;				/**< If true, component swizzle is supported natively, without manual swizzling in shaders. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**
