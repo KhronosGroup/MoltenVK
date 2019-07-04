@@ -66,6 +66,10 @@ public:
 #pragma mark Construction
 
 	MVKSurface(MVKInstance* mvkInstance,
+			   const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
+			   const VkAllocationCallbacks* pAllocator);
+
+	MVKSurface(MVKInstance* mvkInstance,
 			   const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 			   const VkAllocationCallbacks* pAllocator);
 
@@ -73,6 +77,7 @@ public:
 
 protected:
 	void propogateDebugName() override {}
+	void initLayerObserver();
 
 	MVKInstance* _mvkInstance;
 	CAMetalLayer* _mtlCAMetalLayer;

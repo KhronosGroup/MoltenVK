@@ -32,7 +32,7 @@ static UIView* sampleView;		// Global variable to pass UIView to LunarG sample c
  * Initialize sample from view, and resize view in accordance with the sample. 
  */
 void init_window(struct sample_info &info) {
-	info.window = sampleView;
+	info.window = sampleView.layer;
 	sampleView.bounds = CGRectMake(0, 0, info.width, info.height);
 }
 
