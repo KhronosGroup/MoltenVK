@@ -42,9 +42,13 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
                                  MVKCommandUse commandUse) {
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
+	_srcMTLPixFmt = _srcImage->getMTLPixelFormat();
+
 	_dstImage = (MVKImage*)dstImage;
 	_dstLayout = dstImageLayout;
-    _commandUse = commandUse;
+	_dstMTLPixFmt = _dstImage->getMTLPixelFormat();
+
+	_commandUse = commandUse;
 
     // Deterine the total number of texture layers being affected
     uint32_t layerCnt = 0;
@@ -60,6 +64,9 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	}
 
     // Validate
+	if ( !canCopyFormats() ) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying between compressed images of different formats, or between compressed and non-compressed formats."));
+	}
     if ((_srcImage->getMTLTextureType() == MTLTextureType3D) != (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture."));
     }
@@ -86,18 +93,20 @@ void MVKCmdCopyImage::addMetalCopyRegions(const VkImageCopy* pRegion) {
 	}
 }
 
+bool MVKCmdCopyImage::canCopyFormats() {
+	return (_srcMTLPixFmt == _dstMTLPixFmt ||
+			(mvkFormatTypeFromMTLPixelFormat(_srcMTLPixFmt) != kMVKFormatCompressed &&
+			 mvkFormatTypeFromMTLPixelFormat(_dstMTLPixFmt) != kMVKFormatCompressed));
+}
+
 void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture();
     id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
     if ( !srcMTLTex || !dstMTLTex ) { return; }
 
-    if (srcMTLTex.pixelFormat != dstMTLTex.pixelFormat &&
-        mvkFormatTypeFromVkFormat(_dstImage->getVkFormat()) != kMVKFormatCompressed &&
-        mvkFormatTypeFromVkFormat(_srcImage->getVkFormat()) != kMVKFormatCompressed) {
-        // If the pixel formats don't match, Metal won't abort, but it won't
-        // do the copy either. But we can easily work around that... unless the
-        // source format is compressed.
-        srcMTLTex = [[srcMTLTex newTextureViewWithPixelFormat: dstMTLTex.pixelFormat] autorelease];
+	// If the pixel formats don't match, use a texture view on source
+	if (_srcMTLPixFmt != _dstMTLPixFmt) {
+        srcMTLTex = [[srcMTLTex newTextureViewWithPixelFormat: _dstMTLPixFmt] autorelease];
     }
 
     id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(_commandUse);
@@ -129,25 +138,28 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
                                  MVKCommandUse commandUse) {
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
+	_srcMTLPixFmt = _srcImage->getMTLPixelFormat();
+
 	_dstImage = (MVKImage*)dstImage;
 	_dstLayout = dstImageLayout;
+    _dstMTLPixFmt = _dstImage->getMTLPixelFormat();
 
-    _mtlPixFmt = _dstImage->getMTLPixelFormat();
-    _mtlFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
+	_mtlFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
 
-	_blitKey.mtlPixFmt = (uint32_t)_mtlPixFmt;
+	_blitKey.mtlPixFmt = (uint32_t)_dstMTLPixFmt;
 	_blitKey.mtlTexType = (uint32_t)_srcImage->getMTLTextureType();
 
     _commandUse = commandUse;
 
 	// Determine which regions can be copied and which must be rendered to the destination texture
+	bool canCopyFmts = canCopyFormats();
 	bool canCopyRegion[regionCount];
 	uint32_t copyRegionCount = 0;
 	uint32_t renderRegionCount = 0;
 	for (uint32_t i = 0; i < regionCount; i++) {
 		const VkImageBlit* pRegion = &pRegions[i];
 		uint32_t layCnt = pRegion->srcSubresource.layerCount;
-		if ( canCopy(pRegion) && (_srcImage->getMTLPixelFormat() == _mtlPixFmt) ) {
+		if (canCopyFmts && canCopy(pRegion)) {
 			canCopyRegion[i] = true;
 			copyRegionCount += layCnt;
 		} else {
@@ -175,7 +187,7 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
     if (_blitKey.isDepthFormat() && renderRegionCount > 0) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling of depth/stencil images is not supported."));
     }
-    if ( !_mtlTexBlitRenders.empty() && mvkMTLPixelFormatIsStencilFormat(_mtlPixFmt)) {
+    if ( !_mtlTexBlitRenders.empty() && mvkMTLPixelFormatIsStencilFormat(_dstMTLPixFmt)) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Stencil image formats cannot be scaled or inverted."));
     }
 }

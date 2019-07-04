@@ -63,11 +63,14 @@ public:
 
 protected:
     void addMetalCopyRegions(const VkImageCopy* pRegion);
+	bool canCopyFormats();
 
 	MVKImage* _srcImage;
 	VkImageLayout _srcLayout;
 	MVKImage* _dstImage;
 	VkImageLayout _dstLayout;
+	MTLPixelFormat _srcMTLPixFmt;
+	MTLPixelFormat _dstMTLPixFmt;
 	std::vector<MVKMetalCopyTextureRegion> _mtlTexCopyRegions;
     MVKCommandUse _commandUse = kMVKCommandUseNone;
 };
@@ -116,7 +119,6 @@ protected:
 
 	MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
 	MTLSamplerMinMagFilter _mtlFilter;
-    MTLPixelFormat _mtlPixFmt;
 	MVKRPSKeyBlitImg _blitKey;
 	std::vector<MVKMetalBlitTextureRender> _mtlTexBlitRenders;
 };
