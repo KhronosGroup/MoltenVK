@@ -876,12 +876,12 @@ MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImag
 MVK_PUBLIC_SYMBOL VkImageUsageFlags mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat) {
     VkImageUsageFlags vkImageUsageFlags = 0;
 
-    if ( mvkAreFlagsEnabled(mtlUsage, MTLTextureUsageShaderRead) ) {
+    if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageShaderRead) ) {
         mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
         mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_SAMPLED_BIT);
         mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
     }
-    if ( mvkAreFlagsEnabled(mtlUsage, MTLTextureUsageRenderTarget) ) {
+    if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageRenderTarget) ) {
         mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         if (mvkMTLPixelFormatIsDepthFormat(mtlFormat) || mvkMTLPixelFormatIsStencilFormat(mtlFormat)) {
             mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
@@ -889,7 +889,7 @@ MVK_PUBLIC_SYMBOL VkImageUsageFlags mvkVkImageUsageFlagsFromMTLTextureUsage(MTLT
             mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
         }
     }
-    if ( mvkAreFlagsEnabled(mtlUsage, MTLTextureUsageShaderWrite) ) {
+    if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageShaderWrite) ) {
         mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_STORAGE_BIT);
     }
 
@@ -1005,10 +1005,10 @@ MVK_PUBLIC_SYMBOL MTLSamplerMipFilter mvkMTLSamplerMipFilterFromVkSamplerMipmapM
 
 MVK_PUBLIC_SYMBOL MTLColorWriteMask mvkMTLColorWriteMaskFromVkChannelFlags(VkColorComponentFlags vkWriteFlags) {
 	MTLColorWriteMask mtlWriteMask = MTLColorWriteMaskNone;
-	if (mvkAreFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_R_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskRed); }
-	if (mvkAreFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_G_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskGreen); }
-	if (mvkAreFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_B_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskBlue); }
-	if (mvkAreFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_A_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskAlpha); }
+	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_R_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskRed); }
+	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_G_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskGreen); }
+	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_B_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskBlue); }
+	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_A_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskAlpha); }
 	return mtlWriteMask;
 }
 
@@ -1327,14 +1327,14 @@ MVK_PUBLIC_SYMBOL MTLRenderStages mvkMTLRenderStagesFromVkPipelineStageFlags(VkP
 	// barrier is to be placed before the render stages, it should come before the vertex stage, otherwise
 	// if the barrier is to be placed after the render stages, it should come after the fragment stage.
 	if (placeBarrierBefore) {
-		bool placeBeforeFragment = mvkAreOnlyAnyFlagsEnabled(vkStages, (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
+		bool placeBeforeFragment = mvkIsOnlyAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT |
 																		VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT |
 																		VK_PIPELINE_STAGE_LATE_FRAGMENT_TESTS_BIT |
 																		VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT |
 																		VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT));
 		return placeBeforeFragment ? MTLRenderStageFragment : MTLRenderStageVertex;
 	} else {
-		bool placeAfterVertex = mvkAreOnlyAnyFlagsEnabled(vkStages, (VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
+		bool placeAfterVertex = mvkIsOnlyAnyFlagEnabled(vkStages, (VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT |
 																	 VK_PIPELINE_STAGE_DRAW_INDIRECT_BIT |
 																	 VK_PIPELINE_STAGE_VERTEX_INPUT_BIT |
 																	 VK_PIPELINE_STAGE_VERTEX_SHADER_BIT |
@@ -1367,10 +1367,10 @@ MVK_PUBLIC_SYMBOL MTLBarrierScope mvkMTLBarrierScopeFromVkAccessFlags(VkAccessFl
 MVK_PUBLIC_SYMBOL MTLStorageMode mvkMTLStorageModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags) {
 
 	// If not visible to the host: Private
-	if ( !mvkAreFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ) {
+	if ( !mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ) {
 #if MVK_IOS
 		// iOS: If lazily allocated, Memoryless
-		if (mvkAreFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)) {
+		if (mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)) {
 			return MTLStorageModeMemoryless;
 		}
 #endif
@@ -1378,7 +1378,7 @@ MVK_PUBLIC_SYMBOL MTLStorageMode mvkMTLStorageModeFromVkMemoryPropertyFlags(VkMe
 	}
 
 	// If visible to the host and coherent: Shared
-	if (mvkAreFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+	if (mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
 		return MTLStorageModeShared;
 	}
 

@@ -1309,7 +1309,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo) {
 
     const VkPipelineShaderStageCreateInfo* pSS = &pCreateInfo->stage;
-    if ( !mvkAreFlagsEnabled(pSS->stage, VK_SHADER_STAGE_COMPUTE_BIT) ) { return MVKMTLFunctionNull; }
+    if ( !mvkAreAllFlagsEnabled(pSS->stage, VK_SHADER_STAGE_COMPUTE_BIT) ) { return MVKMTLFunctionNull; }
 
     SPIRVToMSLConversionConfiguration shaderContext;
 	shaderContext.options.entryPointName = pCreateInfo->stage.pName;

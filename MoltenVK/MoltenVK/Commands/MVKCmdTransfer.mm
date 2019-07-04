@@ -683,8 +683,8 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
         MTLBlitOption blitOptions = MTLBlitOptionNone;
         if (mvkMTLPixelFormatIsDepthFormat(mtlPixFmt) && mvkMTLPixelFormatIsStencilFormat(mtlPixFmt)) {
             VkImageAspectFlags imgFlags = cpyRgn.imageSubresource.aspectMask;
-            bool wantDepth = mvkAreFlagsEnabled(imgFlags, VK_IMAGE_ASPECT_DEPTH_BIT);
-            bool wantStencil = mvkAreFlagsEnabled(imgFlags, VK_IMAGE_ASPECT_STENCIL_BIT);
+            bool wantDepth = mvkAreAllFlagsEnabled(imgFlags, VK_IMAGE_ASPECT_DEPTH_BIT);
+            bool wantStencil = mvkAreAllFlagsEnabled(imgFlags, VK_IMAGE_ASPECT_STENCIL_BIT);
 
             // The stencil component is always 1 byte per pixel.
 			// Don't reduce depths of 32-bit depth/stencil formats.

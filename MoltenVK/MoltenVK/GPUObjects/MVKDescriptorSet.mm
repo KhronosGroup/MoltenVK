@@ -409,7 +409,7 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
         // Determine if this binding is used by this shader stage
-        _applyToStage[i] = mvkAreFlagsEnabled(pBinding->stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)));
+        _applyToStage[i] = mvkAreAllFlagsEnabled(pBinding->stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)));
 	    // If this binding is used by the shader, set the Metal resource index
         if (_applyToStage[i]) {
             initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.stages[i],

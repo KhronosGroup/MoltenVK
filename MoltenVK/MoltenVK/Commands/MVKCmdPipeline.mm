@@ -209,7 +209,7 @@ void MVKCmdPushConstants::encode(MVKCommandEncoder* cmdEncoder) {
         VK_SHADER_STAGE_COMPUTE_BIT
     };
     for (auto stage : stages) {
-        if (mvkAreFlagsEnabled(_stageFlags, stage)) {
+        if (mvkAreAllFlagsEnabled(_stageFlags, stage)) {
             cmdEncoder->getPushConstants(stage)->setPushConstants(_offset, _pushConstants);
         }
     }

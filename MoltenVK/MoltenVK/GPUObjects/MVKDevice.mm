@@ -1814,7 +1814,7 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
         // See if this pipeline has a parent. This can come either directly
         // via basePipelineHandle or indirectly via basePipelineIndex.
         MVKPipeline* parentPL = VK_NULL_HANDLE;
-        if ( mvkAreFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
+        if ( mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
             VkPipeline vkParentPL = pCreateInfo->basePipelineHandle;
             int32_t parentPLIdx = pCreateInfo->basePipelineIndex;
             if ( !vkParentPL && (parentPLIdx >= 0)) { vkParentPL = pPipelines[parentPLIdx]; }
