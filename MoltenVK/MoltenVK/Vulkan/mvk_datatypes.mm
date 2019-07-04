@@ -840,33 +840,35 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageVie
 MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags) {
     MTLTextureUsage mtlUsage = MTLTextureUsageUnknown;
 
-    if ( mvkAreFlagsEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_SRC_BIT) ) {
-        mvkEnableFlag(mtlUsage, MTLTextureUsageShaderRead);
-    }
-    if ( mvkAreFlagsEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_DST_BIT) ) {
-        mvkEnableFlag(mtlUsage, MTLTextureUsageRenderTarget);
-    }
-    if ( mvkAreFlagsEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_SAMPLED_BIT) ) {
-        mvkEnableFlag(mtlUsage, MTLTextureUsageShaderRead);
-        mvkEnableFlag(mtlUsage, MTLTextureUsagePixelFormatView);
-    }
-    if ( mvkAreFlagsEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_STORAGE_BIT) ) {
-        mvkEnableFlag(mtlUsage, MTLTextureUsageShaderRead);
-        mvkEnableFlag(mtlUsage, MTLTextureUsageShaderWrite);
-        mvkEnableFlag(mtlUsage, MTLTextureUsagePixelFormatView);
-    }
-    if ( mvkAreFlagsEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) ) {
-        mvkEnableFlag(mtlUsage, MTLTextureUsageShaderRead);
-        mvkEnableFlag(mtlUsage, MTLTextureUsagePixelFormatView);
-    }
-    if ( mvkAreFlagsEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ) {
-        mvkEnableFlag(mtlUsage, MTLTextureUsageRenderTarget);
-        mvkEnableFlag(mtlUsage, MTLTextureUsagePixelFormatView);
-    }
-    if ( mvkAreFlagsEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
-        mvkEnableFlag(mtlUsage, MTLTextureUsageRenderTarget);
-        mvkDisableFlag(mtlUsage, MTLTextureUsagePixelFormatView);        // Clears bit. Do this last.
-    }
+	// Read from...
+	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+												VK_IMAGE_USAGE_SAMPLED_BIT |
+												VK_IMAGE_USAGE_STORAGE_BIT |
+												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
+		mvkEnableFlag(mtlUsage, MTLTextureUsageShaderRead);
+	}
+
+	// Write to...
+	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_STORAGE_BIT))) {
+		mvkEnableFlag(mtlUsage, MTLTextureUsageShaderWrite);
+	}
+
+	// Render to...
+	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+												VK_IMAGE_USAGE_TRANSFER_DST_BIT))) {				// Scaling a BLIT may use rendering.
+		mvkEnableFlag(mtlUsage, MTLTextureUsageRenderTarget);
+	}
+
+	// Create view on...
+	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |	 				// May use temp view if transfer involves format change
+												VK_IMAGE_USAGE_SAMPLED_BIT |
+												VK_IMAGE_USAGE_STORAGE_BIT |
+												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+												VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))) {	// D/S may be filtered out after device check
+		mvkEnableFlag(mtlUsage, MTLTextureUsagePixelFormatView);
+	}
 
     return mtlUsage;
 }

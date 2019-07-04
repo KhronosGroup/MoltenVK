@@ -373,16 +373,15 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 }
 
 MTLTextureUsage MVKImage::getMTLTextureUsage() {
+	
 	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
 
-	// If this is a depth/stencil texture, and the device supports it, tell
-	// Metal we may create texture views of this, too.
-	if ((_mtlPixelFormat == MTLPixelFormatDepth32Float_Stencil8
-#if MVK_MACOS
-		 || _mtlPixelFormat == MTLPixelFormatDepth24Unorm_Stencil8
-#endif
-		) && _device->_pMetalFeatures->stencilViews) {
-		mvkEnableFlag(usage, MTLTextureUsagePixelFormatView);
+	// Remove view usage from D/S if Metal doesn't support it
+	if ( !_device->_pMetalFeatures->stencilViews &&
+		mvkMTLPixelFormatIsDepthFormat(_mtlPixelFormat) &&
+		mvkMTLPixelFormatIsStencilFormat(_mtlPixelFormat)) {
+
+		mvkDisableFlag(usage, MTLTextureUsagePixelFormatView);
 	}
 
 	// If this format doesn't support being blitted to, and the usage
