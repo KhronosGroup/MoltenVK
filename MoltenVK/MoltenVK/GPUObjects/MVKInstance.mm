@@ -70,6 +70,11 @@ VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPh
 	return result;
 }
 
+MVKSurface* MVKInstance::createSurface(const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
+									   const VkAllocationCallbacks* pAllocator) {
+	return new MVKSurface(this, pCreateInfo, pAllocator);
+}
+
 MVKSurface* MVKInstance::createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 									   const VkAllocationCallbacks* pAllocator) {
 	return new MVKSurface(this, pCreateInfo, pAllocator);
@@ -540,6 +545,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_EXT_ENTRY_POINT(vkCreateDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
 	ADD_INST_EXT_ENTRY_POINT(vkDestroyDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
 	ADD_INST_EXT_ENTRY_POINT(vkSubmitDebugUtilsMessageEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkCreateMetalSurfaceEXT, EXT_METAL_SURFACE);
 
 #ifdef VK_USE_PLATFORM_IOS_MVK
 	ADD_INST_EXT_ENTRY_POINT(vkCreateIOSSurfaceMVK, MVK_IOS_SURFACE);

@@ -2608,6 +2608,23 @@ MVK_PUBLIC_SYMBOL void vkSubmitDebugUtilsMessageEXT(
 	MVKTraceVulkanCallEnd();
 }
 
+#pragma mark -
+#pragma mark VK_EXT_metal_surface extension
+
+MVK_PUBLIC_SYMBOL VkResult vkCreateMetalSurfaceEXT(
+	VkInstance                                  instance,
+	const VkMetalSurfaceCreateInfoEXT*          pCreateInfo,
+	const VkAllocationCallbacks*                pAllocator,
+	VkSurfaceKHR*                               pSurface) {
+
+	MVKTraceVulkanCallStart();
+	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+	MVKSurface* mvkSrfc = mvkInst->createSurface(pCreateInfo, pAllocator);
+	*pSurface = (VkSurfaceKHR)mvkSrfc;
+	VkResult rslt = mvkSrfc->getConfigurationResult();
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
 
 #pragma mark -
 #pragma mark iOS & macOS surface extensions

@@ -88,6 +88,9 @@ public:
 	/** Returns the driver layer. */
 	MVKLayer* getDriverLayer() { return MVKLayerManager::globalManager()->getDriverLayer(); }
 
+	MVKSurface* createSurface(const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
+							  const VkAllocationCallbacks* pAllocator);
+
 	MVKSurface* createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 							  const VkAllocationCallbacks* pAllocator);
 
