@@ -50,26 +50,51 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 
 	_commandUse = commandUse;
 
-    // Deterine the total number of texture layers being affected
-    uint32_t layerCnt = 0;
-    for (uint32_t i = 0; i < regionCount; i++) {
-        layerCnt += pRegions[i].srcSubresource.layerCount;
-    }
+	_mtlTexCopyRegions.clear();		// Clear for reuse
+	_srcTmpBuffImgCopies.clear();	// Clear for reuse
+	_dstTmpBuffImgCopies.clear();	// Clear for reuse
+	_tmpBuffSize = 0;
 
-	// Add image regions
-    _mtlTexCopyRegions.clear();     // Clear for reuse
-    _mtlTexCopyRegions.reserve(layerCnt);
-	for (uint32_t i = 0; i < regionCount; i++) {
-		addMetalCopyRegions(&pRegions[i]);
+	if (shouldUseTempBuffer()) {
+		// Convert the image-image copies to image-buffer copies
+		_srcTmpBuffImgCopies.reserve(regionCount);
+		_dstTmpBuffImgCopies.reserve(regionCount);
+		for (uint32_t i = 0; i < regionCount; i++) {
+			addTempBufferCopyRegions(&pRegions[i]);
+		}
+	} else {
+		// Deterine the total number of texture layers being affected and add image regions
+		uint32_t layerCnt = 0;
+		for (uint32_t i = 0; i < regionCount; i++) {
+			layerCnt += pRegions[i].srcSubresource.layerCount;
+		}
+		_mtlTexCopyRegions.reserve(layerCnt);
+		for (uint32_t i = 0; i < regionCount; i++) {
+			addMetalCopyRegions(&pRegions[i]);
+		}
 	}
 
     // Validate
 	if ( !canCopyFormats() ) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying between compressed images of different formats, or between compressed and non-compressed formats."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Cannot copy between incompatible formats, such as formats of different pixel sizes."));
 	}
     if ((_srcImage->getMTLTextureType() == MTLTextureType3D) != (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture."));
     }
+}
+
+bool MVKCmdCopyImage::canCopyFormats() {
+	return mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt) == mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt);
+}
+
+bool MVKCmdCopyImage::shouldUseTextureView() {
+	return (_srcMTLPixFmt != _dstMTLPixFmt &&
+			mvkFormatTypeFromMTLPixelFormat(_srcMTLPixFmt) != kMVKFormatCompressed &&
+			mvkFormatTypeFromMTLPixelFormat(_dstMTLPixFmt) != kMVKFormatCompressed);
+}
+
+bool MVKCmdCopyImage::shouldUseTempBuffer() {
+	return (_srcMTLPixFmt != _dstMTLPixFmt && !shouldUseTextureView());
 }
 
 // Adds a Metal copy region structure for each layer in the specified copy region.
@@ -93,35 +118,90 @@ void MVKCmdCopyImage::addMetalCopyRegions(const VkImageCopy* pRegion) {
 	}
 }
 
-bool MVKCmdCopyImage::canCopyFormats() {
-	return (_srcMTLPixFmt == _dstMTLPixFmt ||
-			(mvkFormatTypeFromMTLPixelFormat(_srcMTLPixFmt) != kMVKFormatCompressed &&
-			 mvkFormatTypeFromMTLPixelFormat(_dstMTLPixFmt) != kMVKFormatCompressed));
+// Add an image-buffer copy and buffer-image copy for the image-image copy
+void MVKCmdCopyImage::addTempBufferCopyRegions(const VkImageCopy* pRegion) {
+	VkBufferImageCopy buffImgCpy;
+
+	// Add copy from source image to temp buffer
+	buffImgCpy.bufferOffset = _tmpBuffSize;
+	buffImgCpy.bufferRowLength = 0;
+	buffImgCpy.bufferImageHeight = 0;
+	buffImgCpy.imageSubresource = pRegion->srcSubresource;
+	buffImgCpy.imageOffset = pRegion->srcOffset;
+	buffImgCpy.imageExtent = pRegion->extent;
+	_srcTmpBuffImgCopies.push_back(buffImgCpy);
+
+	// Add copy from temp buffer to destination image
+	buffImgCpy.bufferOffset = _tmpBuffSize;
+	buffImgCpy.bufferRowLength = 0;
+	buffImgCpy.bufferImageHeight = 0;
+	buffImgCpy.imageSubresource = pRegion->dstSubresource;
+	buffImgCpy.imageOffset = pRegion->dstOffset;
+	buffImgCpy.imageExtent = pRegion->extent;
+	_dstTmpBuffImgCopies.push_back(buffImgCpy);
+
+	NSUInteger bytesPerRow = mvkMTLPixelFormatBytesPerRow(_srcMTLPixFmt, pRegion->extent.width);
+	NSUInteger bytesPerRegion = mvkMTLPixelFormatBytesPerLayer(_srcMTLPixFmt, bytesPerRow, pRegion->extent.height);
+	_tmpBuffSize += bytesPerRegion;
 }
 
 void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
-    id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture();
-    id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
-    if ( !srcMTLTex || !dstMTLTex ) { return; }
+	id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture();
+	id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
+	if ( !srcMTLTex || !dstMTLTex ) { return; }
 
-	// If the pixel formats don't match, use a texture view on source
-	if (_srcMTLPixFmt != _dstMTLPixFmt) {
-        srcMTLTex = [[srcMTLTex newTextureViewWithPixelFormat: _dstMTLPixFmt] autorelease];
-    }
+	// If the pixel formats are different but mappable, use a texture view on the source texture
+	if (shouldUseTextureView()) {
+		srcMTLTex = [[srcMTLTex newTextureViewWithPixelFormat: _dstMTLPixFmt] autorelease];
+	}
 
-    id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(_commandUse);
+	id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(_commandUse);
 
-    for (auto& cpyRgn : _mtlTexCopyRegions) {
-        [mtlBlitEnc copyFromTexture: srcMTLTex
-                        sourceSlice: cpyRgn.srcSlice
-                        sourceLevel: cpyRgn.srcLevel
-                       sourceOrigin: cpyRgn.srcOrigin
-                         sourceSize: cpyRgn.srcSize
-                          toTexture: dstMTLTex
-                   destinationSlice: cpyRgn.dstSlice
-                   destinationLevel: cpyRgn.dstLevel
-                  destinationOrigin: cpyRgn.dstOrigin];
-    }
+	// If copies can be performed using direct texture-texture copying, do so
+	for (auto& cpyRgn : _mtlTexCopyRegions) {
+		[mtlBlitEnc copyFromTexture: srcMTLTex
+						sourceSlice: cpyRgn.srcSlice
+						sourceLevel: cpyRgn.srcLevel
+					   sourceOrigin: cpyRgn.srcOrigin
+						 sourceSize: cpyRgn.srcSize
+						  toTexture: dstMTLTex
+				   destinationSlice: cpyRgn.dstSlice
+				   destinationLevel: cpyRgn.dstLevel
+				  destinationOrigin: cpyRgn.dstOrigin];
+	}
+
+	// If copies could not be performed directly between images,
+	// use a temporary buffer acting as a waystation between the images.
+	if ( !_srcTmpBuffImgCopies.empty() ) {
+		MVKBufferDescriptorData tempBuffData;
+		tempBuffData.size = _tmpBuffSize;
+		tempBuffData.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
+		MVKBuffer* tempBuff = getCommandEncodingPool()->getTransferMVKBuffer(tempBuffData);
+
+		MVKCmdBufferImageCopy cpyCmd(&getCommandPool()->_cmdBufferImageCopyPool);
+
+		// Copy from source image to buffer
+		// Create and execute a temporary buffer image command.
+		// To be threadsafe...do NOT acquire and return the command from the pool.
+		cpyCmd.setContent((VkBuffer) tempBuff,
+						  (VkImage) _srcImage,
+						  _srcLayout,
+						  (uint32_t)_srcTmpBuffImgCopies.size(),
+						  _srcTmpBuffImgCopies.data(),
+						  false);
+		cpyCmd.encode(cmdEncoder);
+
+		// Copy from buffer to destination image
+		// Create and execute a temporary buffer image command.
+		// To be threadsafe...do NOT acquire and return the command from the pool.
+		cpyCmd.setContent((VkBuffer) tempBuff,
+						  (VkImage) _dstImage,
+						  _dstLayout,
+						  (uint32_t)_dstTmpBuffImgCopies.size(),
+						  _dstTmpBuffImgCopies.data(),
+						  true);
+		cpyCmd.encode(cmdEncoder);
+	}
 }
 
 

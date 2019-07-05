@@ -63,7 +63,10 @@ public:
 
 protected:
     void addMetalCopyRegions(const VkImageCopy* pRegion);
+	void addTempBufferCopyRegions(const VkImageCopy* pRegion);
 	bool canCopyFormats();
+	bool shouldUseTextureView();
+	bool shouldUseTempBuffer();
 
 	MVKImage* _srcImage;
 	VkImageLayout _srcLayout;
@@ -72,7 +75,10 @@ protected:
 	MTLPixelFormat _srcMTLPixFmt;
 	MTLPixelFormat _dstMTLPixFmt;
 	std::vector<MVKMetalCopyTextureRegion> _mtlTexCopyRegions;
-    MVKCommandUse _commandUse = kMVKCommandUseNone;
+	std::vector<VkBufferImageCopy> _srcTmpBuffImgCopies;
+	std::vector<VkBufferImageCopy> _dstTmpBuffImgCopies;
+	size_t _tmpBuffSize;
+    MVKCommandUse _commandUse;
 };
 
 
