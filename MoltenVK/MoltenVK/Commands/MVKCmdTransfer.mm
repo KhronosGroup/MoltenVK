@@ -790,6 +790,10 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             if (!needsTempBuff) { continue; }
         }
 #endif
+
+		// Don't supply bytes per image if not an arrayed texture
+		if ( !isArrayTexture() ) { bytesPerImg = 0; }
+
         id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(cmdUse);
 
         for (uint32_t lyrIdx = 0; lyrIdx < cpyRgn.imageSubresource.layerCount; lyrIdx++) {
@@ -818,6 +822,16 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             }
         }
     }
+}
+
+bool MVKCmdBufferImageCopy::isArrayTexture() {
+	MTLTextureType mtlTexType = _image->getMTLTextureType();
+	return (mtlTexType == MTLTextureType3D ||
+			mtlTexType == MTLTextureType2DArray ||
+#if MVK_MACOS
+			mtlTexType == MTLTextureType2DMultisampleArray ||
+#endif
+			mtlTexType == MTLTextureType1DArray);
 }
 
 

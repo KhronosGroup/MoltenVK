@@ -809,32 +809,33 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vk
 }
 
 MVK_PUBLIC_SYMBOL VkImageType mvkVkImageTypeFromMTLTextureType(MTLTextureType mtlTextureType) {
-    switch (mtlTextureType) {
-        case MTLTextureType1D:          return VK_IMAGE_TYPE_1D;
-        case MTLTextureType1DArray:     return VK_IMAGE_TYPE_1D;
-        case MTLTextureType3D:          return VK_IMAGE_TYPE_3D;
-        default:                        return VK_IMAGE_TYPE_2D;
-    }
+	switch (mtlTextureType) {
+		case MTLTextureType1D:
+		case MTLTextureType1DArray:
+			return VK_IMAGE_TYPE_1D;
+		case MTLTextureType3D:
+			return VK_IMAGE_TYPE_3D;
+		default:
+			return VK_IMAGE_TYPE_2D;
+	}
 }
 
 MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageViewType vkImageViewType,
-                                                                      bool isMultisample) {
-    switch (vkImageViewType) {
-        case VK_IMAGE_VIEW_TYPE_1D:             return MTLTextureType1D;
-        case VK_IMAGE_VIEW_TYPE_1D_ARRAY:       return MTLTextureType1DArray;
-        case VK_IMAGE_VIEW_TYPE_2D:             return (isMultisample ? MTLTextureType2DMultisample : MTLTextureType2D);
-        case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
+																	  bool isMultisample) {
+	switch (vkImageViewType) {
+		case VK_IMAGE_VIEW_TYPE_1D:				return MTLTextureType1D;
+		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:		return MTLTextureType1DArray;
+		case VK_IMAGE_VIEW_TYPE_2D:				return (isMultisample ? MTLTextureType2DMultisample : MTLTextureType2D);
+		case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
 #if MVK_MACOS
-            if (isMultisample) {
-                return MTLTextureType2DMultisampleArray;
-            }
+			if (isMultisample) { return MTLTextureType2DMultisampleArray; }
 #endif
-            return MTLTextureType2DArray;
-        case VK_IMAGE_VIEW_TYPE_3D:             return MTLTextureType3D;
-        case VK_IMAGE_VIEW_TYPE_CUBE:           return MTLTextureTypeCube;
-        case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:    return MTLTextureTypeCubeArray;
-        default:                            return MTLTextureType2D;
-    }
+			return MTLTextureType2DArray;
+		case VK_IMAGE_VIEW_TYPE_3D:				return MTLTextureType3D;
+		case VK_IMAGE_VIEW_TYPE_CUBE:			return MTLTextureTypeCube;
+		case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:		return MTLTextureTypeCubeArray;
+		default:                            	return MTLTextureType2D;
+	}
 }
 
 MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags) {

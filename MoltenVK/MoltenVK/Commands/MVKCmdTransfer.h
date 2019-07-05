@@ -213,6 +213,8 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
+	bool isArrayTexture();
+
     MVKBuffer* _buffer;
     MVKImage* _image;
     VkImageLayout _imageLayout;

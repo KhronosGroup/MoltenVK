@@ -48,7 +48,12 @@ typedef struct MVKRPSKeyBlitImg_t {
 
 	inline MTLTextureType getMTLTextureType() { return (MTLTextureType)mtlTexType; }
 
-	inline bool isArrayType() { return (mtlTexType == MTLTextureType2DArray) || (mtlTexType == MTLTextureType1DArray); }
+	inline bool isArrayType() {
+		return (mtlTexType == MTLTextureType2DArray ||
+#if MVK_MACOS
+				mtlTexType == MTLTextureType2DMultisampleArray ||
+#endif
+				mtlTexType == MTLTextureType1DArray); }
 
 	std::size_t hash() const {
 		std::size_t hash = mtlTexType;
