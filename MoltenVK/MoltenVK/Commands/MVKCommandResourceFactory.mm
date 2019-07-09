@@ -39,7 +39,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPi
 	plDesc.vertexFunction = getFunctionNamed("vtxCmdBlitImage");
     plDesc.fragmentFunction = getBlitFragFunction(blitKey);
 
-	plDesc.colorAttachments[0].pixelFormat = blitKey.getMTLPixelFormat();
+	plDesc.colorAttachments[0].pixelFormat = blitKey.getDstMTLPixelFormat();
 
     MTLVertexDescriptor* vtxDesc = plDesc.vertexDescriptor;
 
@@ -132,9 +132,9 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg& blitKey) {
 	id<MTLFunction> mtlFunc = nil;
 
-	NSString* typeStr = getMTLFormatTypeString(blitKey.getMTLPixelFormat());
+	NSString* typeStr = getMTLFormatTypeString(blitKey.getSrcMTLPixelFormat());
 
-	bool isArrayType = blitKey.isArrayType();
+	bool isArrayType = blitKey.isSrcArrayType();
 	NSString* arraySuffix = isArrayType ? @"_array" : @"";
 	NSString* sliceArg = isArrayType ? @", srcSlice" : @"";
 

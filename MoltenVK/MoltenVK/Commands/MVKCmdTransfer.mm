@@ -72,7 +72,7 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	_dstMTLPixFmt = _dstImage->getMTLPixelFormat();
 	_isDstCompressed = _dstImage->getIsCompressed();
 
-	_canCopyFormats = mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt) == mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt);
+	_canCopyFormats = mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt) == mvkMTLPixelFormatBytesPerBlock(_dstMTLPixFmt);
 	_shouldUseTextureView = (_srcMTLPixFmt != _dstMTLPixFmt) && !(_isSrcCompressed || _isDstCompressed);	// Different formats and neither is compressed
 	_shouldUseTempBuffer = (_srcMTLPixFmt != _dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);		// Different formats and at least one is compressed
 
@@ -216,16 +216,21 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 
 	_mtlFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
 
-	_blitKey.mtlPixFmt = (uint32_t)_dstMTLPixFmt;
-	_blitKey.mtlTexType = (uint32_t)_srcImage->getMTLTextureType();
+	_blitKey.srcMTLPixelFormat = (uint32_t)_srcMTLPixFmt;
+	_blitKey.srcMTLTextureType = (uint32_t)_srcImage->getMTLTextureType();
+	_blitKey.dstMTLPixelFormat = (uint32_t)_dstMTLPixFmt;
 
 	for (uint32_t i = 0; i < regionCount; i++) {
 		addImageBlitRegion(pRegions[i]);
 	}
 
 	// Validate
-	if ( !_mvkImageBlitRenders.empty() && (_blitKey.isDepthFormat() || _blitKey.isStencilFormat()) ) {
+	if ( !_mvkImageBlitRenders.empty() &&
+		(mvkMTLPixelFormatIsDepthFormat(_srcMTLPixFmt) ||
+		 mvkMTLPixelFormatIsStencilFormat(_srcMTLPixFmt)) ) {
+
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting depth/stencil images is not supported."));
+		_mvkImageBlitRenders.clear();
 	}
 }
 
@@ -330,7 +335,7 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
 	}
 
 	// Perform those BLITs that require rendering to destination texture.
-	if ( !_mvkImageBlitRenders.empty() && !(_blitKey.isDepthFormat() || _blitKey.isStencilFormat()) ) {
+	if ( !_mvkImageBlitRenders.empty() ) {
 
 		cmdEncoder->endCurrentMetalEncoding();
 
