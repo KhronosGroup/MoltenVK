@@ -62,6 +62,8 @@ protected:
 	VkImageLayout _dstLayout;
 	MTLPixelFormat _srcMTLPixFmt;
 	MTLPixelFormat _dstMTLPixFmt;
+	uint32_t _srcSampleCount;
+	uint32_t _dstSampleCount;
 	bool _isSrcCompressed;
 	bool _isDstCompressed;
 	bool _canCopyFormats;

@@ -65,14 +65,18 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
 	_srcMTLPixFmt = _srcImage->getMTLPixelFormat();
+	_srcSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_srcImage->getSampleCount());
 	_isSrcCompressed = _srcImage->getIsCompressed();
+	uint32_t srcBytesPerBlock = mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt);
 
 	_dstImage = (MVKImage*)dstImage;
 	_dstLayout = dstImageLayout;
 	_dstMTLPixFmt = _dstImage->getMTLPixelFormat();
+	_dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
 	_isDstCompressed = _dstImage->getIsCompressed();
+	uint32_t dstBytesPerBlock = mvkMTLPixelFormatBytesPerBlock(_dstMTLPixFmt);
 
-	_canCopyFormats = mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt) == mvkMTLPixelFormatBytesPerBlock(_dstMTLPixFmt);
+	_canCopyFormats = (srcBytesPerBlock == dstBytesPerBlock) && (_srcSampleCount == _dstSampleCount);
 	_shouldUseTextureView = (_srcMTLPixFmt != _dstMTLPixFmt) && !(_isSrcCompressed || _isDstCompressed);	// Different formats and neither is compressed
 	_shouldUseTempBuffer = (_srcMTLPixFmt != _dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);		// Different formats and at least one is compressed
 
@@ -219,6 +223,7 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 	_blitKey.srcMTLPixelFormat = (uint32_t)_srcMTLPixFmt;
 	_blitKey.srcMTLTextureType = (uint32_t)_srcImage->getMTLTextureType();
 	_blitKey.dstMTLPixelFormat = (uint32_t)_dstMTLPixFmt;
+	_blitKey.dstSampleCount = _dstSampleCount;
 
 	for (uint32_t i = 0; i < regionCount; i++) {
 		addImageBlitRegion(pRegions[i]);
@@ -529,7 +534,7 @@ void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
     if (expRgnCnt > 0) {
         MVKCmdBlitImage expandCmd(&getCommandPool()->_cmdBlitImagePool);
         expandCmd.setContent((VkImage)_dstImage, _dstLayout, (VkImage)xfrImage, _dstLayout,
-                             uint32_t(_expansionRegions.size()), _expansionRegions.data(),
+                             expRgnCnt, _expansionRegions.data(),
                              VK_FILTER_LINEAR, kMVKCommandUseResolveExpandImage);
         expandCmd.encode(cmdEncoder);
     }
@@ -541,7 +546,7 @@ void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
     if (cpyRgnCnt > 0) {
         MVKCmdCopyImage copyCmd(&getCommandPool()->_cmdCopyImagePool);
         copyCmd.setContent((VkImage)_srcImage, _srcLayout, (VkImage)xfrImage, _dstLayout,
-                           uint32_t(_copyRegions.size()), _copyRegions.data(), kMVKCommandUseResolveCopyImage);
+                           cpyRgnCnt, _copyRegions.data(), kMVKCommandUseResolveCopyImage);
         copyCmd.encode(cmdEncoder);
     }
 

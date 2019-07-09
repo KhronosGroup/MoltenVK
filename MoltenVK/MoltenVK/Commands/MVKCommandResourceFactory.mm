@@ -38,6 +38,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPi
 
 	plDesc.vertexFunction = getFunctionNamed("vtxCmdBlitImage");
     plDesc.fragmentFunction = getBlitFragFunction(blitKey);
+	plDesc.sampleCount = blitKey.dstSampleCount;
 
 	plDesc.colorAttachments[0].pixelFormat = blitKey.getDstMTLPixelFormat();
 

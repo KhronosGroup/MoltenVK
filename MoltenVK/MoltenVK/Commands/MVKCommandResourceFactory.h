@@ -38,11 +38,13 @@ typedef struct MVKRPSKeyBlitImg_t {
 	uint16_t srcMTLPixelFormat = 0;			/**< as MTLPixelFormat */
 	uint16_t srcMTLTextureType = 0;			/**< as MTLTextureType */
 	uint16_t dstMTLPixelFormat = 0;			/**< as MTLPixelFormat */
+	uint16_t dstSampleCount = 0;
 
 	bool operator==(const MVKRPSKeyBlitImg_t& rhs) const {
 		if (srcMTLPixelFormat != rhs.srcMTLPixelFormat) { return false; }
 		if (srcMTLTextureType != rhs.srcMTLTextureType) { return false; }
 		if (dstMTLPixelFormat != rhs.dstMTLPixelFormat) { return false; }
+		if (dstSampleCount != rhs.dstSampleCount) { return false; }
 		return true;
 	}
 
@@ -63,6 +65,8 @@ typedef struct MVKRPSKeyBlitImg_t {
 		hash |= srcMTLTextureType;
 		hash <<= 16;
 		hash |= dstMTLPixelFormat;
+		hash <<= 16;
+		hash |= dstSampleCount;
 		return hash;
 	}
 
