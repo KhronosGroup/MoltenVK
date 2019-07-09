@@ -444,7 +444,8 @@ void MVKCmdResolveImage::setContent(VkImage srcImage,
         addResolveSlices(rslvRgn);
     }
 
-    _srcImage->getTransferDescriptorData(_transferImageData);
+    _dstImage->getTransferDescriptorData(_transferImageData);
+	_transferImageData.samples = _srcImage->getSampleCount();
 }
 
 /**
