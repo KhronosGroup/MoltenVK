@@ -41,6 +41,10 @@ VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_
 
 VkFormat MVKImage::getVkFormat() { return mvkVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
 
+bool MVKImage::getIsCompressed() {
+	return mvkFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
+}
+
 VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 	return mvkMipmapLevelSizeFromBaseSize3D(_extent, mipLevel);
 }

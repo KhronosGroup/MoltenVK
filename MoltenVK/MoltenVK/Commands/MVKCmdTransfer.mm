@@ -43,10 +43,12 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
 	_srcMTLPixFmt = _srcImage->getMTLPixelFormat();
+	_isSrcCompressed = _srcImage->getIsCompressed();
 
 	_dstImage = (MVKImage*)dstImage;
 	_dstLayout = dstImageLayout;
 	_dstMTLPixFmt = _dstImage->getMTLPixelFormat();
+	_isDstCompressed = _dstImage->getIsCompressed();
 
 	_commandUse = commandUse;
 
@@ -88,13 +90,11 @@ bool MVKCmdCopyImage::canCopyFormats() {
 }
 
 bool MVKCmdCopyImage::shouldUseTextureView() {
-	return (_srcMTLPixFmt != _dstMTLPixFmt &&
-			mvkFormatTypeFromMTLPixelFormat(_srcMTLPixFmt) != kMVKFormatCompressed &&
-			mvkFormatTypeFromMTLPixelFormat(_dstMTLPixFmt) != kMVKFormatCompressed);
+	return (_srcMTLPixFmt != _dstMTLPixFmt) && !(_isSrcCompressed || _isDstCompressed);
 }
 
 bool MVKCmdCopyImage::shouldUseTempBuffer() {
-	return (_srcMTLPixFmt != _dstMTLPixFmt && !shouldUseTextureView());
+	return (_srcMTLPixFmt != _dstMTLPixFmt) && !shouldUseTextureView();
 }
 
 // Adds a Metal copy region structure for each layer in the specified copy region.
@@ -122,7 +122,7 @@ void MVKCmdCopyImage::addMetalCopyRegions(const VkImageCopy* pRegion) {
 void MVKCmdCopyImage::addTempBufferCopyRegions(const VkImageCopy* pRegion) {
 	VkBufferImageCopy buffImgCpy;
 
-	// Add copy from source image to temp buffer
+	// Add copy from source image to temp buffer.
 	buffImgCpy.bufferOffset = _tmpBuffSize;
 	buffImgCpy.bufferRowLength = 0;
 	buffImgCpy.bufferImageHeight = 0;
@@ -131,13 +131,22 @@ void MVKCmdCopyImage::addTempBufferCopyRegions(const VkImageCopy* pRegion) {
 	buffImgCpy.imageExtent = pRegion->extent;
 	_srcTmpBuffImgCopies.push_back(buffImgCpy);
 
-	// Add copy from temp buffer to destination image
+	// Add copy from temp buffer to destination image.
+	// Extent is provided in source texels. If the source is compressed but the
+	// destination is not, each destination pixel will consume an entire source block,
+	// so we must downscale the destination extent by the size of the source block.
+	VkExtent3D dstExtent = pRegion->extent;
+	if (_isSrcCompressed && !_isDstCompressed) {
+		VkExtent2D srcBlockExtent = mvkMTLPixelFormatBlockTexelSize(_srcMTLPixFmt);
+		dstExtent.width /= srcBlockExtent.width;
+		dstExtent.height /= srcBlockExtent.height;
+	}
 	buffImgCpy.bufferOffset = _tmpBuffSize;
 	buffImgCpy.bufferRowLength = 0;
 	buffImgCpy.bufferImageHeight = 0;
 	buffImgCpy.imageSubresource = pRegion->dstSubresource;
 	buffImgCpy.imageOffset = pRegion->dstOffset;
-	buffImgCpy.imageExtent = pRegion->extent;
+	buffImgCpy.imageExtent = dstExtent;
 	_dstTmpBuffImgCopies.push_back(buffImgCpy);
 
 	NSUInteger bytesPerRow = mvkMTLPixelFormatBytesPerRow(_srcMTLPixFmt, pRegion->extent.width);
@@ -800,12 +809,10 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
 #endif
 
 #if MVK_MACOS
-        if (_toImage && mvkFormatTypeFromMTLPixelFormat(mtlPixFmt) == kMVKFormatCompressed &&
-            mtlTexture.textureType == MTLTextureType3D) {
-            // If we're copying to a compressed 3D image, the image data need to be decompressed.
-            // If we're copying to mip level 0, we can skip the copy and just decode
-            // directly into the image. Otherwise, we need to use an intermediate
-            // buffer.
+		// If we're copying to a compressed 3D image, the image data need to be decompressed.
+		// If we're copying to mip level 0, we can skip the copy and just decode
+		// directly into the image. Otherwise, we need to use an intermediate buffer.
+        if (_toImage && _image->getIsCompressed() && mtlTexture.textureType == MTLTextureType3D) {
             MVKCmdCopyBufferToImageInfo info;
             info.srcRowStride = bytesPerRow & 0xffffffff;
             info.srcRowStrideHigh = bytesPerRow >> 32;

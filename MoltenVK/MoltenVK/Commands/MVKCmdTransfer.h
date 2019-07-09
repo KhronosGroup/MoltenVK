@@ -74,6 +74,8 @@ protected:
 	VkImageLayout _dstLayout;
 	MTLPixelFormat _srcMTLPixFmt;
 	MTLPixelFormat _dstMTLPixFmt;
+	bool _isSrcCompressed;
+	bool _isDstCompressed;
 	std::vector<MVKMetalCopyTextureRegion> _mtlTexCopyRegions;
 	std::vector<VkBufferImageCopy> _srcTmpBuffImgCopies;
 	std::vector<VkBufferImageCopy> _dstTmpBuffImgCopies;

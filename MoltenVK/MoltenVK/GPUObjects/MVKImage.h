@@ -61,6 +61,9 @@ public:
     /** Returns the Vulkan image format of this image. */
     VkFormat getVkFormat();
 
+	/** Returns whether this texture is compressed. */
+	bool getIsCompressed();
+
 	/** 
 	 * Returns the 3D extent of this image at the base mipmap level.
 	 * For 2D or cube images, the Z component will be 1.  
