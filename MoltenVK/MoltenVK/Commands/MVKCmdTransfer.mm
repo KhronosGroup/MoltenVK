@@ -38,8 +38,30 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 								 VkImage dstImage,
 								 VkImageLayout dstImageLayout,
 								 uint32_t regionCount,
-                                 const VkImageCopy* pRegions,
-                                 MVKCommandUse commandUse) {
+								 const VkImageCopy* pRegions,
+								 MVKCommandUse commandUse) {
+
+	setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, commandUse);
+
+	for (uint32_t i = 0; i < regionCount; i++) {
+		addImageCopyRegion(pRegions[i]);
+	}
+
+	// Validate
+	if ( !_canCopyFormats ) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Cannot copy between incompatible formats, such as formats of different pixel sizes."));
+	}
+	if ((_srcImage->getMTLTextureType() == MTLTextureType3D) != (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture."));
+	}
+}
+
+// Sets basic content for use by this class and subclasses
+void MVKCmdCopyImage::setContent(VkImage srcImage,
+								 VkImageLayout srcImageLayout,
+								 VkImage dstImage,
+								 VkImageLayout dstImageLayout,
+								 MVKCommandUse commandUse) {
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
 	_srcMTLPixFmt = _srcImage->getMTLPixelFormat();
@@ -50,92 +72,44 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	_dstMTLPixFmt = _dstImage->getMTLPixelFormat();
 	_isDstCompressed = _dstImage->getIsCompressed();
 
-	_commandUse = commandUse;
+	_canCopyFormats = mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt) == mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt);
+	_shouldUseTextureView = (_srcMTLPixFmt != _dstMTLPixFmt) && !(_isSrcCompressed || _isDstCompressed);	// Different formats and neither is compressed
+	_shouldUseTempBuffer = (_srcMTLPixFmt != _dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);		// Different formats and at least one is compressed
 
-	_mtlTexCopyRegions.clear();		// Clear for reuse
-	_srcTmpBuffImgCopies.clear();	// Clear for reuse
-	_dstTmpBuffImgCopies.clear();	// Clear for reuse
+	_commandUse = commandUse;
 	_tmpBuffSize = 0;
 
-	if (shouldUseTempBuffer()) {
-		// Convert the image-image copies to image-buffer copies
-		_srcTmpBuffImgCopies.reserve(regionCount);
-		_dstTmpBuffImgCopies.reserve(regionCount);
-		for (uint32_t i = 0; i < regionCount; i++) {
-			addTempBufferCopyRegions(&pRegions[i]);
-		}
+	_imageCopyRegions.clear();		// Clear for reuse
+	_srcTmpBuffImgCopies.clear();	// Clear for reuse
+	_dstTmpBuffImgCopies.clear();	// Clear for reuse
+}
+
+void MVKCmdCopyImage::addImageCopyRegion(const VkImageCopy& region) {
+	if (_shouldUseTempBuffer) {
+		addTempBufferImageCopyRegion(region);	// Convert to image->buffer->image copies
 	} else {
-		// Deterine the total number of texture layers being affected and add image regions
-		uint32_t layerCnt = 0;
-		for (uint32_t i = 0; i < regionCount; i++) {
-			layerCnt += pRegions[i].srcSubresource.layerCount;
-		}
-		_mtlTexCopyRegions.reserve(layerCnt);
-		for (uint32_t i = 0; i < regionCount; i++) {
-			addMetalCopyRegions(&pRegions[i]);
-		}
-	}
-
-    // Validate
-	if ( !canCopyFormats() ) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Cannot copy between incompatible formats, such as formats of different pixel sizes."));
-	}
-    if ((_srcImage->getMTLTextureType() == MTLTextureType3D) != (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture."));
-    }
-}
-
-bool MVKCmdCopyImage::canCopyFormats() {
-	return mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt) == mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt);
-}
-
-bool MVKCmdCopyImage::shouldUseTextureView() {
-	return (_srcMTLPixFmt != _dstMTLPixFmt) && !(_isSrcCompressed || _isDstCompressed);
-}
-
-bool MVKCmdCopyImage::shouldUseTempBuffer() {
-	return (_srcMTLPixFmt != _dstMTLPixFmt) && !shouldUseTextureView();
-}
-
-// Adds a Metal copy region structure for each layer in the specified copy region.
-void MVKCmdCopyImage::addMetalCopyRegions(const VkImageCopy* pRegion) {
-
-    MVKMetalCopyTextureRegion mtlImgRgn;
-    mtlImgRgn.srcOrigin = mvkMTLOriginFromVkOffset3D(pRegion->srcOffset);
-    mtlImgRgn.dstOrigin = mvkMTLOriginFromVkOffset3D(pRegion->dstOffset);
-    mtlImgRgn.srcSize = mvkMTLSizeFromVkExtent3D(pRegion->extent);
-    mtlImgRgn.srcLevel = pRegion->srcSubresource.mipLevel;
-    mtlImgRgn.dstLevel = pRegion->dstSubresource.mipLevel;
-
-    uint32_t srcBaseLayer = pRegion->srcSubresource.baseArrayLayer;
-    uint32_t dstBaseLayer = pRegion->dstSubresource.baseArrayLayer;
-    uint32_t layCnt = pRegion->srcSubresource.layerCount;
-
-    for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
-		mtlImgRgn.srcSlice = srcBaseLayer + layIdx;
-		mtlImgRgn.dstSlice = dstBaseLayer + layIdx;
-        _mtlTexCopyRegions.push_back(mtlImgRgn);
+		_imageCopyRegions.push_back(region);
 	}
 }
 
-// Add an image-buffer copy and buffer-image copy for the image-image copy
-void MVKCmdCopyImage::addTempBufferCopyRegions(const VkImageCopy* pRegion) {
+// Add an image->buffer copy and buffer->image copy to replace the image->image copy
+void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region) {
 	VkBufferImageCopy buffImgCpy;
 
 	// Add copy from source image to temp buffer.
 	buffImgCpy.bufferOffset = _tmpBuffSize;
 	buffImgCpy.bufferRowLength = 0;
 	buffImgCpy.bufferImageHeight = 0;
-	buffImgCpy.imageSubresource = pRegion->srcSubresource;
-	buffImgCpy.imageOffset = pRegion->srcOffset;
-	buffImgCpy.imageExtent = pRegion->extent;
+	buffImgCpy.imageSubresource = region.srcSubresource;
+	buffImgCpy.imageOffset = region.srcOffset;
+	buffImgCpy.imageExtent = region.extent;
 	_srcTmpBuffImgCopies.push_back(buffImgCpy);
 
 	// Add copy from temp buffer to destination image.
 	// Extent is provided in source texels. If the source is compressed but the
 	// destination is not, each destination pixel will consume an entire source block,
 	// so we must downscale the destination extent by the size of the source block.
-	VkExtent3D dstExtent = pRegion->extent;
+	VkExtent3D dstExtent = region.extent;
 	if (_isSrcCompressed && !_isDstCompressed) {
 		VkExtent2D srcBlockExtent = mvkMTLPixelFormatBlockTexelSize(_srcMTLPixFmt);
 		dstExtent.width /= srcBlockExtent.width;
@@ -144,13 +118,13 @@ void MVKCmdCopyImage::addTempBufferCopyRegions(const VkImageCopy* pRegion) {
 	buffImgCpy.bufferOffset = _tmpBuffSize;
 	buffImgCpy.bufferRowLength = 0;
 	buffImgCpy.bufferImageHeight = 0;
-	buffImgCpy.imageSubresource = pRegion->dstSubresource;
-	buffImgCpy.imageOffset = pRegion->dstOffset;
+	buffImgCpy.imageSubresource = region.dstSubresource;
+	buffImgCpy.imageOffset = region.dstOffset;
 	buffImgCpy.imageExtent = dstExtent;
 	_dstTmpBuffImgCopies.push_back(buffImgCpy);
 
-	NSUInteger bytesPerRow = mvkMTLPixelFormatBytesPerRow(_srcMTLPixFmt, pRegion->extent.width);
-	NSUInteger bytesPerRegion = mvkMTLPixelFormatBytesPerLayer(_srcMTLPixFmt, bytesPerRow, pRegion->extent.height);
+	NSUInteger bytesPerRow = mvkMTLPixelFormatBytesPerRow(_srcMTLPixFmt, region.extent.width);
+	NSUInteger bytesPerRegion = mvkMTLPixelFormatBytesPerLayer(_srcMTLPixFmt, bytesPerRow, region.extent.height);
 	_tmpBuffSize += bytesPerRegion;
 }
 
@@ -160,23 +134,35 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 	if ( !srcMTLTex || !dstMTLTex ) { return; }
 
 	// If the pixel formats are different but mappable, use a texture view on the source texture
-	if (shouldUseTextureView()) {
+	if (_shouldUseTextureView) {
 		srcMTLTex = [[srcMTLTex newTextureViewWithPixelFormat: _dstMTLPixFmt] autorelease];
 	}
 
 	id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(_commandUse);
 
 	// If copies can be performed using direct texture-texture copying, do so
-	for (auto& cpyRgn : _mtlTexCopyRegions) {
-		[mtlBlitEnc copyFromTexture: srcMTLTex
-						sourceSlice: cpyRgn.srcSlice
-						sourceLevel: cpyRgn.srcLevel
-					   sourceOrigin: cpyRgn.srcOrigin
-						 sourceSize: cpyRgn.srcSize
-						  toTexture: dstMTLTex
-				   destinationSlice: cpyRgn.dstSlice
-				   destinationLevel: cpyRgn.dstLevel
-				  destinationOrigin: cpyRgn.dstOrigin];
+	for (auto& cpyRgn : _imageCopyRegions) {
+		uint32_t	srcLevel = cpyRgn.srcSubresource.mipLevel;;
+		MTLOrigin	srcOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.srcOffset);;
+		MTLSize		srcSize = mvkMTLSizeFromVkExtent3D(cpyRgn.extent);
+		uint32_t	dstLevel = cpyRgn.dstSubresource.mipLevel;
+		MTLOrigin	dstOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.dstOffset);
+
+		uint32_t srcBaseLayer = cpyRgn.srcSubresource.baseArrayLayer;
+		uint32_t dstBaseLayer = cpyRgn.dstSubresource.baseArrayLayer;
+		uint32_t layCnt = cpyRgn.srcSubresource.layerCount;
+
+		for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
+			[mtlBlitEnc copyFromTexture: srcMTLTex
+							sourceSlice: srcBaseLayer + layIdx
+							sourceLevel: srcLevel
+						   sourceOrigin: srcOrigin
+							 sourceSize: srcSize
+							  toTexture: dstMTLTex
+					   destinationSlice: dstBaseLayer + layIdx
+					   destinationLevel: dstLevel
+					  destinationOrigin: dstOrigin];
+		}
 	}
 
 	// If copies could not be performed directly between images,
@@ -223,137 +209,81 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 								 VkImageLayout dstImageLayout,
 								 uint32_t regionCount,
 								 const VkImageBlit* pRegions,
-                                 VkFilter filter,
-                                 MVKCommandUse commandUse) {
-	_srcImage = (MVKImage*)srcImage;
-	_srcLayout = srcImageLayout;
-	_srcMTLPixFmt = _srcImage->getMTLPixelFormat();
+								 VkFilter filter,
+								 MVKCommandUse commandUse) {
 
-	_dstImage = (MVKImage*)dstImage;
-	_dstLayout = dstImageLayout;
-    _dstMTLPixFmt = _dstImage->getMTLPixelFormat();
+	MVKCmdCopyImage::setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, commandUse);
 
 	_mtlFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
 
 	_blitKey.mtlPixFmt = (uint32_t)_dstMTLPixFmt;
 	_blitKey.mtlTexType = (uint32_t)_srcImage->getMTLTextureType();
 
-    _commandUse = commandUse;
-
-	// Determine which regions can be copied and which must be rendered to the destination texture
-	bool canCopyFmts = canCopyFormats();
-	bool canCopyRegion[regionCount];
-	uint32_t copyRegionCount = 0;
-	uint32_t renderRegionCount = 0;
 	for (uint32_t i = 0; i < regionCount; i++) {
-		const VkImageBlit* pRegion = &pRegions[i];
-		uint32_t layCnt = pRegion->srcSubresource.layerCount;
-		if (canCopyFmts && canCopy(pRegion)) {
-			canCopyRegion[i] = true;
-			copyRegionCount += layCnt;
-		} else {
-			canCopyRegion[i] = false;
-			renderRegionCount += layCnt;
-		}
+		addImageBlitRegion(pRegions[i]);
 	}
 
-	// Add copy and BLIT regions accordingly
-    _mtlTexCopyRegions.clear();     // Clear for reuse
-	_mtlTexCopyRegions.reserve(copyRegionCount);
-    _mtlTexBlitRenders.clear();     // Clear for reuse
-	_mtlTexBlitRenders.reserve(renderRegionCount);
-
-	for (uint32_t i = 0; i < regionCount; i++) {
-		const VkImageBlit* pRegion = &pRegions[i];
-		if (canCopyRegion[i]) {
-			addMetalCopyRegions(pRegion);
-		} else {
-			addMetalBlitRenders(pRegion);
-		}
+	// Validate
+	if ( !_mvkImageBlitRenders.empty() && (_blitKey.isDepthFormat() || _blitKey.isStencilFormat()) ) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting depth/stencil images is not supported."));
 	}
-
-    // Validate
-    if (_blitKey.isDepthFormat() && renderRegionCount > 0) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling of depth/stencil images is not supported."));
-    }
-    if ( !_mtlTexBlitRenders.empty() && mvkMTLPixelFormatIsStencilFormat(_dstMTLPixFmt)) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Stencil image formats cannot be scaled or inverted."));
-    }
 }
 
-bool MVKCmdBlitImage::canCopy(const VkImageBlit* pRegion) {
-	VkOffset3D srcSize = mvkVkOffset3DDifference(pRegion->srcOffsets[1], pRegion->srcOffsets[0]);
-	VkOffset3D dstSize = mvkVkOffset3DDifference(pRegion->dstOffsets[1], pRegion->dstOffsets[0]);
+void MVKCmdBlitImage::addImageBlitRegion(const VkImageBlit& region) {
+	if (_canCopyFormats && canCopy(region)) {
+		addImageCopyRegionFromBlitRegion(region);	// Convert to image copy
+	} else {
+		MVKImageBlitRender blitRender;
+		blitRender.region = region;
+		populateVertices(blitRender.vertices, region);
+		_mvkImageBlitRenders.push_back(blitRender);
+	}
+}
 
-	// The source and destination sizes must be equal and not be negative in any direction
+// The source and destination sizes must be equal and not be negative in any direction
+bool MVKCmdBlitImage::canCopy(const VkImageBlit& region) {
+	VkOffset3D srcSize = mvkVkOffset3DDifference(region.srcOffsets[1], region.srcOffsets[0]);
+	VkOffset3D dstSize = mvkVkOffset3DDifference(region.dstOffsets[1], region.dstOffsets[0]);
 	return (mvkVkOffset3DsAreEqual(srcSize, dstSize) &&
 			(srcSize.x >= 0) && (srcSize.y >= 0) && (srcSize.z >= 0));
 }
 
-// Adds a Metal copy region structure for each layer in the specified BLIT region.
-void MVKCmdBlitImage::addMetalCopyRegions(const VkImageBlit* pRegion) {
+void MVKCmdBlitImage::addImageCopyRegionFromBlitRegion(const VkImageBlit& region) {
+	const VkOffset3D& so0 = region.srcOffsets[0];
+	const VkOffset3D& so1 = region.srcOffsets[1];
 
-    const VkOffset3D* pSo0 = &pRegion->srcOffsets[0];
-    const VkOffset3D* pSo1 = &pRegion->srcOffsets[1];
+	VkImageCopy cpyRgn;
+	cpyRgn.srcSubresource = region.srcSubresource;
+	cpyRgn.srcOffset = region.srcOffsets[0];
+	cpyRgn.dstSubresource = region.dstSubresource;
+	cpyRgn.dstOffset = region.dstOffsets[0];
+	cpyRgn.extent.width = so1.x - so0.x;
+	cpyRgn.extent.height = so1.y - so0.y;
+	cpyRgn.extent.depth = so1.z - so0.z;
 
-    MVKMetalCopyTextureRegion mtlImgRgn;
-    mtlImgRgn.srcOrigin = mvkMTLOriginFromVkOffset3D(*pSo0);
-    mtlImgRgn.dstOrigin = mvkMTLOriginFromVkOffset3D(pRegion->dstOffsets[0]);
-    mtlImgRgn.srcSize = MTLSizeMake((pSo1->x - pSo0->x), (pSo1->y - pSo0->y), (pSo1->z - pSo0->z));
-    mtlImgRgn.srcLevel = pRegion->srcSubresource.mipLevel;
-    mtlImgRgn.dstLevel = pRegion->dstSubresource.mipLevel;
-
-    uint32_t srcBaseLayer = pRegion->srcSubresource.baseArrayLayer;
-    uint32_t dstBaseLayer = pRegion->dstSubresource.baseArrayLayer;
-	uint32_t layCnt = pRegion->srcSubresource.layerCount;
-
-    for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
-		mtlImgRgn.srcSlice = srcBaseLayer + layIdx;
-		mtlImgRgn.dstSlice = dstBaseLayer + layIdx;
-        _mtlTexCopyRegions.push_back(mtlImgRgn);
-	}
+	MVKCmdCopyImage::addImageCopyRegion(cpyRgn);
 }
 
-// Adds a Metal BLIT render region structure for each layer in the specified BLIT region.
-void MVKCmdBlitImage::addMetalBlitRenders(const VkImageBlit* pRegion) {
-
-    MVKMetalBlitTextureRender mtlBlitRndr;
-    mtlBlitRndr.srcLevel = pRegion->srcSubresource.mipLevel;
-    mtlBlitRndr.dstLevel = pRegion->dstSubresource.mipLevel;
-    populateVertices(mtlBlitRndr.vertices, pRegion);
-
-    uint32_t srcBaseLayer = pRegion->srcSubresource.baseArrayLayer;
-	uint32_t dstBaseLayer = pRegion->dstSubresource.baseArrayLayer;
-	uint32_t layCnt = pRegion->srcSubresource.layerCount;
-
-	for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
-		mtlBlitRndr.srcSlice = srcBaseLayer + layIdx;
-		mtlBlitRndr.dstSlice = dstBaseLayer + layIdx;
-        _mtlTexBlitRenders.push_back(mtlBlitRndr);
-	}
-}
-
-// Populates the vertices in the specified array from the specified region.
-void MVKCmdBlitImage::populateVertices(MVKVertexPosTex* vertices, const VkImageBlit* pRegion) {
-    const VkOffset3D* pSo0 = &pRegion->srcOffsets[0];
-    const VkOffset3D* pSo1 = &pRegion->srcOffsets[1];
-    const VkOffset3D* pDo0 = &pRegion->dstOffsets[0];
-    const VkOffset3D* pDo1 = &pRegion->dstOffsets[1];
+void MVKCmdBlitImage::populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region) {
+    const VkOffset3D& so0 = region.srcOffsets[0];
+    const VkOffset3D& so1 = region.srcOffsets[1];
+    const VkOffset3D& do0 = region.dstOffsets[0];
+    const VkOffset3D& do1 = region.dstOffsets[1];
 
     // Get the extents of the source and destination textures.
-    VkExtent3D srcExtent = _srcImage->getExtent3D(pRegion->srcSubresource.mipLevel);
-    VkExtent3D dstExtent = _dstImage->getExtent3D(pRegion->dstSubresource.mipLevel);
+    VkExtent3D srcExtent = _srcImage->getExtent3D(region.srcSubresource.mipLevel);
+    VkExtent3D dstExtent = _dstImage->getExtent3D(region.dstSubresource.mipLevel);
 
     // Determine the bottom-left and top-right corners of the source and destination
     // texture regions, each as a fraction of the corresponding texture size.
-    CGPoint srcBL = CGPointMake((CGFloat)(pSo0->x) / (CGFloat)srcExtent.width,
-                                (CGFloat)(srcExtent.height - pSo1->y) / (CGFloat)srcExtent.height);
-    CGPoint srcTR = CGPointMake((CGFloat)(pSo1->x) / (CGFloat)srcExtent.width,
-                                (CGFloat)(srcExtent.height - pSo0->y) / (CGFloat)srcExtent.height);
-    CGPoint dstBL = CGPointMake((CGFloat)(pDo0->x) / (CGFloat)dstExtent.width,
-                                (CGFloat)(dstExtent.height - pDo1->y) / (CGFloat)dstExtent.height);
-    CGPoint dstTR = CGPointMake((CGFloat)(pDo1->x) / (CGFloat)dstExtent.width,
-                                (CGFloat)(dstExtent.height - pDo0->y) / (CGFloat)dstExtent.height);
+    CGPoint srcBL = CGPointMake((CGFloat)(so0.x) / (CGFloat)srcExtent.width,
+                                (CGFloat)(srcExtent.height - so1.y) / (CGFloat)srcExtent.height);
+    CGPoint srcTR = CGPointMake((CGFloat)(so1.x) / (CGFloat)srcExtent.width,
+                                (CGFloat)(srcExtent.height - so0.y) / (CGFloat)srcExtent.height);
+    CGPoint dstBL = CGPointMake((CGFloat)(do0.x) / (CGFloat)dstExtent.width,
+                                (CGFloat)(dstExtent.height - do1.y) / (CGFloat)dstExtent.height);
+    CGPoint dstTR = CGPointMake((CGFloat)(do1.x) / (CGFloat)dstExtent.width,
+                                (CGFloat)(dstExtent.height - do0.y) / (CGFloat)dstExtent.height);
 
     // The destination region is used for vertex positions,
     // which are bounded by (-1.0 < p < 1.0) in clip-space.
@@ -383,7 +313,7 @@ void MVKCmdBlitImage::populateVertices(MVKVertexPosTex* vertices, const VkImageB
     pVtx->position.y = dstTR.y;
     pVtx->texCoord.x = srcBL.x;
     pVtx->texCoord.y = (1.0 - srcTR.y);
-    
+
     // Top right vertex
     pVtx = &vertices[3];
     pVtx->position.x = dstTR.x;
@@ -394,50 +324,56 @@ void MVKCmdBlitImage::populateVertices(MVKVertexPosTex* vertices, const VkImageB
 
 void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
 
-    // Perform those BLITs that can be covered by simple texture copying.
-    if ( !_mtlTexCopyRegions.empty() ) {
-        MVKCmdCopyImage::encode(cmdEncoder);
-    }
+	// Perform those BLITs that can be covered by simple texture copying.
+	if ( !_imageCopyRegions.empty() ) {
+		MVKCmdCopyImage::encode(cmdEncoder);
+	}
 
-    // Perform those BLITs that require rendering to destination texture.
-    if ( !_mtlTexBlitRenders.empty() && !_blitKey.isDepthFormat() ) {
+	// Perform those BLITs that require rendering to destination texture.
+	if ( !_mvkImageBlitRenders.empty() && !(_blitKey.isDepthFormat() || _blitKey.isStencilFormat()) ) {
 
-        cmdEncoder->endCurrentMetalEncoding();
+		cmdEncoder->endCurrentMetalEncoding();
 
-        id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture();
-        id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
-        if ( !srcMTLTex || !dstMTLTex ) { return; }
+		id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture();
+		id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
+		if ( !srcMTLTex || !dstMTLTex ) { return; }
 
-		bool isArrayType = _blitKey.isArrayType();
+		MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = _mtlRenderPassDescriptor.colorAttachments[0];
+		mtlColorAttDesc.texture = dstMTLTex;
 
-        MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = _mtlRenderPassDescriptor.colorAttachments[0];
-        mtlColorAttDesc.texture = dstMTLTex;
+		uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 
-        uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
+		MVKCommandEncodingPool* cmdEncPool = getCommandEncodingPool();
 
-        MVKCommandEncodingPool* cmdEncPool = getCommandEncodingPool();
+		for (auto& bltRend : _mvkImageBlitRenders) {
 
-        for (auto& bltRend : _mtlTexBlitRenders) {
+			mtlColorAttDesc.level = bltRend.region.dstSubresource.mipLevel;
 
-            // Update the render pass descriptor for the texture level and slice, and create a render encoder.
-            mtlColorAttDesc.level = bltRend.dstLevel;
-            mtlColorAttDesc.slice = bltRend.dstSlice;
-            id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: _mtlRenderPassDescriptor];
-			setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(_commandUse));
+			uint32_t srcBaseLayer = bltRend.region.srcSubresource.baseArrayLayer;
+			uint32_t dstBaseLayer = bltRend.region.dstSubresource.baseArrayLayer;
 
-            [mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
-            [mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdBlitImageMTLRenderPipelineState(_blitKey)];
-            cmdEncoder->setVertexBytes(mtlRendEnc, bltRend.vertices, sizeof(bltRend.vertices), vtxBuffIdx);
-			[mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
-			[mtlRendEnc setFragmentSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
-			if (isArrayType) {
-				cmdEncoder->setFragmentBytes(mtlRendEnc, &bltRend, sizeof(bltRend), 0);
+			uint32_t layCnt = bltRend.region.srcSubresource.layerCount;
+			for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
+				// Update the render pass descriptor for the texture level and slice, and create a render encoder.
+				mtlColorAttDesc.slice = dstBaseLayer + layIdx;
+				id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: _mtlRenderPassDescriptor];
+				setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(_commandUse));
+
+				[mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
+				[mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdBlitImageMTLRenderPipelineState(_blitKey)];
+				cmdEncoder->setVertexBytes(mtlRendEnc, bltRend.vertices, sizeof(bltRend.vertices), vtxBuffIdx);
+
+				[mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
+				[mtlRendEnc setFragmentSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
+				uint32_t srcSlice = srcBaseLayer + layIdx;
+				cmdEncoder->setFragmentBytes(mtlRendEnc, &srcSlice, sizeof(srcSlice), 0);
+
+				[mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount];
+				[mtlRendEnc popDebugGroup];
+				[mtlRendEnc endEncoding];
 			}
-            [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount];
-            [mtlRendEnc popDebugGroup];
-            [mtlRendEnc endEncoding];
-        }
-    }
+		}
+	}
 }
 
 
@@ -742,10 +678,10 @@ void MVKCmdBufferImageCopy::setContent(VkBuffer buffer,
     _toImage = toImage;
 
     // Add buffer regions
-    _mtlBuffImgCopyRegions.clear();     // Clear for reuse
-    _mtlBuffImgCopyRegions.reserve(regionCount);
+    _bufferImageCopyRegions.clear();     // Clear for reuse
+    _bufferImageCopyRegions.reserve(regionCount);
     for (uint32_t i = 0; i < regionCount; i++) {
-        _mtlBuffImgCopyRegions.push_back(pRegions[i]);
+        _bufferImageCopyRegions.push_back(pRegions[i]);
     }
 
     // Validate
@@ -764,7 +700,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
     MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat();
     MVKCommandUse cmdUse = _toImage ? kMVKCommandUseCopyBufferToImage : kMVKCommandUseCopyImageToBuffer;
 
-    for (auto& cpyRgn : _mtlBuffImgCopyRegions) {
+    for (auto& cpyRgn : _bufferImageCopyRegions) {
 
         MTLOrigin mtlTxtOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.imageOffset);
         MTLSize mtlTxtSize = mvkMTLSizeFromVkExtent3D(cpyRgn.imageExtent);

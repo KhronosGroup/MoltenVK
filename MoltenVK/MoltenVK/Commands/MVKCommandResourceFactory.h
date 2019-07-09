@@ -46,6 +46,8 @@ typedef struct MVKRPSKeyBlitImg_t {
 
 	inline bool isDepthFormat() { return mvkMTLPixelFormatIsDepthFormat(getMTLPixelFormat()); }
 
+	inline bool isStencilFormat() { return mvkMTLPixelFormatIsStencilFormat(getMTLPixelFormat()); }
+
 	inline MTLTextureType getMTLTextureType() { return (MTLTextureType)mtlTexType; }
 
 	inline bool isArrayType() {
