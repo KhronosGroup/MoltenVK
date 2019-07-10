@@ -53,11 +53,6 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 							  dynamicOffsets, &pDynamicOffsetIndex);
 		setConfigurationResult(dsl.getConfigurationResult());
 	}
-	if (cmdEncoder) {
-		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
-		}
-	}
 }
 
 // A null cmdEncoder can be passed to perform a validation pass
@@ -68,12 +63,6 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	auto& dsl = _descriptorSetLayouts[set];
 	dsl.pushDescriptorSet(cmdEncoder, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
 	setConfigurationResult(dsl.getConfigurationResult());
-
-	if (cmdEncoder) {
-		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
-		}
-	}
 }
 
 // A null cmdEncoder can be passed to perform a validation pass
@@ -85,12 +74,6 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	auto& dsl = _descriptorSetLayouts[set];
 	dsl.pushDescriptorSet(cmdEncoder, descUpdateTemplate, pData, _dslMTLResourceIndexOffsets[set]);
 	setConfigurationResult(dsl.getConfigurationResult());
-
-	if (cmdEncoder) {
-		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
-		}
-	}
 }
 
 void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context) {
@@ -166,6 +149,24 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 		}
 	}
 }
+
+
+#pragma mark -
+#pragma mark MVKPipeline
+
+void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
+	if (cmdEncoder) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
+		}
+	}
+}
+
+MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent) :
+	MVKVulkanAPIDeviceObject(device),
+	_pipelineCache(pipelineCache),
+	_pushConstantsMTLResourceIndexes(layout->getPushConstantBindings()),
+	_fullImageViewSwizzle(device->_pMVKConfig->fullImageViewSwizzle) {}
 
 
 #pragma mark -
@@ -285,7 +286,8 @@ bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
 MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 MVKPipelineCache* pipelineCache,
 										 MVKPipeline* parent,
-										 const VkGraphicsPipelineCreateInfo* pCreateInfo) : MVKPipeline(device, pipelineCache, parent) {
+										 const VkGraphicsPipelineCreateInfo* pCreateInfo) :
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, parent) {
 
 	// Get the tessellation shaders, if present. Do this now, because we need to extract
 	// reflection data from them that informs everything else.
@@ -1275,7 +1277,9 @@ void MVKComputePipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t) {
 MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   MVKPipelineCache* pipelineCache,
 									   MVKPipeline* parent,
-									   const VkComputePipelineCreateInfo* pCreateInfo) : MVKPipeline(device, pipelineCache, parent) {
+									   const VkComputePipelineCreateInfo* pCreateInfo) :
+	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, parent) {
+
 	MVKMTLFunction shaderFunc = getMTLFunction(pCreateInfo);
 	_mtlThreadgroupSize = shaderFunc.threadGroupSize;
 	_mtlPipelineState = nil;
