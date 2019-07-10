@@ -225,6 +225,7 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 	_blitKey.dstMTLPixelFormat = (uint32_t)_dstMTLPixFmt;
 	_blitKey.dstSampleCount = _dstSampleCount;
 
+	_mvkImageBlitRenders.clear();		// Clear for reuse
 	for (uint32_t i = 0; i < regionCount; i++) {
 		addImageBlitRegion(pRegions[i]);
 	}
@@ -912,22 +913,22 @@ void MVKCmdClearAttachments::setContent(uint32_t attachmentCount,
     // The depth value (including vertex position Z value) is held in the last index.
     _clearColors[kMVKClearAttachmentDepthStencilIndex] = { mtlDepthVal, mtlDepthVal, mtlDepthVal, mtlDepthVal };
 
-    _clearRects.clear();
+    _clearRects.clear();		// Clear for reuse
     _clearRects.reserve(rectCount);
     for (uint32_t i = 0; i < rectCount; i++) {
         _clearRects.push_back(pRects[i]);
     }
 
+	_vertices.clear();			// Clear for reuse
     _vertices.reserve(rectCount * 6);
 }
 
-/** Populates the vertices for all clear rectangles within an attachment of the specified size. */
+// Populates the vertices for all clear rectangles within an attachment of the specified size.
 void MVKCmdClearAttachments::populateVertices(float attWidth, float attHeight) {
-    _vertices.clear();
     for (auto& rect : _clearRects) { populateVertices(rect, attWidth, attHeight); }
 }
 
-/** Populates the vertices from the specified rectangle within an attachment of the specified size. */
+// Populates the vertices from the specified rectangle within an attachment of the specified size.
 void MVKCmdClearAttachments::populateVertices(VkClearRect& clearRect, float attWidth, float attHeight) {
 
     // Determine the positions of the four edges of the
@@ -1049,7 +1050,7 @@ void MVKCmdClearImage::setContent(VkImage image,
 	_mtlStencilClearValue = mvkMTLClearStencilFromVkClearValue(clearValue);
 
     // Add subresource ranges
-    _subresourceRanges.clear();
+    _subresourceRanges.clear();		// Clear for reuse
     _subresourceRanges.reserve(rangeCount);
     for (uint32_t i = 0; i < rangeCount; i++) {
         _subresourceRanges.push_back(pRanges[i]);
