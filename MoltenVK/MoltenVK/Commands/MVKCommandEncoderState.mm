@@ -44,7 +44,10 @@ void MVKPipelineCommandEncoderState::setPipeline(MVKPipeline* pipeline) {
 MVKPipeline* MVKPipelineCommandEncoderState::getPipeline() { return _pipeline; }
 
 void MVKPipelineCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (_pipeline) { _pipeline->encode(_cmdEncoder, stage); }
+    if (_pipeline) {
+		_pipeline->encode(_cmdEncoder, stage);
+		_pipeline->bindPushConstants(_cmdEncoder);
+	}
 }
 
 void MVKPipelineCommandEncoderState::resetImpl() {

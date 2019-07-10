@@ -58,9 +58,6 @@ public:
                             uint32_t firstSet,
                             MVKVector<uint32_t>& dynamicOffsets);
 
-	/** Populates the specified shader converter context. */
-	void populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context);
-
 	/** Updates a descriptor set in a command encoder. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 						   MVKVector<VkWriteDescriptorSet>& descriptorWrites,
@@ -71,6 +68,9 @@ public:
 						   MVKDescriptorUpdateTemplate* descriptorUpdateTemplate,
 						   uint32_t set,
 						   const void* pData);
+
+	/** Populates the specified shader converter context. */
+	void populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context);
 
 	/** Returns the current swizzle buffer bindings. */
 	const MVKShaderImplicitRezBinding& getSwizzleBufferIndex() { return _swizzleBufferIndex; }
@@ -95,6 +95,9 @@ public:
 
 	/** Returns the number of buffers in this layout. This is used to calculate the size of the buffer size buffer. */
 	uint32_t getBufferCount() { return _pushConstantsMTLResourceIndexes.getMaxBufferIndex(); }
+
+	/** Returns the push constant binding info. */
+	const MVKShaderResourceBinding& getPushConstantBindings() { return _pushConstantsMTLResourceIndexes; }
 
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
@@ -144,6 +147,9 @@ public:
 	/** Binds this pipeline to the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) = 0;
 
+	/** Binds the push constants to a command encoder. */
+	void bindPushConstants(MVKCommandEncoder* cmdEncoder);
+
 	/** Returns the current swizzle buffer bindings. */
 	const MVKShaderImplicitRezBinding& getSwizzleBufferIndex() { return _swizzleBufferIndex; }
 
@@ -157,9 +163,7 @@ public:
 	bool hasValidMTLPipelineStates() { return _hasValidMTLPipelineStates; }
 
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
-	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipeline* parent) : MVKVulkanAPIDeviceObject(device),
-																						   _pipelineCache(pipelineCache),
-	   																					   _fullImageViewSwizzle(device->_pMVKConfig->fullImageViewSwizzle)	{}
+	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent);
 
 protected:
 	void propogateDebugName() override {}
@@ -167,6 +171,7 @@ protected:
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
+	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	bool _fullImageViewSwizzle;
 	bool _hasValidMTLPipelineStates = true;
 
