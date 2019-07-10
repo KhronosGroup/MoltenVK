@@ -33,17 +33,6 @@ class MVKBuffer;
 #pragma mark -
 #pragma mark MVKCmdCopyImage
 
-/** Describes the Metal texture copying parameters. */
-typedef struct {
-	uint32_t	srcLevel;
-	uint32_t	srcSlice;
-	MTLOrigin	srcOrigin;
-	MTLSize		srcSize;
-	uint32_t	dstLevel;
-	uint32_t	dstSlice;
-	MTLOrigin	dstOrigin;
-} MVKMetalCopyTextureRegion;
-
 /** Vulkan command to copy image regions. */
 class MVKCmdCopyImage : public MVKCommand {
 
@@ -62,14 +51,29 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
-    void addMetalCopyRegions(const VkImageCopy* pRegion);
+	void setContent(VkImage srcImage, VkImageLayout srcImageLayout,
+					VkImage dstImage, VkImageLayout dstImageLayout, MVKCommandUse commandUse);
+	void addImageCopyRegion(const VkImageCopy& region);
+	void addTempBufferImageCopyRegion(const VkImageCopy& region);
 
 	MVKImage* _srcImage;
 	VkImageLayout _srcLayout;
 	MVKImage* _dstImage;
 	VkImageLayout _dstLayout;
-	std::vector<MVKMetalCopyTextureRegion> _mtlTexCopyRegions;
-    MVKCommandUse _commandUse = kMVKCommandUseNone;
+	MTLPixelFormat _srcMTLPixFmt;
+	MTLPixelFormat _dstMTLPixFmt;
+	uint32_t _srcSampleCount;
+	uint32_t _dstSampleCount;
+	bool _isSrcCompressed;
+	bool _isDstCompressed;
+	bool _canCopyFormats;
+	bool _shouldUseTextureView;
+	bool _shouldUseTempBuffer;
+	std::vector<VkImageCopy> _imageCopyRegions;
+	std::vector<VkBufferImageCopy> _srcTmpBuffImgCopies;
+	std::vector<VkBufferImageCopy> _dstTmpBuffImgCopies;
+	size_t _tmpBuffSize;
+    MVKCommandUse _commandUse;
 };
 
 
@@ -79,14 +83,11 @@ protected:
 /** Number of vertices in a BLIT rectangle. */
 #define kMVKBlitVertexCount		4
 
-/** Describes Metal texture rendering parameters. */
+/** Combines a VkImageBlit with vertices to render it. */
 typedef struct {
-	uint32_t	srcLevel;
-	uint32_t	srcSlice;
-	uint32_t	dstLevel;
-	uint32_t	dstSlice;
+	VkImageBlit region;
 	MVKVertexPosTex vertices[kMVKBlitVertexCount];
-} MVKMetalBlitTextureRender;
+} MVKImageBlitRender;
 
 /** Vulkan command to BLIT image regions. */
 class MVKCmdBlitImage : public MVKCmdCopyImage {
@@ -108,17 +109,16 @@ public:
 	~MVKCmdBlitImage() override;
 
 protected:
-	bool canCopy(const VkImageBlit* pRegion);
-    void addMetalCopyRegions(const VkImageBlit* pRegion);
-    void addMetalBlitRenders(const VkImageBlit* pRegion);
-	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit* pRegion);
+	bool canCopy(const VkImageBlit& region);
+	void addImageBlitRegion(const VkImageBlit& region);
+	void addImageCopyRegionFromBlitRegion(const VkImageBlit& region);
+	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region);
     void initMTLRenderPassDescriptor();
 
 	MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
 	MTLSamplerMinMagFilter _mtlFilter;
-    MTLPixelFormat _mtlPixFmt;
 	MVKRPSKeyBlitImg _blitKey;
-	std::vector<MVKMetalBlitTextureRender> _mtlTexBlitRenders;
+	std::vector<MVKImageBlitRender> _mvkImageBlitRenders;
 };
 
 
@@ -211,10 +211,12 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
+	bool isArrayTexture();
+
     MVKBuffer* _buffer;
     MVKImage* _image;
     VkImageLayout _imageLayout;
-    std::vector<VkBufferImageCopy> _mtlBuffImgCopyRegions;
+    std::vector<VkBufferImageCopy> _bufferImageCopyRegions;
     bool _toImage = false;
 };
 

@@ -221,6 +221,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		return VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 
+	MVKFormatType mvkFmt = mvkFormatTypeFromVkFormat(format);
 	bool hasAttachmentUsage = mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
@@ -241,8 +242,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (tiling == VK_IMAGE_TILING_LINEAR) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 			// Metal does not allow compressed or depth/stencil formats on 1D textures
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
+			if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt.width = pLimits->maxImageDimension1D;
@@ -263,8 +263,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
 				// Linear textures have additional restrictions under Metal:
 				// - They may not be depth/stencil or compressed textures.
-				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-					mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
+				if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed) {
 					return VK_ERROR_FORMAT_NOT_SUPPORTED;
 				}
 #if MVK_MACOS
@@ -281,7 +280,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				// Compressed multisampled textures aren't supported.
 				// Multisampled cube textures aren't supported.
 				// Non-renderable multisampled textures aren't supported.
-				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed ||
+				if (mvkFmt == kMVKFormatCompressed ||
 					mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ||
 					!mvkIsAnyFlagEnabled(fmtProps.optimalTilingFeatures, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT|VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
 					sampleCounts = VK_SAMPLE_COUNT_1_BIT;
@@ -295,18 +294,17 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
                 return VK_ERROR_FORMAT_NOT_SUPPORTED;
             }
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil
+			if (mvkFmt == kMVKFormatDepthStencil
 #if MVK_IOS
-				|| mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed
+				|| mvkFmt == kMVKFormatCompressed
 #endif
 				) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
 #if MVK_MACOS
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
-				// If this is a compressed format and there's no codec, it isn't
-				// supported.
-				if (!mvkCanDecodeFormat(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+			// If this is a compressed format and there's no codec, it isn't supported.
+			if ((mvkFmt == kMVKFormatCompressed) && !mvkCanDecodeFormat(format)) {
+				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
 #endif
             maxExt.width = pLimits->maxImageDimension3D;
@@ -321,8 +319,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (tiling == VK_IMAGE_TILING_LINEAR) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 			// Metal does not allow compressed or depth/stencil formats on anything but 2D textures
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
+			if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt = { 1, 1, 1};
@@ -1814,7 +1811,7 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
         // See if this pipeline has a parent. This can come either directly
         // via basePipelineHandle or indirectly via basePipelineIndex.
         MVKPipeline* parentPL = VK_NULL_HANDLE;
-        if ( mvkAreFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
+        if ( mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
             VkPipeline vkParentPL = pCreateInfo->basePipelineHandle;
             int32_t parentPLIdx = pCreateInfo->basePipelineIndex;
             if ( !vkParentPL && (parentPLIdx >= 0)) { vkParentPL = pPipelines[parentPLIdx]; }

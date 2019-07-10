@@ -30,6 +30,10 @@ Released TBD
 - Separate `SPIRVToMSLConverterContext` into input config and output results.
 - Fix pipeline cache lookups.
 - Fix race condition between swapchain image destruction and presentation completion callback.
+- Set Metal texture usage to allow texture copy via view.
+- `vkCmdCopyImage()` support copying between compressed and uncompressed formats
+  and validate that formats are compatible for copying.
+- `vkCmdBufferImageCopy()` fix crash when setting bytes per image in non-arrayed images. 
 - Document that the functions in `vk_mvk_moltenvk.h` cannot be used with objects 
   retrieved through the *Vulkan SDK Loader and Layers* framework.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 21.

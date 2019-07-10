@@ -41,6 +41,10 @@ VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_
 
 VkFormat MVKImage::getVkFormat() { return mvkVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
 
+bool MVKImage::getIsCompressed() {
+	return mvkFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
+}
+
 VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 	return mvkMipmapLevelSizeFromBaseSize3D(_extent, mipLevel);
 }
@@ -163,7 +167,7 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 #endif
 #if MVK_IOS
 	// Only transient attachments may use memoryless storage
-	if (!mvkAreFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
+	if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
 		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
 	}
 #endif
@@ -373,16 +377,15 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 }
 
 MTLTextureUsage MVKImage::getMTLTextureUsage() {
+
 	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
 
-	// If this is a depth/stencil texture, and the device supports it, tell
-	// Metal we may create texture views of this, too.
-	if ((_mtlPixelFormat == MTLPixelFormatDepth32Float_Stencil8
-#if MVK_MACOS
-		 || _mtlPixelFormat == MTLPixelFormatDepth24Unorm_Stencil8
-#endif
-		) && _device->_pMetalFeatures->stencilViews) {
-		mvkEnableFlag(usage, MTLTextureUsagePixelFormatView);
+	// Remove view usage from D/S if Metal doesn't support it
+	if ( !_device->_pMetalFeatures->stencilViews &&
+		mvkMTLPixelFormatIsDepthFormat(_mtlPixelFormat) &&
+		mvkMTLPixelFormatIsStencilFormat(_mtlPixelFormat)) {
+
+		mvkDisableFlag(usage, MTLTextureUsagePixelFormatView);
 	}
 
 	// If this format doesn't support being blitted to, and the usage
@@ -390,7 +393,7 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 	// MTLTextureUsageRenderTarget.
 	VkFormatProperties props;
 	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
-	if (!mvkAreFlagsEnabled(_isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures, VK_FORMAT_FEATURE_BLIT_DST_BIT) &&
+	if (!mvkAreAllFlagsEnabled(_isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures, VK_FORMAT_FEATURE_BLIT_DST_BIT) &&
 		!mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
 		mvkDisableFlag(usage, MTLTextureUsageRenderTarget);
 	}
@@ -579,8 +582,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_usage = pCreateInfo->usage;
 
 	_is3DCompressed = (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed);
-	_isDepthStencilAttachment = (mvkAreFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
-								 mvkAreFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
+	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
+								 mvkAreAllFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
 	_hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
 
@@ -890,7 +893,7 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 		if (pCreateInfo->subresourceRange.layerCount != image->_extent.depth) {
 			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
 		}
-		if (!mvkAreFlagsEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+		if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments."));
 		} else if (mvkIsAnyFlagEnabled(_usage, ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
 			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments.");

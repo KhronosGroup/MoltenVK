@@ -38,8 +38,9 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPi
 
 	plDesc.vertexFunction = getFunctionNamed("vtxCmdBlitImage");
     plDesc.fragmentFunction = getBlitFragFunction(blitKey);
+	plDesc.sampleCount = blitKey.dstSampleCount;
 
-	plDesc.colorAttachments[0].pixelFormat = blitKey.getMTLPixelFormat();
+	plDesc.colorAttachments[0].pixelFormat = blitKey.getDstMTLPixelFormat();
 
     MTLVertexDescriptor* vtxDesc = plDesc.vertexDescriptor;
 
@@ -132,11 +133,11 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg& blitKey) {
 	id<MTLFunction> mtlFunc = nil;
 
-	NSString* typeStr = getMTLFormatTypeString(blitKey.getMTLPixelFormat());
+	NSString* typeStr = getMTLFormatTypeString(blitKey.getSrcMTLPixelFormat());
 
-	bool isArrayType = blitKey.isArrayType();
+	bool isArrayType = blitKey.isSrcArrayType();
 	NSString* arraySuffix = isArrayType ? @"_array" : @"";
-	NSString* sliceArg = isArrayType ? @", blitInfo.srcSlice" : @"";
+	NSString* sliceArg = isArrayType ? @", srcSlice" : @"";
 
 	@autoreleasepool {
 		NSMutableString* msl = [NSMutableString stringWithCapacity: (2 * KIBI) ];
@@ -148,27 +149,14 @@ id<MTLFunction> MVKCommandResourceFactory::getBlitFragFunction(MVKRPSKeyBlitImg&
 		[msl appendLineMVK: @"    float2 v_texCoord;"];
 		[msl appendLineMVK: @"} VaryingsPosTex;"];
 		[msl appendLineMVK];
-		if (isArrayType) {
-			[msl appendLineMVK: @"typedef struct {"];
-			[msl appendLineMVK: @"    uint srcLevel;"];
-			[msl appendLineMVK: @"    uint srcSlice;"];
-			[msl appendLineMVK: @"    uint dstLevel;"];
-			[msl appendLineMVK: @"    uint dstSlice;"];
-			[msl appendLineMVK: @"} BlitInfo;"];
-			[msl appendLineMVK];
-		}
 
 		NSString* funcName = @"fragBlit";
 		[msl appendFormat: @"fragment %@4 %@(VaryingsPosTex varyings [[stage_in]],", typeStr, funcName];
 		[msl appendLineMVK];
 		[msl appendFormat: @"                         texture2d%@<%@> texture [[texture(0)]],", arraySuffix, typeStr];
 		[msl appendLineMVK];
-		if (isArrayType) {
-			[msl appendLineMVK: @"                         sampler sampler [[sampler(0)]],"];
-			[msl appendLineMVK: @"                         constant BlitInfo& blitInfo [[buffer(0)]]) {"];
-		} else {
-			[msl appendLineMVK: @"                         sampler sampler [[sampler(0)]]) {"];
-		}
+		[msl appendLineMVK: @"                         sampler sampler [[sampler(0)]],"];
+		[msl appendLineMVK: @"                         constant uint& srcSlice [[buffer(0)]]) {"];
 		[msl appendFormat: @"    return texture.sample(sampler, varyings.v_texCoord%@);", sliceArg];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"}"];

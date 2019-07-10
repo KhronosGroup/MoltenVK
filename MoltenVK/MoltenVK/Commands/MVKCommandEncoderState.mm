@@ -272,10 +272,10 @@ void MVKDepthStencilCommandEncoderState::setStencilCompareMask(VkStencilFaceFlag
     if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK) &&
            mvkIsAnyFlagEnabled(faceMask, VK_STENCIL_FRONT_AND_BACK)) ) { return; }
 
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
         _depthStencilData.frontFaceStencilData.readMask = stencilCompareMask;
     }
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
         _depthStencilData.backFaceStencilData.readMask = stencilCompareMask;
     }
 
@@ -289,10 +289,10 @@ void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags 
     if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK) &&
            mvkIsAnyFlagEnabled(faceMask, VK_STENCIL_FRONT_AND_BACK)) ) { return; }
 
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
         _depthStencilData.frontFaceStencilData.writeMask = stencilWriteMask;
     }
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
         _depthStencilData.backFaceStencilData.writeMask = stencilWriteMask;
     }
 
@@ -342,10 +342,10 @@ void MVKStencilReferenceValueCommandEncoderState::setReferenceValues(VkStencilFa
     if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_REFERENCE) &&
            mvkIsAnyFlagEnabled(faceMask, VK_STENCIL_FRONT_AND_BACK)) ) { return; }
 
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
         _frontFaceValue = stencilReference;
     }
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
         _backFaceValue = stencilReference;
     }
 
@@ -793,7 +793,7 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
     NSUInteger offset = pQueryPool->getVisibilityResultOffset(query);
     NSUInteger maxOffset = _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes;
 
-    bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
+    bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
     _mtlVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
     _mtlVisibilityResultOffset = min(offset, maxOffset);
 
