@@ -1055,8 +1055,15 @@ void MVKCmdClearImage::setContent(VkImage image,
     for (uint32_t i = 0; i < rangeCount; i++) {
         _subresourceRanges.push_back(pRanges[i]);
     }
+
+	// Validate
+	if ( !_image->getSupportsAllFormatFeatures(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) ) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", mvkVkFormatName(_image->getVkFormat())));
+	}
 }
 void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
+	if (getConfigurationResult()) { return; }
+
 	id<MTLTexture> imgMTLTex = _image->getMTLTexture();
     if ( !imgMTLTex ) { return; }
 
