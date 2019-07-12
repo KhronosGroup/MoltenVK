@@ -175,9 +175,8 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 										   ? _device->getPhysicalDevice()->getPrivateMemoryTypes()
 										   : _device->getPhysicalDevice()->getAllMemoryTypes());
 #if MVK_MACOS
-	if (!_isLinear) {  // XXX Linear images must support host-coherent memory
-		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
-	}
+	// Textures must not use shared memory
+	mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
 #endif
 #if MVK_IOS
 	// Only transient attachments may use memoryless storage
