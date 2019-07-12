@@ -163,10 +163,10 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 
 	// If host memory was already allocated, it is copied into the new MTLBuffer, and then released.
 	if (_pHostMemory) {
-		_mtlBuffer = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: _mtlResourceOptions];     // retained
+		_mtlBuffer = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: getMTLResourceOptions()];     // retained
 		freeHostMemory();
 	} else {
-		_mtlBuffer = [getMTLDevice() newBufferWithLength: memLen options: _mtlResourceOptions];     // retained
+		_mtlBuffer = [getMTLDevice() newBufferWithLength: memLen options: getMTLResourceOptions()];     // retained
 	}
 	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
 
@@ -210,7 +210,6 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkAllocationCallbacks* pAllocator) : MVKVulkanAPIDeviceObject(device) {
 	// Set Metal memory parameters
 	VkMemoryPropertyFlags vkMemProps = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
-	_mtlResourceOptions = mvkMTLResourceOptionsFromVkMemoryPropertyFlags(vkMemProps);
 	_mtlStorageMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(vkMemProps);
 	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(vkMemProps);
 
