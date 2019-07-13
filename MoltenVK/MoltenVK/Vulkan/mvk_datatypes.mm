@@ -1395,44 +1395,9 @@ MVK_PUBLIC_SYMBOL MTLCPUCacheMode mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(Vk
 	return MTLCPUCacheModeDefaultCache;
 }
 
-MVK_PUBLIC_SYMBOL MTLResourceOptions mvkMTLResourceOptionsFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags) {
-	MTLResourceOptions mtlFlags = 0;
-
-	// First set the resource CPU cache mode
-	MTLCPUCacheMode mtlCPUMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(vkFlags);
-	switch (mtlCPUMode) {
-		case MTLCPUCacheModeDefaultCache:
-			mvkEnableFlag(mtlFlags, MTLResourceCPUCacheModeDefaultCache);
-			break;
-		case MTLCPUCacheModeWriteCombined:
-			mvkEnableFlag(mtlFlags, MTLResourceCPUCacheModeWriteCombined);
-			break;
-	}
-
-	// Then set the resource storage mode
-	MTLStorageMode mtlStgMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(vkFlags);
-	switch (mtlStgMode) {
-		case MTLStorageModePrivate:
-			mvkEnableFlag(mtlFlags, MTLResourceStorageModePrivate);
-			break;
-		case MTLStorageModeShared:
-			mvkEnableFlag(mtlFlags, MTLResourceStorageModeShared);
-			break;
-#if MVK_MACOS
-		case MTLStorageModeManaged:
-			mvkEnableFlag(mtlFlags, MTLResourceStorageModeManaged);
-			break;
-#endif
-#if MVK_IOS
-		case MTLStorageModeMemoryless:
-			mvkEnableFlag(mtlFlags, MTLResourceStorageModeMemoryless);
-			break;
-#endif
-		default:		// Silence erroneous -Wswitch-enum warning on MTLResourceStorageModeManaged under iOS
-			break;
-	}
-
-	return mtlFlags;
+MVK_PUBLIC_SYMBOL MTLResourceOptions mvkMTLResourceOptions(MTLStorageMode mtlStorageMode,
+														   MTLCPUCacheMode mtlCPUCacheMode) {
+	return (mtlStorageMode << MTLResourceStorageModeShift) | (mtlCPUCacheMode << MTLResourceCPUCacheModeShift);
 }
 
 

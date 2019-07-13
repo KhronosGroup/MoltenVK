@@ -45,6 +45,12 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequireme
 	pMemoryRequirements->size = getByteCount();
 	pMemoryRequirements->alignment = _byteAlignment;
 	pMemoryRequirements->memoryTypeBits = _device->getPhysicalDevice()->getAllMemoryTypes();
+#if MVK_MACOS
+	// Textures must not use shared memory
+	if (mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
+		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
+	}
+#endif
 #if MVK_IOS
 	// Memoryless storage is not allowed for buffers
 	mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
@@ -160,17 +166,9 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
                                                                                               width: _textureSize.width
                                                                                              height: _textureSize.height
                                                                                           mipmapped: NO];
-#if MVK_MACOS
-        // Textures on Mac cannot use shared storage, so force managed.
-        if (_buffer->getMTLBuffer().storageMode == MTLStorageModeShared) {
-            mtlTexDesc.storageMode = MTLStorageModeManaged;
-        } else {
-            mtlTexDesc.storageMode = _buffer->getMTLBuffer().storageMode;
-        }
-#else
-        mtlTexDesc.storageMode = _buffer->getMTLBuffer().storageMode;
-#endif
-        mtlTexDesc.cpuCacheMode = _buffer->getMTLBuffer().cpuCacheMode;
+		id<MTLBuffer> mtlBuff = _buffer->getMTLBuffer();
+		mtlTexDesc.storageMode = mtlBuff.storageMode;
+        mtlTexDesc.cpuCacheMode = mtlBuff.cpuCacheMode;
         mtlTexDesc.usage = MTLTextureUsageShaderRead;
         if ( mvkIsAnyFlagEnabled(_buffer->getUsage(), VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) ) {
             mtlTexDesc.usage |= MTLTextureUsageShaderWrite;

@@ -61,8 +61,20 @@ public:
     /** Returns the Vulkan image format of this image. */
     VkFormat getVkFormat();
 
-	/** Returns whether this texture is compressed. */
+	/** Returns whether this image is compressed. */
 	bool getIsCompressed();
+
+	/**
+	 * Returns whether the format of this image supports ANY of the indicated feature flags,
+	 * taking into consideration whether this image is using linear or optimal tiling.
+	 */
+	bool getSupportsAnyFormatFeature(VkFormatFeatureFlags requiredFormatFeatureFlags);
+
+	/**
+	 * Returns whether the format of this image supports ALL of the indicated feature flags,
+	 * taking into consideration whether this image is using linear or optimal tiling.
+	 */
+	bool getSupportsAllFormatFeatures(VkFormatFeatureFlags requiredFormatFeatureFlags);
 
 	/** 
 	 * Returns the 3D extent of this image at the base mipmap level.

@@ -45,6 +45,20 @@ bool MVKImage::getIsCompressed() {
 	return mvkFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
 }
 
+bool MVKImage::getSupportsAnyFormatFeature(VkFormatFeatureFlags requiredFormatFeatureFlags) {
+	VkFormatProperties props;
+	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
+	VkFormatFeatureFlags imageFeatureFlags = _isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures;
+	return mvkIsAnyFlagEnabled(imageFeatureFlags, requiredFormatFeatureFlags);
+}
+
+bool MVKImage::getSupportsAllFormatFeatures(VkFormatFeatureFlags requiredFormatFeatureFlags) {
+	VkFormatProperties props;
+	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
+	VkFormatFeatureFlags imageFeatureFlags = _isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures;
+	return mvkAreAllFlagsEnabled(imageFeatureFlags, requiredFormatFeatureFlags);
+}
+
 VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 	return mvkMipmapLevelSizeFromBaseSize3D(_extent, mipLevel);
 }
@@ -161,9 +175,8 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 										   ? _device->getPhysicalDevice()->getPrivateMemoryTypes()
 										   : _device->getPhysicalDevice()->getAllMemoryTypes());
 #if MVK_MACOS
-	if (!_isLinear) {  // XXX Linear images must support host-coherent memory
-		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
-	}
+	// Textures must not use shared memory
+	mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
 #endif
 #if MVK_IOS
 	// Only transient attachments may use memoryless storage
@@ -388,13 +401,10 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 		mvkDisableFlag(usage, MTLTextureUsagePixelFormatView);
 	}
 
-	// If this format doesn't support being blitted to, and the usage
-	// doesn't specify use as an attachment, turn off
-	// MTLTextureUsageRenderTarget.
-	VkFormatProperties props;
-	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
-	if (!mvkAreAllFlagsEnabled(_isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures, VK_FORMAT_FEATURE_BLIT_DST_BIT) &&
-		!mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+	// If this format doesn't support being rendered to, disable MTLTextureUsageRenderTarget.
+	if ( !getSupportsAnyFormatFeature(VK_FORMAT_FEATURE_BLIT_DST_BIT |
+									  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+									  VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
 		mvkDisableFlag(usage, MTLTextureUsageRenderTarget);
 	}
 
