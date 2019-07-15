@@ -31,9 +31,12 @@ Released TBD
 - Fix pipeline cache lookups.
 - Fix race condition between swapchain image destruction and presentation completion callback.
 - Set Metal texture usage to allow texture copy via view.
+- Fix memory leak in debug marker and debug utils labelling.
+- Reduce use of autoreleased Obj-C objects, and ensure those remaining are 
+  covered by deliberate autorelease pools. 
 - `vkCmdCopyImage()` support copying between compressed and uncompressed formats
   and validate that formats are compatible for copying.
-- `vkCmdBufferImageCopy()` fix crash when setting bytes per image in non-arrayed images. 
+- `vkCmdBufferImageCopy()` fix crash when setting bytes per image in non-arrayed images.
 - Document that the functions in `vk_mvk_moltenvk.h` cannot be used with objects 
   retrieved through the *Vulkan SDK Loader and Layers* framework.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 21.

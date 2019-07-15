@@ -372,14 +372,16 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     } else {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        _ioSurface = IOSurfaceCreate((CFDictionaryRef)@{
-                                                        (id)kIOSurfaceWidth: @(_extent.width),
-                                                        (id)kIOSurfaceHeight: @(_extent.height),
-                                                        (id)kIOSurfaceBytesPerElement: @(mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
-                                                        (id)kIOSurfaceElementWidth: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
-                                                        (id)kIOSurfaceElementHeight: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
-                                                        (id)kIOSurfaceIsGlobal: @(true),    // Deprecated but needed for interprocess transfers
-                                                        });
+		@autoreleasepool {
+			_ioSurface = IOSurfaceCreate((CFDictionaryRef)@{
+															(id)kIOSurfaceWidth: @(_extent.width),
+															(id)kIOSurfaceHeight: @(_extent.height),
+															(id)kIOSurfaceBytesPerElement: @(mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
+															(id)kIOSurfaceElementWidth: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
+															(id)kIOSurfaceElementHeight: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
+															(id)kIOSurfaceIsGlobal: @(true),    // Deprecated but needed for interprocess transfers
+															});
+		}
 #pragma clang diagnostic pop
 
     }

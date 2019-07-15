@@ -398,10 +398,12 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyQueryPoolResult
 #pragma mark Support methods
 
 id<MTLFunction> MVKCommandResourceFactory::getFunctionNamed(const char* funcName) {
-    uint64_t startTime = _device->getPerformanceTimestamp();
-    id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: @(funcName)] autorelease];
-    _device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
-    return mtlFunc;
+	uint64_t startTime = _device->getPerformanceTimestamp();
+	NSString* nsFuncName = [[NSString alloc] initWithUTF8String: funcName];		// temp retained
+	id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: nsFuncName] autorelease];
+	[nsFuncName release];	// release temp NSStr
+	_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+	return mtlFunc;
 }
 
 id<MTLFunction> MVKCommandResourceFactory::newMTLFunction(NSString* mslSrcCode, NSString* funcName) {

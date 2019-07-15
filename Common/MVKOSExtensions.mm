@@ -76,10 +76,12 @@ void mvkDispatchToMainAndWait(dispatch_block_t block) {
 #pragma mark Process environment
 
 string mvkGetEnvVar(string varName, bool* pWasFound) {
-	NSDictionary* env = [[NSProcessInfo processInfo] environment];
-	NSString* envStr = env[@(varName.c_str())];
-	if (pWasFound) { *pWasFound = envStr != nil; }
-	return envStr ? envStr.UTF8String : "";
+	@autoreleasepool {
+		NSDictionary*nsEnv = [[NSProcessInfo processInfo] environment];
+		NSString* envStr = nsEnv[@(varName.c_str())];
+		if (pWasFound) { *pWasFound = envStr != nil; }
+		return envStr ? envStr.UTF8String : "";
+	}
 }
 
 int64_t mvkGetEnvVarInt64(string varName, bool* pWasFound) {

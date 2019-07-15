@@ -49,57 +49,60 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
     if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
-    NSString* mtlFuncName = @(_shaderConversionResults.entryPoint.mtlFunctionName.c_str());
-	MVKDevice* mvkDev = _owner->getDevice();
-    uint64_t startTime = mvkDev->getPerformanceTimestamp();
-    id<MTLFunction> mtlFunc = [[_mtlLibrary newFunctionWithName: mtlFuncName] autorelease];
-    mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
+	id<MTLFunction> mtlFunc = nil;
+	@autoreleasepool {
+		NSString* mtlFuncName = @(_shaderConversionResults.entryPoint.mtlFunctionName.c_str());
+		MVKDevice* mvkDev = _owner->getDevice();
+		uint64_t startTime = mvkDev->getPerformanceTimestamp();
+		mtlFunc = [_mtlLibrary newFunctionWithName: mtlFuncName];	// retained
+		mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
 
-    if (mtlFunc) {
-        // If the Metal device supports shader specialization, and the Metal function expects to be
-        // specialized, populate Metal function constant values from the Vulkan specialization info,
-        // and compiled a specialized Metal function, otherwise simply use the unspecialized Metal function.
-        if (mvkDev->_pMetalFeatures->shaderSpecialization) {
-            NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
-            if (mtlFCs.count) {
-                // The Metal shader contains function constants and expects to be specialized
-                // Populate the Metal function constant values from the Vulkan specialization info.
-                MTLFunctionConstantValues* mtlFCVals = [[MTLFunctionConstantValues new] autorelease];
-                if (pSpecializationInfo) {
-                    // Iterate through the provided Vulkan specialization entries, and populate the
-                    // Metal function constant value that matches the Vulkan specialization constantID.
-                    for (uint32_t specIdx = 0; specIdx < pSpecializationInfo->mapEntryCount; specIdx++) {
-                        const VkSpecializationMapEntry* pMapEntry = &pSpecializationInfo->pMapEntries[specIdx];
-                        NSUInteger mtlFCIndex = pMapEntry->constantID;
-                        MTLFunctionConstant* mtlFC = getFunctionConstant(mtlFCs, mtlFCIndex);
-                        if (mtlFC) {
-                            [mtlFCVals setConstantValue: &(((char*)pSpecializationInfo->pData)[pMapEntry->offset])
-                                                   type: mtlFC.type
-                                                atIndex: mtlFCIndex];
-                        }
-                    }
-                }
+		if (mtlFunc) {
+			// If the Metal device supports shader specialization, and the Metal function expects to be
+			// specialized, populate Metal function constant values from the Vulkan specialization info,
+			// and compiled a specialized Metal function, otherwise simply use the unspecialized Metal function.
+			if (mvkDev->_pMetalFeatures->shaderSpecialization) {
+				NSArray<MTLFunctionConstant*>* mtlFCs = mtlFunc.functionConstantsDictionary.allValues;
+				if (mtlFCs.count) {
+					// The Metal shader contains function constants and expects to be specialized
+					// Populate the Metal function constant values from the Vulkan specialization info.
+					MTLFunctionConstantValues* mtlFCVals = [MTLFunctionConstantValues new];		// temp retain
+					if (pSpecializationInfo) {
+						// Iterate through the provided Vulkan specialization entries, and populate the
+						// Metal function constant value that matches the Vulkan specialization constantID.
+						for (uint32_t specIdx = 0; specIdx < pSpecializationInfo->mapEntryCount; specIdx++) {
+							const VkSpecializationMapEntry* pMapEntry = &pSpecializationInfo->pMapEntries[specIdx];
+							NSUInteger mtlFCIndex = pMapEntry->constantID;
+							MTLFunctionConstant* mtlFC = getFunctionConstant(mtlFCs, mtlFCIndex);
+							if (mtlFC) {
+								[mtlFCVals setConstantValue: &(((char*)pSpecializationInfo->pData)[pMapEntry->offset])
+													   type: mtlFC.type
+													atIndex: mtlFCIndex];
+							}
+						}
+					}
 
-                // Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
-				MVKFunctionSpecializer* fs = new MVKFunctionSpecializer(_owner);
-				mtlFunc = [fs->newMTLFunction(_mtlLibrary, mtlFuncName, mtlFCVals) autorelease];
-				fs->destroy();
-            }
-        }
-    } else {
-        reportError(VK_ERROR_INVALID_SHADER_NV, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
-    }
+					// Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
+					MVKFunctionSpecializer* fs = new MVKFunctionSpecializer(_owner);
+					mtlFunc = fs->newMTLFunction(_mtlLibrary, mtlFuncName, mtlFCVals);	// retained
+					fs->destroy();
+					[mtlFCVals release];		// release temp
+				}
+			}
+		} else {
+			reportError(VK_ERROR_INVALID_SHADER_NV, "Shader module does not contain an entry point named '%s'.", mtlFuncName.UTF8String);
+		}
 
-	// Set the debug name. First try name of shader module, otherwise try name of owner.
-	NSString* dbName = shaderModule-> getDebugName();
-	if ( !dbName ) { dbName = _owner-> getDebugName(); }
-	setLabelIfNotNil(mtlFunc, dbName);
-
+		// Set the debug name. First try name of shader module, otherwise try name of owner.
+		NSString* dbName = shaderModule-> getDebugName();
+		if ( !dbName ) { dbName = _owner-> getDebugName(); }
+		setLabelIfNotNil(mtlFunc, dbName);
+	}
 
 	auto& wgSize = _shaderConversionResults.entryPoint.workgroupSize;
-	return { mtlFunc, _shaderConversionResults, MTLSizeMake(getWorkgroupDimensionSize(wgSize.width, pSpecializationInfo),
-															getWorkgroupDimensionSize(wgSize.height, pSpecializationInfo),
-															getWorkgroupDimensionSize(wgSize.depth, pSpecializationInfo))};
+	return { [mtlFunc autorelease], _shaderConversionResults, MTLSizeMake(getWorkgroupDimensionSize(wgSize.width, pSpecializationInfo),
+																		  getWorkgroupDimensionSize(wgSize.height, pSpecializationInfo),
+																		  getWorkgroupDimensionSize(wgSize.depth, pSpecializationInfo))};
 }
 
 // Returns the MTLFunctionConstant with the specified ID from the specified array of function constants.
@@ -124,7 +127,11 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 								   const string& mslSourceCode,
 								   const SPIRVToMSLConversionResults& shaderConversionResults) : _owner(owner) {
 	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_owner);
-	_mtlLibrary = slc->newMTLLibrary(@(mslSourceCode.c_str()));	// retained
+
+	NSString* nsSrc = [[NSString alloc] initWithUTF8String: mslSourceCode.c_str()];	// temp retained
+	_mtlLibrary = slc->newMTLLibrary(nsSrc);	// retained
+	[nsSrc release];	// release temp string
+
 	slc->destroy();
 
 	_shaderConversionResults = shaderConversionResults;
