@@ -162,16 +162,25 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 		lock_guard<mutex> lock(_lock);
 		if (_mtlTexture) { return _mtlTexture; }
 
-        MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: _mtlPixelFormat
-                                                                                              width: _textureSize.width
-                                                                                             height: _textureSize.height
-                                                                                          mipmapped: NO];
-		id<MTLBuffer> mtlBuff = _buffer->getMTLBuffer();
-		mtlTexDesc.storageMode = mtlBuff.storageMode;
-        mtlTexDesc.cpuCacheMode = mtlBuff.cpuCacheMode;
-        mtlTexDesc.usage = MTLTextureUsageShaderRead;
+        MTLTextureUsage usage = MTLTextureUsageShaderRead;
         if ( mvkIsAnyFlagEnabled(_buffer->getUsage(), VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) ) {
-            mtlTexDesc.usage |= MTLTextureUsageShaderWrite;
+            usage |= MTLTextureUsageShaderWrite;
+        }
+        id<MTLBuffer> mtlBuff = _buffer->getMTLBuffer();
+        MTLTextureDescriptor* mtlTexDesc;
+        if ( _device->_pMetalFeatures->textureBuffers ) {
+            mtlTexDesc = [MTLTextureDescriptor textureBufferDescriptorWithPixelFormat: _mtlPixelFormat
+                                                                                width: _textureSize.width
+                                                                      resourceOptions: (mtlBuff.cpuCacheMode << MTLResourceCPUCacheModeShift) | (mtlBuff.storageMode << MTLResourceStorageModeShift)
+                                                                                usage: usage];
+        } else {
+            mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: _mtlPixelFormat
+                                                                            width: _textureSize.width
+                                                                           height: _textureSize.height
+                                                                        mipmapped: NO];
+            mtlTexDesc.storageMode = mtlBuff.storageMode;
+            mtlTexDesc.cpuCacheMode = mtlBuff.cpuCacheMode;
+            mtlTexDesc.usage = usage;
         }
 		_mtlTexture = [_buffer->getMTLBuffer() newTextureWithDescriptor: mtlTexDesc
 																 offset: _mtlBufferOffset
@@ -197,17 +206,24 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
     if (byteCount == VK_WHOLE_SIZE) { byteCount = _buffer->getByteCount() - pCreateInfo->offset; }    // Remaining bytes in buffer
     size_t blockCount = byteCount / bytesPerBlock;
 
-	// But Metal requires the texture to be a 2D texture. Determine the number of 2D rows we need and their width.
-	// Multiple rows will automatically align with PoT max texture dimension, but need to align upwards if less than full single row.
-	size_t maxBlocksPerRow = _device->_pMetalFeatures->maxTextureDimension / fmtBlockSize.width;
-	size_t blocksPerRow = min(blockCount, maxBlocksPerRow);
-	_mtlBytesPerRow = mvkAlignByteOffset(blocksPerRow * bytesPerBlock, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
+	if ( !_device->_pMetalFeatures->textureBuffers ) {
+		// But Metal requires the texture to be a 2D texture. Determine the number of 2D rows we need and their width.
+		// Multiple rows will automatically align with PoT max texture dimension, but need to align upwards if less than full single row.
+		size_t maxBlocksPerRow = _device->_pMetalFeatures->maxTextureDimension / fmtBlockSize.width;
+		size_t blocksPerRow = min(blockCount, maxBlocksPerRow);
+		_mtlBytesPerRow = mvkAlignByteOffset(blocksPerRow * bytesPerBlock, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
 
-	size_t rowCount = blockCount / blocksPerRow;
-	if (blockCount % blocksPerRow) { rowCount++; }
+		size_t rowCount = blockCount / blocksPerRow;
+		if (blockCount % blocksPerRow) { rowCount++; }
 
-	_textureSize.width = uint32_t(blocksPerRow * fmtBlockSize.width);
-	_textureSize.height = uint32_t(rowCount * fmtBlockSize.height);
+		_textureSize.width = uint32_t(blocksPerRow * fmtBlockSize.width);
+		_textureSize.height = uint32_t(rowCount * fmtBlockSize.height);
+	} else {
+		// With native texture buffers we don't need to bother with any of that.
+		// We can just use a simple 1D texel array.
+		_textureSize.width = uint32_t(blockCount * fmtBlockSize.width);
+		_textureSize.height = 1;
+	}
 
     if ( !_device->_pMetalFeatures->texelBuffers ) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Texel buffers are not supported on this device."));
