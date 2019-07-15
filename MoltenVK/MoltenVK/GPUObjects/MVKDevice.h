@@ -88,6 +88,9 @@ public:
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return _mvkInstance; }
 
+	/** Populates the specified array with the supported extensions of this device. */
+	VkResult getExtensionProperties(const char* pLayerName, uint32_t* pCount, VkExtensionProperties* pProperties);
+
 	/** Populates the specified structure with the features of this device. */
 	void getFeatures(VkPhysicalDeviceFeatures* features);
 
@@ -318,6 +321,8 @@ protected:
 	void initFeatures();
 	void initProperties();
 	void initMemoryProperties();
+	void initExtensions();
+	MVKExtensionList* getSupportedExtensions(const char* pLayerName = nullptr);
 	std::vector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
 	MTLFeatureSet getHighestMTLFeatureSet();
@@ -327,6 +332,7 @@ protected:
 
 	id<MTLDevice> _mtlDevice;
 	MVKInstance* _mvkInstance;
+	MVKExtensionList _supportedExtensions;
 	VkPhysicalDeviceFeatures _features;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;

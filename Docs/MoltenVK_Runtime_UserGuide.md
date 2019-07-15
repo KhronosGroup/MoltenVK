@@ -240,7 +240,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_KHR_maintenance3`
 - `VK_KHR_push_descriptor`
 - `VK_KHR_relaxed_block_layout`
-- `VK_KHR_sampler_mirror_clamp_to_edge`
+- `VK_KHR_sampler_mirror_clamp_to_edge` *(macOS)*
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float16_int8`
 - `VK_KHR_storage_buffer_storage_class`
@@ -254,6 +254,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_EXT_host_query_reset`
 - `VK_EXT_memory_budget`
 - `VK_EXT_metal_surface`
+- `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
 - `VK_EXT_shader_viewport_index_layer`
 - `VK_EXT_vertex_attribute_divisor`
 - `VK_EXTX_portability_subset`
