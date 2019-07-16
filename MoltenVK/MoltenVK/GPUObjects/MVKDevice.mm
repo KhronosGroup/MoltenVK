@@ -93,6 +93,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     f16Features->shaderInt8 = true;
                     break;
                 }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+                    auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
+                    uboLayoutFeatures->uniformBufferStandardLayout = true;
+                    break;
+                }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
                     auto* varPtrFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
                     varPtrFeatures->variablePointersStorageBuffer = true;
