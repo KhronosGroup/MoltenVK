@@ -742,6 +742,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v5] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.events, MVK_ALLOW_METAL_EVENTS);
+		_metalFeatures.textureBuffers = true;
 	}
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
@@ -801,6 +802,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.multisampleArrayTextures = true;
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.events, MVK_ALLOW_METAL_EVENTS);
         _metalFeatures.memoryBarriers = true;
+        _metalFeatures.textureBuffers = true;
     }
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1] ) {
