@@ -1129,6 +1129,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
 
     shaderContext.options.mslOptions.msl_version = _device->_pMetalFeatures->mslVersion;
     shaderContext.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
+	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -1321,6 +1322,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     shaderContext.options.mslOptions.msl_version = _device->_pMetalFeatures->mslVersion;
     shaderContext.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
 	shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle;
+	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);

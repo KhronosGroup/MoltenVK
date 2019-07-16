@@ -56,6 +56,11 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKPhysicalDevice
 
+VkResult MVKPhysicalDevice::getExtensionProperties(const char* pLayerName, uint32_t* pCount, VkExtensionProperties* pProperties) {
+	MVKExtensionList* extensions = getSupportedExtensions(pLayerName);
+	return extensions->getProperties(pCount, pProperties);
+}
+
 void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures* features) {
     if (features) { *features = _features; }
 }
@@ -86,6 +91,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     auto* f16Features = (VkPhysicalDeviceFloat16Int8FeaturesKHR*)next;
                     f16Features->shaderFloat16 = true;
                     f16Features->shaderInt8 = true;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+                    auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
+                    uboLayoutFeatures->uniformBufferStandardLayout = true;
                     break;
                 }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
@@ -676,7 +686,7 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 
 #pragma mark Construction
 
-MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) {
+MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) : _supportedExtensions(this, true) {
 	_mvkInstance = mvkInstance;
 	_mtlDevice = [mtlDevice retain];
 
@@ -684,6 +694,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initFeatures();             // Call second.
 	initProperties();           // Call third.
 	initMemoryProperties();
+	initExtensions();
 	logGPUInfo();
 }
 
@@ -731,6 +742,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v5] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.events, MVK_ALLOW_METAL_EVENTS);
+		_metalFeatures.textureBuffers = true;
 	}
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
@@ -751,6 +763,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
 		_metalFeatures.layeredRendering = true;
+		_metalFeatures.stencilFeedback = true;
 	}
 
 #endif
@@ -789,10 +802,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.multisampleArrayTextures = true;
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.events, MVK_ALLOW_METAL_EVENTS);
         _metalFeatures.memoryBarriers = true;
+        _metalFeatures.textureBuffers = true;
     }
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1] ) {
 		_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
+		_metalFeatures.stencilFeedback = true;
 	}
 
 #endif
@@ -1497,6 +1512,18 @@ void MVKPhysicalDevice::initMemoryProperties() {
 		_allMemoryTypes				= 0x7;		// Private, shared & memoryless
 	}
 #endif
+}
+
+void MVKPhysicalDevice::initExtensions() {
+	if (!_metalFeatures.stencilFeedback) {
+		_supportedExtensions.vk_EXT_shader_stencil_export.enabled = false;
+	}
+}
+
+// Return all extensions supported by this physical device.
+MVKExtensionList* MVKPhysicalDevice::getSupportedExtensions(const char* pLayerName) {
+	if (!pLayerName || strcmp(pLayerName, "MoltenVK") == 0) { return &_supportedExtensions; }
+	return getInstance()->getLayerManager()->getLayerNamed(pLayerName)->getSupportedExtensions();
 }
 
 void MVKPhysicalDevice::logGPUInfo() {
@@ -2280,7 +2307,7 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
 	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
 												  pCreateInfo->ppEnabledExtensionNames,
-												  getInstance()->getDriverLayer()->getSupportedExtensions()));
+												  getPhysicalDevice()->getSupportedExtensions()));
 }
 
 // Create the command queues
