@@ -53,6 +53,9 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) {
 		return mvkOSVersion() >= 10.14;
 	}
+	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) {
+		return mvkOSVersion() >= 10.13;
+	}
 	if (pProperties == &kVkExtProps_MVK_IOS_SURFACE) { return false; }
 	if (pProperties == &kVkExtProps_IMG_FORMAT_PVRTC) { return false; }
 #endif
@@ -65,6 +68,9 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 		return mvkOSVersion() >= 12.0;
 	}
 	if (pProperties == &kVkExtProps_EXT_SWAPCHAIN_COLOR_SPACE) { return false; }
+	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) {
+		return mvkOSVersion() >= 11.0;
+	}
 	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
 #endif
 

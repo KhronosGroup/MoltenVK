@@ -22,6 +22,8 @@
 
 #include "mvk_datatypes.h"
 
+#include <functional>
+
 class MVKBaseObject;
 
 /*
@@ -74,5 +76,14 @@ MTLWinding mvkMTLWindingFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObjec
 
 MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObject* mvkObj);
 #define mvkMTLTessellationPartitionModeFromSpvExecutionMode(spvMode) mvkMTLTessellationPartitionModeFromSpvExecutionModeInObj(spvMode, this)
+
+
+#pragma mark -
+#pragma mark Image properties
+
+#pragma mark Texture formats
+
+/** Enumerates all formats that support the given features, calling a specified function for each one. */
+void mvkEnumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
 
 #endif

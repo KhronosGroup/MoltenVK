@@ -69,8 +69,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
     if (features) {
         features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         features->features = _features;
-        auto* next = (VkBaseOutStructure*)features->pNext;
-        while (next) {
+        for (auto* next = (VkBaseOutStructure*)features->pNext; next; next = next->pNext) {
             switch ((uint32_t)next->sType) {
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
                     auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
@@ -109,6 +108,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     hostQueryResetFeatures->hostQueryReset = true;
                     break;
                 }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+                    auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
+                    texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
+                    break;
+                }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
                     auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
                     divisorFeatures->vertexAttributeInstanceRateDivisor = true;
@@ -127,7 +131,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                 default:
                     break;
             }
-            next = next->pNext;
         }
     }
 }
@@ -140,42 +143,44 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
     if (properties) {
         properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         properties->properties = _properties;
-		auto* next = (MVKVkAPIStructHeader*)properties->pNext;
-		while (next) {
+		for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 			switch ((uint32_t)next->sType) {
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
                 auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
                 pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-                next = (MVKVkAPIStructHeader*)pointClipProps->pNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
                 auto* maint3Props = (VkPhysicalDeviceMaintenance3Properties*)next;
-                maint3Props->maxPerSetDescriptors = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount + _metalFeatures.maxPerStageSamplerCount) * 2;
+                maint3Props->maxPerSetDescriptors = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount + _metalFeatures.maxPerStageSamplerCount) * 4;
                 maint3Props->maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
-                next = (MVKVkAPIStructHeader*)maint3Props->pNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
                 auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
                 pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
-                next = (MVKVkAPIStructHeader*)pushDescProps->pNext;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+                auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)next;
+                // Save the 'next' pointer; we'll unintentionally overwrite it
+                // on the next line. Put it back when we're done.
+                void* savedNext = texelBuffAlignProps->pNext;
+                *texelBuffAlignProps = _texelBuffAlignProperties;
+                texelBuffAlignProps->pNext = savedNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
                 auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
                 divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
-                next = (MVKVkAPIStructHeader*)divisorProps->pNext;
                 break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
 				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
 				portabilityProps->minVertexInputBindingStrideAlignment = 4;
-				next = (MVKVkAPIStructHeader*)portabilityProps->pNext;
 				break;
 			}
             default:
-                next = (MVKVkAPIStructHeader*)next->pNext;
                 break;
             }
         }
@@ -1113,14 +1118,86 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.bufferImageGranularity = _metalFeatures.mtlBufferAlignment;
     _properties.limits.nonCoherentAtomSize = _metalFeatures.mtlBufferAlignment;
 
+    if ([_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
+        // Figure out the greatest alignment required by all supported formats, and
+        // whether or not they only require alignment to a single texel. We'll use this
+        // information to fill out the VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT
+        // struct.
+        uint32_t maxStorage = 0, maxUniform = 0;
+        bool singleTexelStorage = true, singleTexelUniform = true;
+        mvkEnumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
+            NSUInteger alignment;
+            if ([_mtlDevice respondsToSelector: @selector(minimumTextureBufferAlignmentForPixelFormat:)]) {
+                alignment = [_mtlDevice minimumTextureBufferAlignmentForPixelFormat: mvkMTLPixelFormatFromVkFormat(vk)];
+            } else {
+                alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mvkMTLPixelFormatFromVkFormat(vk)];
+            }
+            VkFormatProperties props = mvkVkFormatProperties(vk, getFormatIsSupported(vk));
+            // For uncompressed formats, this is the size of a single texel.
+            // Note that no implementations of Metal support compressed formats
+            // in a linear texture (including texture buffers). It's likely that even
+            // if they did, this would be the absolute minimum alignment.
+            uint32_t texelSize = mvkVkFormatBytesPerBlock(vk);
+            // From the spec:
+            //   "If the size of a single texel is a multiple of three bytes, then
+            //    the size of a single component of the format is used instead."
+            if (texelSize % 3 == 0) {
+                switch (mvkFormatTypeFromVkFormat(vk)) {
+                case kMVKFormatColorInt8:
+                case kMVKFormatColorUInt8:
+                    texelSize = 1;
+                    break;
+                case kMVKFormatColorHalf:
+                case kMVKFormatColorInt16:
+                case kMVKFormatColorUInt16:
+                    texelSize = 2;
+                    break;
+                case kMVKFormatColorFloat:
+                case kMVKFormatColorInt32:
+                case kMVKFormatColorUInt32:
+                default:
+                    texelSize = 4;
+                    break;
+                }
+            }
+            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) {
+                maxStorage = max(maxStorage, uint32_t(alignment));
+                if (alignment % texelSize != 0) { singleTexelStorage = false; }
+            }
+            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)) {
+                maxUniform = max(maxUniform, uint32_t(alignment));
+                if (alignment % texelSize != 0) { singleTexelUniform = false; }
+            }
+            return true;
+        });
+        _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = maxStorage;
+        _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = singleTexelStorage;
+        _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = maxUniform;
+        _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = singleTexelUniform;
+        _properties.limits.minTexelBufferOffsetAlignment = max(maxStorage, maxUniform);
+    } else {
+#if MVK_IOS
+        if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
+            _properties.limits.minTexelBufferOffsetAlignment = 16;
+        } else {
+            _properties.limits.minTexelBufferOffsetAlignment = 64;
+        }
+#endif
+#if MVK_MACOS
+        _properties.limits.minTexelBufferOffsetAlignment = 256;
+#endif
+        _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = _properties.limits.minTexelBufferOffsetAlignment;
+        _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = VK_FALSE;
+        _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = _properties.limits.minTexelBufferOffsetAlignment;
+        _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = VK_FALSE;
+    }
+
 #if MVK_IOS
     _properties.limits.maxFragmentInputComponents = 60;
 
     if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
-        _properties.limits.minTexelBufferOffsetAlignment = 16;
         _properties.limits.optimalBufferCopyOffsetAlignment = 16;
     } else {
-        _properties.limits.minTexelBufferOffsetAlignment = 64;
         _properties.limits.optimalBufferCopyOffsetAlignment = 64;
     }
 
@@ -1137,7 +1214,6 @@ void MVKPhysicalDevice::initProperties() {
 #endif
 #if MVK_MACOS
     _properties.limits.maxFragmentInputComponents = 128;
-    _properties.limits.minTexelBufferOffsetAlignment = 256;
     _properties.limits.optimalBufferCopyOffsetAlignment = 256;
 
     if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2]) {
