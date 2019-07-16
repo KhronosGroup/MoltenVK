@@ -257,6 +257,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_EXT_metal_surface`
 - `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
 - `VK_EXT_shader_viewport_index_layer`
+- `VK_EXT_swapchain_colorspace` *(macOS)*
 - `VK_EXT_vertex_attribute_divisor`
 - `VK_EXTX_portability_subset`
 - `VK_MVK_ios_surface` *(iOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*

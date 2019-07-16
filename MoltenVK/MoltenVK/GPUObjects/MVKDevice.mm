@@ -466,22 +466,42 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 		MTLPixelFormatRGBA16Float,
 	};
 
+	MVKVectorInline<VkColorSpaceKHR, 16> colorSpaces;
+	colorSpaces.push_back(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
+#if MVK_MACOS
+	if (getInstance()->_enabledExtensions.vk_EXT_swapchain_colorspace.enabled) {
+		// 10.11 supports some but not all of the color spaces specified by VK_EXT_swapchain_colorspace.
+		colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
+		colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT);
+		colorSpaces.push_back(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
+		colorSpaces.push_back(VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT);
+		colorSpaces.push_back(VK_COLOR_SPACE_PASS_THROUGH_EXT);
+		if (mvkOSVersion() >= 10.12) {
+			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
+		}
+	}
+#endif
+
 	const uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
+	const uint vkFmtsCnt = mtlFmtsCnt * (uint)colorSpaces.size();
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pSurfaceFormats ) {
-		*pCount = mtlFmtsCnt;
+		*pCount = vkFmtsCnt;
 		return VK_SUCCESS;
 	}
 
 	// Determine how many results we'll return, and return that number
-	VkResult result = (*pCount >= mtlFmtsCnt) ? VK_SUCCESS : VK_INCOMPLETE;
-	*pCount = min(*pCount, mtlFmtsCnt);
+	VkResult result = (*pCount >= vkFmtsCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	*pCount = min(*pCount, vkFmtsCnt);
 
 	// Now populate the supplied array
-	for (uint fmtIdx = 0; fmtIdx < *pCount; fmtIdx++) {
-		pSurfaceFormats[fmtIdx].format = mvkVkFormatFromMTLPixelFormat(mtlFormats[fmtIdx]);
-		pSurfaceFormats[fmtIdx].colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+	for (uint csIdx = 0, idx = 0; idx < *pCount && csIdx < colorSpaces.size(); csIdx++) {
+		for (uint fmtIdx = 0; idx < *pCount && fmtIdx < mtlFmtsCnt; fmtIdx++, idx++) {
+			pSurfaceFormats[idx].format = mvkVkFormatFromMTLPixelFormat(mtlFormats[fmtIdx]);
+			pSurfaceFormats[idx].colorSpace = colorSpaces[csIdx];
+		}
 	}
 
 	return result;
