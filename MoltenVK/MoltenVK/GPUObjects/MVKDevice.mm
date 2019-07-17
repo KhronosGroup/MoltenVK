@@ -469,6 +469,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 		MTLPixelFormatBGRA8Unorm,
 		MTLPixelFormatBGRA8Unorm_sRGB,
 		MTLPixelFormatRGBA16Float,
+		MTLPixelFormatBGR10A2Unorm,
 	};
 
 	MVKVectorInline<VkColorSpaceKHR, 16> colorSpaces;
@@ -488,7 +489,9 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	}
 #endif
 
-	const uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
+	uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
+	if (!mvkMTLPixelFormatIsSupported(MTLPixelFormatBGR10A2Unorm)) { mtlFmtsCnt--; }
+
 	const uint vkFmtsCnt = mtlFmtsCnt * (uint)colorSpaces.size();
 
 	// If properties aren't actually being requested yet, simply update the returned count
