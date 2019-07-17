@@ -336,6 +336,7 @@ protected:
 	VkPhysicalDeviceFeatures _features;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;
+	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
 	std::vector<MVKQueueFamily*> _queueFamilies;
 	uint32_t _allMemoryTypes;
