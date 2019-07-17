@@ -65,13 +65,13 @@ void MVKQueue::propogateDebugName() { setLabelIfNotNil(_mtlQueue, _debugName); }
 
 #pragma mark Queue submissions
 
-// Execute the queue submission under an autorelease pool to ensure transient Metal objects are autoreleased.
+// Execute the queue submission under an autoreleasepool to ensure transient Metal objects are autoreleased.
 // This is critical for apps that don't use standard OS autoreleasing runloop threading.
 static inline void execute(MVKQueueSubmission* qSubmit) { @autoreleasepool { qSubmit->execute(); } }
 
 // Executes the submmission, either immediately, or by dispatching to an execution queue.
-// Submissions to the execution queue are wrapped in a dedicated autorelease pool.
-// Relying on the dispatch queue to find time to drain the autorelease pool can
+// Submissions to the execution queue are wrapped in a dedicated autoreleasepool.
+// Relying on the dispatch queue to find time to drain the autoreleasepool can
 // result in significant memory creep under heavy workloads.
 VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
 	if ( !qSubmit ) { return VK_SUCCESS; }     // Ignore nils

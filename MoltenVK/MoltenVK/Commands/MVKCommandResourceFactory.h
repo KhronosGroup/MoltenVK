@@ -357,8 +357,8 @@ public:
      */
     id<MTLDepthStencilState> newMTLDepthStencilState(MVKMTLDepthStencilDescriptorData& dsData);
 
-    /** Returns an autoreleased MTLStencilDescriptor constructed from the stencil data. */
-    MTLStencilDescriptor* getMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData);
+    /** Returns an retained MTLStencilDescriptor constructed from the stencil data. */
+    MTLStencilDescriptor* newMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData);
 
     /**
      * Returns a new MVKImage configured with content held in Private storage.
@@ -405,15 +405,15 @@ public:
 protected:
 	void initMTLLibrary();
 	void initImageDeviceMemory();
-	id<MTLFunction> getBlitFragFunction(MVKRPSKeyBlitImg& blitKey);
-	id<MTLFunction> getClearVertFunction(MVKRPSKeyClearAtt& attKey);
-	id<MTLFunction> getClearFragFunction(MVKRPSKeyClearAtt& attKey);
+	id<MTLFunction> newBlitFragFunction(MVKRPSKeyBlitImg& blitKey);
+	id<MTLFunction> newClearVertFunction(MVKRPSKeyClearAtt& attKey);
+	id<MTLFunction> newClearFragFunction(MVKRPSKeyClearAtt& attKey);
 	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
-    id<MTLFunction> getFunctionNamed(const char* funcName);
+    id<MTLFunction> newFunctionNamed(const char* funcName);
 	id<MTLFunction> newMTLFunction(NSString* mslSrcCode, NSString* funcName);
 	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc,
 														 MVKVulkanAPIDeviceObject* owner);
-	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction,
+	id<MTLComputePipelineState> newMTLComputePipelineState(const char* funcName,
 														   MVKVulkanAPIDeviceObject* owner);
 
 	id<MTLLibrary> _mtlLibrary;

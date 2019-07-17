@@ -1711,9 +1711,11 @@ void MVKPhysicalDevice::logGPUInfo() {
 
 #endif
 
-	MVKLogInfo(logMsg.c_str(), _properties.deviceName, devTypeStr.c_str(), _properties.vendorID, _properties.deviceID,
-			   [[[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID] autorelease].UUIDString.UTF8String,
+	NSUUID* nsUUID = [[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID];		// temp retain
+	MVKLogInfo(logMsg.c_str(), _properties.deviceName, devTypeStr.c_str(),
+			   _properties.vendorID, _properties.deviceID, nsUUID.UUIDString.UTF8String,
 			   SPIRVToMSLConversionOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
+	[nsUUID release];																		// temp release
 }
 
 MVKPhysicalDevice::~MVKPhysicalDevice() {
@@ -2164,12 +2166,6 @@ void MVKDevice::getPerformanceStatistics(MVKPerformanceStatistics* pPerf) {
 
 #pragma mark Metal
 
-MTLCompileOptions* MVKDevice::getMTLCompileOptions() {
-	MTLCompileOptions* opts = [[MTLCompileOptions new] autorelease];
-	opts.languageVersion = _pMetalFeatures->mslVersionEnum;
-	return opts;
-}
-
 uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) {
 	return ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
 }
@@ -2239,6 +2235,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;
+
+	initMTLCompileOptions();	// Before command resource factory
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
@@ -2451,12 +2449,19 @@ void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 	}
 }
 
+void MVKDevice::initMTLCompileOptions() {
+	_mtlCompileOptions = [MTLCompileOptions new];	// retained
+	_mtlCompileOptions.languageVersion = _pMetalFeatures->mslVersionEnum;
+}
+
 MVKDevice::~MVKDevice() {
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		mvkDestroyContainerContents(queues);
 	}
-    [_globalVisibilityResultMTLBuffer release];
 	_commandResourceFactory->destroy();
+
+	[_mtlCompileOptions release];
+    [_globalVisibilityResultMTLBuffer release];
 }
 
 

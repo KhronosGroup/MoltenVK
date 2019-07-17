@@ -77,8 +77,7 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	uint32_t dstBytesPerBlock = mvkMTLPixelFormatBytesPerBlock(_dstMTLPixFmt);
 
 	_canCopyFormats = (srcBytesPerBlock == dstBytesPerBlock) && (_srcSampleCount == _dstSampleCount);
-	_shouldUseTextureView = (_srcMTLPixFmt != _dstMTLPixFmt) && !(_isSrcCompressed || _isDstCompressed);	// Different formats and neither is compressed
-	_shouldUseTempBuffer = (_srcMTLPixFmt != _dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);		// Different formats and at least one is compressed
+	_useTempBuffer = (_srcMTLPixFmt != _dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);	// Different formats and at least one is compressed
 
 	_commandUse = commandUse;
 	_tmpBuffSize = 0;
@@ -89,7 +88,7 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 }
 
 void MVKCmdCopyImage::addImageCopyRegion(const VkImageCopy& region) {
-	if (_shouldUseTempBuffer) {
+	if (_useTempBuffer) {
 		addTempBufferImageCopyRegion(region);	// Convert to image->buffer->image copies
 	} else {
 		_imageCopyRegions.push_back(region);
@@ -133,14 +132,13 @@ void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region) {
 }
 
 void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
-	id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture();
+	// Unless we need to use an intermediary buffer copy, map the source pixel format to the
+	// dest pixel format through a texture view on the source texture. If the source and dest
+	// pixel formats are the same, this will simply degenerate to the source texture itself.
+	MTLPixelFormat mapSrcMTLPixFmt = _useTempBuffer ? _srcMTLPixFmt : _dstMTLPixFmt;
+	id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(mapSrcMTLPixFmt);
 	id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
 	if ( !srcMTLTex || !dstMTLTex ) { return; }
-
-	// If the pixel formats are different but mappable, use a texture view on the source texture
-	if (_shouldUseTextureView) {
-		srcMTLTex = [[srcMTLTex newTextureViewWithPixelFormat: _dstMTLPixFmt] autorelease];
-	}
 
 	id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(_commandUse);
 

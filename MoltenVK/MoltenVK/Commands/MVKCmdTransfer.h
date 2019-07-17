@@ -67,8 +67,7 @@ protected:
 	bool _isSrcCompressed;
 	bool _isDstCompressed;
 	bool _canCopyFormats;
-	bool _shouldUseTextureView;
-	bool _shouldUseTempBuffer;
+	bool _useTempBuffer;
 	std::vector<VkImageCopy> _imageCopyRegions;
 	std::vector<VkBufferImageCopy> _srcTmpBuffImgCopies;
 	std::vector<VkBufferImageCopy> _dstTmpBuffImgCopies;

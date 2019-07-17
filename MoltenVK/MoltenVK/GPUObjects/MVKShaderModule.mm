@@ -26,7 +26,22 @@
 using namespace std;
 
 
-const MVKMTLFunction MVKMTLFunctionNull = { nil, SPIRVToMSLConversionResults(), MTLSizeMake(1, 1, 1) };
+MVKMTLFunction::MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversionResults scRslts, MTLSize tgSize) {
+	_mtlFunction = [mtlFunc retain];		// retained
+	shaderConversionResults = scRslts;
+	threadGroupSize = tgSize;
+}
+
+MVKMTLFunction::MVKMTLFunction(const MVKMTLFunction& other) {
+	_mtlFunction = [other._mtlFunction retain];		// retained
+	shaderConversionResults = other.shaderConversionResults;
+	threadGroupSize = other.threadGroupSize;
+}
+
+MVKMTLFunction::~MVKMTLFunction() {
+	[_mtlFunction release];
+}
+
 
 #pragma mark -
 #pragma mark MVKShaderLibrary
@@ -54,7 +69,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 		NSString* mtlFuncName = @(_shaderConversionResults.entryPoint.mtlFunctionName.c_str());
 		MVKDevice* mvkDev = _owner->getDevice();
 		uint64_t startTime = mvkDev->getPerformanceTimestamp();
-		mtlFunc = [_mtlLibrary newFunctionWithName: mtlFuncName];	// retained
+		mtlFunc = [_mtlLibrary newFunctionWithName: mtlFuncName];								// temp retain
 		mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.functionRetrieval, startTime);
 
 		if (mtlFunc) {
@@ -84,9 +99,10 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
 					// Compile the specialized Metal function, and use it instead of the unspecialized Metal function.
 					MVKFunctionSpecializer* fs = new MVKFunctionSpecializer(_owner);
-					mtlFunc = fs->newMTLFunction(_mtlLibrary, mtlFuncName, mtlFCVals);	// retained
+					[mtlFunc release];															// temp release
+					mtlFunc = fs->newMTLFunction(_mtlLibrary, mtlFuncName, mtlFCVals);			// temp retain
 					fs->destroy();
-					[mtlFCVals release];		// release temp
+					[mtlFCVals release];														// temp release
 				}
 			}
 		} else {
@@ -100,9 +116,13 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 	}
 
 	auto& wgSize = _shaderConversionResults.entryPoint.workgroupSize;
-	return { [mtlFunc autorelease], _shaderConversionResults, MTLSizeMake(getWorkgroupDimensionSize(wgSize.width, pSpecializationInfo),
-																		  getWorkgroupDimensionSize(wgSize.height, pSpecializationInfo),
-																		  getWorkgroupDimensionSize(wgSize.depth, pSpecializationInfo))};
+
+	MVKMTLFunction mvkMTLFunc(mtlFunc, _shaderConversionResults, MTLSizeMake(getWorkgroupDimensionSize(wgSize.width, pSpecializationInfo),
+																			 getWorkgroupDimensionSize(wgSize.height, pSpecializationInfo),
+																			 getWorkgroupDimensionSize(wgSize.depth, pSpecializationInfo)));
+	[mtlFunc release];																			// temp release
+
+	return mvkMTLFunc;
 }
 
 // Returns the MTLFunctionConstant with the specified ID from the specified array of function constants.
@@ -156,7 +176,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
     mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.mslLoad, startTime);
 }
 
-MVKShaderLibrary::MVKShaderLibrary(MVKShaderLibrary& other) : _owner(other._owner) {
+MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) : _owner(other._owner) {
 	_mtlLibrary = [other._mtlLibrary retain];
 	_shaderConversionResults = other._shaderConversionResults;
 	_msl = other._msl;

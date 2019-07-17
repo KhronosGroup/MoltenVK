@@ -282,13 +282,18 @@ public:
 #pragma mark Metal
 
 	/** Populates the specified structure with the Metal-specific features of this device. */
-	const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
+	inline const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
 
 	/** Returns the underlying Metal device. */
 	inline id<MTLDevice> getMTLDevice() { return _mtlDevice; }
     
     /*** Replaces the underlying Metal device .*/
-    inline void replaceMTLDevice(id<MTLDevice> mtlDevice) { [_mtlDevice autorelease]; _mtlDevice = [mtlDevice retain]; }
+    inline void replaceMTLDevice(id<MTLDevice> mtlDevice) {
+		if (mtlDevice != _mtlDevice) {
+			[_mtlDevice release];
+			_mtlDevice = [mtlDevice retain];
+		}
+	}
 
 #pragma mark Construction
 
@@ -554,7 +559,7 @@ public:
 	inline id<MTLDevice> getMTLDevice() { return _physicalDevice->getMTLDevice(); }
 
 	/** Returns standard compilation options to be used when compiling MSL shaders. */
-	MTLCompileOptions* getMTLCompileOptions();
+	inline MTLCompileOptions* getMTLCompileOptions() { return _mtlCompileOptions; }
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);
@@ -657,6 +662,7 @@ protected:
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
+	void initMTLCompileOptions();
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
@@ -667,6 +673,7 @@ protected:
 
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
+	MTLCompileOptions* _mtlCompileOptions;
 	std::vector<std::vector<MVKQueue*>> _queuesByQueueFamilyIndex;
 	std::vector<MVKResource*> _resources;
 	std::mutex _rezLock;
