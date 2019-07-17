@@ -108,6 +108,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     hostQueryResetFeatures->hostQueryReset = true;
                     break;
                 }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+                    auto* scalarLayoutFeatures = (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*)next;
+                    scalarLayoutFeatures->scalarBlockLayout = true;
+                    break;
+                }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
                     auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
                     texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
@@ -126,6 +131,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     portabilityFeatures->events = false;
                     portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle;
                     portabilityFeatures->samplerMipLodBias = false;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
+                    auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
+                    shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
                     break;
                 }
                 default:
@@ -784,6 +794,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) {
 		_metalFeatures.arrayOfSamplers = true;
+	}
+
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) {
+		_metalFeatures.postDepthCoverage = true;
 	}
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
@@ -1611,6 +1625,9 @@ void MVKPhysicalDevice::initMemoryProperties() {
 }
 
 void MVKPhysicalDevice::initExtensions() {
+	if (!_metalFeatures.postDepthCoverage) {
+		_supportedExtensions.vk_EXT_post_depth_coverage.enabled = false;
+	}
 	if (!_metalFeatures.stencilFeedback) {
 		_supportedExtensions.vk_EXT_shader_stencil_export.enabled = false;
 	}
