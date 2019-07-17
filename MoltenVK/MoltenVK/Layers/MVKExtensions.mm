@@ -50,6 +50,7 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
 		return mvkOSVersion() >= 10.13;
 	}
+	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return false; }
 	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) {
 		return mvkOSVersion() >= 10.14;
 	}
@@ -63,6 +64,9 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #if MVK_IOS
 	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
+		return mvkOSVersion() >= 11.0;
+	}
+	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) {
 		return mvkOSVersion() >= 11.0;
 	}
 	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) {

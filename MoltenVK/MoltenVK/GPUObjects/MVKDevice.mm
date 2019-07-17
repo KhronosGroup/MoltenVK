@@ -791,6 +791,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.arrayOfSamplers = true;
 	}
 
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) {
+		_metalFeatures.postDepthCoverage = true;
+	}
+
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
 		_metalFeatures.layeredRendering = true;
 		_metalFeatures.stencilFeedback = true;
@@ -1616,6 +1620,9 @@ void MVKPhysicalDevice::initMemoryProperties() {
 }
 
 void MVKPhysicalDevice::initExtensions() {
+	if (!_metalFeatures.postDepthCoverage) {
+		_supportedExtensions.vk_EXT_post_depth_coverage.enabled = false;
+	}
 	if (!_metalFeatures.stencilFeedback) {
 		_supportedExtensions.vk_EXT_shader_stencil_export.enabled = false;
 	}
