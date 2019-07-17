@@ -1107,7 +1107,11 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxDescriptorSetStorageImages = (_properties.limits.maxPerStageDescriptorStorageImages * 4);
 	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 4);
 
-	_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
+	if (_metalFeatures.textureBuffers) {
+		_properties.limits.maxTexelBufferElements = (uint32_t)_metalFeatures.maxMTLBufferSize;
+	} else {
+		_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
+	}
 	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 	_properties.limits.maxStorageBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 	_properties.limits.maxPushConstantsSize = (4 * KIBI);
@@ -1170,6 +1174,7 @@ void MVKPhysicalDevice::initProperties() {
             }
             return true;
         });
+        _texelBuffAlignProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT;
         _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = maxStorage;
         _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = singleTexelStorage;
         _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = maxUniform;
