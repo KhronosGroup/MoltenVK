@@ -271,6 +271,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_AMD_shader_image_load_store_lod` *(iOS)*
 - `VK_AMD_shader_trinary_minmax` *(requires Metal 2.1)*
 - `VK_IMG_format_pvrtc` *(iOS)*
+- `VK_INTEL_shader_integer_functions2`
 - `VK_NV_glsl_shader`
 
 In order to visibly display your content on *iOS* or *macOS*, you must enable the `VK_EXT_metal_surface` 

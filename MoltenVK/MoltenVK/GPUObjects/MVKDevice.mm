@@ -133,6 +133,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     portabilityFeatures->samplerMipLodBias = false;
                     break;
                 }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
+                    auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
+                    shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
+                    break;
+                }
                 default:
                     break;
             }
