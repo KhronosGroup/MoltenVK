@@ -108,6 +108,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     hostQueryResetFeatures->hostQueryReset = true;
                     break;
                 }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+                    auto* scalarLayoutFeatures = (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*)next;
+                    scalarLayoutFeatures->scalarBlockLayout = true;
+                    break;
+                }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
                     auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
                     texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
@@ -126,6 +131,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     portabilityFeatures->events = false;
                     portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle;
                     portabilityFeatures->samplerMipLodBias = false;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
+                    auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
+                    shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
                     break;
                 }
                 default:
@@ -469,6 +479,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 		MTLPixelFormatBGRA8Unorm,
 		MTLPixelFormatBGRA8Unorm_sRGB,
 		MTLPixelFormatRGBA16Float,
+		MTLPixelFormatBGR10A2Unorm,
 	};
 
 	MVKVectorInline<VkColorSpaceKHR, 16> colorSpaces;
@@ -488,7 +499,9 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	}
 #endif
 
-	const uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
+	uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
+	if (!mvkMTLPixelFormatIsSupported(MTLPixelFormatBGR10A2Unorm)) { mtlFmtsCnt--; }
+
 	const uint vkFmtsCnt = mtlFmtsCnt * (uint)colorSpaces.size();
 
 	// If properties aren't actually being requested yet, simply update the returned count
@@ -784,6 +797,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v3] ) {
 		_metalFeatures.arrayOfSamplers = true;
+	}
+
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) {
+		_metalFeatures.postDepthCoverage = true;
 	}
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
@@ -1107,7 +1124,11 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxDescriptorSetStorageImages = (_properties.limits.maxPerStageDescriptorStorageImages * 4);
 	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 4);
 
-	_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
+	if (_metalFeatures.textureBuffers) {
+		_properties.limits.maxTexelBufferElements = (uint32_t)_metalFeatures.maxMTLBufferSize;
+	} else {
+		_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
+	}
 	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 	_properties.limits.maxStorageBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 	_properties.limits.maxPushConstantsSize = (4 * KIBI);
@@ -1170,6 +1191,7 @@ void MVKPhysicalDevice::initProperties() {
             }
             return true;
         });
+        _texelBuffAlignProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT;
         _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = maxStorage;
         _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = singleTexelStorage;
         _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = maxUniform;
@@ -1611,6 +1633,9 @@ void MVKPhysicalDevice::initMemoryProperties() {
 }
 
 void MVKPhysicalDevice::initExtensions() {
+	if (!_metalFeatures.postDepthCoverage) {
+		_supportedExtensions.vk_EXT_post_depth_coverage.enabled = false;
+	}
 	if (!_metalFeatures.stencilFeedback) {
 		_supportedExtensions.vk_EXT_shader_stencil_export.enabled = false;
 	}

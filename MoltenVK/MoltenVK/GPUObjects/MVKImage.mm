@@ -1376,7 +1376,6 @@ MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
 	_availability.isAvailable = true;
 	_preSignaled = make_pair(nullptr, nullptr);
 	_mtlDrawable = nil;
-    _canSupportMTLTextureView = false;		// Override...swapchains never support Metal image view.
 }
 
 MVKSwapchainImage::~MVKSwapchainImage() {

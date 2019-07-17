@@ -667,6 +667,7 @@ MVK_PUBLIC_SYMBOL const char* mvkMTLPixelFormatName(MTLPixelFormat mtlFormat) {
 
 void mvkEnumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
     static const auto areFeaturesSupported = [any](uint32_t a, uint32_t b) {
+        if (b == 0) return true;
         if (any)
             return mvkIsAnyFlagEnabled(a, b);
         else

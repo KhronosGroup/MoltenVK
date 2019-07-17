@@ -539,6 +539,7 @@ typedef struct {
 	VkBool32 multisampleLayeredRendering;       /**< If true, layered rendering to multiple multi-sampled cube or texture array layers is supported. */
 	VkBool32 stencilFeedback;					/**< If true, fragment shaders that write to [[stencil]] outputs are supported. */
 	VkBool32 textureBuffers;					/**< If true, textures of type MTLTextureTypeBuffer are supported. */
+	VkBool32 postDepthCoverage;					/**< If true, coverage masks in fragment shaders post-depth-test are supported. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**
