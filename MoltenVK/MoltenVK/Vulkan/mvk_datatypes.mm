@@ -1412,7 +1412,7 @@ MVK_PUBLIC_SYMBOL MTLStorageMode mvkMTLStorageModeFromVkMemoryPropertyFlags(VkMe
 }
 
 MVK_PUBLIC_SYMBOL MTLCPUCacheMode mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(VkMemoryPropertyFlags vkFlags) {
-	return MTLCPUCacheModeDefaultCache;
+	return mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_CACHED_BIT) ? MTLCPUCacheModeDefaultCache : MTLCPUCacheModeWriteCombined;
 }
 
 MVK_PUBLIC_SYMBOL MTLResourceOptions mvkMTLResourceOptions(MTLStorageMode mtlStorageMode,

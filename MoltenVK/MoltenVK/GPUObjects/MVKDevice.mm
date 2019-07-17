@@ -1597,6 +1597,10 @@ void MVKPhysicalDevice::initMemoryProperties() {
 #endif
             {
                 .heapIndex = 0,
+                .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_SHARED_WRITE_COMBINED,    // Shared storage, write-combined caching
+            },
+            {
+                .heapIndex = 0,
                 .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_SHARED,    // Shared storage
             },
 #if MVK_IOS
@@ -1609,25 +1613,25 @@ void MVKPhysicalDevice::initMemoryProperties() {
     };
 
 #if MVK_MACOS
-	_memoryProperties.memoryTypeCount = 3;
+	_memoryProperties.memoryTypeCount = 4;
 	_privateMemoryTypes			= 0x1;			// Private only
 	_lazilyAllocatedMemoryTypes	= 0x0;			// Not supported on macOS
-	_hostCoherentMemoryTypes 	= 0x4;			// Shared only
-	_hostVisibleMemoryTypes		= 0x6;			// Shared & managed
-	_allMemoryTypes				= 0x7;			// Private, shared, & managed
+	_hostCoherentMemoryTypes 	= 0xc;			// Shared only
+	_hostVisibleMemoryTypes		= 0xe;			// Shared & managed
+	_allMemoryTypes				= 0xf;			// Private, shared, & managed
 #endif
 #if MVK_IOS
-	_memoryProperties.memoryTypeCount = 2;		// Managed storage not available on iOS
+	_memoryProperties.memoryTypeCount = 3;		// Managed storage not available on iOS
 	_privateMemoryTypes			= 0x1;			// Private only
 	_lazilyAllocatedMemoryTypes	= 0x0;			// Not supported on this version
-	_hostCoherentMemoryTypes 	= 0x2;			// Shared only
-	_hostVisibleMemoryTypes		= 0x2;			// Shared only
-	_allMemoryTypes				= 0x3;			// Private & shared
+	_hostCoherentMemoryTypes 	= 0x6;			// Shared only
+	_hostVisibleMemoryTypes		= 0x6;			// Shared only
+	_allMemoryTypes				= 0x7;			// Private & shared
 	if ([getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
-		_memoryProperties.memoryTypeCount = 3;	// Memoryless storage available
-		_privateMemoryTypes			= 0x5;		// Private & memoryless
-		_lazilyAllocatedMemoryTypes	= 0x4;		// Memoryless only
-		_allMemoryTypes				= 0x7;		// Private, shared & memoryless
+		_memoryProperties.memoryTypeCount = 4;	// Memoryless storage available
+		_privateMemoryTypes			= 0x9;		// Private & memoryless
+		_lazilyAllocatedMemoryTypes	= 0x8;		// Memoryless only
+		_allMemoryTypes				= 0xf;		// Private, shared & memoryless
 	}
 #endif
 }
