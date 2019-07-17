@@ -59,6 +59,9 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	}
 	if (pProperties == &kVkExtProps_MVK_IOS_SURFACE) { return false; }
 	if (pProperties == &kVkExtProps_AMD_SHADER_IMAGE_LOAD_STORE_LOD) { return false; }
+	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) {
+		return mvkOSVersion() >= 10.14;
+	}
 	if (pProperties == &kVkExtProps_IMG_FORMAT_PVRTC) { return false; }
 #endif
 #if MVK_IOS
@@ -77,6 +80,9 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 		return mvkOSVersion() >= 11.0;
 	}
 	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
+	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) {
+		return mvkOSVersion() >= 12.0;
+	}
 #endif
 
 	return true;

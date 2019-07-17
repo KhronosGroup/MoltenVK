@@ -268,6 +268,8 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_MVK_moltenvk`
 - `VK_AMD_gpu_shader_half_float`
 - `VK_AMD_negative_viewport_height`
+- `VK_AMD_shader_image_load_store_lod` *(iOS)*
+- `VK_AMD_shader_trinary_minmax` *(requires Metal 2.1)*
 - `VK_IMG_format_pvrtc` *(iOS)*
 - `VK_NV_glsl_shader`
 
