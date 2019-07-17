@@ -665,6 +665,25 @@ MVK_PUBLIC_SYMBOL const char* mvkMTLPixelFormatName(MTLPixelFormat mtlFormat) {
     return formatDescForMTLPixelFormat(mtlFormat).mtlName;
 }
 
+void mvkEnumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
+    static const auto areFeaturesSupported = [any](uint32_t a, uint32_t b) {
+        if (any)
+            return mvkIsAnyFlagEnabled(a, b);
+        else
+            return mvkAreAllFlagsEnabled(a, b);
+    };
+    for (auto& formatDesc : _formatDescriptions) {
+        if (formatDesc.isSupported() &&
+            areFeaturesSupported(formatDesc.properties.linearTilingFeatures, properties.linearTilingFeatures) &&
+            areFeaturesSupported(formatDesc.properties.optimalTilingFeatures, properties.optimalTilingFeatures) &&
+            areFeaturesSupported(formatDesc.properties.bufferFeatures, properties.bufferFeatures)) {
+            if (!func(formatDesc.vk)) {
+                break;
+            }
+        }
+    }
+}
+
 #undef mvkMTLVertexFormatFromVkFormat
 MVK_PUBLIC_SYMBOL MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
 	return mvkMTLVertexFormatFromVkFormatInObj(vkFormat, nullptr);
