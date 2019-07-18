@@ -296,6 +296,22 @@ id<MTLTexture> MVKImage::getMTLTexture() {
 	return _mtlTexture;
 }
 
+id<MTLTexture> MVKImage::getMTLTexture(MTLPixelFormat mtlPixFmt) {
+	if (mtlPixFmt == _mtlPixelFormat) { return getMTLTexture(); }
+
+	id<MTLTexture> mtlTex = _mtlTextureViews[mtlPixFmt];
+	if ( !mtlTex ) {
+		// Lock and check again in case another thread has created the texture.
+		lock_guard<mutex> lock(_lock);
+		mtlTex = _mtlTextureViews[mtlPixFmt];
+		if ( !mtlTex ) {
+			mtlTex = [getMTLTexture() newTextureViewWithPixelFormat: mtlPixFmt];	// retained
+			_mtlTextureViews[mtlPixFmt] = mtlTex;
+		}
+	}
+	return mtlTex;
+}
+
 VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
     lock_guard<mutex> lock(_lock);
     resetMTLTexture();
@@ -325,15 +341,21 @@ VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
 // This implementation creates a new MTLTexture from a MTLTextureDescriptor and possible IOSurface.
 // Subclasses may override this function to create the MTLTexture in a different manner.
 id<MTLTexture> MVKImage::newMTLTexture() {
-    if (_ioSurface) {
-        return [getMTLDevice() newTextureWithDescriptor: getMTLTextureDescriptor() iosurface: _ioSurface plane: 0];
+	id<MTLTexture> mtlTex = nil;
+	MTLTextureDescriptor* mtlTexDesc = newMTLTextureDescriptor();	// temp retain
+
+	if (_ioSurface) {
+		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc iosurface: _ioSurface plane: 0];
 	} else if (_usesTexelBuffer) {
-        return [_deviceMemory->_mtlBuffer newTextureWithDescriptor: getMTLTextureDescriptor()
-															offset: getDeviceMemoryOffset()
-													   bytesPerRow: _subresources[0].layout.rowPitch];
-    } else {
-        return [getMTLDevice() newTextureWithDescriptor: getMTLTextureDescriptor()];
-    }
+		mtlTex = [_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
+															  offset: getDeviceMemoryOffset()
+														 bytesPerRow: _subresources[0].layout.rowPitch];
+	} else {
+		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
+	}
+
+	[mtlTexDesc release];											// temp release
+	return mtlTex;
 }
 
 // Removes and releases the MTLTexture object, so that it can be lazily created by getMTLTexture().
@@ -372,14 +394,16 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     } else {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        _ioSurface = IOSurfaceCreate((CFDictionaryRef)@{
-                                                        (id)kIOSurfaceWidth: @(_extent.width),
-                                                        (id)kIOSurfaceHeight: @(_extent.height),
-                                                        (id)kIOSurfaceBytesPerElement: @(mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
-                                                        (id)kIOSurfaceElementWidth: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
-                                                        (id)kIOSurfaceElementHeight: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
-                                                        (id)kIOSurfaceIsGlobal: @(true),    // Deprecated but needed for interprocess transfers
-                                                        });
+		@autoreleasepool {
+			_ioSurface = IOSurfaceCreate((CFDictionaryRef)@{
+															(id)kIOSurfaceWidth: @(_extent.width),
+															(id)kIOSurfaceHeight: @(_extent.height),
+															(id)kIOSurfaceBytesPerElement: @(mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
+															(id)kIOSurfaceElementWidth: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
+															(id)kIOSurfaceElementHeight: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
+															(id)kIOSurfaceIsGlobal: @(true),    // Deprecated but needed for interprocess transfers
+															});
+		}
 #pragma clang diagnostic pop
 
     }
@@ -418,9 +442,10 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 	return usage;
 }
 
-// Returns an autoreleased Metal texture descriptor constructed from the properties of this image.
-MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
-	MTLTextureDescriptor* mtlTexDesc = [[MTLTextureDescriptor alloc] init];
+// Returns a Metal texture descriptor constructed from the properties of this image.
+// It is the caller's responsibility to release the returned descriptor object.
+MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
+	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];	// retained
 #if MVK_MACOS
 	if (_is3DCompressed) {
 		// Metal doesn't yet support 3D compressed textures, so we'll decompress
@@ -443,7 +468,7 @@ MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
 	mtlTexDesc.storageModeMVK = getMTLStorageMode();
 	mtlTexDesc.cpuCacheMode = getMTLCPUCacheMode();
 
-	return [mtlTexDesc autorelease];
+	return mtlTexDesc;
 }
 
 MTLStorageMode MVKImage::getMTLStorageMode() {
@@ -770,6 +795,7 @@ MVKImage::~MVKImage() {
 	if (_deviceMemory) { _deviceMemory->removeImage(this); }
 	resetMTLTexture();
     resetIOSurface();
+	for (auto elem : _mtlTextureViews) { [elem.second release]; }
 }
 
 
@@ -1056,10 +1082,11 @@ bool MVKSampler::getConstexprSampler(mvk::MSLResourceBinding& resourceBinding) {
 	return _requiresConstExprSampler;
 }
 
-// Returns an autoreleased Metal sampler descriptor constructed from the properties of this image.
-MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo) {
+// Returns an Metal sampler descriptor constructed from the properties of this image.
+// It is the caller's responsibility to release the returned descriptor object.
+MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo) {
 
-	MTLSamplerDescriptor* mtlSampDesc = [[MTLSamplerDescriptor alloc] init];
+	MTLSamplerDescriptor* mtlSampDesc = [MTLSamplerDescriptor new];		// retained
 	mtlSampDesc.sAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeU);
 	mtlSampDesc.tAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeV);
     mtlSampDesc.rAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeW);
@@ -1097,12 +1124,16 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 		}
 	}
 #endif
-	return [mtlSampDesc autorelease];
+	return mtlSampDesc;
 }
 
 MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_requiresConstExprSampler = pCreateInfo->compareEnable && !_device->_pMetalFeatures->depthSampleCompare;
-    _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: getMTLSamplerDescriptor(pCreateInfo)];
+
+	MTLSamplerDescriptor* mtlSampDesc = newMTLSamplerDescriptor(pCreateInfo);	// temp retain
+    _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: mtlSampDesc];
+	[mtlSampDesc release];														// temp release
+
 	initConstExprSampler(pCreateInfo);
 }
 

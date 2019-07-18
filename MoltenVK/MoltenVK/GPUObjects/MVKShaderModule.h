@@ -39,14 +39,22 @@ using namespace mvk;
 #pragma mark MVKShaderLibrary
 
 /** A MTLFunction and corresponding result information resulting from a shader conversion. */
-typedef struct {
-	id<MTLFunction> mtlFunction;
-	const SPIRVToMSLConversionResults shaderConversionResults;
+typedef struct MVKMTLFunction {
+	SPIRVToMSLConversionResults shaderConversionResults;
 	MTLSize threadGroupSize;
+	inline id<MTLFunction> getMTLFunction() { return _mtlFunction; }
+
+	MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversionResults scRslts, MTLSize tgSize);
+	MVKMTLFunction(const MVKMTLFunction& other);
+	~MVKMTLFunction();
+
+private:
+	id<MTLFunction> _mtlFunction;
+
 } MVKMTLFunction;
 
 /** A MVKMTLFunction indicating an invalid MTLFunction. The mtlFunction member is nil. */
-extern const MVKMTLFunction MVKMTLFunctionNull;
+const MVKMTLFunction MVKMTLFunctionNull(nil, SPIRVToMSLConversionResults(), MTLSizeMake(1, 1, 1));
 
 /** Wraps a single MTLLibrary. */
 class MVKShaderLibrary : public MVKBaseObject {
@@ -85,7 +93,7 @@ public:
 					 size_t mslCompiledCodeLength);
 
 	/** Copy constructor. */
-	MVKShaderLibrary(MVKShaderLibrary& other);
+	MVKShaderLibrary(const MVKShaderLibrary& other);
 
 	~MVKShaderLibrary() override;
 

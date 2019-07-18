@@ -22,6 +22,7 @@
 #include "MVKSync.h"
 #include "MVKVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include <unordered_map>
 #include <mutex>
 
 #import <IOSurface/IOSurfaceRef.h>
@@ -154,6 +155,9 @@ public:
 	/** Returns the Metal texture underlying this image. */
 	id<MTLTexture> getMTLTexture();
 
+	/** Returns a Metal texture that interprets the pixels in the specified format. */
+	id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
+
     /**
      * Sets this image to use the specified MTLTexture.
      *
@@ -243,7 +247,7 @@ protected:
 	virtual id<MTLTexture> newMTLTexture();
 	void resetMTLTexture();
     void resetIOSurface();
-	MTLTextureDescriptor* getMTLTextureDescriptor();
+	MTLTextureDescriptor* newMTLTextureDescriptor();
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
 	bool shouldFlushHostMemory();
@@ -254,6 +258,7 @@ protected:
 						   VkImageMemoryBarrier* pImageMemoryBarrier);
 
 	std::vector<MVKImageSubresource> _subresources;
+	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     VkExtent3D _extent;
     uint32_t _mipLevels;
     uint32_t _arrayLayers;
@@ -376,7 +381,7 @@ public:
 
 protected:
 	void propogateDebugName() override {}
-	MTLSamplerDescriptor* getMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
+	MTLSamplerDescriptor* newMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
 	void initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo);
 
 	id<MTLSamplerState> _mtlSamplerState;

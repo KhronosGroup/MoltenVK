@@ -38,7 +38,9 @@ void MVKSwapchain::propogateDebugName() {
 	if (_debugName) {
 		size_t imgCnt = _surfaceImages.size();
 		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-			_surfaceImages[imgIdx]->setDebugName([NSString stringWithFormat: @"%@(%lu)", _debugName, imgIdx].UTF8String);
+			NSString* nsName = [[NSString alloc] initWithFormat: @"%@(%lu)", _debugName, imgIdx];	// temp retain
+			_surfaceImages[imgIdx]->setDebugName(nsName.UTF8String);
+			[nsName release];																		// release temp string
 		}
 	}
 }

@@ -252,28 +252,28 @@ VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeveri
 
 #pragma mark Object Creation
 
-// Returns an autoreleased array containing the MTLDevices available on this system,
-// sorted according to power, with higher power GPU's at the front of the array.
-// This ensures that a lazy app that simply grabs the first GPU will get a high-power
-// one by default. If the MVK_CONFIG_FORCE_LOW_POWER_GPU env var or build setting is set,
-// the returned array will only include low-power devices.
-// If Metal is not supported, ensure we return an empty array.
-static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
+// Returns a new array containing the MTLDevices available on this system, sorted according to power,
+// with higher power GPU's at the front of the array. This ensures that a lazy app that simply
+// grabs the first GPU will get a high-power one by default. If the MVK_CONFIG_FORCE_LOW_POWER_GPU
+// env var or build setting is set, the returned array will only include low-power devices.
+// It is the caller's responsibility to release the array when not required anymore.
+// If Metal is not supported, returns an empty array.
+static NSArray<id<MTLDevice>>* newAvailableMTLDevicesArray() {
+	NSMutableArray* mtlDevs = [NSMutableArray new];
+
 #if MVK_MACOS
-	NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
-	if ( !mtlDevs ) { return @[]; }
+	NSArray* rawMTLDevs = MTLCopyAllDevices();			// temp retain
+	if (rawMTLDevs) {
+		bool forceLowPower = MVK_CONFIG_FORCE_LOW_POWER_GPU;
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(forceLowPower, MVK_CONFIG_FORCE_LOW_POWER_GPU);
 
-	bool forceLowPower = MVK_CONFIG_FORCE_LOW_POWER_GPU;
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL(forceLowPower, MVK_CONFIG_FORCE_LOW_POWER_GPU);
-
-	if (forceLowPower) {
-		NSMutableArray* lpDevs = [[NSMutableArray new] autorelease];
-		for (id<MTLDevice> md in mtlDevs) {
-			if (md.isLowPower) { [lpDevs addObject: md]; }
+		// Populate the array of appropriate MTLDevices
+		for (id<MTLDevice> md in rawMTLDevs) {
+			if ( !forceLowPower || md.isLowPower ) { [mtlDevs addObject: md]; }
 		}
-		return lpDevs;
-	} else {
-		return [mtlDevs sortedArrayUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
+
+		// Sort by power
+		[mtlDevs sortUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
 			BOOL md1IsLP = md1.isLowPower;
 			BOOL md2IsLP = md2.isLowPower;
 
@@ -290,14 +290,18 @@ static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
 
 			return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
 		}];
-	}
 
+	}
+	[rawMTLDevs release];								// release temp
 #endif	// MVK_MACOS
 
 #if MVK_IOS
-	id<MTLDevice> mtlDev = MTLCreateSystemDefaultDevice();
-	return mtlDev ? [NSArray arrayWithObject: mtlDev] : @[];
+	id<MTLDevice> md = MTLCreateSystemDefaultDevice();
+	if (md) { [mtlDevs addObject: md]; }
+	[md release];
 #endif	// MVK_IOS
+
+	return mtlDevs;		// retained
 }
 
 MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
@@ -326,11 +330,13 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	}
 
 	// Populate the array of physical GPU devices
-	NSArray<id<MTLDevice>>* mtlDevices = getAvailableMTLDevices();
+	NSArray<id<MTLDevice>>* mtlDevices = newAvailableMTLDevicesArray();		// temp retain
 	_physicalDevices.reserve(mtlDevices.count);
 	for (id<MTLDevice> mtlDev in mtlDevices) {
 		_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
 	}
+	[mtlDevices release];													// release temp
+
 	if (_physicalDevices.empty()) {
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
 	}

@@ -39,7 +39,7 @@ void MVKVulkanAPIObject::destroy() {
 VkResult MVKVulkanAPIObject::setDebugName(const char* pObjectName) {
 	if (pObjectName) {
 		[_debugName release];
-		_debugName = [[NSString stringWithUTF8String: pObjectName] retain];		// retained
+		_debugName = [[NSString alloc] initWithUTF8String: pObjectName];	// retained
 		propogateDebugName();
 	}
 	return VK_SUCCESS;
