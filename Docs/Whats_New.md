@@ -32,6 +32,7 @@ Released TBD
 - Fix race condition between swapchain image destruction and presentation completion callback.
 - Set Metal texture usage to allow texture copy via view.
 - Fix memory leak in debug marker and debug utils labelling.
+- Fix issue with push constants used across multiple draw calls not being applied.
 - Reduce use of autoreleased Obj-C objects, and ensure those remaining are 
   covered by deliberate autorelease pools. 
 - `vkCmdCopyImage()` support copying between compressed and uncompressed formats
