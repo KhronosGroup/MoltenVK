@@ -2224,6 +2224,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledUBOLayoutFeatures(),
 	_enabledVarPtrFeatures(),
 	_enabledHostQryResetFeatures(),
+	_enabledScalarLayoutFeatures(),
 	_enabledTexelBuffAlignFeatures(),
 	_enabledVtxAttrDivFeatures(),
 	_enabledPortabilityFeatures(),
@@ -2305,6 +2306,7 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	memset((void*)&_enabledUBOLayoutFeatures, 0, sizeof(_enabledUBOLayoutFeatures));
 	memset((void*)&_enabledVarPtrFeatures, 0, sizeof(_enabledVarPtrFeatures));
 	memset((void*)&_enabledHostQryResetFeatures, 0, sizeof(_enabledHostQryResetFeatures));
+	memset((void*)&_enabledScalarLayoutFeatures, 0, sizeof(_enabledScalarLayoutFeatures));
 	memset((void*)&_enabledTexelBuffAlignFeatures, 0, sizeof(_enabledTexelBuffAlignFeatures));
 	memset((void*)&_enabledVtxAttrDivFeatures, 0, sizeof(_enabledVtxAttrDivFeatures));
 	memset((void*)&_enabledPortabilityFeatures, 0, sizeof(_enabledPortabilityFeatures));
@@ -2322,9 +2324,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	pdTexelBuffAlignFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT;
 	pdTexelBuffAlignFeatures.pNext = &pdVtxAttrDivFeatures;
 
+	VkPhysicalDeviceScalarBlockLayoutFeaturesEXT pdScalarLayoutFeatures;
+	pdScalarLayoutFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT;
+	pdScalarLayoutFeatures.pNext = &pdTexelBuffAlignFeatures;
+
 	VkPhysicalDeviceHostQueryResetFeaturesEXT pdHostQryResetFeatures;
 	pdHostQryResetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
-	pdHostQryResetFeatures.pNext = &pdTexelBuffAlignFeatures;
+	pdHostQryResetFeatures.pNext = &pdScalarLayoutFeatures;
 
 	VkPhysicalDeviceVariablePointerFeatures pdVarPtrFeatures;
 	pdVarPtrFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES;
@@ -2409,6 +2415,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledHostQryResetFeatures.hostQueryReset,
 							   &requestedFeatures->hostQueryReset,
 							   &pdHostQryResetFeatures.hostQueryReset, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*)next;
+				enableFeatures(&_enabledScalarLayoutFeatures.scalarBlockLayout,
+							   &requestedFeatures->scalarBlockLayout,
+							   &pdScalarLayoutFeatures.scalarBlockLayout, 1);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
