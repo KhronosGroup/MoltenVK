@@ -607,10 +607,14 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     _arrayLayers = max(pCreateInfo->arrayLayers, minDim);
 
 	// Perform validation and adjustments before configuring other settings
-	validateConfig(pCreateInfo);
-	_samples = validateSamples(pCreateInfo);
-	_mipLevels = validateMipLevels(pCreateInfo);
-	_isLinear = validateLinear(pCreateInfo);
+	bool isAttachment = mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+																 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+																 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+																 VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
+	validateConfig(pCreateInfo, isAttachment);
+	_samples = validateSamples(pCreateInfo, isAttachment);
+	_mipLevels = validateMipLevels(pCreateInfo, isAttachment);
+	_isLinear = validateLinear(pCreateInfo, isAttachment);
 
 	_mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
 	_mtlTextureType = mvkMTLTextureTypeFromVkImageType(pCreateInfo->imageType, _arrayLayers, _samples > VK_SAMPLE_COUNT_1_BIT);
@@ -631,7 +635,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     initSubresources(pCreateInfo);
 }
 
-void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo) {
+void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 
 	bool is2D = pCreateInfo->imageType == VK_IMAGE_TYPE_2D;
 	bool isCompressed = mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed;
@@ -650,18 +654,18 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo) {
 	if ((mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
 	}
-
-	bool isAttachment = mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	if (isAttachment && (pCreateInfo->arrayLayers > 1) && !_device->_pMetalFeatures->layeredRendering) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to array (layered) attachments."));
 	}
-
+	if (isAttachment && (pCreateInfo->imageType == VK_IMAGE_TYPE_1D)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to 1D attachments."));
+	}
 	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not allow uncompressed views of compressed images."));
 	}
 }
 
-VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo) {
+VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 
 	VkSampleCountFlagBits validSamples = pCreateInfo->samples;
 
@@ -682,8 +686,6 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support multisampled array textures. Setting sample count to 1."));
 			validSamples = VK_SAMPLE_COUNT_1_BIT;
 		}
-
-		bool isAttachment = mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
 		if (isAttachment && !_device->_pMetalFeatures->multisampleLayeredRendering) {
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to multisampled array (layered) attachments. Setting sample count to 1."));
 			validSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -693,7 +695,7 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 	return validSamples;
 }
 
-uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo) {
+uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 	uint32_t minDim = 1;
 	uint32_t validMipLevels = max(pCreateInfo->mipLevels, minDim);
 
@@ -707,7 +709,7 @@ uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo) {
 	return validMipLevels;
 }
 
-bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
+bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 
 	if (pCreateInfo->tiling != VK_IMAGE_TILING_LINEAR ) { return false; }
 
@@ -739,8 +741,8 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
 	}
 
 #if MVK_MACOS
-	if ( mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) ) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, usage must not include VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, or VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT."));
+	if (isAttachment) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to linear (VK_IMAGE_TILING_LINEAR) images."));
 		isLin = false;
 	}
 #endif
@@ -929,10 +931,10 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 		if (pCreateInfo->subresourceRange.layerCount != image->_extent.depth) {
 			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
 		}
-		if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments."));
-		} else if (mvkIsAnyFlagEnabled(_usage, ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments.");
+		if ( !mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments."));
+		} else if (mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments.");
 		}
 	}
 }

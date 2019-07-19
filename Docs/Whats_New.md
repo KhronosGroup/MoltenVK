@@ -33,6 +33,7 @@ Released TBD
 - Set Metal texture usage to allow texture copy via view.
 - Fix memory leak in debug marker and debug utils labelling.
 - Fix issue with push constants used across multiple draw calls not being applied.
+- Return error when `MVKImage` created as 1D attachment.
 - Reduce use of autoreleased Obj-C objects, and ensure those remaining are 
   covered by deliberate autorelease pools. 
 - `vkCmdCopyImage()` support copying between compressed and uncompressed formats
