@@ -70,6 +70,36 @@ VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPh
 	return result;
 }
 
+VkResult MVKInstance::getPhysicalDeviceGroups(uint32_t* pCount, VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProps) {
+
+	// According to the Vulkan spec:
+	//  "Every physical device *must* be in exactly one device group."
+	// Since we don't really support this yet, we must return one group for every
+	// device.
+
+	// Get the number of physical devices
+	uint32_t pdCnt = (uint32_t)_physicalDevices.size();
+
+	// If properties aren't actually being requested yet, simply update the returned count
+	if ( !pPhysicalDeviceGroupProps ) {
+		*pCount = pdCnt;
+		return VK_SUCCESS;
+	}
+
+	// Othewise, determine how many physical device groups we'll return, and return that count
+	VkResult result = (*pCount >= pdCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	*pCount = min(pdCnt, *pCount);
+
+	// Now populate the device groups
+	for (uint32_t pdIdx = 0; pdIdx < *pCount; pdIdx++) {
+		pPhysicalDeviceGroupProps[pdIdx].physicalDeviceCount = 1;
+		pPhysicalDeviceGroupProps[pdIdx].physicalDevices[0] = _physicalDevices[pdIdx]->getVkPhysicalDevice();
+		pPhysicalDeviceGroupProps[pdIdx].subsetAllocation = VK_FALSE;
+	}
+
+	return result;
+}
+
 MVKSurface* MVKInstance::createSurface(const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
 									   const VkAllocationCallbacks* pAllocator) {
 	return new MVKSurface(this, pCreateInfo, pAllocator);
@@ -523,6 +553,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_ENTRY_POINT(vkCmdExecuteCommands);
 
 	// Instance extension functions:
+	ADD_INST_EXT_ENTRY_POINT(vkEnumeratePhysicalDeviceGroupsKHR, KHR_DEVICE_GROUP_CREATION);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceFeatures2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceFormatProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);

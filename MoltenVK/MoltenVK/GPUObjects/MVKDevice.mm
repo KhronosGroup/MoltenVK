@@ -2229,7 +2229,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 {
 
 	initPerformanceTracking();
-	initPhysicalDevice(physicalDevice);
+	initPhysicalDevice(physicalDevice, pCreateInfo);
 	enableFeatures(pCreateInfo);
 	enableExtensions(pCreateInfo);
 
@@ -2270,9 +2270,27 @@ void MVKDevice::initPerformanceTracking() {
 	_performanceStatistics.queue.mtlCommandBufferCompletion = initPerf;
 }
 
-void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice) {
+void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
 
-	_physicalDevice = physicalDevice;
+	const VkDeviceGroupDeviceCreateInfo* pGroupCreateInfo = nullptr;
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO:
+			pGroupCreateInfo = (const VkDeviceGroupDeviceCreateInfo*)next;
+			break;
+		default:
+			break;
+		}
+	}
+
+	// If I was given physical devices for a grouped device, use them.
+	// At this time, we only support device groups consisting of a single member,
+	// so this is sufficient for now.
+	if (pGroupCreateInfo && pGroupCreateInfo->physicalDeviceCount)
+		_physicalDevice = MVKPhysicalDevice::getMVKPhysicalDevice(pGroupCreateInfo->pPhysicalDevices[0]);
+	else
+		_physicalDevice = physicalDevice;
+
 	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
 	_pMetalFeatures = _physicalDevice->getMetalFeatures();
 	_pProperties = &_physicalDevice->_properties;
