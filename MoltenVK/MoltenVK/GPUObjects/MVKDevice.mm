@@ -2221,8 +2221,10 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledStorage16Features(),
 	_enabledStorage8Features(),
 	_enabledF16I8Features(),
+	_enabledUBOLayoutFeatures(),
 	_enabledVarPtrFeatures(),
 	_enabledHostQryResetFeatures(),
+	_enabledTexelBuffAlignFeatures(),
 	_enabledVtxAttrDivFeatures(),
 	_enabledPortabilityFeatures(),
 	_enabledExtensions(this)
@@ -2300,8 +2302,10 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	memset((void*)&_enabledStorage16Features, 0, sizeof(_enabledStorage16Features));
 	memset((void*)&_enabledStorage8Features, 0, sizeof(_enabledStorage8Features));
 	memset((void*)&_enabledF16I8Features, 0, sizeof(_enabledF16I8Features));
+	memset((void*)&_enabledUBOLayoutFeatures, 0, sizeof(_enabledUBOLayoutFeatures));
 	memset((void*)&_enabledVarPtrFeatures, 0, sizeof(_enabledVarPtrFeatures));
 	memset((void*)&_enabledHostQryResetFeatures, 0, sizeof(_enabledHostQryResetFeatures));
+	memset((void*)&_enabledTexelBuffAlignFeatures, 0, sizeof(_enabledTexelBuffAlignFeatures));
 	memset((void*)&_enabledVtxAttrDivFeatures, 0, sizeof(_enabledVtxAttrDivFeatures));
 	memset((void*)&_enabledPortabilityFeatures, 0, sizeof(_enabledPortabilityFeatures));
 
@@ -2314,17 +2318,25 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	pdVtxAttrDivFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
 	pdVtxAttrDivFeatures.pNext = &pdPortabilityFeatures;
 
+	VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT pdTexelBuffAlignFeatures;
+	pdTexelBuffAlignFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT;
+	pdTexelBuffAlignFeatures.pNext = &pdVtxAttrDivFeatures;
+
 	VkPhysicalDeviceHostQueryResetFeaturesEXT pdHostQryResetFeatures;
 	pdHostQryResetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
-	pdHostQryResetFeatures.pNext = &pdVtxAttrDivFeatures;
+	pdHostQryResetFeatures.pNext = &pdTexelBuffAlignFeatures;
 
 	VkPhysicalDeviceVariablePointerFeatures pdVarPtrFeatures;
 	pdVarPtrFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES;
 	pdVarPtrFeatures.pNext = &pdHostQryResetFeatures;
 
+	VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR pdUBOLayoutFeatures;
+	pdUBOLayoutFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR;
+	pdUBOLayoutFeatures.pNext = &pdVarPtrFeatures;
+
 	VkPhysicalDeviceFloat16Int8FeaturesKHR pdF16I8Features;
 	pdF16I8Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR;
-	pdF16I8Features.pNext = &pdVarPtrFeatures;
+	pdF16I8Features.pNext = &pdUBOLayoutFeatures;
 
 	VkPhysicalDevice8BitStorageFeaturesKHR pdStorage8Features;
 	pdStorage8Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR;
@@ -2378,6 +2390,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 							   &pdF16I8Features.shaderFloat16, 2);
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+				auto* requestedFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
+				enableFeatures(&_enabledUBOLayoutFeatures.uniformBufferStandardLayout,
+							   &requestedFeatures->uniformBufferStandardLayout,
+							   &pdUBOLayoutFeatures.uniformBufferStandardLayout, 1);
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
 				auto* requestedFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
 				enableFeatures(&_enabledVarPtrFeatures.variablePointersStorageBuffer,
@@ -2390,6 +2409,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledHostQryResetFeatures.hostQueryReset,
 							   &requestedFeatures->hostQueryReset,
 							   &pdHostQryResetFeatures.hostQueryReset, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
+				enableFeatures(&_enabledTexelBuffAlignFeatures.texelBufferAlignment,
+							   &requestedFeatures->texelBufferAlignment,
+							   &pdTexelBuffAlignFeatures.texelBufferAlignment, 1);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
