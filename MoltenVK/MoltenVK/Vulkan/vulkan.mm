@@ -1964,6 +1964,21 @@ MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplateKHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_device_group_creation extension
+
+MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDeviceGroupsKHR(
+    VkInstance                                  instance,
+    uint32_t*                                   pPhysicalDeviceGroupCount,
+    VkPhysicalDeviceGroupPropertiesKHR*         pPhysicalDeviceGroupProperties) {
+    MVKTraceVulkanCallStart();
+    MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+    VkResult rslt = mvkInst->getPhysicalDeviceGroups(pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_get_memory_requirements2 extension
 
 MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements2KHR(
@@ -2377,22 +2392,6 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
 
 
 #pragma mark -
-#pragma mark VK_EXT_host_query_reset extension
-
-MVK_PUBLIC_SYMBOL void vkResetQueryPoolEXT(
-    VkDevice                                    device,
-    VkQueryPool                                 queryPool,
-    uint32_t                                    firstQuery,
-    uint32_t                                    queryCount) {
-
-	MVKTraceVulkanCallStart();
-    auto* mvkQueryPool = (MVKQueryPool*)queryPool;
-    mvkQueryPool->resetResults(firstQuery, queryCount, nullptr);
-	MVKTraceVulkanCallEnd();
-}
-
-
-#pragma mark -
 #pragma mark VK_EXT_debug_report extension
 
 MVK_PUBLIC_SYMBOL VkResult vkCreateDebugReportCallbackEXT(
@@ -2607,6 +2606,23 @@ MVK_PUBLIC_SYMBOL void vkSubmitDebugUtilsMessageEXT(
 	mvkInst->debugUtilsMessage(messageSeverity, messageTypes, pCallbackData);
 	MVKTraceVulkanCallEnd();
 }
+
+
+#pragma mark -
+#pragma mark VK_EXT_host_query_reset extension
+
+MVK_PUBLIC_SYMBOL void vkResetQueryPoolEXT(
+    VkDevice                                    device,
+    VkQueryPool                                 queryPool,
+    uint32_t                                    firstQuery,
+    uint32_t                                    queryCount) {
+
+	MVKTraceVulkanCallStart();
+    auto* mvkQueryPool = (MVKQueryPool*)queryPool;
+    mvkQueryPool->resetResults(firstQuery, queryCount, nullptr);
+	MVKTraceVulkanCallEnd();
+}
+
 
 #pragma mark -
 #pragma mark VK_EXT_metal_surface extension
