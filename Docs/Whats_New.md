@@ -19,7 +19,17 @@ MoltenVK 1.0.36
 Released TBD
 
 - Add support for extensions:
+	- `VK_KHR_swapchain_mutable_format`
+	- `VK_KHR_uniform_buffer_standard_layout`
 	- `VK_EXT_metal_surface`
+	- `VK_EXT_post_depth_coverage`
+	- `VK_EXT_scalar_block_layout`
+	- `VK_EXT_shader_stencil_export`
+	- `VK_EXT_swapchain_colorspace`
+	- `VK_EXT_texel_buffer_alignment`
+	- `VK_AMD_shader_image_load_store_lod`
+	- `VK_AMD_shader_trinary_minmax`
+	- `VK_INTEL_shader_integer_functions2`
 - For shaders created directly from MSL, set function name from 
   `VkPipelineShaderStageCreateInfo::pName`.
 - On iOS GPU family 2 and earlier, support immutable depth-compare samplers 
@@ -32,6 +42,9 @@ Released TBD
 - Fix race condition between swapchain image destruction and presentation completion callback.
 - Set Metal texture usage to allow texture copy via view.
 - Fix memory leak in debug marker and debug utils labelling.
+- Fix issue with push constants used across multiple draw calls not being applied.
+- Fix crash when binding descriptor set to layout that has been destroyed and recreated.
+- Return error when `MVKImage` created as 1D attachment.
 - Reduce use of autoreleased Obj-C objects, and ensure those remaining are 
   covered by deliberate autorelease pools. 
 - `vkCmdCopyImage()` support copying between compressed and uncompressed formats
@@ -75,7 +88,7 @@ Released 2019/06/13
 	- Fix tessellated indirect draws using wrong kernels to map parameters.
 	- Work around potential Metal bug with stage-in indirect buffers.
 	- Fix zero local threadgroup size in indirect tessellated rendering.
-	- Fix [[attribute]] assignment for tessellation evaluation shaders.
+	- Fix `[[attribute]]` assignment for tessellation evaluation shaders.
 - `VkSemaphore` optionally uses `MTLEvent`, if available and 
   `MVK_ALLOW_METAL_EVENTS` environment variable is enabled.
 - Add `vkSetWorkgroupSizeMVK()` to set compute kernel workgroup size 
@@ -100,7 +113,7 @@ Released 2019/06/13
 - Fix unused attachments terminating loop early.
 - Fix offset of buffer view relative to buffer offset within device memory.
 - Guard against missing Metal pipeline states when pipeline compilation fails.
-- MVKBuffer: Force managed storage for linear textures on shared buffers.
+- `MVKBuffer`: Force managed storage for linear textures on shared buffers.
 - Use device address space when decompressing DXT image data.
 - Added missing `texelBufferTextureWidth` setting in `MVKComputePipeline::getMTLFunction()`.
 - Fixes and consolidation of external library header references.
@@ -128,7 +141,7 @@ Released 2019/06/13
 	- MSL: Support Invariant qualifier on position.
 	- MSL: Support stencil export.
 	- Deal with case where a block is somehow emitted in a duplicated fashion.
-	- Fix infinite loop when OpAtomic* temporaries are used in other blocks.
+	- Fix infinite loop when `OpAtomic*` temporaries are used in other blocks.
 	- Fix tests for device->constant address space change in MSL tessellation control shader generation.
 	- Accept SPIR-V 1.4 version.
 
@@ -272,7 +285,7 @@ Released 2019/01/28
 - Allow default GPU Capture scope to be assigned to any queue in any queue family.
 - VkPhysicalDevice: Correct some features and limits.
 - Stop advertising atomic image support.
-- vkSetMTLTextureMVK() function retains texture object.
+- `vkSetMTLTextureMVK()` function retains texture object.
 - Log to stderr instead of stdout.
 - `fetchDependencies`: build `spirv-tools` when attached via symlink.
 - Enhancements to `MVKVector`, and set appropriate inline sizing usages.

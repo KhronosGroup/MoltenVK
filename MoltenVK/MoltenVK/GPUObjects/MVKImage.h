@@ -237,10 +237,10 @@ protected:
 
 	void propogateDebugName() override;
 	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
-	void validateConfig(const VkImageCreateInfo* pCreateInfo);
-	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo);
-	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo);
-	bool validateLinear(const VkImageCreateInfo* pCreateInfo);
+	void validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
+	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
+	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
+	bool validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
