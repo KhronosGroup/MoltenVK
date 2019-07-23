@@ -16,9 +16,10 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.36
 ---------------
 
-Released TBD
+Released 2019/07/25
 
 - Add support for extensions:
+	- `VK_KHR_device_group_creation`
 	- `VK_KHR_swapchain_mutable_format`
 	- `VK_KHR_uniform_buffer_standard_layout`
 	- `VK_EXT_metal_surface`
@@ -30,14 +31,28 @@ Released TBD
 	- `VK_AMD_shader_image_load_store_lod`
 	- `VK_AMD_shader_trinary_minmax`
 	- `VK_INTEL_shader_integer_functions2`
+- Support `VK_FORMAT_A2R10G10B10_UNORM_PACK32` as a surface format and view format.
 - For shaders created directly from MSL, set function name from 
   `VkPipelineShaderStageCreateInfo::pName`.
 - On iOS GPU family 2 and earlier, support immutable depth-compare samplers 
-  as constexpr samplers hardcoded in MSL.
+  as `constexpr` samplers hardcoded in MSL.
+- `vkCmdCopyImage()` support copying between compressed and uncompressed formats
+  and validate that formats are compatible for copying.
+- `vkCmdBufferImageCopy()` fix crash when setting bytes per image in non-arrayed images.
+- `vkCmdBlitImage()` supports blit between different texture formats, and multisampled images.
+- `vkCmdResolveImage()` supports textures of different sizes.
+- `vkCmdClearImage()` returns error if texture is not renderable.
+- Move push constant binding to `vkCmdBindPipeline()` from `vkCmdBindDescriptorSet()`.
+- `MVKDeviceMemory` keep `MTLResourceOptions` aligned with `MTLStorageMode` & `MTLCPUCacheMode`.
+- Texture memory requirements don't use shared storage on macOS.
 - Add `MTLCommandBuffer` completion timing performance tracking option.
 - Expand `MVK_CONFIG_TRACE_VULKAN_CALLS` to optionally log Vulkan call timings.
 - Skip `SPIRV-Tools` build in Travis because Travis does not support the required Python 3.
 - Separate `SPIRVToMSLConverterContext` into input config and output results.
+- Use native Metal texture buffers when available.
+- Fix issue with push constants used across multiple draw calls not being applied.
+- Fix memory leak in debug marker and debug utils labelling.
+- Reduce memory leaks when autorelease pools are not available.
 - Fix pipeline cache lookups.
 - Fix race condition between swapchain image destruction and presentation completion callback.
 - Set Metal texture usage to allow texture copy via view.
@@ -47,24 +62,46 @@ Released TBD
 - Return error when `MVKImage` created as 1D attachment.
 - Reduce use of autoreleased Obj-C objects, and ensure those remaining are 
   covered by deliberate autorelease pools. 
-- `vkCmdCopyImage()` support copying between compressed and uncompressed formats
-  and validate that formats are compatible for copying.
-- `vkCmdBufferImageCopy()` fix crash when setting bytes per image in non-arrayed images.
 - Document that the functions in `vk_mvk_moltenvk.h` cannot be used with objects 
   retrieved through the *Vulkan SDK Loader and Layers* framework.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 21.
 - Update to latest SPIRV-Cross version:
-	- MSL: Add support for `SubgroupSize` / `SubgroupInvocationID` in fragment.
+	- MSL: Support `SPV_KHR_multiview` extension.
+	- MSL: Support the `SPV_KHR_post_depth_coverage` extension.
+	- MSL: Support the `SPV_AMD_shader_trinary_minmax` extension.
+	- MSL: Support the `SPV_KHR_device_group` extension.
+	- MSL: Support the `SPV_INTEL_shader_integer_functions2` extension.
+	- MSL: Support `SubgroupSize` / `SubgroupInvocationID` in fragment.
 	- MSL: Support `OpImageQueryLod`.
 	- MSL: Support `MinLod` operand.
 	- MSL: Support `PrimitiveID` in fragment and barycentrics.
 	- MSL: Support 64-bit integers.
-	- MSL: New SDK errors out on cull distance.
+	- MSL: Support `OpOuterProduct`.
+	- MSL: Support `SubgroupLocalInvocationId` and `SubgroupSize` in all stages.
+	- MSL: Support scalar reflect and refract.
+	- MSL: Support scalar block layout.
+	- MSL: Use the `select()` function for `OpSelect`.
+	- MSL: Handle `coherent`, `volatile`, and `restrict`.
+	- MSL: Fix alignment of packed types.
+	- MSL: Handle packed matrices.
 	- MSL: Conditionally validate MSL 2.2 shaders.
 	- MSL: Rewrite how resource indices are fallback-assigned.
 	- MSL: Support custom bindings for argument buffers.
-	- MSL: Fix sampling with FP16 coordinates.
+	- MSL: Fix sampling with `FP16` coordinates.
 	- MSL: Deal with scalar input values for distance/length/normalize.
+	- MSL: Error out on `int64_t/uint64_t` buffer members as unsupported by Metal.
+	- MSL: Deal with scalar input values for distance/length/normalize.
+	- MSL: Re-roll array expressions in initializers.
+	- MSL: New SDK errors out on cull distance.
+	- Rewrite how switch block case labels are emitted.
+	- Fixes to handling of `OpPhi` and case fallthrough.
+	- Fix declaration of loop variables with a `OpPhi` helper copy.
+	- Handle more cases with FP16 and texture sampling.
+	- Fix variable scope when an `if` or `else` block dominates a variable.
+	- Fall back to complex loop if non-trivial continue block is found.
+	- Remove unreasonable assertion for `OpTypeImage Sampled` parameter.
+	- Propagate NonUniformEXT to dependent expressions.
+	- Deal correctly with return sign of bitscan operations.
 
 
 
