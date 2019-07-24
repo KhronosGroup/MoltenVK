@@ -65,6 +65,7 @@ Released 2019/07/25
 - Document that the functions in `vk_mvk_moltenvk.h` cannot be used with objects 
   retrieved through the *Vulkan SDK Loader and Layers* framework.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to 21.
+- Update dependency libraries to match Vulkan SDK 1.1.114.
 - Update to latest SPIRV-Cross version:
 	- MSL: Support `SPV_KHR_multiview` extension.
 	- MSL: Support the `SPV_KHR_post_depth_coverage` extension.
@@ -82,6 +83,7 @@ Released 2019/07/25
 	- MSL: Support scalar block layout.
 	- MSL: Use the `select()` function for `OpSelect`.
 	- MSL: Handle `coherent`, `volatile`, and `restrict`.
+	- MSL: Refactor buffer packing logic from ground up.
 	- MSL: Fix alignment of packed types.
 	- MSL: Handle packed matrices.
 	- MSL: Conditionally validate MSL 2.2 shaders.
