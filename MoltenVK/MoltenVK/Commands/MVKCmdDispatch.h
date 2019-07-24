@@ -31,14 +31,15 @@
 class MVKCmdDispatch : public MVKCommand {
 
 public:
-	void setContent(uint32_t x, uint32_t y, uint32_t z);
+    void setContent(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
+                    uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
     MVKCmdDispatch(MVKCommandTypePool<MVKCmdDispatch>* pool);
 
 protected:
-    MTLSize  _mtlThreadgroupCount;
+    MTLRegion  _mtlThreadgroupCount;
 };
 
 
@@ -69,4 +70,7 @@ void mvkCmdDispatch(MVKCommandBuffer* cmdBuff, uint32_t x, uint32_t y, uint32_t 
 
 /** Adds an indirect compute threadgroup dispatch command to the specified command buffer. */
 void mvkCmdDispatchIndirect(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset);
+
+/** Adds a compute threadgroup dispatch command to the specified command buffer, with thread IDs starting from the given base. */
+void mvkCmdDispatchBase(MVKCommandBuffer* cmdBuff, uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 

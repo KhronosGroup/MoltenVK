@@ -1969,6 +1969,48 @@ MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplateKHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_device_group extension
+
+MVK_PUBLIC_SYMBOL void vkGetDeviceGroupPeerMemoryFeaturesKHR(
+    VkDevice                                    device,
+    uint32_t                                    heapIndex,
+    uint32_t                                    localDeviceIndex,
+    uint32_t                                    remoteDeviceIndex,
+    VkPeerMemoryFeatureFlagsKHR*                pPeerMemoryFeatures) {
+
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    mvkDev->getPeerMemoryFeatures(heapIndex, localDeviceIndex, remoteDeviceIndex, pPeerMemoryFeatures);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdSetDeviceMaskKHR(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    deviceMask) {
+
+    MVKTraceVulkanCallStart();
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdSetDeviceMask(cmdBuff, deviceMask);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdDispatchBaseKHR(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    baseGroupX,
+    uint32_t                                    baseGroupY,
+    uint32_t                                    baseGroupZ,
+    uint32_t                                    groupCountX,
+    uint32_t                                    groupCountY,
+    uint32_t                                    groupCountZ) {
+	
+	MVKTraceVulkanCallStart();
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDispatchBase(cmdBuff, baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_device_group_creation extension
 
 MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDeviceGroupsKHR(
