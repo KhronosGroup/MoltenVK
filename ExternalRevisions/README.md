@@ -182,11 +182,10 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
 1. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
    `External/SPIRV-Tools`.
 
-2. Drag the `External/glslang/Extermal/spirv-tools/source` file folder to the `External/SPIRV-Tools` 
+2. Drag the `External/glslang/External/spirv-tools/source` file folder to the `External/SPIRV-Tools` 
    group in the *Project Navigator* panel. In the _**Choose options for adding these files**_ dialog 
    that opens, select the _**Create groups**_ option, add the files to *both* the `SPIRV-Tools-macOS` 
    and `SPIRV-Tools-iOS` targets, and click the ***Finish*** button.
-
 
 3. Remove the *Group* named `fuzz` from under the *Group* named `External/SPIRV-Tools/source`.
 

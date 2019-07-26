@@ -184,6 +184,7 @@ protected:
 	MVKQueueSubmission* _next;
 	MVKVectorInline<MVKSemaphore*, 8> _waitSemaphores;
 	bool _isAwaitingSemaphores;
+	bool _trackPerformance;
 };
 
 

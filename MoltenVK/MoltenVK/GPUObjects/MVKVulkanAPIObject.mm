@@ -25,39 +25,21 @@ using namespace std;
 #pragma mark MVKVulkanAPIObject
 
 void MVKVulkanAPIObject::retain() {
-	lock_guard<mutex> lock(_refLock);
-
 	_refCount++;
 }
 
 void MVKVulkanAPIObject::release() {
-	if (decrementRetainCount()) { destroy(); }
+	if (--_refCount == 0) { MVKConfigurableObject::destroy(); }
 }
 
 void MVKVulkanAPIObject::destroy() {
-	if (markDestroyed()) { MVKConfigurableObject::destroy(); }
-}
-
-// Decrements the reference count, and returns whether it's time to destroy this object.
-bool MVKVulkanAPIObject::decrementRetainCount() {
-	lock_guard<mutex> lock(_refLock);
-
-	if (_refCount > 0) { _refCount--; }
-	return (_isDestroyed && _refCount == 0);
-}
-
-// Marks this object as destroyed, and returns whether no references are left outstanding.
-bool MVKVulkanAPIObject::markDestroyed() {
-	lock_guard<mutex> lock(_refLock);
-
-	_isDestroyed = true;
-	return _refCount == 0;
+	release();
 }
 
 VkResult MVKVulkanAPIObject::setDebugName(const char* pObjectName) {
 	if (pObjectName) {
 		[_debugName release];
-		_debugName = [[NSString stringWithUTF8String: pObjectName] retain];		// retained
+		_debugName = [[NSString alloc] initWithUTF8String: pObjectName];	// retained
 		propogateDebugName();
 	}
 	return VK_SUCCESS;

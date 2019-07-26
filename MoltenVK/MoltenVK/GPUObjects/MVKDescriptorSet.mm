@@ -375,7 +375,7 @@ bool MVKDescriptorSetLayoutBinding::validate(MVKSampler* mvkSampler) {
 	return true;
 }
 
-void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLConverterContext& context,
+void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context,
                                                                    MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                                                    uint32_t dslIndex) {
 
@@ -409,7 +409,7 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
         // Determine if this binding is used by this shader stage
-        _applyToStage[i] = mvkAreFlagsEnabled(pBinding->stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)));
+        _applyToStage[i] = mvkAreAllFlagsEnabled(pBinding->stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)));
 	    // If this binding is used by the shader, set the Metal resource index
         if (_applyToStage[i]) {
             initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.stages[i],
@@ -632,7 +632,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     }
 }
 
-void MVKDescriptorSetLayout::populateShaderConverterContext(SPIRVToMSLConverterContext& context,
+void MVKDescriptorSetLayout::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context,
                                                             MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 															uint32_t dslIndex) {
 	uint32_t bindCnt = (uint32_t)_bindings.size();
@@ -650,6 +650,10 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
         _bindings.emplace_back(_device, this, &pCreateInfo->pBindings[i]);
         _bindingToIndex[pCreateInfo->pBindings[i].binding] = i;
     }
+}
+
+MVKDescriptorSetLayout::~MVKDescriptorSetLayout() {
+	for (auto& dsPool : _descriptorPools) { dsPool->removeDescriptorSetPool(this); }
 }
 
 
@@ -1021,20 +1025,28 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets) {
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
 		MVKDescriptorSet* mvkDS = (MVKDescriptorSet*)pDescriptorSets[dsIdx];
-		if (_allocatedSets.erase(mvkDS)) {
-			getDescriptorSetPool(mvkDS->_pLayout)->returnObject(mvkDS);
-		}
+		if (_allocatedSets.erase(mvkDS)) { returnDescriptorSet(mvkDS); }
 	}
 	return VK_SUCCESS;
 }
 
 // Return any allocated descriptor sets to their pools
 VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
-	for (auto& mvkDS : _allocatedSets) {
-		getDescriptorSetPool(mvkDS->_pLayout)->returnObject(mvkDS);
-	}
+	for (auto& mvkDS : _allocatedSets) { returnDescriptorSet(mvkDS); }
 	_allocatedSets.clear();
 	return VK_SUCCESS;
+}
+
+// Returns the descriptor set to its pool, or if that pool doesn't exist, the descriptor set is destroyed
+void MVKDescriptorPool::returnDescriptorSet(MVKDescriptorSet* mvkDescSet) {
+	MVKDescriptorSetLayout* dsLayout = mvkDescSet->_pLayout;
+	MVKDescriptorSetPool* dsPool = dsLayout ? _descriptorSetPools[dsLayout] : nullptr;
+	if (dsPool) {
+		dsPool->returnObject(mvkDescSet);
+	} else {
+		mvkDescSet->destroy();
+		_descriptorSetPools.erase(dsLayout);
+	}
 }
 
 // Returns the pool of descriptor sets that use a specific layout, lazily creating it if necessary
@@ -1043,8 +1055,21 @@ MVKDescriptorSetPool* MVKDescriptorPool::getDescriptorSetPool(MVKDescriptorSetLa
 	if ( !dsp ) {
 		dsp = new MVKDescriptorSetPool(_device);
 		_descriptorSetPools[mvkDescSetLayout] = dsp;
+		mvkDescSetLayout->addDescriptorPool(this);		// tell layout to track me
 	}
 	return dsp;
+}
+
+// Remove the descriptor set pool associated with the descriptor set layout,
+// and make sure any allocated sets don't try to return back to their pools.
+void MVKDescriptorPool::removeDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout) {
+	MVKDescriptorSetPool* dsp = _descriptorSetPools[mvkDescSetLayout];
+	if (dsp) { dsp->destroy(); }
+	_descriptorSetPools.erase(mvkDescSetLayout);
+
+	for (auto& mvkDS : _allocatedSets) {
+		if (mvkDS->_pLayout == mvkDescSetLayout) { mvkDS->_pLayout = nullptr; }
+	}
 }
 
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device,
@@ -1052,10 +1077,14 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device,
 	_maxSets = pCreateInfo->maxSets;
 }
 
-// Return any allocated sets to their pools and then destroy all the pools.
+// Return any allocated sets to their pools and then destroy all the pools,
+// and ensure any descriptor set layouts used as keys are notified.
 MVKDescriptorPool::~MVKDescriptorPool() {
 	reset(0);
-	for (auto& pair : _descriptorSetPools) { pair.second->destroy(); }
+	for (auto& pair : _descriptorSetPools) {
+		pair.first->removeDescriptorPool(this);
+		if (pair.second) { pair.second->destroy(); }
+	}
 }
 
 
@@ -1142,7 +1171,7 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 	}
 }
 
-void mvkPopulateShaderConverterContext(SPIRVToMSLConverterContext& context,
+void mvkPopulateShaderConverterContext(SPIRVToMSLConversionConfiguration& context,
 									   MVKShaderStageResourceBinding& ssRB,
 									   spv::ExecutionModel stage,
 									   uint32_t descriptorSetIndex,

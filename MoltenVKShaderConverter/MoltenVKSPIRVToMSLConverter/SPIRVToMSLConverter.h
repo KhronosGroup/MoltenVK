@@ -27,9 +27,8 @@
 
 namespace mvk {
 
-
 #pragma mark -
-#pragma mark SPIRVToMSLConverterContext
+#pragma mark SPIRVToMSLConversionConfiguration
 
 	/**
 	 * Options for converting SPIR-V to Metal Shading Language
@@ -37,24 +36,19 @@ namespace mvk {
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
-	typedef struct SPIRVToMSLConverterOptions {
+	typedef struct SPIRVToMSLConversionOptions {
 		SPIRV_CROSS_NAMESPACE::CompilerMSL::Options mslOptions;
 		std::string entryPointName;
 		spv::ExecutionModel entryPointStage = spv::ExecutionModelMax;
 		spv::ExecutionMode tessPatchKind = spv::ExecutionModeMax;
 		uint32_t numTessControlPoints = 0;
 		bool shouldFlipVertexY = true;
-		bool needsSwizzleBuffer = false;
-		bool needsOutputBuffer = false;
-		bool needsPatchOutputBuffer = false;
-		bool needsBufferSizeBuffer = false;
-		bool needsInputThreadgroupMem = false;
 
 		/**
 		 * Returns whether the specified options match this one.
 		 * It does if all corresponding elements are equal.
 		 */
-		bool matches(const SPIRVToMSLConverterOptions& other) const;
+		bool matches(const SPIRVToMSLConversionOptions& other) const;
 
 		bool hasEntryPoint() const {
 			return !entryPointName.empty() && entryPointStage != spv::ExecutionModelMax;
@@ -62,14 +56,17 @@ namespace mvk {
 
 		static std::string printMSLVersion(uint32_t mslVersion, bool includePatch = false);
 
-		SPIRVToMSLConverterOptions();
+		SPIRVToMSLConversionOptions();
 
-	} SPIRVToMSLConverterOptions;
+	} SPIRVToMSLConversionOptions;
 
 	/**
 	 * Defines MSL characteristics of a vertex attribute at a particular location.
-	 * The isUsedByShader flag is set to true during conversion of SPIR-V to MSL
-	 * if the shader makes use of this vertex attribute.
+	 *
+	 * The isUsedByShader flag is set to true during conversion of SPIR-V to MSL if the shader
+	 * makes use of this vertex attribute. This allows a pipeline to be optimized, and for two
+	 * shader conversion configurations to be compared only against the attributes that are
+	 * actually used by the shader.
 	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
@@ -98,6 +95,11 @@ namespace mvk {
 	 * hardcoded into the MSL as a constexpr type, instead of passed in as a runtime-bound variable.
 	 * The content of that constexpr sampler is defined in the constExprSampler parameter.
 	 *
+	 * The isUsedByShader flag is set to true during conversion of SPIR-V to MSL if the shader
+	 * makes use of this resource binding. This allows a pipeline to be optimized, and for two
+	 * shader conversion configurations to be compared only against the resource bindings that
+	 * are actually used by the shader.
+	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
@@ -117,13 +119,13 @@ namespace mvk {
 	} MSLResourceBinding;
 
 	/**
-	 * Context passed to the SPIRVToMSLConverter to map SPIR-V descriptors to Metal resource indices.
+	 * Configuration passed to the SPIRVToMSLConverter.
 	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
-	typedef struct SPIRVToMSLConverterContext {
-		SPIRVToMSLConverterOptions options;
+	typedef struct SPIRVToMSLConversionConfiguration {
+		SPIRVToMSLConversionOptions options;
 		std::vector<MSLVertexAttribute> vertexAttributes;
 		std::vector<MSLResourceBinding> resourceBindings;
 
@@ -140,17 +142,22 @@ namespace mvk {
 		void markAllAttributesAndResourcesUsed();
 
         /**
-         * Returns whether this context matches the other context. It does if the respective 
-         * options match and any vertex attributes and resource bindings used by this context
-         * can be found in the other context. Vertex attributes and resource bindings that are
-         * in the other context but are not used by the shader that created this context, are ignored.
+         * Returns whether this configuration matches the other context. It does if the
+		 * respective options match and any vertex attributes and resource bindings used
+		 * by this configuration can be found in the other configuration. Vertex attributes
+		 * and resource bindings that are in the other configuration but are not used by
+		 * the shader that created this configuration, are ignored.
          */
-        bool matches(const SPIRVToMSLConverterContext& other) const;
+        bool matches(const SPIRVToMSLConversionConfiguration& other) const;
 
-        /** Aligns certain aspects of this context with the source context. */
-        void alignWith(const SPIRVToMSLConverterContext& srcContext);
+        /** Aligns certain aspects of this configuration with the source context. */
+        void alignWith(const SPIRVToMSLConversionConfiguration& srcContext);
 
-	} SPIRVToMSLConverterContext;
+	} SPIRVToMSLConversionConfiguration;
+
+
+#pragma mark -
+#pragma mark SPIRVToMSLConversionResults
 
     /**
      * Describes one dimension of the workgroup size of a SPIR-V entry point, including whether
@@ -183,6 +190,25 @@ namespace mvk {
 		} workgroupSize;
 	} SPIRVEntryPoint;
 
+	/**
+	 * Contains the results of the shader conversion that can be used to populate a pipeline.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
+	 */
+	typedef struct SPIRVToMSLConversionResults {
+		SPIRVEntryPoint entryPoint;
+		bool isRasterizationDisabled = false;
+		bool needsSwizzleBuffer = false;
+		bool needsOutputBuffer = false;
+		bool needsPatchOutputBuffer = false;
+		bool needsBufferSizeBuffer = false;
+		bool needsInputThreadgroupMem = false;
+
+		void reset() { *this = SPIRVToMSLConversionResults(); }
+
+	} SPIRVToMSLConversionResults;
+
 
 #pragma mark -
 #pragma mark SPIRVToMSLConverter
@@ -214,7 +240,7 @@ namespace mvk {
          * and optionally, the original GLSL (as converted from the SPIR_V), should be logged 
          * to the result log of this converter. This can be useful during shader debugging.
 		 */
-		bool convert(SPIRVToMSLConverterContext& context,
+		bool convert(SPIRVToMSLConversionConfiguration& context,
                      bool shouldLogSPIRV = false,
                      bool shouldLogMSL = false,
                      bool shouldLogGLSL = false);
@@ -232,14 +258,15 @@ namespace mvk {
 		 */
 		const std::string& getMSL() { return _msl; }
 
-        /** Returns information about the shader entry point. */
-        const SPIRVEntryPoint& getEntryPoint() { return _entryPoint; }
+		/** Returns information about the shader conversion. */
+		const SPIRVToMSLConversionResults& getConversionResults() { return _shaderConversionResults; }
 
         /** Sets the number of threads in a single compute kernel workgroup, per dimension. */
         void setWorkgroupSize(uint32_t x, uint32_t y, uint32_t z) {
-            _entryPoint.workgroupSize.width.size = x;
-            _entryPoint.workgroupSize.height.size = y;
-            _entryPoint.workgroupSize.depth.size = z;
+			auto& wgSize = _shaderConversionResults.entryPoint.workgroupSize;
+            wgSize.width.size = x;
+            wgSize.height.size = y;
+            wgSize.depth.size = z;
         }
         
 		/**
@@ -249,10 +276,10 @@ namespace mvk {
 		const std::string& getResultLog() { return _resultLog; }
 
         /** Sets MSL source code. This can be used when MSL is supplied directly. */
-        void setMSL(const std::string& msl, const SPIRVEntryPoint* pEntryPoint) {
-            _msl = msl;
-			if (pEntryPoint) { _entryPoint = *pEntryPoint; }
-        }
+		void setMSL(const std::string& msl, const SPIRVToMSLConversionResults* pShaderConversionResults) {
+			_msl = msl;
+			if (pShaderConversionResults) { _shaderConversionResults = *pShaderConversionResults; }
+		}
 
 	protected:
 		void logMsg(const char* logMsg);
@@ -261,11 +288,13 @@ namespace mvk {
 		bool validateSPIRV();
 		void writeSPIRVToFile(std::string spvFilepath);
         void logSource(std::string& src, const char* srcLang, const char* opDesc);
+		void populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim, uint32_t size, SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst);
+		void populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler, SPIRVToMSLConversionOptions& options);
 
 		std::vector<uint32_t> _spirv;
 		std::string _msl;
 		std::string _resultLog;
-		SPIRVEntryPoint _entryPoint;
+		SPIRVToMSLConversionResults _shaderConversionResults;
 		bool _wasConverted = false;
 	};
 

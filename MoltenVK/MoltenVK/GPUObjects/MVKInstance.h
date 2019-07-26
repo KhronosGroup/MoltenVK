@@ -85,8 +85,25 @@ public:
 	 */
 	VkResult getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPhysicalDevices);
 
+	/**
+	 * If pPhysicalDeviceGroups is null, the value of pCount is updated with the number of 
+	 * physical device groups supported by this instance.
+	 *
+	 * If pPhysicalDeviceGroups is not null, then pCount physical device groups are copied into the array.
+	 * If the number of available physical device groups is less than pCount, the value of pCount is 
+	 * updated to indicate the number of physical device groups actually returned in the array.
+	 *
+	 * Returns VK_SUCCESS if successful. Returns VK_INCOMPLETE if the number of physical
+	 * device groups available in this instance is larger than the specified pCount. Returns other 
+	 * values if an error occurs.
+	 */
+	VkResult getPhysicalDeviceGroups(uint32_t* pCount, VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProps);
+
 	/** Returns the driver layer. */
 	MVKLayer* getDriverLayer() { return MVKLayerManager::globalManager()->getDriverLayer(); }
+
+	MVKSurface* createSurface(const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
+							  const VkAllocationCallbacks* pAllocator);
 
 	MVKSurface* createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 							  const VkAllocationCallbacks* pAllocator);

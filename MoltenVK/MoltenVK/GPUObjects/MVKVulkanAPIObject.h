@@ -21,7 +21,7 @@
 #include "MVKBaseObject.h"
 #include <vulkan/vk_icd.h>
 #include <string>
-#include <mutex>
+#include <atomic>
 
 #import <Foundation/NSString.h>
 
@@ -93,25 +93,18 @@ public:
 	static MVKVulkanAPIObject* getMVKVulkanAPIObject(VkObjectType objType, uint64_t objectHandle);
 
 	/** Construct an empty instance. Declared here to support copy constructor. */
-	MVKVulkanAPIObject() {}
+	MVKVulkanAPIObject() : _refCount(1) {}
 
-	/**
-	 * Construct an instance from a copy. Default copy constructor disallowed due to mutex.
-	 * Copies start with fresh reference counts.
-	 */
-	MVKVulkanAPIObject(const MVKVulkanAPIObject& other) {}
+	/** Default copy constructor disallowed due to mutex. Copy starts with fresh reference counts. */
+	MVKVulkanAPIObject(const MVKVulkanAPIObject& other) : _refCount(1) {}
 
 	~MVKVulkanAPIObject() override;
 
 protected:
-	bool decrementRetainCount();
-	bool markDestroyed();
 	virtual void propogateDebugName() = 0;
 
+	std::atomic<uint32_t> _refCount;
 	NSString* _debugName = nil;
-	std::mutex _refLock;
-	unsigned _refCount = 0;
-	bool _isDestroyed = false;
 };
 
 
