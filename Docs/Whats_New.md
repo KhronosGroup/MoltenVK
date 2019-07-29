@@ -13,6 +13,15 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.37
+---------------
+
+Released TBD
+
+- Revert to supporting host-coherent memory for linear images on macOS.
+
+
+
 MoltenVK 1.0.36
 ---------------
 
