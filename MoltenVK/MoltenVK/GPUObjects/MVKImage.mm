@@ -175,8 +175,10 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 										   ? _device->getPhysicalDevice()->getPrivateMemoryTypes()
 										   : _device->getPhysicalDevice()->getAllMemoryTypes());
 #if MVK_MACOS
-	// Textures must not use shared memory
-	mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
+	// Metal on macOS does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
+	if ( !_isLinear ) {
+		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
+	}
 #endif
 #if MVK_IOS
 	// Only transient attachments may use memoryless storage

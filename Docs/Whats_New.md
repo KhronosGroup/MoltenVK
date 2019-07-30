@@ -13,6 +13,16 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.37
+---------------
+
+Released TBD
+
+- Revert to supporting host-coherent memory for linear images on macOS.
+- Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
+
+
+
 MoltenVK 1.0.36
 ---------------
 
