@@ -33,7 +33,7 @@ template <class T> class MVKCommandTypePool;
 #pragma mark MVKCommand
 
 /** Abstract class that represents a Vulkan command. */
-class MVKCommand : public MVKConfigurableObject {
+class MVKCommand : public MVKConfigurableObject, public MVKLinkableMixin<MVKCommand> {
 
 public:
 
@@ -50,7 +50,7 @@ public:
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
 
 	/** 
-     * Returns this object back to the pool that created it. This will reset the value of _next member.
+     * Returns this object back to the pool that created it.
      *
      * This method is not thread-safe. Vulkan Command Pools are externally synchronized. 
      * For a particular MVKCommandTypePool instance, all calls to pool->aquireObject(), 
@@ -77,13 +77,6 @@ public:
 
     /** Returns the underlying Metal device. */
     id<MTLDevice> getMTLDevice();
-
-	/**
-	 * Instances of this class can participate in a linked list or pool. When so participating,
-	 * this is a reference to the next instance in the list or pool. This value should only be
-	 * managed and set by the list or pool.
-	 */
-	MVKCommand* _next = nullptr;
 
 protected:
     MVKCommandTypePool<MVKCommand>* _pool;

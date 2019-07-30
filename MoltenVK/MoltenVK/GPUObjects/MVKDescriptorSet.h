@@ -287,7 +287,7 @@ protected:
 #pragma mark MVKDescriptorSet
 
 /** Represents a Vulkan descriptor set. */
-class MVKDescriptorSet : public MVKVulkanAPIDeviceObject {
+class MVKDescriptorSet : public MVKVulkanAPIDeviceObject, public MVKLinkableMixin<MVKDescriptorSet> {
 
 public:
 
@@ -312,13 +312,6 @@ public:
 							VkDescriptorImageInfo* pImageInfo,
 							VkDescriptorBufferInfo* pBufferInfo,
 							VkBufferView* pTexelBufferView);
-
-	/**
-	 * Instances of this class can participate in a linked list or pool. When so participating,
-	 * this is a reference to the next instance in the list or pool. This value should only be
-	 * managed and set by the list or pool.
-	 */
-	MVKDescriptorSet* _next;
 
 	MVKDescriptorSet(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 
