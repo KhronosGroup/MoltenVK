@@ -31,7 +31,7 @@ MVK_PUBLIC_SYMBOL bool mvkConvertSPIRVToMSL(uint32_t* spvCode,
                                             char** pResultLog,
                                             bool shouldLogSPIRV,
                                             bool shouldLogMSL) {
-    SPIRVToMSLConverterContext spvCtx;
+    SPIRVToMSLConversionConfiguration spvCtx;
     SPIRVToMSLConverter spvConverter;
     spvConverter.setSPIRV(spvCode, spvLength);
     bool wasConverted = spvConverter.convert(spvCtx, shouldLogSPIRV, shouldLogMSL);

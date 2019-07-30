@@ -48,12 +48,7 @@ ShellMVK::ShellMVK(Game& game) : Shell(game)
     _profile_start_time = _current_time;
     _profile_present_count = 0;
 
-#ifdef VK_USE_PLATFORM_IOS_MVK
-    instance_extensions_.push_back(VK_MVK_IOS_SURFACE_EXTENSION_NAME);
-#endif
-#ifdef VK_USE_PLATFORM_MACOS_MVK
-    instance_extensions_.push_back(VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
-#endif
+    instance_extensions_.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
 
     init_vk();
 }
@@ -78,22 +73,12 @@ VkSurfaceKHR ShellMVK::create_surface(VkInstance instance) {
     VkSurfaceKHR surface;
 
     VkResult err;
-#ifdef VK_USE_PLATFORM_IOS_MVK
-    VkIOSSurfaceCreateInfoMVK surface_info;
-    surface_info.sType = VK_STRUCTURE_TYPE_IOS_SURFACE_CREATE_INFO_MVK;
+    VkMetalSurfaceCreateInfoEXT surface_info;
+    surface_info.sType = VK_STRUCTURE_TYPE_METAL_SURFACE_CREATE_INFO_EXT;
     surface_info.pNext = NULL;
     surface_info.flags = 0;
-    surface_info.pView = _view;
-    err = vkCreateIOSSurfaceMVK(instance, &surface_info, NULL, &surface);
-#endif
-#ifdef VK_USE_PLATFORM_MACOS_MVK
-    VkMacOSSurfaceCreateInfoMVK surface_info;
-    surface_info.sType = VK_STRUCTURE_TYPE_MACOS_SURFACE_CREATE_INFO_MVK;
-    surface_info.pNext = NULL;
-    surface_info.flags = 0;
-    surface_info.pView = _view;
-    err = vkCreateMacOSSurfaceMVK(instance, &surface_info, NULL, &surface);
-#endif
+    surface_info.pLayer = _caMetalLayer;
+    err = vkCreateMetalSurfaceEXT(instance, &surface_info, NULL, &surface);
     assert(!err);
 
     return surface;
@@ -124,8 +109,8 @@ void ShellMVK::update_and_draw() {
     }
 }
 
-void ShellMVK::run(void* view) {
-    _view = view;       // not retained
+void ShellMVK::run(void* caMetalLayer) {
+    _caMetalLayer = caMetalLayer;       // not retained
     create_context();
     resize_swapchain(settings_.initial_width, settings_.initial_height);
 }

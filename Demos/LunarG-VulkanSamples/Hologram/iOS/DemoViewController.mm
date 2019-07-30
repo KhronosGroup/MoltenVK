@@ -45,12 +45,12 @@
 	self.view.contentScaleFactor = UIScreen.mainScreen.nativeScale;
 
     std::vector<std::string> args;
-  args.push_back("-p");           // Use push constants
+    args.push_back("-p");           // Use push constants
 //  args.push_back("-s");           // Use a single thread
     _game = new Hologram(args);
 
     _shell = new ShellMVK(*_game);
-    _shell->run(self.view);
+    _shell->run(self.view.layer);
 
 	uint32_t fps = 60;
 	_displayLink = [CADisplayLink displayLinkWithTarget: self selector: @selector(renderLoop)];

@@ -240,47 +240,45 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_KHR_maintenance3`
 - `VK_KHR_push_descriptor`
 - `VK_KHR_relaxed_block_layout`
-- `VK_KHR_sampler_mirror_clamp_to_edge`
+- `VK_KHR_sampler_mirror_clamp_to_edge` *(macOS)*
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float16_int8`
 - `VK_KHR_storage_buffer_storage_class`
 - `VK_KHR_surface`
 - `VK_KHR_swapchain`
 - `VK_KHR_swapchain_mutable_format`
+- `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
+- `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
+- `VK_EXT_debug_utils`
 - `VK_EXT_host_query_reset`
-- `VK_EXT_memory_budget`
+- `VK_EXT_memory_budget` *(requires Metal 2.0)*
+- `VK_EXT_metal_surface`
+- `VK_EXT_post_depth_coverage` *(iOS, requires GPU family 4)*
+- `VK_EXT_scalar_block_layout`
+- `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
 - `VK_EXT_shader_viewport_index_layer`
+- `VK_EXT_swapchain_colorspace` *(macOS)*
 - `VK_EXT_vertex_attribute_divisor`
+- `VK_EXT_texel_buffer_alignment` *(requires Metal 2.0)*
 - `VK_EXTX_portability_subset`
-- `VK_MVK_ios_surface` (iOS)
-- `VK_MVK_macos_surface` (macOS)
+- `VK_MVK_ios_surface` *(iOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
+- `VK_MVK_macos_surface` *(macOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
 - `VK_MVK_moltenvk`
 - `VK_AMD_gpu_shader_half_float`
 - `VK_AMD_negative_viewport_height`
-- `VK_IMG_format_pvrtc` (iOS)
+- `VK_AMD_shader_image_load_store_lod` *(iOS)*
+- `VK_AMD_shader_trinary_minmax` *(requires Metal 2.1)*
+- `VK_IMG_format_pvrtc` *(iOS)*
+- `VK_INTEL_shader_integer_functions2`
 - `VK_NV_glsl_shader`
 
-In order to visibly display your content on *iOS* or *macOS*, you must enable the `VK_MVK_ios_surface` 
-or `VK_MVK_macos_surface` extension, respectively, and use the functions defined for that extension
-to create a *Vulkan* rendering surface.
-
-You can enable each of these extensions by defining the `VK_USE_PLATFORM_IOS_MVK` or 
-`VK_USE_PLATFORM_MACOS_MVK` guard macro in your compiler build settings. See the description
-of the `mvk_vulkan.h` file below for a convenient way to enable these extensions automatically.
-
-When using the `VK_MVK_macos_surface ` extension, the `pView` member of the `VkMacOSSurfaceCreateInfoMVK` 
-structure passed in the `vkCreateMacOSSurfaceMVK` function can be either an `NSView` whose layer is a 
-`CAMetalLayer`, or the `CAMetalLayer` itself. Passing the `CAMetalLayer` itself is recommended when 
-calling the `vkCreateMacOSSurfaceMVK` function from outside the main application thread, as `NSView` 
-should only be accessed from the main application thread.
-
-When using the `VK_MVK_ios_surface ` extension, the `pView` member of the `VkIOSSurfaceCreateInfoMVK` 
-structure passed in the `vkCreateIOSSurfaceMVK` function can be either a `UIView` whose layer is a 
-`CAMetalLayer`, or the `CAMetalLayer` itself. Passing the `CAMetalLayer` itself is recommended when 
-calling the `vkCreateIOSSurfaceMVK ` function from outside the main application thread, as `UIView` 
-should only be accessed from the main application thread.
+In order to visibly display your content on *iOS* or *macOS*, you must enable the `VK_EXT_metal_surface` 
+extension, and use the function defined in that extension to create a *Vulkan* rendering surface.
+You can enable the `VK_EXT_metal_surface` extension by defining the `VK_USE_PLATFORM_METAL_EXT` 
+guard macro in your compiler build settings. See the description of the `mvk_vulkan.h` file below for 
+a convenient way to enable this extension automatically.
 
 
 <a name="moltenvk_extension"></a>
@@ -306,16 +304,21 @@ where `HEADER_FILE` is one of the following:
    enabled for *iOS* or *macOS*. Use this header file in place of the `vulkan.h` header file, 
    where access to a **MoltenVK** platform surface extension is required.
    
-   - When building for *iOS*, the `mvk_vulkan.h` header file automatically enables the 
-    `VK_USE_PLATFORM_IOS_MVK` build setting and `VK_MVK_ios_surface` *Vulkan* extension.
-   - When building for *macOS*, the `mvk_vulkan.h` header file automatically enables the
-    `VK_USE_PLATFORM_MACOS_MVK` build setting and `VK_MVK_macos_surface` *Vulkan* extension.
+   The `mvk_vulkan.h` header file automatically enables the `VK_USE_PLATFORM_METAL_EXT` 
+   build setting and `VK_EXT_metal_surface` *Vulkan* extension.
   
 - `mvk_datatypes.h` - Contains helpful functions for converting between *Vulkan* and *Metal* data types.
   You do not need to use this functionality to use **MoltenVK**, as **MoltenVK** converts between 
   *Vulkan* and *Metal* datatypes automatically (using the functions declared in this header). 
   These functions are exposed in this header for your own purposes such as interacting with *Metal* 
   directly, or simply logging data values.
+
+>***Note:*** The functions in `vk_mvk_moltenvk.h` are not supported by the *Vulkan SDK Loader and Layers*
+ framework. The opaque Vulkan objects used by the functions in `vk_mvk_moltenvk.h` (`VkInstance`, 
+ `VkPhysicalDevice`, `VkShaderModule`, `VKImage`, ...), must have been retrieved directly from **MoltenVK**, 
+ and not through the *Vulkan SDK Loader and Layers* framework. The *Vulkan SDK Loader and Layers* framework 
+ often changes these opaque objects, and passing them from a higher layer directly to **MoltenVK** will 
+ result in undefined behaviour.
 
 
 <a name="moltenvk_config"></a>

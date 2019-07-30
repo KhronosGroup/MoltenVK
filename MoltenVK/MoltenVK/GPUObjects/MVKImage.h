@@ -22,6 +22,7 @@
 #include "MVKSync.h"
 #include "MVKVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include <unordered_map>
 #include <mutex>
 
 #import <IOSurface/IOSurfaceRef.h>
@@ -60,6 +61,21 @@ public:
 
     /** Returns the Vulkan image format of this image. */
     VkFormat getVkFormat();
+
+	/** Returns whether this image is compressed. */
+	bool getIsCompressed();
+
+	/**
+	 * Returns whether the format of this image supports ANY of the indicated feature flags,
+	 * taking into consideration whether this image is using linear or optimal tiling.
+	 */
+	bool getSupportsAnyFormatFeature(VkFormatFeatureFlags requiredFormatFeatureFlags);
+
+	/**
+	 * Returns whether the format of this image supports ALL of the indicated feature flags,
+	 * taking into consideration whether this image is using linear or optimal tiling.
+	 */
+	bool getSupportsAllFormatFeatures(VkFormatFeatureFlags requiredFormatFeatureFlags);
 
 	/** 
 	 * Returns the 3D extent of this image at the base mipmap level.
@@ -138,6 +154,9 @@ public:
 
 	/** Returns the Metal texture underlying this image. */
 	id<MTLTexture> getMTLTexture();
+
+	/** Returns a Metal texture that interprets the pixels in the specified format. */
+	id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
 
     /**
      * Sets this image to use the specified MTLTexture.
@@ -218,17 +237,17 @@ protected:
 
 	void propogateDebugName() override;
 	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
-	void validateConfig(const VkImageCreateInfo* pCreateInfo);
-	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo);
-	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo);
-	bool validateLinear(const VkImageCreateInfo* pCreateInfo);
+	void validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
+	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
+	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
+	bool validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
 	virtual id<MTLTexture> newMTLTexture();
 	void resetMTLTexture();
     void resetIOSurface();
-	MTLTextureDescriptor* getMTLTextureDescriptor();
+	MTLTextureDescriptor* newMTLTextureDescriptor();
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
 	bool shouldFlushHostMemory();
@@ -239,6 +258,7 @@ protected:
 						   VkImageMemoryBarrier* pImageMemoryBarrier);
 
 	std::vector<MVKImageSubresource> _subresources;
+	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     VkExtent3D _extent;
     uint32_t _mipLevels;
     uint32_t _arrayLayers;
@@ -361,7 +381,7 @@ public:
 
 protected:
 	void propogateDebugName() override {}
-	MTLSamplerDescriptor* getMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
+	MTLSamplerDescriptor* newMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
 	void initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo);
 
 	id<MTLSamplerState> _mtlSamplerState;

@@ -33,7 +33,7 @@ using namespace std;
 
 // Reset all of the command buffers
 VkResult MVKCommandPool::reset(VkCommandPoolResetFlags flags) {
-	bool releaseRez = mvkAreFlagsEnabled(flags, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
+	bool releaseRez = mvkAreAllFlagsEnabled(flags, VK_COMMAND_POOL_RESET_RELEASE_RESOURCES_BIT);
 
 	VkCommandBufferResetFlags cmdBuffFlags = releaseRez ? VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT : 0;
 

@@ -23,15 +23,27 @@
 #include "MVKOSExtensions.h"
 #import "MVKBlockObserver.h"
 
-#define STR(NAME) #NAME
+// We need to double-dereference the name to first convert to the platform symbol, then to a string.
+#define STR_PLATFORM(NAME) #NAME
+#define STR(NAME) STR_PLATFORM(NAME)
 
 
 #pragma mark MVKSurface
+
+MVKSurface::MVKSurface(MVKInstance* mvkInstance,
+					   const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
+					   const VkAllocationCallbacks* pAllocator) : _mvkInstance(mvkInstance) {
+
+	_mtlCAMetalLayer = (CAMetalLayer*)[pCreateInfo->pLayer retain];
+	initLayerObserver();
+}
 
 // pCreateInfo->pView can be either a CAMetalLayer or a view (NSView/UIView).
 MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 					   const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 					   const VkAllocationCallbacks* pAllocator) : _mvkInstance(mvkInstance) {
+
+	MVKLogInfo("%s(): This function is obsolete. Consider using the vkCreateMetalSurfaceEXT() function from the VK_EXT_metal_surface extension instead.", STR(vkCreate_PLATFORM_SurfaceMVK));
 
 	// Get the platform object contained in pView
 	id<NSObject> obj = (id<NSObject>)pCreateInfo->pView;
@@ -45,30 +57,34 @@ MVKSurface::MVKSurface(MVKInstance* mvkInstance,
 		obj = ((PLATFORM_VIEW_CLASS*)obj).layer;
 	}
 
-	_layerObserver = nil;
-
 	// Confirm that we were provided with a CAMetalLayer
 	if ([obj isKindOfClass: [CAMetalLayer class]]) {
 		_mtlCAMetalLayer = (CAMetalLayer*)[obj retain];		// retained
-		if ([_mtlCAMetalLayer.delegate isKindOfClass: [PLATFORM_VIEW_CLASS class]]) {
-			// Sometimes, the owning view can replace its CAMetalLayer. In that case, the client
-			// needs to recreate the surface.
-			_layerObserver = [MVKBlockObserver observerWithBlock: ^(NSString* path, id, NSDictionary*, void*) {
-				if ( ![path isEqualToString: @"layer"] ) { return; }
-				std::lock_guard<std::mutex> lock(this->_lock);
-				[this->_mtlCAMetalLayer release];
-				this->_mtlCAMetalLayer = nil;
-				this->setConfigurationResult(VK_ERROR_SURFACE_LOST_KHR);
-				[this->_layerObserver release];
-				this->_layerObserver = nil;
-			} forObject: _mtlCAMetalLayer.delegate atKeyPath: @"layer"];
-		}
 	} else {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
 										   "%s(): On-screen rendering requires a layer of type CAMetalLayer.",
 										   STR(vkCreate_PLATFORM_SurfaceMVK)));
 		_mtlCAMetalLayer = nil;
 	}
+
+	initLayerObserver();
+}
+
+// Sometimes, the owning view can replace its CAMetalLayer. In that case, the client needs to recreate the surface.
+void MVKSurface::initLayerObserver() {
+
+	_layerObserver = nil;
+	if ( ![_mtlCAMetalLayer.delegate isKindOfClass: [PLATFORM_VIEW_CLASS class]] ) { return; }
+
+	_layerObserver = [MVKBlockObserver observerWithBlock: ^(NSString* path, id, NSDictionary*, void*) {
+		if ( ![path isEqualToString: @"layer"] ) { return; }
+		std::lock_guard<std::mutex> lock(this->_lock);
+		[this->_mtlCAMetalLayer release];
+		this->_mtlCAMetalLayer = nil;
+		this->setConfigurationResult(VK_ERROR_SURFACE_LOST_KHR);
+		[this->_layerObserver release];
+		this->_layerObserver = nil;
+	} forObject: _mtlCAMetalLayer.delegate atKeyPath: @"layer"];
 }
 
 MVKSurface::~MVKSurface() {

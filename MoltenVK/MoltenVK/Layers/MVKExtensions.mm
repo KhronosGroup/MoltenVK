@@ -46,19 +46,43 @@ static VkExtensionProperties kVkExtProps_ ##EXT = mvkMakeExtProps(VK_ ##EXT ##_E
 
 // Returns whether the specified properties are valid for this platform
 static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
-#if !(MVK_IOS)
+#if MVK_MACOS
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
 		return mvkOSVersion() >= 10.13;
 	}
+	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return false; }
+	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) {
+		return mvkOSVersion() >= 10.14;
+	}
+	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) {
+		return mvkOSVersion() >= 10.13;
+	}
 	if (pProperties == &kVkExtProps_MVK_IOS_SURFACE) { return false; }
+	if (pProperties == &kVkExtProps_AMD_SHADER_IMAGE_LOAD_STORE_LOD) { return false; }
+	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) {
+		return mvkOSVersion() >= 10.14;
+	}
 	if (pProperties == &kVkExtProps_IMG_FORMAT_PVRTC) { return false; }
 #endif
-#if !(MVK_MACOS)
+#if MVK_IOS
 	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
 		return mvkOSVersion() >= 11.0;
 	}
+	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) {
+		return mvkOSVersion() >= 11.0;
+	}
+	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) {
+		return mvkOSVersion() >= 12.0;
+	}
+	if (pProperties == &kVkExtProps_EXT_SWAPCHAIN_COLOR_SPACE) { return false; }
+	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) {
+		return mvkOSVersion() >= 11.0;
+	}
 	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
+	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) {
+		return mvkOSVersion() >= 12.0;
+	}
 #endif
 
 	return true;
@@ -157,3 +181,31 @@ string MVKExtensionList::enabledNamesString(const char* separator, bool prefixFi
 	}
 	return logMsg;
 }
+
+VkResult MVKExtensionList::getProperties(uint32_t* pCount, VkExtensionProperties* pProperties) {
+
+	uint32_t enabledCnt = 0;
+
+	// Iterate extensions and handle those that are enabled. Count them,
+	// and if they are to be returned, and there is room, do so.
+	uint32_t extnCnt = getCount();
+	MVKExtension* extnAry = &extensionArray;
+	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {
+		if (extnAry[extnIdx].enabled) {
+			if (pProperties) {
+				if (enabledCnt < *pCount) {
+					pProperties[enabledCnt] = *(extnAry[extnIdx].pProperties);
+				} else {
+					return VK_INCOMPLETE;
+				}
+			}
+			enabledCnt++;
+		}
+	}
+
+	// Return the count of enabled extensions. This will either be a
+	// count of all enabled extensions, or a count of those returned.
+	*pCount = enabledCnt;
+	return VK_SUCCESS;
+}
+

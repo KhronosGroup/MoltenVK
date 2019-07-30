@@ -42,14 +42,14 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	_canAcceptCommands = true;
 
 	VkCommandBufferUsageFlags usage = pBeginInfo->flags;
-	_isReusable = !mvkAreFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
-	_supportsConcurrentExecution = mvkAreFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
+	_isReusable = !mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT);
+	_supportsConcurrentExecution = mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT);
 
 	// If this is a secondary command buffer, and contains inheritance info, set the inheritance info and determine
 	// whether it contains render pass continuation info. Otherwise, clear the inheritance info, and ignore it.
 	const VkCommandBufferInheritanceInfo* pInheritInfo = (_isSecondary ? pBeginInfo->pInheritanceInfo : NULL);
 	bool hasInheritInfo = mvkSetOrClear(&_secondaryInheritanceInfo, pInheritInfo);
-	_doesContinueRenderPass = mvkAreFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
+	_doesContinueRenderPass = mvkAreAllFlagsEnabled(usage, VK_COMMAND_BUFFER_USAGE_RENDER_PASS_CONTINUE_BIT) && hasInheritInfo;
 
 	return getConfigurationResult();
 }
@@ -76,7 +76,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_initialVisibilityResultMTLBuffer = nil;		// not retained
 	setConfigurationResult(VK_NOT_READY);
 
-	if (mvkAreFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
+	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
 		// TODO: what are we releasing or returning here?
 	}
 

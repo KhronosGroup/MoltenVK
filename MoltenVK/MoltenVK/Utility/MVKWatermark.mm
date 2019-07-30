@@ -75,7 +75,7 @@ id<MTLRenderPipelineState> MVKWatermark::mtlRenderPipelineState() {
 }
 
 id<MTLRenderPipelineState> MVKWatermark::newRenderPipelineState() {
-    MTLRenderPipelineDescriptor* plDesc = [[MTLRenderPipelineDescriptor new] autorelease];
+    MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// temp retained
     plDesc.label = _mtlName;
 
     plDesc.vertexFunction = _mtlFunctionVertex;
@@ -128,7 +128,8 @@ id<MTLRenderPipelineState> MVKWatermark::newRenderPipelineState() {
     NSError* err = nil;
     id<MTLRenderPipelineState> rps = [_mtlDevice newRenderPipelineStateWithDescriptor: plDesc error: &err];	// retained
     MVKAssert( !err, "Could not create watermark pipeline state (Error code %li)\n%s", (long)err.code, err.localizedDescription.UTF8String);
-    return rps;
+	[plDesc release];		// temp released
+	return rps;
 }
 
 
@@ -296,21 +297,26 @@ void MVKWatermark::initTexture(unsigned char* textureContent,
                    bytesPerRow: textureBytesPerRow
                  bytesPerImage: 0];
 
-    MTLSamplerDescriptor* sampDesc = [[MTLSamplerDescriptor new] autorelease];
+    MTLSamplerDescriptor* sampDesc = [MTLSamplerDescriptor new];				// temp retained
     sampDesc.minFilter = MTLSamplerMinMagFilterLinear;
-    _mtlSamplerState = [_mtlDevice newSamplerStateWithDescriptor: sampDesc];		// retained
+    _mtlSamplerState = [_mtlDevice newSamplerStateWithDescriptor: sampDesc];	// retained
+	[sampDesc release];															// temp released
 }
 
 // Initialize the shader functions for rendering the watermark
 void MVKWatermark::initShaders(const char* mslSourceCode) {
     NSError* err = nil;
-    id<MTLLibrary> mtlLib = [[_mtlDevice newLibraryWithSource: @(mslSourceCode)
-                                                      options: nil
-                                                        error: &err] autorelease];
+	NSString* nsSrc = [[NSString alloc] initWithUTF8String: mslSourceCode];	// temp retained
+	id<MTLLibrary> mtlLib = [_mtlDevice newLibraryWithSource: nsSrc
+													 options: nil
+													   error: &err];		// temp retained
 	MVKAssert( !err, "Could not compile watermark shaders (Error code %li):\n%s", (long)err.code, err.localizedDescription.UTF8String);
 
     _mtlFunctionVertex = [mtlLib newFunctionWithName: @"watermarkVertex"];          // retained
     _mtlFunctionFragment = [mtlLib newFunctionWithName: @"watermarkFragment"];      // retained
+
+	[nsSrc release];	// temp released
+	[mtlLib release];	// temp released
 }
 
 // Initialize the vertex buffers to use for rendering the watermark

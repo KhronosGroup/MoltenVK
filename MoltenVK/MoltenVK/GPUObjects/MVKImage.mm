@@ -41,6 +41,24 @@ VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_
 
 VkFormat MVKImage::getVkFormat() { return mvkVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
 
+bool MVKImage::getIsCompressed() {
+	return mvkFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
+}
+
+bool MVKImage::getSupportsAnyFormatFeature(VkFormatFeatureFlags requiredFormatFeatureFlags) {
+	VkFormatProperties props;
+	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
+	VkFormatFeatureFlags imageFeatureFlags = _isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures;
+	return mvkIsAnyFlagEnabled(imageFeatureFlags, requiredFormatFeatureFlags);
+}
+
+bool MVKImage::getSupportsAllFormatFeatures(VkFormatFeatureFlags requiredFormatFeatureFlags) {
+	VkFormatProperties props;
+	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
+	VkFormatFeatureFlags imageFeatureFlags = _isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures;
+	return mvkAreAllFlagsEnabled(imageFeatureFlags, requiredFormatFeatureFlags);
+}
+
 VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 	return mvkMipmapLevelSizeFromBaseSize3D(_extent, mipLevel);
 }
@@ -157,13 +175,14 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 										   ? _device->getPhysicalDevice()->getPrivateMemoryTypes()
 										   : _device->getPhysicalDevice()->getAllMemoryTypes());
 #if MVK_MACOS
-	if (!_isLinear) {  // XXX Linear images must support host-coherent memory
+	// Metal on macOS does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
+	if ( !_isLinear ) {
 		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
 	}
 #endif
 #if MVK_IOS
 	// Only transient attachments may use memoryless storage
-	if (!mvkAreFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
+	if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
 		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
 	}
 #endif
@@ -279,6 +298,22 @@ id<MTLTexture> MVKImage::getMTLTexture() {
 	return _mtlTexture;
 }
 
+id<MTLTexture> MVKImage::getMTLTexture(MTLPixelFormat mtlPixFmt) {
+	if (mtlPixFmt == _mtlPixelFormat) { return getMTLTexture(); }
+
+	id<MTLTexture> mtlTex = _mtlTextureViews[mtlPixFmt];
+	if ( !mtlTex ) {
+		// Lock and check again in case another thread has created the texture.
+		lock_guard<mutex> lock(_lock);
+		mtlTex = _mtlTextureViews[mtlPixFmt];
+		if ( !mtlTex ) {
+			mtlTex = [getMTLTexture() newTextureViewWithPixelFormat: mtlPixFmt];	// retained
+			_mtlTextureViews[mtlPixFmt] = mtlTex;
+		}
+	}
+	return mtlTex;
+}
+
 VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
     lock_guard<mutex> lock(_lock);
     resetMTLTexture();
@@ -308,15 +343,21 @@ VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
 // This implementation creates a new MTLTexture from a MTLTextureDescriptor and possible IOSurface.
 // Subclasses may override this function to create the MTLTexture in a different manner.
 id<MTLTexture> MVKImage::newMTLTexture() {
-    if (_ioSurface) {
-        return [getMTLDevice() newTextureWithDescriptor: getMTLTextureDescriptor() iosurface: _ioSurface plane: 0];
+	id<MTLTexture> mtlTex = nil;
+	MTLTextureDescriptor* mtlTexDesc = newMTLTextureDescriptor();	// temp retain
+
+	if (_ioSurface) {
+		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc iosurface: _ioSurface plane: 0];
 	} else if (_usesTexelBuffer) {
-        return [_deviceMemory->_mtlBuffer newTextureWithDescriptor: getMTLTextureDescriptor()
-															offset: getDeviceMemoryOffset()
-													   bytesPerRow: _subresources[0].layout.rowPitch];
-    } else {
-        return [getMTLDevice() newTextureWithDescriptor: getMTLTextureDescriptor()];
-    }
+		mtlTex = [_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
+															  offset: getDeviceMemoryOffset()
+														 bytesPerRow: _subresources[0].layout.rowPitch];
+	} else {
+		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
+	}
+
+	[mtlTexDesc release];											// temp release
+	return mtlTex;
 }
 
 // Removes and releases the MTLTexture object, so that it can be lazily created by getMTLTexture().
@@ -355,14 +396,16 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     } else {
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-        _ioSurface = IOSurfaceCreate((CFDictionaryRef)@{
-                                                        (id)kIOSurfaceWidth: @(_extent.width),
-                                                        (id)kIOSurfaceHeight: @(_extent.height),
-                                                        (id)kIOSurfaceBytesPerElement: @(mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
-                                                        (id)kIOSurfaceElementWidth: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
-                                                        (id)kIOSurfaceElementHeight: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
-                                                        (id)kIOSurfaceIsGlobal: @(true),    // Deprecated but needed for interprocess transfers
-                                                        });
+		@autoreleasepool {
+			_ioSurface = IOSurfaceCreate((CFDictionaryRef)@{
+															(id)kIOSurfaceWidth: @(_extent.width),
+															(id)kIOSurfaceHeight: @(_extent.height),
+															(id)kIOSurfaceBytesPerElement: @(mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
+															(id)kIOSurfaceElementWidth: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
+															(id)kIOSurfaceElementHeight: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
+															(id)kIOSurfaceIsGlobal: @(true),    // Deprecated but needed for interprocess transfers
+															});
+		}
 #pragma clang diagnostic pop
 
     }
@@ -373,25 +416,21 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 }
 
 MTLTextureUsage MVKImage::getMTLTextureUsage() {
+
 	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
 
-	// If this is a depth/stencil texture, and the device supports it, tell
-	// Metal we may create texture views of this, too.
-	if ((_mtlPixelFormat == MTLPixelFormatDepth32Float_Stencil8
-#if MVK_MACOS
-		 || _mtlPixelFormat == MTLPixelFormatDepth24Unorm_Stencil8
-#endif
-		) && _device->_pMetalFeatures->stencilViews) {
-		mvkEnableFlag(usage, MTLTextureUsagePixelFormatView);
+	// Remove view usage from D/S if Metal doesn't support it
+	if ( !_device->_pMetalFeatures->stencilViews &&
+		mvkMTLPixelFormatIsDepthFormat(_mtlPixelFormat) &&
+		mvkMTLPixelFormatIsStencilFormat(_mtlPixelFormat)) {
+
+		mvkDisableFlag(usage, MTLTextureUsagePixelFormatView);
 	}
 
-	// If this format doesn't support being blitted to, and the usage
-	// doesn't specify use as an attachment, turn off
-	// MTLTextureUsageRenderTarget.
-	VkFormatProperties props;
-	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
-	if (!mvkAreFlagsEnabled(_isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures, VK_FORMAT_FEATURE_BLIT_DST_BIT) &&
-		!mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT|VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) {
+	// If this format doesn't support being rendered to, disable MTLTextureUsageRenderTarget.
+	if ( !getSupportsAnyFormatFeature(VK_FORMAT_FEATURE_BLIT_DST_BIT |
+									  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
+									  VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
 		mvkDisableFlag(usage, MTLTextureUsageRenderTarget);
 	}
 
@@ -405,9 +444,10 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 	return usage;
 }
 
-// Returns an autoreleased Metal texture descriptor constructed from the properties of this image.
-MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
-	MTLTextureDescriptor* mtlTexDesc = [[MTLTextureDescriptor alloc] init];
+// Returns a Metal texture descriptor constructed from the properties of this image.
+// It is the caller's responsibility to release the returned descriptor object.
+MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
+	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];	// retained
 #if MVK_MACOS
 	if (_is3DCompressed) {
 		// Metal doesn't yet support 3D compressed textures, so we'll decompress
@@ -430,7 +470,7 @@ MTLTextureDescriptor* MVKImage::getMTLTextureDescriptor() {
 	mtlTexDesc.storageModeMVK = getMTLStorageMode();
 	mtlTexDesc.cpuCacheMode = getMTLCPUCacheMode();
 
-	return [mtlTexDesc autorelease];
+	return mtlTexDesc;
 }
 
 MTLStorageMode MVKImage::getMTLStorageMode() {
@@ -569,18 +609,22 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     _arrayLayers = max(pCreateInfo->arrayLayers, minDim);
 
 	// Perform validation and adjustments before configuring other settings
-	validateConfig(pCreateInfo);
-	_samples = validateSamples(pCreateInfo);
-	_mipLevels = validateMipLevels(pCreateInfo);
-	_isLinear = validateLinear(pCreateInfo);
+	bool isAttachment = mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+																 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+																 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+																 VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
+	validateConfig(pCreateInfo, isAttachment);
+	_samples = validateSamples(pCreateInfo, isAttachment);
+	_mipLevels = validateMipLevels(pCreateInfo, isAttachment);
+	_isLinear = validateLinear(pCreateInfo, isAttachment);
 
 	_mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
 	_mtlTextureType = mvkMTLTextureTypeFromVkImageType(pCreateInfo->imageType, _arrayLayers, _samples > VK_SAMPLE_COUNT_1_BIT);
 	_usage = pCreateInfo->usage;
 
 	_is3DCompressed = (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed);
-	_isDepthStencilAttachment = (mvkAreFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
-								 mvkAreFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
+	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
+								 mvkAreAllFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
 	_hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
 
@@ -593,7 +637,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     initSubresources(pCreateInfo);
 }
 
-void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo) {
+void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 
 	bool is2D = pCreateInfo->imageType == VK_IMAGE_TYPE_2D;
 	bool isCompressed = mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed;
@@ -612,18 +656,18 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo) {
 	if ((mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
 	}
-
-	bool isAttachment = mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	if (isAttachment && (pCreateInfo->arrayLayers > 1) && !_device->_pMetalFeatures->layeredRendering) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to array (layered) attachments."));
 	}
-
+	if (isAttachment && (pCreateInfo->imageType == VK_IMAGE_TYPE_1D)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to 1D attachments."));
+	}
 	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not allow uncompressed views of compressed images."));
 	}
 }
 
-VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo) {
+VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 
 	VkSampleCountFlagBits validSamples = pCreateInfo->samples;
 
@@ -644,8 +688,6 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support multisampled array textures. Setting sample count to 1."));
 			validSamples = VK_SAMPLE_COUNT_1_BIT;
 		}
-
-		bool isAttachment = mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT));
 		if (isAttachment && !_device->_pMetalFeatures->multisampleLayeredRendering) {
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to multisampled array (layered) attachments. Setting sample count to 1."));
 			validSamples = VK_SAMPLE_COUNT_1_BIT;
@@ -655,7 +697,7 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 	return validSamples;
 }
 
-uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo) {
+uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 	uint32_t minDim = 1;
 	uint32_t validMipLevels = max(pCreateInfo->mipLevels, minDim);
 
@@ -669,7 +711,7 @@ uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo) {
 	return validMipLevels;
 }
 
-bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
+bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 
 	if (pCreateInfo->tiling != VK_IMAGE_TILING_LINEAR ) { return false; }
 
@@ -701,8 +743,8 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo) {
 	}
 
 #if MVK_MACOS
-	if ( mvkIsAnyFlagEnabled(pCreateInfo->usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) ) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, usage must not include VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT, or VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT."));
+	if (isAttachment) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to linear (VK_IMAGE_TILING_LINEAR) images."));
 		isLin = false;
 	}
 #endif
@@ -757,6 +799,7 @@ MVKImage::~MVKImage() {
 	if (_deviceMemory) { _deviceMemory->removeImage(this); }
 	resetMTLTexture();
     resetIOSurface();
+	for (auto elem : _mtlTextureViews) { [elem.second release]; }
 }
 
 
@@ -890,10 +933,10 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 		if (pCreateInfo->subresourceRange.layerCount != image->_extent.depth) {
 			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
 		}
-		if (!mvkAreFlagsEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments."));
-		} else if (mvkIsAnyFlagEnabled(_usage, ~VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images are only supported for color attachments.");
+		if ( !mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments."));
+		} else if (mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments.");
 		}
 	}
 }
@@ -1043,10 +1086,11 @@ bool MVKSampler::getConstexprSampler(mvk::MSLResourceBinding& resourceBinding) {
 	return _requiresConstExprSampler;
 }
 
-// Returns an autoreleased Metal sampler descriptor constructed from the properties of this image.
-MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo) {
+// Returns an Metal sampler descriptor constructed from the properties of this image.
+// It is the caller's responsibility to release the returned descriptor object.
+MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo) {
 
-	MTLSamplerDescriptor* mtlSampDesc = [[MTLSamplerDescriptor alloc] init];
+	MTLSamplerDescriptor* mtlSampDesc = [MTLSamplerDescriptor new];		// retained
 	mtlSampDesc.sAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeU);
 	mtlSampDesc.tAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeV);
     mtlSampDesc.rAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeW);
@@ -1084,12 +1128,16 @@ MTLSamplerDescriptor* MVKSampler::getMTLSamplerDescriptor(const VkSamplerCreateI
 		}
 	}
 #endif
-	return [mtlSampDesc autorelease];
+	return mtlSampDesc;
 }
 
 MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_requiresConstExprSampler = pCreateInfo->compareEnable && !_device->_pMetalFeatures->depthSampleCompare;
-    _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: getMTLSamplerDescriptor(pCreateInfo)];
+
+	MTLSamplerDescriptor* mtlSampDesc = newMTLSamplerDescriptor(pCreateInfo);	// temp retain
+    _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: mtlSampDesc];
+	[mtlSampDesc release];														// temp release
+
 	initConstExprSampler(pCreateInfo);
 }
 
@@ -1323,7 +1371,12 @@ void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) 
             // Signal the semaphore device-side.
             _availabilitySignalers.front().first->encodeSignal(mtlCmdBuff);
         }
-        [mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { makeAvailable(); }];
+
+		retain();	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
+        [mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+			makeAvailable();
+			release();
+		}];
     } else {
         [mtlDrawable present];
         resetMetalSurface();
@@ -1356,7 +1409,6 @@ MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
 	_availability.isAvailable = true;
 	_preSignaled = make_pair(nullptr, nullptr);
 	_mtlDrawable = nil;
-    _canSupportMTLTextureView = false;		// Override...swapchains never support Metal image view.
 }
 
 MVKSwapchainImage::~MVKSwapchainImage() {
