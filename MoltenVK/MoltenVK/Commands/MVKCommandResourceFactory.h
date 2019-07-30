@@ -35,25 +35,38 @@
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
 typedef struct MVKRPSKeyBlitImg_t {
-	uint16_t mtlPixFmt = 0;			/**< MTLPixelFormat */
-	uint16_t mtlTexType = 0;		/**< MTLTextureType */
+	uint16_t srcMTLPixelFormat = 0;			/**< as MTLPixelFormat */
+	uint16_t srcMTLTextureType = 0;			/**< as MTLTextureType */
+	uint16_t dstMTLPixelFormat = 0;			/**< as MTLPixelFormat */
+	uint16_t dstSampleCount = 0;
 
 	bool operator==(const MVKRPSKeyBlitImg_t& rhs) const {
-		return ((mtlPixFmt == rhs.mtlPixFmt) && (mtlTexType == rhs.mtlTexType));
+		if (srcMTLPixelFormat != rhs.srcMTLPixelFormat) { return false; }
+		if (srcMTLTextureType != rhs.srcMTLTextureType) { return false; }
+		if (dstMTLPixelFormat != rhs.dstMTLPixelFormat) { return false; }
+		if (dstSampleCount != rhs.dstSampleCount) { return false; }
+		return true;
 	}
 
-	inline MTLPixelFormat getMTLPixelFormat() { return (MTLPixelFormat)mtlPixFmt; }
+	inline MTLPixelFormat getSrcMTLPixelFormat() { return (MTLPixelFormat)srcMTLPixelFormat; }
 
-	inline bool isDepthFormat() { return mvkMTLPixelFormatIsDepthFormat(getMTLPixelFormat()); }
+	inline MTLPixelFormat getDstMTLPixelFormat() { return (MTLPixelFormat)dstMTLPixelFormat; }
 
-	inline MTLTextureType getMTLTextureType() { return (MTLTextureType)mtlTexType; }
-
-	inline bool isArrayType() { return (mtlTexType == MTLTextureType2DArray) || (mtlTexType == MTLTextureType1DArray); }
+	inline bool isSrcArrayType() {
+		return (srcMTLTextureType == MTLTextureType2DArray ||
+#if MVK_MACOS
+				srcMTLTextureType == MTLTextureType2DMultisampleArray ||
+#endif
+				srcMTLTextureType == MTLTextureType1DArray); }
 
 	std::size_t hash() const {
-		std::size_t hash = mtlTexType;
+		std::size_t hash = srcMTLPixelFormat;
 		hash <<= 16;
-		hash |= mtlPixFmt;
+		hash |= srcMTLTextureType;
+		hash <<= 16;
+		hash |= dstMTLPixelFormat;
+		hash <<= 16;
+		hash |= dstSampleCount;
 		return hash;
 	}
 
@@ -344,8 +357,8 @@ public:
      */
     id<MTLDepthStencilState> newMTLDepthStencilState(MVKMTLDepthStencilDescriptorData& dsData);
 
-    /** Returns an autoreleased MTLStencilDescriptor constructed from the stencil data. */
-    MTLStencilDescriptor* getMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData);
+    /** Returns an retained MTLStencilDescriptor constructed from the stencil data. */
+    MTLStencilDescriptor* newMTLStencilDescriptor(MVKMTLStencilDescriptorData& sData);
 
     /**
      * Returns a new MVKImage configured with content held in Private storage.
@@ -392,15 +405,15 @@ public:
 protected:
 	void initMTLLibrary();
 	void initImageDeviceMemory();
-	id<MTLFunction> getBlitFragFunction(MVKRPSKeyBlitImg& blitKey);
-	id<MTLFunction> getClearVertFunction(MVKRPSKeyClearAtt& attKey);
-	id<MTLFunction> getClearFragFunction(MVKRPSKeyClearAtt& attKey);
+	id<MTLFunction> newBlitFragFunction(MVKRPSKeyBlitImg& blitKey);
+	id<MTLFunction> newClearVertFunction(MVKRPSKeyClearAtt& attKey);
+	id<MTLFunction> newClearFragFunction(MVKRPSKeyClearAtt& attKey);
 	NSString* getMTLFormatTypeString(MTLPixelFormat mtlPixFmt);
-    id<MTLFunction> getFunctionNamed(const char* funcName);
+    id<MTLFunction> newFunctionNamed(const char* funcName);
 	id<MTLFunction> newMTLFunction(NSString* mslSrcCode, NSString* funcName);
 	id<MTLRenderPipelineState> newMTLRenderPipelineState(MTLRenderPipelineDescriptor* plDesc,
 														 MVKVulkanAPIDeviceObject* owner);
-	id<MTLComputePipelineState> newMTLComputePipelineState(id<MTLFunction> mtlFunction,
+	id<MTLComputePipelineState> newMTLComputePipelineState(const char* funcName,
 														   MVKVulkanAPIDeviceObject* owner);
 
 	id<MTLLibrary> _mtlLibrary;

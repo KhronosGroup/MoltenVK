@@ -317,6 +317,19 @@ encumbrances. In submitting code to this repository, you are agreeing that the c
 Property claims.  
 
 
+### Memory Management
+
+*Metal*, and other *Objective-C* objects in *Apple's SDK* frameworks, use reference counting for memory management. 
+When instantiating *Objective-C* objects, it is important that you do not rely on implied *autorelease pools* to do 
+memory management for you. Because many *Vulkan* games and apps may be ported from other platforms, they will 
+typically not include autorelease pools in their threading models.
+
+Avoid the use of the `autorelease` method, or any object creation methods that imply use of `autorelease`,
+(eg- `[NSString stringWithFormat: ]`, etc). Instead, favour object creation methods that return a retained object
+(eg- `[[NSString alloc] initWithFormat: ]`, etc), and manually track and release those objects. If you need to use 
+autoreleased objects, wrap code blocks in an `@autoreleasepool {...}` block.
+
+
 ### Code Formatting
 
 When contributing code, please honour the code formatting style found in existing **MoltenVK** source code.

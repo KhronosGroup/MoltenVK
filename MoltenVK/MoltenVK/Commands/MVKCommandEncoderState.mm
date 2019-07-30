@@ -44,7 +44,10 @@ void MVKPipelineCommandEncoderState::setPipeline(MVKPipeline* pipeline) {
 MVKPipeline* MVKPipelineCommandEncoderState::getPipeline() { return _pipeline; }
 
 void MVKPipelineCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (_pipeline) { _pipeline->encode(_cmdEncoder, stage); }
+    if (_pipeline) {
+		_pipeline->encode(_cmdEncoder, stage);
+		_pipeline->bindPushConstants(_cmdEncoder);
+	}
 }
 
 void MVKPipelineCommandEncoderState::resetImpl() {
@@ -167,8 +170,13 @@ void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIn
     }
 }
 
+// At this point, I have been marked not-dirty, under the assumption that I will make changes to the encoder.
+// However, some of the paths below decide not to actually make any changes to the encoder. In that case,
+// I should remain dirty until I actually do make encoder changes.
 void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
     if (_pushConstants.empty() ) { return; }
+
+	_isDirty = true;	// Stay dirty until I actually decide to make a change to the encoder
 
     switch (_shaderStage) {
         case VK_SHADER_STAGE_VERTEX_BIT:
@@ -177,6 +185,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                             _pushConstants.data(),
                                             _pushConstants.size(),
                                             _mtlBufferIndex);
+				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
         case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
@@ -185,6 +194,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                              _pushConstants.data(),
                                              _pushConstants.size(),
                                              _mtlBufferIndex);
+				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
         case VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT:
@@ -193,6 +203,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                             _pushConstants.data(),
                                             _pushConstants.size(),
                                             _mtlBufferIndex);
+				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
         case VK_SHADER_STAGE_FRAGMENT_BIT:
@@ -201,6 +212,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                               _pushConstants.data(),
                                               _pushConstants.size(),
                                               _mtlBufferIndex);
+				_isDirty = false;	// Okay, I changed the encoder
             }
             break;
         case VK_SHADER_STAGE_COMPUTE_BIT:
@@ -208,6 +220,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
                                          _pushConstants.data(),
                                          _pushConstants.size(),
                                          _mtlBufferIndex);
+			_isDirty = false;	// Okay, I changed the encoder
             break;
         default:
             MVKAssert(false, "Unsupported shader stage: %d", _shaderStage);
@@ -272,10 +285,10 @@ void MVKDepthStencilCommandEncoderState::setStencilCompareMask(VkStencilFaceFlag
     if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK) &&
            mvkIsAnyFlagEnabled(faceMask, VK_STENCIL_FRONT_AND_BACK)) ) { return; }
 
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
         _depthStencilData.frontFaceStencilData.readMask = stencilCompareMask;
     }
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
         _depthStencilData.backFaceStencilData.readMask = stencilCompareMask;
     }
 
@@ -289,10 +302,10 @@ void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags 
     if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK) &&
            mvkIsAnyFlagEnabled(faceMask, VK_STENCIL_FRONT_AND_BACK)) ) { return; }
 
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
         _depthStencilData.frontFaceStencilData.writeMask = stencilWriteMask;
     }
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
         _depthStencilData.backFaceStencilData.writeMask = stencilWriteMask;
     }
 
@@ -342,10 +355,10 @@ void MVKStencilReferenceValueCommandEncoderState::setReferenceValues(VkStencilFa
     if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_REFERENCE) &&
            mvkIsAnyFlagEnabled(faceMask, VK_STENCIL_FRONT_AND_BACK)) ) { return; }
 
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
         _frontFaceValue = stencilReference;
     }
-    if (mvkAreFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
+    if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
         _backFaceValue = stencilReference;
     }
 
@@ -793,7 +806,7 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
     NSUInteger offset = pQueryPool->getVisibilityResultOffset(query);
     NSUInteger maxOffset = _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes;
 
-    bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
+    bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
     _mtlVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
     _mtlVisibilityResultOffset = min(offset, maxOffset);
 

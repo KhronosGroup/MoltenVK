@@ -21,7 +21,7 @@
 #include "MVKBaseObject.h"
 #include <vulkan/vk_icd.h>
 #include <string>
-#include <mutex>
+#include <atomic>
 
 #import <Foundation/NSString.h>
 
@@ -93,25 +93,18 @@ public:
 	static MVKVulkanAPIObject* getMVKVulkanAPIObject(VkObjectType objType, uint64_t objectHandle);
 
 	/** Construct an empty instance. Declared here to support copy constructor. */
-	MVKVulkanAPIObject() {}
+	MVKVulkanAPIObject() : _refCount(1) {}
 
-	/**
-	 * Construct an instance from a copy. Default copy constructor disallowed due to mutex.
-	 * Copies start with fresh reference counts.
-	 */
-	MVKVulkanAPIObject(const MVKVulkanAPIObject& other) {}
+	/** Default copy constructor disallowed due to mutex. Copy starts with fresh reference counts. */
+	MVKVulkanAPIObject(const MVKVulkanAPIObject& other) : _refCount(1) {}
 
 	~MVKVulkanAPIObject() override;
 
 protected:
-	bool decrementRetainCount();
-	bool markDestroyed();
 	virtual void propogateDebugName() = 0;
 
+	std::atomic<uint32_t> _refCount;
 	NSString* _debugName = nil;
-	std::mutex _refLock;
-	unsigned _refCount = 0;
-	bool _isDestroyed = false;
 };
 
 
@@ -129,21 +122,30 @@ class MVKDispatchableVulkanAPIObject : public MVKVulkanAPIObject {
 public:
 
     /**
-     * Returns a reference to this object suitable for use as a Vulkan API handle.
-     * This is the compliment of the getDispatchableObject() method.
+     * Returns a reference to this object suitable for use as a dispatchable Vulkan API handle.
+	 *
+	 * Establishes the loader magic number every time, in case the loader
+	 * overwrote it for some reason before passing the object back,
+	 * particularly in pooled objects that the loader might consider freed.
+	 *
+	 * This is the compliment of the getDispatchableObject() function.
      */
-    void* getVkHandle() override { return &_icdRef; }
+    void* getVkHandle() override {
+		set_loader_magic_value(&_icdRef);
+		return &_icdRef;
+	}
 
     /**
      * Retrieves the MVKDispatchableVulkanAPIObject instance referenced by the dispatchable Vulkan handle.
-     * This is the compliment of the getVkHandle() method.
+	 *
+     * This is the compliment of the getVkHandle() function.
      */
     static inline MVKDispatchableVulkanAPIObject* getDispatchableObject(void* vkHandle) {
 		return vkHandle ? ((MVKDispatchableObjectICDRef*)vkHandle)->mvkObject : nullptr;
     }
 
 protected:
-    MVKDispatchableObjectICDRef _icdRef = { ICD_LOADER_MAGIC, this };
+    MVKDispatchableObjectICDRef _icdRef = { VK_NULL_HANDLE, this };
 
 };
 

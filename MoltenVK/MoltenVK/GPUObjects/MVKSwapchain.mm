@@ -38,7 +38,9 @@ void MVKSwapchain::propogateDebugName() {
 	if (_debugName) {
 		size_t imgCnt = _surfaceImages.size();
 		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-			_surfaceImages[imgIdx]->setDebugName([NSString stringWithFormat: @"%@(%lu)", _debugName, imgIdx].UTF8String);
+			NSString* nsName = [[NSString alloc] initWithFormat: @"%@(%lu)", _debugName, imgIdx];	// temp retain
+			_surfaceImages[imgIdx]->setDebugName(nsName.UTF8String);
+			[nsName release];																		// release temp string
 		}
 	}
 }
@@ -224,12 +226,40 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			   VK_IMAGE_USAGE_SAMPLED_BIT |
 																			   VK_IMAGE_USAGE_STORAGE_BIT));
+#if MVK_MACOS
+	switch (pCreateInfo->imageColorSpace) {
+		case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+			break;
+		case VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+			break;
+		case VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
+			break;
+		case VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceDCIP3);
+			break;
+		case VK_COLOR_SPACE_BT709_NONLINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_709);
+			break;
+		case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998);
+			break;
+		case VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
+			break;
+		case VK_COLOR_SPACE_PASS_THROUGH_EXT:
+		default:
+			// Nothing - the default is not to do color matching.
+			break;
+	}
+#endif
 	_mtlLayerOrigDrawSize = _mtlLayer.updatedDrawableSizeMVK;
 
 	// TODO: set additional CAMetalLayer properties before extracting drawables:
 	//	- presentsWithTransaction
 	//	- drawsAsynchronously
-	//  - colorspace (macOS only) Vulkan only supports sRGB colorspace for now.
 	//  - wantsExtendedDynamicRangeContent (macOS only)
 
 	if ( [_mtlLayer.delegate isKindOfClass: [PLATFORM_VIEW_CLASS class]] ) {
@@ -268,7 +298,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
         .flags = 0,
     };
 
-	if (mvkAreFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)) {
+	if (mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)) {
 		mvkEnableFlag(imgInfo.flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
 	}
 

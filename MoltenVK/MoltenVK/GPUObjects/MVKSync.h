@@ -197,7 +197,7 @@ public:
 #pragma mark Construction
 
     MVKFence(MVKDevice* device, const VkFenceCreateInfo* pCreateInfo) :
-		MVKVulkanAPIDeviceObject(device), _isSignaled(mvkAreFlagsEnabled(pCreateInfo->flags, VK_FENCE_CREATE_SIGNALED_BIT)) {}
+		MVKVulkanAPIDeviceObject(device), _isSignaled(mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_FENCE_CREATE_SIGNALED_BIT)) {}
 
 protected:
 	void propogateDebugName() override {}

@@ -27,7 +27,7 @@
 
 void MVKCmdDebugMarker::setContent(const char* pMarkerName, const float color[4]) {
 	[_markerName release];
-	_markerName = [@(pMarkerName) retain];
+	_markerName = [[NSString alloc] initWithUTF8String: pMarkerName];	// retained
 }
 
 MVKCmdDebugMarker::MVKCmdDebugMarker(MVKCommandTypePool<MVKCmdDebugMarker>* pool)

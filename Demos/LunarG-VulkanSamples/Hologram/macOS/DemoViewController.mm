@@ -46,12 +46,12 @@
 	self.view.wantsLayer = YES;		// Back the view with a layer created by the makeBackingLayer method.
 
     std::vector<std::string> args;
-//  args.push_back("-p");           // Uncomment to use push constants
+    args.push_back("-p");           // Uncomment to use push constants
 //  args.push_back("-s");           // Uncomment to use a single thread
     _game = new Hologram(args);
 
     _shell = new ShellMVK(*_game);
-    _shell->run(self.view);
+    _shell->run(self.view.layer);
 
 	CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
 	CVDisplayLinkSetOutputCallback(_displayLink, &DisplayLinkCallback, _shell);

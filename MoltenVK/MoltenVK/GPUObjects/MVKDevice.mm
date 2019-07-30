@@ -56,6 +56,11 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKPhysicalDevice
 
+VkResult MVKPhysicalDevice::getExtensionProperties(const char* pLayerName, uint32_t* pCount, VkExtensionProperties* pProperties) {
+	MVKExtensionList* extensions = getSupportedExtensions(pLayerName);
+	return extensions->getProperties(pCount, pProperties);
+}
+
 void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures* features) {
     if (features) { *features = _features; }
 }
@@ -64,8 +69,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
     if (features) {
         features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
         features->features = _features;
-        auto* next = (VkBaseOutStructure*)features->pNext;
-        while (next) {
+        for (auto* next = (VkBaseOutStructure*)features->pNext; next; next = next->pNext) {
             switch ((uint32_t)next->sType) {
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
                     auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
@@ -88,6 +92,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     f16Features->shaderInt8 = true;
                     break;
                 }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+                    auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
+                    uboLayoutFeatures->uniformBufferStandardLayout = true;
+                    break;
+                }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
                     auto* varPtrFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
                     varPtrFeatures->variablePointersStorageBuffer = true;
@@ -97,6 +106,16 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
                     auto* hostQueryResetFeatures = (VkPhysicalDeviceHostQueryResetFeaturesEXT*)next;
                     hostQueryResetFeatures->hostQueryReset = true;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+                    auto* scalarLayoutFeatures = (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*)next;
+                    scalarLayoutFeatures->scalarBlockLayout = true;
+                    break;
+                }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+                    auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
+                    texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
                     break;
                 }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
@@ -114,10 +133,14 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     portabilityFeatures->samplerMipLodBias = false;
                     break;
                 }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS2_FEATURES_INTEL: {
+                    auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2INTEL*)next;
+                    shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
+                    break;
+                }
                 default:
                     break;
             }
-            next = next->pNext;
         }
     }
 }
@@ -130,42 +153,44 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
     if (properties) {
         properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
         properties->properties = _properties;
-		auto* next = (MVKVkAPIStructHeader*)properties->pNext;
-		while (next) {
+		for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 			switch ((uint32_t)next->sType) {
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
                 auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
                 pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-                next = (MVKVkAPIStructHeader*)pointClipProps->pNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
                 auto* maint3Props = (VkPhysicalDeviceMaintenance3Properties*)next;
-                maint3Props->maxPerSetDescriptors = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount + _metalFeatures.maxPerStageSamplerCount) * 2;
+                maint3Props->maxPerSetDescriptors = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount + _metalFeatures.maxPerStageSamplerCount) * 4;
                 maint3Props->maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
-                next = (MVKVkAPIStructHeader*)maint3Props->pNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
                 auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
                 pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
-                next = (MVKVkAPIStructHeader*)pushDescProps->pNext;
+                break;
+            }
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+                auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)next;
+                // Save the 'next' pointer; we'll unintentionally overwrite it
+                // on the next line. Put it back when we're done.
+                void* savedNext = texelBuffAlignProps->pNext;
+                *texelBuffAlignProps = _texelBuffAlignProperties;
+                texelBuffAlignProps->pNext = savedNext;
                 break;
             }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
                 auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
                 divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
-                next = (MVKVkAPIStructHeader*)divisorProps->pNext;
                 break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
 				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
 				portabilityProps->minVertexInputBindingStrideAlignment = 4;
-				next = (MVKVkAPIStructHeader*)portabilityProps->pNext;
 				break;
 			}
             default:
-                next = (MVKVkAPIStructHeader*)next->pNext;
                 break;
             }
         }
@@ -221,6 +246,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		return VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 
+	MVKFormatType mvkFmt = mvkFormatTypeFromVkFormat(format);
 	bool hasAttachmentUsage = mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
@@ -241,8 +267,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (tiling == VK_IMAGE_TILING_LINEAR) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 			// Metal does not allow compressed or depth/stencil formats on 1D textures
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
+			if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt.width = pLimits->maxImageDimension1D;
@@ -263,8 +288,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
 				// Linear textures have additional restrictions under Metal:
 				// - They may not be depth/stencil or compressed textures.
-				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-					mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
+				if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed) {
 					return VK_ERROR_FORMAT_NOT_SUPPORTED;
 				}
 #if MVK_MACOS
@@ -281,7 +305,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				// Compressed multisampled textures aren't supported.
 				// Multisampled cube textures aren't supported.
 				// Non-renderable multisampled textures aren't supported.
-				if (mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed ||
+				if (mvkFmt == kMVKFormatCompressed ||
 					mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ||
 					!mvkIsAnyFlagEnabled(fmtProps.optimalTilingFeatures, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT|VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
 					sampleCounts = VK_SAMPLE_COUNT_1_BIT;
@@ -295,18 +319,17 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
                 return VK_ERROR_FORMAT_NOT_SUPPORTED;
             }
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil
+			if (mvkFmt == kMVKFormatDepthStencil
 #if MVK_IOS
-				|| mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed
+				|| mvkFmt == kMVKFormatCompressed
 #endif
 				) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
 #if MVK_MACOS
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
-				// If this is a compressed format and there's no codec, it isn't
-				// supported.
-				if (!mvkCanDecodeFormat(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+			// If this is a compressed format and there's no codec, it isn't supported.
+			if ((mvkFmt == kMVKFormatCompressed) && !mvkCanDecodeFormat(format)) {
+				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
 #endif
             maxExt.width = pLimits->maxImageDimension3D;
@@ -321,8 +344,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (tiling == VK_IMAGE_TILING_LINEAR) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 			// Metal does not allow compressed or depth/stencil formats on anything but 2D textures
-			if (mvkFormatTypeFromVkFormat(format) == kMVKFormatDepthStencil ||
-				mvkFormatTypeFromVkFormat(format) == kMVKFormatCompressed) {
+			if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
             maxExt = { 1, 1, 1};
@@ -457,24 +479,47 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 		MTLPixelFormatBGRA8Unorm,
 		MTLPixelFormatBGRA8Unorm_sRGB,
 		MTLPixelFormatRGBA16Float,
+		MTLPixelFormatBGR10A2Unorm,
 	};
 
-	const uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
+	MVKVectorInline<VkColorSpaceKHR, 16> colorSpaces;
+	colorSpaces.push_back(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
+#if MVK_MACOS
+	if (getInstance()->_enabledExtensions.vk_EXT_swapchain_colorspace.enabled) {
+		// 10.11 supports some but not all of the color spaces specified by VK_EXT_swapchain_colorspace.
+		colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
+		colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT);
+		colorSpaces.push_back(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
+		colorSpaces.push_back(VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT);
+		colorSpaces.push_back(VK_COLOR_SPACE_PASS_THROUGH_EXT);
+		if (mvkOSVersion() >= 10.12) {
+			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
+		}
+	}
+#endif
+
+	uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
+	if (!mvkMTLPixelFormatIsSupported(MTLPixelFormatBGR10A2Unorm)) { mtlFmtsCnt--; }
+
+	const uint vkFmtsCnt = mtlFmtsCnt * (uint)colorSpaces.size();
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pSurfaceFormats ) {
-		*pCount = mtlFmtsCnt;
+		*pCount = vkFmtsCnt;
 		return VK_SUCCESS;
 	}
 
 	// Determine how many results we'll return, and return that number
-	VkResult result = (*pCount >= mtlFmtsCnt) ? VK_SUCCESS : VK_INCOMPLETE;
-	*pCount = min(*pCount, mtlFmtsCnt);
+	VkResult result = (*pCount >= vkFmtsCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	*pCount = min(*pCount, vkFmtsCnt);
 
 	// Now populate the supplied array
-	for (uint fmtIdx = 0; fmtIdx < *pCount; fmtIdx++) {
-		pSurfaceFormats[fmtIdx].format = mvkVkFormatFromMTLPixelFormat(mtlFormats[fmtIdx]);
-		pSurfaceFormats[fmtIdx].colorSpace = VK_COLORSPACE_SRGB_NONLINEAR_KHR;
+	for (uint csIdx = 0, idx = 0; idx < *pCount && csIdx < colorSpaces.size(); csIdx++) {
+		for (uint fmtIdx = 0; idx < *pCount && fmtIdx < mtlFmtsCnt; fmtIdx++, idx++) {
+			pSurfaceFormats[idx].format = mvkVkFormatFromMTLPixelFormat(mtlFormats[fmtIdx]);
+			pSurfaceFormats[idx].colorSpace = colorSpaces[csIdx];
+		}
 	}
 
 	return result;
@@ -679,7 +724,7 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 
 #pragma mark Construction
 
-MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) {
+MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) : _supportedExtensions(this, true) {
 	_mvkInstance = mvkInstance;
 	_mtlDevice = [mtlDevice retain];
 
@@ -687,6 +732,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initFeatures();             // Call second.
 	initProperties();           // Call third.
 	initMemoryProperties();
+	initExtensions();
 	logGPUInfo();
 }
 
@@ -734,6 +780,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v5] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.events, MVK_ALLOW_METAL_EVENTS);
+		_metalFeatures.textureBuffers = true;
 	}
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1] ) {
@@ -752,8 +799,13 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.arrayOfSamplers = true;
 	}
 
+	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) {
+		_metalFeatures.postDepthCoverage = true;
+	}
+
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1] ) {
 		_metalFeatures.layeredRendering = true;
+		_metalFeatures.stencilFeedback = true;
 	}
 
 #endif
@@ -792,10 +844,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.multisampleArrayTextures = true;
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.events, MVK_ALLOW_METAL_EVENTS);
         _metalFeatures.memoryBarriers = true;
+        _metalFeatures.textureBuffers = true;
     }
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1] ) {
 		_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
+		_metalFeatures.stencilFeedback = true;
 	}
 
 #endif
@@ -819,7 +873,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	switch (_metalFeatures.mslVersionEnum) {
 		case MTLLanguageVersion2_2:
-			_metalFeatures.mslVersion = SPIRVToMSLConverterOptions::makeMSLVersion(2, 2);
+			setMSLVersion(2, 2);
 			break;
 		case MTLLanguageVersion2_1:
 			setMSLVersion(2, 1);
@@ -913,7 +967,7 @@ void MVKPhysicalDevice::initFeatures() {
 		_features.tessellationShader = true;
 		_features.shaderTessellationAndGeometryPointSize = true;
 	}
-  
+
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily4_v1] ) {
 		_features.imageCubeArray = true;
 	}
@@ -1087,7 +1141,11 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxDescriptorSetStorageImages = (_properties.limits.maxPerStageDescriptorStorageImages * 4);
 	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 4);
 
-	_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
+	if (_metalFeatures.textureBuffers) {
+		_properties.limits.maxTexelBufferElements = (uint32_t)_metalFeatures.maxMTLBufferSize;
+	} else {
+		_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
+	}
 	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 	_properties.limits.maxStorageBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 	_properties.limits.maxPushConstantsSize = (4 * KIBI);
@@ -1098,14 +1156,87 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.bufferImageGranularity = _metalFeatures.mtlBufferAlignment;
     _properties.limits.nonCoherentAtomSize = _metalFeatures.mtlBufferAlignment;
 
+    if ([_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
+        // Figure out the greatest alignment required by all supported formats, and
+        // whether or not they only require alignment to a single texel. We'll use this
+        // information to fill out the VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT
+        // struct.
+        uint32_t maxStorage = 0, maxUniform = 0;
+        bool singleTexelStorage = true, singleTexelUniform = true;
+        mvkEnumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
+            NSUInteger alignment;
+            if ([_mtlDevice respondsToSelector: @selector(minimumTextureBufferAlignmentForPixelFormat:)]) {
+                alignment = [_mtlDevice minimumTextureBufferAlignmentForPixelFormat: mvkMTLPixelFormatFromVkFormat(vk)];
+            } else {
+                alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mvkMTLPixelFormatFromVkFormat(vk)];
+            }
+            VkFormatProperties props = mvkVkFormatProperties(vk, getFormatIsSupported(vk));
+            // For uncompressed formats, this is the size of a single texel.
+            // Note that no implementations of Metal support compressed formats
+            // in a linear texture (including texture buffers). It's likely that even
+            // if they did, this would be the absolute minimum alignment.
+            uint32_t texelSize = mvkVkFormatBytesPerBlock(vk);
+            // From the spec:
+            //   "If the size of a single texel is a multiple of three bytes, then
+            //    the size of a single component of the format is used instead."
+            if (texelSize % 3 == 0) {
+                switch (mvkFormatTypeFromVkFormat(vk)) {
+                case kMVKFormatColorInt8:
+                case kMVKFormatColorUInt8:
+                    texelSize = 1;
+                    break;
+                case kMVKFormatColorHalf:
+                case kMVKFormatColorInt16:
+                case kMVKFormatColorUInt16:
+                    texelSize = 2;
+                    break;
+                case kMVKFormatColorFloat:
+                case kMVKFormatColorInt32:
+                case kMVKFormatColorUInt32:
+                default:
+                    texelSize = 4;
+                    break;
+                }
+            }
+            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT)) {
+                maxStorage = max(maxStorage, uint32_t(alignment));
+                if (alignment % texelSize != 0) { singleTexelStorage = false; }
+            }
+            if (mvkAreAllFlagsEnabled(props.bufferFeatures, VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT)) {
+                maxUniform = max(maxUniform, uint32_t(alignment));
+                if (alignment % texelSize != 0) { singleTexelUniform = false; }
+            }
+            return true;
+        });
+        _texelBuffAlignProperties.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT;
+        _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = maxStorage;
+        _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = singleTexelStorage;
+        _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = maxUniform;
+        _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = singleTexelUniform;
+        _properties.limits.minTexelBufferOffsetAlignment = max(maxStorage, maxUniform);
+    } else {
+#if MVK_IOS
+        if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
+            _properties.limits.minTexelBufferOffsetAlignment = 16;
+        } else {
+            _properties.limits.minTexelBufferOffsetAlignment = 64;
+        }
+#endif
+#if MVK_MACOS
+        _properties.limits.minTexelBufferOffsetAlignment = 256;
+#endif
+        _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = _properties.limits.minTexelBufferOffsetAlignment;
+        _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = VK_FALSE;
+        _texelBuffAlignProperties.uniformTexelBufferOffsetAlignmentBytes = _properties.limits.minTexelBufferOffsetAlignment;
+        _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = VK_FALSE;
+    }
+
 #if MVK_IOS
     _properties.limits.maxFragmentInputComponents = 60;
 
     if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily3_v1]) {
-        _properties.limits.minTexelBufferOffsetAlignment = 16;
         _properties.limits.optimalBufferCopyOffsetAlignment = 16;
     } else {
-        _properties.limits.minTexelBufferOffsetAlignment = 64;
         _properties.limits.optimalBufferCopyOffsetAlignment = 64;
     }
 
@@ -1122,7 +1253,6 @@ void MVKPhysicalDevice::initProperties() {
 #endif
 #if MVK_MACOS
     _properties.limits.maxFragmentInputComponents = 128;
-    _properties.limits.minTexelBufferOffsetAlignment = 256;
     _properties.limits.optimalBufferCopyOffsetAlignment = 256;
 
     if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2]) {
@@ -1657,6 +1787,21 @@ uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
 	return 128 * MEBI;		// Conservative minimum for macOS GPU's & iOS shared memory
 }
 
+void MVKPhysicalDevice::initExtensions() {
+	if (!_metalFeatures.postDepthCoverage) {
+		_supportedExtensions.vk_EXT_post_depth_coverage.enabled = false;
+	}
+	if (!_metalFeatures.stencilFeedback) {
+		_supportedExtensions.vk_EXT_shader_stencil_export.enabled = false;
+	}
+}
+
+// Return all extensions supported by this physical device.
+MVKExtensionList* MVKPhysicalDevice::getSupportedExtensions(const char* pLayerName) {
+	if (!pLayerName || strcmp(pLayerName, "MoltenVK") == 0) { return &_supportedExtensions; }
+	return getInstance()->getLayerManager()->getLayerNamed(pLayerName)->getSupportedExtensions();
+}
+
 void MVKPhysicalDevice::logGPUInfo() {
 	string devTypeStr;
 	switch (_properties.deviceType) {
@@ -1740,9 +1885,11 @@ void MVKPhysicalDevice::logGPUInfo() {
 
 #endif
 
-	MVKLogInfo(logMsg.c_str(), _properties.deviceName, devTypeStr.c_str(), _properties.vendorID, _properties.deviceID,
-			   [[[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID] autorelease].UUIDString.UTF8String,
-			   SPIRVToMSLConverterOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
+	NSUUID* nsUUID = [[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID];		// temp retain
+	MVKLogInfo(logMsg.c_str(), _properties.deviceName, devTypeStr.c_str(),
+			   _properties.vendorID, _properties.deviceID, nsUUID.UUIDString.UTF8String,
+			   SPIRVToMSLConversionOptions::printMSLVersion(_metalFeatures.mslVersion).c_str());
+	[nsUUID release];																		// temp release
 }
 
 MVKPhysicalDevice::~MVKPhysicalDevice() {
@@ -1988,7 +2135,7 @@ VkResult MVKDevice::createPipelines(VkPipelineCache pipelineCache,
         // See if this pipeline has a parent. This can come either directly
         // via basePipelineHandle or indirectly via basePipelineIndex.
         MVKPipeline* parentPL = VK_NULL_HANDLE;
-        if ( mvkAreFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
+        if ( mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DERIVATIVE_BIT) ) {
             VkPipeline vkParentPL = pCreateInfo->basePipelineHandle;
             int32_t parentPLIdx = pCreateInfo->basePipelineIndex;
             if ( !vkParentPL && (parentPLIdx >= 0)) { vkParentPL = pPipelines[parentPLIdx]; }
@@ -2144,43 +2291,44 @@ void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 
 uint64_t MVKDevice::getPerformanceTimestampImpl() { return mvkGetTimestamp(); }
 
-void MVKDevice::addActivityPerformanceImpl(MVKPerformanceTracker& shaderCompilationEvent,
+void MVKDevice::addActivityPerformanceImpl(MVKPerformanceTracker& activityTracker,
 										   uint64_t startTime, uint64_t endTime) {
     lock_guard<mutex> lock(_perfLock);
 
 	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
-	shaderCompilationEvent.minimumDuration = ((shaderCompilationEvent.minimumDuration == 0.0)
+	activityTracker.minimumDuration = ((activityTracker.minimumDuration == 0.0)
 											  ? currInterval :
-											  min(currInterval, shaderCompilationEvent.minimumDuration));
-    shaderCompilationEvent.maximumDuration = max(currInterval, shaderCompilationEvent.maximumDuration);
-    double totalInterval = (shaderCompilationEvent.averageDuration * shaderCompilationEvent.count++) + currInterval;
-    shaderCompilationEvent.averageDuration = totalInterval / shaderCompilationEvent.count;
+											  min(currInterval, activityTracker.minimumDuration));
+    activityTracker.maximumDuration = max(currInterval, activityTracker.maximumDuration);
+    double totalInterval = (activityTracker.averageDuration * activityTracker.count++) + currInterval;
+    activityTracker.averageDuration = totalInterval / activityTracker.count;
 
 	if (_pMVKConfig->performanceLoggingFrameCount) {
 		MVKLogInfo("Performance to %s count: %d curr: %.3f ms, min: %.3f ms, max: %.3f ms, avg: %.3f ms",
-				   getActivityPerformanceDescription(shaderCompilationEvent),
-				   shaderCompilationEvent.count,
+				   getActivityPerformanceDescription(activityTracker),
+				   activityTracker.count,
 				   currInterval,
-				   shaderCompilationEvent.minimumDuration,
-				   shaderCompilationEvent.maximumDuration,
-				   shaderCompilationEvent.averageDuration);
+				   activityTracker.minimumDuration,
+				   activityTracker.maximumDuration,
+				   activityTracker.averageDuration);
 	}
 }
 
-const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& shaderCompilationEvent) {
-	if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.hashShaderCode) { return "hash shader SPIR-V code"; }
-    if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.spirvToMSL) { return "convert SPIR-V to MSL source code"; }
-    if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.mslCompile) { return "compile MSL source code into a MTLLibrary"; }
-    if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.mslLoad) { return "load pre-compiled MSL code into a MTLLibrary"; }
-	if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.shaderLibraryFromCache) { return "retrieve shader library from the cache"; }
-    if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.functionRetrieval) { return "retrieve a MTLFunction from a MTLLibrary"; }
-    if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.functionSpecialization) { return "specialize a retrieved MTLFunction"; }
-    if (&shaderCompilationEvent == &_performanceStatistics.shaderCompilation.pipelineCompile) { return "compile MTLFunctions into a pipeline"; }
-	if (&shaderCompilationEvent == &_performanceStatistics.pipelineCache.sizePipelineCache) { return "calculate cache size required to write MSL to pipeline cache"; }
-	if (&shaderCompilationEvent == &_performanceStatistics.pipelineCache.writePipelineCache) { return "write MSL to pipeline cache"; }
-	if (&shaderCompilationEvent == &_performanceStatistics.pipelineCache.readPipelineCache) { return "read MSL from pipeline cache"; }
-	if (&shaderCompilationEvent == &_performanceStatistics.queue.mtlQueueAccess) { return "access MTLCommandQueue"; }
-    return "Unknown shader compile event";
+const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& activityTracker) {
+	if (&activityTracker == &_performanceStatistics.shaderCompilation.hashShaderCode) { return "hash shader SPIR-V code"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.spirvToMSL) { return "convert SPIR-V to MSL source code"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.mslCompile) { return "compile MSL source code into a MTLLibrary"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.mslLoad) { return "load pre-compiled MSL code into a MTLLibrary"; }
+	if (&activityTracker == &_performanceStatistics.shaderCompilation.shaderLibraryFromCache) { return "retrieve shader library from the cache"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.functionRetrieval) { return "retrieve a MTLFunction from a MTLLibrary"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.functionSpecialization) { return "specialize a retrieved MTLFunction"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.pipelineCompile) { return "compile MTLFunctions into a pipeline"; }
+	if (&activityTracker == &_performanceStatistics.pipelineCache.sizePipelineCache) { return "calculate cache size required to write MSL to pipeline cache"; }
+	if (&activityTracker == &_performanceStatistics.pipelineCache.writePipelineCache) { return "write MSL to pipeline cache"; }
+	if (&activityTracker == &_performanceStatistics.pipelineCache.readPipelineCache) { return "read MSL from pipeline cache"; }
+	if (&activityTracker == &_performanceStatistics.queue.mtlQueueAccess) { return "access MTLCommandQueue"; }
+	if (&activityTracker == &_performanceStatistics.queue.mtlCommandBufferCompletion) { return "complete MTLCommandBuffer"; }
+    return "Unknown performance activity";
 }
 
 void MVKDevice::getPerformanceStatistics(MVKPerformanceStatistics* pPerf) {
@@ -2191,12 +2339,6 @@ void MVKDevice::getPerformanceStatistics(MVKPerformanceStatistics* pPerf) {
 
 
 #pragma mark Metal
-
-MTLCompileOptions* MVKDevice::getMTLCompileOptions() {
-	MTLCompileOptions* opts = [[MTLCompileOptions new] autorelease];
-	opts.languageVersion = _pMetalFeatures->mslVersionEnum;
-	return opts;
-}
 
 uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) {
 	return ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
@@ -2257,20 +2399,25 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledStorage16Features(),
 	_enabledStorage8Features(),
 	_enabledF16I8Features(),
+	_enabledUBOLayoutFeatures(),
 	_enabledVarPtrFeatures(),
 	_enabledHostQryResetFeatures(),
+	_enabledScalarLayoutFeatures(),
+	_enabledTexelBuffAlignFeatures(),
 	_enabledVtxAttrDivFeatures(),
 	_enabledPortabilityFeatures(),
 	_enabledExtensions(this)
 {
 
 	initPerformanceTracking();
-	initPhysicalDevice(physicalDevice);
+	initPhysicalDevice(physicalDevice, pCreateInfo);
 	enableFeatures(pCreateInfo);
 	enableExtensions(pCreateInfo);
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;
+
+	initMTLCompileOptions();	// Before command resource factory
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
@@ -2301,11 +2448,30 @@ void MVKDevice::initPerformanceTracking() {
 	_performanceStatistics.pipelineCache.writePipelineCache = initPerf;
 	_performanceStatistics.pipelineCache.readPipelineCache = initPerf;
 	_performanceStatistics.queue.mtlQueueAccess = initPerf;
+	_performanceStatistics.queue.mtlCommandBufferCompletion = initPerf;
 }
 
-void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice) {
+void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
 
-	_physicalDevice = physicalDevice;
+	const VkDeviceGroupDeviceCreateInfo* pGroupCreateInfo = nullptr;
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_DEVICE_GROUP_DEVICE_CREATE_INFO:
+			pGroupCreateInfo = (const VkDeviceGroupDeviceCreateInfo*)next;
+			break;
+		default:
+			break;
+		}
+	}
+
+	// If I was given physical devices for a grouped device, use them.
+	// At this time, we only support device groups consisting of a single member,
+	// so this is sufficient for now.
+	if (pGroupCreateInfo && pGroupCreateInfo->physicalDeviceCount)
+		_physicalDevice = MVKPhysicalDevice::getMVKPhysicalDevice(pGroupCreateInfo->pPhysicalDevices[0]);
+	else
+		_physicalDevice = physicalDevice;
+
 	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
 	_pMetalFeatures = _physicalDevice->getMetalFeatures();
 	_pProperties = &_physicalDevice->_properties;
@@ -2333,8 +2499,11 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	memset((void*)&_enabledStorage16Features, 0, sizeof(_enabledStorage16Features));
 	memset((void*)&_enabledStorage8Features, 0, sizeof(_enabledStorage8Features));
 	memset((void*)&_enabledF16I8Features, 0, sizeof(_enabledF16I8Features));
+	memset((void*)&_enabledUBOLayoutFeatures, 0, sizeof(_enabledUBOLayoutFeatures));
 	memset((void*)&_enabledVarPtrFeatures, 0, sizeof(_enabledVarPtrFeatures));
 	memset((void*)&_enabledHostQryResetFeatures, 0, sizeof(_enabledHostQryResetFeatures));
+	memset((void*)&_enabledScalarLayoutFeatures, 0, sizeof(_enabledScalarLayoutFeatures));
+	memset((void*)&_enabledTexelBuffAlignFeatures, 0, sizeof(_enabledTexelBuffAlignFeatures));
 	memset((void*)&_enabledVtxAttrDivFeatures, 0, sizeof(_enabledVtxAttrDivFeatures));
 	memset((void*)&_enabledPortabilityFeatures, 0, sizeof(_enabledPortabilityFeatures));
 
@@ -2347,17 +2516,29 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	pdVtxAttrDivFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
 	pdVtxAttrDivFeatures.pNext = &pdPortabilityFeatures;
 
+	VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT pdTexelBuffAlignFeatures;
+	pdTexelBuffAlignFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT;
+	pdTexelBuffAlignFeatures.pNext = &pdVtxAttrDivFeatures;
+
+	VkPhysicalDeviceScalarBlockLayoutFeaturesEXT pdScalarLayoutFeatures;
+	pdScalarLayoutFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT;
+	pdScalarLayoutFeatures.pNext = &pdTexelBuffAlignFeatures;
+
 	VkPhysicalDeviceHostQueryResetFeaturesEXT pdHostQryResetFeatures;
 	pdHostQryResetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
-	pdHostQryResetFeatures.pNext = &pdVtxAttrDivFeatures;
+	pdHostQryResetFeatures.pNext = &pdScalarLayoutFeatures;
 
 	VkPhysicalDeviceVariablePointerFeatures pdVarPtrFeatures;
 	pdVarPtrFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES;
 	pdVarPtrFeatures.pNext = &pdHostQryResetFeatures;
 
+	VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR pdUBOLayoutFeatures;
+	pdUBOLayoutFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR;
+	pdUBOLayoutFeatures.pNext = &pdVarPtrFeatures;
+
 	VkPhysicalDeviceFloat16Int8FeaturesKHR pdF16I8Features;
 	pdF16I8Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR;
-	pdF16I8Features.pNext = &pdVarPtrFeatures;
+	pdF16I8Features.pNext = &pdUBOLayoutFeatures;
 
 	VkPhysicalDevice8BitStorageFeaturesKHR pdStorage8Features;
 	pdStorage8Features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR;
@@ -2411,6 +2592,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 							   &pdF16I8Features.shaderFloat16, 2);
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+				auto* requestedFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
+				enableFeatures(&_enabledUBOLayoutFeatures.uniformBufferStandardLayout,
+							   &requestedFeatures->uniformBufferStandardLayout,
+							   &pdUBOLayoutFeatures.uniformBufferStandardLayout, 1);
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
 				auto* requestedFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
 				enableFeatures(&_enabledVarPtrFeatures.variablePointersStorageBuffer,
@@ -2423,6 +2611,20 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledHostQryResetFeatures.hostQueryReset,
 							   &requestedFeatures->hostQueryReset,
 							   &pdHostQryResetFeatures.hostQueryReset, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*)next;
+				enableFeatures(&_enabledScalarLayoutFeatures.scalarBlockLayout,
+							   &requestedFeatures->scalarBlockLayout,
+							   &pdScalarLayoutFeatures.scalarBlockLayout, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
+				enableFeatures(&_enabledTexelBuffAlignFeatures.texelBufferAlignment,
+							   &requestedFeatures->texelBufferAlignment,
+							   &pdTexelBuffAlignFeatures.texelBufferAlignment, 1);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
@@ -2459,7 +2661,7 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
 	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
 												  pCreateInfo->ppEnabledExtensionNames,
-												  getInstance()->getDriverLayer()->getSupportedExtensions()));
+												  getPhysicalDevice()->getSupportedExtensions()));
 }
 
 // Create the command queues
@@ -2482,12 +2684,19 @@ void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 	}
 }
 
+void MVKDevice::initMTLCompileOptions() {
+	_mtlCompileOptions = [MTLCompileOptions new];	// retained
+	_mtlCompileOptions.languageVersion = _pMetalFeatures->mslVersionEnum;
+}
+
 MVKDevice::~MVKDevice() {
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		mvkDestroyContainerContents(queues);
 	}
-    [_globalVisibilityResultMTLBuffer release];
 	_commandResourceFactory->destroy();
+
+	[_mtlCompileOptions release];
+    [_globalVisibilityResultMTLBuffer release];
 }
 
 

@@ -71,7 +71,7 @@ VkResult MVKQueryPool::getResults(uint32_t firstQuery,
 
 	uint32_t endQuery = firstQuery + queryCount;
 
-	if (mvkAreFlagsEnabled(flags, VK_QUERY_RESULT_WAIT_BIT)) {
+	if (mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_WAIT_BIT)) {
 		_availabilityBlocker.wait(lock, [this, firstQuery, endQuery]{
 			return areQueriesHostAvailable(firstQuery, endQuery);
 		});
@@ -104,14 +104,14 @@ bool MVKQueryPool::areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuer
 VkResult MVKQueryPool::getResult(uint32_t query, void* pQryData, VkQueryResultFlags flags) {
 
 	bool isAvailable = _availability[query] == Available;
-	bool shouldOutput = (isAvailable || mvkAreFlagsEnabled(flags, VK_QUERY_RESULT_PARTIAL_BIT));
-	bool shouldOutput64Bit = mvkAreFlagsEnabled(flags, VK_QUERY_RESULT_64_BIT);
+	bool shouldOutput = (isAvailable || mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_PARTIAL_BIT));
+	bool shouldOutput64Bit = mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_64_BIT);
 
 	// Output the results of this query
 	if (shouldOutput) { getResult(query, pQryData, shouldOutput64Bit); }
 
 	// If requested, output the availability bit
-	if (mvkAreFlagsEnabled(flags, VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)) {
+	if (mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)) {
 		if (shouldOutput64Bit) {
 			uintptr_t pAvailability = (uintptr_t)pQryData + (_queryElementCount * sizeof(uint64_t));
 			*(uint64_t*)pAvailability = isAvailable;

@@ -93,7 +93,7 @@ public:
               MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
 	/** Populates the specified shader converter context, at the specified descriptor set binding. */
-	void populateShaderConverterContext(mvk::SPIRVToMSLConverterContext& context,
+	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
 
@@ -160,27 +160,32 @@ public:
 
 
 	/** Populates the specified shader converter context, at the specified DSL index. */
-	void populateShaderConverterContext(mvk::SPIRVToMSLConverterContext& context,
+	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
 
 	/** Returns true if this layout is for push descriptors only. */
 	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
-	/** Constructs an instance for the specified device. */
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
+
+	~MVKDescriptorSetLayout();
 
 protected:
 
 	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKPipelineLayout;
 	friend class MVKDescriptorSet;
+	friend class MVKDescriptorPool;
 
 	void propogateDebugName() override {}
-	
+	void addDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.insert(mvkDescPool); }
+	void removeDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.erase(mvkDescPool); }
+
 	MVKVectorInline<MVKDescriptorSetLayoutBinding, 8> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
+	std::unordered_set<MVKDescriptorPool*> _descriptorPools;
 	bool _isPushDescriptorLayout : 1;
 };
 
@@ -357,6 +362,9 @@ public:
 	/** Destoys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
+	/** Removes the pool associated with a descriptor set layout. */
+	void removeDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout);
+
 	/** Constructs an instance for the specified device. */
 	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
@@ -366,6 +374,7 @@ public:
 protected:
 	void propogateDebugName() override {}
 	MVKDescriptorSetPool* getDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout);
+	void returnDescriptorSet(MVKDescriptorSet* mvkDescSet);
 
 	uint32_t _maxSets;
 	std::unordered_set<MVKDescriptorSet*> _allocatedSets;
@@ -427,7 +436,7 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
  * If the shader stage binding has a binding defined for the specified stage, populates
  * the context at the descriptor set binding from the shader stage resource binding.
  */
-void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConverterContext& context,
+void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
 									   MVKShaderStageResourceBinding& ssRB,
 									   spv::ExecutionModel stage,
 									   uint32_t descriptorSetIndex,

@@ -49,7 +49,7 @@ public:
     void quit() { }
 
 protected:
-    void* _view;
+    void* _caMetalLayer;
     PosixTimer _timer;
     double _current_time;
     double _profile_start_time;

@@ -70,6 +70,41 @@ VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPh
 	return result;
 }
 
+VkResult MVKInstance::getPhysicalDeviceGroups(uint32_t* pCount, VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProps) {
+
+	// According to the Vulkan spec:
+	//  "Every physical device *must* be in exactly one device group."
+	// Since we don't really support this yet, we must return one group for every
+	// device.
+
+	// Get the number of physical devices
+	uint32_t pdCnt = (uint32_t)_physicalDevices.size();
+
+	// If properties aren't actually being requested yet, simply update the returned count
+	if ( !pPhysicalDeviceGroupProps ) {
+		*pCount = pdCnt;
+		return VK_SUCCESS;
+	}
+
+	// Othewise, determine how many physical device groups we'll return, and return that count
+	VkResult result = (*pCount >= pdCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	*pCount = min(pdCnt, *pCount);
+
+	// Now populate the device groups
+	for (uint32_t pdIdx = 0; pdIdx < *pCount; pdIdx++) {
+		pPhysicalDeviceGroupProps[pdIdx].physicalDeviceCount = 1;
+		pPhysicalDeviceGroupProps[pdIdx].physicalDevices[0] = _physicalDevices[pdIdx]->getVkPhysicalDevice();
+		pPhysicalDeviceGroupProps[pdIdx].subsetAllocation = VK_FALSE;
+	}
+
+	return result;
+}
+
+MVKSurface* MVKInstance::createSurface(const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
+									   const VkAllocationCallbacks* pAllocator) {
+	return new MVKSurface(this, pCreateInfo, pAllocator);
+}
+
 MVKSurface* MVKInstance::createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* pCreateInfo,
 									   const VkAllocationCallbacks* pAllocator) {
 	return new MVKSurface(this, pCreateInfo, pAllocator);
@@ -247,28 +282,28 @@ VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeveri
 
 #pragma mark Object Creation
 
-// Returns an autoreleased array containing the MTLDevices available on this system,
-// sorted according to power, with higher power GPU's at the front of the array.
-// This ensures that a lazy app that simply grabs the first GPU will get a high-power
-// one by default. If the MVK_CONFIG_FORCE_LOW_POWER_GPU env var or build setting is set,
-// the returned array will only include low-power devices.
-// If Metal is not supported, ensure we return an empty array.
-static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
+// Returns a new array containing the MTLDevices available on this system, sorted according to power,
+// with higher power GPU's at the front of the array. This ensures that a lazy app that simply
+// grabs the first GPU will get a high-power one by default. If the MVK_CONFIG_FORCE_LOW_POWER_GPU
+// env var or build setting is set, the returned array will only include low-power devices.
+// It is the caller's responsibility to release the array when not required anymore.
+// If Metal is not supported, returns an empty array.
+static NSArray<id<MTLDevice>>* newAvailableMTLDevicesArray() {
+	NSMutableArray* mtlDevs = [NSMutableArray new];
+
 #if MVK_MACOS
-	NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
-	if ( !mtlDevs ) { return @[]; }
+	NSArray* rawMTLDevs = MTLCopyAllDevices();			// temp retain
+	if (rawMTLDevs) {
+		bool forceLowPower = MVK_CONFIG_FORCE_LOW_POWER_GPU;
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(forceLowPower, MVK_CONFIG_FORCE_LOW_POWER_GPU);
 
-	bool forceLowPower = MVK_CONFIG_FORCE_LOW_POWER_GPU;
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL(forceLowPower, MVK_CONFIG_FORCE_LOW_POWER_GPU);
-
-	if (forceLowPower) {
-		NSMutableArray* lpDevs = [[NSMutableArray new] autorelease];
-		for (id<MTLDevice> md in mtlDevs) {
-			if (md.isLowPower) { [lpDevs addObject: md]; }
+		// Populate the array of appropriate MTLDevices
+		for (id<MTLDevice> md in rawMTLDevs) {
+			if ( !forceLowPower || md.isLowPower ) { [mtlDevs addObject: md]; }
 		}
-		return lpDevs;
-	} else {
-		return [mtlDevs sortedArrayUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
+
+		// Sort by power
+		[mtlDevs sortUsingComparator: ^(id<MTLDevice> md1, id<MTLDevice> md2) {
 			BOOL md1IsLP = md1.isLowPower;
 			BOOL md2IsLP = md2.isLowPower;
 
@@ -285,14 +320,18 @@ static NSArray<id<MTLDevice>>* getAvailableMTLDevices() {
 
 			return md2IsLP ? NSOrderedAscending : NSOrderedDescending;
 		}];
-	}
 
+	}
+	[rawMTLDevs release];								// release temp
 #endif	// MVK_MACOS
 
 #if MVK_IOS
-	id<MTLDevice> mtlDev = MTLCreateSystemDefaultDevice();
-	return mtlDev ? [NSArray arrayWithObject: mtlDev] : @[];
+	id<MTLDevice> md = MTLCreateSystemDefaultDevice();
+	if (md) { [mtlDevs addObject: md]; }
+	[md release];
 #endif	// MVK_IOS
+
+	return mtlDevs;		// retained
 }
 
 MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExtensions(this) {
@@ -321,11 +360,13 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	}
 
 	// Populate the array of physical GPU devices
-	NSArray<id<MTLDevice>>* mtlDevices = getAvailableMTLDevices();
+	NSArray<id<MTLDevice>>* mtlDevices = newAvailableMTLDevicesArray();		// temp retain
 	_physicalDevices.reserve(mtlDevices.count);
 	for (id<MTLDevice> mtlDev in mtlDevices) {
 		_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
 	}
+	[mtlDevices release];													// release temp
+
 	if (_physicalDevices.empty()) {
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
 	}
@@ -512,6 +553,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_ENTRY_POINT(vkCmdExecuteCommands);
 
 	// Instance extension functions:
+	ADD_INST_EXT_ENTRY_POINT(vkEnumeratePhysicalDeviceGroupsKHR, KHR_DEVICE_GROUP_CREATION);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceFeatures2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceFormatProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
@@ -540,6 +582,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_EXT_ENTRY_POINT(vkCreateDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
 	ADD_INST_EXT_ENTRY_POINT(vkDestroyDebugUtilsMessengerEXT, EXT_DEBUG_UTILS);
 	ADD_INST_EXT_ENTRY_POINT(vkSubmitDebugUtilsMessageEXT, EXT_DEBUG_UTILS);
+	ADD_INST_EXT_ENTRY_POINT(vkCreateMetalSurfaceEXT, EXT_METAL_SURFACE);
 
 #ifdef VK_USE_PLATFORM_IOS_MVK
 	ADD_INST_EXT_ENTRY_POINT(vkCreateIOSSurfaceMVK, MVK_IOS_SURFACE);

@@ -88,6 +88,9 @@ public:
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return _mvkInstance; }
 
+	/** Populates the specified array with the supported extensions of this device. */
+	VkResult getExtensionProperties(const char* pLayerName, uint32_t* pCount, VkExtensionProperties* pProperties);
+
 	/** Populates the specified structure with the features of this device. */
 	void getFeatures(VkPhysicalDeviceFeatures* features);
 
@@ -285,13 +288,18 @@ public:
 	bool getSupportsGPUFamily(MTLGPUFamily gpuFamily);
 
 	/** Populates the specified structure with the Metal-specific features of this device. */
-	const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
+	inline const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
 
 	/** Returns the underlying Metal device. */
 	inline id<MTLDevice> getMTLDevice() { return _mtlDevice; }
     
     /*** Replaces the underlying Metal device .*/
-    inline void replaceMTLDevice(id<MTLDevice> mtlDevice) { [_mtlDevice autorelease]; _mtlDevice = [mtlDevice retain]; }
+    inline void replaceMTLDevice(id<MTLDevice> mtlDevice) {
+		if (mtlDevice != _mtlDevice) {
+			[_mtlDevice release];
+			_mtlDevice = [mtlDevice retain];
+		}
+	}
 
 #pragma mark Construction
 
@@ -326,6 +334,8 @@ protected:
 	void initGPUInfoProperties();
 	void initMemoryProperties();
 	uint64_t getRecommendedMaxWorkingSetSize();
+	void initExtensions();
+	MVKExtensionList* getSupportedExtensions(const char* pLayerName = nullptr);
 	std::vector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
@@ -335,9 +345,11 @@ protected:
 
 	id<MTLDevice> _mtlDevice;
 	MVKInstance* _mvkInstance;
+	MVKExtensionList _supportedExtensions;
 	VkPhysicalDeviceFeatures _features;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;
+	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
 	std::vector<MVKQueueFamily*> _queueFamilies;
 	uint32_t _allMemoryTypes;
@@ -538,10 +550,10 @@ public:
      *
      * If endTime is zero or not supplied, the current time is used.
      */
-    inline void addActivityPerformance(MVKPerformanceTracker& shaderCompilationEvent,
+    inline void addActivityPerformance(MVKPerformanceTracker& activityTracker,
 									   uint64_t startTime, uint64_t endTime = 0) {
 		if (_pMVKConfig->performanceTracking) {
-			addActivityPerformanceImpl(shaderCompilationEvent, startTime, endTime);
+			addActivityPerformanceImpl(activityTracker, startTime, endTime);
 		}
 	};
 
@@ -555,7 +567,7 @@ public:
 	inline id<MTLDevice> getMTLDevice() { return _physicalDevice->getMTLDevice(); }
 
 	/** Returns standard compilation options to be used when compiling MSL shaders. */
-	MTLCompileOptions* getMTLCompileOptions();
+	inline MTLCompileOptions* getMTLCompileOptions() { return _mtlCompileOptions; }
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);
@@ -609,8 +621,11 @@ public:
 	const VkPhysicalDevice16BitStorageFeatures _enabledStorage16Features;
 	const VkPhysicalDevice8BitStorageFeaturesKHR _enabledStorage8Features;
 	const VkPhysicalDeviceFloat16Int8FeaturesKHR _enabledF16I8Features;
+	const VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR _enabledUBOLayoutFeatures;
 	const VkPhysicalDeviceVariablePointerFeatures _enabledVarPtrFeatures;
 	const VkPhysicalDeviceHostQueryResetFeaturesEXT _enabledHostQryResetFeatures;
+	const VkPhysicalDeviceScalarBlockLayoutFeaturesEXT _enabledScalarLayoutFeatures;
+	const VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT _enabledTexelBuffAlignFeatures;
 	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;
 	const VkPhysicalDevicePortabilitySubsetFeaturesEXTX _enabledPortabilityFeatures;
 
@@ -656,18 +671,20 @@ protected:
 	MVKResource* addResource(MVKResource* rez);
 	MVKResource* removeResource(MVKResource* rez);
     void initPerformanceTracking();
-	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice);
+	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
+	void initMTLCompileOptions();
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
-    const char* getActivityPerformanceDescription(MVKPerformanceTracker& shaderCompilationEvent);
+    const char* getActivityPerformanceDescription(MVKPerformanceTracker& activityTracker);
 	uint64_t getPerformanceTimestampImpl();
-	void addActivityPerformanceImpl(MVKPerformanceTracker& shaderCompilationEvent,
+	void addActivityPerformanceImpl(MVKPerformanceTracker& activityTracker,
 									uint64_t startTime, uint64_t endTime);
 
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
+	MTLCompileOptions* _mtlCompileOptions;
 	std::vector<std::vector<MVKQueue*>> _queuesByQueueFamilyIndex;
 	std::vector<MVKResource*> _resources;
 	std::mutex _rezLock;
