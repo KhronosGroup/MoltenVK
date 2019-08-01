@@ -19,7 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
-#include <vector>
+#include "MVKVector.h"
 
 class MVKSwapchainImage;
 class MVKWatermark;
@@ -111,7 +111,7 @@ protected:
 
 	CAMetalLayer* _mtlLayer;
     MVKWatermark* _licenseWatermark;
-	std::vector<MVKSwapchainImage*> _surfaceImages;
+	MVKVectorInline<MVKSwapchainImage*, kMVKMaxSwapchainImageCount> _surfaceImages;
 	std::atomic<uint64_t> _currentAcquisitionID;
     CGSize _mtlLayerOrigDrawSize;
     MVKSwapchainPerformance _performanceStatistics;

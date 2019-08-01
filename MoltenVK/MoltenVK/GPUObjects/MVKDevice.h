@@ -22,9 +22,9 @@
 #include "MVKVulkanAPIObject.h"
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
+#include "MVKVector.h"
 #include "mvk_datatypes.hpp"
 #include "vk_mvk_moltenvk.h"
-#include <vector>
 #include <string>
 #include <mutex>
 
@@ -67,6 +67,10 @@ class MVKCommandResourceFactory;
 const static uint32_t kMVKVertexContentBufferIndex = 0;
 
 // Parameters to define the sizing of inline collections
+const static uint32_t kMVKQueueFamilyCount = 4;
+const static uint32_t kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
+const static uint32_t kMVKMinSwapchainImageCount = 2;
+const static uint32_t kMVKMaxSwapchainImageCount = 3;
 const static uint32_t kMVKCachedViewportScissorCount = 16;
 const static uint32_t kMVKCachedColorAttachmentCount = 8;
 
@@ -328,7 +332,7 @@ protected:
 	void initMemoryProperties();
 	void initExtensions();
 	MVKExtensionList* getSupportedExtensions(const char* pLayerName = nullptr);
-	std::vector<MVKQueueFamily*>& getQueueFamilies();
+	MVKVector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
 	MTLFeatureSet getHighestMTLFeatureSet();
 	uint64_t getSpirvCrossRevision();
@@ -343,7 +347,7 @@ protected:
 	VkPhysicalDeviceProperties _properties;
 	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
-	std::vector<MVKQueueFamily*> _queueFamilies;
+	MVKVectorInline<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
 	uint32_t _hostCoherentMemoryTypes;
@@ -677,8 +681,8 @@ protected:
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
 	MTLCompileOptions* _mtlCompileOptions;
-	std::vector<std::vector<MVKQueue*>> _queuesByQueueFamilyIndex;
-	std::vector<MVKResource*> _resources;
+	MVKVectorInline<MVKVectorInline<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
+	MVKVectorInline<MVKResource*, 256> _resources;
 	std::mutex _rezLock;
     std::mutex _perfLock;
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;

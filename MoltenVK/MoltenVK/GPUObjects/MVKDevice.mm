@@ -606,16 +606,16 @@ VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
 // Metal does not distinguish functionality between queues, which would normally lead us
 // to create only only one general-purpose queue family. However, Vulkan associates command
 // buffers with a queue family, whereas Metal associates command buffers with a Metal queue.
-// In order to allow a Metal command buffer to be prefilled before is is formally submitted to
+// In order to allow a Metal command buffer to be prefilled before it is formally submitted to
 // a Vulkan queue, we need to enforce that each Vulkan queue family can have only one Metal queue.
 // In order to provide parallel queue operations, we therefore provide multiple queue families.
-vector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
+MVKVector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
 	if (_queueFamilies.empty()) {
 		VkQueueFamilyProperties qfProps;
 		bool specialize = _mvkInstance->getMoltenVKConfiguration()->specializedQueueFamilies;
 		uint32_t qfIdx = 0;
 
-		qfProps.queueCount = 1;		// Each queue family must have a single Metal queue (see above)
+		qfProps.queueCount = kMVKQueueCountPerQueueFamily;
 		qfProps.timestampValidBits = 64;
 		qfProps.minImageTransferGranularity = { 1, 1, 1};
 
@@ -634,6 +634,8 @@ vector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
 		// Dedicated transfer queue family...or another general-purpose queue family.
 		if (specialize) { qfProps.queueFlags = VK_QUEUE_TRANSFER_BIT; }
 		_queueFamilies.push_back(new MVKQueueFamily(this, qfIdx++, &qfProps));
+
+		MVKAssert(kMVKQueueFamilyCount >= _queueFamilies.size(), "Adjust value of kMVKQueueFamilyCount.");
 	}
 	return _queueFamilies;
 }
@@ -641,7 +643,7 @@ vector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 													 VkQueueFamilyProperties* pQueueFamilyProperties) {
 
-	vector<MVKQueueFamily*> qFams = getQueueFamilies();
+	auto& qFams = getQueueFamilies();
 	uint32_t qfCnt = uint32_t(qFams.size());
 
 	// If properties aren't actually being requested yet, simply update the returned count
@@ -750,8 +752,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.ioSurfaces = MVK_SUPPORT_IOSURFACE_BOOL;
 
 	// Metal supports 2 or 3 concurrent CAMetalLayer drawables.
-	_metalFeatures.minSwapchainImageCount = 2;
-	_metalFeatures.maxSwapchainImageCount = 3;
+	_metalFeatures.minSwapchainImageCount = kMVKMinSwapchainImageCount;
+	_metalFeatures.maxSwapchainImageCount = kMVKMaxSwapchainImageCount;
 
 #if MVK_IOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_0;
@@ -2088,14 +2090,14 @@ void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 	mvkDevMem->destroy();
 }
 
-/** Adds the specified resource for tracking, and returns the added resource. */
+// Adds the specified resource for tracking, and returns the added resource.
 MVKResource* MVKDevice::addResource(MVKResource* rez) {
 	lock_guard<mutex> lock(_rezLock);
 	_resources.push_back(rez);
 	return rez;
 }
 
-/** Removes the specified resource for tracking and returns the removed resource. */
+// Removes the specified resource for tracking and returns the removed resource.
 MVKResource* MVKDevice::removeResource(MVKResource* rez) {
 	lock_guard<mutex> lock(_rezLock);
 	mvkRemoveFirstOccurance(_resources, rez);
@@ -2488,7 +2490,7 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 
 // Create the command queues
 void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
-	vector<MVKQueueFamily*> qFams = _physicalDevice->getQueueFamilies();
+	auto& qFams = _physicalDevice->getQueueFamilies();
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
 	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
 		const VkDeviceQueueCreateInfo* pQFInfo = &pCreateInfo->pQueueCreateInfos[qrIdx];

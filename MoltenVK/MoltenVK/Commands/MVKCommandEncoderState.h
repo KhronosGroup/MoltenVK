@@ -519,11 +519,11 @@ protected:
     void resetImpl() override;
     void markDirty() override;
 
-    MVKVectorDefault<MVKMTLBufferBinding> _bufferBindings;
-    MVKVectorDefault<MVKMTLTextureBinding> _textureBindings;
-    MVKVectorDefault<MVKMTLSamplerStateBinding> _samplerStateBindings;
-    MVKVectorDefault<uint32_t> _swizzleConstants;
-    MVKVectorDefault<uint32_t> _bufferSizes;
+    MVKVectorInline<MVKMTLBufferBinding, 4> _bufferBindings;
+    MVKVectorInline<MVKMTLTextureBinding, 4> _textureBindings;
+    MVKVectorInline<MVKMTLSamplerStateBinding, 4> _samplerStateBindings;
+    MVKVectorInline<uint32_t, 4> _swizzleConstants;
+    MVKVectorInline<uint32_t, 4> _bufferSizes;
     MVKMTLBufferBinding _swizzleBufferBinding;
     MVKMTLBufferBinding _bufferSizeBufferBinding;
 

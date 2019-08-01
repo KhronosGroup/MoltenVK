@@ -23,8 +23,8 @@
 #include "MVKCommandEncoderState.h"
 #include "MVKMTLBufferAllocation.h"
 #include "MVKCmdPipeline.h"
+#include "MVKQueryPool.h"
 #include "MVKVector.h"
-#include <vector>
 #include <unordered_map>
 
 class MVKCommandPool;
@@ -240,7 +240,7 @@ protected:
 
 
 /*** Holds a collection of active queries for each query pool. */
-typedef std::unordered_map<MVKQueryPool*, std::vector<uint32_t>> MVKActivatedQueries;
+typedef std::unordered_map<MVKQueryPool*, MVKVectorInline<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
 
 /** 
  * MVKCommandEncoder uses a visitor design pattern iterate the commands in a MVKCommandBuffer, 

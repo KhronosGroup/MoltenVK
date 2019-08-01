@@ -23,7 +23,6 @@
 #include <mutex>
 #include <condition_variable>
 #include <unordered_set>
-#include <vector>
 
 class MVKFenceSitter;
 

@@ -77,7 +77,7 @@ void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
 													  afterStages: srcStages
 													 beforeStages: dstStages];
 		}
-		std::vector<id<MTLResource>> resources;
+		MVKVectorInline<id<MTLResource>, 16> resources;
 		resources.reserve(_bufferMemoryBarriers.size() + _imageMemoryBarriers.size());
 		for (auto& mb : _bufferMemoryBarriers) {
 			auto* mvkBuff = (MVKBuffer*)mb.buffer;

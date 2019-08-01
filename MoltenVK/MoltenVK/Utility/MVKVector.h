@@ -42,8 +42,7 @@ using MVKVector = std::vector<T>;
 // Like std::vector, MVKVector is guaranteed to use contiguous memory, so if the
 // preallocated number of elements are exceeded, all elements are then in heap.
 // MVKVector supports just the necessary members to be compatible with MoltenVK
-// If C++17 will be the default in the future, code can be simplified quite
-// a bit.
+// If C++17 will be the default in the future, code can be simplified quite a bit.
 //
 // Example:
 //
@@ -55,8 +54,7 @@ using MVKVector = std::vector<T>;
 //  vector.emplace_back( 4 );
 //
 // If you don't need any inline storage use
-//  MVKVectorDefault<int> vector; // this is essentially the same as using
-//                                // std::vector
+//  MVKVectorDefault<int> vector;   // this is essentially the same as using std::vector
 //
 // Passing MVKVectorInline to a function would require to use the same template
 // parameters that have been used for declaration. To avoid this MVKVectorInline
@@ -182,6 +180,7 @@ public:
   virtual const Type * const  back() const                                   = 0;
   virtual       Type *       &back()                                         = 0;
   virtual const Type * const *data() const                                   = 0;
+  virtual       Type *       *data()                                         = 0;
 
   virtual size_t              size() const                                   = 0;
   virtual bool                empty() const                                  = 0;
@@ -670,7 +669,7 @@ private:
   // this is the growth strategy -> adjust to your needs
   size_t vector_GetNextCapacity() const
   {
-    constexpr auto ELEMENTS_FOR_64_BYTES = 64 / sizeof( Type );
+    constexpr auto ELEMENTS_FOR_64_BYTES = 64 / sizeof( Type* );
     constexpr auto MINIMUM_CAPACITY = ELEMENTS_FOR_64_BYTES > 4 ? ELEMENTS_FOR_64_BYTES : 4;
     const auto current_capacity = capacity();
     return MINIMUM_CAPACITY + ( 3 * current_capacity ) / 2;
@@ -830,6 +829,7 @@ public:
   const Type * const  back()                       const override { return alc.ptr[alc.num_elements_used - 1]; }
         Type *       &back()                             override { return alc.ptr[alc.num_elements_used - 1]; }
   const Type * const *data()                       const override { return &alc.ptr[0]; }
+        Type *       *data()                             override { return &alc.ptr[0]; }
 
   size_t   size()                                  const override { return alc.num_elements_used; }
   bool     empty()                                 const override { return alc.num_elements_used == 0; }
@@ -927,6 +927,21 @@ public:
       for ( size_t i = it.get_position(); i < alc.num_elements_used; ++i )
       {
         alc.ptr[i] = alc.ptr[i + 1];
+      }
+    }
+  }
+
+  void erase( const iterator first, const iterator last )
+  {
+    if( first.is_valid() )
+    {
+      size_t last_pos = last.is_valid() ? last.get_position() : size();
+      size_t n = last_pos - first.get_position();
+      alc.num_elements_used -= n;
+
+      for( size_t i = first.get_position(), e = last_pos; i < alc.num_elements_used && e < alc.num_elements_used + n; ++i, ++e )
+      {
+        alc.ptr[i] = alc.ptr[e];
       }
     }
   }

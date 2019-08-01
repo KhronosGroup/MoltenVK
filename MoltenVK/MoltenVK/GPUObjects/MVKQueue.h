@@ -23,7 +23,6 @@
 #include "MVKImage.h"
 #include "MVKSync.h"
 #include "MVKVector.h"
-#include <vector>
 #include <mutex>
 
 #import <Metal/Metal.h>
@@ -65,7 +64,7 @@ protected:
 	MVKPhysicalDevice* _physicalDevice;
     uint32_t _queueFamilyIndex;
 	VkQueueFamilyProperties _properties;
-	std::vector<id<MTLCommandQueue>> _mtlQueues;
+	MVKVectorInline<id<MTLCommandQueue>, kMVKQueueCountPerQueueFamily> _mtlQueues;
 	std::mutex _qLock;
 };
 
