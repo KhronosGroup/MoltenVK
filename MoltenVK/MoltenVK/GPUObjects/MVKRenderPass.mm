@@ -165,7 +165,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	}
 }
 
-void MVKRenderSubpass::populateClearAttachments(vector<VkClearAttachment>& clearAtts,
+void MVKRenderSubpass::populateClearAttachments(MVKVector<VkClearAttachment>& clearAtts,
 												MVKVector<VkClearValue>& clearValues) {
 	VkClearAttachment cAtt;
 

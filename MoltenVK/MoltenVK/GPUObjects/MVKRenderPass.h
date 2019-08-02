@@ -20,12 +20,15 @@
 
 #include "MVKDevice.h"
 #include "MVKVector.h"
-#include <vector>
 
 #import <Metal/Metal.h>
 
 class MVKRenderPass;
 class MVKFramebuffer;
+
+
+// Parameters to define the sizing of inline collections
+const static uint32_t kMVKDefaultAttachmentCount = 8;
 
 
 #pragma mark -
@@ -70,7 +73,7 @@ public:
 	 * Populates the specified vector with the attachments that need to be cleared
 	 * when the render area is smaller than the full framebuffer size.
 	 */
-	void populateClearAttachments(std::vector<VkClearAttachment>& clearAtts,
+	void populateClearAttachments(MVKVector<VkClearAttachment>& clearAtts,
 								  MVKVector<VkClearValue>& clearValues);
 
 	/** Constructs an instance for the specified parent renderpass. */
@@ -85,10 +88,10 @@ private:
 
 	MVKRenderPass* _renderPass;
 	uint32_t _subpassIndex;
-	std::vector<VkAttachmentReference> _inputAttachments;
-	std::vector<VkAttachmentReference> _colorAttachments;
-	std::vector<VkAttachmentReference> _resolveAttachments;
-	std::vector<uint32_t> _preserveAttachments;
+	MVKVectorInline<VkAttachmentReference, kMVKDefaultAttachmentCount> _inputAttachments;
+	MVKVectorInline<VkAttachmentReference, kMVKDefaultAttachmentCount> _colorAttachments;
+	MVKVectorInline<VkAttachmentReference, kMVKDefaultAttachmentCount> _resolveAttachments;
+	MVKVectorInline<uint32_t, kMVKDefaultAttachmentCount> _preserveAttachments;
 	VkAttachmentReference _depthStencilAttachment;
 	id<MTLTexture> _mtlDummyTex = nil;
 };
@@ -168,9 +171,9 @@ protected:
 
 	void propogateDebugName() override {}
 
-	std::vector<MVKRenderSubpass> _subpasses;
-	std::vector<MVKRenderPassAttachment> _attachments;
-	std::vector<VkSubpassDependency> _subpassDependencies;
+	MVKVectorInline<MVKRenderPassAttachment, kMVKDefaultAttachmentCount> _attachments;
+	MVKVectorInline<MVKRenderSubpass, 4> _subpasses;
+	MVKVectorInline<VkSubpassDependency, 4 * 2> _subpassDependencies;
 
 };
 

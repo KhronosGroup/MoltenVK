@@ -202,8 +202,6 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   uint32_t waitSemaphoreCount,
 									   const VkSemaphore* pWaitSemaphores) {
 	_queue = queue;
-	_prev = nullptr;
-	_next = nullptr;
 	_trackPerformance = _queue->_device->_pMVKConfig->performanceTracking;
 
 	_isAwaitingSemaphores = waitSemaphoreCount > 0;

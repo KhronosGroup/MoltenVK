@@ -257,7 +257,7 @@ protected:
 						   VkPipelineStageFlags dstStageMask,
 						   VkImageMemoryBarrier* pImageMemoryBarrier);
 
-	std::vector<MVKImageSubresource> _subresources;
+	MVKVectorInline<MVKImageSubresource, 4> _subresources;
 	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     VkExtent3D _extent;
     uint32_t _mipLevels;

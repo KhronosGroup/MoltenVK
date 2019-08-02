@@ -20,7 +20,6 @@
 
 #include "MVKCommand.h"
 #include "MVKMTLResourceBindings.h"
-#include <vector>
 
 #import <Metal/Metal.h>
 

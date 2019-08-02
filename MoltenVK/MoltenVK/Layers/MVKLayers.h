@@ -20,7 +20,7 @@
 
 #include "MVKBaseObject.h"
 #include "MVKExtensions.h"
-#include <vector>
+#include "MVKVector.h"
 
 
 #pragma mark MVKLayer
@@ -115,7 +115,7 @@ public:
 	static MVKLayerManager* globalManager();
 
 protected:
-	std::vector<MVKLayer> _layers;
+	MVKVectorInline<MVKLayer, 1> _layers;
 
 };
 

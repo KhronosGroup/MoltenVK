@@ -22,7 +22,7 @@
 #include "MVKFoundation.h"
 #include "MVKObjectPool.h"
 #include "MVKDevice.h"
-#include <vector>
+#include "MVKVector.h"
 
 class MVKMTLBufferAllocationPool;
 
@@ -31,7 +31,7 @@ class MVKMTLBufferAllocationPool;
 #pragma mark MVKMTLBufferAllocation
 
 /** Defines a contiguous region of bytes within a MTLBuffer. */
-class MVKMTLBufferAllocation : public MVKBaseObject {
+class MVKMTLBufferAllocation : public MVKBaseObject, public MVKLinkableMixin<MVKMTLBufferAllocation> {
 
 public:
     id<MTLBuffer> _mtlBuffer;
@@ -50,7 +50,7 @@ public:
     /** Returns the pool whence this object was created. */
     MVKMTLBufferAllocationPool* getPool() const { return _pool; }
 
-	/** Returns this object back to the pool that created it. This will reset the value of _next member. */
+	/** Returns this object back to the pool that created it. */
     void returnToPool();
 
 	/** Constructs this instance with the specified pool as its origin. */
@@ -58,13 +58,6 @@ public:
                            id<MTLBuffer> mtlBuffer,
                            NSUInteger offset,
                            NSUInteger length) : _pool(pool), _mtlBuffer(mtlBuffer), _offset(offset), _length(length) {}
-
-    /**
-	 * Instances of this class can participate in a linked list or pool. When so participating,
-	 * this is a reference to the next instance in the list or pool. This value should only be
-	 * managed and set by the list or pool.
-	 */
-	MVKMTLBufferAllocation* _next = nullptr;
 
 protected:
 	MVKMTLBufferAllocationPool* _pool;
@@ -104,7 +97,7 @@ protected:
     NSUInteger _nextOffset;
     NSUInteger _allocationLength;
     NSUInteger _mtlBufferLength;
-    std::vector<id<MTLBuffer>> _mtlBuffers;
+	MVKVectorInline<id<MTLBuffer>, 64> _mtlBuffers;
     MVKDevice* _device;
 };
 
@@ -149,7 +142,7 @@ public:
     ~MVKMTLBufferAllocator() override;
 
 protected:
-    std::vector<MVKMTLBufferAllocationPool*> _regionPools;
+	MVKVectorInline<MVKMTLBufferAllocationPool*, 32> _regionPools;
     NSUInteger _maxAllocationLength;
 	bool _makeThreadSafe;
 

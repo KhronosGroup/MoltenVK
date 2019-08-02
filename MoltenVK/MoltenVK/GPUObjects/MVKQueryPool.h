@@ -20,7 +20,6 @@
 
 #include "MVKDevice.h"
 #include "MVKVector.h"
-#include <vector>
 #include <mutex>
 #include <condition_variable>
 
@@ -29,7 +28,8 @@ class MVKCommandBuffer;
 class MVKCommandEncoder;
 
 // The size of one query slot in bytes
-#define kMVKQuerySlotSizeInBytes      sizeof(uint64_t)
+#define kMVKQuerySlotSizeInBytes		sizeof(uint64_t)
+#define kMVKDefaultQueryCount			64
 
 
 #pragma mark -
@@ -57,7 +57,7 @@ public:
     virtual void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder);
 
     /** Finishes the specified queries and marks them as available. */
-    virtual void finishQueries(std::vector<uint32_t>& queries);
+    virtual void finishQueries(MVKVector<uint32_t>& queries);
 
 	/** Resets the results and availability status of the specified queries. */
 	virtual void resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder);
@@ -101,7 +101,7 @@ public:
 	MVKQueryPool(MVKDevice* device,
 				 const VkQueryPoolCreateInfo* pCreateInfo,
 				 const uint32_t queryElementCount) : MVKVulkanAPIDeviceObject(device),
-                    _availability(pCreateInfo->queryCount),
+                    _availability(pCreateInfo->queryCount, Initial),
                     _queryElementCount(queryElementCount) {}
 
 protected:
@@ -127,12 +127,12 @@ protected:
 		Available           /**< Query is available to the host. */
 	};
 
-	std::vector<Status> _availability;
+	MVKVectorInline<Status, kMVKDefaultQueryCount> _availability;
+	MVKVectorInline<DeferredCopy, 4> _deferredCopies;
 	uint32_t _queryElementCount;
 	std::mutex _availabilityLock;
 	std::condition_variable _availabilityBlocker;
 	std::mutex _deferredCopiesLock;
-	MVKVectorInline<DeferredCopy, 2> _deferredCopies;
 };
 
 
@@ -143,7 +143,7 @@ protected:
 class MVKTimestampQueryPool : public MVKQueryPool {
 
 public:
-    void finishQueries(std::vector<uint32_t>& queries) override;
+    void finishQueries(MVKVector<uint32_t>& queries) override;
 
 
 #pragma mark Construction
@@ -156,7 +156,7 @@ protected:
 	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
 	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
-	std::vector<uint64_t> _timestamps;
+	MVKVectorInline<uint64_t, kMVKDefaultQueryCount> _timestamps;
 };
 
 

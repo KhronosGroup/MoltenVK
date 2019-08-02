@@ -20,7 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKImage.h"
-#include <vector>
+#include "MVKVector.h"
 
 
 #pragma mark MVKFramebuffer
@@ -56,6 +56,6 @@ protected:
 
 	VkExtent2D _extent;
 	uint32_t _layerCount;
-	std::vector<MVKImageView*> _attachments;
+	MVKVectorInline<MVKImageView*, 8> _attachments;
 };
 

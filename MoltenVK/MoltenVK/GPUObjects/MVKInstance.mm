@@ -666,7 +666,7 @@ void MVKInstance::initConfig() {
 VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {
     VkResult result = VK_SUCCESS;
     for (uint32_t i = 0; i < count; i++) {
-        if ( !MVKLayerManager::globalManager()->getLayerNamed(names[i]) ) {
+        if ( !getLayerManager()->getLayerNamed(names[i]) ) {
             result = reportError(VK_ERROR_LAYER_NOT_PRESENT, "Vulkan layer %s is not supported.", names[i]);
         }
     }

@@ -20,7 +20,6 @@
 
 #include "MVKCommand.h"
 #include "MVKVector.h"
-#include <vector>
 
 class MVKCommandBuffer;
 class MVKPipeline;
@@ -54,9 +53,9 @@ private:
 	VkPipelineStageFlags _srcStageMask;
 	VkPipelineStageFlags _dstStageMask;
 	VkDependencyFlags _dependencyFlags;
-	std::vector<VkMemoryBarrier> _memoryBarriers;
-	std::vector<VkBufferMemoryBarrier> _bufferMemoryBarriers;
-	std::vector<VkImageMemoryBarrier> _imageMemoryBarriers;
+	MVKVectorInline<VkMemoryBarrier, 4> _memoryBarriers;
+	MVKVectorInline<VkBufferMemoryBarrier, 4> _bufferMemoryBarriers;
+	MVKVectorInline<VkImageMemoryBarrier, 4> _imageMemoryBarriers;
 };
 
 
