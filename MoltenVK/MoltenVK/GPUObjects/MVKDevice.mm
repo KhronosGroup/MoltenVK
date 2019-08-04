@@ -808,6 +808,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilFeedback = true;
 	}
 
+	if ( mvkOSVersion() >= 13.0 ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
+	}
+
 #endif
 
 #if MVK_MACOS
@@ -852,11 +856,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilFeedback = true;
 	}
 
-#endif
-
-	if (getSupportsMetalVersion(MTLSoftwareVersion3_0)) {
+	if ( mvkOSVersion() >= 10.15 ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 	}
+
+#endif
 
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
         _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
@@ -901,11 +905,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 	}
 
-}
-
-bool MVKPhysicalDevice::getSupportsMetalVersion(MTLSoftwareVersion mtlVersion) {
-	return ([_mtlDevice respondsToSelector: @selector(supportsVersion:)] &&
-			[_mtlDevice supportsVersion: mtlVersion]);
 }
 
 bool MVKPhysicalDevice::getSupportsGPUFamily(MTLGPUFamily gpuFamily) {
@@ -1619,8 +1618,13 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 
 	// On newer OS's, combine highest Metal version with highest GPU family
 	// (Mac & Apple GPU lists should be mutex on platform)
-	MTLSoftwareVersion mtlVer = MTLSoftwareVersion(0);
-	if (getSupportsMetalVersion(MTLSoftwareVersion3_0)) { mtlVer = MTLSoftwareVersion3_0; }
+	uint32_t mtlVer = 0;
+#if MVK_IOS
+	if (mvkOSVersion() >= 13.0) { mtlVer = 0x30000; }
+#endif
+#if MVK_MACOS
+	if (mvkOSVersion() >= 10.15) { mtlVer = 0x30000; }
+#endif
 
 	MTLGPUFamily mtlFam = MTLGPUFamily(0);
 	if (getSupportsGPUFamily(MTLGPUFamilyMac1)) { mtlFam = MTLGPUFamilyMac1; }
@@ -1633,7 +1637,7 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	if (getSupportsGPUFamily(MTLGPUFamilyApple5)) { mtlFam = MTLGPUFamilyApple5; }
 
 	// Not explicitly guaranteed to be unique...but close enough without spilling over
-	uint32_t mtlFS = ((uint32_t)mtlVer << 8) + (uint32_t)mtlFam;
+	uint32_t mtlFS = (mtlVer << 8) + (uint32_t)mtlFam;
 	if (mtlFS) { return mtlFS; }
 
 	// Fall back to legacy feature sets on older OS's
@@ -1830,8 +1834,6 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\t\tpipelineCacheUUID: %s";
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
-
-	if (getSupportsMetalVersion(MTLSoftwareVersion3_0)) { logMsg += "\n\t\tMetal 3.0"; }
 
 	if (getSupportsGPUFamily(MTLGPUFamilyApple5)) { logMsg += "\n\t\tGPU Family Apple 5"; }
 	if (getSupportsGPUFamily(MTLGPUFamilyApple4)) { logMsg += "\n\t\tGPU Family Apple 4"; }

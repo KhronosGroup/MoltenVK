@@ -281,9 +281,6 @@ public:
 	
 #pragma mark Metal
 
-	/** Returns whether the underlying MTLDevice supports the Metal version. */
-	bool getSupportsMetalVersion(MTLSoftwareVersion mtlVersion);
-
 	/** Returns whether the underlying MTLDevice supports the GPU family. */
 	bool getSupportsGPUFamily(MTLGPUFamily gpuFamily);
 
