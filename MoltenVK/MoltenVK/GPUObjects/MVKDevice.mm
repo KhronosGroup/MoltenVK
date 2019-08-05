@@ -2499,7 +2499,11 @@ void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 		VkQueueFamilyProperties qfProps;
 		qFam->getProperties(&qfProps);
 
-		_queuesByQueueFamilyIndex.resize(qfIdx + 1);	// Ensure an entry for this queue family exists
+		// Ensure an entry for this queue family exists
+		uint32_t qfCntMin = qfIdx + 1;
+		if (_queuesByQueueFamilyIndex.size() < qfCntMin) {
+			_queuesByQueueFamilyIndex.resize(qfCntMin);
+		}
 		auto& queues = _queuesByQueueFamilyIndex[qfIdx];
 		uint32_t qCnt = min(pQFInfo->queueCount, qfProps.queueCount);
 		for (uint32_t qIdx = 0; qIdx < qCnt; qIdx++) {
