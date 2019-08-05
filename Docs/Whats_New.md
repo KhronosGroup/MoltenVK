@@ -20,6 +20,7 @@ Released TBD
 
 - Revert to supporting host-coherent memory for linear images on macOS.
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
+- Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.
 

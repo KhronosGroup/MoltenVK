@@ -412,14 +412,14 @@ public:
   iterator begin() const { return iterator( 0, *this ); }
   iterator end()   const { return iterator( alc.num_elements_used, *this ); }
 
-  const Type &operator[]( const size_t i ) const override { return alc.ptr[i]; }
-        Type &operator[]( const size_t i )       override { return alc.ptr[i]; }
-  const Type &at( const size_t i )         const override { return alc.ptr[i]; }
-        Type &at( const size_t i )               override { return alc.ptr[i]; }
-  const Type &front()                      const override { return alc.ptr[0]; }
-        Type &front()                            override { return alc.ptr[0]; }
-  const Type &back()                       const override { return alc.ptr[alc.num_elements_used - 1]; }
-        Type &back()                             override { return alc.ptr[alc.num_elements_used - 1]; }
+  const Type &operator[]( const size_t i ) const override { return alc[i]; }
+        Type &operator[]( const size_t i )       override { return alc[i]; }
+  const Type &at( const size_t i )         const override { return alc[i]; }
+        Type &at( const size_t i )               override { return alc[i]; }
+  const Type &front()                      const override { return alc[0]; }
+        Type &front()                            override { return alc[0]; }
+  const Type &back()                       const override { return alc[alc.num_elements_used - 1]; }
+        Type &back()                             override { return alc[alc.num_elements_used - 1]; }
   const Type *data()                       const override { return alc.ptr; }
         Type *data()                             override { return alc.ptr; }
 
@@ -820,16 +820,16 @@ public:
   iterator begin()        { return iterator( 0, *this ); }
   iterator end()          { return iterator( alc.num_elements_used, *this ); }
 
-  const Type * const  at( const size_t i )         const override { return alc.ptr[i]; }
-        Type *       &at( const size_t i )               override { return alc.ptr[i]; }
-  const Type * const  operator[]( const size_t i ) const override { return alc.ptr[i]; }
-        Type *       &operator[]( const size_t i )       override { return alc.ptr[i]; }
-  const Type * const  front()                      const override { return alc.ptr[0]; }
-        Type *       &front()                            override { return alc.ptr[0]; }
-  const Type * const  back()                       const override { return alc.ptr[alc.num_elements_used - 1]; }
-        Type *       &back()                             override { return alc.ptr[alc.num_elements_used - 1]; }
-  const Type * const *data()                       const override { return &alc.ptr[0]; }
-        Type *       *data()                             override { return &alc.ptr[0]; }
+  const Type * const  at( const size_t i )         const override { return alc[i]; }
+        Type *       &at( const size_t i )               override { return alc[i]; }
+  const Type * const  operator[]( const size_t i ) const override { return alc[i]; }
+        Type *       &operator[]( const size_t i )       override { return alc[i]; }
+  const Type * const  front()                      const override { return alc[0]; }
+        Type *       &front()                            override { return alc[0]; }
+  const Type * const  back()                       const override { return alc[alc.num_elements_used - 1]; }
+        Type *       &back()                             override { return alc[alc.num_elements_used - 1]; }
+  const Type * const *data()                       const override { return alc.ptr; }
+        Type *       *data()                             override { return alc.ptr; }
 
   size_t   size()                                  const override { return alc.num_elements_used; }
   bool     empty()                                 const override { return alc.num_elements_used == 0; }
