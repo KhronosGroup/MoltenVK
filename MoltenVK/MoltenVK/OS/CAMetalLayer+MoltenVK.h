@@ -56,4 +56,12 @@
  */
 @property(nonatomic, readwrite) NSUInteger maximumDrawableCountMVK;
 
+/**
+ * Replacement for the wantsExtendedDynamicRangeContent property.
+ *
+ * This property allows support under all OS versions. Delegates to the wantsExtendedDynamicRangeContent
+ * property if it is available. Otherwise, returns NO when read and does nothing when set.
+ */
+@property(nonatomic, readwrite) BOOL wantsExtendedDynamicRangeContentMVK;
+
 @end
