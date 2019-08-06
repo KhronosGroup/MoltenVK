@@ -226,7 +226,6 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			   VK_IMAGE_USAGE_SAMPLED_BIT |
 																			   VK_IMAGE_USAGE_STORAGE_BIT));
-#if MVK_MACOS
 	switch (pCreateInfo->imageColorSpace) {
 		case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
@@ -237,24 +236,35 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 		case VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
 			break;
+		case VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
+			break;
+		case VK_COLOR_SPACE_DCI_P3_LINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearDisplayP3);
+			break;
 		case VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceDCIP3);
 			break;
 		case VK_COLOR_SPACE_BT709_NONLINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_709);
 			break;
+		case VK_COLOR_SPACE_BT2020_LINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearITUR_2020);
+			break;
+		case VK_COLOR_SPACE_HDR10_ST2084_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020_PQ_EOTF);
+			break;
+		case VK_COLOR_SPACE_HDR10_HLG_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020_HLG);
+			break;
 		case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998);
-			break;
-		case VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
 			break;
 		case VK_COLOR_SPACE_PASS_THROUGH_EXT:
 		default:
 			// Nothing - the default is not to do color matching.
 			break;
 	}
-#endif
 	_mtlLayerOrigDrawSize = _mtlLayer.updatedDrawableSizeMVK;
 
 	// TODO: set additional CAMetalLayer properties before extracting drawables:

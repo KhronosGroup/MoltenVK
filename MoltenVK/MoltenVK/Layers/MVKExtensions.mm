@@ -75,7 +75,9 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) {
 		return mvkOSVersion() >= 12.0;
 	}
-	if (pProperties == &kVkExtProps_EXT_SWAPCHAIN_COLOR_SPACE) { return false; }
+	if (pProperties == &kVkExtProps_EXT_SWAPCHAIN_COLOR_SPACE) {
+		return mvkOSVersion() >= 9.0;
+	}
 	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) {
 		return mvkOSVersion() >= 11.0;
 	}
