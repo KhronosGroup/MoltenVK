@@ -61,21 +61,15 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequireme
 VkResult MVKBuffer::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
 	pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
 	getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
-	auto* next = (VkStructureType*)pMemoryRequirements->pNext;
-	while (next) {
-		switch (*next) {
+	for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
+		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
 			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
-			// TODO: Maybe someday we could do something with MTLHeaps
-			// and allocate non-dedicated memory from them. For now, we
-			// always prefer dedicated allocations.
-			dedicatedReqs->prefersDedicatedAllocation = VK_TRUE;
+			dedicatedReqs->prefersDedicatedAllocation = VK_FALSE;
 			dedicatedReqs->requiresDedicatedAllocation = VK_FALSE;
-			next = (VkStructureType*)dedicatedReqs->pNext;
 			break;
 		}
 		default:
-			next = (VkStructureType*)((VkMemoryRequirements2*)next)->pNext;
 			break;
 		}
 	}
