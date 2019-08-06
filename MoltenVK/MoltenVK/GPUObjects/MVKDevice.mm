@@ -1026,6 +1026,9 @@ void MVKPhysicalDevice::initFeatures() {
         _features.multiViewport = true;
     }
 
+    if ( mvkOSVersion() >= 10.15 ) {
+        _features.shaderResourceMinLod = true;
+    }
 #endif
 }
 
@@ -1076,7 +1079,7 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    shaderInt64;
 //    VkBool32    shaderInt16;                                  // done
 //    VkBool32    shaderResourceResidency;
-//    VkBool32    shaderResourceMinLod;
+//    VkBool32    shaderResourceMinLod;                         // done
 //    VkBool32    sparseBinding;
 //    VkBool32    sparseResidencyBuffer;
 //    VkBool32    sparseResidencyImage2D;
