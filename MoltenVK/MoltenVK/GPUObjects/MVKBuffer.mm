@@ -29,21 +29,28 @@ using namespace std;
 #pragma mark MVKBuffer
 
 void MVKBuffer::propogateDebugName() {
-	if (_debugName &&
-		_deviceMemory &&
+	if (!_debugName) { return; }
+	if (_deviceMemory &&
 		_deviceMemory->isDedicatedAllocation() &&
 		_deviceMemory->_debugName.length == 0) {
 
 		_deviceMemory->setDebugName(_debugName.UTF8String);
 	}
+	setLabelIfNotNil(_mtlBuffer, _debugName);
 }
 
 
 #pragma mark Resource memory
 
 VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) {
-	pMemoryRequirements->size = getByteCount();
-	pMemoryRequirements->alignment = _byteAlignment;
+	if (_device->_pMetalFeatures->placementHeaps) {
+		MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapBufferSizeAndAlignWithLength: getByteCount() options: MTLResourceStorageModePrivate];
+		pMemoryRequirements->size = sizeAndAlign.size;
+		pMemoryRequirements->alignment = sizeAndAlign.align;
+	} else {
+		pMemoryRequirements->size = getByteCount();
+		pMemoryRequirements->alignment = _byteAlignment;
+	}
 	pMemoryRequirements->memoryTypeBits = _device->getPhysicalDevice()->getAllMemoryTypes();
 #if MVK_MACOS
 	// Textures must not use shared memory
@@ -61,21 +68,15 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequireme
 VkResult MVKBuffer::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
 	pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
 	getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
-	auto* next = (VkStructureType*)pMemoryRequirements->pNext;
-	while (next) {
-		switch (*next) {
+	for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
+		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
 			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
-			// TODO: Maybe someday we could do something with MTLHeaps
-			// and allocate non-dedicated memory from them. For now, we
-			// always prefer dedicated allocations.
-			dedicatedReqs->prefersDedicatedAllocation = VK_TRUE;
+			dedicatedReqs->prefersDedicatedAllocation = VK_FALSE;
 			dedicatedReqs->requiresDedicatedAllocation = VK_FALSE;
-			next = (VkStructureType*)dedicatedReqs->pNext;
 			break;
 		}
 		default:
-			next = (VkStructureType*)((VkMemoryRequirements2*)next)->pNext;
 			break;
 		}
 	}
@@ -134,6 +135,25 @@ bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 }
 
 
+#pragma mark Metal
+
+id<MTLBuffer> MVKBuffer::getMTLBuffer() {
+	if (_mtlBuffer) { return _mtlBuffer; }
+	if (_deviceMemory) {
+		if (_deviceMemory->getMTLHeap()) {
+			_mtlBuffer = [_deviceMemory->getMTLHeap() newBufferWithLength: getByteCount()
+																  options: _deviceMemory->getMTLResourceOptions()
+																   offset: _deviceMemoryOffset];	// retained
+			propogateDebugName();
+			return _mtlBuffer;
+		} else {
+			return _deviceMemory->getMTLBuffer();
+		}
+	}
+	return nil;
+}
+
+
 #pragma mark Construction
 
 MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) : MVKResource(device), _usage(pCreateInfo->usage) {
@@ -143,6 +163,7 @@ MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) :
 
 MVKBuffer::~MVKBuffer() {
 	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
+	if (_mtlBuffer) { [_mtlBuffer release]; }
 }
 
 

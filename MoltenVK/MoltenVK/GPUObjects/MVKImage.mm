@@ -192,21 +192,16 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
 	pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
 	getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
-	auto* next = (VkStructureType*)pMemoryRequirements->pNext;
-	while (next) {
-		switch (*next) {
+	for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
+		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
 			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
-			// TODO: Maybe someday we could do something with MTLHeaps
-			// and allocate non-dedicated memory from them. For now, we
-			// always prefer dedicated allocations.
-			dedicatedReqs->prefersDedicatedAllocation = VK_TRUE;
+			bool writable = mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+			dedicatedReqs->prefersDedicatedAllocation = !_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps);
 			dedicatedReqs->requiresDedicatedAllocation = VK_FALSE;
-			next = (VkStructureType*)dedicatedReqs->pNext;
 			break;
 		}
 		default:
-			next = (VkStructureType*)((VkMemoryRequirements2*)next)->pNext;
 			break;
 		}
 	}
@@ -231,7 +226,7 @@ bool MVKImage::validateUseTexelBuffer() {
 	bool isUncompressed = blockExt.width == 1 && blockExt.height == 1;
 
 	bool useTexelBuffer = _device->_pMetalFeatures->texelBuffers;								// Texel buffers available
-	useTexelBuffer = useTexelBuffer && isMemoryHostAccessible() && _isLinear && isUncompressed;	// Applicable memory layout
+	useTexelBuffer = useTexelBuffer && (isMemoryHostAccessible() || _device->_pMetalFeatures->placementHeaps) && _isLinear && isUncompressed;	// Applicable memory layout
 	useTexelBuffer = useTexelBuffer && _deviceMemory && _deviceMemory->_mtlBuffer;				// Buffer is available to overlay
 
 #if MVK_MACOS
@@ -352,6 +347,10 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 		mtlTex = [_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
 															  offset: getDeviceMemoryOffset()
 														 bytesPerRow: _subresources[0].layout.rowPitch];
+	} else if (_deviceMemory->_mtlHeap) {
+		mtlTex = [_deviceMemory->_mtlHeap newTextureWithDescriptor: mtlTexDesc
+															offset: getDeviceMemoryOffset()];
+		if (_isAliasable) [mtlTex makeAliasable];
 	} else {
 		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
 	}
@@ -628,11 +627,20 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
 	_hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
 
-	// Calc _byteCount after _byteAlignment
-	_byteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(mvkVkFormatBytesPerBlock(pCreateInfo->format));
-    for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
-        _byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
-    }
+	if (!_isLinear && _device->_pMetalFeatures->placementHeaps) {
+		MTLTextureDescriptor *mtlTexDesc = newMTLTextureDescriptor();	// temp retain
+		MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
+		[mtlTexDesc release];
+		_byteCount = sizeAndAlign.size;
+		_byteAlignment = sizeAndAlign.align;
+		_isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
+	} else {
+		// Calc _byteCount after _byteAlignment
+		_byteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(mvkVkFormatBytesPerBlock(pCreateInfo->format));
+		for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
+			_byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
+		}
+	}
 
     initSubresources(pCreateInfo);
 }

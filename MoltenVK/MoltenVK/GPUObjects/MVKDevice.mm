@@ -840,6 +840,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersion() >= 13.0 ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
+		_metalFeatures.placementHeaps = true;
 		if ( getSupportsGPUFamily(MTLGPUFamilyApple4) ) {
 			_metalFeatures.nativeTextureSwizzle = true;
 		}
@@ -894,6 +895,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.native3DCompressedTextures = true;
 		if ( getSupportsGPUFamily(MTLGPUFamilyMac2) ) {
 			_metalFeatures.nativeTextureSwizzle = true;
+			_metalFeatures.placementHeaps = true;
 		}
 	}
 
