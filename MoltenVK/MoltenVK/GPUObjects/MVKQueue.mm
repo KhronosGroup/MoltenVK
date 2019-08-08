@@ -224,7 +224,7 @@ void MVKQueueCommandBufferSubmission::execute() {
 	MVKDevice* mvkDev = _queue->getDevice();
 
 	// If the device supports it, wait for any semaphores on the device.
-	if (mvkDev->_pMetalFeatures->events && _isAwaitingSemaphores) {
+	if (mvkDev->_useMTLEventsForSemaphores && _isAwaitingSemaphores) {
 		_isAwaitingSemaphores = false;
 		for (auto* ws : _waitSemaphores) {
 			ws->encodeWait(getActiveMTLCommandBuffer());
@@ -239,7 +239,7 @@ void MVKQueueCommandBufferSubmission::execute() {
 	if (_fence || _isSignalingSemaphores) { getActiveMTLCommandBuffer(); }
 
 	// If the device supports it, signal all semaphores on the device.
-	if (mvkDev->_pMetalFeatures->events && _isSignalingSemaphores) {
+	if (mvkDev->_useMTLEventsForSemaphores && _isSignalingSemaphores) {
 		_isSignalingSemaphores = false;
 		for (auto* ss : _signalSemaphores) {
 			ss->encodeSignal(getActiveMTLCommandBuffer());
@@ -354,7 +354,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	// If there are semaphores and this device supports MTLEvent, we must present
 	// with a command buffer in order to synchronize with the semaphores.
 	MVKDevice* mvkDev = _queue->getDevice();
-	if (mvkDev->_pMetalFeatures->events && !_waitSemaphores.empty()) {
+	if (mvkDev->_useMTLEventsForSemaphores && !_waitSemaphores.empty()) {
 		// Create a command buffer, have it wait for the semaphores, then present
 		// surfaces via the command buffer.
 		id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();

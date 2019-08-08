@@ -18,6 +18,7 @@ MoltenVK 1.0.37
 
 Released TBD
 
+- Add support for `VkEvent`, using either native `MTLEvent` or emulation when `MTLEvent` not available.
 - Revert to supporting host-coherent memory for linear images on macOS.
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
 - Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.

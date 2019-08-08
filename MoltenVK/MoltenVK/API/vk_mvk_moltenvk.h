@@ -116,7 +116,7 @@ typedef unsigned long MTLLanguageVersion;
  *
  * 4. Setting the MVK_ALLOW_METAL_EVENTS runtime environment variable or MoltenVK compile-time build
  *    setting to 1 will cause MoltenVK to use Metal events, if they are available on the device, for
- *    Vulkan sychronization components such as VkSemaphore. This is disabled by default.
+ *    for VkSemaphore sychronization behaviour. This is disabled by default.
  */
 typedef struct {
 
@@ -167,7 +167,10 @@ typedef struct {
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, the value of this parameter defaults to true.
+	 * If neither is set, the value of this parameter defaults to true for macOS 10.14
+	 * and above or iOS 12 and above, and false otherwise. The reason for this distinction
+	 * is that this feature should be disabled when emulation is required to support VkEvents
+	 * because native support for events (MTLEvent) is not available.
 	 */
 	VkBool32 synchronousQueueSubmits;
 
