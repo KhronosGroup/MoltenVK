@@ -450,7 +450,7 @@ MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
 	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];	// retained
 #if MVK_MACOS
 	if (_is3DCompressed) {
-		// Metal doesn't yet support 3D compressed textures, so we'll decompress
+		// Metal before 3.0 doesn't support 3D compressed textures, so we'll decompress
 		// the texture ourselves. This, then, is the *uncompressed* format.
 		mtlTexDesc.pixelFormat = MTLPixelFormatBGRA8Unorm;
 	} else {
@@ -622,7 +622,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_mtlTextureType = mvkMTLTextureTypeFromVkImageType(pCreateInfo->imageType, _arrayLayers, _samples > VK_SAMPLE_COUNT_1_BIT);
 	_usage = pCreateInfo->usage;
 
-	_is3DCompressed = (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed);
+	_is3DCompressed = (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
@@ -648,8 +648,12 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	}
 #endif
 #if MVK_MACOS
-	if (isCompressed && !is2D && !mvkCanDecodeFormat(pCreateInfo->format)) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", mvkVkFormatName(pCreateInfo->format)));
+	if (isCompressed && !is2D) {
+		if (pCreateInfo->imageType != VK_IMAGE_TYPE_3D) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D or 3D images."));
+		} else if (!getDevice()->_pMetalFeatures->native3DCompressedTextures && !mvkCanDecodeFormat(pCreateInfo->format)) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", mvkVkFormatName(pCreateInfo->format)));
+		}
 	}
 #endif
 

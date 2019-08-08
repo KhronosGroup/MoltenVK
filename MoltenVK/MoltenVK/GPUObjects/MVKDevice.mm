@@ -328,7 +328,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			}
 #if MVK_MACOS
 			// If this is a compressed format and there's no codec, it isn't supported.
-			if ((mvkFmt == kMVKFormatCompressed) && !mvkCanDecodeFormat(format)) {
+			if ((mvkFmt == kMVKFormatCompressed) && !mvkCanDecodeFormat(format) && !_metalFeatures.native3DCompressedTextures) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
 #endif
@@ -888,6 +888,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersion() >= 10.15 ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
+		_metalFeatures.native3DCompressedTextures = true;
 	}
 
 #endif
