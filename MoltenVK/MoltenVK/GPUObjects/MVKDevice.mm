@@ -36,7 +36,6 @@
 #include "MVKOSExtensions.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include "vk_mvk_moltenvk.h"
-#include <mach/mach_host.h>
 
 #import "CAMetalLayer+MoltenVK.h"
 
@@ -728,22 +727,21 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 	if (pMemoryProperties) {
 		pMemoryProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
 		pMemoryProperties->memoryProperties = _memoryProperties;
-		auto* next = (MVKVkAPIStructHeader*)pMemoryProperties->pNext;
-		while (next) {
-			switch ((uint32_t)next->sType) {
+		for (auto* next = (VkBaseOutStructure*)pMemoryProperties->pNext; next; next = next->pNext) {
+			switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
 				auto* budgetProps = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)next;
 				memset(budgetProps->heapBudget, 0, sizeof(budgetProps->heapBudget));
 				memset(budgetProps->heapUsage, 0, sizeof(budgetProps->heapUsage));
 				budgetProps->heapBudget[0] = (VkDeviceSize)getRecommendedMaxWorkingSetSize();
-				if ( [_mtlDevice respondsToSelector: @selector(currentAllocatedSize)] ) {
-					budgetProps->heapUsage[0] = (VkDeviceSize)_mtlDevice.currentAllocatedSize;
+				budgetProps->heapUsage[0] = (VkDeviceSize)getCurrentAllocatedSize();
+				if (!getHasUnifiedMemory()) {
+					budgetProps->heapBudget[1] = (VkDeviceSize)mvkGetAvailableMemorySize();
+					budgetProps->heapUsage[1] = (VkDeviceSize)mvkGetUsedMemorySize();
 				}
-				next = (MVKVkAPIStructHeader*)budgetProps->pNext;
 				break;
 			}
 			default:
-				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 			}
 		}
@@ -1758,7 +1756,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
         .memoryHeaps = {
             {
                 .flags = (VK_MEMORY_HEAP_DEVICE_LOCAL_BIT),
-                .size = (VkDeviceSize)getRecommendedMaxWorkingSetSize(),
+                .size = (VkDeviceSize)getVRAMSize(),
             },
         },
         // NB this list needs to stay sorted by propertyFlags (as bit sets)
@@ -1808,6 +1806,37 @@ void MVKPhysicalDevice::initMemoryProperties() {
 		_allMemoryTypes				= 0x7;		// Private, shared & memoryless
 	}
 #endif
+#if MVK_MACOS
+	if (!getHasUnifiedMemory()) {
+		// This means we really have two heaps. The second heap is system memory.
+		_memoryProperties.memoryHeapCount = 2;
+		_memoryProperties.memoryHeaps[1].size = mvkGetSystemMemorySize();
+		_memoryProperties.memoryHeaps[1].flags = 0;
+		_memoryProperties.memoryTypes[2].heapIndex = 1;	// Shared memory in the shared heap
+	}
+#endif
+}
+
+bool MVKPhysicalDevice::getHasUnifiedMemory() {
+#if MVK_IOS
+	return true;
+#endif
+#if MVK_MACOS
+	return [_mtlDevice respondsToSelector: @selector(hasUnifiedMemory)] && _mtlDevice.hasUnifiedMemory;
+#endif
+}
+
+uint64_t MVKPhysicalDevice::getVRAMSize() {
+#if MVK_IOS
+	// All iOS devices are UMA, so return the system memory size.
+	return mvkGetSystemMemorySize();
+#endif
+#if MVK_MACOS
+	if (getHasUnifiedMemory()) { return mvkGetSystemMemorySize(); }
+	// There's actually no way to query the total physical VRAM on the device in Metal.
+	// Just default to using the recommended max working set size (i.e. the budget).
+	return getRecommendedMaxWorkingSetSize();
+#endif
 }
 
 uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
@@ -1818,19 +1847,24 @@ uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
 #endif
 #if MVK_IOS
 	// GPU and CPU use shared memory. Estimate the current free memory in the system.
-	mach_port_t host_port;
-	mach_msg_type_number_t host_size;
-	vm_size_t pagesize;
-	host_port = mach_host_self();
-	host_size = sizeof(vm_statistics_data_t) / sizeof(integer_t);
-	host_page_size(host_port, &pagesize);
-	vm_statistics_data_t vm_stat;
-	if (host_statistics(host_port, HOST_VM_INFO, (host_info_t)&vm_stat, &host_size) == KERN_SUCCESS ) {
-		return vm_stat.free_count * pagesize;
-	}
+	uint64_t freeMem = mvkGetAvailableMemorySize();
+	if (freeMem) { return freeMem; }
 #endif
 
 	return 128 * MEBI;		// Conservative minimum for macOS GPU's & iOS shared memory
+}
+
+uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
+	if ( [_mtlDevice respondsToSelector: @selector(currentAllocatedSize)] ) {
+		return _mtlDevice.currentAllocatedSize;
+	}
+#if MVK_IOS
+	// We can use the current memory used by this process as a reasonable approximation.
+	return mvkGetUsedMemorySize();
+#endif
+#if MVK_MACOS
+	return 0;
+#endif
 }
 
 void MVKPhysicalDevice::initExtensions() {

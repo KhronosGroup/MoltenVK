@@ -18,7 +18,9 @@
 
 
 #include "MVKOSExtensions.h"
+#include <mach/mach_host.h>
 #include <mach/mach_time.h>
+#include <mach/task.h>
 
 #import <Foundation/Foundation.h>
 
@@ -91,3 +93,43 @@ int64_t mvkGetEnvVarInt64(string varName, bool* pWasFound) {
 bool mvkGetEnvVarBool(std::string varName, bool* pWasFound) {
 	return mvkGetEnvVarInt64(varName, pWasFound) != 0;
 }
+
+
+#pragma mark -
+#pragma mark System memory
+
+uint64_t mvkGetSystemMemorySize() {
+	mach_msg_type_number_t host_size = HOST_BASIC_INFO_COUNT;
+	host_basic_info_data_t info;
+	if (host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&info, &host_size) == KERN_SUCCESS) {
+		return info.max_mem;
+	}
+	return 0;
+}
+
+uint64_t mvkGetAvailableMemorySize() {
+#if MVK_IOS
+	if (mvkOSVersion() >= 13.0) { return os_proc_available_memory(); }
+#endif
+	mach_port_t host_port;
+	mach_msg_type_number_t host_size;
+	vm_size_t pagesize;
+	host_port = mach_host_self();
+	host_size = HOST_VM_INFO_COUNT;
+	host_page_size(host_port, &pagesize);
+	vm_statistics_data_t vm_stat;
+	if (host_statistics(host_port, HOST_VM_INFO, (host_info_t)&vm_stat, &host_size) == KERN_SUCCESS ) {
+		return vm_stat.free_count * pagesize;
+	}
+	return 0;
+}
+
+uint64_t mvkGetUsedMemorySize() {
+	task_vm_info_data_t task_vm_info;
+	mach_msg_type_number_t task_size = TASK_VM_INFO_COUNT;
+	if (task_info(mach_task_self(), TASK_VM_INFO, (task_info_t)&task_vm_info, &task_size) == KERN_SUCCESS) {
+		return task_vm_info.phys_footprint;
+	}
+	return 0;
+}
+
