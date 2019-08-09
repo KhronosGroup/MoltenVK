@@ -242,7 +242,8 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 	if ( !pImageFormatProperties ) { return VK_SUCCESS; }
 
 	// Metal does not support creating uncompressed views of compressed formats.
-	if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) {
+	// Metal does not support split-instance images.
+	if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT | VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT)) {
 		return VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 
@@ -1780,6 +1781,10 @@ VkResult MVKDevice::getDeviceGroupSurfacePresentModes(MVKSurface* surface, VkDev
 	return VK_SUCCESS;
 }
 
+void MVKDevice::getPeerMemoryFeatures(uint32_t heapIndex, uint32_t localDevice, uint32_t remoteDevice, VkPeerMemoryFeatureFlags* pPeerMemoryFeatures) {
+	*pPeerMemoryFeatures = VK_PEER_MEMORY_FEATURE_COPY_SRC_BIT | VK_PEER_MEMORY_FEATURE_COPY_DST_BIT;
+}
+
 
 #pragma mark Object lifecycle
 
@@ -1837,6 +1842,20 @@ void MVKDevice::destroyBufferView(MVKBufferView* mvkBuffView,
 
 MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
 								 const VkAllocationCallbacks* pAllocator) {
+	// If there's a VkImageSwapchainCreateInfoKHR, then we need to create a swapchain image.
+	const VkImageSwapchainCreateInfoKHR* swapchainInfo = nullptr;
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_IMAGE_SWAPCHAIN_CREATE_INFO_KHR:
+			swapchainInfo = (const VkImageSwapchainCreateInfoKHR*)next;
+			break;
+		default:
+			break;
+		}
+	}
+	if (swapchainInfo) {
+		return (MVKImage*)addResource(new MVKSwapchainImage(this, pCreateInfo, (MVKSwapchain*)swapchainInfo->swapchain));
+	}
 	return (MVKImage*)addResource(new MVKImage(this, pCreateInfo));
 }
 

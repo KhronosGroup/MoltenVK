@@ -503,5 +503,8 @@ void mvkCmdWaitEvents(MVKCommandBuffer* cmdBuff,
 					bufferMemoryBarrierCount, pBufferMemoryBarriers,
 					imageMemoryBarrierCount, pImageMemoryBarriers);
 	cmdBuff->addCommand(cmd);
+}
 
+void mvkCmdSetDeviceMask(MVKCommandBuffer* cmdBuff, uint32_t deviceMask) {
+	// No-op for now...
 }

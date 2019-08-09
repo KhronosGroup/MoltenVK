@@ -393,9 +393,6 @@ protected:
 #pragma mark -
 #pragma mark MVKSwapchainImage
 
-/** Tracks a semaphore and fence for later signaling. */
-typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
-
 /** Indicates the relative availability of each image in the swapchain. */
 typedef struct MVKSwapchainImageAvailability_t {
 	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
@@ -405,10 +402,17 @@ typedef struct MVKSwapchainImageAvailability_t {
 	bool operator< (const MVKSwapchainImageAvailability_t& rhs) const;
 } MVKSwapchainImageAvailability;
 
+
 /** Represents a Vulkan image used as a rendering destination within a swapchain. */
 class MVKSwapchainImage : public MVKImage {
 
 public:
+
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+
+	/** Binds this resource according to the specified bind information. */
+	VkResult bindDeviceMemory2(const void* pBindInfo) override;
 
 	/** Returns the encompassing swapchain. */
 	inline MVKSwapchain* getSwapchain() { return _swapchain; }
@@ -431,7 +435,7 @@ public:
 
 	/**
 	 * Presents the contained drawable to the OS, releases the Metal drawable and its 
-	 * texture back to the Metal layer's pool, and makes this image available for new use.
+	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
 	 *
 	 * If mtlCmdBuff is not nil, the contained drawable is scheduled for presentation using
 	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
@@ -448,25 +452,18 @@ public:
 					  MVKSwapchain* swapchain,
 					  uint32_t swapchainIndex);
 
-	~MVKSwapchainImage() override;
+	/** Constructs an instance for the specified device and swapchain, without binding to a particular swapchain image index. */
+	MVKSwapchainImage(MVKDevice* device,
+					  const VkImageCreateInfo* pCreateInfo,
+					  MVKSwapchain* swapchain);
 
 protected:
 	id<MTLTexture> newMTLTexture() override;
 	id<CAMetalDrawable> getCAMetalDrawable();
-	void resetCAMetalDrawable();
     void resetMetalSurface();
-	void signal(MVKSwapchainSignaler& signaler);
-	void markAsTracked(MVKSwapchainSignaler& signaler);
-	void unmarkAsTracked(MVKSwapchainSignaler& signaler);
-	void makeAvailable();
     void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
 	MVKSwapchain* _swapchain;
 	uint32_t _swapchainIndex;
-	id<CAMetalDrawable> _mtlDrawable;
-	std::mutex _availabilityLock;
-	MVKVectorInline<MVKSwapchainSignaler, 4> _availabilitySignalers;
-	MVKSwapchainSignaler _preSignaled;
-	MVKSwapchainImageAvailability _availability;
 };
 

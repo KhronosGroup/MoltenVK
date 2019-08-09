@@ -18,12 +18,16 @@ MoltenVK 1.0.37
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_KHR_device_group`
 - Add support for `VkEvent`, using either native `MTLEvent` or emulation when `MTLEvent` not available.
 - Revert to supporting host-coherent memory for linear images on macOS.
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
 - Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.
+- No longer prefer dedicated allocations for buffer memory, including buffer-backed images.
+- Handle the `compositeAlpha` member of `VkSwapchainCreateInfoKHR`.
 
 
 MoltenVK 1.0.36

@@ -1294,6 +1294,8 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   const VkComputePipelineCreateInfo* pCreateInfo) :
 	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, parent) {
 
+	_allowsDispatchBase = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DISPATCH_BASE);	// sic; drafters forgot the 'BIT' suffix
+
 	MVKMTLFunction func = getMTLFunction(pCreateInfo);
 	_mtlThreadgroupSize = func.threadGroupSize;
 	_mtlPipelineState = nil;
@@ -1324,6 +1326,9 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 	if (_needsBufferSizeBuffer && _bufferSizeBufferIndex.stages[kMVKShaderStageCompute] > _device->_pMetalFeatures->maxPerStageBufferCount) {
 		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader requires buffer size buffer, but there is no free slot to pass it."));
 	}
+	if (_needsDispatchBaseBuffer && _indirectParamsIndex.stages[kMVKShaderStageCompute] > _device->_pMetalFeatures->maxPerStageBufferCount) {
+		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Compute shader requires dispatch base buffer, but there is no free slot to pass it."));
+	}
 }
 
 // Returns a MTLFunction to use when creating the MTLComputePipelineState.
@@ -1339,6 +1344,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     shaderContext.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
 	shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle;
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
+	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -1346,12 +1352,14 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     _bufferSizeBufferIndex = layout->getBufferSizeBufferIndex();
     shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageCompute];
     shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageCompute];
+    shaderContext.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageCompute];
 
     MVKMTLFunction func = ((MVKShaderModule*)pSS->module)->getMTLFunction(&shaderContext, pSS->pSpecializationInfo, _pipelineCache);
 
 	auto& funcRslts = func.shaderConversionResults;
 	_needsSwizzleBuffer = funcRslts.needsSwizzleBuffer;
     _needsBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
+    _needsDispatchBaseBuffer = funcRslts.needsDispatchBaseBuffer;
 
 	return func;
 }
@@ -1710,7 +1718,8 @@ namespace mvk {
 				scr.needsOutputBuffer,
 				scr.needsPatchOutputBuffer,
 				scr.needsBufferSizeBuffer,
-				scr.needsInputThreadgroupMem);
+				scr.needsInputThreadgroupMem,
+				scr.needsDispatchBaseBuffer);
 	}
 
 }

@@ -231,6 +231,8 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_KHR_bind_memory2`
 - `VK_KHR_dedicated_allocation`
 - `VK_KHR_descriptor_update_template`
+- `VK_KHR_device_group`
+- `VK_KHR_device_group_creation`
 - `VK_KHR_get_memory_requirements2`
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`

@@ -313,3 +313,6 @@ void mvkCmdWaitEvents(MVKCommandBuffer* cmdBuff,
 					  const VkBufferMemoryBarrier* pBufferMemoryBarriers,
 					  uint32_t imageMemoryBarrierCount,
 					  const VkImageMemoryBarrier* pImageMemoryBarriers);
+
+/** Indicates that following commands are to be recorded only for the devices in the given device mask. */
+void mvkCmdSetDeviceMask(MVKCommandBuffer* cmdBuff, uint32_t deviceMask);
