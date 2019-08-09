@@ -69,10 +69,10 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal buffer underlying this memory allocation. */
-	inline id<MTLBuffer> getMTLBuffer() { return _deviceMemory ? _deviceMemory->getMTLBuffer() : nullptr; }
+	id<MTLBuffer> getMTLBuffer();
 
 	/** Returns the offset at which the contents of this instance starts within the underlying Metal buffer. */
-	inline NSUInteger getMTLBufferOffset() { return _deviceMemoryOffset; }
+	inline NSUInteger getMTLBufferOffset() { return _deviceMemory && _deviceMemory->getMTLHeap() ? 0 : _deviceMemoryOffset; }
 
 
 #pragma mark Construction
@@ -90,6 +90,7 @@ protected:
 						   VkBufferMemoryBarrier* pBufferMemoryBarrier);
 
 	VkBufferUsageFlags _usage;
+	id<MTLBuffer> _mtlBuffer = nil;
 };
 
 
