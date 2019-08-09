@@ -191,7 +191,7 @@ public:
   virtual void                reset()                                        = 0;
   virtual void                reserve( const size_t new_size )               = 0;
   virtual void                assign( const size_t new_size, const Type *t ) = 0;
-  virtual void                resize( const size_t new_size, const Type *t ) = 0;
+  virtual void                resize( const size_t new_size, const Type *t = nullptr ) = 0;
   virtual void                shrink_to_fit()                                = 0;
   virtual void                push_back( const Type *t )                     = 0;
 };
@@ -880,7 +880,7 @@ public:
     alc.num_elements_used = new_size;
   }
 
-  void resize( const size_t new_size, const Type *t ) override
+  void resize( const size_t new_size, const Type *t = nullptr ) override
   {
     if ( new_size == alc.num_elements_used )
     {

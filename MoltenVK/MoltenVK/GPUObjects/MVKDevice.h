@@ -402,6 +402,9 @@ public:
 	/** Populates the device group surface presentation modes. */
 	VkResult getDeviceGroupSurfacePresentModes(MVKSurface* surface, VkDeviceGroupPresentModeFlagsKHR* pModes);
 
+	/** Populates the device group peer memory features. */
+	void getPeerMemoryFeatures(uint32_t heapIndex, uint32_t localDevice, uint32_t remoteDevice, VkPeerMemoryFeatureFlags* pPeerMemoryFeatures);
+
 
 #pragma mark Object lifecycle
 

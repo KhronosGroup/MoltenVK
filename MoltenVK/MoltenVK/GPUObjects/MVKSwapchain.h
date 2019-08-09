@@ -19,15 +19,18 @@
 #pragma once
 
 #include "MVKDevice.h"
+#include "MVKImage.h"
 #include "MVKVector.h"
 
-class MVKSwapchainImage;
 class MVKWatermark;
 
 @class MVKBlockObserver;
 
 
 #pragma mark MVKSwapchain
+
+/** Tracks a semaphore and fence for later signaling. */
+typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
 
 /** Represents a Vulkan swapchain. */
 class MVKSwapchain : public MVKVulkanAPIDeviceObject {
@@ -77,17 +80,27 @@ public:
 	/** Returns the specified performance stats structure. */
 	const MVKSwapchainPerformance* getPerformanceStatistics() { return &_performanceStatistics; }
 
+	/**
+	 * Registers a semaphore and/or fence that will be signaled when the image at the given index becomes available.
+	 * This function accepts both a semaphore and a fence, and either none, one, or both may be provided.
+	 * If this image is available already, the semaphore and fence are immediately signaled.
+	 */
+	void signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaphore, MVKFence* fence);
+
+	/** Returns the availability status of the image at the given index, relative to other images in the swapchain. */
+	const MVKSwapchainImageAvailability* getAvailability(uint32_t imageIndex);
 
 #pragma mark Metal
 
 	/** 
-	 * Returns the next Metal drawable available to provide backing for 
-	 * an image in this swapchain. The returned object is autoreleased.
+	 * Returns the Metal drawable providing backing for the image at the given
+	 * index in this swapchain. If none is established, the next available
+	 * drawable is acquired and returned.
 	 *
 	 * This function may block until the next drawable is available, 
 	 * and may return nil if no drawable is available at all.
 	 */
-	id<CAMetalDrawable> getNextCAMetalDrawable();
+	id<CAMetalDrawable> getCAMetalDrawable(uint32_t imgIdx);
 
 
 #pragma mark Construction
@@ -99,6 +112,12 @@ public:
 protected:
 	friend class MVKSwapchainImage;
 
+	struct Availability {
+		MVKSwapchainImageAvailability status;
+		MVKVectorInline<MVKSwapchainSignaler, 4> signalers;
+		MVKSwapchainSignaler preSignaled;
+	};
+
 	void propogateDebugName() override;
 	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
@@ -108,10 +127,19 @@ protected:
     void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
+	void resetCAMetalDrawable(uint32_t imgIdx);
+	void signal(MVKSwapchainSignaler& signaler);
+	void signalOnDevice(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff);
+	static void markAsTracked(MVKSwapchainSignaler& signaler);
+	static void unmarkAsTracked(MVKSwapchainSignaler& signaler);
+	void makeAvailable(uint32_t imgIdx);
 
 	CAMetalLayer* _mtlLayer;
     MVKWatermark* _licenseWatermark;
 	MVKVectorInline<MVKSwapchainImage*, kMVKMaxSwapchainImageCount> _surfaceImages;
+	MVKVectorInline<id<CAMetalDrawable>, kMVKMaxSwapchainImageCount> _mtlDrawables;
+	MVKVectorInline<Availability, kMVKMaxSwapchainImageCount> _imageAvailability;
+	std::mutex _availabilityLock;
 	std::atomic<uint64_t> _currentAcquisitionID;
     CGSize _mtlLayerOrigDrawSize;
     MVKSwapchainPerformance _performanceStatistics;

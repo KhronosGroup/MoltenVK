@@ -156,6 +156,9 @@ public:
 	/** Returns the current buffer size buffer bindings. */
 	const MVKShaderImplicitRezBinding& getBufferSizeBufferIndex() { return _bufferSizeBufferIndex; }
 
+	/** Returns the current indirect parameter buffer bindings. */
+	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
+
 	/** Returns whether or not full image view swizzling is enabled for this pipeline. */
 	bool fullImageViewSwizzle() const { return _fullImageViewSwizzle; }
 
@@ -171,6 +174,7 @@ protected:
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
+	MVKShaderImplicitRezBinding _indirectParamsIndex;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	bool _fullImageViewSwizzle;
 	bool _hasValidMTLPipelineStates = true;
@@ -203,9 +207,6 @@ public:
 
     /** Returns the number of output tessellation patch control points. */
     uint32_t getOutputControlPointCount() { return _outputControlPointCount; }
-
-	/** Returns the current indirect parameter buffer bindings. */
-	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
 
 	/** Returns the current captured output buffer bindings. */
 	const MVKShaderImplicitRezBinding& getOutputBufferIndex() { return _outputBufferIndex; }
@@ -281,7 +282,6 @@ protected:
 
     float _blendConstants[4] = { 0.0, 0.0, 0.0, 1.0 };
     uint32_t _outputControlPointCount;
-	MVKShaderImplicitRezBinding _indirectParamsIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;
@@ -317,6 +317,9 @@ public:
 	/** Binds this pipeline to the specified command encoder. */
 	void encode(MVKCommandEncoder* cmdEncoder, uint32_t = 0) override;
 
+	/** Returns if this pipeline allows non-zero dispatch bases in vkCmdDispatchBase(). */
+	bool allowsDispatchBase() { return _allowsDispatchBase; }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKComputePipeline(MVKDevice* device,
 					   MVKPipelineCache* pipelineCache,
@@ -332,6 +335,8 @@ protected:
     MTLSize _mtlThreadgroupSize;
     bool _needsSwizzleBuffer = false;
     bool _needsBufferSizeBuffer = false;
+    bool _needsDispatchBaseBuffer = false;
+    bool _allowsDispatchBase = false;
 };
 
 
