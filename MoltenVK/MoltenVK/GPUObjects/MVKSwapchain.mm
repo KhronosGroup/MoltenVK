@@ -226,6 +226,9 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			   VK_IMAGE_USAGE_SAMPLED_BIT |
 																			   VK_IMAGE_USAGE_STORAGE_BIT));
+	if (pCreateInfo->compositeAlpha != VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
+		_mtlLayer.opaque = pCreateInfo->compositeAlpha == VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+	}
 #if MVK_MACOS
 	switch (pCreateInfo->imageColorSpace) {
 		case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
