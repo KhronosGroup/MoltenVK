@@ -283,6 +283,9 @@ public:
     /** Binds a pipeline to a bind point. */
     void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline);
 
+	/** Encodes an operation to signal an event to a status. */
+	void signalEvent(MVKEvent* mvkEvent, bool status);
+
     /**
      * If a pipeline is currently bound, returns whether the current pipeline permits dynamic
      * setting of the specified state. If no pipeline is currently bound, returns true.

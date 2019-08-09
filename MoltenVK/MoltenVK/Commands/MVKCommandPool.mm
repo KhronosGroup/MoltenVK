@@ -126,6 +126,8 @@ void MVKCommandPool::trim() {
 	_cmdDebugMarkerBeginPool.clear();
 	_cmdDebugMarkerEndPool.clear();
 	_cmdDebugMarkerInsertPool.clear();
+	_cmdSetResetEventPool.clear();
+	_cmdWaitEventsPool.clear();
 }
 
 
@@ -180,7 +182,9 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 	_cmdPushSetWithTemplatePool(this),
 	_cmdDebugMarkerBeginPool(this),
 	_cmdDebugMarkerEndPool(this),
-	_cmdDebugMarkerInsertPool(this)
+	_cmdDebugMarkerInsertPool(this),
+	_cmdSetResetEventPool(this),
+	_cmdWaitEventsPool(this)
 // when extending be sure to add to trim() as well
 {}
 

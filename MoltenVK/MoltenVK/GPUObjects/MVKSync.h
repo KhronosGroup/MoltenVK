@@ -60,6 +60,9 @@ public:
 	 */
 	bool release();
 
+	/** Returns whether this instance is in a reserved state. */
+	bool isReserved();
+
 	/**
 	 * Blocks processing on the current thread until any or all (depending on configuration) outstanding
      * reservations have been released, or until the specified timeout interval in nanoseconds expires.
@@ -81,7 +84,7 @@ public:
 	 *
 	 * The waitAll parameter indicates whether a call to the release() function is required
 	 * for each call to the reserve() function (waitAll = true), or whether a single call 
-	 * to the release() function will release all outstanding reservations (waitAll = true). 
+	 * to the release() function will release all outstanding reservations (waitAll = false). 
 	 * This value defaults to true, indicating that each call to the reserve() function will
 	 * require a separate call to the release() function to cause the semaphore to stop blocking.
 	 */
@@ -243,6 +246,84 @@ private:
 	void fenceSignaled(MVKFence* fence) { _blocker.release(); }
 
 	MVKSemaphoreImpl _blocker;
+};
+
+
+#pragma mark -
+#pragma mark MVKEvent
+
+/** Represents a Vulkan semaphore. */
+class MVKEvent : public MVKVulkanAPIDeviceObject {
+
+public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_EVENT; }
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT; }
+
+	/** Returns whether this event is set. */
+	virtual bool isSet() = 0;
+
+	/** Sets the signal status. */
+	virtual void signal(bool status) = 0;
+
+	/** Encodes an operation to signal the event with a status. */
+	virtual void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) = 0;
+
+	/** Encodes an operation to block command buffer operation until this event is signaled. */
+	virtual void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) = 0;
+
+
+#pragma mark Construction
+
+	MVKEvent(MVKDevice* device, const VkEventCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {}
+
+protected:
+	void propogateDebugName() override {}
+
+};
+
+
+#pragma mark -
+#pragma mark MVKEventNative
+
+/** An MVKEvent that uses native MTLSharedEvent to provide VkEvent functionality. */
+class MVKEventNative : public MVKEvent {
+
+public:
+	bool isSet() override;
+	void signal(bool status) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) override;
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
+
+	MVKEventNative(MVKDevice* device, const VkEventCreateInfo* pCreateInfo);
+
+	~MVKEventNative() override;
+
+protected:
+	id<MTLSharedEvent> _mtlEvent;
+};
+
+
+#pragma mark -
+#pragma mark MVKEventEmulated
+
+/** An MVKEvent that uses CPU synchronization to provide VkEvent functionality. */
+class MVKEventEmulated : public MVKEvent {
+
+public:
+	bool isSet() override;
+	void signal(bool status) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) override;
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
+
+	MVKEventEmulated(MVKDevice* device, const VkEventCreateInfo* pCreateInfo);
+
+protected:
+	MVKSemaphoreImpl _blocker;
+	bool _inlineSignalStatus;
 };
 
 

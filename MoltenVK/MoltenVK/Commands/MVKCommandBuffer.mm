@@ -359,6 +359,11 @@ void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKP
     }
 }
 
+void MVKCommandEncoder::signalEvent(MVKEvent* mvkEvent, bool status) {
+	endCurrentMetalEncoding();
+	mvkEvent->encodeSignal(_mtlCmdBuffer, status);
+}
+
 bool MVKCommandEncoder::supportsDynamicState(VkDynamicState state) {
     MVKGraphicsPipeline* gpl = (MVKGraphicsPipeline*)_graphicsPipelineState.getPipeline();
     return !gpl || gpl->supportsDynamicState(state);

@@ -1286,7 +1286,7 @@ void MVKSwapchainImage::signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* f
 	if (_availability.isAvailable) {
 		_availability.isAvailable = false;
 		signal(signaler);
-		if (_device->_pMetalFeatures->events) {
+		if (_device->_useMTLEventsForSemaphores) {
 			// Unfortunately, we can't assume we have an MTLSharedEvent here.
 			// This means we need to execute a command on the device to signal
 			// the semaphore. Alternatively, we could always use an MTLSharedEvent,
@@ -1310,7 +1310,7 @@ void MVKSwapchainImage::signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* f
 
 // Signal either or both of the semaphore and fence in the specified tracker pair.
 void MVKSwapchainImage::signal(MVKSwapchainSignaler& signaler) {
-	if (signaler.first && !_device->_pMetalFeatures->events) { signaler.first->signal(); }
+	if (signaler.first && !_device->_useMTLEventsForSemaphores) { signaler.first->signal(); }
 	if (signaler.second) { signaler.second->signal(); }
 }
 
@@ -1367,7 +1367,7 @@ void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) 
 		if (scName) { [mtlCmdBuff popDebugGroup]; }
 
 		resetMetalSurface();
-        if (_device->_pMetalFeatures->events && !_availabilitySignalers.empty()) {
+        if (_device->_useMTLEventsForSemaphores && !_availabilitySignalers.empty()) {
             // Signal the semaphore device-side.
             _availabilitySignalers.front().first->encodeSignal(mtlCmdBuff);
         }

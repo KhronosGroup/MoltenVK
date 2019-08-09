@@ -128,7 +128,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
                     portabilityFeatures->triangleFans = false;
                     portabilityFeatures->separateStencilMaskRef = true;
-                    portabilityFeatures->events = false;
+                    portabilityFeatures->events = _metalFeatures.events;
                     portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle;
                     portabilityFeatures->samplerMipLodBias = false;
                     break;
@@ -781,7 +781,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v5] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
-		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.events, MVK_ALLOW_METAL_EVENTS);
+		_metalFeatures.events = true;
 		_metalFeatures.textureBuffers = true;
 	}
 
@@ -844,7 +844,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v4] ) {
         _metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
         _metalFeatures.multisampleArrayTextures = true;
-		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.events, MVK_ALLOW_METAL_EVENTS);
+		_metalFeatures.events = true;
         _metalFeatures.memoryBarriers = true;
         _metalFeatures.textureBuffers = true;
     }
@@ -1899,6 +1899,19 @@ void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
 	mvkSem4->destroy();
 }
 
+MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,
+								 const VkAllocationCallbacks* pAllocator) {
+	if (_pMetalFeatures->events) {
+		return new MVKEventNative(this, pCreateInfo);
+	} else {
+		return new MVKEventEmulated(this, pCreateInfo);
+	}
+}
+
+void MVKDevice::destroyEvent(MVKEvent* mvkEvent, const VkAllocationCallbacks* pAllocator) {
+	mvkEvent->destroy();
+}
+
 MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInfo,
 										 const VkAllocationCallbacks* pAllocator) {
 	switch (pCreateInfo->queryType) {
@@ -2300,6 +2313,11 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	_pMetalFeatures = _physicalDevice->getMetalFeatures();
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
+
+	_useMTLEventsForSemaphores = MVK_ALLOW_METAL_EVENTS;
+	if (_pMetalFeatures->events) {
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventsForSemaphores, MVK_ALLOW_METAL_EVENTS);
+	}
 
 #if MVK_MACOS
 	// If we have selected a high-power GPU and want to force the window system

@@ -46,6 +46,11 @@ void MVKSemaphoreImpl::reserve() {
 	_reservationCount++;
 }
 
+bool MVKSemaphoreImpl::isReserved() {
+	lock_guard<mutex> lock(_lock);
+	return !isClear();
+}
+
 bool MVKSemaphoreImpl::wait(uint64_t timeout, bool reserveAgain) {
     unique_lock<mutex> lock(_lock);
 
@@ -97,7 +102,7 @@ void MVKSemaphore::encodeSignal(id<MTLCommandBuffer> cmdBuff) {
 MVKSemaphore::MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo)
     : MVKVulkanAPIDeviceObject(device), _blocker(false, 1), _mtlEvent(nil), _mtlEventValue(1) {
 
-    if (device->_pMetalFeatures->events) {
+    if (device->_useMTLEventsForSemaphores) {
         _mtlEvent = [device->getMTLDevice() newEvent];
     }
 }
@@ -153,6 +158,76 @@ bool MVKFence::getIsSignaled() {
 
 	return _isSignaled;
 }
+
+
+#pragma mark -
+#pragma mark MVKEventNative
+
+// Odd == set / Even == reset.
+bool MVKEventNative::isSet() { return _mtlEvent.signaledValue & 1; }
+
+void MVKEventNative::signal(bool status) {
+	if (isSet() != status) {
+		_mtlEvent.signaledValue += 1;
+	}
+}
+
+void MVKEventNative::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) {
+	if (isSet() != status) {
+		[mtlCmdBuff encodeSignalEvent: _mtlEvent value: _mtlEvent.signaledValue + 1];
+	}
+}
+
+void MVKEventNative::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
+	if ( !isSet() ) {
+		[mtlCmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEvent.signaledValue + 1];
+	}
+}
+
+MVKEventNative::MVKEventNative(MVKDevice* device, const VkEventCreateInfo* pCreateInfo) : MVKEvent(device, pCreateInfo) {
+	_mtlEvent = [_device->getMTLDevice() newSharedEvent];	// retained
+}
+
+MVKEventNative::~MVKEventNative() {
+	[_mtlEvent release];
+}
+
+
+#pragma mark -
+#pragma mark MVKEventEmulated
+
+bool MVKEventEmulated::isSet() { return !_blocker.isReserved(); }
+
+void MVKEventEmulated::signal(bool status) {
+	if (status) {
+		_blocker.release();
+	} else {
+		_blocker.reserve();
+	}
+}
+
+void MVKEventEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) {
+	if (status) {
+		[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { _blocker.release(); }];
+	} else {
+		_blocker.reserve();
+	}
+
+	// An encoded signal followed by an encoded wait should cause the wait to be skipped.
+	// However, because encoding a signal will not release the blocker until the command buffer
+	// is finished executing (so the CPU can tell when it really is done) it is possible that
+	// the encoded wait will block when it shouldn't. To avoid that, we keep track of whether
+	// the most recent encoded signal was set or reset, so the next encoded wait knows whether
+	// to really wait or not.
+	_inlineSignalStatus = status;
+}
+
+void MVKEventEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
+	if ( !_inlineSignalStatus ) { _blocker.wait(); }
+}
+
+MVKEventEmulated::MVKEventEmulated(MVKDevice* device, const VkEventCreateInfo* pCreateInfo) :
+	MVKEvent(device, pCreateInfo), _blocker(false, 1), _inlineSignalStatus(false) {}
 
 
 #pragma mark -
