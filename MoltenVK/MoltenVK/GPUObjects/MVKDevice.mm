@@ -129,7 +129,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     portabilityFeatures->triangleFans = false;
                     portabilityFeatures->separateStencilMaskRef = true;
                     portabilityFeatures->events = false;
-                    portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle;
+                    portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle || _metalFeatures.nativeTextureSwizzle;
                     portabilityFeatures->samplerMipLodBias = false;
                     break;
                 }
@@ -840,6 +840,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersion() >= 13.0 ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
+		if ( getSupportsGPUFamily(MTLGPUFamilyApple4) ) {
+			_metalFeatures.nativeTextureSwizzle = true;
+		}
 	}
 
 #endif
@@ -889,6 +892,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersion() >= 10.15 ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.native3DCompressedTextures = true;
+		if ( getSupportsGPUFamily(MTLGPUFamilyMac2) ) {
+			_metalFeatures.nativeTextureSwizzle = true;
+		}
 	}
 
 #endif
