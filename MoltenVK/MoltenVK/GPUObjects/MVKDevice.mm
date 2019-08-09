@@ -497,7 +497,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
 		}
 		if (mvkOSVersion() >= 10.14) {
-			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
+			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);

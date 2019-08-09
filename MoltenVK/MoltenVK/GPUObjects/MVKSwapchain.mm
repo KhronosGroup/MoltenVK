@@ -308,7 +308,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
-		case VK_COLOR_SPACE_DCI_P3_LINEAR_EXT:
+		case VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearDisplayP3);
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
