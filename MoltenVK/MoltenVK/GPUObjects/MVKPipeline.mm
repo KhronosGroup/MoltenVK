@@ -47,11 +47,11 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 		MVKDescriptorSet* descSet = descriptorSets[dsIdx];
 		uint32_t dslIdx = firstSet + dsIdx;
-		auto& dsl = _descriptorSetLayouts[dslIdx];
-		dsl.bindDescriptorSet(cmdEncoder, descSet,
-							  _dslMTLResourceIndexOffsets[dslIdx],
-							  dynamicOffsets, &pDynamicOffsetIndex);
-		setConfigurationResult(dsl.getConfigurationResult());
+		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[dslIdx];
+		dsl->bindDescriptorSet(cmdEncoder, descSet,
+							   _dslMTLResourceIndexOffsets[dslIdx],
+							   dynamicOffsets, &pDynamicOffsetIndex);
+		setConfigurationResult(dsl->getConfigurationResult());
 	}
 }
 
@@ -60,9 +60,9 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                           MVKVector<VkWriteDescriptorSet>& descriptorWrites,
                                           uint32_t set) {
 	clearConfigurationResult();
-	auto& dsl = _descriptorSetLayouts[set];
-	dsl.pushDescriptorSet(cmdEncoder, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
-	setConfigurationResult(dsl.getConfigurationResult());
+	MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[set];
+	dsl->pushDescriptorSet(cmdEncoder, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
+	setConfigurationResult(dsl->getConfigurationResult());
 }
 
 // A null cmdEncoder can be passed to perform a validation pass
@@ -71,9 +71,9 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                           uint32_t set,
                                           const void* pData) {
 	clearConfigurationResult();
-	auto& dsl = _descriptorSetLayouts[set];
-	dsl.pushDescriptorSet(cmdEncoder, descUpdateTemplate, pData, _dslMTLResourceIndexOffsets[set]);
-	setConfigurationResult(dsl.getConfigurationResult());
+	MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[set];
+	dsl->pushDescriptorSet(cmdEncoder, descUpdateTemplate, pData, _dslMTLResourceIndexOffsets[set]);
+	setConfigurationResult(dsl->getConfigurationResult());
 }
 
 void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context) {
@@ -82,9 +82,9 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfi
     // Add resource bindings defined in the descriptor set layouts
 	uint32_t dslCnt = (uint32_t)_descriptorSetLayouts.size();
 	for (uint32_t dslIdx = 0; dslIdx < dslCnt; dslIdx++) {
-        _descriptorSetLayouts[dslIdx].populateShaderConverterContext(context,
-                                                                     _dslMTLResourceIndexOffsets[dslIdx],
-                                                                     dslIdx);
+		_descriptorSetLayouts[dslIdx]->populateShaderConverterContext(context,
+																	  _dslMTLResourceIndexOffsets[dslIdx],
+																	  dslIdx);
 	}
 
 	// Add any resource bindings used by push-constants
@@ -113,16 +113,16 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
     // with each DSL as it is added. The final accumulation of resource index offsets
     // becomes the resource index offsets that will be used for push contants.
 
-    // According to the Vulkan spec, VkDescriptorSetLayout is intended to be consumed when
-    // passed to any Vulkan function, and may be safely destroyed by app immediately after.
-    // In order for this pipeline layout to retain the content of a VkDescriptorSetLayout,
-    // this pipeline holds onto copies of the MVKDescriptorSetLayout instances, so that the
-    // originals created by the app can be safely destroyed.
+    // According to the Vulkan spec, VkDescriptorSetLayout is intended to be consumed when passed
+	// to any Vulkan function, and may be safely destroyed by app immediately after. In order for
+	// this pipeline layout to retain the VkDescriptorSetLayout, the MVKDescriptorSetLayout
+	// instance is retained, so that it will live on here after it has been destroyed by the API.
 
 	_descriptorSetLayouts.reserve(pCreateInfo->setLayoutCount);
 	for (uint32_t i = 0; i < pCreateInfo->setLayoutCount; i++) {
 		MVKDescriptorSetLayout* pDescSetLayout = (MVKDescriptorSetLayout*)pCreateInfo->pSetLayouts[i];
-		_descriptorSetLayouts.push_back(*pDescSetLayout);
+		pDescSetLayout->retain();
+		_descriptorSetLayouts.push_back(pDescSetLayout);
 		_dslMTLResourceIndexOffsets.push_back(_pushConstantsMTLResourceIndexes);
 		_pushConstantsMTLResourceIndexes += pDescSetLayout->_mtlResourceCounts;
 	}
@@ -148,6 +148,10 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 			_tessCtlLevelBufferIndex = _tessCtlPatchOutputBufferIndex + 1;
 		}
 	}
+}
+
+MVKPipelineLayout::~MVKPipelineLayout() {
+	for (auto dsl : _descriptorSetLayouts) { dsl->release(); }
 }
 
 
