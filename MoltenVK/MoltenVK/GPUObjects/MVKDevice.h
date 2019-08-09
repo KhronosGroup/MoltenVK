@@ -278,6 +278,9 @@ public:
 	 */
 	inline uint32_t getLazilyAllocatedMemoryTypes() { return _lazilyAllocatedMemoryTypes; }
 
+	/** Returns whether this is a unified memory device. */
+	bool getHasUnifiedMemory();
+
 	
 #pragma mark Metal
 
@@ -330,7 +333,9 @@ protected:
 	void initProperties();
 	void initGPUInfoProperties();
 	void initMemoryProperties();
+	uint64_t getVRAMSize();
 	uint64_t getRecommendedMaxWorkingSetSize();
+	uint64_t getCurrentAllocatedSize();
 	void initExtensions();
 	MVKExtensionList* getSupportedExtensions(const char* pLayerName = nullptr);
 	std::vector<MVKQueueFamily*>& getQueueFamilies();
