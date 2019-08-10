@@ -1055,6 +1055,9 @@ void MVKCmdClearImage::setContent(VkImage image,
     }
 
 	// Validate
+	if (_image->getImageType() == VK_IMAGE_TYPE_1D) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): 1D images cannot be cleared on this device."));
+	}
 	if ( !_image->getSupportsAllFormatFeatures(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", mvkVkFormatName(_image->getVkFormat())));
 	}

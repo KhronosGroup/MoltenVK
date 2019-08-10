@@ -80,15 +80,9 @@ MVKSemaphoreImpl::~MVKSemaphoreImpl() {
 #pragma mark -
 #pragma mark MVKSemaphore
 
-bool MVKSemaphore::wait(uint64_t timeout) {
-	bool isDone = _blocker.wait(timeout, true);
-	if ( !isDone && timeout > 0 ) { reportError(VK_TIMEOUT, "Vulkan semaphore timeout after %llu nanoseconds.", timeout); }
-	return isDone;
-}
+bool MVKSemaphore::wait(uint64_t timeout) { return _blocker.wait(timeout, true); }
 
-void MVKSemaphore::signal() {
-    _blocker.release();
-}
+void MVKSemaphore::signal() { _blocker.release(); }
 
 void MVKSemaphore::encodeWait(id<MTLCommandBuffer> cmdBuff) {
     [cmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue];
@@ -254,12 +248,7 @@ VkResult mvkWaitForFences(MVKDevice* device,
 		((MVKFence*)pFences[i])->addSitter(&fenceSitter);
 	}
 
-	if ( !fenceSitter.wait(timeout) ) {
-		rslt = VK_TIMEOUT;
-		if (timeout > 0) {
-			device->reportError(rslt, "Vulkan fence timeout after %llu nanoseconds.", timeout);
-		}
-	}
+	if ( !fenceSitter.wait(timeout) ) { rslt = VK_TIMEOUT; }
 
 	for (uint32_t i = 0; i < fenceCount; i++) {
 		((MVKFence*)pFences[i])->removeSitter(&fenceSitter);

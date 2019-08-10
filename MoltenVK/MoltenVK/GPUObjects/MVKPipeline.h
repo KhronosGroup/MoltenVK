@@ -102,10 +102,12 @@ public:
 	/** Constructs an instance for the specified device. */
 	MVKPipelineLayout(MVKDevice* device, const VkPipelineLayoutCreateInfo* pCreateInfo);
 
+	~MVKPipelineLayout() override;
+
 protected:
 	void propogateDebugName() override {}
 
-	MVKVectorInline<MVKDescriptorSetLayout, 8> _descriptorSetLayouts;
+	MVKVectorInline<MVKDescriptorSetLayout*, 8> _descriptorSetLayouts;
 	MVKVectorInline<MVKShaderResourceBinding, 8> _dslMTLResourceIndexOffsets;
 	MVKVectorInline<VkPushConstantRange, 8> _pushConstants;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
