@@ -25,11 +25,14 @@ Released TBD
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
 - Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.
 - Fix crash in `vkDestroyPipelineLayout()`.
+- `vkCmdClearImage()` set error if attempt made to clear 1D image.
 - Remove error logging on `VK_TIMEOUT` of `VkSemaphore` and `VkFence`.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.
 - No longer prefer dedicated allocations for buffer memory, including buffer-backed images.
 - Handle the `compositeAlpha` member of `VkSwapchainCreateInfoKHR`.
+- `VkPhysicalDevicePortabilitySubsetFeaturesEXTX::events` set to `true`.
+
 
 
 MoltenVK 1.0.36
