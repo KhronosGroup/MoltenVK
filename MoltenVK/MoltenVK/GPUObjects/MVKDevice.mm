@@ -2279,6 +2279,10 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
 	initQueues(pCreateInfo);
 
+	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
+		[[MTLCaptureManager sharedCaptureManager] startCaptureWithDevice: getMTLDevice()];
+	}
+
 	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
 			   _pProperties->deviceName,
 			   _enabledExtensions.getEnabledCount(),
@@ -2562,6 +2566,10 @@ MVKDevice::~MVKDevice() {
 
 	[_mtlCompileOptions release];
     [_globalVisibilityResultMTLBuffer release];
+
+	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
+		[[MTLCaptureManager sharedCaptureManager] stopCapture];
+	}
 }
 
 
