@@ -19,6 +19,7 @@
 #include "MVKDeviceMemory.h"
 #include "MVKBuffer.h"
 #include "MVKImage.h"
+#include "MVKQueue.h"
 #include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
@@ -91,12 +92,24 @@ VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, 
 	return VK_SUCCESS;
 }
 
-VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset, VkDeviceSize size, bool evenIfCoherent) {
+VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
+										 VkDeviceSize size,
+										 bool evenIfCoherent,
+										 MVKMTLBlitEncoder* pBlitEnc) {
 	// Coherent memory is flushed on unmap(), so it is only flushed if forced
     VkDeviceSize memSize = adjustMemorySize(size, offset);
 	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) ) {
 		lock_guard<mutex> lock(_rezLock);
         for (auto& img : _images) { img->pullFromDevice(offset, memSize); }
+
+#if MVK_MACOS
+		if (pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
+			if ( !pBlitEnc->mtlCmdBuffer) { pBlitEnc->mtlCmdBuffer = [_device->getQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences]; }
+			if ( !pBlitEnc->mtlBlitEncoder) { pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder]; }
+			[pBlitEnc->mtlBlitEncoder synchronizeResource: _mtlBuffer];
+		}
+#endif
+
 	}
 	return VK_SUCCESS;
 }

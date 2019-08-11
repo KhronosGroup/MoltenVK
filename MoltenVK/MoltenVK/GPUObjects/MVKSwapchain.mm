@@ -166,14 +166,10 @@ void MVKSwapchain::signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaph
 		signal(signaler);
 		if (_device->_useMTLEventsForSemaphores) {
 			// Unfortunately, we can't assume we have an MTLSharedEvent here.
-			// This means we need to execute a command on the device to signal
-			// the semaphore. Alternatively, we could always use an MTLSharedEvent,
-			// but that might impose unacceptable performance costs just to handle
-			// this one case.
-			MVKQueue* queue = _device->getQueue(0, 0);	
-			id<MTLCommandQueue> mtlQ = queue->getMTLCommandQueue();
-			id<MTLCommandBuffer> mtlCmdBuff = [mtlQ commandBufferWithUnretainedReferences];
-			[mtlCmdBuff enqueue];
+			// This means we need to execute a command on the device to signal the semaphore.
+			// Alternatively, we could always use an MTLSharedEvent, but that might impose
+			// unacceptable performance costs just to handle this one case.
+			id<MTLCommandBuffer> mtlCmdBuff = [_device->getQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences];
 			signaler.first->encodeSignal(mtlCmdBuff);
 			[mtlCmdBuff commit];
 		}
