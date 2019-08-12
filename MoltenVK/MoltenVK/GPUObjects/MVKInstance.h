@@ -196,6 +196,7 @@ protected:
 	bool _hasDebugUtilsMessengers;
 	bool _useCreationCallbacks;
 	const char* _debugReportCallbackLayerPrefix;
+	int32_t _autoGPUCaptureScope;
 };
 
 

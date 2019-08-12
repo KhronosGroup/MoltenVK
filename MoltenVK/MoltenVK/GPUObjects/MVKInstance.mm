@@ -679,6 +679,8 @@ void MVKInstance::initConfig() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.fullImageViewSwizzle,                   MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.defaultGPUCaptureScopeQueueFamilyIndex, MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.defaultGPUCaptureScopeQueueIndex,       MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX);
+
+	MVK_SET_FROM_ENV_OR_BUILD_INT32(_autoGPUCaptureScope, MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE);
 }
 
 VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {

@@ -2122,6 +2122,9 @@ void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 	mvkDevMem->destroy();
 }
 
+
+#pragma mark Operations
+
 // Adds the specified resource for tracking, and returns the added resource.
 MVKResource* MVKDevice::addResource(MVKResource* rez) {
 	lock_guard<mutex> lock(_rezLock);
@@ -2195,6 +2198,25 @@ void MVKDevice::getPerformanceStatistics(MVKPerformanceStatistics* pPerf) {
     lock_guard<mutex> lock(_perfLock);
 
     if (pPerf) { *pPerf = _performanceStatistics; }
+}
+
+VkResult MVKDevice::invalidateMappedMemoryRanges(uint32_t memRangeCount, const VkMappedMemoryRange* pMemRanges) {
+	@autoreleasepool {
+		VkResult rslt = VK_SUCCESS;
+		MVKMTLBlitEncoder mvkBlitEnc;
+		for (uint32_t i = 0; i < memRangeCount; i++) {
+			const VkMappedMemoryRange* pMem = &pMemRanges[i];
+			MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMem->memory;
+			VkResult r = mvkMem->pullFromDevice(pMem->offset, pMem->size, false, &mvkBlitEnc);
+			if (rslt == VK_SUCCESS) { rslt = r; }
+		}
+		if (mvkBlitEnc.mtlBlitEncoder) { [mvkBlitEnc.mtlBlitEncoder endEncoding]; }
+		if (mvkBlitEnc.mtlCmdBuffer) {
+			[mvkBlitEnc.mtlCmdBuffer commit];
+			[mvkBlitEnc.mtlCmdBuffer waitUntilCompleted];
+		}
+		return rslt;
+	}
 }
 
 
@@ -2278,6 +2300,10 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
 	initQueues(pCreateInfo);
+
+	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
+		[[MTLCaptureManager sharedCaptureManager] startCaptureWithDevice: getMTLDevice()];
+	}
 
 	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
 			   _pProperties->deviceName,
@@ -2562,6 +2588,10 @@ MVKDevice::~MVKDevice() {
 
 	[_mtlCompileOptions release];
     [_globalVisibilityResultMTLBuffer release];
+
+	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
+		[[MTLCaptureManager sharedCaptureManager] stopCapture];
+	}
 }
 
 

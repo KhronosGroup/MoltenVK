@@ -429,15 +429,10 @@ MVK_PUBLIC_SYMBOL VkResult vkInvalidateMappedMemoryRanges(
     VkDevice                                    device,
     uint32_t                                    memRangeCount,
     const VkMappedMemoryRange*                  pMemRanges) {
-	
+
 	MVKTraceVulkanCallStart();
-	VkResult rslt = VK_SUCCESS;
-	for (uint32_t i = 0; i < memRangeCount; i++) {
-		const VkMappedMemoryRange* pMem = &pMemRanges[i];
-		MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMem->memory;
-		VkResult r = mvkMem->pullFromDevice(pMem->offset, pMem->size);
-		if (rslt == VK_SUCCESS) { rslt = r; }
-	}
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	VkResult rslt = mvkDev->invalidateMappedMemoryRanges(memRangeCount, pMemRanges);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }

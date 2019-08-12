@@ -360,6 +360,11 @@ protected:
 #pragma mark -
 #pragma mark MVKDevice
 
+typedef struct {
+	id<MTLBlitCommandEncoder> mtlBlitEncoder = nil;
+	id<MTLCommandBuffer> mtlCmdBuffer = nil;
+} MVKMTLBlitEncoder;
+
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
 
@@ -387,7 +392,7 @@ public:
 	PFN_vkVoidFunction getProcAddr(const char* pName);
 
 	/** Retrieves a queue at the specified index within the specified family. */
-	MVKQueue* getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex);
+	MVKQueue* getQueue(uint32_t queueFamilyIndex = 0, uint32_t queueIndex = 0);
 
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
@@ -528,6 +533,9 @@ public:
 	void freeMemory(MVKDeviceMemory* mvkDevMem,
 					const VkAllocationCallbacks* pAllocator);
 
+
+#pragma mark Operations
+
 	/** Applies the specified global memory barrier to all resource issued by this device. */
 	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 							VkPipelineStageFlags dstStageMask,
@@ -564,6 +572,9 @@ public:
 
     /** Populates the specified statistics structure from the current activity performance statistics. */
     void getPerformanceStatistics(MVKPerformanceStatistics* pPerf);
+
+	/** Invalidates the memory regions. */
+	VkResult invalidateMappedMemoryRanges(uint32_t memRangeCount, const VkMappedMemoryRange* pMemRanges);
 
 
 #pragma mark Metal

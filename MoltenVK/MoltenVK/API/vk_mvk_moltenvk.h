@@ -102,8 +102,8 @@ typedef unsigned long MTLLanguageVersion;
  *      2: Log errors and informational messages.
  *    If neither is set, errors and informational messages are logged.
  *
- * 2. Setting the MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time build
- *    setting will cause MoltenVK to log the name of each Vulkan call made by the application. The logging
+ * 2. The MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time build
+ *    setting causes MoltenVK to log the name of each Vulkan call made by the application. The logging
  *    format options can be controlled by setting the value of MVK_CONFIG_TRACE_VULKAN_CALLS as follows:
  *        0: No Vulkan call logging.
  *        1: Log the name of each Vulkan call when the call is entered.
@@ -117,6 +117,18 @@ typedef unsigned long MTLLanguageVersion;
  * 4. Setting the MVK_ALLOW_METAL_EVENTS runtime environment variable or MoltenVK compile-time build
  *    setting to 1 will cause MoltenVK to use Metal events, if they are available on the device, for
  *    for VkSemaphore sychronization behaviour. This is disabled by default.
+ *
+ * 5. The MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE runtime environment variable or MoltenVK compile-time
+ *    build setting controls whether Xcode should run an automatic GPU capture without the user
+ *    having to trigger it manually via the Xcode user interface, and controls the scope under
+ *    which that GPU capture will occur. This is useful when trying to capture a one-shot GPU
+ *    trace, such as when running a Vulkan CTS test case. For the automatic GPU capture to occur,
+ *    the Xcode scheme under which the app is run must have the Metal GPU capture option turned on.
+ *    MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE should not be set to manually trigger a GPU capture via the
+ *    Xcode user interface.
+ *      0: No automatic GPU capture.
+ *      1: Capture all GPU commands issued during the lifetime of the VkDevice.
+ *    If none of these is set, no automatic GPU capture will occur.
  */
 typedef struct {
 

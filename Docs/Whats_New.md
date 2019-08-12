@@ -21,6 +21,7 @@ Released TBD
 - Add support for extensions:
 	- `VK_KHR_device_group`
 - Add support for `VkEvent`, using either native `MTLEvent` or emulation when `MTLEvent` not available.
+- `vkInvalidateMappedMemoryRanges()` synchronizes managed device memory to CPU.
 - Revert to supporting host-coherent memory for linear images on macOS.
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
 - Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.
@@ -32,6 +33,7 @@ Released TBD
 - No longer prefer dedicated allocations for buffer memory, including buffer-backed images.
 - Handle the `compositeAlpha` member of `VkSwapchainCreateInfoKHR`.
 - `VkPhysicalDevicePortabilitySubsetFeaturesEXTX::events` set to `true`.
+- Add ability to automatically cause an *Xcode* GPU capture without developer intervention.
 
 
 
