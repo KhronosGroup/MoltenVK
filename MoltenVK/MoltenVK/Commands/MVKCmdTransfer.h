@@ -52,7 +52,8 @@ public:
 
 protected:
 	void setContent(VkImage srcImage, VkImageLayout srcImageLayout,
-					VkImage dstImage, VkImageLayout dstImageLayout, MVKCommandUse commandUse);
+					VkImage dstImage, VkImageLayout dstImageLayout,
+					bool formatsMustMatch, MVKCommandUse commandUse);
 	void addImageCopyRegion(const VkImageCopy& region);
 	void addTempBufferImageCopyRegion(const VkImageCopy& region);
 
