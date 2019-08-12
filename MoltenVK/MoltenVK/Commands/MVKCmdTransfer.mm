@@ -41,7 +41,7 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 								 const VkImageCopy* pRegions,
 								 MVKCommandUse commandUse) {
 
-	setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, commandUse);
+	setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, false, commandUse);
 
 	for (uint32_t i = 0; i < regionCount; i++) {
 		addImageCopyRegion(pRegions[i]);
@@ -56,11 +56,12 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	}
 }
 
-// Sets basic content for use by this class and subclasses
+// Sets common content for use by this class and subclasses
 void MVKCmdCopyImage::setContent(VkImage srcImage,
 								 VkImageLayout srcImageLayout,
 								 VkImage dstImage,
 								 VkImageLayout dstImageLayout,
+								 bool formatsMustMatch,
 								 MVKCommandUse commandUse) {
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
@@ -76,7 +77,9 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	_isDstCompressed = _dstImage->getIsCompressed();
 	uint32_t dstBytesPerBlock = mvkMTLPixelFormatBytesPerBlock(_dstMTLPixFmt);
 
-	_canCopyFormats = (srcBytesPerBlock == dstBytesPerBlock) && (_srcSampleCount == _dstSampleCount);
+	_canCopyFormats = formatsMustMatch
+						? (_dstMTLPixFmt == _srcMTLPixFmt)
+						: ((dstBytesPerBlock == srcBytesPerBlock) && (_dstSampleCount == _srcSampleCount));
 	_useTempBuffer = (_srcMTLPixFmt != _dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);	// Different formats and at least one is compressed
 
 	_commandUse = commandUse;
@@ -214,7 +217,7 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 								 VkFilter filter,
 								 MVKCommandUse commandUse) {
 
-	MVKCmdCopyImage::setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, commandUse);
+	MVKCmdCopyImage::setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, true, commandUse);
 
 	_mtlFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
 
@@ -1058,7 +1061,8 @@ void MVKCmdClearImage::setContent(VkImage image,
 	if (_image->getImageType() == VK_IMAGE_TYPE_1D) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): 1D images cannot be cleared on this device."));
 	}
-	if ( !_image->getSupportsAllFormatFeatures(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT) ) {
+	if ((_isDepthStencilClear && !_image->getSupportsAllFormatFeatures(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) ||
+		(!_isDepthStencilClear && !_image->getSupportsAllFormatFeatures(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", mvkVkFormatName(_image->getVkFormat())));
 	}
 }

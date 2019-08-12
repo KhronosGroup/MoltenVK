@@ -26,7 +26,8 @@ Released TBD
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
 - Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.
 - Fix crash in `vkDestroyPipelineLayout()`.
-- `vkCmdClearImage()` set error if attempt made to clear 1D image.
+- `vkCmdBlitImage()` support format component swizzling.
+- `vkCmdClearImage()` set error if attempt made to clear 1D image, and fix validation of depth attachment formats.
 - Remove error logging on `VK_TIMEOUT` of `VkSemaphore` and `VkFence`.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.
