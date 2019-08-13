@@ -77,9 +77,10 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 	_isDstCompressed = _dstImage->getIsCompressed();
 	uint32_t dstBytesPerBlock = mvkMTLPixelFormatBytesPerBlock(_dstMTLPixFmt);
 
-	_canCopyFormats = formatsMustMatch
-						? (_dstMTLPixFmt == _srcMTLPixFmt)
-						: ((dstBytesPerBlock == srcBytesPerBlock) && (_dstSampleCount == _srcSampleCount));
+	_canCopyFormats = (_dstSampleCount == _srcSampleCount) && (formatsMustMatch
+																? (_dstMTLPixFmt == _srcMTLPixFmt)
+																: (dstBytesPerBlock == srcBytesPerBlock));
+
 	_useTempBuffer = (_srcMTLPixFmt != _dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);	// Different formats and at least one is compressed
 
 	_commandUse = commandUse;
