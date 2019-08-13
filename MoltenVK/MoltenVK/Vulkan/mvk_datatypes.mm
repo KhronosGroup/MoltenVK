@@ -580,7 +580,7 @@ MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObje
         string errMsg;
         errMsg += "VkFormat ";
         errMsg += (fmtDesc.vkName) ? fmtDesc.vkName : to_string(fmtDesc.vk);
-        errMsg += " is not supported on this platform.";
+        errMsg += " is not supported on this device.";
 
         if (fmtDesc.isSupportedOrSubstitutable()) {
             mtlPixFmt = fmtDesc.mtlSubstitute;
@@ -702,7 +702,7 @@ MTLVertexFormat mvkMTLVertexFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseOb
         string errMsg;
         errMsg += "VkFormat ";
         errMsg += (fmtDesc.vkName) ? fmtDesc.vkName : to_string(fmtDesc.vk);
-        errMsg += " is not supported for vertex buffers on this platform.";
+        errMsg += " is not supported for vertex buffers on this device.";
 
         if (fmtDesc.vertexIsSupportedOrSubstitutable()) {
             mtlVtxFmt = fmtDesc.mtlVertexFormatSubstitute;

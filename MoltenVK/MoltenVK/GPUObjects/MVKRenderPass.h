@@ -134,6 +134,8 @@ public:
 							const VkAttachmentDescription* pCreateInfo);
 
 protected:
+	VkAttachmentDescription validate(const VkAttachmentDescription* pCreateInfo);
+
 	VkAttachmentDescription _info;
 	MVKRenderPass* _renderPass;
 	uint32_t _attachmentIndex;

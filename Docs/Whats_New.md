@@ -28,6 +28,7 @@ Released TBD
 - Fix crash in `vkDestroyPipelineLayout()`.
 - `vkCmdBlitImage()` support format component swizzling.
 - `vkCmdClearImage()` set error if attempt made to clear 1D image, and fix validation of depth attachment formats.
+- `vkCreateRenderPass()` return `VK_ERROR_FORMAT_NOT_SUPPORTED` if format not supported.
 - Remove error logging on `VK_TIMEOUT` of `VkSemaphore` and `VkFence`.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.
