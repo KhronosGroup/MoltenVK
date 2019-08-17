@@ -512,8 +512,6 @@ This section documents the known limitations in this version of **MoltenVK**.
   In order to use Vulkan layers such as the validation layers, use the Vulkan loader and layers from the
   [LunarG Vulkan SDK](https://vulkan.lunarg.com).
 
-- `VkEvents` are not supported.
-
 - Application-controlled memory allocations using `VkAllocationCallbacks` are ignored.
 
 - Pipeline statistics query pool using `VK_QUERY_TYPE_PIPELINE_STATISTICS` is not supported.

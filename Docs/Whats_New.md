@@ -23,11 +23,13 @@ Released TBD
 - Add support for `VkEvent`, using either native `MTLEvent` or emulation when `MTLEvent` not available.
 - `vkInvalidateMappedMemoryRanges()` synchronizes managed device memory to CPU.
 - Revert to supporting host-coherent memory for linear images on macOS.
+- Disable depth and/or stencil testing if corresponding attachment is missing.
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
 - Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.
 - Fix crash in `vkDestroyPipelineLayout()`.
 - `vkCmdBlitImage()` support format component swizzling.
 - `vkCmdClearImage()` set error if attempt made to clear 1D image, and fix validation of depth attachment formats.
+- `vkCreateRenderPass()` return `VK_ERROR_FORMAT_NOT_SUPPORTED` if format not supported.
 - Remove error logging on `VK_TIMEOUT` of `VkSemaphore` and `VkFence`.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.

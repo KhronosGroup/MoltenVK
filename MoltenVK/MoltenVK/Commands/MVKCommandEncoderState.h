@@ -62,7 +62,7 @@ public:
      * will be encoded to Metal, otherwise it is marked as clean, so the contents will NOT
      * be encoded. Default state can be left unencoded on a new Metal encoder.
      */
-    void beginMetalRenderPass() { if (_isModified) { markDirty(); } }
+	virtual void beginMetalRenderPass() { if (_isModified) { markDirty(); } }
 
     /**
      * If the content of this instance is dirty, marks this instance as no longer dirty
@@ -237,6 +237,8 @@ public:
      */
     void setStencilWriteMask(VkStencilFaceFlags faceMask, uint32_t stencilWriteMask);
 
+	void beginMetalRenderPass() override;
+
     /** Constructs this instance for the specified command encoder. */
     MVKDepthStencilCommandEncoderState(MVKCommandEncoder* cmdEncoder)
         : MVKCommandEncoderState(cmdEncoder) {}
@@ -248,7 +250,9 @@ protected:
                          const VkStencilOpState& vkStencil,
                          bool enabled);
 
-    MVKMTLDepthStencilDescriptorData _depthStencilData;
+    MVKMTLDepthStencilDescriptorData _depthStencilData = kMVKMTLDepthStencilDescriptorDataDefault;
+	bool _hasDepthAttachment = false;
+	bool _hasStencilAttachment = false;
 };
 
 

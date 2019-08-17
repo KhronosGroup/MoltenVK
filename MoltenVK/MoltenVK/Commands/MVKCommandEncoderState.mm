@@ -312,26 +312,43 @@ void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags 
     markDirty();
 }
 
+void MVKDepthStencilCommandEncoderState::beginMetalRenderPass() {
+	MVKRenderSubpass* mvkSubpass = _cmdEncoder->getSubpass();
+	MTLPixelFormat mtlDSFormat = _cmdEncoder->getMTLPixelFormatFromVkFormat(mvkSubpass->getDepthStencilFormat());
+
+	bool prevHasDepthAttachment = _hasDepthAttachment;
+	_hasDepthAttachment = mvkMTLPixelFormatIsDepthFormat(mtlDSFormat);
+	if (_hasDepthAttachment != prevHasDepthAttachment) { markDirty(); }
+
+	bool prevHasStencilAttachment = _hasStencilAttachment;
+	_hasStencilAttachment = mvkMTLPixelFormatIsStencilFormat(mtlDSFormat);
+	if (_hasStencilAttachment != prevHasStencilAttachment) { markDirty(); }
+}
+
 void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (stage != kMVKGraphicsStageRasterization && stage != kMVKGraphicsStageVertex) { return; }
-    MVKRenderSubpass *subpass = _cmdEncoder->getSubpass();
-    id<MTLDepthStencilState> mtlDSS = nil;
-    if (stage != kMVKGraphicsStageVertex && subpass->getDepthStencilFormat() != VK_FORMAT_UNDEFINED) {
-        mtlDSS = _cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(_depthStencilData);
-    } else {
-        // If there is no depth attachment but the depth/stencil state contains a non-always depth
-        // test, Metal Validation will give the following error:
-        // "validateDepthStencilState:3657: failed assertion `MTLDepthStencilDescriptor sets
-        //  depth test but MTLRenderPassDescriptor has a nil depthAttachment texture'"
-        // Check the subpass to see if there is a depth/stencil attachment, and if not use
-        // a depth/stencil state with depth test always, depth write disabled, and no stencil state.
-        mtlDSS = _cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(false, false);
-    }
-    [_cmdEncoder->_mtlRenderEncoder setDepthStencilState: mtlDSS];
+	auto cmdEncPool = _cmdEncoder->getCommandEncodingPool();
+	switch (stage) {
+		case kMVKGraphicsStageRasterization: {
+			// If renderpass does not have a depth or a stencil attachment, disable corresponding test
+			MVKMTLDepthStencilDescriptorData adjustedDSData = _depthStencilData;
+			adjustedDSData.disable(!_hasDepthAttachment, !_hasStencilAttachment);
+			[_cmdEncoder->_mtlRenderEncoder setDepthStencilState: cmdEncPool->getMTLDepthStencilState(adjustedDSData)];
+			break;
+		}
+		case kMVKGraphicsStageVertex: {
+			// Vertex stage of tessellation pipeline requires depth/stencil testing be disabled
+			[_cmdEncoder->_mtlRenderEncoder setDepthStencilState: cmdEncPool->getMTLDepthStencilState(false, false)];
+			break;
+		}
+		default:		// Do nothing on other stages
+			break;
+	}
 }
 
 void MVKDepthStencilCommandEncoderState::resetImpl() {
     _depthStencilData = kMVKMTLDepthStencilDescriptorDataDefault;
+	_hasDepthAttachment = false;
+	_hasStencilAttachment = false;
 }
 
 
