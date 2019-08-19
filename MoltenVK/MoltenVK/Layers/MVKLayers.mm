@@ -30,15 +30,14 @@ const char* MVKLayer::getName() { return (const char*)&_layerProperties.layerNam
 
 VkLayerProperties* const MVKLayer::getLayerProperties() { return &_layerProperties; }
 
-VkResult MVKLayer::getExtensionProperties(uint32_t* pCount, VkExtensionProperties* pProperties) {
-
-	return _supportedExtensions.getProperties(pCount, pProperties);
+VkResult MVKLayer::getInstanceExtensionProperties(uint32_t* pCount, VkExtensionProperties* pProperties) {
+	return _supportedInstanceExtensions.getProperties(pCount, pProperties);
 }
 
 
 #pragma mark Object Creation
 
-MVKLayer::MVKLayer() : _supportedExtensions(nullptr, true) {
+MVKLayer::MVKLayer() : _supportedInstanceExtensions(nullptr, true) {
 
 	// The core driver layer
 	memset(_layerProperties.layerName, 0, sizeof(_layerProperties.layerName));
@@ -47,6 +46,8 @@ MVKLayer::MVKLayer() : _supportedExtensions(nullptr, true) {
 	strcpy(_layerProperties.description, "MoltenVK driver layer");
 	_layerProperties.specVersion = MVK_VULKAN_API_VERSION;
 	_layerProperties.implementationVersion = MVK_VERSION;
+
+	((MVKExtensionList*)&_supportedInstanceExtensions)->disableAllButEnabledInstanceExtensions();
 }
 
 

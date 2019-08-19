@@ -57,8 +57,7 @@ using namespace std;
 #pragma mark MVKPhysicalDevice
 
 VkResult MVKPhysicalDevice::getExtensionProperties(const char* pLayerName, uint32_t* pCount, VkExtensionProperties* pProperties) {
-	MVKExtensionList* extensions = getSupportedExtensions(pLayerName);
-	return extensions->getProperties(pCount, pProperties);
+	return _supportedExtensions.getProperties(pCount, pProperties);
 }
 
 void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures* features) {
@@ -1636,18 +1635,15 @@ void MVKPhysicalDevice::initMemoryProperties() {
 }
 
 void MVKPhysicalDevice::initExtensions() {
+	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_supportedExtensions;
+	pWritableExtns->disableAllButEnabledDeviceExtensions();
+
 	if (!_metalFeatures.postDepthCoverage) {
-		_supportedExtensions.vk_EXT_post_depth_coverage.enabled = false;
+		pWritableExtns->vk_EXT_post_depth_coverage.enabled = false;
 	}
 	if (!_metalFeatures.stencilFeedback) {
-		_supportedExtensions.vk_EXT_shader_stencil_export.enabled = false;
+		pWritableExtns->vk_EXT_shader_stencil_export.enabled = false;
 	}
-}
-
-// Return all extensions supported by this physical device.
-MVKExtensionList* MVKPhysicalDevice::getSupportedExtensions(const char* pLayerName) {
-	if (!pLayerName || strcmp(pLayerName, "MoltenVK") == 0) { return &_supportedExtensions; }
-	return getInstance()->getLayerManager()->getLayerNamed(pLayerName)->getSupportedExtensions();
 }
 
 void MVKPhysicalDevice::logGPUInfo() {
@@ -2548,7 +2544,7 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
 	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
 												  pCreateInfo->ppEnabledExtensionNames,
-												  getPhysicalDevice()->getSupportedExtensions()));
+												  &_physicalDevice->_supportedExtensions));
 }
 
 // Create the command queues
