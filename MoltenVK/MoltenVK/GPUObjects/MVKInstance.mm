@@ -348,7 +348,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
 	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
 												  pCreateInfo->ppEnabledExtensionNames,
-												  getDriverLayer()->getSupportedExtensions()));
+												  getDriverLayer()->getSupportedInstanceExtensions()));
 	logVersions();	// Log the MoltenVK and Vulkan versions
 
 	if (MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <
@@ -638,12 +638,12 @@ void MVKInstance::initProcAddrs() {
 }
 
 void MVKInstance::logVersions() {
-	MVKExtensionList* pExtns  = getDriverLayer()->getSupportedExtensions();
+	MVKExtensionList allExtns(this, true);
 	MVKLogInfo("MoltenVK version %s. Vulkan version %s.\n\tThe following %d Vulkan extensions are supported:%s",
 			   mvkGetMoltenVKVersionString(MVK_VERSION).c_str(),
 			   mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str(),
-			   pExtns->getEnabledCount(),
-			   pExtns->enabledNamesString("\n\t\t", true).c_str());
+			   allExtns.getEnabledCount(),
+			   allExtns.enabledNamesString("\n\t\t", true).c_str());
 }
 
 void MVKInstance::initConfig() {

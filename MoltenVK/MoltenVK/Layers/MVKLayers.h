@@ -40,28 +40,27 @@ public:
 	VkLayerProperties* const getLayerProperties();
 
 	/**
-	 * If pProperties is null, the value of pCount is updated with the number of extensions
-	 * available in this layer.
+	 * If pProperties is null, the value of pCount is updated with the number of instance
+	 * extensions available in this layer.
 	 *
 	 * If pProperties is not null, then pCount extension properties are copied into the array.
-	 * If the number of available layers is less than pCount, the value of pCount is updated
-	 * to indicate the number of extension properties actually returned in the array.
+	 * If the number of available instance extensions is less than pCount, the value of pCount
+	 * is updated to indicate the number of extension properties actually returned in the array.
 	 *
-	 * Returns VK_SUCCESS if successful. Returns VK_INCOMPLETE if the number of extensions
-	 * available in this instance is larger than the specified pCount. Returns other values
-	 * if an error occurs.
+	 * Returns VK_SUCCESS if successful. Returns VK_INCOMPLETE if the number of extensions available
+	 * in this instance is larger than the specified pCount. Returns other values if an error occurs.
 	 */
-	VkResult getExtensionProperties(uint32_t* pCount, VkExtensionProperties* pProperties);
+	VkResult getInstanceExtensionProperties(uint32_t* pCount, VkExtensionProperties* pProperties);
 
-	/** Returns the list of supported extensions. */
-	MVKExtensionList* getSupportedExtensions() { return &_supportedExtensions; }
+	/** Returns the list of supported instance extensions. */
+	const MVKExtensionList* getSupportedInstanceExtensions() { return &_supportedInstanceExtensions; }
 
 	/** Default constructor.  This represents the driver implementation. */
 	MVKLayer();
 
 protected:
 	VkLayerProperties _layerProperties;
-	MVKExtensionList _supportedExtensions;
+	const MVKExtensionList _supportedInstanceExtensions;
 
 };
 

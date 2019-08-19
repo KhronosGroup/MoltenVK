@@ -269,7 +269,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceExtensionProperties(
     VkExtensionProperties*                      pProperties) {
 
 	MVKTraceVulkanCallStart();
-	VkResult rslt = MVKLayerManager::globalManager()->getLayerNamed(pLayerName)->getExtensionProperties(pCount, pProperties);
+	VkResult rslt = MVKLayerManager::globalManager()->getLayerNamed(pLayerName)->getInstanceExtensionProperties(pCount, pProperties);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }

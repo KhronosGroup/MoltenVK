@@ -332,7 +332,6 @@ protected:
 	void initProperties();
 	void initMemoryProperties();
 	void initExtensions();
-	MVKExtensionList* getSupportedExtensions(const char* pLayerName = nullptr);
 	MVKVector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
 	MTLFeatureSet getHighestMTLFeatureSet();
@@ -342,7 +341,7 @@ protected:
 
 	id<MTLDevice> _mtlDevice;
 	MVKInstance* _mvkInstance;
-	MVKExtensionList _supportedExtensions;
+	const MVKExtensionList _supportedExtensions;
 	VkPhysicalDeviceFeatures _features;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;

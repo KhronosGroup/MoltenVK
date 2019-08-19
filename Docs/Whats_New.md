@@ -22,6 +22,7 @@ Released TBD
 	- `VK_KHR_device_group`
 - Add support for `VkEvent`, using either native `MTLEvent` or emulation when `MTLEvent` not available.
 - `vkInvalidateMappedMemoryRanges()` synchronizes managed device memory to CPU.
+- Track supported instance and device extensions correctly.
 - Revert to supporting host-coherent memory for linear images on macOS.
 - Disable depth and/or stencil testing if corresponding attachment is missing.
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
