@@ -87,9 +87,7 @@ public:
 	 */
 	void signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaphore, MVKFence* fence);
 
-	/** Returns the availability status of the image at the given index, relative to other images in the swapchain. */
-	const MVKSwapchainImageAvailability* getAvailability(uint32_t imageIndex);
-
+	
 #pragma mark Metal
 
 	/** 

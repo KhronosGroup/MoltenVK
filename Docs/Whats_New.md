@@ -28,6 +28,7 @@ Released TBD
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
 - Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.
 - Fix crash in `vkDestroyPipelineLayout()`.
+- Fix crash when signalling swapchain semaphore using `MTLEvent`.
 - `vkCmdBlitImage()` support format component swizzling.
 - `vkCmdClearImage()` set error if attempt made to clear 1D image, and fix validation of depth attachment formats.
 - `vkCreateRenderPass()` return `VK_ERROR_FORMAT_NOT_SUPPORTED` if format not supported.

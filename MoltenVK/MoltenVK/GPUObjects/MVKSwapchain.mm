@@ -136,18 +136,18 @@ void MVKSwapchain::makeAvailable(uint32_t imgIdx) {
 
 	MVKSwapchainSignaler signaler;
 	if (availability.isAvailable) {
-		// If this image is now available, signal the semaphore and fence that were associated
+		// If this image is available, signal the semaphore and fence that were associated
 		// with the last time this image was acquired while available. This is a workaround for
 		// when an app uses a single semaphore or fence for more than one swapchain image.
 		// Becuase the semaphore or fence will be signaled by more than one image, it will
 		// get out of sync, and the final use of the image would not be signaled as a result.
-
 		signaler = _imageAvailability[imgIdx].preSignaled;
 	} else {
 		// If this image is not yet available, extract and signal the first semaphore and fence.
-
-		signaler = _imageAvailability[imgIdx].signalers.front();
-		_imageAvailability[imgIdx].signalers.erase( _imageAvailability[imgIdx].signalers.begin() );
+		auto& imgSignalers = _imageAvailability[imgIdx].signalers;
+		auto sigIter = imgSignalers.begin();
+		signaler = *sigIter;
+		imgSignalers.erase(sigIter);
 	}
 
 	// Signal the semaphore and fence, and let them know they are no longer being tracked.
@@ -191,8 +191,11 @@ void MVKSwapchain::signal(MVKSwapchainSignaler& signaler) {
 // If present, signal the semaphore for the first waiter for the given image.
 void MVKSwapchain::signalOnDevice(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff) {
 	lock_guard<mutex> lock(_availabilityLock);
-	MVKSemaphore* mvkSem = _imageAvailability[imgIdx].signalers.front().first;
-	if (mvkSem) { mvkSem->encodeSignal(mtlCmdBuff); }
+	auto& imgSignalers = _imageAvailability[imgIdx].signalers;
+	if ( !imgSignalers.empty() ) {
+		MVKSemaphore* mvkSem = imgSignalers.front().first;
+		if (mvkSem) { mvkSem->encodeSignal(mtlCmdBuff); }
+	}
 }
 
 // Tell the semaphore and fence that they are being tracked for future signaling.
@@ -205,13 +208,6 @@ void MVKSwapchain::markAsTracked(MVKSwapchainSignaler& signaler) {
 void MVKSwapchain::unmarkAsTracked(MVKSwapchainSignaler& signaler) {
 	if (signaler.first) { signaler.first->release(); }
 	if (signaler.second) { signaler.second->release(); }
-}
-
-const MVKSwapchainImageAvailability* MVKSwapchain::getAvailability(uint32_t imageIndex) {
-	lock_guard<mutex> lock(_availabilityLock);
-	auto& availability = _imageAvailability[imageIndex].status;
-	availability.waitCount = (uint32_t)_imageAvailability[imageIndex].signalers.size();
-	return &availability;
 }
 
 

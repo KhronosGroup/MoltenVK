@@ -414,22 +414,6 @@ public:
 	/** Binds this resource according to the specified bind information. */
 	VkResult bindDeviceMemory2(const void* pBindInfo) override;
 
-	/** Returns the encompassing swapchain. */
-	inline MVKSwapchain* getSwapchain() { return _swapchain; }
-
-	/** Returns the index of this image within the encompassing swapchain. */
-	inline uint32_t getSwapchainIndex() { return _swapchainIndex; }
-
-	/**
-	 * Registers a semaphore and/or fence that will be signaled when this image becomes available.
-	 * This function accepts both a semaphore and a fence, and either none, one, or both may be provided.
-	 * If this image is available already, the semaphore and fence are immediately signaled.
-	 */
-	void signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
-
-	/** Returns the availability status of this image, relative to other images in the swapchain. */
-	const MVKSwapchainImageAvailability* getAvailability();
-
 	
 #pragma mark Metal
 

@@ -1259,14 +1259,6 @@ VkResult MVKSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
 	return VK_SUCCESS;
 }
 
-void MVKSwapchainImage::signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
-	_swapchain->signalWhenAvailable( _swapchainIndex, semaphore, fence );
-}
-
-const MVKSwapchainImageAvailability* MVKSwapchainImage::getAvailability() {
-	return _swapchain->getAvailability( _swapchainIndex );
-}
-
 
 #pragma mark Metal
 
