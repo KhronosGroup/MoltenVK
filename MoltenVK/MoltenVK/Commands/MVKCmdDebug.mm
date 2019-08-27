@@ -47,7 +47,7 @@ void MVKCmdDebugMarkerBegin::encode(MVKCommandEncoder* cmdEncoder) {
 	if (mtlCmdEnc) {
 		[mtlCmdEnc pushDebugGroup: _markerName];
 	} else {
-		[cmdEncoder->_mtlCmdBuffer pushDebugGroup: _markerName];
+		mvkPushDebugGroup(cmdEncoder->_mtlCmdBuffer, _markerName);
 	}
 }
 
@@ -65,7 +65,7 @@ void MVKCmdDebugMarkerEnd::encode(MVKCommandEncoder* cmdEncoder) {
 	if (mtlCmdEnc) {
 		[mtlCmdEnc popDebugGroup];
 	} else {
-		[cmdEncoder->_mtlCmdBuffer popDebugGroup];
+		mvkPopDebugGroup(cmdEncoder->_mtlCmdBuffer);
 	}
 }
 
@@ -121,3 +121,18 @@ void mvkCmdInsertDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLa
 	cmdBuff->addCommand(cmd);
 }
 
+
+#pragma mark -
+#pragma mark Support functions
+
+void mvkPushDebugGroup(id<MTLCommandBuffer> mtlCmdBuffer, NSString* name) {
+	if ([mtlCmdBuffer respondsToSelector: @selector(pushDebugGroup:)]) {
+		[mtlCmdBuffer pushDebugGroup: name];
+	}
+}
+
+void mvkPopDebugGroup(id<MTLCommandBuffer> mtlCmdBuffer) {
+	if ([mtlCmdBuffer respondsToSelector: @selector(popDebugGroup)]) {
+		[mtlCmdBuffer popDebugGroup];
+	}
+}

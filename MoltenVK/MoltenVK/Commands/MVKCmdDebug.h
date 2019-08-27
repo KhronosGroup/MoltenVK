@@ -95,3 +95,11 @@ void mvkCmdEndDebugUtilsLabel(MVKCommandBuffer* cmdBuff);
 
 void mvkCmdInsertDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo);
 
+
+#pragma mark -
+#pragma mark Support functions
+
+void mvkPushDebugGroup(id<MTLCommandBuffer> mtlCmdBuffer, NSString* name);
+
+void mvkPopDebugGroup(id<MTLCommandBuffer> mtlCmdBuffer);
+

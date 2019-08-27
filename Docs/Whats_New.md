@@ -40,6 +40,7 @@ Released TBD
 - `VkPhysicalDevicePortabilitySubsetFeaturesEXTX::events` set to `true`.
 - Always submit surface presentations using `MTLCommandBuffer`. 
   `MVKConfiguration::presentWithCommandBuffer` is now obsolete.
+- Don't use `MTLCommandBuffer push/popDebugGroup` if not available.
 - Add ability to automatically cause an *Xcode* GPU capture without developer intervention.
 
 

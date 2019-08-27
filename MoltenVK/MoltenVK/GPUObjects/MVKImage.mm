@@ -20,6 +20,7 @@
 #include "MVKQueue.h"
 #include "MVKSwapchain.h"
 #include "MVKCommandBuffer.h"
+#include "MVKCmdDebug.h"
 #include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
 #include "MVKLogging.h"
@@ -1279,9 +1280,9 @@ void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) 
 	_swapchain->willPresentSurface(getMTLTexture(), mtlCmdBuff);
 
 	NSString* scName = _swapchain->getDebugName();
-	if (scName) { [mtlCmdBuff pushDebugGroup: scName]; }
+	if (scName) { mvkPushDebugGroup(mtlCmdBuff, scName); }
 	[mtlCmdBuff presentDrawable: getCAMetalDrawable()];
-	if (scName) { [mtlCmdBuff popDebugGroup]; }
+	if (scName) { mvkPopDebugGroup(mtlCmdBuff); }
 
 	resetMetalSurface();
 	_swapchain->signalPresentationSemaphore(_swapchainIndex, mtlCmdBuff);
