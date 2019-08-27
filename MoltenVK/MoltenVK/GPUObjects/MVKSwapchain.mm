@@ -151,7 +151,7 @@ void MVKSwapchain::makeAvailable(uint32_t imgIdx) {
 	}
 
 	// Signal the semaphore and fence, and let them know they are no longer being tracked.
-	signal(signaler);
+	signal(signaler, nil);
 	unmarkAsTracked(signaler);
 
 //	MVKLogDebug("Signaling%s swapchain image %p semaphore %p from present, with %lu remaining semaphores.", (_availability.isAvailable ? " pre-signaled" : ""), this, signaler.first, _availabilitySignalers.size());
@@ -160,19 +160,20 @@ void MVKSwapchain::makeAvailable(uint32_t imgIdx) {
 void MVKSwapchain::signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaphore, MVKFence* fence) {
 	lock_guard<mutex> lock(_availabilityLock);
 	auto signaler = make_pair(semaphore, fence);
-	auto& availability = _imageAvailability[imageIndex].status; 
+	auto& availability = _imageAvailability[imageIndex].status;
 	if (availability.isAvailable) {
 		availability.isAvailable = false;
-		signal(signaler);
-		if (_device->_useMTLEventsForSemaphores) {
-			// Unfortunately, we can't assume we have an MTLSharedEvent here.
-			// This means we need to execute a command on the device to signal the semaphore.
-			// Alternatively, we could always use an MTLSharedEvent, but that might impose
-			// unacceptable performance costs just to handle this one case.
-			id<MTLCommandBuffer> mtlCmdBuff = [_device->getQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences];
-			signaler.first->encodeSignal(mtlCmdBuff);
-			[mtlCmdBuff commit];
-		}
+
+		// If signalling through a MTLEvent, use an ephemeral MTLCommandBuffer.
+		// Another option would be to use MTLSharedEvent in MVKSemaphore, but that might
+		// impose unacceptable performance costs to handle this particular case.
+		MVKSemaphore* mvkSem = signaler.first;
+		id<MTLCommandBuffer> mtlCmdBuff = (mvkSem && mvkSem->isUsingMTLEvent()
+										   ? [_device->getQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences]
+										   : nil);
+		signal(signaler, mtlCmdBuff);
+		[mtlCmdBuff commit];
+
 		_imageAvailability[imageIndex].preSignaled = signaler;
 	} else {
 		_imageAvailability[imageIndex].signalers.push_back(signaler);
@@ -183,13 +184,13 @@ void MVKSwapchain::signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaph
 }
 
 // Signal either or both of the semaphore and fence in the specified tracker pair.
-void MVKSwapchain::signal(MVKSwapchainSignaler& signaler) {
-	if (signaler.first && !_device->_useMTLEventsForSemaphores) { signaler.first->signal(); }
+void MVKSwapchain::signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff) {
+	if (signaler.first) { signaler.first->encodeSignal(mtlCmdBuff); }
 	if (signaler.second) { signaler.second->signal(); }
 }
 
 // If present, signal the semaphore for the first waiter for the given image.
-void MVKSwapchain::signalOnDevice(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff) {
+void MVKSwapchain::signalPresentationSemaphore(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff) {
 	lock_guard<mutex> lock(_availabilityLock);
 	auto& imgSignalers = _imageAvailability[imgIdx].signalers;
 	if ( !imgSignalers.empty() ) {

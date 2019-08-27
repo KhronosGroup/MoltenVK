@@ -1274,36 +1274,23 @@ id<CAMetalDrawable> MVKSwapchainImage::getCAMetalDrawable() {
 	return mtlDrawable;
 }
 
+// Present the drawable and make myself available only once the command buffer has completed.
 void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) {
-//	MVKLogDebug("Presenting swapchain image %p from present.", this);
+	_swapchain->willPresentSurface(getMTLTexture(), mtlCmdBuff);
 
-    id<CAMetalDrawable> mtlDrawable = getCAMetalDrawable();
-    _swapchain->willPresentSurface(getMTLTexture(), mtlCmdBuff);
+	NSString* scName = _swapchain->getDebugName();
+	if (scName) { [mtlCmdBuff pushDebugGroup: scName]; }
+	[mtlCmdBuff presentDrawable: getCAMetalDrawable()];
+	if (scName) { [mtlCmdBuff popDebugGroup]; }
 
-    // If using a command buffer, present the drawable through it,
-    // and make myself available only once the command buffer has completed.
-    // Otherwise, immediately present the drawable and make myself available.
-    if (mtlCmdBuff) {
-		NSString* scName = _swapchain->getDebugName();
-		if (scName) { [mtlCmdBuff pushDebugGroup: scName]; }
-		[mtlCmdBuff presentDrawable: mtlDrawable];
-		if (scName) { [mtlCmdBuff popDebugGroup]; }
+	resetMetalSurface();
+	_swapchain->signalPresentationSemaphore(_swapchainIndex, mtlCmdBuff);
 
-		resetMetalSurface();
-        if (_device->_useMTLEventsForSemaphores) {
-            _swapchain->signalOnDevice(_swapchainIndex, mtlCmdBuff);
-        }
-
-		retain();	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
-        [mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-			_swapchain->makeAvailable(_swapchainIndex);
-			release();
-		}];
-    } else {
-        [mtlDrawable present];
-        resetMetalSurface();
-        _swapchain->makeAvailable(_swapchainIndex);
-    }
+	retain();	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
+	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+		_swapchain->makeAvailable(_swapchainIndex);
+		release();
+	}];
 }
 
 // Resets the MTLTexture and CAMetalDrawable underlying this image.

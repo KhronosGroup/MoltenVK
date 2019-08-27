@@ -38,6 +38,8 @@ Released TBD
 - No longer prefer dedicated allocations for buffer memory, including buffer-backed images.
 - Handle the `compositeAlpha` member of `VkSwapchainCreateInfoKHR`.
 - `VkPhysicalDevicePortabilitySubsetFeaturesEXTX::events` set to `true`.
+- Always submit surface presentations using `MTLCommandBuffer`. 
+  `MVKConfiguration::presentWithCommandBuffer` is now obsolete.
 - Add ability to automatically cause an *Xcode* GPU capture without developer intervention.
 
 

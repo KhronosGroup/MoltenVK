@@ -266,18 +266,7 @@ typedef struct {
 	 */
 	VkBool32 supportLargeQueryPools;
 
-	/**
-	 * If enabled, each surface presentation is scheduled using a command buffer. Enabling this
-	 * setting may improve rendering frame synchronization, but may result in reduced frame rates.
-	 *
-	 * The value of this parameter may be changed at any time during application runtime,
-	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
-	 *
-	 * The initial value or this parameter is set by the
-	 * MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER
-	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, the value of this parameter defaults to true.
-	 */
+	/** Obsolete, ignored, and deprecated. All surface presentations are performed with a command buffer. */
 	VkBool32 presentWithCommandBuffer;
 
 	/**

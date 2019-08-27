@@ -80,26 +80,27 @@ MVKSemaphoreImpl::~MVKSemaphoreImpl() {
 #pragma mark -
 #pragma mark MVKSemaphore
 
-bool MVKSemaphore::wait(uint64_t timeout) { return _blocker.wait(timeout, true); }
-
-void MVKSemaphore::signal() { _blocker.release(); }
-
-void MVKSemaphore::encodeWait(id<MTLCommandBuffer> cmdBuff) {
-    [cmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue];
-    ++_mtlEventValue;
+void MVKSemaphore::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
+	if (_mtlEvent && mtlCmdBuff) {
+		[mtlCmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue++];
+	} else if ( !_mtlEvent && !mtlCmdBuff ) {
+		_blocker.wait(UINT64_MAX, true);
+	}
 }
 
-void MVKSemaphore::encodeSignal(id<MTLCommandBuffer> cmdBuff) {
-    [cmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventValue];
+void MVKSemaphore::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) {
+	if (_mtlEvent && mtlCmdBuff) {
+		[mtlCmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventValue];
+	} else if ( !_mtlEvent && !mtlCmdBuff ) {
+		 _blocker.release();
+	}
 }
 
-MVKSemaphore::MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo)
-    : MVKVulkanAPIDeviceObject(device), _blocker(false, 1), _mtlEvent(nil), _mtlEventValue(1) {
-
-    if (device->_useMTLEventsForSemaphores) {
-        _mtlEvent = [device->getMTLDevice() newEvent];
-    }
-}
+MVKSemaphore::MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) :
+	MVKVulkanAPIDeviceObject(device),
+	_blocker(false, 1),
+	_mtlEvent(device->_useMTLEventsForSemaphores ? [device->getMTLDevice() newEvent] : nil),
+	_mtlEventValue(1) {}
 
 MVKSemaphore::~MVKSemaphore() {
     [_mtlEvent release];

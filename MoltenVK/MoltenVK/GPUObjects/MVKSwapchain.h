@@ -126,8 +126,8 @@ protected:
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
 	void resetCAMetalDrawable(uint32_t imgIdx);
-	void signal(MVKSwapchainSignaler& signaler);
-	void signalOnDevice(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff);
+	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
+	void signalPresentationSemaphore(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff);
 	static void markAsTracked(MVKSwapchainSignaler& signaler);
 	static void unmarkAsTracked(MVKSwapchainSignaler& signaler);
 	void makeAvailable(uint32_t imgIdx);
