@@ -167,12 +167,14 @@ void MVKSwapchain::signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaph
 		// If signalling through a MTLEvent, use an ephemeral MTLCommandBuffer.
 		// Another option would be to use MTLSharedEvent in MVKSemaphore, but that might
 		// impose unacceptable performance costs to handle this particular case.
-		MVKSemaphore* mvkSem = signaler.first;
-		id<MTLCommandBuffer> mtlCmdBuff = (mvkSem && mvkSem->isUsingMTLEvent()
-										   ? [_device->getQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences]
-										   : nil);
-		signal(signaler, mtlCmdBuff);
-		[mtlCmdBuff commit];
+		@autoreleasepool {
+			MVKSemaphore* mvkSem = signaler.first;
+			id<MTLCommandBuffer> mtlCmdBuff = (mvkSem && mvkSem->isUsingMTLEvent()
+											   ? [_device->getQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences]
+											   : nil);
+			signal(signaler, mtlCmdBuff);
+			[mtlCmdBuff commit];
+		}
 
 		_imageAvailability[imageIndex].preSignaled = signaler;
 	} else {
