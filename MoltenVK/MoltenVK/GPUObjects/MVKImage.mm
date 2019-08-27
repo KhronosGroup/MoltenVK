@@ -20,6 +20,7 @@
 #include "MVKQueue.h"
 #include "MVKSwapchain.h"
 #include "MVKCommandBuffer.h"
+#include "MVKCmdDebug.h"
 #include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
 #include "MVKLogging.h"
@@ -1259,14 +1260,6 @@ VkResult MVKSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
 	return VK_SUCCESS;
 }
 
-void MVKSwapchainImage::signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
-	_swapchain->signalWhenAvailable( _swapchainIndex, semaphore, fence );
-}
-
-const MVKSwapchainImageAvailability* MVKSwapchainImage::getAvailability() {
-	return _swapchain->getAvailability( _swapchainIndex );
-}
-
 
 #pragma mark Metal
 
@@ -1282,36 +1275,23 @@ id<CAMetalDrawable> MVKSwapchainImage::getCAMetalDrawable() {
 	return mtlDrawable;
 }
 
+// Present the drawable and make myself available only once the command buffer has completed.
 void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) {
-//	MVKLogDebug("Presenting swapchain image %p from present.", this);
+	_swapchain->willPresentSurface(getMTLTexture(), mtlCmdBuff);
 
-    id<CAMetalDrawable> mtlDrawable = getCAMetalDrawable();
-    _swapchain->willPresentSurface(getMTLTexture(), mtlCmdBuff);
+	NSString* scName = _swapchain->getDebugName();
+	if (scName) { mvkPushDebugGroup(mtlCmdBuff, scName); }
+	[mtlCmdBuff presentDrawable: getCAMetalDrawable()];
+	if (scName) { mvkPopDebugGroup(mtlCmdBuff); }
 
-    // If using a command buffer, present the drawable through it,
-    // and make myself available only once the command buffer has completed.
-    // Otherwise, immediately present the drawable and make myself available.
-    if (mtlCmdBuff) {
-		NSString* scName = _swapchain->getDebugName();
-		if (scName) { [mtlCmdBuff pushDebugGroup: scName]; }
-		[mtlCmdBuff presentDrawable: mtlDrawable];
-		if (scName) { [mtlCmdBuff popDebugGroup]; }
+	resetMetalSurface();
+	_swapchain->signalPresentationSemaphore(_swapchainIndex, mtlCmdBuff);
 
-		resetMetalSurface();
-        if (_device->_useMTLEventsForSemaphores) {
-            _swapchain->signalOnDevice(_swapchainIndex, mtlCmdBuff);
-        }
-
-		retain();	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
-        [mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-			_swapchain->makeAvailable(_swapchainIndex);
-			release();
-		}];
-    } else {
-        [mtlDrawable present];
-        resetMetalSurface();
-        _swapchain->makeAvailable(_swapchainIndex);
-    }
+	retain();	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
+	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+		_swapchain->makeAvailable(_swapchainIndex);
+		release();
+	}];
 }
 
 // Resets the MTLTexture and CAMetalDrawable underlying this image.

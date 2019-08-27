@@ -204,7 +204,6 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 	_queue = queue;
 	_trackPerformance = _queue->_device->_pMVKConfig->performanceTracking;
 
-	_isAwaitingSemaphores = waitSemaphoreCount > 0;
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
 		_waitSemaphores.push_back((MVKSemaphore*)pWaitSemaphores[i]);
@@ -221,30 +220,14 @@ void MVKQueueCommandBufferSubmission::execute() {
 
 	_queue->_submissionCaptureScope->beginScope();
 
-	MVKDevice* mvkDev = _queue->getDevice();
-
-	// If the device supports it, wait for any semaphores on the device.
-	if (mvkDev->_useMTLEventsForSemaphores && _isAwaitingSemaphores) {
-		_isAwaitingSemaphores = false;
-		for (auto* ws : _waitSemaphores) {
-			ws->encodeWait(getActiveMTLCommandBuffer());
-		}
-	}
+	// If using encoded semaphore waiting, do so now.
+	for (auto* ws : _waitSemaphores) { ws->encodeWait(getActiveMTLCommandBuffer()); }
 
 	// Submit each command buffer.
 	for (auto& cb : _cmdBuffers) { cb->submit(this); }
 
-	// If a fence or semaphores were provided, ensure that a MTLCommandBuffer
-	// is available to trigger them, in case no command buffers were provided.
-	if (_fence || _isSignalingSemaphores) { getActiveMTLCommandBuffer(); }
-
-	// If the device supports it, signal all semaphores on the device.
-	if (mvkDev->_useMTLEventsForSemaphores && _isSignalingSemaphores) {
-		_isSignalingSemaphores = false;
-		for (auto* ss : _signalSemaphores) {
-			ss->encodeSignal(getActiveMTLCommandBuffer());
-		}
-	}
+	// If using encoded semaphore signaling, do so now.
+	for (auto* ss : _signalSemaphores) { ss->encodeSignal(getActiveMTLCommandBuffer()); }
 
 	// Commit the last MTLCommandBuffer.
 	// Nothing after this because callback might destroy this instance before this function ends.
@@ -274,16 +257,16 @@ void MVKQueueCommandBufferSubmission::setActiveMTLCommandBuffer(id<MTLCommandBuf
 // allow as much filling of the MTLCommandBuffer as possible before forcing a wait.
 void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCompletion) {
 
-	if (_isAwaitingSemaphores) {
-		_isAwaitingSemaphores = false;
-		for (auto& ws : _waitSemaphores) { ws->wait(); }
-	}
+	// If using inline semaphore waiting, do so now.
+	for (auto& ws : _waitSemaphores) { ws->encodeWait(nil); }
 
 	MVKDevice* mkvDev = _queue->_device;
 	uint64_t startTime = mkvDev->getPerformanceTimestamp();
 
+	// Use getActiveMTLCommandBuffer() to ensure at least one MTLCommandBuffer is used,
+	// otherwise if this instance has no content, it will not finish() and be destroyed.
 	if (signalCompletion || _trackPerformance) {
-		[_activeMTLCommandBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
+		[getActiveMTLCommandBuffer() addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
 			_queue->_device->addActivityPerformance(mkvDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
 			if (signalCompletion) { this->finish(); }
 		}];
@@ -303,15 +286,13 @@ void MVKQueueCommandBufferSubmission::finish() {
 	// immediately after a waitIdle() is cleared by fence below, taking the capture scope with it.
 	_queue->_submissionCaptureScope->endScope();
 
-	// Signal each of the signal semaphores.
-    if (_isSignalingSemaphores) {
-        for (auto& ss : _signalSemaphores) { ss->signal(); }
-    }
+	// If using inline semaphore signaling, do so now.
+	for (auto& ss : _signalSemaphores) { ss->encodeSignal(nil); }
 
 	// If a fence exists, signal it.
 	if (_fence) { _fence->signal(); }
 
-    this->destroy();
+	this->destroy();
 }
 
 MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue,
@@ -332,7 +313,6 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
         }
 
         uint32_t ssCnt = pSubmit->signalSemaphoreCount;
-        _isSignalingSemaphores = ssCnt > 0;
         _signalSemaphores.reserve(ssCnt);
         for (uint32_t i = 0; i < ssCnt; i++) {
             _signalSemaphores.push_back((MVKSemaphore*)pSubmit->pSignalSemaphores[i]);
@@ -351,37 +331,21 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
 #pragma mark MVKQueuePresentSurfaceSubmission
 
 void MVKQueuePresentSurfaceSubmission::execute() {
-	// If there are semaphores and this device supports MTLEvent, we must present
-	// with a command buffer in order to synchronize with the semaphores.
-	MVKDevice* mvkDev = _queue->getDevice();
-	if (mvkDev->_useMTLEventsForSemaphores && !_waitSemaphores.empty()) {
-		// Create a command buffer, have it wait for the semaphores, then present
-		// surfaces via the command buffer.
-		id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();
-		for (auto& ws : _waitSemaphores) { ws->encodeWait(mtlCmdBuff); }
-		for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
+	// If the semaphores are encodable, wait on them by encoding them on the MTLCommandBuffer before presenting.
+	// If the semaphores are not encodable, wait on them inline after presenting.
+	// The semaphores know what to do.
+	id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();
+	for (auto& ws : _waitSemaphores) { ws->encodeWait(mtlCmdBuff); }
+	for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
+	for (auto& ws : _waitSemaphores) { ws->encodeWait(nil); }
+	[mtlCmdBuff commit];
 
-		[mtlCmdBuff commit];
-	} else if (mvkDev->_pMVKConfig->presentWithCommandBuffer || mvkDev->_pMVKConfig->displayWatermark) {
-		// Create a command buffer, present surfaces via the command buffer,
-		// then wait on the semaphores before committing.
-		id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();
-		for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
-		for (auto& ws : _waitSemaphores) { ws->wait(); }
-
-		[mtlCmdBuff commit];
-	} else {
-		// Wait on semaphores, then present directly.
-		for (auto& ws : _waitSemaphores) { ws->wait(); }
-		for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(nil); }
-	}
-
-    // Let Xcode know the current frame is done, then start a new frame
+	// Let Xcode know the current frame is done, then start a new frame
 	auto cs = _queue->_presentationCaptureScope;
 	cs->endScope();
 	cs->beginScope();
 
-    this->destroy();
+	this->destroy();
 }
 
 id<MTLCommandBuffer> MVKQueuePresentSurfaceSubmission::getMTLCommandBuffer() {

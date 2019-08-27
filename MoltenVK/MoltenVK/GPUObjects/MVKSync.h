@@ -120,24 +120,39 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT; }
 
-	/** 
-	 * Blocks processing on the current thread until this semaphore is 
-	 * signaled, or until the specified timeout in nanoseconds expires.
+	/**
+	 * Wait for this semaphore to be signaled.
 	 *
-	 * If timeout is the special value UINT64_MAX the timeout is treated as infinite.
+	 * If this instance is using MTLEvent AND the mtlCmdBuff is not nil, a MTLEvent wait
+	 * is encoded on the mtlCmdBuff, and this call returns immediately. Otherwise, if this
+	 * instance is NOT using MTLEvent, AND the mtlCmdBuff is nil, this call blocks
+	 * indefinitely until this semaphore is signaled. Other combinations do nothing.
 	 *
-	 * Returns true if this semaphore was signaled, or false if the timeout interval expired.
+	 * This design allows this function to be blindly called twice, from different points in
+	 * the code path, once with a mtlCmdBuff to support encoding a wait on the command buffer
+	 * if this instance supports MTLEvents, and once without a mtlCmdBuff, at the point in
+	 * the code path where the code should block if this instance does not support MTLEvents.
 	 */
-	bool wait(uint64_t timeout = UINT64_MAX);
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff);
 
-	/** Signals the semaphore. Unblocks all waiting threads to continue processing. */
-	void signal();
+	/**
+	 * Signals this semaphore.
+	 *
+	 * If this instance is using MTLEvent AND the mtlCmdBuff is not nil, a MTLEvent signal
+	 * is encoded on the mtlCmdBuff. Otherwise, if this instance is NOT using MTLEvent,
+	 * AND the mtlCmdBuff is nil, this call immediately signals any waiting calls.
+	 * Either way, this call returns immediately. Other combinations do nothing.
+	 *
+	 * This design allows this function to be blindly called twice, from different points in
+	 * the code path, once with a mtlCmdBuff to support encoding a signal on the command buffer
+	 * if this instance supports MTLEvents, and once without a mtlCmdBuff, at the point in
+	 * the code path where the code should immediately signal any existing waits, if this
+	 * instance does not support MTLEvents.
+	 */
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff);
 
-	/** Encodes an operation to block command buffer operation until this semaphore is signaled. */
-	void encodeWait(id<MTLCommandBuffer> cmdBuff);
-
-	/** Encodes an operation to signal the semaphore. */
-	void encodeSignal(id<MTLCommandBuffer> cmdBuff);
+	/** Returns whether this semaphore is using a MTLEvent. */
+	bool isUsingMTLEvent() { return _mtlEvent != nil; }
 
 
 #pragma mark Construction

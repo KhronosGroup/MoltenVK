@@ -180,7 +180,6 @@ protected:
 
 	MVKQueue* _queue;
 	MVKVectorInline<MVKSemaphore*, 8> _waitSemaphores;
-	bool _isAwaitingSemaphores;
 	bool _trackPerformance;
 };
 
@@ -211,7 +210,6 @@ protected:
 	MVKVectorInline<MVKSemaphore*, 16> _signalSemaphores;
 	MVKFence* _fence;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
-	bool _isSignalingSemaphores;
 };
 
 

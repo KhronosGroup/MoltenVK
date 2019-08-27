@@ -2359,6 +2359,7 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	if (_pMetalFeatures->events) {
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventsForSemaphores, MVK_ALLOW_METAL_EVENTS);
 	}
+	MVKLogInfo("%s MTLEvent for semaphores.", _useMTLEventsForSemaphores ? "Using" : "NOT using");
 
 #if MVK_MACOS
 	// If we have selected a high-power GPU and want to force the window system

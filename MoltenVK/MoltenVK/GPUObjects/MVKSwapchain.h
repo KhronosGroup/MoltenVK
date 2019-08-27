@@ -87,9 +87,7 @@ public:
 	 */
 	void signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaphore, MVKFence* fence);
 
-	/** Returns the availability status of the image at the given index, relative to other images in the swapchain. */
-	const MVKSwapchainImageAvailability* getAvailability(uint32_t imageIndex);
-
+	
 #pragma mark Metal
 
 	/** 
@@ -128,8 +126,8 @@ protected:
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
 	void resetCAMetalDrawable(uint32_t imgIdx);
-	void signal(MVKSwapchainSignaler& signaler);
-	void signalOnDevice(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff);
+	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
+	void signalPresentationSemaphore(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff);
 	static void markAsTracked(MVKSwapchainSignaler& signaler);
 	static void unmarkAsTracked(MVKSwapchainSignaler& signaler);
 	void makeAvailable(uint32_t imgIdx);
