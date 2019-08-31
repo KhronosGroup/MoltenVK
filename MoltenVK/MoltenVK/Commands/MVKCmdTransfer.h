@@ -304,7 +304,7 @@ public:
 protected:
     MVKBuffer* _dstBuffer;
     VkDeviceSize _dstOffset;
-    VkDeviceSize _size;
+    uint32_t _wordCount;
     uint32_t _dataValue;
 };
 
