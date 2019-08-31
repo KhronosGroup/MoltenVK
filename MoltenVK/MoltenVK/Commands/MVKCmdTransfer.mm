@@ -1151,43 +1151,60 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdFillBuffer
 
-// Matches shader struct
-typedef struct {
-	uint32_t size;
-	uint32_t data;
-} MVKCmdFillBufferInfo;
-
 void MVKCmdFillBuffer::setContent(VkBuffer dstBuffer,
                                   VkDeviceSize dstOffset,
                                   VkDeviceSize size,
                                   uint32_t data) {
     _dstBuffer = (MVKBuffer*)dstBuffer;
     _dstOffset = dstOffset;
-    _size = size;
     _dataValue = data;
+
+	// Round up in case of VK_WHOLE_SIZE on a buffer size which is not aligned to 4 bytes.
+	VkDeviceSize byteCnt = (size == VK_WHOLE_SIZE) ? (_dstBuffer->getByteCount() - _dstOffset) : size;
+	VkDeviceSize wdCnt = (byteCnt + 3) >> 2;
+	if (mvkFits<uint32_t>(wdCnt)) {
+		_wordCount = (uint32_t)wdCnt;
+	} else {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdFillBuffer(): Buffer fill size must fit into a 32-bit unsigned integer. Fill size %llu is too large.", wdCnt));
+		_wordCount = std::numeric_limits<uint32_t>::max();
+	}
 }
 
 void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
-    id<MTLBuffer> dstMTLBuff = _dstBuffer->getMTLBuffer();
-    VkDeviceSize dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset();
-    VkDeviceSize byteCnt = (_size == VK_WHOLE_SIZE) ? (_dstBuffer->getByteCount() - _dstOffset) : _size;
+	if (_wordCount == 0) { return; }
 
-    // Round up in case of VK_WHOLE_SIZE on a buffer size which is not aligned to 4 bytes.
-    VkDeviceSize wordCnt = (byteCnt + 3) >> 2;
+	id<MTLBuffer> dstMTLBuff = _dstBuffer->getMTLBuffer();
+	NSUInteger dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset() + _dstOffset;
 
-	MVKAssert(mvkFits<uint32_t>(wordCnt),
-			  "Buffer fill size must fit into a 32-bit unsigned integer.");
+	// Determine the number of full threadgroups we can dispatch to cover the buffer content efficiently.
+	id<MTLComputePipelineState> cps = getCommandEncodingPool()->getCmdFillBufferMTLComputePipelineState();
+	NSUInteger tgWidth = cps.maxTotalThreadsPerThreadgroup;
+	NSUInteger tgCount = _wordCount / tgWidth;
 
-	MVKCmdFillBufferInfo fillInfo;
-	fillInfo.size = (uint32_t)wordCnt;
-	fillInfo.data = _dataValue;
-
-	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyBuffer);
+	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseFillBuffer);
 	[mtlComputeEnc pushDebugGroup: @"vkCmdFillBuffer"];
-	[mtlComputeEnc setComputePipelineState: getCommandEncodingPool()->getCmdFillBufferMTLComputePipelineState()];
-	[mtlComputeEnc setBuffer: dstMTLBuff offset: dstMTLBuffOffset+_dstOffset atIndex: 0];
-	[mtlComputeEnc setBytes: &fillInfo length: sizeof(fillInfo) atIndex: 1];
-	[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1) threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
+	[mtlComputeEnc setComputePipelineState: cps];
+	[mtlComputeEnc setBytes: &_dataValue length: sizeof(_dataValue) atIndex: 1];
+	[mtlComputeEnc setBuffer: dstMTLBuff offset: dstMTLBuffOffset atIndex: 0];
+
+	// Run as many full threadgroups as will fit into the buffer content.
+	if (tgCount > 0) {
+		[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(tgCount, 1, 1)
+					  threadsPerThreadgroup: MTLSizeMake(tgWidth, 1, 1)];
+	}
+
+	// If there is left-over buffer content after running full threadgroups, or if the buffer content
+	// fits within a single threadgroup, run a single partial threadgroup of the appropriate size.
+	uint32_t remainderWordCount = _wordCount % tgWidth;
+	if (remainderWordCount > 0) {
+		if (tgCount > 0) {		// If we've already written full threadgroups, skip ahead to unwritten content
+			dstMTLBuffOffset += tgCount * tgWidth * sizeof(_dataValue);
+			[mtlComputeEnc setBufferOffset: dstMTLBuffOffset atIndex: 0];
+		}
+		[mtlComputeEnc dispatchThreadgroups: MTLSizeMake(1, 1, 1)
+					  threadsPerThreadgroup: MTLSizeMake(remainderWordCount, 1, 1)];
+	}
+
 	[mtlComputeEnc popDebugGroup];
 }
 

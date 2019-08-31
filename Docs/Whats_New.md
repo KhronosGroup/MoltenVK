@@ -29,9 +29,10 @@ Released TBD
 - Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.
 - Fix crash in `vkDestroyPipelineLayout()`.
 - Fix crash when signalling swapchain semaphore using `MTLEvent`.
-- `vkCmdBlitImage()` support format component swizzling.
-- `vkCmdClearImage()` set error if attempt made to clear 1D image, and fix validation of depth attachment formats.
-- `vkCreateRenderPass()` return `VK_ERROR_FORMAT_NOT_SUPPORTED` if format not supported.
+- `vkCmdBlitImage():` Support format component swizzling.
+- `vkCmdClearImage():` Set error if attempt made to clear 1D image, and fix validation of depth attachment formats.
+- `vkCreateRenderPass():` Return `VK_ERROR_FORMAT_NOT_SUPPORTED` if format not supported.
+- `vkCmdFillBuffer():` Improve performance 150x by using parallelism more effectively.
 - Remove error logging on `VK_TIMEOUT` of `VkSemaphore` and `VkFence`.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.
