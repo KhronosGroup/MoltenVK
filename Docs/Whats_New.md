@@ -33,6 +33,7 @@ Released TBD
 - `vkCmdClearImage():` Set error if attempt made to clear 1D image, and fix validation of depth attachment formats.
 - `vkCreateRenderPass():` Return `VK_ERROR_FORMAT_NOT_SUPPORTED` if format not supported.
 - `vkCmdFillBuffer():` Improve performance 150x by using parallelism more effectively.
+- Support optional use of `MTLFence` for Vulkan semaphores via the `MVK_ALLOW_METAL_FENCES` environment variable.
 - Remove error logging on `VK_TIMEOUT` of `VkSemaphore` and `VkFence`.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.
@@ -43,6 +44,7 @@ Released TBD
   `MVKConfiguration::presentWithCommandBuffer` is now obsolete.
 - Don't use `MTLCommandBuffer push/popDebugGroup` if not available.
 - Add ability to automatically cause an *Xcode* GPU capture without developer intervention.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version 22.
 
 
 

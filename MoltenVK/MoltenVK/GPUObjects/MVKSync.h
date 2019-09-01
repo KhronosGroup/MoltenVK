@@ -109,7 +109,7 @@ private:
 #pragma mark -
 #pragma mark MVKSemaphore
 
-/** Represents a Vulkan semaphore. */
+/** Abstract class that represents a Vulkan semaphore. */
 class MVKSemaphore : public MVKVulkanAPIDeviceObject {
 
 public:
@@ -123,50 +123,103 @@ public:
 	/**
 	 * Wait for this semaphore to be signaled.
 	 *
-	 * If this instance is using MTLEvent AND the mtlCmdBuff is not nil, a MTLEvent wait
-	 * is encoded on the mtlCmdBuff, and this call returns immediately. Otherwise, if this
-	 * instance is NOT using MTLEvent, AND the mtlCmdBuff is nil, this call blocks
+	 * If the subclass uses command encoding AND the mtlCmdBuff is not nil, a wait
+	 * is encoded on the mtlCmdBuff, and this call returns immediately. Otherwise, if the
+	 * subclass does NOT use command encoding, AND the mtlCmdBuff is nil, this call blocks
 	 * indefinitely until this semaphore is signaled. Other combinations do nothing.
 	 *
-	 * This design allows this function to be blindly called twice, from different points in
-	 * the code path, once with a mtlCmdBuff to support encoding a wait on the command buffer
-	 * if this instance supports MTLEvents, and once without a mtlCmdBuff, at the point in
-	 * the code path where the code should block if this instance does not support MTLEvents.
+	 * This design allows this function to be blindly called twice, from different points in the
+	 * code path, once with a mtlCmdBuff to support encoding a wait on the command buffer if the
+	 * subclass supports command encoding, and once without a mtlCmdBuff, at the point in the
+	 * code path where the code should block if the subclass does not support command encoding.
 	 */
-	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff);
+	virtual void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) = 0;
 
 	/**
 	 * Signals this semaphore.
 	 *
-	 * If this instance is using MTLEvent AND the mtlCmdBuff is not nil, a MTLEvent signal
-	 * is encoded on the mtlCmdBuff. Otherwise, if this instance is NOT using MTLEvent,
+	 * If the subclass uses command encoding AND the mtlCmdBuff is not nil, a signal is
+	 * encoded on the mtlCmdBuff. Otherwise, if the subclass does NOT use command encoding,
 	 * AND the mtlCmdBuff is nil, this call immediately signals any waiting calls.
 	 * Either way, this call returns immediately. Other combinations do nothing.
 	 *
-	 * This design allows this function to be blindly called twice, from different points in
-	 * the code path, once with a mtlCmdBuff to support encoding a signal on the command buffer
-	 * if this instance supports MTLEvents, and once without a mtlCmdBuff, at the point in
-	 * the code path where the code should immediately signal any existing waits, if this
-	 * instance does not support MTLEvents.
+	 * This design allows this function to be blindly called twice, from different points in the
+	 * code path, once with a mtlCmdBuff to support encoding a wait on the command buffer if the
+	 * subclass supports command encoding, and once without a mtlCmdBuff, at the point in the
+	 * code path where the code should block if the subclass does not support command encoding.
 	 */
-	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff);
+	virtual void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) = 0;
 
-	/** Returns whether this semaphore is using a MTLEvent. */
-	bool isUsingMTLEvent() { return _mtlEvent != nil; }
+	/** Returns whether this semaphore uses command encoding. */
+	virtual bool isUsingCommandEncoding() = 0;
 
 
 #pragma mark Construction
 
-    MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
-
-    ~MVKSemaphore() override;
+    MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {}
 
 protected:
 	void propogateDebugName() override {}
 
-	MVKSemaphoreImpl _blocker;
+};
+
+
+#pragma mark -
+#pragma mark MVKSemaphoreMTLFence
+
+/** An MVKSemaphore that uses MTLFence to provide synchronization. */
+class MVKSemaphoreMTLFence : public MVKSemaphore {
+
+public:
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) override;
+	bool isUsingCommandEncoding() override { return true; }
+
+	MVKSemaphoreMTLFence(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
+
+	~MVKSemaphoreMTLFence() override;
+
+protected:
+	id<MTLFence> _mtlFence;
+};
+
+
+#pragma mark -
+#pragma mark MVKSemaphoreMTLEvent
+
+/** An MVKSemaphore that uses MTLEvent to provide synchronization. */
+class MVKSemaphoreMTLEvent : public MVKSemaphore {
+
+public:
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) override;
+	bool isUsingCommandEncoding() override { return true; }
+
+	MVKSemaphoreMTLEvent(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
+
+	~MVKSemaphoreMTLEvent() override;
+
+protected:
 	id<MTLEvent> _mtlEvent;
 	std::atomic<uint64_t> _mtlEventValue;
+};
+
+
+#pragma mark -
+#pragma mark MVKSemaphoreEmulated
+
+/** An MVKSemaphore that uses CPU synchronization to provide synchronization functionality. */
+class MVKSemaphoreEmulated : public MVKSemaphore {
+
+public:
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) override;
+	bool isUsingCommandEncoding() override { return false; }
+
+	MVKSemaphoreEmulated(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
+
+protected:
+	MVKSemaphoreImpl _blocker;
 };
 
 
@@ -267,7 +320,7 @@ private:
 #pragma mark -
 #pragma mark MVKEvent
 
-/** Represents a Vulkan semaphore. */
+/** Abstract class that represents a Vulkan event. */
 class MVKEvent : public MVKVulkanAPIDeviceObject {
 
 public:

@@ -169,7 +169,7 @@ void MVKSwapchain::signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaph
 		// impose unacceptable performance costs to handle this particular case.
 		@autoreleasepool {
 			MVKSemaphore* mvkSem = signaler.first;
-			id<MTLCommandBuffer> mtlCmdBuff = (mvkSem && mvkSem->isUsingMTLEvent()
+			id<MTLCommandBuffer> mtlCmdBuff = (mvkSem && mvkSem->isUsingCommandEncoding()
 											   ? [_device->getQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences]
 											   : nil);
 			signal(signaler, mtlCmdBuff);
