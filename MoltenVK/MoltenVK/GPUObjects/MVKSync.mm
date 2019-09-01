@@ -78,33 +78,70 @@ MVKSemaphoreImpl::~MVKSemaphoreImpl() {
 
 
 #pragma mark -
-#pragma mark MVKSemaphore
+#pragma mark MVKSemaphoreMTLEvent
 
-void MVKSemaphore::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
-	if (_mtlEvent && mtlCmdBuff) {
-		[mtlCmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue++];
-	} else if ( !_mtlEvent && !mtlCmdBuff ) {
-		_blocker.wait(UINT64_MAX, true);
-	}
+// Could use any encoder. Assume BLIT is fastest and lightest.
+// Nil mtlCmdBuff will do nothing.
+void MVKSemaphoreMTLFence::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
+	id<MTLBlitCommandEncoder> mtlCmdEnc = mtlCmdBuff.blitCommandEncoder;
+	[mtlCmdEnc waitForFence: _mtlFence];
+	[mtlCmdEnc endEncoding];
 }
 
-void MVKSemaphore::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) {
-	if (_mtlEvent && mtlCmdBuff) {
-		[mtlCmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventValue];
-	} else if ( !_mtlEvent && !mtlCmdBuff ) {
-		 _blocker.release();
-	}
+// Could use any encoder. Assume BLIT is fastest and lightest.
+// Nil mtlCmdBuff will do nothing.
+void MVKSemaphoreMTLFence::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) {
+	id<MTLBlitCommandEncoder> mtlCmdEnc = mtlCmdBuff.blitCommandEncoder;
+	[mtlCmdEnc updateFence: _mtlFence];
+	[mtlCmdEnc endEncoding];
 }
 
-MVKSemaphore::MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) :
-	MVKVulkanAPIDeviceObject(device),
-	_blocker(false, 1),
-	_mtlEvent(device->_useMTLEventsForSemaphores ? [device->getMTLDevice() newEvent] : nil),
+MVKSemaphoreMTLFence::MVKSemaphoreMTLFence(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) :
+	MVKSemaphore(device, pCreateInfo),
+	_mtlFence([device->getMTLDevice() newFence]) {}		//retained
+
+MVKSemaphoreMTLFence::~MVKSemaphoreMTLFence() {
+	[_mtlFence release];
+}
+
+
+#pragma mark -
+#pragma mark MVKSemaphoreMTLEvent
+
+// Nil mtlCmdBuff will do nothing.
+void MVKSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
+	[mtlCmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue++];
+}
+
+// Nil mtlCmdBuff will do nothing.
+void MVKSemaphoreMTLEvent::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) {
+	[mtlCmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventValue];
+}
+
+MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) :
+	MVKSemaphore(device, pCreateInfo),
+	_mtlEvent([device->getMTLDevice() newEvent]),	//retained
 	_mtlEventValue(1) {}
 
-MVKSemaphore::~MVKSemaphore() {
+MVKSemaphoreMTLEvent::~MVKSemaphoreMTLEvent() {
     [_mtlEvent release];
 }
+
+
+#pragma mark -
+#pragma mark MVKSemaphoreEmulated
+
+void MVKSemaphoreEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
+	if ( !mtlCmdBuff ) { _blocker.wait(UINT64_MAX, true); }
+}
+
+void MVKSemaphoreEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) {
+	if ( !mtlCmdBuff ) { _blocker.release(); }
+}
+
+MVKSemaphoreEmulated::MVKSemaphoreEmulated(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) :
+	MVKSemaphore(device, pCreateInfo),
+	_blocker(false, 1) {}
 
 
 #pragma mark -

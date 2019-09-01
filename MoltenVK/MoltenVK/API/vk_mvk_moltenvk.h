@@ -55,7 +55,7 @@ typedef unsigned long MTLLanguageVersion;
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            21
+#define VK_MVK_MOLTENVK_SPEC_VERSION            22
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -114,9 +114,11 @@ typedef unsigned long MTLLanguageVersion;
  * 3. Setting the MVK_CONFIG_FORCE_LOW_POWER_GPU runtime environment variable or MoltenVK compile-time
  *    build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.
  *
- * 4. Setting the MVK_ALLOW_METAL_EVENTS runtime environment variable or MoltenVK compile-time build
- *    setting to 1 will cause MoltenVK to use Metal events, if they are available on the device, for
- *    for VkSemaphore sychronization behaviour. This is disabled by default.
+ * 4. Setting the MVK_ALLOW_METAL_FENCES or MVK_ALLOW_METAL_EVENTS runtime environment variable
+ *    or MoltenVK compile-time build setting to 1 will cause MoltenVK to use MTLFence or MTLEvent
+ *    if they are available on the device, for VkSemaphore sychronization behaviour.
+ *    If both variables are set, MVK_ALLOW_METAL_FENCES takes priority over MVK_ALLOW_METAL_EVENTS.
+ *    Both options are disabled by default.
  *
  * 5. The MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE runtime environment variable or MoltenVK compile-time
  *    build setting controls whether Xcode should run an automatic GPU capture without the user
@@ -206,7 +208,7 @@ typedef struct {
 	 * buffers (VK_COMMAND_BUFFER_LEVEL_SECONDARY), or for primary command buffers that are intended
 	 * to be submitted to multiple queues concurrently (VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT).
 	 *
-	 * When enabling this features, be aware that one Metal command buffer is required for each Vulkan
+	 * When enabling this feature, be aware that one Metal command buffer is required for each Vulkan
 	 * command buffer. Depending on the number of command buffers that you use, you may also need to
 	 * change the value of the maxActiveMetalCommandBuffersPerQueue setting.
 	 *
@@ -538,12 +540,13 @@ typedef struct {
 	VkBool32 arrayOfSamplers;			 	  	/**< If true, arrays of texture samplers is supported. */
 	MTLLanguageVersion mslVersionEnum;			/**< The version of the Metal Shading Language available on this device, as a Metal enumeration. */
 	VkBool32 depthSampleCompare;				/**< If true, depth texture samplers support the comparison of the pixel value against a reference value. */
-	VkBool32 events;							/**< If true, Metal synchronization events are supported. */
+	VkBool32 events;							/**< If true, Metal synchronization events (MTLEvent) are supported. */
 	VkBool32 memoryBarriers;					/**< If true, full memory barriers within Metal render passes are supported. */
 	VkBool32 multisampleLayeredRendering;       /**< If true, layered rendering to multiple multi-sampled cube or texture array layers is supported. */
 	VkBool32 stencilFeedback;					/**< If true, fragment shaders that write to [[stencil]] outputs are supported. */
 	VkBool32 textureBuffers;					/**< If true, textures of type MTLTextureTypeBuffer are supported. */
 	VkBool32 postDepthCoverage;					/**< If true, coverage masks in fragment shaders post-depth-test are supported. */
+	VkBool32 fences;							/**< If true, Metal synchronization fences (MTLFence) are supported. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**

@@ -609,6 +609,9 @@ VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
 // In order to allow a Metal command buffer to be prefilled before it is formally submitted to
 // a Vulkan queue, we need to enforce that each Vulkan queue family can have only one Metal queue.
 // In order to provide parallel queue operations, we therefore provide multiple queue families.
+// In addition, Metal queues are always general purpose, so the default behaviour is for all
+// queue families to support graphics + compute + transfer, unless the app indicates it
+// requires queue family specialization.
 MVKVector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
 	if (_queueFamilies.empty()) {
 		VkQueueFamilyProperties qfProps;
@@ -773,6 +776,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
+		_metalFeatures.fences = true;
     }
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v4] ) {
@@ -839,6 +843,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.arrayOfTextures = true;
 		_metalFeatures.arrayOfSamplers = true;
 		_metalFeatures.presentModeImmediate = true;
+		_metalFeatures.fences = true;
     }
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v4] ) {
@@ -1906,7 +1911,13 @@ void MVKDevice::destroyFence(MVKFence* mvkFence,
 
 MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInfo,
 										 const VkAllocationCallbacks* pAllocator) {
-	return new MVKSemaphore(this, pCreateInfo);
+	if (_useMTLFenceForSemaphores) {
+		return new MVKSemaphoreMTLFence(this, pCreateInfo);
+	} else if (_useMTLEventForSemaphores) {
+		return new MVKSemaphoreMTLEvent(this, pCreateInfo);
+	} else {
+		return new MVKSemaphoreEmulated(this, pCreateInfo);
+	}
 }
 
 void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
@@ -2355,11 +2366,15 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 
-	_useMTLEventsForSemaphores = MVK_ALLOW_METAL_EVENTS;
-	if (_pMetalFeatures->events) {
-		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventsForSemaphores, MVK_ALLOW_METAL_EVENTS);
+	_useMTLFenceForSemaphores = false;
+	if (_pMetalFeatures->fences) {
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLFenceForSemaphores, MVK_ALLOW_METAL_FENCES);
 	}
-	MVKLogInfo("%s MTLEvent for semaphores.", _useMTLEventsForSemaphores ? "Using" : "NOT using");
+	_useMTLEventForSemaphores = false;
+	if (_pMetalFeatures->events) {
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventForSemaphores, MVK_ALLOW_METAL_EVENTS);
+	}
+	MVKLogInfo("Using %s for semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
 
 #if MVK_MACOS
 	// If we have selected a high-power GPU and want to force the window system
