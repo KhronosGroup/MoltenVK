@@ -1136,7 +1136,12 @@ void MVKPhysicalDevice::initProperties() {
 	} else {
 		_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
 	}
+#if MVK_MACOS
+	_properties.limits.maxUniformBufferRange = (64 * KIBI);
+#endif
+#if MVK_IOS
 	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
+#endif
 	_properties.limits.maxStorageBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 	_properties.limits.maxPushConstantsSize = (4 * KIBI);
 
