@@ -102,6 +102,13 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     varPtrFeatures->variablePointers = true;
                     break;
                 }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
+                    auto* interlockFeatures = (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*)next;
+                    interlockFeatures->fragmentShaderSampleInterlock = _metalFeatures.rasterOrderGroups;
+                    interlockFeatures->fragmentShaderPixelInterlock = _metalFeatures.rasterOrderGroups;
+                    interlockFeatures->fragmentShaderShadingRateInterlock = false;    // Requires variable rate shading; not supported yet in Metal
+                    break;
+                }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
                     auto* hostQueryResetFeatures = (VkPhysicalDeviceHostQueryResetFeaturesEXT*)next;
                     hostQueryResetFeatures->hostQueryReset = true;
@@ -860,6 +867,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 
 #endif
+
+    // Note the selector name, which is different from the property name.
+    if ( [_mtlDevice respondsToSelector: @selector(areRasterOrderGroupsSupported)] ) {
+        _metalFeatures.rasterOrderGroups = _mtlDevice.rasterOrderGroupsSupported;
+    }
 
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
         _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
@@ -1648,6 +1660,9 @@ void MVKPhysicalDevice::initExtensions() {
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_supportedExtensions;
 	pWritableExtns->disableAllButEnabledDeviceExtensions();
 
+	if (!_metalFeatures.rasterOrderGroups) {
+		pWritableExtns->vk_EXT_fragment_shader_interlock.enabled = false;
+	}
 	if (!_metalFeatures.postDepthCoverage) {
 		pWritableExtns->vk_EXT_post_depth_coverage.enabled = false;
 	}
@@ -2291,6 +2306,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledF16I8Features(),
 	_enabledUBOLayoutFeatures(),
 	_enabledVarPtrFeatures(),
+	_enabledInterlockFeatures(),
 	_enabledHostQryResetFeatures(),
 	_enabledScalarLayoutFeatures(),
 	_enabledTexelBuffAlignFeatures(),
@@ -2405,6 +2421,7 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	memset((void*)&_enabledF16I8Features, 0, sizeof(_enabledF16I8Features));
 	memset((void*)&_enabledUBOLayoutFeatures, 0, sizeof(_enabledUBOLayoutFeatures));
 	memset((void*)&_enabledVarPtrFeatures, 0, sizeof(_enabledVarPtrFeatures));
+	memset((void*)&_enabledInterlockFeatures, 0, sizeof(_enabledInterlockFeatures));
 	memset((void*)&_enabledHostQryResetFeatures, 0, sizeof(_enabledHostQryResetFeatures));
 	memset((void*)&_enabledScalarLayoutFeatures, 0, sizeof(_enabledScalarLayoutFeatures));
 	memset((void*)&_enabledTexelBuffAlignFeatures, 0, sizeof(_enabledTexelBuffAlignFeatures));
@@ -2432,9 +2449,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	pdHostQryResetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
 	pdHostQryResetFeatures.pNext = &pdScalarLayoutFeatures;
 
+	VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT pdInterlockFeatures;
+	pdInterlockFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
+	pdInterlockFeatures.pNext = &pdHostQryResetFeatures;
+
 	VkPhysicalDeviceVariablePointerFeatures pdVarPtrFeatures;
 	pdVarPtrFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES;
-	pdVarPtrFeatures.pNext = &pdHostQryResetFeatures;
+	pdVarPtrFeatures.pNext = &pdInterlockFeatures;
 
 	VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR pdUBOLayoutFeatures;
 	pdUBOLayoutFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR;
@@ -2508,6 +2529,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledVarPtrFeatures.variablePointersStorageBuffer,
 							   &requestedFeatures->variablePointersStorageBuffer,
 							   &pdVarPtrFeatures.variablePointersStorageBuffer, 2);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*)next;
+				enableFeatures(&_enabledInterlockFeatures.fragmentShaderSampleInterlock,
+							   &requestedFeatures->fragmentShaderSampleInterlock,
+							   &pdInterlockFeatures.fragmentShaderSampleInterlock, 3);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {

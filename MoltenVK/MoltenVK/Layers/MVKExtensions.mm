@@ -47,6 +47,9 @@ static VkExtensionProperties kVkExtProps_ ##EXT = mvkMakeExtProps(VK_ ##EXT ##_E
 // Returns whether the specified properties are valid for this platform
 static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #if MVK_MACOS
+	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) {
+		return mvkOSVersion() >= 10.13;
+	}
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
 		return mvkOSVersion() >= 10.13;
 	}
@@ -66,6 +69,9 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #endif
 #if MVK_IOS
 	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
+	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) {
+		return mvkOSVersion() >= 11.0;
+	}
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
 		return mvkOSVersion() >= 11.0;
 	}
