@@ -1159,6 +1159,10 @@ void MVKPhysicalDevice::initProperties() {
         uint32_t maxStorage = 0, maxUniform = 0;
         bool singleTexelStorage = true, singleTexelUniform = true;
         mvkEnumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
+            // MTLDevice minimumLinearTextureAlignmentForPixelFormat with MTLPixelFormatInvalid will cause as a failed assertion on iOS 13.x and iPad OS 13.x
+            if ( vk == VK_FORMAT_UNDEFINED )
+              return false;
+          
             NSUInteger alignment;
             if ([_mtlDevice respondsToSelector: @selector(minimumTextureBufferAlignmentForPixelFormat:)]) {
                 alignment = [_mtlDevice minimumTextureBufferAlignmentForPixelFormat: mvkMTLPixelFormatFromVkFormat(vk)];
