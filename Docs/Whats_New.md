@@ -20,6 +20,7 @@ Released TBD
 
 - Add support for extensions:
 	- `VK_KHR_device_group`
+	- `VK_EXT_fragment_shader_interlock`
 - Add support for `VkEvent`, using either native `MTLEvent` or emulation when `MTLEvent` not available.
 - `vkInvalidateMappedMemoryRanges()` synchronizes managed device memory to CPU.
 - Track supported instance and device extensions correctly.
@@ -44,7 +45,27 @@ Released TBD
   `MVKConfiguration::presentWithCommandBuffer` is now obsolete.
 - Don't use `MTLCommandBuffer push/popDebugGroup` if not available.
 - Add ability to automatically cause an *Xcode* GPU capture without developer intervention.
+- On macOS, limit uniform buffer bindings to 64k.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version 22.
+- Update to latest SPIRV-Cross version:
+	- MSL: Deal with array copies from and to threadgroup.
+	- MSL: Inline all emitted functions.
+	- MSL: Inline all non-entry-point functions.
+	- MSL: Add `{Base,}{Vertex,Instance}{,Index}` to `bitcast_from_builtin_load`.
+	- MSL: Add support for sampler Y'CbCr conversion.
+	- MSL: Force storage images on iOS to use discrete descriptors.
+	- MSL: Support dynamic offsets for buffers in argument buffers.
+	- Support the `SPV_EXT_fragment_shader_interlock` extension.
+	- Fix variable scope when switch block exits multiple times.
+	- Deal correctly with sign on bitfield operations.
+	- Elide branches to continue block when continue block is also a merge.
+	- Move branchless analysis to CFG.
+	- Deal with `ldexp` taking `uint` input.
+	- Do not allow base expressions for non-native row-major matrices.
+	- GLSL: Assume image and sampler can be `RelaxedPrecision`.
+	- GLSL: Fix post-depth coverage for ESSL.
+	- Fix `ParsedIR::mark_used_as_array_length(uint32_t id)`.
+	- Refactor into stronger types in public API.
 
 
 
