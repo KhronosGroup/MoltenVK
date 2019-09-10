@@ -16,7 +16,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.37
 ---------------
 
-Released TBD
+Released 2019/09/10
 
 - Add support for extensions:
 	- `VK_KHR_device_group`
@@ -25,17 +25,21 @@ Released TBD
 - `vkInvalidateMappedMemoryRanges()` synchronizes managed device memory to CPU.
 - Track supported instance and device extensions correctly.
 - Revert to supporting host-coherent memory for linear images on macOS.
+- Report limit of 64KB for constant buffer bindings on macOS.
 - Disable depth and/or stencil testing if corresponding attachment is missing.
 - Ensure Vulkan loader magic number is set every time before returning any dispatchable Vulkan handle.
 - Fix crash when `VkDeviceCreateInfo` specifies queue families out of numerical order.
 - Fix crash in `vkDestroyPipelineLayout()`.
 - Fix crash when signalling swapchain semaphore using `MTLEvent`.
+- Fix crash when determining alignment of invalid pixel formats.
 - `vkCmdBlitImage():` Support format component swizzling.
 - `vkCmdClearImage():` Set error if attempt made to clear 1D image, and fix validation of depth attachment formats.
 - `vkCreateRenderPass():` Return `VK_ERROR_FORMAT_NOT_SUPPORTED` if format not supported.
 - `vkCmdFillBuffer():` Improve performance 150x by using parallelism more effectively.
 - Support optional use of `MTLFence` for Vulkan semaphores via the `MVK_ALLOW_METAL_FENCES` environment variable.
 - Remove error logging on `VK_TIMEOUT` of `VkSemaphore` and `VkFence`.
+- Remove log message warning of obsolescence of `vkCreateMacOSSurfaceMVK()` and `vkCreateIOSSurfaceMVK()` functions.
+- Streamline design and use of `MVKSemaphore`.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.
 - No longer prefer dedicated allocations for buffer memory, including buffer-backed images.
@@ -44,26 +48,34 @@ Released TBD
 - Always submit surface presentations using `MTLCommandBuffer`. 
   `MVKConfiguration::presentWithCommandBuffer` is now obsolete.
 - Don't use `MTLCommandBuffer push/popDebugGroup` if not available.
+- `MVKSwapchain::signalWhenAvailable()` add autoreleasepool around `MTLCommandBuffer` use.
 - Add ability to automatically cause an *Xcode* GPU capture without developer intervention.
-- On macOS, limit uniform buffer bindings to 64k.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version 22.
+- Update dependency libraries to match Vulkan SDK 1.1.121.
+- Update to renaming of `VK_INTEL_shader_integer_functions2` enums and structs in latest Vulkan headers.
 - Update to latest SPIRV-Cross version:
+	- Support the `SPV_EXT_fragment_shader_interlock` extension.
 	- MSL: Deal with array copies from and to threadgroup.
+	- MSL: Deal with `Modf/Frexp` where output is access chain to scalar.
 	- MSL: Inline all emitted functions.
 	- MSL: Inline all non-entry-point functions.
 	- MSL: Add `{Base,}{Vertex,Instance}{,Index}` to `bitcast_from_builtin_load`.
 	- MSL: Add support for sampler Y'CbCr conversion.
 	- MSL: Force storage images on iOS to use discrete descriptors.
 	- MSL: Support dynamic offsets for buffers in argument buffers.
-	- Support the `SPV_EXT_fragment_shader_interlock` extension.
+	- MSL: Cleanup temporary use with `emit_uninitialized_temporary`.
+	- MSL: Unify the `get_*_address_space()` methods.
+	- Assume image and sampler can be `RelaxedPrecision`.
+	- Fix post-depth coverage for ESSL.
 	- Fix variable scope when switch block exits multiple times.
+	- Fix severe performance issue with invariant expression invalidation.
+	- Fix `ParsedIR::mark_used_as_array_length(uint32_t id)`
 	- Deal correctly with sign on bitfield operations.
 	- Elide branches to continue block when continue block is also a merge.
 	- Move branchless analysis to CFG.
 	- Deal with `ldexp` taking `uint` input.
 	- Do not allow base expressions for non-native row-major matrices.
-	- GLSL: Assume image and sampler can be `RelaxedPrecision`.
-	- GLSL: Fix post-depth coverage for ESSL.
+	- Do not force temporary unless continue-only for loop dominates.
 	- Fix `ParsedIR::mark_used_as_array_length(uint32_t id)`.
 	- Refactor into stronger types in public API.
 
