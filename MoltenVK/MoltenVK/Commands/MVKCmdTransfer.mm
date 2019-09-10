@@ -1177,8 +1177,10 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 	NSUInteger dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset() + _dstOffset;
 
 	// Determine the number of full threadgroups we can dispatch to cover the buffer content efficiently.
+	// Some GPU's report different values for max threadgroup width between the pipeline state and device,
+	// so conservatively use the minimum of these two reported values.
 	id<MTLComputePipelineState> cps = getCommandEncodingPool()->getCmdFillBufferMTLComputePipelineState();
-	NSUInteger tgWidth = cps.maxTotalThreadsPerThreadgroup;
+	NSUInteger tgWidth = std::min(cps.maxTotalThreadsPerThreadgroup, getMTLDevice().maxThreadsPerThreadgroup.width);
 	NSUInteger tgCount = _wordCount / tgWidth;
 
 	id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseFillBuffer);

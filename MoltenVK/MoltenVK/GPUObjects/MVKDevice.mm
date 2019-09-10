@@ -139,8 +139,8 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     portabilityFeatures->samplerMipLodBias = false;
                     break;
                 }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS2_FEATURES_INTEL: {
-                    auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2INTEL*)next;
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
+                    auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
                     shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
                     break;
                 }
@@ -1164,22 +1164,20 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.nonCoherentAtomSize = _metalFeatures.mtlBufferAlignment;
 
     if ([_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
-        // Figure out the greatest alignment required by all supported formats, and
-        // whether or not they only require alignment to a single texel. We'll use this
-        // information to fill out the VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT
-        // struct.
+        // Figure out the greatest alignment required by all supported formats, and whether
+		// or not they only require alignment to a single texel. We'll use this information
+		// to fill out the VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT struct.
         uint32_t maxStorage = 0, maxUniform = 0;
         bool singleTexelStorage = true, singleTexelUniform = true;
         mvkEnumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
-            // MTLDevice minimumLinearTextureAlignmentForPixelFormat with MTLPixelFormatInvalid will cause as a failed assertion on iOS 13.x and iPad OS 13.x
-            if ( vk == VK_FORMAT_UNDEFINED )
-              return false;
-          
+			MTLPixelFormat mtlFmt = mvkMTLPixelFormatFromVkFormat(vk);
+			if ( !mtlFmt ) { return false; }	// If format is invalid, avoid validation errors on MTLDevice format alignment calls
+
             NSUInteger alignment;
             if ([_mtlDevice respondsToSelector: @selector(minimumTextureBufferAlignmentForPixelFormat:)]) {
-                alignment = [_mtlDevice minimumTextureBufferAlignmentForPixelFormat: mvkMTLPixelFormatFromVkFormat(vk)];
+                alignment = [_mtlDevice minimumTextureBufferAlignmentForPixelFormat: mtlFmt];
             } else {
-                alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mvkMTLPixelFormatFromVkFormat(vk)];
+                alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mtlFmt];
             }
             VkFormatProperties props = mvkVkFormatProperties(vk, getFormatIsSupported(vk));
             // For uncompressed formats, this is the size of a single texel.

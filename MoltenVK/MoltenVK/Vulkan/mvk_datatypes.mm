@@ -94,7 +94,7 @@ using namespace std;
 #define MVK_FMT_NO_FEATS			0
 
 #define MVK_MAKE_FMT_STRUCT(VK_FMT, MTL_FMT, MTL_FMT_ALT, IOS_SINCE, MACOS_SINCE, BLK_W, BLK_H, BLK_BYTE_CNT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, VTX_IOS_SINCE, VTX_MACOS_SINCE, CLR_TYPE, PIXEL_FEATS, BUFFER_FEATS)  \
-        { VK_FMT, MTL_FMT, MTL_FMT_ALT, IOS_SINCE, MACOS_SINCE, { BLK_W, BLK_H }, BLK_BYTE_CNT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, VTX_IOS_SINCE, VTX_MACOS_SINCE, CLR_TYPE, { (PIXEL_FEATS & MVK_FMT_LINEAR_TILING_FEATS), PIXEL_FEATS, BUFFER_FEATS }, #VK_FMT, #MTL_FMT }
+        { VK_FMT, MTL_FMT, MTL_FMT_ALT, IOS_SINCE, MACOS_SINCE, { BLK_W, BLK_H }, BLK_BYTE_CNT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, VTX_IOS_SINCE, VTX_MACOS_SINCE, CLR_TYPE, { (PIXEL_FEATS & MVK_FMT_LINEAR_TILING_FEATS), PIXEL_FEATS, BUFFER_FEATS }, #VK_FMT, #MTL_FMT, false }
 
 #pragma mark Texture formats
 
@@ -117,6 +117,7 @@ typedef struct {
 	VkFormatProperties properties;
     const char* vkName;
     const char* mtlName;
+	bool hasReportedSubstitution;
 
     inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); };
 
@@ -569,31 +570,35 @@ MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat
 }
 
 MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj) {
-    MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
+	MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
 
-    const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
-    if (fmtDesc.isSupported()) {
-        mtlPixFmt = fmtDesc.mtl;
-    } else if (vkFormat != VK_FORMAT_UNDEFINED) {
-        // If the MTLPixelFormat is not supported but VkFormat is valid,
-        // report an error, and possibly substitute a different MTLPixelFormat.
-        string errMsg;
-        errMsg += "VkFormat ";
-        errMsg += (fmtDesc.vkName) ? fmtDesc.vkName : to_string(fmtDesc.vk);
-        errMsg += " is not supported on this device.";
+	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
+	if (fmtDesc.isSupported()) {
+		mtlPixFmt = fmtDesc.mtl;
+	} else if (vkFormat != VK_FORMAT_UNDEFINED) {
+		// If the MTLPixelFormat is not supported but VkFormat is valid, attempt to substitute a different format.
+		mtlPixFmt = fmtDesc.mtlSubstitute;
 
-        if (fmtDesc.isSupportedOrSubstitutable()) {
-            mtlPixFmt = fmtDesc.mtlSubstitute;
+		// Report an error if there is no substitute, or the first time a substitution is made.
+		if ( !mtlPixFmt || !fmtDesc.hasReportedSubstitution ) {
+			string errMsg;
+			errMsg += "VkFormat ";
+			errMsg += (fmtDesc.vkName) ? fmtDesc.vkName : to_string(fmtDesc.vk);
+			errMsg += " is not supported on this device.";
 
-            const MVKFormatDesc& fmtDescSubs = formatDescForMTLPixelFormat(mtlPixFmt);
-            errMsg += " Using VkFormat ";
-            errMsg += (fmtDescSubs.vkName) ? fmtDescSubs.vkName : to_string(fmtDescSubs.vk);
-            errMsg += " instead.";
-        }
-		MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
-    }
+			if (mtlPixFmt) {
+				((MVKFormatDesc*)&fmtDesc)->hasReportedSubstitution = true;
 
-    return mtlPixFmt;
+				const MVKFormatDesc& fmtDescSubs = formatDescForMTLPixelFormat(mtlPixFmt);
+				errMsg += " Using VkFormat ";
+				errMsg += (fmtDescSubs.vkName) ? fmtDescSubs.vkName : to_string(fmtDescSubs.vk);
+				errMsg += " instead.";
+			}
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
+		}
+	}
+
+	return mtlPixFmt;
 }
 
 MVK_PUBLIC_SYMBOL VkFormat mvkVkFormatFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
