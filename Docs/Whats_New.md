@@ -39,6 +39,7 @@ Released 2019/09/10
 - Support optional use of `MTLFence` for Vulkan semaphores via the `MVK_ALLOW_METAL_FENCES` environment variable.
 - Remove error logging on `VK_TIMEOUT` of `VkSemaphore` and `VkFence`.
 - Remove log message warning of obsolescence of `vkCreateMacOSSurfaceMVK()` and `vkCreateIOSSurfaceMVK()` functions.
+- Report error only on the first time a format substitution is made.
 - Streamline design and use of `MVKSemaphore`.
 - Consolidate the various linkable objects into a `MVKLinkableMixin` template base class.
 - Use `MVKVector` whenever possible in MoltenVK, especially within render loop.
