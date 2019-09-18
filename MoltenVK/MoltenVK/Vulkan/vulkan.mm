@@ -269,7 +269,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceExtensionProperties(
     VkExtensionProperties*                      pProperties) {
 
 	MVKTraceVulkanCallStart();
-	VkResult rslt = MVKLayerManager::globalManager()->getLayerNamed(pLayerName)->getExtensionProperties(pCount, pProperties);
+	VkResult rslt = MVKLayerManager::globalManager()->getLayerNamed(pLayerName)->getInstanceExtensionProperties(pCount, pProperties);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -429,15 +429,10 @@ MVK_PUBLIC_SYMBOL VkResult vkInvalidateMappedMemoryRanges(
     VkDevice                                    device,
     uint32_t                                    memRangeCount,
     const VkMappedMemoryRange*                  pMemRanges) {
-	
+
 	MVKTraceVulkanCallStart();
-	VkResult rslt = VK_SUCCESS;
-	for (uint32_t i = 0; i < memRangeCount; i++) {
-		const VkMappedMemoryRange* pMem = &pMemRanges[i];
-		MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMem->memory;
-		VkResult r = mvkMem->pullFromDevice(pMem->offset, pMem->size);
-		if (rslt == VK_SUCCESS) { rslt = r; }
-	}
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	VkResult rslt = mvkDev->invalidateMappedMemoryRanges(memRangeCount, pMemRanges);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -651,9 +646,10 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateEvent(
     VkEvent*                                    pEvent) {
 	
 	MVKTraceVulkanCallStart();
-	//VK_DEBUG_REPORT_OBJECT_TYPE_EVENT_EXT
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	VkResult rslt = mvkDev->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateEvent(): Vukan events are not supported.");
+	MVKEvent* mvkEvent = mvkDev->createEvent(pCreateInfo, pAllocator);
+	*pEvent = (VkEvent)mvkEvent;
+	VkResult rslt = mvkEvent->getConfigurationResult();
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -666,7 +662,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyEvent(
 	MVKTraceVulkanCallStart();
 	if ( !event ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	mvkDev->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkDestroyEvent(): Vukan events are not supported.");
+	mvkDev->destroyEvent((MVKEvent*)event, pAllocator);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -675,8 +671,8 @@ MVK_PUBLIC_SYMBOL VkResult vkGetEventStatus(
     VkEvent                                     event) {
 	
 	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	VkResult rslt = mvkDev->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkGetEventStatus(): Vukan events are not supported.");
+	MVKEvent* mvkEvent = (MVKEvent*)event;
+	VkResult rslt = mvkEvent->isSet() ? VK_EVENT_SET : VK_EVENT_RESET;
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -686,10 +682,10 @@ MVK_PUBLIC_SYMBOL VkResult vkSetEvent(
     VkEvent                                     event) {
 	
 	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	VkResult rslt = mvkDev->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkSetEvent(): Vukan events are not supported.");
+	MVKEvent* mvkEvent = (MVKEvent*)event;
+	mvkEvent->signal(true);
 	MVKTraceVulkanCallEnd();
-	return rslt;
+	return VK_SUCCESS;
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkResetEvent(
@@ -697,10 +693,10 @@ MVK_PUBLIC_SYMBOL VkResult vkResetEvent(
     VkEvent                                     event) {
 	
 	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	VkResult rslt = mvkDev->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkResetEvent(): Vukan events are not supported.");
+	MVKEvent* mvkEvent = (MVKEvent*)event;
+	mvkEvent->signal(false);
 	MVKTraceVulkanCallEnd();
-	return rslt;
+	return VK_SUCCESS;
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkCreateQueryPool(
@@ -1709,7 +1705,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetEvent(
 	
 	MVKTraceVulkanCallStart();
 	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetEvent(): Vukan events are not supported.");
+	mvkCmdSetEvent(cmdBuff, event, stageMask);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1720,7 +1716,7 @@ MVK_PUBLIC_SYMBOL void vkCmdResetEvent(
 	
 	MVKTraceVulkanCallStart();
 	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdResetEvent(): Vukan events are not supported.");
+	mvkCmdResetEvent(cmdBuff, event, stageMask);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1739,7 +1735,11 @@ MVK_PUBLIC_SYMBOL void vkCmdWaitEvents(
 
 	MVKTraceVulkanCallStart();
 	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdWaitEvents(): Vukan events are not supported.");
+	mvkCmdWaitEvents(cmdBuff, eventCount, pEvents,
+					 srcStageMask, dstStageMask,
+					 memoryBarrierCount, pMemoryBarriers,
+					 bufferMemoryBarrierCount, pBufferMemoryBarriers,
+					 imageMemoryBarrierCount, pImageMemoryBarriers);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1757,8 +1757,8 @@ MVK_PUBLIC_SYMBOL void vkCmdPipelineBarrier(
 
 	MVKTraceVulkanCallStart();
     MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdPipelineBarrier(cmdBuff, srcStageMask, dstStageMask,
-						  dependencyFlags, memoryBarrierCount, pMemoryBarriers,
+	mvkCmdPipelineBarrier(cmdBuff, srcStageMask, dstStageMask, dependencyFlags,
+						  memoryBarrierCount, pMemoryBarriers,
 						  bufferMemoryBarrierCount, pBufferMemoryBarriers,
 						  imageMemoryBarrierCount, pImageMemoryBarriers);
 	MVKTraceVulkanCallEnd();
@@ -1959,6 +1959,48 @@ MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplateKHR(
 
 	MVKTraceVulkanCallStart();
     mvkUpdateDescriptorSetWithTemplate(descriptorSet, descriptorUpdateTemplate, pData);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_device_group extension
+
+MVK_PUBLIC_SYMBOL void vkGetDeviceGroupPeerMemoryFeaturesKHR(
+    VkDevice                                    device,
+    uint32_t                                    heapIndex,
+    uint32_t                                    localDeviceIndex,
+    uint32_t                                    remoteDeviceIndex,
+    VkPeerMemoryFeatureFlagsKHR*                pPeerMemoryFeatures) {
+
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    mvkDev->getPeerMemoryFeatures(heapIndex, localDeviceIndex, remoteDeviceIndex, pPeerMemoryFeatures);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdSetDeviceMaskKHR(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    deviceMask) {
+
+    MVKTraceVulkanCallStart();
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+    mvkCmdSetDeviceMask(cmdBuff, deviceMask);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdDispatchBaseKHR(
+    VkCommandBuffer                             commandBuffer,
+    uint32_t                                    baseGroupX,
+    uint32_t                                    baseGroupY,
+    uint32_t                                    baseGroupZ,
+    uint32_t                                    groupCountX,
+    uint32_t                                    groupCountY,
+    uint32_t                                    groupCountZ) {
+	
+	MVKTraceVulkanCallStart();
+    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
+	mvkCmdDispatchBase(cmdBuff, baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
 	MVKTraceVulkanCallEnd();
 }
 

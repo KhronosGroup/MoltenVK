@@ -231,6 +231,8 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_KHR_bind_memory2`
 - `VK_KHR_dedicated_allocation`
 - `VK_KHR_descriptor_update_template`
+- `VK_KHR_device_group`
+- `VK_KHR_device_group_creation`
 - `VK_KHR_get_memory_requirements2`
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
@@ -252,6 +254,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`
+- `VK_EXT_fragment_shader_interlock` *(requires Metal 2.0 and Raster Order Groups)*
 - `VK_EXT_host_query_reset`
 - `VK_EXT_memory_budget` *(requires Metal 2.0)*
 - `VK_EXT_metal_surface`
@@ -509,8 +512,6 @@ This section documents the known limitations in this version of **MoltenVK**.
   on its own.
   In order to use Vulkan layers such as the validation layers, use the Vulkan loader and layers from the
   [LunarG Vulkan SDK](https://vulkan.lunarg.com).
-
-- `VkEvents` are not supported.
 
 - Application-controlled memory allocations using `VkAllocationCallbacks` are ignored.
 

@@ -21,8 +21,8 @@
 #include "MVKEnvironment.h"
 #include "MVKLayers.h"
 #include "MVKVulkanAPIObject.h"
+#include "MVKVector.h"
 #include "vk_mvk_moltenvk.h"
-#include <vector>
 #include <unordered_map>
 #include <string>
 #include <mutex>
@@ -100,7 +100,7 @@ public:
 	VkResult getPhysicalDeviceGroups(uint32_t* pCount, VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProps);
 
 	/** Returns the driver layer. */
-	MVKLayer* getDriverLayer() { return MVKLayerManager::globalManager()->getDriverLayer(); }
+	MVKLayer* getDriverLayer() { return getLayerManager()->getDriverLayer(); }
 
 	MVKSurface* createSurface(const VkMetalSurfaceCreateInfoEXT* pCreateInfo,
 							  const VkAllocationCallbacks* pAllocator);
@@ -187,15 +187,16 @@ protected:
 
 	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
-	std::vector<MVKPhysicalDevice*> _physicalDevices;
+	MVKVectorInline<MVKPhysicalDevice*, 4> _physicalDevices;
+	MVKVectorInline<MVKDebugReportCallback*, 4> _debugReportCallbacks;
+	MVKVectorInline<MVKDebugUtilsMessenger*, 4> _debugUtilMessengers;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
-	std::vector<MVKDebugReportCallback*> _debugReportCallbacks;
-	std::vector<MVKDebugUtilsMessenger*> _debugUtilMessengers;
 	std::mutex _dcbLock;
 	bool _hasDebugReportCallbacks;
 	bool _hasDebugUtilsMessengers;
 	bool _useCreationCallbacks;
 	const char* _debugReportCallbackLayerPrefix;
+	int32_t _autoGPUCaptureScope;
 };
 
 

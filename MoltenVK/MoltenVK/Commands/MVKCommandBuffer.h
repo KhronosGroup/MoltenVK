@@ -23,8 +23,8 @@
 #include "MVKCommandEncoderState.h"
 #include "MVKMTLBufferAllocation.h"
 #include "MVKCmdPipeline.h"
+#include "MVKQueryPool.h"
 #include "MVKVector.h"
-#include <vector>
 #include <unordered_map>
 
 class MVKCommandPool;
@@ -50,8 +50,9 @@ typedef uint64_t MVKMTLCommandBufferID;
 #pragma mark MVKCommandBuffer
 
 /** Represents a Vulkan command pool. */
-class MVKCommandBuffer : public MVKDispatchableVulkanAPIObject, public MVKDeviceTrackingMixin {
-
+class MVKCommandBuffer : public MVKDispatchableVulkanAPIObject,
+						 public MVKDeviceTrackingMixin,
+						 public MVKLinkableMixin<MVKCommandBuffer> {
 public:
 
 	/** Returns the Vulkan type of this object. */
@@ -95,13 +96,6 @@ public:
      * buffer during command execution, and begin a new Metal renderpass.
      */
     id<MTLBuffer> _initialVisibilityResultMTLBuffer;
-
-	/**
-	 * Instances of this class can participate in a linked list or pool. When so participating,
-	 * this is a reference to the next instance in the list or pool. This value should only be
-	 * managed and set by the list or pool.
-	 */
-	MVKCommandBuffer* _next;
 
 
 #pragma mark Constituent render pass management
@@ -246,7 +240,7 @@ protected:
 
 
 /*** Holds a collection of active queries for each query pool. */
-typedef std::unordered_map<MVKQueryPool*, std::vector<uint32_t>> MVKActivatedQueries;
+typedef std::unordered_map<MVKQueryPool*, MVKVectorInline<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
 
 /** 
  * MVKCommandEncoder uses a visitor design pattern iterate the commands in a MVKCommandBuffer, 
@@ -288,6 +282,9 @@ public:
 
     /** Binds a pipeline to a bind point. */
     void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline);
+
+	/** Encodes an operation to signal an event to a status. */
+	void signalEvent(MVKEvent* mvkEvent, bool status);
 
     /**
      * If a pipeline is currently bound, returns whether the current pipeline permits dynamic

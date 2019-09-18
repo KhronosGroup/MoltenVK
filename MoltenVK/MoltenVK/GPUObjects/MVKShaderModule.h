@@ -20,9 +20,9 @@
 
 #include "MVKDevice.h"
 #include "MVKSync.h"
+#include "MVKVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <MoltenVKGLSLToSPIRVConverter/GLSLToSPIRVConverter.h>
-#include <vector>
 #include <mutex>
 
 #import <Metal/Metal.h>
@@ -151,7 +151,7 @@ protected:
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
-	std::vector<std::pair<SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>> _shaderLibraries;
+	MVKVectorInline<std::pair<SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>, 4> _shaderLibraries;
 };
 
 

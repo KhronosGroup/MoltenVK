@@ -40,7 +40,7 @@ static VkExtensionProperties mvkMakeExtProps(const char* extensionName, uint32_t
 }
 
 // Extension properties
-#define MVK_EXTENSION(var, EXT) \
+#define MVK_EXTENSION(var, EXT, type) \
 static VkExtensionProperties kVkExtProps_ ##EXT = mvkMakeExtProps(VK_ ##EXT ##_EXTENSION_NAME, VK_ ##EXT ##_SPEC_VERSION);
 #include "MVKExtensions.def"
 
@@ -49,6 +49,9 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #if MVK_MACOS
 	if (pProperties == &kVkExtProps_EXT_HDR_METADATA) {
 		return mvkOSVersion() >= 10.15;
+	}
+	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) {
+		return mvkOSVersion() >= 10.13;
 	}
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
 		return mvkOSVersion() >= 10.13;
@@ -70,6 +73,9 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #if MVK_IOS
 	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
 	if (pProperties == &kVkExtProps_EXT_HDR_METADATA) { return false; }
+	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) {
+		return mvkOSVersion() >= 11.0;
+	}
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
 		return mvkOSVersion() >= 11.0;
 	}
@@ -105,8 +111,8 @@ MVKExtension::MVKExtension(VkExtensionProperties* pProperties, bool enableForPla
 #pragma mark MVKExtensionList
 
 MVKExtensionList::MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableForPlatform) : _apiObject(apiObject),
-#define MVK_EXTENSION_LAST(var, EXT)	vk_ ##var(&kVkExtProps_ ##EXT, enableForPlatform)
-#define MVK_EXTENSION(var, EXT)			MVK_EXTENSION_LAST(var, EXT),
+#define MVK_EXTENSION_LAST(var, EXT, type)		vk_ ##var(&kVkExtProps_ ##EXT, enableForPlatform)
+#define MVK_EXTENSION(var, EXT, type)			MVK_EXTENSION_LAST(var, EXT, type),
 #include "MVKExtensions.def"
 {
 	initCount();
@@ -117,7 +123,21 @@ MVKExtensionList::MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableFor
 void MVKExtensionList::initCount() {
 	_count = 0;
 
-#define MVK_EXTENSION(var, EXT) _count++;
+#define MVK_EXTENSION(var, EXT, type) _count++;
+#include "MVKExtensions.def"
+}
+
+void MVKExtensionList::disableAllButEnabledInstanceExtensions() {
+#define MVK_EXTENSION_INSTANCE	true
+#define MVK_EXTENSION_DEVICE	false
+#define MVK_EXTENSION(var, EXT, type) vk_ ##var.enabled = type && vk_ ##var.enabled;
+#include "MVKExtensions.def"
+}
+
+void MVKExtensionList::disableAllButEnabledDeviceExtensions() {
+#define MVK_EXTENSION_INSTANCE	false
+#define MVK_EXTENSION_DEVICE	true
+#define MVK_EXTENSION(var, EXT, type) vk_ ##var.enabled = type && vk_ ##var.enabled;
 #include "MVKExtensions.def"
 }
 
@@ -157,7 +177,7 @@ void MVKExtensionList::enable(const char* extnName) {
 	}
 }
 
-VkResult MVKExtensionList::enable(uint32_t count, const char* const* names, MVKExtensionList* parent) {
+VkResult MVKExtensionList::enable(uint32_t count, const char* const* names, const MVKExtensionList* parent) {
 	VkResult result = VK_SUCCESS;
 	for (uint32_t i = 0; i < count; i++) {
 		auto extnName = names[i];
@@ -188,14 +208,14 @@ string MVKExtensionList::enabledNamesString(const char* separator, bool prefixFi
 	return logMsg;
 }
 
-VkResult MVKExtensionList::getProperties(uint32_t* pCount, VkExtensionProperties* pProperties) {
+VkResult MVKExtensionList::getProperties(uint32_t* pCount, VkExtensionProperties* pProperties) const {
 
 	uint32_t enabledCnt = 0;
 
 	// Iterate extensions and handle those that are enabled. Count them,
 	// and if they are to be returned, and there is room, do so.
 	uint32_t extnCnt = getCount();
-	MVKExtension* extnAry = &extensionArray;
+	const MVKExtension* extnAry = &extensionArray;
 	for (uint32_t extnIdx = 0; extnIdx < extnCnt; extnIdx++) {
 		if (extnAry[extnIdx].enabled) {
 			if (pProperties) {

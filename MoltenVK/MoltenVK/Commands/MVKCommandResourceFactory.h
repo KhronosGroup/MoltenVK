@@ -207,18 +207,24 @@ typedef struct MVKMTLDepthStencilDescriptorData_t {
 		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
 	}
 
-    MVKMTLDepthStencilDescriptorData_t() {
+	/** Disable depth and/or stencil testing. */
+	void disable(bool disableDepth, bool disableStencil) {
+		if (disableDepth) {
+			depthCompareFunction = MTLCompareFunctionAlways;
+			depthWriteEnabled = false;
+		}
+		if (disableStencil) {
+			frontFaceStencilData = kMVKMTLStencilDescriptorDataDefault;
+			backFaceStencilData = kMVKMTLStencilDescriptorDataDefault;
+		}
+	}
 
-        // Start with all zeros to ensure memory comparisons will work,
-        // even if the structure contains alignment gaps.
-        memset(this, 0, sizeof(*this));
-
-        depthCompareFunction = MTLCompareFunctionAlways;
-        depthWriteEnabled = false;
-
-        frontFaceStencilData = kMVKMTLStencilDescriptorDataDefault;
-        backFaceStencilData = kMVKMTLStencilDescriptorDataDefault;
-    }
+	MVKMTLDepthStencilDescriptorData_t() {
+		// Start with all zeros to ensure memory comparisons will work,
+		// even if the structure contains alignment gaps.
+		memset(this, 0, sizeof(*this));
+		disable(true, true);
+	}
 
 } __attribute__((aligned(sizeof(uint64_t)))) MVKMTLDepthStencilDescriptorData;
 
@@ -345,10 +351,7 @@ public:
 	id<MTLRenderPipelineState> newCmdClearMTLRenderPipelineState(MVKRPSKeyClearAtt& attKey,
 																 MVKVulkanAPIDeviceObject* owner);
 
-	/**
-	 * Returns a new MTLDepthStencilState dedicated to rendering to several 
-	 * attachments to support clearing regions of those attachments.
-	 */
+	/** Returns a new MTLDepthStencilState that always writes to the depth and/or stencil attachments. */
 	id<MTLDepthStencilState> newMTLDepthStencilState(bool useDepth, bool useStencil);
 
     /**

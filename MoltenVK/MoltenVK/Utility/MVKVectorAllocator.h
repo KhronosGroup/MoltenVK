@@ -21,6 +21,10 @@
 #include <new>
 #include <type_traits>
 
+
+#define MVK_VECTOR_CHECK_BOUNDS if (i >= num_elements_used) { throw std::out_of_range("Index out of range"); }
+
+
 namespace mvk_memory_allocator
 {
   inline char *alloc( const size_t num_bytes )
@@ -53,8 +57,8 @@ public:
   mvk_vector_allocator_base( T *_ptr, const size_t _num_elements_used ) : ptr{ _ptr },    num_elements_used{ _num_elements_used } { }
   virtual ~mvk_vector_allocator_base() { }
 
-  const T &operator[]( const size_t i ) const { return ptr[i]; }
-  T       &operator[]( const size_t i )       { return ptr[i]; }
+  const T &operator[]( const size_t i ) const { MVK_VECTOR_CHECK_BOUNDS return ptr[i]; }
+  T       &operator[]( const size_t i )       { MVK_VECTOR_CHECK_BOUNDS return ptr[i]; }
 
   size_t size() const { return num_elements_used; }
 

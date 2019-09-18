@@ -23,14 +23,36 @@
 #include <mutex>
 
 
+/**
+ * Instances of sublcasses of this mixin can participate in a typed linked list or pool.
+ * A simple implementation of the CRTP (https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern).
+ */
+template <class T>
+class MVKLinkableMixin {
+
+public:
+
+	/**
+	 * When participating in a linked list or pool, this is a reference to the next instance
+	 * in the list or pool. This value should only be managed and set by the list or pool.
+	 */
+	T* _next = nullptr;
+
+protected:
+	friend T;
+	MVKLinkableMixin() {};
+};
+
+
 #pragma mark -
 #pragma mark MVKObjectPool
 
 /**
  * Manages a pool of instances of a particular object type.
  *
- * The objects managed by this pool must have public member variable named "_next", 
- * of the same object type, which is used by this pool to create a linked list of objects.
+ * The objects managed by this pool should derive from MVKLinkableMixin, or otherwise
+ * support a public member variable named "_next", of the same object type, which is
+ * used by this pool to create a linked list of objects.
  *
  * When this pool is destroyed, any objects contained in the pool are also destroyed.
  *

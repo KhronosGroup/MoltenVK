@@ -77,7 +77,7 @@ void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
 													  afterStages: srcStages
 													 beforeStages: dstStages];
 		}
-		std::vector<id<MTLResource>> resources;
+		MVKVectorInline<id<MTLResource>, 16> resources;
 		resources.reserve(_bufferMemoryBarriers.size() + _imageMemoryBarriers.size());
 		for (auto& mb : _bufferMemoryBarriers) {
 			auto* mvkBuff = (MVKBuffer*)mb.buffer;
@@ -347,6 +347,54 @@ MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
 
 
 #pragma mark -
+#pragma mark MVKCmdSetResetEvent
+
+void MVKCmdSetResetEvent::setContent(VkEvent event, VkPipelineStageFlags stageMask, bool status) {
+	_mvkEvent = (MVKEvent*)event;
+	_status = status;
+}
+
+void MVKCmdSetResetEvent::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->signalEvent(_mvkEvent, _status);
+}
+
+MVKCmdSetResetEvent::MVKCmdSetResetEvent(MVKCommandTypePool<MVKCmdSetResetEvent>* pool)
+	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
+
+
+#pragma mark -
+#pragma mark MVKCmdWaitEvents
+
+void MVKCmdWaitEvents::setContent(uint32_t eventCount,
+							   const VkEvent* pEvents,
+							   VkPipelineStageFlags srcStageMask,
+							   VkPipelineStageFlags dstStageMask,
+							   uint32_t memoryBarrierCount,
+							   const VkMemoryBarrier* pMemoryBarriers,
+							   uint32_t bufferMemoryBarrierCount,
+							   const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+							   uint32_t imageMemoryBarrierCount,
+							   const VkImageMemoryBarrier* pImageMemoryBarriers) {
+
+	_mvkEvents.clear();	// Clear for reuse
+	_mvkEvents.reserve(eventCount);
+	for (uint32_t i = 0; i < eventCount; i++) {
+		_mvkEvents.push_back((MVKEvent*)pEvents[i]);
+	}
+
+}
+
+void MVKCmdWaitEvents::encode(MVKCommandEncoder* cmdEncoder) {
+	for (MVKEvent* mvkEvt : _mvkEvents) {
+		mvkEvt->encodeWait(cmdEncoder->_mtlCmdBuffer);
+	}
+}
+
+MVKCmdWaitEvents::MVKCmdWaitEvents(MVKCommandTypePool<MVKCmdWaitEvents>* pool)
+	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
+
+
+#pragma mark -
 #pragma mark Command creation functions
 
 void mvkCmdPipelineBarrier(MVKCommandBuffer* cmdBuff,
@@ -419,4 +467,44 @@ void mvkCmdPushDescriptorSetWithTemplate(MVKCommandBuffer* cmdBuff,
 	MVKCmdPushDescriptorSetWithTemplate* cmd = cmdBuff->_commandPool->_cmdPushSetWithTemplatePool.acquireObject();
 	cmd->setContent(descUpdateTemplate, layout, set, pData);
 	cmdBuff->addCommand(cmd);
+}
+
+void mvkCmdSetEvent(MVKCommandBuffer* cmdBuff,
+					VkEvent event,
+					VkPipelineStageFlags stageMask) {
+	MVKCmdSetResetEvent* cmd = cmdBuff->_commandPool->_cmdSetResetEventPool.acquireObject();
+	cmd->setContent(event, stageMask, true);
+	cmdBuff->addCommand(cmd);
+}
+
+void mvkCmdResetEvent(MVKCommandBuffer* cmdBuff,
+					  VkEvent event,
+					  VkPipelineStageFlags stageMask) {
+	MVKCmdSetResetEvent* cmd = cmdBuff->_commandPool->_cmdSetResetEventPool.acquireObject();
+	cmd->setContent(event, stageMask, false);
+	cmdBuff->addCommand(cmd);
+}
+
+void mvkCmdWaitEvents(MVKCommandBuffer* cmdBuff,
+					  uint32_t eventCount,
+					  const VkEvent* pEvents,
+					  VkPipelineStageFlags srcStageMask,
+					  VkPipelineStageFlags dstStageMask,
+					  uint32_t memoryBarrierCount,
+					  const VkMemoryBarrier* pMemoryBarriers,
+					  uint32_t bufferMemoryBarrierCount,
+					  const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+					  uint32_t imageMemoryBarrierCount,
+					  const VkImageMemoryBarrier* pImageMemoryBarriers) {
+	MVKCmdWaitEvents* cmd = cmdBuff->_commandPool->_cmdWaitEventsPool.acquireObject();
+	cmd->setContent(eventCount, pEvents,
+					srcStageMask, dstStageMask,
+					memoryBarrierCount, pMemoryBarriers,
+					bufferMemoryBarrierCount, pBufferMemoryBarriers,
+					imageMemoryBarrierCount, pImageMemoryBarriers);
+	cmdBuff->addCommand(cmd);
+}
+
+void mvkCmdSetDeviceMask(MVKCommandBuffer* cmdBuff, uint32_t deviceMask) {
+	// No-op for now...
 }

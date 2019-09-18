@@ -117,10 +117,8 @@ void MVKBuffer::applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
 #endif
 }
 
-/**
- * Returns whether the specified buffer memory barrier requires a sync between this
- * buffer and host memory for the purpose of the host reading texture memory.
- */
+// Returns whether the specified buffer memory barrier requires a sync between this
+// buffer and host memory for the purpose of the host reading texture memory.
 bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 								  VkPipelineStageFlags dstStageMask,
 								  VkBufferMemoryBarrier* pBufferMemoryBarrier) {

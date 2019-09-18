@@ -308,6 +308,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	_shaderConversionResults.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
 	_shaderConversionResults.needsBufferSizeBuffer = pMSLCompiler && pMSLCompiler->needs_buffer_size_buffer();
 	_shaderConversionResults.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
+	_shaderConversionResults.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 
 	if (context.stageSupportsVertexAttributes()) {
 		for (auto& ctxVA : context.vertexAttributes) {
@@ -424,7 +425,7 @@ void SPIRVToMSLConverter::populateWorkgroupDimension(SPIRVWorkgroupSizeDimension
 													 uint32_t size,
 													 SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst) {
 	wgDim.size = max(size, 1u);
-	wgDim.isSpecialized = (spvSpecConst.id != 0);
+	wgDim.isSpecialized = (uint32_t(spvSpecConst.id) != 0);
 	wgDim.specializationID = spvSpecConst.constant_id;
 }
 

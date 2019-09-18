@@ -257,7 +257,7 @@ protected:
 						   VkPipelineStageFlags dstStageMask,
 						   VkImageMemoryBarrier* pImageMemoryBarrier);
 
-	std::vector<MVKImageSubresource> _subresources;
+	MVKVectorInline<MVKImageSubresource, 4> _subresources;
 	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     VkExtent3D _extent;
     uint32_t _mipLevels;
@@ -394,9 +394,6 @@ protected:
 #pragma mark -
 #pragma mark MVKSwapchainImage
 
-/** Tracks a semaphore and fence for later signaling. */
-typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
-
 /** Indicates the relative availability of each image in the swapchain. */
 typedef struct MVKSwapchainImageAvailability_t {
 	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
@@ -406,33 +403,24 @@ typedef struct MVKSwapchainImageAvailability_t {
 	bool operator< (const MVKSwapchainImageAvailability_t& rhs) const;
 } MVKSwapchainImageAvailability;
 
+
 /** Represents a Vulkan image used as a rendering destination within a swapchain. */
 class MVKSwapchainImage : public MVKImage {
 
 public:
 
-	/** Returns the encompassing swapchain. */
-	inline MVKSwapchain* getSwapchain() { return _swapchain; }
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
 
-	/** Returns the index of this image within the encompassing swapchain. */
-	inline uint32_t getSwapchainIndex() { return _swapchainIndex; }
-
-	/**
-	 * Registers a semaphore and/or fence that will be signaled when this image becomes available.
-	 * This function accepts both a semaphore and a fence, and either none, one, or both may be provided.
-	 * If this image is available already, the semaphore and fence are immediately signaled.
-	 */
-	void signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
-
-	/** Returns the availability status of this image, relative to other images in the swapchain. */
-	const MVKSwapchainImageAvailability* getAvailability();
+	/** Binds this resource according to the specified bind information. */
+	VkResult bindDeviceMemory2(const void* pBindInfo) override;
 
 	
 #pragma mark Metal
 
 	/**
 	 * Presents the contained drawable to the OS, releases the Metal drawable and its 
-	 * texture back to the Metal layer's pool, and makes this image available for new use.
+	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
 	 *
 	 * If mtlCmdBuff is not nil, the contained drawable is scheduled for presentation using
 	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
@@ -449,25 +437,18 @@ public:
 					  MVKSwapchain* swapchain,
 					  uint32_t swapchainIndex);
 
-	~MVKSwapchainImage() override;
+	/** Constructs an instance for the specified device and swapchain, without binding to a particular swapchain image index. */
+	MVKSwapchainImage(MVKDevice* device,
+					  const VkImageCreateInfo* pCreateInfo,
+					  MVKSwapchain* swapchain);
 
 protected:
 	id<MTLTexture> newMTLTexture() override;
 	id<CAMetalDrawable> getCAMetalDrawable();
-	void resetCAMetalDrawable();
     void resetMetalSurface();
-	void signal(MVKSwapchainSignaler& signaler);
-	void markAsTracked(MVKSwapchainSignaler& signaler);
-	void unmarkAsTracked(MVKSwapchainSignaler& signaler);
-	void makeAvailable();
     void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
 	MVKSwapchain* _swapchain;
 	uint32_t _swapchainIndex;
-	id<CAMetalDrawable> _mtlDrawable;
-	std::mutex _availabilityLock;
-	MVKVectorInline<MVKSwapchainSignaler, 4> _availabilitySignalers;
-	MVKSwapchainSignaler _preSignaled;
-	MVKSwapchainImageAvailability _availability;
 };
 
