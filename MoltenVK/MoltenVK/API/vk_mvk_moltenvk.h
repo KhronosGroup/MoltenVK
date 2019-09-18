@@ -50,12 +50,12 @@ typedef unsigned long MTLLanguageVersion;
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   36
+#define MVK_VERSION_PATCH   37
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            21
+#define VK_MVK_MOLTENVK_SPEC_VERSION            22
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -102,8 +102,8 @@ typedef unsigned long MTLLanguageVersion;
  *      2: Log errors and informational messages.
  *    If neither is set, errors and informational messages are logged.
  *
- * 2. Setting the MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time build
- *    setting will cause MoltenVK to log the name of each Vulkan call made by the application. The logging
+ * 2. The MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time build
+ *    setting causes MoltenVK to log the name of each Vulkan call made by the application. The logging
  *    format options can be controlled by setting the value of MVK_CONFIG_TRACE_VULKAN_CALLS as follows:
  *        0: No Vulkan call logging.
  *        1: Log the name of each Vulkan call when the call is entered.
@@ -114,9 +114,23 @@ typedef unsigned long MTLLanguageVersion;
  * 3. Setting the MVK_CONFIG_FORCE_LOW_POWER_GPU runtime environment variable or MoltenVK compile-time
  *    build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.
  *
- * 4. Setting the MVK_ALLOW_METAL_EVENTS runtime environment variable or MoltenVK compile-time build
- *    setting to 1 will cause MoltenVK to use Metal events, if they are available on the device, for
- *    Vulkan sychronization components such as VkSemaphore. This is disabled by default.
+ * 4. Setting the MVK_ALLOW_METAL_FENCES or MVK_ALLOW_METAL_EVENTS runtime environment variable
+ *    or MoltenVK compile-time build setting to 1 will cause MoltenVK to use MTLFence or MTLEvent
+ *    if they are available on the device, for VkSemaphore sychronization behaviour.
+ *    If both variables are set, MVK_ALLOW_METAL_FENCES takes priority over MVK_ALLOW_METAL_EVENTS.
+ *    Both options are disabled by default.
+ *
+ * 5. The MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE runtime environment variable or MoltenVK compile-time
+ *    build setting controls whether Xcode should run an automatic GPU capture without the user
+ *    having to trigger it manually via the Xcode user interface, and controls the scope under
+ *    which that GPU capture will occur. This is useful when trying to capture a one-shot GPU
+ *    trace, such as when running a Vulkan CTS test case. For the automatic GPU capture to occur,
+ *    the Xcode scheme under which the app is run must have the Metal GPU capture option turned on.
+ *    MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE should not be set to manually trigger a GPU capture via the
+ *    Xcode user interface.
+ *      0: No automatic GPU capture.
+ *      1: Capture all GPU commands issued during the lifetime of the VkDevice.
+ *    If none of these is set, no automatic GPU capture will occur.
  */
 typedef struct {
 
@@ -167,7 +181,10 @@ typedef struct {
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, the value of this parameter defaults to true.
+	 * If neither is set, the value of this parameter defaults to true for macOS 10.14
+	 * and above or iOS 12 and above, and false otherwise. The reason for this distinction
+	 * is that this feature should be disabled when emulation is required to support VkEvents
+	 * because native support for events (MTLEvent) is not available.
 	 */
 	VkBool32 synchronousQueueSubmits;
 
@@ -191,7 +208,7 @@ typedef struct {
 	 * buffers (VK_COMMAND_BUFFER_LEVEL_SECONDARY), or for primary command buffers that are intended
 	 * to be submitted to multiple queues concurrently (VK_COMMAND_BUFFER_USAGE_SIMULTANEOUS_USE_BIT).
 	 *
-	 * When enabling this features, be aware that one Metal command buffer is required for each Vulkan
+	 * When enabling this feature, be aware that one Metal command buffer is required for each Vulkan
 	 * command buffer. Depending on the number of command buffers that you use, you may also need to
 	 * change the value of the maxActiveMetalCommandBuffersPerQueue setting.
 	 *
@@ -251,18 +268,7 @@ typedef struct {
 	 */
 	VkBool32 supportLargeQueryPools;
 
-	/**
-	 * If enabled, each surface presentation is scheduled using a command buffer. Enabling this
-	 * setting may improve rendering frame synchronization, but may result in reduced frame rates.
-	 *
-	 * The value of this parameter may be changed at any time during application runtime,
-	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
-	 *
-	 * The initial value or this parameter is set by the
-	 * MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER
-	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, the value of this parameter defaults to true.
-	 */
+	/** Obsolete, ignored, and deprecated. All surface presentations are performed with a command buffer. */
 	VkBool32 presentWithCommandBuffer;
 
 	/**
@@ -534,12 +540,14 @@ typedef struct {
 	VkBool32 arrayOfSamplers;			 	  	/**< If true, arrays of texture samplers is supported. */
 	MTLLanguageVersion mslVersionEnum;			/**< The version of the Metal Shading Language available on this device, as a Metal enumeration. */
 	VkBool32 depthSampleCompare;				/**< If true, depth texture samplers support the comparison of the pixel value against a reference value. */
-	VkBool32 events;							/**< If true, Metal synchronization events are supported. */
+	VkBool32 events;							/**< If true, Metal synchronization events (MTLEvent) are supported. */
 	VkBool32 memoryBarriers;					/**< If true, full memory barriers within Metal render passes are supported. */
 	VkBool32 multisampleLayeredRendering;       /**< If true, layered rendering to multiple multi-sampled cube or texture array layers is supported. */
 	VkBool32 stencilFeedback;					/**< If true, fragment shaders that write to [[stencil]] outputs are supported. */
 	VkBool32 textureBuffers;					/**< If true, textures of type MTLTextureTypeBuffer are supported. */
 	VkBool32 postDepthCoverage;					/**< If true, coverage masks in fragment shaders post-depth-test are supported. */
+	VkBool32 fences;							/**< If true, Metal synchronization fences (MTLFence) are supported. */
+	VkBool32 rasterOrderGroups;					/**< If true, Raster order groups in fragment shaders are supported. */
 	VkBool32 native3DCompressedTextures;		/**< If true, 3D compressed images are supported natively, without manual decompression. */
 	VkBool32 nativeTextureSwizzle;				/**< If true, component swizzle is supported natively, without manual swizzling in shaders. */
 	VkBool32 placementHeaps;					/**< If true, MTLHeap objects support placement of resources. */

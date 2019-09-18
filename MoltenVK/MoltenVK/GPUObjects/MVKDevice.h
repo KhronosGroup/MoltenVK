@@ -22,9 +22,9 @@
 #include "MVKVulkanAPIObject.h"
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
+#include "MVKVector.h"
 #include "mvk_datatypes.hpp"
 #include "vk_mvk_moltenvk.h"
-#include <vector>
 #include <string>
 #include <mutex>
 
@@ -47,6 +47,7 @@ class MVKSwapchain;
 class MVKDeviceMemory;
 class MVKFence;
 class MVKSemaphore;
+class MVKEvent;
 class MVKQueryPool;
 class MVKShaderModule;
 class MVKPipelineCache;
@@ -67,6 +68,10 @@ class MVKCommandResourceFactory;
 const static uint32_t kMVKVertexContentBufferIndex = 0;
 
 // Parameters to define the sizing of inline collections
+const static uint32_t kMVKQueueFamilyCount = 4;
+const static uint32_t kMVKQueueCountPerQueueFamily = 1;		// Must be 1. See comments in MVKPhysicalDevice::getQueueFamilies()
+const static uint32_t kMVKMinSwapchainImageCount = 2;
+const static uint32_t kMVKMaxSwapchainImageCount = 3;
 const static uint32_t kMVKCachedViewportScissorCount = 16;
 const static uint32_t kMVKCachedColorAttachmentCount = 8;
 
@@ -337,8 +342,7 @@ protected:
 	uint64_t getRecommendedMaxWorkingSetSize();
 	uint64_t getCurrentAllocatedSize();
 	void initExtensions();
-	MVKExtensionList* getSupportedExtensions(const char* pLayerName = nullptr);
-	std::vector<MVKQueueFamily*>& getQueueFamilies();
+	MVKVector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
 	uint64_t getSpirvCrossRevision();
@@ -347,13 +351,13 @@ protected:
 
 	id<MTLDevice> _mtlDevice;
 	MVKInstance* _mvkInstance;
-	MVKExtensionList _supportedExtensions;
+	const MVKExtensionList _supportedExtensions;
 	VkPhysicalDeviceFeatures _features;
 	MVKPhysicalDeviceMetalFeatures _metalFeatures;
 	VkPhysicalDeviceProperties _properties;
 	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
-	std::vector<MVKQueueFamily*> _queueFamilies;
+	MVKVectorInline<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
 	uint32_t _hostCoherentMemoryTypes;
@@ -364,6 +368,11 @@ protected:
 
 #pragma mark -
 #pragma mark MVKDevice
+
+typedef struct {
+	id<MTLBlitCommandEncoder> mtlBlitEncoder = nil;
+	id<MTLCommandBuffer> mtlCmdBuffer = nil;
+} MVKMTLBlitEncoder;
 
 /** Represents a Vulkan logical GPU device, associated with a physical device. */
 class MVKDevice : public MVKDispatchableVulkanAPIObject {
@@ -392,7 +401,7 @@ public:
 	PFN_vkVoidFunction getProcAddr(const char* pName);
 
 	/** Retrieves a queue at the specified index within the specified family. */
-	MVKQueue* getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex);
+	MVKQueue* getQueue(uint32_t queueFamilyIndex = 0, uint32_t queueIndex = 0);
 
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
@@ -406,6 +415,9 @@ public:
 
 	/** Populates the device group surface presentation modes. */
 	VkResult getDeviceGroupSurfacePresentModes(MVKSurface* surface, VkDeviceGroupPresentModeFlagsKHR* pModes);
+
+	/** Populates the device group peer memory features. */
+	void getPeerMemoryFeatures(uint32_t heapIndex, uint32_t localDevice, uint32_t remoteDevice, VkPeerMemoryFeatureFlags* pPeerMemoryFeatures);
 
 
 #pragma mark Object lifecycle
@@ -450,6 +462,11 @@ public:
 								  const VkAllocationCallbacks* pAllocator);
 	void destroySemaphore(MVKSemaphore* mvkSem4,
 						  const VkAllocationCallbacks* pAllocator);
+
+	MVKEvent* createEvent(const VkEventCreateInfo* pCreateInfo,
+						  const VkAllocationCallbacks* pAllocator);
+	void destroyEvent(MVKEvent* mvkEvent,
+					  const VkAllocationCallbacks* pAllocator);
 
 	MVKQueryPool* createQueryPool(const VkQueryPoolCreateInfo* pCreateInfo,
 								  const VkAllocationCallbacks* pAllocator);
@@ -525,6 +542,9 @@ public:
 	void freeMemory(MVKDeviceMemory* mvkDevMem,
 					const VkAllocationCallbacks* pAllocator);
 
+
+#pragma mark Operations
+
 	/** Applies the specified global memory barrier to all resource issued by this device. */
 	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 							VkPipelineStageFlags dstStageMask,
@@ -561,6 +581,9 @@ public:
 
     /** Populates the specified statistics structure from the current activity performance statistics. */
     void getPerformanceStatistics(MVKPerformanceStatistics* pPerf);
+
+	/** Invalidates the memory regions. */
+	VkResult invalidateMappedMemoryRanges(uint32_t memRangeCount, const VkMappedMemoryRange* pMemRanges);
 
 
 #pragma mark Metal
@@ -625,6 +648,7 @@ public:
 	const VkPhysicalDeviceFloat16Int8FeaturesKHR _enabledF16I8Features;
 	const VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR _enabledUBOLayoutFeatures;
 	const VkPhysicalDeviceVariablePointerFeatures _enabledVarPtrFeatures;
+	const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT _enabledInterlockFeatures;
 	const VkPhysicalDeviceHostQueryResetFeaturesEXT _enabledHostQryResetFeatures;
 	const VkPhysicalDeviceScalarBlockLayoutFeaturesEXT _enabledScalarLayoutFeatures;
 	const VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT _enabledTexelBuffAlignFeatures;
@@ -645,6 +669,16 @@ public:
 
     /** Performance statistics. */
     MVKPerformanceStatistics _performanceStatistics;
+
+	// Indicates whether semaphores should use a MTLFence if available.
+	// Set by the MVK_ALLOW_METAL_FENCES environment variable if MTLFences are available.
+	// This should be a temporary fix after some repair to semaphore handling.
+	bool _useMTLFenceForSemaphores;
+
+	// Indicates whether semaphores should use a MTLEvent if available.
+	// Set by the MVK_ALLOW_METAL_EVENTS environment variable if MTLEvents are available.
+	// This should be a temporary fix after some repair to semaphore handling.
+	bool _useMTLEventForSemaphores;
 
 
 #pragma mark Construction
@@ -687,8 +721,8 @@ protected:
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
 	MTLCompileOptions* _mtlCompileOptions;
-	std::vector<std::vector<MVKQueue*>> _queuesByQueueFamilyIndex;
-	std::vector<MVKResource*> _resources;
+	MVKVectorInline<MVKVectorInline<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
+	MVKVectorInline<MVKResource*, 256> _resources;
 	std::mutex _rezLock;
     std::mutex _perfLock;
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;

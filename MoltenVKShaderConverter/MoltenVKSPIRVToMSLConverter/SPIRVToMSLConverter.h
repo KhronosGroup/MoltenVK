@@ -204,6 +204,7 @@ namespace mvk {
 		bool needsPatchOutputBuffer = false;
 		bool needsBufferSizeBuffer = false;
 		bool needsInputThreadgroupMem = false;
+		bool needsDispatchBaseBuffer = false;
 
 		void reset() { *this = SPIRVToMSLConversionResults(); }
 

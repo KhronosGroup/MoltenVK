@@ -165,7 +165,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	}
 }
 
-void MVKRenderSubpass::populateClearAttachments(vector<VkClearAttachment>& clearAtts,
+void MVKRenderSubpass::populateClearAttachments(MVKVector<VkClearAttachment>& clearAtts,
 												MVKVector<VkClearValue>& clearValues) {
 	VkClearAttachment cAtt;
 
@@ -321,9 +321,19 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 		}
 	}
 
-    _info = *pCreateInfo;
+	_info = validate(pCreateInfo);
 }
 
+// Validate and potentially modify the create info
+VkAttachmentDescription MVKRenderPassAttachment::validate(const VkAttachmentDescription* pCreateInfo) {
+	VkAttachmentDescription info = *pCreateInfo;
+
+	if ( !_renderPass->getMTLPixelFormatFromVkFormat(info.format) ) {
+		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", mvkVkFormatName(info.format)));
+	}
+
+	return info;
+}
 
 #pragma mark -
 #pragma mark MVKRenderPass

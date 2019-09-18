@@ -52,7 +52,7 @@ public:
 
 	union {
 		struct {
-#define MVK_EXTENSION(var, EXT) MVKExtension vk_ ##var;
+#define MVK_EXTENSION(var, EXT, type) MVKExtension vk_ ##var;
 #include "MVKExtensions.def"
 		};
 		MVKExtension extensionArray;
@@ -77,13 +77,25 @@ public:
 	 * for it to be enabled here. If it is not enabled in the parent, an error is logged
 	 * and returned. Returns VK_SUCCESS if all requested extensions were able to be enabled.
 	 */
-	VkResult enable(uint32_t count, const char* const* names, MVKExtensionList* parent = nullptr);
+	VkResult enable(uint32_t count, const char* const* names, const MVKExtensionList* parent = nullptr);
 
 	/**
 	 * Returns a string containing the names of the enabled extensions, separated by the separator string.
 	 * If prefixFirstWithSeparator is true the separator will also appear before the first extension name.
 	 */
 	std::string enabledNamesString(const char* separator = " ", bool prefixFirstWithSeparator = false) const;
+
+	/**
+	 * Disables all extensions except instance extensions that are already enabled,
+	 * effectively leaving a list of platform-supported instance extensions.
+	 */
+	void disableAllButEnabledInstanceExtensions();
+
+	/**
+	 * Disables all extensions except device extensions that are already enabled,
+	 * effectively leaving a list of platform-supported device extensions.
+	 */
+	void disableAllButEnabledDeviceExtensions();
 
 	/**
 	 * If pProperties is null, the value of pCount is updated with the number of extensions
@@ -97,7 +109,7 @@ public:
 	 * enabled in this list is larger than the specified pCount. Returns other values
 	 * if an error occurs.
 	 */
-	VkResult getProperties(uint32_t* pCount, VkExtensionProperties* pProperties);
+	VkResult getProperties(uint32_t* pCount, VkExtensionProperties* pProperties) const;
 
 	MVKExtensionList(MVKVulkanAPIObject* apiObject, bool enableForPlatform = false);
 

@@ -20,7 +20,6 @@
 
 #include "MVKCommand.h"
 #include "MVKVector.h"
-#include <vector>
 
 class MVKCommandBuffer;
 class MVKPipeline;
@@ -54,9 +53,9 @@ private:
 	VkPipelineStageFlags _srcStageMask;
 	VkPipelineStageFlags _dstStageMask;
 	VkDependencyFlags _dependencyFlags;
-	std::vector<VkMemoryBarrier> _memoryBarriers;
-	std::vector<VkBufferMemoryBarrier> _bufferMemoryBarriers;
-	std::vector<VkImageMemoryBarrier> _imageMemoryBarriers;
+	MVKVectorInline<VkMemoryBarrier, 4> _memoryBarriers;
+	MVKVectorInline<VkBufferMemoryBarrier, 4> _bufferMemoryBarriers;
+	MVKVectorInline<VkImageMemoryBarrier, 4> _imageMemoryBarriers;
 };
 
 
@@ -191,6 +190,54 @@ private:
 
 
 #pragma mark -
+#pragma mark MVKCmdSetResetEvent
+
+/** Vulkan command to set or reset an event. */
+class MVKCmdSetResetEvent : public MVKCommand {
+
+public:
+	void setContent(VkEvent event, VkPipelineStageFlags stageMask, bool status);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	MVKCmdSetResetEvent(MVKCommandTypePool<MVKCmdSetResetEvent>* pool);
+
+private:
+	MVKEvent* _mvkEvent;
+	bool _status;
+
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdWaitEvents
+
+/** Vulkan command to wait for an event to be signaled. */
+class MVKCmdWaitEvents : public MVKCommand {
+
+public:
+	void setContent(uint32_t eventCount,
+					const VkEvent* pEvents,
+					VkPipelineStageFlags srcStageMask,
+					VkPipelineStageFlags dstStageMask,
+					uint32_t memoryBarrierCount,
+					const VkMemoryBarrier* pMemoryBarriers,
+					uint32_t bufferMemoryBarrierCount,
+					const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+					uint32_t imageMemoryBarrierCount,
+					const VkImageMemoryBarrier* pImageMemoryBarriers);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+	MVKCmdWaitEvents(MVKCommandTypePool<MVKCmdWaitEvents>* pool);
+
+private:
+	MVKVectorInline<MVKEvent*, 4> _mvkEvents;
+
+};
+
+
+#pragma mark -
 #pragma mark Command creation functions
 
 /** Adds commands to the specified command buffer that insert the specified pipeline barriers. */
@@ -242,3 +289,30 @@ void mvkCmdPushDescriptorSetWithTemplate(MVKCommandBuffer* cmdBuff,
 										 VkPipelineLayout layout,
 										 uint32_t set,
 										 const void* pData);
+
+/** Adds a set event command to the specified command buffer. */
+void mvkCmdSetEvent(MVKCommandBuffer* cmdBuff,
+					VkEvent event,
+					VkPipelineStageFlags stageMask);
+
+/** Adds a reset event command to the specified command buffer. */
+void mvkCmdResetEvent(MVKCommandBuffer* cmdBuff,
+					  VkEvent event,
+					  VkPipelineStageFlags stageMask);
+
+
+/** Adds a wait events command to the specified command buffer. */
+void mvkCmdWaitEvents(MVKCommandBuffer* cmdBuff,
+					  uint32_t eventCount,
+					  const VkEvent* pEvents,
+					  VkPipelineStageFlags srcStageMask,
+					  VkPipelineStageFlags dstStageMask,
+					  uint32_t memoryBarrierCount,
+					  const VkMemoryBarrier* pMemoryBarriers,
+					  uint32_t bufferMemoryBarrierCount,
+					  const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+					  uint32_t imageMemoryBarrierCount,
+					  const VkImageMemoryBarrier* pImageMemoryBarriers);
+
+/** Indicates that following commands are to be recorded only for the devices in the given device mask. */
+void mvkCmdSetDeviceMask(MVKCommandBuffer* cmdBuff, uint32_t deviceMask);

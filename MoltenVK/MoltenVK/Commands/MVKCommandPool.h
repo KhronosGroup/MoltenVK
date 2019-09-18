@@ -149,6 +149,10 @@ public:
 
 	MVKCommandTypePool<MVKCmdDebugMarkerInsert> _cmdDebugMarkerInsertPool;
 
+	MVKCommandTypePool<MVKCmdSetResetEvent> _cmdSetResetEventPool;
+
+	MVKCommandTypePool<MVKCmdWaitEvents> _cmdWaitEventsPool;
+
 
 #pragma mark Command resources
 

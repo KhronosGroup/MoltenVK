@@ -348,7 +348,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
 	setConfigurationResult(pWritableExtns->enable(pCreateInfo->enabledExtensionCount,
 												  pCreateInfo->ppEnabledExtensionNames,
-												  getDriverLayer()->getSupportedExtensions()));
+												  getDriverLayer()->getSupportedInstanceExtensions()));
 	logVersions();	// Log the MoltenVK and Vulkan versions
 
 	if (MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <
@@ -609,6 +609,9 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_EXT_ENTRY_POINT(vkCreateDescriptorUpdateTemplateKHR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
 	ADD_DVC_EXT_ENTRY_POINT(vkDestroyDescriptorUpdateTemplateKHR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
 	ADD_DVC_EXT_ENTRY_POINT(vkUpdateDescriptorSetWithTemplateKHR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_EXT_ENTRY_POINT(vkGetDeviceGroupPeerMemoryFeaturesKHR, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetDeviceMaskKHR, KHR_DEVICE_GROUP);
+	ADD_DVC_EXT_ENTRY_POINT(vkCmdDispatchBaseKHR, KHR_DEVICE_GROUP);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetBufferMemoryRequirements2KHR, KHR_GET_MEMORY_REQUIREMENTS_2);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetImageMemoryRequirements2KHR, KHR_GET_MEMORY_REQUIREMENTS_2);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetImageSparseMemoryRequirements2KHR, KHR_GET_MEMORY_REQUIREMENTS_2);
@@ -636,15 +639,30 @@ void MVKInstance::initProcAddrs() {
 }
 
 void MVKInstance::logVersions() {
-	MVKExtensionList* pExtns  = getDriverLayer()->getSupportedExtensions();
+	MVKExtensionList allExtns(this, true);
 	MVKLogInfo("MoltenVK version %s. Vulkan version %s.\n\tThe following %d Vulkan extensions are supported:%s",
 			   mvkGetMoltenVKVersionString(MVK_VERSION).c_str(),
 			   mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str(),
-			   pExtns->getEnabledCount(),
-			   pExtns->enabledNamesString("\n\t\t", true).c_str());
+			   allExtns.getEnabledCount(),
+			   allExtns.enabledNamesString("\n\t\t", true).c_str());
 }
 
 void MVKInstance::initConfig() {
+
+// The default value for MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS actually depends on whether
+// MTLEvents are supported, becuase if MTLEvents are not supported, then synchronous queues
+// should be turned off by default to ensure , whereas if MTLEvents are supported, we want
+// sychronous queues for better behaviour. The app can of course still override this default
+// behaviour by setting the env var, or the config directly.
+#undef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
+#define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS	syncQueueSubmits
+#if MVK_MACOS
+	bool syncQueueSubmits = mvkOSVersion() >= 10.14;	// Support for MTLEvents
+#endif
+#if MVK_IOS
+	bool syncQueueSubmits = mvkOSVersion() >= 12.0;		// Support for MTLEvents
+#endif
+
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.debugMode,                              MVK_DEBUG);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.shaderConversionFlipVertexY,            MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.synchronousQueueSubmits,                MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS);
@@ -662,12 +680,14 @@ void MVKInstance::initConfig() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.fullImageViewSwizzle,                   MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.defaultGPUCaptureScopeQueueFamilyIndex, MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.defaultGPUCaptureScopeQueueIndex,       MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX);
+
+	MVK_SET_FROM_ENV_OR_BUILD_INT32(_autoGPUCaptureScope, MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE);
 }
 
 VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {
     VkResult result = VK_SUCCESS;
     for (uint32_t i = 0; i < count; i++) {
-        if ( !MVKLayerManager::globalManager()->getLayerNamed(names[i]) ) {
+        if ( !getLayerManager()->getLayerNamed(names[i]) ) {
             result = reportError(VK_ERROR_LAYER_NOT_PRESENT, "Vulkan layer %s is not supported.", names[i]);
         }
     }

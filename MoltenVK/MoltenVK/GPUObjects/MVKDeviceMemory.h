@@ -19,7 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
-#include <vector>
+#include "MVKVector.h"
 #include <mutex>
 
 #import <Metal/Metal.h>
@@ -85,8 +85,18 @@ public:
 	 * If this memory is host-visible, pulls the specified memory range from the device.
 	 * Normally, pulling will only occur if the device memory is non-coherent, but pulling
 	 * to coherent memory can be forced by setting evenIfCoherent to true.
+	 *
+	 * If pBlitEnc is not null, it points to a holder for a MTLBlitCommandEncoder and its
+	 * assocated MTLCommandBuffer. If this instance has a MTLBuffer using managed memory,
+	 * this function may call synchronizeResource: on the MTLBlitCommandEncoder to
+	 * synchronize the GPU contents to the CPU. If the contents of the pBlitEnc do not
+	 * include a MTLBlitCommandEncoder and MTLCommandBuffer, this function will create
+	 * them and populate the contents into the MVKMTLBlitEncoder struct.
 	 */
-	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size, bool evenIfCoherent = false);
+	VkResult pullFromDevice(VkDeviceSize offset,
+							VkDeviceSize size,
+							bool evenIfCoherent = false,
+							MVKMTLBlitEncoder* pBlitEnc = nullptr);
 
 
 #pragma mark Metal
@@ -132,8 +142,8 @@ protected:
 	void freeHostMemory();
 	MVKResource* getDedicatedResource();
 
-	std::vector<MVKBuffer*> _buffers;
-	std::vector<MVKImage*> _images;
+	MVKVectorInline<MVKBuffer*, 4> _buffers;
+	MVKVectorInline<MVKImage*, 4> _images;
 	std::mutex _rezLock;
     VkDeviceSize _allocationSize = 0;
 	VkDeviceSize _mapOffset = 0;

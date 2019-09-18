@@ -20,7 +20,6 @@
 
 #include "MVKCommand.h"
 #include "MVKVector.h"
-#include <vector>
 
 #import <Metal/Metal.h>
 
@@ -85,7 +84,7 @@ public:
 #pragma mark -
 #pragma mark MVKCmdExecuteCommands
 
-/** Vulkan command to end the current render pass. */
+/** Vulkan command to execute secondary command buffers. */
 class MVKCmdExecuteCommands : public MVKCommand {
 
 public:
@@ -96,7 +95,7 @@ public:
 	MVKCmdExecuteCommands(MVKCommandTypePool<MVKCmdExecuteCommands>* pool);
 
 private:
-	std::vector<MVKCommandBuffer*> _secondaryCommandBuffers;
+	MVKVectorInline<MVKCommandBuffer*, 64> _secondaryCommandBuffers;
 };
 
 #pragma mark -

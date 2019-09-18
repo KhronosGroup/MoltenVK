@@ -22,7 +22,7 @@
 #include "MVKMTLBufferAllocation.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKFoundation.h"
-#include <vector>
+#include "MVKVector.h"
 
 #import <Metal/Metal.h>
 
@@ -52,7 +52,8 @@ public:
 
 protected:
 	void setContent(VkImage srcImage, VkImageLayout srcImageLayout,
-					VkImage dstImage, VkImageLayout dstImageLayout, MVKCommandUse commandUse);
+					VkImage dstImage, VkImageLayout dstImageLayout,
+					bool formatsMustMatch, MVKCommandUse commandUse);
 	void addImageCopyRegion(const VkImageCopy& region);
 	void addTempBufferImageCopyRegion(const VkImageCopy& region);
 
@@ -68,9 +69,9 @@ protected:
 	bool _isDstCompressed;
 	bool _canCopyFormats;
 	bool _useTempBuffer;
-	std::vector<VkImageCopy> _imageCopyRegions;
-	std::vector<VkBufferImageCopy> _srcTmpBuffImgCopies;
-	std::vector<VkBufferImageCopy> _dstTmpBuffImgCopies;
+	MVKVectorInline<VkImageCopy, 4> _imageCopyRegions;
+	MVKVectorInline<VkBufferImageCopy, 4> _srcTmpBuffImgCopies;
+	MVKVectorInline<VkBufferImageCopy, 4> _dstTmpBuffImgCopies;
 	size_t _tmpBuffSize;
     MVKCommandUse _commandUse;
 };
@@ -117,7 +118,7 @@ protected:
 	MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
 	MTLSamplerMinMagFilter _mtlFilter;
 	MVKRPSKeyBlitImg _blitKey;
-	std::vector<MVKImageBlitRender> _mvkImageBlitRenders;
+	MVKVectorInline<MVKImageBlitRender, 4> _mvkImageBlitRenders;
 };
 
 
@@ -157,11 +158,11 @@ protected:
     VkImageLayout _srcLayout;
     MVKImage* _dstImage;
     VkImageLayout _dstLayout;
-    std::vector<VkImageBlit> _expansionRegions;
-    std::vector<VkImageCopy> _copyRegions;
     MVKImageDescriptorData _transferImageData;
     MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
-    std::vector<MVKMetalResolveSlice> _mtlResolveSlices;
+	MVKVectorInline<VkImageBlit, 4> _expansionRegions;
+	MVKVectorInline<VkImageCopy, 4> _copyRegions;
+	MVKVectorInline<MVKMetalResolveSlice, 4> _mtlResolveSlices;
 };
 
 
@@ -186,7 +187,7 @@ protected:
 
 	MVKBuffer* _srcBuffer;
 	MVKBuffer* _dstBuffer;
-	std::vector<VkBufferCopy> _mtlBuffCopyRegions;
+	MVKVectorInline<VkBufferCopy, 4> _mtlBuffCopyRegions;
 };
 
 
@@ -215,7 +216,7 @@ protected:
     MVKBuffer* _buffer;
     MVKImage* _image;
     VkImageLayout _imageLayout;
-    std::vector<VkBufferImageCopy> _bufferImageCopyRegions;
+	MVKVectorInline<VkBufferImageCopy, 4> _bufferImageCopyRegions;
     bool _toImage = false;
 };
 
@@ -241,8 +242,8 @@ protected:
     void populateVertices(float attWidth, float attHeight);
     void populateVertices(VkClearRect& clearRect, float attWidth, float attHeight);
 
-    std::vector<VkClearRect> _clearRects;
-    std::vector<simd::float4> _vertices;
+	MVKVectorInline<VkClearRect, 4> _clearRects;
+	MVKVectorInline<simd::float4, (4 * 6)> _vertices;
     simd::float4 _clearColors[kMVKClearAttachmentCount];
     VkClearValue _vkClearValues[kMVKClearAttachmentCount];
     MVKRPSKeyClearAtt _rpsKey;
@@ -278,7 +279,7 @@ protected:
     
     MVKImage* _image;
     VkImageLayout _imgLayout;
-    std::vector<VkImageSubresourceRange> _subresourceRanges;
+	MVKVectorInline<VkImageSubresourceRange, 4> _subresourceRanges;
 	MTLClearColor _mtlColorClearValue;
 	double _mtlDepthClearValue;
     uint32_t _mtlStencilClearValue;
@@ -303,7 +304,7 @@ public:
 protected:
     MVKBuffer* _dstBuffer;
     VkDeviceSize _dstOffset;
-    VkDeviceSize _size;
+    uint32_t _wordCount;
     uint32_t _dataValue;
 };
 
@@ -330,7 +331,7 @@ protected:
     MVKBuffer* _dstBuffer;
     VkDeviceSize _dstOffset;
     VkDeviceSize _dataSize;
-    std::vector<uint8_t> _srcDataCache;
+    MVKVectorDefault<uint8_t> _srcDataCache;
 };
 
 

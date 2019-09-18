@@ -141,12 +141,26 @@
 #   define MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX    0
 #endif
 
+/**
+ * The scope under which to automatically run a GPU capture within Xcode, without the
+ * developer having to trigger it manually via the Xcode UI. This is useful when trying
+ * to capture a one-shot trace, such as when running a Vulkan CTS test case.
+ */
+#define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE		0
+#define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE	1
+#ifndef MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE
+#   define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE    	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
+#endif
+
 /** Force the use of a low-power GPU if it exists. Disabled by default. */
 #ifndef MVK_CONFIG_FORCE_LOW_POWER_GPU
 #   define MVK_CONFIG_FORCE_LOW_POWER_GPU    0
 #endif
 
-/** Allow the use of Metal events for Vulkan synchronizations such as VkSemaphores. Disabled by default. */
+/** Allow the use of MTLFence or MTLEvent for VkSemaphore synchronization behaviour. Disabled by default. */
+#ifndef MVK_ALLOW_METAL_FENCES
+#   define MVK_ALLOW_METAL_FENCES    0
+#endif
 #ifndef MVK_ALLOW_METAL_EVENTS
 #   define MVK_ALLOW_METAL_EVENTS    0
 #endif

@@ -359,6 +359,11 @@ void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKP
     }
 }
 
+void MVKCommandEncoder::signalEvent(MVKEvent* mvkEvent, bool status) {
+	endCurrentMetalEncoding();
+	mvkEvent->encodeSignal(_mtlCmdBuffer, status);
+}
+
 bool MVKCommandEncoder::supportsDynamicState(VkDynamicState state) {
     MVKGraphicsPipeline* gpl = (MVKGraphicsPipeline*)_graphicsPipelineState.getPipeline();
     return !gpl || gpl->supportsDynamicState(state);
@@ -398,7 +403,7 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
 // Clears the render area of the framebuffer attachments.
 void MVKCommandEncoder::clearRenderArea() {
 
-	vector<VkClearAttachment> clearAtts;
+	MVKVectorInline<VkClearAttachment, kMVKDefaultAttachmentCount> clearAtts;
 	getSubpass()->populateClearAttachments(clearAtts, _clearValues);
 
 	uint32_t clearAttCnt = (uint32_t)clearAtts.size();
