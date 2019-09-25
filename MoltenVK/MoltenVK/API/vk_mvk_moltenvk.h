@@ -50,7 +50,7 @@ typedef unsigned long MTLLanguageVersion;
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   37
+#define MVK_VERSION_PATCH   38
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
@@ -110,6 +110,7 @@ typedef unsigned long MTLLanguageVersion;
  *        2: Log the name of each Vulkan call when the call is entered and exited. This effectively
  *           brackets any other logging activity within the scope of the Vulkan call.
  *        3: Same as option 2, plus logs the time spent inside the Vulkan function.
+ *    If none of these is set, no Vulkan call logging will occur.
  *
  * 3. Setting the MVK_CONFIG_FORCE_LOW_POWER_GPU runtime environment variable or MoltenVK compile-time
  *    build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.

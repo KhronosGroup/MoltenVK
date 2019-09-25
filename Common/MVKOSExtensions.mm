@@ -77,7 +77,7 @@ void mvkDispatchToMainAndWait(dispatch_block_t block) {
 
 string mvkGetEnvVar(string varName, bool* pWasFound) {
 	@autoreleasepool {
-		NSDictionary*nsEnv = [[NSProcessInfo processInfo] environment];
+		NSDictionary* nsEnv = [[NSProcessInfo processInfo] environment];
 		NSString* envStr = nsEnv[@(varName.c_str())];
 		if (pWasFound) { *pWasFound = envStr != nil; }
 		return envStr ? envStr.UTF8String : "";
