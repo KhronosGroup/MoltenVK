@@ -19,7 +19,8 @@ MoltenVK 1.0.38
 
 Released TBD
 
-- Add request for feedback from people who reject MoltenVK to README.md document.
+- Clarify static linking as the recommended linking approach for *iOS* app store distribution.
+- Add request for feedback from people who reject **MoltenVK** to `README.md` document.
 
 
 
