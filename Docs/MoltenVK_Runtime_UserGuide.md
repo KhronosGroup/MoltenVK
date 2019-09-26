@@ -106,6 +106,11 @@ Depending on your build and deployment needs, you can install **MoltenVK** as a 
 *static library*, or *dynamic library*, by following the steps in this section. If you are unsure 
 about which linking and deployment option you need, follow the steps for installing a 
 *static framework*, as it is the simplest to install.
+  
+>**_Note:_** Distributing an app containing a dynamic library via the *iOS App Store* can require
+specialized bundling. Unless you have specific needs for dynamic libraries, the recommended
+approach on *iOS* is to link **MoltenVK** to your app as a static library.
+
 
 1. Open your application in *Xcode* and select your application's target in the 
    *Project Navigator* panel.
@@ -167,7 +172,6 @@ about which linking and deployment option you need, follow the steps for install
    - `IOKit.framework` (*macOS*)
    - `UIKit.framework` (*iOS*)
    - `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`)
-
 
 6. If installing **MoltenVK** as a *dynamic library* in your application, arrange to install 
    the `libMoltenVK.dylib` file in your application environment:

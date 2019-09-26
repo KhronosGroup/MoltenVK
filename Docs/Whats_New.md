@@ -13,6 +13,17 @@ For best results, use a Markdown reader.*
 
 
 
+
+MoltenVK 1.0.38
+---------------
+
+Released TBD
+
+- Clarify static linking as the recommended linking approach for *iOS* app store distribution.
+- Add request for feedback from people who reject **MoltenVK** to `README.md` document.
+
+
+
 MoltenVK 1.0.37
 ---------------
 

@@ -287,9 +287,14 @@ Reporting Issues
 
 - If you encounter an issue with the behaviour of **MoltenVK**, you can report it in the 
   [*MoltenVK Issues List*](https://github.com/KhronosGroup/MoltenVK/issues).
- 
+
 - If you encounter an issue with the *Vulkan SDK*, including the *Validation Layers*, you can report it in the 
   [*Vulkan SDK Issues List*](https://vulkan.lunarg.com/issue/home).
+
+- If you explore **MoltenVK** and determine that it does not meet your requirements at this time, we would appreciate
+  hearing why that is so, on the [*MoltenVK Issues List*](https://github.com/KhronosGroup/MoltenVK/issues). 
+  The goal of **MoltenVK** is to increase the value of *Vulkan* as a true cross-platform ecosystem, by providing 
+  *Vulkan* on *Apple* platforms. Hearing why this is currently not working for you will help us in that goal.
 
 
 
