@@ -56,9 +56,23 @@
 #   define MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y    1
 #endif
 
-/** Process command queue submissions on the same thread on which the submission call was made. Enable by default. */
+/**
+ * Process command queue submissions on the same thread on which the submission call was made.
+ * The default value actually depends on whether MTLEvents are supported, becuase if MTLEvents
+ * are not supported, then synchronous queues should be turned off by default to ensure the
+ * CPU emulation of VkEvent behaviour does not deadlock a queue submission, whereas if MTLEvents
+ * are supported, we want sychronous queues for better, and more performant, behaviour.
+ * The app can of course still override this default behaviour by setting the
+ * MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS env var, or the config directly.
+ */
+#if MVK_MACOS
+#   define MVK_MTLEVENT_MIN_OS  10.14
+#endif
+#if MVK_IOS
+#   define MVK_MTLEVENT_MIN_OS  12.0
+#endif
 #ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
-#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    1
+#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    (mvkOSVersion() >= MVK_MTLEVENT_MIN_OS)
 #endif
 
 /** Fill a Metal command buffers when each Vulkan command buffer is filled. */
