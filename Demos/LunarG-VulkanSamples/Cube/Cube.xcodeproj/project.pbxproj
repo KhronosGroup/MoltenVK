@@ -30,7 +30,7 @@
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
-			dstSubfolderSpec = 6;
+			dstSubfolderSpec = 10;
 			files = (
 				A9C2ABB02185098A00DDBC03 /* libMoltenVK.dylib in CopyFiles */,
 			);
@@ -40,7 +40,7 @@
 			isa = PBXCopyFilesBuildPhase;
 			buildActionMask = 2147483647;
 			dstPath = "";
-			dstSubfolderSpec = 6;
+			dstSubfolderSpec = 10;
 			files = (
 				A9C2ABB12185099500DDBC03 /* libMoltenVK.dylib in CopyFiles */,
 			);
@@ -234,7 +234,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1030;
+				LastUpgradeCheck = 1100;
 				TargetAttributes = {
 					A9B53B0F1C3AC0BE00ABC6F6 = {
 						DevelopmentTeam = VU3TCKU48B;
@@ -320,7 +320,7 @@
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS/dynamic\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				PRODUCT_NAME = Cube;
@@ -339,7 +339,7 @@
 					MVK_SAMP_CUBE,
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS/dynamic\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				PRODUCT_NAME = Cube;
@@ -359,7 +359,7 @@
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS/dynamic\"";
 				PRODUCT_NAME = Cube;
 				SDKROOT = iphoneos;
@@ -380,7 +380,7 @@
 				);
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS/dynamic\"";
 				PRODUCT_NAME = Cube;
 				SDKROOT = iphoneos;

@@ -129,6 +129,7 @@ approach on *iOS* is to link **MoltenVK** to your app as a static library.
 	       add an entry that points to **_one_** of the following folders:
 	          - `MoltenVK/macOS/static` *(macOS)*
 	          - `MoltenVK/iOS/static` *(iOS)*
+	          
         2. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, 
            add an entry that points to the `MoltenVK/include` folder.
 
@@ -137,12 +138,17 @@ approach on *iOS* is to link **MoltenVK** to your app as a static library.
 	       add an entry that points to **_one_** of the following folders:
 	          - `MoltenVK/macOS/dynamic` *(macOS)*
 	          - `MoltenVK/iOS/dynamic` *(iOS)*
+	          
         2. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, 
            add an entry that points to the `MoltenVK/include` folder.
         3. In the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting, 
            add an entry that matches where the dynamic library will be located in your runtime
            environment. If the dynamic library is to be embedded within your application, 
-           you would typically set this value to either `@executable_path` or `@loader_path`. 
+           you would typically set this value to either:
+
+           - `@executable_path/../Frameworks` *(macOS)*
+           - `@executable_path/Frameworks` *(iOS)*
+           
            The `libMoltenVK.dylib` library is internally configured to be located at 
            `@rpath/libMoltenVK.dylib`.
 
@@ -177,9 +183,13 @@ approach on *iOS* is to link **MoltenVK** to your app as a static library.
    the `libMoltenVK.dylib` file in your application environment:
 
    - To copy the `libMoltenVK.dylib` file into your application or component library:
+   
         1. On the *Build Phases* tab, add a new *Copy Files* build phase.
+        
         2. Set the *Destination* into which you want to place  the `libMoltenVK.dylib` file.
-           Typically this will be *Executables*.
+           Typically this will be *Frameworks* (and should match the **Runpath Search Paths** 
+           (aka `LD_RUNPATH_SEARCH_PATHS`) build setting you set above).
+        
         3. Drag **_one_** of the following files to the *Copy Files* list in this new build phase:
 	          - `MoltenVK/macOS/dynamic/libMoltenVK.dylib` *(macOS)*
 	          - `MoltenVK/iOS/dynamic/libMoltenVK.dylib` *(iOS)*
