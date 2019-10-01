@@ -226,8 +226,8 @@ typedef struct {
 #   define MTLPixelFormatDepth16Unorm_Stencil8  MTLPixelFormatDepth32Float_Stencil8
 #endif
 
-
-static const MVKFormatDesc _formatDescriptions[] {
+// This cannot be const, because we write to MVKFormatDesc::hasReportedSubstitution
+static MVKFormatDesc _formatDescriptions[] {
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_UNDEFINED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 0, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatNone, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R4G4_UNORM_PACK8, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 1, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),

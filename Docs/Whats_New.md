@@ -19,6 +19,7 @@ MoltenVK 1.0.38
 
 Released TBD
 
+- Update `MoltenVK_Runtime_UserGuide.md` about embedding `libMoltenVK.dylib` in an application.
 - Clarify static linking as the recommended linking approach for *iOS* app store distribution.
 - Add request for feedback from people who reject **MoltenVK** to `README.md` document.
 - Allow `MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS` build setting to be overridden.
