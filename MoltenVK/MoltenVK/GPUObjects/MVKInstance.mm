@@ -282,17 +282,16 @@ VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeveri
 
 #pragma mark Object Creation
 
-// Returns a new array containing the MTLDevices available on this system, sorted according to power,
+// Returns an autoreleased array containing the MTLDevices available on this system, sorted according to power,
 // with higher power GPU's at the front of the array. This ensures that a lazy app that simply
 // grabs the first GPU will get a high-power one by default. If the MVK_CONFIG_FORCE_LOW_POWER_GPU
 // env var or build setting is set, the returned array will only include low-power devices.
-// It is the caller's responsibility to release the array when not required anymore.
 // If Metal is not supported, returns an empty array.
-static NSArray<id<MTLDevice>>* newAvailableMTLDevicesArray() {
-	NSMutableArray* mtlDevs = [NSMutableArray new];
+static NSArray<id<MTLDevice>>* availableMTLDevicesArray() {
+	NSMutableArray* mtlDevs = [NSMutableArray array];
 
 #if MVK_MACOS
-	NSArray* rawMTLDevs = MTLCopyAllDevices();			// temp retain
+	NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
 	if (rawMTLDevs) {
 		bool forceLowPower = MVK_CONFIG_FORCE_LOW_POWER_GPU;
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(forceLowPower, MVK_CONFIG_FORCE_LOW_POWER_GPU);
@@ -322,13 +321,11 @@ static NSArray<id<MTLDevice>>* newAvailableMTLDevicesArray() {
 		}];
 
 	}
-	[rawMTLDevs release];								// release temp
 #endif	// MVK_MACOS
 
 #if MVK_IOS
-	id<MTLDevice> md = MTLCreateSystemDefaultDevice();
+	id<MTLDevice> md = [MTLCreateSystemDefaultDevice() autorelease];
 	if (md) { [mtlDevs addObject: md]; }
-	[md release];
 #endif	// MVK_IOS
 
 	return mtlDevs;		// retained
@@ -359,13 +356,16 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 										   mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str()));
 	}
 
-	// Populate the array of physical GPU devices
-	NSArray<id<MTLDevice>>* mtlDevices = newAvailableMTLDevicesArray();		// temp retain
-	_physicalDevices.reserve(mtlDevices.count);
-	for (id<MTLDevice> mtlDev in mtlDevices) {
-		_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
+	// Populate the array of physical GPU devices.
+	// This effort creates a number of autoreleased instances of Metal
+	// and other Obj-C classes, so wrap it all in an autorelease pool.
+	@autoreleasepool {
+		NSArray<id<MTLDevice>>* mtlDevices = availableMTLDevicesArray();
+		_physicalDevices.reserve(mtlDevices.count);
+		for (id<MTLDevice> mtlDev in mtlDevices) {
+			_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
+		}
 	}
-	[mtlDevices release];													// release temp
 
 	if (_physicalDevices.empty()) {
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
