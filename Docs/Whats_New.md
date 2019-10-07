@@ -24,6 +24,7 @@ Released TBD
 - Add request for feedback from people who reject **MoltenVK** to `README.md` document.
 - Allow `MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS` build setting to be overridden.
 - Fix memory leaks of system classes during `VkInstance` and `VkQueue` creation.
+- Fix memory leaks when compiling shaders and pipelines without default OS autorelease pool.
 
 
 
