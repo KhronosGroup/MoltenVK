@@ -187,9 +187,9 @@ protected:
 
 	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
-	MVKVectorInline<MVKPhysicalDevice*, 4> _physicalDevices;
-	MVKVectorInline<MVKDebugReportCallback*, 4> _debugReportCallbacks;
-	MVKVectorInline<MVKDebugUtilsMessenger*, 4> _debugUtilMessengers;
+	MVKVectorInline<MVKPhysicalDevice*, 1> _physicalDevices;
+	MVKVectorDefault<MVKDebugReportCallback*> _debugReportCallbacks;
+	MVKVectorDefault<MVKDebugUtilsMessenger*> _debugUtilMessengers;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
 	std::mutex _dcbLock;
 	bool _hasDebugReportCallbacks;

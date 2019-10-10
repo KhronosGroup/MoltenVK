@@ -348,7 +348,7 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
     // Add subpasses and dependencies first
 	_subpasses.reserve(pCreateInfo->subpassCount);
 	for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
-		_subpasses.push_back(MVKRenderSubpass(this, &pCreateInfo->pSubpasses[i]));
+		_subpasses.emplace_back(this, &pCreateInfo->pSubpasses[i]);
 	}
 	_subpassDependencies.reserve(pCreateInfo->dependencyCount);
 	for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
@@ -358,7 +358,7 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	// Add attachments after subpasses, so each attachment can link to subpasses
 	_attachments.reserve(pCreateInfo->attachmentCount);
 	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
-		_attachments.push_back(MVKRenderPassAttachment(this, &pCreateInfo->pAttachments[i]));
+		_attachments.emplace_back(this, &pCreateInfo->pAttachments[i]);
 	}
 }
 

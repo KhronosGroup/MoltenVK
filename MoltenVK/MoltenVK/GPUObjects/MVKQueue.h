@@ -206,8 +206,8 @@ protected:
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
 	void finish();
 
-	MVKVectorInline<MVKCommandBuffer*, 16> _cmdBuffers;
-	MVKVectorInline<MVKSemaphore*, 16> _signalSemaphores;
+	MVKVectorInline<MVKCommandBuffer*, 32> _cmdBuffers;
+	MVKVectorInline<MVKSemaphore*, 8> _signalSemaphores;
 	MVKFence* _fence;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
 };
