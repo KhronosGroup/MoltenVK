@@ -174,8 +174,8 @@ protected:
 	void propogateDebugName() override {}
 
 	MVKVectorInline<MVKRenderPassAttachment, kMVKDefaultAttachmentCount> _attachments;
-	MVKVectorInline<MVKRenderSubpass, 4> _subpasses;
-	MVKVectorInline<VkSubpassDependency, 4 * 2> _subpassDependencies;
+	MVKVectorInline<MVKRenderSubpass, 1> _subpasses;
+	MVKVectorDefault<VkSubpassDependency> _subpassDependencies;
 
 };
 

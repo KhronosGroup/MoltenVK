@@ -56,6 +56,6 @@ protected:
 
 	VkExtent2D _extent;
 	uint32_t _layerCount;
-	MVKVectorInline<MVKImageView*, 8> _attachments;
+	MVKVectorInline<MVKImageView*, 4> _attachments;
 };
 

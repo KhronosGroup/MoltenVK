@@ -151,7 +151,7 @@ protected:
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
-	MVKVectorInline<std::pair<SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>, 4> _shaderLibraries;
+	MVKVectorInline<std::pair<SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>, 1> _shaderLibraries;
 };
 
 

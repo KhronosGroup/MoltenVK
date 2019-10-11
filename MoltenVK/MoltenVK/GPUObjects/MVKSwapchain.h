@@ -112,7 +112,7 @@ protected:
 
 	struct Availability {
 		MVKSwapchainImageAvailability status;
-		MVKVectorInline<MVKSwapchainSignaler, 4> signalers;
+		MVKVectorInline<MVKSwapchainSignaler, 1> signalers;
 		MVKSwapchainSignaler preSignaled;
 	};
 

@@ -24,6 +24,7 @@
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 class MVKDescriptorPool;
 class MVKDescriptorBinding;
@@ -117,7 +118,7 @@ protected:
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
-	MVKVectorInline<MVKSampler*, 16> _immutableSamplers;
+	std::vector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	bool _applyToStage[kMVKShaderStageMax];
 };
@@ -181,7 +182,7 @@ protected:
 	void addDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.insert(mvkDescPool); }
 	void removeDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.erase(mvkDescPool); }
 
-	MVKVectorInline<MVKDescriptorSetLayoutBinding, 8> _bindings;
+	MVKVectorInline<MVKDescriptorSetLayoutBinding, 1> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	std::unordered_set<MVKDescriptorPool*> _descriptorPools;
@@ -271,13 +272,13 @@ protected:
 
 	MVKDescriptorSet* _pDescSet;
 	MVKDescriptorSetLayoutBinding* _pBindingLayout;
-	MVKVectorInline<VkDescriptorImageInfo, 1> _imageBindings;
-	MVKVectorInline<VkDescriptorBufferInfo, 1> _bufferBindings;
-	MVKVectorInline<VkBufferView, 1> _texelBufferBindings;
-	MVKVectorInline<id<MTLBuffer>, 1> _mtlBuffers;
-	MVKVectorInline<NSUInteger, 1> _mtlBufferOffsets;
-	MVKVectorInline<id<MTLTexture>, 1> _mtlTextures;
-	MVKVectorInline<id<MTLSamplerState>, 1> _mtlSamplers;
+	std::vector<VkDescriptorImageInfo> _imageBindings;
+	std::vector<VkDescriptorBufferInfo> _bufferBindings;
+	std::vector<VkBufferView> _texelBufferBindings;
+	std::vector<id<MTLBuffer>> _mtlBuffers;
+	std::vector<NSUInteger> _mtlBufferOffsets;
+	std::vector<id<MTLTexture>> _mtlTextures;
+	std::vector<id<MTLSamplerState>> _mtlSamplers;
 	bool _hasDynamicSamplers;
 };
 
@@ -323,7 +324,7 @@ protected:
     MVKDescriptorBinding* getBinding(uint32_t binding);
 
 	MVKDescriptorSetLayout* _pLayout = nullptr;
-	MVKVectorInline<MVKDescriptorBinding, 8> _bindings;
+	MVKVectorInline<MVKDescriptorBinding, 1> _bindings;
 };
 
 
@@ -407,7 +408,7 @@ protected:
 	void propogateDebugName() override {}
 
 	VkDescriptorUpdateTemplateTypeKHR _type;
-	MVKVectorInline<VkDescriptorUpdateTemplateEntryKHR, 4> _entries;
+	MVKVectorInline<VkDescriptorUpdateTemplateEntryKHR, 1> _entries;
 };
 
 #pragma mark -

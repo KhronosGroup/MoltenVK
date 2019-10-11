@@ -107,9 +107,9 @@ public:
 protected:
 	void propogateDebugName() override {}
 
-	MVKVectorInline<MVKDescriptorSetLayout*, 8> _descriptorSetLayouts;
-	MVKVectorInline<MVKShaderResourceBinding, 8> _dslMTLResourceIndexOffsets;
-	MVKVectorInline<VkPushConstantRange, 8> _pushConstants;
+	MVKVectorInline<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
+	MVKVectorInline<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
+	MVKVectorDefault<VkPushConstantRange> _pushConstants;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
