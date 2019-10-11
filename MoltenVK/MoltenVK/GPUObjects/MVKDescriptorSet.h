@@ -24,6 +24,7 @@
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 class MVKDescriptorPool;
 class MVKDescriptorBinding;
@@ -117,7 +118,7 @@ protected:
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
-	MVKVectorDefault<MVKSampler*> _immutableSamplers;
+	std::vector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	bool _applyToStage[kMVKShaderStageMax];
 };
@@ -271,13 +272,13 @@ protected:
 
 	MVKDescriptorSet* _pDescSet;
 	MVKDescriptorSetLayoutBinding* _pBindingLayout;
-	MVKVectorDefault<VkDescriptorImageInfo> _imageBindings;
-	MVKVectorDefault<VkDescriptorBufferInfo> _bufferBindings;
-	MVKVectorDefault<VkBufferView> _texelBufferBindings;
-	MVKVectorDefault<id<MTLBuffer>> _mtlBuffers;
-	MVKVectorDefault<NSUInteger> _mtlBufferOffsets;
-	MVKVectorDefault<id<MTLTexture>> _mtlTextures;
-	MVKVectorDefault<id<MTLSamplerState>> _mtlSamplers;
+	std::vector<VkDescriptorImageInfo> _imageBindings;
+	std::vector<VkDescriptorBufferInfo> _bufferBindings;
+	std::vector<VkBufferView> _texelBufferBindings;
+	std::vector<id<MTLBuffer>> _mtlBuffers;
+	std::vector<NSUInteger> _mtlBufferOffsets;
+	std::vector<id<MTLTexture>> _mtlTextures;
+	std::vector<id<MTLSamplerState>> _mtlSamplers;
 	bool _hasDynamicSamplers;
 };
 
