@@ -70,8 +70,8 @@ MVK_PUBLIC_SYMBOL bool GLSLToSPIRVConverter::convert(MVKGLSLConversionShaderStag
 	configureGLSLCompilerResources(&glslCompilerResources);
 	std::vector<std::unique_ptr<glslang::TShader>> glslShaders;
 	const char *glslStrings[1];
-    glslang::TProgram glslProgram;
-    
+	glslang::TProgram glslProgram;
+
 	for (const auto& glsl : _glsls) {
 		glslStrings[0] = glsl.data();
 
