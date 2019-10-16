@@ -178,6 +178,9 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	// Don't bother if we don't have placement heaps.
 	if (!getDevice()->_pMetalFeatures->placementHeaps) { return true; }
 
+	// Can't create MTLHeaps of zero size.
+	if (_allocationSize == 0) { return true; }
+
 #if MVK_MACOS
 	// MTLHeaps on Mac must use private storage for now.
 	if (_mtlStorageMode != MTLStorageModePrivate) { return true; }

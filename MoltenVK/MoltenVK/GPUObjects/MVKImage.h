@@ -216,7 +216,7 @@ public:
     MTLStorageMode getMTLStorageMode();
 
 	/** Returns the Metal CPU cache mode used by this image. */
-	inline MTLCPUCacheMode getMTLCPUCacheMode() { return _deviceMemory->getMTLCPUCacheMode(); }
+	MTLCPUCacheMode getMTLCPUCacheMode();
 
 	/** 
 	 * Returns whether the memory is automatically coherent between device and host. 

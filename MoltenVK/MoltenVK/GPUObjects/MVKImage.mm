@@ -487,6 +487,10 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
     return stgMode;
 }
 
+MTLCPUCacheMode MVKImage::getMTLCPUCacheMode() {
+	return _deviceMemory ? _deviceMemory->getMTLCPUCacheMode() : MTLCPUCacheModeDefaultCache;
+}
+
 bool MVKImage::isMemoryHostCoherent() {
     return (getMTLStorageMode() == MTLStorageModeShared);
 }
