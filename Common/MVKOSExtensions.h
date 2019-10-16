@@ -111,3 +111,17 @@ bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
 		int64_t val = wasFound ? ev : EV;						\
 		cfgVal = (int32_t)std::min(std::max(val, (int64_t)INT32_MIN), (int64_t)INT32_MAX);	\
 	} while(false)
+
+
+#pragma mark -
+#pragma mark System memory
+
+/** Returns the total amount of physical RAM in the system. */
+uint64_t mvkGetSystemMemorySize();
+
+/** Returns the amount of memory available to this process. */
+uint64_t mvkGetAvailableMemorySize();
+
+/** Returns the amount of memory currently used by this process. */
+uint64_t mvkGetUsedMemorySize();
+

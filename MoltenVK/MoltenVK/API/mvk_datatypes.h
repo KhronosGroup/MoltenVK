@@ -234,6 +234,12 @@ uint32_t mvkSampleCountFromVkSampleCountFlagBits(VkSampleCountFlagBits vkSampleC
 /** Returns the Vulkan bit flags corresponding to the numeric sample count, which must be a PoT value. */
 VkSampleCountFlagBits mvkVkSampleCountFlagBitsFromSampleCount(NSUInteger sampleCount);
 
+/** Returns the Metal texture swizzle from the Vulkan component swizzle. */
+MTLTextureSwizzle mvkMTLTextureSwizzleFromVkComponentSwizzle(VkComponentSwizzle vkSwizzle);
+
+/** Returns all four Metal texture swizzles from the Vulkan component mapping. */
+MTLTextureSwizzleChannels mvkMTLTextureSwizzleChannelsFromVkComponentMapping(VkComponentMapping vkMapping);
+
 
 #pragma mark Mipmaps
 

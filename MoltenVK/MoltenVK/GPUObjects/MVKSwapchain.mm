@@ -30,6 +30,8 @@
 #import "CAMetalLayer+MoltenVK.h"
 #import "MVKBlockObserver.h"
 
+#include <libkern/OSByteOrder.h>
+
 using namespace std;
 
 
@@ -276,6 +278,70 @@ void MVKSwapchain::markFrameInterval() {
 	}
 }
 
+#if MVK_MACOS
+struct CIE1931XY {
+	uint16_t x;
+	uint16_t y;
+} __attribute__((packed));
+
+// According to D.3.28:
+//   "[x and y] specify the normalized x and y chromaticity coordinates, respectively...
+//    in normalized increments of 0.00002."
+static inline uint16_t FloatToCIE1931Unorm(float x) { return OSSwapHostToBigInt16((uint16_t)(x * 100000 / 2)); }
+static inline CIE1931XY VkXYColorEXTToCIE1931XY(VkXYColorEXT xy) {
+	return { FloatToCIE1931Unorm(xy.x), FloatToCIE1931Unorm(xy.y) };
+}
+#endif
+
+void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
+#if MVK_MACOS
+	// We were given metadata as floats, but CA wants it as specified in H.265.
+	// More specifically, it wants "Mastering display colour volume" (D.2.28) and
+	// "Content light level information" (D.2.35) SEI messages, with big-endian
+	// integers. We have to convert.
+	struct ColorVolumeSEI {
+		CIE1931XY display_primaries[3];  // Green, blue, red
+		CIE1931XY white_point;
+		uint32_t max_display_mastering_luminance;
+		uint32_t min_display_mastering_luminance;
+	} __attribute__((packed));
+	struct LightLevelSEI {
+		uint16_t max_content_light_level;
+		uint16_t max_pic_average_light_level;
+	} __attribute__((packed));
+	ColorVolumeSEI colorVol;
+	LightLevelSEI lightLevel;
+	// According to D.3.28:
+	//   "For describing mastering displays that use red, green, and blue colour
+	//    primaries, it is suggested that index value c equal to 0 should correspond
+	//    to the green primary, c equal to 1 should correspond to the blue primary
+	//    and c equal to 2 should correspond to the red colour primary."
+	colorVol.display_primaries[0] = VkXYColorEXTToCIE1931XY(metadata.displayPrimaryGreen);
+	colorVol.display_primaries[1] = VkXYColorEXTToCIE1931XY(metadata.displayPrimaryBlue);
+	colorVol.display_primaries[2] = VkXYColorEXTToCIE1931XY(metadata.displayPrimaryRed);
+	colorVol.white_point = VkXYColorEXTToCIE1931XY(metadata.whitePoint);
+	// Later in D.3.28:
+	//   "max_display_mastering_luminance and min_display_mastering_luminance specify
+	//    the nominal maximum and minimum display luminance, respectively, of the mastering
+	//    display in units of 0.0001 candelas [sic] per square metre."
+	// N.B. 1 nit = 1 cd/m^2
+	colorVol.max_display_mastering_luminance = OSSwapHostToBigInt32((uint32_t)(metadata.maxLuminance * 10000));
+	colorVol.min_display_mastering_luminance = OSSwapHostToBigInt32((uint32_t)(metadata.minLuminance * 10000));
+	lightLevel.max_content_light_level = OSSwapHostToBigInt16((uint16_t)metadata.maxContentLightLevel);
+	lightLevel.max_pic_average_light_level = OSSwapHostToBigInt16((uint16_t)metadata.maxFrameAverageLightLevel);
+	NSData* colorVolData = [NSData dataWithBytes: &colorVol length: sizeof(colorVol)];
+	NSData* lightLevelData = [NSData dataWithBytes: &lightLevel length: sizeof(lightLevel)];
+	CAEDRMetadata* caMetadata = [CAEDRMetadata HDR10MetadataWithDisplayInfo: colorVolData
+																contentInfo: lightLevelData
+														 opticalOutputScale: 1];
+	_mtlLayer.EDRMetadata = caMetadata;
+	[caMetadata release];
+	[colorVolData release];
+	[lightLevelData release];
+	_mtlLayer.wantsExtendedDynamicRangeContent = YES;
+#endif
+}
+
 
 #pragma mark Metal
 
@@ -342,41 +408,59 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	if (pCreateInfo->compositeAlpha != VK_COMPOSITE_ALPHA_INHERIT_BIT_KHR) {
 		_mtlLayer.opaque = pCreateInfo->compositeAlpha == VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
 	}
-#if MVK_MACOS
+
 	switch (pCreateInfo->imageColorSpace) {
 		case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
 			break;
 		case VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
+			break;
+		case VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
+			break;
+		case VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearDisplayP3);
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceDCIP3);
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_BT709_NONLINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_709);
 			break;
+		case VK_COLOR_SPACE_BT2020_LINEAR_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearITUR_2020);
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
+			break;
+		case VK_COLOR_SPACE_HDR10_ST2084_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020_PQ_EOTF);
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
+			break;
+		case VK_COLOR_SPACE_HDR10_HLG_EXT:
+			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020_HLG);
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
+			break;
 		case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
 			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998);
-			break;
-		case VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
 			break;
 		case VK_COLOR_SPACE_PASS_THROUGH_EXT:
 		default:
 			// Nothing - the default is not to do color matching.
 			break;
 	}
-#endif
 	_mtlLayerOrigDrawSize = _mtlLayer.updatedDrawableSizeMVK;
 
 	// TODO: set additional CAMetalLayer properties before extracting drawables:
 	//	- presentsWithTransaction
 	//	- drawsAsynchronously
-	//  - wantsExtendedDynamicRangeContent (macOS only)
 
 	if ( [_mtlLayer.delegate isKindOfClass: [PLATFORM_VIEW_CLASS class]] ) {
 		// Sometimes, the owning view can replace its CAMetalLayer. In that case, the client

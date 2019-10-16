@@ -932,6 +932,25 @@ MVK_PUBLIC_SYMBOL VkSampleCountFlagBits mvkVkSampleCountFlagBitsFromSampleCount(
     return VkSampleCountFlagBits(sampleCount);
 }
 
+MVK_PUBLIC_SYMBOL MTLTextureSwizzle mvkMTLTextureSwizzleFromVkComponentSwizzle(VkComponentSwizzle vkSwizzle) {
+	switch (vkSwizzle) {
+		case VK_COMPONENT_SWIZZLE_ZERO:		return MTLTextureSwizzleZero;
+		case VK_COMPONENT_SWIZZLE_ONE:		return MTLTextureSwizzleOne;
+		case VK_COMPONENT_SWIZZLE_R:		return MTLTextureSwizzleRed;
+		case VK_COMPONENT_SWIZZLE_G:		return MTLTextureSwizzleGreen;
+		case VK_COMPONENT_SWIZZLE_B:		return MTLTextureSwizzleBlue;
+		case VK_COMPONENT_SWIZZLE_A:		return MTLTextureSwizzleAlpha;
+		default:							return MTLTextureSwizzleRed;
+	}
+}
+
+MVK_PUBLIC_SYMBOL MTLTextureSwizzleChannels mvkMTLTextureSwizzleChannelsFromVkComponentMapping(VkComponentMapping vkMapping) {
+#define convert(v, d) \
+    v == VK_COMPONENT_SWIZZLE_IDENTITY ? MTLTextureSwizzle##d : mvkMTLTextureSwizzleFromVkComponentSwizzle(v)
+    return MTLTextureSwizzleChannelsMake(convert(vkMapping.r, Red), convert(vkMapping.g, Green), convert(vkMapping.b, Blue), convert(vkMapping.a, Alpha));
+#undef convert
+}
+
 
 #pragma mark Mipmaps
 

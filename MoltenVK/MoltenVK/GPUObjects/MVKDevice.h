@@ -283,8 +283,14 @@ public:
 	 */
 	inline uint32_t getLazilyAllocatedMemoryTypes() { return _lazilyAllocatedMemoryTypes; }
 
+	/** Returns whether this is a unified memory device. */
+	bool getHasUnifiedMemory();
+
 	
 #pragma mark Metal
+
+	/** Returns whether the underlying MTLDevice supports the GPU family. */
+	bool getSupportsGPUFamily(MTLGPUFamily gpuFamily);
 
 	/** Populates the specified structure with the Metal-specific features of this device. */
 	inline const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
@@ -330,11 +336,15 @@ protected:
     void initMetalFeatures();
 	void initFeatures();
 	void initProperties();
+	void initGPUInfoProperties();
 	void initMemoryProperties();
+	uint64_t getVRAMSize();
+	uint64_t getRecommendedMaxWorkingSetSize();
+	uint64_t getCurrentAllocatedSize();
 	void initExtensions();
 	MVKVector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
-	MTLFeatureSet getHighestMTLFeatureSet();
+	uint32_t getHighestMTLFeatureSet();
 	uint64_t getSpirvCrossRevision();
 	bool getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo);
 	void logGPUInfo();
@@ -831,18 +841,5 @@ protected:
 #pragma mark -
 #pragma mark Support functions
 
-/** Returns an approximation of how much memory, in bytes, the device can use with good performance. */
-uint64_t mvkRecommendedMaxWorkingSetSize(id<MTLDevice> mtlDevice);
-
-/** Populate the propertes with info about the GPU represented by the MTLDevice. */
-void mvkPopulateGPUInfo(VkPhysicalDeviceProperties& devProps, id<MTLDevice> mtlDevice);
-
 /** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
-
-/**
- * If the MTLDevice defines a texture memory alignment for the format, it is retrieved from
- * the MTLDevice and returned, or returns zero if the MTLDevice does not define an alignment.
- * The format must support linear texture memory (must not be depth, stencil, or compressed).
- */
-VkDeviceSize mvkMTLPixelFormatLinearTextureAlignment(MTLPixelFormat mtlPixelFormat, id<MTLDevice> mtlDevice);

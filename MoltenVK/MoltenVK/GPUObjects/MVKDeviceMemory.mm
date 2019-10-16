@@ -32,7 +32,10 @@ using namespace std;
 
 #pragma mark MVKDeviceMemory
 
-void MVKDeviceMemory::propogateDebugName() { setLabelIfNotNil(_mtlBuffer, _debugName); }
+void MVKDeviceMemory::propogateDebugName() {
+	setLabelIfNotNil(_mtlHeap, _debugName);
+	setLabelIfNotNil(_mtlBuffer, _debugName);
+}
 
 VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMapFlags flags, void** ppData) {
 
@@ -86,8 +89,11 @@ VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, 
 		}
 #endif
 
-		lock_guard<mutex> lock(_rezLock);
-        for (auto& img : _images) { img->flushToDevice(offset, memSize); }
+		// If we have an MTLHeap object, there's no need to sync memory manually between images and the buffer.
+		if (!_mtlHeap) {
+			lock_guard<mutex> lock(_rezLock);
+			for (auto& img : _images) { img->flushToDevice(offset, memSize); }
+		}
 	}
 	return VK_SUCCESS;
 }
@@ -98,7 +104,7 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 										 MVKMTLBlitEncoder* pBlitEnc) {
 	// Coherent memory is flushed on unmap(), so it is only flushed if forced
     VkDeviceSize memSize = adjustMemorySize(size, offset);
-	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) ) {
+	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) && !_mtlHeap) {
 		lock_guard<mutex> lock(_rezLock);
         for (auto& img : _images) { img->pullFromDevice(offset, memSize); }
 
@@ -153,8 +159,7 @@ VkResult MVKDeviceMemory::addImage(MVKImage* mvkImg) {
 		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
 	}
 
-	if (!_isDedicated)
-		_images.push_back(mvkImg);
+	if (!_isDedicated) { _images.push_back(mvkImg); }
 
 	return VK_SUCCESS;
 }
@@ -162,6 +167,36 @@ VkResult MVKDeviceMemory::addImage(MVKImage* mvkImg) {
 void MVKDeviceMemory::removeImage(MVKImage* mvkImg) {
 	lock_guard<mutex> lock(_rezLock);
 	mvkRemoveAllOccurances(_images, mvkImg);
+}
+
+// Ensures that this instance is backed by a MTLHeap object,
+// creating the MTLHeap if needed, and returns whether it was successful.
+bool MVKDeviceMemory::ensureMTLHeap() {
+
+	if (_mtlHeap) { return true; }
+
+	// Don't bother if we don't have placement heaps.
+	if (!getDevice()->_pMetalFeatures->placementHeaps) { return true; }
+
+#if MVK_MACOS
+	// MTLHeaps on Mac must use private storage for now.
+	if (_mtlStorageMode != MTLStorageModePrivate) { return true; }
+#endif
+
+	MTLHeapDescriptor* heapDesc = [MTLHeapDescriptor new];
+	heapDesc.type = MTLHeapTypePlacement;
+	heapDesc.resourceOptions = getMTLResourceOptions();
+	// For now, use tracked resources. Later, we should probably default
+	// to untracked, since Vulkan uses explicit barriers anyway.
+	heapDesc.hazardTrackingMode = MTLHazardTrackingModeTracked;
+	heapDesc.size = _allocationSize;
+	_mtlHeap = [_device->getMTLDevice() newHeapWithDescriptor: heapDesc];	// retained
+	[heapDesc release];
+	if (!_mtlHeap) { return false; }
+
+	propogateDebugName();
+
+	return true;
 }
 
 // Ensures that this instance is backed by a MTLBuffer object,
@@ -175,12 +210,20 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 	if (memLen > _device->_pMetalFeatures->maxMTLBufferSize) { return false; }
 
 	// If host memory was already allocated, it is copied into the new MTLBuffer, and then released.
-	if (_pHostMemory) {
+	if (_mtlHeap) {
+		_mtlBuffer = [_mtlHeap newBufferWithLength: memLen options: getMTLResourceOptions() offset: 0];	// retained
+		if (_pHostMemory) {
+			memcpy(_mtlBuffer.contents, _pHostMemory, memLen);
+			freeHostMemory();
+		}
+		[_mtlBuffer makeAliasable];
+	} else if (_pHostMemory) {
 		_mtlBuffer = [getMTLDevice() newBufferWithBytes: _pHostMemory length: memLen options: getMTLResourceOptions()];     // retained
 		freeHostMemory();
 	} else {
 		_mtlBuffer = [getMTLDevice() newBufferWithLength: memLen options: getMTLResourceOptions()];     // retained
 	}
+	if (!_mtlBuffer) { return false; }
 	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
 
 	propogateDebugName();
@@ -265,6 +308,15 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 		_isDedicated = true;
 		_images.push_back((MVKImage*)dedicatedImage);
 		return;
+	}
+
+	// If we can, create a MTLHeap. This should happen before creating the buffer
+	// allowing us to map its contents.
+	if (!dedicatedImage && !dedicatedBuffer) {
+		if (!ensureMTLHeap()) {
+			setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate VkDeviceMemory of size %llu bytes.", _allocationSize));
+			return;
+		}
 	}
 
 	// If memory needs to be coherent it must reside in an MTLBuffer, since an open-ended map() must work.

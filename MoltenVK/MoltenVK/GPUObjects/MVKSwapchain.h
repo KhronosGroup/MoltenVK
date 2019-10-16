@@ -80,6 +80,9 @@ public:
 	/** Returns the specified performance stats structure. */
 	const MVKSwapchainPerformance* getPerformanceStatistics() { return &_performanceStatistics; }
 
+	/** Adds HDR metadata to this swapchain. */
+	void setHDRMetadataEXT(const VkHdrMetadataEXT& metadata);
+
 	/**
 	 * Registers a semaphore and/or fence that will be signaled when the image at the given index becomes available.
 	 * This function accepts both a semaphore and a fence, and either none, one, or both may be provided.

@@ -275,6 +275,7 @@ protected:
 	bool _usesTexelBuffer;
 	bool _isLinear;
 	bool _is3DCompressed;
+	bool _isAliasable;
 };
 
 
