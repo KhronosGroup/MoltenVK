@@ -36,19 +36,30 @@ namespace mvk {
 	public:
 
 		/** Sets the GLSL source code that is to be converted to the specified string. */
-		void setGLSL(const std::string& glslSrc) { _glsl = glslSrc; }
+		void setGLSL(const std::string& glslSrc);
 
 		/**
 		 * Sets the GLSL source code that is to be converted from the first length characters
 		 * of the buffer, and ensuring the resulting string is null-terminated.
 		 */
-		void setGLSL(const char* glslSrc, size_t length) { _glsl.assign(glslSrc, length); }
+		void setGLSL(const char* glslSrc, size_t length);
 
 		/** Returns the GLSL source code that was set using the setGLSL() function. */
-		const std::string& getGLSL() { return _glsl; }
+		const std::string& getGLSL() { return _glsls.front(); }
+
+		/**
+		 * Sets the GLSL source code that is to be converted to the specified strings.
+		 * 
+		 * A separate shader will be compiled for each source and linked together into a single
+		 * program.
+		 */
+		void setGLSLs(const std::vector<std::string>& glslSrcs);
+
+		/** Returns the GLSL source code that was set using the setGLSLs() function. */
+		const std::vector<std::string>& getGLSLs() { return _glsls; }
 
 		/** Returns whether the SPIR-V code has been set. */
-		bool hasGLSL() { return !_glsl.empty(); }
+		bool hasGLSL() { return !_glsls.empty(); }
 
 		/**
 		 * Converts GLSL code, set with setGLSL(), to SPIR-V code, which can be retrieved using getSPIRV().
@@ -82,7 +93,7 @@ namespace mvk {
 		bool validateSPIRV();
 		void initGLSLCompilerResources();
 
-		std::string _glsl;
+		std::vector<std::string> _glsls;
 		std::vector<uint32_t> _spirv;
 		std::string _resultLog;
 		bool _wasConverted = false;

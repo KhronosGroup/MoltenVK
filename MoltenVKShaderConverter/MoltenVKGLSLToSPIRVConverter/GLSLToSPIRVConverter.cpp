@@ -37,6 +37,23 @@ void configureGLSLCompilerResources(TBuiltInResource* glslCompilerResources);
 /** Returns the GLSL compiler language type corresponding to the specified MoltenVK shader stage. */
 EShLanguage eshLanguageFromMVKGLSLConversionShaderStage(const MVKGLSLConversionShaderStage mvkShaderStage);
 
+MVK_PUBLIC_SYMBOL void GLSLToSPIRVConverter::setGLSL(const std::string& glslSrc) {
+	_glsls.clear();
+	if (glslSrc.size())
+		_glsls.push_back(glslSrc);
+}
+
+MVK_PUBLIC_SYMBOL void GLSLToSPIRVConverter::setGLSL(const char* glslSrc, size_t length) {
+	_glsls.clear();
+	if (length > 0)
+		_glsls.push_back(std::string(glslSrc, length));
+}
+
+MVK_PUBLIC_SYMBOL void GLSLToSPIRVConverter::setGLSLs(const std::vector<std::string>& glslSrcs) {
+	_glsls.clear();
+	_glsls = glslSrcs;
+}
+
 MVK_PUBLIC_SYMBOL bool GLSLToSPIRVConverter::convert(MVKGLSLConversionShaderStage shaderStage,
 													 bool shouldLogGLSL,
 													 bool shouldLogSPIRV) {
@@ -51,26 +68,31 @@ MVK_PUBLIC_SYMBOL bool GLSLToSPIRVConverter::convert(MVKGLSLConversionShaderStag
 	EShLanguage stage = eshLanguageFromMVKGLSLConversionShaderStage(shaderStage);
 	TBuiltInResource glslCompilerResources;
 	configureGLSLCompilerResources(&glslCompilerResources);
+	std::vector<std::unique_ptr<glslang::TShader>> glslShaders;
 	const char *glslStrings[1];
-	glslStrings[0] = _glsl.data();
+    glslang::TProgram glslProgram;
+    
+	for (const auto& glsl : _glsls) {
+		glslStrings[0] = glsl.data();
 
-	// Create and compile a shader from the source code
-	glslang::TShader glslShader(stage);
-	glslShader.setStrings(glslStrings, 1);
-	if (glslShader.parse(&glslCompilerResources, 100, false, messages)) {
-		if (shouldLogGLSL) {
-			logMsg(glslShader.getInfoLog());
-			logMsg(glslShader.getInfoDebugLog());
+		// Create and compile a shader from the source code
+		glslShaders.emplace_back(new glslang::TShader(stage));
+		glslShaders.back()->setStrings(glslStrings, 1);
+		if (glslShaders.back()->parse(&glslCompilerResources, 100, false, messages)) {
+			if (shouldLogGLSL) {
+				logMsg(glslShaders.back()->getInfoLog());
+				logMsg(glslShaders.back()->getInfoDebugLog());
+			}
+		} else {
+			logError(glslShaders.back()->getInfoLog());
+			logError(glslShaders.back()->getInfoDebugLog());
+			return logError("Error compiling GLSL when converting GLSL to SPIR-V.");
 		}
-	} else {
-		logError(glslShader.getInfoLog());
-		logError(glslShader.getInfoDebugLog());
-		return logError("Error compiling GLSL when converting GLSL to SPIR-V.");
+		// Add a shader to the program. Each shader added will be linked together.
+		glslProgram.addShader(glslShaders.back().get());
 	}
 
-	// Create and link a shader program containing the single shader
-	glslang::TProgram glslProgram;
-	glslProgram.addShader(&glslShader);
+	// Create and link a shader program
 	if ( !glslProgram.link(messages) ) {
 		logError(glslProgram.getInfoLog());
 		logError(glslProgram.getInfoDebugLog());
@@ -125,8 +147,8 @@ bool GLSLToSPIRVConverter::validateSPIRV() {
 void GLSLToSPIRVConverter::logGLSL(const char* opDesc) {
 	_resultLog += opDesc;
 	_resultLog += " GLSL:\n";
-	_resultLog += _glsl;
-	_resultLog += "\nEnd GLSL\n\n";
+	for (const auto& glsl : _glsls) _resultLog += glsl + "\n";
+	_resultLog += "End GLSL\n\n";
 }
 
 
