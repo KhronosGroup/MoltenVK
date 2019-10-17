@@ -211,8 +211,6 @@ bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
 	switch (mvkMTLPixelFormatFromVkFormat(format)) {
 		case MTLPixelFormatDepth24Unorm_Stencil8:
 			return getMTLDevice().isDepth24Stencil8PixelFormatSupported;
-			break;
-
 		default:
 			break;
 	}
@@ -2512,7 +2510,7 @@ MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBa
 #if MVK_MACOS
 	if (mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8 &&
 		!getMTLDevice().isDepth24Stencil8PixelFormatSupported) {
-		return MTLPixelFormatDepth32Float_Stencil8;
+		return mvkMTLPixelFormatFromVkFormatInObj(vkFormat, mvkObj, MTLPixelFormatDepth24Unorm_Stencil8);
 	}
 #endif
 	return mtlPixFmt;
