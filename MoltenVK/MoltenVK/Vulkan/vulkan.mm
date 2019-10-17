@@ -2651,6 +2651,24 @@ MVK_PUBLIC_SYMBOL void vkSubmitDebugUtilsMessageEXT(
 
 
 #pragma mark -
+#pragma mark VK_EXT_hdr_metadata extension
+
+MVK_PUBLIC_SYMBOL void vkSetHdrMetadataEXT(
+	VkDevice                                    device,
+	uint32_t                                    swapchainCount,
+	const VkSwapchainKHR*                       pSwapchains,
+	const VkHdrMetadataEXT*                     pMetadata) {
+
+	MVKTraceVulkanCallStart();
+	for (uint32_t i = 0; i < swapchainCount; i++) {
+		auto* mvkSwpChn = (MVKSwapchain*)pSwapchains[i];
+		mvkSwpChn->setHDRMetadataEXT(pMetadata[i]);
+	}
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_host_query_reset extension
 
 MVK_PUBLIC_SYMBOL void vkResetQueryPoolEXT(

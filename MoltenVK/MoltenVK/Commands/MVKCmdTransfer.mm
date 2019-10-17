@@ -762,7 +762,8 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
 		// If we're copying to a compressed 3D image, the image data need to be decompressed.
 		// If we're copying to mip level 0, we can skip the copy and just decode
 		// directly into the image. Otherwise, we need to use an intermediate buffer.
-        if (_toImage && _image->getIsCompressed() && mtlTexture.textureType == MTLTextureType3D) {
+        if (_toImage && _image->getIsCompressed() && mtlTexture.textureType == MTLTextureType3D &&
+            !getDevice()->_pMetalFeatures->native3DCompressedTextures) {
             MVKCmdCopyBufferToImageInfo info;
             info.srcRowStride = bytesPerRow & 0xffffffff;
             info.srcRowStrideHigh = bytesPerRow >> 32;

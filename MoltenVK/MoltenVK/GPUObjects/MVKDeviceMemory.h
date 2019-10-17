@@ -104,6 +104,9 @@ public:
 	/** Returns the Metal buffer underlying this memory allocation. */
 	inline id<MTLBuffer> getMTLBuffer() { return _mtlBuffer; }
 
+	/** Returns the Metal heap underlying this memory allocation. */
+	inline id<MTLHeap> getMTLHeap() { return _mtlHeap; }
+
 	/** Returns the Metal storage mode used by this memory allocation. */
 	inline MTLStorageMode getMTLStorageMode() { return _mtlStorageMode; }
 
@@ -133,6 +136,7 @@ protected:
 	void removeBuffer(MVKBuffer* mvkBuff);
 	VkResult addImage(MVKImage* mvkImg);
 	void removeImage(MVKImage* mvkImg);
+	bool ensureMTLHeap();
 	bool ensureMTLBuffer();
 	bool ensureHostMemory();
 	void freeHostMemory();
@@ -145,6 +149,7 @@ protected:
 	VkDeviceSize _mapOffset = 0;
 	VkDeviceSize _mapSize = 0;
 	id<MTLBuffer> _mtlBuffer = nil;
+	id<MTLHeap> _mtlHeap = nil;
 	void* _pMemory = nullptr;
 	void* _pHostMemory = nullptr;
 	bool _isMapped = false;

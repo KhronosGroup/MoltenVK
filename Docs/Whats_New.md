@@ -17,8 +17,18 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.38
 ---------------
 
-Released TBD
+Released 2019/10/31
 
+- Add support for Metal 3.0 capabilities.
+- Add support for extensions:
+	- `VK_EXT_swapchain_colorspace` (*iOS*, already supported on *macOS*).
+	- `VK_EXT_hdr_metadata` (*macOS*)
+- Use native texture swizzling when available.
+- Use placement `MTLHeaps` for `VkDeviceMemory` when possible.
+- Report heap sizes accurately when possible.
+- Add support for additional colorspace options.
+- Add support for the `VkPhysicalDeviceFeatures::shaderResourceMinLod` feature.
+- Add support for compressed 3D images on *macOS*.
 - Update `MoltenVK_Runtime_UserGuide.md` about embedding `libMoltenVK.dylib` in an application.
 - Clarify static linking as the recommended linking approach for *iOS* app store distribution.
 - Add request for feedback from people who reject **MoltenVK** to `README.md` document.
@@ -27,6 +37,7 @@ Released TBD
 - Fix memory leaks when compiling shaders and pipelines without default OS autorelease pool.
 - Reduce memory usage by adjusting default memory allocs for many `MVKVectorInline` uses and 
   replacing use of `MVKVectorDefault` with `std::vector` in descriptor set bindings.
+	 
 
 
 
@@ -112,7 +123,7 @@ Released 2019/07/25
 	- `VK_EXT_post_depth_coverage`
 	- `VK_EXT_scalar_block_layout`
 	- `VK_EXT_shader_stencil_export`
-	- `VK_EXT_swapchain_colorspace`
+	- `VK_EXT_swapchain_colorspace` (*macOS*)
 	- `VK_EXT_texel_buffer_alignment`
 	- `VK_AMD_shader_image_load_store_lod`
 	- `VK_AMD_shader_trinary_minmax`

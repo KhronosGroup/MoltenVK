@@ -591,7 +591,7 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
     MVKPipeline* pipeline = _cmdEncoder->_graphicsPipelineState.getPipeline();
-    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle();
+    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || _cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     bool forTessellation = ((MVKGraphicsPipeline*)pipeline)->isTessellationPipeline();
 
     if (stage == (forTessellation ? kMVKGraphicsStageVertex : kMVKGraphicsStageRasterization)) {
