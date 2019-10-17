@@ -171,14 +171,18 @@
 #   define MVK_CONFIG_FORCE_LOW_POWER_GPU    0
 #endif
 
-/** Allow the use of MTLFence or MTLEvent for VkSemaphore synchronization behaviour. Disabled by default. */
+/**
+ * Allow the use of MTLFence or MTLEvent for VkSemaphore synchronization behaviour.
+ * By default:
+ *   - MVK_ALLOW_METAL_FENCES is enabled
+ *   - MVK_ALLOW_METAL_EVENTS is disabled
+ * */
 #ifndef MVK_ALLOW_METAL_FENCES
-#   define MVK_ALLOW_METAL_FENCES    0
+#   define MVK_ALLOW_METAL_FENCES    1
 #endif
 #ifndef MVK_ALLOW_METAL_EVENTS
 #   define MVK_ALLOW_METAL_EVENTS    0
 #endif
-
 
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.

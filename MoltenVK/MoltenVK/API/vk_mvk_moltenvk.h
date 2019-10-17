@@ -116,10 +116,14 @@ typedef unsigned long MTLLanguageVersion;
  *    build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.
  *
  * 4. Setting the MVK_ALLOW_METAL_FENCES or MVK_ALLOW_METAL_EVENTS runtime environment variable
- *    or MoltenVK compile-time build setting to 1 will cause MoltenVK to use MTLFence or MTLEvent
- *    if they are available on the device, for VkSemaphore sychronization behaviour.
+ *    or MoltenVK compile-time build setting to 1 will cause MoltenVK to use MTLFence or MTLEvent,
+ *    respectively, if it is available on the device, for VkSemaphore synchronization behaviour.
  *    If both variables are set, MVK_ALLOW_METAL_FENCES takes priority over MVK_ALLOW_METAL_EVENTS.
- *    Both options are disabled by default.
+ *    If both are disabled, or if MTLFence or MTLEvent is not available on the device, MoltenVK
+ *    will use CPU synchronization to control VkSemaphore synchronization behaviour.
+ *    By default, MVK_ALLOW_METAL_FENCES is enabled and MVK_ALLOW_METAL_EVENTS is disabled,
+ *    meaning MoltenVK will use MTLFences, if they are available, to control VkSemaphore
+ *    synchronization behaviour, by default.
  *
  * 5. The MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE runtime environment variable or MoltenVK compile-time
  *    build setting controls whether Xcode should run an automatic GPU capture without the user
