@@ -39,14 +39,12 @@ EShLanguage eshLanguageFromMVKGLSLConversionShaderStage(const MVKGLSLConversionS
 
 MVK_PUBLIC_SYMBOL void GLSLToSPIRVConverter::setGLSL(const std::string& glslSrc) {
 	_glsls.clear();
-	if (glslSrc.size())
-		_glsls.push_back(glslSrc);
+	if (glslSrc.size()) { _glsls.push_back(glslSrc); }
 }
 
 MVK_PUBLIC_SYMBOL void GLSLToSPIRVConverter::setGLSL(const char* glslSrc, size_t length) {
 	_glsls.clear();
-	if (length > 0)
-		_glsls.push_back(std::string(glslSrc, length));
+	if (length > 0) { _glsls.push_back(std::string(glslSrc, length)); }
 }
 
 MVK_PUBLIC_SYMBOL void GLSLToSPIRVConverter::setGLSLs(const std::vector<std::string>& glslSrcs) {
@@ -147,7 +145,7 @@ bool GLSLToSPIRVConverter::validateSPIRV() {
 void GLSLToSPIRVConverter::logGLSL(const char* opDesc) {
 	_resultLog += opDesc;
 	_resultLog += " GLSL:\n";
-	for (const auto& glsl : _glsls) _resultLog += glsl + "\n";
+	for (const auto& glsl : _glsls) { _resultLog += glsl + "\n"; }
 	_resultLog += "End GLSL\n\n";
 }
 
