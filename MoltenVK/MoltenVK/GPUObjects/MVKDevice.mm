@@ -211,8 +211,6 @@ bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
 	switch (mvkMTLPixelFormatFromVkFormat(format)) {
 		case MTLPixelFormatDepth24Unorm_Stencil8:
 			return getMTLDevice().isDepth24Stencil8PixelFormatSupported;
-			break;
-
 		default:
 			break;
 	}
@@ -2512,7 +2510,7 @@ MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBa
 #if MVK_MACOS
 	if (mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8 &&
 		!getMTLDevice().isDepth24Stencil8PixelFormatSupported) {
-		return MTLPixelFormatDepth32Float_Stencil8;
+		return mvkMTLPixelFormatFromVkFormatInObj(vkFormat, mvkObj, MTLPixelFormatDepth24Unorm_Stencil8);
 	}
 #endif
 	return mtlPixFmt;
@@ -2653,7 +2651,7 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	if (_pMetalFeatures->events) {
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventForSemaphores, MVK_ALLOW_METAL_EVENTS);
 	}
-	MVKLogInfo("Using %s for semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
+	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
 
 #if MVK_MACOS
 	// If we have selected a high-power GPU and want to force the window system

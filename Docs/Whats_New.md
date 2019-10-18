@@ -17,13 +17,15 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.38
 ---------------
 
-Released 2019/10/31
+Released 2019/10/28
 
 - Add support for Metal 3.0 capabilities.
 - Add support for extensions:
 	- `VK_EXT_swapchain_colorspace` (*iOS*, already supported on *macOS*).
 	- `VK_EXT_hdr_metadata` (*macOS*)
 - Use native texture swizzling when available.
+- Set default value of the `MVK_ALLOW_METAL_FENCES` environment variable to `1 (true)`, 
+  to enable use of `MTLFence` for Vulkan semaphores, by default.
 - Use placement `MTLHeaps` for `VkDeviceMemory` when possible.
 - Report heap sizes accurately when possible.
 - Add support for additional colorspace options.
@@ -35,6 +37,7 @@ Released 2019/10/31
 - Allow `MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS` build setting to be overridden.
 - Fix memory leaks of system classes during `VkInstance` and `VkQueue` creation.
 - Fix memory leaks when compiling shaders and pipelines without default OS autorelease pool.
+- Log format substitution error when `MTLPixelFormatDepth24Unorm_Stencil8` is not supported.
 - Reduce memory usage by adjusting default memory allocs for many `MVKVectorInline` uses and 
   replacing use of `MVKVectorDefault` with `std::vector` in descriptor set bindings.
 	 
