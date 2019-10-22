@@ -1197,11 +1197,9 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxDescriptorSetStorageImages = (_properties.limits.maxPerStageDescriptorStorageImages * 4);
 	_properties.limits.maxDescriptorSetInputAttachments = (_properties.limits.maxPerStageDescriptorInputAttachments * 4);
 
-	if (_metalFeatures.textureBuffers) {
-		_properties.limits.maxTexelBufferElements = (uint32_t)_metalFeatures.maxMTLBufferSize;
-	} else {
-		_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * _properties.limits.maxImageDimension2D;
-	}
+	// Whether handled as a real texture buffer or a 2D texture, this value is likely nowhere near the size of a buffer,
+	// needs to fit in 32 bits, and some apps (I'm looking at you, CTS), assume it is low when doing 32-bit math.
+	_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * (4 * KIBI);
 #if MVK_MACOS
 	_properties.limits.maxUniformBufferRange = (64 * KIBI);
 #endif
