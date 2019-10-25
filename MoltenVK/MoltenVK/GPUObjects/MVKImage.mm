@@ -617,16 +617,18 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 																 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 																 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
 																 VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
-	validateConfig(pCreateInfo, isAttachment);
+	// Texture type depends on validated samples. Other validation depends on possibly modified texture type.
 	_samples = validateSamples(pCreateInfo, isAttachment);
+	_mtlTextureType = mvkMTLTextureTypeFromVkImageType(pCreateInfo->imageType, _arrayLayers, _samples > VK_SAMPLE_COUNT_1_BIT);
+
+	validateConfig(pCreateInfo, isAttachment);
 	_mipLevels = validateMipLevels(pCreateInfo, isAttachment);
 	_isLinear = validateLinear(pCreateInfo, isAttachment);
 
 	_mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
-	_mtlTextureType = mvkMTLTextureTypeFromVkImageType(pCreateInfo->imageType, _arrayLayers, _samples > VK_SAMPLE_COUNT_1_BIT);
 	_usage = pCreateInfo->usage;
 
-	_is3DCompressed = (pCreateInfo->imageType == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
+	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
@@ -650,50 +652,14 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     initSubresources(pCreateInfo);
 }
 
-void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
-
-	bool is2D = pCreateInfo->imageType == VK_IMAGE_TYPE_2D;
-	bool isCompressed = mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed;
-
-#if MVK_IOS
-	if (isCompressed && !is2D) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
-	}
-#endif
-#if MVK_MACOS
-	if (isCompressed && !is2D) {
-		if (pCreateInfo->imageType != VK_IMAGE_TYPE_3D) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D or 3D images."));
-		} else if (!getDevice()->_pMetalFeatures->native3DCompressedTextures && !mvkCanDecodeFormat(pCreateInfo->format)) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", mvkVkFormatName(pCreateInfo->format)));
-		}
-	}
-#endif
-
-	if ((mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
-	}
-	if (isAttachment && (pCreateInfo->arrayLayers > 1) && !_device->_pMetalFeatures->layeredRendering) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to array (layered) attachments."));
-	}
-	if (isAttachment && (pCreateInfo->imageType == VK_IMAGE_TYPE_1D)) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to 1D attachments."));
-	}
-	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not allow uncompressed views of compressed images."));
-	}
-	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT)) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not support split-instance memory binding."));
-	}
-}
-
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 
 	VkSampleCountFlagBits validSamples = pCreateInfo->samples;
 
 	if (validSamples == VK_SAMPLE_COUNT_1_BIT) { return validSamples; }
 
-	if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
+	// Don't use getImageType() because it hasn't been set yet.
+	if ( !((pCreateInfo->imageType == VK_IMAGE_TYPE_2D) || ((pCreateInfo->imageType == VK_IMAGE_TYPE_1D) && _mvkTexture1DAs2D)) ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
@@ -717,14 +683,51 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 	return validSamples;
 }
 
+void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
+
+	bool is2D = (getImageType() == VK_IMAGE_TYPE_2D);
+	bool isCompressed = mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed;
+
+#if MVK_IOS
+	if (isCompressed && !is2D) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
+	}
+#endif
+#if MVK_MACOS
+	if (isCompressed && !is2D) {
+		if (getImageType() != VK_IMAGE_TYPE_3D) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D or 3D images."));
+		} else if (!getDevice()->_pMetalFeatures->native3DCompressedTextures && !mvkCanDecodeFormat(pCreateInfo->format)) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", mvkVkFormatName(pCreateInfo->format)));
+		}
+	}
+#endif
+
+	if ((mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
+	}
+	if (isAttachment && (pCreateInfo->arrayLayers > 1) && !_device->_pMetalFeatures->layeredRendering) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to array (layered) attachments."));
+	}
+	if (isAttachment && (getImageType() == VK_IMAGE_TYPE_1D)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not support rendering to native 1D attachments. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D."));
+	}
+	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not allow uncompressed views of compressed images."));
+	}
+	if (mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not support split-instance memory binding."));
+	}
+}
+
 uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
 	uint32_t minDim = 1;
 	uint32_t validMipLevels = max(pCreateInfo->mipLevels, minDim);
 
 	if (validMipLevels == 1) { return validMipLevels; }
 
-	if (pCreateInfo->imageType == VK_IMAGE_TYPE_1D) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, 1D images cannot use mipmaps. Setting mip levels to 1."));
+	if (getImageType() == VK_IMAGE_TYPE_1D) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, native 1D images cannot use mipmaps. Setting mip levels to 1. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D."));
 		validMipLevels = 1;
 	}
 
@@ -737,7 +740,7 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 
 	bool isLin = true;
 
-	if (pCreateInfo->imageType != VK_IMAGE_TYPE_2D) {
+	if (getImageType() != VK_IMAGE_TYPE_2D) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, imageType must be VK_IMAGE_TYPE_2D."));
 		isLin = false;
 	}

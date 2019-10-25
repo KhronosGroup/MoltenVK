@@ -1157,6 +1157,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     _tessCtlPatchOutputBufferIndex = layout->getTessCtlPatchOutputBufferIndex();
     _tessCtlLevelBufferIndex = layout->getTessCtlLevelBufferIndex();
 
+	shaderContext.options.mslOptions.texture_1D_as_2D = _mvkTexture1DAs2D;
     shaderContext.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo, reflectData);
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
     shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
@@ -1349,6 +1350,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
+	shaderContext.options.mslOptions.texture_1D_as_2D = _mvkTexture1DAs2D;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -1615,12 +1617,19 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.shader_patch_output_buffer_index,
 				opt.shader_tess_factor_buffer_index,
 				opt.buffer_size_buffer_index,
+				opt.view_mask_buffer_index,
+				opt.dynamic_offsets_buffer_index,
 				opt.shader_input_wg_index,
+				opt.device_index,
 				opt.enable_point_size_builtin,
 				opt.disable_rasterization,
 				opt.capture_output_to_buffer,
 				opt.swizzle_texture_samples,
 				opt.tess_domain_origin_lower_left,
+				opt.multiview,
+				opt.view_index_from_device_index,
+				opt.dispatch_base,
+				opt.texture_1D_as_2D,
 				opt.argument_buffers,
 				opt.pad_fragment_output_components,
 				opt.texture_buffer_native);

@@ -264,21 +264,26 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 	VkSampleCountFlags sampleCounts = _metalFeatures.supportedSampleCounts;
     switch (type) {
         case VK_IMAGE_TYPE_1D:
-			// Metal does not allow 1D textures to be used as attachments
-			if (hasAttachmentUsage) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+			maxExt.height = 1;
+			maxExt.depth = 1;
+			if (_mvkTexture1DAs2D) {
+				maxExt.width = pLimits->maxImageDimension2D;
+				maxLevels = mvkMipmapLevels3D(maxExt);
+			} else {
+				maxExt.width = pLimits->maxImageDimension1D;
+				maxLevels = 1;
+				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 
-			// Metal does not allow linear tiling on 1D textures
-			if (tiling == VK_IMAGE_TILING_LINEAR) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+				// Metal does not allow native 1D textures to be used as attachments
+				if (hasAttachmentUsage ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
-			// Metal does not allow compressed or depth/stencil formats on 1D textures
-			if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed) {
-				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+				// Metal does not allow linear tiling on native 1D textures
+				if (tiling == VK_IMAGE_TILING_LINEAR) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+
+				// Metal does not allow compressed or depth/stencil formats on native 1D textures
+				if (mvkFmt == kMVKFormatDepthStencil) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+				if (mvkFmt == kMVKFormatCompressed) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 			}
-            maxExt.width = pLimits->maxImageDimension1D;
-            maxExt.height = 1;
-            maxExt.depth = 1;
-			maxLevels = 1;
-            sampleCounts = VK_SAMPLE_COUNT_1_BIT;
             break;
         case VK_IMAGE_TYPE_2D:
             if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ) {

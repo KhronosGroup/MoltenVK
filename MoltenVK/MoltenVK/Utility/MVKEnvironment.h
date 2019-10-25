@@ -184,6 +184,11 @@
 #   define MVK_ALLOW_METAL_EVENTS    0
 #endif
 
+/** Substitute Metal 2D textures for Vulkan 1D images. Enabled by default. */
+#ifndef MVK_CONFIG_TEXTURE_1D_AS_2D
+#   define MVK_CONFIG_TEXTURE_1D_AS_2D    1
+#endif
+
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.
  *

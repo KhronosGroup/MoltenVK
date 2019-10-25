@@ -26,6 +26,9 @@ Released 2019/10/28
 - Use native texture swizzling when available.
 - Set default value of the `MVK_ALLOW_METAL_FENCES` environment variable to `1 (true)`, 
   to enable use of `MTLFence` for Vulkan semaphores, by default.
+- Support additional capabilities in 1D images, including rendering, clearing,
+  and mipmaps. Add `MVK_CONFIG_TEXTURE_1D_AS_2D` environment variable to 
+  enable/disable these capabilities.
 - Use placement `MTLHeaps` for `VkDeviceMemory` when possible.
 - Report heap sizes accurately when possible.
 - Add support for additional colorspace options.

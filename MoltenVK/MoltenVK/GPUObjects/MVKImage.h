@@ -56,7 +56,11 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT; }
 
-	/** Returns the Vulkan image type of this image. */
+	/**
+	 * Returns the Vulkan image type of this image.
+	 * This may be different than the value originally specified for the image
+	 * if a 1D texture is being handled via a Metal 2D texture with height of 1.
+	 */
     VkImageType getImageType();
 
     /** Returns the Vulkan image format of this image. */

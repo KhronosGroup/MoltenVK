@@ -1061,7 +1061,7 @@ void MVKCmdClearImage::setContent(VkImage image,
 
 	// Validate
 	if (_image->getImageType() == VK_IMAGE_TYPE_1D) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): 1D images cannot be cleared on this device."));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Native 1D images cannot be cleared on this device. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D."));
 	}
 	if ((_isDepthStencilClear && !_image->getSupportsAllFormatFeatures(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) ||
 		(!_isDepthStencilClear && !_image->getSupportsAllFormatFeatures(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))) {

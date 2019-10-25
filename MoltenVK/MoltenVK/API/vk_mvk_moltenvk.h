@@ -100,7 +100,7 @@ typedef unsigned long MTLLanguageVersion;
  *      0: No logging.
  *      1: Log errors only.
  *      2: Log errors and informational messages.
- *    If neither is set, errors and informational messages are logged.
+ *    If none of these is set, errors and informational messages are logged.
  *
  * 2. The MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time build
  *    setting causes MoltenVK to log the name of each Vulkan call made by the application. The logging
@@ -114,6 +114,7 @@ typedef unsigned long MTLLanguageVersion;
  *
  * 3. Setting the MVK_CONFIG_FORCE_LOW_POWER_GPU runtime environment variable or MoltenVK compile-time
  *    build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.
+ *    By default, this setting is disabled, allowing both low-power and high-power GPU's to be used.
  *
  * 4. Setting the MVK_ALLOW_METAL_FENCES or MVK_ALLOW_METAL_EVENTS runtime environment variable
  *    or MoltenVK compile-time build setting to 1 will cause MoltenVK to use MTLFence or MTLEvent,
@@ -136,6 +137,13 @@ typedef unsigned long MTLLanguageVersion;
  *      0: No automatic GPU capture.
  *      1: Capture all GPU commands issued during the lifetime of the VkDevice.
  *    If none of these is set, no automatic GPU capture will occur.
+ *
+ * 6. The MVK_CONFIG_TEXTURE_1D_AS_2D runtime environment variable or MoltenVK compile-time build
+ *    setting controls whether MoltenVK should use a Metal 2D texture with a height of 1 for a
+ *    Vulkan 1D image, or use a native Metal 1D texture. Metal imposes significant restrictions
+ *    on native 1D textures, including not being renderable, clearable, or permitting mipmaps.
+ *    Using a Metal 2D texture allows Vulkan 1D textures to support this additional functionality.
+ *    This setting is enabled by default, and MoltenVK will use a Metal 2D texture for each Vulkan 1D image.
  */
 typedef struct {
 
