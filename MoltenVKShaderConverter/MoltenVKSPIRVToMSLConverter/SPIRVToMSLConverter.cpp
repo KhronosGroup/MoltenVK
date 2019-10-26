@@ -63,6 +63,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConv
 	if (mslOptions.argument_buffers != other.mslOptions.argument_buffers) { return false; }
 	if (mslOptions.pad_fragment_output_components != other.mslOptions.pad_fragment_output_components) { return false; }
 	if (mslOptions.texture_buffer_native != other.mslOptions.texture_buffer_native) { return false; }
+	if (mslOptions.texture_1D_as_2D != other.mslOptions.texture_1D_as_2D) { return false; }
 
 	return true;
 }

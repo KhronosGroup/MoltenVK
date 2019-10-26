@@ -1108,6 +1108,7 @@
 		450A4F64221C5A95007203D7 /* spirv_reflect.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_reflect.cpp; sourceTree = "<group>"; };
 		A90FD89F21CC4EAB00B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A90FD9E421CC4EB900B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gen_spirv_cross_rev_hdr.sh; sourceTree = "<group>"; };
 		A9679AAC21D269D900856BF7 /* package_ext_libs_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_macos.sh; sourceTree = "<group>"; };
 		A9679AAD21D269D900856BF7 /* package_ext_libs_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_ios.sh; sourceTree = "<group>"; };
 		A9679AAE21D269D900856BF7 /* package_ext_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs.sh; sourceTree = "<group>"; };
@@ -1642,6 +1643,7 @@
 		A9679AAB21D2699800856BF7 /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
+				A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */,
 				A9679AAD21D269D900856BF7 /* package_ext_libs_ios.sh */,
 				A9679AAC21D269D900856BF7 /* package_ext_libs_macos.sh */,
 				A9679AAE21D269D900856BF7 /* package_ext_libs.sh */,
@@ -2880,6 +2882,7 @@
 			buildPhases = (
 				A976290021CC608E00B52A68 /* Headers */,
 				A976290121CC609100B52A68 /* Sources */,
+				A91BF013235F9EED0039B7DE /* Generate Revision Header */,
 			);
 			buildRules = (
 			);
@@ -2896,6 +2899,7 @@
 			buildPhases = (
 				A97628FF21CC608900B52A68 /* Headers */,
 				A97628FE21CC608400B52A68 /* Sources */,
+				A91BF012235F9E220039B7DE /* Generate Revision Header */,
 			);
 			buildRules = (
 			);
@@ -2976,7 +2980,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1100;
+				LastUpgradeCheck = 1110;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A972A7E421CEC72F0013AB25 = {
@@ -3018,6 +3022,42 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A91BF012235F9E220039B7DE /* Generate Revision Header */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Revision Header";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Scripts/gen_spirv_cross_rev_hdr.sh\"\n";
+		};
+		A91BF013235F9EED0039B7DE /* Generate Revision Header */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Revision Header";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/Scripts/gen_spirv_cross_rev_hdr.sh\"\n";
+		};
 		A9679AAF21D26C1400856BF7 /* Package External Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;

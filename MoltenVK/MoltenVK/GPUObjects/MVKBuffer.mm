@@ -175,7 +175,7 @@ void MVKBufferView::propogateDebugName() {
 #pragma mark Metal
 
 id<MTLTexture> MVKBufferView::getMTLTexture() {
-    if ( !_mtlTexture && _mtlPixelFormat &&  _device->_pMetalFeatures->texelBuffers) {
+    if ( !_mtlTexture && _mtlPixelFormat && _device->_pMetalFeatures->texelBuffers) {
 
 		// Lock and check again in case another thread has created the texture.
 		lock_guard<mutex> lock(_lock);
@@ -201,9 +201,9 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
             mtlTexDesc.cpuCacheMode = mtlBuff.cpuCacheMode;
             mtlTexDesc.usage = usage;
         }
-		_mtlTexture = [_buffer->getMTLBuffer() newTextureWithDescriptor: mtlTexDesc
-																 offset: _mtlBufferOffset
-															bytesPerRow: _mtlBytesPerRow];
+		_mtlTexture = [mtlBuff newTextureWithDescriptor: mtlTexDesc
+												 offset: _mtlBufferOffset
+											bytesPerRow: _mtlBytesPerRow];
 		propogateDebugName();
     }
     return _mtlTexture;
