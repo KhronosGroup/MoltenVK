@@ -287,7 +287,7 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
     if (hasResolveAttachment && !_renderPass->getDevice()->getPhysicalDevice()->getMetalFeatures()->combinedStoreResolveAction) {
         mtlAttDesc.storeAction = MTLStoreActionMultisampleResolve;
     } else if ( storeOverride ) {
-        mtlAttDesc.storeAction = MTLStoreActionStore;
+        mtlAttDesc.storeAction = hasResolveAttachment ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
     } else if ( isRenderingEntireAttachment && (subpass->_subpassIndex == _lastUseSubpassIdx) ) {
         VkAttachmentStoreOp storeOp = isStencil ? _info.stencilStoreOp : _info.storeOp;
         mtlAttDesc.storeAction = mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp, hasResolveAttachment);
