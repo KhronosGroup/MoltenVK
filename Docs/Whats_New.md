@@ -17,7 +17,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.38
 ---------------
 
-Released 2019/10/28
+Released 2019/10/29
 
 - Add support for Metal 3.0 capabilities.
 - Add support for extensions:
@@ -43,6 +43,21 @@ Released 2019/10/28
 - Log format substitution error when `MTLPixelFormatDepth24Unorm_Stencil8` is not supported.
 - Reduce memory usage by adjusting default memory allocs for many `MVKVectorInline` uses and 
   replacing use of `MVKVectorDefault` with `std::vector` in descriptor set bindings.
+- Set value of `VkPhysicalDeviceLimits::maxTexelBufferElements` to more realistic value.
+- Add linking separate shader texts to `GLSLToSPRIVConverter`.
+- Move generation of `SPIRV-Cross/mvkSpirvCrossRevisionDerived.h` to separate script.
+- Support Xcode 11.1.
+- Update dependency libraries to match *Vulkan SDK 1.1.126*.
+- Update to latest SPIRV-Cross version:
+	- MSL: Support option for treating 1D textures as 2D textures of height 1.
+	- MSL: Fix array copies to/from interpolators.
+	- MSL: Fix 16-bit integer literals.
+	- MSL: Fix regression with `OpCompositeConstruct` from `std140 float[]`.
+	- Fixes cases where discard and demote are called in pure functions 
+	  and the function result is not consumed.
+	- Do not consider aliased struct types if the master is not a block.
+	- Fix `OpVectorExtractDynamic` with spec constant op index.
+	- Update SPIR-V headers to SPIR-V 1.5.
 	 
 
 
@@ -86,8 +101,8 @@ Released 2019/09/10
 - `MVKSwapchain::signalWhenAvailable()` add autoreleasepool around `MTLCommandBuffer` use.
 - Add ability to automatically cause an *Xcode* GPU capture without developer intervention.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to version 22.
-- Update dependency libraries to match Vulkan SDK 1.1.121.
 - Update to renaming of `VK_INTEL_shader_integer_functions2` enums and structs in latest Vulkan headers.
+- Update dependency libraries to match *Vulkan SDK 1.1.121*.
 - Update to latest SPIRV-Cross version:
 	- Support the `SPV_EXT_fragment_shader_interlock` extension.
 	- MSL: Deal with array copies from and to threadgroup.
