@@ -201,6 +201,9 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
 
 4. Repeat *Step 3* for the `SPIRV-Tools-iOS` target within the `ExternalDependencies` *Xcode* project
 
+5. Update `Templates/spirv-tools/build.zip` from the contents of `External/glslang/External/spirv-tools/build`,
+   and test by running `./fetchDependencies --skip-spirv-tools-build`, and a **MoltenVK** build.
+
 
 
 <a name="add_glslang"></a>
