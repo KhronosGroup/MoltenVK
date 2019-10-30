@@ -446,6 +446,8 @@ public:
 					  const VkImageCreateInfo* pCreateInfo,
 					  MVKSwapchain* swapchain);
 
+	~MVKSwapchainImage() override;
+
 protected:
 	id<MTLTexture> newMTLTexture() override;
 	id<CAMetalDrawable> getCAMetalDrawable();

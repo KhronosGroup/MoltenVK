@@ -40,6 +40,7 @@ Released 2019/10/29
 - Allow `MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS` build setting to be overridden.
 - Fix memory leaks of system classes during `VkInstance` and `VkQueue` creation.
 - Fix memory leaks when compiling shaders and pipelines without default OS autorelease pool.
+- Fix severe FPS degradation caused by certain swapchain recreation situations.
 - Log format substitution error when `MTLPixelFormatDepth24Unorm_Stencil8` is not supported.
 - Reduce memory usage by adjusting default memory allocs for many `MVKVectorInline` uses and 
   replacing use of `MVKVectorDefault` with `std::vector` in descriptor set bindings.
