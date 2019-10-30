@@ -17,7 +17,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.38
 ---------------
 
-Released 2019/10/29
+Released 2019/10/30
 
 - Add support for Metal 3.0 capabilities.
 - Add support for extensions:
