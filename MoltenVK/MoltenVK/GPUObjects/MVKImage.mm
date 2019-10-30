@@ -1348,4 +1348,7 @@ MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
 	_swapchainIndex = uint32_t(-1);
 }
 
+MVKSwapchainImage::~MVKSwapchainImage() {
+	resetMetalSurface();	// remove drawable from swapchain
+}
 
