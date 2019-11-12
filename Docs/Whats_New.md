@@ -14,6 +14,16 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.39
+---------------
+
+Released TBD
+
+- Support linear filtering when using `vkCmdBlitImage()`.
+- Support *Xcode 11.2*.
+
+
+
 MoltenVK 1.0.38
 ---------------
 
@@ -47,7 +57,7 @@ Released 2019/10/30
 - Set value of `VkPhysicalDeviceLimits::maxTexelBufferElements` to more realistic value.
 - Add linking separate shader texts to `GLSLToSPRIVConverter`.
 - Move generation of `SPIRV-Cross/mvkSpirvCrossRevisionDerived.h` to separate script.
-- Support Xcode 11.1.
+- Support *Xcode 11.1*.
 - Update dependency libraries to match *Vulkan SDK 1.1.126*.
 - Update to latest SPIRV-Cross version:
 	- MSL: Support option for treating 1D textures as 2D textures of height 1.

@@ -156,8 +156,10 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		NSString* typeStr = getMTLFormatTypeString(blitKey.getSrcMTLPixelFormat());
 
 		bool isArrayType = blitKey.isSrcArrayType();
+		bool isLinearFilter = (blitKey.getSrcMTLSamplerMinMagFilter() == MTLSamplerMinMagFilterLinear);
 		NSString* arraySuffix = isArrayType ? @"_array" : @"";
-		NSString* sliceArg = isArrayType ? @", srcSlice" : @"";
+		NSString* sliceArg = isArrayType ? @", subRez.slice" : @"";
+		NSString* srcFilter = isLinearFilter ? @"linear" : @"nearest";
 
 		NSMutableString* msl = [NSMutableString stringWithCapacity: (2 * KIBI) ];
 		[msl appendLineMVK: @"#include <metal_stdlib>"];
@@ -168,19 +170,26 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		[msl appendLineMVK: @"    float2 v_texCoord;"];
 		[msl appendLineMVK: @"} VaryingsPosTex;"];
 		[msl appendLineMVK];
+		[msl appendLineMVK: @"typedef struct {"];
+		[msl appendLineMVK: @"    uint slice;"];
+		[msl appendLineMVK: @"    float lod;"];
+		[msl appendLineMVK: @"} TexSubrez;"];
+		[msl appendLineMVK];
 
-		NSString* funcName = @"fragBlit";
+		[msl appendFormat: @"constexpr sampler ce_sampler(mip_filter::nearest, filter::%@);", srcFilter];
+		[msl appendLineMVK];
+
+		NSString* funcName = @"fragCmdBlitImage";
 		[msl appendFormat: @"fragment %@4 %@(VaryingsPosTex varyings [[stage_in]],", typeStr, funcName];
 		[msl appendLineMVK];
-		[msl appendFormat: @"                         texture2d%@<%@> texture [[texture(0)]],", arraySuffix, typeStr];
+		[msl appendFormat: @"                         texture2d%@<%@> tex [[texture(0)]],", arraySuffix, typeStr];
 		[msl appendLineMVK];
-		[msl appendLineMVK: @"                         sampler sampler [[sampler(0)]],"];
-		[msl appendLineMVK: @"                         constant uint& srcSlice [[buffer(0)]]) {"];
-		[msl appendFormat: @"    return texture.sample(sampler, varyings.v_texCoord%@);", sliceArg];
+		[msl appendLineMVK: @"                         constant TexSubrez& subRez [[buffer(0)]]) {"];
+		[msl appendFormat: @"    return tex.sample(ce_sampler, varyings.v_texCoord%@, level(subRez.lod));", sliceArg];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"}"];
 
-//		MVKLogDebug("\n%s", msl.UTF8String);
+		MVKLogDebug("\n%s", msl.UTF8String);
 
 		return newMTLFunction(msl, funcName);
 	}

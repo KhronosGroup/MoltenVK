@@ -60,18 +60,6 @@ id<MTLRenderPipelineState> MVKCommandEncodingPool::getCmdBlitImageMTLRenderPipel
 	MVK_ENC_REZ_ACCESS(_cmdBlitImageMTLRenderPipelineStates[blitKey], newCmdBlitImageMTLRenderPipelineState(blitKey, _commandPool));
 }
 
-id<MTLSamplerState> MVKCommandEncodingPool::getCmdBlitImageMTLSamplerState(MTLSamplerMinMagFilter mtlFilter) {
-    switch (mtlFilter) {
-		case MTLSamplerMinMagFilterNearest: {
-			MVK_ENC_REZ_ACCESS(_cmdBlitImageNearestMTLSamplerState, newCmdBlitImageMTLSamplerState(mtlFilter));
-		}
-
-		case MTLSamplerMinMagFilterLinear: {
-			MVK_ENC_REZ_ACCESS(_cmdBlitImageLinearMTLSamplerState, newCmdBlitImageMTLSamplerState(mtlFilter));
-		}
-    }
-}
-
 id<MTLDepthStencilState> MVKCommandEncodingPool::getMTLDepthStencilState(bool useDepth, bool useStencil) {
 
     if (useDepth && useStencil) {
@@ -167,12 +155,6 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 
     for (auto& pair : _transferBufferMemory) { mvkDev->freeMemory(pair.second, nullptr); }
     _transferBufferMemory.clear();
-
-    [_cmdBlitImageLinearMTLSamplerState release];
-    _cmdBlitImageLinearMTLSamplerState = nil;
-
-    [_cmdBlitImageNearestMTLSamplerState release];
-    _cmdBlitImageNearestMTLSamplerState = nil;
 
     [_cmdClearDepthAndStencilDepthStencilState release];
     _cmdClearDepthAndStencilDepthStencilState = nil;

@@ -116,7 +116,6 @@ protected:
     void initMTLRenderPassDescriptor();
 
 	MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
-	MTLSamplerMinMagFilter _mtlFilter;
 	MVKRPSKeyBlitImg _blitKey;
 	MVKVectorInline<MVKImageBlitRender, 4> _mvkImageBlitRenders;
 };

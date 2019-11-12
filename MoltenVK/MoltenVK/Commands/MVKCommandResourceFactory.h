@@ -30,7 +30,7 @@
 #pragma mark MVKRPSKeyBlitImg
 
 /**
- * Key to use for looking up cached MTLRenderPipelineState instances based on MTLPixelFormat and MTLTextureType.
+ * Key to use for looking up cached MTLRenderPipelineState instances based on BLIT info.
  *
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
@@ -38,12 +38,14 @@ typedef struct MVKRPSKeyBlitImg_t {
 	uint16_t srcMTLPixelFormat = 0;			/**< as MTLPixelFormat */
 	uint16_t srcMTLTextureType = 0;			/**< as MTLTextureType */
 	uint16_t dstMTLPixelFormat = 0;			/**< as MTLPixelFormat */
-	uint16_t dstSampleCount = 0;
+	uint8_t srcFilter = 0;					/**< as MTLSamplerMinMagFilter */
+	uint8_t dstSampleCount = 0;
 
 	bool operator==(const MVKRPSKeyBlitImg_t& rhs) const {
 		if (srcMTLPixelFormat != rhs.srcMTLPixelFormat) { return false; }
 		if (srcMTLTextureType != rhs.srcMTLTextureType) { return false; }
 		if (dstMTLPixelFormat != rhs.dstMTLPixelFormat) { return false; }
+		if (srcFilter != rhs.srcFilter) { return false; }
 		if (dstSampleCount != rhs.dstSampleCount) { return false; }
 		return true;
 	}
@@ -52,20 +54,29 @@ typedef struct MVKRPSKeyBlitImg_t {
 
 	inline MTLPixelFormat getDstMTLPixelFormat() { return (MTLPixelFormat)dstMTLPixelFormat; }
 
+	inline MTLSamplerMinMagFilter getSrcMTLSamplerMinMagFilter() { return (MTLSamplerMinMagFilter)srcFilter; }
+
 	inline bool isSrcArrayType() {
 		return (srcMTLTextureType == MTLTextureType2DArray ||
 #if MVK_MACOS
 				srcMTLTextureType == MTLTextureType2DMultisampleArray ||
 #endif
-				srcMTLTextureType == MTLTextureType1DArray); }
+				srcMTLTextureType == MTLTextureType1DArray);
+	}
 
 	std::size_t hash() const {
 		std::size_t hash = srcMTLPixelFormat;
+
 		hash <<= 16;
 		hash |= srcMTLTextureType;
+
 		hash <<= 16;
 		hash |= dstMTLPixelFormat;
-		hash <<= 16;
+
+		hash <<= 8;
+		hash |= srcFilter;
+
+		hash <<= 8;
 		hash |= dstSampleCount;
 		return hash;
 	}
