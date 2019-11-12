@@ -52,12 +52,6 @@ public:
     id<MTLRenderPipelineState> getCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey);
 
     /**
-     * Returns a MTLSamplerState dedicated to rendering to a texture using the
-     * specified min/mag filter value to support certain Vulkan BLIT commands.
-     */
-    id<MTLSamplerState> getCmdBlitImageMTLSamplerState(MTLSamplerMinMagFilter mtlFilter);
-
-    /**
      * Returns a MTLDepthStencilState dedicated to rendering to several attachments
      * to support clearing regions of those attachments.
      */
@@ -88,10 +82,10 @@ public:
      * with content held in Private storage. The object returned can be used as a
      * temporary image during image transfers.
      *
-     * The same image instance will be returned for two calls to this funciton with
+     * The same image instance will be returned for two calls to this function with
      * the same image descriptor data. This implies that the same image instance could 
      * be used by two transfers within the same encoder or queue. This is acceptable 
-     * becuase the content only needss to be valid during the transfer, and it can be 
+     * becuase the content only needs to be valid during the transfer, and it can be
      * reused by subsequent transfers in the same encoding run.
      */
     MVKImage* getTransferMVKImage(MVKImageDescriptorData& imgData);
@@ -148,8 +142,6 @@ protected:
     std::unordered_map<MVKBufferDescriptorData, MVKBuffer*> _transferBuffers;
     std::unordered_map<MVKBufferDescriptorData, MVKDeviceMemory*> _transferBufferMemory;
     MVKMTLBufferAllocator _mtlBufferAllocator;
-    id<MTLSamplerState> _cmdBlitImageLinearMTLSamplerState = nil;
-    id<MTLSamplerState> _cmdBlitImageNearestMTLSamplerState = nil;
     id<MTLDepthStencilState> _cmdClearDepthOnlyDepthStencilState = nil;
     id<MTLDepthStencilState> _cmdClearStencilOnlyDepthStencilState = nil;
     id<MTLDepthStencilState> _cmdClearDepthAndStencilDepthStencilState = nil;

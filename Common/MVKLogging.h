@@ -23,6 +23,8 @@
 extern "C" {
 #endif	//  __cplusplus
 
+#include "MVKCommonEnvironment.h"
+	
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>

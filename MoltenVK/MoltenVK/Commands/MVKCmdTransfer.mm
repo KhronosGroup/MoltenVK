@@ -220,11 +220,10 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 
 	MVKCmdCopyImage::setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, true, commandUse);
 
-	_mtlFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
-
-	_blitKey.srcMTLPixelFormat = (uint32_t)_srcMTLPixFmt;
-	_blitKey.srcMTLTextureType = (uint32_t)_srcImage->getMTLTextureType();
-	_blitKey.dstMTLPixelFormat = (uint32_t)_dstMTLPixFmt;
+	_blitKey.srcMTLPixelFormat = _srcMTLPixFmt;
+	_blitKey.srcMTLTextureType = _srcImage->getMTLTextureType();
+	_blitKey.dstMTLPixelFormat = _dstMTLPixFmt;
+	_blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
 	_blitKey.dstSampleCount = _dstSampleCount;
 
 	_mvkImageBlitRenders.clear();		// Clear for reuse
@@ -355,31 +354,31 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
 		mtlColorAttDesc.texture = dstMTLTex;
 
 		uint32_t vtxBuffIdx = getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
-
-		MVKCommandEncodingPool* cmdEncPool = getCommandEncodingPool();
+		id<MTLRenderPipelineState> mtlRPS = getCommandEncodingPool()->getCmdBlitImageMTLRenderPipelineState(_blitKey);
 
 		for (auto& bltRend : _mvkImageBlitRenders) {
 
 			mtlColorAttDesc.level = bltRend.region.dstSubresource.mipLevel;
 
-			uint32_t srcBaseLayer = bltRend.region.srcSubresource.baseArrayLayer;
-			uint32_t dstBaseLayer = bltRend.region.dstSubresource.baseArrayLayer;
-
 			uint32_t layCnt = bltRend.region.srcSubresource.layerCount;
 			for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
 				// Update the render pass descriptor for the texture level and slice, and create a render encoder.
-				mtlColorAttDesc.slice = dstBaseLayer + layIdx;
+				mtlColorAttDesc.slice = bltRend.region.dstSubresource.baseArrayLayer + layIdx;
 				id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: _mtlRenderPassDescriptor];
 				setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(_commandUse));
 
 				[mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
-				[mtlRendEnc setRenderPipelineState: cmdEncPool->getCmdBlitImageMTLRenderPipelineState(_blitKey)];
+				[mtlRendEnc setRenderPipelineState: mtlRPS];
 				cmdEncoder->setVertexBytes(mtlRendEnc, bltRend.vertices, sizeof(bltRend.vertices), vtxBuffIdx);
-
 				[mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
-				[mtlRendEnc setFragmentSamplerState: cmdEncPool->getCmdBlitImageMTLSamplerState(_mtlFilter) atIndex: 0];
-				uint32_t srcSlice = srcBaseLayer + layIdx;
-				cmdEncoder->setFragmentBytes(mtlRendEnc, &srcSlice, sizeof(srcSlice), 0);
+
+				struct {
+					uint slice;
+					float lod;
+				} texSubRez;
+				texSubRez.slice = bltRend.region.srcSubresource.baseArrayLayer + layIdx;
+				texSubRez.lod = bltRend.region.srcSubresource.mipLevel;
+				cmdEncoder->setFragmentBytes(mtlRendEnc, &texSubRez, sizeof(texSubRez), 0);
 
 				[mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount];
 				[mtlRendEnc popDebugGroup];
