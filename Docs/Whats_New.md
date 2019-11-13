@@ -20,6 +20,7 @@ MoltenVK 1.0.39
 Released TBD
 
 - Support linear filtering when using `vkCmdBlitImage()`.
+- Clamp image copy extents to image extent.
 - Support *Xcode 11.2*.
 
 
