@@ -28,6 +28,20 @@
 #include "MVKEnvironment.h"
 #include "MVKLogging.h"
 #include "mvk_datatypes.hpp"
+#include <algorithm>
+
+
+#pragma mark -
+#pragma mark Support functions
+
+// Clamps the size so that the sum of the origin and size do not exceed the maximum size.
+static inline MTLSize mvkClampMTLSize(MTLSize size, MTLOrigin origin, MTLSize maxSize) {
+	MTLSize clamped;
+	clamped.width = std::min(size.width, maxSize.width - origin.x);
+	clamped.height = std::min(size.height, maxSize.height - origin.y);
+	clamped.depth = std::min(size.depth, maxSize.depth - origin.z);
+	return clamped;
+}
 
 
 #pragma mark -
@@ -148,15 +162,16 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 
 	// If copies can be performed using direct texture-texture copying, do so
 	for (auto& cpyRgn : _imageCopyRegions) {
-		uint32_t	srcLevel = cpyRgn.srcSubresource.mipLevel;;
-		MTLOrigin	srcOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.srcOffset);;
-		MTLSize		srcSize = mvkMTLSizeFromVkExtent3D(cpyRgn.extent);
-		uint32_t	dstLevel = cpyRgn.dstSubresource.mipLevel;
-		MTLOrigin	dstOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.dstOffset);
-
-		uint32_t srcBaseLayer = cpyRgn.srcSubresource.baseArrayLayer;
-		uint32_t dstBaseLayer = cpyRgn.dstSubresource.baseArrayLayer;
-		uint32_t layCnt = cpyRgn.srcSubresource.layerCount;
+		uint32_t  srcLevel = cpyRgn.srcSubresource.mipLevel;
+		MTLOrigin srcOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.srcOffset);
+		MTLSize   srcSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(cpyRgn.extent),
+											srcOrigin,
+											mvkMTLSizeFromVkExtent3D(_srcImage->getExtent3D(srcLevel)));
+		uint32_t  dstLevel = cpyRgn.dstSubresource.mipLevel;
+		MTLOrigin dstOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.dstOffset);
+		uint32_t  srcBaseLayer = cpyRgn.srcSubresource.baseArrayLayer;
+		uint32_t  dstBaseLayer = cpyRgn.dstSubresource.baseArrayLayer;
+		uint32_t  layCnt = cpyRgn.srcSubresource.layerCount;
 
 		for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
 			[mtlBlitEnc copyFromTexture: srcMTLTex
@@ -715,8 +730,11 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
 
     for (auto& cpyRgn : _bufferImageCopyRegions) {
 
+		uint32_t mipLevel = cpyRgn.imageSubresource.mipLevel;
         MTLOrigin mtlTxtOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.imageOffset);
-        MTLSize mtlTxtSize = mvkMTLSizeFromVkExtent3D(cpyRgn.imageExtent);
+		MTLSize mtlTxtSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(cpyRgn.imageExtent),
+											 mtlTxtOrigin,
+											 mvkMTLSizeFromVkExtent3D(_image->getExtent3D(mipLevel)));
 		NSUInteger mtlBuffOffset = mtlBuffOffsetBase + cpyRgn.bufferOffset;
 
         uint32_t buffImgWd = cpyRgn.bufferRowLength;
@@ -773,7 +791,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             info.format = _image->getVkFormat();
             info.offset = cpyRgn.imageOffset;
             info.extent = cpyRgn.imageExtent;
-            bool needsTempBuff = cpyRgn.imageSubresource.mipLevel != 0;
+            bool needsTempBuff = mipLevel != 0;
             id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(cmdUse);
             id<MTLComputePipelineState> mtlComputeState = getCommandEncodingPool()->getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff);
             [mtlComputeEnc pushDebugGroup: @"vkCmdCopyBufferToImage"];
@@ -842,13 +860,13 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
                                 sourceSize: mtlTxtSize
                                  toTexture: mtlTexture
                           destinationSlice: (cpyRgn.imageSubresource.baseArrayLayer + lyrIdx)
-                          destinationLevel: cpyRgn.imageSubresource.mipLevel
+                          destinationLevel: mipLevel
                          destinationOrigin: mtlTxtOrigin
                                    options: blitOptions];
             } else {
                 [mtlBlitEnc copyFromTexture: mtlTexture
                                 sourceSlice: (cpyRgn.imageSubresource.baseArrayLayer + lyrIdx)
-                                sourceLevel: cpyRgn.imageSubresource.mipLevel
+                                sourceLevel: mipLevel
                                sourceOrigin: mtlTxtOrigin
                                  sourceSize: mtlTxtSize
                                    toBuffer: mtlBuffer
