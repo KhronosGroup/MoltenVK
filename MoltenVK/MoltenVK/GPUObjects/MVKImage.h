@@ -273,6 +273,7 @@ protected:
     id<MTLTexture> _mtlTexture;
     std::mutex _lock;
     IOSurfaceRef _ioSurface;
+	VkDeviceSize _rowByteAlignment;
     bool _isDepthStencilAttachment;
 	bool _canSupportMTLTextureView;
     bool _hasExpectedTexelSize;

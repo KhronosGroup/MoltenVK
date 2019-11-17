@@ -22,6 +22,7 @@ Released TBD
 - Support linear filtering when using `vkCmdBlitImage()`.
 - Clamp image copy extents to image extent.
 - Fix crash in `fetchDependencies` on build paths containing spaces.
+- Fix image subresource sizing calculations for heap-based textures.
 - Support *Xcode 11.2*.
 
 

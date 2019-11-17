@@ -66,7 +66,7 @@ VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 
 VkDeviceSize MVKImage::getBytesPerRow(uint32_t mipLevel) {
     size_t bytesPerRow = mvkMTLPixelFormatBytesPerRow(_mtlPixelFormat, getExtent3D(mipLevel).width);
-    return (uint32_t)mvkAlignByteOffset(bytesPerRow, _byteAlignment);
+    return mvkAlignByteOffset(bytesPerRow, _rowByteAlignment);
 }
 
 VkDeviceSize MVKImage::getBytesPerLayer(uint32_t mipLevel) {
@@ -634,6 +634,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
 	_hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
 
+	_rowByteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(mvkVkFormatBytesPerBlock(pCreateInfo->format));
 	if (!_isLinear && _device->_pMetalFeatures->placementHeaps) {
 		MTLTextureDescriptor *mtlTexDesc = newMTLTextureDescriptor();	// temp retain
 		MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
@@ -642,8 +643,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 		_byteAlignment = sizeAndAlign.align;
 		_isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
 	} else {
-		// Calc _byteCount after _byteAlignment
-		_byteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(mvkVkFormatBytesPerBlock(pCreateInfo->format));
+		// Calc _byteCount after _rowByteAlignment
+		_byteAlignment = _rowByteAlignment;
 		for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
 			_byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
 		}
