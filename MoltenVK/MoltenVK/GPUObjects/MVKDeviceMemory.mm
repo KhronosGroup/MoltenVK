@@ -344,5 +344,8 @@ MVKDeviceMemory::~MVKDeviceMemory() {
 	[_mtlBuffer release];
 	_mtlBuffer = nil;
 
+	[_mtlHeap release];
+	_mtlHeap = nil;
+
 	freeHostMemory();
 }
