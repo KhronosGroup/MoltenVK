@@ -141,12 +141,6 @@ static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
 #pragma mark -
 #pragma mark Alignment functions
 
-/** Returns the result of an unsigned integer division, rounded up. */
-static inline size_t mvkCeilingDivide(size_t numerator, size_t denominator) {
-	if (denominator == 1) { return numerator; }		// Short circuit for this very common usecase.
-	return (numerator + denominator - 1) / denominator;
-}
-
 /** Returns whether the specified value is a power-of-two. */
 static inline bool mvkIsPowerOfTwo(uintptr_t value) {
 	// Test POT:  (x != 0) && ((x & (x - 1)) == 0)
@@ -346,6 +340,13 @@ const bool mvkFits(const Tval& val) {
 template<typename T>
 const T& mvkClamp(const T& val, const T& lower, const T& upper) {
     return std::min(std::max(val, lower), upper);
+}
+
+/** Returns the result of a division, rounded up. */
+template<typename T>
+T mvkCeilingDivide(T numerator, T denominator) {
+	// Short circuit very common usecase of dividing by one.
+	return (denominator == 1) ? numerator : (numerator + denominator - 1) / denominator;
 }
 
 /**

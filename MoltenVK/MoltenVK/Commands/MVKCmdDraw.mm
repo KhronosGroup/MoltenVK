@@ -110,7 +110,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
     if (pipeline->isTessellationPipeline()) {
         inControlPointCount = pipeline->getInputControlPointCount();
         outControlPointCount = pipeline->getOutputControlPointCount();
-        patchCount = (uint32_t)mvkCeilingDivide(_vertexCount, inControlPointCount);
+        patchCount = mvkCeilingDivide(_vertexCount, inControlPointCount);
     }
     for (uint32_t s : stages) {
         auto stage = MVKGraphicsStage(s);
@@ -308,7 +308,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
     if (pipeline->isTessellationPipeline()) {
         inControlPointCount = pipeline->getInputControlPointCount();
         outControlPointCount = pipeline->getOutputControlPointCount();
-        patchCount = (uint32_t)mvkCeilingDivide(_indexCount, inControlPointCount);
+        patchCount = mvkCeilingDivide(_indexCount, inControlPointCount);
     }
     for (uint32_t s : stages) {
         auto stage = MVKGraphicsStage(s);
@@ -544,7 +544,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         inControlPointCount = pipeline->getInputControlPointCount();
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKDrawIndirectVertexCountUpperBound;
-        patchCount = (uint32_t)mvkCeilingDivide(vertexCount, inControlPointCount);
+        patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
         VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount;
         if (cmdEncoder->_pDeviceMetalFeatures->mslVersion >= 20100) {
             indirectSize += sizeof(MTLStageInRegionIndirectArguments) * _drawCount;
@@ -614,7 +614,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                             &_drawCount,
                                             sizeof(_drawCount),
                                             5);
-                [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
+                [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
                                   threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
             }
 
@@ -783,7 +783,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         inControlPointCount = pipeline->getInputControlPointCount();
         outControlPointCount = pipeline->getOutputControlPointCount();
         vertexCount = kMVKDrawIndirectVertexCountUpperBound;
-        patchCount = (uint32_t)mvkCeilingDivide(vertexCount, inControlPointCount);
+        patchCount = mvkCeilingDivide(vertexCount, inControlPointCount);
         VkDeviceSize indirectSize = (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments)) * _drawCount;
         if (cmdEncoder->_pDeviceMetalFeatures->mslVersion >= 20100) {
             indirectSize += sizeof(MTLStageInRegionIndirectArguments) * _drawCount;
@@ -842,7 +842,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                                 &_drawCount,
                                                 sizeof(_drawCount),
                                                 5);
-                    [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
+                    [mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
                                       threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
                 }
                 // We actually need to make a copy of the index buffer, regardless of whether
