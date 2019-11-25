@@ -867,7 +867,7 @@ uint32_t MVKDescriptorBinding::readBindings(uint32_t srcStartIndex,
 											VkDescriptorImageInfo* pImageInfo,
 											VkDescriptorBufferInfo* pBufferInfo,
 											VkBufferView* pTexelBufferView,
-                                            VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+											VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 
 	uint32_t srcCnt = MIN(count, _pBindingLayout->_info.descriptorCount - srcStartIndex);
 

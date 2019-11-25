@@ -254,7 +254,7 @@ public:
 						  VkDescriptorImageInfo* pImageInfo,
 						  VkDescriptorBufferInfo* pBufferInfo,
 						  VkBufferView* pTexelBufferView,
-                          VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock);
+						  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock);
 
     /** Returns whether this instance represents the specified Vulkan binding point. */
     bool hasBinding(uint32_t binding);
@@ -314,7 +314,7 @@ public:
 							VkDescriptorImageInfo* pImageInfo,
 							VkDescriptorBufferInfo* pBufferInfo,
 							VkBufferView* pTexelBufferView,
-                            VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
+							VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
 	MVKDescriptorSet(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 
