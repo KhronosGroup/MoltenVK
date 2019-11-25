@@ -51,3 +51,12 @@ typedef struct {
     MTLIndexType mtlIndexType;
     bool isDirty = true;
 } MVKIndexMTLBufferBinding;
+
+/** Describes host bytes resource binding. */
+typedef struct {
+    union { const void* mtlBytes = nil; const void* mtlResource; }; // aliases
+    uint32_t index = 0;
+    uint32_t size = 0;
+    bool isDirty = true;
+} MVKMTLInlineBinding;
+

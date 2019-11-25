@@ -90,6 +90,7 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
     MVKMTLBufferBinding bb;
     MVKMTLTextureBinding tb;
     MVKMTLSamplerStateBinding sb;
+    MVKMTLInlineBinding ib;
     NSUInteger bufferDynamicOffset = 0;
 
     // Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
@@ -116,6 +117,22 @@ void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
 							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
                         } else {
 							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+                        }
+                    }
+                }
+                break;
+            }
+
+            case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
+                ib.mtlBytes = descBinding._inlineBindings[rezIdx].pData;
+                ib.size = descBinding._inlineBindings[rezIdx].dataSize;
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        ib.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindInline(ib); }
+                        } else {
+                            if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindInline(MVKShaderStage(i), ib); }
                         }
                     }
                 }
@@ -208,6 +225,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
     MVKMTLBufferBinding bb;
     MVKMTLTextureBinding tb;
     MVKMTLSamplerStateBinding sb;
+    MVKMTLInlineBinding ib;
 
     if (dstArrayElement >= _info.descriptorCount) {
         dstArrayElement -= _info.descriptorCount;
@@ -249,6 +267,23 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
 							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
                         } else {
 							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+                        }
+                    }
+                }
+                break;
+            }
+
+            case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
+                const auto& inlineUniformBlock = get<VkWriteDescriptorSetInlineUniformBlockEXT>(pData, stride, rezIdx - dstArrayElement);
+                ib.mtlBytes = inlineUniformBlock.pData;
+                ib.size = inlineUniformBlock.dataSize;
+                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                    if (_applyToStage[i]) {
+                        ib.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                        if (i == kMVKShaderStageCompute) {
+                            if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindInline(ib); }
+                        } else {
+                            if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindInline(MVKShaderStage(i), ib); }
                         }
                     }
                 }
@@ -499,6 +534,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
             pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
             pDescSetCounts->bufferIndex += pBinding->descriptorCount;
             break;
@@ -532,6 +568,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
 static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorImageInfo* pImageInfo,
                                       const VkDescriptorBufferInfo* pBufferInfo, const VkBufferView* pTexelBufferView,
+                                      const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock,
                                       size_t& stride) {
     const void* pData;
     switch (type) {
@@ -558,6 +595,11 @@ static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorI
         stride = sizeof(MVKBufferView*);
         break;
 
+    case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+        pData = pInlineUniformBlock;
+        stride = sizeof(VkWriteDescriptorSetInlineUniformBlockEXT);
+        break;
+
     default:
         pData = nullptr;
         stride = 0;
@@ -580,6 +622,20 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         const VkDescriptorImageInfo* pImageInfo = descWrite.pImageInfo;
         const VkDescriptorBufferInfo* pBufferInfo = descWrite.pBufferInfo;
         const VkBufferView* pTexelBufferView = descWrite.pTexelBufferView;
+        const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
+        if (_device->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+            for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
+            {
+                switch (next->sType) {
+                case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
+                    pInlineUniformBlock = next;
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+        }
         if (!_bindingToIndex.count(dstBinding)) continue;
         // Note: This will result in us walking off the end of the array
         // in case there are too many updates... but that's ill-defined anyway.
@@ -587,7 +643,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
             if (!_bindingToIndex.count(dstBinding)) continue;
             size_t stride;
             const void* pData = getWriteParameters(descWrite.descriptorType, pImageInfo,
-                                                   pBufferInfo, pTexelBufferView, stride);
+                                                   pBufferInfo, pTexelBufferView, pInlineUniformBlock, stride);
             uint32_t descriptorsPushed = 0;
             uint32_t bindIdx = _bindingToIndex[dstBinding];
             _bindings[bindIdx].push(cmdEncoder, dstArrayElement, descriptorCount,
@@ -777,6 +833,26 @@ uint32_t MVKDescriptorBinding::writeBindings(uint32_t srcStartIndex,
 				}
             }
 			break;
+
+        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+            for (uint32_t i = 0; i < dstCnt; i++) {
+                uint32_t dstIdx = dstStartIndex + i;
+                const auto& srcInlineUniformBlock = get<VkWriteDescriptorSetInlineUniformBlockEXT>(pData, stride, srcStartIndex + i);
+                auto& dstInlineUniformBlock = _inlineBindings[dstIdx];
+                if (dstInlineUniformBlock.pData && dstInlineUniformBlock.pData != srcInlineUniformBlock.pData)
+                    delete [] reinterpret_cast<const uint8_t*>(dstInlineUniformBlock.pData);
+                if (srcInlineUniformBlock.dataSize != 0) {
+                    dstInlineUniformBlock.pData = reinterpret_cast<const void*>(new uint8_t*[srcInlineUniformBlock.dataSize]);
+                    if (srcInlineUniformBlock.pData) {
+                        memcpy(const_cast<void*>(dstInlineUniformBlock.pData), srcInlineUniformBlock.pData, srcInlineUniformBlock.dataSize);
+                    }
+                } else {
+                    dstInlineUniformBlock.pData = nullptr;
+                }
+                dstInlineUniformBlock.dataSize = srcInlineUniformBlock.dataSize;
+            }
+            break;
+
 		default:
 			break;
 	}
@@ -790,7 +866,8 @@ uint32_t MVKDescriptorBinding::readBindings(uint32_t srcStartIndex,
 											VkDescriptorType& descType,
 											VkDescriptorImageInfo* pImageInfo,
 											VkDescriptorBufferInfo* pBufferInfo,
-											VkBufferView* pTexelBufferView) {
+											VkBufferView* pTexelBufferView,
+                                            VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 
 	uint32_t srcCnt = MIN(count, _pBindingLayout->_info.descriptorCount - srcStartIndex);
 
@@ -821,6 +898,24 @@ uint32_t MVKDescriptorBinding::readBindings(uint32_t srcStartIndex,
 				pTexelBufferView[dstStartIndex + i] = _texelBufferBindings[srcStartIndex + i];
 			}
 			break;
+
+        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+            for (uint32_t i = 0; i < srcCnt; i++) {
+                const auto& srcInlineUniformBlock = _inlineBindings[srcStartIndex + i];
+                auto& dstInlineUniformBlock = pInlineUniformBlock[dstStartIndex + i];
+                if (dstInlineUniformBlock.pData && dstInlineUniformBlock.pData != srcInlineUniformBlock.pData)
+                    delete [] reinterpret_cast<const uint8_t*>(dstInlineUniformBlock.pData);
+                if (srcInlineUniformBlock.dataSize != 0) {
+                    dstInlineUniformBlock.pData = reinterpret_cast<const void*>(new uint8_t*[srcInlineUniformBlock.dataSize]);
+                    if (srcInlineUniformBlock.pData) {
+                        memcpy(const_cast<void*>(dstInlineUniformBlock.pData), srcInlineUniformBlock.pData, srcInlineUniformBlock.dataSize);
+                    }
+                } else {
+                    dstInlineUniformBlock.pData = nullptr;
+                }
+                dstInlineUniformBlock.dataSize = srcInlineUniformBlock.dataSize;
+            }
+            break;
 
 		default:
 			break;
@@ -866,6 +961,12 @@ MVKDescriptorBinding::MVKDescriptorBinding(MVKDescriptorSet* pDescSet, MVKDescri
 			_mtlBufferOffsets.resize(descCnt, 0);
 			break;
 
+        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
+            static const VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlock {VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT, nullptr, 0, nullptr};
+            _inlineBindings.resize(descCnt, inlineUniformBlock);
+            break;
+        }
+
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 			_texelBufferBindings.resize(descCnt, nil);
@@ -902,6 +1003,11 @@ MVKDescriptorBinding::~MVKDescriptorBinding() {
 			((MVKBufferView*)buffView)->release();
 		}
 	}
+    for (VkWriteDescriptorSetInlineUniformBlockEXT& inlineUniformBlock : _inlineBindings) {
+        if (inlineUniformBlock.pData) {
+            delete [] reinterpret_cast<const uint8_t*>(inlineUniformBlock.pData);
+        }
+    }
 }
 
 /**
@@ -956,7 +1062,8 @@ void MVKDescriptorSet::readDescriptorSets(const VkCopyDescriptorSet* pDescriptor
 										  VkDescriptorType& descType,
 										  VkDescriptorImageInfo* pImageInfo,
 										  VkDescriptorBufferInfo* pBufferInfo,
-										  VkBufferView* pTexelBufferView) {
+										  VkBufferView* pTexelBufferView,
+                                          VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 	uint32_t srcStartIdx = pDescriptorCopy->srcArrayElement;
     uint32_t binding = pDescriptorCopy->srcBinding;
     uint32_t origCnt = pDescriptorCopy->descriptorCount;
@@ -966,7 +1073,7 @@ void MVKDescriptorSet::readDescriptorSets(const VkCopyDescriptorSet* pDescriptor
     while (mvkDescBind && remainCnt > 0) {
         uint32_t dstStartIdx = origCnt - remainCnt;
         remainCnt = mvkDescBind->readBindings(srcStartIdx, dstStartIdx, remainCnt, descType,
-                                              pImageInfo, pBufferInfo, pTexelBufferView);
+                                              pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
         binding++;                              // If not consumed, move to next consecutive binding point
         mvkDescBind = getBinding(binding);
         srcStartIdx = 0;                        // Subsequent bindings start reading at first element
@@ -1125,10 +1232,26 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 	for (uint32_t i = 0; i < writeCount; i++) {
 		const VkWriteDescriptorSet* pDescWrite = &pDescriptorWrites[i];
 		size_t stride;
+        MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescWrite->dstSet;
+
+        const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
+        if (dstSet->getDevice()->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+            for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)pDescWrite->pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
+            {
+                switch (next->sType) {
+                case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
+                    pInlineUniformBlock = next;
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+        }
+
 		const void* pData = getWriteParameters(pDescWrite->descriptorType, pDescWrite->pImageInfo,
 											   pDescWrite->pBufferInfo, pDescWrite->pTexelBufferView,
-											   stride);
-		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescWrite->dstSet;
+                                               pInlineUniformBlock, stride);
 		dstSet->writeDescriptorSets(pDescWrite, stride, pData);
 	}
 
@@ -1141,13 +1264,14 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		VkDescriptorImageInfo imgInfos[descCnt];
 		VkDescriptorBufferInfo buffInfos[descCnt];
 		VkBufferView texelBuffInfos[descCnt];
+        VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlocks[descCnt];
 
 		MVKDescriptorSet* srcSet = (MVKDescriptorSet*)pDescCopy->srcSet;
-		srcSet->readDescriptorSets(pDescCopy, descType, imgInfos, buffInfos, texelBuffInfos);
+		srcSet->readDescriptorSets(pDescCopy, descType, imgInfos, buffInfos, texelBuffInfos, inlineUniformBlocks);
 
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescCopy->dstSet;
 		size_t stride;
-		const void* pData = getWriteParameters(descType, imgInfos, buffInfos, texelBuffInfos, stride);
+		const void* pData = getWriteParameters(descType, imgInfos, buffInfos, texelBuffInfos, inlineUniformBlocks, stride);
 		dstSet->writeDescriptorSets(pDescCopy, stride, pData);
 	}
 }

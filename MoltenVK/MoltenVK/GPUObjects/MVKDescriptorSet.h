@@ -253,7 +253,8 @@ public:
 						  VkDescriptorType& descType,
 						  VkDescriptorImageInfo* pImageInfo,
 						  VkDescriptorBufferInfo* pBufferInfo,
-						  VkBufferView* pTexelBufferView);
+						  VkBufferView* pTexelBufferView,
+                          VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock);
 
     /** Returns whether this instance represents the specified Vulkan binding point. */
     bool hasBinding(uint32_t binding);
@@ -274,6 +275,7 @@ protected:
 	MVKDescriptorSetLayoutBinding* _pBindingLayout;
 	std::vector<VkDescriptorImageInfo> _imageBindings;
 	std::vector<VkDescriptorBufferInfo> _bufferBindings;
+    std::vector<VkWriteDescriptorSetInlineUniformBlockEXT> _inlineBindings;
 	std::vector<VkBufferView> _texelBufferBindings;
 	std::vector<id<MTLBuffer>> _mtlBuffers;
 	std::vector<NSUInteger> _mtlBufferOffsets;
@@ -311,7 +313,8 @@ public:
 							VkDescriptorType& descType,
 							VkDescriptorImageInfo* pImageInfo,
 							VkDescriptorBufferInfo* pBufferInfo,
-							VkBufferView* pTexelBufferView);
+							VkBufferView* pTexelBufferView,
+                            VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
 	MVKDescriptorSet(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 
