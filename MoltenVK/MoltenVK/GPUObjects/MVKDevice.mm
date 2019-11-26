@@ -143,6 +143,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                     shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
                     break;
                 }
+                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
+                    auto* inlineUniformBlockFeatures = (VkPhysicalDeviceInlineUniformBlockFeaturesEXT*)next;
+                    inlineUniformBlockFeatures->inlineUniformBlock = true;
+                    inlineUniformBlockFeatures->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
+                    break;
+                }
                 default:
                     break;
             }

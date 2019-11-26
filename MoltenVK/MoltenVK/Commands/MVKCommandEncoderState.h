@@ -424,6 +424,9 @@ public:
     /** Binds the specified buffer for the specified shader stage. */
     void bindBuffer(MVKShaderStage stage, const MVKMTLBufferBinding& binding);
 
+    /** Binds the specified buffer for the specified shader stage. */
+    void bindInline(MVKShaderStage stage, const MVKMTLInlineBinding& binding);
+
     /** Binds the specified texture for the specified shader stage. */
     void bindTexture(MVKShaderStage stage, const MVKMTLTextureBinding& binding);
 
@@ -458,7 +461,8 @@ public:
                         std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
                         std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKVector<uint32_t>&)> bindImplicitBuffer,
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
-                        std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
+                        std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler,
+                        std::function<void(MVKCommandEncoder*, MVKMTLInlineBinding&)> bindInline);
 
 #pragma mark Construction
     
@@ -474,6 +478,7 @@ protected:
         MVKVectorInline<MVKMTLBufferBinding, 8> bufferBindings;
         MVKVectorInline<MVKMTLTextureBinding, 8> textureBindings;
         MVKVectorInline<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
+        MVKVectorInline<MVKMTLInlineBinding, 8> inlineBindings;
         MVKVectorInline<uint32_t, 8> swizzleConstants;
         MVKVectorInline<uint32_t, 8> bufferSizes;
         MVKMTLBufferBinding swizzleBufferBinding;
@@ -482,6 +487,7 @@ protected:
         bool areBufferBindingsDirty = false;
         bool areTextureBindingsDirty = false;
         bool areSamplerStateBindingsDirty = false;
+        bool areInlineBindingsDirty = false;
 
         bool needsSwizzle = false;
     };
@@ -500,6 +506,9 @@ public:
 
     /** Binds the specified buffer. */
     void bindBuffer(const MVKMTLBufferBinding& binding);
+
+    /** Binds the specified buffer. */
+    void bindInline(const MVKMTLInlineBinding& binding);
 
     /** Binds the specified texture. */
     void bindTexture(const MVKMTLTextureBinding& binding);
@@ -526,6 +535,7 @@ protected:
     MVKVectorInline<MVKMTLBufferBinding, 4> _bufferBindings;
     MVKVectorInline<MVKMTLTextureBinding, 4> _textureBindings;
     MVKVectorInline<MVKMTLSamplerStateBinding, 4> _samplerStateBindings;
+    MVKVectorInline<MVKMTLInlineBinding, 4> _inlineBindings;
     MVKVectorInline<uint32_t, 4> _swizzleConstants;
     MVKVectorInline<uint32_t, 4> _bufferSizes;
     MVKMTLBufferBinding _swizzleBufferBinding;
@@ -534,6 +544,7 @@ protected:
     bool _areBufferBindingsDirty = false;
     bool _areTextureBindingsDirty = false;
     bool _areSamplerStateBindingsDirty = false;
+    bool _areInlineBindingsDirty = false;
 
     bool _needsSwizzle = false;
 };
