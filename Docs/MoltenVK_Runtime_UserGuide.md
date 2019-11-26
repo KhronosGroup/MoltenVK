@@ -270,6 +270,7 @@ In addition to the core *Vulkan* API, **MoltenVK**  also supports the following 
 - `VK_EXT_debug_utils`
 - `VK_EXT_fragment_shader_interlock` *(requires Metal 2.0 and Raster Order Groups)*
 - `VK_EXT_host_query_reset`
+- `VK_EXT_inline_uniform_block`
 - `VK_EXT_memory_budget` *(requires Metal 2.0)*
 - `VK_EXT_metal_surface`
 - `VK_EXT_post_depth_coverage` *(iOS, requires GPU family 4)*
