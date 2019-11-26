@@ -507,9 +507,10 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessVertexStageDescripto
 }
 
 static uint32_t sizeOfOutput(const SPIRVShaderOutput& output) {
+	if ( !output.isUsed ) { return 0; }		// Unused outputs consume no buffer space.
+
 	uint32_t vecWidth = output.vecWidth;
-	// Round up to 4 elements for 3-vectors, since that reflects how Metal lays them out.
-	if (vecWidth == 3) { vecWidth = 4; }
+	if (vecWidth == 3) { vecWidth = 4; }	// Metal 3-vectors consume same as 4-vectors.
 	switch (output.baseType) {
 		case SPIRType::SByte:
 		case SPIRType::UByte:

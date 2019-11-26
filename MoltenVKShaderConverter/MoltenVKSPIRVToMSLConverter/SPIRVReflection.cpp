@@ -129,6 +129,7 @@ bool getShaderOutputs(const std::vector<uint32_t>& spirv, spv::ExecutionModel mo
 			reflect.set_entry_point(entryName, model);
 		}
 		reflect.compile();
+		reflect.update_active_builtins();
 
 		outputs.clear();
 
@@ -136,11 +137,13 @@ bool getShaderOutputs(const std::vector<uint32_t>& spirv, spv::ExecutionModel mo
 		parser.get_parsed_ir().for_each_typed_id<SPIRV_CROSS_NAMESPACE::SPIRVariable>([&reflect, &outputs, model, addSat](uint32_t varID, const SPIRV_CROSS_NAMESPACE::SPIRVariable& var) {
 			if (var.storage != spv::StorageClassOutput) { return; }
 
+			bool isUsed = true;
 			const auto* type = &reflect.get_type(reflect.get_type_from_variable(varID).parent_type);
 			bool patch = reflect.has_decoration(varID, spv::DecorationPatch);
 			auto biType = spv::BuiltInMax;
 			if (reflect.has_decoration(varID, spv::DecorationBuiltIn)) {
 				biType = (spv::BuiltIn)reflect.get_decoration(varID, spv::DecorationBuiltIn);
+				isUsed = reflect.has_active_builtin(biType, var.storage);
 			}
 			uint32_t loc = -1;
 			if (reflect.has_decoration(varID, spv::DecorationLocation)) {
@@ -160,30 +163,31 @@ bool getShaderOutputs(const std::vector<uint32_t>& spirv, spv::ExecutionModel mo
 					patch = reflect.has_member_decoration(type->self, i, spv::DecorationPatch);
 					if (reflect.has_member_decoration(type->self, i, spv::DecorationBuiltIn)) {
 						biType = (spv::BuiltIn)reflect.get_member_decoration(type->self, i, spv::DecorationBuiltIn);
+						isUsed = reflect.has_active_builtin(biType, var.storage);
 					}
 					const SPIRV_CROSS_NAMESPACE::SPIRType& memberType = reflect.get_type(type->member_types[i]);
 					if (memberType.columns > 1) {
 						for (uint32_t i = 0; i < memberType.columns; i++) {
-							outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), patch, biType});
+							outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), biType, patch, isUsed});
 						}
 					} else if (!memberType.array.empty()) {
 						for (uint32_t i = 0; i < memberType.array[0]; i++) {
-							outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), patch, biType});
+							outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), biType, patch, isUsed});
 						}
 					} else {
-						outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, patch, biType});
+						outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, biType, patch, isUsed});
 					}
 				}
 			} else if (type->columns > 1) {
 				for (uint32_t i = 0; i < type->columns; i++) {
-					outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), patch, biType});
+					outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), biType, patch, isUsed});
 				}
 			} else if (!type->array.empty()) {
 				for (uint32_t i = 0; i < type->array[0]; i++) {
-					outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), patch, biType});
+					outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), biType, patch, isUsed});
 				}
 			} else {
-				outputs.push_back({type->basetype, type->vecsize, loc, patch, biType});
+				outputs.push_back({type->basetype, type->vecsize, loc, biType, patch, isUsed});
 			}
 		});
 		// Sort outputs by ascending location.

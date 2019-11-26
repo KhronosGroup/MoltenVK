@@ -825,15 +825,15 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             // One thread is run per block. Each block decompresses to an m x n array of texels.
             // So the size of the grid is (ceil(width/m), ceil(height/n), depth).
             VkExtent2D blockExtent = mvkMTLPixelFormatBlockTexelSize(mtlPixFmt);
-            MTLSize mtlGridSize = MTLSizeMake(mvkCeilingDivide(mtlTxtSize.width, blockExtent.width),
-                                              mvkCeilingDivide(mtlTxtSize.height, blockExtent.height),
+            MTLSize mtlGridSize = MTLSizeMake(mvkCeilingDivide<NSUInteger>(mtlTxtSize.width, blockExtent.width),
+                                              mvkCeilingDivide<NSUInteger>(mtlTxtSize.height, blockExtent.height),
                                               mtlTxtSize.depth);
             // Use four times the thread execution width as the threadgroup size.
             MTLSize mtlTgrpSize = MTLSizeMake(2, 2, mtlComputeState.threadExecutionWidth);
             // Then the number of threadgroups is (ceil(x/2), ceil(y/2), ceil(z/t)),
             // where 't' is the thread execution width.
-            mtlGridSize.width = mvkCeilingDivide(mtlGridSize.width, 2);
-            mtlGridSize.height = mvkCeilingDivide(mtlGridSize.height, 2);
+            mtlGridSize.width = mvkCeilingDivide(mtlGridSize.width, mtlTgrpSize.width);
+            mtlGridSize.height = mvkCeilingDivide(mtlGridSize.height, mtlTgrpSize.height);
             mtlGridSize.depth = mvkCeilingDivide(mtlGridSize.depth, mtlTgrpSize.depth);
             // There may be extra threads, but that's OK; the shader does bounds checking to
             // ensure it doesn't try to write out of bounds.
