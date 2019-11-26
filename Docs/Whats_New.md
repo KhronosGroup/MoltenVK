@@ -19,11 +19,14 @@ MoltenVK 1.0.39
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_EXT_inline_uniform_block`
 - Support linear filtering when using `vkCmdBlitImage()`.
 - Clamp image copy extents to image extent.
 - Fix crash in `fetchDependencies` on build paths containing spaces.
 - Fix image subresource sizing calculations for heap-based textures.
 - Fix `MTLHeap` memory leak in `MVKDeviceMemory`.
+- Fix tessellation break when control stage declares but does not use position builtin.
 - Support *Xcode 11.2*.
 
 

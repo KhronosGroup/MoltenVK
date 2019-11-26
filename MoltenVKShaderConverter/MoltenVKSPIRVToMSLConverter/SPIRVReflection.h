@@ -61,11 +61,14 @@ namespace mvk {
 		/** The location number of the output. */
 		uint32_t location;
 
+		/** If this is a builtin, the kind of builtin this is. */
+		spv::BuiltIn builtin;
+
 		/** Whether this is a per-patch or per-vertex output. Only meaningful for tessellation control shaders. */
 		bool perPatch;
 
-		/** If this is a builtin, the kind of builtin this is. */
-		spv::BuiltIn builtin;
+		/** Whether this output is actually used (populated) by the shader. */
+		bool isUsed;
 	};
 
 #pragma mark -
