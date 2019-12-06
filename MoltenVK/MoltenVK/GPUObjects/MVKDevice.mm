@@ -1844,7 +1844,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 		// This means we really have two heaps. The second heap is system memory.
 		_memoryProperties.memoryHeapCount = 2;
 		_memoryProperties.memoryHeaps[1].size = mvkGetSystemMemorySize();
-		_memoryProperties.memoryHeaps[1].flags = 0;
+		_memoryProperties.memoryHeaps[1].flags = VK_MEMORY_HEAP_DEVICE_LOCAL_BIT;
 		_memoryProperties.memoryTypes[2].heapIndex = 1;	// Shared memory in the shared heap
 	}
 #endif

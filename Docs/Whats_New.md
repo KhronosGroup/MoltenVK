@@ -27,6 +27,7 @@ Released TBD
 - Fix image subresource sizing calculations for heap-based textures.
 - Fix `MTLHeap` memory leak in `MVKDeviceMemory`.
 - Fix tessellation break when control stage declares but does not use position builtin.
+- Fix inconsistency in reporting device local memory between type and heap on macOS.
 - Cube demo use `VK_EXT_metal_surface` extension.
 - Support *Xcode 11.2*.
 
