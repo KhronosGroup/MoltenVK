@@ -231,7 +231,9 @@ bool MVKImage::validateUseTexelBuffer() {
 	useTexelBuffer = useTexelBuffer && _deviceMemory && _deviceMemory->_mtlBuffer;				// Buffer is available to overlay
 
 #if MVK_MACOS
-	useTexelBuffer = useTexelBuffer && !isMemoryHostCoherent();	// macOS cannot use shared memory for texel buffers
+	// macOS cannot use shared memory for texel buffers.
+	// Test _deviceMemory->isMemoryHostCoherent() directly because local version overrides.
+	useTexelBuffer = useTexelBuffer && _deviceMemory && !_deviceMemory->isMemoryHostCoherent();
 #endif
 
 	return useTexelBuffer;
@@ -476,12 +478,12 @@ MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
 MTLStorageMode MVKImage::getMTLStorageMode() {
     if ( !_deviceMemory ) return MTLStorageModePrivate;
 
-    // For macOS, textures cannot use Shared storage mode, so change to Managed storage mode.
     MTLStorageMode stgMode = _deviceMemory->getMTLStorageMode();
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
 #if MVK_MACOS
+	// For macOS, textures cannot use Shared storage mode, so change to Managed storage mode.
     if (stgMode == MTLStorageModeShared) { stgMode = MTLStorageModeManaged; }
 #endif
     return stgMode;

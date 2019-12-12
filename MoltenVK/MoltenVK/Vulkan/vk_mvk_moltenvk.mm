@@ -34,10 +34,10 @@ using namespace std;
 // value of *pCopySize is the same as the actual size of the struct, or VK_INCOMPLETE otherwise.
 // If either pSrc or pDst are null, sets the value of *pCopySize to the size of the struct and returns VK_SUCCESS.
 template<typename S>
-VkResult mvkCopyStruct(S* pDst, const S* pSrc, size_t* pCopySize) {
+VkResult mvkCopy(S* pDst, const S* pSrc, size_t* pCopySize) {
 	if (pSrc && pDst) {
 		size_t origSize = *pCopySize;
-		*pCopySize = mvkCopyStruct(pDst, pSrc, origSize);
+		*pCopySize = mvkCopy(pDst, pSrc, origSize);
 		return (*pCopySize == origSize) ? VK_SUCCESS : VK_INCOMPLETE;
 	} else {
 		*pCopySize = sizeof(S);
@@ -51,7 +51,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
 	size_t*                                     pConfigurationSize) {
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-	return mvkCopyStruct(pConfiguration, mvkInst->getMoltenVKConfiguration(), pConfigurationSize);
+	return mvkCopy(pConfiguration, mvkInst->getMoltenVKConfiguration(), pConfigurationSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
@@ -60,7 +60,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
 	size_t*                                     pConfigurationSize) {
 
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-	return mvkCopyStruct((MVKConfiguration*)mvkInst->getMoltenVKConfiguration(), pConfiguration, pConfigurationSize);
+	return mvkCopy((MVKConfiguration*)mvkInst->getMoltenVKConfiguration(), pConfiguration, pConfigurationSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
@@ -69,7 +69,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
 	size_t*                                     pMetalFeaturesSize) {
 
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	return mvkCopyStruct(pMetalFeatures, mvkPD->getMetalFeatures(), pMetalFeaturesSize);
+	return mvkCopy(pMetalFeatures, mvkPD->getMetalFeatures(), pMetalFeaturesSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkGetSwapchainPerformanceMVK(
@@ -79,7 +79,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetSwapchainPerformanceMVK(
 	size_t*                                     pSwapchainPerfSize) {
 
 	MVKSwapchain* mvkSC = (MVKSwapchain*)swapchain;
-	return mvkCopyStruct(pSwapchainPerf, mvkSC->getPerformanceStatistics(), pSwapchainPerfSize);
+	return mvkCopy(pSwapchainPerf, mvkSC->getPerformanceStatistics(), pSwapchainPerfSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
@@ -89,7 +89,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
 
 	MVKPerformanceStatistics mvkPerf;
 	MVKDevice::getMVKDevice(device)->getPerformanceStatistics(&mvkPerf);
-	return mvkCopyStruct(pPerf, &mvkPerf, pPerfSize);
+	return mvkCopy(pPerf, &mvkPerf, pPerfSize);
 }
 
 MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(

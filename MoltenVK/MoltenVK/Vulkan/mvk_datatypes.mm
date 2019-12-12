@@ -499,9 +499,9 @@ static uint16_t _fmtDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
 static void MVKInitFormatMaps() {
 
     // Set all VkFormats and MTLPixelFormats to undefined/invalid
-    memset(_fmtDescIndicesByVkFormatsCore, 0, sizeof(_fmtDescIndicesByVkFormatsCore));
-    memset(_fmtDescIndicesByMTLPixelFormats, 0, sizeof(_fmtDescIndicesByMTLPixelFormats));
-    memset(_fmtDescIndicesByMTLVertexFormats, 0, sizeof(_fmtDescIndicesByMTLVertexFormats));
+    mvkClear(_fmtDescIndicesByVkFormatsCore);
+    mvkClear(_fmtDescIndicesByMTLPixelFormats);
+    mvkClear(_fmtDescIndicesByMTLVertexFormats);
 
 	_pFmtDescIndicesByVkFormatsExt = new MVKFormatIndexByVkFormatMap();
 

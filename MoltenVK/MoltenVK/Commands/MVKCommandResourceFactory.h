@@ -137,7 +137,7 @@ typedef struct MVKRPSKeyClearAtt_t {
 	}
 
 	void reset() {
-		memset(this, 0, sizeof(*this));
+		mvkClear(this);
 		mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 	}
 
@@ -180,7 +180,7 @@ typedef struct MVKMTLStencilDescriptorData_t {
 
         // Start with all zeros to ensure memory comparisons will work,
         // even if the structure contains alignment gaps.
-        memset(this, 0, sizeof(*this));
+        mvkClear(this);
 
         enabled = false,
         stencilCompareFunction = MTLCompareFunctionAlways;
@@ -233,7 +233,7 @@ typedef struct MVKMTLDepthStencilDescriptorData_t {
 	MVKMTLDepthStencilDescriptorData_t() {
 		// Start with all zeros to ensure memory comparisons will work,
 		// even if the structure contains alignment gaps.
-		memset(this, 0, sizeof(*this));
+		mvkClear(this);
 		disable(true, true);
 	}
 
@@ -276,7 +276,7 @@ typedef struct MVKImageDescriptorData_t {
 		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
 	}
 
-    MVKImageDescriptorData_t() { memset(this, 0, sizeof(*this)); }
+    MVKImageDescriptorData_t() { mvkClear(this); }
 
 } __attribute__((aligned(sizeof(uint64_t)))) MVKImageDescriptorData;
 
@@ -313,7 +313,7 @@ typedef struct MVKBufferDescriptorData_t {
 		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
 	}
 
-    MVKBufferDescriptorData_t() { memset(this, 0, sizeof(*this)); }
+    MVKBufferDescriptorData_t() { mvkClear(this); }
 
 } __attribute__((aligned(sizeof(uint64_t)))) MVKBufferDescriptorData;
 
