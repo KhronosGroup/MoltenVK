@@ -791,7 +791,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	_metalFeatures.maxPerStageBufferCount = 31;
     _metalFeatures.maxMTLBufferSize = (256 * MEBI);
-    _metalFeatures.dynamicMTLBuffers = false;
+    _metalFeatures.dynamicMTLBufferSize = 0;
 
     _metalFeatures.maxPerStageSamplerCount = 16;
     _metalFeatures.maxQueryBufferSize = (64 * KIBI);
@@ -812,7 +812,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
-        _metalFeatures.dynamicMTLBuffers = true;
+        _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
 		_metalFeatures.maxTextureDimension = (8 * KIBI);
     }
 
@@ -881,7 +881,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
-        _metalFeatures.dynamicMTLBuffers = true;
+        _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
         _metalFeatures.samplerClampToBorder = true;

@@ -502,7 +502,7 @@ void MVKCommandEncoder::setVertexBytes(id<MTLRenderCommandEncoder> mtlEncoder,
                                        const void* bytes,
                                        NSUInteger length,
                                        uint32_t mtlBuffIndex) {
-    if (_pDeviceMetalFeatures->dynamicMTLBuffers) {
+    if (_pDeviceMetalFeatures->dynamicMTLBufferSize && length <= _pDeviceMetalFeatures->dynamicMTLBufferSize) {
         [mtlEncoder setVertexBytes: bytes length: length atIndex: mtlBuffIndex];
     } else {
         const MVKMTLBufferAllocation* mtlBuffAlloc = copyToTempMTLBufferAllocation(bytes, length);
@@ -514,7 +514,7 @@ void MVKCommandEncoder::setFragmentBytes(id<MTLRenderCommandEncoder> mtlEncoder,
                                          const void* bytes,
                                          NSUInteger length,
                                          uint32_t mtlBuffIndex) {
-    if (_pDeviceMetalFeatures->dynamicMTLBuffers) {
+    if (_pDeviceMetalFeatures->dynamicMTLBufferSize && length <= _pDeviceMetalFeatures->dynamicMTLBufferSize) {
         [mtlEncoder setFragmentBytes: bytes length: length atIndex: mtlBuffIndex];
     } else {
         const MVKMTLBufferAllocation* mtlBuffAlloc = copyToTempMTLBufferAllocation(bytes, length);
@@ -526,7 +526,7 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
                                         const void* bytes,
                                         NSUInteger length,
                                         uint32_t mtlBuffIndex) {
-    if (_pDeviceMetalFeatures->dynamicMTLBuffers) {
+    if (_pDeviceMetalFeatures->dynamicMTLBufferSize && length <= _pDeviceMetalFeatures->dynamicMTLBufferSize) {
         [mtlEncoder setBytes: bytes length: length atIndex: mtlBuffIndex];
     } else {
         const MVKMTLBufferAllocation* mtlBuffAlloc = copyToTempMTLBufferAllocation(bytes, length);

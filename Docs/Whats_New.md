@@ -28,6 +28,8 @@ Released TBD
 - Fix `MTLHeap` memory leak in `MVKDeviceMemory`.
 - Fix tessellation break when control stage declares but does not use position builtin.
 - Fix inconsistency in reporting device local memory between type and heap on macOS.
+- Fix bug where dynamic shader buffers are overflowing.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `23`.
 - Cube demo use `VK_EXT_metal_surface` extension.
 - Support *Xcode 11.3*.
 
