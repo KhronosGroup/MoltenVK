@@ -29,7 +29,7 @@ Released TBD
 - Fix tessellation break when control stage declares but does not use position builtin.
 - Fix inconsistency in reporting device local memory between type and heap on macOS.
 - Cube demo use `VK_EXT_metal_surface` extension.
-- Support *Xcode 11.2*.
+- Support *Xcode 11.3*.
 
 
 
