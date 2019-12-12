@@ -259,7 +259,7 @@ void MVKOcclusionQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCoun
     } else {  // Host-side reset
         id<MTLBuffer> vizBuff = getVisibilityResultMTLBuffer();
         size_t size = std::min(lastOffset, vizBuff.length) - firstOffset;
-        mvkClear((char *)[vizBuff contents] + firstOffset);
+        mvkClear((char *)[vizBuff contents] + firstOffset, size);
     }
 }
 

@@ -418,11 +418,11 @@ void mvkRemoveAllOccurances(C& container, T val) {
 
 /** If pVal is not null, clears the memory occupied by *pVal by writing zeros to all the bytes. */
 template<typename T>
-void mvkClear(T* pVal) { if (pVal) { memset(pVal, 0, sizeof(T)); } }
+void mvkClear(T* pVal, size_t clearSize = sizeof(T)) { if (pVal) { memset(pVal, 0, clearSize); } }
 
 /** If pVal is not null, overrides the const declaration, and clears the memory occupied by *pVal by writing zeros to all the bytes. */
 template<typename T>
-void mvkClear(const T* pVal) { mvkClear((T*)pVal); }
+void mvkClear(const T* pVal, size_t clearSize = sizeof(T)) { mvkClear((T*)pVal, clearSize); }
 
 /**
  * If pSrc and pDst are not null, copies at most copySize bytes from the contents of the source
