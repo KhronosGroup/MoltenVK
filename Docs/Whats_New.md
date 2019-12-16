@@ -17,7 +17,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.39
 ---------------
 
-Released TBD
+Released 2019/12/16
 
 - Add support for extensions:
 	- `VK_EXT_inline_uniform_block`
@@ -33,6 +33,36 @@ Released TBD
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `23`.
 - Cube demo use `VK_EXT_metal_surface` extension.
 - Support *Xcode 11.3*.
+- Update dependency libraries to match *Vulkan SDK 1.1.130*.
+- Update to latest SPIRV-Cross version:
+	- MSL: Rewrite `tessellation_access_chain()`.
+	- MSL: Report tess input array failures more accurately.
+	- MSL: Deal with chained access chains for tessellation IO variables.
+	- MSL: Fix array of array declaration.
+	- MSL: Declare struct type explicitly.
+	- MSL: Declare arrays with proper type wrapper.
+	- MSL: Remove workaround for passing constant arrays to functions.
+	- MSL: Fix unpacking of column from padded matrix.
+	- MSL: Fix integer cast.
+	- MSL: Add missing reference output.
+	- MSL: Ensure stable output for access chain CFG workarounds.
+	- MSL: Remove stray `allow_id_rewrite()`.
+	- MSL: Do read-only lookups of access_chain_children.
+	- MSL: Do not declare variables which will not be unflattened.
+	- MSL: Rewrite propagated depth comparison state handling.
+	- MSL: Do not declare array of UBO/SSBO as `spvUnsafeArray<T>`.
+	- MSL: Remove dubious workaround code in `unpack_expression()`.
+	- MSL: Remove hacky workaround for patch constant passing.
+	- MSL: Revert hack with `kBufferSizeBufferBinding`.
+	- MSL: Remove stale code for texture swizzle.
+	- MSL: Avoid some fallthrough warnings.
+	- Expose as public `Compiler::update_active_builtins()` and `has_active_builtin()`.
+	- Implement constant empty struct correctly on all backends.
+	- Mark loop headers as complex as early as possible.
+	- Clean up call to `builtin_translates_to_nonarray()`.
+	- Fix broken access tracking for `OpFunctionCall` results.
+	- Avoid including stdexcept in no-exception environment.
+	- Add `spvc_type_get_base_type_id()`.
 
 
 

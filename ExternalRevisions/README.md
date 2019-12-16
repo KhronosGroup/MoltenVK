@@ -199,9 +199,9 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
 		"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include"
 		"$(SRCROOT)/External/glslang/External/spirv-tools/build"
 
-4. Repeat *Step 3* for the `SPIRV-Tools-iOS` target within the `ExternalDependencies` *Xcode* project
+5. Repeat *Step 4* for the `SPIRV-Tools-iOS` target within the `ExternalDependencies` *Xcode* project
 
-5. Update `Templates/spirv-tools/build.zip` from the contents of `External/glslang/External/spirv-tools/build`,
+6. Update `Templates/spirv-tools/build.zip` from the contents of `External/glslang/External/spirv-tools/build`,
    and test by running `./fetchDependencies --skip-spirv-tools-build`, and a **MoltenVK** build.
 
 
@@ -232,3 +232,15 @@ if you encounter any building errors, you may need to re-add the *glslang* libra
 
 		External/glslang/glslang/MachineIndependant/glslang.y
 		External/glslang/glslang/OSDependent/Windows
+
+
+4. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
+   select the `glslang-macOS` target, and open the *Build Settings* tab. Locate the build 
+   setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
+
+		$(inherited) 
+		"$(SRCROOT)/External/glslang"
+
+5. Repeat *Step 4* for the `glslang-iOS` target within the `ExternalDependencies` *Xcode* project
+
+

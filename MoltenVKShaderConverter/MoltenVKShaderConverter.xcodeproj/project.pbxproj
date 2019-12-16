@@ -878,6 +878,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
+					"\"$(SRCROOT)/glslang\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
@@ -931,6 +932,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
+					"\"$(SRCROOT)/glslang\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 				);
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
