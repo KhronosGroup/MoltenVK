@@ -416,18 +416,25 @@ void mvkRemoveAllOccurances(C& container, T val) {
     container.erase(remove(container.begin(), container.end(), val), container.end());
 }
 
+/** If pVal is not null, clears the memory occupied by *pVal by writing zeros to all the bytes. */
+template<typename T>
+void mvkClear(T* pVal, size_t clearSize = sizeof(T)) { if (pVal) { memset(pVal, 0, clearSize); } }
+
+/** If pVal is not null, overrides the const declaration, and clears the memory occupied by *pVal by writing zeros to all the bytes. */
+template<typename T>
+void mvkClear(const T* pVal, size_t clearSize = sizeof(T)) { mvkClear((T*)pVal, clearSize); }
+
 /**
  * If pSrc and pDst are not null, copies at most copySize bytes from the contents of the source
- * struct to the destination struct, and returns the number of bytes copied, which is the smaller
+ * value to the destination value, and returns the number of bytes copied, which is the smaller
  * of copySize and the actual size of the struct. If either pSrc or pDst are null, returns zero.
  */
 template<typename S>
-size_t mvkCopyStruct(S* pDst, const S* pSrc, size_t copySize = sizeof(S)) {
-	size_t bytesCopied = 0;
-	if (pSrc && pDst) {
-		bytesCopied = std::min(copySize, sizeof(S));
-		memcpy(pDst, pSrc, bytesCopied);
-	}
+size_t mvkCopy(S* pDst, const S* pSrc, size_t copySize = sizeof(S)) {
+	if ( !(pSrc && pDst) ) { return 0; }
+
+	size_t bytesCopied = std::min(copySize, sizeof(S));
+	memcpy(pDst, pSrc, bytesCopied);
 	return bytesCopied;
 }
 
@@ -449,7 +456,7 @@ bool mvkSetOrClear(T* pDest, const T* pSrc) {
         *pDest = *pSrc;
         return true;
     }
-    if (pDest) { memset(pDest, 0, sizeof(T)); }
+    if (pDest) { mvkClear(pDest); }
     return false;
 }
 

@@ -50,7 +50,7 @@ PFN_vkVoidFunction MVKInstance::getProcAddr(const char* pName) {
 VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPhysicalDevices) {
 
 	// Get the number of physical devices
-	uint32_t pdCnt = (uint32_t)_physicalDevices.size();
+	uint32_t pdCnt = getPhysicalDeviceCount();
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pPhysicalDevices ) {
@@ -72,13 +72,11 @@ VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPh
 
 VkResult MVKInstance::getPhysicalDeviceGroups(uint32_t* pCount, VkPhysicalDeviceGroupProperties* pPhysicalDeviceGroupProps) {
 
-	// According to the Vulkan spec:
-	//  "Every physical device *must* be in exactly one device group."
-	// Since we don't really support this yet, we must return one group for every
-	// device.
+	// According to the Vulkan spec: "Every physical device *must* be in exactly one device group."
+	// Since we don't really support this yet, we must return one group for every device.
 
 	// Get the number of physical devices
-	uint32_t pdCnt = (uint32_t)_physicalDevices.size();
+	uint32_t pdCnt = getPhysicalDeviceCount();
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pPhysicalDeviceGroupProps ) {

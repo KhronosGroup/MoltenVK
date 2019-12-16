@@ -31,10 +31,6 @@ class MVKBaseObject;
  * which is part of the public external MoltenVK C API.
  */
 
-/** Support the MVK_CONFIG_TEXTURE_1D_AS_2D runtime environment variable. */
-extern bool _mvkTexture1DAs2D;
-
-
 #pragma mark -
 #pragma mark Support for VK_EXT_debug_report extension
 
@@ -90,5 +86,8 @@ MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode
 
 /** Enumerates all formats that support the given features, calling a specified function for each one. */
 void mvkEnumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
+
+/** Returns whether 1D textures should be treated as Metal 2D textures with height 1. */
+bool mvkTreatTexture1DAs2D();
 
 #endif

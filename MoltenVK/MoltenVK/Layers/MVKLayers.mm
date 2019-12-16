@@ -18,6 +18,7 @@
 
 #include "MVKLayers.h"
 #include "MVKEnvironment.h"
+#include "MVKFoundation.h"
 #include "vk_mvk_moltenvk.h"
 #include <mutex>
 
@@ -40,9 +41,9 @@ VkResult MVKLayer::getInstanceExtensionProperties(uint32_t* pCount, VkExtensionP
 MVKLayer::MVKLayer() : _supportedInstanceExtensions(nullptr, true) {
 
 	// The core driver layer
-	memset(_layerProperties.layerName, 0, sizeof(_layerProperties.layerName));
+	mvkClear(_layerProperties.layerName);
 	strcpy(_layerProperties.layerName, "MoltenVK");
-	memset(_layerProperties.description, 0, sizeof(_layerProperties.description));
+	mvkClear(_layerProperties.description);
 	strcpy(_layerProperties.description, "MoltenVK driver layer");
 	_layerProperties.specVersion = MVK_VULKAN_API_VERSION;
 	_layerProperties.implementationVersion = MVK_VERSION;

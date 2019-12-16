@@ -36,14 +36,17 @@ using namespace std;
 #endif
 
 static uint32_t _mvkLogLevel = MVK_CONFIG_LOG_LEVEL;
-
-// Initialize log level from environment
 static bool _mvkLoggingInitialized = false;
-__attribute__((constructor)) static void MVKInitLogging() {
-	if (_mvkLoggingInitialized ) { return; }
-	_mvkLoggingInitialized = true;
 
-	MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkLogLevel, MVK_CONFIG_LOG_LEVEL);
+// Returns log level from environment variable.
+// We do this once lazily instead of in a library constructor function to
+// ensure the NSProcessInfo environment is available when called upon.
+static inline uint32_t getMVKLogLevel() {
+	if ( !_mvkLoggingInitialized ) {
+		_mvkLoggingInitialized = true;
+		MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkLogLevel, MVK_CONFIG_LOG_LEVEL);
+	}
+	return _mvkLogLevel;
 }
 
 static const char* getReportingLevelString(int aslLvl) {
@@ -99,7 +102,7 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char*
 	MVKVulkanAPIObject* mvkAPIObj = mvkObj ? mvkObj->getVulkanAPIObject() : nullptr;
 	MVKInstance* mvkInst = mvkAPIObj ? mvkAPIObj->getInstance() : nullptr;
 	bool hasDebugCallbacks = mvkInst && mvkInst->hasDebugCallbacks();
-	bool shouldLog = (aslLvl < (_mvkLogLevel << 2));
+	bool shouldLog = (aslLvl < (getMVKLogLevel() << 2));
 
 	// Fail fast to avoid further unnecessary processing.
 	if ( !(shouldLog || hasDebugCallbacks) ) { return; }

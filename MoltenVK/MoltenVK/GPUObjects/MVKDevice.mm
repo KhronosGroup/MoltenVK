@@ -272,7 +272,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
         case VK_IMAGE_TYPE_1D:
 			maxExt.height = 1;
 			maxExt.depth = 1;
-			if (_mvkTexture1DAs2D) {
+			if (mvkTreatTexture1DAs2D()) {
 				maxExt.width = pLimits->maxImageDimension2D;
 				maxLevels = mvkMipmapLevels3D(maxExt);
 			} else {
@@ -752,8 +752,8 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 			switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
 				auto* budgetProps = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)next;
-				memset(budgetProps->heapBudget, 0, sizeof(budgetProps->heapBudget));
-				memset(budgetProps->heapUsage, 0, sizeof(budgetProps->heapUsage));
+				mvkClear(budgetProps->heapBudget);
+				mvkClear(budgetProps->heapUsage);
 				budgetProps->heapBudget[0] = (VkDeviceSize)getRecommendedMaxWorkingSetSize();
 				budgetProps->heapUsage[0] = (VkDeviceSize)getCurrentAllocatedSize();
 				if (!getHasUnifiedMemory()) {
@@ -787,11 +787,11 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 
 /** Initializes the Metal-specific physical device features of this instance. */
 void MVKPhysicalDevice::initMetalFeatures() {
-	memset(&_metalFeatures, 0, sizeof(_metalFeatures));	// Start with everything cleared
+	mvkClear(&_metalFeatures);	// Start with everything cleared
 
 	_metalFeatures.maxPerStageBufferCount = 31;
     _metalFeatures.maxMTLBufferSize = (256 * MEBI);
-    _metalFeatures.dynamicMTLBuffers = false;
+    _metalFeatures.dynamicMTLBufferSize = 0;
 
     _metalFeatures.maxPerStageSamplerCount = 16;
     _metalFeatures.maxQueryBufferSize = (64 * KIBI);
@@ -812,7 +812,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v2] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
-        _metalFeatures.dynamicMTLBuffers = true;
+        _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
 		_metalFeatures.maxTextureDimension = (8 * KIBI);
     }
 
@@ -881,7 +881,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
     if ( [_mtlDevice supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily1_v2] ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
-        _metalFeatures.dynamicMTLBuffers = true;
+        _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
         _metalFeatures.samplerClampToBorder = true;
@@ -979,7 +979,7 @@ bool MVKPhysicalDevice::getSupportsGPUFamily(MTLGPUFamily gpuFamily) {
 
 // Initializes the physical device features of this instance.
 void MVKPhysicalDevice::initFeatures() {
-	memset(&_features, 0, sizeof(_features));	// Start with everything cleared
+	mvkClear(&_features);	// Start with everything cleared
 
     _features.robustBufferAccess = true;  // XXX Required by Vulkan spec
     _features.fullDrawIndexUint32 = true;
@@ -1130,7 +1130,7 @@ void MVKPhysicalDevice::initFeatures() {
 
 /** Initializes the physical device properties of this instance. */
 void MVKPhysicalDevice::initProperties() {
-	memset(&_properties, 0, sizeof(_properties));	// Start with everything cleared
+	mvkClear(&_properties);	// Start with everything cleared
 
 	_properties.apiVersion = MVK_VULKAN_API_VERSION;
 	_properties.driverVersion = MVK_VERSION;
@@ -1667,7 +1667,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	// Clear the UUID
-	memset(&_properties.pipelineCacheUUID, 0, sizeof(_properties.pipelineCacheUUID));
+	mvkClear(&_properties.pipelineCacheUUID);
 
 	size_t uuidComponentOffset = 0;
 
@@ -1749,105 +1749,110 @@ uint64_t MVKPhysicalDevice::getSpirvCrossRevision() {
 	return revVal;
 }
 
-/** Initializes the memory properties of this instance. */
+void MVKPhysicalDevice::setMemoryHeap(uint32_t heapIndex, VkDeviceSize heapSize, VkMemoryHeapFlags heapFlags) {
+	_memoryProperties.memoryHeaps[heapIndex].size = heapSize;
+	_memoryProperties.memoryHeaps[heapIndex].flags = heapFlags;
+}
+
+void MVKPhysicalDevice::setMemoryType(uint32_t typeIndex, uint32_t heapIndex, VkMemoryPropertyFlags propertyFlags) {
+	_memoryProperties.memoryTypes[typeIndex].heapIndex = heapIndex;
+	_memoryProperties.memoryTypes[typeIndex].propertyFlags = propertyFlags;
+}
+
+// Initializes the memory properties of this instance.
+// Metal Shared:
+//	- applies to both buffers and textures
+//	- default mode for buffers on both iOS & macOS
+//	- default mode for textures on iOS
+//	- one copy of memory visible to both CPU & GPU
+//	- coherent at command buffer boundaries
+// Metal Private:
+//	- applies to both buffers and textures
+//	- accessed only by GPU through render, compute, or BLIT operations
+//	- no access by CPU
+//	- always use for framebuffers and renderable textures
+// Metal Managed:
+//	- applies to both buffers and textures
+//	- default mode for textures on macOS
+//	- two copies of each buffer or texture when discrete memory available
+//	- convenience of shared mode, performance of private mode
+//	- on unified systems behaves like shared memory and has only one copy of content
+//	- when writing, use:
+//		- buffer didModifyRange:
+//		- texture replaceRegion:
+//	- when reading, use:
+//		- encoder synchronizeResource: followed by
+//		- cmdbuff waitUntilCompleted (or completion handler)
+//		- buffer/texture getBytes:
+// Metal Memoryless:
+//	- applies only to textures used as transient render targets
+//	- only available with TBDR devices (i.e. on iOS)
+//	- no device memory is reserved at all
+//	- storage comes from tile memory
+//	- contents are undefined after rendering
+//	- use for temporary renderable textures
 void MVKPhysicalDevice::initMemoryProperties() {
 
-	// Metal Shared:
-	//	- applies to both buffers and textures
-	//	- default mode for buffers on both iOS & macOS
-	//	- default mode for textures on iOS
-	//	- one copy of memory visible to both CPU & GPU
-	//	- coherent at command buffer boundaries
-	// Metal Private:
-	//	- applies to both buffers and textures
-	//	- accessed only by GPU through render, compute, or BLIT operations
-	//	- no access by CPU
-	//	- always use for framebuffers and renderable textures
-	// Metal Managed:
-	//	- applies to both buffers and textures
-	//	- default mode for textures on macOS
-	//	- two copies of each buffer or texture when discrete memory available
-	//	- convenience of shared mode, performance of private mode
-	//	- on unified systems behaves like shared memory and has only one copy of content
-	//	- when writing, use:
-	//		- buffer didModifyRange:
-	//		- texture replaceRegion:
-	//	- when reading, use:
-	//		- encoder synchronizeResource: followed by
-	//		- cmdbuff waitUntilCompleted (or completion handler)
-	//		- buffer/texture getBytes:
-	// Metal Memoryless:
-	//	- applies only to textures used as transient render targets
-	//	- only available with TBDR devices (i.e. on iOS)
-	//	- no device memory is reserved at all
-	//	- storage comes from tile memory
-	//	- contents are undefined after rendering
-	//	- use for temporary renderable textures
+	mvkClear(&_memoryProperties);	// Start with everything cleared
 
-    _memoryProperties = (VkPhysicalDeviceMemoryProperties){
-        .memoryHeapCount = 1,
-        .memoryHeaps = {
-            {
-                .flags = (VK_MEMORY_HEAP_DEVICE_LOCAL_BIT),
-                .size = (VkDeviceSize)getVRAMSize(),
-            },
-        },
-        // NB this list needs to stay sorted by propertyFlags (as bit sets)
-        .memoryTypes = {
-            {
-                .heapIndex = 0,
-                .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_PRIVATE,    // Private storage
-            },
-#if MVK_MACOS
-            {
-                .heapIndex = 0,
-                .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_MANAGED,    // Managed storage
-            },
-#endif
-            {
-                .heapIndex = 0,
-                .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_SHARED,    // Shared storage
-            },
-#if MVK_IOS
-            {
-                .heapIndex = 0,
-                .propertyFlags = MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS,    // Memoryless storage
-            },
-#endif
-        },
-    };
+	// Main heap
+	uint32_t mainHeapIdx = 0;
+	setMemoryHeap(mainHeapIdx, getVRAMSize(), VK_MEMORY_HEAP_DEVICE_LOCAL_BIT);
 
+	// Optional second heap for shared memory
+	uint32_t sharedHeapIdx;
+	VkMemoryPropertyFlags sharedTypePropFlags;
+	if (getHasUnifiedMemory()) {
+		// Shared memory goes in the single main heap in unified memory, and per Vulkan spec must be marked local
+		sharedHeapIdx = mainHeapIdx;
+		sharedTypePropFlags = MVK_VK_MEMORY_TYPE_METAL_SHARED | VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT;
+	} else {
+		// Define a second heap to mark the shared memory as non-local
+		sharedHeapIdx = mainHeapIdx + 1;
+		setMemoryHeap(sharedHeapIdx, mvkGetSystemMemorySize(), 0);
+		sharedTypePropFlags = MVK_VK_MEMORY_TYPE_METAL_SHARED;
+	}
+
+	_memoryProperties.memoryHeapCount = sharedHeapIdx + 1;
+
+	// Memory types
+	uint32_t typeIdx = 0;
+
+	// Private storage
+	uint32_t privateBit = 1 << typeIdx;
+	setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_PRIVATE);
+	typeIdx++;
+
+	// Shared storage
+	uint32_t sharedBit = 1 << typeIdx;
+	setMemoryType(typeIdx, sharedHeapIdx, sharedTypePropFlags);
+	typeIdx++;
+
+	// Managed storage
+	uint32_t managedBit = 0;
 #if MVK_MACOS
-	_memoryProperties.memoryTypeCount = 3;
-	_privateMemoryTypes			= 0x1;			// Private only
-	_lazilyAllocatedMemoryTypes	= 0x0;			// Not supported on macOS
-	_hostCoherentMemoryTypes 	= 0x4;			// Shared only
-	_hostVisibleMemoryTypes		= 0x6;			// Shared & managed
-	_allMemoryTypes				= 0x7;			// Private, shared, & managed
+	managedBit = 1 << typeIdx;
+	setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MANAGED);
+	typeIdx++;
 #endif
+
+	// Memoryless storage
+	uint32_t memlessBit = 0;
 #if MVK_IOS
-	_memoryProperties.memoryTypeCount = 2;		// Managed storage not available on iOS
-	_privateMemoryTypes			= 0x1;			// Private only
-	_lazilyAllocatedMemoryTypes	= 0x0;			// Not supported on this version
-	_hostCoherentMemoryTypes 	= 0x2;			// Shared only
-	_hostVisibleMemoryTypes		= 0x2;			// Shared only
-	_allMemoryTypes				= 0x3;			// Private & shared
-	if ([getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
-		_memoryProperties.memoryTypeCount = 3;	// Memoryless storage available
-		_privateMemoryTypes			= 0x5;		// Private & memoryless
-		_lazilyAllocatedMemoryTypes	= 0x4;		// Memoryless only
-		_allMemoryTypes				= 0x7;		// Private, shared & memoryless
+	if ([_mtlDevice supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
+		memlessBit = 1 << typeIdx;
+		setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
+		typeIdx++;
 	}
 #endif
-#if MVK_MACOS
-	if (!getHasUnifiedMemory()) {
-		// This means we really have two heaps. The second heap is system memory.
-		_memoryProperties.memoryHeapCount = 2;
-		_memoryProperties.memoryHeaps[1].size = mvkGetSystemMemorySize();
-		_memoryProperties.memoryHeaps[1].flags = 0;
-		_memoryProperties.memoryTypes[2].heapIndex = 1;	// Shared memory in the shared heap
-	}
-#endif
+
+	_memoryProperties.memoryTypeCount = typeIdx;
+
+	_privateMemoryTypes			= privateBit | memlessBit;
+	_hostVisibleMemoryTypes		= sharedBit | managedBit;
+	_hostCoherentMemoryTypes 	= sharedBit;
+	_lazilyAllocatedMemoryTypes	= memlessBit;
+	_allMemoryTypes				= privateBit | sharedBit | managedBit | memlessBit;
 }
 
 bool MVKPhysicalDevice::getHasUnifiedMemory() {
@@ -1855,21 +1860,20 @@ bool MVKPhysicalDevice::getHasUnifiedMemory() {
 	return true;
 #endif
 #if MVK_MACOS
-	return [_mtlDevice respondsToSelector: @selector(hasUnifiedMemory)] && _mtlDevice.hasUnifiedMemory;
+	return (([_mtlDevice respondsToSelector: @selector(hasUnifiedMemory)] && _mtlDevice.hasUnifiedMemory)
+			|| _mtlDevice.isLowPower
+			|| getInstance()->getPhysicalDeviceCount() == 1);
 #endif
 }
 
 uint64_t MVKPhysicalDevice::getVRAMSize() {
-#if MVK_IOS
-	// All iOS devices are UMA, so return the system memory size.
-	return mvkGetSystemMemorySize();
-#endif
-#if MVK_MACOS
-	if (getHasUnifiedMemory()) { return mvkGetSystemMemorySize(); }
-	// There's actually no way to query the total physical VRAM on the device in Metal.
-	// Just default to using the recommended max working set size (i.e. the budget).
-	return getRecommendedMaxWorkingSetSize();
-#endif
+	if (getHasUnifiedMemory()) {
+		return mvkGetSystemMemorySize();
+	} else {
+		// There's actually no way to query the total physical VRAM on the device in Metal.
+		// Just default to using the recommended max working set size (i.e. the budget).
+		return getRecommendedMaxWorkingSetSize();
+	}
 }
 
 uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
@@ -2050,7 +2054,7 @@ void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateI
 }
 
 VkResult MVKDevice::getDeviceGroupPresentCapabilities(VkDeviceGroupPresentCapabilitiesKHR* pDeviceGroupPresentCapabilities) {
-	memset(pDeviceGroupPresentCapabilities->presentMask, 0, sizeof(pDeviceGroupPresentCapabilities->presentMask));
+	mvkClear(pDeviceGroupPresentCapabilities->presentMask);
 	pDeviceGroupPresentCapabilities->presentMask[0] = 0x1;
 
 	pDeviceGroupPresentCapabilities->modes = VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_BIT_KHR;
@@ -2680,18 +2684,18 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 
 	// Start with all features disabled
-	memset((void*)&_enabledFeatures, 0, sizeof(_enabledFeatures));
-	memset((void*)&_enabledStorage16Features, 0, sizeof(_enabledStorage16Features));
-	memset((void*)&_enabledStorage8Features, 0, sizeof(_enabledStorage8Features));
-	memset((void*)&_enabledF16I8Features, 0, sizeof(_enabledF16I8Features));
-	memset((void*)&_enabledUBOLayoutFeatures, 0, sizeof(_enabledUBOLayoutFeatures));
-	memset((void*)&_enabledVarPtrFeatures, 0, sizeof(_enabledVarPtrFeatures));
-	memset((void*)&_enabledInterlockFeatures, 0, sizeof(_enabledInterlockFeatures));
-	memset((void*)&_enabledHostQryResetFeatures, 0, sizeof(_enabledHostQryResetFeatures));
-	memset((void*)&_enabledScalarLayoutFeatures, 0, sizeof(_enabledScalarLayoutFeatures));
-	memset((void*)&_enabledTexelBuffAlignFeatures, 0, sizeof(_enabledTexelBuffAlignFeatures));
-	memset((void*)&_enabledVtxAttrDivFeatures, 0, sizeof(_enabledVtxAttrDivFeatures));
-	memset((void*)&_enabledPortabilityFeatures, 0, sizeof(_enabledPortabilityFeatures));
+	mvkClear(&_enabledFeatures);
+	mvkClear(&_enabledStorage16Features);
+	mvkClear(&_enabledStorage8Features);
+	mvkClear(&_enabledF16I8Features);
+	mvkClear(&_enabledUBOLayoutFeatures);
+	mvkClear(&_enabledVarPtrFeatures);
+	mvkClear(&_enabledInterlockFeatures);
+	mvkClear(&_enabledHostQryResetFeatures);
+	mvkClear(&_enabledScalarLayoutFeatures);
+	mvkClear(&_enabledTexelBuffAlignFeatures);
+	mvkClear(&_enabledVtxAttrDivFeatures);
+	mvkClear(&_enabledPortabilityFeatures);
 
 	// Fetch the available physical device features.
 	VkPhysicalDevicePortabilitySubsetFeaturesEXTX pdPortabilityFeatures;

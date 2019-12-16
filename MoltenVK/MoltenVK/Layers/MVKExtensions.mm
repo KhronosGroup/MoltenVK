@@ -33,7 +33,7 @@ using namespace std;
 // Returns a VkExtensionProperties struct populated with a name and version
 static VkExtensionProperties mvkMakeExtProps(const char* extensionName, uint32_t specVersion) {
 	VkExtensionProperties extProps;
-	memset(extProps.extensionName, 0, sizeof(extProps.extensionName));
+	mvkClear(extProps.extensionName);
 	if (extensionName) { strcpy(extProps.extensionName, extensionName); }
 	extProps.specVersion = specVersion;
 	return extProps;

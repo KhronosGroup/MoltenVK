@@ -71,6 +71,9 @@ public:
 	/** Returns the function pointer corresponding to the named entry point, or NULL if it doesn't exist. */
 	PFN_vkVoidFunction getProcAddr(const char* pName);
 
+	/** Returns the number of available physical devices. */
+	uint32_t getPhysicalDeviceCount() { return (uint32_t)_physicalDevices.size(); }
+
 	/**
 	 * If pPhysicalDevices is null, the value of pCount is updated with the number of 
 	 * physical devices supported by this instance.

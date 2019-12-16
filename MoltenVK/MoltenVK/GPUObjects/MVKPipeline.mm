@@ -326,7 +326,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	// Track dynamic state in _dynamicStateEnabled array
-	memset(&_dynamicStateEnabled, false, sizeof(_dynamicStateEnabled));		// start with all dynamic state disabled
+	mvkClear(&_dynamicStateEnabled);		// start with all dynamic state disabled
 	const VkPipelineDynamicStateCreateInfo* pDS = pCreateInfo->pDynamicState;
 	if (pDS) {
 		for (uint32_t i = 0; i < pDS->dynamicStateCount; i++) {
@@ -1158,7 +1158,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     _tessCtlPatchOutputBufferIndex = layout->getTessCtlPatchOutputBufferIndex();
     _tessCtlLevelBufferIndex = layout->getTessCtlLevelBufferIndex();
 
-	shaderContext.options.mslOptions.texture_1D_as_2D = _mvkTexture1DAs2D;
+	shaderContext.options.mslOptions.texture_1D_as_2D = mvkTreatTexture1DAs2D();
     shaderContext.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo, reflectData);
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
     shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
@@ -1351,7 +1351,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
-	shaderContext.options.mslOptions.texture_1D_as_2D = _mvkTexture1DAs2D;
+	shaderContext.options.mslOptions.texture_1D_as_2D = mvkTreatTexture1DAs2D();
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);

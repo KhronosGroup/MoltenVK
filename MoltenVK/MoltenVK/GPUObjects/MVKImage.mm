@@ -231,7 +231,9 @@ bool MVKImage::validateUseTexelBuffer() {
 	useTexelBuffer = useTexelBuffer && _deviceMemory && _deviceMemory->_mtlBuffer;				// Buffer is available to overlay
 
 #if MVK_MACOS
-	useTexelBuffer = useTexelBuffer && !isMemoryHostCoherent();	// macOS cannot use shared memory for texel buffers
+	// macOS cannot use shared memory for texel buffers.
+	// Test _deviceMemory->isMemoryHostCoherent() directly because local version overrides.
+	useTexelBuffer = useTexelBuffer && _deviceMemory && !_deviceMemory->isMemoryHostCoherent();
 #endif
 
 	return useTexelBuffer;
@@ -476,12 +478,12 @@ MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
 MTLStorageMode MVKImage::getMTLStorageMode() {
     if ( !_deviceMemory ) return MTLStorageModePrivate;
 
-    // For macOS, textures cannot use Shared storage mode, so change to Managed storage mode.
     MTLStorageMode stgMode = _deviceMemory->getMTLStorageMode();
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
 #if MVK_MACOS
+	// For macOS, textures cannot use Shared storage mode, so change to Managed storage mode.
     if (stgMode == MTLStorageModeShared) { stgMode = MTLStorageModeManaged; }
 #endif
     return stgMode;
@@ -660,7 +662,7 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 	if (validSamples == VK_SAMPLE_COUNT_1_BIT) { return validSamples; }
 
 	// Don't use getImageType() because it hasn't been set yet.
-	if ( !((pCreateInfo->imageType == VK_IMAGE_TYPE_2D) || ((pCreateInfo->imageType == VK_IMAGE_TYPE_1D) && _mvkTexture1DAs2D)) ) {
+	if ( !((pCreateInfo->imageType == VK_IMAGE_TYPE_2D) || ((pCreateInfo->imageType == VK_IMAGE_TYPE_1D) && mvkTreatTexture1DAs2D())) ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}

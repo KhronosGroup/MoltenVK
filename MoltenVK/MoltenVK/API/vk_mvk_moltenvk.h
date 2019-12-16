@@ -55,7 +55,7 @@ typedef unsigned long MTLLanguageVersion;
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            22
+#define VK_MVK_MOLTENVK_SPEC_VERSION            23
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -528,7 +528,7 @@ typedef struct {
     uint32_t mslVersion;                        /**< The version of the Metal Shading Language available on this device. The format of the integer is MMmmpp, with two decimal digts each for Major, minor, and patch version values (eg. MSL 1.2 would appear as 010200). */
 	VkBool32 indirectDrawing;                   /**< If true, draw calls support parameters held in a GPU buffer. */
 	VkBool32 baseVertexInstanceDrawing;         /**< If true, draw calls support specifiying the base vertex and instance. */
-    VkBool32 dynamicMTLBuffers;                 /**< If true, dynamic MTLBuffers for setting vertex, fragment, and compute bytes are supported. */
+    uint32_t dynamicMTLBufferSize;              /**< If greater than zero, dynamic MTLBuffers for setting vertex, fragment, and compute bytes are supported, and their content must be below this value. */
     VkBool32 shaderSpecialization;              /**< If true, shader specialization (aka Metal function constants) is supported. */
     VkBool32 ioSurfaces;                        /**< If true, VkImages can be underlaid by IOSurfaces via the vkUseIOSurfaceMVK() function, to support inter-process image transfers. */
     VkBool32 texelBuffers;                      /**< If true, texel buffers are supported, allowing the contents of a buffer to be interpreted as an image via a VkBufferView. */
