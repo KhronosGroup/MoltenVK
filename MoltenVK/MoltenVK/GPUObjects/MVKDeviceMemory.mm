@@ -182,13 +182,19 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	if (_allocationSize == 0) { return true; }
 
 #if MVK_MACOS
-	// MTLHeaps on Mac must use private storage for now.
+	// MTLHeaps on macOS must use private storage for now.
 	if (_mtlStorageMode != MTLStorageModePrivate) { return true; }
+#endif
+#if MVK_IOS
+	// MTLHeaps on iOS must use private or shared storage for now.
+	if ( !(_mtlStorageMode == MTLStorageModePrivate ||
+		   _mtlStorageMode == MTLStorageModeShared) ) { return true; }
 #endif
 
 	MTLHeapDescriptor* heapDesc = [MTLHeapDescriptor new];
 	heapDesc.type = MTLHeapTypePlacement;
-	heapDesc.resourceOptions = getMTLResourceOptions();
+	heapDesc.storageMode = _mtlStorageMode;
+	heapDesc.cpuCacheMode = _mtlCPUCacheMode;
 	// For now, use tracked resources. Later, we should probably default
 	// to untracked, since Vulkan uses explicit barriers anyway.
 	heapDesc.hazardTrackingMode = MTLHazardTrackingModeTracked;

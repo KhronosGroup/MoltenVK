@@ -1860,9 +1860,8 @@ bool MVKPhysicalDevice::getHasUnifiedMemory() {
 	return true;
 #endif
 #if MVK_MACOS
-	return (([_mtlDevice respondsToSelector: @selector(hasUnifiedMemory)] && _mtlDevice.hasUnifiedMemory)
-			|| _mtlDevice.isLowPower
-			|| getInstance()->getPhysicalDeviceCount() == 1);
+	return ([_mtlDevice respondsToSelector: @selector(hasUnifiedMemory)]
+			? _mtlDevice.hasUnifiedMemory : _mtlDevice.isLowPower);
 #endif
 }
 
