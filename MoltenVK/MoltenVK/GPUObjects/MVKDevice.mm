@@ -272,7 +272,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
         case VK_IMAGE_TYPE_1D:
 			maxExt.height = 1;
 			maxExt.depth = 1;
-			if (_mvkTexture1DAs2D) {
+			if (mvkTreatTexture1DAs2D()) {
 				maxExt.width = pLimits->maxImageDimension2D;
 				maxLevels = mvkMipmapLevels3D(maxExt);
 			} else {

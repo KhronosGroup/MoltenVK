@@ -29,6 +29,7 @@ Released TBD
 - Fix tessellation break when control stage declares but does not use position builtin.
 - Fix inconsistency in reporting device local memory between type and heap on macOS.
 - Fix bug where dynamic shader buffers are overflowing.
+- Avoid reading env vars inside library constructor functions.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `23`.
 - Cube demo use `VK_EXT_metal_surface` extension.
 - Support *Xcode 11.3*.

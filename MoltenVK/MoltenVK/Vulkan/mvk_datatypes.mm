@@ -822,7 +822,7 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vk
 																  bool isMultisample) {
 	switch (vkImageType) {
 		case VK_IMAGE_TYPE_3D: return MTLTextureType3D;
-		case VK_IMAGE_TYPE_1D: return (_mvkTexture1DAs2D
+		case VK_IMAGE_TYPE_1D: return (mvkTreatTexture1DAs2D()
 									   ? mvkMTLTextureTypeFromVkImageType(VK_IMAGE_TYPE_2D, arraySize, isMultisample)
 									   : (arraySize > 1 ? MTLTextureType1DArray : MTLTextureType1D));
 		case VK_IMAGE_TYPE_2D:
@@ -854,8 +854,8 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageVie
 		case VK_IMAGE_VIEW_TYPE_3D:			return MTLTextureType3D;
 		case VK_IMAGE_VIEW_TYPE_CUBE:		return MTLTextureTypeCube;
 		case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:	return MTLTextureTypeCubeArray;
-		case VK_IMAGE_VIEW_TYPE_1D:			return _mvkTexture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D, isMultisample) : MTLTextureType1D;
-		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:	return _mvkTexture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY, isMultisample) : MTLTextureType1DArray;
+		case VK_IMAGE_VIEW_TYPE_1D:			return mvkTreatTexture1DAs2D() ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D, isMultisample) : MTLTextureType1D;
+		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:	return mvkTreatTexture1DAs2D() ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY, isMultisample) : MTLTextureType1DArray;
 
 		case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
 #if MVK_MACOS
@@ -1450,11 +1450,23 @@ MVK_PUBLIC_SYMBOL MTLResourceOptions mvkMTLResourceOptions(MTLStorageMode mtlSto
 	return (mtlStorageMode << MTLResourceStorageModeShift) | (mtlCPUCacheMode << MTLResourceCPUCacheModeShift);
 }
 
+static bool _mvkTexture1DAs2D = MVK_CONFIG_TEXTURE_1D_AS_2D;
+static bool _mvkTexture1DAs2DInitialized = false;
+
+// Returns environment variable indicating whether to use Metal 2D textures for 1D textures.
+// We do this once lazily instead of in a library constructor function to
+// ensure the NSProcessInfo environment is available when called upon.
+bool mvkTreatTexture1DAs2D() {
+	if ( !_mvkTexture1DAs2DInitialized ) {
+		_mvkTexture1DAs2DInitialized = true;
+		MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkTexture1DAs2D, MVK_CONFIG_TEXTURE_1D_AS_2D);
+	}
+	return _mvkTexture1DAs2D;
+}
+
 
 #pragma mark -
 #pragma mark Library initialization
-
-bool _mvkTexture1DAs2D = MVK_CONFIG_TEXTURE_1D_AS_2D;
 
 /**
  * Called automatically when the framework is loaded and initialized.
@@ -1464,12 +1476,9 @@ bool _mvkTexture1DAs2D = MVK_CONFIG_TEXTURE_1D_AS_2D;
 static bool _mvkDataTypesInitialized = false;
 __attribute__((constructor)) static void MVKInitDataTypes() {
 	if (_mvkDataTypesInitialized ) { return; }
+	_mvkDataTypesInitialized = true;
 
 	MVKInitFormatMaps();
-
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL(_mvkTexture1DAs2D, MVK_CONFIG_TEXTURE_1D_AS_2D);
-
-	_mvkDataTypesInitialized = true;
 }
 
 	

@@ -51,19 +51,24 @@
 #   define MVK_CONFIG_TRACE_VULKAN_CALLS    0
 #endif
 
-static uint32_t _mvkTraceVulkanCalls = 0;
+static uint32_t _mvkTraceVulkanCalls = MVK_CONFIG_TRACE_VULKAN_CALLS;
 static bool _mvkVulkanCallTracingInitialized = false;
-__attribute__((constructor)) static void MVKInitVulkanCallTracing() {
-	if (_mvkVulkanCallTracingInitialized ) { return; }
-	_mvkVulkanCallTracingInitialized = true;
 
-	MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkTraceVulkanCalls, MVK_CONFIG_TRACE_VULKAN_CALLS);
+// Returns Vulkan call trace level from environment variable.
+// We do this once lazily instead of in a library constructor function to
+// ensure the NSProcessInfo environment is available when called upon.
+static inline uint32_t getCallTraceLevel() {
+	if ( !_mvkVulkanCallTracingInitialized ) {
+		_mvkVulkanCallTracingInitialized = true;
+		MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkTraceVulkanCalls, MVK_CONFIG_TRACE_VULKAN_CALLS);
+	}
+	return _mvkTraceVulkanCalls;
 }
 
 // Optionally log start of function calls to stderr
 static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
 	uint64_t timestamp = 0;
-	switch(_mvkTraceVulkanCalls) {
+	switch(getCallTraceLevel()) {
 		case 3:			// Fall through
 			timestamp = mvkGetTimestamp();
 		case 2:
@@ -81,7 +86,7 @@ static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
 
 // Optionally log end of function calls and timings to stderr
 static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t startTime) {
-	switch(_mvkTraceVulkanCalls) {
+	switch(getCallTraceLevel()) {
 		case 3:
 			fprintf(stderr, "[mvk-trace] } %s() (%.4f ms)\n", funcName, mvkGetElapsedMilliseconds(startTime));
 			break;
