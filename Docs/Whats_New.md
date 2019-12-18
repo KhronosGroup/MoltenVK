@@ -14,6 +14,15 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.40
+---------------
+
+Released TBD
+
+- Fix crash when app does not use queue family zero.
+
+
+
 MoltenVK 1.0.39
 ---------------
 

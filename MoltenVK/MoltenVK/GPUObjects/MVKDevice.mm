@@ -2030,6 +2030,15 @@ MVKQueue* MVKDevice::getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex) {
 	return _queuesByQueueFamilyIndex[queueFamilyIndex][queueIndex];
 }
 
+MVKQueue* MVKDevice::getAnyQueue() {
+	for (auto& queues : _queuesByQueueFamilyIndex) {
+		for (MVKQueue* q : queues) {
+			if (q) { return q; };
+		}
+	}
+	return nullptr;
+}
+
 VkResult MVKDevice::waitIdle() {
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		for (MVKQueue* q : queues) {

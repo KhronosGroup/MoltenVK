@@ -402,8 +402,11 @@ public:
 	/** Returns the function pointer corresponding to the specified named entry point. */
 	PFN_vkVoidFunction getProcAddr(const char* pName);
 
-	/** Retrieves a queue at the specified index within the specified family. */
-	MVKQueue* getQueue(uint32_t queueFamilyIndex = 0, uint32_t queueIndex = 0);
+	/** Returns the queue at the specified index within the specified family. */
+	MVKQueue* getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex);
+
+	/** Retrieves the queue at the lowest queue and queue family indices used by the app. */
+	MVKQueue* getAnyQueue();
 
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
