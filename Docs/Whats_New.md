@@ -20,6 +20,7 @@ MoltenVK 1.0.40
 Released TBD
 
 - Fix crash when app does not use queue family zero.
+- Fix buffer offset in `vkCmdPushDescriptorSet()` for non-dedicated buffer memory.
 
 
 
@@ -120,7 +121,6 @@ Released 2019/10/30
 	- Do not consider aliased struct types if the master is not a block.
 	- Fix `OpVectorExtractDynamic` with spec constant op index.
 	- Update SPIR-V headers to SPIR-V 1.5.
-	 
 
 
 
