@@ -253,6 +253,25 @@ void MVKCmdPushDescriptorSet::setContent(VkPipelineBindPoint pipelineBindPoint,
 			std::copy_n(descWrite.pTexelBufferView, descWrite.descriptorCount, pNewTexelBufferView);
 			descWrite.pTexelBufferView = pNewTexelBufferView;
 		}
+        if (getDevice()->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+            const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
+            for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
+            {
+                switch (next->sType) {
+                case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
+                    pInlineUniformBlock = next;
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+            if (pInlineUniformBlock != nullptr) {
+                auto *pNewInlineUniformBlock = new VkWriteDescriptorSetInlineUniformBlockEXT(*pInlineUniformBlock);
+                pNewInlineUniformBlock->pNext = nullptr; // clear pNext just in case, no other extensions are supported at this time
+                descWrite.pNext = pNewInlineUniformBlock;
+            }
+        }
 	}
 
 	// Validate by encoding on a null encoder
@@ -276,6 +295,22 @@ void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
 		if (descWrite.pImageInfo) delete[] descWrite.pImageInfo;
 		if (descWrite.pBufferInfo) delete[] descWrite.pBufferInfo;
 		if (descWrite.pTexelBufferView) delete[] descWrite.pTexelBufferView;
+        if (getDevice()->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+            const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
+            for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
+            {
+                switch (next->sType) {
+                case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
+                    pInlineUniformBlock = next;
+                    break;
+                }
+                default:
+                    break;
+                }
+            }
+            if (pInlineUniformBlock != nullptr)
+                delete pInlineUniformBlock;
+        }
 	}
 	_descriptorWrites.clear();
 }
