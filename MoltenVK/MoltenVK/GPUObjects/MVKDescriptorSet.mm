@@ -225,7 +225,6 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
     MVKMTLBufferBinding bb;
     MVKMTLTextureBinding tb;
     MVKMTLSamplerStateBinding sb;
-    MVKMTLInlineBinding ib;
 
     if (dstArrayElement >= _info.descriptorCount) {
         dstArrayElement -= _info.descriptorCount;
@@ -275,15 +274,16 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
 
             case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
                 const auto& inlineUniformBlock = get<VkWriteDescriptorSetInlineUniformBlockEXT>(pData, stride, rezIdx - dstArrayElement);
-                ib.mtlBytes = inlineUniformBlock.pData;
-                ib.size = inlineUniformBlock.dataSize;
+                bb.mtlBytes = inlineUniformBlock.pData;
+                bb.size = inlineUniformBlock.dataSize;
+                bb.isInline = true;
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
-                        ib.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                        bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
                         if (i == kMVKShaderStageCompute) {
-                            if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindInline(ib); }
+                            if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
                         } else {
-                            if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindInline(MVKShaderStage(i), ib); }
+                            if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
                         }
                     }
                 }
@@ -1000,11 +1000,6 @@ MVKDescriptorBinding::~MVKDescriptorBinding() {
 	for (VkBufferView buffView : _texelBufferBindings) {
 		if (buffView) {
 			((MVKBufferView*)buffView)->release();
-		}
-	}
-	for (VkWriteDescriptorSetInlineUniformBlockEXT& inlineUniformBlock : _inlineBindings) {
-		if (inlineUniformBlock.pData) {
-			delete [] reinterpret_cast<const uint8_t*>(inlineUniformBlock.pData);
 		}
 	}
 }
