@@ -66,7 +66,7 @@ VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 
 VkDeviceSize MVKImage::getBytesPerRow(uint32_t mipLevel) {
     size_t bytesPerRow = mvkMTLPixelFormatBytesPerRow(_mtlPixelFormat, getExtent3D(mipLevel).width);
-    return mvkAlignByteOffset(bytesPerRow, _rowByteAlignment);
+    return mvkAlignByteCount(bytesPerRow, _rowByteAlignment);
 }
 
 VkDeviceSize MVKImage::getBytesPerLayer(uint32_t mipLevel) {

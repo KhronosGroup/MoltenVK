@@ -317,7 +317,7 @@ MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
             reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): Each query pool can support a maximum of %d queries.", queryCount);
         }
 
-        NSUInteger mtlBuffLen = mvkAlignByteOffset(newBuffLen, _device->_pMetalFeatures->mtlBufferAlignment);
+        NSUInteger mtlBuffLen = mvkAlignByteCount(newBuffLen, _device->_pMetalFeatures->mtlBufferAlignment);
         MTLResourceOptions mtlBuffOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
         _visibilityResultMTLBuffer = [getMTLDevice() newBufferWithLength: mtlBuffLen options: mtlBuffOpts];     // retained
 
