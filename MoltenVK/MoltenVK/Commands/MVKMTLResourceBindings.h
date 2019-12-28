@@ -37,11 +37,12 @@ typedef struct {
 
 /** Describes a MTLBuffer resource binding. */
 typedef struct {
-    union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases
+    union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
     NSUInteger offset = 0;
     uint32_t index = 0;
     uint32_t size = 0;
     bool isDirty = true;
+    bool isInline = false;
 } MVKMTLBufferBinding;
 
 /** Describes a MTLBuffer resource binding as used for an index buffer. */
@@ -51,12 +52,3 @@ typedef struct {
     MTLIndexType mtlIndexType;
     bool isDirty = true;
 } MVKIndexMTLBufferBinding;
-
-/** Describes host bytes resource binding. */
-typedef struct {
-    union { const void* mtlBytes = nil; const void* mtlResource; }; // aliases
-    uint32_t index = 0;
-    uint32_t size = 0;
-    bool isDirty = true;
-} MVKMTLInlineBinding;
-
