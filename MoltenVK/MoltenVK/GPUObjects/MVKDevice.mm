@@ -785,7 +785,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	logGPUInfo();
 }
 
-/** Initializes the Metal-specific physical device features of this instance. */
+// Initializes the Metal-specific physical device features of this instance.
 void MVKPhysicalDevice::initMetalFeatures() {
 	mvkClear(&_metalFeatures);	// Start with everything cleared
 
@@ -795,6 +795,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
     _metalFeatures.maxPerStageSamplerCount = 16;
     _metalFeatures.maxQueryBufferSize = (64 * KIBI);
+
+	_metalFeatures.pushConstantSizeAlignment = 16;     // Min float4 alignment for typical uniform structs.
 
 	_metalFeatures.ioSurfaces = MVK_SUPPORT_IOSURFACE_BOOL;
 
