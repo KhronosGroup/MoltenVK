@@ -185,7 +185,7 @@ static inline uint32_t mvkPowerOfTwoExponent(uintptr_t value) {
  * than or equal to the reference if alignDown is true.
  *
  * This is a low level utility method. Usually you will use the convenience functions
- * mvkAlignAddress() and mvkAlignByteOffset() to align addresses and offsets respectively.
+ * mvkAlignAddress() and mvkAlignByteCount() to align addresses and offsets respectively.
  */
 static inline uintptr_t mvkAlignByteRef(uintptr_t byteRef, uintptr_t byteAlignment, bool alignDown = false) {
 	if (byteAlignment == 0) { return byteRef; }
@@ -216,8 +216,8 @@ static inline void* mvkAlignAddress(void* address, uintptr_t byteAlignment, bool
  * which will be greater than or equal to the original offset if alignDown is false, or less
  * than or equal to the original offset if alignDown is true.
  */
-static inline uintptr_t mvkAlignByteOffset(uintptr_t byteOffset, uintptr_t byteAlignment, bool alignDown = false) {
-	return mvkAlignByteRef(byteOffset, byteAlignment, alignDown);
+static inline uintptr_t mvkAlignByteCount(uintptr_t byteCount, uintptr_t byteAlignment, bool alignDown = false) {
+	return mvkAlignByteRef(byteCount, byteAlignment, alignDown);
 }
 
 /**

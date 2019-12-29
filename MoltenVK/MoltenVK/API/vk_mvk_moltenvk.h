@@ -55,7 +55,7 @@ typedef unsigned long MTLLanguageVersion;
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            23
+#define VK_MVK_MOLTENVK_SPEC_VERSION            24
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -564,6 +564,7 @@ typedef struct {
 	VkBool32 native3DCompressedTextures;		/**< If true, 3D compressed images are supported natively, without manual decompression. */
 	VkBool32 nativeTextureSwizzle;				/**< If true, component swizzle is supported natively, without manual swizzling in shaders. */
 	VkBool32 placementHeaps;					/**< If true, MTLHeap objects support placement of resources. */
+	VkDeviceSize pushConstantSizeAlignment;     /**< The alignment used internally when allocating memory for push constants. Must be PoT. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /**

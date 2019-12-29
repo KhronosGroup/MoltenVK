@@ -157,10 +157,15 @@ void MVKScissorCommandEncoderState::resetImpl() {
 #pragma mark MVKPushConstantsCommandEncoderState
 
 void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVKVector<char>& pushConstants) {
-    uint32_t pcCnt = (uint32_t)pushConstants.size();
-    mvkEnsureSize(_pushConstants, offset + pcCnt);
+	// MSL structs can have a larger size than the equivalent C struct due to MSL alignment needs.
+	// Typically any MSL struct that contains a float4 will also have a size that is rounded up to a multiple of a float4 size.
+	// Ensure that we pass along enough content to cover this extra space even if it is never actually accessed by the shader.
+	size_t pcSizeAlign = _cmdEncoder->getDevice()->_pMetalFeatures->pushConstantSizeAlignment;
+    size_t pcSize = pushConstants.size();
+	size_t pcBuffSize = mvkAlignByteCount(offset + pcSize, pcSizeAlign);
+    mvkEnsureSize(_pushConstants, pcBuffSize);
     copy(pushConstants.begin(), pushConstants.end(), _pushConstants.begin() + offset);
-    if (pcCnt > 0) { markDirty(); }
+    if (pcBuffSize > 0) { markDirty(); }
 }
 
 void MVKPushConstantsCommandEncoderState::setMTLBufferIndex(uint32_t mtlBufferIndex) {

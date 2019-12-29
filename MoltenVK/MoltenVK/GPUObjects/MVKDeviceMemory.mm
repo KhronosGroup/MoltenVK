@@ -214,7 +214,7 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 
 	if (_mtlBuffer) { return true; }
 
-	NSUInteger memLen = mvkAlignByteOffset(_allocationSize, _device->_pMetalFeatures->mtlBufferAlignment);
+	NSUInteger memLen = mvkAlignByteCount(_allocationSize, _device->_pMetalFeatures->mtlBufferAlignment);
 
 	if (memLen > _device->_pMetalFeatures->maxMTLBufferSize) { return false; }
 
@@ -247,7 +247,7 @@ bool MVKDeviceMemory::ensureHostMemory() {
 
 	if ( !_pHostMemory) {
 		size_t memAlign = _device->_pMetalFeatures->mtlBufferAlignment;
-		NSUInteger memLen = mvkAlignByteOffset(_allocationSize, memAlign);
+		NSUInteger memLen = mvkAlignByteCount(_allocationSize, memAlign);
 		int err = posix_memalign(&_pHostMemory, memAlign, memLen);
 		if (err) { return false; }
 	}
