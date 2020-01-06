@@ -346,15 +346,19 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 #pragma mark Metal
 
 id<CAMetalDrawable> MVKSwapchain::getCAMetalDrawable(uint32_t imageIndex) {
-    if ( _mtlDrawables[imageIndex] ) { return _mtlDrawables[imageIndex]; }
-    @autoreleasepool {      // Allow auto-released drawable object to be reclaimed before end of loop
-        id<CAMetalDrawable> nextDrwbl = nil;
-        while ( !(nextDrwbl = [_mtlLayer nextDrawable]) ) {
-            MVKLogError("Drawable could not be retrieved! Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-        }
-        _mtlDrawables[imageIndex] = [nextDrwbl retain];
-    }
-    return _mtlDrawables[imageIndex];
+	id<CAMetalDrawable> nextDrwbl = _mtlDrawables[imageIndex];
+	while ( !nextDrwbl ) {
+		@autoreleasepool {      // Allow auto-released drawable object to be reclaimed before end of loop
+			uint64_t startTime = _device->getPerformanceTimestamp();
+
+			nextDrwbl = _mtlLayer.nextDrawable;
+			if ( !nextDrwbl ) { MVKLogError("Drawable could not be retrieved! Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds()); }
+			_mtlDrawables[imageIndex] = [nextDrwbl retain];
+
+			_device->addActivityPerformance(_device->_performanceStatistics.queue.nextCAMetalDrawable, startTime);
+		}
+	}
+	return nextDrwbl;
 }
 
 // Removes and releases a Metal drawable object, so that it can be lazily created by getCAMetalDrawable().
