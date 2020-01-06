@@ -269,7 +269,7 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	// otherwise if this instance has no content, it will not finish() and be destroyed.
 	if (signalCompletion || _trackPerformance) {
 		[getActiveMTLCommandBuffer() addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-			_queue->_device->addActivityPerformance(mkvDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
+			mkvDev->addActivityPerformance(mkvDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
 			if (signalCompletion) { this->finish(); }
 		}];
 	}

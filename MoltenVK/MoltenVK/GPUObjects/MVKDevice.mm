@@ -2493,6 +2493,7 @@ const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& 
 	if (&activityTracker == &_performanceStatistics.pipelineCache.readPipelineCache) { return "read MSL from pipeline cache"; }
 	if (&activityTracker == &_performanceStatistics.queue.mtlQueueAccess) { return "access MTLCommandQueue"; }
 	if (&activityTracker == &_performanceStatistics.queue.mtlCommandBufferCompletion) { return "complete MTLCommandBuffer"; }
+	if (&activityTracker == &_performanceStatistics.queue.nextCAMetalDrawable) { return "retrieve a CAMetalDrawable from CAMetalLayer"; }
     return "Unknown performance activity";
 }
 
@@ -2638,6 +2639,7 @@ void MVKDevice::initPerformanceTracking() {
 	_performanceStatistics.pipelineCache.readPipelineCache = initPerf;
 	_performanceStatistics.queue.mtlQueueAccess = initPerf;
 	_performanceStatistics.queue.mtlCommandBufferCompletion = initPerf;
+	_performanceStatistics.queue.nextCAMetalDrawable = initPerf;
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {

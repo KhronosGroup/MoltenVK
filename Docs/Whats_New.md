@@ -22,6 +22,7 @@ Released TBD
 - Fix crash when app does not use queue family zero.
 - Fix buffer offset in `vkCmdPushDescriptorSet()` for non-dedicated buffer memory.
 - Fix Metal validation error on push constant sizing differences between C and MSL structs.
+- Track performance of `CAMetalLayer nextDrawable` call.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `24`.
 
 

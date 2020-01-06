@@ -608,7 +608,6 @@ typedef struct {
 	MVKPerformanceTracker glslToSPRIV;					/** Convert GLSL to SPIR-V code. */
 } MVKShaderCompilationPerformance;
 
-
 /** MoltenVK performance of pipeline cache activities. */
 typedef struct {
 	MVKPerformanceTracker sizePipelineCache;			/** Calculate the size of cache data required to write MSL to pipeline cache data stream. */
@@ -620,6 +619,7 @@ typedef struct {
 typedef struct {
 	MVKPerformanceTracker mtlQueueAccess;               /** Create an MTLCommmandQueue or access an existing cached instance. */
 	MVKPerformanceTracker mtlCommandBufferCompletion;   /** Completion of a MTLCommandBuffer on the GPU, from commit to completion callback. */
+	MVKPerformanceTracker nextCAMetalDrawable;			/** Retrieve next CAMetalDrawable from CAMetalLayer during presentation. */
 } MVKQueuePerformance;
 
 /**
