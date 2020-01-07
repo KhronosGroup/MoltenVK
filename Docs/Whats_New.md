@@ -23,6 +23,7 @@ Released TBD
 - Fix buffer offset in `vkCmdPushDescriptorSet()` for non-dedicated buffer memory.
 - Fix Metal validation error on push constant sizing differences between C and MSL structs.
 - Track performance of `CAMetalLayer nextDrawable` call.
+- Document recommendation to use 3 swapchain images, particularly with full-screen rendering.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `24`.
 
 
