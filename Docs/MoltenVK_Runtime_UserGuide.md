@@ -30,6 +30,7 @@ Table of Contents
 	- [Troubleshooting Shader Conversion](#spv_vs_msl)
 - [Performance Considerations](#performance)
 	- [Shader Loading Time](#shader_load_time)
+	- [Swapchains](#swapchains)
 	- [Xcode Configuration](#xcode_config)
 	- [Metal System Trace Tool](#trace_tool)
 - [Known **MoltenVK** Limitations](#limitations)
@@ -496,6 +497,24 @@ information about how to use the `MoltenVKShaderConverter` tool to create and lo
 *Metal* shaders into **MoltenVK**. This behaviour is not standard *Vulkan* behaviour, and does not
 improve performance significantly. Your first choice should be to use offline storage of pipeline
 cache contents as described in the previous paragraphs.
+
+
+<a name="swapchains"></a>
+### Swapchains
+
+*Metal* supports a very small number (3) of concurrent swapchain images. In addition, *Metal* can
+sometimes hold onto these images during surface presentation.
+
+**MoltenVK** supports using either 2 or 3 swapchain images. For best performance, it is recommended
+that you use 3 swapchain images (triple-buffering), to ensure that at least one swapchain image will 
+be available when you need to render to it. 
+
+Using 3 swapchain images is particularly important when rendering to a full-screen surface, because 
+in that situation, *Metal* uses its *Direct to Display* feature, and avoids compositing the swapchain
+image onto a separate composition surface before displaying it. Although *Direct to Display* can improve 
+performance throughput, it also means that *Metal* may hold onto each swapchain image a little longer 
+than when using an internal compositor, which increases the risk that a swapchain image will not be a
+vailable when you request it, resulting in frame delays and visual stuttering.
 
 
 <a name="xcode_config"></a>
