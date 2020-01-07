@@ -6,7 +6,7 @@
 
 #What's New in MoltenVK
 
-Copyright (c) 2014-2019 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2020 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 *This document is written in [Markdown](http://en.wikipedia.org/wiki/Markdown) format.
 For best results, use a Markdown reader.*
@@ -25,6 +25,7 @@ Released TBD
 - Track performance of `CAMetalLayer nextDrawable` call.
 - Document recommendation to use 3 swapchain images, particularly with full-screen rendering.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `24`.
+- Update copyright to 2020.
 
 
 
