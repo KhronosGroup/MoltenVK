@@ -85,6 +85,7 @@ protected:
 	void propogateDebugName() override {}
 	void addDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.insert(mvkDescPool); }
 	void removeDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.erase(mvkDescPool); }
+	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex);
 
 	MVKVectorInline<MVKDescriptorSetLayoutBinding, 1> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
@@ -128,12 +129,12 @@ public:
 	MVKDescriptorSet(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 
 protected:
-	friend class MVKDescriptorSetLayout;
+	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKDescriptorPool;
 
 	void propogateDebugName() override {}
 	void setLayout(MVKDescriptorSetLayout* layout);
-    MVKDescriptorBinding* getBinding(uint32_t binding);
+	inline MVKDescriptorBinding* getDescriptor(uint32_t index) { return &_bindings[index]; }
 
 	MVKDescriptorSetLayout* _pLayout = nullptr;
 	MVKVectorInline<MVKDescriptorBinding, 1> _bindings;
@@ -170,10 +171,8 @@ public:
 	/** Removes the pool associated with a descriptor set layout. */
 	void removeDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout);
 
-	/** Constructs an instance for the specified device. */
 	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
-	/** Destructor. */
 	~MVKDescriptorPool() override;
 
 protected:
@@ -247,7 +246,3 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 									   uint32_t descriptorSetIndex,
 									   uint32_t bindingIndex,
 									   MVKSampler* immutableSampler);
-
-
-
-

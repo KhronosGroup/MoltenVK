@@ -24,21 +24,31 @@ using namespace mvk;
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
+// Look through the layout bindings looking for the binding number, accumulating the number
+// of descriptors in each layout binding as we go, then add the element index.
+uint32_t MVKDescriptorSetLayout::getDescriptorIndex(uint32_t binding, uint32_t elementIndex) {
+	uint32_t descIdx = 0;
+	for (auto& dslBind : _bindings) {
+		if (dslBind.getBinding() == binding) { break; }
+		descIdx += dslBind.getDescriptorCount();
+	}
+	return descIdx + elementIndex;
+}
+
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                MVKDescriptorSet* descSet,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                                MVKVector<uint32_t>& dynamicOffsets,
                                                uint32_t* pDynamicOffsetIndex) {
-
     if (_isPushDescriptorLayout) return;
 
 	clearConfigurationResult();
     uint32_t bindCnt = (uint32_t)_bindings.size();
-    for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
-        _bindings[bindIdx].bind(cmdEncoder, descSet->_bindings[bindIdx],
-                                dslMTLRezIdxOffsets, dynamicOffsets,
-                                pDynamicOffsetIndex);
+    for (uint32_t descIdx = 0, bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
+		descIdx += _bindings[bindIdx].bind(cmdEncoder, descSet, descIdx,
+										   dslMTLRezIdxOffsets, dynamicOffsets,
+										   pDynamicOffsetIndex);
     }
 }
 
@@ -195,20 +205,13 @@ MVKDescriptorSetLayout::~MVKDescriptorSetLayout() {
 template<typename DescriptorAction>
 void MVKDescriptorSet::writeDescriptorSets(const DescriptorAction* pDescriptorAction,
                                            size_t stride, const void* pData) {
-    uint32_t dstStartIdx = pDescriptorAction->dstArrayElement;
-    uint32_t binding = pDescriptorAction->dstBinding;
-    uint32_t origCnt = pDescriptorAction->descriptorCount;
-    uint32_t remainCnt = origCnt;
 
-    MVKDescriptorBinding* mvkDescBind = getBinding(binding);
-    while (mvkDescBind && remainCnt > 0) {
-        uint32_t srcStartIdx = origCnt - remainCnt;
-        remainCnt = mvkDescBind->writeBindings(srcStartIdx, dstStartIdx, remainCnt,
-                                               stride, pData);
-        binding++;                              // If not consumed, move to next consecutive binding point
-        mvkDescBind = getBinding(binding);
-        dstStartIdx = 0;                        // Subsequent bindings start reading at first element
-    }
+	uint32_t dstStartIdx = _pLayout->getDescriptorIndex(pDescriptorAction->dstBinding,
+													   pDescriptorAction->dstArrayElement);
+	uint32_t descCnt = pDescriptorAction->descriptorCount;
+	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
+		_bindings[dstStartIdx + descIdx].writeBinding(descIdx, stride, pData);
+	}
 }
 
 // Create concrete implementations of the three variations of the writeDescriptorSets() function.
@@ -226,39 +229,29 @@ void MVKDescriptorSet::readDescriptorSets(const VkCopyDescriptorSet* pDescriptor
 										  VkDescriptorBufferInfo* pBufferInfo,
 										  VkBufferView* pTexelBufferView,
 										  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
-	uint32_t srcStartIdx = pDescriptorCopy->srcArrayElement;
-    uint32_t binding = pDescriptorCopy->srcBinding;
-    uint32_t origCnt = pDescriptorCopy->descriptorCount;
-    uint32_t remainCnt = origCnt;
 
-    MVKDescriptorBinding* mvkDescBind = getBinding(binding);
-    while (mvkDescBind && remainCnt > 0) {
-        uint32_t dstStartIdx = origCnt - remainCnt;
-        remainCnt = mvkDescBind->readBindings(srcStartIdx, dstStartIdx, remainCnt, descType,
-                                              pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
-        binding++;                              // If not consumed, move to next consecutive binding point
-        mvkDescBind = getBinding(binding);
-        srcStartIdx = 0;                        // Subsequent bindings start reading at first element
-    }
-}
-
-// Returns the binding instance that is assigned the specified
-// binding number, or returns null if no such binding exists.
-MVKDescriptorBinding* MVKDescriptorSet::getBinding(uint32_t binding) {
-    for (auto& mvkDB : _bindings) { if (mvkDB.hasBinding(binding)) { return &mvkDB; } }
-    return nullptr;
+	uint32_t srcStartIdx = _pLayout->getDescriptorIndex(pDescriptorCopy->srcBinding,
+														pDescriptorCopy->srcArrayElement);
+	uint32_t descCnt = pDescriptorCopy->descriptorCount;
+	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
+		_bindings[srcStartIdx + descIdx].readBinding(descIdx, descType, pImageInfo, pBufferInfo,
+													 pTexelBufferView, pInlineUniformBlock);
+	}
 }
 
 // If the layout has changed, create the binding slots, each referencing a corresponding binding layout
 void MVKDescriptorSet::setLayout(MVKDescriptorSetLayout* layout) {
-	if (layout != _pLayout) {
-		_pLayout = layout;
-		uint32_t bindCnt = (uint32_t)layout->_bindings.size();
+	if (layout == _pLayout) { return; }
 
-		_bindings.clear();
-		_bindings.reserve(bindCnt);
-		for (uint32_t i = 0; i < bindCnt; i++) {
-			_bindings.emplace_back(this, &layout->_bindings[i]);
+	_pLayout = layout;
+	_bindings.clear();
+
+	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
+	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
+		MVKDescriptorSetLayoutBinding* dslBind = &layout->_bindings[bindIdx];
+		uint32_t descCnt = dslBind->getDescriptorCount();
+		for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
+			_bindings.emplace_back(this, dslBind, descIdx);
 		}
 	}
 }
