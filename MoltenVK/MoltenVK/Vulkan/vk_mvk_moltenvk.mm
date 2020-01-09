@@ -22,6 +22,7 @@
 #include "MVKEnvironment.h"
 #include "MVKSwapchain.h"
 #include "MVKImage.h"
+#include "MVKBuffer.h"
 #include "MVKFoundation.h"
 #include "MVKShaderModule.h"
 #include <string>
@@ -131,6 +132,14 @@ MVK_PUBLIC_SYMBOL void vkGetMTLTextureMVK(
 
     MVKImage* mvkImg = (MVKImage*)image;
     *pMTLTexture = mvkImg->getMTLTexture();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetMTLBufferMVK(
+    VkBuffer                                    buffer,
+    id<MTLBuffer>*                              pMTLBuffer) {
+
+    MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
+    *pMTLBuffer = mvkBuffer->getMTLBuffer();
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkUseIOSurfaceMVK(
