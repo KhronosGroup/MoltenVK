@@ -656,6 +656,7 @@ typedef void (VKAPI_PTR *PFN_vkGetVersionStringsMVK)(char* pMoltenVersionStringB
 typedef void (VKAPI_PTR *PFN_vkGetMTLDeviceMVK)(VkPhysicalDevice physicalDevice, id<MTLDevice>* pMTLDevice);
 typedef VkResult (VKAPI_PTR *PFN_vkSetMTLTextureMVK)(VkImage image, id<MTLTexture> mtlTexture);
 typedef void (VKAPI_PTR *PFN_vkGetMTLTextureMVK)(VkImage image, id<MTLTexture>* pMTLTexture);
+typedef void (VKAPI_PTR *PFN_vkGetMTLBufferMVK)(VkBuffer buffer, id<MTLBuffer>* pMTLBuffer);
 typedef VkResult (VKAPI_PTR *PFN_vkUseIOSurfaceMVK)(VkImage image, IOSurfaceRef ioSurface);
 typedef void (VKAPI_PTR *PFN_vkGetIOSurfaceMVK)(VkImage image, IOSurfaceRef* pIOSurface);
 #endif // __OBJC__
@@ -926,6 +927,19 @@ VKAPI_ATTR VkResult VKAPI_CALL vkSetMTLTextureMVK(
 VKAPI_ATTR void VKAPI_CALL vkGetMTLTextureMVK(
     VkImage                                     image,
     id<MTLTexture>*                             pMTLTexture);
+
+/**
+* Returns, in the pMTLBuffer pointer, the MTLBuffer currently underlaying the VkImage.
+*
+* This function is not supported by the Vulkan SDK Loader and Layers framework.
+* The VkImage object you provide here must have been retrieved directly from
+* MoltenVK, and not through the Vulkan SDK Loader and Layers framework. Opaque Vulkan
+* objects are often changed by layers, and passing them from one layer to another,
+* or from a layer directly to MoltenVK, will result in undefined behaviour.
+*/
+VKAPI_ATTR void VKAPI_CALL vkGetMTLBufferMVK(
+    VkBuffer                                    buffer,
+    id<MTLBuffer>*                              pMTLBuffer);
 
 /**
  * Indicates that a VkImage should use an IOSurface to underlay the Metal texture.
