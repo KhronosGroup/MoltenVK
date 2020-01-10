@@ -75,6 +75,9 @@ public:
 	/** Returns the number of descriptors in this layout. */
 	inline uint32_t getDescriptorCount() { return _info.descriptorCount; }
 
+	/** Returns the descriptor type of this layout. */
+	inline VkDescriptorType getDescriptorType() { return _info.descriptorType; }
+
 	/**
 	 * Encodes the descriptors in the descriptor set that are specified by this layout,
 	 * starting with the descriptor at the index, on the the command encoder.
@@ -137,40 +140,53 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
+	/** Encodes this descriptor (based on its layout binding index) on the the command encoder. */
+	void bind(MVKCommandEncoder* cmdEncoder,
+			  VkDescriptorType descriptorType,
+			  uint32_t descriptorIndex,
+			  bool stages[],
+			  MVKShaderResourceBinding& mtlIndexes,
+			  MVKVector<uint32_t>& dynamicOffsets,
+			  uint32_t* pDynamicOffsetIndex);
+
 	/**
 	 * Updates the internal binding from the specified content. The format of the content depends
 	 * on the descriptor type, and is extracted from pData at the location given by srcIndex * stride.
 	 */
-	void writeBinding(uint32_t srcIndex, size_t stride, const void* pData);
+	void write(MVKDescriptorSet* mvkDescSet,
+			   VkDescriptorType descriptorType,
+			   uint32_t srcIndex,
+			   size_t stride,
+			   const void* pData);
 
 	/**
 	 * Updates the specified content arrays from the internal binding.
 	 *
-	 * Depending on the descriptor type of the descriptor set, the binding content is
-	 * placed into one of the specified pImageInfo, pBufferInfo, or pTexelBufferView
-	 * arrays, and the other arrays are ignored (and may be a null pointer).
+	 * Depending on the descriptor type, the binding content is placed into one of the
+	 * specified pImageInfo, pBufferInfo, or pTexelBufferView arrays, and the other
+	 * arrays are ignored (and may be a null pointer).
 	 *
 	 * The dstIndex parameter indicates the index of the initial descriptor element
 	 * at which to start writing.
 	 */
-	void readBinding(uint32_t dstIndex,
-					 VkDescriptorType& descType,
-					 VkDescriptorImageInfo* pImageInfo,
-					 VkDescriptorBufferInfo* pBufferInfo,
-					 VkBufferView* pTexelBufferView,
-					 VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock);
+	void read(MVKDescriptorSet* mvkDescSet,
+			  VkDescriptorType descriptorType,
+			  uint32_t dstIndex,
+			  VkDescriptorImageInfo* pImageInfo,
+			  VkDescriptorBufferInfo* pBufferInfo,
+			  VkBufferView* pTexelBufferView,
+			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock);
 
-	MVKDescriptorBinding(MVKDescriptorSet* pDescSet, MVKDescriptorSetLayoutBinding* pBindingLayout, uint32_t index);
+	/** Sets the binding layout. */
+	void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index);
 
 	~MVKDescriptorBinding();
 
 protected:
 	friend class MVKDescriptorSetLayoutBinding;
 
-	bool validate(MVKSampler* mvkSampler) { return _pBindingLayout->validate(mvkSampler); }
+	bool validate(MVKSampler* mvkSampler);
 
-	MVKDescriptorSet* _pDescSet;
-	MVKDescriptorSetLayoutBinding* _pBindingLayout;
 	VkDescriptorImageInfo _imageBinding = {};
 	VkDescriptorBufferInfo _bufferBinding = {};
     VkWriteDescriptorSetInlineUniformBlockEXT _inlineBinding = {};

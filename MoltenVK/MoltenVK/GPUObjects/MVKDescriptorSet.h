@@ -86,6 +86,7 @@ protected:
 	void addDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.insert(mvkDescPool); }
 	void removeDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.erase(mvkDescPool); }
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex);
+	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 
 	MVKVectorInline<MVKDescriptorSetLayoutBinding, 1> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
@@ -109,22 +110,22 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT; }
 
+	/** Returns the descriptor type for the specified binding number. */
+	VkDescriptorType getDescriptorType(uint32_t binding);
+
 	/** Updates the resource bindings in this instance from the specified content. */
 	template<typename DescriptorAction>
-	void writeDescriptorSets(const DescriptorAction* pDescriptorAction,
-							 size_t stride,
-							 const void* pData);
+	void write(const DescriptorAction* pDescriptorAction, size_t stride, const void* pData);
 
 	/** 
 	 * Reads the resource bindings defined in the specified content 
 	 * from this instance into the specified collection of bindings.
 	 */
-	void readDescriptorSets(const VkCopyDescriptorSet* pDescriptorCopies,
-							VkDescriptorType& descType,
-							VkDescriptorImageInfo* pImageInfo,
-							VkDescriptorBufferInfo* pBufferInfo,
-							VkBufferView* pTexelBufferView,
-							VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
+	void read(const VkCopyDescriptorSet* pDescriptorCopies,
+			  VkDescriptorImageInfo* pImageInfo,
+			  VkDescriptorBufferInfo* pBufferInfo,
+			  VkBufferView* pTexelBufferView,
+			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
 	MVKDescriptorSet(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 

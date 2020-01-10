@@ -202,40 +202,45 @@ MVKDescriptorSetLayout::~MVKDescriptorSetLayout() {
 #pragma mark -
 #pragma mark MVKDescriptorSet
 
-template<typename DescriptorAction>
-void MVKDescriptorSet::writeDescriptorSets(const DescriptorAction* pDescriptorAction,
-                                           size_t stride, const void* pData) {
+VkDescriptorType MVKDescriptorSet::getDescriptorType(uint32_t binding) {
+	return _pLayout->getBinding(binding)->getDescriptorType();
+}
 
+template<typename DescriptorAction>
+void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
+							 size_t stride,
+							 const void* pData) {
+
+	VkDescriptorType descType = getDescriptorType(pDescriptorAction->dstBinding);
 	uint32_t dstStartIdx = _pLayout->getDescriptorIndex(pDescriptorAction->dstBinding,
 													   pDescriptorAction->dstArrayElement);
 	uint32_t descCnt = pDescriptorAction->descriptorCount;
 	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		_bindings[dstStartIdx + descIdx].writeBinding(descIdx, stride, pData);
+		_bindings[dstStartIdx + descIdx].write(this, descType, descIdx, stride, pData);
 	}
 }
 
-// Create concrete implementations of the three variations of the writeDescriptorSets() function.
-template void MVKDescriptorSet::writeDescriptorSets<VkWriteDescriptorSet>(const VkWriteDescriptorSet* pDescriptorAction,
+// Create concrete implementations of the three variations of the write() function.
+template void MVKDescriptorSet::write<VkWriteDescriptorSet>(const VkWriteDescriptorSet* pDescriptorAction,
+															size_t stride, const void *pData);
+template void MVKDescriptorSet::write<VkCopyDescriptorSet>(const VkCopyDescriptorSet* pDescriptorAction,
+														   size_t stride, const void *pData);
+template void MVKDescriptorSet::write<VkDescriptorUpdateTemplateEntryKHR>(const VkDescriptorUpdateTemplateEntryKHR* pDescriptorAction,
 																		  size_t stride, const void *pData);
-template void MVKDescriptorSet::writeDescriptorSets<VkCopyDescriptorSet>(const VkCopyDescriptorSet* pDescriptorAction,
-																		 size_t stride, const void *pData);
-template void MVKDescriptorSet::writeDescriptorSets<VkDescriptorUpdateTemplateEntryKHR>(
-	const VkDescriptorUpdateTemplateEntryKHR* pDescriptorAction,
-	size_t stride, const void *pData);
 
-void MVKDescriptorSet::readDescriptorSets(const VkCopyDescriptorSet* pDescriptorCopy,
-										  VkDescriptorType& descType,
-										  VkDescriptorImageInfo* pImageInfo,
-										  VkDescriptorBufferInfo* pBufferInfo,
-										  VkBufferView* pTexelBufferView,
-										  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
+							VkDescriptorImageInfo* pImageInfo,
+							VkDescriptorBufferInfo* pBufferInfo,
+							VkBufferView* pTexelBufferView,
+							VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 
+	VkDescriptorType descType = getDescriptorType(pDescriptorCopy->srcBinding);
 	uint32_t srcStartIdx = _pLayout->getDescriptorIndex(pDescriptorCopy->srcBinding,
 														pDescriptorCopy->srcArrayElement);
 	uint32_t descCnt = pDescriptorCopy->descriptorCount;
 	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		_bindings[srcStartIdx + descIdx].readBinding(descIdx, descType, pImageInfo, pBufferInfo,
-													 pTexelBufferView, pInlineUniformBlock);
+		_bindings[srcStartIdx + descIdx].read(this, descType, descIdx, pImageInfo, pBufferInfo,
+											  pTexelBufferView, pInlineUniformBlock);
 	}
 }
 
@@ -251,7 +256,7 @@ void MVKDescriptorSet::setLayout(MVKDescriptorSetLayout* layout) {
 		MVKDescriptorSetLayoutBinding* dslBind = &layout->_bindings[bindIdx];
 		uint32_t descCnt = dslBind->getDescriptorCount();
 		for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-			_bindings.emplace_back(this, dslBind, descIdx);
+			_bindings.emplace_back().setLayout(dslBind, descIdx);
 		}
 	}
 }
@@ -407,7 +412,7 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		const void* pData = getWriteParameters(pDescWrite->descriptorType, pDescWrite->pImageInfo,
 											   pDescWrite->pBufferInfo, pDescWrite->pTexelBufferView,
 											   pInlineUniformBlock, stride);
-		dstSet->writeDescriptorSets(pDescWrite, stride, pData);
+		dstSet->write(pDescWrite, stride, pData);
 	}
 
 	// Perform the copy updates by reading bindings from one set and writing to other set.
@@ -415,19 +420,19 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		const VkCopyDescriptorSet* pDescCopy = &pDescriptorCopies[i];
 
 		uint32_t descCnt = pDescCopy->descriptorCount;
-		VkDescriptorType descType;
 		VkDescriptorImageInfo imgInfos[descCnt];
 		VkDescriptorBufferInfo buffInfos[descCnt];
 		VkBufferView texelBuffInfos[descCnt];
 		VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlocks[descCnt];
 
 		MVKDescriptorSet* srcSet = (MVKDescriptorSet*)pDescCopy->srcSet;
-		srcSet->readDescriptorSets(pDescCopy, descType, imgInfos, buffInfos, texelBuffInfos, inlineUniformBlocks);
+		srcSet->read(pDescCopy, imgInfos, buffInfos, texelBuffInfos, inlineUniformBlocks);
 
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescCopy->dstSet;
+		VkDescriptorType descType = dstSet->getDescriptorType(pDescCopy->dstBinding);
 		size_t stride;
 		const void* pData = getWriteParameters(descType, imgInfos, buffInfos, texelBuffInfos, inlineUniformBlocks, stride);
-		dstSet->writeDescriptorSets(pDescCopy, stride, pData);
+		dstSet->write(pDescCopy, stride, pData);
 	}
 }
 
@@ -446,7 +451,7 @@ void mvkUpdateDescriptorSetWithTemplate(VkDescriptorSet descriptorSet,
 	for (uint32_t i = 0; i < pTemplate->getNumberOfEntries(); i++) {
 		const VkDescriptorUpdateTemplateEntryKHR* pEntry = pTemplate->getEntry(i);
 		const void* pCurData = (const char*)pData + pEntry->offset;
-		dstSet->writeDescriptorSets(pEntry, pEntry->stride, pCurData);
+		dstSet->write(pEntry, pEntry->stride, pCurData);
 	}
 }
 
