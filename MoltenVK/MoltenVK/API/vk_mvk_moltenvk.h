@@ -929,10 +929,10 @@ VKAPI_ATTR void VKAPI_CALL vkGetMTLTextureMVK(
     id<MTLTexture>*                             pMTLTexture);
 
 /**
-* Returns, in the pMTLBuffer pointer, the MTLBuffer currently underlaying the VkImage.
+* Returns, in the pMTLBuffer pointer, the MTLBuffer currently underlaying the VkBuffer.
 *
 * This function is not supported by the Vulkan SDK Loader and Layers framework.
-* The VkImage object you provide here must have been retrieved directly from
+* The VkBuffer object you provide here must have been retrieved directly from
 * MoltenVK, and not through the Vulkan SDK Loader and Layers framework. Opaque Vulkan
 * objects are often changed by layers, and passing them from one layer to another,
 * or from a layer directly to MoltenVK, will result in undefined behaviour.
