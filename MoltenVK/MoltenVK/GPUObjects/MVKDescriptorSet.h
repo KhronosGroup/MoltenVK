@@ -129,16 +129,18 @@ public:
 
 	MVKDescriptorSet(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 
+	~MVKDescriptorSet() override;
+
 protected:
 	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKDescriptorPool;
 
 	void propogateDebugName() override {}
 	void setLayout(MVKDescriptorSetLayout* layout);
-	inline MVKDescriptorBinding* getDescriptor(uint32_t index) { return &_bindings[index]; }
+	inline MVKDescriptorBinding* getDescriptorBinding(uint32_t index) { return _bindings[index]; }
 
 	MVKDescriptorSetLayout* _pLayout = nullptr;
-	MVKVectorInline<MVKDescriptorBinding, 1> _bindings;
+	std::vector<MVKDescriptorBinding*> _bindings;
 };
 
 

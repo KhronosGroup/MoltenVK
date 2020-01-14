@@ -216,7 +216,7 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 													   pDescriptorAction->dstArrayElement);
 	uint32_t descCnt = pDescriptorAction->descriptorCount;
 	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		_bindings[dstStartIdx + descIdx].write(this, descType, descIdx, stride, pData);
+		_bindings[dstStartIdx + descIdx]->write(this, descType, descIdx, stride, pData);
 	}
 }
 
@@ -239,8 +239,8 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 														pDescriptorCopy->srcArrayElement);
 	uint32_t descCnt = pDescriptorCopy->descriptorCount;
 	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		_bindings[srcStartIdx + descIdx].read(this, descType, descIdx, pImageInfo, pBufferInfo,
-											  pTexelBufferView, pInlineUniformBlock);
+		_bindings[srcStartIdx + descIdx]->read(this, descType, descIdx, pImageInfo, pBufferInfo,
+											   pTexelBufferView, pInlineUniformBlock);
 	}
 }
 
@@ -256,9 +256,15 @@ void MVKDescriptorSet::setLayout(MVKDescriptorSetLayout* layout) {
 		MVKDescriptorSetLayoutBinding* dslBind = &layout->_bindings[bindIdx];
 		uint32_t descCnt = dslBind->getDescriptorCount();
 		for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-			_bindings.emplace_back().setLayout(dslBind, descIdx);
+			MVKDescriptorBinding* descBind = dslBind->newDescriptorBinding();
+			descBind->setLayout(dslBind, descIdx);
+			_bindings.push_back(descBind);
 		}
 	}
+}
+
+MVKDescriptorSet::~MVKDescriptorSet() {
+	mvkDestroyContainerContents(_bindings);
 }
 
 
