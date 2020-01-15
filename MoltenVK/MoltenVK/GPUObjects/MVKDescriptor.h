@@ -1,5 +1,5 @@
 /*
- * MVKDescriptorBinding.h
+ * MVKDescriptor.h
  *
  * Copyright (c) 2015-2020 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -22,7 +22,7 @@
 #include "MVKVector.h"
 #include <vector>
 
-class MVKDescriptorBinding;
+class MVKDescriptor;
 class MVKDescriptorSet;
 class MVKDescriptorSetLayout;
 class MVKCommandEncoder;
@@ -30,7 +30,7 @@ class MVKCommandEncoder;
 
 #pragma mark MVKShaderStageResourceBinding
 
-/** Indicates the Metal resource indexes used by a single shader stage in a descriptor binding. */
+/** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
 typedef struct MVKShaderStageResourceBinding {
 	uint32_t bufferIndex = 0;
 	uint32_t textureIndex = 0;
@@ -44,7 +44,7 @@ typedef struct MVKShaderStageResourceBinding {
 
 #pragma mark MVKShaderResourceBinding
 
-/** Indicates the Metal resource indexes used by each shader stage in a descriptor binding. */
+/** Indicates the Metal resource indexes used by each shader stage in a descriptor. */
 typedef struct MVKShaderResourceBinding {
 	MVKShaderStageResourceBinding stages[kMVKShaderStageMax];
 
@@ -93,7 +93,7 @@ public:
 				  MVKVector<uint32_t>& dynamicOffsets,
 				  uint32_t* pDynamicOffsetIndex);
 
-    /** Encodes this binding layout and the specified descriptor binding on the specified command encoder immediately. */
+    /** Encodes this binding layout and the specified descriptor on the specified command encoder immediately. */
     void push(MVKCommandEncoder* cmdEncoder,
               uint32_t& dstArrayElement,
               uint32_t& descriptorCount,
@@ -118,9 +118,8 @@ public:
 
 protected:
 	friend class MVKDescriptorSet;
-	friend class MVKDescriptorBinding;
 
-	MVKDescriptorBinding* newDescriptorBinding();
+	MVKDescriptor* newDescriptor();
 	void initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
 									   MVKShaderStageResourceBinding* pDescSetCounts,
 									   const VkDescriptorSetLayoutBinding* pBinding);
@@ -135,10 +134,10 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKDescriptorBinding
+#pragma mark MVKDescriptor
 
-/** Represents a Vulkan descriptor binding. */
-class MVKDescriptorBinding : public MVKBaseObject {
+/** Represents a Vulkan descriptor. */
+class MVKDescriptor : public MVKBaseObject {
 
 public:
 
@@ -189,10 +188,10 @@ public:
 
 
 #pragma mark -
-#pragma mark MVKBufferDescriptorBinding
+#pragma mark MVKBufferDescriptor
 
-/** Represents a Vulkan descriptor binding tracking a buffer. */
-class MVKBufferDescriptorBinding : public MVKDescriptorBinding {
+/** Represents a Vulkan descriptor tracking a buffer. */
+class MVKBufferDescriptor : public MVKDescriptor {
 
 public:
 	void bind(MVKCommandEncoder* cmdEncoder,
@@ -217,7 +216,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
-	~MVKBufferDescriptorBinding();
+	~MVKBufferDescriptor();
 
 protected:
 	MVKBuffer* _mvkBuffer = nullptr;
@@ -227,10 +226,10 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKInlineUniformDescriptorBinding
+#pragma mark MVKInlineUniformDescriptor
 
-/** Represents a Vulkan descriptor binding tracking an inline block of uniform data. */
-class MVKInlineUniformDescriptorBinding : public MVKDescriptorBinding {
+/** Represents a Vulkan descriptor tracking an inline block of uniform data. */
+class MVKInlineUniformDescriptor : public MVKDescriptor {
 
 public:
 	void bind(MVKCommandEncoder* cmdEncoder,
@@ -255,7 +254,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
-	~MVKInlineUniformDescriptorBinding();
+	~MVKInlineUniformDescriptor();
 
 protected:
 	id<MTLBuffer> _mtlBuffer = nil;
@@ -264,10 +263,10 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKImageDescriptorBinding
+#pragma mark MVKImageDescriptor
 
-/** Represents a Vulkan descriptor binding tracking an image. */
-class MVKImageDescriptorBinding : public MVKDescriptorBinding {
+/** Represents a Vulkan descriptor tracking an image. */
+class MVKImageDescriptor : public MVKDescriptor {
 
 public:
 	void bind(MVKCommandEncoder* cmdEncoder,
@@ -292,7 +291,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
-	~MVKImageDescriptorBinding();
+	~MVKImageDescriptor();
 
 protected:
 	MVKImageView* _mvkImageView = nullptr;
@@ -301,16 +300,16 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKSamplerDescriptorBindingMixin
+#pragma mark MVKSamplerDescriptorMixin
 
 /**
- * This mixin class adds the ability for a descriptor binding to track a sampler.
+ * This mixin class adds the ability for a descriptor to track a sampler.
  *
  * As a mixin, this class should only be used as a component of multiple inheritance.
- * Any class that inherits from this class should also inherit from MVKDescriptorBinding.
+ * Any class that inherits from this class should also inherit from MVKDescriptor.
  * This requirement is to avoid the diamond problem of multiple inheritance.
  */
-class MVKSamplerDescriptorBindingMixin {
+class MVKSamplerDescriptorMixin {
 
 protected:
 	void bind(MVKCommandEncoder* cmdEncoder,
@@ -337,7 +336,7 @@ protected:
 
 	void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index);
 
-	virtual ~MVKSamplerDescriptorBindingMixin();
+	virtual ~MVKSamplerDescriptorMixin();
 
 	MVKSampler* _mvkSampler = nullptr;
 	bool _hasDynamicSampler = true;
@@ -345,46 +344,10 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKSamplerDescriptorBinding
+#pragma mark MVKSamplerDescriptor
 
-/** Represents a Vulkan descriptor binding tracking a sampler. */
-class MVKSamplerDescriptorBinding : public MVKDescriptorBinding,
-public MVKSamplerDescriptorBindingMixin {
-
-public:
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkDescriptorType descriptorType,
-			  uint32_t descriptorIndex,
-			  bool stages[],
-			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKVector<uint32_t>& dynamicOffsets,
-			  uint32_t* pDynamicOffsetIndex) override;
-
-	void write(MVKDescriptorSet* mvkDescSet,
-			   VkDescriptorType descriptorType,
-			   uint32_t srcIndex,
-			   size_t stride,
-			   const void* pData) override;
-
-	void read(MVKDescriptorSet* mvkDescSet,
-			  VkDescriptorType descriptorType,
-			  uint32_t dstIndex,
-			  VkDescriptorImageInfo* pImageInfo,
-			  VkDescriptorBufferInfo* pBufferInfo,
-			  VkBufferView* pTexelBufferView,
-			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
-
-	void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) override;
-
-};
-
-
-#pragma mark -
-#pragma mark MVKCombinedImageSamplerDescriptorBinding
-
-/** Represents a Vulkan descriptor binding tracking a combined image and sampler. */
-class MVKCombinedImageSamplerDescriptorBinding : public MVKImageDescriptorBinding,
-												 public MVKSamplerDescriptorBindingMixin {
+/** Represents a Vulkan descriptor tracking a sampler. */
+class MVKSamplerDescriptor : public MVKDescriptor, public MVKSamplerDescriptorMixin {
 
 public:
 	void bind(MVKCommandEncoder* cmdEncoder,
@@ -415,10 +378,10 @@ public:
 
 
 #pragma mark -
-#pragma mark MVKTexelBufferDescriptorBinding
+#pragma mark MVKCombinedImageSamplerDescriptor
 
-/** Represents a Vulkan descriptor binding tracking a texel buffer. */
-class MVKTexelBufferDescriptorBinding : public MVKDescriptorBinding {
+/** Represents a Vulkan descriptor tracking a combined image and sampler. */
+class MVKCombinedImageSamplerDescriptor : public MVKImageDescriptor, public MVKSamplerDescriptorMixin {
 
 public:
 	void bind(MVKCommandEncoder* cmdEncoder,
@@ -443,7 +406,41 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
-	~MVKTexelBufferDescriptorBinding();
+	void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) override;
+
+};
+
+
+#pragma mark -
+#pragma mark MVKTexelBufferDescriptor
+
+/** Represents a Vulkan descriptor tracking a texel buffer. */
+class MVKTexelBufferDescriptor : public MVKDescriptor {
+
+public:
+	void bind(MVKCommandEncoder* cmdEncoder,
+			  VkDescriptorType descriptorType,
+			  uint32_t descriptorIndex,
+			  bool stages[],
+			  MVKShaderResourceBinding& mtlIndexes,
+			  MVKVector<uint32_t>& dynamicOffsets,
+			  uint32_t* pDynamicOffsetIndex) override;
+
+	void write(MVKDescriptorSet* mvkDescSet,
+			   VkDescriptorType descriptorType,
+			   uint32_t srcIndex,
+			   size_t stride,
+			   const void* pData) override;
+
+	void read(MVKDescriptorSet* mvkDescSet,
+			  VkDescriptorType descriptorType,
+			  uint32_t dstIndex,
+			  VkDescriptorImageInfo* pImageInfo,
+			  VkDescriptorBufferInfo* pBufferInfo,
+			  VkBufferView* pTexelBufferView,
+			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+
+	~MVKTexelBufferDescriptor();
 
 protected:
 	MVKBufferView* _mvkBufferView = nullptr;

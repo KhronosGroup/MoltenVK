@@ -18,7 +18,7 @@
 
 #pragma once
 
-#include "MVKDescriptorBinding.h"
+#include "MVKDescriptor.h"
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -133,10 +133,10 @@ protected:
 	friend class MVKDescriptorPool;
 
 	void propogateDebugName() override {}
-	inline MVKDescriptorBinding* getDescriptorBinding(uint32_t index) { return _bindings[index]; }
+	inline MVKDescriptor* getDescriptor(uint32_t index) { return _descriptors[index]; }
 
 	MVKDescriptorSetLayout* _pLayout = nullptr;
-	std::vector<MVKDescriptorBinding*> _bindings;
+	std::vector<MVKDescriptor*> _descriptors;
 };
 
 

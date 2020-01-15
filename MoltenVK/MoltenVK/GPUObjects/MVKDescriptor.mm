@@ -1,5 +1,5 @@
 /*
- * MVKDescriptorBinding.mm
+ * MVKDescriptor.mm
  *
  * Copyright (c) 2015-2020 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-#include "MVKDescriptorBinding.h"
+#include "MVKDescriptor.h"
 #include "MVKDescriptorSet.h"
 #include "MVKBuffer.h"
 
@@ -94,38 +94,38 @@ uint32_t MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
 
 	uint32_t descCnt = _info.descriptorCount;
     for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		MVKDescriptorBinding* descBinding = descSet->getDescriptorBinding(descStartIndex + descIdx);
-		descBinding->bind(cmdEncoder, _info.descriptorType, descIdx, _applyToStage,
-						  mtlIdxs, dynamicOffsets, pDynamicOffsetIndex);
+		MVKDescriptor* mvkDesc = descSet->getDescriptor(descStartIndex + descIdx);
+		mvkDesc->bind(cmdEncoder, _info.descriptorType, descIdx, _applyToStage,
+					  mtlIdxs, dynamicOffsets, pDynamicOffsetIndex);
     }
 	return descCnt;
 }
 
-MVKDescriptorBinding* MVKDescriptorSetLayoutBinding::newDescriptorBinding() {
+MVKDescriptor* MVKDescriptorSetLayoutBinding::newDescriptor() {
 	switch (_info.descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			return new MVKBufferDescriptorBinding();
+			return new MVKBufferDescriptor();
 
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			return new MVKInlineUniformDescriptorBinding();
+			return new MVKInlineUniformDescriptor();
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			return new MVKImageDescriptorBinding();
+			return new MVKImageDescriptor();
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			return new MVKSamplerDescriptorBinding();
+			return new MVKSamplerDescriptor();
 
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			return new MVKCombinedImageSamplerDescriptorBinding();
+			return new MVKCombinedImageSamplerDescriptor();
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			return new MVKTexelBufferDescriptorBinding();
+			return new MVKTexelBufferDescriptor();
 
 		default:
 			return nullptr;
@@ -470,16 +470,16 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
 
 
 #pragma mark -
-#pragma mark MVKBufferDescriptorBinding
+#pragma mark MVKBufferDescriptor
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKBufferDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
-									  VkDescriptorType descriptorType,
-									  uint32_t descriptorIndex,
-									  bool stages[],
-									  MVKShaderResourceBinding& mtlIndexes,
-									  MVKVector<uint32_t>& dynamicOffsets,
-									  uint32_t* pDynamicOffsetIndex) {
+void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
+							   VkDescriptorType descriptorType,
+							   uint32_t descriptorIndex,
+							   bool stages[],
+							   MVKShaderResourceBinding& mtlIndexes,
+							   MVKVector<uint32_t>& dynamicOffsets,
+							   uint32_t* pDynamicOffsetIndex) {
 	MVKMTLBufferBinding bb;
 	NSUInteger bufferDynamicOffset = 0;
 
@@ -514,11 +514,11 @@ void MVKBufferDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
 	}
 }
 
-void MVKBufferDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
-									   VkDescriptorType descriptorType,
-									   uint32_t srcIndex,
-									   size_t stride,
-									   const void* pData) {
+void MVKBufferDescriptor::write(MVKDescriptorSet* mvkDescSet,
+								VkDescriptorType descriptorType,
+								uint32_t srcIndex,
+								size_t stride,
+								const void* pData) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
@@ -541,13 +541,13 @@ void MVKBufferDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-void MVKBufferDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
-									  VkDescriptorType descriptorType,
-									  uint32_t dstIndex,
-									  VkDescriptorImageInfo* pImageInfo,
-									  VkDescriptorBufferInfo* pBufferInfo,
-									  VkBufferView* pTexelBufferView,
-									  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+void MVKBufferDescriptor::read(MVKDescriptorSet* mvkDescSet,
+							   VkDescriptorType descriptorType,
+							   uint32_t dstIndex,
+							   VkDescriptorImageInfo* pImageInfo,
+							   VkDescriptorBufferInfo* pBufferInfo,
+							   VkBufferView* pTexelBufferView,
+							   VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
@@ -565,22 +565,22 @@ void MVKBufferDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-MVKBufferDescriptorBinding::~MVKBufferDescriptorBinding() {
+MVKBufferDescriptor::~MVKBufferDescriptor() {
 	if (_mvkBuffer) { _mvkBuffer->release(); }
 }
 
 
 #pragma mark -
-#pragma mark MVKInlineUniformDescriptorBinding
+#pragma mark MVKInlineUniformDescriptor
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKInlineUniformDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
-											 VkDescriptorType descriptorType,
-											 uint32_t descriptorIndex,
-											 bool stages[],
-											 MVKShaderResourceBinding& mtlIndexes,
-											 MVKVector<uint32_t>& dynamicOffsets,
-											 uint32_t* pDynamicOffsetIndex) {
+void MVKInlineUniformDescriptor::bind(MVKCommandEncoder* cmdEncoder,
+									  VkDescriptorType descriptorType,
+									  uint32_t descriptorIndex,
+									  bool stages[],
+									  MVKShaderResourceBinding& mtlIndexes,
+									  MVKVector<uint32_t>& dynamicOffsets,
+									  uint32_t* pDynamicOffsetIndex) {
 	MVKMTLBufferBinding bb;
 
 	switch (descriptorType) {
@@ -605,11 +605,11 @@ void MVKInlineUniformDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
 	}
 }
 
-void MVKInlineUniformDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
-											  VkDescriptorType descriptorType,
-											  uint32_t srcIndex,
-											  size_t stride,
-											  const void* pData) {
+void MVKInlineUniformDescriptor::write(MVKDescriptorSet* mvkDescSet,
+									   VkDescriptorType descriptorType,
+									   uint32_t srcIndex,
+									   size_t stride,
+									   const void* pData) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
 			const auto& srcInlineUniformBlock = get<VkWriteDescriptorSetInlineUniformBlockEXT>(pData, stride, srcIndex);
@@ -633,13 +633,13 @@ void MVKInlineUniformDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-void MVKInlineUniformDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
-											 VkDescriptorType descriptorType,
-											 uint32_t dstIndex,
-											 VkDescriptorImageInfo* pImageInfo,
-											 VkDescriptorBufferInfo* pBufferInfo,
-											 VkBufferView* pTexelBufferView,
-											 VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+void MVKInlineUniformDescriptor::read(MVKDescriptorSet* mvkDescSet,
+									  VkDescriptorType descriptorType,
+									  uint32_t dstIndex,
+									  VkDescriptorImageInfo* pImageInfo,
+									  VkDescriptorBufferInfo* pBufferInfo,
+									  VkBufferView* pTexelBufferView,
+									  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
 			auto& dstInlineUniformBlock = pInlineUniformBlock[dstIndex];
@@ -659,22 +659,22 @@ void MVKInlineUniformDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-MVKInlineUniformDescriptorBinding::~MVKInlineUniformDescriptorBinding() {
+MVKInlineUniformDescriptor::~MVKInlineUniformDescriptor() {
 	[_mtlBuffer release];
 }
 
 
 #pragma mark -
-#pragma mark MVKImageDescriptorBinding
+#pragma mark MVKImageDescriptor
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKImageDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
-									 VkDescriptorType descriptorType,
-									 uint32_t descriptorIndex,
-									 bool stages[],
-									 MVKShaderResourceBinding& mtlIndexes,
-									 MVKVector<uint32_t>& dynamicOffsets,
-									 uint32_t* pDynamicOffsetIndex) {
+void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
+							  VkDescriptorType descriptorType,
+							  uint32_t descriptorIndex,
+							  bool stages[],
+							  MVKShaderResourceBinding& mtlIndexes,
+							  MVKVector<uint32_t>& dynamicOffsets,
+							  uint32_t* pDynamicOffsetIndex) {
 	MVKMTLTextureBinding tb;
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -707,11 +707,11 @@ void MVKImageDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
 	}
 }
 
-void MVKImageDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
-									  VkDescriptorType descriptorType,
-									  uint32_t srcIndex,
-									  size_t stride,
-									  const void* pData) {
+void MVKImageDescriptor::write(MVKDescriptorSet* mvkDescSet,
+							   VkDescriptorType descriptorType,
+							   uint32_t srcIndex,
+							   size_t stride,
+							   const void* pData) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -734,13 +734,13 @@ void MVKImageDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-void MVKImageDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
-									 VkDescriptorType descriptorType,
-									 uint32_t dstIndex,
-									 VkDescriptorImageInfo* pImageInfo,
-									 VkDescriptorBufferInfo* pBufferInfo,
-									 VkBufferView* pTexelBufferView,
-									 VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+void MVKImageDescriptor::read(MVKDescriptorSet* mvkDescSet,
+							  VkDescriptorType descriptorType,
+							  uint32_t dstIndex,
+							  VkDescriptorImageInfo* pImageInfo,
+							  VkDescriptorBufferInfo* pBufferInfo,
+							  VkBufferView* pTexelBufferView,
+							  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -757,22 +757,22 @@ void MVKImageDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-MVKImageDescriptorBinding::~MVKImageDescriptorBinding() {
+MVKImageDescriptor::~MVKImageDescriptor() {
 	if (_mvkImageView) { _mvkImageView->release(); }
 }
 
 
 #pragma mark -
-#pragma mark MVKSamplerDescriptorBindingMixin
+#pragma mark MVKSamplerDescriptorMixin
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKSamplerDescriptorBindingMixin::bind(MVKCommandEncoder* cmdEncoder,
-											VkDescriptorType descriptorType,
-											uint32_t descriptorIndex,
-											bool stages[],
-											MVKShaderResourceBinding& mtlIndexes,
-											MVKVector<uint32_t>& dynamicOffsets,
-											uint32_t* pDynamicOffsetIndex) {
+void MVKSamplerDescriptorMixin::bind(MVKCommandEncoder* cmdEncoder,
+									 VkDescriptorType descriptorType,
+									 uint32_t descriptorIndex,
+									 bool stages[],
+									 MVKShaderResourceBinding& mtlIndexes,
+									 MVKVector<uint32_t>& dynamicOffsets,
+									 uint32_t* pDynamicOffsetIndex) {
 	MVKMTLSamplerStateBinding sb;
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -798,11 +798,11 @@ void MVKSamplerDescriptorBindingMixin::bind(MVKCommandEncoder* cmdEncoder,
 	}
 }
 
-void MVKSamplerDescriptorBindingMixin::write(MVKDescriptorSet* mvkDescSet,
-											 VkDescriptorType descriptorType,
-											 uint32_t srcIndex,
-											 size_t stride,
-											 const void* pData) {
+void MVKSamplerDescriptorMixin::write(MVKDescriptorSet* mvkDescSet,
+									  VkDescriptorType descriptorType,
+									  uint32_t srcIndex,
+									  size_t stride,
+									  const void* pData) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
@@ -829,13 +829,13 @@ void MVKSamplerDescriptorBindingMixin::write(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-void MVKSamplerDescriptorBindingMixin::read(MVKDescriptorSet* mvkDescSet,
-											VkDescriptorType descriptorType,
-											uint32_t dstIndex,
-											VkDescriptorImageInfo* pImageInfo,
-											VkDescriptorBufferInfo* pBufferInfo,
-											VkBufferView* pTexelBufferView,
-											VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+void MVKSamplerDescriptorMixin::read(MVKDescriptorSet* mvkDescSet,
+									 VkDescriptorType descriptorType,
+									 uint32_t dstIndex,
+									 VkDescriptorImageInfo* pImageInfo,
+									 VkDescriptorBufferInfo* pBufferInfo,
+									 VkBufferView* pTexelBufferView,
+									 VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
@@ -849,7 +849,7 @@ void MVKSamplerDescriptorBindingMixin::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-void MVKSamplerDescriptorBindingMixin::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
+void MVKSamplerDescriptorMixin::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
 	auto* oldSamp = _mvkSampler;
 
 	_mvkSampler = nullptr;
@@ -876,92 +876,26 @@ void MVKSamplerDescriptorBindingMixin::setLayout(MVKDescriptorSetLayoutBinding* 
 	if (oldSamp) { oldSamp->release(); }
 }
 
-MVKSamplerDescriptorBindingMixin::~MVKSamplerDescriptorBindingMixin() {
+MVKSamplerDescriptorMixin::~MVKSamplerDescriptorMixin() {
 	if (_mvkSampler) { _mvkSampler->release(); }
 }
 
 
 #pragma mark -
-#pragma mark MVKSamplerDescriptorBinding
+#pragma mark MVKSamplerDescriptor
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKSamplerDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
-									   VkDescriptorType descriptorType,
-									   uint32_t descriptorIndex,
-									   bool stages[],
-									   MVKShaderResourceBinding& mtlIndexes,
-									   MVKVector<uint32_t>& dynamicOffsets,
-									   uint32_t* pDynamicOffsetIndex) {
+void MVKSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
+								VkDescriptorType descriptorType,
+								uint32_t descriptorIndex,
+								bool stages[],
+								MVKShaderResourceBinding& mtlIndexes,
+								MVKVector<uint32_t>& dynamicOffsets,
+								uint32_t* pDynamicOffsetIndex) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLER: {
-			MVKSamplerDescriptorBindingMixin::bind(cmdEncoder, descriptorType, descriptorIndex, stages,
-												   mtlIndexes, dynamicOffsets, pDynamicOffsetIndex);
-			break;
-		}
-
-		default:
-			break;
-	}
-}
-
-void MVKSamplerDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
-										VkDescriptorType descriptorType,
-										uint32_t srcIndex,
-										size_t stride,
-										const void* pData) {
-	switch (descriptorType) {
-		case VK_DESCRIPTOR_TYPE_SAMPLER: {
-			MVKSamplerDescriptorBindingMixin::write(mvkDescSet, descriptorType, srcIndex, stride, pData);
-			break;
-		}
-
-		default:
-			break;
-	}
-}
-
-void MVKSamplerDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
-									   VkDescriptorType descriptorType,
-									   uint32_t dstIndex,
-									   VkDescriptorImageInfo* pImageInfo,
-									   VkDescriptorBufferInfo* pBufferInfo,
-									   VkBufferView* pTexelBufferView,
-									   VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
-	switch (descriptorType) {
-		case VK_DESCRIPTOR_TYPE_SAMPLER: {
-			MVKSamplerDescriptorBindingMixin::read(mvkDescSet, descriptorType, dstIndex, pImageInfo,
-												   pBufferInfo, pTexelBufferView, pInlineUniformBlock);
-			break;
-		}
-
-		default:
-			break;
-	}
-}
-
-void MVKSamplerDescriptorBinding::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
-	MVKDescriptorBinding::setLayout(dslBinding, index);
-	MVKSamplerDescriptorBindingMixin::setLayout(dslBinding, index);
-}
-
-
-#pragma mark -
-#pragma mark MVKCombinedImageSamplerDescriptorBinding
-
-// A null cmdEncoder can be passed to perform a validation pass
-void MVKCombinedImageSamplerDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
-													VkDescriptorType descriptorType,
-													uint32_t descriptorIndex,
-													bool stages[],
-													MVKShaderResourceBinding& mtlIndexes,
-													MVKVector<uint32_t>& dynamicOffsets,
-													uint32_t* pDynamicOffsetIndex) {
-	switch (descriptorType) {
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-			MVKImageDescriptorBinding::bind(cmdEncoder, descriptorType, descriptorIndex, stages,
+			MVKSamplerDescriptorMixin::bind(cmdEncoder, descriptorType, descriptorIndex, stages,
 											mtlIndexes, dynamicOffsets, pDynamicOffsetIndex);
-			MVKSamplerDescriptorBindingMixin::bind(cmdEncoder, descriptorType, descriptorIndex, stages,
-												   mtlIndexes, dynamicOffsets, pDynamicOffsetIndex);
 			break;
 		}
 
@@ -970,15 +904,14 @@ void MVKCombinedImageSamplerDescriptorBinding::bind(MVKCommandEncoder* cmdEncode
 	}
 }
 
-void MVKCombinedImageSamplerDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
-													 VkDescriptorType descriptorType,
-													 uint32_t srcIndex,
-													 size_t stride,
-													 const void* pData) {
+void MVKSamplerDescriptor::write(MVKDescriptorSet* mvkDescSet,
+								 VkDescriptorType descriptorType,
+								 uint32_t srcIndex,
+								 size_t stride,
+								 const void* pData) {
 	switch (descriptorType) {
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-			MVKImageDescriptorBinding::write(mvkDescSet, descriptorType, srcIndex, stride, pData);
-			MVKSamplerDescriptorBindingMixin::write(mvkDescSet, descriptorType, srcIndex, stride, pData);
+		case VK_DESCRIPTOR_TYPE_SAMPLER: {
+			MVKSamplerDescriptorMixin::write(mvkDescSet, descriptorType, srcIndex, stride, pData);
 			break;
 		}
 
@@ -987,19 +920,17 @@ void MVKCombinedImageSamplerDescriptorBinding::write(MVKDescriptorSet* mvkDescSe
 	}
 }
 
-void MVKCombinedImageSamplerDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
-													VkDescriptorType descriptorType,
-													uint32_t dstIndex,
-													VkDescriptorImageInfo* pImageInfo,
-													VkDescriptorBufferInfo* pBufferInfo,
-													VkBufferView* pTexelBufferView,
-													VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+void MVKSamplerDescriptor::read(MVKDescriptorSet* mvkDescSet,
+								VkDescriptorType descriptorType,
+								uint32_t dstIndex,
+								VkDescriptorImageInfo* pImageInfo,
+								VkDescriptorBufferInfo* pBufferInfo,
+								VkBufferView* pTexelBufferView,
+								VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 	switch (descriptorType) {
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-			MVKImageDescriptorBinding::read(mvkDescSet, descriptorType, dstIndex, pImageInfo,
+		case VK_DESCRIPTOR_TYPE_SAMPLER: {
+			MVKSamplerDescriptorMixin::read(mvkDescSet, descriptorType, dstIndex, pImageInfo,
 											pBufferInfo, pTexelBufferView, pInlineUniformBlock);
-			MVKSamplerDescriptorBindingMixin::read(mvkDescSet, descriptorType, dstIndex, pImageInfo,
-												   pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 			break;
 		}
 
@@ -1008,23 +939,92 @@ void MVKCombinedImageSamplerDescriptorBinding::read(MVKDescriptorSet* mvkDescSet
 	}
 }
 
-void MVKCombinedImageSamplerDescriptorBinding::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
-	MVKImageDescriptorBinding::setLayout(dslBinding, index);
-	MVKSamplerDescriptorBindingMixin::setLayout(dslBinding, index);
+void MVKSamplerDescriptor::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
+	MVKDescriptor::setLayout(dslBinding, index);
+	MVKSamplerDescriptorMixin::setLayout(dslBinding, index);
 }
 
 
 #pragma mark -
-#pragma mark MVKTexelBufferDescriptorBinding
+#pragma mark MVKCombinedImageSamplerDescriptor
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKTexelBufferDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
-										   VkDescriptorType descriptorType,
-										   uint32_t descriptorIndex,
-										   bool stages[],
-										   MVKShaderResourceBinding& mtlIndexes,
-										   MVKVector<uint32_t>& dynamicOffsets,
-										   uint32_t* pDynamicOffsetIndex) {
+void MVKCombinedImageSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
+											 VkDescriptorType descriptorType,
+											 uint32_t descriptorIndex,
+											 bool stages[],
+											 MVKShaderResourceBinding& mtlIndexes,
+											 MVKVector<uint32_t>& dynamicOffsets,
+											 uint32_t* pDynamicOffsetIndex) {
+	switch (descriptorType) {
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+			MVKImageDescriptor::bind(cmdEncoder, descriptorType, descriptorIndex, stages,
+									 mtlIndexes, dynamicOffsets, pDynamicOffsetIndex);
+			MVKSamplerDescriptorMixin::bind(cmdEncoder, descriptorType, descriptorIndex, stages,
+											mtlIndexes, dynamicOffsets, pDynamicOffsetIndex);
+			break;
+		}
+
+		default:
+			break;
+	}
+}
+
+void MVKCombinedImageSamplerDescriptor::write(MVKDescriptorSet* mvkDescSet,
+											  VkDescriptorType descriptorType,
+											  uint32_t srcIndex,
+											  size_t stride,
+											  const void* pData) {
+	switch (descriptorType) {
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+			MVKImageDescriptor::write(mvkDescSet, descriptorType, srcIndex, stride, pData);
+			MVKSamplerDescriptorMixin::write(mvkDescSet, descriptorType, srcIndex, stride, pData);
+			break;
+		}
+
+		default:
+			break;
+	}
+}
+
+void MVKCombinedImageSamplerDescriptor::read(MVKDescriptorSet* mvkDescSet,
+											 VkDescriptorType descriptorType,
+											 uint32_t dstIndex,
+											 VkDescriptorImageInfo* pImageInfo,
+											 VkDescriptorBufferInfo* pBufferInfo,
+											 VkBufferView* pTexelBufferView,
+											 VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+	switch (descriptorType) {
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
+			MVKImageDescriptor::read(mvkDescSet, descriptorType, dstIndex, pImageInfo,
+									 pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+			MVKSamplerDescriptorMixin::read(mvkDescSet, descriptorType, dstIndex, pImageInfo,
+											pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+			break;
+		}
+
+		default:
+			break;
+	}
+}
+
+void MVKCombinedImageSamplerDescriptor::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
+	MVKImageDescriptor::setLayout(dslBinding, index);
+	MVKSamplerDescriptorMixin::setLayout(dslBinding, index);
+}
+
+
+#pragma mark -
+#pragma mark MVKTexelBufferDescriptor
+
+// A null cmdEncoder can be passed to perform a validation pass
+void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
+									VkDescriptorType descriptorType,
+									uint32_t descriptorIndex,
+									bool stages[],
+									MVKShaderResourceBinding& mtlIndexes,
+									MVKVector<uint32_t>& dynamicOffsets,
+									uint32_t* pDynamicOffsetIndex) {
 	MVKMTLTextureBinding tb;
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
@@ -1050,11 +1050,11 @@ void MVKTexelBufferDescriptorBinding::bind(MVKCommandEncoder* cmdEncoder,
 	}
 }
 
-void MVKTexelBufferDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
-											VkDescriptorType descriptorType,
-											uint32_t srcIndex,
-											size_t stride,
-											const void* pData) {
+void MVKTexelBufferDescriptor::write(MVKDescriptorSet* mvkDescSet,
+									 VkDescriptorType descriptorType,
+									 uint32_t srcIndex,
+									 size_t stride,
+									 const void* pData) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
@@ -1074,13 +1074,13 @@ void MVKTexelBufferDescriptorBinding::write(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-void MVKTexelBufferDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
-										   VkDescriptorType descriptorType,
-										   uint32_t dstIndex,
-										   VkDescriptorImageInfo* pImageInfo,
-										   VkDescriptorBufferInfo* pBufferInfo,
-										   VkBufferView* pTexelBufferView,
-										   VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+void MVKTexelBufferDescriptor::read(MVKDescriptorSet* mvkDescSet,
+									VkDescriptorType descriptorType,
+									uint32_t dstIndex,
+									VkDescriptorImageInfo* pImageInfo,
+									VkDescriptorBufferInfo* pBufferInfo,
+									VkBufferView* pTexelBufferView,
+									VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
@@ -1093,6 +1093,6 @@ void MVKTexelBufferDescriptorBinding::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-MVKTexelBufferDescriptorBinding::~MVKTexelBufferDescriptorBinding() {
+MVKTexelBufferDescriptor::~MVKTexelBufferDescriptor() {
 	if (_mvkBufferView) { _mvkBufferView->release(); }
 }

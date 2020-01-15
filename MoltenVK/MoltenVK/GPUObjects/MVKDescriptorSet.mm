@@ -215,7 +215,7 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 													   pDescriptorAction->dstArrayElement);
 	uint32_t descCnt = pDescriptorAction->descriptorCount;
 	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		_bindings[dstStartIdx + descIdx]->write(this, descType, descIdx, stride, pData);
+		_descriptors[dstStartIdx + descIdx]->write(this, descType, descIdx, stride, pData);
 	}
 }
 
@@ -238,29 +238,29 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 														pDescriptorCopy->srcArrayElement);
 	uint32_t descCnt = pDescriptorCopy->descriptorCount;
 	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		_bindings[srcStartIdx + descIdx]->read(this, descType, descIdx, pImageInfo, pBufferInfo,
-											   pTexelBufferView, pInlineUniformBlock);
+		_descriptors[srcStartIdx + descIdx]->read(this, descType, descIdx, pImageInfo, pBufferInfo,
+												  pTexelBufferView, pInlineUniformBlock);
 	}
 }
 
 MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout) : MVKVulkanAPIDeviceObject(layout->_device) {
 	_pLayout = layout;
 
-	_bindings.reserve(layout->getDescriptorCount());
+	_descriptors.reserve(layout->getDescriptorCount());
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
-		MVKDescriptorSetLayoutBinding* dslBind = &layout->_bindings[bindIdx];
-		uint32_t descCnt = dslBind->getDescriptorCount();
+		MVKDescriptorSetLayoutBinding* mvkDSLBind = &layout->_bindings[bindIdx];
+		uint32_t descCnt = mvkDSLBind->getDescriptorCount();
 		for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-			MVKDescriptorBinding* descBind = dslBind->newDescriptorBinding();
-			descBind->setLayout(dslBind, descIdx);
-			_bindings.push_back(descBind);
+			MVKDescriptor* mvkDesc = mvkDSLBind->newDescriptor();
+			mvkDesc->setLayout(mvkDSLBind, descIdx);
+			_descriptors.push_back(mvkDesc);
 		}
 	}
 }
 
 MVKDescriptorSet::~MVKDescriptorSet() {
-	mvkDestroyContainerContents(_bindings);
+	mvkDestroyContainerContents(_descriptors);
 }
 
 

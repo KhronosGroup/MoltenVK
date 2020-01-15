@@ -157,10 +157,10 @@
 		A95B7D6A1D3EE486003183D3 /* MVKCommandEncoderState.h in Headers */ = {isa = PBXBuildFile; fileRef = A95B7D671D3EE486003183D3 /* MVKCommandEncoderState.h */; };
 		A95B7D6B1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95B7D681D3EE486003183D3 /* MVKCommandEncoderState.mm */; };
 		A95B7D6C1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95B7D681D3EE486003183D3 /* MVKCommandEncoderState.mm */; };
-		A966A5DF23C535D000BBF9B4 /* MVKDescriptorBinding.h in Headers */ = {isa = PBXBuildFile; fileRef = A966A5DC23C535D000BBF9B4 /* MVKDescriptorBinding.h */; };
-		A966A5E023C535D000BBF9B4 /* MVKDescriptorBinding.h in Headers */ = {isa = PBXBuildFile; fileRef = A966A5DC23C535D000BBF9B4 /* MVKDescriptorBinding.h */; };
-		A966A5E123C535D000BBF9B4 /* MVKDescriptorBinding.mm in Sources */ = {isa = PBXBuildFile; fileRef = A966A5DE23C535D000BBF9B4 /* MVKDescriptorBinding.mm */; };
-		A966A5E223C535D000BBF9B4 /* MVKDescriptorBinding.mm in Sources */ = {isa = PBXBuildFile; fileRef = A966A5DE23C535D000BBF9B4 /* MVKDescriptorBinding.mm */; };
+		A966A5DF23C535D000BBF9B4 /* MVKDescriptor.h in Headers */ = {isa = PBXBuildFile; fileRef = A966A5DC23C535D000BBF9B4 /* MVKDescriptor.h */; };
+		A966A5E023C535D000BBF9B4 /* MVKDescriptor.h in Headers */ = {isa = PBXBuildFile; fileRef = A966A5DC23C535D000BBF9B4 /* MVKDescriptor.h */; };
+		A966A5E123C535D000BBF9B4 /* MVKDescriptor.mm in Sources */ = {isa = PBXBuildFile; fileRef = A966A5DE23C535D000BBF9B4 /* MVKDescriptor.mm */; };
+		A966A5E223C535D000BBF9B4 /* MVKDescriptor.mm in Sources */ = {isa = PBXBuildFile; fileRef = A966A5DE23C535D000BBF9B4 /* MVKDescriptor.mm */; };
 		A981494D1FB6A3F7005F00B4 /* MVKBaseObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */; };
 		A981494E1FB6A3F7005F00B4 /* MVKBaseObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */; };
 		A981494F1FB6A3F7005F00B4 /* MVKBaseObject.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */; };
@@ -377,8 +377,8 @@
 		A95870F71C90D29F009EB096 /* MVKCommandResourceFactory.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCommandResourceFactory.mm; sourceTree = "<group>"; };
 		A95B7D671D3EE486003183D3 /* MVKCommandEncoderState.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommandEncoderState.h; sourceTree = "<group>"; };
 		A95B7D681D3EE486003183D3 /* MVKCommandEncoderState.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCommandEncoderState.mm; sourceTree = "<group>"; };
-		A966A5DC23C535D000BBF9B4 /* MVKDescriptorBinding.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKDescriptorBinding.h; sourceTree = "<group>"; };
-		A966A5DE23C535D000BBF9B4 /* MVKDescriptorBinding.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKDescriptorBinding.mm; sourceTree = "<group>"; };
+		A966A5DC23C535D000BBF9B4 /* MVKDescriptor.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKDescriptor.h; sourceTree = "<group>"; };
+		A966A5DE23C535D000BBF9B4 /* MVKDescriptor.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKDescriptor.mm; sourceTree = "<group>"; };
 		A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKBaseObject.mm; sourceTree = "<group>"; };
 		A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKBaseObject.h; sourceTree = "<group>"; };
 		A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKEnvironment.h; sourceTree = "<group>"; };
@@ -489,8 +489,8 @@
 			children = (
 				A94FB77F1C7DFB4800632CA3 /* MVKBuffer.h */,
 				A94FB7801C7DFB4800632CA3 /* MVKBuffer.mm */,
-				A966A5DC23C535D000BBF9B4 /* MVKDescriptorBinding.h */,
-				A966A5DE23C535D000BBF9B4 /* MVKDescriptorBinding.mm */,
+				A966A5DC23C535D000BBF9B4 /* MVKDescriptor.h */,
+				A966A5DE23C535D000BBF9B4 /* MVKDescriptor.mm */,
 				A94FB7811C7DFB4800632CA3 /* MVKDescriptorSet.h */,
 				A94FB7821C7DFB4800632CA3 /* MVKDescriptorSet.mm */,
 				A94FB7831C7DFB4800632CA3 /* MVKDevice.h */,
@@ -703,7 +703,7 @@
 				A94FB7F01C7DFB4800632CA3 /* MVKImage.h in Headers */,
 				4553AEFD2251617100E8EBCD /* MVKBlockObserver.h in Headers */,
 				A94FB7B81C7DFB4800632CA3 /* MVKCmdTransfer.h in Headers */,
-				A966A5DF23C535D000BBF9B4 /* MVKDescriptorBinding.h in Headers */,
+				A966A5DF23C535D000BBF9B4 /* MVKDescriptor.h in Headers */,
 				A94FB7C81C7DFB4800632CA3 /* MVKCmdDraw.h in Headers */,
 				A94FB7D01C7DFB4800632CA3 /* MVKCommandBuffer.h in Headers */,
 				A9E53DF32100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.h in Headers */,
@@ -772,7 +772,7 @@
 				A94FB7F11C7DFB4800632CA3 /* MVKImage.h in Headers */,
 				4553AEFE2251617100E8EBCD /* MVKBlockObserver.h in Headers */,
 				A94FB7B91C7DFB4800632CA3 /* MVKCmdTransfer.h in Headers */,
-				A966A5E023C535D000BBF9B4 /* MVKDescriptorBinding.h in Headers */,
+				A966A5E023C535D000BBF9B4 /* MVKDescriptor.h in Headers */,
 				A94FB7C91C7DFB4800632CA3 /* MVKCmdDraw.h in Headers */,
 				A94FB7D11C7DFB4800632CA3 /* MVKCommandBuffer.h in Headers */,
 				A9E53DF42100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.h in Headers */,
@@ -1014,7 +1014,7 @@
 				A98149551FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */,
 				A94FB7E61C7DFB4800632CA3 /* MVKDevice.mm in Sources */,
 				A9E53DF52100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.m in Sources */,
-				A966A5E123C535D000BBF9B4 /* MVKDescriptorBinding.mm in Sources */,
+				A966A5E123C535D000BBF9B4 /* MVKDescriptor.mm in Sources */,
 				A94FB7FA1C7DFB4800632CA3 /* MVKPipeline.mm in Sources */,
 				A94FB8021C7DFB4800632CA3 /* MVKQueue.mm in Sources */,
 				A9E53DD72100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m in Sources */,
@@ -1071,7 +1071,7 @@
 				A98149561FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */,
 				A94FB7E71C7DFB4800632CA3 /* MVKDevice.mm in Sources */,
 				A9E53DF62100B302002781DD /* MTLRenderPassDescriptor+MoltenVK.m in Sources */,
-				A966A5E223C535D000BBF9B4 /* MVKDescriptorBinding.mm in Sources */,
+				A966A5E223C535D000BBF9B4 /* MVKDescriptor.mm in Sources */,
 				A94FB7FB1C7DFB4800632CA3 /* MVKPipeline.mm in Sources */,
 				A94FB8031C7DFB4800632CA3 /* MVKQueue.mm in Sources */,
 				A9E53DD82100B197002781DD /* MTLSamplerDescriptor+MoltenVK.m in Sources */,
