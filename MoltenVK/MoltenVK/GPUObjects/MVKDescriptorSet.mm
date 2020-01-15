@@ -186,16 +186,15 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(SPIRVToMSLConversion
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
     _isPushDescriptorLayout = (pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) != 0;
-    // Create the descriptor bindings
+
+	// Create the descriptor layout bindings
+	_descriptorCount = 0;
     _bindings.reserve(pCreateInfo->bindingCount);
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
         _bindings.emplace_back(_device, this, &pCreateInfo->pBindings[i]);
+		_descriptorCount += _bindings.back().getDescriptorCount();
         _bindingToIndex[pCreateInfo->pBindings[i].binding] = i;
     }
-}
-
-MVKDescriptorSetLayout::~MVKDescriptorSetLayout() {
-	for (auto& dsPool : _descriptorPools) { dsPool->removeDescriptorSetPool(this); }
 }
 
 
@@ -244,13 +243,10 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 	}
 }
 
-// If the layout has changed, create the binding slots, each referencing a corresponding binding layout
-void MVKDescriptorSet::setLayout(MVKDescriptorSetLayout* layout) {
-	if (layout == _pLayout) { return; }
-
+MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout) : MVKVulkanAPIDeviceObject(layout->_device) {
 	_pLayout = layout;
-	_bindings.clear();
 
+	_bindings.reserve(layout->getDescriptorCount());
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		MVKDescriptorSetLayoutBinding* dslBind = &layout->_bindings[bindIdx];
@@ -285,8 +281,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
 		MVKDescriptorSetLayout* mvkDSL = (MVKDescriptorSetLayout*)pSetLayouts[dsIdx];
 		if ( !mvkDSL->isPushDescriptorLayout() ) {
-			MVKDescriptorSet* mvkDS = getDescriptorSetPool(mvkDSL)->acquireObject();
-			mvkDS->setLayout(mvkDSL);
+			MVKDescriptorSet* mvkDS = new MVKDescriptorSet(mvkDSL);
 			_allocatedSets.insert(mvkDS);
 			pDescriptorSets[dsIdx] = (VkDescriptorSet)mvkDS;
 		}
@@ -298,66 +293,29 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets) {
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
 		MVKDescriptorSet* mvkDS = (MVKDescriptorSet*)pDescriptorSets[dsIdx];
-		if (_allocatedSets.erase(mvkDS)) { returnDescriptorSet(mvkDS); }
+		freeDescriptorSet(mvkDS);
+		_allocatedSets.erase(mvkDS);
 	}
 	return VK_SUCCESS;
 }
 
-// Return any allocated descriptor sets to their pools
+// Destroy all allocated descriptor sets
 VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
-	for (auto& mvkDS : _allocatedSets) { returnDescriptorSet(mvkDS); }
+	for (auto& mvkDS : _allocatedSets) { freeDescriptorSet(mvkDS); }
 	_allocatedSets.clear();
 	return VK_SUCCESS;
 }
 
-// Returns the descriptor set to its pool, or if that pool doesn't exist, the descriptor set is destroyed
-void MVKDescriptorPool::returnDescriptorSet(MVKDescriptorSet* mvkDescSet) {
-	MVKDescriptorSetLayout* dsLayout = mvkDescSet->_pLayout;
-	MVKDescriptorSetPool* dsPool = dsLayout ? _descriptorSetPools[dsLayout] : nullptr;
-	if (dsPool) {
-		dsPool->returnObject(mvkDescSet);
-	} else {
-		mvkDescSet->destroy();
-		_descriptorSetPools.erase(dsLayout);
-	}
-}
-
-// Returns the pool of descriptor sets that use a specific layout, lazily creating it if necessary
-MVKDescriptorSetPool* MVKDescriptorPool::getDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout) {
-	MVKDescriptorSetPool* dsp = _descriptorSetPools[mvkDescSetLayout];
-	if ( !dsp ) {
-		dsp = new MVKDescriptorSetPool(_device);
-		_descriptorSetPools[mvkDescSetLayout] = dsp;
-		mvkDescSetLayout->addDescriptorPool(this);		// tell layout to track me
-	}
-	return dsp;
-}
-
-// Remove the descriptor set pool associated with the descriptor set layout,
-// and make sure any allocated sets don't try to return back to their pools.
-void MVKDescriptorPool::removeDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout) {
-	MVKDescriptorSetPool* dsp = _descriptorSetPools[mvkDescSetLayout];
-	if (dsp) { dsp->destroy(); }
-	_descriptorSetPools.erase(mvkDescSetLayout);
-
-	for (auto& mvkDS : _allocatedSets) {
-		if (mvkDS->_pLayout == mvkDescSetLayout) { mvkDS->_pLayout = nullptr; }
-	}
-}
+void MVKDescriptorPool::freeDescriptorSet(MVKDescriptorSet* mvkDS) { mvkDS->destroy(); }
 
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device,
 									 const VkDescriptorPoolCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_maxSets = pCreateInfo->maxSets;
 }
 
-// Return any allocated sets to their pools and then destroy all the pools,
-// and ensure any descriptor set layouts used as keys are notified.
+// Destroy all allocated descriptor sets
 MVKDescriptorPool::~MVKDescriptorPool() {
 	reset(0);
-	for (auto& pair : _descriptorSetPools) {
-		pair.first->removeDescriptorPool(this);
-		if (pair.second) { pair.second->destroy(); }
-	}
 }
 
 

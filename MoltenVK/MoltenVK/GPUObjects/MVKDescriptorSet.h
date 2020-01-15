@@ -19,9 +19,9 @@
 #pragma once
 
 #include "MVKDescriptorBinding.h"
-#include "MVKVector.h"
 #include <unordered_set>
 #include <unordered_map>
+#include <vector>
 
 class MVKDescriptorPool;
 class MVKPipelineLayout;
@@ -73,8 +73,6 @@ public:
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
-	~MVKDescriptorSetLayout();
-
 protected:
 
 	friend class MVKDescriptorSetLayoutBinding;
@@ -83,16 +81,15 @@ protected:
 	friend class MVKDescriptorPool;
 
 	void propogateDebugName() override {}
-	void addDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.insert(mvkDescPool); }
-	void removeDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.erase(mvkDescPool); }
+	inline uint32_t getDescriptorCount() { return _descriptorCount; }
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex);
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 
-	MVKVectorInline<MVKDescriptorSetLayoutBinding, 1> _bindings;
+	std::vector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
-	std::unordered_set<MVKDescriptorPool*> _descriptorPools;
-	bool _isPushDescriptorLayout : 1;
+	uint32_t _descriptorCount;
+	bool _isPushDescriptorLayout;
 };
 
 
@@ -100,7 +97,7 @@ protected:
 #pragma mark MVKDescriptorSet
 
 /** Represents a Vulkan descriptor set. */
-class MVKDescriptorSet : public MVKVulkanAPIDeviceObject, public MVKLinkableMixin<MVKDescriptorSet> {
+class MVKDescriptorSet : public MVKVulkanAPIDeviceObject {
 
 public:
 
@@ -127,7 +124,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
-	MVKDescriptorSet(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
+	MVKDescriptorSet(MVKDescriptorSetLayout* layout);
 
 	~MVKDescriptorSet() override;
 
@@ -136,7 +133,6 @@ protected:
 	friend class MVKDescriptorPool;
 
 	void propogateDebugName() override {}
-	void setLayout(MVKDescriptorSetLayout* layout);
 	inline MVKDescriptorBinding* getDescriptorBinding(uint32_t index) { return _bindings[index]; }
 
 	MVKDescriptorSetLayout* _pLayout = nullptr;
@@ -171,21 +167,16 @@ public:
 	/** Destoys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
-	/** Removes the pool associated with a descriptor set layout. */
-	void removeDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout);
-
 	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
 	~MVKDescriptorPool() override;
 
 protected:
 	void propogateDebugName() override {}
-	MVKDescriptorSetPool* getDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout);
-	void returnDescriptorSet(MVKDescriptorSet* mvkDescSet);
+	void freeDescriptorSet(MVKDescriptorSet* mvkDS);
 
 	uint32_t _maxSets;
 	std::unordered_set<MVKDescriptorSet*> _allocatedSets;
-	std::unordered_map<MVKDescriptorSetLayout*, MVKDescriptorSetPool*> _descriptorSetPools;
 };
 
 
