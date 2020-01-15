@@ -101,37 +101,6 @@ uint32_t MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
 	return descCnt;
 }
 
-MVKDescriptor* MVKDescriptorSetLayoutBinding::newDescriptor() {
-	switch (_info.descriptorType) {
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			return new MVKBufferDescriptor();
-
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			return new MVKInlineUniformDescriptor();
-
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			return new MVKImageDescriptor();
-
-		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			return new MVKSamplerDescriptor();
-
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			return new MVKCombinedImageSamplerDescriptor();
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			return new MVKTexelBufferDescriptor();
-
-		default:
-			return nullptr;
-	}
-}
-
 template<typename T>
 static const T& get(const void* pData, size_t stride, uint32_t index) {
     return *(T*)((const char*)pData + stride * index);

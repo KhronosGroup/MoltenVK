@@ -22,7 +22,6 @@
 #include "MVKVector.h"
 #include <vector>
 
-class MVKDescriptor;
 class MVKDescriptorSet;
 class MVKDescriptorSetLayout;
 class MVKCommandEncoder;
@@ -117,9 +116,6 @@ public:
 	~MVKDescriptorSetLayoutBinding() override;
 
 protected:
-	friend class MVKDescriptorSet;
-
-	MVKDescriptor* newDescriptor();
 	void initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
 									   MVKShaderStageResourceBinding* pDescSetCounts,
 									   const VkDescriptorSetLayoutBinding* pBinding);
