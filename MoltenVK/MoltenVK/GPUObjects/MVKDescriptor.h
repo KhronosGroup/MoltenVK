@@ -140,6 +140,8 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
 
+	virtual VkDescriptorType getDescriptorType() = 0;
+
 	/** Encodes this descriptor (based on its layout binding index) on the the command encoder. */
 	virtual void bind(MVKCommandEncoder* cmdEncoder,
 					  VkDescriptorType descriptorType,
@@ -180,6 +182,11 @@ public:
 	/** Sets the binding layout. */
 	virtual void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {}
 
+	/** Resets any internal content. */
+	virtual void reset() {}
+
+	~MVKDescriptor() { reset(); }
+
 };
 
 
@@ -212,7 +219,9 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
-	~MVKBufferDescriptor();
+	void reset() override;
+
+	~MVKBufferDescriptor() { reset(); }
 
 protected:
 	MVKBuffer* _mvkBuffer = nullptr;
@@ -222,12 +231,50 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKInlineUniformDescriptor
+#pragma mark MVKUniformBufferDescriptor
+
+class MVKUniformBufferDescriptor : public MVKBufferDescriptor {
+public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER; }
+};
+
+
+#pragma mark -
+#pragma mark MVKUniformBufferDynamicDescriptor
+
+class MVKUniformBufferDynamicDescriptor : public MVKBufferDescriptor {
+public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC; }
+};
+
+
+#pragma mark -
+#pragma mark MVKStorageBufferDescriptor
+
+class MVKStorageBufferDescriptor : public MVKBufferDescriptor {
+public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER; }
+};
+
+
+#pragma mark -
+#pragma mark MVKStorageBufferDynamicDescriptor
+
+class MVKStorageBufferDynamicDescriptor : public MVKBufferDescriptor {
+public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC; }
+};
+
+
+#pragma mark -
+#pragma mark MVKInlineUniformBlockDescriptor
 
 /** Represents a Vulkan descriptor tracking an inline block of uniform data. */
-class MVKInlineUniformDescriptor : public MVKDescriptor {
+class MVKInlineUniformBlockDescriptor : public MVKDescriptor {
 
 public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT; }
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
@@ -250,11 +297,13 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
-	~MVKInlineUniformDescriptor();
+	void reset() override;
+
+	~MVKInlineUniformBlockDescriptor() { reset(); }
 
 protected:
 	id<MTLBuffer> _mtlBuffer = nil;
-	uint32_t _dataSize;
+	uint32_t _dataSize = 0;
 };
 
 
@@ -287,11 +336,40 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
-	~MVKImageDescriptor();
+	void reset() override;
+
+	~MVKImageDescriptor() { reset(); }
 
 protected:
 	MVKImageView* _mvkImageView = nullptr;
 	VkImageLayout _imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+};
+
+
+#pragma mark -
+#pragma mark MVKSampledImageDescriptor
+
+class MVKSampledImageDescriptor : public MVKImageDescriptor {
+public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE; }
+};
+
+
+#pragma mark -
+#pragma mark MVKStorageImageDescriptor
+
+class MVKStorageImageDescriptor : public MVKImageDescriptor {
+public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE; }
+};
+
+
+#pragma mark -
+#pragma mark MVKInputAttachmentDescriptor
+
+class MVKInputAttachmentDescriptor : public MVKImageDescriptor {
+public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT; }
 };
 
 
@@ -332,7 +410,9 @@ protected:
 
 	void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index);
 
-	virtual ~MVKSamplerDescriptorMixin();
+	void reset();
+
+	~MVKSamplerDescriptorMixin() { reset(); }
 
 	MVKSampler* _mvkSampler = nullptr;
 	bool _hasDynamicSampler = true;
@@ -346,6 +426,8 @@ protected:
 class MVKSamplerDescriptor : public MVKDescriptor, public MVKSamplerDescriptorMixin {
 
 public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_SAMPLER; }
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
@@ -369,6 +451,10 @@ public:
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
 	void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) override;
+
+	void reset() override;
+
+	~MVKSamplerDescriptor() { reset(); }
 
 };
 
@@ -380,6 +466,8 @@ public:
 class MVKCombinedImageSamplerDescriptor : public MVKImageDescriptor, public MVKSamplerDescriptorMixin {
 
 public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; }
+
 	void bind(MVKCommandEncoder* cmdEncoder,
 			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
@@ -403,6 +491,10 @@ public:
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
 	void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) override;
+
+	void reset() override;
+
+	~MVKCombinedImageSamplerDescriptor() { reset(); }
 
 };
 
@@ -436,8 +528,28 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
-	~MVKTexelBufferDescriptor();
+	void reset() override;
+
+	~MVKTexelBufferDescriptor() { reset(); }
 
 protected:
 	MVKBufferView* _mvkBufferView = nullptr;
+};
+
+
+#pragma mark -
+#pragma mark MVKUniformTexelBufferDescriptor
+
+class MVKUniformTexelBufferDescriptor : public MVKTexelBufferDescriptor {
+public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER; }
+};
+
+
+#pragma mark -
+#pragma mark MVKStorageTexelBufferDescriptor
+
+class MVKStorageTexelBufferDescriptor : public MVKTexelBufferDescriptor {
+public:
+	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER; }
 };

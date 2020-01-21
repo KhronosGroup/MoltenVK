@@ -142,9 +142,70 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKDescriptorPool
+#pragma mark MVKDescriptorTypePreallocation
 
-typedef MVKDeviceObjectPool<MVKDescriptorSet> MVKDescriptorSetPool;
+/** Support class for MVKDescriptorPool that holds preallocated instances of a single concrete descriptor class. */
+template<class DescriptorClass>
+class MVKDescriptorTypePreallocation : public MVKBaseObject {
+
+public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
+
+	MVKDescriptorTypePreallocation(const VkDescriptorPoolCreateInfo* pCreateInfo,
+								   VkDescriptorType descriptorType);
+
+protected:
+	friend class MVKPreallocatedDescriptors;
+
+	VkResult allocateDescriptor(MVKDescriptor** pMVKDesc);
+	bool findDescriptor(uint32_t endIndex, MVKDescriptor** pMVKDesc);
+	void freeDescriptor(MVKDescriptor* mvkDesc);
+
+	std::vector<DescriptorClass> _descriptors;
+	std::vector<bool> _availability;
+	uint32_t _nextAvailableIndex;
+	bool _supportAvailability;
+};
+
+
+#pragma mark -
+#pragma mark MVKPreallocatedDescriptors
+
+/** Support class for MVKDescriptorPool that holds preallocated instances of all concrete descriptor classes. */
+class MVKPreallocatedDescriptors : public MVKBaseObject {
+
+public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
+
+	MVKPreallocatedDescriptors(const VkDescriptorPoolCreateInfo* pCreateInfo);
+
+protected:
+	friend class MVKDescriptorPool;
+
+	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
+	void freeDescriptor(MVKDescriptor* mvkDesc);
+
+	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;
+	MVKDescriptorTypePreallocation<MVKUniformBufferDynamicDescriptor> _uniformBufferDynamicDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageBufferDynamicDescriptor> _storageBufferDynamicDescriptors;
+	MVKDescriptorTypePreallocation<MVKInlineUniformBlockDescriptor> _inlineUniformBlockDescriptors;
+	MVKDescriptorTypePreallocation<MVKSampledImageDescriptor> _sampledImageDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageImageDescriptor> _storageImageDescriptors;
+	MVKDescriptorTypePreallocation<MVKInputAttachmentDescriptor> _inputAttachmentDescriptors;
+	MVKDescriptorTypePreallocation<MVKSamplerDescriptor> _samplerDescriptors;
+	MVKDescriptorTypePreallocation<MVKCombinedImageSamplerDescriptor> _combinedImageSamplerDescriptors;
+	MVKDescriptorTypePreallocation<MVKUniformTexelBufferDescriptor> _uniformTexelBufferDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
+};
+
+
+#pragma mark -
+#pragma mark MVKDescriptorPool
 
 /** Represents a Vulkan descriptor pool. */
 class MVKDescriptorPool : public MVKVulkanAPIDeviceObject {
@@ -183,6 +244,7 @@ protected:
 
 	uint32_t _maxSets;
 	std::unordered_set<MVKDescriptorSet*> _allocatedSets;
+	MVKPreallocatedDescriptors* _preallocatedDescriptors;
 };
 
 

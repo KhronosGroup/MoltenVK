@@ -20,9 +20,6 @@
 #include "MVKDescriptorSet.h"
 #include "MVKBuffer.h"
 
-using namespace std;
-using namespace mvk;
-
 
 #pragma mark MVKShaderStageResourceBinding
 
@@ -45,15 +42,15 @@ MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::operator+= (const 
 #pragma mark MVKShaderResourceBinding
 
 uint32_t MVKShaderResourceBinding::getMaxBufferIndex() {
-	return max({stages[kMVKShaderStageVertex].bufferIndex, stages[kMVKShaderStageTessCtl].bufferIndex, stages[kMVKShaderStageTessEval].bufferIndex, stages[kMVKShaderStageFragment].bufferIndex, stages[kMVKShaderStageCompute].bufferIndex});
+	return std::max({stages[kMVKShaderStageVertex].bufferIndex, stages[kMVKShaderStageTessCtl].bufferIndex, stages[kMVKShaderStageTessEval].bufferIndex, stages[kMVKShaderStageFragment].bufferIndex, stages[kMVKShaderStageCompute].bufferIndex});
 }
 
 uint32_t MVKShaderResourceBinding::getMaxTextureIndex() {
-	return max({stages[kMVKShaderStageVertex].textureIndex, stages[kMVKShaderStageTessCtl].textureIndex, stages[kMVKShaderStageTessEval].textureIndex, stages[kMVKShaderStageFragment].textureIndex, stages[kMVKShaderStageCompute].textureIndex});
+	return std::max({stages[kMVKShaderStageVertex].textureIndex, stages[kMVKShaderStageTessCtl].textureIndex, stages[kMVKShaderStageTessEval].textureIndex, stages[kMVKShaderStageFragment].textureIndex, stages[kMVKShaderStageCompute].textureIndex});
 }
 
 uint32_t MVKShaderResourceBinding::getMaxSamplerIndex() {
-	return max({stages[kMVKShaderStageVertex].samplerIndex, stages[kMVKShaderStageTessCtl].samplerIndex, stages[kMVKShaderStageTessEval].samplerIndex, stages[kMVKShaderStageFragment].samplerIndex, stages[kMVKShaderStageCompute].samplerIndex});
+	return std::max({stages[kMVKShaderStageVertex].samplerIndex, stages[kMVKShaderStageTessCtl].samplerIndex, stages[kMVKShaderStageTessEval].samplerIndex, stages[kMVKShaderStageFragment].samplerIndex, stages[kMVKShaderStageCompute].samplerIndex});
 }
 
 MVKShaderResourceBinding MVKShaderResourceBinding::operator+ (const MVKShaderResourceBinding& rhs) {
@@ -303,7 +300,7 @@ bool MVKDescriptorSetLayoutBinding::validate(MVKSampler* mvkSampler) {
 	return true;
 }
 
-void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context,
+void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
                                                                    MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                                                    uint32_t dslIndex) {
 
@@ -534,16 +531,20 @@ void MVKBufferDescriptor::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-MVKBufferDescriptor::~MVKBufferDescriptor() {
+void MVKBufferDescriptor::reset() {
 	if (_mvkBuffer) { _mvkBuffer->release(); }
+	_mvkBuffer = nullptr;
+	_buffOffset = 0;
+	_buffRange = 0;
+	MVKDescriptor::reset();
 }
 
 
 #pragma mark -
-#pragma mark MVKInlineUniformDescriptor
+#pragma mark MVKInlineUniformBlockDescriptor
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKInlineUniformDescriptor::bind(MVKCommandEncoder* cmdEncoder,
+void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 									  VkDescriptorType descriptorType,
 									  uint32_t descriptorIndex,
 									  bool stages[],
@@ -574,7 +575,7 @@ void MVKInlineUniformDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 	}
 }
 
-void MVKInlineUniformDescriptor::write(MVKDescriptorSet* mvkDescSet,
+void MVKInlineUniformBlockDescriptor::write(MVKDescriptorSet* mvkDescSet,
 									   VkDescriptorType descriptorType,
 									   uint32_t srcIndex,
 									   size_t stride,
@@ -602,7 +603,7 @@ void MVKInlineUniformDescriptor::write(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-void MVKInlineUniformDescriptor::read(MVKDescriptorSet* mvkDescSet,
+void MVKInlineUniformBlockDescriptor::read(MVKDescriptorSet* mvkDescSet,
 									  VkDescriptorType descriptorType,
 									  uint32_t dstIndex,
 									  VkDescriptorImageInfo* pImageInfo,
@@ -628,8 +629,11 @@ void MVKInlineUniformDescriptor::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-MVKInlineUniformDescriptor::~MVKInlineUniformDescriptor() {
+void MVKInlineUniformBlockDescriptor::reset() {
 	[_mtlBuffer release];
+	_mtlBuffer = nil;
+	_dataSize = 0;
+	MVKDescriptor::reset();
 }
 
 
@@ -726,8 +730,11 @@ void MVKImageDescriptor::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-MVKImageDescriptor::~MVKImageDescriptor() {
+void MVKImageDescriptor::reset() {
 	if (_mvkImageView) { _mvkImageView->release(); }
+	_mvkImageView = nullptr;
+	_imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+	MVKDescriptor::reset();
 }
 
 
@@ -845,8 +852,10 @@ void MVKSamplerDescriptorMixin::setLayout(MVKDescriptorSetLayoutBinding* dslBind
 	if (oldSamp) { oldSamp->release(); }
 }
 
-MVKSamplerDescriptorMixin::~MVKSamplerDescriptorMixin() {
+void MVKSamplerDescriptorMixin::reset() {
 	if (_mvkSampler) { _mvkSampler->release(); }
+	_mvkSampler = nullptr;
+	_hasDynamicSampler = true;
 }
 
 
@@ -911,6 +920,11 @@ void MVKSamplerDescriptor::read(MVKDescriptorSet* mvkDescSet,
 void MVKSamplerDescriptor::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
 	MVKDescriptor::setLayout(dslBinding, index);
 	MVKSamplerDescriptorMixin::setLayout(dslBinding, index);
+}
+
+void MVKSamplerDescriptor::reset() {
+	MVKSamplerDescriptorMixin::reset();
+	MVKDescriptor::reset();
 }
 
 
@@ -980,6 +994,11 @@ void MVKCombinedImageSamplerDescriptor::read(MVKDescriptorSet* mvkDescSet,
 void MVKCombinedImageSamplerDescriptor::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
 	MVKImageDescriptor::setLayout(dslBinding, index);
 	MVKSamplerDescriptorMixin::setLayout(dslBinding, index);
+}
+
+void MVKCombinedImageSamplerDescriptor::reset() {
+	MVKSamplerDescriptorMixin::reset();
+	MVKImageDescriptor::reset();
 }
 
 
@@ -1062,6 +1081,8 @@ void MVKTexelBufferDescriptor::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
-MVKTexelBufferDescriptor::~MVKTexelBufferDescriptor() {
+void MVKTexelBufferDescriptor::reset() {
 	if (_mvkBufferView) { _mvkBufferView->release(); }
+	_mvkBufferView = nullptr;
+	MVKDescriptor::reset();
 }
