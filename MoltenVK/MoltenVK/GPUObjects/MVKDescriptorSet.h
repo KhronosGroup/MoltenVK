@@ -162,6 +162,7 @@ protected:
 	VkResult allocateDescriptor(MVKDescriptor** pMVKDesc);
 	bool findDescriptor(uint32_t endIndex, MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
+	void reset();
 
 	std::vector<DescriptorClass> _descriptors;
 	std::vector<bool> _availability;
@@ -188,6 +189,7 @@ protected:
 
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
+	void reset();
 
 	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;

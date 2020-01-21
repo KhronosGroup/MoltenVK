@@ -144,6 +144,15 @@ typedef unsigned long MTLLanguageVersion;
  *    on native 1D textures, including not being renderable, clearable, or permitting mipmaps.
  *    Using a Metal 2D texture allows Vulkan 1D textures to support this additional functionality.
  *    This setting is enabled by default, and MoltenVK will use a Metal 2D texture for each Vulkan 1D image.
+ *
+ * 7. The MVK_CONFIG_PREALLOCATE_DESCRIPTORS runtime environment variable or MoltenVK compile-time
+ *    build setting controls whether MoltenVK should preallocate memory in each VkDescriptorPool
+ *    according to the values of the VkDescriptorPoolSize parameters. Doing so may improve
+ *    descriptor set allocation performance at a cost of preallocated application memory.
+ *    If this environment variable is disabled, the descriptors required for a descriptor set will
+ *    be dynamically allocated in application memory when the descriptor set itself is allocated.
+ *    This setting is disabled by default, and MoltenVK will dynamically allocate descriptors
+ *    when the containing descriptor set is allocated.
  */
 typedef struct {
 

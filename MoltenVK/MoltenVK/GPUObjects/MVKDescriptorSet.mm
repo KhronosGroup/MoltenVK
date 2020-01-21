@@ -355,6 +355,11 @@ void MVKDescriptorTypePreallocation<DescriptorClass>::freeDescriptor(MVKDescript
 }
 
 template<typename DescriptorClass>
+void MVKDescriptorTypePreallocation<DescriptorClass>::reset() {
+	_nextAvailableIndex = 0;
+}
+
+template<typename DescriptorClass>
 MVKDescriptorTypePreallocation<DescriptorClass>::MVKDescriptorTypePreallocation(const VkDescriptorPoolCreateInfo* pCreateInfo,
 																				VkDescriptorType descriptorType) {
 	// There may be more than  one poolSizeCount instance for the desired VkDescriptorType.
@@ -466,6 +471,21 @@ void MVKPreallocatedDescriptors::freeDescriptor(MVKDescriptor* mvkDesc) {
 	}
 }
 
+void MVKPreallocatedDescriptors::reset() {
+	_uniformBufferDescriptors.reset();
+	_storageBufferDescriptors.reset();
+	_uniformBufferDynamicDescriptors.reset();
+	_storageBufferDynamicDescriptors.reset();
+	_inlineUniformBlockDescriptors.reset();
+	_sampledImageDescriptors.reset();
+	_storageImageDescriptors.reset();
+	_inputAttachmentDescriptors.reset();
+	_samplerDescriptors.reset();
+	_combinedImageSamplerDescriptors.reset();
+	_uniformTexelBufferDescriptors.reset();
+	_storageTexelBufferDescriptors.reset();
+}
+
 MVKPreallocatedDescriptors::MVKPreallocatedDescriptors(const VkDescriptorPoolCreateInfo* pCreateInfo) :
 	_uniformBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
 	_storageBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
@@ -521,6 +541,7 @@ VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescripto
 VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
 	for (auto& mvkDS : _allocatedSets) { freeDescriptorSet(mvkDS); }
 	_allocatedSets.clear();
+	if (_preallocatedDescriptors) { _preallocatedDescriptors->reset(); }
 	return VK_SUCCESS;
 }
 

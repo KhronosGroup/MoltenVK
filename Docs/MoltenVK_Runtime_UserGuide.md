@@ -352,17 +352,21 @@ There are three mechanisms for setting the values of the **MoltenVK** configurat
 - Application runtime environment variables.
 - Build settings at **MoltenVK** build time.
 
-To change the **MoltenVK** configuration settings at runtime using a programmatic API, use the 
-`vkGetMoltenVKConfigurationMVK()` and `vkSetMoltenVKConfigurationMVK()` functions to retrieve, 
-modify, and set a copy of the `MVKConfiguration` structure.
+To change some of the **MoltenVK** configuration settings at runtime using a programmatic API, 
+use the `vkGetMoltenVKConfigurationMVK()` and `vkSetMoltenVKConfigurationMVK()` functions to 
+retrieve, modify, and set a copy of the `MVKConfiguration` structure.
 
-The initial value of each of the configuration settings can established at runtime 
+The initial value of each of the configuration settings can be established at runtime 
 by a corresponding environment variable, or if the environment variable is not set, 
 by a corresponding build setting at the time **MoltenVK** is compiled. The environment 
 variable and build setting for each configuration parameter share the same name.
 
-See the description of the `MVKConfiguration` structure parameters in the `vk_mvk_moltenvk.h` 
-file for more info about configuring and optimizing **MoltenVK** at build time or runtime.
+There are also a number of additional runtime environment variables that are not included in the
+`MVKConfiguration` structure, but that also control **MoltenVK** behaviour.
+
+See the description of the environment variables and the `MVKConfiguration` structure parameters 
+in the `vk_mvk_moltenvk.h` file for more info about configuring and optimizing **MoltenVK** 
+at runtime or build time.
 
 
 <a name="shaders"></a>
