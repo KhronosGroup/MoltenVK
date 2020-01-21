@@ -17,15 +17,19 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.40
 ---------------
 
-Released TBD
+Released 2020/01/21
 
+- Refactor descriptor management to reduce memory footprint and fix caching leak.
+- Add `MVK_CONFIG_PREALLOCATE_DESCRIPTORS` environment variable to support preallocated 
+  descriptor pooling within a `VkDescriptorPool` via the `VkDescriptorPoolSize` values.
 - Fix crash when app does not use queue family zero.
 - Fix buffer offset in `vkCmdPushDescriptorSet()` for non-dedicated buffer memory.
 - Fix Metal validation error on push constant sizing differences between C and MSL structs.
 - Track performance of `CAMetalLayer nextDrawable` call.
 - Document recommendation to use 3 swapchain images, particularly with full-screen rendering.
+- Update `MoltenVK_Runtime_UserGuide.md` to better explain runtime environment variables.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `24`.
-- Update copyright to 2020.
+- Update copyright notices to year 2020.
 
 
 
