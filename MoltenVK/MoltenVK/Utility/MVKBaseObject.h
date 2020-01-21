@@ -117,6 +117,9 @@ public:
         if (_configurationResult == VK_SUCCESS) { _configurationResult = vkResult; }
     }
 
+	/** Returns whether the configuration was successful. */
+	inline bool wasConfigurationSuccessful() { return _configurationResult == VK_SUCCESS; }
+
     /** Resets the indication of the success of the configuration of this instance back to VK_SUCCESS. */
     inline void clearConfigurationResult() { _configurationResult = VK_SUCCESS; }
 

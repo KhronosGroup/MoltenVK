@@ -1143,7 +1143,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 	// If compareEnable is true, but dynamic samplers with depth compare are not available
 	// on this device, this sampler must only be used as an immutable sampler, and will
 	// be automatically hardcoded into the shader MSL. An error will be triggered if this
-	// sampler is used to update or push a descriptor binding.
+	// sampler is used to update or push a descriptor.
 	if (pCreateInfo->compareEnable && !_requiresConstExprSampler) {
 		mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 	}

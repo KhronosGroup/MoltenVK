@@ -18,110 +18,14 @@
 
 #pragma once
 
-#include "MVKDevice.h"
-#include "MVKImage.h"
-#include "MVKVector.h"
-#include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include "MVKDescriptor.h"
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
 
 class MVKDescriptorPool;
-class MVKDescriptorBinding;
-class MVKDescriptorSet;
-class MVKDescriptorSetLayout;
 class MVKPipelineLayout;
 class MVKCommandEncoder;
-
-
-#pragma mark MVKShaderStageResourceBinding
-
-/** Indicates the Metal resource indexes used by a single shader stage in a descriptor binding. */
-typedef struct MVKShaderStageResourceBinding {
-	uint32_t bufferIndex = 0;
-	uint32_t textureIndex = 0;
-	uint32_t samplerIndex = 0;
-
-	MVKShaderStageResourceBinding operator+ (const MVKShaderStageResourceBinding& rhs);
-	MVKShaderStageResourceBinding& operator+= (const MVKShaderStageResourceBinding& rhs);
-
-} MVKShaderStageResourceBinding;
-
-
-#pragma mark MVKShaderResourceBinding
-
-/** Indicates the Metal resource indexes used by each shader stage in a descriptor binding. */
-typedef struct MVKShaderResourceBinding {
-	MVKShaderStageResourceBinding stages[kMVKShaderStageMax];
-
-	uint32_t getMaxBufferIndex();
-	uint32_t getMaxTextureIndex();
-	uint32_t getMaxSamplerIndex();
-
-	MVKShaderResourceBinding operator+ (const MVKShaderResourceBinding& rhs);
-	MVKShaderResourceBinding& operator+= (const MVKShaderResourceBinding& rhs);
-
-} MVKShaderResourceBinding;
-
-
-#pragma mark -
-#pragma mark MVKDescriptorSetLayoutBinding
-
-/** Represents a Vulkan descriptor set layout binding. */
-class MVKDescriptorSetLayoutBinding : public MVKBaseDeviceObject {
-
-public:
-
-	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override;
-
-	/** Encodes this binding layout and the specified descriptor set binding on the specified command encoder. */
-    void bind(MVKCommandEncoder* cmdEncoder,
-              MVKDescriptorBinding& descBinding,
-              MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-              MVKVector<uint32_t>& dynamicOffsets,
-              uint32_t* pDynamicOffsetIndex);
-
-    /** Encodes this binding layout and the specified descriptor binding on the specified command encoder immediately. */
-    void push(MVKCommandEncoder* cmdEncoder,
-              uint32_t& dstArrayElement,
-              uint32_t& descriptorCount,
-              uint32_t& descriptorsPushed,
-              VkDescriptorType descriptorType,
-              size_t stride,
-              const void* pData,
-              MVKShaderResourceBinding& dslMTLRezIdxOffsets);
-
-	/** Populates the specified shader converter context, at the specified descriptor set binding. */
-	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
-                                        MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                                        uint32_t dslIndex);
-
-	/** Constructs an instance. */
-	MVKDescriptorSetLayoutBinding(MVKDevice* device,
-								  MVKDescriptorSetLayout* layout,
-								  const VkDescriptorSetLayoutBinding* pBinding);
-
-	MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding);
-
-	/** Destuctor. */
-	~MVKDescriptorSetLayoutBinding() override;
-
-protected:
-	friend class MVKDescriptorBinding;
-	friend class MVKPipelineLayout;
-
-	void initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
-									   MVKShaderStageResourceBinding* pDescSetCounts,
-									   const VkDescriptorSetLayoutBinding* pBinding);
-	bool validate(MVKSampler* mvkSampler);
-
-	MVKDescriptorSetLayout* _layout;
-	VkDescriptorSetLayoutBinding _info;
-	std::vector<MVKSampler*> _immutableSamplers;
-	MVKShaderResourceBinding _mtlResourceIndexOffsets;
-	bool _applyToStage[kMVKShaderStageMax];
-};
 
 
 #pragma mark -
@@ -169,8 +73,6 @@ public:
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
-	~MVKDescriptorSetLayout();
-
 protected:
 
 	friend class MVKDescriptorSetLayoutBinding;
@@ -179,109 +81,15 @@ protected:
 	friend class MVKDescriptorPool;
 
 	void propogateDebugName() override {}
-	void addDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.insert(mvkDescPool); }
-	void removeDescriptorPool(MVKDescriptorPool* mvkDescPool) { _descriptorPools.erase(mvkDescPool); }
+	inline uint32_t getDescriptorCount() { return _descriptorCount; }
+	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex);
+	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 
-	MVKVectorInline<MVKDescriptorSetLayoutBinding, 1> _bindings;
+	std::vector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
-	std::unordered_set<MVKDescriptorPool*> _descriptorPools;
-	bool _isPushDescriptorLayout : 1;
-};
-
-
-#pragma mark -
-#pragma mark MVKDescriptorBinding
-
-/** Represents a Vulkan descriptor binding. */
-class MVKDescriptorBinding : public MVKBaseObject {
-
-public:
-
-	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override;
-
-	/**
-	 * Updates the internal element bindings from the specified content.
-	 *
-	 * Depending on the descriptor type of the descriptor set, the binding content is 
-	 * extracted from one of the specified pImageInfo, pBufferInfo, or pTexelBufferView 
-	 * arrays, and the other arrays are ignored (and may be a null pointer).
-	 *
-	 * The srcStartIndex parameter indicates the index of the initial pDescriptor element
-	 * at which to start reading, and the dstStartIndex parameter indicates the index of 
-	 * the initial internal element at which to start writing.
-	 * 
-	 * The count parameter indicates how many internal elements should be updated, and 
-	 * may be larger than the number of descriptors that can be updated in this instance.
-	 * If count is larger than the number of internal elements remaining after dstStartIndex,
-	 * only the remaining elements will be updated, and the number of pDescriptors that were
-	 * not read will be returned, so that the remaining unread pDescriptors can be read by 
-	 * another MVKDescriptorBinding instance within the same descriptor set. If all of the
-	 * remaining pDescriptors are read by this intance, this function returns zero, indicating
-	 * that there is nothing left to be read by another MVKDescriptorBinding instance.
-	 */
-	uint32_t writeBindings(uint32_t srcStartIndex,
-						   uint32_t dstStartIndex,
-						   uint32_t count,
-						   size_t stride,
-						   const void* pData);
-
-	/**
-	 * Updates the specified content arrays from the internal element bindings.
-	 *
-	 * Depending on the descriptor type of the descriptor set, the binding content is
-	 * placed into one of the specified pImageInfo, pBufferInfo, or pTexelBufferView 
-	 * arrays, and the other arrays are ignored (and may be a null pointer).
-	 *
-	 * The srcStartIndex parameter indicates the index of the initial internal element 
-	 * at which to start reading, and the dstStartIndex parameter indicates the index of
-	 * the initial pDescriptor element at which to start writing.
-	 *
-	 * The count parameter indicates how many internal elements should be read, and may
-	 * be larger than the number of descriptors that can be read from this instance. 
-	 * If count is larger than the number of internal elements remaining after srcStartIndex,
-	 * only the remaining elements will be read, and the number of pDescriptors that were not
-	 * updated will be returned, so that the remaining pDescriptors can be updated by another
-	 * MVKDescriptorBinding instance within the same descriptor set. If all of the remaining
-	 * pDescriptors are updated by this intance, this function returns zero, indicating that
-	 * there is nothing left to be updated by another MVKDescriptorBinding instance.
-	 */
-	uint32_t readBindings(uint32_t srcStartIndex,
-						  uint32_t dstStartIndex,
-						  uint32_t count,
-						  VkDescriptorType& descType,
-						  VkDescriptorImageInfo* pImageInfo,
-						  VkDescriptorBufferInfo* pBufferInfo,
-						  VkBufferView* pTexelBufferView,
-						  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock);
-
-    /** Returns whether this instance represents the specified Vulkan binding point. */
-    bool hasBinding(uint32_t binding);
-
-	/** Constructs an instance. */
-	MVKDescriptorBinding(MVKDescriptorSet* pDescSet, MVKDescriptorSetLayoutBinding* pBindingLayout);
-
-	/** Destructor. */
-	~MVKDescriptorBinding();
-
-protected:
-	friend class MVKDescriptorSetLayoutBinding;
-
-	void initMTLSamplers(MVKDescriptorSetLayoutBinding* pBindingLayout);
-	bool validate(MVKSampler* mvkSampler) { return _pBindingLayout->validate(mvkSampler); }
-
-	MVKDescriptorSet* _pDescSet;
-	MVKDescriptorSetLayoutBinding* _pBindingLayout;
-	std::vector<VkDescriptorImageInfo> _imageBindings;
-	std::vector<VkDescriptorBufferInfo> _bufferBindings;
-    std::vector<VkWriteDescriptorSetInlineUniformBlockEXT> _inlineBindings;
-	std::vector<VkBufferView> _texelBufferBindings;
-	std::vector<id<MTLBuffer>> _mtlBuffers;
-	std::vector<NSUInteger> _mtlBufferOffsets;
-	std::vector<id<MTLTexture>> _mtlTextures;
-	std::vector<id<MTLSamplerState>> _mtlSamplers;
-	bool _hasDynamicSamplers;
+	uint32_t _descriptorCount;
+	bool _isPushDescriptorLayout;
 };
 
 
@@ -289,7 +97,7 @@ protected:
 #pragma mark MVKDescriptorSet
 
 /** Represents a Vulkan descriptor set. */
-class MVKDescriptorSet : public MVKVulkanAPIDeviceObject, public MVKLinkableMixin<MVKDescriptorSet> {
+class MVKDescriptorSet : public MVKVulkanAPIDeviceObject {
 
 public:
 
@@ -299,42 +107,105 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT; }
 
+	/** Returns the descriptor type for the specified binding number. */
+	VkDescriptorType getDescriptorType(uint32_t binding);
+
 	/** Updates the resource bindings in this instance from the specified content. */
 	template<typename DescriptorAction>
-	void writeDescriptorSets(const DescriptorAction* pDescriptorAction,
-							 size_t stride,
-							 const void* pData);
+	void write(const DescriptorAction* pDescriptorAction, size_t stride, const void* pData);
 
 	/** 
 	 * Reads the resource bindings defined in the specified content 
 	 * from this instance into the specified collection of bindings.
 	 */
-	void readDescriptorSets(const VkCopyDescriptorSet* pDescriptorCopies,
-							VkDescriptorType& descType,
-							VkDescriptorImageInfo* pImageInfo,
-							VkDescriptorBufferInfo* pBufferInfo,
-							VkBufferView* pTexelBufferView,
-							VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
+	void read(const VkCopyDescriptorSet* pDescriptorCopies,
+			  VkDescriptorImageInfo* pImageInfo,
+			  VkDescriptorBufferInfo* pBufferInfo,
+			  VkBufferView* pTexelBufferView,
+			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
-	MVKDescriptorSet(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
+	MVKDescriptorSet(MVKDescriptorSetLayout* layout, MVKDescriptorPool* pool);
+
+	~MVKDescriptorSet() override;
 
 protected:
-	friend class MVKDescriptorSetLayout;
+	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKDescriptorPool;
 
 	void propogateDebugName() override {}
-	void setLayout(MVKDescriptorSetLayout* layout);
-    MVKDescriptorBinding* getBinding(uint32_t binding);
+	inline MVKDescriptor* getDescriptor(uint32_t index) { return _descriptors[index]; }
 
-	MVKDescriptorSetLayout* _pLayout = nullptr;
-	MVKVectorInline<MVKDescriptorBinding, 1> _bindings;
+	MVKDescriptorSetLayout* _layout;
+	MVKDescriptorPool* _pool;
+	std::vector<MVKDescriptor*> _descriptors;
+};
+
+
+#pragma mark -
+#pragma mark MVKDescriptorTypePreallocation
+
+/** Support class for MVKDescriptorPool that holds preallocated instances of a single concrete descriptor class. */
+template<class DescriptorClass>
+class MVKDescriptorTypePreallocation : public MVKBaseObject {
+
+public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
+
+	MVKDescriptorTypePreallocation(const VkDescriptorPoolCreateInfo* pCreateInfo,
+								   VkDescriptorType descriptorType);
+
+protected:
+	friend class MVKPreallocatedDescriptors;
+
+	VkResult allocateDescriptor(MVKDescriptor** pMVKDesc);
+	bool findDescriptor(uint32_t endIndex, MVKDescriptor** pMVKDesc);
+	void freeDescriptor(MVKDescriptor* mvkDesc);
+
+	std::vector<DescriptorClass> _descriptors;
+	std::vector<bool> _availability;
+	uint32_t _nextAvailableIndex;
+	bool _supportAvailability;
+};
+
+
+#pragma mark -
+#pragma mark MVKPreallocatedDescriptors
+
+/** Support class for MVKDescriptorPool that holds preallocated instances of all concrete descriptor classes. */
+class MVKPreallocatedDescriptors : public MVKBaseObject {
+
+public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
+
+	MVKPreallocatedDescriptors(const VkDescriptorPoolCreateInfo* pCreateInfo);
+
+protected:
+	friend class MVKDescriptorPool;
+
+	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
+	void freeDescriptor(MVKDescriptor* mvkDesc);
+
+	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;
+	MVKDescriptorTypePreallocation<MVKUniformBufferDynamicDescriptor> _uniformBufferDynamicDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageBufferDynamicDescriptor> _storageBufferDynamicDescriptors;
+	MVKDescriptorTypePreallocation<MVKInlineUniformBlockDescriptor> _inlineUniformBlockDescriptors;
+	MVKDescriptorTypePreallocation<MVKSampledImageDescriptor> _sampledImageDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageImageDescriptor> _storageImageDescriptors;
+	MVKDescriptorTypePreallocation<MVKInputAttachmentDescriptor> _inputAttachmentDescriptors;
+	MVKDescriptorTypePreallocation<MVKSamplerDescriptor> _samplerDescriptors;
+	MVKDescriptorTypePreallocation<MVKCombinedImageSamplerDescriptor> _combinedImageSamplerDescriptors;
+	MVKDescriptorTypePreallocation<MVKUniformTexelBufferDescriptor> _uniformTexelBufferDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
 };
 
 
 #pragma mark -
 #pragma mark MVKDescriptorPool
-
-typedef MVKDeviceObjectPool<MVKDescriptorSet> MVKDescriptorSetPool;
 
 /** Represents a Vulkan descriptor pool. */
 class MVKDescriptorPool : public MVKVulkanAPIDeviceObject {
@@ -358,23 +229,22 @@ public:
 	/** Destoys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
-	/** Removes the pool associated with a descriptor set layout. */
-	void removeDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout);
-
-	/** Constructs an instance for the specified device. */
 	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
-	/** Destructor. */
 	~MVKDescriptorPool() override;
 
 protected:
+	friend class MVKDescriptorSet;
+
 	void propogateDebugName() override {}
-	MVKDescriptorSetPool* getDescriptorSetPool(MVKDescriptorSetLayout* mvkDescSetLayout);
-	void returnDescriptorSet(MVKDescriptorSet* mvkDescSet);
+	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, VkDescriptorSet* pVKDS);
+	void freeDescriptorSet(MVKDescriptorSet* mvkDS);
+	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
+	void freeDescriptor(MVKDescriptor* mvkDesc);
 
 	uint32_t _maxSets;
 	std::unordered_set<MVKDescriptorSet*> _allocatedSets;
-	std::unordered_map<MVKDescriptorSetLayout*, MVKDescriptorSetPool*> _descriptorSetPools;
+	MVKPreallocatedDescriptors* _preallocatedDescriptors;
 };
 
 
@@ -438,7 +308,3 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 									   uint32_t descriptorSetIndex,
 									   uint32_t bindingIndex,
 									   MVKSampler* immutableSampler);
-
-
-
-
