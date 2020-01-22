@@ -149,7 +149,8 @@ The *SPIRV-Cross* library plays an important part in providing features for **_M
 you are developing features for **_MoltenVK_**, you may end up making changes to *SPIRV-Cross*. 
 
 If you make changes to the `SPIRV-Cross` repository, you can build a new version of the `libSPIRVCross.a`
-static library by opening the `ExternalDependencies.xcodeproj` *Xcode* project, and running the **_ExternalDependencies_** *Xcode* scheme. You can then rebuild **MoltenVK** to include the new library.
+static library by opening the `ExternalDependencies.xcodeproj` *Xcode* project, and running the 
+**_ExternalDependencies_** *Xcode* scheme. You can then rebuild **MoltenVK** to include the new library.
 
 While makng changes to the `SPIRV-Cross` repository, you can regression test your changes using the
 following steps:
@@ -201,8 +202,9 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
 
 5. Repeat *Step 4* for the `SPIRV-Tools-iOS` target within the `ExternalDependencies` *Xcode* project
 
-6. Update `Templates/spirv-tools/build.zip` from the contents of `External/glslang/External/spirv-tools/build`,
-   and test by running `./fetchDependencies --skip-spirv-tools-build`, and a **MoltenVK** build.
+6. Update `Templates/spirv-tools/build.zip` from the `*.h` and `*.inc` files in 
+   `External/glslang/External/spirv-tools/build`, remove hidden `.*` files, and test 
+   by running `./fetchDependencies --skip-spirv-tools-build`, and a **MoltenVK** build.
 
 
 

@@ -17,7 +17,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.40
 ---------------
 
-Released 2020/01/21
+Released 2020/01/22
 
 - Refactor descriptor management to reduce memory footprint and fix caching leak.
 - Add `MVK_CONFIG_PREALLOCATE_DESCRIPTORS` environment variable to support preallocated 
