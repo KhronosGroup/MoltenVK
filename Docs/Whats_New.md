@@ -17,7 +17,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.40
 ---------------
 
-Released 2020/01/21
+Released 2020/01/22
 
 - Refactor descriptor management to reduce memory footprint and fix caching leak.
 - Add `MVK_CONFIG_PREALLOCATE_DESCRIPTORS` environment variable to support preallocated 
@@ -25,11 +25,33 @@ Released 2020/01/21
 - Fix crash when app does not use queue family zero.
 - Fix buffer offset in `vkCmdPushDescriptorSet()` for non-dedicated buffer memory.
 - Fix Metal validation error on push constant sizing differences between C and MSL structs.
+- Use `MTLBuffer` when inline uniform block descriptor is written to instead of copying host-side bytes.
+- Fix `EXT_inline_uniform_block` when using push descriptor sets.
+- Merge buffer and inline unions to fix issue where binding inline descriptor would interfere with
+  future binds on the same set index in the same command buffer (now only used in push case anyway).
 - Track performance of `CAMetalLayer nextDrawable` call.
 - Document recommendation to use 3 swapchain images, particularly with full-screen rendering.
 - Update `MoltenVK_Runtime_UserGuide.md` to better explain runtime environment variables.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `24`.
 - Update copyright notices to year 2020.
+- Update dependency libraries to match *Vulkan SDK 1.2.131*.
+- Update to latest SPIRV-Cross version:
+	- MSL: Support `ClipDistance` as an input stage variable.
+	- MSL: Fix automatic binding allocation for image atomic buffers.
+	- MSL: Deal with packing vectors for vertex input/fragment output.
+	- MSL: Don't set `OrigID` when emitting component packed vectors.
+	- MSL: Add trivial tests for `Component` decoration.
+	- MSL: Deal with padded fragment output + `Component` decoration.
+	- MSL: Partially implement support for Component decoration in complex scenarios.
+	- MSL: Explicitly don't support component packing for tessellation.
+	- MSL: Deal with sign on wave `min/max`.
+	- MSL: Add support for force-activating IAB resources.
+	- Deal with illegal names in types as well.
+	- Basic implementation of `OpCopyLogical`.
+	- Fix sign handling for `S/UToF`.
+	- Fix uninitialized memory issue.
+	- Roll custom versions of `isalpha/isalnum`.
+	- Update license headers to year 2020.
 
 
 
