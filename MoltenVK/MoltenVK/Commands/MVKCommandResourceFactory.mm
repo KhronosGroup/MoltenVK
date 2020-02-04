@@ -189,7 +189,7 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"}"];
 
-		MVKLogDebug("\n%s", msl.UTF8String);
+//		MVKLogDebug("\n%s", msl.UTF8String);
 
 		return newMTLFunction(msl, funcName);
 	}

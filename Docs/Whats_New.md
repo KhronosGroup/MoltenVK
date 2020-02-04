@@ -14,6 +14,15 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.41
+---------------
+
+Released TBD
+
+- Fix issue where immutable samplers are removed during descriptor update.
+
+
+
 MoltenVK 1.0.40
 ---------------
 
