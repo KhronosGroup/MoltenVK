@@ -782,21 +782,18 @@ void MVKSamplerDescriptorMixin::write(MVKDescriptorSet* mvkDescSet,
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-			auto* oldSamp = _mvkSampler;
-
-			const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcIndex);
 			if (_hasDynamicSampler) {
+				auto* oldSamp = _mvkSampler;
+
+				const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcIndex);
 				_mvkSampler = (MVKSampler*)pImgInfo->sampler;
 				if (_mvkSampler && _mvkSampler->getRequiresConstExprSampler()) {
 					_mvkSampler->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUpdateDescriptorSets(): Depth texture samplers using a compare operation can only be used as immutable samplers on this device.");
 				}
-			} else {
-				_mvkSampler = nullptr;
+
+				if (_mvkSampler) { _mvkSampler->retain(); }
+				if (oldSamp) { oldSamp->release(); }
 			}
-
-			if (_mvkSampler) { _mvkSampler->retain(); }
-			if (oldSamp) { oldSamp->release(); }
-
 			break;
 		}
 
@@ -816,7 +813,7 @@ void MVKSamplerDescriptorMixin::read(MVKDescriptorSet* mvkDescSet,
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
 			auto& imgInfo = pImageInfo[dstIndex];
-			imgInfo.sampler = (VkSampler)_mvkSampler;
+			imgInfo.sampler = _hasDynamicSampler ? (VkSampler)_mvkSampler : nullptr;
 			break;
 		}
 

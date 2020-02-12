@@ -700,7 +700,7 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 					break;
 				}
 			}
-	}
+		}
 
 		const void* pData = getWriteParameters(pDescWrite->descriptorType, pDescWrite->pImageInfo,
 											   pDescWrite->pBufferInfo, pDescWrite->pTexelBufferView,
