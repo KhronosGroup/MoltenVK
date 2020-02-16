@@ -20,6 +20,8 @@ MoltenVK 1.0.41
 Released TBD
 
 - Fix issue where immutable samplers are removed during descriptor update.
+- Guard against Metal validation assertion from reuse of query number 
+  within a single `MTLRenderEncoder`.
 
 
 

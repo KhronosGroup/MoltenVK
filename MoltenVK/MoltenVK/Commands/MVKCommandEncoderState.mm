@@ -855,6 +855,12 @@ void MVKComputeResourcesCommandEncoderState::resetImpl() {
 
 void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
 
+	// If the occlusion query is not valid, don't set it up, and end the current query
+	if ( !validateOcclusionQuery(pQueryPool, query) ) {
+		endCurrentOcclusionQuery();
+		return;
+	}
+
     NSUInteger offset = pQueryPool->getVisibilityResultOffset(query);
     NSUInteger maxOffset = _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes;
 
@@ -868,10 +874,30 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
-    _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-    _mtlVisibilityResultOffset = 0;
+	endCurrentOcclusionQuery();
+}
 
-    markDirty();
+void MVKOcclusionQueryCommandEncoderState::endCurrentOcclusionQuery() {
+	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	_mtlVisibilityResultOffset = 0;
+
+	markDirty();
+}
+
+bool MVKOcclusionQueryCommandEncoderState::validateOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
+
+	// If the query was already used for the current Metal render encoder, log an error and return the query as invalid
+	id<MTLRenderCommandEncoder> currMTLRendEnc = _cmdEncoder->_mtlRenderEncoder;
+	if (currMTLRendEnc) {
+		MVKQueryKey qKey = {pQueryPool, query};
+		if (_mtlEncodersUsed[qKey] == currMTLRendEnc) {
+			MVKLogError("vkCmdBeginQuery(): Metal does not support using the same query more than once within a single Vulkan render subpass.");
+			return false;
+		}
+		_mtlEncodersUsed[qKey] = currMTLRendEnc;	// Remember which MTLRenderEncoder was used for this query
+	}
+
+	return true;
 }
 
 // If the MTLBuffer has not yet been set, see if the command buffer is configured with it

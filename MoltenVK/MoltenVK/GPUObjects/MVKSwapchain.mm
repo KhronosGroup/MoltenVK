@@ -37,7 +37,7 @@ using namespace std;
 
 #pragma mark MVKSwapchain
 
-bool MVKSwapchainImageAvailability_t::operator< (const MVKSwapchainImageAvailability_t& rhs) const {
+bool MVKSwapchainImageAvailability::operator< (const MVKSwapchainImageAvailability& rhs) const {
 	if (  isAvailable && !rhs.isAvailable) { return true; }
 	if ( !isAvailable &&  rhs.isAvailable) { return false; }
 

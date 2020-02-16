@@ -25,6 +25,8 @@
 
 #import <Metal/Metal.h>
 
+class MVKQueryPool;
+
 
 #pragma mark -
 #pragma mark MVKRPSKeyBlitImg
@@ -34,14 +36,14 @@
  *
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
-typedef struct MVKRPSKeyBlitImg_t {
+typedef struct MVKRPSKeyBlitImg {
 	uint16_t srcMTLPixelFormat = 0;			/**< as MTLPixelFormat */
 	uint16_t srcMTLTextureType = 0;			/**< as MTLTextureType */
 	uint16_t dstMTLPixelFormat = 0;			/**< as MTLPixelFormat */
 	uint8_t srcFilter = 0;					/**< as MTLSamplerMinMagFilter */
 	uint8_t dstSampleCount = 0;
 
-	bool operator==(const MVKRPSKeyBlitImg_t& rhs) const {
+	bool operator==(const MVKRPSKeyBlitImg& rhs) const {
 		if (srcMTLPixelFormat != rhs.srcMTLPixelFormat) { return false; }
 		if (srcMTLTextureType != rhs.srcMTLTextureType) { return false; }
 		if (dstMTLPixelFormat != rhs.dstMTLPixelFormat) { return false; }
@@ -109,7 +111,7 @@ namespace std {
  *
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
-typedef struct MVKRPSKeyClearAtt_t {
+typedef struct MVKRPSKeyClearAtt {
     uint16_t attachmentMTLPixelFormats[kMVKClearAttachmentCount];
 	uint16_t mtlSampleCount;
     uint16_t flags;			// bitcount > kMVKClearAttachmentLayeredRenderingBitIndex
@@ -124,7 +126,7 @@ typedef struct MVKRPSKeyClearAtt_t {
 
 	bool isLayeredRenderingEnabled() { return mvkIsAnyFlagEnabled(flags, bitFlag << kMVKClearAttachmentLayeredRenderingBitIndex); }
 
-    bool operator==(const MVKRPSKeyClearAtt_t& rhs) const {
+    bool operator==(const MVKRPSKeyClearAtt& rhs) const {
         return ((flags == rhs.flags) &&
 				(mtlSampleCount == rhs.mtlSampleCount) &&
                 (memcmp(attachmentMTLPixelFormats, rhs.attachmentMTLPixelFormats, sizeof(attachmentMTLPixelFormats)) == 0));
@@ -141,7 +143,7 @@ typedef struct MVKRPSKeyClearAtt_t {
 		mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(VK_SAMPLE_COUNT_1_BIT);
 	}
 
-	MVKRPSKeyClearAtt_t() { reset(); }
+	MVKRPSKeyClearAtt() { reset(); }
 
 } MVKRPSKeyClearAtt;
 
@@ -167,7 +169,7 @@ namespace std {
  * situated near the beginning of the structure so that a memory comparison will detect any
  * change as early as possible.
  */
-typedef struct MVKMTLStencilDescriptorData_t {
+typedef struct MVKMTLStencilDescriptorData {
     bool enabled;                       /**< Indicates whether stencil testing for this face is enabled. */
     uint8_t stencilCompareFunction;		/**< The stencil compare function (interpreted as MTLCompareFunction). */
     uint8_t stencilFailureOperation;	/**< The operation to take when the stencil test fails (interpreted as MTLStencilOperation). */
@@ -176,7 +178,7 @@ typedef struct MVKMTLStencilDescriptorData_t {
     uint32_t readMask;					/**< The bit-mask to apply when comparing the stencil buffer value to the reference value. */
     uint32_t writeMask;					/**< The bit-mask to apply when writing values to the stencil buffer. */
 
-    MVKMTLStencilDescriptorData_t() {
+    MVKMTLStencilDescriptorData() {
 
         // Start with all zeros to ensure memory comparisons will work,
         // even if the structure contains alignment gaps.
@@ -204,13 +206,13 @@ const MVKMTLStencilDescriptorData kMVKMTLStencilDescriptorDataDefault;
  * situated near the beginning of the structure so that a memory comparison will detect any
  * change as early as possible.
  */
-typedef struct MVKMTLDepthStencilDescriptorData_t {
+typedef struct MVKMTLDepthStencilDescriptorData {
     uint8_t depthCompareFunction;		/**< The depth compare function (interpreted as MTLCompareFunction). */
     bool depthWriteEnabled;				/**< Indicates whether depth writing is enabled. */
     MVKMTLStencilDescriptorData frontFaceStencilData;
     MVKMTLStencilDescriptorData backFaceStencilData;
 
-	bool operator==(const MVKMTLDepthStencilDescriptorData_t& rhs) const {
+	bool operator==(const MVKMTLDepthStencilDescriptorData& rhs) const {
 		return (memcmp(this, &rhs, sizeof(*this)) == 0);
 	}
 
@@ -230,7 +232,7 @@ typedef struct MVKMTLDepthStencilDescriptorData_t {
 		}
 	}
 
-	MVKMTLDepthStencilDescriptorData_t() {
+	MVKMTLDepthStencilDescriptorData() {
 		// Start with all zeros to ensure memory comparisons will work,
 		// even if the structure contains alignment gaps.
 		mvkClear(this);
@@ -259,7 +261,7 @@ namespace std {
  *
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
-typedef struct MVKImageDescriptorData_t {
+typedef struct MVKImageDescriptorData {
     VkImageType              imageType;
     VkFormat                 format;
     VkExtent3D               extent;
@@ -268,7 +270,7 @@ typedef struct MVKImageDescriptorData_t {
     VkSampleCountFlagBits    samples;
     VkImageUsageFlags        usage;
 
-    bool operator==(const MVKImageDescriptorData_t& rhs) const {
+    bool operator==(const MVKImageDescriptorData& rhs) const {
         return (memcmp(this, &rhs, sizeof(*this)) == 0);
     }
 
@@ -276,7 +278,7 @@ typedef struct MVKImageDescriptorData_t {
 		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
 	}
 
-    MVKImageDescriptorData_t() { mvkClear(this); }
+    MVKImageDescriptorData() { mvkClear(this); }
 
 } __attribute__((aligned(sizeof(uint64_t)))) MVKImageDescriptorData;
 
@@ -301,11 +303,11 @@ namespace std {
  *
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
-typedef struct MVKBufferDescriptorData_t {
+typedef struct MVKBufferDescriptorData {
     VkDeviceSize             size;
     VkBufferUsageFlags       usage;
 
-    bool operator==(const MVKBufferDescriptorData_t& rhs) const {
+    bool operator==(const MVKBufferDescriptorData& rhs) const {
         return (memcmp(this, &rhs, sizeof(*this)) == 0);
     }
 
@@ -313,7 +315,7 @@ typedef struct MVKBufferDescriptorData_t {
 		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
 	}
 
-    MVKBufferDescriptorData_t() { mvkClear(this); }
+    MVKBufferDescriptorData() { mvkClear(this); }
 
 } __attribute__((aligned(sizeof(uint64_t)))) MVKBufferDescriptorData;
 
@@ -326,6 +328,28 @@ namespace std {
     struct hash<MVKBufferDescriptorData> {
         std::size_t operator()(const MVKBufferDescriptorData& k) const { return k.hash(); }
     };
+}
+
+/**
+ * Key for looking up query results.
+ *
+ * This structure can be used as a key in a std::map and std::unordered_map.
+ */
+typedef struct MVKQueryKey {
+	MVKQueryPool* queryPool;
+	uint32_t query;
+
+	bool operator==(const MVKQueryKey& rhs) const {
+		return (queryPool == rhs.queryPool) && (query == rhs.query);
+	}
+	std::size_t hash() const { return (size_t)queryPool ^ query; }
+} MVKQueryKey;
+
+namespace std {
+	template <>
+	struct hash<MVKQueryKey> {
+		std::size_t operator()(const MVKQueryKey& k) const { return k.hash(); }
+	};
 }
 
 

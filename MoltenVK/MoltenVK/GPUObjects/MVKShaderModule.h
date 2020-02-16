@@ -158,15 +158,15 @@ protected:
 #pragma mark -
 #pragma mark MVKShaderModule
 
-typedef struct MVKShaderModuleKey_t {
+typedef struct MVKShaderModuleKey {
 	std::size_t codeSize;
 	std::size_t codeHash;
 
-	bool operator==(const MVKShaderModuleKey_t& rhs) const {
+	bool operator==(const MVKShaderModuleKey& rhs) const {
 		return ((codeSize == rhs.codeSize) && (codeHash == rhs.codeHash));
 	}
-	MVKShaderModuleKey_t(std::size_t codeSize, std::size_t codeHash) : codeSize(codeSize), codeHash(codeHash) {}
-	MVKShaderModuleKey_t() :  MVKShaderModuleKey_t(0, 0) {}
+	MVKShaderModuleKey(std::size_t codeSize, std::size_t codeHash) : codeSize(codeSize), codeHash(codeHash) {}
+	MVKShaderModuleKey() :  MVKShaderModuleKey(0, 0) {}
 } MVKShaderModuleKey;
 
 /**
