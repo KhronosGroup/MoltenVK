@@ -331,24 +331,29 @@ namespace std {
 }
 
 /**
- * Key for looking up query results.
+ * Spec for a query.
  *
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
-typedef struct MVKQueryKey {
-	MVKQueryPool* queryPool;
-	uint32_t query;
+typedef struct MVKQuerySpec {
+	MVKQueryPool* queryPool = nullptr;
+	uint32_t query = 0;
 
-	bool operator==(const MVKQueryKey& rhs) const {
+	inline void set(MVKQueryPool* qryPool, uint32_t qry) { queryPool = qryPool; query = qry; }
+	inline void reset() { set(nullptr, 0); }
+
+	bool operator==(const MVKQuerySpec& rhs) const {
 		return (queryPool == rhs.queryPool) && (query == rhs.query);
 	}
+
 	std::size_t hash() const { return (size_t)queryPool ^ query; }
-} MVKQueryKey;
+
+} MVKQuerySpec;
 
 namespace std {
 	template <>
-	struct hash<MVKQueryKey> {
-		std::size_t operator()(const MVKQueryKey& k) const { return k.hash(); }
+	struct hash<MVKQuerySpec> {
+		std::size_t operator()(const MVKQuerySpec& k) const { return k.hash(); }
 	};
 }
 

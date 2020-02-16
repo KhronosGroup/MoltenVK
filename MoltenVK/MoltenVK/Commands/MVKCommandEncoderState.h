@@ -563,13 +563,12 @@ public:
 protected:
     void encodeImpl(uint32_t) override;
     void resetImpl() override;
-	bool validateOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query);
-	void endCurrentOcclusionQuery();
 
     id<MTLBuffer> _visibilityResultMTLBuffer = nil;
     MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
     NSUInteger _mtlVisibilityResultOffset = 0;
-	std::unordered_map<MVKQueryKey, id<MTLRenderCommandEncoder>> _mtlEncodersUsed;
+	std::unordered_map<MVKQuerySpec, id<MTLRenderCommandEncoder>> _mtlEncodersUsed;
+	MVKQuerySpec _currentQuery;
 };
 
 
