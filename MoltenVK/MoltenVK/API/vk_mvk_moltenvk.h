@@ -103,8 +103,9 @@ typedef unsigned long MTLLanguageVersion;
  *    If none of these is set, errors and informational messages are logged.
  *
  * 2. The MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time build
- *    setting causes MoltenVK to log the name of each Vulkan call made by the application. The logging
- *    format options can be controlled by setting the value of MVK_CONFIG_TRACE_VULKAN_CALLS as follows:
+ *    setting causes MoltenVK to log the name of each Vulkan call made by the application, along with
+ *    the Mach thread ID, global system thread ID, and thread name. The logging format options can be
+ *    controlled by setting the value of MVK_CONFIG_TRACE_VULKAN_CALLS as follows:
  *        0: No Vulkan call logging.
  *        1: Log the name of each Vulkan call when the call is entered.
  *        2: Log the name of each Vulkan call when the call is entered and exited. This effectively

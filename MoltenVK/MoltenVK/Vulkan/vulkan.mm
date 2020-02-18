@@ -43,12 +43,22 @@
 #include "MVKOSExtensions.h"
 #include "MVKLogging.h"
 
+#include <pthread.h>
+
 
 #pragma mark -
 #pragma mark Tracing Vulkan calls
 
+typedef enum {
+	MVKVulkanCallTraceLevelNone = 0,
+	MVKVulkanCallTraceLevelFunctionName = 1,
+	MVKVulkanCallTraceLevelFunctionScope = 2,
+	MVKVulkanCallTraceLevelFunctionTime = 3,
+	MVKVulkanCallTraceLevelFunctionMax
+} MVKVulkanCallTraceLevel;
+
 #ifndef MVK_CONFIG_TRACE_VULKAN_CALLS
-#   define MVK_CONFIG_TRACE_VULKAN_CALLS    0
+#   define MVK_CONFIG_TRACE_VULKAN_CALLS    MVKVulkanCallTraceLevelNone
 #endif
 
 static uint32_t _mvkTraceVulkanCalls = MVK_CONFIG_TRACE_VULKAN_CALLS;
@@ -67,34 +77,35 @@ static inline uint32_t getCallTraceLevel() {
 
 // Optionally log start of function calls to stderr
 static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
-	uint64_t timestamp = 0;
-	switch(getCallTraceLevel()) {
-		case 3:			// Fall through
-			timestamp = mvkGetTimestamp();
-		case 2:
-			fprintf(stderr, "[mvk-trace] %s() {\n", funcName);
-			break;
-		case 1:
-			fprintf(stderr, "[mvk-trace] %s()\n", funcName);
-			break;
-		case 0:
-		default:
-			break;
-	}
-	return timestamp;
+	uint32_t traceLvl = getCallTraceLevel();
+
+	if (traceLvl == MVKVulkanCallTraceLevelNone ||
+		traceLvl >= MVKVulkanCallTraceLevelFunctionMax) { return 0; }
+
+	uint64_t gtid, mtid;
+	const uint32_t kThreadNameBuffSize = 256;
+	char threadName[kThreadNameBuffSize];
+	pthread_t tid = pthread_self();
+	mtid = pthread_mach_thread_np(tid);		// Mach thread ID
+	pthread_threadid_np(tid, &gtid);		// Global system-wide thead ID
+	pthread_getname_np(tid, threadName, kThreadNameBuffSize);
+
+	fprintf(stderr, "[mvk-trace] %s()%s [%llu/%llu/%s]\n",
+			funcName, (traceLvl >= MVKVulkanCallTraceLevelFunctionScope) ? " {" : "",
+			mtid, gtid, threadName);
+
+	return (traceLvl >= MVKVulkanCallTraceLevelFunctionTime) ? mvkGetTimestamp() : 0;
 }
 
 // Optionally log end of function calls and timings to stderr
 static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t startTime) {
 	switch(getCallTraceLevel()) {
-		case 3:
-			fprintf(stderr, "[mvk-trace] } %s() (%.4f ms)\n", funcName, mvkGetElapsedMilliseconds(startTime));
+		case MVKVulkanCallTraceLevelFunctionTime:
+			fprintf(stderr, "[mvk-trace] } %s [%.4f ms]\n", funcName, mvkGetElapsedMilliseconds(startTime));
 			break;
-		case 2:
-			fprintf(stderr, "[mvk-trace] } %s()\n", funcName);
+		case MVKVulkanCallTraceLevelFunctionScope:
+			fprintf(stderr, "[mvk-trace] } %s\n", funcName);
 			break;
-		case 1:
-		case 0:
 		default:
 			break;
 	}
