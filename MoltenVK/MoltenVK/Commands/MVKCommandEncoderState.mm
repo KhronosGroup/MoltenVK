@@ -855,6 +855,8 @@ void MVKComputeResourcesCommandEncoderState::resetImpl() {
 
 void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
 
+	_currentQuery.set(pQueryPool, query);
+
     NSUInteger offset = pQueryPool->getVisibilityResultOffset(query);
     NSUInteger maxOffset = _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes;
 
@@ -868,22 +870,33 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
-    _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-    _mtlVisibilityResultOffset = 0;
-
-    markDirty();
+	reset();
 }
 
-// If the MTLBuffer has not yet been set, see if the command buffer is configured with it
 id<MTLBuffer> MVKOcclusionQueryCommandEncoderState::getVisibilityResultMTLBuffer() { return _visibilityResultMTLBuffer; }
 
 void MVKOcclusionQueryCommandEncoderState::encodeImpl(uint32_t stage) {
-    if (stage != kMVKGraphicsStageRasterization) { return; }
-    [_cmdEncoder->_mtlRenderEncoder setVisibilityResultMode: _mtlVisibilityResultMode
-                                                     offset: _mtlVisibilityResultOffset];
+	if (stage != kMVKGraphicsStageRasterization) { return; }
+
+	// Metal does not allow a query to be run twice on a single render encoder.
+	// If the query is active and was already used for the current Metal render encoder,
+	// log an error and terminate the current query. Remember which MTLRenderEncoder
+	// was used for this query to test for this situation on future queries.
+	if (_mtlVisibilityResultMode != MTLVisibilityResultModeDisabled) {
+		id<MTLRenderCommandEncoder> currMTLRendEnc = _cmdEncoder->_mtlRenderEncoder;
+		if (currMTLRendEnc == _mtlEncodersUsed[_currentQuery]) {
+			MVKLogError("vkCmdBeginQuery(): Metal does not support using the same occlusion query more than once within a single Vulkan render subpass.");
+			resetImpl();
+		}
+		_mtlEncodersUsed[_currentQuery] = currMTLRendEnc;
+	}
+
+	[_cmdEncoder->_mtlRenderEncoder setVisibilityResultMode: _mtlVisibilityResultMode
+													 offset: _mtlVisibilityResultOffset];
 }
 
 void MVKOcclusionQueryCommandEncoderState::resetImpl() {
+	_currentQuery.reset();
     _visibilityResultMTLBuffer = _cmdEncoder->_cmdBuffer->_initialVisibilityResultMTLBuffer;
     _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
     _mtlVisibilityResultOffset = 0;

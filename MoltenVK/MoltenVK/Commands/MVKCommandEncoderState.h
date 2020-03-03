@@ -22,6 +22,7 @@
 #include "MVKCommandResourceFactory.h"
 #include "MVKDevice.h"
 #include "MVKVector.h"
+#include <unordered_map>
 
 class MVKCommandEncoder;
 class MVKOcclusionQueryPool;
@@ -566,6 +567,8 @@ protected:
     id<MTLBuffer> _visibilityResultMTLBuffer = nil;
     MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
     NSUInteger _mtlVisibilityResultOffset = 0;
+	std::unordered_map<MVKQuerySpec, id<MTLRenderCommandEncoder>> _mtlEncodersUsed;
+	MVKQuerySpec _currentQuery;
 };
 
 

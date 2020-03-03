@@ -27,6 +27,16 @@ class MVKWatermark;
 @class MVKBlockObserver;
 
 
+/** Indicates the relative availability of each image in the swapchain. */
+typedef struct MVKSwapchainImageAvailability {
+	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
+	uint32_t waitCount;				/**< The number of semaphores already waiting for this image. */
+	bool isAvailable;				/**< Indicates whether this image is currently available. */
+
+	bool operator< (const MVKSwapchainImageAvailability& rhs) const;
+} MVKSwapchainImageAvailability;
+
+
 #pragma mark MVKSwapchain
 
 /** Tracks a semaphore and fence for later signaling. */
