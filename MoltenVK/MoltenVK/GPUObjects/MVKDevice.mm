@@ -1224,7 +1224,7 @@ void MVKPhysicalDevice::initProperties() {
 
     _properties.limits.minMemoryMapAlignment = _metalFeatures.mtlBufferAlignment;
     _properties.limits.minUniformBufferOffsetAlignment = _metalFeatures.mtlBufferAlignment;
-    _properties.limits.minStorageBufferOffsetAlignment = 4;
+    _properties.limits.minStorageBufferOffsetAlignment = 16;
     _properties.limits.bufferImageGranularity = _metalFeatures.mtlBufferAlignment;
     _properties.limits.nonCoherentAtomSize = _metalFeatures.mtlBufferAlignment;
 

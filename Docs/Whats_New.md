@@ -22,6 +22,8 @@ Released TBD
 - Fix issue where immutable samplers are removed during descriptor update.
 - Guard against Metal validation assertion from reuse of query number 
   within a single `MTLRenderEncoder`.
+- Increase value of `VkPhysicalDeviceLimits::minStorageBufferOffsetAlignment` 
+  to `16` to avoid Metal validation assertions.
 
 
 
