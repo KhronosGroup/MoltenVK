@@ -29,16 +29,18 @@
 
 using namespace std;
 
-// If pSrc and pDst are not null, copies at most *pCopySize bytes from the contents of the source struct
-// to the destination struct, and sets *pCopySize to the number of bytes copied, which is the smaller of
-// the original value of *pCopySize and the actual size of the struct. Returns VK_SUCCESS if the original
-// value of *pCopySize is the same as the actual size of the struct, or VK_INCOMPLETE otherwise.
-// If either pSrc or pDst are null, sets the value of *pCopySize to the size of the struct and returns VK_SUCCESS.
+// If pSrc and pDst are not null, copies at most *pCopySize bytes from the contents of the
+// source struct to the destination struct, and sets *pCopySize to the number of bytes copied,
+// which is the smaller of the original value of *pCopySize and the actual size of the struct.
+// Returns VK_SUCCESS if the original value of *pCopySize is the same as the actual size of
+// the struct, or VK_INCOMPLETE otherwise. If either pSrc or pDst are null, sets the value
+// of *pCopySize to the size of the struct and returns VK_SUCCESS.
 template<typename S>
 VkResult mvkCopy(S* pDst, const S* pSrc, size_t* pCopySize) {
 	if (pSrc && pDst) {
 		size_t origSize = *pCopySize;
-		*pCopySize = mvkCopy(pDst, pSrc, origSize);
+		*pCopySize = std::min(origSize, sizeof(S));
+		memcpy(pDst, pSrc, *pCopySize);
 		return (*pCopySize == origSize) ? VK_SUCCESS : VK_INCOMPLETE;
 	} else {
 		*pCopySize = sizeof(S);

@@ -752,8 +752,8 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 			switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
 				auto* budgetProps = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)next;
-				mvkClear(budgetProps->heapBudget);
-				mvkClear(budgetProps->heapUsage);
+				mvkClear(budgetProps->heapBudget, VK_MAX_MEMORY_HEAPS);
+				mvkClear(budgetProps->heapUsage, VK_MAX_MEMORY_HEAPS);
 				budgetProps->heapBudget[0] = (VkDeviceSize)getRecommendedMaxWorkingSetSize();
 				budgetProps->heapUsage[0] = (VkDeviceSize)getCurrentAllocatedSize();
 				if (!getHasUnifiedMemory()) {
@@ -1669,7 +1669,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	// Clear the UUID
-	mvkClear(&_properties.pipelineCacheUUID);
+	mvkClear(&_properties.pipelineCacheUUID, VK_UUID_SIZE);
 
 	size_t uuidComponentOffset = 0;
 
@@ -2064,7 +2064,7 @@ void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateI
 }
 
 VkResult MVKDevice::getDeviceGroupPresentCapabilities(VkDeviceGroupPresentCapabilitiesKHR* pDeviceGroupPresentCapabilities) {
-	mvkClear(pDeviceGroupPresentCapabilities->presentMask);
+	mvkClear(pDeviceGroupPresentCapabilities->presentMask, VK_MAX_DEVICE_GROUP_SIZE);
 	pDeviceGroupPresentCapabilities->presentMask[0] = 0x1;
 
 	pDeviceGroupPresentCapabilities->modes = VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_BIT_KHR;
