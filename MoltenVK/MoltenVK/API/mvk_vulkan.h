@@ -44,6 +44,5 @@
 #endif
 
 #include <vulkan/vulkan.h>
-#include <vulkan-portability/vk_extx_portability_subset.h>
 
 #endif

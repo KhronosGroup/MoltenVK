@@ -402,33 +402,17 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 
 // If the image format info links portability image view info, test if an image view of that configuration is supported
 bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo) {
-	auto* next = (VkStructureType*)pImageFormatInfo->pNext;
+	auto* next = (MVKVkAPIStructHeader*)pImageFormatInfo->pNext;
 	while (next) {
-		switch ((int32_t)*next) {
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_SUPPORT_EXTX: {
-				auto* portImgViewInfo = (VkPhysicalDeviceImageViewSupportEXTX*)next;
-
-				// Create an image view and test whether it could be configured
-				VkImageViewCreateInfo viewInfo = {
-					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-					.pNext = (VkStructureType*)portImgViewInfo->pNext,
-					.flags = portImgViewInfo->flags,
-					.image = VK_NULL_HANDLE,
-					.viewType = portImgViewInfo->viewType,
-					.format = portImgViewInfo->format,
-					.components = portImgViewInfo->components,
-					.subresourceRange = {
-						.aspectMask = portImgViewInfo->aspectMask,
-						.baseMipLevel = 0,
-						.levelCount = 1,
-						.baseArrayLayer = 0,
-						.layerCount = 1},
-				};
+		switch ((uint32_t)next->sType) {
+			case VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO: {
+				VkImageViewCreateInfo viewInfo = *(VkImageViewCreateInfo*)next;
+				viewInfo.image = VK_NULL_HANDLE;
 				MVKImageView imgView(VK_NULL_HANDLE, &viewInfo, _mvkInstance->getMoltenVKConfiguration());
 				return imgView.getConfigurationResult() == VK_SUCCESS;
 			}
 			default:
-				next = (VkStructureType*)((VkPhysicalDeviceFeatures2*)next)->pNext;
+				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 		}
 	}

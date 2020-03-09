@@ -161,19 +161,22 @@ else
 	REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
+
+# During development of integrated VK_EXTX_portability_subset, update the Vulkan-Header
+# files by pulling from GitLab VK_EXTX_portability_subset branch HEAD, building the
+# headers from XML, and copying them to Vulkan-Header.
+	REPO_URL="https://gitlab.khronos.org/vulkan/vulkan.git"
+	REPO_REV=VK_EXTX_portability_subset
+
+	update_repo vulkan ${REPO_URL} ${REPO_REV}
+
+	cd vulkan/xml
+	make
+	cd -  > /dev/null
+
+	cp -pRL ./vulkan/include/vulkan/ ./Vulkan-Headers/include/vulkan/
 fi
 
-# ----------------- Vulkan-Portability -------------------
-
-echo
-echo ========== Vulkan-Portability ==========
-echo
-
-REPO_NAME=Vulkan-Portability
-REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
-
-update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
 # ----------------- SPIRV-Cross -------------------

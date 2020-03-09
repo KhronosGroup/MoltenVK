@@ -1067,7 +1067,7 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
 		useSwizzle = true;
 
 		if ( !pMVKConfig->fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle ) {
-			const char* vkCmd = _image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX";
+			const char* vkCmd = _image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkImageViewCreateInfo";
 			const char* errMsg = ("The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
 								  " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
 								  " be enabled via the MVKConfiguration::fullImageViewSwizzle config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable.");

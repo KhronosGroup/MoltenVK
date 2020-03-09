@@ -9,6 +9,7 @@ External/Vulkan-Headers
 External/Vulkan-Portability
 External/Vulkan-Tools
 External/VulkanSamples
+External/vulkan
 
 # Mac OS X Finder
 .DS_Store
