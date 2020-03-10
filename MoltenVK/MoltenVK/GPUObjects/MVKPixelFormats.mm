@@ -1,5 +1,5 @@
 /*
- * MVKFormats.mm
+ * MVKPixelFormats.mm
  *
  * Copyright (c) 2015-2020 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -18,7 +18,7 @@
 
 #include "mvk_datatypes.hpp"
 #include "MVKEnvironment.h"
-#include "MVKFormats.h"
+#include "MVKPixelFormats.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKFoundation.h"
 #include "MVKLogging.h"
@@ -177,17 +177,17 @@ using namespace std;
 
 
 #pragma mark -
-#pragma mark MVKFormats
+#pragma mark MVKPixelFormats
 
-bool MVKFormats::vkFormatIsSupported(VkFormat vkFormat) {
+bool MVKPixelFormats::vkFormatIsSupported(VkFormat vkFormat) {
 	return formatDescForVkFormat(vkFormat).isSupported();
 }
 
-bool MVKFormats::mtlPixelFormatIsSupported(MTLPixelFormat mtlFormat) {
+bool MVKPixelFormats::mtlPixelFormatIsSupported(MTLPixelFormat mtlFormat) {
 	return formatDescForMTLPixelFormat(mtlFormat).isSupported();
 }
 
-bool MVKFormats::mtlPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {
+bool MVKPixelFormats::mtlPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {
 	switch (mtlFormat) {
 		case MTLPixelFormatDepth32Float:
 #if MVK_MACOS
@@ -201,7 +201,7 @@ bool MVKFormats::mtlPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {
 	}
 }
 
-bool MVKFormats::mtlPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat) {
+bool MVKPixelFormats::mtlPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat) {
 	switch (mtlFormat) {
 		case MTLPixelFormatStencil8:
 #if MVK_MACOS
@@ -216,7 +216,7 @@ bool MVKFormats::mtlPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat) {
 	}
 }
 
-bool MVKFormats::mtlPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) {
+bool MVKPixelFormats::mtlPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) {
 	switch (mtlFormat) {
 #if MVK_IOS
 		case MTLPixelFormatPVRTC_RGBA_2BPP:
@@ -234,15 +234,15 @@ bool MVKFormats::mtlPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) {
 	}
 }
 
-MVKFormatType MVKFormats::getFormatTypeFromVkFormat(VkFormat vkFormat) {
+MVKFormatType MVKPixelFormats::getFormatTypeFromVkFormat(VkFormat vkFormat) {
 	return formatDescForVkFormat(vkFormat).formatType;
 }
 
-MVKFormatType MVKFormats::getFormatTypeFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
+MVKFormatType MVKPixelFormats::getFormatTypeFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
 	return formatDescForMTLPixelFormat(mtlFormat).formatType;
 }
 
-MTLPixelFormat MVKFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat,
+MTLPixelFormat MVKPixelFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat,
 														 MTLPixelFormat mtlPixelFormatKnownUnsupported) {
 	MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
 
@@ -275,53 +275,53 @@ MTLPixelFormat MVKFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat,
 	return mtlPixFmt;
 }
 
-VkFormat MVKFormats::getVkFormatFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
+VkFormat MVKPixelFormats::getVkFormatFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
     return formatDescForMTLPixelFormat(mtlFormat).vk;
 }
 
-uint32_t MVKFormats::getVkFormatBytesPerBlock(VkFormat vkFormat) {
+uint32_t MVKPixelFormats::getVkFormatBytesPerBlock(VkFormat vkFormat) {
     return formatDescForVkFormat(vkFormat).bytesPerBlock;
 }
 
-uint32_t MVKFormats::getMTLPixelFormatBytesPerBlock(MTLPixelFormat mtlFormat) {
+uint32_t MVKPixelFormats::getMTLPixelFormatBytesPerBlock(MTLPixelFormat mtlFormat) {
     return formatDescForMTLPixelFormat(mtlFormat).bytesPerBlock;
 }
 
-VkExtent2D MVKFormats::getVkFormatBlockTexelSize(VkFormat vkFormat) {
+VkExtent2D MVKPixelFormats::getVkFormatBlockTexelSize(VkFormat vkFormat) {
     return formatDescForVkFormat(vkFormat).blockTexelSize;
 }
 
-VkExtent2D MVKFormats::getMTLPixelFormatBlockTexelSize(MTLPixelFormat mtlFormat) {
+VkExtent2D MVKPixelFormats::getMTLPixelFormatBlockTexelSize(MTLPixelFormat mtlFormat) {
     return formatDescForMTLPixelFormat(mtlFormat).blockTexelSize;
 }
 
-float MVKFormats::getVkFormatBytesPerTexel(VkFormat vkFormat) {
+float MVKPixelFormats::getVkFormatBytesPerTexel(VkFormat vkFormat) {
     return formatDescForVkFormat(vkFormat).bytesPerTexel();
 }
 
-float MVKFormats::getMTLPixelFormatBytesPerTexel(MTLPixelFormat mtlFormat) {
+float MVKPixelFormats::getMTLPixelFormatBytesPerTexel(MTLPixelFormat mtlFormat) {
     return formatDescForMTLPixelFormat(mtlFormat).bytesPerTexel();
 }
 
-size_t MVKFormats::getVkFormatBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow) {
+size_t MVKPixelFormats::getVkFormatBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow) {
     const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
     return mvkCeilingDivide(texelsPerRow, fmtDesc.blockTexelSize.width) * fmtDesc.bytesPerBlock;
 }
 
-size_t MVKFormats::getMTLPixelFormatBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow) {
+size_t MVKPixelFormats::getMTLPixelFormatBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow) {
     const MVKFormatDesc& fmtDesc = formatDescForMTLPixelFormat(mtlFormat);
     return mvkCeilingDivide(texelsPerRow, fmtDesc.blockTexelSize.width) * fmtDesc.bytesPerBlock;
 }
 
-size_t MVKFormats::getVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
+size_t MVKPixelFormats::getVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
     return mvkCeilingDivide(texelRowsPerLayer, formatDescForVkFormat(vkFormat).blockTexelSize.height) * bytesPerRow;
 }
 
-size_t MVKFormats::getMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
+size_t MVKPixelFormats::getMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
     return mvkCeilingDivide(texelRowsPerLayer, formatDescForMTLPixelFormat(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
-VkFormatProperties MVKFormats::getVkFormatProperties(VkFormat vkFormat, bool assumeGPUSupportsDefault) {
+VkFormatProperties MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat, bool assumeGPUSupportsDefault) {
 	VkFormatProperties fmtProps = {MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS};
 	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
 	if (assumeGPUSupportsDefault && fmtDesc.isSupported()) {
@@ -336,15 +336,15 @@ VkFormatProperties MVKFormats::getVkFormatProperties(VkFormat vkFormat, bool ass
 	return fmtProps;
 }
 
-const char* MVKFormats::getVkFormatName(VkFormat vkFormat) {
+const char* MVKPixelFormats::getVkFormatName(VkFormat vkFormat) {
     return formatDescForVkFormat(vkFormat).vkName;
 }
 
-const char* MVKFormats::getMTLPixelFormatName(MTLPixelFormat mtlFormat) {
+const char* MVKPixelFormats::getMTLPixelFormatName(MTLPixelFormat mtlFormat) {
     return formatDescForMTLPixelFormat(mtlFormat).mtlName;
 }
 
-void MVKFormats::enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
+void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
     static const auto areFeaturesSupported = [any](uint32_t a, uint32_t b) {
         if (b == 0) return true;
         if (any)
@@ -365,7 +365,7 @@ void MVKFormats::enumerateSupportedFormats(VkFormatProperties properties, bool a
 }
 
 #undef mvkMTLVertexFormatFromVkFormat
-MTLVertexFormat MVKFormats::getMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
+MTLVertexFormat MVKPixelFormats::getMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
     MTLVertexFormat mtlVtxFmt = MTLVertexFormatInvalid;
 
     const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
@@ -393,7 +393,7 @@ MTLVertexFormat MVKFormats::getMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
     return mtlVtxFmt;
 }
 
-MTLClearColor MVKFormats::getMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
+MTLClearColor MVKPixelFormats::getMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
 														   VkFormat vkFormat) {
 	MTLClearColor mtlClr;
 	switch (getFormatTypeFromVkFormat(vkFormat)) {
@@ -430,7 +430,7 @@ MTLClearColor MVKFormats::getMTLClearColorFromVkClearValue(VkClearValue vkClearV
 	return mtlClr;
 }
 
-VkImageUsageFlags MVKFormats::getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage,
+VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage,
 																	  MTLPixelFormat mtlFormat) {
     VkImageUsageFlags vkImageUsageFlags = 0;
 
@@ -455,19 +455,19 @@ VkImageUsageFlags MVKFormats::getVkImageUsageFlagsFromMTLTextureUsage(MTLTexture
 }
 
 // Return a reference to the format description corresponding to the VkFormat.
-const MVKFormatDesc& MVKFormats::formatDescForVkFormat(VkFormat vkFormat) {
+const MVKFormatDesc& MVKPixelFormats::formatDescForVkFormat(VkFormat vkFormat) {
 	uint16_t fmtIdx = (vkFormat < _vkFormatCoreCount) ? _fmtDescIndicesByVkFormatsCore[vkFormat] : _fmtDescIndicesByVkFormatsExt[vkFormat];
 	return _formatDescriptions[fmtIdx];
 }
 
 // Return a reference to the format description corresponding to the MTLPixelFormat.
-const MVKFormatDesc& MVKFormats::formatDescForMTLPixelFormat(MTLPixelFormat mtlFormat) {
+const MVKFormatDesc& MVKPixelFormats::formatDescForMTLPixelFormat(MTLPixelFormat mtlFormat) {
 	uint16_t fmtIdx = (mtlFormat < _mtlFormatCount) ? _fmtDescIndicesByMTLPixelFormats[mtlFormat] : 0;
 	return _formatDescriptions[fmtIdx];
 }
 
 // Return a reference to the format description corresponding to the MTLVertexFormat.
-const MVKFormatDesc& MVKFormats::formatDescForMTLVertexFormat(MTLVertexFormat mtlFormat) {
+const MVKFormatDesc& MVKPixelFormats::formatDescForMTLVertexFormat(MTLVertexFormat mtlFormat) {
 	uint16_t fmtIdx = (mtlFormat < _mtlVertexFormatCount) ? _fmtDescIndicesByMTLVertexFormats[mtlFormat] : 0;
 	return _formatDescriptions[fmtIdx];
 }
@@ -475,7 +475,7 @@ const MVKFormatDesc& MVKFormats::formatDescForMTLVertexFormat(MTLVertexFormat mt
 
 #pragma mark Construction
 
-MVKFormats::MVKFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice) : _apiObject(apiObject) {
+MVKPixelFormats::MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice) : _apiObject(apiObject) {
 	initFormatCapabilities();
 	modifyFormatCapabilitiesForMTLDevice(mtlDevice);
 	buidFormatMaps();
@@ -488,7 +488,7 @@ MVKFormats::MVKFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice) :
 
 static const MVKOSVersion kMTLFmtNA = numeric_limits<MVKOSVersion>::max();
 
-void MVKFormats::initFormatCapabilities() {
+void MVKPixelFormats::initFormatCapabilities() {
 
 	MVKLogInfo("sizeof MVKFormatDesc %lu.", sizeof(MVKFormatDesc));
 
@@ -747,7 +747,7 @@ void MVKFormats::initFormatCapabilities() {
 // to map the value in one architecture (as an array index) to the corresponding value in the
 // other architecture. Values that exist in one API but not the other are given a default value.
 // Vulkan extension formats have very large values, and are tracked in a separate map.
-void MVKFormats::buidFormatMaps() {
+void MVKPixelFormats::buidFormatMaps() {
 
 	// Set all VkFormats and MTLPixelFormats to undefined/invalid
 	mvkClear(_fmtDescIndicesByVkFormatsCore, _vkFormatCoreCount);
@@ -780,7 +780,7 @@ void MVKFormats::buidFormatMaps() {
 }
 
 // Modifies the format capability tables based on the capabilities of the specific MTLDevice
-void MVKFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice) {}
+void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice) {}
 
 
 #pragma mark -
@@ -788,7 +788,8 @@ void MVKFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice) {
 
 // Validate the functionality of this class against the previous format data within MoltenVK.
 // This is a temporary function to confirm that converting to using this class matches existing behaviour at first.
-void MVKFormats::test() {
+void MVKPixelFormats::test() {
+	if (_apiObject) { return; }		// Only test default formats
 
 #define MVK_TEST_FMT(V1, V2)	testFmt(V1, V2, fd.vkName, #V1)
 
@@ -852,15 +853,8 @@ void MVKFormats::test() {
 }
 
 template<typename T>
-void MVKFormats::testFmt(const T v1, const T v2, const char* fmtName, const char* funcName) {
+void MVKPixelFormats::testFmt(const T v1, const T v2, const char* fmtName, const char* funcName) {
 	MVKAssert(mvkAreEqual(&v1,&v2), "Results not equal for format %s on test %s.", fmtName, funcName);
 }
 
-
-//static bool _mvkFormatsTest = false;
-//__attribute__((constructor)) static void MVKTestFormats() {
-//	if (_mvkFormatsTest ) { return; }
-//	_mvkFormatsTest = true;
-//
-//	MVKFormats fmts;
-//}
+static const MVKPixelFormats _defaultFormats;

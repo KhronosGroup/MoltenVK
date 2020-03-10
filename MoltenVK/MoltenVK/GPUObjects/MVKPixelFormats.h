@@ -1,5 +1,5 @@
 /*
- * MVKFormats.h
+ * MVKPixelFormats.h
  *
  * Copyright (c) 2015-2020 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -91,10 +91,10 @@ typedef struct {
 
 
 #pragma mark -
-#pragma mark MVKFormats
+#pragma mark MVKPixelFormats
 
 /** Helper class to manage pixel format capabilities and conversions.  */
-class MVKFormats : public MVKBaseObject {
+class MVKPixelFormats : public MVKBaseObject {
 
 public:
 
@@ -261,9 +261,9 @@ public:
 
 #pragma mark Construction
 
-	MVKFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice);
+	MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice);
 
-	MVKFormats() : MVKFormats(nullptr, nil) {}
+	MVKPixelFormats() : MVKPixelFormats(nullptr, nil) {}
 
 protected:
 	const MVKFormatDesc& formatDescForVkFormat(VkFormat vkFormat);
@@ -272,8 +272,8 @@ protected:
 	void initFormatCapabilities();
 	void buidFormatMaps();
 	void modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice);
-	template<typename T>
 
+	template<typename T>
 	void testFmt(const T v1, const T v2, const char* fmtName, const char* funcName);
 	void test();
 
