@@ -209,20 +209,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 }
 
 bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
-
-	if ( !mvkVkFormatIsSupported(format) ) { return false; }
-
-	// Special-case certain formats that not all GPU's support.
-#if MVK_MACOS
-	switch (mvkMTLPixelFormatFromVkFormat(format)) {
-		case MTLPixelFormatDepth24Unorm_Stencil8:
-			return getMTLDevice().isDepth24Stencil8PixelFormatSupported;
-		default:
-			break;
-	}
-#endif
-
-	return true;
+	return _pixelFormats.vkFormatIsSupported(format);
 }
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
@@ -773,9 +760,11 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 
 #pragma mark Construction
 
-MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) : _supportedExtensions(this, true) {
-	_mvkInstance = mvkInstance;
-	_mtlDevice = [mtlDevice retain];
+MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) :
+	_mvkInstance(mvkInstance),
+	_supportedExtensions(this, true),
+	_pixelFormats(this, mtlDevice),
+	_mtlDevice([mtlDevice retain]) {
 
 	initMetalFeatures();        // Call first.
 	initFeatures();             // Call second.
@@ -2530,14 +2519,7 @@ uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t bindin
 }
 
 MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBaseObject* mvkObj) {
-	MTLPixelFormat mtlPixFmt = mvkMTLPixelFormatFromVkFormatInObj(vkFormat, mvkObj);
-#if MVK_MACOS
-	if (mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8 &&
-		!getMTLDevice().isDepth24Stencil8PixelFormatSupported) {
-		return mvkMTLPixelFormatFromVkFormatInObj(vkFormat, mvkObj, MTLPixelFormatDepth24Unorm_Stencil8);
-	}
-#endif
-	return mtlPixFmt;
+	return _physicalDevice->_pixelFormats.getMTLPixelFormatFromVkFormat(vkFormat);
 }
 
 VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {

@@ -28,12 +28,12 @@
 
 
 #include "mvk_datatypes.h"
+#include "MVKEnvironment.h"
 #include "MVKBaseObject.h"
 #include "MVKOSExtensions.h"
 #include <unordered_map>
 
 #import <Metal/Metal.h>
-//#import <CoreGraphics/CoreGraphics.h>
 
 
 #pragma mark -
@@ -125,20 +125,8 @@ public:
 	/**
 	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
 	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
-	 *
-	 * Not all MTLPixelFormats returned by this function are supported by all GPU's,
-	 * and, internally, MoltenVK may substitute and use a different MTLPixelFormat than
-	 * is returned by this function for a particular Vulkan VkFormat value.
-	 *
-	 * Not all macOS GPU's support the MTLPixelFormatDepth24Unorm_Stencil8 pixel format.
-	 * Even though this function will return that value when passed the corresponding
-	 * VkFormat value, internally, MoltenVK will use the MTLPixelFormatDepth32Float_Stencil8
-	 * instead when a GPU does not support the MTLPixelFormatDepth24Unorm_Stencil8 pixel format.
-	 * On an macOS device that has more than one GPU, one of the GPU's may support the
-	 * MTLPixelFormatDepth24Unorm_Stencil8 pixel format while another may not.
 	 */
-	MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat,
-												 MTLPixelFormat mtlPixelFormatKnownUnsupported = MTLPixelFormatInvalid);
+	MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat);
 
 	/**
 	 * Returns the Vulkan VkFormat corresponding to the specified Metal MTLPixelFormat,
@@ -272,6 +260,7 @@ protected:
 	void initFormatCapabilities();
 	void buidFormatMaps();
 	void modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice);
+	void disableMTLPixelFormat(MTLPixelFormat mtlFormat);
 
 	template<typename T>
 	void testFmt(const T v1, const T v2, const char* fmtName, const char* funcName);

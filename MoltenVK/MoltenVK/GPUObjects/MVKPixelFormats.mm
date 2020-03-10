@@ -17,7 +17,6 @@
  */
 
 #include "mvk_datatypes.hpp"
-#include "MVKEnvironment.h"
 #include "MVKPixelFormats.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKFoundation.h"
@@ -242,12 +241,11 @@ MVKFormatType MVKPixelFormats::getFormatTypeFromMTLPixelFormat(MTLPixelFormat mt
 	return formatDescForMTLPixelFormat(mtlFormat).formatType;
 }
 
-MTLPixelFormat MVKPixelFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat,
-														 MTLPixelFormat mtlPixelFormatKnownUnsupported) {
+MTLPixelFormat MVKPixelFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
 	MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
 
 	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
-	if (fmtDesc.isSupported() && (fmtDesc.mtl != mtlPixelFormatKnownUnsupported)) {
+	if (fmtDesc.isSupported()) {
 		mtlPixFmt = fmtDesc.mtl;
 	} else if (vkFormat != VK_FORMAT_UNDEFINED) {
 		// If the MTLPixelFormat is not supported but VkFormat is valid, attempt to substitute a different format.
@@ -477,8 +475,8 @@ const MVKFormatDesc& MVKPixelFormats::formatDescForMTLVertexFormat(MTLVertexForm
 
 MVKPixelFormats::MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice) : _apiObject(apiObject) {
 	initFormatCapabilities();
-	modifyFormatCapabilitiesForMTLDevice(mtlDevice);
 	buidFormatMaps();
+	modifyFormatCapabilitiesForMTLDevice(mtlDevice);
 //	test();
 }
 
@@ -780,7 +778,20 @@ void MVKPixelFormats::buidFormatMaps() {
 }
 
 // Modifies the format capability tables based on the capabilities of the specific MTLDevice
-void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice) {}
+void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice) {
+	if ( !mtlDevice ) { return; }
+
+#if MVK_MACOS
+	if ( !mtlDevice.isDepth24Stencil8PixelFormatSupported ) {
+		disableMTLPixelFormat(MTLPixelFormatDepth24Unorm_Stencil8);
+	}
+#endif
+}
+
+void MVKPixelFormats::disableMTLPixelFormat(MTLPixelFormat mtlFormat) {
+	const MVKFormatDesc& fmtDesc = formatDescForMTLPixelFormat(MTLPixelFormatDepth24Unorm_Stencil8);
+	((MVKFormatDesc*)&fmtDesc)->mtl = MTLPixelFormatInvalid;
+}
 
 
 #pragma mark -
@@ -810,10 +821,6 @@ void MVKPixelFormats::test() {
 			MVK_TEST_FMT(getFormatTypeFromVkFormat(vkFmt), mvkFormatTypeFromVkFormat(vkFmt));
 			MVK_TEST_FMT(getFormatTypeFromMTLPixelFormat(mtlFmt), mvkFormatTypeFromMTLPixelFormat(mtlFmt));
 			MVK_TEST_FMT(getMTLPixelFormatFromVkFormat(vkFmt), mvkMTLPixelFormatFromVkFormat(vkFmt));
-#if MVK_MACOS
-			MVK_TEST_FMT(getMTLPixelFormatFromVkFormat(vkFmt, MTLPixelFormatDepth24Unorm_Stencil8),
-						 mvkMTLPixelFormatFromVkFormatInObj(vkFmt, _apiObject, MTLPixelFormatDepth24Unorm_Stencil8));
-#endif
 			MVK_TEST_FMT(getVkFormatFromMTLPixelFormat(mtlFmt), mvkVkFormatFromMTLPixelFormat(mtlFmt));
 			MVK_TEST_FMT(getVkFormatBytesPerBlock(vkFmt), mvkVkFormatBytesPerBlock(vkFmt));
 			MVK_TEST_FMT(getMTLPixelFormatBytesPerBlock(mtlFmt), mvkMTLPixelFormatBytesPerBlock(mtlFmt));

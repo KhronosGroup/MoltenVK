@@ -569,13 +569,11 @@ MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat
 	return mvkMTLPixelFormatFromVkFormatInObj(vkFormat, nullptr);
 }
 
-MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat,
-												  MVKBaseObject* mvkObj,
-												  MTLPixelFormat mtlPixelFormatKnownUnsupported) {
+MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj) {
 	MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
 
 	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
-	if (fmtDesc.isSupported() && (fmtDesc.mtl != mtlPixelFormatKnownUnsupported)) {
+	if (fmtDesc.isSupported()) {
 		mtlPixFmt = fmtDesc.mtl;
 	} else if (vkFormat != VK_FORMAT_UNDEFINED) {
 		// If the MTLPixelFormat is not supported but VkFormat is valid, attempt to substitute a different format.
