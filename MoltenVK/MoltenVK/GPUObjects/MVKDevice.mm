@@ -2395,7 +2395,7 @@ void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,
 
 MVKCommandPool* MVKDevice::createCommandPool(const VkCommandPoolCreateInfo* pCreateInfo,
 											const VkAllocationCallbacks* pAllocator) {
-	return new MVKCommandPool(this, pCreateInfo);
+	return new MVKCommandPool(this, pCreateInfo, _useCommandPooling);
 }
 
 void MVKDevice::destroyCommandPool(MVKCommandPool* mvkCmdPool,
@@ -2650,15 +2650,29 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 
+
+	// Indicates whether semaphores should use a MTLFence if available.
+	// Set by the MVK_ALLOW_METAL_FENCES environment variable if MTLFences are available.
+	// This should be a temporary fix after some repair to semaphore handling.
 	_useMTLFenceForSemaphores = false;
 	if (_pMetalFeatures->fences) {
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLFenceForSemaphores, MVK_ALLOW_METAL_FENCES);
 	}
+
+	// Indicates whether semaphores should use a MTLEvent if available.
+	// Set by the MVK_ALLOW_METAL_EVENTS environment variable if MTLEvents are available.
+	// This should be a temporary fix after some repair to semaphore handling.
 	_useMTLEventForSemaphores = false;
 	if (_pMetalFeatures->events) {
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventForSemaphores, MVK_ALLOW_METAL_EVENTS);
 	}
 	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
+
+#ifndef MVK_CONFIG_USE_COMMAND_POOLING
+#   define MVK_CONFIG_USE_COMMAND_POOLING    1
+#endif
+	_useCommandPooling = MVK_CONFIG_USE_COMMAND_POOLING;
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useCommandPooling, MVK_CONFIG_USE_COMMAND_POOLING);
 
 #if MVK_MACOS
 	// If we have selected a high-power GPU and want to force the window system

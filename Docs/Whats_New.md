@@ -24,6 +24,9 @@ Released TBD
   within a single `MTLRenderEncoder`.
 - Increase value of `VkPhysicalDeviceLimits::minStorageBufferOffsetAlignment` 
   to `16` to avoid Metal validation assertions.
+- Add ability to disable command memory pooling using `MVK_CONFIG_USE_COMMAND_POOLING`
+  environment variable.
+
 
 
 

@@ -666,16 +666,6 @@ public:
     /** Performance statistics. */
     MVKPerformanceStatistics _performanceStatistics;
 
-	// Indicates whether semaphores should use a MTLFence if available.
-	// Set by the MVK_ALLOW_METAL_FENCES environment variable if MTLFences are available.
-	// This should be a temporary fix after some repair to semaphore handling.
-	bool _useMTLFenceForSemaphores;
-
-	// Indicates whether semaphores should use a MTLEvent if available.
-	// Set by the MVK_ALLOW_METAL_EVENTS environment variable if MTLEvents are available.
-	// This should be a temporary fix after some repair to semaphore handling.
-	bool _useMTLEventForSemaphores;
-
 
 #pragma mark Construction
 
@@ -724,6 +714,9 @@ protected:
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;
     uint32_t _globalVisibilityQueryCount;
     std::mutex _vizLock;
+	bool _useMTLFenceForSemaphores;
+	bool _useMTLEventForSemaphores;
+	bool _useCommandPooling;
 };
 
 

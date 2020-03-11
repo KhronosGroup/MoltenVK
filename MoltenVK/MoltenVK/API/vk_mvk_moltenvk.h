@@ -154,6 +154,15 @@ typedef unsigned long MTLLanguageVersion;
  *    be dynamically allocated in application memory when the descriptor set itself is allocated.
  *    This setting is disabled by default, and MoltenVK will dynamically allocate descriptors
  *    when the containing descriptor set is allocated.
+ *
+ * 8. The MVK_CONFIG_USE_COMMAND_POOLING runtime environment variable or MoltenVK compile-time
+ *    build setting controls whether MoltenVK should use pools to manage memory used when
+ *    adding commands to command buffers. If this environment variable is enabled, MoltenVK
+ *    will use a pool to hold command resources for reuse during command execution. If this
+ *    environment variable is disabled, command memory is allocated and destroyed each time
+ *    a command is executed. This is a classic time-space trade off. When command pooling is
+ *    active, the memory in the pool can be cleared via a call to the vkTrimCommandPoolKHR()
+ *    command. This setting is enabled by default, and MoltenVK will pool command memory.
  */
 typedef struct {
 
