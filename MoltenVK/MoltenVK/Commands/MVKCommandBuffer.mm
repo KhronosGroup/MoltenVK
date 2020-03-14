@@ -54,18 +54,20 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	return getConfigurationResult();
 }
 
-VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
+void MVKCommandBuffer::releaseCommands() {
 	MVKCommand* cmd = _head;
 	while (cmd) {
 		MVKCommand* nextCmd = cmd->_next;	// Establish next before returning current to pool.
 		cmd->returnToPool();
 		cmd = nextCmd;
 	}
-
-	clearPrefilledMTLCommandBuffer();
-
 	_head = nullptr;
 	_tail = nullptr;
+}
+
+VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
+	clearPrefilledMTLCommandBuffer();
+	releaseCommands();
 	_doesContinueRenderPass = false;
 	_canAcceptCommands = false;
 	_isReusable = false;
@@ -140,18 +142,24 @@ bool MVKCommandBuffer::canExecute() {
 	return true;
 }
 
-// If we can, prefill a MTLCommandBuffer with the commands in this command buffer
+// If we can, prefill a MTLCommandBuffer with the commands in this command buffer.
+// Wrap in autorelease pool to capture autoreleased Metal encoding activity.
 void MVKCommandBuffer::prefill() {
+	@autoreleasepool {
+		clearPrefilledMTLCommandBuffer();
 
-	clearPrefilledMTLCommandBuffer();
+		if ( !canPrefill() ) { return; }
 
-	if ( !canPrefill() ) { return; }
+		uint32_t qIdx = 0;
+		_prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);	// retain
 
-	uint32_t qIdx = 0;
-	_prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);	// retain
+		MVKCommandEncoder encoder(this);
+		encoder.encode(_prefilledMTLCmdBuffer);
 
-	MVKCommandEncoder encoder(this);
-	encoder.encode(_prefilledMTLCmdBuffer);
+		// Once encoded onto Metal, if this command buffer is not reusable, we don't need the
+		// MVKCommand instances anymore, so release them in order to reduce memory pressure.
+		if ( !_isReusable ) { releaseCommands(); }
+	}
 }
 
 bool MVKCommandBuffer::canPrefill() {
