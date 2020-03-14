@@ -416,26 +416,36 @@ void mvkRemoveAllOccurances(C& container, T val) {
     container.erase(remove(container.begin(), container.end(), val), container.end());
 }
 
-/** If pVal is not null, clears the memory occupied by *pVal by writing zeros to all the bytes. */
+/**
+ * If pVal is not null, clears the memory occupied by *pVal by writing zeros to all bytes.
+ * The optional count allows clearing multiple elements in an array.
+ */
 template<typename T>
-void mvkClear(T* pVal, size_t clearSize = sizeof(T)) { if (pVal) { memset(pVal, 0, clearSize); } }
-
-/** If pVal is not null, overrides the const declaration, and clears the memory occupied by *pVal by writing zeros to all the bytes. */
-template<typename T>
-void mvkClear(const T* pVal, size_t clearSize = sizeof(T)) { mvkClear((T*)pVal, clearSize); }
+void mvkClear(T* pVal, size_t count = 1) { if (pVal) { memset(pVal, 0, sizeof(T) * count); } }
 
 /**
- * If pSrc and pDst are not null, copies at most copySize bytes from the contents of the source
- * value to the destination value, and returns the number of bytes copied, which is the smaller
- * of copySize and the actual size of the struct. If either pSrc or pDst are null, returns zero.
- */
-template<typename S>
-size_t mvkCopy(S* pDst, const S* pSrc, size_t copySize = sizeof(S)) {
-	if ( !(pSrc && pDst) ) { return 0; }
+ * If pVal is not null, overrides the const declaration, and clears the memory occupied by *pVal
+ * by writing zeros to all bytes. The optional count allows clearing multiple elements in an array.
+*/
+template<typename T>
+void mvkClear(const T* pVal, size_t count = 1) { mvkClear((T*)pVal, count); }
 
-	size_t bytesCopied = std::min(copySize, sizeof(S));
-	memcpy(pDst, pSrc, bytesCopied);
-	return bytesCopied;
+/**
+ * If pSrc and pDst are both not null, copies the contents of the source value to the
+ * destination value. The optional count allows copying of multiple elements in an array.
+ */
+template<typename T>
+void mvkCopy(T* pDst, const T* pSrc, size_t count = 1) {
+	if (pSrc && pDst) { memcpy(pDst, pSrc, sizeof(T) * count); }
+}
+
+/**
+ * If pV1 and pV2 are both not null, returns whether the contents of the two values are equal,
+ * otherwise returns false. The optional count allows comparing multiple elements in an array.
+ */
+template<typename T>
+bool mvkAreEqual(const T* pV1, const T* pV2, size_t count = 1) {
+	return (pV1 && pV2) ? (memcmp(pV1, pV2, sizeof(T) * count) == 0) : false;
 }
 
 /**

@@ -249,7 +249,7 @@ void MVKQueueCommandBufferSubmission::setActiveMTLCommandBuffer(id<MTLCommandBuf
 
 	if (_activeMTLCommandBuffer) { commitActiveMTLCommandBuffer(); }
 
-	_activeMTLCommandBuffer = mtlCmdBuff;	// not retained
+	_activeMTLCommandBuffer = [mtlCmdBuff retain];		// retained to handle prefilled
 	[_activeMTLCommandBuffer enqueue];
 }
 
@@ -276,8 +276,9 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 
 	// Use temp var because callback may destroy this instance before this function ends.
 	id<MTLCommandBuffer> mtlCmdBuff = _activeMTLCommandBuffer;
-	_activeMTLCommandBuffer = nil;			// not retained
+	_activeMTLCommandBuffer = nil;
 	[mtlCmdBuff commit];
+	[mtlCmdBuff release];		// retained
 }
 
 void MVKQueueCommandBufferSubmission::finish() {

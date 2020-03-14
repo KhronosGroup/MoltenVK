@@ -187,6 +187,9 @@ protected:
 #pragma mark -
 #pragma mark MVKGraphicsPipeline
 
+/** The number of dynamic states possible in Vulkan. */
+static const uint32_t kMVKVkDynamicStateCount = 32;
+
 /** Represents an Vulkan graphics pipeline. */
 class MVKGraphicsPipeline : public MVKPipeline {
 
@@ -288,7 +291,7 @@ protected:
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;
 
-	bool _dynamicStateEnabled[VK_DYNAMIC_STATE_RANGE_SIZE];
+	bool _dynamicStateEnabled[kMVKVkDynamicStateCount];
 	bool _hasDepthStencilInfo;
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;

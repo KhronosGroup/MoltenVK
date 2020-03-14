@@ -182,7 +182,9 @@ public:
 	/** Resets the command pool. */
 	VkResult reset( VkCommandPoolResetFlags flags);
 
-	MVKCommandPool(MVKDevice* device, const VkCommandPoolCreateInfo* pCreateInfo);
+	MVKCommandPool(MVKDevice* device,
+				   const VkCommandPoolCreateInfo* pCreateInfo,
+				   bool usePooling);
 
 	~MVKCommandPool() override;
 

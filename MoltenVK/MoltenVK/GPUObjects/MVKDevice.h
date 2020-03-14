@@ -23,6 +23,7 @@
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
 #include "MVKVector.h"
+#include "MVKPixelFormats.h"
 #include "mvk_datatypes.hpp"
 #include "vk_mvk_moltenvk.h"
 #include <string>
@@ -360,6 +361,7 @@ protected:
 	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
 	MVKVectorInline<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
+	MVKPixelFormats _pixelFormats;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
 	uint32_t _hostCoherentMemoryTypes;
@@ -605,17 +607,6 @@ public:
 	/**
 	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
 	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
-	 *
-	 * This function uses the MoltenVK API function mvkMTLPixelFormatFromVkFormat(), but 
-     * not all MTLPixelFormats returned by that API function are supported by all GPU's.
-	 * This function may substitute and return a MTLPixelFormat value that is different than
-	 * the value returned by the mvkMTLPixelFormatFromVkFormat() function, but is compatible
-	 * with the GPU underlying this instance.
-	 *
-	 * Not all macOS GPU's support the MTLPixelFormatDepth24Unorm_Stencil8 pixel format, and
-	 * in that case, this function will return MTLPixelFormatDepth32Float_Stencil8 instead.
-	 *
-	 * All other pixel formats are returned unchanged.
 	 */
 	MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBaseObject* mvkObj);
 
@@ -675,16 +666,6 @@ public:
     /** Performance statistics. */
     MVKPerformanceStatistics _performanceStatistics;
 
-	// Indicates whether semaphores should use a MTLFence if available.
-	// Set by the MVK_ALLOW_METAL_FENCES environment variable if MTLFences are available.
-	// This should be a temporary fix after some repair to semaphore handling.
-	bool _useMTLFenceForSemaphores;
-
-	// Indicates whether semaphores should use a MTLEvent if available.
-	// Set by the MVK_ALLOW_METAL_EVENTS environment variable if MTLEvents are available.
-	// This should be a temporary fix after some repair to semaphore handling.
-	bool _useMTLEventForSemaphores;
-
 
 #pragma mark Construction
 
@@ -733,6 +714,9 @@ protected:
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;
     uint32_t _globalVisibilityQueryCount;
     std::mutex _vizLock;
+	bool _useMTLFenceForSemaphores;
+	bool _useMTLEventForSemaphores;
+	bool _useCommandPooling;
 };
 
 
@@ -760,10 +744,6 @@ public:
 	/**
 	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
 	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
-	 *
-	 * This function delegates to the MVKDevice::getMTLPixelFormatFromVkFormat() function.
-	 * See the notes for that function for more information about how MTLPixelFormats
-	 * are managed for each platform device.
 	 */
 	inline MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
 		return _device ? _device->getMTLPixelFormatFromVkFormat(vkFormat, getBaseObject())

@@ -209,20 +209,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 }
 
 bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
-
-	if ( !mvkVkFormatIsSupported(format) ) { return false; }
-
-	// Special-case certain formats that not all GPU's support.
-#if MVK_MACOS
-	switch (mvkMTLPixelFormatFromVkFormat(format)) {
-		case MTLPixelFormatDepth24Unorm_Stencil8:
-			return getMTLDevice().isDepth24Stencil8PixelFormatSupported;
-		default:
-			break;
-	}
-#endif
-
-	return true;
+	return _pixelFormats.vkFormatIsSupported(format);
 }
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
@@ -752,8 +739,8 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 			switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
 				auto* budgetProps = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)next;
-				mvkClear(budgetProps->heapBudget);
-				mvkClear(budgetProps->heapUsage);
+				mvkClear(budgetProps->heapBudget, VK_MAX_MEMORY_HEAPS);
+				mvkClear(budgetProps->heapUsage, VK_MAX_MEMORY_HEAPS);
 				budgetProps->heapBudget[0] = (VkDeviceSize)getRecommendedMaxWorkingSetSize();
 				budgetProps->heapUsage[0] = (VkDeviceSize)getCurrentAllocatedSize();
 				if (!getHasUnifiedMemory()) {
@@ -773,9 +760,11 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 
 #pragma mark Construction
 
-MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) : _supportedExtensions(this, true) {
-	_mvkInstance = mvkInstance;
-	_mtlDevice = [mtlDevice retain];
+MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) :
+	_mvkInstance(mvkInstance),
+	_supportedExtensions(this, true),
+	_pixelFormats(this, mtlDevice),
+	_mtlDevice([mtlDevice retain]) {
 
 	initMetalFeatures();        // Call first.
 	initFeatures();             // Call second.
@@ -1669,7 +1658,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	// Clear the UUID
-	mvkClear(&_properties.pipelineCacheUUID);
+	mvkClear(&_properties.pipelineCacheUUID, VK_UUID_SIZE);
 
 	size_t uuidComponentOffset = 0;
 
@@ -2064,7 +2053,7 @@ void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateI
 }
 
 VkResult MVKDevice::getDeviceGroupPresentCapabilities(VkDeviceGroupPresentCapabilitiesKHR* pDeviceGroupPresentCapabilities) {
-	mvkClear(pDeviceGroupPresentCapabilities->presentMask);
+	mvkClear(pDeviceGroupPresentCapabilities->presentMask, VK_MAX_DEVICE_GROUP_SIZE);
 	pDeviceGroupPresentCapabilities->presentMask[0] = 0x1;
 
 	pDeviceGroupPresentCapabilities->modes = VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_BIT_KHR;
@@ -2406,7 +2395,7 @@ void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,
 
 MVKCommandPool* MVKDevice::createCommandPool(const VkCommandPoolCreateInfo* pCreateInfo,
 											const VkAllocationCallbacks* pAllocator) {
-	return new MVKCommandPool(this, pCreateInfo);
+	return new MVKCommandPool(this, pCreateInfo, _useCommandPooling);
 }
 
 void MVKDevice::destroyCommandPool(MVKCommandPool* mvkCmdPool,
@@ -2530,14 +2519,7 @@ uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t bindin
 }
 
 MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBaseObject* mvkObj) {
-	MTLPixelFormat mtlPixFmt = mvkMTLPixelFormatFromVkFormatInObj(vkFormat, mvkObj);
-#if MVK_MACOS
-	if (mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8 &&
-		!getMTLDevice().isDepth24Stencil8PixelFormatSupported) {
-		return mvkMTLPixelFormatFromVkFormatInObj(vkFormat, mvkObj, MTLPixelFormatDepth24Unorm_Stencil8);
-	}
-#endif
-	return mtlPixFmt;
+	return _physicalDevice->_pixelFormats.getMTLPixelFormatFromVkFormat(vkFormat);
 }
 
 VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {
@@ -2668,15 +2650,29 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 
+
+	// Indicates whether semaphores should use a MTLFence if available.
+	// Set by the MVK_ALLOW_METAL_FENCES environment variable if MTLFences are available.
+	// This should be a temporary fix after some repair to semaphore handling.
 	_useMTLFenceForSemaphores = false;
 	if (_pMetalFeatures->fences) {
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLFenceForSemaphores, MVK_ALLOW_METAL_FENCES);
 	}
+
+	// Indicates whether semaphores should use a MTLEvent if available.
+	// Set by the MVK_ALLOW_METAL_EVENTS environment variable if MTLEvents are available.
+	// This should be a temporary fix after some repair to semaphore handling.
 	_useMTLEventForSemaphores = false;
 	if (_pMetalFeatures->events) {
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventForSemaphores, MVK_ALLOW_METAL_EVENTS);
 	}
 	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
+
+#ifndef MVK_CONFIG_USE_COMMAND_POOLING
+#   define MVK_CONFIG_USE_COMMAND_POOLING    1
+#endif
+	_useCommandPooling = MVK_CONFIG_USE_COMMAND_POOLING;
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useCommandPooling, MVK_CONFIG_USE_COMMAND_POOLING);
 
 #if MVK_MACOS
 	// If we have selected a high-power GPU and want to force the window system

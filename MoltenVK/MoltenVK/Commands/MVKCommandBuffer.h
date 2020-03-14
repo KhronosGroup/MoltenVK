@@ -152,6 +152,7 @@ protected:
 	bool canPrefill();
 	void prefill();
 	void clearPrefilledMTLCommandBuffer();
+	void releaseCommands();
 
 	MVKCommand* _head = nullptr;
 	MVKCommand* _tail = nullptr;

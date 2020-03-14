@@ -499,9 +499,9 @@ static uint16_t _fmtDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
 static void MVKInitFormatMaps() {
 
     // Set all VkFormats and MTLPixelFormats to undefined/invalid
-    mvkClear(_fmtDescIndicesByVkFormatsCore);
-    mvkClear(_fmtDescIndicesByMTLPixelFormats);
-    mvkClear(_fmtDescIndicesByMTLVertexFormats);
+    mvkClear(_fmtDescIndicesByVkFormatsCore, _vkFormatCoreCount);
+    mvkClear(_fmtDescIndicesByMTLPixelFormats, _mtlFormatCount);
+    mvkClear(_fmtDescIndicesByMTLVertexFormats, _mtlVertexFormatCount);
 
 	_pFmtDescIndicesByVkFormatsExt = new MVKFormatIndexByVkFormatMap();
 
@@ -569,13 +569,11 @@ MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat
 	return mvkMTLPixelFormatFromVkFormatInObj(vkFormat, nullptr);
 }
 
-MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat,
-												  MVKBaseObject* mvkObj,
-												  MTLPixelFormat mtlPixelFormatKnownUnsupported) {
+MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj) {
 	MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
 
 	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
-	if (fmtDesc.isSupported() && (fmtDesc.mtl != mtlPixelFormatKnownUnsupported)) {
+	if (fmtDesc.isSupported()) {
 		mtlPixFmt = fmtDesc.mtl;
 	} else if (vkFormat != VK_FORMAT_UNDEFINED) {
 		// If the MTLPixelFormat is not supported but VkFormat is valid, attempt to substitute a different format.

@@ -275,7 +275,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
 
     // First test if this dynamic state is explicitly turned off
-    if ( (state >= VK_DYNAMIC_STATE_RANGE_SIZE) || !_dynamicStateEnabled[state] ) { return false; }
+    if ( (state >= kMVKVkDynamicStateCount) || !_dynamicStateEnabled[state] ) { return false; }
 
     // Some dynamic states have other restrictions
     switch (state) {
@@ -326,7 +326,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	// Track dynamic state in _dynamicStateEnabled array
-	mvkClear(&_dynamicStateEnabled);		// start with all dynamic state disabled
+	mvkClear(_dynamicStateEnabled, kMVKVkDynamicStateCount);	// start with all dynamic state disabled
 	const VkPipelineDynamicStateCreateInfo* pDS = pCreateInfo->pDynamicState;
 	if (pDS) {
 		for (uint32_t i = 0; i < pDS->dynamicStateCount; i++) {
