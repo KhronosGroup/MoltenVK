@@ -116,9 +116,10 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
         colorDesc.pixelFormat = (MTLPixelFormat)attKey.attachmentMTLPixelFormats[caIdx];
         colorDesc.writeMask = attKey.isAttachmentEnabled(caIdx) ? MTLColorWriteMaskAll : MTLColorWriteMaskNone;
     }
+	MVKPixelFormats* pixFmts = getPixelFormats();
     MTLPixelFormat mtlDSFormat = (MTLPixelFormat)attKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex];
-    if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
-    if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
+    if (pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
+    if (pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
     MTLVertexDescriptor* vtxDesc = plDesc.vertexDescriptor;
 

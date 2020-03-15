@@ -108,9 +108,10 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	if (dsRPAttIdx != VK_ATTACHMENT_UNUSED) {
 		MVKRenderPassAttachment* dsMVKRPAtt = &_renderPass->_attachments[dsRPAttIdx];
 		MVKImageView* dsImage = framebuffer->getAttachment(dsRPAttIdx);
+		MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
 		MTLPixelFormat mtlDSFormat = dsImage->getMTLPixelFormat();
 
-		if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) {
+		if (pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFormat)) {
 			MTLRenderPassDepthAttachmentDescriptor* mtlDepthAttDesc = mtlRPDesc.depthAttachment;
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
@@ -121,7 +122,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                 mtlDepthAttDesc.clearDepth = mvkMTLClearDepthFromVkClearValue(clearValues[dsRPAttIdx]);
 			}
 		}
-		if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
+		if (pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFormat)) {
 			MTLRenderPassStencilAttachmentDescriptor* mtlStencilAttDesc = mtlRPDesc.stencilAttachment;
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
@@ -187,9 +188,10 @@ void MVKRenderSubpass::populateClearAttachments(MVKVector<VkClearAttachment>& cl
 		cAtt.colorAttachment = 0;
 		cAtt.clearValue = clearValues[attIdx];
 
+		MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
 		MTLPixelFormat mtlDSFmt = _renderPass->getPixelFormats()->getMTLPixelFormatFromVkFormat(getDepthStencilFormat());
-		if (mvkMTLPixelFormatIsDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
-		if (mvkMTLPixelFormatIsStencilFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT; }
+		if (pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
+		if (pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT; }
 		if (cAtt.aspectMask) { clearAtts.push_back(cAtt); }
 	}
 }

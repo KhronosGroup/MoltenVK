@@ -247,9 +247,10 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 	}
 
 	// Validate
+	MVKPixelFormats* pixFmts = getPixelFormats();
 	if ( !_mvkImageBlitRenders.empty() &&
-		(mvkMTLPixelFormatIsDepthFormat(_srcMTLPixFmt) ||
-		 mvkMTLPixelFormatIsStencilFormat(_srcMTLPixFmt)) ) {
+		(pixFmts->mtlPixelFormatIsDepthFormat(_srcMTLPixFmt) ||
+		 pixFmts->mtlPixelFormatIsStencilFormat(_srcMTLPixFmt)) ) {
 
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting depth/stencil images is not supported."));
 		_mvkImageBlitRenders.clear();
@@ -727,6 +728,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
 	NSUInteger mtlBuffOffsetBase = _buffer->getMTLBufferOffset();
     MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat();
     MVKCommandUse cmdUse = _toImage ? kMVKCommandUseCopyBufferToImage : kMVKCommandUseCopyImageToBuffer;
+	MVKPixelFormats* pixFmts = getPixelFormats();
 
     for (auto& cpyRgn : _bufferImageCopyRegions) {
 
@@ -749,7 +751,9 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
         // If the format combines BOTH depth and stencil, determine whether one or both
         // components are to be copied, and adjust the byte counts and copy options accordingly.
         MTLBlitOption blitOptions = MTLBlitOptionNone;
-        if (mvkMTLPixelFormatIsDepthFormat(mtlPixFmt) && mvkMTLPixelFormatIsStencilFormat(mtlPixFmt)) {
+        if (pixFmts->mtlPixelFormatIsDepthFormat(mtlPixFmt) &&
+			pixFmts->mtlPixelFormatIsStencilFormat(mtlPixFmt)) {
+
             VkImageAspectFlags imgFlags = cpyRgn.imageSubresource.aspectMask;
             bool wantDepth = mvkAreAllFlagsEnabled(imgFlags, VK_IMAGE_ASPECT_DEPTH_BIT);
             bool wantStencil = mvkAreAllFlagsEnabled(imgFlags, VK_IMAGE_ASPECT_STENCIL_BIT);
@@ -770,7 +774,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
         }
 
 #if MVK_IOS
-		if (mvkMTLPixelFormatIsPVRTCFormat(mtlPixFmt)) {
+		if (pixFmts->mtlPixelFormatIsPVRTCFormat(mtlPixFmt)) {
 			blitOptions |= MTLBlitOptionRowLinearPVRTC;
 		}
 #endif
@@ -1028,8 +1032,9 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     VkFormat vkAttFmt = subpass->getDepthStencilFormat();
 	MTLPixelFormat mtlAttFmt = pixFmts->getMTLPixelFormatFromVkFormat(vkAttFmt);
     _rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = mtlAttFmt;
-	bool isClearingDepth = _isClearingDepth && mvkMTLPixelFormatIsDepthFormat(mtlAttFmt);
-	bool isClearingStencil = _isClearingStencil && mvkMTLPixelFormatIsStencilFormat(mtlAttFmt);
+
+	bool isClearingDepth = _isClearingDepth && pixFmts->mtlPixelFormatIsDepthFormat(mtlAttFmt);
+	bool isClearingStencil = _isClearingStencil && pixFmts->mtlPixelFormatIsStencilFormat(mtlAttFmt);
 
     // Render the clear colors to the attachments
     id<MTLRenderCommandEncoder> mtlRendEnc = cmdEncoder->_mtlRenderEncoder;

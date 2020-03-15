@@ -422,9 +422,10 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
 
 	// Remove view usage from D/S if Metal doesn't support it
+	MVKPixelFormats* pixFmts = getPixelFormats();
 	if ( !_device->_pMetalFeatures->stencilViews &&
-		mvkMTLPixelFormatIsDepthFormat(_mtlPixelFormat) &&
-		mvkMTLPixelFormatIsStencilFormat(_mtlPixelFormat)) {
+		pixFmts->mtlPixelFormatIsDepthFormat(_mtlPixelFormat) &&
+		pixFmts->mtlPixelFormatIsStencilFormat(_mtlPixelFormat)) {
 
 		mvkDisableFlag(usage, MTLTextureUsagePixelFormatView);
 	}
@@ -549,7 +550,7 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
 	VkDeviceSize bytesPerImage = (imgType == VK_IMAGE_TYPE_3D) ? imgLayout.depthPitch : 0;
 
 	id<MTLTexture> mtlTex = getMTLTexture();
-	if (mvkMTLPixelFormatIsPVRTCFormat(mtlTex.pixelFormat)) {
+	if (getPixelFormats()->mtlPixelFormatIsPVRTCFormat(mtlTex.pixelFormat)) {
 		bytesPerRow = 0;
 		bytesPerImage = 0;
 	}

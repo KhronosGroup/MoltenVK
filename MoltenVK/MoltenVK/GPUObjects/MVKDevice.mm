@@ -532,7 +532,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	}
 
 	uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
-	if (!mvkMTLPixelFormatIsSupported(MTLPixelFormatBGR10A2Unorm)) { mtlFmtsCnt--; }
+	if ( !_pixelFormats.mtlPixelFormatIsSupported(MTLPixelFormatBGR10A2Unorm) ) { mtlFmtsCnt--; }
 
 	const uint vkFmtsCnt = mtlFmtsCnt * (uint)colorSpaces.size();
 
