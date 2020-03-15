@@ -18,6 +18,7 @@
 
 #include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
+#include "MVKPixelFormats.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKBaseObject.h"
@@ -98,6 +99,12 @@ using namespace std;
 
 #pragma mark Texture formats
 
+
+MVKPixelFormats* mvkPlatformPixelFormats() {
+	static MVKPixelFormats _platformPixelFormats;
+	return &_platformPixelFormats;
+}
+
 static const MVKOSVersion kMTLFmtNA = numeric_limits<MVKOSVersion>::max();
 
 /** Describes the properties of each VkFormat, including the corresponding Metal pixel format. */
@@ -142,7 +149,7 @@ typedef struct {
     }
     inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid) && (mvkOSVersion() >= vertexSinceOSVersion()); };
     inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
-} MVKFormatDesc;
+} MVKPlatformFormatDesc;
 
 /** Mapping between Vulkan and Metal pixel formats. */
 #if MVK_MACOS
@@ -226,8 +233,8 @@ typedef struct {
 #   define MTLPixelFormatDepth16Unorm_Stencil8  MTLPixelFormatDepth32Float_Stencil8
 #endif
 
-// This cannot be const, because we write to MVKFormatDesc::hasReportedSubstitution
-static MVKFormatDesc _formatDescriptions[] {
+// This cannot be const, because we write to MVKPlatformFormatDesc::hasReportedSubstitution
+static MVKPlatformFormatDesc _formatDescriptions[] {
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_UNDEFINED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 0, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatNone, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
 
 	MVK_MAKE_FMT_STRUCT( VK_FORMAT_R4G4_UNORM_PACK8, MTLPixelFormatInvalid, MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA, 1, 1, 1, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS ),
@@ -469,10 +476,6 @@ static MVKFormatDesc _formatDescriptions[] {
     MVK_MAKE_FMT_STRUCT( VK_FORMAT_UNDEFINED, MTLPixelFormatBGRG422, MTLPixelFormatInvalid, 8.0, 10.11, 2, 1, 4, MTLVertexFormatInvalid, MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS ),
 };
 
-static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
-static const uint32_t _mtlFormatCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
-static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
-
 // Map for mapping large VkFormat values to an index.
 typedef unordered_map<uint32_t, uint32_t> MVKFormatIndexByVkFormatMap;
 
@@ -506,11 +509,11 @@ static void MVKInitFormatMaps() {
 	_pFmtDescIndicesByVkFormatsExt = new MVKFormatIndexByVkFormatMap();
 
 	// Iterate through the format descriptions and populate the lookup maps.
-	uint32_t fmtCnt = sizeof(_formatDescriptions) / sizeof(MVKFormatDesc);
+	uint32_t fmtCnt = sizeof(_formatDescriptions) / sizeof(MVKPlatformFormatDesc);
 	for (uint32_t fmtIdx = 0; fmtIdx < fmtCnt; fmtIdx++) {
 
 		// Access the mapping
-		const MVKFormatDesc& tfm = _formatDescriptions[fmtIdx];
+		const MVKPlatformFormatDesc& tfm = _formatDescriptions[fmtIdx];
 
 		// If the Vulkan format is defined, create a lookup between the Vulkan format
         // and an index to the format info. For core Vulkan formats, which are small
@@ -531,19 +534,19 @@ static void MVKInitFormatMaps() {
 }
 
 // Return a reference to the format description corresponding to the VkFormat.
-inline const MVKFormatDesc& formatDescForVkFormat(VkFormat vkFormat) {
+inline const MVKPlatformFormatDesc& formatDescForVkFormat(VkFormat vkFormat) {
 	uint16_t fmtIdx = (vkFormat < _vkFormatCoreCount) ? _fmtDescIndicesByVkFormatsCore[vkFormat] : (*_pFmtDescIndicesByVkFormatsExt)[vkFormat];
     return _formatDescriptions[fmtIdx];
 }
 
 // Return a reference to the format description corresponding to the MTLPixelFormat.
-inline const MVKFormatDesc& formatDescForMTLPixelFormat(MTLPixelFormat mtlFormat) {
+inline const MVKPlatformFormatDesc& formatDescForMTLPixelFormat(MTLPixelFormat mtlFormat) {
     uint16_t fmtIdx = (mtlFormat < _mtlFormatCount) ? _fmtDescIndicesByMTLPixelFormats[mtlFormat] : 0;
     return _formatDescriptions[fmtIdx];
 }
 
 // Return a reference to the format description corresponding to the MTLVertexFormat.
-inline const MVKFormatDesc& formatDescForMTLVertexFormat(MTLVertexFormat mtlFormat) {
+inline const MVKPlatformFormatDesc& formatDescForMTLVertexFormat(MTLVertexFormat mtlFormat) {
     uint16_t fmtIdx = (mtlFormat < _mtlVertexFormatCount) ? _fmtDescIndicesByMTLVertexFormats[mtlFormat] : 0;
     return _formatDescriptions[fmtIdx];
 }
@@ -572,7 +575,7 @@ MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat
 MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj) {
 	MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
 
-	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
+	const MVKPlatformFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
 	if (fmtDesc.isSupported()) {
 		mtlPixFmt = fmtDesc.mtl;
 	} else if (vkFormat != VK_FORMAT_UNDEFINED) {
@@ -587,9 +590,9 @@ MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObje
 			errMsg += " is not supported on this device.";
 
 			if (mtlPixFmt) {
-				((MVKFormatDesc*)&fmtDesc)->hasReportedSubstitution = true;
+				((MVKPlatformFormatDesc*)&fmtDesc)->hasReportedSubstitution = true;
 
-				const MVKFormatDesc& fmtDescSubs = formatDescForMTLPixelFormat(mtlPixFmt);
+				const MVKPlatformFormatDesc& fmtDescSubs = formatDescForMTLPixelFormat(mtlPixFmt);
 				errMsg += " Using VkFormat ";
 				errMsg += (fmtDescSubs.vkName) ? fmtDescSubs.vkName : to_string(fmtDescSubs.vk);
 				errMsg += " instead.";
@@ -630,12 +633,12 @@ MVK_PUBLIC_SYMBOL float mvkMTLPixelFormatBytesPerTexel(MTLPixelFormat mtlFormat)
 }
 
 MVK_PUBLIC_SYMBOL size_t mvkVkFormatBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow) {
-    const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
+    const MVKPlatformFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
     return mvkCeilingDivide(texelsPerRow, fmtDesc.blockTexelSize.width) * fmtDesc.bytesPerBlock;
 }
 
 MVK_PUBLIC_SYMBOL size_t mvkMTLPixelFormatBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow) {
-    const MVKFormatDesc& fmtDesc = formatDescForMTLPixelFormat(mtlFormat);
+    const MVKPlatformFormatDesc& fmtDesc = formatDescForMTLPixelFormat(mtlFormat);
     return mvkCeilingDivide(texelsPerRow, fmtDesc.blockTexelSize.width) * fmtDesc.bytesPerBlock;
 }
 
@@ -649,7 +652,7 @@ MVK_PUBLIC_SYMBOL size_t mvkMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat
 
 MVK_PUBLIC_SYMBOL VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat, bool assumeGPUSupportsDefault) {
 	VkFormatProperties fmtProps = {MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS};
-	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
+	const MVKPlatformFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
 	if (assumeGPUSupportsDefault && fmtDesc.isSupported()) {
 		fmtProps = fmtDesc.properties;
 		if (!fmtDesc.vertexIsSupportedOrSubstitutable()) {
@@ -698,7 +701,7 @@ MVK_PUBLIC_SYMBOL MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkForm
 MTLVertexFormat mvkMTLVertexFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj) {
     MTLVertexFormat mtlVtxFmt = MTLVertexFormatInvalid;
 
-    const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
+    const MVKPlatformFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
     if (fmtDesc.vertexIsSupported()) {
         mtlVtxFmt = fmtDesc.mtlVertexFormat;
     } else if (vkFormat != VK_FORMAT_UNDEFINED) {
@@ -712,7 +715,7 @@ MTLVertexFormat mvkMTLVertexFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseOb
         if (fmtDesc.vertexIsSupportedOrSubstitutable()) {
             mtlVtxFmt = fmtDesc.mtlVertexFormatSubstitute;
 
-            const MVKFormatDesc& fmtDescSubs = formatDescForMTLVertexFormat(mtlVtxFmt);
+            const MVKPlatformFormatDesc& fmtDescSubs = formatDescForMTLVertexFormat(mtlVtxFmt);
             errMsg += " Using VkFormat ";
             errMsg += (fmtDescSubs.vkName) ? fmtDescSubs.vkName : to_string(fmtDescSubs.vk);
             errMsg += " instead.";

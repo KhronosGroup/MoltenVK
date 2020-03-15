@@ -627,7 +627,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_mipLevels = validateMipLevels(pCreateInfo, isAttachment);
 	_isLinear = validateLinear(pCreateInfo, isAttachment);
 
-	_mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
+	_mtlPixelFormat = getPixelFormats()->getMTLPixelFormatFromVkFormat(pCreateInfo->format);
 	_usage = pCreateInfo->usage;
 
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
@@ -993,7 +993,7 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
 													   const MVKConfiguration* pMVKConfig) {
 
 	// Attempt to find a valid format transformation swizzle first.
-	MTLPixelFormat mtlPF = getMTLPixelFormatFromVkFormat(format);
+	MTLPixelFormat mtlPF = getPixelFormats()->getMTLPixelFormatFromVkFormat(format);
 	useSwizzle = false;
 
 	#define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(components, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )

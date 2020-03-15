@@ -215,7 +215,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
     _buffer = (MVKBuffer*)pCreateInfo->buffer;
     _mtlBufferOffset = _buffer->getMTLBufferOffset() + pCreateInfo->offset;
-    _mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
+    _mtlPixelFormat = getPixelFormats()->getMTLPixelFormatFromVkFormat(pCreateInfo->format);
     VkExtent2D fmtBlockSize = mvkVkFormatBlockTexelSize(pCreateInfo->format);  // Pixel size of format
     size_t bytesPerBlock = mvkVkFormatBytesPerBlock(pCreateInfo->format);
 	_mtlTexture = nil;

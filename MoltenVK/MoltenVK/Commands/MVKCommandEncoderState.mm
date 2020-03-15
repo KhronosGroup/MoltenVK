@@ -319,7 +319,8 @@ void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags 
 
 void MVKDepthStencilCommandEncoderState::beginMetalRenderPass() {
 	MVKRenderSubpass* mvkSubpass = _cmdEncoder->getSubpass();
-	MTLPixelFormat mtlDSFormat = _cmdEncoder->getMTLPixelFormatFromVkFormat(mvkSubpass->getDepthStencilFormat());
+	MVKPixelFormats* pixFmts = _cmdEncoder->getPixelFormats();
+	MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormatFromVkFormat(mvkSubpass->getDepthStencilFormat());
 
 	bool prevHasDepthAttachment = _hasDepthAttachment;
 	_hasDepthAttachment = mvkMTLPixelFormatIsDepthFormat(mtlDSFormat);

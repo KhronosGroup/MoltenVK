@@ -2518,15 +2518,11 @@ uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t bindin
 	return ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
 }
 
-MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBaseObject* mvkObj) {
-	return _physicalDevice->_pixelFormats.getMTLPixelFormatFromVkFormat(vkFormat);
-}
-
 VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {
 	VkDeviceSize deviceAlignment = 0;
 	id<MTLDevice> mtlDev = getMTLDevice();
 	if ([mtlDev respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
-		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: getMTLPixelFormatFromVkFormat(format, mvkObj)];
+		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: getPixelFormats()->getMTLPixelFormatFromVkFormat(format)];
 	}
 	return deviceAlignment ? deviceAlignment : _pProperties->limits.minTexelBufferOffsetAlignment;
 }

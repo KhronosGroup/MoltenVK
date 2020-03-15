@@ -187,7 +187,7 @@ void MVKRenderSubpass::populateClearAttachments(MVKVector<VkClearAttachment>& cl
 		cAtt.colorAttachment = 0;
 		cAtt.clearValue = clearValues[attIdx];
 
-		MTLPixelFormat mtlDSFmt = _renderPass->getMTLPixelFormatFromVkFormat(getDepthStencilFormat());
+		MTLPixelFormat mtlDSFmt = _renderPass->getPixelFormats()->getMTLPixelFormatFromVkFormat(getDepthStencilFormat());
 		if (mvkMTLPixelFormatIsDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
 		if (mvkMTLPixelFormatIsStencilFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT; }
 		if (cAtt.aspectMask) { clearAtts.push_back(cAtt); }
@@ -328,7 +328,7 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 VkAttachmentDescription MVKRenderPassAttachment::validate(const VkAttachmentDescription* pCreateInfo) {
 	VkAttachmentDescription info = *pCreateInfo;
 
-	if ( !_renderPass->getMTLPixelFormatFromVkFormat(info.format) ) {
+	if ( !_renderPass->getPixelFormats()->getMTLPixelFormatFromVkFormat(info.format) ) {
 		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", mvkVkFormatName(info.format)));
 	}
 

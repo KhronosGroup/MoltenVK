@@ -25,6 +25,7 @@
 #include <functional>
 
 class MVKBaseObject;
+class MVKPixelFormats;
 
 /*
  * This header file should be used internally within MoltenVK in place of mvk_datatypes.h,
@@ -81,6 +82,12 @@ MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode
 #pragma mark Image properties
 
 #pragma mark Texture formats
+
+/**
+ * Returns info about the default pixel formats supported by the platform,
+ * without taking into consideration support at the MTLDevice level.
+ */
+MVKPixelFormats* mvkPlatformPixelFormats();
 
 /** Enumerates all formats that support the given features, calling a specified function for each one. */
 void mvkEnumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);

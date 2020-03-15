@@ -43,6 +43,8 @@ MVKDevice* MVKCommand::getDevice() { return getCommandPool()->getDevice(); }
 
 id<MTLDevice> MVKCommand::getMTLDevice() { return getCommandPool()->getMTLDevice(); }
 
+MVKPixelFormats* MVKCommand::getPixelFormats() { return getDevice()->getPixelFormats(); }
+
 
 #pragma mark -
 #pragma mark MVKCommandTypePool
