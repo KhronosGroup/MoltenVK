@@ -567,12 +567,7 @@ MVK_PUBLIC_SYMBOL MVKFormatType mvkFormatTypeFromMTLPixelFormat(MTLPixelFormat m
 	return formatDescForMTLPixelFormat(mtlFormat).formatType;
 }
 
-#undef mvkMTLPixelFormatFromVkFormat
 MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
-	return mvkMTLPixelFormatFromVkFormatInObj(vkFormat, nullptr);
-}
-
-MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj) {
 	MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
 
 	const MVKPlatformFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
@@ -597,7 +592,7 @@ MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObje
 				errMsg += (fmtDescSubs.vkName) ? fmtDescSubs.vkName : to_string(fmtDescSubs.vk);
 				errMsg += " instead.";
 			}
-			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
+			MVKBaseObject::reportError(nullptr, VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
 		}
 	}
 

@@ -549,7 +549,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	// Now populate the supplied array
 	for (uint csIdx = 0, idx = 0; idx < *pCount && csIdx < colorSpaces.size(); csIdx++) {
 		for (uint fmtIdx = 0; idx < *pCount && fmtIdx < mtlFmtsCnt; fmtIdx++, idx++) {
-			pSurfaceFormats[idx].format = mvkVkFormatFromMTLPixelFormat(mtlFormats[fmtIdx]);
+			pSurfaceFormats[idx].format = _pixelFormats.getVkFormatFromMTLPixelFormat(mtlFormats[fmtIdx]);
 			pSurfaceFormats[idx].colorSpace = colorSpaces[csIdx];
 		}
 	}
@@ -1224,7 +1224,7 @@ void MVKPhysicalDevice::initProperties() {
         uint32_t maxStorage = 0, maxUniform = 0;
         bool singleTexelStorage = true, singleTexelUniform = true;
         mvkEnumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
-			MTLPixelFormat mtlFmt = mvkMTLPixelFormatFromVkFormat(vk);
+			MTLPixelFormat mtlFmt = _pixelFormats.getMTLPixelFormatFromVkFormat(vk);
 			if ( !mtlFmt ) { return false; }	// If format is invalid, avoid validation errors on MTLDevice format alignment calls
 
             NSUInteger alignment;

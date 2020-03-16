@@ -40,7 +40,7 @@ void MVKImage::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName);
 
 VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_mtlTextureType); }
 
-VkFormat MVKImage::getVkFormat() { return mvkVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
+VkFormat MVKImage::getVkFormat() { return getPixelFormats()->getVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
 
 bool MVKImage::getIsCompressed() {
 	return getPixelFormats()->getFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;

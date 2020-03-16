@@ -492,7 +492,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = mvkVkFormatFromMTLPixelFormat(_mtlLayer.pixelFormat),
+        .format = getPixelFormats()->getVkFormatFromMTLPixelFormat(_mtlLayer.pixelFormat),
         .extent = { imgExtent.width, imgExtent.height, 1 },
         .mipLevels = 1,
         .arrayLayers = 1,

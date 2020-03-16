@@ -47,9 +47,6 @@ class MVKPixelFormats;
  * of an MVKBaseObject subclass, which is true for all but static calling functions.
  */
 
-MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj);
-#define mvkMTLPixelFormatFromVkFormat(vkFormat)	mvkMTLPixelFormatFromVkFormatInObj(vkFormat, this)
-
 MTLVertexFormat mvkMTLVertexFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj);
 #define mvkMTLVertexFormatFromVkFormat(vkFormat) mvkMTLVertexFormatFromVkFormatInObj(vkFormat, this)
 
