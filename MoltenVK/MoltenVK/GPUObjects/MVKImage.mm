@@ -43,7 +43,7 @@ VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_
 VkFormat MVKImage::getVkFormat() { return mvkVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
 
 bool MVKImage::getIsCompressed() {
-	return mvkFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
+	return getPixelFormats()->getFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
 }
 
 bool MVKImage::getSupportsAnyFormatFeature(VkFormatFeatureFlags requiredFormatFeatureFlags) {

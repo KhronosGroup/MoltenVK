@@ -277,7 +277,7 @@ id<MTLFunction> MVKCommandResourceFactory::newClearFragFunction(MVKRPSKeyClearAt
 }
 
 NSString* MVKCommandResourceFactory::getMTLFormatTypeString(MTLPixelFormat mtlPixFmt) {
-	switch (mvkFormatTypeFromMTLPixelFormat(mtlPixFmt)) {
+	switch (getPixelFormats()->getFormatTypeFromMTLPixelFormat(mtlPixFmt)) {
 		case kMVKFormatColorHalf:		return @"half";
 		case kMVKFormatColorFloat:		return @"float";
 		case kMVKFormatColorInt8:
