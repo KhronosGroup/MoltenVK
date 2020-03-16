@@ -628,10 +628,11 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_mipLevels = validateMipLevels(pCreateInfo, isAttachment);
 	_isLinear = validateLinear(pCreateInfo, isAttachment);
 
-	_mtlPixelFormat = getPixelFormats()->getMTLPixelFormatFromVkFormat(pCreateInfo->format);
+	MVKPixelFormats* pixFmts = getPixelFormats();
+	_mtlPixelFormat = pixFmts->getMTLPixelFormatFromVkFormat(pCreateInfo->format);
 	_usage = pCreateInfo->usage;
 
-	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
+	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
@@ -668,7 +669,7 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
 
-	if (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) {
+	if (getPixelFormats()->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with compressed images. Setting sample count to 1."));
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
@@ -688,9 +689,10 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 }
 
 void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
+	MVKPixelFormats* pixFmts = getPixelFormats();
 
 	bool is2D = (getImageType() == VK_IMAGE_TYPE_2D);
-	bool isCompressed = mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed;
+	bool isCompressed = pixFmts->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed;
 
 #if MVK_IOS
 	if (isCompressed && !is2D) {
@@ -707,7 +709,7 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	}
 #endif
 
-	if ((mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
+	if ((pixFmts->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
 	}
 	if (isAttachment && (pCreateInfo->arrayLayers > 1) && !_device->_pMetalFeatures->layeredRendering) {
@@ -749,7 +751,7 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 		isLin = false;
 	}
 
-	if (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) {
+	if (getPixelFormats()->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a depth/stencil format."));
 		isLin = false;
 	}

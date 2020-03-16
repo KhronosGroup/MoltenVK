@@ -1188,7 +1188,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
         // to match the vertex attribute. So tell SPIRV-Cross if we're expecting an unsigned format.
         // Only do this if the attribute could be reasonably expected to fit in the shader's
         // declared type. Programs that try to invoke undefined behavior are on their own.
-        switch (mvkFormatTypeFromVkFormat(pVKVA->format) ) {
+        switch (getPixelFormats()->getFormatTypeFromVkFormat(pVKVA->format) ) {
         case kMVKFormatColorUInt8:
             va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT8;
             break;
@@ -1243,7 +1243,7 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConverterContext(SPIRVToMSLC
         va.vertexAttribute.location = shaderOutputs[vaIdx].location;
         va.vertexAttribute.builtin = shaderOutputs[vaIdx].builtin;
 
-        switch (mvkFormatTypeFromVkFormat(mvkFormatFromOutput(shaderOutputs[vaIdx]) ) ) {
+        switch (getPixelFormats()->getFormatTypeFromVkFormat(mvkFormatFromOutput(shaderOutputs[vaIdx]) ) ) {
             case kMVKFormatColorUInt8:
                 va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT8;
                 break;

@@ -243,7 +243,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		return VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 
-	MVKFormatType mvkFmt = mvkFormatTypeFromVkFormat(format);
+	MVKFormatType mvkFmt = _pixelFormats.getFormatTypeFromVkFormat(format);
 	bool hasAttachmentUsage = mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
@@ -1243,7 +1243,7 @@ void MVKPhysicalDevice::initProperties() {
             //   "If the size of a single texel is a multiple of three bytes, then
             //    the size of a single component of the format is used instead."
             if (texelSize % 3 == 0) {
-                switch (mvkFormatTypeFromVkFormat(vk)) {
+                switch (_pixelFormats.getFormatTypeFromVkFormat(vk)) {
                 case kMVKFormatColorInt8:
                 case kMVKFormatColorUInt8:
                     texelSize = 1;
