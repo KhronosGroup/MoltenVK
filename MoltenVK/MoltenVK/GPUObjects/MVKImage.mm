@@ -327,7 +327,7 @@ VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
     _mipLevels = uint32_t(_mtlTexture.mipmapLevelCount);
     _samples = mvkVkSampleCountFlagBitsFromSampleCount(_mtlTexture.sampleCount);
     _arrayLayers = uint32_t(_mtlTexture.arrayLength);
-    _usage = mvkVkImageUsageFlagsFromMTLTextureUsage(_mtlTexture.usage, _mtlPixelFormat);
+    _usage = getPixelFormats()->getVkImageUsageFlagsFromMTLTextureUsage(_mtlTexture.usage, _mtlPixelFormat);
 
     if (_device->_pMetalFeatures->ioSurfaces) {
         _ioSurface = mtlTexture.iosurface;

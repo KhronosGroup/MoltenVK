@@ -362,7 +362,6 @@ void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, b
     }
 }
 
-#undef mvkMTLVertexFormatFromVkFormat
 MTLVertexFormat MVKPixelFormats::getMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
     MTLVertexFormat mtlVtxFmt = MTLVertexFormatInvalid;
 
@@ -495,8 +494,6 @@ MVKPixelFormats::MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mt
 static const MVKOSVersion kMTLFmtNA = numeric_limits<MVKOSVersion>::max();
 
 void MVKPixelFormats::initFormatCapabilities() {
-
-	MVKLogInfo("sizeof MVKFormatDesc %lu.", sizeof(MVKFormatDesc));
 
 	mvkClear(_formatDescriptions, _vkSpecFormatCount);
 
@@ -808,7 +805,7 @@ void MVKPixelFormats::disableMTLPixelFormat(MTLPixelFormat mtlFormat) {
 // Validate the functionality of this class against the previous format data within MoltenVK.
 // This is a temporary function to confirm that converting to using this class matches existing behaviour at first.
 void MVKPixelFormats::test() {
-	if (_apiObject) { return; }		// Only test default formats
+	if (_apiObject) { return; }		// Only test default platform formats
 
 #define MVK_TEST_FMT(V1, V2)	testFmt(V1, V2, fd.vkName, #V1)
 
@@ -870,5 +867,3 @@ template<typename T>
 void MVKPixelFormats::testFmt(const T v1, const T v2, const char* fmtName, const char* funcName) {
 	MVKAssert(mvkAreEqual(&v1,&v2), "Results not equal for format %s on test %s.", fmtName, funcName);
 }
-
-static const MVKPixelFormats _defaultFormats;

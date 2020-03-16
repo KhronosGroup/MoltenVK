@@ -97,13 +97,12 @@ using namespace std;
 #define MVK_MAKE_FMT_STRUCT(VK_FMT, MTL_FMT, MTL_FMT_ALT, IOS_SINCE, MACOS_SINCE, BLK_W, BLK_H, BLK_BYTE_CNT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, VTX_IOS_SINCE, VTX_MACOS_SINCE, CLR_TYPE, PIXEL_FEATS, BUFFER_FEATS)  \
         { VK_FMT, MTL_FMT, MTL_FMT_ALT, IOS_SINCE, MACOS_SINCE, { BLK_W, BLK_H }, BLK_BYTE_CNT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, VTX_IOS_SINCE, VTX_MACOS_SINCE, CLR_TYPE, { (PIXEL_FEATS & MVK_FMT_LINEAR_TILING_FEATS), PIXEL_FEATS, BUFFER_FEATS }, #VK_FMT, #MTL_FMT, false }
 
+
 #pragma mark Texture formats
 
+static MVKPixelFormats _platformPixelFormats;
 
-MVKPixelFormats* mvkPlatformPixelFormats() {
-	static MVKPixelFormats _platformPixelFormats;
-	return &_platformPixelFormats;
-}
+MVKPixelFormats* mvkPlatformPixelFormats() { return &_platformPixelFormats; }
 
 static const MVKOSVersion kMTLFmtNA = numeric_limits<MVKOSVersion>::max();
 
@@ -668,34 +667,8 @@ MVK_PUBLIC_SYMBOL const char* mvkMTLPixelFormatName(MTLPixelFormat mtlFormat) {
     return formatDescForMTLPixelFormat(mtlFormat).mtlName;
 }
 
-void mvkEnumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
-    static const auto areFeaturesSupported = [any](uint32_t a, uint32_t b) {
-        if (b == 0) return true;
-        if (any)
-            return mvkIsAnyFlagEnabled(a, b);
-        else
-            return mvkAreAllFlagsEnabled(a, b);
-    };
-    for (auto& formatDesc : _formatDescriptions) {
-        if (formatDesc.isSupported() &&
-            areFeaturesSupported(formatDesc.properties.linearTilingFeatures, properties.linearTilingFeatures) &&
-            areFeaturesSupported(formatDesc.properties.optimalTilingFeatures, properties.optimalTilingFeatures) &&
-            areFeaturesSupported(formatDesc.properties.bufferFeatures, properties.bufferFeatures)) {
-            if (!func(formatDesc.vk)) {
-                break;
-            }
-        }
-    }
-}
-
-#undef mvkMTLVertexFormatFromVkFormat
 MVK_PUBLIC_SYMBOL MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
-	return mvkMTLVertexFormatFromVkFormatInObj(vkFormat, nullptr);
-}
-
-MTLVertexFormat mvkMTLVertexFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj) {
     MTLVertexFormat mtlVtxFmt = MTLVertexFormatInvalid;
-
     const MVKPlatformFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
     if (fmtDesc.vertexIsSupported()) {
         mtlVtxFmt = fmtDesc.mtlVertexFormat;
@@ -715,7 +688,7 @@ MTLVertexFormat mvkMTLVertexFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseOb
             errMsg += (fmtDescSubs.vkName) ? fmtDescSubs.vkName : to_string(fmtDescSubs.vk);
             errMsg += " instead.";
         }
-		MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
+		MVKBaseObject::reportError(nullptr, VK_ERROR_FORMAT_NOT_SUPPORTED, "%s", errMsg.c_str());
     }
 
     return mtlVtxFmt;

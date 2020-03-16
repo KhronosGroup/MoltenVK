@@ -628,7 +628,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 		offset = (uint32_t)mvkAlignByteCount(offset, sizeOfOutput(output));
 		if (shaderContext.isVertexAttributeLocationUsed(output.location)) {
 			plDesc.stageInputDescriptor.attributes[output.location].bufferIndex = kMVKTessCtlInputBufferIndex;
-			plDesc.stageInputDescriptor.attributes[output.location].format = (MTLAttributeFormat)mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.stageInputDescriptor.attributes[output.location].format = (MTLAttributeFormat)getPixelFormats()->getMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
 			plDesc.stageInputDescriptor.attributes[output.location].offset = offset;
 		}
 		offset += sizeOfOutput(output);
@@ -720,7 +720,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 		} else if (output.perPatch) {
 			patchOffset = (uint32_t)mvkAlignByteCount(patchOffset, sizeOfOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalPatchInputBufferIndex;
-			plDesc.vertexDescriptor.attributes[output.location].format = mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].offset = patchOffset;
 			patchOffset += sizeOfOutput(output);
 			if (!firstPatch) { firstPatch = &output; }
@@ -728,7 +728,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 		} else {
 			offset = (uint32_t)mvkAlignByteCount(offset, sizeOfOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalInputBufferIndex;
-			plDesc.vertexDescriptor.attributes[output.location].format = mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].offset = offset;
 			offset += sizeOfOutput(output);
 			if (!firstVertex) { firstVertex = &output; }
@@ -980,7 +980,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 			}
 
 			MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
-            vaDesc.format = mvkMTLVertexFormatFromVkFormat(pVKVA->format);
+            vaDesc.format = getPixelFormats()->getMTLVertexFormatFromVkFormat(pVKVA->format);
             vaDesc.bufferIndex = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
             vaDesc.offset = pVKVA->offset;
         }
