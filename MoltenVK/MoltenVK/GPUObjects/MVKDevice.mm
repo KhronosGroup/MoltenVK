@@ -1238,7 +1238,7 @@ void MVKPhysicalDevice::initProperties() {
             // Note that no implementations of Metal support compressed formats
             // in a linear texture (including texture buffers). It's likely that even
             // if they did, this would be the absolute minimum alignment.
-            uint32_t texelSize = mvkVkFormatBytesPerBlock(vk);
+            uint32_t texelSize = _pixelFormats.getVkFormatBytesPerBlock(vk);
             // From the spec:
             //   "If the size of a single texel is a multiple of three bytes, then
             //    the size of a single component of the format is used instead."

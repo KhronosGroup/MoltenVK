@@ -65,12 +65,12 @@ VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 }
 
 VkDeviceSize MVKImage::getBytesPerRow(uint32_t mipLevel) {
-    size_t bytesPerRow = mvkMTLPixelFormatBytesPerRow(_mtlPixelFormat, getExtent3D(mipLevel).width);
+    size_t bytesPerRow = getPixelFormats()->getMTLPixelFormatBytesPerRow(_mtlPixelFormat, getExtent3D(mipLevel).width);
     return mvkAlignByteCount(bytesPerRow, _rowByteAlignment);
 }
 
 VkDeviceSize MVKImage::getBytesPerLayer(uint32_t mipLevel) {
-    return mvkMTLPixelFormatBytesPerLayer(_mtlPixelFormat, getBytesPerRow(mipLevel), getExtent3D(mipLevel).height);
+    return getPixelFormats()->getMTLPixelFormatBytesPerLayer(_mtlPixelFormat, getBytesPerRow(mipLevel), getExtent3D(mipLevel).height);
 }
 
 VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,
@@ -223,7 +223,7 @@ VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOff
 }
 
 bool MVKImage::validateUseTexelBuffer() {
-	VkExtent2D blockExt = mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat);
+	VkExtent2D blockExt = getPixelFormats()->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat);
 	bool isUncompressed = blockExt.width == 1 && blockExt.height == 1;
 
 	bool useTexelBuffer = _device->_pMetalFeatures->texelBuffers;								// Texel buffers available
@@ -386,12 +386,14 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     resetMTLTexture();
     resetIOSurface();
 
-    if (ioSurface) {
+	MVKPixelFormats* pixFmts = getPixelFormats();
+
+	if (ioSurface) {
 		if (IOSurfaceGetWidth(ioSurface) != _extent.width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface width %zu does not match VkImage width %d.", IOSurfaceGetWidth(ioSurface), _extent.width); }
 		if (IOSurfaceGetHeight(ioSurface) != _extent.height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface height %zu does not match VkImage height %d.", IOSurfaceGetHeight(ioSurface), _extent.height); }
-		if (IOSurfaceGetBytesPerElement(ioSurface) != mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface bytes per element %zu does not match VkImage bytes per element %d.", IOSurfaceGetBytesPerElement(ioSurface), mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)); }
-		if (IOSurfaceGetElementWidth(ioSurface) != mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element width %zu does not match VkImage element width %d.", IOSurfaceGetElementWidth(ioSurface), mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width); }
-		if (IOSurfaceGetElementHeight(ioSurface) != mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element height %zu does not match VkImage element height %d.", IOSurfaceGetElementHeight(ioSurface), mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height); }
+		if (IOSurfaceGetBytesPerElement(ioSurface) != pixFmts->getMTLPixelFormatBytesPerBlock(_mtlPixelFormat)) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface bytes per element %zu does not match VkImage bytes per element %d.", IOSurfaceGetBytesPerElement(ioSurface), pixFmts->getMTLPixelFormatBytesPerBlock(_mtlPixelFormat)); }
+		if (IOSurfaceGetElementWidth(ioSurface) != pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element width %zu does not match VkImage element width %d.", IOSurfaceGetElementWidth(ioSurface), pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width); }
+		if (IOSurfaceGetElementHeight(ioSurface) != pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element height %zu does not match VkImage element height %d.", IOSurfaceGetElementHeight(ioSurface), pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height); }
 
         _ioSurface = ioSurface;
         CFRetain(_ioSurface);
@@ -402,9 +404,9 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 			_ioSurface = IOSurfaceCreate((CFDictionaryRef)@{
 															(id)kIOSurfaceWidth: @(_extent.width),
 															(id)kIOSurfaceHeight: @(_extent.height),
-															(id)kIOSurfaceBytesPerElement: @(mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
-															(id)kIOSurfaceElementWidth: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
-															(id)kIOSurfaceElementHeight: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
+															(id)kIOSurfaceBytesPerElement: @(pixFmts->getMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
+															(id)kIOSurfaceElementWidth: @(pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
+															(id)kIOSurfaceElementHeight: @(pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
 															(id)kIOSurfaceIsGlobal: @(true),    // Deprecated but needed for interprocess transfers
 															});
 		}
@@ -636,9 +638,9 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
-	_hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
+	_hasExpectedTexelSize = (pixFmts->getMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == pixFmts->getVkFormatBytesPerBlock(pCreateInfo->format));
 
-	_rowByteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(mvkVkFormatBytesPerBlock(pCreateInfo->format));
+	_rowByteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getVkFormatBytesPerBlock(pCreateInfo->format));
 	if (!_isLinear && _device->_pMetalFeatures->placementHeaps) {
 		MTLTextureDescriptor *mtlTexDesc = newMTLTextureDescriptor();	// temp retain
 		MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];

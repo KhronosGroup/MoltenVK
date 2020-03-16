@@ -234,7 +234,7 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
                                                        __watermarkTextureWidth,
                                                        __watermarkTextureHeight,
                                                        __watermarkTextureFormat,
-                                                       mvkMTLPixelFormatBytesPerRow(__watermarkTextureFormat, __watermarkTextureWidth),
+                                                       getPixelFormats()->getMTLPixelFormatBytesPerRow(__watermarkTextureFormat, __watermarkTextureWidth),
                                                        __watermarkShaderSource);
         }
         _licenseWatermark->render(mtlTexture, mtlCmdBuff, _performanceStatistics.lastFrameInterval / 1000.0);

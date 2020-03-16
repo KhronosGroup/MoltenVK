@@ -77,19 +77,21 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 								 VkImageLayout dstImageLayout,
 								 bool formatsMustMatch,
 								 MVKCommandUse commandUse) {
+	MVKPixelFormats* pixFmts = getPixelFormats();
+
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
 	_srcMTLPixFmt = _srcImage->getMTLPixelFormat();
 	_srcSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_srcImage->getSampleCount());
 	_isSrcCompressed = _srcImage->getIsCompressed();
-	uint32_t srcBytesPerBlock = mvkMTLPixelFormatBytesPerBlock(_srcMTLPixFmt);
+	uint32_t srcBytesPerBlock = pixFmts->getMTLPixelFormatBytesPerBlock(_srcMTLPixFmt);
 
 	_dstImage = (MVKImage*)dstImage;
 	_dstLayout = dstImageLayout;
 	_dstMTLPixFmt = _dstImage->getMTLPixelFormat();
 	_dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
 	_isDstCompressed = _dstImage->getIsCompressed();
-	uint32_t dstBytesPerBlock = mvkMTLPixelFormatBytesPerBlock(_dstMTLPixFmt);
+	uint32_t dstBytesPerBlock = pixFmts->getMTLPixelFormatBytesPerBlock(_dstMTLPixFmt);
 
 	_canCopyFormats = (_dstSampleCount == _srcSampleCount) && (formatsMustMatch
 																? (_dstMTLPixFmt == _srcMTLPixFmt)
@@ -115,9 +117,10 @@ void MVKCmdCopyImage::addImageCopyRegion(const VkImageCopy& region) {
 
 // Add an image->buffer copy and buffer->image copy to replace the image->image copy
 void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region) {
-	VkBufferImageCopy buffImgCpy;
+	MVKPixelFormats* pixFmts = getPixelFormats();
 
 	// Add copy from source image to temp buffer.
+	VkBufferImageCopy buffImgCpy;
 	buffImgCpy.bufferOffset = _tmpBuffSize;
 	buffImgCpy.bufferRowLength = 0;
 	buffImgCpy.bufferImageHeight = 0;
@@ -132,7 +135,7 @@ void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region) {
 	// so we must downscale the destination extent by the size of the source block.
 	VkExtent3D dstExtent = region.extent;
 	if (_isSrcCompressed && !_isDstCompressed) {
-		VkExtent2D srcBlockExtent = mvkMTLPixelFormatBlockTexelSize(_srcMTLPixFmt);
+		VkExtent2D srcBlockExtent = pixFmts->getMTLPixelFormatBlockTexelSize(_srcMTLPixFmt);
 		dstExtent.width /= srcBlockExtent.width;
 		dstExtent.height /= srcBlockExtent.height;
 	}
@@ -144,8 +147,8 @@ void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region) {
 	buffImgCpy.imageExtent = dstExtent;
 	_dstTmpBuffImgCopies.push_back(buffImgCpy);
 
-	NSUInteger bytesPerRow = mvkMTLPixelFormatBytesPerRow(_srcMTLPixFmt, region.extent.width);
-	NSUInteger bytesPerRegion = mvkMTLPixelFormatBytesPerLayer(_srcMTLPixFmt, bytesPerRow, region.extent.height);
+	NSUInteger bytesPerRow = pixFmts->getMTLPixelFormatBytesPerRow(_srcMTLPixFmt, region.extent.width);
+	NSUInteger bytesPerRegion = pixFmts->getMTLPixelFormatBytesPerLayer(_srcMTLPixFmt, bytesPerRow, region.extent.height);
 	_tmpBuffSize += bytesPerRegion;
 }
 
@@ -745,8 +748,8 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
         uint32_t buffImgHt = cpyRgn.bufferImageHeight;
         if (buffImgHt == 0) { buffImgHt = cpyRgn.imageExtent.height; }
 
-        NSUInteger bytesPerRow = mvkMTLPixelFormatBytesPerRow(mtlPixFmt, buffImgWd);
-        NSUInteger bytesPerImg = mvkMTLPixelFormatBytesPerLayer(mtlPixFmt, bytesPerRow, buffImgHt);
+        NSUInteger bytesPerRow = pixFmts->getMTLPixelFormatBytesPerRow(mtlPixFmt, buffImgWd);
+        NSUInteger bytesPerImg = pixFmts->getMTLPixelFormatBytesPerLayer(mtlPixFmt, bytesPerRow, buffImgHt);
 
         // If the format combines BOTH depth and stencil, determine whether one or both
         // components are to be copied, and adjust the byte counts and copy options accordingly.
@@ -761,7 +764,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             // The stencil component is always 1 byte per pixel.
 			// Don't reduce depths of 32-bit depth/stencil formats.
             if (wantDepth && !wantStencil) {
-				if (mvkMTLPixelFormatBytesPerTexel(mtlPixFmt) != 4) {
+				if (pixFmts->getMTLPixelFormatBytesPerTexel(mtlPixFmt) != 4) {
 					bytesPerRow -= buffImgWd;
 					bytesPerImg -= buffImgWd * buffImgHt;
 				}
@@ -803,8 +806,8 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             [mtlComputeEnc setBuffer: mtlBuffer offset: mtlBuffOffset atIndex: 0];
             MVKBuffer* tempBuff;
             if (needsTempBuff) {
-                NSUInteger bytesPerDestRow = mvkMTLPixelFormatBytesPerRow(mtlTexture.pixelFormat, info.extent.width);
-                NSUInteger bytesPerDestImg = mvkMTLPixelFormatBytesPerLayer(mtlTexture.pixelFormat, bytesPerDestRow, info.extent.height);
+                NSUInteger bytesPerDestRow = pixFmts->getMTLPixelFormatBytesPerRow(mtlTexture.pixelFormat, info.extent.width);
+                NSUInteger bytesPerDestImg = pixFmts->getMTLPixelFormatBytesPerLayer(mtlTexture.pixelFormat, bytesPerDestRow, info.extent.height);
                 // We're going to copy from the temporary buffer now, so use the
                 // temp buffer parameters in the copy below.
                 bytesPerRow = bytesPerDestRow;
@@ -828,7 +831,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             // Now work out how big to make the grid, and from there, the size and number of threadgroups.
             // One thread is run per block. Each block decompresses to an m x n array of texels.
             // So the size of the grid is (ceil(width/m), ceil(height/n), depth).
-            VkExtent2D blockExtent = mvkMTLPixelFormatBlockTexelSize(mtlPixFmt);
+            VkExtent2D blockExtent = pixFmts->getMTLPixelFormatBlockTexelSize(mtlPixFmt);
             MTLSize mtlGridSize = MTLSizeMake(mvkCeilingDivide<NSUInteger>(mtlTxtSize.width, blockExtent.width),
                                               mvkCeilingDivide<NSUInteger>(mtlTxtSize.height, blockExtent.height),
                                               mtlTxtSize.depth);
