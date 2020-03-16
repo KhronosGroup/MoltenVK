@@ -636,7 +636,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
-								 mvkAreAllFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
+								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
 	_hasExpectedTexelSize = (pixFmts->getMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == pixFmts->getVkFormatBytesPerBlock(pCreateInfo->format));
 
@@ -706,7 +706,7 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 		if (getImageType() != VK_IMAGE_TYPE_3D) {
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D or 3D images."));
 		} else if (!getDevice()->_pMetalFeatures->native3DCompressedTextures && !mvkCanDecodeFormat(pCreateInfo->format)) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", mvkVkFormatName(pCreateInfo->format)));
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", getPixelFormats()->getVkFormatName(pCreateInfo->format)));
 		}
 	}
 #endif

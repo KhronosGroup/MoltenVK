@@ -331,7 +331,7 @@ VkAttachmentDescription MVKRenderPassAttachment::validate(const VkAttachmentDesc
 	VkAttachmentDescription info = *pCreateInfo;
 
 	if ( !_renderPass->getPixelFormats()->getMTLPixelFormatFromVkFormat(info.format) ) {
-		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", mvkVkFormatName(info.format)));
+		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", _renderPass->getPixelFormats()->getVkFormatName(info.format)));
 	}
 
 	return info;

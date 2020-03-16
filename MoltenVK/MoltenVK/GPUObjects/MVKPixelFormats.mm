@@ -319,10 +319,10 @@ size_t MVKPixelFormats::getMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat,
     return mvkCeilingDivide(texelRowsPerLayer, formatDescForMTLPixelFormat(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
-VkFormatProperties MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat, bool assumeGPUSupportsDefault) {
+VkFormatProperties MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
 	VkFormatProperties fmtProps = {MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS};
 	const MVKFormatDesc& fmtDesc = formatDescForVkFormat(vkFormat);
-	if (assumeGPUSupportsDefault && fmtDesc.isSupported()) {
+	if (fmtDesc.isSupported()) {
 		fmtProps = fmtDesc.properties;
 		if (!fmtDesc.vertexIsSupportedOrSubstitutable()) {
 			fmtProps.bufferFeatures &= ~VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT;
@@ -833,7 +833,6 @@ void MVKPixelFormats::test() {
 			MVK_TEST_FMT(getVkFormatBytesPerLayer(vkFmt, 256, 4), mvkVkFormatBytesPerLayer(vkFmt, 256, 4));
 			MVK_TEST_FMT(getMTLPixelFormatBytesPerLayer(mtlFmt, 256, 4), mvkMTLPixelFormatBytesPerLayer(mtlFmt, 256, 4));
 			MVK_TEST_FMT(getVkFormatProperties(vkFmt), mvkVkFormatProperties(vkFmt));
-			MVK_TEST_FMT(getVkFormatProperties(vkFmt, false), mvkVkFormatProperties(vkFmt, false));
 			MVK_TEST_FMT(strcmp(getVkFormatName(vkFmt), mvkVkFormatName(vkFmt)), 0);
 			MVK_TEST_FMT(strcmp(getMTLPixelFormatName(mtlFmt), mvkMTLPixelFormatName(mtlFmt)), 0);
 			MVK_TEST_FMT(getMTLClearColorFromVkClearValue(VkClearValue(), vkFmt),

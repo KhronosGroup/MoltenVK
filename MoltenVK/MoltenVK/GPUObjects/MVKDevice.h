@@ -112,9 +112,6 @@ public:
 	/** Returns the name of this device. */
 	inline const char* getName() { return _properties.deviceName; }
 
-	/** Returns whether the specified format is supported on this device. */
-	bool getFormatIsSupported(VkFormat format);
-
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
 

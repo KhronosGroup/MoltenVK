@@ -719,7 +719,7 @@ void MVKCmdBufferImageCopy::setContent(VkBuffer buffer,
     // Validate
     if ( !_image->hasExpectedTexelSize() ) {
         const char* cmdName = _toImage ? "vkCmdCopyBufferToImage" : "vkCmdCopyImageToBuffer";
-        setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, mvkMTLPixelFormatName(_image->getMTLPixelFormat()), mvkVkFormatName(_image->getVkFormat())));
+        setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, getPixelFormats()->getMTLPixelFormatName(_image->getMTLPixelFormat()), getPixelFormats()->getVkFormatName(_image->getVkFormat())));
     }
 }
 
@@ -1090,7 +1090,7 @@ void MVKCmdClearImage::setContent(VkImage image,
 	}
 	if ((_isDepthStencilClear && !_image->getSupportsAllFormatFeatures(VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT)) ||
 		(!_isDepthStencilClear && !_image->getSupportsAllFormatFeatures(VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT))) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", mvkVkFormatName(_image->getVkFormat())));
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", getPixelFormats()->getVkFormatName(_image->getVkFormat())));
 	}
 }
 void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {

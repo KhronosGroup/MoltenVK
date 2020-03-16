@@ -208,13 +208,9 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
     }
 }
 
-bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
-	return _pixelFormats.vkFormatIsSupported(format);
-}
-
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
     if (pFormatProperties) {
-		*pFormatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
+		*pFormatProperties = _pixelFormats.getVkFormatProperties(format);
 	}
 }
 
@@ -222,7 +218,7 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format,
                                             VkFormatProperties2KHR* pFormatProperties) {
 	if (pFormatProperties) {
 		pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
-		pFormatProperties->formatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
+		pFormatProperties->formatProperties = _pixelFormats.getVkFormatProperties(format);
 	}
 }
 
@@ -233,7 +229,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
                                                      VkImageCreateFlags flags,
                                                      VkImageFormatProperties* pImageFormatProperties) {
 
-	if ( !getFormatIsSupported(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+	if ( !_pixelFormats.vkFormatIsSupported(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	if ( !pImageFormatProperties ) { return VK_SUCCESS; }
 
@@ -372,7 +368,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
         return VK_ERROR_FORMAT_NOT_SUPPORTED;
     }
 
-    if ( !getFormatIsSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+    if ( !_pixelFormats.vkFormatIsSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	if ( !getImageViewIsSupported(pImageFormatInfo) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
@@ -1233,7 +1229,7 @@ void MVKPhysicalDevice::initProperties() {
             } else {
                 alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mtlFmt];
             }
-            VkFormatProperties props = mvkVkFormatProperties(vk, getFormatIsSupported(vk));
+            VkFormatProperties props = _pixelFormats.getVkFormatProperties(vk);
             // For uncompressed formats, this is the size of a single texel.
             // Note that no implementations of Metal support compressed formats
             // in a linear texture (including texture buffers). It's likely that even
