@@ -221,6 +221,12 @@ public:
 	MTLClearColor getMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
 												   VkFormat vkFormat);
 
+	/** Returns the Metal depth value corresponding to the depth value in the specified VkClearValue. */
+	double getMTLClearDepthFromVkClearValue(VkClearValue vkClearValue);
+
+	/** Returns the Metal stencil value corresponding to the stencil value in the specified VkClearValue. */
+	uint32_t getMTLClearStencilFromVkClearValue(VkClearValue vkClearValue);
+
 	/** Returns the Vulkan image usage from the Metal texture usage and format. */
 	VkImageUsageFlags getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat);
 

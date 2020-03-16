@@ -909,6 +909,7 @@ void MVKCmdClearAttachments::setContent(uint32_t attachmentCount,
     _isClearingDepth = false;
     _isClearingStencil = false;
     float mtlDepthVal = 0.0;
+	MVKPixelFormats* pixFmts = getPixelFormats();
 
     // For each attachment to be cleared, mark it so in the render pipeline state
     // attachment key, and populate the clear color value into a uniform array.
@@ -927,13 +928,13 @@ void MVKCmdClearAttachments::setContent(uint32_t attachmentCount,
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT)) {
             _isClearingDepth = true;
             _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
-            mtlDepthVal = mvkMTLClearDepthFromVkClearValue(clrAtt.clearValue);
+            mtlDepthVal = pixFmts->getMTLClearDepthFromVkClearValue(clrAtt.clearValue);
         }
 
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT)) {
             _isClearingStencil = true;
             _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
-            _mtlStencilValue = mvkMTLClearStencilFromVkClearValue(clrAtt.clearValue);
+            _mtlStencilValue = pixFmts->getMTLClearStencilFromVkClearValue(clrAtt.clearValue);
         }
     }
 
@@ -1028,7 +1029,7 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
         VkFormat vkAttFmt = subpass->getColorAttachmentFormat(caIdx);
 		_rpsKey.attachmentMTLPixelFormats[caIdx] = pixFmts->getMTLPixelFormatFromVkFormat(vkAttFmt);
-		MTLClearColor mtlCC = mvkMTLClearColorFromVkClearValue(_vkClearValues[caIdx], vkAttFmt);
+		MTLClearColor mtlCC = pixFmts->getMTLClearColorFromVkClearValue(_vkClearValues[caIdx], vkAttFmt);
 		_clearColors[caIdx] = { (float)mtlCC.red, (float)mtlCC.green, (float)mtlCC.blue, (float)mtlCC.alpha};
     }
 
@@ -1073,9 +1074,10 @@ void MVKCmdClearImage::setContent(VkImage image,
     _imgLayout = imageLayout;
     _isDepthStencilClear = isDepthStencilClear;
 
-	_mtlColorClearValue = mvkMTLClearColorFromVkClearValue(clearValue, _image->getVkFormat());
-	_mtlDepthClearValue = mvkMTLClearDepthFromVkClearValue(clearValue);
-	_mtlStencilClearValue = mvkMTLClearStencilFromVkClearValue(clearValue);
+	MVKPixelFormats* pixFmts = getPixelFormats();
+	_mtlColorClearValue = pixFmts->getMTLClearColorFromVkClearValue(clearValue, _image->getVkFormat());
+	_mtlDepthClearValue = pixFmts->getMTLClearDepthFromVkClearValue(clearValue);
+	_mtlStencilClearValue = pixFmts->getMTLClearStencilFromVkClearValue(clearValue);
 
     // Add subresource ranges
     _subresourceRanges.clear();		// Clear for reuse

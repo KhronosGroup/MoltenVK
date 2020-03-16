@@ -73,6 +73,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 													   bool isRenderingEntireAttachment,
 													   bool loadOverride,
 													   bool storeOverride) {
+	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
+
 	// Populate the Metal color attachments
 	uint32_t caCnt = getColorAttachmentCount();
 	uint32_t caUsedCnt = 0;
@@ -98,7 +100,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                        hasResolveAttachment, false,
                                                                        loadOverride,
                                                                        storeOverride)) {
-				mtlColorAttDesc.clearColor = mvkMTLClearColorFromVkClearValue(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
+				mtlColorAttDesc.clearColor = pixFmts->getMTLClearColorFromVkClearValue(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
 			}
 		}
 	}
@@ -108,7 +110,6 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	if (dsRPAttIdx != VK_ATTACHMENT_UNUSED) {
 		MVKRenderPassAttachment* dsMVKRPAtt = &_renderPass->_attachments[dsRPAttIdx];
 		MVKImageView* dsImage = framebuffer->getAttachment(dsRPAttIdx);
-		MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
 		MTLPixelFormat mtlDSFormat = dsImage->getMTLPixelFormat();
 
 		if (pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFormat)) {
@@ -119,7 +120,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                       false, false,
                                                                       loadOverride,
                                                                       storeOverride)) {
-                mtlDepthAttDesc.clearDepth = mvkMTLClearDepthFromVkClearValue(clearValues[dsRPAttIdx]);
+                mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthFromVkClearValue(clearValues[dsRPAttIdx]);
 			}
 		}
 		if (pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFormat)) {
@@ -130,7 +131,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                       false, true,
                                                                       loadOverride,
                                                                       storeOverride)) {
-				mtlStencilAttDesc.clearStencil = mvkMTLClearStencilFromVkClearValue(clearValues[dsRPAttIdx]);
+				mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilFromVkClearValue(clearValues[dsRPAttIdx]);
 			}
 		}
 	}

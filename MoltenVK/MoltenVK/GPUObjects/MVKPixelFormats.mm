@@ -428,6 +428,14 @@ MTLClearColor MVKPixelFormats::getMTLClearColorFromVkClearValue(VkClearValue vkC
 	return mtlClr;
 }
 
+double MVKPixelFormats::getMTLClearDepthFromVkClearValue(VkClearValue vkClearValue) {
+	return vkClearValue.depthStencil.depth;
+}
+
+uint32_t MVKPixelFormats::getMTLClearStencilFromVkClearValue(VkClearValue vkClearValue) {
+	return vkClearValue.depthStencil.stencil;
+}
+
 VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage,
 																	  MTLPixelFormat mtlFormat) {
     VkImageUsageFlags vkImageUsageFlags = 0;
