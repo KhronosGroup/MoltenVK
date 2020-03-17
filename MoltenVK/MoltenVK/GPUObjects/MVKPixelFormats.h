@@ -35,7 +35,7 @@ static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 
 
 #pragma mark -
-#pragma mark Format descriptions
+#pragma mark Format descriptors
 
 /** Describes the properties of a VkFormat, including the corresponding Metal pixel and vertex format. */
 typedef struct {
@@ -238,9 +238,10 @@ public:
 	MVKPixelFormats() : MVKPixelFormats(nullptr, nil) {}
 
 protected:
-	MVKVkFormatDesc& getDescForVkFormat(VkFormat vkFormat);
-	MVKMTLFormatDesc& getDescForMTLPixelFormat(MTLPixelFormat mtlFormat);
-	MVKMTLFormatDesc& getDescForMTLVertexFormat(MTLVertexFormat mtlFormat);
+	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);
+	MVKVkFormatDesc& getVkFormatDesc(MTLPixelFormat mtlFormat);
+	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
+	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();

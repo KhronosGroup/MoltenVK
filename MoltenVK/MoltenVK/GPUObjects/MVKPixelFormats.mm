@@ -179,11 +179,11 @@ using namespace std;
 #pragma mark MVKPixelFormats
 
 bool MVKPixelFormats::vkFormatIsSupported(VkFormat vkFormat) {
-	return getDescForVkFormat(vkFormat).isSupported();
+	return getVkFormatDesc(vkFormat).isSupported();
 }
 
 bool MVKPixelFormats::mtlPixelFormatIsSupported(MTLPixelFormat mtlFormat) {
-	return getDescForMTLPixelFormat(mtlFormat).isSupported();
+	return getMTLPixelFormatDesc(mtlFormat).isSupported();
 }
 
 bool MVKPixelFormats::mtlPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {
@@ -234,17 +234,17 @@ bool MVKPixelFormats::mtlPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) {
 }
 
 MVKFormatType MVKPixelFormats::getFormatTypeFromVkFormat(VkFormat vkFormat) {
-	return getDescForVkFormat(vkFormat).formatType;
+	return getVkFormatDesc(vkFormat).formatType;
 }
 
 MVKFormatType MVKPixelFormats::getFormatTypeFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
-	return getDescForVkFormat(getDescForMTLPixelFormat(mtlFormat).vkFormat).formatType;
+	return getVkFormatDesc(mtlFormat).formatType;
 }
 
 MTLPixelFormat MVKPixelFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
 	MTLPixelFormat mtlPixFmt = MTLPixelFormatInvalid;
 
-	auto& vkDesc = getDescForVkFormat(vkFormat);
+	auto& vkDesc = getVkFormatDesc(vkFormat);
 	if (vkDesc.isSupported()) {
 		mtlPixFmt = vkDesc.mtlPixelFormat;
 	} else if (vkFormat != VK_FORMAT_UNDEFINED) {
@@ -261,7 +261,7 @@ MTLPixelFormat MVKPixelFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat)
 			if (mtlPixFmt) {
 				vkDesc.hasReportedSubstitution = true;
 
-				auto& vkDescSubs = getDescForVkFormat(getDescForMTLPixelFormat(mtlPixFmt).vkFormat);
+				auto& vkDescSubs = getVkFormatDesc(mtlPixFmt);
 				errMsg += " Using VkFormat ";
 				errMsg += (vkDescSubs.name) ? vkDescSubs.name : to_string(vkDescSubs.vkFormat);
 				errMsg += " instead.";
@@ -274,55 +274,54 @@ MTLPixelFormat MVKPixelFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat)
 }
 
 VkFormat MVKPixelFormats::getVkFormatFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
-    return getDescForMTLPixelFormat(mtlFormat).vkFormat;
+    return getMTLPixelFormatDesc(mtlFormat).vkFormat;
 }
 
 uint32_t MVKPixelFormats::getVkFormatBytesPerBlock(VkFormat vkFormat) {
-    return getDescForVkFormat(vkFormat).bytesPerBlock;
+    return getVkFormatDesc(vkFormat).bytesPerBlock;
 }
 
 uint32_t MVKPixelFormats::getMTLPixelFormatBytesPerBlock(MTLPixelFormat mtlFormat) {
-    return getDescForVkFormat(getDescForMTLPixelFormat(mtlFormat).vkFormat).bytesPerBlock;
+    return getVkFormatDesc(mtlFormat).bytesPerBlock;
 }
 
 VkExtent2D MVKPixelFormats::getVkFormatBlockTexelSize(VkFormat vkFormat) {
-    return getDescForVkFormat(vkFormat).blockTexelSize;
+    return getVkFormatDesc(vkFormat).blockTexelSize;
 }
 
 VkExtent2D MVKPixelFormats::getMTLPixelFormatBlockTexelSize(MTLPixelFormat mtlFormat) {
-    return getDescForVkFormat(getDescForMTLPixelFormat(mtlFormat).vkFormat).blockTexelSize;
+    return getVkFormatDesc(mtlFormat).blockTexelSize;
 }
 
 float MVKPixelFormats::getVkFormatBytesPerTexel(VkFormat vkFormat) {
-    return getDescForVkFormat(vkFormat).bytesPerTexel();
+    return getVkFormatDesc(vkFormat).bytesPerTexel();
 }
 
 float MVKPixelFormats::getMTLPixelFormatBytesPerTexel(MTLPixelFormat mtlFormat) {
-    return getDescForVkFormat(getDescForMTLPixelFormat(mtlFormat).vkFormat).bytesPerTexel();
+    return getVkFormatDesc(mtlFormat).bytesPerTexel();
 }
 
 size_t MVKPixelFormats::getVkFormatBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow) {
-    auto& vkDesc = getDescForVkFormat(vkFormat);
+    auto& vkDesc = getVkFormatDesc(vkFormat);
     return mvkCeilingDivide(texelsPerRow, vkDesc.blockTexelSize.width) * vkDesc.bytesPerBlock;
 }
 
 size_t MVKPixelFormats::getMTLPixelFormatBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow) {
-	auto& vkDesc = getDescForVkFormat(getDescForMTLPixelFormat(mtlFormat).vkFormat);
+	auto& vkDesc = getVkFormatDesc(mtlFormat);
     return mvkCeilingDivide(texelsPerRow, vkDesc.blockTexelSize.width) * vkDesc.bytesPerBlock;
 }
 
 size_t MVKPixelFormats::getVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
-    return mvkCeilingDivide(texelRowsPerLayer, getDescForVkFormat(vkFormat).blockTexelSize.height) * bytesPerRow;
+    return mvkCeilingDivide(texelRowsPerLayer, getVkFormatDesc(vkFormat).blockTexelSize.height) * bytesPerRow;
 }
 
 size_t MVKPixelFormats::getMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
-	auto& vkDesc = getDescForVkFormat(getDescForMTLPixelFormat(mtlFormat).vkFormat);
-    return mvkCeilingDivide(texelRowsPerLayer, vkDesc.blockTexelSize.height) * bytesPerRow;
+    return mvkCeilingDivide(texelRowsPerLayer, getVkFormatDesc(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
 VkFormatProperties MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
 	VkFormatProperties fmtProps = {MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS};
-	auto& vkDesc = getDescForVkFormat(vkFormat);
+	auto& vkDesc = getVkFormatDesc(vkFormat);
 	if (vkDesc.isSupported()) {
 		fmtProps = vkDesc.properties;
 		if ( !vkDesc.vertexIsSupportedOrSubstitutable() ) {
@@ -337,11 +336,11 @@ VkFormatProperties MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
 }
 
 const char* MVKPixelFormats::getVkFormatName(VkFormat vkFormat) {
-    return getDescForVkFormat(vkFormat).name;
+    return getVkFormatDesc(vkFormat).name;
 }
 
 const char* MVKPixelFormats::getMTLPixelFormatName(MTLPixelFormat mtlFormat) {
-    return getDescForMTLPixelFormat(mtlFormat).name;
+    return getMTLPixelFormatDesc(mtlFormat).name;
 }
 
 void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
@@ -367,7 +366,7 @@ void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, b
 MTLVertexFormat MVKPixelFormats::getMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
 	MTLVertexFormat mtlVtxFmt = MTLVertexFormatInvalid;
 
-	auto& vkDesc = getDescForVkFormat(vkFormat);
+	auto& vkDesc = getVkFormatDesc(vkFormat);
 	if (vkDesc.vertexIsSupported()) {
 		mtlVtxFmt = vkDesc.mtlVertexFormat;
 	} else if (vkFormat != VK_FORMAT_UNDEFINED) {
@@ -381,7 +380,7 @@ MTLVertexFormat MVKPixelFormats::getMTLVertexFormatFromVkFormat(VkFormat vkForma
 		if (vkDesc.vertexIsSupportedOrSubstitutable()) {
 			mtlVtxFmt = vkDesc.mtlVertexFormatSubstitute;
 
-			auto& vkDescSubs = getDescForVkFormat(getDescForMTLVertexFormat(mtlVtxFmt).vkFormat);
+			auto& vkDescSubs = getVkFormatDesc(getMTLVertexFormatDesc(mtlVtxFmt).vkFormat);
 			errMsg += " Using VkFormat ";
 			errMsg += (vkDescSubs.name) ? vkDescSubs.name : to_string(vkDescSubs.vkFormat);
 			errMsg += " instead.";
@@ -461,22 +460,27 @@ VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlagsFromMTLTextureUsage(MTLTe
     return vkImageUsageFlags;
 }
 
-// Return a reference to the Vulkan format description corresponding to the VkFormat.
-MVKVkFormatDesc& MVKPixelFormats::getDescForVkFormat(VkFormat vkFormat) {
+// Return a reference to the Vulkan format descriptor corresponding to the VkFormat.
+MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(VkFormat vkFormat) {
 	uint16_t fmtIdx = (vkFormat < _vkFormatCoreCount) ? _vkFormatDescIndicesByVkFormatsCore[vkFormat] : _vkFormatDescIndicesByVkFormatsExt[vkFormat];
 	return _vkFormatDescriptions[fmtIdx];
 }
 
-// Return a reference to the Metal format description corresponding to the MTLPixelFormat.
-MVKMTLFormatDesc& MVKPixelFormats::getDescForMTLPixelFormat(MTLPixelFormat mtlFormat) {
+// Return a reference to the Metal format descriptor corresponding to the MTLPixelFormat.
+MVKMTLFormatDesc& MVKPixelFormats::getMTLPixelFormatDesc(MTLPixelFormat mtlFormat) {
 	uint16_t fmtIdx = (mtlFormat < _mtlPixelFormatCount) ? _mtlFormatDescIndicesByMTLPixelFormats[mtlFormat] : 0;
 	return _mtlPixelFormatDescriptions[fmtIdx];
 }
 
-// Return a reference to the Metal format description corresponding to the MTLVertexFormat.
-MVKMTLFormatDesc& MVKPixelFormats::getDescForMTLVertexFormat(MTLVertexFormat mtlFormat) {
+// Return a reference to the Metal format descriptor corresponding to the MTLVertexFormat.
+MVKMTLFormatDesc& MVKPixelFormats::getMTLVertexFormatDesc(MTLVertexFormat mtlFormat) {
 	uint16_t fmtIdx = (mtlFormat < _mtlVertexFormatCount) ? _mtlFormatDescIndicesByMTLVertexFormats[mtlFormat] : 0;
 	return _mtlVertexFormatDescriptions[fmtIdx];
+}
+
+// Return a reference to the Vulkan format descriptor corresponding to the MTLPixelFormat.
+MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(MTLPixelFormat mtlFormat) {
+	return getVkFormatDesc(getMTLPixelFormatDesc(mtlFormat).vkFormat);
 }
 
 
@@ -1041,21 +1045,21 @@ void MVKPixelFormats::buildFormatMaps() {
 			// Validate the corresponding Metal formats for the platform, and clear them
 			// in the Vulkan format if not supported.
 			if (vkDesc.mtlPixelFormat) {
-				auto& mtlDesc = getDescForMTLPixelFormat(vkDesc.mtlPixelFormat);
+				auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat);
 				if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkFmt; }
 				if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormat = MTLPixelFormatInvalid; }
 			}
 			if (vkDesc.mtlPixelFormatSubstitute) {
-				auto& mtlDesc = getDescForMTLPixelFormat(vkDesc.mtlPixelFormatSubstitute);
+				auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormatSubstitute);
 				if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid; }
 			}
 			if (vkDesc.mtlVertexFormat) {
-				auto& mtlDesc = getDescForMTLVertexFormat(vkDesc.mtlVertexFormat);
+				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormat);
 				if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkFmt; }
 				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormat = MTLVertexFormatInvalid; }
 			}
 			if (vkDesc.mtlVertexFormatSubstitute) {
-				auto& mtlDesc = getDescForMTLVertexFormat(vkDesc.mtlVertexFormatSubstitute);
+				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormatSubstitute);
 				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormatSubstitute = MTLVertexFormatInvalid; }
 			}
 		}
@@ -1074,7 +1078,7 @@ void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevi
 }
 
 void MVKPixelFormats::disableMTLPixelFormat(MTLPixelFormat mtlFormat) {
-	getDescForVkFormat(getDescForMTLPixelFormat(mtlFormat).vkFormat).mtlPixelFormat = MTLPixelFormatInvalid;
+	getVkFormatDesc(mtlFormat).mtlPixelFormat = MTLPixelFormatInvalid;
 }
 
 
