@@ -485,7 +485,7 @@ static uint16_t _fmtDescIndicesByVkFormatsCore[_vkFormatCoreCount];
 static MVKFormatIndexByVkFormatMap* _pFmtDescIndicesByVkFormatsExt;
 
 // Metal formats have small values and are mapped by simple lookup array.
-static uint16_t _fmtDescIndicesByMTLPixelFormats[_mtlFormatCount];
+static uint16_t _fmtDescIndicesByMTLPixelFormats[_mtlPixelFormatCount];
 static uint16_t _fmtDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
 
 /**
@@ -502,7 +502,7 @@ static void MVKInitFormatMaps() {
 
     // Set all VkFormats and MTLPixelFormats to undefined/invalid
     mvkClear(_fmtDescIndicesByVkFormatsCore, _vkFormatCoreCount);
-    mvkClear(_fmtDescIndicesByMTLPixelFormats, _mtlFormatCount);
+    mvkClear(_fmtDescIndicesByMTLPixelFormats, _mtlPixelFormatCount);
     mvkClear(_fmtDescIndicesByMTLVertexFormats, _mtlVertexFormatCount);
 
 	_pFmtDescIndicesByVkFormatsExt = new MVKFormatIndexByVkFormatMap();
@@ -527,8 +527,12 @@ static void MVKInitFormatMaps() {
 
         // If the Metal format is defined, create a lookup between the Metal format and an
         // index to the format info. Metal formats are small, so use a simple lookup array.
-		if (tfm.mtl != MTLPixelFormatInvalid) { _fmtDescIndicesByMTLPixelFormats[tfm.mtl] = fmtIdx; }
-		if (tfm.mtlVertexFormat != MTLVertexFormatInvalid) { _fmtDescIndicesByMTLVertexFormats[tfm.mtlVertexFormat] = fmtIdx; }
+		if (tfm.mtl != MTLPixelFormatInvalid && !_fmtDescIndicesByMTLPixelFormats[tfm.mtl]) {
+			_fmtDescIndicesByMTLPixelFormats[tfm.mtl] = fmtIdx;
+		}
+		if (tfm.mtlVertexFormat != MTLVertexFormatInvalid && !_fmtDescIndicesByMTLVertexFormats[tfm.mtlVertexFormat]) {
+			_fmtDescIndicesByMTLVertexFormats[tfm.mtlVertexFormat] = fmtIdx;
+		}
 	}
 }
 
@@ -540,7 +544,7 @@ inline const MVKPlatformFormatDesc& formatDescForVkFormat(VkFormat vkFormat) {
 
 // Return a reference to the format description corresponding to the MTLPixelFormat.
 inline const MVKPlatformFormatDesc& formatDescForMTLPixelFormat(MTLPixelFormat mtlFormat) {
-    uint16_t fmtIdx = (mtlFormat < _mtlFormatCount) ? _fmtDescIndicesByMTLPixelFormats[mtlFormat] : 0;
+    uint16_t fmtIdx = (mtlFormat < _mtlPixelFormatCount) ? _fmtDescIndicesByMTLPixelFormats[mtlFormat] : 0;
     return _formatDescriptions[fmtIdx];
 }
 
