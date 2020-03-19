@@ -40,10 +40,10 @@ void MVKImage::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName);
 
 VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_mtlTextureType); }
 
-VkFormat MVKImage::getVkFormat() { return mvkVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
+VkFormat MVKImage::getVkFormat() { return getPixelFormats()->getVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
 
 bool MVKImage::getIsCompressed() {
-	return mvkFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
+	return getPixelFormats()->getFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
 }
 
 bool MVKImage::getSupportsAnyFormatFeature(VkFormatFeatureFlags requiredFormatFeatureFlags) {
@@ -65,12 +65,12 @@ VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 }
 
 VkDeviceSize MVKImage::getBytesPerRow(uint32_t mipLevel) {
-    size_t bytesPerRow = mvkMTLPixelFormatBytesPerRow(_mtlPixelFormat, getExtent3D(mipLevel).width);
+    size_t bytesPerRow = getPixelFormats()->getMTLPixelFormatBytesPerRow(_mtlPixelFormat, getExtent3D(mipLevel).width);
     return mvkAlignByteCount(bytesPerRow, _rowByteAlignment);
 }
 
 VkDeviceSize MVKImage::getBytesPerLayer(uint32_t mipLevel) {
-    return mvkMTLPixelFormatBytesPerLayer(_mtlPixelFormat, getBytesPerRow(mipLevel), getExtent3D(mipLevel).height);
+    return getPixelFormats()->getMTLPixelFormatBytesPerLayer(_mtlPixelFormat, getBytesPerRow(mipLevel), getExtent3D(mipLevel).height);
 }
 
 VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,
@@ -223,7 +223,7 @@ VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOff
 }
 
 bool MVKImage::validateUseTexelBuffer() {
-	VkExtent2D blockExt = mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat);
+	VkExtent2D blockExt = getPixelFormats()->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat);
 	bool isUncompressed = blockExt.width == 1 && blockExt.height == 1;
 
 	bool useTexelBuffer = _device->_pMetalFeatures->texelBuffers;								// Texel buffers available
@@ -327,7 +327,7 @@ VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
     _mipLevels = uint32_t(_mtlTexture.mipmapLevelCount);
     _samples = mvkVkSampleCountFlagBitsFromSampleCount(_mtlTexture.sampleCount);
     _arrayLayers = uint32_t(_mtlTexture.arrayLength);
-    _usage = mvkVkImageUsageFlagsFromMTLTextureUsage(_mtlTexture.usage, _mtlPixelFormat);
+    _usage = getPixelFormats()->getVkImageUsageFlagsFromMTLTextureUsage(_mtlTexture.usage, _mtlPixelFormat);
 
     if (_device->_pMetalFeatures->ioSurfaces) {
         _ioSurface = mtlTexture.iosurface;
@@ -386,12 +386,14 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     resetMTLTexture();
     resetIOSurface();
 
-    if (ioSurface) {
+	MVKPixelFormats* pixFmts = getPixelFormats();
+
+	if (ioSurface) {
 		if (IOSurfaceGetWidth(ioSurface) != _extent.width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface width %zu does not match VkImage width %d.", IOSurfaceGetWidth(ioSurface), _extent.width); }
 		if (IOSurfaceGetHeight(ioSurface) != _extent.height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface height %zu does not match VkImage height %d.", IOSurfaceGetHeight(ioSurface), _extent.height); }
-		if (IOSurfaceGetBytesPerElement(ioSurface) != mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface bytes per element %zu does not match VkImage bytes per element %d.", IOSurfaceGetBytesPerElement(ioSurface), mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)); }
-		if (IOSurfaceGetElementWidth(ioSurface) != mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element width %zu does not match VkImage element width %d.", IOSurfaceGetElementWidth(ioSurface), mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width); }
-		if (IOSurfaceGetElementHeight(ioSurface) != mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element height %zu does not match VkImage element height %d.", IOSurfaceGetElementHeight(ioSurface), mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height); }
+		if (IOSurfaceGetBytesPerElement(ioSurface) != pixFmts->getMTLPixelFormatBytesPerBlock(_mtlPixelFormat)) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface bytes per element %zu does not match VkImage bytes per element %d.", IOSurfaceGetBytesPerElement(ioSurface), pixFmts->getMTLPixelFormatBytesPerBlock(_mtlPixelFormat)); }
+		if (IOSurfaceGetElementWidth(ioSurface) != pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element width %zu does not match VkImage element width %d.", IOSurfaceGetElementWidth(ioSurface), pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width); }
+		if (IOSurfaceGetElementHeight(ioSurface) != pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element height %zu does not match VkImage element height %d.", IOSurfaceGetElementHeight(ioSurface), pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height); }
 
         _ioSurface = ioSurface;
         CFRetain(_ioSurface);
@@ -402,9 +404,9 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 			_ioSurface = IOSurfaceCreate((CFDictionaryRef)@{
 															(id)kIOSurfaceWidth: @(_extent.width),
 															(id)kIOSurfaceHeight: @(_extent.height),
-															(id)kIOSurfaceBytesPerElement: @(mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
-															(id)kIOSurfaceElementWidth: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
-															(id)kIOSurfaceElementHeight: @(mvkMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
+															(id)kIOSurfaceBytesPerElement: @(pixFmts->getMTLPixelFormatBytesPerBlock(_mtlPixelFormat)),
+															(id)kIOSurfaceElementWidth: @(pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).width),
+															(id)kIOSurfaceElementHeight: @(pixFmts->getMTLPixelFormatBlockTexelSize(_mtlPixelFormat).height),
 															(id)kIOSurfaceIsGlobal: @(true),    // Deprecated but needed for interprocess transfers
 															});
 		}
@@ -422,9 +424,10 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
 
 	// Remove view usage from D/S if Metal doesn't support it
+	MVKPixelFormats* pixFmts = getPixelFormats();
 	if ( !_device->_pMetalFeatures->stencilViews &&
-		mvkMTLPixelFormatIsDepthFormat(_mtlPixelFormat) &&
-		mvkMTLPixelFormatIsStencilFormat(_mtlPixelFormat)) {
+		pixFmts->mtlPixelFormatIsDepthFormat(_mtlPixelFormat) &&
+		pixFmts->mtlPixelFormatIsStencilFormat(_mtlPixelFormat)) {
 
 		mvkDisableFlag(usage, MTLTextureUsagePixelFormatView);
 	}
@@ -549,7 +552,7 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
 	VkDeviceSize bytesPerImage = (imgType == VK_IMAGE_TYPE_3D) ? imgLayout.depthPitch : 0;
 
 	id<MTLTexture> mtlTex = getMTLTexture();
-	if (mvkMTLPixelFormatIsPVRTCFormat(mtlTex.pixelFormat)) {
+	if (getPixelFormats()->mtlPixelFormatIsPVRTCFormat(mtlTex.pixelFormat)) {
 		bytesPerRow = 0;
 		bytesPerImage = 0;
 	}
@@ -627,16 +630,17 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_mipLevels = validateMipLevels(pCreateInfo, isAttachment);
 	_isLinear = validateLinear(pCreateInfo, isAttachment);
 
-	_mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
+	MVKPixelFormats* pixFmts = getPixelFormats();
+	_mtlPixelFormat = pixFmts->getMTLPixelFormatFromVkFormat(pCreateInfo->format);
 	_usage = pCreateInfo->usage;
 
-	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
+	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
-								 mvkAreAllFlagsEnabled(mvkVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
+								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
-	_hasExpectedTexelSize = (mvkMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == mvkVkFormatBytesPerBlock(pCreateInfo->format));
+	_hasExpectedTexelSize = (pixFmts->getMTLPixelFormatBytesPerBlock(_mtlPixelFormat) == pixFmts->getVkFormatBytesPerBlock(pCreateInfo->format));
 
-	_rowByteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(mvkVkFormatBytesPerBlock(pCreateInfo->format));
+	_rowByteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getVkFormatBytesPerBlock(pCreateInfo->format));
 	if (!_isLinear && _device->_pMetalFeatures->placementHeaps) {
 		MTLTextureDescriptor *mtlTexDesc = newMTLTextureDescriptor();	// temp retain
 		MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
@@ -667,7 +671,7 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
 
-	if (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) {
+	if (getPixelFormats()->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with compressed images. Setting sample count to 1."));
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
@@ -687,9 +691,10 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 }
 
 void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
+	MVKPixelFormats* pixFmts = getPixelFormats();
 
 	bool is2D = (getImageType() == VK_IMAGE_TYPE_2D);
-	bool isCompressed = mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed;
+	bool isCompressed = pixFmts->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed;
 
 #if MVK_IOS
 	if (isCompressed && !is2D) {
@@ -701,12 +706,12 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 		if (getImageType() != VK_IMAGE_TYPE_3D) {
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D or 3D images."));
 		} else if (!getDevice()->_pMetalFeatures->native3DCompressedTextures && !mvkCanDecodeFormat(pCreateInfo->format)) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", mvkVkFormatName(pCreateInfo->format)));
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", getPixelFormats()->getVkFormatName(pCreateInfo->format)));
 		}
 	}
 #endif
 
-	if ((mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
+	if ((pixFmts->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
 	}
 	if (isAttachment && (pCreateInfo->arrayLayers > 1) && !_device->_pMetalFeatures->layeredRendering) {
@@ -748,7 +753,7 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 		isLin = false;
 	}
 
-	if (mvkFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) {
+	if (getPixelFormats()->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatDepthStencil) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a depth/stencil format."));
 		isLin = false;
 	}
@@ -993,7 +998,7 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
 													   const MVKConfiguration* pMVKConfig) {
 
 	// Attempt to find a valid format transformation swizzle first.
-	MTLPixelFormat mtlPF = getMTLPixelFormatFromVkFormat(format);
+	MTLPixelFormat mtlPF = getPixelFormats()->getMTLPixelFormatFromVkFormat(format);
 	useSwizzle = false;
 
 	#define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(components, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )

@@ -628,7 +628,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 		offset = (uint32_t)mvkAlignByteCount(offset, sizeOfOutput(output));
 		if (shaderContext.isVertexAttributeLocationUsed(output.location)) {
 			plDesc.stageInputDescriptor.attributes[output.location].bufferIndex = kMVKTessCtlInputBufferIndex;
-			plDesc.stageInputDescriptor.attributes[output.location].format = (MTLAttributeFormat)mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.stageInputDescriptor.attributes[output.location].format = (MTLAttributeFormat)getPixelFormats()->getMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
 			plDesc.stageInputDescriptor.attributes[output.location].offset = offset;
 		}
 		offset += sizeOfOutput(output);
@@ -720,7 +720,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 		} else if (output.perPatch) {
 			patchOffset = (uint32_t)mvkAlignByteCount(patchOffset, sizeOfOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalPatchInputBufferIndex;
-			plDesc.vertexDescriptor.attributes[output.location].format = mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].offset = patchOffset;
 			patchOffset += sizeOfOutput(output);
 			if (!firstPatch) { firstPatch = &output; }
@@ -728,7 +728,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 		} else {
 			offset = (uint32_t)mvkAlignByteCount(offset, sizeOfOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalInputBufferIndex;
-			plDesc.vertexDescriptor.attributes[output.location].format = mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].offset = offset;
 			offset += sizeOfOutput(output);
 			if (!firstVertex) { firstVertex = &output; }
@@ -980,7 +980,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 			}
 
 			MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
-            vaDesc.format = mvkMTLVertexFormatFromVkFormat(pVKVA->format);
+            vaDesc.format = getPixelFormats()->getMTLVertexFormatFromVkFormat(pVKVA->format);
             vaDesc.bufferIndex = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
             vaDesc.offset = pVKVA->offset;
         }
@@ -1084,7 +1084,7 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
             const VkPipelineColorBlendAttachmentState* pCA = &pCreateInfo->pColorBlendState->pAttachments[caIdx];
 
             MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
-            colorDesc.pixelFormat = getMTLPixelFormatFromVkFormat(mvkRenderSubpass->getColorAttachmentFormat(caIdx));
+            colorDesc.pixelFormat = getPixelFormats()->getMTLPixelFormatFromVkFormat(mvkRenderSubpass->getColorAttachmentFormat(caIdx));
             colorDesc.writeMask = mvkMTLColorWriteMaskFromVkChannelFlags(pCA->colorWriteMask);
             // Don't set the blend state if we're not using this attachment.
             // The pixel format will be MTLPixelFormatInvalid in that case, and
@@ -1103,14 +1103,14 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
     }
 
     // Depth & stencil attachments
-    MTLPixelFormat mtlDSFormat = getMTLPixelFormatFromVkFormat(mvkRenderSubpass->getDepthStencilFormat());
-    if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
-    if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
+	MVKPixelFormats* pixFmts = getPixelFormats();
+    MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormatFromVkFormat(mvkRenderSubpass->getDepthStencilFormat());
+    if (pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
+    if (pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
-    // In Vulkan, it's perfectly valid to render with no attachments. Not so
-    // in Metal. If we have no attachments, then we'll have to add a dummy
-    // attachment.
-    if (!caCnt && !mvkMTLPixelFormatIsDepthFormat(mtlDSFormat) && !mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
+    // In Vulkan, it's perfectly valid to render with no attachments. Not so in Metal.
+	// If we have no attachments, then we'll have to add a dummy attachment.
+    if (!caCnt && !pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFormat) && !pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFormat)) {
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[0];
         colorDesc.pixelFormat = MTLPixelFormatR8Unorm;
         colorDesc.writeMask = MTLColorWriteMaskNone;
@@ -1188,7 +1188,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
         // to match the vertex attribute. So tell SPIRV-Cross if we're expecting an unsigned format.
         // Only do this if the attribute could be reasonably expected to fit in the shader's
         // declared type. Programs that try to invoke undefined behavior are on their own.
-        switch (mvkFormatTypeFromVkFormat(pVKVA->format) ) {
+        switch (getPixelFormats()->getFormatTypeFromVkFormat(pVKVA->format) ) {
         case kMVKFormatColorUInt8:
             va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT8;
             break;
@@ -1243,7 +1243,7 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConverterContext(SPIRVToMSLC
         va.vertexAttribute.location = shaderOutputs[vaIdx].location;
         va.vertexAttribute.builtin = shaderOutputs[vaIdx].builtin;
 
-        switch (mvkFormatTypeFromVkFormat(mvkFormatFromOutput(shaderOutputs[vaIdx]) ) ) {
+        switch (getPixelFormats()->getFormatTypeFromVkFormat(mvkFormatFromOutput(shaderOutputs[vaIdx]) ) ) {
             case kMVKFormatColorUInt8:
                 va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT8;
                 break;

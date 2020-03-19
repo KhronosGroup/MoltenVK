@@ -25,6 +25,7 @@
 #include <functional>
 
 class MVKBaseObject;
+class MVKPixelFormats;
 
 /*
  * This header file should be used internally within MoltenVK in place of mvk_datatypes.h,
@@ -45,12 +46,6 @@ class MVKBaseObject;
  * functions declared here, passing the calling instance, which is assumed to be an instance
  * of an MVKBaseObject subclass, which is true for all but static calling functions.
  */
-
-MTLPixelFormat mvkMTLPixelFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj);
-#define mvkMTLPixelFormatFromVkFormat(vkFormat)	mvkMTLPixelFormatFromVkFormatInObj(vkFormat, this)
-
-MTLVertexFormat mvkMTLVertexFormatFromVkFormatInObj(VkFormat vkFormat, MVKBaseObject* mvkObj);
-#define mvkMTLVertexFormatFromVkFormat(vkFormat) mvkMTLVertexFormatFromVkFormatInObj(vkFormat, this)
 
 MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(VkPrimitiveTopology vkTopology, MVKBaseObject* mvkObj);
 #define mvkMTLPrimitiveTypeFromVkPrimitiveTopology(vkTopology) mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(vkTopology, this)
@@ -82,8 +77,11 @@ MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode
 
 #pragma mark Texture formats
 
-/** Enumerates all formats that support the given features, calling a specified function for each one. */
-void mvkEnumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
+/**
+ * Returns info about the default pixel formats supported by the platform,
+ * without taking into consideration support at the MTLDevice level.
+ */
+MVKPixelFormats* mvkPlatformPixelFormats();
 
 /** Returns whether 1D textures should be treated as Metal 2D textures with height 1. */
 bool mvkTreatTexture1DAs2D();

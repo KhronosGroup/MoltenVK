@@ -213,11 +213,12 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 #pragma mark Construction
 
 MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+	MVKPixelFormats* pixFmts = getPixelFormats();
     _buffer = (MVKBuffer*)pCreateInfo->buffer;
     _mtlBufferOffset = _buffer->getMTLBufferOffset() + pCreateInfo->offset;
-    _mtlPixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->format);
-    VkExtent2D fmtBlockSize = mvkVkFormatBlockTexelSize(pCreateInfo->format);  // Pixel size of format
-    size_t bytesPerBlock = mvkVkFormatBytesPerBlock(pCreateInfo->format);
+    _mtlPixelFormat = pixFmts->getMTLPixelFormatFromVkFormat(pCreateInfo->format);
+    VkExtent2D fmtBlockSize = pixFmts->getVkFormatBlockTexelSize(pCreateInfo->format);  // Pixel size of format
+    size_t bytesPerBlock = pixFmts->getVkFormatBytesPerBlock(pCreateInfo->format);
 	_mtlTexture = nil;
 
     // Layout texture as a 1D array of texel blocks (which are texels for non-compressed textures) that covers the bytes

@@ -112,9 +112,6 @@ public:
 	/** Returns the name of this device. */
 	inline const char* getName() { return _properties.deviceName; }
 
-	/** Returns whether the specified format is supported on this device. */
-	bool getFormatIsSupported(VkFormat format);
-
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
 
@@ -395,6 +392,9 @@ public:
 	/** Returns the physical device underlying this logical device. */
 	inline MVKPhysicalDevice* getPhysicalDevice() { return _physicalDevice; }
 
+	/** Returns info about the pixel format supported by the physical device. */
+	inline MVKPixelFormats* getPixelFormats() { return &_physicalDevice->_pixelFormats; }
+
 	/** Returns the name of this device. */
 	inline const char* getName() { return _pProperties->deviceName; }
 
@@ -604,12 +604,6 @@ public:
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);
 
-	/**
-	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
-	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
-	 */
-	MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBaseObject* mvkObj);
-
 	/** Returns the memory alignment required for the format when used in a texel buffer. */
 	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj);
 
@@ -741,14 +735,8 @@ public:
 	/** Returns the underlying Metal device. */
 	inline id<MTLDevice> getMTLDevice() { return _device ? _device->getMTLDevice() : nil; }
 
-	/**
-	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
-	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
-	 */
-	inline MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
-		return _device ? _device->getMTLPixelFormatFromVkFormat(vkFormat, getBaseObject())
-					   : mvkMTLPixelFormatFromVkFormatInObj(vkFormat, getBaseObject());
-	}
+	/** Returns info about the pixel format supported by the physical device. */
+	inline MVKPixelFormats* getPixelFormats() { return _device ? _device->getPixelFormats() : mvkPlatformPixelFormats(); }
 
 	/** Constructs an instance for the specified device. */
     MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) {}

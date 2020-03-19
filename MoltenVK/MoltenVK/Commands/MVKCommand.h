@@ -78,6 +78,9 @@ public:
     /** Returns the underlying Metal device. */
     id<MTLDevice> getMTLDevice();
 
+	/** Returns info about the pixel format supported by the physical device. */
+	MVKPixelFormats* getPixelFormats();
+
 protected:
     MVKCommandTypePool<MVKCommand>* _pool;
 	MVKCommandBuffer* _commandBuffer = nullptr;

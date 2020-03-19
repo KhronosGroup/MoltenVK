@@ -208,13 +208,9 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
     }
 }
 
-bool MVKPhysicalDevice::getFormatIsSupported(VkFormat format) {
-	return _pixelFormats.vkFormatIsSupported(format);
-}
-
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
     if (pFormatProperties) {
-		*pFormatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
+		*pFormatProperties = _pixelFormats.getVkFormatProperties(format);
 	}
 }
 
@@ -222,7 +218,7 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format,
                                             VkFormatProperties2KHR* pFormatProperties) {
 	if (pFormatProperties) {
 		pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
-		pFormatProperties->formatProperties = mvkVkFormatProperties(format, getFormatIsSupported(format));
+		pFormatProperties->formatProperties = _pixelFormats.getVkFormatProperties(format);
 	}
 }
 
@@ -233,7 +229,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
                                                      VkImageCreateFlags flags,
                                                      VkImageFormatProperties* pImageFormatProperties) {
 
-	if ( !getFormatIsSupported(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+	if ( !_pixelFormats.vkFormatIsSupported(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	if ( !pImageFormatProperties ) { return VK_SUCCESS; }
 
@@ -243,7 +239,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		return VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 
-	MVKFormatType mvkFmt = mvkFormatTypeFromVkFormat(format);
+	MVKFormatType mvkFmt = _pixelFormats.getFormatTypeFromVkFormat(format);
 	bool hasAttachmentUsage = mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
@@ -372,7 +368,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
         return VK_ERROR_FORMAT_NOT_SUPPORTED;
     }
 
-    if ( !getFormatIsSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+    if ( !_pixelFormats.vkFormatIsSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	if ( !getImageViewIsSupported(pImageFormatInfo) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
@@ -532,7 +528,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	}
 
 	uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
-	if (!mvkMTLPixelFormatIsSupported(MTLPixelFormatBGR10A2Unorm)) { mtlFmtsCnt--; }
+	if ( !_pixelFormats.mtlPixelFormatIsSupported(MTLPixelFormatBGR10A2Unorm) ) { mtlFmtsCnt--; }
 
 	const uint vkFmtsCnt = mtlFmtsCnt * (uint)colorSpaces.size();
 
@@ -549,7 +545,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	// Now populate the supplied array
 	for (uint csIdx = 0, idx = 0; idx < *pCount && csIdx < colorSpaces.size(); csIdx++) {
 		for (uint fmtIdx = 0; idx < *pCount && fmtIdx < mtlFmtsCnt; fmtIdx++, idx++) {
-			pSurfaceFormats[idx].format = mvkVkFormatFromMTLPixelFormat(mtlFormats[fmtIdx]);
+			pSurfaceFormats[idx].format = _pixelFormats.getVkFormatFromMTLPixelFormat(mtlFormats[fmtIdx]);
 			pSurfaceFormats[idx].colorSpace = colorSpaces[csIdx];
 		}
 	}
@@ -1223,8 +1219,8 @@ void MVKPhysicalDevice::initProperties() {
 		// to fill out the VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT struct.
         uint32_t maxStorage = 0, maxUniform = 0;
         bool singleTexelStorage = true, singleTexelUniform = true;
-        mvkEnumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
-			MTLPixelFormat mtlFmt = mvkMTLPixelFormatFromVkFormat(vk);
+        _pixelFormats.enumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
+			MTLPixelFormat mtlFmt = _pixelFormats.getMTLPixelFormatFromVkFormat(vk);
 			if ( !mtlFmt ) { return false; }	// If format is invalid, avoid validation errors on MTLDevice format alignment calls
 
             NSUInteger alignment;
@@ -1233,17 +1229,17 @@ void MVKPhysicalDevice::initProperties() {
             } else {
                 alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mtlFmt];
             }
-            VkFormatProperties props = mvkVkFormatProperties(vk, getFormatIsSupported(vk));
+            VkFormatProperties props = _pixelFormats.getVkFormatProperties(vk);
             // For uncompressed formats, this is the size of a single texel.
             // Note that no implementations of Metal support compressed formats
             // in a linear texture (including texture buffers). It's likely that even
             // if they did, this would be the absolute minimum alignment.
-            uint32_t texelSize = mvkVkFormatBytesPerBlock(vk);
+            uint32_t texelSize = _pixelFormats.getVkFormatBytesPerBlock(vk);
             // From the spec:
             //   "If the size of a single texel is a multiple of three bytes, then
             //    the size of a single component of the format is used instead."
             if (texelSize % 3 == 0) {
-                switch (mvkFormatTypeFromVkFormat(vk)) {
+                switch (_pixelFormats.getFormatTypeFromVkFormat(vk)) {
                 case kMVKFormatColorInt8:
                 case kMVKFormatColorUInt8:
                     texelSize = 1;
@@ -2518,15 +2514,11 @@ uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t bindin
 	return ((_pMetalFeatures->maxPerStageBufferCount - 1) - binding);
 }
 
-MTLPixelFormat MVKDevice::getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBaseObject* mvkObj) {
-	return _physicalDevice->_pixelFormats.getMTLPixelFormatFromVkFormat(vkFormat);
-}
-
 VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {
 	VkDeviceSize deviceAlignment = 0;
 	id<MTLDevice> mtlDev = getMTLDevice();
 	if ([mtlDev respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
-		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: getMTLPixelFormatFromVkFormat(format, mvkObj)];
+		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: getPixelFormats()->getMTLPixelFormatFromVkFormat(format)];
 	}
 	return deviceAlignment ? deviceAlignment : _pProperties->limits.minTexelBufferOffsetAlignment;
 }

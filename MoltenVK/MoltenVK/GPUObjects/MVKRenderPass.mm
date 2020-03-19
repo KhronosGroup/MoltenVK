@@ -73,6 +73,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 													   bool isRenderingEntireAttachment,
 													   bool loadOverride,
 													   bool storeOverride) {
+	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
+
 	// Populate the Metal color attachments
 	uint32_t caCnt = getColorAttachmentCount();
 	uint32_t caUsedCnt = 0;
@@ -98,7 +100,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                        hasResolveAttachment, false,
                                                                        loadOverride,
                                                                        storeOverride)) {
-				mtlColorAttDesc.clearColor = mvkMTLClearColorFromVkClearValue(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
+				mtlColorAttDesc.clearColor = pixFmts->getMTLClearColorFromVkClearValue(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
 			}
 		}
 	}
@@ -110,7 +112,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		MVKImageView* dsImage = framebuffer->getAttachment(dsRPAttIdx);
 		MTLPixelFormat mtlDSFormat = dsImage->getMTLPixelFormat();
 
-		if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) {
+		if (pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFormat)) {
 			MTLRenderPassDepthAttachmentDescriptor* mtlDepthAttDesc = mtlRPDesc.depthAttachment;
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
@@ -118,10 +120,10 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                       false, false,
                                                                       loadOverride,
                                                                       storeOverride)) {
-                mtlDepthAttDesc.clearDepth = mvkMTLClearDepthFromVkClearValue(clearValues[dsRPAttIdx]);
+                mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthFromVkClearValue(clearValues[dsRPAttIdx]);
 			}
 		}
-		if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
+		if (pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFormat)) {
 			MTLRenderPassStencilAttachmentDescriptor* mtlStencilAttDesc = mtlRPDesc.stencilAttachment;
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
@@ -129,7 +131,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                       false, true,
                                                                       loadOverride,
                                                                       storeOverride)) {
-				mtlStencilAttDesc.clearStencil = mvkMTLClearStencilFromVkClearValue(clearValues[dsRPAttIdx]);
+				mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilFromVkClearValue(clearValues[dsRPAttIdx]);
 			}
 		}
 	}
@@ -187,9 +189,10 @@ void MVKRenderSubpass::populateClearAttachments(MVKVector<VkClearAttachment>& cl
 		cAtt.colorAttachment = 0;
 		cAtt.clearValue = clearValues[attIdx];
 
-		MTLPixelFormat mtlDSFmt = _renderPass->getMTLPixelFormatFromVkFormat(getDepthStencilFormat());
-		if (mvkMTLPixelFormatIsDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
-		if (mvkMTLPixelFormatIsStencilFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT; }
+		MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
+		MTLPixelFormat mtlDSFmt = _renderPass->getPixelFormats()->getMTLPixelFormatFromVkFormat(getDepthStencilFormat());
+		if (pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
+		if (pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT; }
 		if (cAtt.aspectMask) { clearAtts.push_back(cAtt); }
 	}
 }
@@ -328,8 +331,8 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 VkAttachmentDescription MVKRenderPassAttachment::validate(const VkAttachmentDescription* pCreateInfo) {
 	VkAttachmentDescription info = *pCreateInfo;
 
-	if ( !_renderPass->getMTLPixelFormatFromVkFormat(info.format) ) {
-		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", mvkVkFormatName(info.format)));
+	if ( !_renderPass->getPixelFormats()->getMTLPixelFormatFromVkFormat(info.format) ) {
+		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", _renderPass->getPixelFormats()->getVkFormatName(info.format)));
 	}
 
 	return info;

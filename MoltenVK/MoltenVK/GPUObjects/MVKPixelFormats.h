@@ -16,16 +16,7 @@
  * limitations under the License.
  */
 
-
-/* 
- * This file contains functions for converting between Vulkan and Metal data types.
- *
- * The functions here are used internally by MoltenVK, and are exposed here 
- * as a convenience for use elsewhere within applications using MoltenVK.
- */
-
 #pragma once
-
 
 #include "mvk_datatypes.h"
 #include "MVKEnvironment.h"
@@ -36,35 +27,47 @@
 #import <Metal/Metal.h>
 
 
-#pragma mark -
-#pragma mark MVKFormatDesc
-
 /** Validate these values periodically as new formats are added over time. */
-static const uint32_t _vkSpecFormatCount = 256;
+static const uint32_t _vkFormatCount = 256;
 static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
-static const uint32_t _mtlFormatCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
+static const uint32_t _mtlPixelFormatCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
 static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 
-/** Describes the properties of each VkFormat, including the corresponding Metal pixel format. */
+
+#pragma mark -
+#pragma mark Format descriptors
+
+/** Describes the properties of a VkFormat, including the corresponding Metal pixel and vertex format. */
 typedef struct {
-	VkFormat vk;
-	MTLPixelFormat mtl;
-	MTLPixelFormat mtlSubstitute;
-	MVKOSVersion sinceIOSVersion;
-	MVKOSVersion sinceMacOSVersion;
-	VkExtent2D blockTexelSize;
-	uint32_t bytesPerBlock;
+	VkFormat vkFormat;
+	MTLPixelFormat mtlPixelFormat;
+	MTLPixelFormat mtlPixelFormatSubstitute;
 	MTLVertexFormat mtlVertexFormat;
 	MTLVertexFormat mtlVertexFormatSubstitute;
-	MVKOSVersion vertexSinceIOSVersion;
-	MVKOSVersion vertexSinceMacOSVersion;
+	VkExtent2D blockTexelSize;
+	uint32_t bytesPerBlock;
 	MVKFormatType formatType;
 	VkFormatProperties properties;
-	const char* vkName;
-	const char* mtlName;
+	const char* name;
 	bool hasReportedSubstitution;
 
 	inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); };
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid); };
+	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlPixelFormatSubstitute != MTLPixelFormatInvalid); };
+	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); };
+	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
+} MVKVkFormatDesc;
+
+/** Describes the properties of a MTLPixelFormat or MTLVertexFormat. */
+typedef struct {
+	union {
+		MTLPixelFormat mtlPixelFormat;
+		MTLVertexFormat mtlVertexFormat;
+	};
+	VkFormat vkFormat;
+	MVKOSVersion sinceIOSVersion;
+	MVKOSVersion sinceMacOSVersion;
+	const char* name;
 
 	inline MVKOSVersion sinceOSVersion() const {
 #if MVK_IOS
@@ -74,20 +77,8 @@ typedef struct {
 		return sinceMacOSVersion;
 #endif
 	}
-	inline bool isSupported() const { return (mtl != MTLPixelFormatInvalid) && (mvkOSVersion() >= sinceOSVersion()); };
-	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlSubstitute != MTLPixelFormatInvalid); };
-
-	inline MVKOSVersion vertexSinceOSVersion() const {
-#if MVK_IOS
-		return vertexSinceIOSVersion;
-#endif
-#if MVK_MACOS
-		return vertexSinceMacOSVersion;
-#endif
-	}
-	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid) && (mvkOSVersion() >= vertexSinceOSVersion()); };
-	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
-} MVKFormatDesc;
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mvkOSVersion() >= sinceOSVersion()); };
+} MVKMTLFormatDesc;
 
 
 #pragma mark -
@@ -205,21 +196,8 @@ public:
 	 */
 	size_t getMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 
-	/**
-	 * Returns the default properties for the specified Vulkan format.
-	 *
-	 * Not all MTLPixelFormats returned by this function are supported by all GPU's, and, as a
-	 * result, MoltenVK may return a different value from the vkGetPhysicalDeviceFormatProperties()
-	 * function than is returned here. Use the vkGetPhysicalDeviceFormatProperties() function to
-	 * return the properties for a particular GPU.
-	 *
-	 * Setting assumeGPUSupportsDefault to true allows the default format properties to be returned.
-	 * The assumeGPUSupportsDefault flag can be set to false if it is already known that the format
-	 * is not supported by a particular GPU for images, in which case all of the returned properties
-	 * will be disabled, except possibly VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT, which may be supported
-	 * for the format even without image support.
-	 */
-	VkFormatProperties getVkFormatProperties(VkFormat vkFormat, bool assumeGPUSupportsDefault = true);
+	/** Returns the default properties for the specified Vulkan format. */
+	VkFormatProperties getVkFormatProperties(VkFormat vkFormat);
 
 	/** Returns the name of the specified Vulkan format. */
 	const char* getVkFormatName(VkFormat vkFormat);
@@ -233,6 +211,12 @@ public:
 	 */
 	MTLClearColor getMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
 												   VkFormat vkFormat);
+
+	/** Returns the Metal depth value corresponding to the depth value in the specified VkClearValue. */
+	double getMTLClearDepthFromVkClearValue(VkClearValue vkClearValue);
+
+	/** Returns the Metal stencil value corresponding to the stencil value in the specified VkClearValue. */
+	uint32_t getMTLClearStencilFromVkClearValue(VkClearValue vkClearValue);
 
 	/** Returns the Vulkan image usage from the Metal texture usage and format. */
 	VkImageUsageFlags getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat);
@@ -254,11 +238,14 @@ public:
 	MVKPixelFormats() : MVKPixelFormats(nullptr, nil) {}
 
 protected:
-	const MVKFormatDesc& formatDescForVkFormat(VkFormat vkFormat);
-	const MVKFormatDesc& formatDescForMTLPixelFormat(MTLPixelFormat mtlFormat);
-	const MVKFormatDesc& formatDescForMTLVertexFormat(MTLVertexFormat mtlFormat);
-	void initFormatCapabilities();
-	void buidFormatMaps();
+	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);
+	MVKVkFormatDesc& getVkFormatDesc(MTLPixelFormat mtlFormat);
+	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
+	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
+	void initVkFormatCapabilities();
+	void initMTLPixelFormatCapabilities();
+	void initMTLVertexFormatCapabilities();
+	void buildFormatMaps();
 	void modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice);
 	void disableMTLPixelFormat(MTLPixelFormat mtlFormat);
 
@@ -267,16 +254,16 @@ protected:
 	void test();
 
 	MVKVulkanAPIObject* _apiObject;
-	MVKFormatDesc _formatDescriptions[_vkSpecFormatCount];
-	uint32_t _vkFormatCount;
+	MVKVkFormatDesc _vkFormatDescriptions[_vkFormatCount];
+	MVKMTLFormatDesc _mtlPixelFormatDescriptions[_mtlPixelFormatCount];
+	MVKMTLFormatDesc _mtlVertexFormatDescriptions[_mtlVertexFormatCount];
 
 	// Vulkan core formats have small values and are mapped by simple lookup array.
 	// Vulkan extension formats have larger values and are mapped by a map.
-	uint16_t _fmtDescIndicesByVkFormatsCore[_vkFormatCoreCount];
-	std::unordered_map<uint32_t, uint32_t> _fmtDescIndicesByVkFormatsExt;
+	uint16_t _vkFormatDescIndicesByVkFormatsCore[_vkFormatCoreCount];
+	std::unordered_map<uint32_t, uint32_t> _vkFormatDescIndicesByVkFormatsExt;
 
 	// Metal formats have small values and are mapped by simple lookup array.
-	uint16_t _fmtDescIndicesByMTLPixelFormats[_mtlFormatCount];
-	uint16_t _fmtDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
-
+	uint16_t _mtlFormatDescIndicesByMTLPixelFormats[_mtlPixelFormatCount];
+	uint16_t _mtlFormatDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
 };
