@@ -131,11 +131,17 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
                 }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
                     auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
+					portabilityFeatures->constantAlphaColorBlendFactors = true;
                     portabilityFeatures->triangleFans = false;
+					portabilityFeatures->pointPolygons = false;
                     portabilityFeatures->separateStencilMaskRef = true;
 					portabilityFeatures->events = true;
                     portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle || _metalFeatures.nativeTextureSwizzle;
                     portabilityFeatures->samplerMipLodBias = false;
+					portabilityFeatures->mutableComparisonSamplers = _metalFeatures.depthSampleCompare;
+					portabilityFeatures->tessellationIsolines = false;
+					portabilityFeatures->tessellationPointMode = false;
+					portabilityFeatures->shaderSampleRateInterpolationFunctions = false;
                     break;
                 }
                 case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
@@ -2833,9 +2839,9 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
 				auto* requestedFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
-				enableFeatures(&_enabledPortabilityFeatures.triangleFans,
-							   &requestedFeatures->triangleFans,
-							   &pdPortabilityFeatures.triangleFans, 5);
+				enableFeatures(&_enabledPortabilityFeatures.constantAlphaColorBlendFactors,
+							   &requestedFeatures->constantAlphaColorBlendFactors,
+							   &pdPortabilityFeatures.constantAlphaColorBlendFactors, 11);
 				break;
 			}
 			default:
