@@ -20,8 +20,8 @@
 
 #include "mvk_datatypes.h"
 #include "MVKEnvironment.h"
-#include "MVKBaseObject.h"
 #include "MVKOSExtensions.h"
+#include "MVKBaseObject.h"
 #include <unordered_map>
 
 #import <Metal/Metal.h>
@@ -32,6 +32,78 @@ static const uint32_t _vkFormatCount = 256;
 static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
 static const uint32_t _mtlPixelFormatCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
 static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
+
+
+#pragma mark -
+#pragma mark Metal format capabilities
+
+typedef enum {
+	kMVKMTLFmtCapsNone               = 0,
+	kMVKMTLFmtCapsTexRead            = (1<<0),
+	kMVKMTLFmtCapsTexFilter          = (1<<1),
+	kMVKMTLFmtCapsTexColorAtt        = (1<<2),
+	kMVKMTLFmtCapsTexDepthStencilAtt = (1<<3),
+	kMVKMTLFmtCapsTexBlend           = (1<<4),
+	kMVKMTLFmtCapsTexMSAA            = (1<<5),
+	kMVKMTLFmtCapsTexResolve         = (1<<6),
+	kMVKMTLFmtCapsTexWrite           = (1<<7),
+
+	kMVKMTLFmtCapsBufRead            = (1<<8),
+	kMVKMTLFmtCapsBufVertex          = (1<<9),
+	kMVKMTLFmtCapsBufWrite           = (1<<10),
+
+	kMVKMTLFmtCapsTexRF              = (kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexFilter),
+	kMVKMTLFmtCapsTexRC              = (kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexColorAtt),
+	kMVKMTLFmtCapsTexRCM             = (kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexColorAtt |
+										kMVKMTLFmtCapsTexMSAA),
+	kMVKMTLFmtCapsTexRCB             = (kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexColorAtt |
+										kMVKMTLFmtCapsTexBlend),
+	kMVKMTLFmtCapsTexRCMB            = (kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexColorAtt |
+										kMVKMTLFmtCapsTexMSAA |
+										kMVKMTLFmtCapsTexBlend),
+	kMVKMTLFmtCapsTexRWCM            = (kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexWrite |
+										kMVKMTLFmtCapsTexColorAtt |
+										kMVKMTLFmtCapsTexMSAA),
+	kMVKMTLFmtCapsTexRFCMRB          = (kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexFilter |
+										kMVKMTLFmtCapsTexColorAtt |
+										kMVKMTLFmtCapsTexMSAA |
+										kMVKMTLFmtCapsTexResolve |
+										kMVKMTLFmtCapsTexBlend),
+	kMVKMTLFmtCapsTexRFWCMB          = (kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexFilter |
+										kMVKMTLFmtCapsTexWrite |
+										kMVKMTLFmtCapsTexColorAtt |
+										kMVKMTLFmtCapsTexMSAA |
+										kMVKMTLFmtCapsTexBlend),
+	kMVKMTLFmtCapsTexDRM             = (kMVKMTLFmtCapsTexDepthStencilAtt |
+										kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexMSAA),
+	kMVKMTLFmtCapsTexDRFMR           = (kMVKMTLFmtCapsTexDepthStencilAtt |
+										kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexFilter |
+										kMVKMTLFmtCapsTexMSAA |
+										kMVKMTLFmtCapsTexResolve),
+	kMVKMTLFmtCapsTexAll        = (kMVKMTLFmtCapsTexRead |
+										kMVKMTLFmtCapsTexFilter |
+										kMVKMTLFmtCapsTexWrite |
+										kMVKMTLFmtCapsTexColorAtt |
+										kMVKMTLFmtCapsTexMSAA |
+										kMVKMTLFmtCapsTexResolve |
+										kMVKMTLFmtCapsTexBlend),
+
+	kMVKMTLFmtCapsBufRW              = (kMVKMTLFmtCapsBufRead |
+										kMVKMTLFmtCapsBufWrite),
+	kMVKMTLFmtCapsBufAll             = (kMVKMTLFmtCapsBufRead |
+										kMVKMTLFmtCapsBufWrite |
+										kMVKMTLFmtCapsBufVertex),
+} MVKMTLFmtCaps;
 
 
 #pragma mark -
@@ -65,19 +137,11 @@ typedef struct {
 		MTLVertexFormat mtlVertexFormat;
 	};
 	VkFormat vkFormat;
-	MVKOSVersion sinceIOSVersion;
-	MVKOSVersion sinceMacOSVersion;
+	MVKOSVersion sinceOSVersion;
+	MVKMTLFmtCaps mtlPixFmtCaps;
 	const char* name;
 
-	inline MVKOSVersion sinceOSVersion() const {
-#if MVK_IOS
-		return sinceIOSVersion;
-#endif
-#if MVK_MACOS
-		return sinceMacOSVersion;
-#endif
-	}
-	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mvkOSVersion() >= sinceOSVersion()); };
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mvkOSVersion() >= sinceOSVersion); };
 } MVKMTLFormatDesc;
 
 

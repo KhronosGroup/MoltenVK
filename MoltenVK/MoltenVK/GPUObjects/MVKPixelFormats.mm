@@ -151,11 +151,16 @@ using namespace std;
 #   define MTLPixelFormatPVRTC_RGBA_4BPP_sRGB   MTLPixelFormatInvalid
 
 #   define MTLPixelFormatDepth16Unorm_Stencil8  MTLPixelFormatDepth24Unorm_Stencil8
+#   define MTLPixelFormatBGRA10_XR				MTLPixelFormatInvalid
+#   define MTLPixelFormatBGRA10_XR_sRGB			MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR10_XR				MTLPixelFormatInvalid
+#   define MTLPixelFormatBGR10_XR_sRGB			MTLPixelFormatInvalid
 #endif
 
 #if MVK_IOS
 #   define MTLPixelFormatDepth16Unorm           MTLPixelFormatInvalid
 #   define MTLPixelFormatDepth24Unorm_Stencil8  MTLPixelFormatInvalid
+#   define MTLPixelFormatX24_Stencil8           MTLPixelFormatInvalid
 #   define MTLPixelFormatBC1_RGBA               MTLPixelFormatInvalid
 #   define MTLPixelFormatBC1_RGBA_sRGB          MTLPixelFormatInvalid
 #   define MTLPixelFormatBC2_RGBA               MTLPixelFormatInvalid
@@ -497,9 +502,10 @@ MVKPixelFormats::MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mt
 
 static const MVKOSVersion kMTLFmtNA = numeric_limits<MVKOSVersion>::max();
 
-#define MVK_ADD_VKFMT_STRUCT(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, PIXEL_FEATS, BUFFER_FEATS)  \
-	MVKAssert(fmtIdx < _vkFormatCount, "Attempting to describe %d VkFormats, but only have space for %d. Increase the value of _vkFormatCount", fmtIdx + 1, _vkFormatCount);		\
-	_vkFormatDescriptions[fmtIdx++] = { VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, { BLK_W, BLK_H }, BLK_BYTE_CNT, MVK_FMT_TYPE, { (PIXEL_FEATS & MVK_FMT_LINEAR_TILING_FEATS), PIXEL_FEATS, BUFFER_FEATS }, #VK_FMT, false }
+#define addVkFormatDesc(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, PIXEL_FEATS, BUFFER_FEATS)  \
+	MVKAssert(fmtIdx < _vkFormatCount, "Attempting to describe %d VkFormats, but only have space for %d. Increase the value of _vkFormatCount", fmtIdx + 1, _vkFormatCount);  \
+_vkFormatDescriptions[fmtIdx++] = { VK_FORMAT_ ##VK_FMT, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT,  \
+{ BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { (MVK_FMT_ ##PIXEL_FEATS & MVK_FMT_LINEAR_TILING_FEATS), MVK_FMT_ ##PIXEL_FEATS, MVK_FMT_ ##BUFFER_FEATS }, "VK_FORMAT_" #VK_FMT, false }
 
 void MVKPixelFormats::initVkFormatCapabilities() {
 
@@ -508,253 +514,256 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	uint32_t fmtIdx = 0;
 
 	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
-	// VK_FORMAT_UNDEFINED must come first.
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_UNDEFINED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 0, kMVKFormatNone, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	// UNDEFINED must come first.
+	addVkFormatDesc( UNDEFINED, Invalid, Invalid, Invalid, Invalid, 1, 1, 0, None, NO_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R4G4_UNORM_PACK8, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 1, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R4G4B4A4_UNORM_PACK16, MTLPixelFormatABGR4Unorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );	// Vulkan packed is reversed
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B4G4R4A4_UNORM_PACK16, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( R4G4_UNORM_PACK8, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R4G4B4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( B4G4R4A4_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R5G6B5_UNORM_PACK16, MTLPixelFormatB5G6R5Unorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );	// Vulkan packed is reversed
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B5G6R5_UNORM_PACK16, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R5G5B5A1_UNORM_PACK16, MTLPixelFormatA1BGR5Unorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );	// Vulkan packed is reversed
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B5G5R5A1_UNORM_PACK16, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A1R5G5B5_UNORM_PACK16, MTLPixelFormatBGR5A1Unorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( R5G6B5_UNORM_PACK16, B5G6R5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( B5G6R5_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R5G5B5A1_UNORM_PACK16, A1BGR5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( B5G5R5A1_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( A1R5G5B5_UNORM_PACK16, BGR5A1Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8_UNORM, MTLPixelFormatR8Unorm, MTLPixelFormatInvalid, MTLVertexFormatUCharNormalized, MTLVertexFormatUChar2Normalized, 1, 1, 1, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8_SNORM, MTLPixelFormatR8Snorm, MTLPixelFormatInvalid, MTLVertexFormatCharNormalized, MTLVertexFormatChar2Normalized, 1, 1, 1, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 1, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 1, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8_UINT, MTLPixelFormatR8Uint, MTLPixelFormatInvalid, MTLVertexFormatUChar, MTLVertexFormatUChar2, 1, 1, 1, kMVKFormatColorUInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8_SINT, MTLPixelFormatR8Sint, MTLPixelFormatInvalid, MTLVertexFormatChar, MTLVertexFormatChar2, 1, 1, 1, kMVKFormatColorInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8_SRGB, MTLPixelFormatR8Unorm_sRGB, MTLPixelFormatInvalid, MTLVertexFormatUCharNormalized, MTLVertexFormatUChar2Normalized, 1, 1, 1, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );
+	addVkFormatDesc( R8_UNORM, R8Unorm, Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8_SNORM, R8Snorm, Invalid, CharNormalized, Char2Normalized, 1, 1, 1, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R8_UINT, R8Uint, Invalid, UChar, UChar2, 1, 1, 1, ColorUInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8_SINT, R8Sint, Invalid, Char, Char2, 1, 1, 1, ColorInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8_SRGB, R8Unorm_sRGB, Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8_UNORM, MTLPixelFormatRG8Unorm, MTLPixelFormatInvalid, MTLVertexFormatUChar2Normalized, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8_SNORM, MTLPixelFormatRG8Snorm, MTLPixelFormatInvalid, MTLVertexFormatChar2Normalized, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8_UINT, MTLPixelFormatRG8Uint, MTLPixelFormatInvalid, MTLVertexFormatUChar2, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorUInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8_SINT, MTLPixelFormatRG8Sint, MTLPixelFormatInvalid, MTLVertexFormatChar2, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8_SRGB, MTLPixelFormatRG8Unorm_sRGB, MTLPixelFormatInvalid, MTLVertexFormatUChar2Normalized, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );
+	addVkFormatDesc( R8G8_UNORM, RG8Unorm, Invalid, UChar2Normalized, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8_SNORM, RG8Snorm, Invalid, Char2Normalized, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R8G8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R8G8_UINT, RG8Uint, Invalid, UChar2, Invalid, 1, 1, 2, ColorUInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8_SINT, RG8Sint, Invalid, Char2, Invalid, 1, 1, 2, ColorInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8_SRGB, RG8Unorm_sRGB, Invalid, UChar2Normalized, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8_UNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatUChar3Normalized, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8_SNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatChar3Normalized, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatUChar3, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorUInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatChar3, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8_SRGB, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatUChar3Normalized, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );
+	addVkFormatDesc( R8G8B8_UNORM, Invalid, Invalid, UChar3Normalized, Invalid, 1, 1, 3, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8B8_SNORM, Invalid, Invalid, Char3Normalized, Invalid, 1, 1, 3, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8B8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R8G8B8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R8G8B8_UINT, Invalid, Invalid, UChar3, Invalid, 1, 1, 3, ColorUInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8B8_SINT, Invalid, Invalid, Char3, Invalid, 1, 1, 3, ColorInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8B8_SRGB, Invalid, Invalid, UChar3Normalized, Invalid, 1, 1, 3, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8_UNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8_SNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorUInt8, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorInt8, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8_SRGB, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( B8G8R8_UNORM, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8_SNORM, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8_UINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorUInt8, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8_SINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorInt8, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8_SRGB, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat, NO_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8A8_UNORM, MTLPixelFormatRGBA8Unorm, MTLPixelFormatInvalid, MTLVertexFormatUChar4Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8A8_SNORM, MTLPixelFormatRGBA8Snorm, MTLPixelFormatInvalid, MTLVertexFormatChar4Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8A8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8A8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8A8_UINT, MTLPixelFormatRGBA8Uint, MTLPixelFormatInvalid, MTLVertexFormatUChar4, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorUInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8A8_SINT, MTLPixelFormatRGBA8Sint, MTLPixelFormatInvalid, MTLVertexFormatChar4, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R8G8B8A8_SRGB, MTLPixelFormatRGBA8Unorm_sRGB, MTLPixelFormatInvalid, MTLVertexFormatUChar4Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );
+	addVkFormatDesc( R8G8B8A8_UNORM, RGBA8Unorm, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8B8A8_SNORM, RGBA8Snorm, Invalid, Char4Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8B8A8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R8G8B8A8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R8G8B8A8_UINT, RGBA8Uint, Invalid, UChar4, Invalid, 1, 1, 4, ColorUInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8B8A8_SINT, RGBA8Sint, Invalid, Char4, Invalid, 1, 1, 4, ColorInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R8G8B8A8_SRGB, RGBA8Unorm_sRGB, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8A8_UNORM, MTLPixelFormatBGRA8Unorm, MTLPixelFormatInvalid, MTLVertexFormatUChar4Normalized_BGRA, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8A8_SNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8A8_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8A8_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8A8_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorUInt8, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8A8_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorInt8, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B8G8R8A8_SRGB, MTLPixelFormatBGRA8Unorm_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );
+	addVkFormatDesc( B8G8R8A8_UNORM, BGRA8Unorm, Invalid, UChar4Normalized_BGRA, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( B8G8R8A8_SNORM, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8A8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8A8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8A8_UINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt8, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8A8_SINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorInt8, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( B8G8R8A8_SRGB, BGRA8Unorm_sRGB, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A8B8G8R8_UNORM_PACK32, MTLPixelFormatRGBA8Unorm, MTLPixelFormatInvalid, MTLVertexFormatUChar4Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A8B8G8R8_SNORM_PACK32, MTLPixelFormatRGBA8Snorm, MTLPixelFormatInvalid, MTLVertexFormatChar4Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A8B8G8R8_USCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A8B8G8R8_SSCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A8B8G8R8_UINT_PACK32, MTLPixelFormatRGBA8Uint, MTLPixelFormatInvalid, MTLVertexFormatUChar4, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorUInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A8B8G8R8_SINT_PACK32, MTLPixelFormatRGBA8Sint, MTLPixelFormatInvalid, MTLVertexFormatChar4, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorInt8, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A8B8G8R8_SRGB_PACK32, MTLPixelFormatRGBA8Unorm_sRGB, MTLPixelFormatInvalid, MTLVertexFormatUChar4Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );
+	addVkFormatDesc( A8B8G8R8_UNORM_PACK32, RGBA8Unorm, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( A8B8G8R8_SNORM_PACK32, RGBA8Snorm, Invalid, Char4Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( A8B8G8R8_USCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( A8B8G8R8_SSCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( A8B8G8R8_UINT_PACK32, RGBA8Uint, Invalid, UChar4, Invalid, 1, 1, 4, ColorUInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( A8B8G8R8_SINT_PACK32, RGBA8Sint, Invalid, Char4, Invalid, 1, 1, 4, ColorInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( A8B8G8R8_SRGB_PACK32, RGBA8Unorm_sRGB, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2R10G10B10_UNORM_PACK32, MTLPixelFormatBGR10A2Unorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );	// Vulkan packed is reversed
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2R10G10B10_SNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2R10G10B10_USCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2R10G10B10_SSCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2R10G10B10_UINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorUInt16, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2R10G10B10_SINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorInt16, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( A2R10G10B10_UNORM_PACK32, BGR10A2Unorm, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( A2R10G10B10_SNORM_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( A2R10G10B10_USCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( A2R10G10B10_SSCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( A2R10G10B10_UINT_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt16, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( A2R10G10B10_SINT_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorInt16, NO_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2B10G10R10_UNORM_PACK32, MTLPixelFormatRGB10A2Unorm, MTLPixelFormatInvalid, MTLVertexFormatUInt1010102Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );	// Vulkan packed is reversed
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2B10G10R10_SNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInt1010102Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2B10G10R10_USCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2B10G10R10_SSCALED_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2B10G10R10_UINT_PACK32, MTLPixelFormatRGB10A2Uint, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorUInt16, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_FEATS );		// Vulkan packed is reversed
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_A2B10G10R10_SINT_PACK32, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorInt16, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( A2B10G10R10_UNORM_PACK32, RGB10A2Unorm, Invalid, UInt1010102Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( A2B10G10R10_SNORM_PACK32, Invalid, Invalid, Int1010102Normalized, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( A2B10G10R10_USCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( A2B10G10R10_SSCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( A2B10G10R10_UINT_PACK32, RGB10A2Uint, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt16, COLOR_INTEGER_FEATS, BUFFER_FEATS );		// Vulkan packed is reversed
+	addVkFormatDesc( A2B10G10R10_SINT_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorInt16, NO_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16_UNORM, MTLPixelFormatR16Unorm, MTLPixelFormatInvalid, MTLVertexFormatUShortNormalized, MTLVertexFormatUShort2Normalized, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16_SNORM, MTLPixelFormatR16Snorm, MTLPixelFormatInvalid, MTLVertexFormatShortNormalized, MTLVertexFormatShort2Normalized, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16_UINT, MTLPixelFormatR16Uint, MTLPixelFormatInvalid, MTLVertexFormatUShort, MTLVertexFormatUShort2, 1, 1, 2, kMVKFormatColorUInt16, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16_SINT, MTLPixelFormatR16Sint, MTLPixelFormatInvalid, MTLVertexFormatShort, MTLVertexFormatShort2, 1, 1, 2, kMVKFormatColorInt16, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16_SFLOAT, MTLPixelFormatR16Float, MTLPixelFormatInvalid, MTLVertexFormatHalf, MTLVertexFormatHalf2, 1, 1, 2, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16_UNORM, R16Unorm, Invalid, UShortNormalized, UShort2Normalized, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16_SNORM, R16Snorm, Invalid, ShortNormalized, Short2Normalized, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R16_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R16_UINT, R16Uint, Invalid, UShort, UShort2, 1, 1, 2, ColorUInt16, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16_SINT, R16Sint, Invalid, Short, Short2, 1, 1, 2, ColorInt16, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16_SFLOAT, R16Float, Invalid, Half, Half2, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16_UNORM, MTLPixelFormatRG16Unorm, MTLPixelFormatInvalid, MTLVertexFormatUShort2Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16_SNORM, MTLPixelFormatRG16Snorm, MTLPixelFormatInvalid, MTLVertexFormatShort2Normalized, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16_UINT, MTLPixelFormatRG16Uint, MTLPixelFormatInvalid, MTLVertexFormatUShort2, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorUInt16, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16_SINT, MTLPixelFormatRG16Sint, MTLPixelFormatInvalid, MTLVertexFormatShort2, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorInt16, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16_SFLOAT, MTLPixelFormatRG16Float, MTLPixelFormatInvalid, MTLVertexFormatHalf2, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16_UNORM, RG16Unorm, Invalid, UShort2Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16_SNORM, RG16Snorm, Invalid, Short2Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R16G16_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R16G16_UINT, RG16Uint, Invalid, UShort2, Invalid, 1, 1, 4, ColorUInt16, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16_SINT, RG16Sint, Invalid, Short2, Invalid, 1, 1, 4, ColorInt16, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16_SFLOAT, RG16Float, Invalid, Half2, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16_UNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatUShort3Normalized, MTLVertexFormatInvalid, 1, 1, 6, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16_SNORM, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatShort3Normalized, MTLVertexFormatInvalid, 1, 1, 6, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 6, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 6, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatUShort3, MTLVertexFormatInvalid, 1, 1, 6, kMVKFormatColorUInt16, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatShort3, MTLVertexFormatInvalid, 1, 1, 6, kMVKFormatColorInt16, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatHalf3, MTLVertexFormatInvalid, 1, 1, 6, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16_UNORM, Invalid, Invalid, UShort3Normalized, Invalid, 1, 1, 6, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16_SNORM, Invalid, Invalid, Short3Normalized, Invalid, 1, 1, 6, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 6, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R16G16B16_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 6, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R16G16B16_UINT, Invalid, Invalid, UShort3, Invalid, 1, 1, 6, ColorUInt16, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16_SINT, Invalid, Invalid, Short3, Invalid, 1, 1, 6, ColorInt16, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16_SFLOAT, Invalid, Invalid, Half3, Invalid, 1, 1, 6, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16A16_UNORM, MTLPixelFormatRGBA16Unorm, MTLPixelFormatInvalid, MTLVertexFormatUShort4Normalized, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16A16_SNORM, MTLPixelFormatRGBA16Snorm, MTLPixelFormatInvalid, MTLVertexFormatShort4Normalized, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16A16_USCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16A16_SSCALED, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16A16_UINT, MTLPixelFormatRGBA16Uint, MTLPixelFormatInvalid, MTLVertexFormatUShort4, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorUInt16, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16A16_SINT, MTLPixelFormatRGBA16Sint, MTLPixelFormatInvalid, MTLVertexFormatShort4, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorInt16, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R16G16B16A16_SFLOAT, MTLPixelFormatRGBA16Float, MTLPixelFormatInvalid, MTLVertexFormatHalf4, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16A16_UNORM, RGBA16Unorm, Invalid, UShort4Normalized, Invalid, 1, 1, 8, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16A16_SNORM, RGBA16Snorm, Invalid, Short4Normalized, Invalid, 1, 1, 8, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16A16_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R16G16B16A16_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R16G16B16A16_UINT, RGBA16Uint, Invalid, UShort4, Invalid, 1, 1, 8, ColorUInt16, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16A16_SINT, RGBA16Sint, Invalid, Short4, Invalid, 1, 1, 8, ColorInt16, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R16G16B16A16_SFLOAT, RGBA16Float, Invalid, Half4, Invalid, 1, 1, 8, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32_UINT, MTLPixelFormatR32Uint, MTLPixelFormatInvalid, MTLVertexFormatUInt, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorUInt32, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32_SINT, MTLPixelFormatR32Sint, MTLPixelFormatInvalid, MTLVertexFormatInt, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorInt32, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32_SFLOAT, MTLPixelFormatR32Float, MTLPixelFormatInvalid, MTLVertexFormatFloat, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FLOAT32_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32_UINT, R32Uint, Invalid, UInt, Invalid, 1, 1, 4, ColorUInt32, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32_SINT, R32Sint, Invalid, Int, Invalid, 1, 1, 4, ColorInt32, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32_SFLOAT, R32Float, Invalid, Float, Invalid, 1, 1, 4, ColorFloat, COLOR_FLOAT32_FEATS, BUFFER_VTX_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32G32_UINT, MTLPixelFormatRG32Uint, MTLPixelFormatInvalid, MTLVertexFormatUInt2, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorUInt32, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32G32_SINT, MTLPixelFormatRG32Sint, MTLPixelFormatInvalid, MTLVertexFormatInt2, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorInt32, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32G32_SFLOAT, MTLPixelFormatRG32Float, MTLPixelFormatInvalid, MTLVertexFormatFloat2, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorFloat, MVK_FMT_COLOR_FLOAT32_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32G32_UINT, RG32Uint, Invalid, UInt2, Invalid, 1, 1, 8, ColorUInt32, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32G32_SINT, RG32Sint, Invalid, Int2, Invalid, 1, 1, 8, ColorInt32, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32G32_SFLOAT, RG32Float, Invalid, Float2, Invalid, 1, 1, 8, ColorFloat, COLOR_FLOAT32_FEATS, BUFFER_VTX_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32G32B32_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatUInt3, MTLVertexFormatInvalid, 1, 1, 12, kMVKFormatColorUInt32, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32G32B32_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInt3, MTLVertexFormatInvalid, 1, 1, 12, kMVKFormatColorInt32, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32G32B32_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatFloat3, MTLVertexFormatInvalid, 1, 1, 12, kMVKFormatColorFloat, MVK_FMT_COLOR_FLOAT32_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32G32B32_UINT, Invalid, Invalid, UInt3, Invalid, 1, 1, 12, ColorUInt32, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32G32B32_SINT, Invalid, Invalid, Int3, Invalid, 1, 1, 12, ColorInt32, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32G32B32_SFLOAT, Invalid, Invalid, Float3, Invalid, 1, 1, 12, ColorFloat, COLOR_FLOAT32_FEATS, BUFFER_VTX_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32G32B32A32_UINT, MTLPixelFormatRGBA32Uint, MTLPixelFormatInvalid, MTLVertexFormatUInt4, MTLVertexFormatInvalid, 1, 1, 16, kMVKFormatColorUInt32, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32G32B32A32_SINT, MTLPixelFormatRGBA32Sint, MTLPixelFormatInvalid, MTLVertexFormatInt4, MTLVertexFormatInvalid, 1, 1, 16, kMVKFormatColorInt32, MVK_FMT_COLOR_INTEGER_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R32G32B32A32_SFLOAT, MTLPixelFormatRGBA32Float, MTLPixelFormatInvalid, MTLVertexFormatFloat4, MTLVertexFormatInvalid, 1, 1, 16, kMVKFormatColorFloat, MVK_FMT_COLOR_FLOAT32_FEATS, MVK_FMT_BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32G32B32A32_UINT, RGBA32Uint, Invalid, UInt4, Invalid, 1, 1, 16, ColorUInt32, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32G32B32A32_SINT, RGBA32Sint, Invalid, Int4, Invalid, 1, 1, 16, ColorInt32, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
+	addVkFormatDesc( R32G32B32A32_SFLOAT, RGBA32Float, Invalid, Float4, Invalid, 1, 1, 16, ColorFloat, COLOR_FLOAT32_FEATS, BUFFER_VTX_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 8, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( R64_UINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R64_SINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R64_SFLOAT, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat, NO_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64G64_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 16, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64G64_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 16, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64G64_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 16, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( R64G64_UINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 16, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R64G64_SINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 16, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R64G64_SFLOAT, Invalid, Invalid, Invalid, Invalid, 1, 1, 16, ColorFloat, NO_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64G64B64_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 24, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64G64B64_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 24, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64G64B64_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 24, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( R64G64B64_UINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 24, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R64G64B64_SINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 24, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R64G64B64_SFLOAT, Invalid, Invalid, Invalid, Invalid, 1, 1, 24, ColorFloat, NO_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64G64B64A64_UINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 32, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64G64B64A64_SINT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 32, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_R64G64B64A64_SFLOAT, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 32, kMVKFormatColorFloat, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( R64G64B64A64_UINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R64G64B64A64_SINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( R64G64B64A64_SFLOAT, Invalid, Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat, NO_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_B10G11R11_UFLOAT_PACK32, MTLPixelFormatRG11B10Float, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );	// Vulkan packed is reversed
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_E5B9G9R9_UFLOAT_PACK32, MTLPixelFormatRGB9E5Float, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatColorFloat, MVK_FMT_E5B9G9R9_FEATS, MVK_FMT_E5B9G9R9_BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( B10G11R11_UFLOAT_PACK32, RG11B10Float, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( E5B9G9R9_UFLOAT_PACK32, RGB9E5Float, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, E5B9G9R9_FEATS, E5B9G9R9_BUFFER_FEATS );	// Vulkan packed is reversed
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_D32_SFLOAT, MTLPixelFormatDepth32Float, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_D32_SFLOAT_S8_UINT, MTLPixelFormatDepth32Float_Stencil8, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 5, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( D32_SFLOAT, Depth32Float, Invalid, Invalid, Invalid, 1, 1, 4, DepthStencil, DEPTH_FEATS, NO_FEATS );
+	addVkFormatDesc( D32_SFLOAT_S8_UINT, Depth32Float_Stencil8, Invalid, Invalid, Invalid, 1, 1, 5, DepthStencil, DEPTH_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_S8_UINT, MTLPixelFormatStencil8, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 1, kMVKFormatDepthStencil, MVK_FMT_STENCIL_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( S8_UINT, Stencil8, Invalid, Invalid, Invalid, 1, 1, 1, DepthStencil, STENCIL_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_D16_UNORM, MTLPixelFormatDepth16Unorm, MTLPixelFormatDepth32Float, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 2, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_D16_UNORM_S8_UINT, MTLPixelFormatInvalid, MTLPixelFormatDepth16Unorm_Stencil8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 3, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_D24_UNORM_S8_UINT, MTLPixelFormatDepth24Unorm_Stencil8, MTLPixelFormatDepth32Float_Stencil8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( D16_UNORM, Depth16Unorm, Depth32Float, Invalid, Invalid, 1, 1, 2, DepthStencil, DEPTH_FEATS, NO_FEATS );
+	addVkFormatDesc( D16_UNORM_S8_UINT, Invalid, Depth16Unorm_Stencil8, Invalid, Invalid, 1, 1, 3, DepthStencil, DEPTH_FEATS, NO_FEATS );
+	addVkFormatDesc( D24_UNORM_S8_UINT, Depth24Unorm_Stencil8, Depth32Float_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil, DEPTH_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_X8_D24_UNORM_PACK32, MTLPixelFormatInvalid, MTLPixelFormatDepth24Unorm_Stencil8, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 1, 1, 4, kMVKFormatDepthStencil, MVK_FMT_DEPTH_FEATS, MVK_FMT_NO_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( X8_D24_UNORM_PACK32, Invalid, Depth24Unorm_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil, DEPTH_FEATS, NO_FEATS );	// Vulkan packed is reversed
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC1_RGB_UNORM_BLOCK, MTLPixelFormatBC1_RGBA, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC1_RGB_SRGB_BLOCK, MTLPixelFormatBC1_RGBA_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC1_RGBA_UNORM_BLOCK, MTLPixelFormatBC1_RGBA, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC1_RGBA_SRGB_BLOCK, MTLPixelFormatBC1_RGBA_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( BC1_RGB_UNORM_BLOCK, BC1_RGBA, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( BC1_RGB_SRGB_BLOCK, BC1_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( BC1_RGBA_UNORM_BLOCK, BC1_RGBA, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( BC1_RGBA_SRGB_BLOCK, BC1_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC2_UNORM_BLOCK, MTLPixelFormatBC2_RGBA, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC2_SRGB_BLOCK, MTLPixelFormatBC2_RGBA_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( BC2_UNORM_BLOCK, BC2_RGBA, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( BC2_SRGB_BLOCK, BC2_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC3_UNORM_BLOCK, MTLPixelFormatBC3_RGBA, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC3_SRGB_BLOCK, MTLPixelFormatBC3_RGBA_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( BC3_UNORM_BLOCK, BC3_RGBA, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( BC3_SRGB_BLOCK, BC3_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC4_UNORM_BLOCK, MTLPixelFormatBC4_RUnorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC4_SNORM_BLOCK, MTLPixelFormatBC4_RSnorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( BC4_UNORM_BLOCK, BC4_RUnorm, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( BC4_SNORM_BLOCK, BC4_RSnorm, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC5_UNORM_BLOCK, MTLPixelFormatBC5_RGUnorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC5_SNORM_BLOCK, MTLPixelFormatBC5_RGSnorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( BC5_UNORM_BLOCK, BC5_RGUnorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( BC5_SNORM_BLOCK, BC5_RGSnorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC6H_UFLOAT_BLOCK, MTLPixelFormatBC6H_RGBUfloat, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC6H_SFLOAT_BLOCK, MTLPixelFormatBC6H_RGBFloat, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( BC6H_UFLOAT_BLOCK, BC6H_RGBUfloat, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( BC6H_SFLOAT_BLOCK, BC6H_RGBFloat, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC7_UNORM_BLOCK, MTLPixelFormatBC7_RGBAUnorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_BC7_SRGB_BLOCK, MTLPixelFormatBC7_RGBAUnorm_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( BC7_UNORM_BLOCK, BC7_RGBAUnorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( BC7_SRGB_BLOCK, BC7_RGBAUnorm_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK, MTLPixelFormatETC2_RGB8, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK, MTLPixelFormatETC2_RGB8_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK, MTLPixelFormatETC2_RGB8A1, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK, MTLPixelFormatETC2_RGB8A1_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( ETC2_R8G8B8_UNORM_BLOCK, ETC2_RGB8, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ETC2_R8G8B8_SRGB_BLOCK, ETC2_RGB8_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ETC2_R8G8B8A1_UNORM_BLOCK, ETC2_RGB8A1, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ETC2_R8G8B8A1_SRGB_BLOCK, ETC2_RGB8A1_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK, MTLPixelFormatEAC_RGBA8, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK, MTLPixelFormatEAC_RGBA8_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( ETC2_R8G8B8A8_UNORM_BLOCK, EAC_RGBA8, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ETC2_R8G8B8A8_SRGB_BLOCK, EAC_RGBA8_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_EAC_R11_UNORM_BLOCK, MTLPixelFormatEAC_R11Unorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_EAC_R11_SNORM_BLOCK, MTLPixelFormatEAC_R11Snorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( EAC_R11_UNORM_BLOCK, EAC_R11Unorm, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( EAC_R11_SNORM_BLOCK, EAC_R11Snorm, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_EAC_R11G11_UNORM_BLOCK, MTLPixelFormatEAC_RG11Unorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_EAC_R11G11_SNORM_BLOCK, MTLPixelFormatEAC_RG11Snorm, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( EAC_R11G11_UNORM_BLOCK, EAC_RG11Unorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( EAC_R11G11_SNORM_BLOCK, EAC_RG11Snorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_4x4_UNORM_BLOCK, MTLPixelFormatASTC_4x4_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_4x4_SRGB_BLOCK, MTLPixelFormatASTC_4x4_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_5x4_UNORM_BLOCK, MTLPixelFormatASTC_5x4_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 5, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_5x4_SRGB_BLOCK, MTLPixelFormatASTC_5x4_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 5, 4, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_5x5_UNORM_BLOCK, MTLPixelFormatASTC_5x5_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 5, 5, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_5x5_SRGB_BLOCK, MTLPixelFormatASTC_5x5_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 5, 5, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_6x5_UNORM_BLOCK, MTLPixelFormatASTC_6x5_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 6, 5, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_6x5_SRGB_BLOCK, MTLPixelFormatASTC_6x5_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 6, 5, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_6x6_UNORM_BLOCK, MTLPixelFormatASTC_6x6_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 6, 6, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_6x6_SRGB_BLOCK, MTLPixelFormatASTC_6x6_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 6, 6, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_8x5_UNORM_BLOCK, MTLPixelFormatASTC_8x5_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 5, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_8x5_SRGB_BLOCK, MTLPixelFormatASTC_8x5_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 5, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_8x6_UNORM_BLOCK, MTLPixelFormatASTC_8x6_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 6, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_8x6_SRGB_BLOCK, MTLPixelFormatASTC_8x6_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 6, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_8x8_UNORM_BLOCK, MTLPixelFormatASTC_8x8_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 8, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_8x8_SRGB_BLOCK, MTLPixelFormatASTC_8x8_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 8, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_10x5_UNORM_BLOCK, MTLPixelFormatASTC_10x5_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 10, 5, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_10x5_SRGB_BLOCK, MTLPixelFormatASTC_10x5_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 10, 5, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_10x6_UNORM_BLOCK, MTLPixelFormatASTC_10x6_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 10, 6, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_10x6_SRGB_BLOCK, MTLPixelFormatASTC_10x6_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 10, 6, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_10x8_UNORM_BLOCK, MTLPixelFormatASTC_10x8_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 10, 8, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_10x8_SRGB_BLOCK, MTLPixelFormatASTC_10x8_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 10, 8, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_10x10_UNORM_BLOCK, MTLPixelFormatASTC_10x10_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 10, 10, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_10x10_SRGB_BLOCK, MTLPixelFormatASTC_10x10_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 10, 10, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_12x10_UNORM_BLOCK, MTLPixelFormatASTC_12x10_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 12, 10, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_12x10_SRGB_BLOCK, MTLPixelFormatASTC_12x10_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 12, 10, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_12x12_UNORM_BLOCK, MTLPixelFormatASTC_12x12_LDR, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 12, 12, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_ASTC_12x12_SRGB_BLOCK, MTLPixelFormatASTC_12x12_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 12, 12, 16, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( ASTC_4x4_UNORM_BLOCK, ASTC_4x4_LDR, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_4x4_SRGB_BLOCK, ASTC_4x4_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_5x4_UNORM_BLOCK, ASTC_5x4_LDR, Invalid, Invalid, Invalid, 5, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_5x4_SRGB_BLOCK, ASTC_5x4_sRGB, Invalid, Invalid, Invalid, 5, 4, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_5x5_UNORM_BLOCK, ASTC_5x5_LDR, Invalid, Invalid, Invalid, 5, 5, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_5x5_SRGB_BLOCK, ASTC_5x5_sRGB, Invalid, Invalid, Invalid, 5, 5, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_6x5_UNORM_BLOCK, ASTC_6x5_LDR, Invalid, Invalid, Invalid, 6, 5, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_6x5_SRGB_BLOCK, ASTC_6x5_sRGB, Invalid, Invalid, Invalid, 6, 5, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_6x6_UNORM_BLOCK, ASTC_6x6_LDR, Invalid, Invalid, Invalid, 6, 6, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_6x6_SRGB_BLOCK, ASTC_6x6_sRGB, Invalid, Invalid, Invalid, 6, 6, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_8x5_UNORM_BLOCK, ASTC_8x5_LDR, Invalid, Invalid, Invalid, 8, 5, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_8x5_SRGB_BLOCK, ASTC_8x5_sRGB, Invalid, Invalid, Invalid, 8, 5, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_8x6_UNORM_BLOCK, ASTC_8x6_LDR, Invalid, Invalid, Invalid, 8, 6, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_8x6_SRGB_BLOCK, ASTC_8x6_sRGB, Invalid, Invalid, Invalid, 8, 6, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_8x8_UNORM_BLOCK, ASTC_8x8_LDR, Invalid, Invalid, Invalid, 8, 8, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_8x8_SRGB_BLOCK, ASTC_8x8_sRGB, Invalid, Invalid, Invalid, 8, 8, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_10x5_UNORM_BLOCK, ASTC_10x5_LDR, Invalid, Invalid, Invalid, 10, 5, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_10x5_SRGB_BLOCK, ASTC_10x5_sRGB, Invalid, Invalid, Invalid, 10, 5, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_10x6_UNORM_BLOCK, ASTC_10x6_LDR, Invalid, Invalid, Invalid, 10, 6, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_10x6_SRGB_BLOCK, ASTC_10x6_sRGB, Invalid, Invalid, Invalid, 10, 6, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_10x8_UNORM_BLOCK, ASTC_10x8_LDR, Invalid, Invalid, Invalid, 10, 8, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_10x8_SRGB_BLOCK, ASTC_10x8_sRGB, Invalid, Invalid, Invalid, 10, 8, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_10x10_UNORM_BLOCK, ASTC_10x10_LDR, Invalid, Invalid, Invalid, 10, 10, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_10x10_SRGB_BLOCK, ASTC_10x10_sRGB, Invalid, Invalid, Invalid, 10, 10, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_12x10_UNORM_BLOCK, ASTC_12x10_LDR, Invalid, Invalid, Invalid, 12, 10, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_12x10_SRGB_BLOCK, ASTC_12x10_sRGB, Invalid, Invalid, Invalid, 12, 10, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_12x12_UNORM_BLOCK, ASTC_12x12_LDR, Invalid, Invalid, Invalid, 12, 12, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( ASTC_12x12_SRGB_BLOCK, ASTC_12x12_sRGB, Invalid, Invalid, Invalid, 12, 12, 16, Compressed, COMPRESSED_FEATS, NO_FEATS );
 
 	// Extension VK_IMG_format_pvrtc
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_PVRTC1_2BPP_UNORM_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_2BPP, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_PVRTC1_4BPP_UNORM_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_4BPP, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_PVRTC2_2BPP_UNORM_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 4, 8, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_PVRTC2_4BPP_UNORM_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_PVRTC1_2BPP_SRGB_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_2BPP_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_PVRTC1_4BPP_SRGB_BLOCK_IMG, MTLPixelFormatPVRTC_RGBA_4BPP_sRGB, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_COMPRESSED_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_PVRTC2_2BPP_SRGB_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 8, 4, 8, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_PVRTC2_4BPP_SRGB_BLOCK_IMG, MTLPixelFormatInvalid, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 4, 4, 8, kMVKFormatCompressed, MVK_FMT_NO_FEATS, MVK_FMT_NO_FEATS );
+	addVkFormatDesc( PVRTC1_2BPP_UNORM_BLOCK_IMG, PVRTC_RGBA_2BPP, Invalid, Invalid, Invalid, 8, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( PVRTC1_4BPP_UNORM_BLOCK_IMG, PVRTC_RGBA_4BPP, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( PVRTC2_2BPP_UNORM_BLOCK_IMG, Invalid, Invalid, Invalid, Invalid, 8, 4, 8, Compressed, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( PVRTC2_4BPP_UNORM_BLOCK_IMG, Invalid, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( PVRTC1_2BPP_SRGB_BLOCK_IMG, PVRTC_RGBA_2BPP_sRGB, Invalid, Invalid, Invalid, 8, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( PVRTC1_4BPP_SRGB_BLOCK_IMG, PVRTC_RGBA_4BPP_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
+	addVkFormatDesc( PVRTC2_2BPP_SRGB_BLOCK_IMG, Invalid, Invalid, Invalid, Invalid, 8, 4, 8, Compressed, NO_FEATS, NO_FEATS );
+	addVkFormatDesc( PVRTC2_4BPP_SRGB_BLOCK_IMG, Invalid, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, NO_FEATS, NO_FEATS );
 
 	// Future extension VK_KHX_color_conversion and Vulkan 1.1.
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_UNDEFINED, MTLPixelFormatGBGR422, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 2, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );
-	MVK_ADD_VKFMT_STRUCT( VK_FORMAT_UNDEFINED, MTLPixelFormatBGRG422, MTLPixelFormatInvalid, MTLVertexFormatInvalid, MTLVertexFormatInvalid, 2, 1, 4, kMVKFormatColorFloat, MVK_FMT_COLOR_FEATS, MVK_FMT_BUFFER_FEATS );
+	addVkFormatDesc( UNDEFINED, GBGR422, Invalid, Invalid, Invalid, 2, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
+	addVkFormatDesc( UNDEFINED, BGRG422, Invalid, Invalid, Invalid, 2, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 
 	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
 }
 
-#define MVK_ADD_MTLPIXFMT_STRUCT(MTL_FMT, IOS_SINCE, MACOS_SINCE)  \
-	MVKAssert(fmtIdx < _mtlPixelFormatCount, "Attempting to describe %d MTLPixelFormats, but only have space for %d. Increase the value of _mtlPixelFormatCount", fmtIdx + 1, _mtlPixelFormatCount);		\
-	_mtlPixelFormatDescriptions[fmtIdx++] = { .mtlPixelFormat = MTL_FMT, VK_FORMAT_UNDEFINED, IOS_SINCE, MACOS_SINCE, #MTL_FMT }
+#define addMTLPixelFormatDesc(MTL_FMT, IOS_SINCE, MACOS_SINCE, IOS_CAPS, MACOS_CAPS)  \
+	MVKAssert(fmtIdx < _mtlPixelFormatCount, "Attempting to describe %d MTLPixelFormats, but only have space for %d. Increase the value of _mtlPixelFormatCount", fmtIdx + 1, _mtlPixelFormatCount);  \
+_mtlPixelFormatDescriptions[fmtIdx++] = { .mtlPixelFormat = MTLPixelFormat ##MTL_FMT, VK_FORMAT_UNDEFINED,  \
+                                          mvkSelectPlatformValue<MVKOSVersion>(MACOS_SINCE, IOS_SINCE),  \
+                                          mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
+                                          "MTLPixelFormat" #MTL_FMT }
 
 void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 
@@ -763,170 +772,171 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	uint32_t fmtIdx = 0;
 
 	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
+
 	// MTLPixelFormatInvalid must come first.
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatInvalid, kMTLFmtNA, kMTLFmtNA );
+	addMTLPixelFormatDesc( Invalid, kMTLFmtNA, kMTLFmtNA, None, None );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatABGR4Unorm, 8.0, kMTLFmtNA );
+	// Ordinary 8-bit pixel formats
+	addMTLPixelFormatDesc( A8Unorm, 8.0, 10.11, TexRF, TexRF );
+	addMTLPixelFormatDesc( R8Unorm, 8.0, 10.11, TexAll, TexAll );
+	addMTLPixelFormatDesc( R8Unorm_sRGB, 8.0, kMTLFmtNA, TexRFCMRB, None );
+	addMTLPixelFormatDesc( R8Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( R8Uint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( R8Sint, 8.0, 10.11, TexRWCM, TexRWCM );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatB5G6R5Unorm, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatA1BGR5Unorm, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBGR5A1Unorm, 8.0, kMTLFmtNA );
+	// Ordinary 16-bit pixel formats
+	addMTLPixelFormatDesc( R16Unorm, 8.0, 10.11, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( R16Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( R16Uint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( R16Sint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( R16Float, 8.0, 10.11, TexAll, TexAll );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR8Unorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR8Snorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR8Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR8Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR8Unorm_sRGB, 8.0, kMTLFmtNA );
+	addMTLPixelFormatDesc( RG8Unorm, 8.0, 10.11, TexAll, TexAll );
+	addMTLPixelFormatDesc( RG8Unorm_sRGB, 8.0, kMTLFmtNA, TexRFCMRB, None );
+	addMTLPixelFormatDesc( RG8Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RG8Uint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RG8Sint, 8.0, 10.11, TexRWCM, TexRWCM );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG8Unorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG8Snorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG8Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG8Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG8Unorm_sRGB, 8.0, kMTLFmtNA );
+	// Packed 16-bit pixel formats
+	addMTLPixelFormatDesc( B5G6R5Unorm, 8.0, kMTLFmtNA, TexRFCMRB, None );
+	addMTLPixelFormatDesc( A1BGR5Unorm, 8.0, kMTLFmtNA, TexRFCMRB, None );
+	addMTLPixelFormatDesc( ABGR4Unorm, 8.0, kMTLFmtNA, TexRFCMRB, None );
+	addMTLPixelFormatDesc( BGR5A1Unorm, 8.0, kMTLFmtNA, TexRFCMRB, None );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Unorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Snorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Unorm_sRGB, 8.0, 10.11 );
+	// Ordinary 32-bit pixel formats
+	addMTLPixelFormatDesc( R32Uint, 8.0, 10.11, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( R32Sint, 8.0, 10.11, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( R32Float, 8.0, 10.11, TexRCMB, TexAll );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBGRA8Unorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBGRA8Unorm_sRGB, 8.0, 10.11 );
+	addMTLPixelFormatDesc( RG16Unorm, 8.0, 10.11, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RG16Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RG16Uint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RG16Sint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RG16Float, 8.0, 10.11, TexAll, TexAll );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Unorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Snorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA8Unorm_sRGB, 8.0, 10.11 );
+	addMTLPixelFormatDesc( RGBA8Unorm, 8.0, 10.11, TexAll, TexAll );
+	addMTLPixelFormatDesc( RGBA8Unorm_sRGB, 8.0, 10.11, TexRFCMRB, TexRFCMRB );
+	addMTLPixelFormatDesc( RGBA8Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RGBA8Uint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RGBA8Sint, 8.0, 10.11, TexRWCM, TexRWCM );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBGR10A2Unorm, 11.0, 10.13 );
+	addMTLPixelFormatDesc( BGRA8Unorm, 8.0, 10.11, TexAll, TexAll );
+	addMTLPixelFormatDesc( BGRA8Unorm_sRGB, 8.0, 10.11, TexRFCMRB, TexRFCMRB );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGB10A2Unorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGB10A2Uint, 8.0, 10.11 );
+	// Packed 32-bit pixel formats
+	addMTLPixelFormatDesc( RGB10A2Unorm, 8.0, 10.11, TexRFCMRB, TexAll );
+	addMTLPixelFormatDesc( RGB10A2Uint, 8.0, 10.11, TexRCM, TexRWCM );
+	addMTLPixelFormatDesc( RG11B10Float, 8.0, 10.11, TexRFCMRB, TexAll );
+	addMTLPixelFormatDesc( RGB9E5Float, 8.0, 10.11, TexRFCMRB, TexRF );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR16Unorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR16Snorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR16Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR16Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR16Float, 8.0, 10.11 );
+	// Ordinary 64-bit pixel formats
+	addMTLPixelFormatDesc( RG32Uint, 8.0, 10.11, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( RG32Sint, 8.0, 10.11, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( RG32Float, 8.0, 10.11, TexRCB, TexAll );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG16Unorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG16Snorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG16Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG16Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG16Float, 8.0, 10.11 );
+	addMTLPixelFormatDesc( RGBA16Unorm, 8.0, 10.11, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RGBA16Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RGBA16Uint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RGBA16Sint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RGBA16Float, 8.0, 10.11, TexAll, TexAll );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA16Unorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA16Snorm, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA16Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA16Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA16Float, 8.0, 10.11 );
+	// Ordinary 128-bit pixel formats
+	addMTLPixelFormatDesc( RGBA32Uint, 8.0, 10.11, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( RGBA32Sint, 8.0, 10.11, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( RGBA32Float, 8.0, 10.11, TexRC, TexAll );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR32Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR32Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatR32Float, 8.0, 10.11 );
+	// Compressed pixel formats
+	addMTLPixelFormatDesc( PVRTC_RGBA_2BPP, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( PVRTC_RGBA_4BPP, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( PVRTC_RGBA_2BPP_sRGB, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( PVRTC_RGBA_4BPP_sRGB, 8.0, kMTLFmtNA, TexRF, None );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG32Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG32Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG32Float, 8.0, 10.11 );
+	addMTLPixelFormatDesc( ETC2_RGB8, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( ETC2_RGB8_sRGB, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( ETC2_RGB8A1, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( ETC2_RGB8A1_sRGB, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( EAC_RGBA8, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( EAC_RGBA8_sRGB, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( EAC_R11Unorm, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( EAC_R11Snorm, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( EAC_RG11Unorm, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( EAC_RG11Snorm, 8.0, kMTLFmtNA, TexRF, None );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA32Uint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA32Sint, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGBA32Float, 8.0, 10.11 );
+	addMTLPixelFormatDesc( ASTC_4x4_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_4x4_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_5x4_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_5x4_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_5x5_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_5x5_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_6x5_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_6x5_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_6x6_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_6x6_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_8x5_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_8x5_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_8x6_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_8x6_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_8x8_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_8x8_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_10x5_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_10x5_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_10x6_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_10x6_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_10x8_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_10x8_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_10x10_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_10x10_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_12x10_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_12x10_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_12x12_LDR, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_12x12_sRGB, 8.0, kMTLFmtNA, None, None );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRG11B10Float, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatRGB9E5Float, 8.0, 10.11 );
+	addMTLPixelFormatDesc( BC1_RGBA, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC1_RGBA_sRGB, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC1_RGBA, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC1_RGBA_sRGB, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC2_RGBA, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC2_RGBA_sRGB, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC3_RGBA, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC3_RGBA_sRGB, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC4_RUnorm, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC4_RSnorm, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC5_RGUnorm, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC5_RGSnorm, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC6H_RGBUfloat, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC6H_RGBFloat, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC7_RGBAUnorm, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC7_RGBAUnorm_sRGB, kMTLFmtNA, 10.11, None, TexRF );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatDepth32Float, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatDepth32Float_Stencil8, 9.0, 10.11 );
+	// YUV pixel formats
+	addMTLPixelFormatDesc( GBGR422, 8.0, 10.11, TexRF, TexRF );
+	addMTLPixelFormatDesc( BGRG422, 8.0, 10.11, TexRF, TexRF );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatStencil8, 8.0, 10.11 );
+	// Depth and stencil pixel formats
+	addMTLPixelFormatDesc( Depth16Unorm, kMTLFmtNA, 10.12, None, TexDRFMR );
+	addMTLPixelFormatDesc( Depth32Float, 8.0, 10.11, TexDRM, TexDRFMR );
+	addMTLPixelFormatDesc( Stencil8, 8.0, 10.11, TexDRM, TexDRM );
+	addMTLPixelFormatDesc( Depth24Unorm_Stencil8, kMTLFmtNA, 10.11, None, TexDRFMR );
+	addMTLPixelFormatDesc( Depth32Float_Stencil8, 9.0, 10.11, TexDRM, TexDRFMR );
+	addMTLPixelFormatDesc( X24_Stencil8, kMTLFmtNA, 10.11, None, TexDRM );
+	addMTLPixelFormatDesc( X32_Stencil8, 8.0, 10.11, TexDRM, TexDRM );
 
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatDepth16Unorm, kMTLFmtNA, 10.12 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatDepth24Unorm_Stencil8, kMTLFmtNA, 10.11 );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC1_RGBA, kMTLFmtNA, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC1_RGBA_sRGB, kMTLFmtNA, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC1_RGBA, kMTLFmtNA, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC1_RGBA_sRGB, kMTLFmtNA, 10.11 );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC2_RGBA, kMTLFmtNA, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC2_RGBA_sRGB, kMTLFmtNA, 10.11 );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC3_RGBA, kMTLFmtNA, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC3_RGBA_sRGB, kMTLFmtNA, 10.11 );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC4_RUnorm, kMTLFmtNA, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC4_RSnorm, kMTLFmtNA, 10.11 );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC5_RGUnorm, kMTLFmtNA, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC5_RGSnorm, kMTLFmtNA, 10.11 );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC6H_RGBUfloat, kMTLFmtNA, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC6H_RGBFloat, kMTLFmtNA, 10.11 );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC7_RGBAUnorm, kMTLFmtNA, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBC7_RGBAUnorm_sRGB, kMTLFmtNA, 10.11 );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatETC2_RGB8, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatETC2_RGB8_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatETC2_RGB8A1, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatETC2_RGB8A1_sRGB, 8.0, kMTLFmtNA );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatEAC_RGBA8, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatEAC_RGBA8_sRGB, 8.0, kMTLFmtNA );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatEAC_R11Unorm, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatEAC_R11Snorm, 8.0, kMTLFmtNA );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatEAC_RG11Unorm, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatEAC_RG11Snorm, 8.0, kMTLFmtNA );
-
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_4x4_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_4x4_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_5x4_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_5x4_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_5x5_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_5x5_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_6x5_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_6x5_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_6x6_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_6x6_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_8x5_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_8x5_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_8x6_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_8x6_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_8x8_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_8x8_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_10x5_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_10x5_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_10x6_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_10x6_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_10x8_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_10x8_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_10x10_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_10x10_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_12x10_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_12x10_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_12x12_LDR, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatASTC_12x12_sRGB, 8.0, kMTLFmtNA );
-
-	// Extension VK_IMG_format_pvrtc
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatPVRTC_RGBA_2BPP, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatPVRTC_RGBA_4BPP, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatPVRTC_RGBA_2BPP_sRGB, 8.0, kMTLFmtNA );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatPVRTC_RGBA_4BPP_sRGB, 8.0, kMTLFmtNA );
-
-	// Future extension VK_KHX_color_conversion and Vulkan 1.1.
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatGBGR422, 8.0, 10.11 );
-	MVK_ADD_MTLPIXFMT_STRUCT( MTLPixelFormatBGRG422, 8.0, 10.11 );
+	// Extended range and wide color pixel formats
+	addMTLPixelFormatDesc( BGRA10_XR, 10.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( BGRA10_XR_sRGB, 10.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( BGR10_XR, 10.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( BGR10_XR_sRGB, 10.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( BGR10A2Unorm, 11.0, 10.13, TexAll, TexRFCMRB );
 
 	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
 }
 
-#define MVK_ADD_MTLVTXFMT_STRUCT(MTL_VTX_FMT, VTX_IOS_SINCE, VTX_MACOS_SINCE)  \
-	MVKAssert(fmtIdx < _mtlVertexFormatCount, "Attempting to describe %d MTLVertexFormats, but only have space for %d. Increase the value of _mtlVertexFormatCount", fmtIdx + 1, _mtlVertexFormatCount);		\
-	_mtlVertexFormatDescriptions[fmtIdx++] = { .mtlVertexFormat = MTL_VTX_FMT, VK_FORMAT_UNDEFINED, VTX_IOS_SINCE, VTX_MACOS_SINCE, #MTL_VTX_FMT }
+#define addMTLVertexFormatDesc(MTL_VTX_FMT, VTX_IOS_SINCE, VTX_MACOS_SINCE, IOS_CAPS, MACOS_CAPS)  \
+	MVKAssert(fmtIdx < _mtlVertexFormatCount, "Attempting to describe %d MTLVertexFormats, but only have space for %d. Increase the value of _mtlVertexFormatCount", fmtIdx + 1, _mtlVertexFormatCount);  \
+	_mtlVertexFormatDescriptions[fmtIdx++] = { .mtlVertexFormat = MTLVertexFormat ##MTL_VTX_FMT, VK_FORMAT_UNDEFINED,  \
+                                               mvkSelectPlatformValue<MVKOSVersion>(VTX_MACOS_SINCE, VTX_IOS_SINCE),  \
+                                               mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
+                                               "MTLVertexFormat" #MTL_VTX_FMT }
 
 void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 
@@ -936,72 +946,72 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 
 	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
 	// MTLVertexFormatInvalid must come first.
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatInvalid, kMTLFmtNA, kMTLFmtNA );
+	addMTLVertexFormatDesc( Invalid, kMTLFmtNA, kMTLFmtNA, None, None );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUCharNormalized, 11.0, 10.13 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatCharNormalized, 11.0, 10.13 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUChar, 11.0, 10.13 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatChar, 11.0, 10.13 );
+	addMTLVertexFormatDesc( UCharNormalized, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( CharNormalized, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char, 11.0, 10.13, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUChar2Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatChar2Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUChar2, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatChar2, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UChar2Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char2Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar2, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char2, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUChar3Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatChar3Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUChar3, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatChar3, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UChar3Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char3Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar3, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char3, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUChar4Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatChar4Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUChar4, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatChar4, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UChar4Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char4Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar4, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char4, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUChar4Normalized_BGRA, 11.0, 10.13 );
+	addMTLVertexFormatDesc( UChar4Normalized_BGRA, 11.0, 10.13, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUInt1010102Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatInt1010102Normalized, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UInt1010102Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int1010102Normalized, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUShortNormalized, 11.0, 10.13 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatShortNormalized, 11.0, 10.13 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUShort, 11.0, 10.13 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatShort, 11.0, 10.13 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatHalf, 11.0, 10.13 );
+	addMTLVertexFormatDesc( UShortNormalized, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( ShortNormalized, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Half, 11.0, 10.13, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUShort2Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatShort2Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUShort2, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatShort2, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatHalf2, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UShort2Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short2Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort2, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short2, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Half2, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUShort3Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatShort3Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUShort3, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatShort3, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatHalf3, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UShort3Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short3Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort3, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short3, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Half3, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUShort4Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatShort4Normalized, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUShort4, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatShort4, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatHalf4, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UShort4Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short4Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort4, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short4, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Half4, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUInt, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatInt, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatFloat, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UInt, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Float, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUInt2, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatInt2, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatFloat2, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UInt2, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int2, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Float2, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUInt3, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatInt3, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatFloat3, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UInt3, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int3, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Float3, 8.0, 10.11, BufVertex, BufVertex );
 
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatUInt4, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatInt4, 8.0, 10.11 );
-	MVK_ADD_MTLVTXFMT_STRUCT( MTLVertexFormatFloat4, 8.0, 10.11 );
+	addMTLVertexFormatDesc( UInt4, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int4, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Float4, 8.0, 10.11, BufVertex, BufVertex );
 
 	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
 }
@@ -1085,12 +1095,15 @@ void MVKPixelFormats::disableMTLPixelFormat(MTLPixelFormat mtlFormat) {
 #pragma mark -
 #pragma mark Unit Testing
 
+template<typename T>
+void MVKPixelFormats::testFmt(const T v1, const T v2, const char* fmtName, const char* funcName) {
+	MVKAssert(mvkAreEqual(&v1,&v2), "Results not equal for format %s on test %s.", fmtName, funcName);
+}
+
 // Validate the functionality of this class against the previous format data within MoltenVK.
 // This is a temporary function to confirm that converting to using this class matches existing behaviour at first.
 void MVKPixelFormats::test() {
 	if (_apiObject) { return; }		// Only test default platform formats
-
-#define MVK_TEST_FMT(V1, V2)	testFmt(V1, V2, fd.name, #V1)
 
 	MVKLogInfo("Starting testing formats");
 	for (uint32_t fmtIdx = 0; fmtIdx < _vkFormatCount; fmtIdx++) {
@@ -1102,43 +1115,47 @@ void MVKPixelFormats::test() {
 			if (fd.isSupportedOrSubstitutable()) {
 				MVKLogInfo("Testing %s", fd.name);
 
-				MVK_TEST_FMT(vkFormatIsSupported(vkFmt), mvkVkFormatIsSupported(vkFmt));
-				MVK_TEST_FMT(mtlPixelFormatIsSupported(mtlFmt), mvkMTLPixelFormatIsSupported(mtlFmt));
-				MVK_TEST_FMT(mtlPixelFormatIsDepthFormat(mtlFmt), mvkMTLPixelFormatIsDepthFormat(mtlFmt));
-				MVK_TEST_FMT(mtlPixelFormatIsStencilFormat(mtlFmt), mvkMTLPixelFormatIsStencilFormat(mtlFmt));
-				MVK_TEST_FMT(mtlPixelFormatIsPVRTCFormat(mtlFmt), mvkMTLPixelFormatIsPVRTCFormat(mtlFmt));
-				MVK_TEST_FMT(getFormatTypeFromVkFormat(vkFmt), mvkFormatTypeFromVkFormat(vkFmt));
-				MVK_TEST_FMT(getFormatTypeFromMTLPixelFormat(mtlFmt), mvkFormatTypeFromMTLPixelFormat(mtlFmt));
-				MVK_TEST_FMT(getMTLPixelFormatFromVkFormat(vkFmt), mvkMTLPixelFormatFromVkFormat(vkFmt));
-				MVK_TEST_FMT(getVkFormatFromMTLPixelFormat(mtlFmt), mvkVkFormatFromMTLPixelFormat(mtlFmt));
-				MVK_TEST_FMT(getVkFormatBytesPerBlock(vkFmt), mvkVkFormatBytesPerBlock(vkFmt));
-				MVK_TEST_FMT(getMTLPixelFormatBytesPerBlock(mtlFmt), mvkMTLPixelFormatBytesPerBlock(mtlFmt));
-				MVK_TEST_FMT(getVkFormatBlockTexelSize(vkFmt), mvkVkFormatBlockTexelSize(vkFmt));
-				MVK_TEST_FMT(getMTLPixelFormatBlockTexelSize(mtlFmt), mvkMTLPixelFormatBlockTexelSize(mtlFmt));
-				MVK_TEST_FMT(getVkFormatBytesPerTexel(vkFmt), mvkVkFormatBytesPerTexel(vkFmt));
-				MVK_TEST_FMT(getMTLPixelFormatBytesPerTexel(mtlFmt), mvkMTLPixelFormatBytesPerTexel(mtlFmt));
-				MVK_TEST_FMT(getVkFormatBytesPerRow(vkFmt, 4), mvkVkFormatBytesPerRow(vkFmt, 4));
-				MVK_TEST_FMT(getMTLPixelFormatBytesPerRow(mtlFmt, 4), mvkMTLPixelFormatBytesPerRow(mtlFmt, 4));
-				MVK_TEST_FMT(getVkFormatBytesPerLayer(vkFmt, 256, 4), mvkVkFormatBytesPerLayer(vkFmt, 256, 4));
-				MVK_TEST_FMT(getMTLPixelFormatBytesPerLayer(mtlFmt, 256, 4), mvkMTLPixelFormatBytesPerLayer(mtlFmt, 256, 4));
-				MVK_TEST_FMT(getVkFormatProperties(vkFmt), mvkVkFormatProperties(vkFmt));
-				MVK_TEST_FMT(strcmp(getVkFormatName(vkFmt), mvkVkFormatName(vkFmt)), 0);
-				MVK_TEST_FMT(strcmp(getMTLPixelFormatName(mtlFmt), mvkMTLPixelFormatName(mtlFmt)), 0);
-				MVK_TEST_FMT(getMTLClearColorFromVkClearValue(VkClearValue(), vkFmt),
-							 mvkMTLClearColorFromVkClearValue(VkClearValue(), vkFmt));
+#				define testFmt(V1, V2)	testFmt(V1, V2, fd.name, #V1)
 
-				MVK_TEST_FMT(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageUnknown, mtlFmt),
-							 mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageUnknown, mtlFmt));
-				MVK_TEST_FMT(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderRead, mtlFmt),
-							 mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderRead, mtlFmt));
-				MVK_TEST_FMT(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderWrite, mtlFmt),
-							 mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderWrite, mtlFmt));
-				MVK_TEST_FMT(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageRenderTarget, mtlFmt),
-							 mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageRenderTarget, mtlFmt));
-				MVK_TEST_FMT(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsagePixelFormatView, mtlFmt),
-							 mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsagePixelFormatView, mtlFmt));
+				testFmt(vkFormatIsSupported(vkFmt), mvkVkFormatIsSupported(vkFmt));
+				testFmt(mtlPixelFormatIsSupported(mtlFmt), mvkMTLPixelFormatIsSupported(mtlFmt));
+				testFmt(mtlPixelFormatIsDepthFormat(mtlFmt), mvkMTLPixelFormatIsDepthFormat(mtlFmt));
+				testFmt(mtlPixelFormatIsStencilFormat(mtlFmt), mvkMTLPixelFormatIsStencilFormat(mtlFmt));
+				testFmt(mtlPixelFormatIsPVRTCFormat(mtlFmt), mvkMTLPixelFormatIsPVRTCFormat(mtlFmt));
+				testFmt(getFormatTypeFromVkFormat(vkFmt), mvkFormatTypeFromVkFormat(vkFmt));
+				testFmt(getFormatTypeFromMTLPixelFormat(mtlFmt), mvkFormatTypeFromMTLPixelFormat(mtlFmt));
+				testFmt(getMTLPixelFormatFromVkFormat(vkFmt), mvkMTLPixelFormatFromVkFormat(vkFmt));
+				testFmt(getVkFormatFromMTLPixelFormat(mtlFmt), mvkVkFormatFromMTLPixelFormat(mtlFmt));
+				testFmt(getVkFormatBytesPerBlock(vkFmt), mvkVkFormatBytesPerBlock(vkFmt));
+				testFmt(getMTLPixelFormatBytesPerBlock(mtlFmt), mvkMTLPixelFormatBytesPerBlock(mtlFmt));
+				testFmt(getVkFormatBlockTexelSize(vkFmt), mvkVkFormatBlockTexelSize(vkFmt));
+				testFmt(getMTLPixelFormatBlockTexelSize(mtlFmt), mvkMTLPixelFormatBlockTexelSize(mtlFmt));
+				testFmt(getVkFormatBytesPerTexel(vkFmt), mvkVkFormatBytesPerTexel(vkFmt));
+				testFmt(getMTLPixelFormatBytesPerTexel(mtlFmt), mvkMTLPixelFormatBytesPerTexel(mtlFmt));
+				testFmt(getVkFormatBytesPerRow(vkFmt, 4), mvkVkFormatBytesPerRow(vkFmt, 4));
+				testFmt(getMTLPixelFormatBytesPerRow(mtlFmt, 4), mvkMTLPixelFormatBytesPerRow(mtlFmt, 4));
+				testFmt(getVkFormatBytesPerLayer(vkFmt, 256, 4), mvkVkFormatBytesPerLayer(vkFmt, 256, 4));
+				testFmt(getMTLPixelFormatBytesPerLayer(mtlFmt, 256, 4), mvkMTLPixelFormatBytesPerLayer(mtlFmt, 256, 4));
+				testFmt(getVkFormatProperties(vkFmt), mvkVkFormatProperties(vkFmt));
+				testFmt(strcmp(getVkFormatName(vkFmt), mvkVkFormatName(vkFmt)), 0);
+				testFmt(strcmp(getMTLPixelFormatName(mtlFmt), mvkMTLPixelFormatName(mtlFmt)), 0);
+				testFmt(getMTLClearColorFromVkClearValue(VkClearValue(), vkFmt),
+						mvkMTLClearColorFromVkClearValue(VkClearValue(), vkFmt));
 
-				MVK_TEST_FMT(getMTLVertexFormatFromVkFormat(vkFmt), mvkMTLVertexFormatFromVkFormat(vkFmt));
+				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageUnknown, mtlFmt),
+						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageUnknown, mtlFmt));
+				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderRead, mtlFmt),
+						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderRead, mtlFmt));
+				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderWrite, mtlFmt),
+						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderWrite, mtlFmt));
+				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageRenderTarget, mtlFmt),
+						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageRenderTarget, mtlFmt));
+				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsagePixelFormatView, mtlFmt),
+						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsagePixelFormatView, mtlFmt));
+
+				testFmt(getMTLVertexFormatFromVkFormat(vkFmt), mvkMTLVertexFormatFromVkFormat(vkFmt));
+
+#				undef testFmt
 
 			} else {
 				MVKLogInfo("%s not supported or substitutable on this device.", fd.name);
@@ -1146,9 +1163,4 @@ void MVKPixelFormats::test() {
 		}
 	}
 	MVKLogInfo("Finished testing formats.\n");
-}
-
-template<typename T>
-void MVKPixelFormats::testFmt(const T v1, const T v2, const char* fmtName, const char* funcName) {
-	MVKAssert(mvkAreEqual(&v1,&v2), "Results not equal for format %s on test %s.", fmtName, funcName);
 }

@@ -20,6 +20,7 @@
 #pragma once
 
 
+#include "MVKCommonEnvironment.h"
 #include "mvk_vulkan.h"
 #include <algorithm>
 #include <string>
@@ -330,6 +331,8 @@ static inline bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkCompone
 #pragma mark -
 #pragma mark Template functions
 
+#pragma mark Math
+
 /** Returns whether the value will fit inside the numeric type. */
 template<typename T, typename Tval>
 const bool mvkFits(const Tval& val) {
@@ -349,6 +352,9 @@ T mvkCeilingDivide(T numerator, T denominator) {
 	return (denominator == 1) ? numerator : (numerator + denominator - 1) / denominator;
 }
 
+
+#pragma mark Hashing
+
 /**
  * Returns a hash value calculated from the specified array of numeric elements,
  * using the DJB2a algorithm:  hash = (hash * 33) ^ value.
@@ -363,6 +369,9 @@ std::size_t mvkHash(const N* pVals, std::size_t count = 1, std::size_t seed = 53
     for (std::size_t i = 0; i < count; i++) { hash = ((hash << 5) + hash) ^ pVals[i]; }
     return hash;
 }
+
+
+#pragma mark Containers
 
 /** Ensures the size of the specified container is at least the specified size. */
 template<typename C, typename S>
@@ -414,6 +423,20 @@ void mvkRemoveFirstOccurance(C& container, T val) {
 template<class C, class T>
 void mvkRemoveAllOccurances(C& container, T val) {
     container.erase(remove(container.begin(), container.end(), val), container.end());
+}
+
+
+#pragma mark Values and structs
+
+/** Selects and returns one of the values, based on the platform OS. */
+template<typename T>
+const T& mvkSelectPlatformValue(const T& macOSVal, const T& iOSVal) {
+#if MVK_IOS
+	return iOSVal;
+#endif
+#if MVK_MACOS
+	return macOSVal;
+#endif
 }
 
 /**
@@ -469,6 +492,9 @@ bool mvkSetOrClear(T* pDest, const T* pSrc) {
     if (pDest) { mvkClear(pDest); }
     return false;
 }
+
+
+#pragma mark Boolean flags
 
 /**
  * Enables the flag (set the bit to 1) within the value parameter specified by the bitMask parameter.
