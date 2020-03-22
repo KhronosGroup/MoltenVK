@@ -518,14 +518,14 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( UNDEFINED, Invalid, Invalid, Invalid, Invalid, 1, 1, 0, None, NO_FEATS, NO_FEATS );
 
 	addVkFormatDesc( R4G4_UNORM_PACK8, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat, NO_FEATS, NO_FEATS );
-	addVkFormatDesc( R4G4B4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( R4G4B4A4_UNORM_PACK16, ABGR4Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 	addVkFormatDesc( B4G4R4A4_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
 
-	addVkFormatDesc( R5G6B5_UNORM_PACK16, B5G6R5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( R5G6B5_UNORM_PACK16, B5G6R5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 	addVkFormatDesc( B5G6R5_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
-	addVkFormatDesc( R5G5B5A1_UNORM_PACK16, A1BGR5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( R5G5B5A1_UNORM_PACK16, A1BGR5Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 	addVkFormatDesc( B5G5R5A1_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, NO_FEATS, NO_FEATS );
-	addVkFormatDesc( A1R5G5B5_UNORM_PACK16, BGR5A1Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( A1R5G5B5_UNORM_PACK16, BGR5A1Unorm, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 
 	addVkFormatDesc( R8_UNORM, R8Unorm, Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
 	addVkFormatDesc( R8_SNORM, R8Snorm, Invalid, CharNormalized, Char2Normalized, 1, 1, 1, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
@@ -583,18 +583,18 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( A8B8G8R8_SINT_PACK32, RGBA8Sint, Invalid, Char4, Invalid, 1, 1, 4, ColorInt8, COLOR_INTEGER_FEATS, BUFFER_VTX_FEATS );
 	addVkFormatDesc( A8B8G8R8_SRGB_PACK32, RGBA8Unorm_sRGB, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 
-	addVkFormatDesc( A2R10G10B10_UNORM_PACK32, BGR10A2Unorm, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( A2R10G10B10_UNORM_PACK32, BGR10A2Unorm, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
 	addVkFormatDesc( A2R10G10B10_SNORM_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
 	addVkFormatDesc( A2R10G10B10_USCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
 	addVkFormatDesc( A2R10G10B10_SSCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
 	addVkFormatDesc( A2R10G10B10_UINT_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt16, NO_FEATS, NO_FEATS );
 	addVkFormatDesc( A2R10G10B10_SINT_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorInt16, NO_FEATS, NO_FEATS );
 
-	addVkFormatDesc( A2B10G10R10_UNORM_PACK32, RGB10A2Unorm, Invalid, UInt1010102Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( A2B10G10R10_UNORM_PACK32, RGB10A2Unorm, Invalid, UInt1010102Normalized, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
 	addVkFormatDesc( A2B10G10R10_SNORM_PACK32, Invalid, Invalid, Int1010102Normalized, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, BUFFER_VTX_FEATS );
 	addVkFormatDesc( A2B10G10R10_USCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
 	addVkFormatDesc( A2B10G10R10_SSCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, NO_FEATS, NO_FEATS );
-	addVkFormatDesc( A2B10G10R10_UINT_PACK32, RGB10A2Uint, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt16, COLOR_INTEGER_FEATS, BUFFER_FEATS );		// Vulkan packed is reversed
+	addVkFormatDesc( A2B10G10R10_UINT_PACK32, RGB10A2Uint, Invalid, Invalid, Invalid, 1, 1, 4, ColorUInt16, COLOR_INTEGER_FEATS, BUFFER_FEATS );
 	addVkFormatDesc( A2B10G10R10_SINT_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorInt16, NO_FEATS, NO_FEATS );
 
 	addVkFormatDesc( R16_UNORM, R16Unorm, Invalid, UShortNormalized, UShort2Normalized, 1, 1, 2, ColorFloat, COLOR_FEATS, BUFFER_VTX_FEATS );
@@ -661,8 +661,8 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( R64G64B64A64_SINT, Invalid, Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat, NO_FEATS, NO_FEATS );
 	addVkFormatDesc( R64G64B64A64_SFLOAT, Invalid, Invalid, Invalid, Invalid, 1, 1, 32, ColorFloat, NO_FEATS, NO_FEATS );
 
-	addVkFormatDesc( B10G11R11_UFLOAT_PACK32, RG11B10Float, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );	// Vulkan packed is reversed
-	addVkFormatDesc( E5B9G9R9_UFLOAT_PACK32, RGB9E5Float, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, E5B9G9R9_FEATS, E5B9G9R9_BUFFER_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( B10G11R11_UFLOAT_PACK32, RG11B10Float, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, COLOR_FEATS, BUFFER_FEATS );
+	addVkFormatDesc( E5B9G9R9_UFLOAT_PACK32, RGB9E5Float, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat, E5B9G9R9_FEATS, E5B9G9R9_BUFFER_FEATS );
 
 	addVkFormatDesc( D32_SFLOAT, Depth32Float, Invalid, Invalid, Invalid, 1, 1, 4, DepthStencil, DEPTH_FEATS, NO_FEATS );
 	addVkFormatDesc( D32_SFLOAT_S8_UINT, Depth32Float_Stencil8, Invalid, Invalid, Invalid, 1, 1, 5, DepthStencil, DEPTH_FEATS, NO_FEATS );
@@ -673,7 +673,7 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( D16_UNORM_S8_UINT, Invalid, Depth16Unorm_Stencil8, Invalid, Invalid, 1, 1, 3, DepthStencil, DEPTH_FEATS, NO_FEATS );
 	addVkFormatDesc( D24_UNORM_S8_UINT, Depth24Unorm_Stencil8, Depth32Float_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil, DEPTH_FEATS, NO_FEATS );
 
-	addVkFormatDesc( X8_D24_UNORM_PACK32, Invalid, Depth24Unorm_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil, DEPTH_FEATS, NO_FEATS );	// Vulkan packed is reversed
+	addVkFormatDesc( X8_D24_UNORM_PACK32, Invalid, Depth24Unorm_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil, DEPTH_FEATS, NO_FEATS );
 
 	addVkFormatDesc( BC1_RGB_UNORM_BLOCK, BC1_RGBA, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
 	addVkFormatDesc( BC1_RGB_SRGB_BLOCK, BC1_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed, COMPRESSED_FEATS, NO_FEATS );
@@ -913,10 +913,10 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc( BGRG422, 8.0, 10.11, TexRF, TexRF );
 
 	// Depth and stencil pixel formats
-	addMTLPixelFormatDesc( Depth16Unorm, kMTLFmtNA, 10.12, None, TexDRFMR );
+	addMTLPixelFormatDesc( Depth16Unorm, kMTLFmtNA, 10.12, None, None );
 	addMTLPixelFormatDesc( Depth32Float, 8.0, 10.11, TexDRM, TexDRFMR );
 	addMTLPixelFormatDesc( Stencil8, 8.0, 10.11, TexDRM, TexDRM );
-	addMTLPixelFormatDesc( Depth24Unorm_Stencil8, kMTLFmtNA, 10.11, None, TexDRFMR );
+	addMTLPixelFormatDesc( Depth24Unorm_Stencil8, kMTLFmtNA, 10.11, None, None );
 	addMTLPixelFormatDesc( Depth32Float_Stencil8, 9.0, 10.11, TexDRM, TexDRFMR );
 	addMTLPixelFormatDesc( X24_Stencil8, kMTLFmtNA, 10.11, None, TexDRM );
 	addMTLPixelFormatDesc( X32_Stencil8, 8.0, 10.11, TexDRM, TexDRM );
@@ -926,7 +926,7 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc( BGRA10_XR_sRGB, 10.0, kMTLFmtNA, None, None );
 	addMTLPixelFormatDesc( BGR10_XR, 10.0, kMTLFmtNA, None, None );
 	addMTLPixelFormatDesc( BGR10_XR_sRGB, 10.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( BGR10A2Unorm, 11.0, 10.13, TexAll, TexRFCMRB );
+	addMTLPixelFormatDesc( BGR10A2Unorm, 11.0, 10.13, None, None );
 
 	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
 }
@@ -948,11 +948,6 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 	// MTLVertexFormatInvalid must come first.
 	addMTLVertexFormatDesc( Invalid, kMTLFmtNA, kMTLFmtNA, None, None );
 
-	addMTLVertexFormatDesc( UCharNormalized, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( CharNormalized, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UChar, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Char, 11.0, 10.13, BufVertex, BufVertex );
-
 	addMTLVertexFormatDesc( UChar2Normalized, 8.0, 10.11, BufVertex, BufVertex );
 	addMTLVertexFormatDesc( Char2Normalized, 8.0, 10.11, BufVertex, BufVertex );
 	addMTLVertexFormatDesc( UChar2, 8.0, 10.11, BufVertex, BufVertex );
@@ -968,16 +963,8 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 	addMTLVertexFormatDesc( UChar4, 8.0, 10.11, BufVertex, BufVertex );
 	addMTLVertexFormatDesc( Char4, 8.0, 10.11, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UChar4Normalized_BGRA, 11.0, 10.13, BufVertex, BufVertex );
-
 	addMTLVertexFormatDesc( UInt1010102Normalized, 8.0, 10.11, BufVertex, BufVertex );
 	addMTLVertexFormatDesc( Int1010102Normalized, 8.0, 10.11, BufVertex, BufVertex );
-
-	addMTLVertexFormatDesc( UShortNormalized, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( ShortNormalized, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UShort, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Short, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Half, 11.0, 10.13, BufVertex, BufVertex );
 
 	addMTLVertexFormatDesc( UShort2Normalized, 8.0, 10.11, BufVertex, BufVertex );
 	addMTLVertexFormatDesc( Short2Normalized, 8.0, 10.11, BufVertex, BufVertex );
@@ -1012,6 +999,19 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 	addMTLVertexFormatDesc( UInt4, 8.0, 10.11, BufVertex, BufVertex );
 	addMTLVertexFormatDesc( Int4, 8.0, 10.11, BufVertex, BufVertex );
 	addMTLVertexFormatDesc( Float4, 8.0, 10.11, BufVertex, BufVertex );
+
+	addMTLVertexFormatDesc( UCharNormalized, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( CharNormalized, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char, 11.0, 10.13, BufVertex, BufVertex );
+
+	addMTLVertexFormatDesc( UShortNormalized, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( ShortNormalized, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Half, 11.0, 10.13, BufVertex, BufVertex );
+
+	addMTLVertexFormatDesc( UChar4Normalized_BGRA, 11.0, 10.13, BufVertex, BufVertex );
 
 	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
 }
@@ -1076,20 +1076,115 @@ void MVKPixelFormats::buildFormatMaps() {
 	}
 }
 
+// If the device supports the feature set, add additional capabilities to a MTLPixelFormat
+void MVKPixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
+													MTLFeatureSet mtlFeatSet,
+													MTLPixelFormat mtlPixFmt,
+													MVKMTLFmtCaps mtlFmtCaps) {
+	if ( [mtlDevice supportsFeatureSet: mtlFeatSet] ) {
+		auto& fmtDesc = getMTLPixelFormatDesc(mtlPixFmt);
+		fmtDesc.mtlFmtCaps = (MVKMTLFmtCaps)(fmtDesc.mtlFmtCaps | mtlFmtCaps);
+	}
+}
+
+#define addMTLPixelFormatCapabilities(FEAT_SET, MTL_FMT, CAPS)  \
+	addMTLPixelFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
+
 // Modifies the format capability tables based on the capabilities of the specific MTLDevice
+#if MVK_MACOS
 void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice) {
 	if ( !mtlDevice ) { return; }
 
-#if MVK_MACOS
-	if ( !mtlDevice.isDepth24Stencil8PixelFormatSupported ) {
-		disableMTLPixelFormat(MTLPixelFormatDepth24Unorm_Stencil8);
+	if (mtlDevice.isDepth24Stencil8PixelFormatSupported) {
+		addMTLPixelFormatCapabilities( macOS_GPUFamily1_v1, Depth24Unorm_Stencil8, TexDRFMR );
 	}
-#endif
-}
 
-void MVKPixelFormats::disableMTLPixelFormat(MTLPixelFormat mtlFormat) {
-	getVkFormatDesc(mtlFormat).mtlPixelFormat = MTLPixelFormatInvalid;
+	addMTLPixelFormatCapabilities( macOS_GPUFamily1_v2, Depth16Unorm, TexDRFMR );
+
+	addMTLPixelFormatCapabilities( macOS_GPUFamily1_v3, BGR10A2Unorm, TexRFCMRB );
 }
+#endif
+#if MVK_IOS
+void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice) {
+	if ( !mtlDevice ) { return; }
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v3, R8Unorm_sRGB, TexAll );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, R8Unorm_sRGB, TexAll );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, R8Snorm, TexAll );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v3, RG8Unorm_sRGB, TexAll );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, RG8Unorm_sRGB, TexAll );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, RG8Snorm, TexAll );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Uint, TexRWC );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Sint, TexRWC );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Float, TexRWCMB );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v3, RGBA8Unorm_sRGB, TexAll );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, RGBA8Unorm_sRGB, TexAll );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, RGBA8Snorm, TexAll );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v3, BGRA8Unorm_sRGB, TexAll );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, BGRA8Unorm_sRGB, TexAll );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, RGB10A2Unorm, TexAll );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, RGB10A2Uint, TexRWCM );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, RG11B10Float, TexAll );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, RGB9E5Float, TexAll );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, RG32Uint, TexRWC );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, RG32Sint, TexRWC );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, RG32Float, TexRWCB );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, RGBA32Uint, TexRWC );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, RGBA32Sint, TexRWC );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, RGBA32Float, TexRWC );
+
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_4x4_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_4x4_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_5x4_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_5x4_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_5x5_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_5x5_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_6x5_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_6x5_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_6x6_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_6x6_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x5_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x5_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x6_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x6_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x8_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x8_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x5_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x5_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x6_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x6_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x8_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x8_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x10_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x10_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_12x10_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_12x10_sRGB, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_12x12_LDR, TexRF );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_12x12_sRGB, TexRF );
+
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, Depth32Float, TexDRMR );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, Depth32Float_Stencil8, TexDRMR );
+
+	addMTLPixelFormatCapabilities(iOS_GPUFamily3_v2, BGRA10_XR, TexAll );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily3_v2, BGRA10_XR_sRGB, TexAll );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily3_v2, BGR10_XR, TexAll );
+	addMTLPixelFormatCapabilities(iOS_GPUFamily3_v2, BGR10_XR_sRGB, TexAll );
+
+	addMTLPixelFormatCapabilities(iOS_GPUFamily1_v4, BGR10A2Unorm, TexAll );
+}
+#endif
+#undef addMTLPixelFormatCapabilities
 
 
 #pragma mark -

@@ -38,71 +38,40 @@ static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 #pragma mark Metal format capabilities
 
 typedef enum {
-	kMVKMTLFmtCapsNone               = 0,
-	kMVKMTLFmtCapsTexRead            = (1<<0),
-	kMVKMTLFmtCapsTexFilter          = (1<<1),
-	kMVKMTLFmtCapsTexColorAtt        = (1<<2),
-	kMVKMTLFmtCapsTexDepthStencilAtt = (1<<3),
-	kMVKMTLFmtCapsTexBlend           = (1<<4),
-	kMVKMTLFmtCapsTexMSAA            = (1<<5),
-	kMVKMTLFmtCapsTexResolve         = (1<<6),
-	kMVKMTLFmtCapsTexWrite           = (1<<7),
+	kMVKMTLFmtCapsNone        = 0,
+	kMVKMTLFmtCapsTexRead     = (1<<0),
+	kMVKMTLFmtCapsTexFilter   = (1<<1),
+	kMVKMTLFmtCapsTexColorAtt = (1<<2),
+	kMVKMTLFmtCapsTexDSAtt    = (1<<3),
+	kMVKMTLFmtCapsTexBlend    = (1<<4),
+	kMVKMTLFmtCapsTexMSAA     = (1<<5),
+	kMVKMTLFmtCapsTexResolve  = (1<<6),
+	kMVKMTLFmtCapsTexWrite    = (1<<7),
 
-	kMVKMTLFmtCapsBufRead            = (1<<8),
-	kMVKMTLFmtCapsBufVertex          = (1<<9),
-	kMVKMTLFmtCapsBufWrite           = (1<<10),
+	kMVKMTLFmtCapsBufRead     = (1<<8),
+	kMVKMTLFmtCapsBufVertex   = (1<<9),
+	kMVKMTLFmtCapsBufWrite    = (1<<10),
 
-	kMVKMTLFmtCapsTexRF              = (kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexFilter),
-	kMVKMTLFmtCapsTexRC              = (kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexColorAtt),
-	kMVKMTLFmtCapsTexRCM             = (kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexColorAtt |
-										kMVKMTLFmtCapsTexMSAA),
-	kMVKMTLFmtCapsTexRCB             = (kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexColorAtt |
-										kMVKMTLFmtCapsTexBlend),
-	kMVKMTLFmtCapsTexRCMB            = (kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexColorAtt |
-										kMVKMTLFmtCapsTexMSAA |
-										kMVKMTLFmtCapsTexBlend),
-	kMVKMTLFmtCapsTexRWCM            = (kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexWrite |
-										kMVKMTLFmtCapsTexColorAtt |
-										kMVKMTLFmtCapsTexMSAA),
-	kMVKMTLFmtCapsTexRFCMRB          = (kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexFilter |
-										kMVKMTLFmtCapsTexColorAtt |
-										kMVKMTLFmtCapsTexMSAA |
-										kMVKMTLFmtCapsTexResolve |
-										kMVKMTLFmtCapsTexBlend),
-	kMVKMTLFmtCapsTexRFWCMB          = (kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexFilter |
-										kMVKMTLFmtCapsTexWrite |
-										kMVKMTLFmtCapsTexColorAtt |
-										kMVKMTLFmtCapsTexMSAA |
-										kMVKMTLFmtCapsTexBlend),
-	kMVKMTLFmtCapsTexDRM             = (kMVKMTLFmtCapsTexDepthStencilAtt |
-										kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexMSAA),
-	kMVKMTLFmtCapsTexDRFMR           = (kMVKMTLFmtCapsTexDepthStencilAtt |
-										kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexFilter |
-										kMVKMTLFmtCapsTexMSAA |
-										kMVKMTLFmtCapsTexResolve),
-	kMVKMTLFmtCapsTexAll        = (kMVKMTLFmtCapsTexRead |
-										kMVKMTLFmtCapsTexFilter |
-										kMVKMTLFmtCapsTexWrite |
-										kMVKMTLFmtCapsTexColorAtt |
-										kMVKMTLFmtCapsTexMSAA |
-										kMVKMTLFmtCapsTexResolve |
-										kMVKMTLFmtCapsTexBlend),
+	kMVKMTLFmtCapsTexRF       = (kMVKMTLFmtCapsTexRead | kMVKMTLFmtCapsTexFilter),
+	kMVKMTLFmtCapsTexRC       = (kMVKMTLFmtCapsTexRead | kMVKMTLFmtCapsTexColorAtt),
+	kMVKMTLFmtCapsTexRCB      = (kMVKMTLFmtCapsTexRC | kMVKMTLFmtCapsTexBlend),
+	kMVKMTLFmtCapsTexRCM      = (kMVKMTLFmtCapsTexRC | kMVKMTLFmtCapsTexMSAA),
+	kMVKMTLFmtCapsTexRCMB     = (kMVKMTLFmtCapsTexRCM | kMVKMTLFmtCapsTexBlend),
+	kMVKMTLFmtCapsTexRWC      = (kMVKMTLFmtCapsTexRC | kMVKMTLFmtCapsTexWrite),
+	kMVKMTLFmtCapsTexRWCB     = (kMVKMTLFmtCapsTexRWC | kMVKMTLFmtCapsTexBlend),
+	kMVKMTLFmtCapsTexRWCM     = (kMVKMTLFmtCapsTexRWC | kMVKMTLFmtCapsTexMSAA),
+	kMVKMTLFmtCapsTexRWCMB    = (kMVKMTLFmtCapsTexRWCM | kMVKMTLFmtCapsTexBlend),
+	kMVKMTLFmtCapsTexRFCMRB   = (kMVKMTLFmtCapsTexRCMB | kMVKMTLFmtCapsTexFilter | kMVKMTLFmtCapsTexResolve),
+	kMVKMTLFmtCapsTexRFWCMB   = (kMVKMTLFmtCapsTexRWCMB | kMVKMTLFmtCapsTexFilter),
+	kMVKMTLFmtCapsTexAll      = (kMVKMTLFmtCapsTexRFWCMB | kMVKMTLFmtCapsTexResolve),
 
-	kMVKMTLFmtCapsBufRW              = (kMVKMTLFmtCapsBufRead |
-										kMVKMTLFmtCapsBufWrite),
-	kMVKMTLFmtCapsBufAll             = (kMVKMTLFmtCapsBufRead |
-										kMVKMTLFmtCapsBufWrite |
-										kMVKMTLFmtCapsBufVertex),
+	kMVKMTLFmtCapsTexDRM      = (kMVKMTLFmtCapsTexDSAtt | kMVKMTLFmtCapsTexRead | kMVKMTLFmtCapsTexMSAA),
+	kMVKMTLFmtCapsTexDRMR     = (kMVKMTLFmtCapsTexDRM | kMVKMTLFmtCapsTexResolve),
+	kMVKMTLFmtCapsTexDRFMR    = (kMVKMTLFmtCapsTexDRMR | kMVKMTLFmtCapsTexFilter),
+
+	kMVKMTLFmtCapsBufRW       = (kMVKMTLFmtCapsBufRead | kMVKMTLFmtCapsBufWrite),
+	kMVKMTLFmtCapsBufAll      = (kMVKMTLFmtCapsBufRW | kMVKMTLFmtCapsBufVertex),
+
 } MVKMTLFmtCaps;
 
 
@@ -138,7 +107,7 @@ typedef struct {
 	};
 	VkFormat vkFormat;
 	MVKOSVersion sinceOSVersion;
-	MVKMTLFmtCaps mtlPixFmtCaps;
+	MVKMTLFmtCaps mtlFmtCaps;
 	const char* name;
 
 	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mvkOSVersion() >= sinceOSVersion); };
@@ -311,7 +280,10 @@ protected:
 	void initMTLVertexFormatCapabilities();
 	void buildFormatMaps();
 	void modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice);
-	void disableMTLPixelFormat(MTLPixelFormat mtlFormat);
+	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
+									   MTLFeatureSet mtlFeatSet,
+									   MTLPixelFormat mtlPixFmt,
+									   MVKMTLFmtCaps mtlFmtCaps);
 
 	template<typename T>
 	void testFmt(const T v1, const T v2, const char* fmtName, const char* funcName);
