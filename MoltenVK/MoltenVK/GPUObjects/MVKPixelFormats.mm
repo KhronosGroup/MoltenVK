@@ -1000,18 +1000,18 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 	addMTLVertexFormatDesc( Int4, 8.0, 10.11, BufVertex, BufVertex );
 	addMTLVertexFormatDesc( Float4, 8.0, 10.11, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UCharNormalized, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( CharNormalized, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UChar, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Char, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UCharNormalized, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( CharNormalized, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( UChar, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( Char, 11.0, 10.13, None, None );
 
-	addMTLVertexFormatDesc( UShortNormalized, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( ShortNormalized, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UShort, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Short, 11.0, 10.13, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Half, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShortNormalized, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( ShortNormalized, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( UShort, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( Short, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( Half, 11.0, 10.13, None, None );
 
-	addMTLVertexFormatDesc( UChar4Normalized_BGRA, 11.0, 10.13, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar4Normalized_BGRA, 11.0, 10.13, None, None );
 
 	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
 }
@@ -1087,8 +1087,22 @@ void MVKPixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 	}
 }
 
+// If the device supports the feature set, add additional capabilities to a MTLVertexFormat
+void MVKPixelFormats::addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
+													 MTLFeatureSet mtlFeatSet,
+													 MTLVertexFormat mtlVtxFmt,
+													 MVKMTLFmtCaps mtlFmtCaps) {
+	if ( [mtlDevice supportsFeatureSet: mtlFeatSet] ) {
+		auto& fmtDesc = getMTLVertexFormatDesc(mtlVtxFmt);
+		fmtDesc.mtlFmtCaps = (MVKMTLFmtCaps)(fmtDesc.mtlFmtCaps | mtlFmtCaps);
+	}
+}
+
 #define addMTLPixelFormatCapabilities(FEAT_SET, MTL_FMT, CAPS)  \
 	addMTLPixelFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
+
+#define addMTLVertexFormatCapabilities(FEAT_SET, MTL_FMT, CAPS)  \
+	addMTLVertexFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
 
 // Modifies the format capability tables based on the capabilities of the specific MTLDevice
 #if MVK_MACOS
@@ -1102,6 +1116,17 @@ void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevi
 	addMTLPixelFormatCapabilities( macOS_GPUFamily1_v2, Depth16Unorm, TexDRFMR );
 
 	addMTLPixelFormatCapabilities( macOS_GPUFamily1_v3, BGR10A2Unorm, TexRFCMRB );
+
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, UCharNormalized, BufVertex );
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, CharNormalized, BufVertex );
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, UChar, BufVertex );
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, Char, BufVertex );
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, UShortNormalized, BufVertex );
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, ShortNormalized, BufVertex );
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, UShort, BufVertex );
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, Short, BufVertex );
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, Half, BufVertex );
+	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, UChar4Normalized_BGRA, BufVertex );
 }
 #endif
 #if MVK_IOS
@@ -1182,9 +1207,21 @@ void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevi
 	addMTLPixelFormatCapabilities(iOS_GPUFamily3_v2, BGR10_XR_sRGB, TexAll );
 
 	addMTLPixelFormatCapabilities(iOS_GPUFamily1_v4, BGR10A2Unorm, TexAll );
+
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, UCharNormalized, BufVertex );
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, CharNormalized, BufVertex );
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, UChar, BufVertex );
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, Char, BufVertex );
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, UShortNormalized, BufVertex );
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, ShortNormalized, BufVertex );
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, UShort, BufVertex );
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, Short, BufVertex );
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, Half, BufVertex );
+	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, UChar4Normalized_BGRA, BufVertex );
 }
 #endif
 #undef addMTLPixelFormatCapabilities
+#undef addMTLVertexFormatCapabilities
 
 
 #pragma mark -

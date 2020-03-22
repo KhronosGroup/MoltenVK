@@ -284,6 +284,10 @@ protected:
 									   MTLFeatureSet mtlFeatSet,
 									   MTLPixelFormat mtlPixFmt,
 									   MVKMTLFmtCaps mtlFmtCaps);
+	void addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
+										MTLFeatureSet mtlFeatSet,
+										MTLVertexFormat mtlVtxFmt,
+										MVKMTLFmtCaps mtlFmtCaps);
 
 	template<typename T>
 	void testFmt(const T v1, const T v2, const char* fmtName, const char* funcName);
