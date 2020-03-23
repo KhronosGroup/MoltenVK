@@ -178,13 +178,13 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 #if MVK_MACOS
 	// Metal on macOS does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
 	if ( !_isLinear ) {
-		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
+		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
 	}
 #endif
 #if MVK_IOS
 	// Only transient attachments may use memoryless storage
 	if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
-		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
+		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
 	}
 #endif
 	return VK_SUCCESS;
@@ -429,14 +429,14 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 		pixFmts->mtlPixelFormatIsDepthFormat(_mtlPixelFormat) &&
 		pixFmts->mtlPixelFormatIsStencilFormat(_mtlPixelFormat)) {
 
-		mvkDisableFlag(usage, MTLTextureUsagePixelFormatView);
+		mvkDisableFlags(usage, MTLTextureUsagePixelFormatView);
 	}
 
 	// If this format doesn't support being rendered to, disable MTLTextureUsageRenderTarget.
 	if ( !getSupportsAnyFormatFeature(VK_FORMAT_FEATURE_BLIT_DST_BIT |
 									  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
 									  VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
-		mvkDisableFlag(usage, MTLTextureUsageRenderTarget);
+		mvkDisableFlags(usage, MTLTextureUsageRenderTarget);
 	}
 
 #if MVK_MACOS

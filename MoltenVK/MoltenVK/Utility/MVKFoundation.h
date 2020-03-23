@@ -506,15 +506,9 @@ bool mvkSetOrClear(T* pDest, const T* pSrc) {
 template<typename T1, typename T2>
 void mvkEnableFlag(T1& value, const T2 bitMask) { value |= bitMask; }
 
-/**
- * Disables the flag (set the bit to 0) within the value parameter specified by the bitMask parameter.
- *
- * Typically, you call this function with only a single bit of the bitMask parameter set to 1.
- * However, you may also call this function with more than one bit of the bitMask parameter set
- * to 1, in which case, this function will set all corresponding bits in the value parameter to 0.
- */
+/** Disables the flags (sets bits to 0) within the value parameter specified by the bitMask parameter. */
 template<typename T1, typename T2>
-void mvkDisableFlag(T1& value, const T2 bitMask) { value &= ~bitMask; }
+void mvkDisableFlags(T1& value, const T2 bitMask) { value &= ~bitMask; }
 
 /** Returns whether the specified value has ANY of the flags specified in bitMask enabled (set to 1). */
 template<typename T1, typename T2>
