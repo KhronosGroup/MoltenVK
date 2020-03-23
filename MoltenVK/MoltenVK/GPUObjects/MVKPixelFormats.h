@@ -20,14 +20,13 @@
 
 #include "mvk_datatypes.h"
 #include "MVKEnvironment.h"
-#include "MVKOSExtensions.h"
 #include "MVKBaseObject.h"
 #include <unordered_map>
 
 #import <Metal/Metal.h>
 
 
-/** Validate these values periodically as new formats are added over time. */
+// Validate these values periodically as new formats are added over time.
 static const uint32_t _vkFormatCount = 256;
 static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
 static const uint32_t _mtlPixelFormatCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
@@ -106,11 +105,10 @@ typedef struct {
 		MTLVertexFormat mtlVertexFormat;
 	};
 	VkFormat vkFormat;
-	MVKOSVersion sinceOSVersion;
 	MVKMTLFmtCaps mtlFmtCaps;
 	const char* name;
 
-	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mvkOSVersion() >= sinceOSVersion); };
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mtlFmtCaps != kMVKMTLFmtCapsNone); };
 } MVKMTLFormatDesc;
 
 
@@ -278,8 +276,9 @@ protected:
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
-	void buildFormatMaps();
-	void modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice);
+	void buildMTLFormatMaps();
+	void buildVkFormatMaps();
+	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
 	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 									   MTLFeatureSet mtlFeatSet,
 									   MTLPixelFormat mtlPixFmt,
@@ -291,7 +290,7 @@ protected:
 
 	template<typename T>
 	void testFmt(const T v1, const T v2, const char* fmtName, const char* funcName);
-	void test();
+	void test(id<MTLDevice> mtlDevice);
 
 	MVKVulkanAPIObject* _apiObject;
 	MVKVkFormatDesc _vkFormatDescriptions[_vkFormatCount];

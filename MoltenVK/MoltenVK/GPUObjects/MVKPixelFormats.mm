@@ -492,20 +492,24 @@ MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(MTLPixelFormat mtlFormat) {
 #pragma mark Construction
 
 MVKPixelFormats::MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice) : _apiObject(apiObject) {
-	initVkFormatCapabilities();
+
+	// Build and update the Metal formats
 	initMTLPixelFormatCapabilities();
 	initMTLVertexFormatCapabilities();
-	buildFormatMaps();
-	modifyFormatCapabilitiesForMTLDevice(mtlDevice);
-//	test();
-}
+	buildMTLFormatMaps();
+	modifyMTLFormatCapabilities(mtlDevice);
 
-static const MVKOSVersion kMTLFmtNA = numeric_limits<MVKOSVersion>::max();
+	// Build the Vulkan formats and link them to the Metal formats
+	initVkFormatCapabilities();
+	buildVkFormatMaps();
+
+//	test(mtlDevice);
+}
 
 #define addVkFormatDesc(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE, PIXEL_FEATS, BUFFER_FEATS)  \
 	MVKAssert(fmtIdx < _vkFormatCount, "Attempting to describe %d VkFormats, but only have space for %d. Increase the value of _vkFormatCount", fmtIdx + 1, _vkFormatCount);  \
-_vkFormatDescriptions[fmtIdx++] = { VK_FORMAT_ ##VK_FMT, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT,  \
-{ BLK_W, BLK_H }, BLK_BYTE_CNT, kMVKFormat ##MVK_FMT_TYPE, { (MVK_FMT_ ##PIXEL_FEATS & MVK_FMT_LINEAR_TILING_FEATS), MVK_FMT_ ##PIXEL_FEATS, MVK_FMT_ ##BUFFER_FEATS }, "VK_FORMAT_" #VK_FMT, false }
+	_vkFormatDescriptions[fmtIdx++] = { VK_FORMAT_ ##VK_FMT, MTLPixelFormat ##MTL_FMT, MTLPixelFormat ##MTL_FMT_ALT, MTLVertexFormat ##MTL_VTX_FMT, MTLVertexFormat ##MTL_VTX_FMT_ALT, { BLK_W, BLK_H }, BLK_BYTE_CNT,  \
+									    kMVKFormat ##MVK_FMT_TYPE, { (MVK_FMT_ ##PIXEL_FEATS & MVK_FMT_LINEAR_TILING_FEATS), MVK_FMT_ ##PIXEL_FEATS, MVK_FMT_ ##BUFFER_FEATS }, "VK_FORMAT_" #VK_FMT, false }
 
 void MVKPixelFormats::initVkFormatCapabilities() {
 
@@ -758,12 +762,11 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
 }
 
-#define addMTLPixelFormatDesc(MTL_FMT, IOS_SINCE, MACOS_SINCE, IOS_CAPS, MACOS_CAPS)  \
+#define addMTLPixelFormatDesc(MTL_FMT, IOS_CAPS, MACOS_CAPS)  \
 	MVKAssert(fmtIdx < _mtlPixelFormatCount, "Attempting to describe %d MTLPixelFormats, but only have space for %d. Increase the value of _mtlPixelFormatCount", fmtIdx + 1, _mtlPixelFormatCount);  \
-_mtlPixelFormatDescriptions[fmtIdx++] = { .mtlPixelFormat = MTLPixelFormat ##MTL_FMT, VK_FORMAT_UNDEFINED,  \
-                                          mvkSelectPlatformValue<MVKOSVersion>(MACOS_SINCE, IOS_SINCE),  \
-                                          mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
-                                          "MTLPixelFormat" #MTL_FMT }
+	_mtlPixelFormatDescriptions[fmtIdx++] = { .mtlPixelFormat = MTLPixelFormat ##MTL_FMT, VK_FORMAT_UNDEFINED,  \
+											  mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
+											  "MTLPixelFormat" #MTL_FMT }
 
 void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 
@@ -774,167 +777,166 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
 
 	// MTLPixelFormatInvalid must come first.
-	addMTLPixelFormatDesc( Invalid, kMTLFmtNA, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( Invalid, None, None );
 
 	// Ordinary 8-bit pixel formats
-	addMTLPixelFormatDesc( A8Unorm, 8.0, 10.11, TexRF, TexRF );
-	addMTLPixelFormatDesc( R8Unorm, 8.0, 10.11, TexAll, TexAll );
-	addMTLPixelFormatDesc( R8Unorm_sRGB, 8.0, kMTLFmtNA, TexRFCMRB, None );
-	addMTLPixelFormatDesc( R8Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
-	addMTLPixelFormatDesc( R8Uint, 8.0, 10.11, TexRWCM, TexRWCM );
-	addMTLPixelFormatDesc( R8Sint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( A8Unorm, TexRF, TexRF );
+	addMTLPixelFormatDesc( R8Unorm, TexAll, TexAll );
+	addMTLPixelFormatDesc( R8Unorm_sRGB, TexRFCMRB, None );
+	addMTLPixelFormatDesc( R8Snorm, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( R8Uint, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( R8Sint, TexRWCM, TexRWCM );
 
 	// Ordinary 16-bit pixel formats
-	addMTLPixelFormatDesc( R16Unorm, 8.0, 10.11, TexRFWCMB, TexAll );
-	addMTLPixelFormatDesc( R16Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
-	addMTLPixelFormatDesc( R16Uint, 8.0, 10.11, TexRWCM, TexRWCM );
-	addMTLPixelFormatDesc( R16Sint, 8.0, 10.11, TexRWCM, TexRWCM );
-	addMTLPixelFormatDesc( R16Float, 8.0, 10.11, TexAll, TexAll );
+	addMTLPixelFormatDesc( R16Unorm, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( R16Snorm, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( R16Uint, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( R16Sint, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( R16Float, TexAll, TexAll );
 
-	addMTLPixelFormatDesc( RG8Unorm, 8.0, 10.11, TexAll, TexAll );
-	addMTLPixelFormatDesc( RG8Unorm_sRGB, 8.0, kMTLFmtNA, TexRFCMRB, None );
-	addMTLPixelFormatDesc( RG8Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
-	addMTLPixelFormatDesc( RG8Uint, 8.0, 10.11, TexRWCM, TexRWCM );
-	addMTLPixelFormatDesc( RG8Sint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RG8Unorm, TexAll, TexAll );
+	addMTLPixelFormatDesc( RG8Unorm_sRGB, TexRFCMRB, None );
+	addMTLPixelFormatDesc( RG8Snorm, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RG8Uint, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RG8Sint, TexRWCM, TexRWCM );
 
 	// Packed 16-bit pixel formats
-	addMTLPixelFormatDesc( B5G6R5Unorm, 8.0, kMTLFmtNA, TexRFCMRB, None );
-	addMTLPixelFormatDesc( A1BGR5Unorm, 8.0, kMTLFmtNA, TexRFCMRB, None );
-	addMTLPixelFormatDesc( ABGR4Unorm, 8.0, kMTLFmtNA, TexRFCMRB, None );
-	addMTLPixelFormatDesc( BGR5A1Unorm, 8.0, kMTLFmtNA, TexRFCMRB, None );
+	addMTLPixelFormatDesc( B5G6R5Unorm, TexRFCMRB, None );
+	addMTLPixelFormatDesc( A1BGR5Unorm, TexRFCMRB, None );
+	addMTLPixelFormatDesc( ABGR4Unorm, TexRFCMRB, None );
+	addMTLPixelFormatDesc( BGR5A1Unorm, TexRFCMRB, None );
 
 	// Ordinary 32-bit pixel formats
-	addMTLPixelFormatDesc( R32Uint, 8.0, 10.11, TexRC, TexRWCM );
-	addMTLPixelFormatDesc( R32Sint, 8.0, 10.11, TexRC, TexRWCM );
-	addMTLPixelFormatDesc( R32Float, 8.0, 10.11, TexRCMB, TexAll );
+	addMTLPixelFormatDesc( R32Uint, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( R32Sint, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( R32Float, TexRCMB, TexAll );
 
-	addMTLPixelFormatDesc( RG16Unorm, 8.0, 10.11, TexRFWCMB, TexAll );
-	addMTLPixelFormatDesc( RG16Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
-	addMTLPixelFormatDesc( RG16Uint, 8.0, 10.11, TexRWCM, TexRWCM );
-	addMTLPixelFormatDesc( RG16Sint, 8.0, 10.11, TexRWCM, TexRWCM );
-	addMTLPixelFormatDesc( RG16Float, 8.0, 10.11, TexAll, TexAll );
+	addMTLPixelFormatDesc( RG16Unorm, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RG16Snorm, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RG16Uint, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RG16Sint, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RG16Float, TexAll, TexAll );
 
-	addMTLPixelFormatDesc( RGBA8Unorm, 8.0, 10.11, TexAll, TexAll );
-	addMTLPixelFormatDesc( RGBA8Unorm_sRGB, 8.0, 10.11, TexRFCMRB, TexRFCMRB );
-	addMTLPixelFormatDesc( RGBA8Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
-	addMTLPixelFormatDesc( RGBA8Uint, 8.0, 10.11, TexRWCM, TexRWCM );
-	addMTLPixelFormatDesc( RGBA8Sint, 8.0, 10.11, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RGBA8Unorm, TexAll, TexAll );
+	addMTLPixelFormatDesc( RGBA8Unorm_sRGB, TexRFCMRB, TexRFCMRB );
+	addMTLPixelFormatDesc( RGBA8Snorm, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RGBA8Uint, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RGBA8Sint, TexRWCM, TexRWCM );
 
-	addMTLPixelFormatDesc( BGRA8Unorm, 8.0, 10.11, TexAll, TexAll );
-	addMTLPixelFormatDesc( BGRA8Unorm_sRGB, 8.0, 10.11, TexRFCMRB, TexRFCMRB );
+	addMTLPixelFormatDesc( BGRA8Unorm, TexAll, TexAll );
+	addMTLPixelFormatDesc( BGRA8Unorm_sRGB, TexRFCMRB, TexRFCMRB );
 
 	// Packed 32-bit pixel formats
-	addMTLPixelFormatDesc( RGB10A2Unorm, 8.0, 10.11, TexRFCMRB, TexAll );
-	addMTLPixelFormatDesc( RGB10A2Uint, 8.0, 10.11, TexRCM, TexRWCM );
-	addMTLPixelFormatDesc( RG11B10Float, 8.0, 10.11, TexRFCMRB, TexAll );
-	addMTLPixelFormatDesc( RGB9E5Float, 8.0, 10.11, TexRFCMRB, TexRF );
+	addMTLPixelFormatDesc( RGB10A2Unorm, TexRFCMRB, TexAll );
+	addMTLPixelFormatDesc( RGB10A2Uint, TexRCM, TexRWCM );
+	addMTLPixelFormatDesc( RG11B10Float, TexRFCMRB, TexAll );
+	addMTLPixelFormatDesc( RGB9E5Float, TexRFCMRB, TexRF );
 
 	// Ordinary 64-bit pixel formats
-	addMTLPixelFormatDesc( RG32Uint, 8.0, 10.11, TexRC, TexRWCM );
-	addMTLPixelFormatDesc( RG32Sint, 8.0, 10.11, TexRC, TexRWCM );
-	addMTLPixelFormatDesc( RG32Float, 8.0, 10.11, TexRCB, TexAll );
+	addMTLPixelFormatDesc( RG32Uint, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( RG32Sint, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( RG32Float, TexRCB, TexAll );
 
-	addMTLPixelFormatDesc( RGBA16Unorm, 8.0, 10.11, TexRFWCMB, TexAll );
-	addMTLPixelFormatDesc( RGBA16Snorm, 8.0, 10.11, TexRFWCMB, TexAll );
-	addMTLPixelFormatDesc( RGBA16Uint, 8.0, 10.11, TexRWCM, TexRWCM );
-	addMTLPixelFormatDesc( RGBA16Sint, 8.0, 10.11, TexRWCM, TexRWCM );
-	addMTLPixelFormatDesc( RGBA16Float, 8.0, 10.11, TexAll, TexAll );
+	addMTLPixelFormatDesc( RGBA16Unorm, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RGBA16Snorm, TexRFWCMB, TexAll );
+	addMTLPixelFormatDesc( RGBA16Uint, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RGBA16Sint, TexRWCM, TexRWCM );
+	addMTLPixelFormatDesc( RGBA16Float, TexAll, TexAll );
 
 	// Ordinary 128-bit pixel formats
-	addMTLPixelFormatDesc( RGBA32Uint, 8.0, 10.11, TexRC, TexRWCM );
-	addMTLPixelFormatDesc( RGBA32Sint, 8.0, 10.11, TexRC, TexRWCM );
-	addMTLPixelFormatDesc( RGBA32Float, 8.0, 10.11, TexRC, TexAll );
+	addMTLPixelFormatDesc( RGBA32Uint, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( RGBA32Sint, TexRC, TexRWCM );
+	addMTLPixelFormatDesc( RGBA32Float, TexRC, TexAll );
 
 	// Compressed pixel formats
-	addMTLPixelFormatDesc( PVRTC_RGBA_2BPP, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( PVRTC_RGBA_4BPP, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( PVRTC_RGBA_2BPP_sRGB, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( PVRTC_RGBA_4BPP_sRGB, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( PVRTC_RGBA_2BPP, TexRF, None );
+	addMTLPixelFormatDesc( PVRTC_RGBA_4BPP, TexRF, None );
+	addMTLPixelFormatDesc( PVRTC_RGBA_2BPP_sRGB, TexRF, None );
+	addMTLPixelFormatDesc( PVRTC_RGBA_4BPP_sRGB, TexRF, None );
 
-	addMTLPixelFormatDesc( ETC2_RGB8, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( ETC2_RGB8_sRGB, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( ETC2_RGB8A1, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( ETC2_RGB8A1_sRGB, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( EAC_RGBA8, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( EAC_RGBA8_sRGB, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( EAC_R11Unorm, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( EAC_R11Snorm, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( EAC_RG11Unorm, 8.0, kMTLFmtNA, TexRF, None );
-	addMTLPixelFormatDesc( EAC_RG11Snorm, 8.0, kMTLFmtNA, TexRF, None );
+	addMTLPixelFormatDesc( ETC2_RGB8, TexRF, None );
+	addMTLPixelFormatDesc( ETC2_RGB8_sRGB, TexRF, None );
+	addMTLPixelFormatDesc( ETC2_RGB8A1, TexRF, None );
+	addMTLPixelFormatDesc( ETC2_RGB8A1_sRGB, TexRF, None );
+	addMTLPixelFormatDesc( EAC_RGBA8, TexRF, None );
+	addMTLPixelFormatDesc( EAC_RGBA8_sRGB, TexRF, None );
+	addMTLPixelFormatDesc( EAC_R11Unorm, TexRF, None );
+	addMTLPixelFormatDesc( EAC_R11Snorm, TexRF, None );
+	addMTLPixelFormatDesc( EAC_RG11Unorm, TexRF, None );
+	addMTLPixelFormatDesc( EAC_RG11Snorm, TexRF, None );
 
-	addMTLPixelFormatDesc( ASTC_4x4_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_4x4_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_5x4_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_5x4_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_5x5_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_5x5_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_6x5_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_6x5_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_6x6_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_6x6_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_8x5_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_8x5_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_8x6_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_8x6_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_8x8_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_8x8_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_10x5_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_10x5_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_10x6_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_10x6_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_10x8_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_10x8_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_10x10_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_10x10_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_12x10_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_12x10_sRGB, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_12x12_LDR, 8.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( ASTC_12x12_sRGB, 8.0, kMTLFmtNA, None, None );
+	addMTLPixelFormatDesc( ASTC_4x4_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_4x4_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_5x4_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_5x4_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_5x5_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_5x5_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_6x5_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_6x5_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_6x6_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_6x6_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_8x5_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_8x5_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_8x6_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_8x6_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_8x8_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_8x8_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_10x5_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_10x5_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_10x6_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_10x6_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_10x8_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_10x8_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_10x10_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_10x10_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_12x10_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_12x10_sRGB, None, None );
+	addMTLPixelFormatDesc( ASTC_12x12_LDR, None, None );
+	addMTLPixelFormatDesc( ASTC_12x12_sRGB, None, None );
 
-	addMTLPixelFormatDesc( BC1_RGBA, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC1_RGBA_sRGB, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC1_RGBA, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC1_RGBA_sRGB, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC2_RGBA, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC2_RGBA_sRGB, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC3_RGBA, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC3_RGBA_sRGB, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC4_RUnorm, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC4_RSnorm, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC5_RGUnorm, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC5_RGSnorm, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC6H_RGBUfloat, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC6H_RGBFloat, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC7_RGBAUnorm, kMTLFmtNA, 10.11, None, TexRF );
-	addMTLPixelFormatDesc( BC7_RGBAUnorm_sRGB, kMTLFmtNA, 10.11, None, TexRF );
+	addMTLPixelFormatDesc( BC1_RGBA, None, TexRF );
+	addMTLPixelFormatDesc( BC1_RGBA_sRGB, None, TexRF );
+	addMTLPixelFormatDesc( BC1_RGBA, None, TexRF );
+	addMTLPixelFormatDesc( BC1_RGBA_sRGB, None, TexRF );
+	addMTLPixelFormatDesc( BC2_RGBA, None, TexRF );
+	addMTLPixelFormatDesc( BC2_RGBA_sRGB, None, TexRF );
+	addMTLPixelFormatDesc( BC3_RGBA, None, TexRF );
+	addMTLPixelFormatDesc( BC3_RGBA_sRGB, None, TexRF );
+	addMTLPixelFormatDesc( BC4_RUnorm, None, TexRF );
+	addMTLPixelFormatDesc( BC4_RSnorm, None, TexRF );
+	addMTLPixelFormatDesc( BC5_RGUnorm, None, TexRF );
+	addMTLPixelFormatDesc( BC5_RGSnorm, None, TexRF );
+	addMTLPixelFormatDesc( BC6H_RGBUfloat, None, TexRF );
+	addMTLPixelFormatDesc( BC6H_RGBFloat, None, TexRF );
+	addMTLPixelFormatDesc( BC7_RGBAUnorm, None, TexRF );
+	addMTLPixelFormatDesc( BC7_RGBAUnorm_sRGB, None, TexRF );
 
 	// YUV pixel formats
-	addMTLPixelFormatDesc( GBGR422, 8.0, 10.11, TexRF, TexRF );
-	addMTLPixelFormatDesc( BGRG422, 8.0, 10.11, TexRF, TexRF );
+	addMTLPixelFormatDesc( GBGR422, TexRF, TexRF );
+	addMTLPixelFormatDesc( BGRG422, TexRF, TexRF );
 
 	// Depth and stencil pixel formats
-	addMTLPixelFormatDesc( Depth16Unorm, kMTLFmtNA, 10.12, None, None );
-	addMTLPixelFormatDesc( Depth32Float, 8.0, 10.11, TexDRM, TexDRFMR );
-	addMTLPixelFormatDesc( Stencil8, 8.0, 10.11, TexDRM, TexDRM );
-	addMTLPixelFormatDesc( Depth24Unorm_Stencil8, kMTLFmtNA, 10.11, None, None );
-	addMTLPixelFormatDesc( Depth32Float_Stencil8, 9.0, 10.11, TexDRM, TexDRFMR );
-	addMTLPixelFormatDesc( X24_Stencil8, kMTLFmtNA, 10.11, None, TexDRM );
-	addMTLPixelFormatDesc( X32_Stencil8, 8.0, 10.11, TexDRM, TexDRM );
+	addMTLPixelFormatDesc( Depth16Unorm, None, None );
+	addMTLPixelFormatDesc( Depth32Float, TexDRM, TexDRFMR );
+	addMTLPixelFormatDesc( Stencil8, TexDRM, TexDRM );
+	addMTLPixelFormatDesc( Depth24Unorm_Stencil8, None, None );
+	addMTLPixelFormatDesc( Depth32Float_Stencil8, TexDRM, TexDRFMR );
+	addMTLPixelFormatDesc( X24_Stencil8, None, TexDRM );
+	addMTLPixelFormatDesc( X32_Stencil8, TexDRM, TexDRM );
 
 	// Extended range and wide color pixel formats
-	addMTLPixelFormatDesc( BGRA10_XR, 10.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( BGRA10_XR_sRGB, 10.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( BGR10_XR, 10.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( BGR10_XR_sRGB, 10.0, kMTLFmtNA, None, None );
-	addMTLPixelFormatDesc( BGR10A2Unorm, 11.0, 10.13, None, None );
+	addMTLPixelFormatDesc( BGRA10_XR, None, None );
+	addMTLPixelFormatDesc( BGRA10_XR_sRGB, None, None );
+	addMTLPixelFormatDesc( BGR10_XR, None, None );
+	addMTLPixelFormatDesc( BGR10_XR_sRGB, None, None );
+	addMTLPixelFormatDesc( BGR10A2Unorm, None, None );
 
 	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
 }
 
-#define addMTLVertexFormatDesc(MTL_VTX_FMT, VTX_IOS_SINCE, VTX_MACOS_SINCE, IOS_CAPS, MACOS_CAPS)  \
+#define addMTLVertexFormatDesc(MTL_VTX_FMT, IOS_CAPS, MACOS_CAPS)  \
 	MVKAssert(fmtIdx < _mtlVertexFormatCount, "Attempting to describe %d MTLVertexFormats, but only have space for %d. Increase the value of _mtlVertexFormatCount", fmtIdx + 1, _mtlVertexFormatCount);  \
 	_mtlVertexFormatDescriptions[fmtIdx++] = { .mtlVertexFormat = MTLVertexFormat ##MTL_VTX_FMT, VK_FORMAT_UNDEFINED,  \
-                                               mvkSelectPlatformValue<MVKOSVersion>(VTX_MACOS_SINCE, VTX_IOS_SINCE),  \
                                                mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
                                                "MTLVertexFormat" #MTL_VTX_FMT }
 
@@ -946,81 +948,80 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 
 	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
 	// MTLVertexFormatInvalid must come first.
-	addMTLVertexFormatDesc( Invalid, kMTLFmtNA, kMTLFmtNA, None, None );
+	addMTLVertexFormatDesc( Invalid, None, None );
 
-	addMTLVertexFormatDesc( UChar2Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Char2Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UChar2, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Char2, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar2Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char2Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar2, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char2, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UChar3Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Char3Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UChar3, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Char3, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar3Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char3Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar3, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char3, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UChar4Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Char4Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UChar4, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Char4, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar4Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char4Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UChar4, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Char4, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UInt1010102Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Int1010102Normalized, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UInt1010102Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int1010102Normalized, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UShort2Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Short2Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UShort2, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Short2, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Half2, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort2Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short2Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort2, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short2, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Half2, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UShort3Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Short3Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UShort3, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Short3, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Half3, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort3Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short3Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort3, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short3, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Half3, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UShort4Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Short4Normalized, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( UShort4, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Short4, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Half4, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort4Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short4Normalized, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UShort4, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Short4, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Half4, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UInt, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Int, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Float, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UInt, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Float, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UInt2, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Int2, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Float2, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UInt2, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int2, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Float2, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UInt3, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Int3, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Float3, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UInt3, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int3, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Float3, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UInt4, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Int4, 8.0, 10.11, BufVertex, BufVertex );
-	addMTLVertexFormatDesc( Float4, 8.0, 10.11, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( UInt4, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Int4, BufVertex, BufVertex );
+	addMTLVertexFormatDesc( Float4, BufVertex, BufVertex );
 
-	addMTLVertexFormatDesc( UCharNormalized, 11.0, 10.13, None, None );
-	addMTLVertexFormatDesc( CharNormalized, 11.0, 10.13, None, None );
-	addMTLVertexFormatDesc( UChar, 11.0, 10.13, None, None );
-	addMTLVertexFormatDesc( Char, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( UCharNormalized, None, None );
+	addMTLVertexFormatDesc( CharNormalized, None, None );
+	addMTLVertexFormatDesc( UChar, None, None );
+	addMTLVertexFormatDesc( Char, None, None );
 
-	addMTLVertexFormatDesc( UShortNormalized, 11.0, 10.13, None, None );
-	addMTLVertexFormatDesc( ShortNormalized, 11.0, 10.13, None, None );
-	addMTLVertexFormatDesc( UShort, 11.0, 10.13, None, None );
-	addMTLVertexFormatDesc( Short, 11.0, 10.13, None, None );
-	addMTLVertexFormatDesc( Half, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( UShortNormalized, None, None );
+	addMTLVertexFormatDesc( ShortNormalized, None, None );
+	addMTLVertexFormatDesc( UShort, None, None );
+	addMTLVertexFormatDesc( Short, None, None );
+	addMTLVertexFormatDesc( Half, None, None );
 
-	addMTLVertexFormatDesc( UChar4Normalized_BGRA, 11.0, 10.13, None, None );
+	addMTLVertexFormatDesc( UChar4Normalized_BGRA, None, None );
 
 	// When adding to this list, be sure to ensure _mtlVertexFormatCount is large enough for the format count
 }
 
-// Populates the lookup maps that map Vulkan and Metal pixel formats to one-another.
-void MVKPixelFormats::buildFormatMaps() {
+// Populates the Metal lookup maps
+void MVKPixelFormats::buildMTLFormatMaps() {
 
-	// Set all VkFormats, MTLPixelFormats, and MTLVertexFormats to undefined/invalid
-	mvkClear(_vkFormatDescIndicesByVkFormatsCore, _vkFormatCoreCount);
+	// Set all MTLPixelFormats and MTLVertexFormats to undefined/invalid
 	mvkClear(_mtlFormatDescIndicesByMTLPixelFormats, _mtlPixelFormatCount);
 	mvkClear(_mtlFormatDescIndicesByMTLVertexFormats, _mtlVertexFormatCount);
 
@@ -1034,45 +1035,6 @@ void MVKPixelFormats::buildFormatMaps() {
 	for (uint32_t fmtIdx = 0; fmtIdx < _mtlVertexFormatCount; fmtIdx++) {
 		MTLVertexFormat fmt = _mtlVertexFormatDescriptions[fmtIdx].mtlVertexFormat;
 		if (fmt) { _mtlFormatDescIndicesByMTLVertexFormats[fmt] = fmtIdx; }
-	}
-
-	// Iterate through the VkFormat descriptions, populate the lookup maps and back pointers,
-	// and validate the Metal formats for the platform and OS.
-	for (uint32_t fmtIdx = 0; fmtIdx < _vkFormatCount; fmtIdx++) {
-		MVKVkFormatDesc& vkDesc = _vkFormatDescriptions[fmtIdx];
-		VkFormat vkFmt = vkDesc.vkFormat;
-		if (vkFmt) {
-			// Create a lookup between the Vulkan format and an index to the format info.
-			// For core Vulkan format values, which are small and consecutive, use a simple lookup array.
-			// For extension format values, which can be large, use a map.
-			if (vkFmt < _vkFormatCoreCount) {
-				_vkFormatDescIndicesByVkFormatsCore[vkFmt] = fmtIdx;
-			} else {
-				_vkFormatDescIndicesByVkFormatsExt[vkFmt] = fmtIdx;
-			}
-
-			// Populate the back reference from the Metal formats to the Vulkan format.
-			// Validate the corresponding Metal formats for the platform, and clear them
-			// in the Vulkan format if not supported.
-			if (vkDesc.mtlPixelFormat) {
-				auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat);
-				if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkFmt; }
-				if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormat = MTLPixelFormatInvalid; }
-			}
-			if (vkDesc.mtlPixelFormatSubstitute) {
-				auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormatSubstitute);
-				if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid; }
-			}
-			if (vkDesc.mtlVertexFormat) {
-				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormat);
-				if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkFmt; }
-				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormat = MTLVertexFormatInvalid; }
-			}
-			if (vkDesc.mtlVertexFormatSubstitute) {
-				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormatSubstitute);
-				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormatSubstitute = MTLVertexFormatInvalid; }
-			}
-		}
 	}
 }
 
@@ -1106,7 +1068,7 @@ void MVKPixelFormats::addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 
 // Modifies the format capability tables based on the capabilities of the specific MTLDevice
 #if MVK_MACOS
-void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice) {
+void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	if ( !mtlDevice ) { return; }
 
 	if (mtlDevice.isDepth24Stencil8PixelFormatSupported) {
@@ -1130,7 +1092,7 @@ void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevi
 }
 #endif
 #if MVK_IOS
-void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice) {
+void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	if ( !mtlDevice ) { return; }
 
 	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v3, R8Unorm_sRGB, TexAll );
@@ -1223,6 +1185,52 @@ void MVKPixelFormats::modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevi
 #undef addMTLPixelFormatCapabilities
 #undef addMTLVertexFormatCapabilities
 
+// Populates the VkFormat lookup maps and connects Vulkan and Metal pixel formats to one-another.
+void MVKPixelFormats::buildVkFormatMaps() {
+
+	// Set the VkFormats to undefined/invalid
+	mvkClear(_vkFormatDescIndicesByVkFormatsCore, _vkFormatCoreCount);
+
+	// Iterate through the VkFormat descriptions, populate the lookup maps and back pointers,
+	// and validate the Metal formats for the platform and OS.
+	for (uint32_t fmtIdx = 0; fmtIdx < _vkFormatCount; fmtIdx++) {
+		MVKVkFormatDesc& vkDesc = _vkFormatDescriptions[fmtIdx];
+		VkFormat vkFmt = vkDesc.vkFormat;
+		if (vkFmt) {
+			// Create a lookup between the Vulkan format and an index to the format info.
+			// For core Vulkan format values, which are small and consecutive, use a simple lookup array.
+			// For extension format values, which can be large, use a map.
+			if (vkFmt < _vkFormatCoreCount) {
+				_vkFormatDescIndicesByVkFormatsCore[vkFmt] = fmtIdx;
+			} else {
+				_vkFormatDescIndicesByVkFormatsExt[vkFmt] = fmtIdx;
+			}
+
+			// Populate the back reference from the Metal formats to the Vulkan format.
+			// Validate the corresponding Metal formats for the platform, and clear them
+			// in the Vulkan format if not supported.
+			if (vkDesc.mtlPixelFormat) {
+				auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat);
+				if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkFmt; }
+				if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormat = MTLPixelFormatInvalid; }
+			}
+			if (vkDesc.mtlPixelFormatSubstitute) {
+				auto& mtlDesc = getMTLPixelFormatDesc(vkDesc.mtlPixelFormatSubstitute);
+				if ( !mtlDesc.isSupported() ) { vkDesc.mtlPixelFormatSubstitute = MTLPixelFormatInvalid; }
+			}
+			if (vkDesc.mtlVertexFormat) {
+				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormat);
+				if ( !mtlDesc.vkFormat ) { mtlDesc.vkFormat = vkFmt; }
+				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormat = MTLVertexFormatInvalid; }
+			}
+			if (vkDesc.mtlVertexFormatSubstitute) {
+				auto& mtlDesc = getMTLVertexFormatDesc(vkDesc.mtlVertexFormatSubstitute);
+				if ( !mtlDesc.isSupported() ) { vkDesc.mtlVertexFormatSubstitute = MTLVertexFormatInvalid; }
+			}
+		}
+	}
+}
+
 
 #pragma mark -
 #pragma mark Unit Testing
@@ -1234,8 +1242,8 @@ void MVKPixelFormats::testFmt(const T v1, const T v2, const char* fmtName, const
 
 // Validate the functionality of this class against the previous format data within MoltenVK.
 // This is a temporary function to confirm that converting to using this class matches existing behaviour at first.
-void MVKPixelFormats::test() {
-	if (_apiObject) { return; }		// Only test default platform formats
+void MVKPixelFormats::test(id<MTLDevice> mtlDevice) {
+	if ( !mtlDevice || mtlDevice.isLowPower ) { return; }	// Only test primary device platform formats
 
 	MVKLogInfo("Starting testing formats");
 	for (uint32_t fmtIdx = 0; fmtIdx < _vkFormatCount; fmtIdx++) {
