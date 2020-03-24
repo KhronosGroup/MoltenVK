@@ -19,6 +19,8 @@ MoltenVK 1.0.41
 
 Released 2020/03/30
 
+- Accurately populate Vulkan `VkFormatProperties` from `MTLPixelFormat` capabilities, 
+  taking into consideration variations across `MTLDevice` Features Sets.
 - Fix issue where immutable samplers are removed during descriptor update.
 - Guard against Metal validation assertion from reuse of query number within a single `MTLRenderEncoder`.
 - Increase value of `VkPhysicalDeviceLimits::minStorageBufferOffsetAlignment` 
