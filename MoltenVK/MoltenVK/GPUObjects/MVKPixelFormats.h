@@ -261,7 +261,7 @@ public:
 
 	MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice);
 
-	MVKPixelFormats() : MVKPixelFormats(nullptr, nil) {}
+	MVKPixelFormats();
 
 protected:
 	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);
@@ -271,6 +271,7 @@ protected:
 	VkFormatFeatureFlags getOptimalTilingFeatures(MVKMTLFmtCaps mtlFmtCaps);
 	VkFormatFeatureFlags getLinearTilingFeatures(MVKMTLFmtCaps mtlFmtCaps, MVKFormatType mvkFmtType);
 	VkFormatFeatureFlags getBufferFeatures(MVKMTLFmtCaps mtlFmtTexCaps, MVKMTLFmtCaps mtlFmtVtxCaps, MVKFormatType mvkFmtType);
+	void init(id<MTLDevice> mtlDevice);
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();

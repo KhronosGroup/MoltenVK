@@ -16,13 +16,11 @@
  * limitations under the License.
  */
 
-#include "mvk_datatypes.hpp"
 #include "MVKPixelFormats.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKFoundation.h"
 #include "MVKLogging.h"
 #include <string>
-#include <limits>
 
 using namespace std;
 
@@ -412,6 +410,17 @@ MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(MTLPixelFormat mtlFormat) {
 #pragma mark Construction
 
 MVKPixelFormats::MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice) : _apiObject(apiObject) {
+	init(mtlDevice);
+}
+
+//	Retrieves the default MTLDevice, which needs to be released after use.
+MVKPixelFormats::MVKPixelFormats() : _apiObject(nullptr) {
+	id<MTLDevice> mtlDevice = MTLCreateSystemDefaultDevice();	// retained
+	init(mtlDevice);
+	[mtlDevice release];	// Release temp instance
+}
+
+void MVKPixelFormats::init(id<MTLDevice> mtlDevice) {
 
 	// Build and update the Metal formats
 	initMTLPixelFormatCapabilities();
@@ -423,7 +432,7 @@ MVKPixelFormats::MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mt
 	initVkFormatCapabilities();
 	buildVkFormatMaps();
 
-//	test(mtlDevice);
+	test(mtlDevice);
 }
 
 #define addVkFormatDesc(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)  \
