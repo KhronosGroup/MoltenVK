@@ -442,7 +442,7 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 #if MVK_MACOS
 	// If this is a 3D compressed texture, tell Metal we might write to it.
 	if (_is3DCompressed) {
-		mvkEnableFlag(usage, MTLTextureUsageShaderWrite);
+		mvkEnableFlags(usage, MTLTextureUsageShaderWrite);
 	}
 #endif
 

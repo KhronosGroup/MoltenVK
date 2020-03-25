@@ -268,19 +268,19 @@ MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImag
 												VK_IMAGE_USAGE_SAMPLED_BIT |
 												VK_IMAGE_USAGE_STORAGE_BIT |
 												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-		mvkEnableFlag(mtlUsage, MTLTextureUsageShaderRead);
+		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderRead);
 	}
 
 	// Write to...
 	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_STORAGE_BIT))) {
-		mvkEnableFlag(mtlUsage, MTLTextureUsageShaderWrite);
+		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
 	}
 
 	// Render to...
 	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 												VK_IMAGE_USAGE_TRANSFER_DST_BIT))) {				// Scaling a BLIT may use rendering.
-		mvkEnableFlag(mtlUsage, MTLTextureUsageRenderTarget);
+		mvkEnableFlags(mtlUsage, MTLTextureUsageRenderTarget);
 	}
 
 	// Create view on...
@@ -290,7 +290,7 @@ MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImag
 												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
 												VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))) {	// D/S may be filtered out after device check
-		mvkEnableFlag(mtlUsage, MTLTextureUsagePixelFormatView);
+		mvkEnableFlags(mtlUsage, MTLTextureUsagePixelFormatView);
 	}
 
     return mtlUsage;
@@ -300,20 +300,20 @@ MVK_PUBLIC_SYMBOL VkImageUsageFlags mvkVkImageUsageFlagsFromMTLTextureUsage(MTLT
     VkImageUsageFlags vkImageUsageFlags = 0;
 
     if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageShaderRead) ) {
-        mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-        mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_SAMPLED_BIT);
-        mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
+        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_SAMPLED_BIT);
+        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
     }
     if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageRenderTarget) ) {
-        mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
+        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
         if (mvkMTLPixelFormatIsDepthFormat(mtlFormat) || mvkMTLPixelFormatIsStencilFormat(mtlFormat)) {
-            mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+            mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
         } else {
-            mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+            mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
         }
     }
     if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageShaderWrite) ) {
-        mvkEnableFlag(vkImageUsageFlags, VK_IMAGE_USAGE_STORAGE_BIT);
+        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_STORAGE_BIT);
     }
 
     return vkImageUsageFlags;
@@ -447,10 +447,10 @@ MVK_PUBLIC_SYMBOL MTLSamplerMipFilter mvkMTLSamplerMipFilterFromVkSamplerMipmapM
 
 MVK_PUBLIC_SYMBOL MTLColorWriteMask mvkMTLColorWriteMaskFromVkChannelFlags(VkColorComponentFlags vkWriteFlags) {
 	MTLColorWriteMask mtlWriteMask = MTLColorWriteMaskNone;
-	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_R_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskRed); }
-	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_G_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskGreen); }
-	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_B_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskBlue); }
-	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_A_BIT)) { mvkEnableFlag(mtlWriteMask, MTLColorWriteMaskAlpha); }
+	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_R_BIT)) { mvkEnableFlags(mtlWriteMask, MTLColorWriteMaskRed); }
+	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_G_BIT)) { mvkEnableFlags(mtlWriteMask, MTLColorWriteMaskGreen); }
+	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_B_BIT)) { mvkEnableFlags(mtlWriteMask, MTLColorWriteMaskBlue); }
+	if (mvkAreAllFlagsEnabled(vkWriteFlags, VK_COLOR_COMPONENT_A_BIT)) { mvkEnableFlags(mtlWriteMask, MTLColorWriteMaskAlpha); }
 	return mtlWriteMask;
 }
 
