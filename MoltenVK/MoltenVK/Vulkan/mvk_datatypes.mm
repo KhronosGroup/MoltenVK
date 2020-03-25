@@ -118,94 +118,27 @@ MVK_PUBLIC_SYMBOL MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkForm
 
 MVK_PUBLIC_SYMBOL MTLClearColor mvkMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
 																 VkFormat vkFormat) {
-	MTLClearColor mtlClr;
-	switch (mvkFormatTypeFromVkFormat(vkFormat)) {
-		case kMVKFormatColorHalf:
-		case kMVKFormatColorFloat:
-			mtlClr.red		= vkClearValue.color.float32[0];
-			mtlClr.green	= vkClearValue.color.float32[1];
-			mtlClr.blue		= vkClearValue.color.float32[2];
-			mtlClr.alpha	= vkClearValue.color.float32[3];
-			break;
-		case kMVKFormatColorUInt8:
-		case kMVKFormatColorUInt16:
-		case kMVKFormatColorUInt32:
-			mtlClr.red		= vkClearValue.color.uint32[0];
-			mtlClr.green	= vkClearValue.color.uint32[1];
-			mtlClr.blue		= vkClearValue.color.uint32[2];
-			mtlClr.alpha	= vkClearValue.color.uint32[3];
-			break;
-		case kMVKFormatColorInt8:
-		case kMVKFormatColorInt16:
-		case kMVKFormatColorInt32:
-			mtlClr.red		= vkClearValue.color.int32[0];
-			mtlClr.green	= vkClearValue.color.int32[1];
-			mtlClr.blue		= vkClearValue.color.int32[2];
-			mtlClr.alpha	= vkClearValue.color.int32[3];
-			break;
-		default:
-			mtlClr.red		= 0.0;
-			mtlClr.green	= 0.0;
-			mtlClr.blue		= 0.0;
-			mtlClr.alpha	= 1.0;
-			break;
-	}
-	return mtlClr;
+	return _platformPixelFormats.getMTLClearColorFromVkClearValue(vkClearValue, vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL double mvkMTLClearDepthFromVkClearValue(VkClearValue vkClearValue) {
-	return vkClearValue.depthStencil.depth;
+	return _platformPixelFormats.getMTLClearDepthFromVkClearValue(vkClearValue);
 }
 
 MVK_PUBLIC_SYMBOL uint32_t mvkMTLClearStencilFromVkClearValue(VkClearValue vkClearValue) {
-	return vkClearValue.depthStencil.stencil;
+	return _platformPixelFormats.getMTLClearStencilFromVkClearValue(vkClearValue);
 }
 
 MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {
-	switch (mtlFormat) {
-		case MTLPixelFormatDepth32Float:
-#if MVK_MACOS
-        case MTLPixelFormatDepth16Unorm:
-		case MTLPixelFormatDepth24Unorm_Stencil8:
-#endif
-		case MTLPixelFormatDepth32Float_Stencil8:
-			return true;
-		default:
-			return false;
-	}
+	return _platformPixelFormats.mtlPixelFormatIsDepthFormat(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat) {
-	switch (mtlFormat) {
-		case MTLPixelFormatStencil8:
-#if MVK_MACOS
-		case MTLPixelFormatDepth24Unorm_Stencil8:
-        case MTLPixelFormatX24_Stencil8:
-#endif
-		case MTLPixelFormatDepth32Float_Stencil8:
-        case MTLPixelFormatX32_Stencil8:
-			return true;
-		default:
-			return false;
-	}
+	return _platformPixelFormats.mtlPixelFormatIsStencilFormat(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) {
-	switch (mtlFormat) {
-#if MVK_IOS
-		case MTLPixelFormatPVRTC_RGBA_2BPP:
-		case MTLPixelFormatPVRTC_RGBA_2BPP_sRGB:
-		case MTLPixelFormatPVRTC_RGBA_4BPP:
-		case MTLPixelFormatPVRTC_RGBA_4BPP_sRGB:
-		case MTLPixelFormatPVRTC_RGB_2BPP:
-		case MTLPixelFormatPVRTC_RGB_2BPP_sRGB:
-		case MTLPixelFormatPVRTC_RGB_4BPP:
-		case MTLPixelFormatPVRTC_RGB_4BPP_sRGB:
-			return true;
-#endif
-		default:
-			return false;
-	}
+	return _platformPixelFormats.mtlPixelFormatIsPVRTCFormat(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vkImageType,
@@ -297,26 +230,7 @@ MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImag
 }
 
 MVK_PUBLIC_SYMBOL VkImageUsageFlags mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat) {
-    VkImageUsageFlags vkImageUsageFlags = 0;
-
-    if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageShaderRead) ) {
-        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
-        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_SAMPLED_BIT);
-        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT);
-    }
-    if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageRenderTarget) ) {
-        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-        if (mvkMTLPixelFormatIsDepthFormat(mtlFormat) || mvkMTLPixelFormatIsStencilFormat(mtlFormat)) {
-            mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-        } else {
-            mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-        }
-    }
-    if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageShaderWrite) ) {
-        mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_STORAGE_BIT);
-    }
-
-    return vkImageUsageFlags;
+	return _platformPixelFormats.getVkImageUsageFlagsFromMTLTextureUsage(mtlUsage, mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL uint32_t mvkSampleCountFromVkSampleCountFlagBits(VkSampleCountFlagBits vkSampleCountFlag) {
