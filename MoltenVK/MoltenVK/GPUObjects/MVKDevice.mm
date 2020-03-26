@@ -223,11 +223,11 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format,
 }
 
 VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
-                                                     VkImageType type,
-                                                     VkImageTiling tiling,
-                                                     VkImageUsageFlags usage,
-                                                     VkImageCreateFlags flags,
-                                                     VkImageFormatProperties* pImageFormatProperties) {
+													 VkImageType type,
+													 VkImageTiling tiling,
+													 VkImageUsageFlags usage,
+													 VkImageCreateFlags flags,
+													 VkImageFormatProperties* pImageFormatProperties) {
 
 	if ( !_pixelFormats.vkFormatIsSupported(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
@@ -245,14 +245,16 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 														  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
 
-    VkPhysicalDeviceLimits* pLimits = &_properties.limits;
-    VkExtent3D maxExt;
-	uint32_t maxLevels;
+	VkPhysicalDeviceLimits* pLimits = &_properties.limits;
+	VkExtent3D maxExt = { 1, 1, 1};
+	uint32_t maxLevels = 1;
 	uint32_t maxLayers = hasAttachmentUsage ? pLimits->maxFramebufferLayers : pLimits->maxImageArrayLayers;
 
-	VkSampleCountFlags sampleCounts = _metalFeatures.supportedSampleCounts;
-    switch (type) {
-        case VK_IMAGE_TYPE_1D:
+	bool supportsMSAA =  mvkAreAllFlagsEnabled(_pixelFormats.getVkFormatCapabilities(format), kMVKMTLFmtCapsMSAA);
+	VkSampleCountFlags sampleCounts = supportsMSAA ? _metalFeatures.supportedSampleCounts : VK_SAMPLE_COUNT_1_BIT;
+
+	switch (type) {
+		case VK_IMAGE_TYPE_1D:
 			maxExt.height = 1;
 			maxExt.depth = 1;
 			if (mvkTreatTexture1DAs2D()) {
@@ -273,16 +275,17 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				if (mvkFmt == kMVKFormatDepthStencil) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 				if (mvkFmt == kMVKFormatCompressed) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 			}
-            break;
-        case VK_IMAGE_TYPE_2D:
-            if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ) {
-                maxExt.width = pLimits->maxImageDimensionCube;
-                maxExt.height = pLimits->maxImageDimensionCube;
-            } else {
-                maxExt.width = pLimits->maxImageDimension2D;
-                maxExt.height = pLimits->maxImageDimension2D;
-            }
-            maxExt.depth = 1;
+			break;
+
+		case VK_IMAGE_TYPE_2D:
+			if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ) {
+				maxExt.width = pLimits->maxImageDimensionCube;
+				maxExt.height = pLimits->maxImageDimensionCube;
+			} else {
+				maxExt.width = pLimits->maxImageDimension2D;
+				maxExt.height = pLimits->maxImageDimension2D;
+			}
+			maxExt.depth = 1;
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
 				// Linear textures have additional restrictions under Metal:
 				// - They may not be depth/stencil or compressed textures.
@@ -310,12 +313,13 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				}
 				maxLevels = mvkMipmapLevels3D(maxExt);
 			}
-            break;
-        case VK_IMAGE_TYPE_3D:
-            // Metal does not allow linear tiling on 3D textures
-            if (tiling == VK_IMAGE_TILING_LINEAR) {
-                return VK_ERROR_FORMAT_NOT_SUPPORTED;
-            }
+			break;
+
+		case VK_IMAGE_TYPE_3D:
+			// Metal does not allow linear tiling on 3D textures
+			if (tiling == VK_IMAGE_TILING_LINEAR) {
+				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+			}
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
 			if (mvkFmt == kMVKFormatDepthStencil
 #if MVK_IOS
@@ -330,35 +334,25 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
 #endif
-            maxExt.width = pLimits->maxImageDimension3D;
-            maxExt.height = pLimits->maxImageDimension3D;
-            maxExt.depth = pLimits->maxImageDimension3D;
+			maxExt.width = pLimits->maxImageDimension3D;
+			maxExt.height = pLimits->maxImageDimension3D;
+			maxExt.depth = pLimits->maxImageDimension3D;
 			maxLevels = mvkMipmapLevels3D(maxExt);
-            maxLayers = 1;
-            sampleCounts = VK_SAMPLE_COUNT_1_BIT;
-            break;
-        default:
-			// Metal does not allow linear tiling on anything but 2D textures
-			if (tiling == VK_IMAGE_TILING_LINEAR) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
-
-			// Metal does not allow compressed or depth/stencil formats on anything but 2D textures
-			if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed) {
-				return VK_ERROR_FORMAT_NOT_SUPPORTED;
-			}
-            maxExt = { 1, 1, 1};
-            maxLayers = 1;
-			maxLevels = 1;
+			maxLayers = 1;
 			sampleCounts = VK_SAMPLE_COUNT_1_BIT;
-            break;
-    }
+			break;
 
-    pImageFormatProperties->maxExtent = maxExt;
-    pImageFormatProperties->maxMipLevels = maxLevels;
-    pImageFormatProperties->maxArrayLayers = maxLayers;
-    pImageFormatProperties->sampleCounts = sampleCounts;
-    pImageFormatProperties->maxResourceSize = kMVKUndefinedLargeUInt64;
+		default:
+			return VK_ERROR_FORMAT_NOT_SUPPORTED;	// Illegal VkImageType
+	}
 
-    return VK_SUCCESS;
+	pImageFormatProperties->maxExtent = maxExt;
+	pImageFormatProperties->maxMipLevels = maxLevels;
+	pImageFormatProperties->maxArrayLayers = maxLayers;
+	pImageFormatProperties->sampleCounts = sampleCounts;
+	pImageFormatProperties->maxResourceSize = kMVKUndefinedLargeUInt64;
+
+	return VK_SUCCESS;
 }
 
 VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo,
@@ -385,9 +379,9 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 
 // If the image format info links portability image view info, test if an image view of that configuration is supported
 bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo) {
-	auto* next = (VkStructureType*)pImageFormatInfo->pNext;
+	auto* next = (MVKVkAPIStructHeader*)pImageFormatInfo->pNext;
 	while (next) {
-		switch ((int32_t)*next) {
+		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_SUPPORT_EXTX: {
 				auto* portImgViewInfo = (VkPhysicalDeviceImageViewSupportEXTX*)next;
 
@@ -396,7 +390,7 @@ bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageForma
 					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 					.pNext = (VkStructureType*)portImgViewInfo->pNext,
 					.flags = portImgViewInfo->flags,
-					.image = VK_NULL_HANDLE,
+					.image = nullptr,
 					.viewType = portImgViewInfo->viewType,
 					.format = portImgViewInfo->format,
 					.components = portImgViewInfo->components,
@@ -407,11 +401,15 @@ bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageForma
 						.baseArrayLayer = 0,
 						.layerCount = 1},
 				};
-				MVKImageView imgView(VK_NULL_HANDLE, &viewInfo, _mvkInstance->getMoltenVKConfiguration());
-				return imgView.getConfigurationResult() == VK_SUCCESS;
+				MTLPixelFormat mtlPixFmt;
+				bool useSwizzle;
+				return (MVKImageView::validateSwizzledMTLPixelFormat(&viewInfo, &_pixelFormats, this,
+																	 _metalFeatures.nativeTextureSwizzle,
+																	 _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle,
+																	 mtlPixFmt, useSwizzle) == VK_SUCCESS);
 			}
 			default:
-				next = (VkStructureType*)((VkPhysicalDeviceFeatures2*)next)->pNext;
+				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 		}
 	}

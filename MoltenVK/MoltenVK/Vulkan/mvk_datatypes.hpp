@@ -75,14 +75,6 @@ MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionMode
 #pragma mark -
 #pragma mark Image properties
 
-#pragma mark Texture formats
-
-/**
- * Returns info about the default pixel formats supported by the platform,
- * without taking into consideration support at the MTLDevice level.
- */
-MVKPixelFormats* mvkPlatformPixelFormats();
-
 /** Returns whether 1D textures should be treated as Metal 2D textures with height 1. */
 bool mvkTreatTexture1DAs2D();
 

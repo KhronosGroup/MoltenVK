@@ -21,17 +21,52 @@
 #include "mvk_datatypes.h"
 #include "MVKEnvironment.h"
 #include "MVKBaseObject.h"
-#include "MVKOSExtensions.h"
 #include <unordered_map>
 
 #import <Metal/Metal.h>
 
 
-/** Validate these values periodically as new formats are added over time. */
+// Validate these values periodically as new formats are added over time.
 static const uint32_t _vkFormatCount = 256;
 static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
 static const uint32_t _mtlPixelFormatCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
 static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
+
+
+#pragma mark -
+#pragma mark Metal format capabilities
+
+typedef enum : uint16_t {
+
+	kMVKMTLFmtCapsNone     = 0,
+	kMVKMTLFmtCapsRead     = (1<<0),
+	kMVKMTLFmtCapsFilter   = (1<<1),
+	kMVKMTLFmtCapsWrite    = (1<<2),
+	kMVKMTLFmtCapsColorAtt = (1<<3),
+	kMVKMTLFmtCapsDSAtt    = (1<<4),
+	kMVKMTLFmtCapsBlend    = (1<<5),
+	kMVKMTLFmtCapsMSAA     = (1<<6),
+	kMVKMTLFmtCapsResolve  = (1<<7),
+	kMVKMTLFmtCapsVertex   = (1<<8),
+
+	kMVKMTLFmtCapsRF       = (kMVKMTLFmtCapsRead | kMVKMTLFmtCapsFilter),
+	kMVKMTLFmtCapsRC       = (kMVKMTLFmtCapsRead | kMVKMTLFmtCapsColorAtt),
+	kMVKMTLFmtCapsRCB      = (kMVKMTLFmtCapsRC | kMVKMTLFmtCapsBlend),
+	kMVKMTLFmtCapsRCM      = (kMVKMTLFmtCapsRC | kMVKMTLFmtCapsMSAA),
+	kMVKMTLFmtCapsRCMB     = (kMVKMTLFmtCapsRCM | kMVKMTLFmtCapsBlend),
+	kMVKMTLFmtCapsRWC      = (kMVKMTLFmtCapsRC | kMVKMTLFmtCapsWrite),
+	kMVKMTLFmtCapsRWCB     = (kMVKMTLFmtCapsRWC | kMVKMTLFmtCapsBlend),
+	kMVKMTLFmtCapsRWCM     = (kMVKMTLFmtCapsRWC | kMVKMTLFmtCapsMSAA),
+	kMVKMTLFmtCapsRWCMB    = (kMVKMTLFmtCapsRWCM | kMVKMTLFmtCapsBlend),
+	kMVKMTLFmtCapsRFCMRB   = (kMVKMTLFmtCapsRCMB | kMVKMTLFmtCapsFilter | kMVKMTLFmtCapsResolve),
+	kMVKMTLFmtCapsRFWCMB   = (kMVKMTLFmtCapsRWCMB | kMVKMTLFmtCapsFilter),
+	kMVKMTLFmtCapsAll      = (kMVKMTLFmtCapsRFWCMB | kMVKMTLFmtCapsResolve),
+
+	kMVKMTLFmtCapsDRM      = (kMVKMTLFmtCapsDSAtt | kMVKMTLFmtCapsRead | kMVKMTLFmtCapsMSAA),
+	kMVKMTLFmtCapsDRMR     = (kMVKMTLFmtCapsDRM | kMVKMTLFmtCapsResolve),
+	kMVKMTLFmtCapsDRFMR    = (kMVKMTLFmtCapsDRMR | kMVKMTLFmtCapsFilter),
+
+} MVKMTLFmtCaps;
 
 
 #pragma mark -
@@ -52,10 +87,14 @@ typedef struct {
 	bool hasReportedSubstitution;
 
 	inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); };
+
 	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid); };
 	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlPixelFormatSubstitute != MTLPixelFormatInvalid); };
+	inline MTLPixelFormat getMTLPixelFormatOrSubstitute() const { return mtlPixelFormat ? mtlPixelFormat : mtlPixelFormatSubstitute; }
+
 	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); };
 	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
+	inline MTLVertexFormat getMTLVertexFormatOrSubstitute() const { return mtlVertexFormat ? mtlVertexFormat : mtlVertexFormatSubstitute; }
 } MVKVkFormatDesc;
 
 /** Describes the properties of a MTLPixelFormat or MTLVertexFormat. */
@@ -65,19 +104,10 @@ typedef struct {
 		MTLVertexFormat mtlVertexFormat;
 	};
 	VkFormat vkFormat;
-	MVKOSVersion sinceIOSVersion;
-	MVKOSVersion sinceMacOSVersion;
+	MVKMTLFmtCaps mtlFmtCaps;
 	const char* name;
 
-	inline MVKOSVersion sinceOSVersion() const {
-#if MVK_IOS
-		return sinceIOSVersion;
-#endif
-#if MVK_MACOS
-		return sinceMacOSVersion;
-#endif
-	}
-	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mvkOSVersion() >= sinceOSVersion()); };
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mtlFmtCaps != kMVKMTLFmtCapsNone); };
 } MVKMTLFormatDesc;
 
 
@@ -94,6 +124,9 @@ public:
 
 	/** Returns whether the VkFormat is supported by this implementation. */
 	bool vkFormatIsSupported(VkFormat vkFormat);
+
+	/** Returns whether the VkFormat is supported by this implementation, or can be substituted by one that is. */
+	bool vkFormatIsSupportedOrSubstitutable(VkFormat vkFormat);
 
 	/** Returns whether the MTLPixelFormat is supported by this implementation. */
 	bool mtlPixelFormatIsSupported(MTLPixelFormat mtlFormat);
@@ -199,6 +232,12 @@ public:
 	/** Returns the default properties for the specified Vulkan format. */
 	VkFormatProperties getVkFormatProperties(VkFormat vkFormat);
 
+	/** Returns the Metal format capabilities supported by the specified Vulkan format. */
+	MVKMTLFmtCaps getVkFormatCapabilities(VkFormat vkFormat);
+
+	/** Returns the Metal format capabilities supported by the specified Metal format. */
+	MVKMTLFmtCaps getMTLPixelFormatCapabilities(MTLPixelFormat mtlFormat);
+
 	/** Returns the name of the specified Vulkan format. */
 	const char* getVkFormatName(VkFormat vkFormat);
 
@@ -235,23 +274,38 @@ public:
 
 	MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice);
 
-	MVKPixelFormats() : MVKPixelFormats(nullptr, nil) {}
+	MVKPixelFormats();
 
 protected:
 	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);
 	MVKVkFormatDesc& getVkFormatDesc(MTLPixelFormat mtlFormat);
+	MVKMTLFormatDesc& getMTLPixelFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
+	MVKMTLFormatDesc& getMTLVertexFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
+	VkFormatFeatureFlags getOptimalTilingFeatures(MVKMTLFmtCaps mtlFmtCaps);
+	VkFormatFeatureFlags getLinearTilingFeatures(MVKMTLFmtCaps mtlFmtCaps, MVKFormatType mvkFmtType);
+	VkFormatFeatureFlags getBufferFeatures(MVKMTLFmtCaps mtlFmtTexCaps, MVKMTLFmtCaps mtlFmtVtxCaps, MVKFormatType mvkFmtType);
+	void init(id<MTLDevice> mtlDevice);
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
-	void buildFormatMaps();
-	void modifyFormatCapabilitiesForMTLDevice(id<MTLDevice> mtlDevice);
-	void disableMTLPixelFormat(MTLPixelFormat mtlFormat);
+	void buildMTLFormatMaps();
+	void buildVkFormatMaps();
+	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
+	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
+									   MTLFeatureSet mtlFeatSet,
+									   MTLPixelFormat mtlPixFmt,
+									   MVKMTLFmtCaps mtlFmtCaps);
+	void addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
+										MTLFeatureSet mtlFeatSet,
+										MTLVertexFormat mtlVtxFmt,
+										MVKMTLFmtCaps mtlFmtCaps);
 
 	template<typename T>
 	void testFmt(const T v1, const T v2, const char* fmtName, const char* funcName);
-	void test();
+	void testProps(const VkFormatProperties p1, const VkFormatProperties p2, const char* fmtName);
+	void test(id<MTLDevice> mtlDevice);
 
 	MVKVulkanAPIObject* _apiObject;
 	MVKVkFormatDesc _vkFormatDescriptions[_vkFormatCount];

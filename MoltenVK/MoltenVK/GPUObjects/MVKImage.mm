@@ -178,13 +178,13 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 #if MVK_MACOS
 	// Metal on macOS does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
 	if ( !_isLinear ) {
-		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
+		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
 	}
 #endif
 #if MVK_IOS
 	// Only transient attachments may use memoryless storage
 	if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
-		mvkDisableFlag(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
+		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
 	}
 #endif
 	return VK_SUCCESS;
@@ -429,20 +429,20 @@ MTLTextureUsage MVKImage::getMTLTextureUsage() {
 		pixFmts->mtlPixelFormatIsDepthFormat(_mtlPixelFormat) &&
 		pixFmts->mtlPixelFormatIsStencilFormat(_mtlPixelFormat)) {
 
-		mvkDisableFlag(usage, MTLTextureUsagePixelFormatView);
+		mvkDisableFlags(usage, MTLTextureUsagePixelFormatView);
 	}
 
 	// If this format doesn't support being rendered to, disable MTLTextureUsageRenderTarget.
 	if ( !getSupportsAnyFormatFeature(VK_FORMAT_FEATURE_BLIT_DST_BIT |
 									  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
 									  VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
-		mvkDisableFlag(usage, MTLTextureUsageRenderTarget);
+		mvkDisableFlags(usage, MTLTextureUsageRenderTarget);
 	}
 
 #if MVK_MACOS
 	// If this is a 3D compressed texture, tell Metal we might write to it.
 	if (_is3DCompressed) {
-		mvkEnableFlag(usage, MTLTextureUsageShaderWrite);
+		mvkEnableFlags(usage, MTLTextureUsageShaderWrite);
 	}
 #endif
 
@@ -634,7 +634,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_mtlPixelFormat = pixFmts->getMTLPixelFormatFromVkFormat(pCreateInfo->format);
 	_usage = pCreateInfo->usage;
 
-	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !getDevice()->_pMetalFeatures->native3DCompressedTextures;
+	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatTypeFromVkFormat(pCreateInfo->format) == kMVKFormatCompressed) && !_device->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
@@ -705,7 +705,7 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	if (isCompressed && !is2D) {
 		if (getImageType() != VK_IMAGE_TYPE_3D) {
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D or 3D images."));
-		} else if (!getDevice()->_pMetalFeatures->native3DCompressedTextures && !mvkCanDecodeFormat(pCreateInfo->format)) {
+		} else if (!_device->_pMetalFeatures->native3DCompressedTextures && !mvkCanDecodeFormat(pCreateInfo->format)) {
 			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", getPixelFormats()->getVkFormatName(pCreateInfo->format)));
 		}
 	}
@@ -896,7 +896,7 @@ id<MTLTexture> MVKImageView::newMTLTexture() {
         mtlTextureType = MTLTextureType3D;
         sliceRange = NSMakeRange(0, 1);
     }
-    if (getDevice()->_pMetalFeatures->nativeTextureSwizzle && _packedSwizzle) {
+    if (_device->_pMetalFeatures->nativeTextureSwizzle && _packedSwizzle) {
         return [_image->getMTLTexture() newTextureViewWithPixelFormat: _mtlPixelFormat
                                                           textureType: mtlTextureType
                                                                levels: NSMakeRange(_subresourceRange.baseMipLevel, _subresourceRange.levelCount)
@@ -913,27 +913,24 @@ id<MTLTexture> MVKImageView::newMTLTexture() {
 
 #pragma mark Construction
 
-// device and _image may be nil when a temporary instance
-// is constructed to validate image view capabilities
 MVKImageView::MVKImageView(MVKDevice* device,
 						   const VkImageViewCreateInfo* pCreateInfo,
 						   const MVKConfiguration* pAltMVKConfig) : MVKVulkanAPIDeviceObject(device) {
 	_image = (MVKImage*)pCreateInfo->image;
-	_usage = _image ? _image->_usage : 0;
+	_usage = _image->_usage;
 
-	auto* next = (VkStructureType*)pCreateInfo->pNext;
+	auto* next = (MVKVkAPIStructHeader*)pCreateInfo->pNext;
 	while (next) {
-		switch (*next) {
-		case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
-			auto* pViewUsageInfo = (VkImageViewUsageCreateInfo*)next;
-			if (!(pViewUsageInfo->usage & ~_usage))
-				_usage = pViewUsageInfo->usage;
-			next = (VkStructureType*)pViewUsageInfo->pNext;
-			break;
-		}
-		default:
-			next = (VkStructureType*)((VkImageViewCreateInfo*)next)->pNext;
-			break;
+		switch ((uint32_t)next->sType) {
+			case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
+				auto* pViewUsageInfo = (VkImageViewUsageCreateInfo*)next;
+				if (!(pViewUsageInfo->usage & ~_usage)) { _usage = pViewUsageInfo->usage; }
+				next = (MVKVkAPIStructHeader*)next->pNext;
+				break;
+			}
+			default:
+				next = (MVKVkAPIStructHeader*)next->pNext;
+				break;
 		}
 	}
 
@@ -942,20 +939,21 @@ MVKImageView::MVKImageView(MVKDevice* device,
 	// Remember the subresource range, and determine the actual number of mip levels and texture slices
     _subresourceRange = pCreateInfo->subresourceRange;
 	if (_subresourceRange.levelCount == VK_REMAINING_MIP_LEVELS) {
-		_subresourceRange.levelCount = _image ? (_image->getMipLevelCount() - _subresourceRange.baseMipLevel) : 1;
+		_subresourceRange.levelCount = _image->getMipLevelCount() - _subresourceRange.baseMipLevel;
 	}
 	if (_subresourceRange.layerCount == VK_REMAINING_ARRAY_LAYERS) {
-		_subresourceRange.layerCount = _image ? (_image->getLayerCount() - _subresourceRange.baseArrayLayer) : 1;
+		_subresourceRange.layerCount = _image->getLayerCount() - _subresourceRange.baseArrayLayer;
 	}
 
-	bool useSwizzle;
-	bool isMultisample = _image ? _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT : false;
 	_mtlTexture = nil;
-    _mtlPixelFormat = getSwizzledMTLPixelFormat(pCreateInfo->format, pCreateInfo->components, useSwizzle,
-												(_device ? _device->_pMVKConfig : pAltMVKConfig));
+	bool useSwizzle;
+	setConfigurationResult(validateSwizzledMTLPixelFormat(pCreateInfo, getPixelFormats(), this,
+														  _device->_pMetalFeatures->nativeTextureSwizzle,
+														  _device->_pMVKConfig->fullImageViewSwizzle,
+														  _mtlPixelFormat, useSwizzle));
 	_packedSwizzle = useSwizzle ? mvkPackSwizzle(pCreateInfo->components) : 0;
-	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType, isMultisample);
-
+	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType,
+														   _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT);
 	initMTLTextureViewSupport();
 }
 
@@ -982,71 +980,74 @@ void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateI
 	}
 }
 
-// Returns a MTLPixelFormat, based on the MTLPixelFormat converted from the VkFormat, but possibly
-// modified by the swizzles defined in the VkComponentMapping of the VkImageViewCreateInfo.
-// Metal prior to version 3.0 does not support general per-texture swizzles, so if the swizzle is not an
-// identity swizzle, this function attempts to find an alternate MTLPixelFormat that coincidentally
-// matches the swizzled format.
-// If a replacement MTLFormat was found, it is returned and useSwizzle is set to false.
-// If a replacement MTLFormat could not be found, the original MTLPixelFormat is returned, and the
-// useSwizzle is set to true, indicating that either native or shader swizzling should be used for
-// this image view.
-// The config is used to test whether full shader swizzle support is available, and to report an error if not.
-MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
-													   VkComponentMapping components,
-													   bool& useSwizzle,
-													   const MVKConfiguration* pMVKConfig) {
-
-	// Attempt to find a valid format transformation swizzle first.
-	MTLPixelFormat mtlPF = getPixelFormats()->getMTLPixelFormatFromVkFormat(format);
+VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo,
+													  MVKPixelFormats* mvkPixFmts,
+													  MVKVulkanAPIObject* apiObject,
+													  bool hasNativeSwizzleSupport,
+													  bool hasShaderSwizzleSupport,
+													  MTLPixelFormat& mtlPixFmt,
+													  bool& useSwizzle) {
 	useSwizzle = false;
+	mtlPixFmt = mvkPixFmts->getMTLPixelFormatFromVkFormat(pCreateInfo->format);
+	VkComponentMapping components = pCreateInfo->components;
 
 	#define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(components, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )
 	#define VK_COMPONENT_SWIZZLE_ANY       VK_COMPONENT_SWIZZLE_MAX_ENUM
 
-	switch (mtlPF) {
+	// If we have an identity swizzle, we're all good.
+	if (SWIZZLE_MATCHES(R, G, B, A)) {
+		return VK_SUCCESS;
+	}
+
+	switch (mtlPixFmt) {
 		case MTLPixelFormatR8Unorm:
 			if (SWIZZLE_MATCHES(ZERO, ANY, ANY, R)) {
-				return MTLPixelFormatA8Unorm;
+				mtlPixFmt = MTLPixelFormatA8Unorm;
+				return VK_SUCCESS;
 			}
 			break;
 
 		case MTLPixelFormatA8Unorm:
 			if (SWIZZLE_MATCHES(A, ANY, ANY, ZERO)) {
-				return MTLPixelFormatR8Unorm;
+				mtlPixFmt = MTLPixelFormatR8Unorm;
+				return VK_SUCCESS;
 			}
 			break;
 
 		case MTLPixelFormatRGBA8Unorm:
 			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				return MTLPixelFormatBGRA8Unorm;
+				mtlPixFmt = MTLPixelFormatBGRA8Unorm;
+				return VK_SUCCESS;
 			}
 			break;
 
 		case MTLPixelFormatRGBA8Unorm_sRGB:
 			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				return MTLPixelFormatBGRA8Unorm_sRGB;
+				mtlPixFmt = MTLPixelFormatBGRA8Unorm_sRGB;
+				return VK_SUCCESS;
 			}
 			break;
 
 		case MTLPixelFormatBGRA8Unorm:
 			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				return MTLPixelFormatRGBA8Unorm;
+				mtlPixFmt = MTLPixelFormatRGBA8Unorm;
+				return VK_SUCCESS;
 			}
 			break;
 
 		case MTLPixelFormatBGRA8Unorm_sRGB:
 			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				return MTLPixelFormatRGBA8Unorm_sRGB;
+				mtlPixFmt = MTLPixelFormatRGBA8Unorm_sRGB;
+				return VK_SUCCESS;
 			}
 			break;
 
 		case MTLPixelFormatDepth32Float_Stencil8:
 			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-				mtlPF = MTLPixelFormatX32_Stencil8;
+			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+				mtlPixFmt = MTLPixelFormatX32_Stencil8;
 				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
-					return mtlPF;
+					return VK_SUCCESS;
 				}
 			}
 			break;
@@ -1054,10 +1055,10 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
 #if MVK_MACOS
 		case MTLPixelFormatDepth24Unorm_Stencil8:
 			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (_subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-				mtlPF = MTLPixelFormatX24_Stencil8;
+			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+				mtlPixFmt = MTLPixelFormatX24_Stencil8;
 				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
-					return mtlPF;
+					return VK_SUCCESS;
 				}
 			}
 			break;
@@ -1067,22 +1068,20 @@ MTLPixelFormat MVKImageView::getSwizzledMTLPixelFormat(VkFormat format,
 			break;
 	}
 
-	// No format transformation swizzles were found, so unless we have an identity swizzle, we'll need to use shader swizzling.
-	if ( !SWIZZLE_MATCHES(R, G, B, A)) {
-		useSwizzle = true;
-
-		if ( !pMVKConfig->fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle ) {
-			const char* vkCmd = _image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX";
-			const char* errMsg = ("The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
-								  " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
-								  " be enabled via the MVKConfiguration::fullImageViewSwizzle config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable.");
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, errMsg, vkCmd,
-											   mvkVkComponentSwizzleName(components.r), mvkVkComponentSwizzleName(components.g),
-											   mvkVkComponentSwizzleName(components.b), mvkVkComponentSwizzleName(components.a)));
-		}
+	// No format transformation swizzles were found, so we'll need to use either native or shader swizzling.
+	useSwizzle = true;
+	if (hasNativeSwizzleSupport || hasShaderSwizzleSupport ) {
+		return VK_SUCCESS;
 	}
 
-	return mtlPF;
+	// Oh, oh. Neither native or shader swizzling is supported.
+	return apiObject->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
+								  "The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
+								  " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
+								  " be enabled via the MVKConfiguration::fullImageViewSwizzle config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable.",
+								  pCreateInfo->image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX",
+								  mvkVkComponentSwizzleName(components.r), mvkVkComponentSwizzleName(components.g),
+								  mvkVkComponentSwizzleName(components.b), mvkVkComponentSwizzleName(components.a));
 }
 
 // Determine whether this image view should use a Metal texture view,
@@ -1104,7 +1103,7 @@ void MVKImageView::initMTLTextureViewSupport() {
 		 ((_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray) && is3D)) &&
 		_subresourceRange.levelCount == _image->_mipLevels &&
 		(is3D || _subresourceRange.layerCount == _image->_arrayLayers) &&
-		(!getDevice()->_pMetalFeatures->nativeTextureSwizzle || !_packedSwizzle)) {
+		(!_device->_pMetalFeatures->nativeTextureSwizzle || !_packedSwizzle)) {
 		_useMTLTextureView = false;
 	}
 }

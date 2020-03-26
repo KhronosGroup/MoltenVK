@@ -163,21 +163,8 @@ size_t mvkVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t 
  */
 size_t mvkMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 
-/** 
- * Returns the default properties for the specified Vulkan format.
- *
- * Not all MTLPixelFormats returned by this function are supported by all GPU's, and, as a
- * result, MoltenVK may return a different value from the vkGetPhysicalDeviceFormatProperties()
- * function than is returned here. Use the vkGetPhysicalDeviceFormatProperties() function to
- * return the properties for a particular GPU.
- *
- * Setting assumeGPUSupportsDefault to true allows the default format properties to be returned.
- * The assumeGPUSupportsDefault flag can be set to false if it is already known that the format
- * is not supported by a particular GPU for images, in which case all of the returned properties
- * will be disabled, except possibly VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT, which may be supported
- * for the format even without image support.
- */
-VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat, bool assumeGPUSupportsDefault = true);
+/** Returns the default properties for the specified Vulkan format. */
+VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat);
 
 /** Returns the name of the specified Vulkan format. */
 const char* mvkVkFormatName(VkFormat vkFormat);

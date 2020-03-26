@@ -467,6 +467,11 @@ void MVKCmdResolveImage::setContent(VkImage srcImage,
 
     _dstImage->getTransferDescriptorData(_transferImageData);
 	_transferImageData.samples = _srcImage->getSampleCount();
+
+	// Validate
+	if ( !mvkAreAllFlagsEnabled(getPixelFormats()->getMTLPixelFormatCapabilities(_dstImage->getMTLPixelFormat()), kMVKMTLFmtCapsResolve) ) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdResolveImage(): %s cannot be used as a resolve destination on this device.", getPixelFormats()->getVkFormatName(_dstImage->getVkFormat())));
+	}
 }
 
 /**
