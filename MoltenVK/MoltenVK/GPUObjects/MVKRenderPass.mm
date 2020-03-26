@@ -197,24 +197,33 @@ void MVKRenderSubpass::populateClearAttachments(MVKVector<VkClearAttachment>& cl
 	}
 }
 
-/**
- * Returns whether this subpass uses the attachment at the specified index within the
- * parent renderpass, as any of input, color, resolve, or depth/stencil attachment type.
- */
-bool MVKRenderSubpass::isUsingAttachmentAt(uint32_t rpAttIdx) {
+//Returns the format capabilities required by this render subpass.
+// The Vulkan spec is unclear about whether a subpass can use an attachment in multiple places,
+// so accumulate the capabilities from all possible attachments, just to be safe.
+MVKMTLFmtCaps MVKRenderSubpass::getRequiredFormatCapabilitiesForAttachmentAt(uint32_t rpAttIdx) {
+	MVKMTLFmtCaps caps = kMVKMTLFmtCapsNone;
 
 	for (auto& att : _inputAttachments) {
-		if (att.attachment == rpAttIdx) { return true; }
+		if (att.attachment == rpAttIdx) {
+			mvkEnableFlags(caps, kMVKMTLFmtCapsNone);	// TODO: input attachments are current unsupported
+			break;
+		}
 	}
 	for (auto& att : _colorAttachments) {
-		if (att.attachment == rpAttIdx) { return true; }
+		if (att.attachment == rpAttIdx) {
+			mvkEnableFlags(caps, kMVKMTLFmtCapsColorAtt);
+			break;
+		}
 	}
 	for (auto& att : _resolveAttachments) {
-		if (att.attachment == rpAttIdx) { return true; }
+		if (att.attachment == rpAttIdx) {
+			mvkEnableFlags(caps, kMVKMTLFmtCapsResolve);
+			break;
+		}
 	}
-	if (_depthStencilAttachment.attachment == rpAttIdx) { return true; }
+	if (_depthStencilAttachment.attachment == rpAttIdx) { mvkEnableFlags(caps, kMVKMTLFmtCapsDSAtt); }
 
-	return false;
+	return caps;
 }
 
 MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
@@ -310,33 +319,35 @@ bool MVKRenderPassAttachment::shouldUseClearAttachment(MVKRenderSubpass* subpass
 
 MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 												 const VkAttachmentDescription* pCreateInfo) {
+	_info = *pCreateInfo;
 	_renderPass = renderPass;
 	_attachmentIndex = uint32_t(_renderPass->_attachments.size());
 
-	// Determine the indices of the first and last render subpasses to use that attachment.
+	// Validate pixel format is supported
+	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
+	if ( !pixFmts->vkFormatIsSupportedOrSubstitutable(_info.format) ) {
+		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", _renderPass->getPixelFormats()->getVkFormatName(_info.format)));
+	}
+
+	// Determine the indices of the first and last render subpasses to use this attachment.
 	_firstUseSubpassIdx = kMVKUndefinedLargeUInt32;
 	_lastUseSubpassIdx = 0;
 	for (auto& subPass : _renderPass->_subpasses) {
-		if (subPass.isUsingAttachmentAt(_attachmentIndex)) {
+		// If it uses this attachment, the subpass will identify required format capabilities.
+		MVKMTLFmtCaps reqCaps = subPass.getRequiredFormatCapabilitiesForAttachmentAt(_attachmentIndex);
+		if (reqCaps) {
 			uint32_t spIdx = subPass._subpassIndex;
-			_firstUseSubpassIdx = MIN(spIdx, _firstUseSubpassIdx);
-			_lastUseSubpassIdx = MAX(spIdx, _lastUseSubpassIdx);
+			_firstUseSubpassIdx = min(spIdx, _firstUseSubpassIdx);
+			_lastUseSubpassIdx = max(spIdx, _lastUseSubpassIdx);
+
+			// Validate that the attachment pixel format supports the capabilities required by the subpass.
+			if ( !mvkAreAllFlagsEnabled(pixFmts->getVkFormatCapabilities(_info.format), reqCaps) ) {
+				_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s on this device does not support the VkFormat attachment capabilities required by the subpass at index %d.", _renderPass->getPixelFormats()->getVkFormatName(_info.format), spIdx));
+			}
 		}
 	}
-
-	_info = validate(pCreateInfo);
 }
 
-// Validate and potentially modify the create info
-VkAttachmentDescription MVKRenderPassAttachment::validate(const VkAttachmentDescription* pCreateInfo) {
-	VkAttachmentDescription info = *pCreateInfo;
-
-	if ( !_renderPass->getPixelFormats()->getMTLPixelFormatFromVkFormat(info.format) ) {
-		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", _renderPass->getPixelFormats()->getVkFormatName(info.format)));
-	}
-
-	return info;
-}
 
 #pragma mark -
 #pragma mark MVKRenderPass

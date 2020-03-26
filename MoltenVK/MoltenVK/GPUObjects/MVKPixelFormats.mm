@@ -120,6 +120,10 @@ bool MVKPixelFormats::vkFormatIsSupported(VkFormat vkFormat) {
 	return getVkFormatDesc(vkFormat).isSupported();
 }
 
+bool MVKPixelFormats::vkFormatIsSupportedOrSubstitutable(VkFormat vkFormat) {
+	return getVkFormatDesc(vkFormat).isSupportedOrSubstitutable();
+}
+
 bool MVKPixelFormats::mtlPixelFormatIsSupported(MTLPixelFormat mtlFormat) {
 	return getMTLPixelFormatDesc(mtlFormat).isSupported();
 }
@@ -260,6 +264,14 @@ VkFormatProperties MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
 	return	getVkFormatDesc(vkFormat).properties;
 }
 
+MVKMTLFmtCaps MVKPixelFormats::getVkFormatCapabilities(VkFormat vkFormat) {
+	return getMTLPixelFormatDesc(vkFormat).mtlFmtCaps;
+}
+
+MVKMTLFmtCaps MVKPixelFormats::getMTLPixelFormatCapabilities(MTLPixelFormat mtlFormat) {
+	return getMTLPixelFormatDesc(mtlFormat).mtlFmtCaps;
+}
+
 const char* MVKPixelFormats::getVkFormatName(VkFormat vkFormat) {
     return getVkFormatDesc(vkFormat).name;
 }
@@ -389,21 +401,31 @@ MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(VkFormat vkFormat) {
 	return _vkFormatDescriptions[fmtIdx];
 }
 
+// Return a reference to the Vulkan format descriptor corresponding to the MTLPixelFormat.
+MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(MTLPixelFormat mtlFormat) {
+	return getVkFormatDesc(getMTLPixelFormatDesc(mtlFormat).vkFormat);
+}
+
+// Return a reference to the Metal format descriptor corresponding to the VkFormat.
+MVKMTLFormatDesc& MVKPixelFormats::getMTLPixelFormatDesc(VkFormat vkFormat) {
+	return getMTLPixelFormatDesc(getVkFormatDesc(vkFormat).getMTLPixelFormatOrSubstitute());
+}
+
 // Return a reference to the Metal format descriptor corresponding to the MTLPixelFormat.
 MVKMTLFormatDesc& MVKPixelFormats::getMTLPixelFormatDesc(MTLPixelFormat mtlFormat) {
 	uint16_t fmtIdx = (mtlFormat < _mtlPixelFormatCount) ? _mtlFormatDescIndicesByMTLPixelFormats[mtlFormat] : 0;
 	return _mtlPixelFormatDescriptions[fmtIdx];
 }
 
+// Return a reference to the Metal format descriptor corresponding to the VkFormat.
+MVKMTLFormatDesc& MVKPixelFormats::getMTLVertexFormatDesc(VkFormat vkFormat) {
+	return getMTLVertexFormatDesc(getVkFormatDesc(vkFormat).getMTLVertexFormatOrSubstitute());
+}
+
 // Return a reference to the Metal format descriptor corresponding to the MTLVertexFormat.
 MVKMTLFormatDesc& MVKPixelFormats::getMTLVertexFormatDesc(MTLVertexFormat mtlFormat) {
 	uint16_t fmtIdx = (mtlFormat < _mtlVertexFormatCount) ? _mtlFormatDescIndicesByMTLVertexFormats[mtlFormat] : 0;
 	return _mtlVertexFormatDescriptions[fmtIdx];
-}
-
-// Return a reference to the Vulkan format descriptor corresponding to the MTLPixelFormat.
-MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(MTLPixelFormat mtlFormat) {
-	return getVkFormatDesc(getMTLPixelFormatDesc(mtlFormat).vkFormat);
 }
 
 
@@ -973,8 +995,7 @@ void MVKPixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 													MTLPixelFormat mtlPixFmt,
 													MVKMTLFmtCaps mtlFmtCaps) {
 	if ( [mtlDevice supportsFeatureSet: mtlFeatSet] ) {
-		auto& fmtDesc = getMTLPixelFormatDesc(mtlPixFmt);
-		fmtDesc.mtlFmtCaps = (MVKMTLFmtCaps)(fmtDesc.mtlFmtCaps | mtlFmtCaps);
+		mvkEnableFlags(getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps, mtlFmtCaps);
 	}
 }
 
@@ -984,8 +1005,7 @@ void MVKPixelFormats::addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 													 MTLVertexFormat mtlVtxFmt,
 													 MVKMTLFmtCaps mtlFmtCaps) {
 	if ( [mtlDevice supportsFeatureSet: mtlFeatSet] ) {
-		auto& fmtDesc = getMTLVertexFormatDesc(mtlVtxFmt);
-		fmtDesc.mtlFmtCaps = (MVKMTLFmtCaps)(fmtDesc.mtlFmtCaps | mtlFmtCaps);
+		mvkEnableFlags(getMTLVertexFormatDesc(mtlVtxFmt).mtlFmtCaps, mtlFmtCaps);
 	}
 }
 
@@ -1159,8 +1179,8 @@ void MVKPixelFormats::buildVkFormatMaps() {
 
 			// Vulkan format features
 			MVKFormatType fmtType = vkDesc.formatType;
-			MVKMTLFmtCaps mtlPixFmtCaps = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat ?: vkDesc.mtlPixelFormatSubstitute).mtlFmtCaps;
-			MVKMTLFmtCaps mtlVtxFmtCaps = getMTLVertexFormatDesc(vkDesc.mtlVertexFormat ?: vkDesc.mtlVertexFormatSubstitute).mtlFmtCaps;
+			MVKMTLFmtCaps mtlPixFmtCaps = getMTLPixelFormatDesc(vkFmt).mtlFmtCaps;
+			MVKMTLFmtCaps mtlVtxFmtCaps = getMTLVertexFormatDesc(vkFmt).mtlFmtCaps;
 			vkDesc.properties = { getLinearTilingFeatures(mtlPixFmtCaps, fmtType),
 								  getOptimalTilingFeatures(mtlPixFmtCaps),
 								  getBufferFeatures(mtlPixFmtCaps, mtlVtxFmtCaps, fmtType) };

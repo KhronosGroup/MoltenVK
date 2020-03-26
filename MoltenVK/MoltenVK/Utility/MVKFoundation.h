@@ -497,26 +497,26 @@ bool mvkSetOrClear(T* pDest, const T* pSrc) {
 #pragma mark Boolean flags
 
 /** Enables the flags (sets bits to 1) within the value parameter specified by the bitMask parameter. */
-template<typename T1, typename T2>
-void mvkEnableFlags(T1& value, const T2 bitMask) { value |= bitMask; }
+template<typename Tv, typename Tm>
+void mvkEnableFlags(Tv& value, const Tm bitMask) { value = (Tv)(value | bitMask); }
 
 /** Disables the flags (sets bits to 0) within the value parameter specified by the bitMask parameter. */
-template<typename T1, typename T2>
-void mvkDisableFlags(T1& value, const T2 bitMask) { value &= ~bitMask; }
+template<typename Tv, typename Tm>
+void mvkDisableFlags(Tv& value, const Tm bitMask) { value = (Tv)(value & ~(Tv)bitMask); }
 
 /** Returns whether the specified value has ANY of the flags specified in bitMask enabled (set to 1). */
-template<typename T1, typename T2>
-bool mvkIsAnyFlagEnabled(T1 value, const T2 bitMask) { return !!(value & bitMask); }
+template<typename Tv, typename Tm>
+bool mvkIsAnyFlagEnabled(Tv value, const Tm bitMask) { return !!(value & bitMask); }
 
 /** Returns whether the specified value has ALL of the flags specified in bitMask enabled (set to 1). */
-template<typename T1, typename T2>
-bool mvkAreAllFlagsEnabled(T1 value, const T2 bitMask) { return ((value & bitMask) == bitMask); }
+template<typename Tv, typename Tm>
+bool mvkAreAllFlagsEnabled(Tv value, const Tm bitMask) { return ((value & bitMask) == bitMask); }
 
 /** Returns whether the specified value has ONLY one or more of the flags specified in bitMask enabled (set to 1), and none others. */
-template<typename T1, typename T2>
-bool mvkIsOnlyAnyFlagEnabled(T1 value, const T2 bitMask) { return (mvkIsAnyFlagEnabled(value, bitMask) && ((value | bitMask) == bitMask)); }
+template<typename Tv, typename Tm>
+bool mvkIsOnlyAnyFlagEnabled(Tv value, const Tm bitMask) { return (mvkIsAnyFlagEnabled(value, bitMask) && ((value | bitMask) == bitMask)); }
 
 /** Returns whether the specified value has ONLY ALL of the flags specified in bitMask enabled (set to 1), and none others. */
-template<typename T1, typename T2>
-bool mvkAreOnlyAllFlagsEnabled(T1 value, const T2 bitMask) { return (value == bitMask); }
+template<typename Tv, typename Tm>
+bool mvkAreOnlyAllFlagsEnabled(Tv value, const Tm bitMask) { return (value == bitMask); }
 

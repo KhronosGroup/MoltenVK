@@ -87,10 +87,14 @@ typedef struct {
 	bool hasReportedSubstitution;
 
 	inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); };
+
 	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid); };
 	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlPixelFormatSubstitute != MTLPixelFormatInvalid); };
+	inline MTLPixelFormat getMTLPixelFormatOrSubstitute() const { return mtlPixelFormat ? mtlPixelFormat : mtlPixelFormatSubstitute; }
+
 	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); };
 	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
+	inline MTLVertexFormat getMTLVertexFormatOrSubstitute() const { return mtlVertexFormat ? mtlVertexFormat : mtlVertexFormatSubstitute; }
 } MVKVkFormatDesc;
 
 /** Describes the properties of a MTLPixelFormat or MTLVertexFormat. */
@@ -120,6 +124,9 @@ public:
 
 	/** Returns whether the VkFormat is supported by this implementation. */
 	bool vkFormatIsSupported(VkFormat vkFormat);
+
+	/** Returns whether the VkFormat is supported by this implementation, or can be substituted by one that is. */
+	bool vkFormatIsSupportedOrSubstitutable(VkFormat vkFormat);
 
 	/** Returns whether the MTLPixelFormat is supported by this implementation. */
 	bool mtlPixelFormatIsSupported(MTLPixelFormat mtlFormat);
@@ -225,6 +232,12 @@ public:
 	/** Returns the default properties for the specified Vulkan format. */
 	VkFormatProperties getVkFormatProperties(VkFormat vkFormat);
 
+	/** Returns the Metal format capabilities supported by the specified Vulkan format. */
+	MVKMTLFmtCaps getVkFormatCapabilities(VkFormat vkFormat);
+
+	/** Returns the Metal format capabilities supported by the specified Metal format. */
+	MVKMTLFmtCaps getMTLPixelFormatCapabilities(MTLPixelFormat mtlFormat);
+
 	/** Returns the name of the specified Vulkan format. */
 	const char* getVkFormatName(VkFormat vkFormat);
 
@@ -266,7 +279,9 @@ public:
 protected:
 	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);
 	MVKVkFormatDesc& getVkFormatDesc(MTLPixelFormat mtlFormat);
+	MVKMTLFormatDesc& getMTLPixelFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
+	MVKMTLFormatDesc& getMTLVertexFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
 	VkFormatFeatureFlags getOptimalTilingFeatures(MVKMTLFmtCaps mtlFmtCaps);
 	VkFormatFeatureFlags getLinearTilingFeatures(MVKMTLFmtCaps mtlFmtCaps, MVKFormatType mvkFmtType);
