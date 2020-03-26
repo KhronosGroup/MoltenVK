@@ -719,7 +719,6 @@ protected:
 
 /**
  * This mixin class adds the ability for an object to track the device that created it.
- * Implementation supports an instance where the device is null.
  *
  * As a mixin, this class should only be used as a component of multiple inheritance.
  * Any class that inherits from this class should also inherit from MVKBaseObject.
@@ -733,18 +732,19 @@ public:
 	inline MVKDevice* getDevice() { return _device; }
 
 	/** Returns the underlying Metal device. */
-	inline id<MTLDevice> getMTLDevice() { return _device ? _device->getMTLDevice() : nil; }
+	inline id<MTLDevice> getMTLDevice() { return _device->getMTLDevice(); }
 
 	/** Returns info about the pixel format supported by the physical device. */
-	inline MVKPixelFormats* getPixelFormats() { return _device ? _device->getPixelFormats() : mvkPlatformPixelFormats(); }
+	inline MVKPixelFormats* getPixelFormats() { return _device->getPixelFormats(); }
 
 	/** Constructs an instance for the specified device. */
-    MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) {}
+    MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
 
 	virtual ~MVKDeviceTrackingMixin() {}
 
 protected:
 	virtual MVKBaseObject* getBaseObject() = 0;
+
 	MVKDevice* _device;
 };
 

@@ -323,6 +323,30 @@ public:
 	 */
 	void populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc);
 
+	/**
+	 * Returns, in mtlPixFmt, a MTLPixelFormat, based on the MTLPixelFormat converted from
+	 * the VkFormat, but possibly modified by the swizzles defined in the VkComponentMapping
+	 * of the VkImageViewCreateInfo.
+	 *
+	 * Metal prior to version 3.0 does not support native per-texture swizzles, so if the swizzle
+	 * is not an identity swizzle, this function attempts to find an alternate MTLPixelFormat that
+	 * coincidentally matches the swizzled format.
+	 *
+	 * If a replacement MTLFormat was found, it is returned and useSwizzle is set to false.
+	 * If a replacement MTLFormat could not be found, the original MTLPixelFormat is returned,
+	 * and the useSwizzle is set to true, indicating that either native or shader swizzling
+	 * should be used for this image view.
+	 *
+	 * This is a static function that can be used to validate image view formats prior to creating one.
+	 */
+	static VkResult validateSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo,
+												   MVKPixelFormats* mvkPixFmts,
+												   MVKVulkanAPIObject* apiObject,
+												   bool hasNativeSwizzleSupport,
+												   bool hasShaderSwizzleSupport,
+												   MTLPixelFormat& mtlPixFmt,
+												   bool& useSwizzle);
+
 
 #pragma mark Construction
 
@@ -336,10 +360,6 @@ protected:
 	void propogateDebugName() override;
 	id<MTLTexture> newMTLTexture();
 	void initMTLTextureViewSupport();
-    MTLPixelFormat getSwizzledMTLPixelFormat(VkFormat format,
-											 VkComponentMapping components,
-											 bool& useSwizzle,
-											 const MVKConfiguration* pMVKConfig);
 	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
 
     MVKImage* _image;

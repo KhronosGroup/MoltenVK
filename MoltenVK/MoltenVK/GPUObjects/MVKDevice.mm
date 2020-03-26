@@ -379,9 +379,9 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 
 // If the image format info links portability image view info, test if an image view of that configuration is supported
 bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo) {
-	auto* next = (VkStructureType*)pImageFormatInfo->pNext;
+	auto* next = (MVKVkAPIStructHeader*)pImageFormatInfo->pNext;
 	while (next) {
-		switch ((int32_t)*next) {
+		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_SUPPORT_EXTX: {
 				auto* portImgViewInfo = (VkPhysicalDeviceImageViewSupportEXTX*)next;
 
@@ -390,7 +390,7 @@ bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageForma
 					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
 					.pNext = (VkStructureType*)portImgViewInfo->pNext,
 					.flags = portImgViewInfo->flags,
-					.image = VK_NULL_HANDLE,
+					.image = nullptr,
 					.viewType = portImgViewInfo->viewType,
 					.format = portImgViewInfo->format,
 					.components = portImgViewInfo->components,
@@ -401,11 +401,15 @@ bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageForma
 						.baseArrayLayer = 0,
 						.layerCount = 1},
 				};
-				MVKImageView imgView(VK_NULL_HANDLE, &viewInfo, _mvkInstance->getMoltenVKConfiguration());
-				return imgView.getConfigurationResult() == VK_SUCCESS;
+				MTLPixelFormat mtlPixFmt;
+				bool useSwizzle;
+				return (MVKImageView::validateSwizzledMTLPixelFormat(&viewInfo, &_pixelFormats, this,
+																	 _metalFeatures.nativeTextureSwizzle,
+																	 _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle,
+																	 mtlPixFmt, useSwizzle) == VK_SUCCESS);
 			}
 			default:
-				next = (VkStructureType*)((VkPhysicalDeviceFeatures2*)next)->pNext;
+				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 		}
 	}

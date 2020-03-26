@@ -34,8 +34,6 @@ using namespace std;
 
 static MVKPixelFormats _platformPixelFormats;
 
-MVKPixelFormats* mvkPlatformPixelFormats() { return &_platformPixelFormats; }
-
 MVK_PUBLIC_SYMBOL bool mvkVkFormatIsSupported(VkFormat vkFormat) {
 	return _platformPixelFormats.vkFormatIsSupported(vkFormat);
 }
