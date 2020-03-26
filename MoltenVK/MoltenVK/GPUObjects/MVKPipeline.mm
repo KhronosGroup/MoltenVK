@@ -1544,7 +1544,7 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 		if (NSSwapLittleIntToHost(hdrComponent) !=  pDevProps->deviceID) { return; }
 
 		reader(pcUUID);			// Pipeline cache UUID
-		if (memcmp(pcUUID, pDevProps->pipelineCacheUUID, VK_UUID_SIZE) != 0) { return; }
+		if (mvkAreEqual(pcUUID, pDevProps->pipelineCacheUUID, VK_UUID_SIZE)) { return; }
 
 		bool done = false;
 		while ( !done ) {
