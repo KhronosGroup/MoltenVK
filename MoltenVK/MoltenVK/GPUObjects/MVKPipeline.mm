@@ -1544,7 +1544,7 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 		if (NSSwapLittleIntToHost(hdrComponent) !=  pDevProps->deviceID) { return; }
 
 		reader(pcUUID);			// Pipeline cache UUID
-		if (mvkAreEqual(pcUUID, pDevProps->pipelineCacheUUID, VK_UUID_SIZE)) { return; }
+		if ( !mvkAreEqual(pcUUID, pDevProps->pipelineCacheUUID, VK_UUID_SIZE) ) { return; }
 
 		bool done = false;
 		while ( !done ) {
@@ -1632,8 +1632,16 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.dispatch_base,
 				opt.texture_1D_as_2D,
 				opt.argument_buffers,
+				opt.enable_base_index_zero,
 				opt.pad_fragment_output_components,
-				opt.texture_buffer_native);
+				opt.ios_support_base_vertex_instance,
+				opt.ios_use_framebuffer_fetch_subpasses,
+				opt.invariant_float_math,
+				opt.emulate_cube_array,
+				opt.enable_decoration_binding,
+				opt.texture_buffer_native,
+				opt.force_active_argument_buffer_resources,
+				opt.force_native_arrays);
 	}
 
 	template<class Archive>
@@ -1671,9 +1679,19 @@ namespace SPIRV_CROSS_NAMESPACE {
 				cs.lod_clamp_min,
 				cs.lod_clamp_max,
 				cs.max_anisotropy,
+				cs.planes,
+				cs.resolution,
+				cs.chroma_filter,
+				cs.x_chroma_offset,
+				cs.y_chroma_offset,
+				cs.swizzle,
+				cs.ycbcr_model,
+				cs.ycbcr_range,
+				cs.bpc,
 				cs.compare_enable,
 				cs.lod_clamp_enable,
-				cs.anisotropy_enable);
+				cs.anisotropy_enable,
+				cs.ycbcr_conversion_enable);
 	}
 
 }
@@ -1721,7 +1739,9 @@ namespace mvk {
 
 	template<class Archive>
 	void serialize(Archive & archive, SPIRVToMSLConversionConfiguration& ctx) {
-		archive(ctx.options, ctx.vertexAttributes, ctx.resourceBindings);
+		archive(ctx.options,
+				ctx.vertexAttributes,
+				ctx.resourceBindings);
 	}
 
 	template<class Archive>
@@ -1740,7 +1760,8 @@ namespace mvk {
 
 template<class Archive>
 void serialize(Archive & archive, MVKShaderModuleKey& k) {
-	archive(k.codeSize, k.codeHash);
+	archive(k.codeSize,
+			k.codeHash);
 }
 
 
