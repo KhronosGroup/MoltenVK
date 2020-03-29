@@ -488,11 +488,11 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 		colorSpaces.push_back(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
 		colorSpaces.push_back(VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT);
 		colorSpaces.push_back(VK_COLOR_SPACE_PASS_THROUGH_EXT);
-		if (mvkOSVersion() >= 10.12) {
+		if (mvkOSVersionIsAtLeast(10.12)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
 		}
-		if (mvkOSVersion() >= 10.14) {
+		if (mvkOSVersionIsAtLeast(10.14)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
@@ -501,25 +501,25 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 #endif
 #if MVK_IOS
 		// iOS 8 doesn't support anything but sRGB.
-		if (mvkOSVersion() >= 9.0) {
+		if (mvkOSVersionIsAtLeast(9.0)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_BT709_NONLINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_PASS_THROUGH_EXT);
 		}
-		if (mvkOSVersion() >= 10.0) {
+		if (mvkOSVersionIsAtLeast(10.0)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
 		}
-		if (mvkOSVersion() >= 12.0) {
+		if (mvkOSVersionIsAtLeast(12.0)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
 		}
-		if (mvkOSVersion() >= 12.3) {
+		if (mvkOSVersionIsAtLeast(12.3)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
 		}
-		if (mvkOSVersion() >= 13.0) {
+		if (mvkOSVersionIsAtLeast(13.0)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
 		}
 #endif
@@ -843,7 +843,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilFeedback = true;
 	}
 
-	if ( mvkOSVersion() >= 13.0 ) {
+	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = true;
 		if ( getSupportsGPUFamily(MTLGPUFamilyApple4) ) {
@@ -896,7 +896,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilFeedback = true;
 	}
 
-	if ( mvkOSVersion() >= 10.15 ) {
+	if ( mvkOSVersionIsAtLeast(10.15) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.native3DCompressedTextures = true;
 		if ( getSupportsGPUFamily(MTLGPUFamilyMac2) ) {
@@ -1046,7 +1046,7 @@ void MVKPhysicalDevice::initFeatures() {
         _features.multiViewport = true;
     }
 
-    if ( mvkOSVersion() >= 10.15 ) {
+    if ( mvkOSVersionIsAtLeast(10.15) ) {
         _features.shaderResourceMinLod = true;
     }
 #endif
@@ -1678,10 +1678,10 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	// (Mac & Apple GPU lists should be mutex on platform)
 	uint32_t mtlVer = 0;
 #if MVK_IOS
-	if (mvkOSVersion() >= 13.0) { mtlVer = 0x30000; }
+	if (mvkOSVersionIsAtLeast(13.0)) { mtlVer = 0x30000; }
 #endif
 #if MVK_MACOS
-	if (mvkOSVersion() >= 10.15) { mtlVer = 0x30000; }
+	if (mvkOSVersionIsAtLeast(10.15)) { mtlVer = 0x30000; }
 #endif
 
 	MTLGPUFamily mtlFam = MTLGPUFamily(0);
