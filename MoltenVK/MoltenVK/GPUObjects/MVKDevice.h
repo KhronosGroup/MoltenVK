@@ -287,9 +287,6 @@ public:
 	
 #pragma mark Metal
 
-	/** Returns whether the underlying MTLDevice supports the GPU family. */
-	bool getSupportsGPUFamily(MTLGPUFamily gpuFamily);
-
 	/** Populates the specified structure with the Metal-specific features of this device. */
 	inline const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
 
