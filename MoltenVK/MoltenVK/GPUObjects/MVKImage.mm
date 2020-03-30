@@ -42,9 +42,9 @@ VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_
 
 VkFormat MVKImage::getVkFormat() { return getPixelFormats()->getVkFormatFromMTLPixelFormat(_mtlPixelFormat); }
 
-bool MVKImage::getIsCompressed() {
-	return getPixelFormats()->getFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
-}
+bool MVKImage::getIsDepthStencil() { return getPixelFormats()->getFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatDepthStencil; }
+
+bool MVKImage::getIsCompressed() { return getPixelFormats()->getFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed; }
 
 VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 	return mvkMipmapLevelSizeFromBaseSize3D(_extent, mipLevel);
@@ -336,7 +336,7 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 		mtlTex = [_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
 															  offset: getDeviceMemoryOffset()
 														 bytesPerRow: _subresources[0].layout.rowPitch];
-	} else if (_deviceMemory->_mtlHeap) {
+	} else if (_deviceMemory->_mtlHeap && !getIsDepthStencil()) {	// Metal support for depth/stencil from heaps is flaky
 		mtlTex = [_deviceMemory->_mtlHeap newTextureWithDescriptor: mtlTexDesc
 															offset: getDeviceMemoryOffset()];
 		if (_isAliasable) [mtlTex makeAliasable];

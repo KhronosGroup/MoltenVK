@@ -65,6 +65,9 @@ public:
     /** Returns the Vulkan image format of this image. */
     VkFormat getVkFormat();
 
+	/** Returns whether this image has a depth or stencil format. */
+	bool getIsDepthStencil();
+
 	/** Returns whether this image is compressed. */
 	bool getIsCompressed();
 
