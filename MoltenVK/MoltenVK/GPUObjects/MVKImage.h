@@ -272,6 +272,60 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKSwapchainImage
+
+/** Represents a Vulkan image used as a rendering destination within a swapchain. */
+class MVKSwapchainImage : public MVKImage {
+
+public:
+
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+
+	/** Binds this resource according to the specified bind information. */
+	VkResult bindDeviceMemory2(const void* pBindInfo) override;
+
+
+#pragma mark Metal
+
+	/**
+	 * Presents the contained drawable to the OS, releases the Metal drawable and its
+	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
+	 *
+	 * If mtlCmdBuff is not nil, the contained drawable is scheduled for presentation using
+	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
+	 * drawable is presented immediately using the present method of the drawable.
+	 */
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff);
+
+
+#pragma mark Construction
+
+	/** Constructs an instance for the specified device and swapchain. */
+	MVKSwapchainImage(MVKDevice* device,
+					  const VkImageCreateInfo* pCreateInfo,
+					  MVKSwapchain* swapchain,
+					  uint32_t swapchainIndex);
+
+	/** Constructs an instance for the specified device and swapchain, without binding to a particular swapchain image index. */
+	MVKSwapchainImage(MVKDevice* device,
+					  const VkImageCreateInfo* pCreateInfo,
+					  MVKSwapchain* swapchain);
+
+	~MVKSwapchainImage() override;
+
+protected:
+	id<MTLTexture> newMTLTexture() override;
+	id<CAMetalDrawable> getCAMetalDrawable();
+	void resetMetalSurface();
+	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
+
+	MVKSwapchain* _swapchain;
+	uint32_t _swapchainIndex;
+};
+
+
+#pragma mark -
 #pragma mark MVKImageView
 
 /** Represents a Vulkan image view. */
@@ -401,58 +455,3 @@ protected:
 	SPIRV_CROSS_NAMESPACE::MSLConstexprSampler _constExprSampler;
 	bool _requiresConstExprSampler;
 };
-
-
-#pragma mark -
-#pragma mark MVKSwapchainImage
-
-/** Represents a Vulkan image used as a rendering destination within a swapchain. */
-class MVKSwapchainImage : public MVKImage {
-
-public:
-
-	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
-
-	/** Binds this resource according to the specified bind information. */
-	VkResult bindDeviceMemory2(const void* pBindInfo) override;
-
-	
-#pragma mark Metal
-
-	/**
-	 * Presents the contained drawable to the OS, releases the Metal drawable and its 
-	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
-	 *
-	 * If mtlCmdBuff is not nil, the contained drawable is scheduled for presentation using
-	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
-	 * drawable is presented immediately using the present method of the drawable.
-	 */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff);
-
-
-#pragma mark Construction
-	
-	/** Constructs an instance for the specified device and swapchain. */
-	MVKSwapchainImage(MVKDevice* device,
-					  const VkImageCreateInfo* pCreateInfo,
-					  MVKSwapchain* swapchain,
-					  uint32_t swapchainIndex);
-
-	/** Constructs an instance for the specified device and swapchain, without binding to a particular swapchain image index. */
-	MVKSwapchainImage(MVKDevice* device,
-					  const VkImageCreateInfo* pCreateInfo,
-					  MVKSwapchain* swapchain);
-
-	~MVKSwapchainImage() override;
-
-protected:
-	id<MTLTexture> newMTLTexture() override;
-	id<CAMetalDrawable> getCAMetalDrawable();
-    void resetMetalSurface();
-    void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
-
-	MVKSwapchain* _swapchain;
-	uint32_t _swapchainIndex;
-};
-

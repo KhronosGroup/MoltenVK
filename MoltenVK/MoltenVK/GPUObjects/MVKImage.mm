@@ -792,6 +792,96 @@ MVKImage::~MVKImage() {
 
 
 #pragma mark -
+#pragma mark MVKSwapchainImage
+
+VkResult MVKSwapchainImage::bindDeviceMemory(MVKDeviceMemory*, VkDeviceSize) {
+	return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+}
+
+VkResult MVKSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
+	const auto* imageInfo = (const VkBindImageMemoryInfo*)pBindInfo;
+	const VkBindImageMemorySwapchainInfoKHR* swapchainInfo = nullptr;
+	for (const auto* next = (const VkBaseInStructure*)imageInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR:
+				swapchainInfo = (const VkBindImageMemorySwapchainInfoKHR*)next;
+				break;
+			default:
+				break;
+		}
+		if (swapchainInfo) { break; }
+	}
+	if (!swapchainInfo) {
+		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
+	}
+	_swapchainIndex = swapchainInfo->imageIndex;
+	return VK_SUCCESS;
+}
+
+
+#pragma mark Metal
+
+// Creates and returns a retained Metal texture suitable for use in this instance.
+// This implementation retrieves a MTLTexture from the CAMetalDrawable.
+id<MTLTexture> MVKSwapchainImage::newMTLTexture() {
+	return [[getCAMetalDrawable() texture] retain];
+}
+
+id<CAMetalDrawable> MVKSwapchainImage::getCAMetalDrawable() {
+	id<CAMetalDrawable> mtlDrawable = _swapchain->getCAMetalDrawable(_swapchainIndex);
+	MVKAssert(mtlDrawable, "Could not acquire an available CAMetalDrawable from the CAMetalLayer in MVKSwapchain image: %p.", this);
+	return mtlDrawable;
+}
+
+// Present the drawable and make myself available only once the command buffer has completed.
+void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) {
+	_swapchain->willPresentSurface(getMTLTexture(), mtlCmdBuff);
+
+	NSString* scName = _swapchain->getDebugName();
+	if (scName) { mvkPushDebugGroup(mtlCmdBuff, scName); }
+	[mtlCmdBuff presentDrawable: getCAMetalDrawable()];
+	if (scName) { mvkPopDebugGroup(mtlCmdBuff); }
+
+	resetMetalSurface();
+	_swapchain->signalPresentationSemaphore(_swapchainIndex, mtlCmdBuff);
+
+	retain();	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
+	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+		_swapchain->makeAvailable(_swapchainIndex);
+		release();
+	}];
+}
+
+// Resets the MTLTexture and CAMetalDrawable underlying this image.
+void MVKSwapchainImage::resetMetalSurface() {
+	resetMTLTexture();			// Release texture first so drawable will be last to release it
+	_swapchain->resetCAMetalDrawable(_swapchainIndex);
+}
+
+
+#pragma mark Construction
+
+MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
+									 const VkImageCreateInfo* pCreateInfo,
+									 MVKSwapchain* swapchain,
+									 uint32_t swapchainIndex) : MVKImage(device, pCreateInfo) {
+	_swapchain = swapchain;
+	_swapchainIndex = swapchainIndex;
+}
+
+MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
+									 const VkImageCreateInfo* pCreateInfo,
+									 MVKSwapchain* swapchain) : MVKImage(device, pCreateInfo) {
+	_swapchain = swapchain;
+	_swapchainIndex = uint32_t(-1);
+}
+
+MVKSwapchainImage::~MVKSwapchainImage() {
+	resetMetalSurface();	// remove drawable from swapchain
+}
+
+
+#pragma mark -
 #pragma mark MVKImageView
 
 void MVKImageView::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
@@ -1225,94 +1315,3 @@ void MVKSampler::initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo) {
 MVKSampler::~MVKSampler() {
 	[_mtlSamplerState release];
 }
-
-
-#pragma mark -
-#pragma mark MVKSwapchainImage
-
-VkResult MVKSwapchainImage::bindDeviceMemory(MVKDeviceMemory*, VkDeviceSize) {
-	return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-}
-
-VkResult MVKSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
-	const auto* imageInfo = (const VkBindImageMemoryInfo*)pBindInfo;
-	const VkBindImageMemorySwapchainInfoKHR* swapchainInfo = nullptr;
-	for (const auto* next = (const VkBaseInStructure*)imageInfo->pNext; next; next = next->pNext) {
-		switch (next->sType) {
-		case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR:
-			swapchainInfo = (const VkBindImageMemorySwapchainInfoKHR*)next;
-			break;
-		default:
-			break;
-		}
-		if (swapchainInfo) { break; }
-	}
-	if (!swapchainInfo) {
-		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-	}
-	_swapchainIndex = swapchainInfo->imageIndex;
-	return VK_SUCCESS;
-}
-
-
-#pragma mark Metal
-
-// Creates and returns a retained Metal texture suitable for use in this instance.
-// This implementation retrieves a MTLTexture from the CAMetalDrawable.
-id<MTLTexture> MVKSwapchainImage::newMTLTexture() {
-	return [[getCAMetalDrawable() texture] retain];
-}
-
-id<CAMetalDrawable> MVKSwapchainImage::getCAMetalDrawable() {
-	id<CAMetalDrawable> mtlDrawable = _swapchain->getCAMetalDrawable(_swapchainIndex);
-	MVKAssert(mtlDrawable, "Could not acquire an available CAMetalDrawable from the CAMetalLayer in MVKSwapchain image: %p.", this);
-	return mtlDrawable;
-}
-
-// Present the drawable and make myself available only once the command buffer has completed.
-void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) {
-	_swapchain->willPresentSurface(getMTLTexture(), mtlCmdBuff);
-
-	NSString* scName = _swapchain->getDebugName();
-	if (scName) { mvkPushDebugGroup(mtlCmdBuff, scName); }
-	[mtlCmdBuff presentDrawable: getCAMetalDrawable()];
-	if (scName) { mvkPopDebugGroup(mtlCmdBuff); }
-
-	resetMetalSurface();
-	_swapchain->signalPresentationSemaphore(_swapchainIndex, mtlCmdBuff);
-
-	retain();	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
-	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-		_swapchain->makeAvailable(_swapchainIndex);
-		release();
-	}];
-}
-
-// Resets the MTLTexture and CAMetalDrawable underlying this image.
-void MVKSwapchainImage::resetMetalSurface() {
-    resetMTLTexture();			// Release texture first so drawable will be last to release it
-    _swapchain->resetCAMetalDrawable(_swapchainIndex);
-}
-
-
-#pragma mark Construction
-
-MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
-									 const VkImageCreateInfo* pCreateInfo,
-									 MVKSwapchain* swapchain,
-									 uint32_t swapchainIndex) : MVKImage(device, pCreateInfo) {
-	_swapchain = swapchain;
-	_swapchainIndex = swapchainIndex;
-}
-
-MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
-									 const VkImageCreateInfo* pCreateInfo,
-									 MVKSwapchain* swapchain) : MVKImage(device, pCreateInfo) {
-	_swapchain = swapchain;
-	_swapchainIndex = uint32_t(-1);
-}
-
-MVKSwapchainImage::~MVKSwapchainImage() {
-	resetMetalSurface();	// remove drawable from swapchain
-}
-
