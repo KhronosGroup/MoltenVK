@@ -46,20 +46,6 @@ bool MVKImage::getIsCompressed() {
 	return getPixelFormats()->getFormatTypeFromMTLPixelFormat(_mtlPixelFormat) == kMVKFormatCompressed;
 }
 
-bool MVKImage::getSupportsAnyFormatFeature(VkFormatFeatureFlags requiredFormatFeatureFlags) {
-	VkFormatProperties props;
-	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
-	VkFormatFeatureFlags imageFeatureFlags = _isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures;
-	return mvkIsAnyFlagEnabled(imageFeatureFlags, requiredFormatFeatureFlags);
-}
-
-bool MVKImage::getSupportsAllFormatFeatures(VkFormatFeatureFlags requiredFormatFeatureFlags) {
-	VkFormatProperties props;
-	_device->getPhysicalDevice()->getFormatProperties(getVkFormat(), &props);
-	VkFormatFeatureFlags imageFeatureFlags = _isLinear ? props.linearTilingFeatures : props.optimalTilingFeatures;
-	return mvkAreAllFlagsEnabled(imageFeatureFlags, requiredFormatFeatureFlags);
-}
-
 VkExtent3D MVKImage::getExtent3D(uint32_t mipLevel) {
 	return mvkMipmapLevelSizeFromBaseSize3D(_extent, mipLevel);
 }
@@ -419,51 +405,22 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     return VK_SUCCESS;
 }
 
-MTLTextureUsage MVKImage::getMTLTextureUsage() {
-
-	MTLTextureUsage usage = mvkMTLTextureUsageFromVkImageUsageFlags(_usage);
-
-	// Remove view usage from D/S if Metal doesn't support it
-	MVKPixelFormats* pixFmts = getPixelFormats();
-	if ( !_device->_pMetalFeatures->stencilViews &&
-		pixFmts->mtlPixelFormatIsDepthFormat(_mtlPixelFormat) &&
-		pixFmts->mtlPixelFormatIsStencilFormat(_mtlPixelFormat)) {
-
-		mvkDisableFlags(usage, MTLTextureUsagePixelFormatView);
-	}
-
-	// If this format doesn't support being rendered to, disable MTLTextureUsageRenderTarget.
-	if ( !getSupportsAnyFormatFeature(VK_FORMAT_FEATURE_BLIT_DST_BIT |
-									  VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
-									  VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
-		mvkDisableFlags(usage, MTLTextureUsageRenderTarget);
-	}
-
-#if MVK_MACOS
-	// If this is a 3D compressed texture, tell Metal we might write to it.
-	if (_is3DCompressed) {
-		mvkEnableFlags(usage, MTLTextureUsageShaderWrite);
-	}
-#endif
-
-	return usage;
-}
-
 // Returns a Metal texture descriptor constructed from the properties of this image.
 // It is the caller's responsibility to release the returned descriptor object.
 MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
-	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];	// retained
+	MTLPixelFormat mtlPixFmt = _mtlPixelFormat;
+	MTLTextureUsage minUsage = MTLTextureUsageUnknown;
 #if MVK_MACOS
 	if (_is3DCompressed) {
 		// Metal before 3.0 doesn't support 3D compressed textures, so we'll decompress
 		// the texture ourselves. This, then, is the *uncompressed* format.
-		mtlTexDesc.pixelFormat = MTLPixelFormatBGRA8Unorm;
-	} else {
-		mtlTexDesc.pixelFormat = _mtlPixelFormat;
+		mtlPixFmt = MTLPixelFormatBGRA8Unorm;
+		minUsage = MTLTextureUsageShaderWrite;
 	}
-#else
-	mtlTexDesc.pixelFormat = _mtlPixelFormat;
 #endif
+
+	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];	// retained
+	mtlTexDesc.pixelFormat = mtlPixFmt;
 	mtlTexDesc.textureType = _mtlTextureType;
 	mtlTexDesc.width = _extent.width;
 	mtlTexDesc.height = _extent.height;
@@ -471,7 +428,7 @@ MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
 	mtlTexDesc.mipmapLevelCount = _mipLevels;
 	mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_samples);
 	mtlTexDesc.arrayLength = _arrayLayers;
-	mtlTexDesc.usageMVK = getMTLTextureUsage();
+	mtlTexDesc.usageMVK = getPixelFormats()->getMTLTextureUsageFromVkImageUsageFlags(_usage, mtlPixFmt, minUsage);
 	mtlTexDesc.storageModeMVK = getMTLStorageMode();
 	mtlTexDesc.cpuCacheMode = getMTLCPUCacheMode();
 

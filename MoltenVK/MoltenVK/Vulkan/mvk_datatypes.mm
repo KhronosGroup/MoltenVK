@@ -191,40 +191,8 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageVie
 	}
 }
 
-MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags) {
-    MTLTextureUsage mtlUsage = MTLTextureUsageUnknown;
-
-	// Read from...
-	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-												VK_IMAGE_USAGE_SAMPLED_BIT |
-												VK_IMAGE_USAGE_STORAGE_BIT |
-												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderRead);
-	}
-
-	// Write to...
-	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_STORAGE_BIT))) {
-		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
-	}
-
-	// Render to...
-	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-												VK_IMAGE_USAGE_TRANSFER_DST_BIT))) {				// Scaling a BLIT may use rendering.
-		mvkEnableFlags(mtlUsage, MTLTextureUsageRenderTarget);
-	}
-
-	// Create view on...
-	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |	 				// May use temp view if transfer involves format change
-												VK_IMAGE_USAGE_SAMPLED_BIT |
-												VK_IMAGE_USAGE_STORAGE_BIT |
-												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-												VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT))) {	// D/S may be filtered out after device check
-		mvkEnableFlags(mtlUsage, MTLTextureUsagePixelFormatView);
-	}
-
-    return mtlUsage;
+MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags, MTLPixelFormat mtlPixFmt) {
+	return _platformPixelFormats.getMTLTextureUsageFromVkImageUsageFlags(vkImageUsageFlags, mtlPixFmt);
 }
 
 MVK_PUBLIC_SYMBOL VkImageUsageFlags mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat) {

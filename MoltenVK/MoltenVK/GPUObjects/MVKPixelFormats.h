@@ -25,6 +25,8 @@
 
 #import <Metal/Metal.h>
 
+class MVKPhysicalDevice;
+
 
 // Validate these values periodically as new formats are added over time.
 static const uint32_t _vkFormatCount = 256;
@@ -120,7 +122,7 @@ class MVKPixelFormats : public MVKBaseObject {
 public:
 
 	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override { return _apiObject; };
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
 	/** Returns whether the VkFormat is supported by this implementation. */
 	bool vkFormatIsSupported(VkFormat vkFormat);
@@ -260,6 +262,14 @@ public:
 	/** Returns the Vulkan image usage from the Metal texture usage and format. */
 	VkImageUsageFlags getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat);
 
+	/**
+	 * Returns the Metal texture usage from the Vulkan image usage and Metal format, ensuring that at least the
+	 * usages in minUsage are included, even if they wouldn't naturally be included based on the other two parameters.
+	 */
+	MTLTextureUsage getMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags,
+															MTLPixelFormat mtlFormat,
+															MTLTextureUsage minUsage = MTLTextureUsageUnknown);
+
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
 	void enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
 
@@ -272,9 +282,7 @@ public:
 
 #pragma mark Construction
 
-	MVKPixelFormats(MVKVulkanAPIObject* apiObject, id<MTLDevice> mtlDevice);
-
-	MVKPixelFormats();
+	MVKPixelFormats(MVKPhysicalDevice* physicalDevice = nullptr);
 
 protected:
 	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);
@@ -286,12 +294,12 @@ protected:
 	VkFormatFeatureFlags getOptimalTilingFeatures(MVKMTLFmtCaps mtlFmtCaps);
 	VkFormatFeatureFlags getLinearTilingFeatures(MVKMTLFmtCaps mtlFmtCaps, MVKFormatType mvkFmtType);
 	VkFormatFeatureFlags getBufferFeatures(MVKMTLFmtCaps mtlFmtTexCaps, MVKMTLFmtCaps mtlFmtVtxCaps, MVKFormatType mvkFmtType);
-	void init(id<MTLDevice> mtlDevice);
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
 	void buildMTLFormatMaps();
 	void buildVkFormatMaps();
+	void modifyMTLFormatCapabilities();
 	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
 	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 									   MTLFeatureSet mtlFeatSet,
@@ -305,9 +313,9 @@ protected:
 	template<typename T>
 	void testFmt(const T v1, const T v2, const char* fmtName, const char* funcName);
 	void testProps(const VkFormatProperties p1, const VkFormatProperties p2, const char* fmtName);
-	void test(id<MTLDevice> mtlDevice);
+	void test();
 
-	MVKVulkanAPIObject* _apiObject;
+	MVKPhysicalDevice* _physicalDevice;
 	MVKVkFormatDesc _vkFormatDescriptions[_vkFormatCount];
 	MVKMTLFormatDesc _mtlPixelFormatDescriptions[_mtlPixelFormatCount];
 	MVKMTLFormatDesc _mtlVertexFormatDescriptions[_mtlVertexFormatCount];

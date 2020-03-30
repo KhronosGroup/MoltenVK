@@ -755,14 +755,14 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 #pragma mark Construction
 
 MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtlDevice) :
+	_mtlDevice([mtlDevice retain]),		// Set first
 	_mvkInstance(mvkInstance),
 	_supportedExtensions(this, true),
-	_pixelFormats(this, mtlDevice),
-	_mtlDevice([mtlDevice retain]) {
+	_pixelFormats(this) {				// Set after _mtlDevice
 
-	initMetalFeatures();        // Call first.
-	initFeatures();             // Call second.
-	initProperties();           // Call third.
+	initMetalFeatures();        		// Call first.
+	initFeatures();             		// Call second.
+	initProperties();           		// Call third.
 	initMemoryProperties();
 	initExtensions();
 	logGPUInfo();
