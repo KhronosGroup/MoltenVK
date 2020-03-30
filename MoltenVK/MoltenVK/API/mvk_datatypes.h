@@ -205,8 +205,8 @@ VkImageType mvkVkImageTypeFromMTLTextureType(MTLTextureType mtlTextureType);
 /** Returns the Metal MTLTextureType corresponding to the Vulkan VkImageViewType. */
 MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageViewType vkImageViewType, bool isMultisample);
 
-/** Returns the Metal texture usage from the Vulkan image usage. */
-MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags);
+/** Returns the Metal texture usage from the Vulkan image usage taking into considertion usage limits for the pixel format. */
+MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags, MTLPixelFormat mtlPixFmt);
 
 /** Returns the Vulkan image usage from the Metal texture usage and format. */
 VkImageUsageFlags mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat);
@@ -357,7 +357,7 @@ MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(VkPolygonMode vkFill
 MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachmentLoadOp vkLoadOp);
 
 /** Returns the Metal MTLStoreAction corresponding to the specified Vulkan VkAttachmentStoreOp. */
-MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment = false);
+MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment);
 
 /** Returns the Metal MTLViewport corresponding to the specified Vulkan VkViewport. */
 MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport);

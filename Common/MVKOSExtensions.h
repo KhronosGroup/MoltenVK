@@ -31,7 +31,10 @@ typedef float MVKOSVersion;
  * - (10.12.3) => 10.1203
  * - (8.0.2) => 8.0002
  */
-MVKOSVersion mvkOSVersion(void);
+MVKOSVersion mvkOSVersion();
+
+/** Returns whether the operating system version is at least minVer. */
+inline bool mvkOSVersionIsAtLeast(MVKOSVersion minVer) { return mvkOSVersion() >= minVer; }
 
 /**
  * Returns a monotonic timestamp value for use in Vulkan and performance timestamping.

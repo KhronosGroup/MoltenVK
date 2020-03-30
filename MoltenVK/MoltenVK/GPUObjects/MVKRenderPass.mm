@@ -146,7 +146,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			mtlTexDesc.arrayLength = framebuffer->getLayerCount();
 		}
 #if MVK_IOS
-		if ([_renderPass->getDevice()->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
+		if ([_renderPass->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
 			mtlTexDesc.storageMode = MTLStorageModeMemoryless;
 		} else {
 			mtlTexDesc.storageMode = MTLStorageModePrivate;
@@ -155,7 +155,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		mtlTexDesc.storageMode = MTLStorageModePrivate;
 #endif
 		mtlTexDesc.usage = MTLTextureUsageRenderTarget;
-		_mtlDummyTex = [_renderPass->getDevice()->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];  // not retained
+		_mtlDummyTex = [_renderPass->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];  // not retained
 		[_mtlDummyTex setPurgeableState: MTLPurgeableStateVolatile];
 		MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
 		mtlColorAttDesc.texture = _mtlDummyTex;

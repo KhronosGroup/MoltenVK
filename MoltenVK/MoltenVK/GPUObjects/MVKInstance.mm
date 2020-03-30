@@ -18,9 +18,7 @@
 
 
 #include "MVKInstance.h"
-#include "MVKDevice.h"
 #include "MVKFoundation.h"
-#include "MVKEnvironment.h"
 #include "MVKSurface.h"
 #include "MVKOSExtensions.h"
 #include "MVKLogging.h"
@@ -64,7 +62,7 @@ VkResult MVKInstance::getPhysicalDevices(uint32_t* pCount, VkPhysicalDevice* pPh
 
 	// Now populate the devices
 	for (uint32_t pdIdx = 0; pdIdx < *pCount; pdIdx++) {
-		pPhysicalDevices[pdIdx] = _physicalDevices[pdIdx]->getVkPhysicalDevice();
+		pPhysicalDevices[pdIdx] = _physicalDevices[pdIdx].getVkPhysicalDevice();
 	}
 
 	return result;
@@ -91,7 +89,7 @@ VkResult MVKInstance::getPhysicalDeviceGroups(uint32_t* pCount, VkPhysicalDevice
 	// Now populate the device groups
 	for (uint32_t pdIdx = 0; pdIdx < *pCount; pdIdx++) {
 		pPhysicalDeviceGroupProps[pdIdx].physicalDeviceCount = 1;
-		pPhysicalDeviceGroupProps[pdIdx].physicalDevices[0] = _physicalDevices[pdIdx]->getVkPhysicalDevice();
+		pPhysicalDeviceGroupProps[pdIdx].physicalDevices[0] = _physicalDevices[pdIdx].getVkPhysicalDevice();
 		pPhysicalDeviceGroupProps[pdIdx].subsetAllocation = VK_FALSE;
 	}
 
@@ -359,9 +357,8 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	// and other Obj-C classes, so wrap it all in an autorelease pool.
 	@autoreleasepool {
 		NSArray<id<MTLDevice>>* mtlDevices = availableMTLDevicesArray();
-		_physicalDevices.reserve(mtlDevices.count);
 		for (id<MTLDevice> mtlDev in mtlDevices) {
-			_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
+			_physicalDevices.emplace_back(this, mtlDev);
 		}
 	}
 
@@ -679,10 +676,8 @@ VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {
 }
 
 MVKInstance::~MVKInstance() {
-	_useCreationCallbacks = true;
-	mvkDestroyContainerContents(_physicalDevices);
-
 	lock_guard<mutex> lock(_dcbLock);
+	_useCreationCallbacks = true;
 	mvkDestroyContainerContents(_debugReportCallbacks);
 }
 

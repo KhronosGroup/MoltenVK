@@ -72,7 +72,7 @@
 #   define MVK_MTLEVENT_MIN_OS  12.0
 #endif
 #ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
-#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    (mvkOSVersion() >= MVK_MTLEVENT_MIN_OS)
+#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    mvkOSVersionIsAtLeast(MVK_MTLEVENT_MIN_OS)
 #endif
 
 /** Fill a Metal command buffers when each Vulkan command buffer is filled. */
