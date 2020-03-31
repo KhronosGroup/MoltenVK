@@ -287,11 +287,13 @@ id<MTLTexture> MVKImage::getMTLTexture(MTLPixelFormat mtlPixFmt) {
 
 	id<MTLTexture> mtlTex = _mtlTextureViews[mtlPixFmt];
 	if ( !mtlTex ) {
-		// Lock and check again in case another thread has created the texture.
+		// Lock and check again in case another thread has created the view texture.
+		// baseTex retreived outside of lock to avoid deadlock if it too needs to be lazily created.
+		id<MTLTexture> baseTex = getMTLTexture();
 		lock_guard<mutex> lock(_lock);
 		mtlTex = _mtlTextureViews[mtlPixFmt];
 		if ( !mtlTex ) {
-			mtlTex = [getMTLTexture() newTextureViewWithPixelFormat: mtlPixFmt];	// retained
+			mtlTex = [baseTex newTextureViewWithPixelFormat: mtlPixFmt];	// retained
 			_mtlTextureViews[mtlPixFmt] = mtlTex;
 		}
 	}
@@ -348,10 +350,12 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 	return mtlTex;
 }
 
-// Removes and releases the MTLTexture object, so that it can be lazily created by getMTLTexture().
+// Removes and releases the MTLTexture object, and all associated texture views
 void MVKImage::resetMTLTexture() {
 	[_mtlTexture release];
 	_mtlTexture = nil;
+	for (auto elem : _mtlTextureViews) { [elem.second release]; }
+	_mtlTextureViews.clear();
 }
 
 void MVKImage::resetIOSurface() {
@@ -364,6 +368,7 @@ void MVKImage::resetIOSurface() {
 IOSurfaceRef MVKImage::getIOSurface() { return _ioSurface; }
 
 VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
+	lock_guard<mutex> lock(_lock);
 
     if (!_device->_pMetalFeatures->ioSurfaces) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
 
@@ -787,7 +792,6 @@ MVKImage::~MVKImage() {
 	if (_deviceMemory) { _deviceMemory->removeImage(this); }
 	resetMTLTexture();
     resetIOSurface();
-	for (auto elem : _mtlTextureViews) { [elem.second release]; }
 }
 
 
