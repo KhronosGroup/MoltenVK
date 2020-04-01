@@ -29,6 +29,7 @@ Released 2020/03/30
 - Add ability to disable command memory pooling using `MVK_CONFIG_USE_COMMAND_POOLING`
   environment variable.
 - Fix memory leak when pre-filling `MTLCommandBuffers` using `MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS`.
+- Broaden conditions for host read sync for image memory barriers on macOS.
 - Update the `README.md` and `MoltenVK_Runtime_UserGuide.md` documents to clarify that 
   **MoltenVK** is not a fully-compliant implementation of *Vulkan*.
 - Support Xcode 11.4.

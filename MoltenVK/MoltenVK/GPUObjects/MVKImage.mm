@@ -143,8 +143,7 @@ bool MVKImage::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 #endif
 #if MVK_MACOS
 	return ((pImageMemoryBarrier->newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
-			mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
-			mvkIsAnyFlagEnabled(pImageMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
+			mvkIsAnyFlagEnabled(pImageMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
 			isMemoryHostAccessible() && !isMemoryHostCoherent());
 #endif
 }
