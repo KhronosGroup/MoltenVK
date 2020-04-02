@@ -97,6 +97,7 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
 
 	// Return the index of the image with the shortest wait and signal the semaphore and fence when it's available
 	*pImageIndex = minWaitImage->_swapchainIndex;
+	minWaitImage->resetMetalDrawable();
 	minWaitImage->signalWhenAvailable((MVKSemaphore*)semaphore, (MVKFence*)fence);
 
 	return getHasSurfaceSizeChanged() ? VK_ERROR_OUT_OF_DATE_KHR : VK_SUCCESS;
