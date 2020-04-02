@@ -274,6 +274,19 @@ protected:
 #pragma mark -
 #pragma mark MVKSwapchainImage
 
+/** Indicates the relative availability of each image in the swapchain. */
+typedef struct MVKSwapchainImageAvailability {
+	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
+	uint32_t waitCount;				/**< The number of semaphores already waiting for this image. */
+	bool isAvailable;				/**< Indicates whether this image is currently available. */
+
+	bool operator< (const MVKSwapchainImageAvailability& rhs) const;
+} MVKSwapchainImageAvailability;
+
+/** Tracks a semaphore and fence for later signaling. */
+typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
+
+
 /** Represents a Vulkan image used as a rendering destination within a swapchain. */
 class MVKSwapchainImage : public MVKImage {
 
@@ -315,14 +328,27 @@ public:
 	~MVKSwapchainImage() override;
 
 protected:
+	friend MVKSwapchain;
+
 	id<MTLTexture> newMTLTexture() override;
 	id<CAMetalDrawable> getCAMetalDrawable();
 	void resetMetalDrawable();
+	MVKSwapchainImageAvailability getAvailability();
+	void makeAvailable();
+	void signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
+	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
+	void signalPresentationSemaphore(id<MTLCommandBuffer> mtlCmdBuff);
+	static void markAsTracked(MVKSwapchainSignaler& signaler);
+	static void unmarkAsTracked(MVKSwapchainSignaler& signaler);
 	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
 	MVKSwapchain* _swapchain;
 	uint32_t _swapchainIndex;
 	id<CAMetalDrawable> _mtlDrawable;
+	MVKSwapchainImageAvailability _availability;
+	MVKVectorInline<MVKSwapchainSignaler, 1> _availabilitySignalers;
+	MVKSwapchainSignaler _preSignaler;
+	std::mutex _availabilityLock;
 };
 
 
