@@ -272,6 +272,82 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKSwapchainImage
+
+/** Indicates the relative availability of each image in the swapchain. */
+typedef struct MVKSwapchainImageAvailability {
+	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
+	uint32_t waitCount;				/**< The number of semaphores already waiting for this image. */
+	bool isAvailable;				/**< Indicates whether this image is currently available. */
+
+	bool operator< (const MVKSwapchainImageAvailability& rhs) const;
+} MVKSwapchainImageAvailability;
+
+/** Tracks a semaphore and fence for later signaling. */
+typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
+
+
+/** Represents a Vulkan image used as a rendering destination within a swapchain. */
+class MVKSwapchainImage : public MVKImage {
+
+public:
+
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+
+	/** Binds this resource according to the specified bind information. */
+	VkResult bindDeviceMemory2(const void* pBindInfo) override;
+
+
+#pragma mark Metal
+
+	/**
+	 * Presents the contained drawable to the OS, releases the Metal drawable and its
+	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
+	 *
+	 * If mtlCmdBuff is not nil, the contained drawable is scheduled for presentation using
+	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
+	 * drawable is presented immediately using the present method of the drawable.
+	 */
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff);
+
+
+#pragma mark Construction
+
+	/** Constructs an instance for the specified device and swapchain. */
+	MVKSwapchainImage(MVKDevice* device,
+					  const VkImageCreateInfo* pCreateInfo,
+					  MVKSwapchain* swapchain,
+					  uint32_t swapchainIndex);
+
+	~MVKSwapchainImage() override;
+
+protected:
+	friend MVKSwapchain;
+
+	id<MTLTexture> newMTLTexture() override;
+	id<CAMetalDrawable> getCAMetalDrawable();
+	void resetMetalDrawable();
+	MVKSwapchainImageAvailability getAvailability();
+	void makeAvailable();
+	void signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
+	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
+	void signalPresentationSemaphore(id<MTLCommandBuffer> mtlCmdBuff);
+	static void markAsTracked(MVKSwapchainSignaler& signaler);
+	static void unmarkAsTracked(MVKSwapchainSignaler& signaler);
+	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
+
+	MVKSwapchain* _swapchain;
+	uint32_t _swapchainIndex;
+	id<CAMetalDrawable> _mtlDrawable;
+	MVKSwapchainImageAvailability _availability;
+	MVKVectorInline<MVKSwapchainSignaler, 1> _availabilitySignalers;
+	MVKSwapchainSignaler _preSignaler;
+	std::mutex _availabilityLock;
+};
+
+
+#pragma mark -
 #pragma mark MVKImageView
 
 /** Represents a Vulkan image view. */
@@ -401,58 +477,3 @@ protected:
 	SPIRV_CROSS_NAMESPACE::MSLConstexprSampler _constExprSampler;
 	bool _requiresConstExprSampler;
 };
-
-
-#pragma mark -
-#pragma mark MVKSwapchainImage
-
-/** Represents a Vulkan image used as a rendering destination within a swapchain. */
-class MVKSwapchainImage : public MVKImage {
-
-public:
-
-	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
-
-	/** Binds this resource according to the specified bind information. */
-	VkResult bindDeviceMemory2(const void* pBindInfo) override;
-
-	
-#pragma mark Metal
-
-	/**
-	 * Presents the contained drawable to the OS, releases the Metal drawable and its 
-	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
-	 *
-	 * If mtlCmdBuff is not nil, the contained drawable is scheduled for presentation using
-	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
-	 * drawable is presented immediately using the present method of the drawable.
-	 */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff);
-
-
-#pragma mark Construction
-	
-	/** Constructs an instance for the specified device and swapchain. */
-	MVKSwapchainImage(MVKDevice* device,
-					  const VkImageCreateInfo* pCreateInfo,
-					  MVKSwapchain* swapchain,
-					  uint32_t swapchainIndex);
-
-	/** Constructs an instance for the specified device and swapchain, without binding to a particular swapchain image index. */
-	MVKSwapchainImage(MVKDevice* device,
-					  const VkImageCreateInfo* pCreateInfo,
-					  MVKSwapchain* swapchain);
-
-	~MVKSwapchainImage() override;
-
-protected:
-	id<MTLTexture> newMTLTexture() override;
-	id<CAMetalDrawable> getCAMetalDrawable();
-    void resetMetalSurface();
-    void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
-
-	MVKSwapchain* _swapchain;
-	uint32_t _swapchainIndex;
-};
-
