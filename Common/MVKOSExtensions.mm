@@ -18,9 +18,11 @@
 
 
 #include "MVKOSExtensions.h"
+#include "MVKCommonEnvironment.h"
 #include <mach/mach_host.h>
 #include <mach/mach_time.h>
 #include <mach/task.h>
+#include <os/proc.h>
 
 #import <Foundation/Foundation.h>
 

@@ -30,6 +30,7 @@ Released 2020/04/05
   environment variable.
 - Fix memory leak when pre-filling `MTLCommandBuffers` using `MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS`.
 - Fix issue causing screen captures from swapchain image to deadlock.
+- Fix memory estimates for iOS 13+.
 - Broaden conditions for host read sync for image memory barriers on macOS.
 - Update the `README.md` and `MoltenVK_Runtime_UserGuide.md` documents to clarify that 
   **MoltenVK** is not a fully-compliant implementation of *Vulkan*.
