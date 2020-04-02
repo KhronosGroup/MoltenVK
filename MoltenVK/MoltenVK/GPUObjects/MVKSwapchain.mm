@@ -343,31 +343,6 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 }
 
 
-#pragma mark Metal
-
-id<CAMetalDrawable> MVKSwapchain::getCAMetalDrawable(uint32_t imageIndex) {
-	id<CAMetalDrawable> nextDrwbl = _mtlDrawables[imageIndex];
-	while ( !nextDrwbl ) {
-		@autoreleasepool {      // Allow auto-released drawable object to be reclaimed before end of loop
-			uint64_t startTime = _device->getPerformanceTimestamp();
-
-			nextDrwbl = _mtlLayer.nextDrawable;
-			if ( !nextDrwbl ) { MVKLogError("Drawable could not be retrieved! Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds()); }
-			_mtlDrawables[imageIndex] = [nextDrwbl retain];
-
-			_device->addActivityPerformance(_device->_performanceStatistics.queue.nextCAMetalDrawable, startTime);
-		}
-	}
-	return nextDrwbl;
-}
-
-// Removes and releases a Metal drawable object, so that it can be lazily created by getCAMetalDrawable().
-void MVKSwapchain::resetCAMetalDrawable(uint32_t imgIdx) {
-	[_mtlDrawables[imgIdx] release];
-	_mtlDrawables[imgIdx] = nil;
-}
-
-
 #pragma mark Construction
 
 MVKSwapchain::MVKSwapchain(MVKDevice* device,
@@ -510,15 +485,12 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		mvkEnableFlags(imgInfo.flags, VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT);
 	}
 
-	_surfaceImages.reserve(imgCnt);
-	_mtlDrawables.resize(imgCnt);
 	_imageAvailability.resize(imgCnt);
     for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
         _surfaceImages.push_back(_device->createSwapchainImage(&imgInfo, this, imgIdx, NULL));
         _imageAvailability[imgIdx].status.acquisitionID = getNextAcquisitionID();
         _imageAvailability[imgIdx].status.isAvailable = true;
         _imageAvailability[imgIdx].preSignaled = make_pair(nullptr, nullptr);
-        _mtlDrawables[imgIdx] = nil;
     }
 
     MVKLogInfo("Created %d swapchain images with initial size (%d, %d).", imgCnt, imgExtent.width, imgExtent.height);

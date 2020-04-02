@@ -317,11 +317,12 @@ public:
 protected:
 	id<MTLTexture> newMTLTexture() override;
 	id<CAMetalDrawable> getCAMetalDrawable();
-	void resetMetalSurface();
+	void resetMetalDrawable();
 	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
 	MVKSwapchain* _swapchain;
 	uint32_t _swapchainIndex;
+	id<CAMetalDrawable> _mtlDrawable;
 };
 
 

@@ -100,19 +100,6 @@ public:
 	 */
 	void signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaphore, MVKFence* fence);
 
-	
-#pragma mark Metal
-
-	/** 
-	 * Returns the Metal drawable providing backing for the image at the given
-	 * index in this swapchain. If none is established, the next available
-	 * drawable is acquired and returned.
-	 *
-	 * This function may block until the next drawable is available, 
-	 * and may return nil if no drawable is available at all.
-	 */
-	id<CAMetalDrawable> getCAMetalDrawable(uint32_t imgIdx);
-
 
 #pragma mark Construction
 	
@@ -138,7 +125,6 @@ protected:
     void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
-	void resetCAMetalDrawable(uint32_t imgIdx);
 	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
 	void signalPresentationSemaphore(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff);
 	static void markAsTracked(MVKSwapchainSignaler& signaler);
@@ -148,7 +134,6 @@ protected:
 	CAMetalLayer* _mtlLayer;
     MVKWatermark* _licenseWatermark;
 	MVKVectorInline<MVKSwapchainImage*, kMVKMaxSwapchainImageCount> _surfaceImages;
-	MVKVectorInline<id<CAMetalDrawable>, kMVKMaxSwapchainImageCount> _mtlDrawables;
 	MVKVectorInline<Availability, kMVKMaxSwapchainImageCount> _imageAvailability;
 	std::mutex _availabilityLock;
 	std::atomic<uint64_t> _currentAcquisitionID;
