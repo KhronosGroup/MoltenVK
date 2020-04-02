@@ -991,11 +991,6 @@ MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
 	_preSignaler = make_pair(nullptr, nullptr);
 }
 
-MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
-									 const VkImageCreateInfo* pCreateInfo,
-									 MVKSwapchain* swapchain) :
-	MVKSwapchainImage(device, pCreateInfo, swapchain, uint32_t(-1)) {}
-
 MVKSwapchainImage::~MVKSwapchainImage() {
 	resetMetalDrawable();
 }

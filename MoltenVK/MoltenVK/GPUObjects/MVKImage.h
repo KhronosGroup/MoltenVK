@@ -320,11 +320,6 @@ public:
 					  MVKSwapchain* swapchain,
 					  uint32_t swapchainIndex);
 
-	/** Constructs an instance for the specified device and swapchain, without binding to a particular swapchain image index. */
-	MVKSwapchainImage(MVKDevice* device,
-					  const VkImageCreateInfo* pCreateInfo,
-					  MVKSwapchain* swapchain);
-
 	~MVKSwapchainImage() override;
 
 protected:

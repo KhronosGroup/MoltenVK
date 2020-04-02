@@ -2131,7 +2131,7 @@ MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
 		}
 	}
 	if (swapchainInfo) {
-		return (MVKImage*)addResource(new MVKSwapchainImage(this, pCreateInfo, (MVKSwapchain*)swapchainInfo->swapchain));
+		return createSwapchainImage(pCreateInfo, (MVKSwapchain*)swapchainInfo->swapchain, uint32_t(-1), pAllocator);
 	}
 	return (MVKImage*)addResource(new MVKImage(this, pCreateInfo));
 }
