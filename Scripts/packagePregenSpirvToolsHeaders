@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#
+# Copyright (c) 2016-2020 The Brenwill Workshop Ltd.
+#
+# packagePregenSpirvToolsHeaders - Packages Spirv-Tools headers to simplify building glslang
+#
+# macOS usage: ./packagePregenSpirvToolsHeaders
+#
+
+set -o errexit
+
+
+# ----------------- Main -------------------
+
+EXT_DIR=../External
+SPV_TLS_BLD_DIR="${EXT_DIR}/glslang/External/spirv-tools/build"
+TPLT_DIR=../Templates/spirv-tools
+TPLT_BLD_DIR="${TPLT_DIR}/build"
+
+rm -rf "${TPLT_BLD_DIR}"
+mkdir -p "${TPLT_BLD_DIR}"
+cp -a "${SPV_TLS_BLD_DIR}/"*.h "${SPV_TLS_BLD_DIR}/"*.inc "${TPLT_BLD_DIR}"
+
+cd "${TPLT_DIR}"
+rm -f build.zip
+zip -qr build.zip build
+rm -rf build/
+cd -  > /dev/null
+

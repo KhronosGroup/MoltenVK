@@ -17,7 +17,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.41
 ---------------
 
-Released 2020/03/30
+Released 2020/04/05
 
 - Accurately populate Vulkan `VkFormatProperties` from `MTLPixelFormat` capabilities, 
   taking into consideration variations across `MTLDevice` Features Sets.
@@ -29,7 +29,11 @@ Released 2020/03/30
 - Add ability to disable command memory pooling using `MVK_CONFIG_USE_COMMAND_POOLING`
   environment variable.
 - Fix memory leak when pre-filling `MTLCommandBuffers` using `MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS`.
+- Fix issue causing screen captures from swapchain image to deadlock.
+- Fix memory estimates for iOS 13+.
 - Broaden conditions for host read sync for image memory barriers on macOS.
+- Fix the `make install` build command to overwrite the existing framework in the system
+  framework library, and update `README.md` to clarify the instructions for using `make install`. 
 - Update the `README.md` and `MoltenVK_Runtime_UserGuide.md` documents to clarify that 
   **MoltenVK** is not a fully-compliant implementation of *Vulkan*.
 - Support Xcode 11.4.
@@ -37,6 +41,7 @@ Released 2020/03/30
 - Update to latest SPIRV-Cross version:
 	- MSL: Support inline uniform blocks in argument buffers.
 	- MSL: Move inline uniform blocks to the end of the argument buffer.
+	- MSL: Fix access chain for deep struct hierarchy on array of buffers.
 	- MSL: Remove old memory_scope flag from iOS barriers.
 	- MSL: Fixes to array handling.
 
