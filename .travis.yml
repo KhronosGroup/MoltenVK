@@ -1,7 +1,8 @@
 language: objective-c 
 
 # macOS and Xcode Version
-osx_image: xcode11.4
+os: osx
+osx_image: xcode11.3
 
 # Build dependencies
 # Travis has trouble with python3, which SPIRV-Tools requires,
