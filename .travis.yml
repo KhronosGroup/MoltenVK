@@ -1,18 +1,13 @@
 language: objective-c 
 
 # macOS and Xcode Version
-osx_image: xcode11.1
+osx_image: xcode11.4
 
 # Build dependencies
 # Travis has trouble with python3, which SPIRV-Tools requires,
 # so skip the SPIRV-Tools build, and use templeted headers instead.
 install:
   - ./fetchDependencies -v --skip-spirv-tools-build
-
-# Cache built deps
-cache:
-  directories:
-    - External
 
 script:
   - xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package"
