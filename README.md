@@ -181,16 +181,21 @@ in the **_Release_** configuration from the command line. The following `make` t
 	make clean
 	make install
 
+
+Running `make all` is the same as running both `make macos` and `make ios`. Running `make` with no 
+arguments is the same as running `make all`.
+
 The `install` target will copy the most recently built *macOS* `MoltenVK.framework` into 
 the `/Library/Frameworks` folder of your computer. Since `/Library/Frameworks` is protected, 
-you will generally need to run it as `sudo make install` and enter your password.
+you will generally need to run it as `sudo make install` and enter your password. 
 
-The default `make` command with no arguments is the same as `make all`.
+The `install` target just installs the built framework, it does not first build the framework.
+So you will first need to at least run `make macos`, or use *Xcode* to build the framework as described above.
 
 The `make` targets all require that *Xcode* is installed on your system. 
 
-Building from the command line creates the same `Package` folder structure described above when building
-from within *Xcode*.
+Building from the command line creates the same `Package` folder structure described above when 
+building from within *Xcode*.
 
 
 ### Building Within a Larger External Build Environment
