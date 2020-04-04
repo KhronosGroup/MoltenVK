@@ -300,8 +300,8 @@ id<MTLTexture> MVKImage::getMTLTexture(MTLPixelFormat mtlPixFmt) {
 
 VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
     lock_guard<mutex> lock(_lock);
-    resetMTLTexture();
-    resetIOSurface();
+    releaseMTLTexture();
+    releaseIOSurface();
 
     _mtlTexture = [mtlTexture retain];		// retained
 
@@ -349,14 +349,14 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 }
 
 // Removes and releases the MTLTexture object, and all associated texture views
-void MVKImage::resetMTLTexture() {
+void MVKImage::releaseMTLTexture() {
 	[_mtlTexture release];
 	_mtlTexture = nil;
 	for (auto elem : _mtlTextureViews) { [elem.second release]; }
 	_mtlTextureViews.clear();
 }
 
-void MVKImage::resetIOSurface() {
+void MVKImage::releaseIOSurface() {
     if (_ioSurface) {
         CFRelease(_ioSurface);
         _ioSurface = nil;
@@ -372,8 +372,8 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 
 #if MVK_SUPPORT_IOSURFACE_BOOL
 
-    resetMTLTexture();
-    resetIOSurface();
+    releaseMTLTexture();
+    releaseIOSurface();
 
 	MVKPixelFormats* pixFmts = getPixelFormats();
 
@@ -788,13 +788,19 @@ void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 
 MVKImage::~MVKImage() {
 	if (_deviceMemory) { _deviceMemory->removeImage(this); }
-	resetMTLTexture();
-    resetIOSurface();
+	releaseMTLTexture();
+    releaseIOSurface();
 }
 
 
 #pragma mark -
 #pragma mark MVKSwapchainImage
+
+bool MVKSwapchainImageAvailability::operator< (const MVKSwapchainImageAvailability& rhs) const {
+	if (  isAvailable && !rhs.isAvailable) { return true; }
+	if ( !isAvailable &&  rhs.isAvailable) { return false; }
+	return acquisitionID < rhs.acquisitionID;
+}
 
 VkResult MVKSwapchainImage::bindDeviceMemory(MVKDeviceMemory*, VkDeviceSize) {
 	return VK_ERROR_OUT_OF_DEVICE_MEMORY;
@@ -818,16 +824,6 @@ VkResult MVKSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
 	}
 	_swapchainIndex = swapchainInfo->imageIndex;
 	return VK_SUCCESS;
-}
-
-bool MVKSwapchainImageAvailability::operator< (const MVKSwapchainImageAvailability& rhs) const {
-	if (  isAvailable && !rhs.isAvailable) { return true; }
-	if ( !isAvailable &&  rhs.isAvailable) { return false; }
-
-	if (waitCount < rhs.waitCount) { return true; }
-	if (waitCount > rhs.waitCount) { return false; }
-
-	return acquisitionID < rhs.acquisitionID;
 }
 
 MVKSwapchainImageAvailability MVKSwapchainImage::getAvailability() {
@@ -870,8 +866,12 @@ void MVKSwapchainImage::makeAvailable() {
 //	MVKLogDebug("Signaling%s swapchain image %p semaphore %p from present, with %lu remaining semaphores.", (_availability.isAvailable ? " pre-signaled" : ""), this, signaler.first, _availabilitySignalers.size());
 }
 
-void MVKSwapchainImage::signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
+void MVKSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
 	lock_guard<mutex> lock(_availabilityLock);
+
+	// Now that this image is being acquired, release the existing drawable and its texture.
+	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
+	releaseMetalDrawable();
 
 	auto signaler = make_pair(semaphore, fence);
 	if (_availability.isAvailable) {
@@ -968,8 +968,8 @@ void MVKSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) 
 }
 
 // Resets the MTLTexture and CAMetalDrawable underlying this image.
-void MVKSwapchainImage::resetMetalDrawable() {
-	resetMTLTexture();			// Release texture first so drawable will be last to release it
+void MVKSwapchainImage::releaseMetalDrawable() {
+	releaseMTLTexture();			// Release texture first so drawable will be last to release it
 	[_mtlDrawable release];
 	_mtlDrawable = nil;
 }
@@ -991,7 +991,7 @@ MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
 }
 
 MVKSwapchainImage::~MVKSwapchainImage() {
-	resetMetalDrawable();
+	releaseMetalDrawable();
 }
 
 

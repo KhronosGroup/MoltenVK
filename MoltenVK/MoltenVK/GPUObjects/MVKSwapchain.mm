@@ -80,11 +80,9 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
 
 	if ( getIsSurfaceLost() ) { return VK_ERROR_SURFACE_LOST_KHR; }
 
-	// Find the image that has the smallest availability measure
+	// Find the image that has the shortest wait by finding the smallest availability measure.
 	MVKSwapchainImage* minWaitImage = nullptr;
-	MVKSwapchainImageAvailability minAvailability = { .acquisitionID = kMVKUndefinedLargeUInt64,
-													  .waitCount = kMVKUndefinedLargeUInt32,
-													  .isAvailable = false };
+	MVKSwapchainImageAvailability minAvailability = { kMVKUndefinedLargeUInt64, false };
 	uint32_t imgCnt = getImageCount();
 	for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
 		MVKSwapchainImage* img = getImage(imgIdx);
@@ -95,10 +93,10 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
 		}
 	}
 
-	// Return the index of the image with the shortest wait and signal the semaphore and fence when it's available
+	// Return the index of the image with the shortest wait,
+	// and signal the semaphore and fence when it's available
 	*pImageIndex = minWaitImage->_swapchainIndex;
-	minWaitImage->resetMetalDrawable();
-	minWaitImage->signalWhenAvailable((MVKSemaphore*)semaphore, (MVKFence*)fence);
+	minWaitImage->acquireAndSignalWhenAvailable((MVKSemaphore*)semaphore, (MVKFence*)fence);
 
 	return getHasSurfaceSizeChanged() ? VK_ERROR_OUT_OF_DATE_KHR : VK_SUCCESS;
 }

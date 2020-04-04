@@ -236,8 +236,8 @@ protected:
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
 	virtual id<MTLTexture> newMTLTexture();
-	void resetMTLTexture();
-    void resetIOSurface();
+	void releaseMTLTexture();
+    void releaseIOSurface();
 	MTLTextureDescriptor* newMTLTextureDescriptor();
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
@@ -277,7 +277,6 @@ protected:
 /** Indicates the relative availability of each image in the swapchain. */
 typedef struct MVKSwapchainImageAvailability {
 	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
-	uint32_t waitCount;				/**< The number of semaphores already waiting for this image. */
 	bool isAvailable;				/**< Indicates whether this image is currently available. */
 
 	bool operator< (const MVKSwapchainImageAvailability& rhs) const;
@@ -327,10 +326,10 @@ protected:
 
 	id<MTLTexture> newMTLTexture() override;
 	id<CAMetalDrawable> getCAMetalDrawable();
-	void resetMetalDrawable();
+	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
 	void makeAvailable();
-	void signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
+	void acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
 	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
 	void signalPresentationSemaphore(id<MTLCommandBuffer> mtlCmdBuff);
 	static void markAsTracked(MVKSwapchainSignaler& signaler);
