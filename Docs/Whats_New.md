@@ -32,6 +32,7 @@ Released 2020/04/05
 - Fix issue causing screen captures from swapchain image to deadlock.
 - Fix memory estimates for iOS 13+.
 - Broaden conditions for host read sync for image memory barriers on macOS.
+- Fix issue of reseting `CAMetalDrawable` and `MTLTexture` of peer swapchain images.
 - Fix the `make install` build command to overwrite the existing framework in the system
   framework library, and update `README.md` to clarify the instructions for using `make install`. 
 - Update the `README.md` and `MoltenVK_Runtime_UserGuide.md` documents to clarify that 

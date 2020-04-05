@@ -42,10 +42,10 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT; }
 
 	/** Returns the number of images in this swapchain. */
-	inline uint32_t getImageCount() { return (uint32_t)_surfaceImages.size(); }
+	inline uint32_t getImageCount() { return (uint32_t)_presentableImages.size(); }
 
 	/** Returns the image at the specified index. */
-	inline MVKSwapchainImage* getImage(uint32_t index) { return _surfaceImages[index]; }
+	inline MVKPresentableSwapchainImage* getPresentableImage(uint32_t index) { return _presentableImages[index]; }
 
 	/**
 	 * Returns the array of presentable images associated with this swapchain.
@@ -89,7 +89,7 @@ public:
 	~MVKSwapchain() override;
 
 protected:
-	friend class MVKSwapchainImage;
+	friend class MVKPresentableSwapchainImage;
 
 	void propogateDebugName() override;
 	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
@@ -103,7 +103,7 @@ protected:
 
 	CAMetalLayer* _mtlLayer;
     MVKWatermark* _licenseWatermark;
-	MVKVectorInline<MVKSwapchainImage*, kMVKMaxSwapchainImageCount> _surfaceImages;
+	MVKVectorInline<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
 	std::atomic<uint64_t> _currentAcquisitionID;
     CGSize _mtlLayerOrigDrawSize;
     MVKSwapchainPerformance _performanceStatistics;

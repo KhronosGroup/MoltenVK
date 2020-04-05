@@ -339,7 +339,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	// The semaphores know what to do.
 	id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();
 	for (auto& ws : _waitSemaphores) { ws->encodeWait(mtlCmdBuff); }
-	for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
+	for (auto& img : _presentableImages) { img->presentCAMetalDrawable(mtlCmdBuff); }
 	for (auto& ws : _waitSemaphores) { ws->encodeWait(nil); }
 	[mtlCmdBuff commit];
 
@@ -363,10 +363,10 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 		: MVKQueueSubmission(queue, pPresentInfo->waitSemaphoreCount, pPresentInfo->pWaitSemaphores) {
 
 	// Populate the array of swapchain images, testing each one for a change in surface size
-	_surfaceImages.reserve(pPresentInfo->swapchainCount);
+	_presentableImages.reserve(pPresentInfo->swapchainCount);
 	for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
 		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[i];
-		_surfaceImages.push_back(mvkSC->getImage(pPresentInfo->pImageIndices[i]));
+		_presentableImages.push_back(mvkSC->getPresentableImage(pPresentInfo->pImageIndices[i]));
 		// Surface loss takes precedence over out-of-date errors.
 		if (mvkSC->getIsSurfaceLost()) {
 			setConfigurationResult(VK_ERROR_SURFACE_LOST_KHR);

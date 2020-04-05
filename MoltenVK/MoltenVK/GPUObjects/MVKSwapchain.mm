@@ -40,10 +40,10 @@ using namespace std;
 
 void MVKSwapchain::propogateDebugName() {
 	if (_debugName) {
-		size_t imgCnt = _surfaceImages.size();
+		size_t imgCnt = _presentableImages.size();
 		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
 			NSString* nsName = [[NSString alloc] initWithFormat: @"%@(%lu)", _debugName, imgIdx];	// temp retain
-			_surfaceImages[imgIdx]->setDebugName(nsName.UTF8String);
+			_presentableImages[imgIdx]->setDebugName(nsName.UTF8String);
 			[nsName release];																		// release temp string
 		}
 	}
@@ -66,7 +66,7 @@ VkResult MVKSwapchain::getImages(uint32_t* pCount, VkImage* pSwapchainImages) {
 
 	// Now populate the images
 	for (uint32_t imgIdx = 0; imgIdx < *pCount; imgIdx++) {
-		pSwapchainImages[imgIdx] = (VkImage)_surfaceImages[imgIdx];
+		pSwapchainImages[imgIdx] = (VkImage)_presentableImages[imgIdx];
 	}
 
 	return result;
@@ -81,11 +81,11 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
 	if ( getIsSurfaceLost() ) { return VK_ERROR_SURFACE_LOST_KHR; }
 
 	// Find the image that has the shortest wait by finding the smallest availability measure.
-	MVKSwapchainImage* minWaitImage = nullptr;
+	MVKPresentableSwapchainImage* minWaitImage = nullptr;
 	MVKSwapchainImageAvailability minAvailability = { kMVKUndefinedLargeUInt64, false };
 	uint32_t imgCnt = getImageCount();
 	for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-		MVKSwapchainImage* img = getImage(imgIdx);
+		auto* img = getPresentableImage(imgIdx);
 		auto imgAvail = img->getAvailability();
 		if (imgAvail < minAvailability) {
 			minAvailability = imgAvail;
@@ -382,7 +382,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 	}
 
 	for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-		_surfaceImages.push_back(_device->createSwapchainImage(&imgInfo, this, imgIdx, NULL));
+		_presentableImages.push_back(_device->createPresentableSwapchainImage(&imgInfo, this, imgIdx, NULL));
 	}
 
     MVKLogInfo("Created %d swapchain images with initial size (%d, %d).", imgCnt, imgExtent.width, imgExtent.height);
@@ -403,7 +403,7 @@ void MVKSwapchain::initFrameIntervalTracking() {
 }
 
 MVKSwapchain::~MVKSwapchain() {
-	for (auto& img : _surfaceImages) { _device->destroySwapchainImage(img, NULL); }
+	for (auto& img : _presentableImages) { _device->destroyPresentableSwapchainImage(img, NULL); }
 
     if (_licenseWatermark) { _licenseWatermark->destroy(); }
     [this->_layerObserver release];
