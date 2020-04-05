@@ -298,34 +298,6 @@ id<MTLTexture> MVKImage::getMTLTexture(MTLPixelFormat mtlPixFmt) {
 	return mtlTex;
 }
 
-VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
-    lock_guard<mutex> lock(_lock);
-    releaseMTLTexture();
-    releaseIOSurface();
-
-    _mtlTexture = [mtlTexture retain];		// retained
-
-    _mtlPixelFormat = _mtlTexture.pixelFormat;
-    _mtlTextureType = _mtlTexture.textureType;
-    _extent.width = uint32_t(_mtlTexture.width);
-    _extent.height = uint32_t(_mtlTexture.height);
-    _extent.depth = uint32_t(_mtlTexture.depth);
-    _mipLevels = uint32_t(_mtlTexture.mipmapLevelCount);
-    _samples = mvkVkSampleCountFlagBitsFromSampleCount(_mtlTexture.sampleCount);
-    _arrayLayers = uint32_t(_mtlTexture.arrayLength);
-    _usage = getPixelFormats()->getVkImageUsageFlagsFromMTLTextureUsage(_mtlTexture.usage, _mtlPixelFormat);
-
-    if (_device->_pMetalFeatures->ioSurfaces) {
-        _ioSurface = mtlTexture.iosurface;
-        CFRetain(_ioSurface);
-    }
-
-    return VK_SUCCESS;
-}
-
-// Creates and returns a retained Metal texture suitable for use in this instance.
-// This implementation creates a new MTLTexture from a MTLTextureDescriptor and possible IOSurface.
-// Subclasses may override this function to create the MTLTexture in a different manner.
 id<MTLTexture> MVKImage::newMTLTexture() {
 	id<MTLTexture> mtlTex = nil;
 	MTLTextureDescriptor* mtlTexDesc = newMTLTextureDescriptor();	// temp retain
@@ -346,6 +318,32 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 
 	[mtlTexDesc release];											// temp release
 	return mtlTex;
+}
+
+VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
+	lock_guard<mutex> lock(_lock);
+
+	releaseMTLTexture();
+	releaseIOSurface();
+
+	_mtlTexture = [mtlTexture retain];		// retained
+
+	_mtlPixelFormat = mtlTexture.pixelFormat;
+	_mtlTextureType = mtlTexture.textureType;
+	_extent.width = uint32_t(mtlTexture.width);
+	_extent.height = uint32_t(mtlTexture.height);
+	_extent.depth = uint32_t(mtlTexture.depth);
+	_mipLevels = uint32_t(mtlTexture.mipmapLevelCount);
+	_samples = mvkVkSampleCountFlagBitsFromSampleCount(mtlTexture.sampleCount);
+	_arrayLayers = uint32_t(mtlTexture.arrayLength);
+	_usage = getPixelFormats()->getVkImageUsageFlagsFromMTLTextureUsage(mtlTexture.usage, _mtlPixelFormat);
+
+	if (_device->_pMetalFeatures->ioSurfaces) {
+		_ioSurface = mtlTexture.iosurface;
+		CFRetain(_ioSurface);
+	}
+
+	return VK_SUCCESS;
 }
 
 // Removes and releases the MTLTexture object, and all associated texture views
@@ -929,11 +927,8 @@ void MVKSwapchainImage::unmarkAsTracked(MVKSwapchainSignaler& signaler) {
 
 #pragma mark Metal
 
-// Creates and returns a retained Metal texture suitable for use in this instance.
-// This implementation retrieves a MTLTexture from the CAMetalDrawable.
-id<MTLTexture> MVKSwapchainImage::newMTLTexture() {
-	return [[getCAMetalDrawable() texture] retain];
-}
+// Overridden to always retrieve the MTLTexture directly from the CAMetalDrawable.
+id<MTLTexture> MVKSwapchainImage::getMTLTexture() { return [getCAMetalDrawable() texture]; }
 
 id<CAMetalDrawable> MVKSwapchainImage::getCAMetalDrawable() {
 	while ( !_mtlDrawable ) {
@@ -941,7 +936,7 @@ id<CAMetalDrawable> MVKSwapchainImage::getCAMetalDrawable() {
 			uint64_t startTime = _device->getPerformanceTimestamp();
 
 			_mtlDrawable = [_swapchain->_mtlLayer.nextDrawable retain];
-			if ( !_mtlDrawable ) { MVKLogError("CAMetalDrawable could not be acquired after %.6f ms.", mvkGetElapsedMilliseconds(startTime)); }
+			if ( !_mtlDrawable ) { MVKLogError("CAMetalDrawable could not be acquired."); }
 
 			_device->addActivityPerformance(_device->_performanceStatistics.queue.nextCAMetalDrawable, startTime);
 		}

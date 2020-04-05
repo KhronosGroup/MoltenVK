@@ -147,7 +147,7 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image. */
-	id<MTLTexture> getMTLTexture();
+	virtual id<MTLTexture> getMTLTexture();
 
 	/** Returns a Metal texture that interprets the pixels in the specified format. */
 	id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
@@ -235,7 +235,7 @@ protected:
 	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
-	virtual id<MTLTexture> newMTLTexture();
+	id<MTLTexture> newMTLTexture();
 	void releaseMTLTexture();
     void releaseIOSurface();
 	MTLTextureDescriptor* newMTLTextureDescriptor();
@@ -300,6 +300,9 @@ public:
 
 #pragma mark Metal
 
+	/** Returns the Metal texture used by the CAMetalDrawable underlying this image. */
+	id<MTLTexture> getMTLTexture() override;
+
 	/**
 	 * Presents the contained drawable to the OS, releases the Metal drawable and its
 	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
@@ -324,7 +327,6 @@ public:
 protected:
 	friend MVKSwapchain;
 
-	id<MTLTexture> newMTLTexture() override;
 	id<CAMetalDrawable> getCAMetalDrawable();
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
