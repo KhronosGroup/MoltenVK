@@ -773,7 +773,15 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 
 // Initializes the Metal-specific physical device features of this instance.
 void MVKPhysicalDevice::initMetalFeatures() {
-	mvkClear(&_metalFeatures);	// Start with everything cleared
+
+#	ifndef MVK_CONFIG_USE_MTLHEAP
+#   	define MVK_CONFIG_USE_MTLHEAP    0
+#	endif
+	bool useMTLHeaps;
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL(useMTLHeaps, MVK_CONFIG_USE_MTLHEAP);
+
+	// Start with all Metal features cleared
+	mvkClear(&_metalFeatures);
 
 	_metalFeatures.maxPerStageBufferCount = 31;
     _metalFeatures.maxMTLBufferSize = (256 * MEBI);
@@ -848,7 +856,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
-		_metalFeatures.placementHeaps = true;
+		_metalFeatures.placementHeaps = useMTLHeaps;
 		if (supportsMTLGPUFamily(Apple4)) {
 			_metalFeatures.nativeTextureSwizzle = true;
 		}
@@ -904,7 +912,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.native3DCompressedTextures = true;
 		if (supportsMTLGPUFamily(Mac2)) {
 			_metalFeatures.nativeTextureSwizzle = true;
-			_metalFeatures.placementHeaps = true;
+			_metalFeatures.placementHeaps = useMTLHeaps;
 		}
 	}
 
@@ -957,7 +965,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			break;
 #endif
 	}
-
 }
 
 // Initializes the physical device features of this instance.
@@ -2131,7 +2138,7 @@ MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
 		}
 	}
 	if (swapchainInfo) {
-		return createSwapchainImage(pCreateInfo, (MVKSwapchain*)swapchainInfo->swapchain, uint32_t(-1), pAllocator);
+		return (MVKImage*)addResource(new MVKPeerSwapchainImage(this, pCreateInfo, (MVKSwapchain*)swapchainInfo->swapchain, uint32_t(-1)));
 	}
 	return (MVKImage*)addResource(new MVKImage(this, pCreateInfo));
 }
@@ -2162,15 +2169,15 @@ void MVKDevice::destroySwapchain(MVKSwapchain* mvkSwpChn,
 	mvkSwpChn->destroy();
 }
 
-MVKSwapchainImage* MVKDevice::createSwapchainImage(const VkImageCreateInfo* pCreateInfo,
-												   MVKSwapchain* swapchain,
-												   uint32_t swapchainIndex,
-												   const VkAllocationCallbacks* pAllocator) {
-	return (MVKSwapchainImage*)addResource(new MVKSwapchainImage(this, pCreateInfo, swapchain, swapchainIndex));
+MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const VkImageCreateInfo* pCreateInfo,
+																		 MVKSwapchain* swapchain,
+																		 uint32_t swapchainIndex,
+																		 const VkAllocationCallbacks* pAllocator) {
+	return (MVKPresentableSwapchainImage*)addResource(new MVKPresentableSwapchainImage(this, pCreateInfo, swapchain, swapchainIndex));
 }
 
-void MVKDevice::destroySwapchainImage(MVKSwapchainImage* mvkImg,
-									  const VkAllocationCallbacks* pAllocator) {
+void MVKDevice::destroyPresentableSwapchainImage(MVKPresentableSwapchainImage* mvkImg,
+												 const VkAllocationCallbacks* pAllocator) {
 	removeResource(mvkImg);
 	mvkImg->destroy();
 }
@@ -2656,10 +2663,9 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	}
 	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
 
-#ifndef MVK_CONFIG_USE_COMMAND_POOLING
-#   define MVK_CONFIG_USE_COMMAND_POOLING    1
-#endif
-	_useCommandPooling = MVK_CONFIG_USE_COMMAND_POOLING;
+#	ifndef MVK_CONFIG_USE_COMMAND_POOLING
+#   	define MVK_CONFIG_USE_COMMAND_POOLING    1
+#	endif
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useCommandPooling, MVK_CONFIG_USE_COMMAND_POOLING);
 
 #if MVK_MACOS

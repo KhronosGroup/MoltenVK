@@ -163,6 +163,18 @@ typedef unsigned long MTLLanguageVersion;
  *    a command is executed. This is a classic time-space trade off. When command pooling is
  *    active, the memory in the pool can be cleared via a call to the vkTrimCommandPoolKHR()
  *    command. This setting is enabled by default, and MoltenVK will pool command memory.
+ *
+ * 9. The MVK_CONFIG_USE_MTLHEAP runtime environment variable or MoltenVK compile-time build
+ *    setting controls whether MoltenVK should use MTLHeaps for allocating textures and buffers
+ *    from device memory. If this environment variable is enabled, and placement MTLHeaps are
+ *    available on the platform, MoltenVK will allocate a placement MTLHeap for each VkDeviceMemory
+ *    instance, and allocate textures and buffers from that placement heap. If this environment
+ *    variable is disabled, MoltenVK will allocate textures and buffers from general device memory.
+ *    Apple recommends that MTLHeaps should only be used for specific requirements such as aliasing
+ *    or hazard tracking, and MoltenVK testing has shown that allocating multiple textures of
+ *    different types or usages from one MTLHeap can occassionally cause corruption issues under
+ *    certain circumstances. Because of this, this setting is disabled by default, and MoltenVK
+ *    will allocate texures and buffers from general device memory.
  */
 typedef struct {
 

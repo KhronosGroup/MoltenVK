@@ -42,7 +42,7 @@ class MVKResource;
 class MVKBuffer;
 class MVKBufferView;
 class MVKImage;
-class MVKSwapchainImage;
+class MVKPresentableSwapchainImage;
 class MVKImageView;
 class MVKSwapchain;
 class MVKDeviceMemory;
@@ -450,12 +450,12 @@ public:
 	void destroySwapchain(MVKSwapchain* mvkSwpChn,
 						  const VkAllocationCallbacks* pAllocator);
 
-	MVKSwapchainImage* createSwapchainImage(const VkImageCreateInfo* pCreateInfo,
-											MVKSwapchain* swapchain,
-											uint32_t swapchainIndex,
-											const VkAllocationCallbacks* pAllocator);
-	void destroySwapchainImage(MVKSwapchainImage* mvkImg,
-							   const VkAllocationCallbacks* pAllocator);
+	MVKPresentableSwapchainImage* createPresentableSwapchainImage(const VkImageCreateInfo* pCreateInfo,
+																  MVKSwapchain* swapchain,
+																  uint32_t swapchainIndex,
+																  const VkAllocationCallbacks* pAllocator);
+	void destroyPresentableSwapchainImage(MVKPresentableSwapchainImage* mvkImg,
+										  const VkAllocationCallbacks* pAllocator);
 
 	MVKFence* createFence(const VkFenceCreateInfo* pCreateInfo,
 						  const VkAllocationCallbacks* pAllocator);

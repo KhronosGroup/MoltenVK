@@ -32,11 +32,13 @@ Released 2020/04/05
 - Fix issue causing screen captures from swapchain image to deadlock.
 - Fix memory estimates for iOS 13+.
 - Broaden conditions for host read sync for image memory barriers on macOS.
+- Fix issue of reseting `CAMetalDrawable` and `MTLTexture` of peer swapchain images.
 - Fix the `make install` build command to overwrite the existing framework in the system
   framework library, and update `README.md` to clarify the instructions for using `make install`. 
 - Update the `README.md` and `MoltenVK_Runtime_UserGuide.md` documents to clarify that 
   **MoltenVK** is not a fully-compliant implementation of *Vulkan*.
 - Support Xcode 11.4.
+- Disable `API-Samples` demos and document in `Demos/README.md`.
 - Update dependency libraries to match *Vulkan SDK 1.2.135*.
 - Update to latest SPIRV-Cross version:
 	- MSL: Support inline uniform blocks in argument buffers.

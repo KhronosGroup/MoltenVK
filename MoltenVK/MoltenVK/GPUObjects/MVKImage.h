@@ -147,7 +147,7 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image. */
-	id<MTLTexture> getMTLTexture();
+	virtual id<MTLTexture> getMTLTexture();
 
 	/** Returns a Metal texture that interprets the pixels in the specified format. */
 	id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
@@ -235,9 +235,9 @@ protected:
 	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
-	virtual id<MTLTexture> newMTLTexture();
-	void resetMTLTexture();
-    void resetIOSurface();
+	id<MTLTexture> newMTLTexture();
+	void releaseMTLTexture();
+    void releaseIOSurface();
 	MTLTextureDescriptor* newMTLTextureDescriptor();
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
@@ -274,10 +274,44 @@ protected:
 #pragma mark -
 #pragma mark MVKSwapchainImage
 
+/** Abstract class of Vulkan image used as a rendering destination within a swapchain. */
+class MVKSwapchainImage : public MVKImage {
+
+public:
+
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+
+#pragma mark Metal
+
+	/** Returns the Metal texture used by the CAMetalDrawable underlying this image. */
+	id<MTLTexture> getMTLTexture() override;
+
+
+#pragma mark Construction
+
+	/** Constructs an instance for the specified device and swapchain. */
+	MVKSwapchainImage(MVKDevice* device,
+					  const VkImageCreateInfo* pCreateInfo,
+					  MVKSwapchain* swapchain,
+					  uint32_t swapchainIndex);
+
+protected:
+	friend class MVKPeerSwapchainImage;
+
+	virtual id<CAMetalDrawable> getCAMetalDrawable() = 0;
+
+	MVKSwapchain* _swapchain;
+	uint32_t _swapchainIndex;
+};
+
+
+#pragma mark -
+#pragma mark MVKPresentableSwapchainImage
+
 /** Indicates the relative availability of each image in the swapchain. */
 typedef struct MVKSwapchainImageAvailability {
 	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
-	uint32_t waitCount;				/**< The number of semaphores already waiting for this image. */
 	bool isAvailable;				/**< Indicates whether this image is currently available. */
 
 	bool operator< (const MVKSwapchainImageAvailability& rhs) const;
@@ -287,17 +321,10 @@ typedef struct MVKSwapchainImageAvailability {
 typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
 
 
-/** Represents a Vulkan image used as a rendering destination within a swapchain. */
-class MVKSwapchainImage : public MVKImage {
+/** Represents a Vulkan swapchain image that can be submitted to the presentation engine. */
+class MVKPresentableSwapchainImage : public MVKSwapchainImage {
 
 public:
-
-	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
-
-	/** Binds this resource according to the specified bind information. */
-	VkResult bindDeviceMemory2(const void* pBindInfo) override;
-
 
 #pragma mark Metal
 
@@ -315,35 +342,58 @@ public:
 #pragma mark Construction
 
 	/** Constructs an instance for the specified device and swapchain. */
-	MVKSwapchainImage(MVKDevice* device,
-					  const VkImageCreateInfo* pCreateInfo,
-					  MVKSwapchain* swapchain,
-					  uint32_t swapchainIndex);
+	MVKPresentableSwapchainImage(MVKDevice* device,
+								 const VkImageCreateInfo* pCreateInfo,
+								 MVKSwapchain* swapchain,
+								 uint32_t swapchainIndex);
 
-	~MVKSwapchainImage() override;
+	~MVKPresentableSwapchainImage() override;
 
 protected:
 	friend MVKSwapchain;
 
-	id<MTLTexture> newMTLTexture() override;
-	id<CAMetalDrawable> getCAMetalDrawable();
-	void resetMetalDrawable();
+	id<CAMetalDrawable> getCAMetalDrawable() override;
+	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
 	void makeAvailable();
-	void signalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
+	void acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
 	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
 	void signalPresentationSemaphore(id<MTLCommandBuffer> mtlCmdBuff);
 	static void markAsTracked(MVKSwapchainSignaler& signaler);
 	static void unmarkAsTracked(MVKSwapchainSignaler& signaler);
 	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
-	MVKSwapchain* _swapchain;
-	uint32_t _swapchainIndex;
 	id<CAMetalDrawable> _mtlDrawable;
 	MVKSwapchainImageAvailability _availability;
 	MVKVectorInline<MVKSwapchainSignaler, 1> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaler;
 	std::mutex _availabilityLock;
+};
+
+
+#pragma mark -
+#pragma mark MVKPeerSwapchainImage
+
+/** Represents a Vulkan swapchain image that can be associated as a peer to a swapchain image. */
+class MVKPeerSwapchainImage : public MVKSwapchainImage {
+
+public:
+
+	/** Binds this resource according to the specified bind information. */
+	VkResult bindDeviceMemory2(const void* pBindInfo) override;
+
+
+#pragma mark Construction
+
+	/** Constructs an instance for the specified device and swapchain. */
+	MVKPeerSwapchainImage(MVKDevice* device,
+						  const VkImageCreateInfo* pCreateInfo,
+						  MVKSwapchain* swapchain,
+						  uint32_t swapchainIndex);
+
+protected:
+	id<CAMetalDrawable> getCAMetalDrawable() override;
+
 };
 
 

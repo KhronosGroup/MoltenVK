@@ -228,6 +228,6 @@ public:
 protected:
 	id<MTLCommandBuffer> getMTLCommandBuffer();
 
-	MVKVectorInline<MVKSwapchainImage*, 4> _surfaceImages;
+	MVKVectorInline<MVKPresentableSwapchainImage*, 4> _presentableImages;
 };
 

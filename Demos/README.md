@@ -64,7 +64,12 @@ as a system library instead.
 <a name="lunarg-vulkan-samples-api"></a>
 ### *API-Samples*
 
-This *Xcode* project actually contains a large number of modular demos, with each demo
+> **_Note:_** The `Vulkan-Samples API-Samples` have recently changed to use a different build 
+  process that involves converting GLSL to SPIR-V via scripts. This upgrade has not yet been 
+  integrated into the *Xcode*-based build environment used to build these demos here. 
+  As a result, the `API-Samples` demos have been disabled here until this can be corrected.
+
+This *Xcode* project contains a large number of modular demos, with each demo
 demonstrating a particular *Vulkan* feature, or suite of calls.
 
 This demo can be found in the `LunarG-VulkanSamples/API-Samples` folder, and in the 
@@ -77,7 +82,7 @@ To specify which of the many modular demos to run, open the `Samples.h` in the `
 project in the *Xcode Project Navigator* in the `Demos.xcworkspace` *Xcode* workspace, and
 follow the instructions in the comments within that file.
 
-> **Note:** For simplicity, the `API-Samples` demos are bare-bones. Each of the `API-Samples` 
+> **_Note:_** For simplicity, the `API-Samples` demos are bare-bones. Each of the `API-Samples` 
 > demos renders a single frame during app startup, and then leaves the rendered image static. 
 > There is no display loop or motion in any of these demos.
 > **This is normal for these demos, and the demo has not "hung" or "crashed" when this occurs.**
@@ -91,7 +96,7 @@ The `API-Samples` demo is a simple example of installing **MoltenVK** as a *stat
 <a name="lunarg-vulkan-samples-hologram"></a>
 ### *Hologram*
 
-> **Note:** In order to build the `Hologram` demo, you must have *Python3* installed
+> **_Note:_** In order to build the `Hologram` demo, you must have *Python3* installed
 > on your build computer.
 
 This is a sophisticated particle demo that populates command buffers from multiple threads.

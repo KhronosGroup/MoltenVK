@@ -289,7 +289,7 @@ static NSArray<id<MTLDevice>>* availableMTLDevicesArray() {
 #if MVK_MACOS
 	NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
 	if (rawMTLDevs) {
-		bool forceLowPower = MVK_CONFIG_FORCE_LOW_POWER_GPU;
+		bool forceLowPower;
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(forceLowPower, MVK_CONFIG_FORCE_LOW_POWER_GPU);
 
 		// Populate the array of appropriate MTLDevices
