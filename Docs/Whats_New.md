@@ -38,6 +38,7 @@ Released 2020/04/05
 - Update the `README.md` and `MoltenVK_Runtime_UserGuide.md` documents to clarify that 
   **MoltenVK** is not a fully-compliant implementation of *Vulkan*.
 - Support Xcode 11.4.
+- Disable `API-Samples` demos and document in `Demos/README.md`.
 - Update dependency libraries to match *Vulkan SDK 1.2.135*.
 - Update to latest SPIRV-Cross version:
 	- MSL: Support inline uniform blocks in argument buffers.
