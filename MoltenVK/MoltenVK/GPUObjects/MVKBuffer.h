@@ -72,7 +72,7 @@ public:
 	id<MTLBuffer> getMTLBuffer();
 
 	/** Returns the offset at which the contents of this instance starts within the underlying Metal buffer. */
-	inline NSUInteger getMTLBufferOffset() { return _deviceMemory && _deviceMemory->getMTLHeap() ? 0 : _deviceMemoryOffset; }
+	inline NSUInteger getMTLBufferOffset() { return _deviceMemory && _deviceMemory->getMTLHeap() && !_isHostCoherentTexelBuffer ? 0 : _deviceMemoryOffset; }
 
 
 #pragma mark Construction
@@ -82,14 +82,19 @@ public:
 	~MVKBuffer() override;
 
 protected:
+	friend class MVKDeviceMemory;
 	using MVKResource::needsHostReadSync;
 
 	void propogateDebugName() override;
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   VkBufferMemoryBarrier* pBufferMemoryBarrier);
+	bool shouldFlushHostMemory();
+	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
+	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
 
 	VkBufferUsageFlags _usage;
+	bool _isHostCoherentTexelBuffer = false;
 	id<MTLBuffer> _mtlBuffer = nil;
 };
 
