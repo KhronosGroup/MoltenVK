@@ -446,8 +446,8 @@
 		A94FB7651C7DFB4800632CA3 /* API */ = {
 			isa = PBXGroup;
 			children = (
-				A948BB7E1E51642700DE59F2 /* mvk_vulkan.h */,
 				A94FB7671C7DFB4800632CA3 /* mvk_datatypes.h */,
+				A948BB7E1E51642700DE59F2 /* mvk_vulkan.h */,
 				A94FB7691C7DFB4800632CA3 /* vk_mvk_moltenvk.h */,
 			);
 			path = API;
@@ -478,11 +478,11 @@
 				A95B7D681D3EE486003183D3 /* MVKCommandEncoderState.mm */,
 				A90C8DE81F45354D009CB32C /* MVKCommandEncodingPool.h */,
 				A90C8DE91F45354D009CB32C /* MVKCommandEncodingPool.mm */,
-				A95870F61C90D29F009EB096 /* MVKCommandResourceFactory.h */,
-				A95870F71C90D29F009EB096 /* MVKCommandResourceFactory.mm */,
 				A94FB77C1C7DFB4800632CA3 /* MVKCommandPipelineStateFactoryShaderSource.h */,
 				A94FB77A1C7DFB4800632CA3 /* MVKCommandPool.h */,
 				A94FB77B1C7DFB4800632CA3 /* MVKCommandPool.mm */,
+				A95870F61C90D29F009EB096 /* MVKCommandResourceFactory.h */,
+				A95870F71C90D29F009EB096 /* MVKCommandResourceFactory.mm */,
 				A9C96DCE1DDC20C20053187F /* MVKMTLBufferAllocation.h */,
 				A9C96DCF1DDC20C20053187F /* MVKMTLBufferAllocation.mm */,
 				A9E4B7881E1D8AF10046A4CE /* MVKMTLResourceBindings.h */,
@@ -561,19 +561,19 @@
 		A98149401FB6A3F7005F00B4 /* Utility */ = {
 			isa = PBXGroup;
 			children = (
+				A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */,
+				A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */,
 				4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */,
 				4553AEF62251617100E8EBCD /* MVKBlockObserver.m */,
 				45557A4D21C9EFF3008868BD /* MVKCodec.cpp */,
 				45557A5121C9EFF3008868BD /* MVKCodec.h */,
 				45557A5721CD83C3008868BD /* MVKDXTnCodec.def */,
-				83A4AD2521BD75570006C935 /* MVKVector.h */,
-				83A4AD2921BD75570006C935 /* MVKVectorAllocator.h */,
-				A98149411FB6A3F7005F00B4 /* MVKBaseObject.mm */,
-				A98149421FB6A3F7005F00B4 /* MVKBaseObject.h */,
 				A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */,
 				A98149451FB6A3F7005F00B4 /* MVKFoundation.cpp */,
 				A98149441FB6A3F7005F00B4 /* MVKFoundation.h */,
 				A98149461FB6A3F7005F00B4 /* MVKObjectPool.h */,
+				83A4AD2521BD75570006C935 /* MVKVector.h */,
+				83A4AD2921BD75570006C935 /* MVKVectorAllocator.h */,
 				A98149491FB6A3F7005F00B4 /* MVKWatermark.h */,
 				A981494A1FB6A3F7005F00B4 /* MVKWatermark.mm */,
 				A981494B1FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h */,
