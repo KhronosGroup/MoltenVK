@@ -2446,42 +2446,72 @@ uint64_t MVKDevice::getPerformanceTimestampImpl() { return mvkGetTimestamp(); }
 
 void MVKDevice::addActivityPerformanceImpl(MVKPerformanceTracker& activityTracker,
 										   uint64_t startTime, uint64_t endTime) {
-    lock_guard<mutex> lock(_perfLock);
 
 	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
-	activityTracker.minimumDuration = ((activityTracker.minimumDuration == 0.0)
-											  ? currInterval :
-											  min(currInterval, activityTracker.minimumDuration));
-    activityTracker.maximumDuration = max(currInterval, activityTracker.maximumDuration);
-    double totalInterval = (activityTracker.averageDuration * activityTracker.count++) + currInterval;
-    activityTracker.averageDuration = totalInterval / activityTracker.count;
+	lock_guard<mutex> lock(_perfLock);
 
-	if (_pMVKConfig->performanceLoggingFrameCount) {
-		MVKLogInfo("Performance to %s count: %d curr: %.3f ms, min: %.3f ms, max: %.3f ms, avg: %.3f ms",
-				   getActivityPerformanceDescription(activityTracker),
-				   activityTracker.count,
-				   currInterval,
-				   activityTracker.minimumDuration,
-				   activityTracker.maximumDuration,
-				   activityTracker.averageDuration);
-	}
+	activityTracker.latestDuration = currInterval;
+	activityTracker.minimumDuration = ((activityTracker.minimumDuration == 0.0)
+									   ? currInterval :
+									   min(currInterval, activityTracker.minimumDuration));
+	activityTracker.maximumDuration = max(currInterval, activityTracker.maximumDuration);
+	double totalInterval = (activityTracker.averageDuration * activityTracker.count++) + currInterval;
+	activityTracker.averageDuration = totalInterval / activityTracker.count;
+
+	if (_logActivityPerformanceInline) { logActivityPerformance(activityTracker, true); }
+}
+
+void MVKDevice::logActivityPerformance(MVKPerformanceTracker& activityTracker, bool isInline) {
+	MVKLogInfo("%s%s%s avg: %.3f ms, latest: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
+			   (isInline ? "" : "  "),
+			   getActivityPerformanceDescription(activityTracker),
+			   (isInline ? " performance" : ""),
+			   activityTracker.averageDuration,
+			   activityTracker.latestDuration,
+			   activityTracker.minimumDuration,
+			   activityTracker.maximumDuration,
+			   activityTracker.count);
+}
+
+void MVKDevice::logPerformanceSummary() {
+	if (_logActivityPerformanceInline) { return; }
+
+	lock_guard<mutex> lock(_perfLock);
+
+	bool isInline = false;
+	logActivityPerformance(_performanceStatistics.queue.frameInterval, isInline);
+	logActivityPerformance(_performanceStatistics.queue.nextCAMetalDrawable, isInline);
+	logActivityPerformance(_performanceStatistics.queue.mtlCommandBufferCompletion, isInline);
+	logActivityPerformance(_performanceStatistics.queue.mtlQueueAccess, isInline);
+	logActivityPerformance(_performanceStatistics.shaderCompilation.hashShaderCode, isInline);
+	logActivityPerformance(_performanceStatistics.shaderCompilation.spirvToMSL, isInline);
+	logActivityPerformance(_performanceStatistics.shaderCompilation.mslCompile, isInline);
+	logActivityPerformance(_performanceStatistics.shaderCompilation.mslLoad, isInline);
+	logActivityPerformance(_performanceStatistics.shaderCompilation.shaderLibraryFromCache, isInline);
+	logActivityPerformance(_performanceStatistics.shaderCompilation.functionRetrieval, isInline);
+	logActivityPerformance(_performanceStatistics.shaderCompilation.functionSpecialization, isInline);
+	logActivityPerformance(_performanceStatistics.shaderCompilation.pipelineCompile, isInline);
+	logActivityPerformance(_performanceStatistics.pipelineCache.sizePipelineCache, isInline);
+	logActivityPerformance(_performanceStatistics.pipelineCache.readPipelineCache, isInline);
+	logActivityPerformance(_performanceStatistics.pipelineCache.writePipelineCache, isInline);
 }
 
 const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& activityTracker) {
-	if (&activityTracker == &_performanceStatistics.shaderCompilation.hashShaderCode) { return "hash shader SPIR-V code"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.spirvToMSL) { return "convert SPIR-V to MSL source code"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.mslCompile) { return "compile MSL source code into a MTLLibrary"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.mslLoad) { return "load pre-compiled MSL code into a MTLLibrary"; }
-	if (&activityTracker == &_performanceStatistics.shaderCompilation.shaderLibraryFromCache) { return "retrieve shader library from the cache"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.functionRetrieval) { return "retrieve a MTLFunction from a MTLLibrary"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.functionSpecialization) { return "specialize a retrieved MTLFunction"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.pipelineCompile) { return "compile MTLFunctions into a pipeline"; }
-	if (&activityTracker == &_performanceStatistics.pipelineCache.sizePipelineCache) { return "calculate cache size required to write MSL to pipeline cache"; }
-	if (&activityTracker == &_performanceStatistics.pipelineCache.writePipelineCache) { return "write MSL to pipeline cache"; }
-	if (&activityTracker == &_performanceStatistics.pipelineCache.readPipelineCache) { return "read MSL from pipeline cache"; }
-	if (&activityTracker == &_performanceStatistics.queue.mtlQueueAccess) { return "access MTLCommandQueue"; }
-	if (&activityTracker == &_performanceStatistics.queue.mtlCommandBufferCompletion) { return "complete MTLCommandBuffer"; }
-	if (&activityTracker == &_performanceStatistics.queue.nextCAMetalDrawable) { return "retrieve a CAMetalDrawable from CAMetalLayer"; }
+	if (&activityTracker == &_performanceStatistics.shaderCompilation.hashShaderCode) { return "Hash shader SPIR-V code"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.spirvToMSL) { return "Convert SPIR-V to MSL source code"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.mslCompile) { return "Compile MSL source code into a MTLLibrary"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.mslLoad) { return "Load pre-compiled MSL code into a MTLLibrary"; }
+	if (&activityTracker == &_performanceStatistics.shaderCompilation.shaderLibraryFromCache) { return "Retrieve shader library from the cache"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.functionRetrieval) { return "Retrieve a MTLFunction from a MTLLibrary"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.functionSpecialization) { return "Specialize a retrieved MTLFunction"; }
+    if (&activityTracker == &_performanceStatistics.shaderCompilation.pipelineCompile) { return "Compile MTLFunctions into a pipeline"; }
+	if (&activityTracker == &_performanceStatistics.pipelineCache.sizePipelineCache) { return "Calculate cache size required to write MSL to pipeline cache"; }
+	if (&activityTracker == &_performanceStatistics.pipelineCache.readPipelineCache) { return "Read MSL from pipeline cache"; }
+	if (&activityTracker == &_performanceStatistics.pipelineCache.writePipelineCache) { return "Write MSL to pipeline cache"; }
+	if (&activityTracker == &_performanceStatistics.queue.mtlQueueAccess) { return "Access MTLCommandQueue"; }
+	if (&activityTracker == &_performanceStatistics.queue.mtlCommandBufferCompletion) { return "Complete MTLCommandBuffer"; }
+	if (&activityTracker == &_performanceStatistics.queue.nextCAMetalDrawable) { return "Retrieve a CAMetalDrawable from CAMetalLayer"; }
+	if (&activityTracker == &_performanceStatistics.queue.frameInterval) { return "Frame interval"; }
     return "Unknown performance activity";
 }
 
@@ -2597,7 +2627,12 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 }
 
 void MVKDevice::initPerformanceTracking() {
-    MVKPerformanceTracker initPerf;
+#	ifndef MVK_CONFIG_PERFORMANCE_LOGGING_INLINE
+#   	define MVK_CONFIG_PERFORMANCE_LOGGING_INLINE    0
+#	endif
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL(_logActivityPerformanceInline, MVK_CONFIG_PERFORMANCE_LOGGING_INLINE);
+
+	MVKPerformanceTracker initPerf;
     initPerf.count = 0;
     initPerf.averageDuration = 0.0;
     initPerf.minimumDuration = 0.0;
@@ -2617,6 +2652,7 @@ void MVKDevice::initPerformanceTracking() {
 	_performanceStatistics.queue.mtlQueueAccess = initPerf;
 	_performanceStatistics.queue.mtlCommandBufferCompletion = initPerf;
 	_performanceStatistics.queue.nextCAMetalDrawable = initPerf;
+	_performanceStatistics.queue.frameInterval = initPerf;
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {

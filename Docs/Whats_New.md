@@ -14,6 +14,20 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.42
+---------------
+
+Released TBD
+
+- Consolidate frame and non-frame performance reporting.
+	- Remove `vkGetSwapchainPerformanceMVK()` from API.
+	- Swapchain performance can be retrieved with other activity performance 
+	  through `vkGetPerformanceStatisticsMVK()`.
+	- Add `MVK_CONFIG_PERFORMANCE_LOGGING_INLINE` env var to enable/disable
+	  logging of performance of each activity when it happens. 
+
+
+
 MoltenVK 1.0.41
 ---------------
 

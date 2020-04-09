@@ -589,6 +589,9 @@ public:
 	/** Invalidates the memory regions. */
 	VkResult invalidateMappedMemoryRanges(uint32_t memRangeCount, const VkMappedMemoryRange* pMemRanges);
 
+	/** Log all performance statistics. */
+	void logPerformanceSummary();
+
 
 #pragma mark Metal
 
@@ -691,6 +694,7 @@ protected:
 	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& activityTracker);
+	void logActivityPerformance(MVKPerformanceTracker& activityTracker, bool isInline);
 	uint64_t getPerformanceTimestampImpl();
 	void addActivityPerformanceImpl(MVKPerformanceTracker& activityTracker,
 									uint64_t startTime, uint64_t endTime);
@@ -708,6 +712,7 @@ protected:
 	bool _useMTLFenceForSemaphores;
 	bool _useMTLEventForSemaphores;
 	bool _useCommandPooling;
+	bool _logActivityPerformanceInline;
 };
 
 

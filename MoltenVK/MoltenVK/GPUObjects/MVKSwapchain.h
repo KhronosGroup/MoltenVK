@@ -75,9 +75,6 @@ public:
 	/** Returns whether the parent surface is now lost and this swapchain must be recreated. */
 	bool getIsSurfaceLost() { return _surfaceLost; }
 
-	/** Returns the specified performance stats structure. */
-	const MVKSwapchainPerformance* getPerformanceStatistics() { return &_performanceStatistics; }
-
 	/** Adds HDR metadata to this swapchain. */
 	void setHDRMetadataEXT(const VkHdrMetadataEXT& metadata);
 
@@ -94,7 +91,6 @@ protected:
 	void propogateDebugName() override;
 	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
-    void initFrameIntervalTracking();
 	void releaseUndisplayedSurfaces();
 	uint64_t getNextAcquisitionID();
     void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
@@ -106,9 +102,7 @@ protected:
 	MVKVectorInline<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
 	std::atomic<uint64_t> _currentAcquisitionID;
     CGSize _mtlLayerOrigDrawSize;
-    MVKSwapchainPerformance _performanceStatistics;
     uint64_t _lastFrameTime;
-    double _averageFrameIntervalFilterAlpha;
     uint32_t _currentPerfLogFrameCount;
     std::atomic<bool> _surfaceLost;
     MVKBlockObserver* _layerObserver;

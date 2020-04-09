@@ -133,7 +133,7 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
                                                        getPixelFormats()->getMTLPixelFormatBytesPerRow(__watermarkTextureFormat, __watermarkTextureWidth),
                                                        __watermarkShaderSource);
         }
-        _licenseWatermark->render(mtlTexture, mtlCmdBuff, _performanceStatistics.lastFrameInterval / 1000.0);
+		_licenseWatermark->render(mtlTexture, mtlCmdBuff, 0.02f);
     } else {
         if (_licenseWatermark) {
             _licenseWatermark->destroy();
@@ -144,33 +144,23 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
 
 // Calculates and remembers the time interval between frames.
 void MVKSwapchain::markFrameInterval() {
-    if ( !(_device->_pMVKConfig->performanceTracking || _licenseWatermark) ) { return; }
+	if ( !(_device->_pMVKConfig->performanceTracking || _licenseWatermark) ) { return; }
 
-    uint64_t prevFrameTime = _lastFrameTime;
-    _lastFrameTime = mvkGetTimestamp();
-    _performanceStatistics.lastFrameInterval = mvkGetElapsedMilliseconds(prevFrameTime, _lastFrameTime);
+	uint64_t prevFrameTime = _lastFrameTime;
+	_lastFrameTime = mvkGetTimestamp();
 
-    // Low pass filter.
-    // y[i] := α * x[i] + (1-α) * y[i-1]  OR
-    // y[i] := y[i-1] + α * (x[i] - y[i-1])
-    _performanceStatistics.averageFrameInterval += _averageFrameIntervalFilterAlpha * (_performanceStatistics.lastFrameInterval - _performanceStatistics.averageFrameInterval);
-    _performanceStatistics.averageFramesPerSecond = 1000.0 / _performanceStatistics.averageFrameInterval;
+	if (prevFrameTime == 0) { return; }		// First frame starts at first presentation
 
-// Uncomment for per-frame logging.
-//	MVKLogDebug("Frame interval: %.2f ms. Avg frame interval: %.2f ms. Frame number: %d.",
-//				_performanceStatistics.lastFrameInterval,
-//				_performanceStatistics.averageFrameInterval,
-//				_currentPerfLogFrameCount + 1);
+	_device->addActivityPerformance(_device->_performanceStatistics.queue.frameInterval, prevFrameTime, _lastFrameTime);
 
-    uint32_t perfLogCntLimit = _device->_pMVKConfig->performanceLoggingFrameCount;
-    if ((perfLogCntLimit > 0) && (++_currentPerfLogFrameCount >= perfLogCntLimit)) {
+	uint32_t perfLogCntLimit = _device->_pMVKConfig->performanceLoggingFrameCount;
+	if ((perfLogCntLimit > 0) && (++_currentPerfLogFrameCount >= perfLogCntLimit)) {
 		_currentPerfLogFrameCount = 0;
-		MVKLogInfo("Frame interval: %.2f ms. Avg frame interval: %.2f ms. Avg FPS: %.2f. Reporting every: %d frames. Elapsed time: %.3f seconds.",
-				   _performanceStatistics.lastFrameInterval,
-				   _performanceStatistics.averageFrameInterval,
-				   _performanceStatistics.averageFramesPerSecond,
+		MVKLogInfo("Performance statistics reporting every: %d frames, avg FPS: %.2f, elapsed time: %.3f seconds:",
 				   perfLogCntLimit,
+				   (1000.0 / _device->_performanceStatistics.queue.frameInterval.averageDuration),
 				   mvkGetElapsedMilliseconds() / 1000.0);
+		_device->logPerformanceSummary();
 	}
 }
 
@@ -242,9 +232,14 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 #pragma mark Construction
 
 MVKSwapchain::MVKSwapchain(MVKDevice* device,
-						   const VkSwapchainCreateInfoKHR* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _surfaceLost(false) {
-	_currentAcquisitionID = 0;
-	_layerObserver = nil;
+						   const VkSwapchainCreateInfoKHR* pCreateInfo) :
+	MVKVulkanAPIDeviceObject(device),
+	_surfaceLost(false),
+	_currentAcquisitionID(0),
+	_layerObserver(nil),
+	_currentPerfLogFrameCount(0),
+	_lastFrameTime(0),
+	_licenseWatermark(nil) {
 
 	// If applicable, release any surfaces (not currently being displayed) from the old swapchain.
 	MVKSwapchain* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
@@ -255,9 +250,6 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
 							   _device->_pMetalFeatures->maxSwapchainImageCount);
 	initCAMetalLayer(pCreateInfo, imgCnt);
     initSurfaceImages(pCreateInfo, imgCnt);		// After initCAMetalLayer()
-    initFrameIntervalTracking();
-
-    _licenseWatermark = NULL;
 }
 
 // Initializes the CAMetalLayer underlying the surface of this swapchain.
@@ -386,20 +378,6 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 	}
 
     MVKLogInfo("Created %d swapchain images with initial size (%d, %d).", imgCnt, imgExtent.width, imgExtent.height);
-}
-
-// Initialize frame interval tracking, including start time and filtering parameters.
-void MVKSwapchain::initFrameIntervalTracking() {
-    _performanceStatistics.lastFrameInterval = 0;
-    _performanceStatistics.averageFrameInterval = 0;
-    _performanceStatistics.averageFramesPerSecond = 0;
-    _currentPerfLogFrameCount = 0;
-
-	_lastFrameTime = mvkGetTimestamp();
-
-    // Establish the alpha parameter of a low-pass filter for averaging frame intervals.
-    double RC_over_dt = 10.0;
-    _averageFrameIntervalFilterAlpha = 1.0 / (1.0 + RC_over_dt);
 }
 
 MVKSwapchain::~MVKSwapchain() {
