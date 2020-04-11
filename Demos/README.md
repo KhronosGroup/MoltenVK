@@ -18,8 +18,8 @@ Table of Contents
 
 - [LunarG Vulkan Samples](#lunarg-vulkan-samples)
 	- [*Cube*](#lunarg-vulkan-samples-cube)
-	- [*API-Samples*](#lunarg-vulkan-samples-api)
 	- [*Hologram*](#lunarg-vulkan-samples-hologram)
+	- [*API-Samples*](#lunarg-vulkan-samples-api)
 - [Sascha Willems Vulkan Samples](#sascha-willems-vulkan-samples)
 	- [Installing the *Sascha Willems* Library](#sascha-willems-install)
 - [Cinder Vulkan Samples](#cinder-vulkan-samples)
@@ -60,14 +60,32 @@ the **MoltenVK** *dynamic library* is embedded in the application, but it could 
 as a system library instead.
 
 
+<a name="lunarg-vulkan-samples-hologram"></a>
+### *Hologram*
+
+> **_Note:_** In order to build the `Hologram` demo, you must have *Python3* installed
+> on your build computer.
+
+This is a sophisticated particle demo that populates command buffers from multiple threads.
+
+This demo can be found in the `LunarG-VulkanSamples/Hologram` folder, and in the 
+`LunarG-VulkanSamples/Hologram` group in the *Xcode Project Navigator* in the 
+`Demos.xcworkspace` *Xcode* workspace.
+
+To run this demo, run either the `Hologram-iOS` or `Hologram-macOS` *Scheme* from within *Xcode*.
+
+On *macOS*, once the demo is open, you can use the *Up-arrow* and *Down-arrow* keys on the 
+keyboard to zoom the camera in and out of the scene. Zooming out will show more items on screen.
+
+The demo allows some customization, by modifying the arguments passed to the demo at startup.
+To customize, modify the arguments created in the `DemoViewController viewDidLoad` method
+found in the `iOS/DemoViewController.mm` or `macOS/DemoViewController.mm` file.
+
+The `Hologram` demo is a simple example of installing **MoltenVK** as a *static library*.
+
 
 <a name="lunarg-vulkan-samples-api"></a>
 ### *API-Samples*
-
-> **_Note:_** The `Vulkan-Samples API-Samples` have recently changed to use a different build 
-  process that involves converting GLSL to SPIR-V via scripts. This upgrade has not yet been 
-  integrated into the *Xcode*-based build environment used to build these demos here. 
-  As a result, the `API-Samples` demos have been disabled here until this can be corrected.
 
 This *Xcode* project contains a large number of modular demos, with each demo
 demonstrating a particular *Vulkan* feature, or suite of calls.
@@ -91,30 +109,6 @@ To see descriptions and screenshots of each of the demos, open
 [this summary document](LunarG-VulkanSamples/VulkanSamples/samples_index.html#AdditionalVulkan).
 
 The `API-Samples` demo is a simple example of installing **MoltenVK** as a *static framework*.
-
-
-<a name="lunarg-vulkan-samples-hologram"></a>
-### *Hologram*
-
-> **_Note:_** In order to build the `Hologram` demo, you must have *Python3* installed
-> on your build computer.
-
-This is a sophisticated particle demo that populates command buffers from multiple threads.
-
-This demo can be found in the `LunarG-VulkanSamples/Hologram` folder, and in the 
-`LunarG-VulkanSamples/Hologram` group in the *Xcode Project Navigator* in the 
-`Demos.xcworkspace` *Xcode* workspace.
-
-To run this demo, run either the `Hologram-iOS` or `Hologram-macOS` *Scheme* from within *Xcode*.
-
-On *macOS*, once the demo is open, you can use the *Up-arrow* and *Down-arrow* keys on the 
-keyboard to zoom the camera in and out of the scene. Zooming out will show more items on screen.
-
-The demo allows some customization, by modifying the arguments passed to the demo at startup.
-To customize, modify the arguments created in the `DemoViewController viewDidLoad` method
-found in the `iOS/DemoViewController.mm` or `macOS/DemoViewController.mm` file.
-
-The `Hologram` demo is a simple example of installing **MoltenVK** as a *static library*.
 
 
 

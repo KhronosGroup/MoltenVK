@@ -17,7 +17,10 @@
  */
 
 #include "SPIRVSupport.h"
+#include "MVKStrings.h"
 #include <SPIRV-Cross/spirv.hpp>
+#include <ostream>
+
 #import <CoreFoundation/CFByteOrder.h>
 
 using namespace mvk;
@@ -29,6 +32,26 @@ void mvk::spirvToBytes(const vector<uint32_t>& spv, vector<char>& bytes) {
 	char* cBytes = (char*)spv.data();
 	bytes.clear();
 	bytes.insert(bytes.end(), cBytes, cBytes + byteCnt);
+}
+
+void mvk::spirvToHeaderBytes(const vector<uint32_t>& spv, vector<char>& bytes, const string& varName) {
+	bytes.clear();
+	charvectorbuf cb(&bytes);
+	ostream hdr(&cb);
+	size_t spvCnt = spv.size();
+
+	hdr << "// Automatically generated. Do not edit.\n\n";
+	hdr << "#include <stdint.h>\n\n";
+	hdr << "\tstatic const uint32_t " << cleanseVarName(varName) << '[' << spvCnt << "] = {";
+
+	// Output the SPIR-V content, 8 elements per line
+	if (spvCnt > 0) {
+		hdr << "\n\t\t" << spv.front();
+		for (size_t spvIdx = 1; spvIdx < spvCnt; spvIdx++) {
+			hdr << (spvIdx % 8 ? ", " : ",\n\t\t") << spv[spvIdx];
+		}
+	}
+	hdr << "\n\t};\n";
 }
 
 void mvk::bytesToSPIRV(const vector<char>& bytes, vector<uint32_t>& spv) {

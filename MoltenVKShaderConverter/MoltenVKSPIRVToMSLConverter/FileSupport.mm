@@ -33,9 +33,11 @@ MVK_PUBLIC_SYMBOL string mvk::absolutePath(const string& path) {
 	return nsPath.UTF8String;
 }
 
-MVK_PUBLIC_SYMBOL string mvk::lastPathComponent(const string& path) {
+MVK_PUBLIC_SYMBOL string mvk::fileName(const string& path, bool includeExtension) {
 	NSString* nsPath = @(path.data());
-	return nsPath.lastPathComponent.UTF8String;
+	NSString* fName = nsPath.lastPathComponent;
+	if ( !includeExtension ) { fName = fName.stringByDeletingPathExtension; }
+	return fName.UTF8String;
 }
 
 MVK_PUBLIC_SYMBOL string mvk::pathExtension(const string& path) {

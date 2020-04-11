@@ -33,6 +33,18 @@
 			name = "MoltenVK-macOS";
 			productName = Package;
 		};
+		A9AD700D2440ED3B00B9E254 /* MVKShaderConverterTool */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = A9AD70132440ED3B00B9E254 /* Build configuration list for PBXAggregateTarget "MVKShaderConverterTool" */;
+			buildPhases = (
+				A9AD70122440ED3B00B9E254 /* Package MoltenVK */,
+			);
+			dependencies = (
+				A9AD70102440ED3B00B9E254 /* PBXTargetDependency */,
+			);
+			name = MVKShaderConverterTool;
+			productName = Package;
+		};
 		A9FEADBC1F3517480010240E /* MoltenVK */ = {
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A9FEADDC1F3517480010240E /* Build configuration list for PBXAggregateTarget "MoltenVK" */;
@@ -124,6 +136,13 @@
 			proxyType = 2;
 			remoteGlobalIDString = A93903C71C57E9ED00FE90DC;
 			remoteInfo = "MoltenVKSPIRVToMSLConverter-macOS";
+		};
+		A9AD70112440ED3B00B9E254 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = A9092A8C1A81717B00051823;
+			remoteInfo = MoltenVKShaderConverter;
 		};
 		A9AFC25F2184EEF60084B396 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -280,6 +299,7 @@
 				A9FEADBC1F3517480010240E /* MoltenVK */,
 				A975D5782140585200D4834F /* MoltenVK-iOS */,
 				A975D58B2140586700D4834F /* MoltenVK-macOS */,
+				A9AD700D2440ED3B00B9E254 /* MVKShaderConverterTool */,
 			);
 		};
 /* End PBXProject section */
@@ -365,6 +385,20 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/Scripts/package_macos.sh\"\n";
 		};
+		A9AD70122440ED3B00B9E254 /* Package MoltenVK */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputPaths = (
+			);
+			name = "Package MoltenVK";
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "export MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\n\"${SRCROOT}/Scripts/package_shader_converter_tool.sh\"\n\"${SRCROOT}/Scripts/package_update_latest.sh\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -387,6 +421,11 @@
 			isa = PBXTargetDependency;
 			name = MoltenVKShaderConverter;
 			targetProxy = A975D5992140586700D4834F /* PBXContainerItemProxy */;
+		};
+		A9AD70102440ED3B00B9E254 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = MoltenVKShaderConverter;
+			targetProxy = A9AD70112440ED3B00B9E254 /* PBXContainerItemProxy */;
 		};
 		A9AFC2602184EEF60084B396 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -441,6 +480,20 @@
 			};
 			name = Release;
 		};
+		A9AD70142440ED3B00B9E254 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		A9AD70152440ED3B00B9E254 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		A9FEADDD1F3517480010240E /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -481,6 +534,15 @@
 			buildConfigurations = (
 				A975D59C2140586700D4834F /* Debug */,
 				A975D59D2140586700D4834F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A9AD70132440ED3B00B9E254 /* Build configuration list for PBXAggregateTarget "MVKShaderConverterTool" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A9AD70142440ED3B00B9E254 /* Debug */,
+				A9AD70152440ED3B00B9E254 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
