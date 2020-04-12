@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # Copyright (c) 2016-2020 The Brenwill Workshop Ltd.
 #
@@ -32,7 +32,7 @@
 #              This repository does not have to be built.
 #
 
-set -o errexit
+set -e
 
 # ----------------- Functions -------------------
 
@@ -288,29 +288,6 @@ xcodebuild 								\
 	-derivedDataPath "${XC_DD_PATH}"	\
 	${XC_BUILD_VERBOSITY}				\
 	build
-
-
-# -------------- Convert sample shader files -----------------
-echo
-echo ========== Building MoltenVKShaderConverter tool ==========
-echo
-
-XC_PROJ="MoltenVKPackaging.xcodeproj"
-XC_SCHEME="MVKShaderConverterTool Package"
-
-xcodebuild 								\
-	-project "${XC_PROJ}"				\
-	-scheme "${XC_SCHEME}"				\
-	${XC_BUILD_VERBOSITY}				\
-	build
-
-echo
-echo ========== Converting API-Samples shader files ==========
-echo
-
-"Package/Latest/MoltenVKShaderConverter/Tools/MoltenVKShaderConverter"  \
- -r -gi -so -oh -xs . -q  \
- -d "Demos/LunarG-VulkanSamples/VulkanSamples/API-Samples"
 
 echo ========== Done! ==========
 

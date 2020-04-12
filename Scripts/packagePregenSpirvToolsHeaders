@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # Copyright (c) 2016-2020 The Brenwill Workshop Ltd.
 #
@@ -7,10 +7,7 @@
 # macOS usage: ./packagePregenSpirvToolsHeaders
 #
 
-set -o errexit
-
-
-# ----------------- Main -------------------
+set -e
 
 EXT_DIR=../External
 SPV_TLS_BLD_DIR="${EXT_DIR}/glslang/External/spirv-tools/build"

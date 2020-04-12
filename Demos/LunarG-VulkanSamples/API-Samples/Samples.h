@@ -30,6 +30,14 @@
  *
  * If you choose to add a #define statement to this file, be sure to clear the existing macro
  * from the Preprocessor Macros (aka GCC_PREPROCESSOR_DEFINITIONS) compiler setting in Xcode.
+ *
+ * Each of the `API-Samples` demos loads SPIR-V shader code from a file. Before running
+ * any of these demos, generate these SPIR-V files from a command line as follows:
+ *
+ *     cd MoltenVK/Demos/LunarG-VulkanSamples/API-Samples
+ *     ./generateSPIRVShaders
+ *
+ * You only need to do this step once. It generates the SPIR-V shader code files for all of these demos.
  */
 
 #include <MoltenVK/mvk_vulkan.h>

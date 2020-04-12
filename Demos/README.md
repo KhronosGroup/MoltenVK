@@ -94,7 +94,17 @@ This demo can be found in the `LunarG-VulkanSamples/API-Samples` folder, and in 
 `LunarG-VulkanSamples/API-Samples` group in the *Xcode Project Navigator* in the 
 `Demos.xcworkspace` *Xcode* workspace.
 
-To run this demo, run either the `API-Samples-iOS` or `API-Samples-macOS` *Scheme* from within *Xcode*.
+Each of the `API-Samples` demos loads *SPIR-V* shader code from a file. Before any of the 
+`API-Samples` demos are run, these *SPIR-V* files need to be generated as follows:
+
+	cd MoltenVK/Demos/LunarG-VulkanSamples/API-Samples
+	./generateSPIRVShaders
+ 
+You only need to do this step once. It generates the *SPIR-V* shader code files for
+all of the `API-Samples` demos.
+
+To run any of the `API-Samples` demos, run either the `API-Samples-iOS` or `API-Samples-macOS` 
+*Scheme* from within *Xcode*.
 
 To specify which of the many modular demos to run, open the `Samples.h` in the `API-Samples`
 project in the *Xcode Project Navigator* in the `Demos.xcworkspace` *Xcode* workspace, and
