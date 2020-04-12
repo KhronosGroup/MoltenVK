@@ -24,6 +24,7 @@
 #include "MVKObjectPool.h"
 #include "MVKVector.h"
 #include "MVKPixelFormats.h"
+#include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
 #include "vk_mvk_moltenvk.h"
 #include <string>
@@ -566,9 +567,7 @@ public:
 	 * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
 	 * can be used to perform this calculation.
      */
-    inline uint64_t getPerformanceTimestamp() {
-		return _pMVKConfig->performanceTracking ? getPerformanceTimestampImpl() : 0;
-	}
+    inline uint64_t getPerformanceTimestamp() { return _pMVKConfig->performanceTracking ? mvkGetTimestamp() : 0; }
 
     /**
      * If performance is being tracked, adds the performance for an activity with a duration
@@ -579,7 +578,11 @@ public:
     inline void addActivityPerformance(MVKPerformanceTracker& activityTracker,
 									   uint64_t startTime, uint64_t endTime = 0) {
 		if (_pMVKConfig->performanceTracking) {
-			addActivityPerformanceImpl(activityTracker, startTime, endTime);
+			updateActivityPerformance(activityTracker, startTime, endTime);
+
+			// Log call not locked. Very minor chance that the tracker data will be updated during log call,
+			// resulting in an inconsistent report. Not worth taking lock perf hit for rare inline reporting.
+			if (_logActivityPerformanceInline) { logActivityPerformance(activityTracker, _performanceStatistics, true); }
 		}
 	};
 
@@ -588,6 +591,9 @@ public:
 
 	/** Invalidates the memory regions. */
 	VkResult invalidateMappedMemoryRanges(uint32_t memRangeCount, const VkMappedMemoryRange* pMemRanges);
+
+	/** Log all performance statistics. */
+	void logPerformanceSummary();
 
 
 #pragma mark Metal
@@ -690,10 +696,9 @@ protected:
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
-    const char* getActivityPerformanceDescription(MVKPerformanceTracker& activityTracker);
-	uint64_t getPerformanceTimestampImpl();
-	void addActivityPerformanceImpl(MVKPerformanceTracker& activityTracker,
-									uint64_t startTime, uint64_t endTime);
+    const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
+	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
+	void updateActivityPerformance(MVKPerformanceTracker& activity, uint64_t startTime, uint64_t endTime);
 
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
@@ -708,6 +713,7 @@ protected:
 	bool _useMTLFenceForSemaphores;
 	bool _useMTLEventForSemaphores;
 	bool _useCommandPooling;
+	bool _logActivityPerformanceInline;
 };
 
 

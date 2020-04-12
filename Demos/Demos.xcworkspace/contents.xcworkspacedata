@@ -13,5 +13,8 @@
       <FileRef
          location = "group:LunarG-VulkanSamples/Hologram/Hologram.xcodeproj">
       </FileRef>
+      <FileRef
+         location = "group:LunarG-VulkanSamples/API-Samples/API-Samples.xcodeproj">
+      </FileRef>
    </Group>
 </Workspace>

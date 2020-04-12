@@ -2266,11 +2266,11 @@
 		A9679AAB21D2699800856BF7 /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
-				A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */,
 				A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */,
 				A9679AAD21D269D900856BF7 /* package_ext_libs_ios.sh */,
 				A9679AAC21D269D900856BF7 /* package_ext_libs_macos.sh */,
 				A9679AAE21D269D900856BF7 /* package_ext_libs.sh */,
+				A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */,
 			);
 			path = Scripts;
 			sourceTree = "<group>";

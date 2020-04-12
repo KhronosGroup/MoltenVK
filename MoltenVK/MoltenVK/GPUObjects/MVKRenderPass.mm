@@ -197,15 +197,16 @@ void MVKRenderSubpass::populateClearAttachments(MVKVector<VkClearAttachment>& cl
 	}
 }
 
-//Returns the format capabilities required by this render subpass.
-// The Vulkan spec is unclear about whether a subpass can use an attachment in multiple places,
-// so accumulate the capabilities from all possible attachments, just to be safe.
+// Returns the format capabilities required by this render subpass.
+// It is possible for a subpass to use a single framebuffer attachment for multiple purposes.
+// For example, a subpass may use a color or depth attachment as an input attachment as well.
+// So, accumulate the capabilities from all possible attachments, just to be safe.
 MVKMTLFmtCaps MVKRenderSubpass::getRequiredFormatCapabilitiesForAttachmentAt(uint32_t rpAttIdx) {
 	MVKMTLFmtCaps caps = kMVKMTLFmtCapsNone;
 
 	for (auto& att : _inputAttachments) {
 		if (att.attachment == rpAttIdx) {
-			mvkEnableFlags(caps, kMVKMTLFmtCapsNone);	// TODO: input attachments are current unsupported
+			mvkEnableFlags(caps, kMVKMTLFmtCapsRead);
 			break;
 		}
 	}

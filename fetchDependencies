@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 #
 # Copyright (c) 2016-2020 The Brenwill Workshop Ltd.
 #
@@ -32,7 +32,7 @@
 #              This repository does not have to be built.
 #
 
-set -o errexit
+set -e
 
 # ----------------- Functions -------------------
 

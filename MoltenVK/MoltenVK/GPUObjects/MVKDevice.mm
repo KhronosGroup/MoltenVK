@@ -33,7 +33,6 @@
 #include "MVKCodec.h"
 #include "MVKEnvironment.h"
 #include "MVKLogging.h"
-#include "MVKOSExtensions.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include "vk_mvk_moltenvk.h"
 
@@ -2442,47 +2441,74 @@ void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 	}
 }
 
-uint64_t MVKDevice::getPerformanceTimestampImpl() { return mvkGetTimestamp(); }
-
-void MVKDevice::addActivityPerformanceImpl(MVKPerformanceTracker& activityTracker,
-										   uint64_t startTime, uint64_t endTime) {
-    lock_guard<mutex> lock(_perfLock);
+void MVKDevice::updateActivityPerformance(MVKPerformanceTracker& activity,
+										  uint64_t startTime, uint64_t endTime) {
 
 	double currInterval = mvkGetElapsedMilliseconds(startTime, endTime);
-	activityTracker.minimumDuration = ((activityTracker.minimumDuration == 0.0)
-											  ? currInterval :
-											  min(currInterval, activityTracker.minimumDuration));
-    activityTracker.maximumDuration = max(currInterval, activityTracker.maximumDuration);
-    double totalInterval = (activityTracker.averageDuration * activityTracker.count++) + currInterval;
-    activityTracker.averageDuration = totalInterval / activityTracker.count;
+	lock_guard<mutex> lock(_perfLock);
 
-	if (_pMVKConfig->performanceLoggingFrameCount) {
-		MVKLogInfo("Performance to %s count: %d curr: %.3f ms, min: %.3f ms, max: %.3f ms, avg: %.3f ms",
-				   getActivityPerformanceDescription(activityTracker),
-				   activityTracker.count,
-				   currInterval,
-				   activityTracker.minimumDuration,
-				   activityTracker.maximumDuration,
-				   activityTracker.averageDuration);
-	}
+	activity.latestDuration = currInterval;
+	activity.minimumDuration = ((activity.minimumDuration == 0.0)
+								? currInterval :
+								min(currInterval, activity.minimumDuration));
+	activity.maximumDuration = max(currInterval, activity.maximumDuration);
+	double totalInterval = (activity.averageDuration * activity.count++) + currInterval;
+	activity.averageDuration = totalInterval / activity.count;
 }
 
-const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& activityTracker) {
-	if (&activityTracker == &_performanceStatistics.shaderCompilation.hashShaderCode) { return "hash shader SPIR-V code"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.spirvToMSL) { return "convert SPIR-V to MSL source code"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.mslCompile) { return "compile MSL source code into a MTLLibrary"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.mslLoad) { return "load pre-compiled MSL code into a MTLLibrary"; }
-	if (&activityTracker == &_performanceStatistics.shaderCompilation.shaderLibraryFromCache) { return "retrieve shader library from the cache"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.functionRetrieval) { return "retrieve a MTLFunction from a MTLLibrary"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.functionSpecialization) { return "specialize a retrieved MTLFunction"; }
-    if (&activityTracker == &_performanceStatistics.shaderCompilation.pipelineCompile) { return "compile MTLFunctions into a pipeline"; }
-	if (&activityTracker == &_performanceStatistics.pipelineCache.sizePipelineCache) { return "calculate cache size required to write MSL to pipeline cache"; }
-	if (&activityTracker == &_performanceStatistics.pipelineCache.writePipelineCache) { return "write MSL to pipeline cache"; }
-	if (&activityTracker == &_performanceStatistics.pipelineCache.readPipelineCache) { return "read MSL from pipeline cache"; }
-	if (&activityTracker == &_performanceStatistics.queue.mtlQueueAccess) { return "access MTLCommandQueue"; }
-	if (&activityTracker == &_performanceStatistics.queue.mtlCommandBufferCompletion) { return "complete MTLCommandBuffer"; }
-	if (&activityTracker == &_performanceStatistics.queue.nextCAMetalDrawable) { return "retrieve a CAMetalDrawable from CAMetalLayer"; }
-    return "Unknown performance activity";
+void MVKDevice::logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline) {
+	MVKLogInfo("%s%s%s avg: %.3f ms, latest: %.3f ms, min: %.3f ms, max: %.3f ms, count: %d",
+			   (isInline ? "" : "  "),
+			   getActivityPerformanceDescription(activity, perfStats),
+			   (isInline ? " performance" : ""),
+			   activity.averageDuration,
+			   activity.latestDuration,
+			   activity.minimumDuration,
+			   activity.maximumDuration,
+			   activity.count);
+}
+
+void MVKDevice::logPerformanceSummary() {
+	if (_logActivityPerformanceInline) { return; }
+
+	// Get a copy to minimize time under lock
+	MVKPerformanceStatistics perfStats;
+	getPerformanceStatistics(&perfStats);
+
+	logActivityPerformance(perfStats.queue.frameInterval, perfStats);
+	logActivityPerformance(perfStats.queue.nextCAMetalDrawable, perfStats);
+	logActivityPerformance(perfStats.queue.mtlCommandBufferCompletion, perfStats);
+	logActivityPerformance(perfStats.queue.mtlQueueAccess, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.hashShaderCode, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.spirvToMSL, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.mslCompile, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.mslLoad, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.shaderLibraryFromCache, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.functionRetrieval, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.functionSpecialization, perfStats);
+	logActivityPerformance(perfStats.shaderCompilation.pipelineCompile, perfStats);
+	logActivityPerformance(perfStats.pipelineCache.sizePipelineCache, perfStats);
+	logActivityPerformance(perfStats.pipelineCache.readPipelineCache, perfStats);
+	logActivityPerformance(perfStats.pipelineCache.writePipelineCache, perfStats);
+}
+
+const char* MVKDevice::getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats) {
+	if (&activity == &perfStats.shaderCompilation.hashShaderCode) { return "Hash shader SPIR-V code"; }
+	if (&activity == &perfStats.shaderCompilation.spirvToMSL) { return "Convert SPIR-V to MSL source code"; }
+	if (&activity == &perfStats.shaderCompilation.mslCompile) { return "Compile MSL source code into a MTLLibrary"; }
+	if (&activity == &perfStats.shaderCompilation.mslLoad) { return "Load pre-compiled MSL code into a MTLLibrary"; }
+	if (&activity == &perfStats.shaderCompilation.shaderLibraryFromCache) { return "Retrieve shader library from the cache"; }
+	if (&activity == &perfStats.shaderCompilation.functionRetrieval) { return "Retrieve a MTLFunction from a MTLLibrary"; }
+	if (&activity == &perfStats.shaderCompilation.functionSpecialization) { return "Specialize a retrieved MTLFunction"; }
+	if (&activity == &perfStats.shaderCompilation.pipelineCompile) { return "Compile MTLFunctions into a pipeline"; }
+	if (&activity == &perfStats.pipelineCache.sizePipelineCache) { return "Calculate cache size required to write MSL to pipeline cache"; }
+	if (&activity == &perfStats.pipelineCache.readPipelineCache) { return "Read MSL from pipeline cache"; }
+	if (&activity == &perfStats.pipelineCache.writePipelineCache) { return "Write MSL to pipeline cache"; }
+	if (&activity == &perfStats.queue.mtlQueueAccess) { return "Access MTLCommandQueue"; }
+	if (&activity == &perfStats.queue.mtlCommandBufferCompletion) { return "Complete MTLCommandBuffer"; }
+	if (&activity == &perfStats.queue.nextCAMetalDrawable) { return "Retrieve a CAMetalDrawable from CAMetalLayer"; }
+	if (&activity == &perfStats.queue.frameInterval) { return "Frame interval"; }
+	return "Unknown performance activity";
 }
 
 void MVKDevice::getPerformanceStatistics(MVKPerformanceStatistics* pPerf) {
@@ -2597,7 +2623,12 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 }
 
 void MVKDevice::initPerformanceTracking() {
-    MVKPerformanceTracker initPerf;
+#	ifndef MVK_CONFIG_PERFORMANCE_LOGGING_INLINE
+#   	define MVK_CONFIG_PERFORMANCE_LOGGING_INLINE    0
+#	endif
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL(_logActivityPerformanceInline, MVK_CONFIG_PERFORMANCE_LOGGING_INLINE);
+
+	MVKPerformanceTracker initPerf;
     initPerf.count = 0;
     initPerf.averageDuration = 0.0;
     initPerf.minimumDuration = 0.0;
@@ -2617,6 +2648,7 @@ void MVKDevice::initPerformanceTracking() {
 	_performanceStatistics.queue.mtlQueueAccess = initPerf;
 	_performanceStatistics.queue.mtlCommandBufferCompletion = initPerf;
 	_performanceStatistics.queue.nextCAMetalDrawable = initPerf;
+	_performanceStatistics.queue.frameInterval = initPerf;
 }
 
 void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo) {
