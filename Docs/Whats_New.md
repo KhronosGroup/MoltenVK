@@ -19,6 +19,8 @@ MoltenVK 1.0.42
 
 Released TBD
 
+- Reinstate `VulkanSamples API-Samples` demo apps and add 
+  `input_attachment` and `push_descriptors` demos.
 - Consolidate frame and non-frame performance reporting.
 	- Remove `vkGetSwapchainPerformanceMVK()` from API.
 	- Swapchain performance can be retrieved with other activity performance 

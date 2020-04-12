@@ -64,6 +64,10 @@
 #	include "../VulkanSamples/API-Samples/immutable_sampler/immutable_sampler.cpp"
 #endif
 
+#ifdef MVK_SAMP_input_attachment
+#	include "../VulkanSamples/API-Samples/input_attachment/input_attachment.cpp"
+#endif
+
 #ifdef MVK_SAMP_memory_barriers
 #	include "../VulkanSamples/API-Samples/memory_barriers/memory_barriers.cpp"
 #endif
@@ -88,6 +92,10 @@
 #	include "../VulkanSamples/API-Samples/push_constants/push_constants.cpp"
 #endif
 
+#ifdef MVK_SAMP_push_descriptors
+#	include "../VulkanSamples/API-Samples/push_descriptors/push_descriptors.cpp"
+#endif
+
 #ifdef MVK_SAMP_secondary_command_buffer
 #	include "../VulkanSamples/API-Samples/secondary_command_buffer/secondary_command_buffer.cpp"
 #endif
@@ -96,10 +104,7 @@
 #	include "../VulkanSamples/API-Samples/separate_image_sampler/separate_image_sampler.cpp"
 #endif
 
-#ifdef MVK_SAMP_template
-#	include "../VulkanSamples/API-Samples/template/template.cpp"
-#endif
-
+// Does not run on macOS, which does not support textures in host-coherent memory.
 #ifdef MVK_SAMP_texel_buffer
 #	include "../VulkanSamples/API-Samples/texel_buffer/texel_buffer.cpp"
 #endif
