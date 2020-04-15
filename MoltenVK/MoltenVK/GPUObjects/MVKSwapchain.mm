@@ -98,11 +98,7 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
 	*pImageIndex = minWaitImage->_swapchainIndex;
 	minWaitImage->acquireAndSignalWhenAvailable((MVKSemaphore*)semaphore, (MVKFence*)fence);
 
-	return getHasSurfaceSizeChanged() ? VK_ERROR_OUT_OF_DATE_KHR : VK_SUCCESS;
-}
-
-bool MVKSwapchain::getHasSurfaceSizeChanged() {
-	return !CGSizeEqualToSize(_mtlLayer.naturalDrawableSizeMVK, _mtlLayerOrigDrawSize);
+	return getSurfaceStatus();
 }
 
 uint64_t MVKSwapchain::getNextAcquisitionID() { return ++_currentAcquisitionID; }
@@ -345,9 +341,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 // The CAMetalLayer should already be initialized when this is called.
 void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt) {
 
-    if ( getIsSurfaceLost() ) {
-        return;
-    }
+    if ( getIsSurfaceLost() ) { return; }
 
     VkExtent2D imgExtent = mvkVkExtent2DFromCGSize(_mtlLayerOrigDrawSize);
 

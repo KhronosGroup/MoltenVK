@@ -22,6 +22,9 @@
 #include "MVKImage.h"
 #include "MVKVector.h"
 
+#import "CAMetalLayer+MoltenVK.h"
+#import <Metal/Metal.h>
+
 class MVKWatermark;
 
 @class MVKBlockObserver;
@@ -69,11 +72,20 @@ public:
 								 uint32_t deviceMask,
 								 uint32_t* pImageIndex);
 
-	/** Returns whether the surface size has changed since the last time this function was called. */
-	bool getHasSurfaceSizeChanged();
-
 	/** Returns whether the parent surface is now lost and this swapchain must be recreated. */
-	bool getIsSurfaceLost() { return _surfaceLost; }
+	inline bool getIsSurfaceLost() { return _surfaceLost; }
+
+	/** Returns whether the surface size has changed since the last time this function was called. */
+	inline bool getHasSurfaceSizeChanged() {
+		return !CGSizeEqualToSize(_mtlLayer.naturalDrawableSizeMVK, _mtlLayerOrigDrawSize);
+	}
+
+	/** Returns the status of the surface. Surface loss takes precedence over out-of-date errors. */
+	inline VkResult getSurfaceStatus() {
+		if (getIsSurfaceLost()) { return VK_ERROR_SURFACE_LOST_KHR; }
+		if (getHasSurfaceSizeChanged()) { return VK_ERROR_OUT_OF_DATE_KHR; }
+		return VK_SUCCESS;
+	}
 
 	/** Adds HDR metadata to this swapchain. */
 	void setHDRMetadataEXT(const VkHdrMetadataEXT& metadata);

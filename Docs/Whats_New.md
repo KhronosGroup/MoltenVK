@@ -21,6 +21,7 @@ Released TBD
 
 - Reinstate `VulkanSamples API-Samples` demo apps and add 
   `input_attachment` and `push_descriptors` demos.
+- `vkQueuePresentKHR()` returns a `VkResult` for each swapchain.
 - Consolidate frame and non-frame performance reporting.
 	- Remove `vkGetSwapchainPerformanceMVK()` from API.
 	- Swapchain performance can be retrieved with other activity performance 
