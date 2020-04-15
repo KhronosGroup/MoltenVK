@@ -52,12 +52,6 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequireme
 		pMemoryRequirements->alignment = _byteAlignment;
 	}
 	pMemoryRequirements->memoryTypeBits = _device->getPhysicalDevice()->getAllMemoryTypes();
-#if MVK_MACOS
-	// Textures must not use shared memory
-	if (mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT)) {
-		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
-	}
-#endif
 #if MVK_IOS
 	// Memoryless storage is not allowed for buffers
 	mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
@@ -88,6 +82,12 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 
 	MVKResource::bindDeviceMemory(mvkMem, memOffset);
 
+#if MVK_MACOS
+	if (_deviceMemory) {
+		_isHostCoherentTexelBuffer = _deviceMemory->isMemoryHostCoherent() && mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT);
+	}
+#endif
+
 	propogateDebugName();
 
 	return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
@@ -117,6 +117,31 @@ void MVKBuffer::applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
 #endif
 }
 
+#if MVK_MACOS
+bool MVKBuffer::shouldFlushHostMemory() { return _isHostCoherentTexelBuffer; }
+#endif
+
+// Flushes the device memory at the specified memory range into the MTLBuffer.
+VkResult MVKBuffer::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
+#if MVK_MACOS
+	if (shouldFlushHostMemory()) {
+		memcpy(getMTLBuffer().contents, reinterpret_cast<const char *>(_deviceMemory->getHostMemoryAddress()) + offset, size);
+		[getMTLBuffer() didModifyRange: NSMakeRange(0, size)];
+	}
+#endif
+	return VK_SUCCESS;
+}
+
+// Pulls content from the MTLBuffer into the device memory at the specified memory range.
+VkResult MVKBuffer::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
+#if MVK_MACOS
+	if (shouldFlushHostMemory()) {
+		memcpy(reinterpret_cast<char *>(_deviceMemory->getHostMemoryAddress()) + offset, getMTLBuffer().contents, size);
+	}
+#endif
+	return VK_SUCCESS;
+}
+
 // Returns whether the specified buffer memory barrier requires a sync between this
 // buffer and host memory for the purpose of the host reading texture memory.
 bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
@@ -128,7 +153,7 @@ bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 #if MVK_MACOS
 	return (mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
 			mvkIsAnyFlagEnabled(pBufferMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
-			isMemoryHostAccessible() && !isMemoryHostCoherent());
+			isMemoryHostAccessible() && (!isMemoryHostCoherent() || _isHostCoherentTexelBuffer));
 #endif
 }
 
@@ -144,6 +169,16 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 																   offset: _deviceMemoryOffset];	// retained
 			propogateDebugName();
 			return _mtlBuffer;
+#if MVK_MACOS
+		} else if (_isHostCoherentTexelBuffer) {
+			// According to the Vulkan spec, buffers, like linear images, can always use host-coherent memory.
+                        // But texel buffers on Mac cannot use shared memory. So we need to use host-cached
+                        // memory here.
+			_mtlBuffer = [_device->getMTLDevice() newBufferWithLength: getByteCount()
+															  options: MTLResourceStorageModeManaged];	// retained
+			propogateDebugName();
+			return _mtlBuffer;
+#endif
 		} else {
 			return _deviceMemory->getMTLBuffer();
 		}
