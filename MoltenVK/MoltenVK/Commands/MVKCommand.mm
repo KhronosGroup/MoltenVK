@@ -29,11 +29,10 @@
 
 void MVKCommand::returnToPool() {
 	clearConfigurationResult();
-	_commandBuffer = nullptr;
 	_pool->returnObject(this);
 }
 
-MVKVulkanAPIObject* MVKCommand::getVulkanAPIObject() { return _commandBuffer ? _commandBuffer->getVulkanAPIObject() : getCommandPool()->getVulkanAPIObject(); };
+MVKVulkanAPIObject* MVKCommand::getVulkanAPIObject() { return getCommandPool()->getVulkanAPIObject(); };
 
 MVKCommandPool* MVKCommand::getCommandPool() { return _pool->getCommandPool(); }
 
