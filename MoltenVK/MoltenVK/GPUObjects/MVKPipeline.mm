@@ -1158,8 +1158,24 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     _tessCtlPatchOutputBufferIndex = layout->getTessCtlPatchOutputBufferIndex();
     _tessCtlLevelBufferIndex = layout->getTessCtlLevelBufferIndex();
 
+    MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
+    MVKRenderSubpass* mvkRenderSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
+	MVKPixelFormats* pixFmts = getPixelFormats();
+    MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormatFromVkFormat(mvkRenderSubpass->getDepthStencilFormat());
+
+	shaderContext.options.mslOptions.enable_frag_output_mask = 0;
+	if (pCreateInfo->pColorBlendState) {
+		for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
+			if (mvkRenderSubpass->isColorAttachmentUsed(caIdx)) {
+				mvkEnableFlags(shaderContext.options.mslOptions.enable_frag_output_mask, 1 << caIdx);
+			}
+		}
+	}
+
 	shaderContext.options.mslOptions.texture_1D_as_2D = mvkTreatTexture1DAs2D();
     shaderContext.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo, reflectData);
+	shaderContext.options.mslOptions.enable_frag_depth_builtin = pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFormat);
+	shaderContext.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFormat);
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
     shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderContext.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
@@ -1622,7 +1638,10 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.dynamic_offsets_buffer_index,
 				opt.shader_input_wg_index,
 				opt.device_index,
+				opt.enable_frag_output_mask,
 				opt.enable_point_size_builtin,
+				opt.enable_frag_depth_builtin,
+				opt.enable_frag_stencil_ref_builtin,
 				opt.disable_rasterization,
 				opt.capture_output_to_buffer,
 				opt.swizzle_texture_samples,
