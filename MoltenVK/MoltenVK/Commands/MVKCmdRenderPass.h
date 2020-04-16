@@ -77,6 +77,8 @@ private:
 class MVKCmdEndRenderPass : public MVKCommand {
 
 public:
+	void setContent(MVKCommandBuffer* cmdBuff);
+
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 	MVKCmdEndRenderPass(MVKCommandTypePool<MVKCmdEndRenderPass>* pool);

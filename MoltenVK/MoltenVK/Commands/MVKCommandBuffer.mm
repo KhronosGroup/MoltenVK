@@ -197,7 +197,7 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 
 
 #pragma mark -
-#pragma mark Constituent render pass management
+#pragma mark Tessellation constituent command management
 
 void MVKCommandBuffer::recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass) {
 	_lastBeginRenderPass = mvkBeginRenderPass;

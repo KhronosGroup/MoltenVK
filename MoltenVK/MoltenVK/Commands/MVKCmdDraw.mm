@@ -94,6 +94,8 @@ void MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
     if ((_firstInstance != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance."));
     }
+
+	cmdBuff->recordDraw(this);
 }
 
 void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
@@ -288,6 +290,8 @@ void MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
     if ((_vertexOffset != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex."));
     }
+
+	cmdBuff->recordDraw(this);
 }
 
 void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
@@ -518,6 +522,8 @@ void MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
     if ( !(getDevice()->_pMetalFeatures->indirectDrawing) ) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing."));
     }
+
+	cmdBuff->recordDraw(this);
 }
 
 // This is totally arbitrary, but we're forced to do this because we don't know how many vertices
@@ -762,6 +768,8 @@ void MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
     if ( !(getDevice()->_pMetalFeatures->indirectDrawing) ) {
         setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing."));
     }
+
+	cmdBuff->recordDraw(this);
 }
 
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
@@ -1020,7 +1028,6 @@ void mvkCmdDraw(MVKCommandBuffer* cmdBuff,
 				uint32_t firstInstance) {
 	MVKCmdDraw* cmd = cmdBuff->_commandPool->_cmdDrawPool.acquireObject();
 	cmd->setContent(cmdBuff, vertexCount, instanceCount, firstVertex, firstInstance);
-	cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1032,7 +1039,6 @@ void mvkCmdDrawIndexed(MVKCommandBuffer* cmdBuff,
 					   uint32_t firstInstance) {
 	MVKCmdDrawIndexed* cmd = cmdBuff->_commandPool->_cmdDrawIndexedPool.acquireObject();
 	cmd->setContent(cmdBuff, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
-	cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1052,7 +1058,6 @@ void mvkCmdDrawIndirect(MVKCommandBuffer* cmdBuff,
 						uint32_t stride) {
 	MVKCmdDrawIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndirectPool.acquireObject();
 	cmd->setContent(cmdBuff, buffer, offset, drawCount, stride);
-	cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1063,7 +1068,6 @@ void mvkCmdDrawIndexedIndirect(MVKCommandBuffer* cmdBuff,
 							   uint32_t stride) {
 	MVKCmdDrawIndexedIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndexedIndirectPool.acquireObject();
 	cmd->setContent(cmdBuff, buffer, offset, drawCount, stride);
-	cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
 

@@ -98,7 +98,7 @@ public:
     id<MTLBuffer> _initialVisibilityResultMTLBuffer;
 
 
-#pragma mark Constituent render pass management
+#pragma mark Tessellation constituent command management
     /** Preps metadata for recording render pass */
 	void recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass);
 	

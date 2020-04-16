@@ -44,6 +44,8 @@ void MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
 	for (uint32_t i = 0; i < _info.clearValueCount; i++) {
 		_clearValues.push_back(_info.pClearValues[i]);
 	}
+
+	cmdBuff->recordBeginRenderPass(this);
 }
 
 void MVKCmdBeginRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
@@ -73,6 +75,10 @@ MVKCmdNextSubpass::MVKCmdNextSubpass(MVKCommandTypePool<MVKCmdNextSubpass>* pool
 
 #pragma mark -
 #pragma mark MVKCmdEndRenderPass
+
+void MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
+	cmdBuff->recordEndRenderPass(this);
+}
 
 void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdEndRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
@@ -294,7 +300,6 @@ void mvkCmdBeginRenderPass(MVKCommandBuffer* cmdBuff,
 						   VkSubpassContents contents) {
 	MVKCmdBeginRenderPass* cmd = cmdBuff->_commandPool->_cmdBeginRenderPassPool.acquireObject();
 	cmd->setContent(cmdBuff, pRenderPassBegin, contents);
-	cmdBuff->recordBeginRenderPass(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -306,7 +311,7 @@ void mvkCmdNextSubpass(MVKCommandBuffer* cmdBuff, VkSubpassContents contents) {
 
 void mvkCmdEndRenderPass(MVKCommandBuffer* cmdBuff) {
 	MVKCmdEndRenderPass* cmd = cmdBuff->_commandPool->_cmdEndRenderPassPool.acquireObject();
-	cmdBuff->recordEndRenderPass(cmd);
+	cmd->setContent(cmdBuff);
 	cmdBuff->addCommand(cmd);
 }
 

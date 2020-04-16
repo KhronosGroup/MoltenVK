@@ -133,6 +133,8 @@ void MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff,
 									VkPipeline pipeline) {
 	_bindPoint = pipelineBindPoint;
 	_pipeline = (MVKPipeline*)pipeline;
+
+	cmdBuff->recordBindPipeline(this);
 }
 
 void MVKCmdBindPipeline::encode(MVKCommandEncoder* cmdEncoder) {
@@ -466,7 +468,6 @@ void mvkCmdBindPipeline(MVKCommandBuffer* cmdBuff,
 						VkPipeline pipeline) {
 	MVKCmdBindPipeline* cmd = cmdBuff->_commandPool->_cmdBindPipelinePool.acquireObject();
 	cmd->setContent(cmdBuff, pipelineBindPoint, pipeline);
-	cmdBuff->recordBindPipeline(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
