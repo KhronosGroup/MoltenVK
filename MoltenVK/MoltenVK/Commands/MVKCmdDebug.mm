@@ -25,9 +25,13 @@
 #pragma mark -
 #pragma mark MVKCmdDebugMarker
 
-void MVKCmdDebugMarker::setContent(MVKCommandBuffer* cmdBuff, const char* pMarkerName, const float color[4]) {
+VkResult MVKCmdDebugMarker::setContent(MVKCommandBuffer* cmdBuff,
+									   const char* pMarkerName,
+									   const float color[4]) {
 	[_markerName release];
 	_markerName = [[NSString alloc] initWithUTF8String: pMarkerName];	// retained
+
+	return VK_SUCCESS;
 }
 
 MVKCmdDebugMarker::MVKCmdDebugMarker(MVKCommandTypePool<MVKCmdDebugMarker>* pool)
@@ -58,7 +62,7 @@ MVKCmdDebugMarkerBegin::MVKCmdDebugMarkerBegin(MVKCommandTypePool<MVKCmdDebugMar
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerEnd
 
-void MVKCmdDebugMarkerEnd::setContent(MVKCommandBuffer* cmdBuff) {}
+VkResult MVKCmdDebugMarkerEnd::setContent(MVKCommandBuffer* cmdBuff) { return VK_SUCCESS; }
 
 // Vulkan debug groups are more general than Metal's.
 // If a renderpass is active, pop from the render command encoder, otherwise pop from the command buffer.

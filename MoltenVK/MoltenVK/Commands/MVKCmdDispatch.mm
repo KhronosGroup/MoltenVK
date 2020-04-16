@@ -28,10 +28,12 @@
 #pragma mark -
 #pragma mark MVKCmdDispatch
 
-void MVKCmdDispatch::setContent(MVKCommandBuffer* cmdBuff,
-								uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
-                                uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+VkResult MVKCmdDispatch::setContent(MVKCommandBuffer* cmdBuff,
+									uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
+									uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
     _mtlThreadgroupCount = MTLRegionMake3D(baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
@@ -63,10 +65,12 @@ MVKCmdDispatch::MVKCmdDispatch(MVKCommandTypePool<MVKCmdDispatch>* pool)
 #pragma mark -
 #pragma mark MVKCmdDispatchIndirect
 
-void MVKCmdDispatchIndirect::setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
+VkResult MVKCmdDispatchIndirect::setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdDispatchIndirect::encode(MVKCommandEncoder* cmdEncoder) {

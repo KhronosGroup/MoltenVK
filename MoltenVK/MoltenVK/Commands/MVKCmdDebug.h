@@ -30,7 +30,7 @@
 class MVKCmdDebugMarker : public MVKCommand {
 
 public:
-	void setContent(MVKCommandBuffer* cmdBuff, const char* pMarkerName, const float color[4]);
+	VkResult setContent(MVKCommandBuffer* cmdBuff, const char* pMarkerName, const float color[4]);
 
     MVKCmdDebugMarker(MVKCommandTypePool<MVKCmdDebugMarker>* pool);
 
@@ -61,7 +61,7 @@ public:
 class MVKCmdDebugMarkerEnd : public MVKCommand {
 
 public:
-	void setContent(MVKCommandBuffer* cmdBuff);
+	VkResult setContent(MVKCommandBuffer* cmdBuff);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 

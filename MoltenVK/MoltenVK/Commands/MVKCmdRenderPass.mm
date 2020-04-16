@@ -28,9 +28,9 @@
 #pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
-void MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
-									   const VkRenderPassBeginInfo* pRenderPassBegin,
-									   VkSubpassContents contents) {
+VkResult MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
+										   const VkRenderPassBeginInfo* pRenderPassBegin,
+										   VkSubpassContents contents) {
 	_info = *pRenderPassBegin;
 	_contents = contents;
 	_renderPass = (MVKRenderPass*)_info.renderPass;
@@ -46,6 +46,8 @@ void MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
 	}
 
 	cmdBuff->recordBeginRenderPass(this);
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdBeginRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
@@ -60,9 +62,11 @@ MVKCmdBeginRenderPass::MVKCmdBeginRenderPass(MVKCommandTypePool<MVKCmdBeginRende
 #pragma mark -
 #pragma mark MVKCmdNextSubpass
 
-void MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
-								   VkSubpassContents contents) {
+VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
+									   VkSubpassContents contents) {
 	_contents = contents;
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
@@ -76,8 +80,9 @@ MVKCmdNextSubpass::MVKCmdNextSubpass(MVKCommandTypePool<MVKCmdNextSubpass>* pool
 #pragma mark -
 #pragma mark MVKCmdEndRenderPass
 
-void MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
+VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
 	cmdBuff->recordEndRenderPass(this);
+	return VK_SUCCESS;
 }
 
 void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
@@ -92,15 +97,17 @@ MVKCmdEndRenderPass::MVKCmdEndRenderPass(MVKCommandTypePool<MVKCmdEndRenderPass>
 #pragma mark -
 #pragma mark MVKCmdExecuteCommands
 
-void MVKCmdExecuteCommands::setContent(MVKCommandBuffer* cmdBuff,
-									   uint32_t commandBuffersCount,
-									   const VkCommandBuffer* pCommandBuffers) {
+VkResult MVKCmdExecuteCommands::setContent(MVKCommandBuffer* cmdBuff,
+										   uint32_t commandBuffersCount,
+										   const VkCommandBuffer* pCommandBuffers) {
 	// Add clear values
 	_secondaryCommandBuffers.clear();	// Clear for reuse
 	_secondaryCommandBuffers.reserve(commandBuffersCount);
 	for (uint32_t cbIdx = 0; cbIdx < commandBuffersCount; cbIdx++) {
 		_secondaryCommandBuffers.push_back(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
 	}
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdExecuteCommands::encode(MVKCommandEncoder* cmdEncoder) {
@@ -114,16 +121,18 @@ MVKCmdExecuteCommands::MVKCmdExecuteCommands(MVKCommandTypePool<MVKCmdExecuteCom
 #pragma mark -
 #pragma mark MVKCmdSetViewport
 
-void MVKCmdSetViewport::setContent(MVKCommandBuffer* cmdBuff,
-								   uint32_t firstViewport,
-								   uint32_t viewportCount,
-								   const VkViewport* pViewports) {
+VkResult MVKCmdSetViewport::setContent(MVKCommandBuffer* cmdBuff,
+									   uint32_t firstViewport,
+									   uint32_t viewportCount,
+									   const VkViewport* pViewports) {
 	_firstViewport = firstViewport;
 	_mtlViewports.clear();	// Clear for reuse
 	_mtlViewports.reserve(viewportCount);
 	for (uint32_t i = 0; i < viewportCount; i++) {
 		_mtlViewports.push_back(mvkMTLViewportFromVkViewport(pViewports[i]));
 	}
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetViewport::encode(MVKCommandEncoder* cmdEncoder) {
@@ -137,16 +146,18 @@ MVKCmdSetViewport::MVKCmdSetViewport(MVKCommandTypePool<MVKCmdSetViewport>* pool
 #pragma mark -
 #pragma mark MVKCmdSetScissor
 
-void MVKCmdSetScissor::setContent(MVKCommandBuffer* cmdBuff,
-								  uint32_t firstScissor,
-								  uint32_t scissorCount,
-								  const VkRect2D* pScissors) {
+VkResult MVKCmdSetScissor::setContent(MVKCommandBuffer* cmdBuff,
+									  uint32_t firstScissor,
+									  uint32_t scissorCount,
+									  const VkRect2D* pScissors) {
 	_firstScissor = firstScissor;
 	_mtlScissors.clear();	// Clear for reuse
 	_mtlScissors.reserve(scissorCount);
 	for (uint32_t i = 0; i < scissorCount; i++) {
 		_mtlScissors.push_back(mvkMTLScissorRectFromVkRect2D(pScissors[i]));
 	}
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetScissor::encode(MVKCommandEncoder* cmdEncoder) {
@@ -160,14 +171,16 @@ MVKCmdSetScissor::MVKCmdSetScissor(MVKCommandTypePool<MVKCmdSetScissor>* pool)
 #pragma mark -
 #pragma mark MVKCmdSetLineWidth
 
-void MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
-									float lineWidth) {
+VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
+										float lineWidth) {
     _lineWidth = lineWidth;
 
     // Validate
     if (_lineWidth != 1.0 || getDevice()->_enabledFeatures.wideLines) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetLineWidth(): The current device does not support wide lines."));
+        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetLineWidth(): The current device does not support wide lines.");
     }
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {}
@@ -179,13 +192,15 @@ MVKCmdSetLineWidth::MVKCmdSetLineWidth(MVKCommandTypePool<MVKCmdSetLineWidth>* p
 #pragma mark -
 #pragma mark MVKCmdSetDepthBias
 
-void MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
-									float depthBiasConstantFactor,
-                                    float depthBiasSlopeFactor,
-                                    float depthBiasClamp) {
+VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
+										float depthBiasConstantFactor,
+										float depthBiasSlopeFactor,
+										float depthBiasClamp) {
     _depthBiasConstantFactor = depthBiasConstantFactor;
     _depthBiasSlopeFactor = depthBiasSlopeFactor;
     _depthBiasClamp = depthBiasClamp;
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
@@ -201,12 +216,14 @@ MVKCmdSetDepthBias::MVKCmdSetDepthBias(MVKCommandTypePool<MVKCmdSetDepthBias>* p
 #pragma mark -
 #pragma mark MVKCmdSetBlendConstants
 
-void MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
-										 const float blendConst[4]) {
+VkResult MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
+											 const float blendConst[4]) {
     _red = blendConst[0];
     _green = blendConst[1];
     _blue = blendConst[2];
     _alpha = blendConst[3];
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
@@ -220,16 +237,18 @@ MVKCmdSetBlendConstants::MVKCmdSetBlendConstants(MVKCommandTypePool<MVKCmdSetBle
 #pragma mark -
 #pragma mark MVKCmdSetDepthBounds
 
-void MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
-									  float minDepthBounds,
-									  float maxDepthBounds) {
+VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
+										  float minDepthBounds,
+										  float maxDepthBounds) {
     _minDepthBounds = minDepthBounds;
     _maxDepthBounds = maxDepthBounds;
 
     // Validate
     if (getDevice()->_enabledFeatures.depthBounds) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBounds(): The current device does not support setting depth bounds."));
+        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBounds(): The current device does not support setting depth bounds.");
     }
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {}
@@ -241,11 +260,13 @@ MVKCmdSetDepthBounds::MVKCmdSetDepthBounds(MVKCommandTypePool<MVKCmdSetDepthBoun
 #pragma mark -
 #pragma mark MVKCmdSetStencilCompareMask
 
-void MVKCmdSetStencilCompareMask::setContent(MVKCommandBuffer* cmdBuff,
-											 VkStencilFaceFlags faceMask,
-                                             uint32_t stencilCompareMask) {
+VkResult MVKCmdSetStencilCompareMask::setContent(MVKCommandBuffer* cmdBuff,
+												 VkStencilFaceFlags faceMask,
+												 uint32_t stencilCompareMask) {
     _faceMask = faceMask;
     _stencilCompareMask = stencilCompareMask;
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetStencilCompareMask::encode(MVKCommandEncoder* cmdEncoder) {
@@ -259,11 +280,13 @@ MVKCmdSetStencilCompareMask::MVKCmdSetStencilCompareMask(MVKCommandTypePool<MVKC
 #pragma mark -
 #pragma mark MVKCmdSetStencilWriteMask
 
-void MVKCmdSetStencilWriteMask::setContent(MVKCommandBuffer* cmdBuff,
-										   VkStencilFaceFlags faceMask,
-										   uint32_t stencilWriteMask) {
+VkResult MVKCmdSetStencilWriteMask::setContent(MVKCommandBuffer* cmdBuff,
+											   VkStencilFaceFlags faceMask,
+											   uint32_t stencilWriteMask) {
     _faceMask = faceMask;
     _stencilWriteMask = stencilWriteMask;
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetStencilWriteMask::encode(MVKCommandEncoder* cmdEncoder) {
@@ -277,11 +300,13 @@ MVKCmdSetStencilWriteMask::MVKCmdSetStencilWriteMask(MVKCommandTypePool<MVKCmdSe
 #pragma mark -
 #pragma mark MVKCmdSetStencilReference
 
-void MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
-										   VkStencilFaceFlags faceMask,
-                                           uint32_t stencilReference) {
+VkResult MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
+											   VkStencilFaceFlags faceMask,
+											   uint32_t stencilReference) {
     _faceMask = faceMask;
     _stencilReference = stencilReference;
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {

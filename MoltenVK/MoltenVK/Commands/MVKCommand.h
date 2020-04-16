@@ -33,15 +33,12 @@ template <class T> class MVKCommandTypePool;
 #pragma mark MVKCommand
 
 /** Abstract class that represents a Vulkan command. */
-class MVKCommand : public MVKConfigurableObject, public MVKLinkableMixin<MVKCommand> {
+class MVKCommand : public MVKBaseObject, public MVKLinkableMixin<MVKCommand> {
 
 public:
 
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
-
-    /** Indicates that this command has a valid configuration and can be encoded. */
-    inline bool canEncode() { return _configurationResult == VK_SUCCESS; }
 
 	/** Encodes this command on the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;

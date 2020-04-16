@@ -114,12 +114,18 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 #define MVKTraceVulkanCallStart()	uint64_t tvcStartTime = MVKTraceVulkanCallStartImpl(__FUNCTION__)
 #define MVKTraceVulkanCallEnd()		MVKTraceVulkanCallEndImpl(__FUNCTION__, tvcStartTime)
 
-// Add a command of particular type to a command buffer.
+// Create and configure a command of particular type.
+// If the command is configured correctly, add it to the buffer,
+// otherwise indicate the configuration error to the command buffer.
 #define MVKAddCmd(cmdType, vkCmdBuff, ...)  										\
 	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(vkCmdBuff);	\
 	auto* cmd = cmdBuff->_commandPool->_cmd ##cmdType ##Pool.acquireObject();		\
-	cmd->setContent(cmdBuff, ##__VA_ARGS__);										\
-	cmdBuff->addCommand(cmd)
+	VkResult cmdRslt = cmd->setContent(cmdBuff, ##__VA_ARGS__);						\
+	if(cmdRslt == VK_SUCCESS) {														\
+		cmdBuff->addCommand(cmd);													\
+	} else {																		\
+		cmdBuff->setConfigurationResult(cmdRslt);									\
+	}
 
 
 #pragma mark -

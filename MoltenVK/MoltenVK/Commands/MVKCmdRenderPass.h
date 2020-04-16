@@ -34,9 +34,9 @@ class MVKFramebuffer;
 class MVKCmdBeginRenderPass : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
-	void setContent(MVKCommandBuffer* cmdBuff,
-					const VkRenderPassBeginInfo* pRenderPassBegin,
-					VkSubpassContents contents);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkRenderPassBeginInfo* pRenderPassBegin,
+						VkSubpassContents contents);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -58,8 +58,8 @@ private:
 class MVKCmdNextSubpass : public MVKCommand {
 
 public:
-	void setContent(MVKCommandBuffer* cmdBuff,
-					VkSubpassContents contents);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkSubpassContents contents);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -77,7 +77,7 @@ private:
 class MVKCmdEndRenderPass : public MVKCommand {
 
 public:
-	void setContent(MVKCommandBuffer* cmdBuff);
+	VkResult setContent(MVKCommandBuffer* cmdBuff);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -92,9 +92,9 @@ public:
 class MVKCmdExecuteCommands : public MVKCommand {
 
 public:
-	void setContent(MVKCommandBuffer* cmdBuff,
-					uint32_t commandBuffersCount,
-					const VkCommandBuffer* pCommandBuffers);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t commandBuffersCount,
+						const VkCommandBuffer* pCommandBuffers);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -111,10 +111,10 @@ private:
 class MVKCmdSetViewport : public MVKCommand {
 
 public:
-	void setContent(MVKCommandBuffer* cmdBuff,
-					uint32_t firstViewport,
-					uint32_t viewportCount,
-					const VkViewport* pViewports);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t firstViewport,
+						uint32_t viewportCount,
+						const VkViewport* pViewports);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -133,10 +133,10 @@ private:
 class MVKCmdSetScissor : public MVKCommand {
 
 public:
-	void setContent(MVKCommandBuffer* cmdBuff,
-					uint32_t firstScissor,
-					uint32_t scissorCount,
-					const VkRect2D* pScissors);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t firstScissor,
+						uint32_t scissorCount,
+						const VkRect2D* pScissors);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -155,7 +155,7 @@ private:
 class MVKCmdSetLineWidth : public MVKCommand {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
 					float lineWidth);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
@@ -174,10 +174,10 @@ private:
 class MVKCmdSetDepthBias : public MVKCommand {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					float depthBiasConstantFactor,
-                    float depthBiasSlopeFactor,
-                    float depthBiasClamp);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						float depthBiasConstantFactor,
+						float depthBiasSlopeFactor,
+						float depthBiasClamp);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -197,8 +197,8 @@ private:
 class MVKCmdSetBlendConstants : public MVKCommand {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					const float blendConst[4]);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const float blendConst[4]);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -219,9 +219,9 @@ private:
 class MVKCmdSetDepthBounds : public MVKCommand {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					float minDepthBounds,
-					float maxDepthBounds);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						float minDepthBounds,
+						float maxDepthBounds);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -240,9 +240,9 @@ private:
 class MVKCmdSetStencilCompareMask : public MVKCommand {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					VkStencilFaceFlags faceMask,
-					uint32_t stencilCompareMask);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkStencilFaceFlags faceMask,
+						uint32_t stencilCompareMask);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -261,9 +261,9 @@ private:
 class MVKCmdSetStencilWriteMask : public MVKCommand {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					VkStencilFaceFlags faceMask,
-					uint32_t stencilWriteMask);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkStencilFaceFlags faceMask,
+						uint32_t stencilWriteMask);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -282,9 +282,9 @@ private:
 class MVKCmdSetStencilReference : public MVKCommand {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					VkStencilFaceFlags faceMask,
-					uint32_t stencilReference);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkStencilFaceFlags faceMask,
+						uint32_t stencilReference);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 

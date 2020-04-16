@@ -28,7 +28,6 @@
 //  Opt 2: Allocate arrays & rezs from pools in Command pool, and return in returnToPool
 
 void MVKCommand::returnToPool() {
-	clearConfigurationResult();
 	_pool->returnObject(this);
 }
 

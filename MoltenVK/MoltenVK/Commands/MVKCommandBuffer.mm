@@ -102,8 +102,6 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
     _tail = command;
     if ( !_head ) { _head = command; }
     _commandCount++;
-
-    setConfigurationResult(command->getConfigurationResult());
 }
 
 void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
@@ -246,10 +244,10 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 
 	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
 
-    MVKCommand* cmd = _cmdBuffer->_head;
+	MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
-        if (cmd->canEncode()) { cmd->encode(this); }
-        cmd = cmd->_next;
+		cmd->encode(this);
+		cmd = cmd->_next;
 	}
 
 	endCurrentMetalEncoding();

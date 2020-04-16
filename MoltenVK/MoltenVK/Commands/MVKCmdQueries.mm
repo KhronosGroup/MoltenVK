@@ -25,11 +25,13 @@
 #pragma mark -
 #pragma mark MVKCmdQuery
 
-void MVKCmdQuery::setContent(MVKCommandBuffer* cmdBuff,
-							 VkQueryPool queryPool,
-							 uint32_t query) {
+VkResult MVKCmdQuery::setContent(MVKCommandBuffer* cmdBuff,
+								 VkQueryPool queryPool,
+								 uint32_t query) {
     _queryPool = (MVKQueryPool*)queryPool;
     _query = query;
+
+	return VK_SUCCESS;
 }
 
 MVKCmdQuery::MVKCmdQuery(MVKCommandTypePool<MVKCommand>* pool) : MVKCommand::MVKCommand(pool) {}
@@ -38,14 +40,17 @@ MVKCmdQuery::MVKCmdQuery(MVKCommandTypePool<MVKCommand>* pool) : MVKCommand::MVK
 #pragma mark -
 #pragma mark MVKCmdBeginQuery
 
-void MVKCmdBeginQuery::setContent(MVKCommandBuffer* cmdBuff,
-								  VkQueryPool queryPool,
-								  uint32_t query,
-								  VkQueryControlFlags flags) {
-    MVKCmdQuery::setContent(cmdBuff, queryPool, query);
-    _flags = flags;
+VkResult MVKCmdBeginQuery::setContent(MVKCommandBuffer* cmdBuff,
+									  VkQueryPool queryPool,
+									  uint32_t query,
+									  VkQueryControlFlags flags) {
 
+    VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, query);
+
+	_flags = flags;
 	_queryPool->beginQueryAddedTo(_query, cmdBuff);
+
+	return rslt;
 }
 
 void MVKCmdBeginQuery::encode(MVKCommandEncoder* cmdEncoder) {
@@ -70,12 +75,16 @@ MVKCmdEndQuery::MVKCmdEndQuery(MVKCommandTypePool<MVKCmdEndQuery>* pool)
 #pragma mark -
 #pragma mark MVKCmdWriteTimestamp
 
-void MVKCmdWriteTimestamp::setContent(MVKCommandBuffer* cmdBuff,
-									  VkPipelineStageFlagBits pipelineStage,
-									  VkQueryPool queryPool,
-									  uint32_t query) {
-    MVKCmdQuery::setContent(cmdBuff, queryPool, query);
+VkResult MVKCmdWriteTimestamp::setContent(MVKCommandBuffer* cmdBuff,
+										  VkPipelineStageFlagBits pipelineStage,
+										  VkQueryPool queryPool,
+										  uint32_t query) {
+
+	VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, query);
+
 	_pipelineStage = pipelineStage;
+
+	return rslt;
 }
 
 void MVKCmdWriteTimestamp::encode(MVKCommandEncoder* cmdEncoder) {
@@ -89,12 +98,16 @@ MVKCmdWriteTimestamp::MVKCmdWriteTimestamp(MVKCommandTypePool<MVKCmdWriteTimesta
 #pragma mark -
 #pragma mark MVKCmdResetQueryPool
 
-void MVKCmdResetQueryPool::setContent(MVKCommandBuffer* cmdBuff,
-									  VkQueryPool queryPool,
-									  uint32_t firstQuery,
-									  uint32_t queryCount) {
-    MVKCmdQuery::setContent(cmdBuff, queryPool, firstQuery);
-    _queryCount = queryCount;
+VkResult MVKCmdResetQueryPool::setContent(MVKCommandBuffer* cmdBuff,
+										  VkQueryPool queryPool,
+										  uint32_t firstQuery,
+										  uint32_t queryCount) {
+
+	VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, firstQuery);
+
+	_queryCount = queryCount;
+
+	return rslt;
 }
 
 void MVKCmdResetQueryPool::encode(MVKCommandEncoder* cmdEncoder) {
@@ -108,20 +121,24 @@ MVKCmdResetQueryPool::MVKCmdResetQueryPool(MVKCommandTypePool<MVKCmdResetQueryPo
 #pragma mark -
 #pragma mark MVKCmdCopyQueryPoolResults
 
-void MVKCmdCopyQueryPoolResults::setContent(MVKCommandBuffer* cmdBuff,
-											VkQueryPool queryPool,
-                                            uint32_t firstQuery,
-                                            uint32_t queryCount,
-                                            VkBuffer destBuffer,
-                                            VkDeviceSize destOffset,
-                                            VkDeviceSize destStride,
-                                            VkQueryResultFlags flags) {
-    MVKCmdQuery::setContent(cmdBuff, queryPool, firstQuery);
-    _queryCount = queryCount;
+VkResult MVKCmdCopyQueryPoolResults::setContent(MVKCommandBuffer* cmdBuff,
+												VkQueryPool queryPool,
+												uint32_t firstQuery,
+												uint32_t queryCount,
+												VkBuffer destBuffer,
+												VkDeviceSize destOffset,
+												VkDeviceSize destStride,
+												VkQueryResultFlags flags) {
+
+	VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, firstQuery);
+
+	_queryCount = queryCount;
     _destBuffer = (MVKBuffer*) destBuffer;
     _destOffset = destOffset;
     _destStride = destStride;
     _flags = flags;
+
+	return rslt;
 }
 
 void MVKCmdCopyQueryPoolResults::encode(MVKCommandEncoder* cmdEncoder) {

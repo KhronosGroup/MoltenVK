@@ -30,9 +30,9 @@ class MVKQueryPool;
 class MVKCmdQuery : public MVKCommand {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					VkQueryPool queryPool,
-					uint32_t query);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t query);
 
     MVKCmdQuery(MVKCommandTypePool<MVKCommand>* pool);
 
@@ -49,10 +49,10 @@ protected:
 class MVKCmdBeginQuery : public MVKCmdQuery {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					VkQueryPool queryPool,
-					uint32_t query,
-					VkQueryControlFlags flags);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t query,
+						VkQueryControlFlags flags);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -83,10 +83,10 @@ public:
 class MVKCmdWriteTimestamp : public MVKCmdQuery {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					VkPipelineStageFlagBits pipelineStage,
-                    VkQueryPool queryPool,
-                    uint32_t query);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkPipelineStageFlagBits pipelineStage,
+						VkQueryPool queryPool,
+						uint32_t query);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -104,10 +104,10 @@ protected:
 class MVKCmdResetQueryPool : public MVKCmdQuery {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					VkQueryPool queryPool,
-					uint32_t firstQuery,
-					uint32_t queryCount);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t firstQuery,
+						uint32_t queryCount);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -125,14 +125,14 @@ protected:
 class MVKCmdCopyQueryPoolResults : public MVKCmdQuery {
 
 public:
-    void setContent(MVKCommandBuffer* cmdBuff,
-					VkQueryPool queryPool,
-                    uint32_t firstQuery,
-                    uint32_t queryCount,
-                    VkBuffer destBuffer,
-                    VkDeviceSize destOffset,
-                    VkDeviceSize destStride,
-                    VkQueryResultFlags flags);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t firstQuery,
+						uint32_t queryCount,
+						VkBuffer destBuffer,
+						VkDeviceSize destOffset,
+						VkDeviceSize destStride,
+						VkQueryResultFlags flags);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
