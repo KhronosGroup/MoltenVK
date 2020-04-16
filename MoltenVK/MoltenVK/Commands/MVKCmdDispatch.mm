@@ -81,29 +81,3 @@ void MVKCmdDispatchIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 MVKCmdDispatchIndirect::MVKCmdDispatchIndirect(MVKCommandTypePool<MVKCmdDispatchIndirect>* pool)
 	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
-
-
-
-#pragma mark -
-#pragma mark Command creation functions
-
-void mvkCmdDispatch(MVKCommandBuffer* cmdBuff, uint32_t x, uint32_t y, uint32_t z) {
-	MVKCmdDispatch* cmd = cmdBuff->_commandPool->_cmdDispatchPool.acquireObject();
-	cmd->setContent(cmdBuff, 0, 0, 0, x, y, z);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDispatchIndirect(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
-	MVKCmdDispatchIndirect* cmd = cmdBuff->_commandPool->_cmdDispatchIndirectPool.acquireObject();
-	cmd->setContent(cmdBuff, buffer, offset);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDispatchBase(MVKCommandBuffer* cmdBuff, uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
-						uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
-	MVKCmdDispatch* cmd = cmdBuff->_commandPool->_cmdDispatchPool.acquireObject();
-	cmd->setContent(cmdBuff, baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
-	cmdBuff->addCommand(cmd);
-}
-
-

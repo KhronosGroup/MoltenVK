@@ -61,6 +61,8 @@ public:
 class MVKCmdDebugMarkerEnd : public MVKCommand {
 
 public:
+	void setContent(MVKCommandBuffer* cmdBuff);
+
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 	MVKCmdDebugMarkerEnd(MVKCommandTypePool<MVKCmdDebugMarkerEnd>* pool);
@@ -78,22 +80,6 @@ public:
 
 		MVKCmdDebugMarkerInsert(MVKCommandTypePool<MVKCmdDebugMarkerInsert>* pool);
 	};
-
-
-#pragma mark -
-#pragma mark Command creation functions
-
-void mvkCmdDebugMarkerBegin(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo);
-
-void mvkCmdDebugMarkerEnd(MVKCommandBuffer* cmdBuff);
-
-void mvkCmdDebugMarkerInsert(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo);
-
-void mvkCmdBeginDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo);
-
-void mvkCmdEndDebugUtilsLabel(MVKCommandBuffer* cmdBuff);
-
-void mvkCmdInsertDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo);
 
 
 #pragma mark -

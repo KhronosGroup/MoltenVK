@@ -58,6 +58,8 @@ MVKCmdDebugMarkerBegin::MVKCmdDebugMarkerBegin(MVKCommandTypePool<MVKCmdDebugMar
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerEnd
 
+void MVKCmdDebugMarkerEnd::setContent(MVKCommandBuffer* cmdBuff) {}
+
 // Vulkan debug groups are more general than Metal's.
 // If a renderpass is active, pop from the render command encoder, otherwise pop from the command buffer.
 void MVKCmdDebugMarkerEnd::encode(MVKCommandEncoder* cmdEncoder) {
@@ -82,44 +84,6 @@ void MVKCmdDebugMarkerInsert::encode(MVKCommandEncoder* cmdEncoder) {
 
 MVKCmdDebugMarkerInsert::MVKCmdDebugMarkerInsert(MVKCommandTypePool<MVKCmdDebugMarkerInsert>* pool)
 	: MVKCmdDebugMarker::MVKCmdDebugMarker((MVKCommandTypePool<MVKCmdDebugMarker>*)pool) {}
-
-
-#pragma mark -
-#pragma mark Command creation functions
-
-void mvkCmdDebugMarkerBegin(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
-	MVKCmdDebugMarkerBegin* cmd = cmdBuff->_commandPool->_cmdDebugMarkerBeginPool.acquireObject();
-	cmd->setContent(cmdBuff, pMarkerInfo->pMarkerName, pMarkerInfo->color);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDebugMarkerEnd(MVKCommandBuffer* cmdBuff) {
-	MVKCmdDebugMarkerEnd* cmd = cmdBuff->_commandPool->_cmdDebugMarkerEndPool.acquireObject();
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDebugMarkerInsert(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
-	MVKCmdDebugMarkerInsert* cmd = cmdBuff->_commandPool->_cmdDebugMarkerInsertPool.acquireObject();
-	cmd->setContent(cmdBuff, pMarkerInfo->pMarkerName, pMarkerInfo->color);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdBeginDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo) {
-	MVKCmdDebugMarkerBegin* cmd = cmdBuff->_commandPool->_cmdDebugMarkerBeginPool.acquireObject();
-	cmd->setContent(cmdBuff, pLabelInfo->pLabelName, pLabelInfo->color);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdEndDebugUtilsLabel(MVKCommandBuffer* cmdBuff) {
-	MVKCmdDebugMarkerEnd* cmd = cmdBuff->_commandPool->_cmdDebugMarkerEndPool.acquireObject();
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdInsertDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo) {
-	MVKCmdDebugMarkerInsert* cmd = cmdBuff->_commandPool->_cmdDebugMarkerInsertPool.acquireObject();
-	cmd->setContent(cmdBuff, pLabelInfo->pLabelName, pLabelInfo->color);
-	cmdBuff->addCommand(cmd);
-}
 
 
 #pragma mark -
