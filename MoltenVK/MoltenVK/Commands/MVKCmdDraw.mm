@@ -28,7 +28,8 @@
 #pragma mark -
 #pragma mark MVKCmdBindVertexBuffers
 
-void MVKCmdBindVertexBuffers::setContent(uint32_t startBinding,
+void MVKCmdBindVertexBuffers::setContent(MVKCommandBuffer* cmdBuff,
+										 uint32_t startBinding,
 										 uint32_t bindingCount,
 										 const VkBuffer* pBuffers,
 										 const VkDeviceSize* pOffsets) {
@@ -56,7 +57,8 @@ MVKCmdBindVertexBuffers::MVKCmdBindVertexBuffers(MVKCommandTypePool<MVKCmdBindVe
 #pragma mark -
 #pragma mark MVKCmdBindIndexBuffer
 
-void MVKCmdBindIndexBuffer::setContent(VkBuffer buffer,
+void MVKCmdBindIndexBuffer::setContent(MVKCommandBuffer* cmdBuff,
+									   VkBuffer buffer,
                                        VkDeviceSize offset,
                                        VkIndexType indexType) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
@@ -76,7 +78,8 @@ MVKCmdBindIndexBuffer::MVKCmdBindIndexBuffer(MVKCommandTypePool<MVKCmdBindIndexB
 #pragma mark -
 #pragma mark MVKCmdDraw
 
-void MVKCmdDraw::setContent(uint32_t vertexCount,
+void MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
+							uint32_t vertexCount,
 							uint32_t instanceCount,
 							uint32_t firstVertex,
 							uint32_t firstInstance) {
@@ -264,7 +267,8 @@ MVKCmdDraw::MVKCmdDraw(MVKCommandTypePool<MVKCmdDraw>* pool)
 #pragma mark -
 #pragma mark MVKCmdDrawIndexed
 
-void MVKCmdDrawIndexed::setContent(uint32_t indexCount,
+void MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
+								   uint32_t indexCount,
                                    uint32_t instanceCount,
                                    uint32_t firstIndex,
                                    int32_t vertexOffset,
@@ -497,10 +501,11 @@ MVKCmdDrawIndexed::MVKCmdDrawIndexed(MVKCommandTypePool<MVKCmdDrawIndexed>* pool
 #pragma mark -
 #pragma mark MVKCmdDrawIndirect
 
-void MVKCmdDrawIndirect::setContent(VkBuffer buffer,
-										VkDeviceSize offset,
-										uint32_t drawCount,
-										uint32_t stride) {
+void MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
+									VkBuffer buffer,
+									VkDeviceSize offset,
+									uint32_t drawCount,
+									uint32_t stride) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
@@ -740,10 +745,11 @@ MVKCmdDrawIndirect::MVKCmdDrawIndirect(MVKCommandTypePool<MVKCmdDrawIndirect>* p
 #pragma mark -
 #pragma mark MVKCmdDrawIndexedIndirect
 
-void MVKCmdDrawIndexedIndirect::setContent(VkBuffer buffer,
-										VkDeviceSize offset,
-										uint32_t drawCount,
-										uint32_t stride) {
+void MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
+										   VkBuffer buffer,
+										   VkDeviceSize offset,
+										   uint32_t drawCount,
+										   uint32_t stride) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
@@ -1003,7 +1009,7 @@ void mvkCmdBindVertexBuffers(MVKCommandBuffer* cmdBuff,
 							 const VkBuffer* pBuffers,
 							 const VkDeviceSize* pOffsets) {
 	MVKCmdBindVertexBuffers* cmd = cmdBuff->_commandPool->_cmdBindVertexBuffersPool.acquireObject();
-	cmd->setContent(startBinding, bindingCount, pBuffers, pOffsets);
+	cmd->setContent(cmdBuff, startBinding, bindingCount, pBuffers, pOffsets);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1013,7 +1019,7 @@ void mvkCmdDraw(MVKCommandBuffer* cmdBuff,
 				uint32_t firstVertex,
 				uint32_t firstInstance) {
 	MVKCmdDraw* cmd = cmdBuff->_commandPool->_cmdDrawPool.acquireObject();
-	cmd->setContent(vertexCount, instanceCount, firstVertex, firstInstance);
+	cmd->setContent(cmdBuff, vertexCount, instanceCount, firstVertex, firstInstance);
 	cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
@@ -1025,7 +1031,7 @@ void mvkCmdDrawIndexed(MVKCommandBuffer* cmdBuff,
 					   int32_t vertexOffset,
 					   uint32_t firstInstance) {
 	MVKCmdDrawIndexed* cmd = cmdBuff->_commandPool->_cmdDrawIndexedPool.acquireObject();
-	cmd->setContent(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+	cmd->setContent(cmdBuff, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 	cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
@@ -1035,7 +1041,7 @@ void mvkCmdBindIndexBuffer(MVKCommandBuffer* cmdBuff,
 						   VkDeviceSize offset,
 						   VkIndexType indexType) {
 	MVKCmdBindIndexBuffer* cmd = cmdBuff->_commandPool->_cmdBindIndexBufferPool.acquireObject();
-	cmd->setContent(buffer, offset, indexType);
+	cmd->setContent(cmdBuff, buffer, offset, indexType);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1045,7 +1051,7 @@ void mvkCmdDrawIndirect(MVKCommandBuffer* cmdBuff,
 						uint32_t drawCount,
 						uint32_t stride) {
 	MVKCmdDrawIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndirectPool.acquireObject();
-	cmd->setContent(buffer, offset, drawCount, stride);
+	cmd->setContent(cmdBuff, buffer, offset, drawCount, stride);
 	cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }
@@ -1056,7 +1062,7 @@ void mvkCmdDrawIndexedIndirect(MVKCommandBuffer* cmdBuff,
 							   uint32_t drawCount,
 							   uint32_t stride) {
 	MVKCmdDrawIndexedIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndexedIndirectPool.acquireObject();
-	cmd->setContent(buffer, offset, drawCount, stride);
+	cmd->setContent(cmdBuff, buffer, offset, drawCount, stride);
 	cmdBuff->recordDraw(cmd);
 	cmdBuff->addCommand(cmd);
 }

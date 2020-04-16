@@ -31,7 +31,8 @@
 class MVKCmdDispatch : public MVKCommand {
 
 public:
-    void setContent(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
+    void setContent(MVKCommandBuffer* cmdBuff,
+					uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
                     uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
@@ -50,7 +51,7 @@ protected:
 class MVKCmdDispatchIndirect : public MVKCommand {
 
 public:
-	void setContent(VkBuffer buffer, VkDeviceSize offset);
+	void setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 

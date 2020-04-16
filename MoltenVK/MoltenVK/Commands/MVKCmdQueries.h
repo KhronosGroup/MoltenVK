@@ -30,7 +30,9 @@ class MVKQueryPool;
 class MVKCmdQuery : public MVKCommand {
 
 public:
-    void setContent(VkQueryPool queryPool, uint32_t query);
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkQueryPool queryPool,
+					uint32_t query);
 
     MVKCmdQuery(MVKCommandTypePool<MVKCommand>* pool);
 
@@ -47,9 +49,10 @@ protected:
 class MVKCmdBeginQuery : public MVKCmdQuery {
 
 public:
-    void setContent(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags);
-
-    void added(MVKCommandBuffer* cmdBuffer) override;
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkQueryPool queryPool,
+					uint32_t query,
+					VkQueryControlFlags flags);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -80,7 +83,8 @@ public:
 class MVKCmdWriteTimestamp : public MVKCmdQuery {
 
 public:
-    void setContent(VkPipelineStageFlagBits pipelineStage,
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkPipelineStageFlagBits pipelineStage,
                     VkQueryPool queryPool,
                     uint32_t query);
 
@@ -100,7 +104,10 @@ protected:
 class MVKCmdResetQueryPool : public MVKCmdQuery {
 
 public:
-    void setContent(VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount);
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkQueryPool queryPool,
+					uint32_t firstQuery,
+					uint32_t queryCount);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -118,7 +125,8 @@ protected:
 class MVKCmdCopyQueryPoolResults : public MVKCmdQuery {
 
 public:
-    void setContent(VkQueryPool queryPool,
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkQueryPool queryPool,
                     uint32_t firstQuery,
                     uint32_t queryCount,
                     VkBuffer destBuffer,

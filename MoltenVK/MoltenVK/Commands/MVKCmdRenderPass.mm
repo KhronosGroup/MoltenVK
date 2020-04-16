@@ -28,7 +28,8 @@
 #pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
-void MVKCmdBeginRenderPass::setContent(const VkRenderPassBeginInfo* pRenderPassBegin,
+void MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
+									   const VkRenderPassBeginInfo* pRenderPassBegin,
 									   VkSubpassContents contents) {
 	_info = *pRenderPassBegin;
 	_contents = contents;
@@ -57,7 +58,8 @@ MVKCmdBeginRenderPass::MVKCmdBeginRenderPass(MVKCommandTypePool<MVKCmdBeginRende
 #pragma mark -
 #pragma mark MVKCmdNextSubpass
 
-void MVKCmdNextSubpass::setContent(VkSubpassContents contents) {
+void MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
+								   VkSubpassContents contents) {
 	_contents = contents;
 }
 
@@ -84,7 +86,8 @@ MVKCmdEndRenderPass::MVKCmdEndRenderPass(MVKCommandTypePool<MVKCmdEndRenderPass>
 #pragma mark -
 #pragma mark MVKCmdExecuteCommands
 
-void MVKCmdExecuteCommands::setContent(uint32_t commandBuffersCount,
+void MVKCmdExecuteCommands::setContent(MVKCommandBuffer* cmdBuff,
+									   uint32_t commandBuffersCount,
 									   const VkCommandBuffer* pCommandBuffers) {
 	// Add clear values
 	_secondaryCommandBuffers.clear();	// Clear for reuse
@@ -105,7 +108,10 @@ MVKCmdExecuteCommands::MVKCmdExecuteCommands(MVKCommandTypePool<MVKCmdExecuteCom
 #pragma mark -
 #pragma mark MVKCmdSetViewport
 
-void MVKCmdSetViewport::setContent(uint32_t firstViewport, uint32_t viewportCount, const VkViewport* pViewports) {
+void MVKCmdSetViewport::setContent(MVKCommandBuffer* cmdBuff,
+								   uint32_t firstViewport,
+								   uint32_t viewportCount,
+								   const VkViewport* pViewports) {
 	_firstViewport = firstViewport;
 	_mtlViewports.clear();	// Clear for reuse
 	_mtlViewports.reserve(viewportCount);
@@ -125,7 +131,10 @@ MVKCmdSetViewport::MVKCmdSetViewport(MVKCommandTypePool<MVKCmdSetViewport>* pool
 #pragma mark -
 #pragma mark MVKCmdSetScissor
 
-void MVKCmdSetScissor::setContent(uint32_t firstScissor, uint32_t scissorCount, const VkRect2D* pScissors) {
+void MVKCmdSetScissor::setContent(MVKCommandBuffer* cmdBuff,
+								  uint32_t firstScissor,
+								  uint32_t scissorCount,
+								  const VkRect2D* pScissors) {
 	_firstScissor = firstScissor;
 	_mtlScissors.clear();	// Clear for reuse
 	_mtlScissors.reserve(scissorCount);
@@ -145,7 +154,8 @@ MVKCmdSetScissor::MVKCmdSetScissor(MVKCommandTypePool<MVKCmdSetScissor>* pool)
 #pragma mark -
 #pragma mark MVKCmdSetLineWidth
 
-void MVKCmdSetLineWidth::setContent(float lineWidth) {
+void MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
+									float lineWidth) {
     _lineWidth = lineWidth;
 
     // Validate
@@ -163,7 +173,8 @@ MVKCmdSetLineWidth::MVKCmdSetLineWidth(MVKCommandTypePool<MVKCmdSetLineWidth>* p
 #pragma mark -
 #pragma mark MVKCmdSetDepthBias
 
-void MVKCmdSetDepthBias::setContent(float depthBiasConstantFactor,
+void MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
+									float depthBiasConstantFactor,
                                     float depthBiasSlopeFactor,
                                     float depthBiasClamp) {
     _depthBiasConstantFactor = depthBiasConstantFactor;
@@ -184,7 +195,8 @@ MVKCmdSetDepthBias::MVKCmdSetDepthBias(MVKCommandTypePool<MVKCmdSetDepthBias>* p
 #pragma mark -
 #pragma mark MVKCmdSetBlendConstants
 
-void MVKCmdSetBlendConstants::setContent(const float blendConst[4]) {
+void MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
+										 const float blendConst[4]) {
     _red = blendConst[0];
     _green = blendConst[1];
     _blue = blendConst[2];
@@ -202,7 +214,9 @@ MVKCmdSetBlendConstants::MVKCmdSetBlendConstants(MVKCommandTypePool<MVKCmdSetBle
 #pragma mark -
 #pragma mark MVKCmdSetDepthBounds
 
-void MVKCmdSetDepthBounds::setContent(float minDepthBounds, float maxDepthBounds) {
+void MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
+									  float minDepthBounds,
+									  float maxDepthBounds) {
     _minDepthBounds = minDepthBounds;
     _maxDepthBounds = maxDepthBounds;
 
@@ -221,7 +235,8 @@ MVKCmdSetDepthBounds::MVKCmdSetDepthBounds(MVKCommandTypePool<MVKCmdSetDepthBoun
 #pragma mark -
 #pragma mark MVKCmdSetStencilCompareMask
 
-void MVKCmdSetStencilCompareMask::setContent(VkStencilFaceFlags faceMask,
+void MVKCmdSetStencilCompareMask::setContent(MVKCommandBuffer* cmdBuff,
+											 VkStencilFaceFlags faceMask,
                                              uint32_t stencilCompareMask) {
     _faceMask = faceMask;
     _stencilCompareMask = stencilCompareMask;
@@ -238,8 +253,9 @@ MVKCmdSetStencilCompareMask::MVKCmdSetStencilCompareMask(MVKCommandTypePool<MVKC
 #pragma mark -
 #pragma mark MVKCmdSetStencilWriteMask
 
-void MVKCmdSetStencilWriteMask::setContent(VkStencilFaceFlags faceMask,
-                                             uint32_t stencilWriteMask) {
+void MVKCmdSetStencilWriteMask::setContent(MVKCommandBuffer* cmdBuff,
+										   VkStencilFaceFlags faceMask,
+										   uint32_t stencilWriteMask) {
     _faceMask = faceMask;
     _stencilWriteMask = stencilWriteMask;
 }
@@ -255,7 +271,8 @@ MVKCmdSetStencilWriteMask::MVKCmdSetStencilWriteMask(MVKCommandTypePool<MVKCmdSe
 #pragma mark -
 #pragma mark MVKCmdSetStencilReference
 
-void MVKCmdSetStencilReference::setContent(VkStencilFaceFlags faceMask,
+void MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
+										   VkStencilFaceFlags faceMask,
                                            uint32_t stencilReference) {
     _faceMask = faceMask;
     _stencilReference = stencilReference;
@@ -276,14 +293,14 @@ void mvkCmdBeginRenderPass(MVKCommandBuffer* cmdBuff,
 						   const VkRenderPassBeginInfo* pRenderPassBegin,
 						   VkSubpassContents contents) {
 	MVKCmdBeginRenderPass* cmd = cmdBuff->_commandPool->_cmdBeginRenderPassPool.acquireObject();
-	cmd->setContent(pRenderPassBegin, contents);
+	cmd->setContent(cmdBuff, pRenderPassBegin, contents);
 	cmdBuff->recordBeginRenderPass(cmd);
 	cmdBuff->addCommand(cmd);
 }
 
 void mvkCmdNextSubpass(MVKCommandBuffer* cmdBuff, VkSubpassContents contents) {
 	MVKCmdNextSubpass* cmd = cmdBuff->_commandPool->_cmdNextSubpassPool.acquireObject();
-	cmd->setContent(contents);
+	cmd->setContent(cmdBuff, contents);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -297,7 +314,7 @@ void mvkCmdExecuteCommands(MVKCommandBuffer* cmdBuff,
 						   uint32_t commandBuffersCount,
 						   const VkCommandBuffer* pCommandBuffers) {
 	MVKCmdExecuteCommands* cmd = cmdBuff->_commandPool->_cmdExecuteCommandsPool.acquireObject();
-	cmd->setContent(commandBuffersCount, pCommandBuffers);
+	cmd->setContent(cmdBuff, commandBuffersCount, pCommandBuffers);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -308,7 +325,7 @@ void mvkCmdSetViewport(MVKCommandBuffer* cmdBuff,
 	if (viewportCount == 0 || firstViewport > 0) { return; }		// Nothing to set
 
 	MVKCmdSetViewport* cmd = cmdBuff->_commandPool->_cmdSetViewportPool.acquireObject();
-	cmd->setContent(firstViewport, viewportCount, pViewports);
+	cmd->setContent(cmdBuff, firstViewport, viewportCount, pViewports);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -319,13 +336,13 @@ void mvkCmdSetScissor(MVKCommandBuffer* cmdBuff,
 	if (scissorCount == 0) { return; }		// Nothing to set
 
 	MVKCmdSetScissor* cmd = cmdBuff->_commandPool->_cmdSetScissorPool.acquireObject();
-	cmd->setContent(firstScissor, scissorCount, pScissors);
+	cmd->setContent(cmdBuff, firstScissor, scissorCount, pScissors);
 	cmdBuff->addCommand(cmd);
 }
 
 void mvkCmdSetLineWidth(MVKCommandBuffer* cmdBuff, float lineWidth) {
     MVKCmdSetLineWidth* cmd = cmdBuff->_commandPool->_cmdSetLineWidthPool.acquireObject();
-    cmd->setContent(lineWidth);
+    cmd->setContent(cmdBuff, lineWidth);
     cmdBuff->addCommand(cmd);
 }
 
@@ -334,14 +351,14 @@ void mvkCmdSetDepthBias(MVKCommandBuffer* cmdBuff,
                         float depthBiasClamp,
                         float depthBiasSlopeFactor) {
     MVKCmdSetDepthBias* cmd = cmdBuff->_commandPool->_cmdSetDepthBiasPool.acquireObject();
-    cmd->setContent(depthBiasConstantFactor, depthBiasSlopeFactor, depthBiasClamp);
+    cmd->setContent(cmdBuff, depthBiasConstantFactor, depthBiasSlopeFactor, depthBiasClamp);
     cmdBuff->addCommand(cmd);
 }
 
 void mvkCmdSetBlendConstants(MVKCommandBuffer* cmdBuff,
                              const float blendConst[4]) {
     MVKCmdSetBlendConstants* cmd = cmdBuff->_commandPool->_cmdSetBlendConstantsPool.acquireObject();
-    cmd->setContent(blendConst);
+    cmd->setContent(cmdBuff, blendConst);
     cmdBuff->addCommand(cmd);
 }
 
@@ -349,7 +366,7 @@ void mvkCmdSetDepthBounds(MVKCommandBuffer* cmdBuff,
                           float minDepthBounds,
                           float maxDepthBounds) {
     MVKCmdSetDepthBounds* cmd = cmdBuff->_commandPool->_cmdSetDepthBoundsPool.acquireObject();
-    cmd->setContent(minDepthBounds, maxDepthBounds);
+    cmd->setContent(cmdBuff, minDepthBounds, maxDepthBounds);
     cmdBuff->addCommand(cmd);
 }
 
@@ -357,7 +374,7 @@ void mvkCmdSetStencilCompareMask(MVKCommandBuffer* cmdBuff,
                                  VkStencilFaceFlags faceMask,
                                  uint32_t stencilCompareMask) {
     MVKCmdSetStencilCompareMask* cmd = cmdBuff->_commandPool->_cmdSetStencilCompareMaskPool.acquireObject();
-    cmd->setContent(faceMask, stencilCompareMask);
+    cmd->setContent(cmdBuff, faceMask, stencilCompareMask);
     cmdBuff->addCommand(cmd);
 }
 
@@ -365,7 +382,7 @@ void mvkCmdSetStencilWriteMask(MVKCommandBuffer* cmdBuff,
                                VkStencilFaceFlags faceMask,
                                uint32_t stencilWriteMask) {
     MVKCmdSetStencilWriteMask* cmd = cmdBuff->_commandPool->_cmdSetStencilWriteMaskPool.acquireObject();
-    cmd->setContent(faceMask, stencilWriteMask);
+    cmd->setContent(cmdBuff, faceMask, stencilWriteMask);
     cmdBuff->addCommand(cmd);
 }
 
@@ -373,7 +390,7 @@ void mvkCmdSetStencilReference(MVKCommandBuffer* cmdBuff,
                                VkStencilFaceFlags faceMask,
                                uint32_t stencilReference) {
     MVKCmdSetStencilReference* cmd = cmdBuff->_commandPool->_cmdSetStencilReferencePool.acquireObject();
-    cmd->setContent(faceMask, stencilReference);
+    cmd->setContent(cmdBuff, faceMask, stencilReference);
     cmdBuff->addCommand(cmd);
 }
 

@@ -30,7 +30,7 @@
 class MVKCmdDebugMarker : public MVKCommand {
 
 public:
-	void setContent(const char* pMarkerName, const float color[4]);
+	void setContent(MVKCommandBuffer* cmdBuff, const char* pMarkerName, const float color[4]);
 
     MVKCmdDebugMarker(MVKCommandTypePool<MVKCmdDebugMarker>* pool);
 

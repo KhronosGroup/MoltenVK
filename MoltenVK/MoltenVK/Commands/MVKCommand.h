@@ -40,9 +40,6 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
-    /** Called when this command is added to a command buffer. */
-	virtual void added(MVKCommandBuffer* cmdBuffer) {};
-
     /** Indicates that this command has a valid configuration and can be encoded. */
     inline bool canEncode() { return _configurationResult == VK_SUCCESS; }
 

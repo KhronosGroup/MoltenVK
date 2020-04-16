@@ -47,7 +47,8 @@ static inline MTLSize mvkClampMTLSize(MTLSize size, MTLOrigin origin, MTLSize ma
 #pragma mark -
 #pragma mark MVKCmdCopyImage
 
-void MVKCmdCopyImage::setContent(VkImage srcImage,
+void MVKCmdCopyImage::setContent(MVKCommandBuffer* cmdBuff,
+								 VkImage srcImage,
 								 VkImageLayout srcImageLayout,
 								 VkImage dstImage,
 								 VkImageLayout dstImageLayout,
@@ -55,7 +56,7 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 								 const VkImageCopy* pRegions,
 								 MVKCommandUse commandUse) {
 
-	setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, false, commandUse);
+	setContent(cmdBuff, srcImage, srcImageLayout, dstImage, dstImageLayout, false, commandUse);
 
 	for (uint32_t i = 0; i < regionCount; i++) {
 		addImageCopyRegion(pRegions[i]);
@@ -71,7 +72,8 @@ void MVKCmdCopyImage::setContent(VkImage srcImage,
 }
 
 // Sets common content for use by this class and subclasses
-void MVKCmdCopyImage::setContent(VkImage srcImage,
+void MVKCmdCopyImage::setContent(MVKCommandBuffer* cmdBuff,
+								 VkImage srcImage,
 								 VkImageLayout srcImageLayout,
 								 VkImage dstImage,
 								 VkImageLayout dstImageLayout,
@@ -202,7 +204,8 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 		// Copy from source image to buffer
 		// Create and execute a temporary buffer image command.
 		// To be threadsafe...do NOT acquire and return the command from the pool.
-		cpyCmd.setContent((VkBuffer) tempBuff,
+		cpyCmd.setContent(cmdEncoder->_cmdBuffer,
+						  (VkBuffer) tempBuff,
 						  (VkImage) _srcImage,
 						  _srcLayout,
 						  (uint32_t)_srcTmpBuffImgCopies.size(),
@@ -213,7 +216,8 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 		// Copy from buffer to destination image
 		// Create and execute a temporary buffer image command.
 		// To be threadsafe...do NOT acquire and return the command from the pool.
-		cpyCmd.setContent((VkBuffer) tempBuff,
+		cpyCmd.setContent(cmdEncoder->_cmdBuffer,
+						  (VkBuffer) tempBuff,
 						  (VkImage) _dstImage,
 						  _dstLayout,
 						  (uint32_t)_dstTmpBuffImgCopies.size(),
@@ -227,7 +231,8 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdBlitImage
 
-void MVKCmdBlitImage::setContent(VkImage srcImage,
+void MVKCmdBlitImage::setContent(MVKCommandBuffer* cmdBuff,
+								 VkImage srcImage,
 								 VkImageLayout srcImageLayout,
 								 VkImage dstImage,
 								 VkImageLayout dstImageLayout,
@@ -236,7 +241,7 @@ void MVKCmdBlitImage::setContent(VkImage srcImage,
 								 VkFilter filter,
 								 MVKCommandUse commandUse) {
 
-	MVKCmdCopyImage::setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, true, commandUse);
+	MVKCmdCopyImage::setContent(cmdBuff, srcImage, srcImageLayout, dstImage, dstImageLayout, true, commandUse);
 
 	_blitKey.srcMTLPixelFormat = _srcMTLPixFmt;
 	_blitKey.srcMTLTextureType = _srcImage->getMTLTextureType();
@@ -432,7 +437,8 @@ MVKCmdBlitImage::~MVKCmdBlitImage() {
 #pragma mark -
 #pragma mark MVKCmdResolveImage
 
-void MVKCmdResolveImage::setContent(VkImage srcImage,
+void MVKCmdResolveImage::setContent(MVKCommandBuffer* cmdBuff,
+									VkImage srcImage,
                                     VkImageLayout srcImageLayout,
                                     VkImage dstImage,
                                     VkImageLayout dstImageLayout,
@@ -560,7 +566,8 @@ void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t expRgnCnt = uint32_t(_expansionRegions.size());
     if (expRgnCnt > 0) {
         MVKCmdBlitImage expandCmd(&getCommandPool()->_cmdBlitImagePool);
-        expandCmd.setContent((VkImage)_dstImage, _dstLayout, (VkImage)xfrImage, _dstLayout,
+        expandCmd.setContent(cmdEncoder->_cmdBuffer,
+							 (VkImage)_dstImage, _dstLayout, (VkImage)xfrImage, _dstLayout,
                              expRgnCnt, _expansionRegions.data(),
                              VK_FILTER_LINEAR, kMVKCommandUseResolveExpandImage);
         expandCmd.encode(cmdEncoder);
@@ -572,7 +579,8 @@ void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t cpyRgnCnt = uint32_t(_copyRegions.size());
     if (cpyRgnCnt > 0) {
         MVKCmdCopyImage copyCmd(&getCommandPool()->_cmdCopyImagePool);
-        copyCmd.setContent((VkImage)_srcImage, _srcLayout, (VkImage)xfrImage, _dstLayout,
+        copyCmd.setContent(cmdEncoder->_cmdBuffer,
+						   (VkImage)_srcImage, _srcLayout, (VkImage)xfrImage, _dstLayout,
                            cpyRgnCnt, _copyRegions.data(), kMVKCommandUseResolveCopyImage);
         copyCmd.encode(cmdEncoder);
     }
@@ -628,7 +636,8 @@ typedef struct {
 	uint32_t size;
 } MVKCmdCopyBufferInfo;
 
-void MVKCmdCopyBuffer::setContent(VkBuffer srcBuffer,
+void MVKCmdCopyBuffer::setContent(MVKCommandBuffer* cmdBuff,
+								  VkBuffer srcBuffer,
 								  VkBuffer destBuffer,
 								  uint32_t regionCount,
 								  const VkBufferCopy* pRegions) {
@@ -703,7 +712,8 @@ typedef struct {
     VkExtent3D extent;
 } MVKCmdCopyBufferToImageInfo;
 
-void MVKCmdBufferImageCopy::setContent(VkBuffer buffer,
+void MVKCmdBufferImageCopy::setContent(MVKCommandBuffer* cmdBuff,
+									   VkBuffer buffer,
                                        VkImage image,
                                        VkImageLayout imageLayout,
                                        uint32_t regionCount,
@@ -905,7 +915,8 @@ bool MVKCmdBufferImageCopy::isArrayTexture() {
 #pragma mark -
 #pragma mark MVKCmdClearAttachments
 
-void MVKCmdClearAttachments::setContent(uint32_t attachmentCount,
+void MVKCmdClearAttachments::setContent(MVKCommandBuffer* cmdBuff,
+										uint32_t attachmentCount,
                                         const VkClearAttachment* pAttachments,
                                         uint32_t rectCount,
                                         const VkClearRect* pRects) {
@@ -1069,7 +1080,8 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdClearImage
 
-void MVKCmdClearImage::setContent(VkImage image,
+void MVKCmdClearImage::setContent(MVKCommandBuffer* cmdBuff,
+								  VkImage image,
                                   VkImageLayout imageLayout,
                                   const VkClearValue& clearValue,
                                   uint32_t rangeCount,
@@ -1185,7 +1197,8 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdFillBuffer
 
-void MVKCmdFillBuffer::setContent(VkBuffer dstBuffer,
+void MVKCmdFillBuffer::setContent(MVKCommandBuffer* cmdBuff,
+								  VkBuffer dstBuffer,
                                   VkDeviceSize dstOffset,
                                   VkDeviceSize size,
                                   uint32_t data) {
@@ -1248,7 +1261,8 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdUpdateBuffer
 
-void MVKCmdUpdateBuffer::setContent(VkBuffer dstBuffer,
+void MVKCmdUpdateBuffer::setContent(MVKCommandBuffer* cmdBuff,
+									VkBuffer dstBuffer,
                                     VkDeviceSize dstOffset,
                                     VkDeviceSize dataSize,
                                     const void* pData,
@@ -1296,7 +1310,7 @@ void mvkCmdCopyImage(MVKCommandBuffer* cmdBuff,
 					 uint32_t regionCount,
 					 const VkImageCopy* pRegions) {
 	MVKCmdCopyImage* cmd = cmdBuff->_commandPool->_cmdCopyImagePool.acquireObject();
-	cmd->setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
+	cmd->setContent(cmdBuff, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1309,7 +1323,7 @@ void mvkCmdBlitImage(MVKCommandBuffer* cmdBuff,
 					 const VkImageBlit* pRegions,
 					 VkFilter filter) {
 	MVKCmdBlitImage* cmd = cmdBuff->_commandPool->_cmdBlitImagePool.acquireObject();
-	cmd->setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
+	cmd->setContent(cmdBuff, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1321,7 +1335,7 @@ void mvkCmdResolveImage(MVKCommandBuffer* cmdBuff,
                         uint32_t regionCount,
                         const VkImageResolve* pRegions) {
     MVKCmdResolveImage* cmd = cmdBuff->_commandPool->_cmdResolveImagePool.acquireObject();
-    cmd->setContent(srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
+    cmd->setContent(cmdBuff, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
     cmdBuff->addCommand(cmd);
 }
 
@@ -1331,7 +1345,7 @@ void mvkCmdCopyBuffer(MVKCommandBuffer* cmdBuff,
 					  uint32_t regionCount,
 					  const VkBufferCopy* pRegions) {
 	MVKCmdCopyBuffer* cmd = cmdBuff->_commandPool->_cmdCopyBufferPool.acquireObject();
-	cmd->setContent(srcBuffer, dstBuffer, regionCount, pRegions);
+	cmd->setContent(cmdBuff, srcBuffer, dstBuffer, regionCount, pRegions);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -1342,7 +1356,7 @@ void mvkCmdCopyBufferToImage(MVKCommandBuffer* cmdBuff,
                              uint32_t regionCount,
                              const VkBufferImageCopy* pRegions) {
     MVKCmdBufferImageCopy* cmd = cmdBuff->_commandPool->_cmdBufferImageCopyPool.acquireObject();
-    cmd->setContent(srcBuffer, dstImage, dstImageLayout, regionCount, pRegions, true);
+    cmd->setContent(cmdBuff, srcBuffer, dstImage, dstImageLayout, regionCount, pRegions, true);
     cmdBuff->addCommand(cmd);
 }
 
@@ -1353,7 +1367,7 @@ void mvkCmdCopyImageToBuffer(MVKCommandBuffer* cmdBuff,
                              uint32_t regionCount,
                              const VkBufferImageCopy* pRegions) {
     MVKCmdBufferImageCopy* cmd = cmdBuff->_commandPool->_cmdBufferImageCopyPool.acquireObject();
-    cmd->setContent(dstBuffer, srcImage, srcImageLayout, regionCount, pRegions, false);
+    cmd->setContent(cmdBuff, dstBuffer, srcImage, srcImageLayout, regionCount, pRegions, false);
     cmdBuff->addCommand(cmd);
 }
 
@@ -1363,7 +1377,7 @@ void mvkCmdClearAttachments(MVKCommandBuffer* cmdBuff,
                             uint32_t rectCount,
                             const VkClearRect* pRects) {
     MVKCmdClearAttachments* cmd = cmdBuff->_commandPool->_cmdClearAttachmentsPool.acquireObject();
-    cmd->setContent(attachmentCount, pAttachments, rectCount, pRects);
+    cmd->setContent(cmdBuff, attachmentCount, pAttachments, rectCount, pRects);
     cmdBuff->addCommand(cmd);
 }
 
@@ -1376,7 +1390,7 @@ void mvkCmdClearColorImage(MVKCommandBuffer* cmdBuff,
     MVKCmdClearImage* cmd = cmdBuff->_commandPool->_cmdClearImagePool.acquireObject();
     VkClearValue clrVal;
     clrVal.color = *pColor;
-    cmd->setContent(image, imageLayout, clrVal, rangeCount, pRanges, false);
+    cmd->setContent(cmdBuff, image, imageLayout, clrVal, rangeCount, pRanges, false);
     cmdBuff->addCommand(cmd);
 }
 
@@ -1389,7 +1403,7 @@ void mvkCmdClearDepthStencilImage(MVKCommandBuffer* cmdBuff,
     MVKCmdClearImage* cmd = cmdBuff->_commandPool->_cmdClearImagePool.acquireObject();
     VkClearValue clrVal;
     clrVal.depthStencil = *pDepthStencil;
-    cmd->setContent(image, imageLayout, clrVal, rangeCount, pRanges, true);
+    cmd->setContent(cmdBuff, image, imageLayout, clrVal, rangeCount, pRanges, true);
     cmdBuff->addCommand(cmd);
 }
 
@@ -1399,7 +1413,7 @@ void mvkCmdFillBuffer(MVKCommandBuffer* cmdBuff,
                       VkDeviceSize size,
                       uint32_t data) {
     MVKCmdFillBuffer* cmd = cmdBuff->_commandPool->_cmdFillBufferPool.acquireObject();
-    cmd->setContent(dstBuffer, dstOffset, size, data);
+    cmd->setContent(cmdBuff, dstBuffer, dstOffset, size, data);
     cmdBuff->addCommand(cmd);
 }
 
@@ -1409,7 +1423,7 @@ void mvkCmdUpdateBuffer(MVKCommandBuffer* cmdBuff,
                         VkDeviceSize dataSize,
                         const void* pData) {
     MVKCmdUpdateBuffer* cmd = cmdBuff->_commandPool->_cmdUpdateBufferPool.acquireObject();
-    cmd->setContent(dstBuffer, dstOffset, dataSize, pData, cmdBuff->getIsReusable());
+    cmd->setContent(cmdBuff, dstBuffer, dstOffset, dataSize, pData, cmdBuff->getIsReusable());
     cmdBuff->addCommand(cmd);
 }
 

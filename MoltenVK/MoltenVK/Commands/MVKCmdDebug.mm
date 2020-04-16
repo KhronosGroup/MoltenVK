@@ -25,7 +25,7 @@
 #pragma mark -
 #pragma mark MVKCmdDebugMarker
 
-void MVKCmdDebugMarker::setContent(const char* pMarkerName, const float color[4]) {
+void MVKCmdDebugMarker::setContent(MVKCommandBuffer* cmdBuff, const char* pMarkerName, const float color[4]) {
 	[_markerName release];
 	_markerName = [[NSString alloc] initWithUTF8String: pMarkerName];	// retained
 }
@@ -89,7 +89,7 @@ MVKCmdDebugMarkerInsert::MVKCmdDebugMarkerInsert(MVKCommandTypePool<MVKCmdDebugM
 
 void mvkCmdDebugMarkerBegin(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
 	MVKCmdDebugMarkerBegin* cmd = cmdBuff->_commandPool->_cmdDebugMarkerBeginPool.acquireObject();
-	cmd->setContent(pMarkerInfo->pMarkerName, pMarkerInfo->color);
+	cmd->setContent(cmdBuff, pMarkerInfo->pMarkerName, pMarkerInfo->color);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -100,13 +100,13 @@ void mvkCmdDebugMarkerEnd(MVKCommandBuffer* cmdBuff) {
 
 void mvkCmdDebugMarkerInsert(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo) {
 	MVKCmdDebugMarkerInsert* cmd = cmdBuff->_commandPool->_cmdDebugMarkerInsertPool.acquireObject();
-	cmd->setContent(pMarkerInfo->pMarkerName, pMarkerInfo->color);
+	cmd->setContent(cmdBuff, pMarkerInfo->pMarkerName, pMarkerInfo->color);
 	cmdBuff->addCommand(cmd);
 }
 
 void mvkCmdBeginDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo) {
 	MVKCmdDebugMarkerBegin* cmd = cmdBuff->_commandPool->_cmdDebugMarkerBeginPool.acquireObject();
-	cmd->setContent(pLabelInfo->pLabelName, pLabelInfo->color);
+	cmd->setContent(cmdBuff, pLabelInfo->pLabelName, pLabelInfo->color);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -117,7 +117,7 @@ void mvkCmdEndDebugUtilsLabel(MVKCommandBuffer* cmdBuff) {
 
 void mvkCmdInsertDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo) {
 	MVKCmdDebugMarkerInsert* cmd = cmdBuff->_commandPool->_cmdDebugMarkerInsertPool.acquireObject();
-	cmd->setContent(pLabelInfo->pLabelName, pLabelInfo->color);
+	cmd->setContent(cmdBuff, pLabelInfo->pLabelName, pLabelInfo->color);
 	cmdBuff->addCommand(cmd);
 }
 

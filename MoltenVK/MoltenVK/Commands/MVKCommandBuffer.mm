@@ -103,8 +103,6 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
     if ( !_head ) { _head = command; }
     _commandCount++;
 
-    command->added(this);
-
     setConfigurationResult(command->getConfigurationResult());
 }
 
@@ -426,7 +424,7 @@ void MVKCommandEncoder::clearRenderArea() {
     // Create and execute a temporary clear attachments command.
     // To be threadsafe...do NOT acquire and return the command from the pool.
     MVKCmdClearAttachments cmd(&_cmdBuffer->_commandPool->_cmdClearAttachmentsPool);
-    cmd.setContent(clearAttCnt, clearAtts.data(), 1, &clearRect);
+    cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
     cmd.encode(this);
 }
 

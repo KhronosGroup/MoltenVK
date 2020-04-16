@@ -30,7 +30,8 @@
 #pragma mark -
 #pragma mark MVKCmdPipelineBarrier
 
-void MVKCmdPipelineBarrier::setContent(VkPipelineStageFlags srcStageMask,
+void MVKCmdPipelineBarrier::setContent(MVKCommandBuffer* cmdBuff,
+									   VkPipelineStageFlags srcStageMask,
 									   VkPipelineStageFlags dstStageMask,
 									   VkDependencyFlags dependencyFlags,
 									   uint32_t memoryBarrierCount,
@@ -127,7 +128,9 @@ MVKCmdPipelineBarrier::MVKCmdPipelineBarrier(MVKCommandTypePool<MVKCmdPipelineBa
 #pragma mark -
 #pragma mark MVKCmdBindPipeline
 
-void MVKCmdBindPipeline::setContent(VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline) {
+void MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff,
+									VkPipelineBindPoint pipelineBindPoint,
+									VkPipeline pipeline) {
 	_bindPoint = pipelineBindPoint;
 	_pipeline = (MVKPipeline*)pipeline;
 }
@@ -150,7 +153,8 @@ bool MVKCmdBindPipeline::isTessellationPipeline() {
 #pragma mark -
 #pragma mark MVKCmdBindDescriptorSets
 
-void MVKCmdBindDescriptorSets::setContent(VkPipelineBindPoint pipelineBindPoint,
+void MVKCmdBindDescriptorSets::setContent(MVKCommandBuffer* cmdBuff,
+										  VkPipelineBindPoint pipelineBindPoint,
                                           VkPipelineLayout layout,
                                           uint32_t firstSet,
                                           uint32_t setCount,
@@ -187,7 +191,8 @@ MVKCmdBindDescriptorSets::MVKCmdBindDescriptorSets(MVKCommandTypePool<MVKCmdBind
 #pragma mark -
 #pragma mark MVKCmdPushConstants
 
-void MVKCmdPushConstants::setContent(VkPipelineLayout layout,
+void MVKCmdPushConstants::setContent(MVKCommandBuffer* cmdBuff,
+									 VkPipelineLayout layout,
 									 VkShaderStageFlags stageFlags,
 									 uint32_t offset,
 									 uint32_t size,
@@ -222,7 +227,8 @@ MVKCmdPushConstants::MVKCmdPushConstants(MVKCommandTypePool<MVKCmdPushConstants>
 #pragma mark -
 #pragma mark MVKCmdPushDescriptorSet
 
-void MVKCmdPushDescriptorSet::setContent(VkPipelineBindPoint pipelineBindPoint,
+void MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
+										 VkPipelineBindPoint pipelineBindPoint,
                                          VkPipelineLayout layout,
                                          uint32_t set,
                                          uint32_t descriptorWriteCount,
@@ -319,7 +325,8 @@ void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
 #pragma mark -
 #pragma mark MVKCmdPushDescriptorSetWithTemplate
 
-void MVKCmdPushDescriptorSetWithTemplate::setContent(VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+void MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBuff,
+													 VkDescriptorUpdateTemplateKHR descUpdateTemplate,
 													 VkPipelineLayout layout,
 													 uint32_t set,
 													 const void* pData) {
@@ -384,7 +391,10 @@ MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
 #pragma mark -
 #pragma mark MVKCmdSetResetEvent
 
-void MVKCmdSetResetEvent::setContent(VkEvent event, VkPipelineStageFlags stageMask, bool status) {
+void MVKCmdSetResetEvent::setContent(MVKCommandBuffer* cmdBuff,
+									 VkEvent event,
+									 VkPipelineStageFlags stageMask,
+									 bool status) {
 	_mvkEvent = (MVKEvent*)event;
 	_status = status;
 }
@@ -400,16 +410,17 @@ MVKCmdSetResetEvent::MVKCmdSetResetEvent(MVKCommandTypePool<MVKCmdSetResetEvent>
 #pragma mark -
 #pragma mark MVKCmdWaitEvents
 
-void MVKCmdWaitEvents::setContent(uint32_t eventCount,
-							   const VkEvent* pEvents,
-							   VkPipelineStageFlags srcStageMask,
-							   VkPipelineStageFlags dstStageMask,
-							   uint32_t memoryBarrierCount,
-							   const VkMemoryBarrier* pMemoryBarriers,
-							   uint32_t bufferMemoryBarrierCount,
-							   const VkBufferMemoryBarrier* pBufferMemoryBarriers,
-							   uint32_t imageMemoryBarrierCount,
-							   const VkImageMemoryBarrier* pImageMemoryBarriers) {
+void MVKCmdWaitEvents::setContent(MVKCommandBuffer* cmdBuff,
+								  uint32_t eventCount,
+								  const VkEvent* pEvents,
+								  VkPipelineStageFlags srcStageMask,
+								  VkPipelineStageFlags dstStageMask,
+								  uint32_t memoryBarrierCount,
+								  const VkMemoryBarrier* pMemoryBarriers,
+								  uint32_t bufferMemoryBarrierCount,
+								  const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+								  uint32_t imageMemoryBarrierCount,
+								  const VkImageMemoryBarrier* pImageMemoryBarriers) {
 
 	_mvkEvents.clear();	// Clear for reuse
 	_mvkEvents.reserve(eventCount);
@@ -443,7 +454,7 @@ void mvkCmdPipelineBarrier(MVKCommandBuffer* cmdBuff,
 						   uint32_t imageMemoryBarrierCount,
 						   const VkImageMemoryBarrier* pImageMemoryBarriers) {
 	MVKCmdPipelineBarrier* cmd = cmdBuff->_commandPool->_cmdPipelineBarrierPool.acquireObject();
-	cmd->setContent(srcStageMask, dstStageMask, dependencyFlags,
+	cmd->setContent(cmdBuff, srcStageMask, dstStageMask, dependencyFlags,
 					memoryBarrierCount, pMemoryBarriers,
 					bufferMemoryBarrierCount, pBufferMemoryBarriers,
 					imageMemoryBarrierCount, pImageMemoryBarriers);
@@ -454,7 +465,7 @@ void mvkCmdBindPipeline(MVKCommandBuffer* cmdBuff,
 						VkPipelineBindPoint pipelineBindPoint,
 						VkPipeline pipeline) {
 	MVKCmdBindPipeline* cmd = cmdBuff->_commandPool->_cmdBindPipelinePool.acquireObject();
-	cmd->setContent(pipelineBindPoint, pipeline);
+	cmd->setContent(cmdBuff, pipelineBindPoint, pipeline);
 	cmdBuff->recordBindPipeline(cmd);
 	cmdBuff->addCommand(cmd);
 }
@@ -468,7 +479,7 @@ void mvkCmdBindDescriptorSets(MVKCommandBuffer* cmdBuff,
 							  uint32_t dynamicOffsetCount,
 							  const uint32_t* pDynamicOffsets) {
 	MVKCmdBindDescriptorSets* cmd = cmdBuff->_commandPool->_cmdBindDescriptorSetsPool.acquireObject();
-	cmd->setContent(pipelineBindPoint, layout, firstSet, setCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
+	cmd->setContent(cmdBuff, pipelineBindPoint, layout, firstSet, setCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -479,7 +490,7 @@ void mvkCmdPushConstants(MVKCommandBuffer* cmdBuff,
 						 uint32_t size,
 						 const void* pValues) {
 	MVKCmdPushConstants* cmd = cmdBuff->_commandPool->_cmdPushConstantsPool.acquireObject();
-	cmd->setContent(layout, stageFlags, offset, size, pValues);
+	cmd->setContent(cmdBuff, layout, stageFlags, offset, size, pValues);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -490,7 +501,7 @@ void mvkCmdPushDescriptorSet(MVKCommandBuffer* cmdBuff,
 							 uint32_t descriptorWriteCount,
 							 const VkWriteDescriptorSet* pDescriptorWrites) {
 	MVKCmdPushDescriptorSet* cmd = cmdBuff->_commandPool->_cmdPushDescriptorSetPool.acquireObject();
-	cmd->setContent(pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+	cmd->setContent(cmdBuff, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -500,7 +511,7 @@ void mvkCmdPushDescriptorSetWithTemplate(MVKCommandBuffer* cmdBuff,
 										 uint32_t set,
 										 const void* pData) {
 	MVKCmdPushDescriptorSetWithTemplate* cmd = cmdBuff->_commandPool->_cmdPushSetWithTemplatePool.acquireObject();
-	cmd->setContent(descUpdateTemplate, layout, set, pData);
+	cmd->setContent(cmdBuff, descUpdateTemplate, layout, set, pData);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -508,7 +519,7 @@ void mvkCmdSetEvent(MVKCommandBuffer* cmdBuff,
 					VkEvent event,
 					VkPipelineStageFlags stageMask) {
 	MVKCmdSetResetEvent* cmd = cmdBuff->_commandPool->_cmdSetResetEventPool.acquireObject();
-	cmd->setContent(event, stageMask, true);
+	cmd->setContent(cmdBuff, event, stageMask, true);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -516,7 +527,7 @@ void mvkCmdResetEvent(MVKCommandBuffer* cmdBuff,
 					  VkEvent event,
 					  VkPipelineStageFlags stageMask) {
 	MVKCmdSetResetEvent* cmd = cmdBuff->_commandPool->_cmdSetResetEventPool.acquireObject();
-	cmd->setContent(event, stageMask, false);
+	cmd->setContent(cmdBuff, event, stageMask, false);
 	cmdBuff->addCommand(cmd);
 }
 
@@ -532,7 +543,7 @@ void mvkCmdWaitEvents(MVKCommandBuffer* cmdBuff,
 					  uint32_t imageMemoryBarrierCount,
 					  const VkImageMemoryBarrier* pImageMemoryBarriers) {
 	MVKCmdWaitEvents* cmd = cmdBuff->_commandPool->_cmdWaitEventsPool.acquireObject();
-	cmd->setContent(eventCount, pEvents,
+	cmd->setContent(cmdBuff, eventCount, pEvents,
 					srcStageMask, dstStageMask,
 					memoryBarrierCount, pMemoryBarriers,
 					bufferMemoryBarrierCount, pBufferMemoryBarriers,

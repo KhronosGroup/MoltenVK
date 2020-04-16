@@ -35,7 +35,8 @@ class MVKDescriptorUpdateTemplate;
 class MVKCmdPipelineBarrier : public MVKCommand {
 
 public:
-	void setContent(VkPipelineStageFlags srcStageMask,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkPipelineStageFlags srcStageMask,
 					VkPipelineStageFlags dstStageMask,
 					VkDependencyFlags dependencyFlags,
 					uint32_t memoryBarrierCount,
@@ -66,7 +67,9 @@ private:
 class MVKCmdBindPipeline : public MVKCommand {
 
 public:
-	void setContent(VkPipelineBindPoint pipelineBindPoint, VkPipeline pipeline);
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkPipelineBindPoint pipelineBindPoint,
+					VkPipeline pipeline);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -88,7 +91,8 @@ private:
 class MVKCmdBindDescriptorSets : public MVKCommand {
 
 public:
-	void setContent(VkPipelineBindPoint pipelineBindPoint,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkPipelineBindPoint pipelineBindPoint,
 					VkPipelineLayout layout,
 					uint32_t firstSet,
 					uint32_t setCount,
@@ -116,7 +120,8 @@ private:
 class MVKCmdPushConstants : public MVKCommand {
 
 public:
-	void setContent(VkPipelineLayout layout,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkPipelineLayout layout,
 					VkShaderStageFlags stageFlags,
 					uint32_t offset,
 					uint32_t size,
@@ -141,7 +146,8 @@ private:
 class MVKCmdPushDescriptorSet : public MVKCommand {
 
 public:
-	void setContent(VkPipelineBindPoint pipelineBindPoint,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkPipelineBindPoint pipelineBindPoint,
 					VkPipelineLayout layout,
 					uint32_t set,
 					uint32_t descriptorWriteCount,
@@ -170,7 +176,8 @@ private:
 class MVKCmdPushDescriptorSetWithTemplate : public MVKCommand {
 
 public:
-	void setContent(VkDescriptorUpdateTemplateKHR descUpdateTemplate,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkDescriptorUpdateTemplateKHR descUpdateTemplate,
 					VkPipelineLayout layout,
 					uint32_t set,
 					const void* pData);
@@ -196,7 +203,10 @@ private:
 class MVKCmdSetResetEvent : public MVKCommand {
 
 public:
-	void setContent(VkEvent event, VkPipelineStageFlags stageMask, bool status);
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkEvent event,
+					VkPipelineStageFlags stageMask,
+					bool status);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -216,7 +226,8 @@ private:
 class MVKCmdWaitEvents : public MVKCommand {
 
 public:
-	void setContent(uint32_t eventCount,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					uint32_t eventCount,
 					const VkEvent* pEvents,
 					VkPipelineStageFlags srcStageMask,
 					VkPipelineStageFlags dstStageMask,

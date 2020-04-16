@@ -32,7 +32,8 @@
 class MVKCmdBindVertexBuffers : public MVKCommand {
 
 public:
-	void setContent(uint32_t startBinding,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					uint32_t startBinding,
 					uint32_t bindingCount,
 					const VkBuffer* pBuffers,
 					const VkDeviceSize* pOffsets);
@@ -53,7 +54,10 @@ protected:
 class MVKCmdBindIndexBuffer : public MVKCommand {
 
 public:
-	void setContent(VkBuffer buffer, VkDeviceSize offset, VkIndexType indexType);
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkBuffer buffer,
+					VkDeviceSize offset,
+					VkIndexType indexType);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -71,7 +75,8 @@ protected:
 class MVKCmdDraw : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
-	void setContent(uint32_t vertexCount,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					uint32_t vertexCount,
 					uint32_t instanceCount,
 					uint32_t firstVertex,
 					uint32_t firstInstance);
@@ -95,7 +100,8 @@ protected:
 class MVKCmdDrawIndexed : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
-	void setContent(uint32_t indexCount,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					uint32_t indexCount,
 					uint32_t instanceCount,
 					uint32_t firstIndex,
 					int32_t vertexOffset,
@@ -121,7 +127,8 @@ protected:
 class MVKCmdDrawIndirect : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
-	void setContent(VkBuffer buffer,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkBuffer buffer,
 					VkDeviceSize offset,
 					uint32_t count,
 					uint32_t stride);
@@ -145,7 +152,8 @@ protected:
 class MVKCmdDrawIndexedIndirect : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
-	void setContent(VkBuffer buffer,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkBuffer buffer,
 					VkDeviceSize offset,
 					uint32_t count,
 					uint32_t stride);

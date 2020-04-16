@@ -37,7 +37,8 @@ class MVKBuffer;
 class MVKCmdCopyImage : public MVKCommand {
 
 public:
-	void setContent(VkImage srcImage,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkImage srcImage,
 					VkImageLayout srcImageLayout,
 					VkImage dstImage,
 					VkImageLayout dstImageLayout,
@@ -51,9 +52,13 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
-	void setContent(VkImage srcImage, VkImageLayout srcImageLayout,
-					VkImage dstImage, VkImageLayout dstImageLayout,
-					bool formatsMustMatch, MVKCommandUse commandUse);
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkImage srcImage,
+					VkImageLayout srcImageLayout,
+					VkImage dstImage,
+					VkImageLayout dstImageLayout,
+					bool formatsMustMatch,
+					MVKCommandUse commandUse);
 	void addImageCopyRegion(const VkImageCopy& region);
 	void addTempBufferImageCopyRegion(const VkImageCopy& region);
 
@@ -93,7 +98,8 @@ typedef struct {
 class MVKCmdBlitImage : public MVKCmdCopyImage {
 
 public:
-	void setContent(VkImage srcImage,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkImage srcImage,
 					VkImageLayout srcImageLayout,
 					VkImage dstImage,
 					VkImageLayout dstImageLayout,
@@ -134,7 +140,8 @@ typedef struct {
 class MVKCmdResolveImage : public MVKCommand {
 
 public:
-    void setContent(VkImage srcImage,
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkImage srcImage,
                     VkImageLayout srcImageLayout,
                     VkImage dstImage,
                     VkImageLayout dstImageLayout,
@@ -172,7 +179,8 @@ protected:
 class MVKCmdCopyBuffer : public MVKCommand {
 
 public:
-	void setContent(VkBuffer srcBuffer,
+	void setContent(MVKCommandBuffer* cmdBuff,
+					VkBuffer srcBuffer,
 					VkBuffer destBuffer,
 					uint32_t regionCount,
 					const VkBufferCopy* pRegions);
@@ -197,7 +205,8 @@ protected:
 class MVKCmdBufferImageCopy : public MVKCommand {
 
 public:
-    void setContent(VkBuffer buffer,
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkBuffer buffer,
                     VkImage image,
                     VkImageLayout imageLayout,
                     uint32_t regionCount,
@@ -227,7 +236,8 @@ protected:
 class MVKCmdClearAttachments : public MVKCommand {
 
 public:
-    void setContent(uint32_t attachmentCount,
+    void setContent(MVKCommandBuffer* cmdBuff,
+					uint32_t attachmentCount,
                     const VkClearAttachment* pAttachments,
                     uint32_t rectCount,
                     const VkClearRect* pRects);
@@ -259,7 +269,8 @@ protected:
 class MVKCmdClearImage : public MVKCommand {
 
 public:
-    void setContent(VkImage image,
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkImage image,
                     VkImageLayout imageLayout,
                     const VkClearValue& clearValue,
                     uint32_t rangeCount,
@@ -293,7 +304,11 @@ protected:
 class MVKCmdFillBuffer : public MVKCommand {
 
 public:
-    void setContent(VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize size, uint32_t data);
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkBuffer dstBuffer,
+					VkDeviceSize dstOffset,
+					VkDeviceSize size,
+					uint32_t data);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -315,7 +330,8 @@ protected:
 class MVKCmdUpdateBuffer : public MVKCommand {
 
 public:
-    void setContent(VkBuffer dstBuffer,
+    void setContent(MVKCommandBuffer* cmdBuff,
+					VkBuffer dstBuffer,
                     VkDeviceSize dstOffset,
                     VkDeviceSize dataSize,
                     const void* pData,

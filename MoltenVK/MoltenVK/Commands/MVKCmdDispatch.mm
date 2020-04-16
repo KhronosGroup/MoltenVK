@@ -28,7 +28,8 @@
 #pragma mark -
 #pragma mark MVKCmdDispatch
 
-void MVKCmdDispatch::setContent(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
+void MVKCmdDispatch::setContent(MVKCommandBuffer* cmdBuff,
+								uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
                                 uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
     _mtlThreadgroupCount = MTLRegionMake3D(baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
 }
@@ -62,7 +63,7 @@ MVKCmdDispatch::MVKCmdDispatch(MVKCommandTypePool<MVKCmdDispatch>* pool)
 #pragma mark -
 #pragma mark MVKCmdDispatchIndirect
 
-void MVKCmdDispatchIndirect::setContent(VkBuffer buffer, VkDeviceSize offset) {
+void MVKCmdDispatchIndirect::setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
@@ -88,20 +89,20 @@ MVKCmdDispatchIndirect::MVKCmdDispatchIndirect(MVKCommandTypePool<MVKCmdDispatch
 
 void mvkCmdDispatch(MVKCommandBuffer* cmdBuff, uint32_t x, uint32_t y, uint32_t z) {
 	MVKCmdDispatch* cmd = cmdBuff->_commandPool->_cmdDispatchPool.acquireObject();
-	cmd->setContent(0, 0, 0, x, y, z);
+	cmd->setContent(cmdBuff, 0, 0, 0, x, y, z);
 	cmdBuff->addCommand(cmd);
 }
 
 void mvkCmdDispatchIndirect(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
 	MVKCmdDispatchIndirect* cmd = cmdBuff->_commandPool->_cmdDispatchIndirectPool.acquireObject();
-	cmd->setContent(buffer, offset);
+	cmd->setContent(cmdBuff, buffer, offset);
 	cmdBuff->addCommand(cmd);
 }
 
 void mvkCmdDispatchBase(MVKCommandBuffer* cmdBuff, uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
 						uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
 	MVKCmdDispatch* cmd = cmdBuff->_commandPool->_cmdDispatchPool.acquireObject();
-	cmd->setContent(baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
+	cmd->setContent(cmdBuff, baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
 	cmdBuff->addCommand(cmd);
 }
 
