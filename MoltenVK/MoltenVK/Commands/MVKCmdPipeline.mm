@@ -70,7 +70,7 @@ void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
 #if MVK_MACOS
     // Calls below invoke MTLBlitCommandEncoder so must apply this first.
 	// Check if pipeline barriers are available and we are in a renderpass.
-	if (getDevice()->_pMetalFeatures->memoryBarriers && cmdEncoder->_mtlRenderEncoder) {
+	if (cmdEncoder->getDevice()->_pMetalFeatures->memoryBarriers && cmdEncoder->_mtlRenderEncoder) {
 		MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_srcStageMask, false);
 		MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_dstStageMask, true);
 		for (auto& mb : _memoryBarriers) {
@@ -103,11 +103,12 @@ void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
 	}
 #endif
 
+	MVKDevice* mvkDvc = cmdEncoder->getDevice();
     MVKCommandUse cmdUse = kMVKCommandUsePipelineBarrier;
 
 	// Apply global memory barriers
     for (auto& mb : _memoryBarriers) {
-        getDevice()->applyMemoryBarrier(_srcStageMask, _dstStageMask, &mb, cmdEncoder, cmdUse);
+        mvkDvc->applyMemoryBarrier(_srcStageMask, _dstStageMask, &mb, cmdEncoder, cmdUse);
     }
 
     // Apply specific buffer barriers
@@ -248,6 +249,7 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 	_set = set;
 
 	// Add the descriptor writes
+	MVKDevice* mvkDvc = cmdBuff->getDevice();
 	clearDescriptorWrites();	// Clear for reuse
 	_descriptorWrites.reserve(descriptorWriteCount);
 	for (uint32_t dwIdx = 0; dwIdx < descriptorWriteCount; dwIdx++) {
@@ -269,7 +271,7 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 			std::copy_n(descWrite.pTexelBufferView, descWrite.descriptorCount, pNewTexelBufferView);
 			descWrite.pTexelBufferView = pNewTexelBufferView;
 		}
-        if (getDevice()->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
+        if (mvkDvc->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
             const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
             for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
             {
@@ -308,25 +310,23 @@ MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {
 
 void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
 	for (VkWriteDescriptorSet &descWrite : _descriptorWrites) {
-		if (descWrite.pImageInfo) delete[] descWrite.pImageInfo;
-		if (descWrite.pBufferInfo) delete[] descWrite.pBufferInfo;
-		if (descWrite.pTexelBufferView) delete[] descWrite.pTexelBufferView;
-        if (getDevice()->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
-            const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-            for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
-            {
-                switch (next->sType) {
-                case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-                    pInlineUniformBlock = next;
-                    break;
-                }
-                default:
-                    break;
-                }
-            }
-            if (pInlineUniformBlock != nullptr)
-                delete pInlineUniformBlock;
-        }
+		if (descWrite.pImageInfo) { delete[] descWrite.pImageInfo; }
+		if (descWrite.pBufferInfo) { delete[] descWrite.pBufferInfo; }
+		if (descWrite.pTexelBufferView) { delete[] descWrite.pTexelBufferView; }
+
+		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
+		for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
+		{
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
+					pInlineUniformBlock = next;
+					break;
+				}
+				default:
+					break;
+			}
+		}
+		if (pInlineUniformBlock) { delete pInlineUniformBlock; }
 	}
 	_descriptorWrites.clear();
 }

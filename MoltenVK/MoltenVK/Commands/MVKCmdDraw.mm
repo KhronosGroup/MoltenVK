@@ -34,12 +34,13 @@ VkResult MVKCmdBindVertexBuffers::setContent(MVKCommandBuffer* cmdBuff,
 											 const VkBuffer* pBuffers,
 											 const VkDeviceSize* pOffsets) {
 
-    _bindings.clear();	// Clear for reuse
+	MVKDevice* mvkDvc = cmdBuff->getDevice();
+	_bindings.clear();	// Clear for reuse
     _bindings.reserve(bindingCount);
     MVKMTLBufferBinding b;
     for (uint32_t bindIdx = 0; bindIdx < bindingCount; bindIdx++) {
         MVKBuffer* mvkBuffer = (MVKBuffer*)pBuffers[bindIdx];
-        b.index = getDevice()->getMetalBufferIndexForVertexAttributeBinding(startBinding + bindIdx);
+        b.index = mvkDvc->getMetalBufferIndexForVertexAttributeBinding(startBinding + bindIdx);
         b.mtlBuffer = mvkBuffer->getMTLBuffer();
         b.offset = mvkBuffer->getMTLBufferOffset() + pOffsets[bindIdx];
         _bindings.push_back(b);
@@ -95,7 +96,7 @@ VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
 	_storeOverride = false;
 
     // Validate
-    if ((_firstInstance != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
+    if ((_firstInstance != 0) && !(cmdBuff->getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
         return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance.");
     }
 
@@ -289,10 +290,11 @@ VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
 	_storeOverride = false;
 
     // Validate
-    if ((_firstInstance != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
+	MVKDevice* mvkDvc = cmdBuff->getDevice();
+    if ((_firstInstance != 0) && !(mvkDvc->_pMetalFeatures->baseVertexInstanceDrawing)) {
         return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base instance.");
     }
-    if ((_vertexOffset != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
+    if ((_vertexOffset != 0) && !(mvkDvc->_pMetalFeatures->baseVertexInstanceDrawing)) {
         return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex.");
     }
 
@@ -335,7 +337,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
             // Yeah, this sucks. But there aren't many good ways for dealing with this issue.
             mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl);
             tcIndexBuff = cmdEncoder->getTempMTLBuffer(_instanceCount * patchCount * outControlPointCount * idxSize);
-            id<MTLComputePipelineState> mtlCopyIndexState = getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
+            id<MTLComputePipelineState> mtlCopyIndexState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
             [mtlTessCtlEncoder setComputePipelineState: mtlCopyIndexState];
             [mtlTessCtlEncoder setBuffer: ibb.mtlBuffer
                                   offset: ibb.offset
@@ -525,7 +527,7 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	_storeOverride = false;
 
     // Validate
-    if ( !(getDevice()->_pMetalFeatures->indirectDrawing) ) {
+    if ( !(cmdBuff->getDevice()->_pMetalFeatures->indirectDrawing) ) {
         return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing.");
     }
 
@@ -608,7 +610,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 // to do it, since it will require switching to compute anyway. Do it all
                 // at once to get it over with.
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl);
-                id<MTLComputePipelineState> mtlConvertState = getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(false);
+                id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(false);
                 [mtlTessCtlEncoder setComputePipelineState: mtlConvertState];
                 [mtlTessCtlEncoder setBuffer: _mtlIndirectBuffer
                                       offset: _mtlIndirectBufferOffset
@@ -772,7 +774,7 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	_storeOverride = false;
 
     // Validate
-    if ( !(getDevice()->_pMetalFeatures->indirectDrawing) ) {
+    if ( !(cmdBuff->getDevice()->_pMetalFeatures->indirectDrawing) ) {
         return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing.");
     }
 
@@ -840,7 +842,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 // to do it, since it will require switching to compute anyway. Do it all
                 // at once to get it over with.
                 if (drawIdx == 0) {
-                    id<MTLComputePipelineState> mtlConvertState = getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(true);
+                    id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(true);
                     [mtlTessCtlEncoder setComputePipelineState: mtlConvertState];
                     [mtlTessCtlEncoder setBuffer: _mtlIndirectBuffer
                                           offset: _mtlIndirectBufferOffset
@@ -871,7 +873,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 // or not there are gaps in it, because there's no way to tell Metal to
                 // offset an index buffer from a value in an indirect buffer. This also
                 // means that, to make a copy, we have to use a compute shader.
-                id<MTLComputePipelineState> mtlCopyIndexState = getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
+                id<MTLComputePipelineState> mtlCopyIndexState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
                 [mtlTessCtlEncoder setComputePipelineState: mtlCopyIndexState];
                 [mtlTessCtlEncoder setBuffer: ibb.mtlBuffer
                                       offset: ibb.offset

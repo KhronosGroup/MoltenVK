@@ -20,7 +20,7 @@
 
 #include "MVKCommand.h"
 
-#import <Foundation/NSString.h>
+#import <Metal/Metal.h>
 
 
 #pragma mark -

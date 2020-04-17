@@ -59,8 +59,8 @@ protected:
 						VkImageLayout dstImageLayout,
 						bool formatsMustMatch,
 						MVKCommandUse commandUse);
-	void addImageCopyRegion(const VkImageCopy& region);
-	void addTempBufferImageCopyRegion(const VkImageCopy& region);
+	void addImageCopyRegion(const VkImageCopy& region, MVKPixelFormats* pixFmts);
+	void addTempBufferImageCopyRegion(const VkImageCopy& region, MVKPixelFormats* pixFmts);
 
 	MVKImage* _srcImage;
 	VkImageLayout _srcLayout;
@@ -116,8 +116,8 @@ public:
 
 protected:
 	bool canCopy(const VkImageBlit& region);
-	void addImageBlitRegion(const VkImageBlit& region);
-	void addImageCopyRegionFromBlitRegion(const VkImageBlit& region);
+	void addImageBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
+	void addImageCopyRegionFromBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
 	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region);
     void initMTLRenderPassDescriptor();
 

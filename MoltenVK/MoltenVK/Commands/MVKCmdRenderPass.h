@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKCommand.h"
+#include "MVKDevice.h"
 #include "MVKVector.h"
 
 #import <Metal/Metal.h>

@@ -421,7 +421,7 @@ void MVKCommandEncoder::clearRenderArea() {
 
     // Create and execute a temporary clear attachments command.
     // To be threadsafe...do NOT acquire and return the command from the pool.
-    MVKCmdClearAttachments cmd(&_cmdBuffer->_commandPool->_cmdClearAttachmentsPool);
+    MVKCmdClearAttachments cmd(&_cmdBuffer->getCommandPool()->_cmdClearAttachmentsPool);
     cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
     cmd.encode(this);
 }
@@ -550,7 +550,9 @@ const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger len
     return mtlBuffAlloc;
 }
 
-MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _cmdBuffer->_commandPool->getCommandEncodingPool(); }
+MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
+	return _cmdBuffer->getCommandPool()->getCommandEncodingPool();
+}
 
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {

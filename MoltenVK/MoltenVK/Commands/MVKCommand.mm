@@ -27,27 +27,13 @@
 //	Opt 1: Leave arrays & rezs allocated in command, per current practice
 //  Opt 2: Allocate arrays & rezs from pools in Command pool, and return in returnToPool
 
-void MVKCommand::returnToPool() {
-	_pool->returnObject(this);
-}
-
-MVKVulkanAPIObject* MVKCommand::getVulkanAPIObject() { return getCommandPool()->getVulkanAPIObject(); };
-
-MVKCommandPool* MVKCommand::getCommandPool() { return _pool->getCommandPool(); }
-
-MVKCommandEncodingPool* MVKCommand::getCommandEncodingPool() { return getCommandPool()->getCommandEncodingPool(); }
-
-MVKDevice* MVKCommand::getDevice() { return getCommandPool()->getDevice(); }
-
-id<MTLDevice> MVKCommand::getMTLDevice() { return getCommandPool()->getMTLDevice(); }
-
-MVKPixelFormats* MVKCommand::getPixelFormats() { return getDevice()->getPixelFormats(); }
+void MVKCommand::returnToPool() { _pool->returnObject(this); }
 
 
 #pragma mark -
 #pragma mark MVKCommandTypePool
 
-MVKVulkanAPIObject* mvkCommandTypePoolGetVulkanAPIObject(MVKCommandPool* cmdPool) { return cmdPool->getVulkanAPIObject(); }
+MVKVulkanAPIObject* mvkCommandPoolGetVulkanAPIObject(MVKCommandPool* cmdPool) { return cmdPool->getVulkanAPIObject(); }
 
 
 #pragma mark -

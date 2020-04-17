@@ -176,7 +176,7 @@ VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
     _lineWidth = lineWidth;
 
     // Validate
-    if (_lineWidth != 1.0 || getDevice()->_enabledFeatures.wideLines) {
+    if (_lineWidth != 1.0 || cmdBuff->getDevice()->_enabledFeatures.wideLines) {
         return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetLineWidth(): The current device does not support wide lines.");
     }
 
@@ -244,7 +244,7 @@ VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
     _maxDepthBounds = maxDepthBounds;
 
     // Validate
-    if (getDevice()->_enabledFeatures.depthBounds) {
+    if (cmdBuff->getDevice()->_enabledFeatures.depthBounds) {
         return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdSetDepthBounds(): The current device does not support setting depth bounds.");
     }
 

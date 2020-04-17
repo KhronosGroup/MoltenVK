@@ -20,7 +20,6 @@
 
 
 #include "MVKObjectPool.h"
-#include "MVKDevice.h"
 
 class MVKCommandBuffer;
 class MVKCommandEncoder;
@@ -38,7 +37,7 @@ class MVKCommand : public MVKBaseObject, public MVKLinkableMixin<MVKCommand> {
 public:
 
 	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override;
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; }
 
 	/** Encodes this command on the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
@@ -60,21 +59,6 @@ public:
 	/** Constructs this instance with the specified pool as its origin. */
     MVKCommand(MVKCommandTypePool<MVKCommand>* pool) : _pool(pool) {}
 
-	/** Returns the command pool that is managing the resources used by this command. */
-    MVKCommandPool* getCommandPool();
-
-	/** Returns the command encoding pool. */
-	MVKCommandEncodingPool* getCommandEncodingPool();
-
-    /** Returns the device for which this command was created. */
-    MVKDevice* getDevice();
-
-    /** Returns the underlying Metal device. */
-    id<MTLDevice> getMTLDevice();
-
-	/** Returns info about the pixel format supported by the physical device. */
-	MVKPixelFormats* getPixelFormats();
-
 protected:
     MVKCommandTypePool<MVKCommand>* _pool;
 };
@@ -84,11 +68,11 @@ protected:
 #pragma mark MVKCommandTypePool
 
 /**
- * Static function for MVKCommandTypePool template to call to resolve getVulkanAPIObject().
- * Needed because MVKCommandTypePool template cannot have function implementation outside
- * the template, and MVKCommandPool is not completely defined in this header file.
+ * Static function for MVKCommandTypePool template to call to resolve its own getVulkanAPIObject()
+ * from its MVKCommandPool. Needed because MVKCommandTypePool template cannot have a function
+ * implementation outside the template, and MVKCommandPool is not fully defined in this header file.
  */
-MVKVulkanAPIObject* mvkCommandTypePoolGetVulkanAPIObject(MVKCommandPool* cmdPool);
+MVKVulkanAPIObject* mvkCommandPoolGetVulkanAPIObject(MVKCommandPool* cmdPool);
 
 
 /** A pool of MVKCommand instances of a particular type. */
@@ -97,9 +81,8 @@ class MVKCommandTypePool : public MVKObjectPool<T> {
 
 public:
 
-
 	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override { return mvkCommandTypePoolGetVulkanAPIObject(_commandPool); };
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return mvkCommandPoolGetVulkanAPIObject(_commandPool); };
 
     /** Some commands require access to the command pool to access resources. */
     MVKCommandPool* getCommandPool() { return _commandPool; }
