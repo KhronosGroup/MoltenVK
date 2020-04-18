@@ -51,6 +51,10 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 	MVKCmdDebugMarkerBegin(MVKCommandTypePool<MVKCmdDebugMarkerBegin>* pool);
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 };
 
 
@@ -66,20 +70,28 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 	MVKCmdDebugMarkerEnd(MVKCommandTypePool<MVKCmdDebugMarkerEnd>* pool);
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerInsert
 
-	/** Vulkan command to insert a debug marker into the command encoder. */
-	class MVKCmdDebugMarkerInsert : public MVKCmdDebugMarker {
+/** Vulkan command to insert a debug marker into the command encoder. */
+class MVKCmdDebugMarkerInsert : public MVKCmdDebugMarker {
 
-	public:
-		void encode(MVKCommandEncoder* cmdEncoder) override;
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-		MVKCmdDebugMarkerInsert(MVKCommandTypePool<MVKCmdDebugMarkerInsert>* pool);
-	};
+	MVKCmdDebugMarkerInsert(MVKCommandTypePool<MVKCmdDebugMarkerInsert>* pool);
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+};
 
 
 #pragma mark -

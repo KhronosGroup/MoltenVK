@@ -24,14 +24,21 @@
 class MVKCommandBuffer;
 class MVKCommandEncoder;
 class MVKCommandPool;
-class MVKCommandEncodingPool;
+//class MVKCommandEncodingPool;
 template <class T> class MVKCommandTypePool;
 
 
 #pragma mark -
 #pragma mark MVKCommand
 
-/** Abstract class that represents a Vulkan command. */
+/**
+ * Abstract class that represents a Vulkan command.
+ *
+ * To allow the command contents to be populated, all concrete
+ * subclasses must support a member function of the following form:
+ *
+ *     VkResult setContent(MVKCommandBuffer* cmdBuff, ...);
+ */
 class MVKCommand : public MVKBaseObject, public MVKLinkableMixin<MVKCommand> {
 
 public:
@@ -43,24 +50,29 @@ public:
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
 
 	/** 
-     * Returns this object back to the pool that created it.
+     * Returns this object back to the type pool associated with the subclass type,
+	 * contained in the command pool.
      *
      * This method is not thread-safe. Vulkan Command Pools are externally synchronized. 
      * For a particular MVKCommandTypePool instance, all calls to pool->aquireObject(), 
      * and returnToPool() (or pool->returnObject()), MUST be called from the same thread.
      *
-     * It is possible to instantiate command instances directly, without retrieving them from
-     * a command pool via acquireObject(). This can be done when a transient sub-command can be
-     * used to perform some of the work during the execution of another command. In that case,
-     * this method should not be called. It is sufficient to just destroy the command instance.
+     * Do not call this function if a subclass instance has been created inline to
+	 * perform a transient sub-command operation. Instead, let the instance be destroyed
+	 * automatically at the end of the inline scope, as usual for inline instantiation.
      */
-    void returnToPool();
+    void returnToPool(MVKCommandPool* cmdPool);
 
-	/** Constructs this instance with the specified pool as its origin. */
-    MVKCommand(MVKCommandTypePool<MVKCommand>* pool) : _pool(pool) {}
+    MVKCommand(MVKCommandTypePool<MVKCommand>* pool) {}
 
 protected:
-    MVKCommandTypePool<MVKCommand>* _pool;
+	virtual MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) = 0;
+
+	// Macro to implement a subclass override of the getTypePool(MVKCommandPool* cmdPool) function.
+#	define MVKFuncionOverride_getTypePool(cmdType)					  							\
+	MVKCommandTypePool<MVKCommand>* MVKCmd ##cmdType ::getTypePool(MVKCommandPool* cmdPool) {	\
+		return (MVKCommandTypePool<MVKCommand>*)&cmdPool->_cmd  ##cmdType ##Pool;				\
+	}
 };
 
 
@@ -113,8 +125,8 @@ protected:
  */
 class MVKLoadStoreOverrideMixin {
 public:
-    void setLoadOverride(bool loadOverride);
-    void setStoreOverride(bool storeOverride);
+	void setLoadOverride(bool loadOverride) { _loadOverride = loadOverride; }
+	void setStoreOverride(bool storeOverride) { _storeOverride = storeOverride; }
 
 protected:
     bool _loadOverride;

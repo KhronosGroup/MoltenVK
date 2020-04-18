@@ -119,7 +119,7 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 // otherwise indicate the configuration error to the command buffer.
 #define MVKAddCmd(cmdType, vkCmdBuff, ...)  										\
 	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(vkCmdBuff);	\
-	auto* cmd = cmdBuff->getCommandPool()->_cmd ##cmdType ##Pool.acquireObject();	\
+	MVKCmd ##cmdType* cmd = cmdBuff->getCommandPool()->_cmd ##cmdType ##Pool.acquireObject();	\
 	VkResult cmdRslt = cmd->setContent(cmdBuff, ##__VA_ARGS__);						\
 	if(cmdRslt == VK_SUCCESS) {														\
 		cmdBuff->addCommand(cmd);													\
@@ -2180,7 +2180,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
     const void*                                pData) {
 
 	MVKTraceVulkanCallStart();
-    MVKAddCmd(PushSetWithTemplate, commandBuffer, descriptorUpdateTemplate, layout, set, pData);
+    MVKAddCmd(PushDescriptorSetWithTemplate, commandBuffer, descriptorUpdateTemplate, layout, set, pData);
 	MVKTraceVulkanCallEnd();
 }
 

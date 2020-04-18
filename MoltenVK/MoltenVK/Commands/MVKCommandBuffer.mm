@@ -58,7 +58,7 @@ void MVKCommandBuffer::releaseCommands() {
 	MVKCommand* cmd = _head;
 	while (cmd) {
 		MVKCommand* nextCmd = cmd->_next;	// Establish next before returning current to pool.
-		cmd->returnToPool();
+		cmd->returnToPool(getCommandPool());
 		cmd = nextCmd;
 	}
 	_head = nullptr;

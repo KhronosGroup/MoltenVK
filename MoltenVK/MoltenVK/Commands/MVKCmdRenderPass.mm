@@ -28,6 +28,8 @@
 #pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
+MVKFuncionOverride_getTypePool(BeginRenderPass)
+
 VkResult MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
 										   const VkRenderPassBeginInfo* pRenderPassBegin,
 										   VkSubpassContents contents) {
@@ -62,6 +64,8 @@ MVKCmdBeginRenderPass::MVKCmdBeginRenderPass(MVKCommandTypePool<MVKCmdBeginRende
 #pragma mark -
 #pragma mark MVKCmdNextSubpass
 
+MVKFuncionOverride_getTypePool(NextSubpass)
+
 VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 									   VkSubpassContents contents) {
 	_contents = contents;
@@ -80,6 +84,8 @@ MVKCmdNextSubpass::MVKCmdNextSubpass(MVKCommandTypePool<MVKCmdNextSubpass>* pool
 #pragma mark -
 #pragma mark MVKCmdEndRenderPass
 
+MVKFuncionOverride_getTypePool(EndRenderPass)
+
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
 	cmdBuff->recordEndRenderPass(this);
 	return VK_SUCCESS;
@@ -96,6 +102,8 @@ MVKCmdEndRenderPass::MVKCmdEndRenderPass(MVKCommandTypePool<MVKCmdEndRenderPass>
 
 #pragma mark -
 #pragma mark MVKCmdExecuteCommands
+
+MVKFuncionOverride_getTypePool(ExecuteCommands)
 
 VkResult MVKCmdExecuteCommands::setContent(MVKCommandBuffer* cmdBuff,
 										   uint32_t commandBuffersCount,
@@ -120,6 +128,8 @@ MVKCmdExecuteCommands::MVKCmdExecuteCommands(MVKCommandTypePool<MVKCmdExecuteCom
 
 #pragma mark -
 #pragma mark MVKCmdSetViewport
+
+MVKFuncionOverride_getTypePool(SetViewport)
 
 VkResult MVKCmdSetViewport::setContent(MVKCommandBuffer* cmdBuff,
 									   uint32_t firstViewport,
@@ -146,6 +156,8 @@ MVKCmdSetViewport::MVKCmdSetViewport(MVKCommandTypePool<MVKCmdSetViewport>* pool
 #pragma mark -
 #pragma mark MVKCmdSetScissor
 
+MVKFuncionOverride_getTypePool(SetScissor)
+
 VkResult MVKCmdSetScissor::setContent(MVKCommandBuffer* cmdBuff,
 									  uint32_t firstScissor,
 									  uint32_t scissorCount,
@@ -171,6 +183,8 @@ MVKCmdSetScissor::MVKCmdSetScissor(MVKCommandTypePool<MVKCmdSetScissor>* pool)
 #pragma mark -
 #pragma mark MVKCmdSetLineWidth
 
+MVKFuncionOverride_getTypePool(SetLineWidth)
+
 VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
 										float lineWidth) {
     _lineWidth = lineWidth;
@@ -191,6 +205,8 @@ MVKCmdSetLineWidth::MVKCmdSetLineWidth(MVKCommandTypePool<MVKCmdSetLineWidth>* p
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthBias
+
+MVKFuncionOverride_getTypePool(SetDepthBias)
 
 VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
 										float depthBiasConstantFactor,
@@ -216,6 +232,8 @@ MVKCmdSetDepthBias::MVKCmdSetDepthBias(MVKCommandTypePool<MVKCmdSetDepthBias>* p
 #pragma mark -
 #pragma mark MVKCmdSetBlendConstants
 
+MVKFuncionOverride_getTypePool(SetBlendConstants)
+
 VkResult MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
 											 const float blendConst[4]) {
     _red = blendConst[0];
@@ -236,6 +254,8 @@ MVKCmdSetBlendConstants::MVKCmdSetBlendConstants(MVKCommandTypePool<MVKCmdSetBle
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthBounds
+
+MVKFuncionOverride_getTypePool(SetDepthBounds)
 
 VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
 										  float minDepthBounds,
@@ -260,6 +280,8 @@ MVKCmdSetDepthBounds::MVKCmdSetDepthBounds(MVKCommandTypePool<MVKCmdSetDepthBoun
 #pragma mark -
 #pragma mark MVKCmdSetStencilCompareMask
 
+MVKFuncionOverride_getTypePool(SetStencilCompareMask)
+
 VkResult MVKCmdSetStencilCompareMask::setContent(MVKCommandBuffer* cmdBuff,
 												 VkStencilFaceFlags faceMask,
 												 uint32_t stencilCompareMask) {
@@ -280,6 +302,8 @@ MVKCmdSetStencilCompareMask::MVKCmdSetStencilCompareMask(MVKCommandTypePool<MVKC
 #pragma mark -
 #pragma mark MVKCmdSetStencilWriteMask
 
+MVKFuncionOverride_getTypePool(SetStencilWriteMask)
+
 VkResult MVKCmdSetStencilWriteMask::setContent(MVKCommandBuffer* cmdBuff,
 											   VkStencilFaceFlags faceMask,
 											   uint32_t stencilWriteMask) {
@@ -299,6 +323,8 @@ MVKCmdSetStencilWriteMask::MVKCmdSetStencilWriteMask(MVKCommandTypePool<MVKCmdSe
 
 #pragma mark -
 #pragma mark MVKCmdSetStencilReference
+
+MVKFuncionOverride_getTypePool(SetStencilReference)
 
 VkResult MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
 											   VkStencilFaceFlags faceMask,

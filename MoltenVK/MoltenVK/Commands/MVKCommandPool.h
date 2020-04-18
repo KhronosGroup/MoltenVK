@@ -141,7 +141,7 @@ public:
 
     MVKCommandTypePool<MVKCmdPushDescriptorSet> _cmdPushDescriptorSetPool;
 
-    MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate> _cmdPushSetWithTemplatePool;
+    MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate> _cmdPushDescriptorSetWithTemplatePool;
 
 	MVKCommandTypePool<MVKCmdDebugMarkerBegin> _cmdDebugMarkerBeginPool;
 

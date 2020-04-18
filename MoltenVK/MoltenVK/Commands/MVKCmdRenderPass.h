@@ -43,7 +43,9 @@ public:
 
 	MVKCmdBeginRenderPass(MVKCommandTypePool<MVKCmdBeginRenderPass>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	VkRenderPassBeginInfo _info;
 	VkSubpassContents _contents;
 	MVKRenderPass* _renderPass;
@@ -66,7 +68,9 @@ public:
 
 	MVKCmdNextSubpass(MVKCommandTypePool<MVKCmdNextSubpass>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	VkSubpassContents _contents;
 };
 
@@ -83,6 +87,10 @@ public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 	MVKCmdEndRenderPass(MVKCommandTypePool<MVKCmdEndRenderPass>* pool);
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 };
 
 
@@ -101,7 +109,9 @@ public:
 
 	MVKCmdExecuteCommands(MVKCommandTypePool<MVKCmdExecuteCommands>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	MVKVectorInline<MVKCommandBuffer*, 64> _secondaryCommandBuffers;
 };
 
@@ -121,7 +131,9 @@ public:
 
 	MVKCmdSetViewport(MVKCommandTypePool<MVKCmdSetViewport>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	uint32_t _firstViewport;
 	MVKVectorInline<MTLViewport, kMVKCachedViewportScissorCount> _mtlViewports;
 };
@@ -143,7 +155,9 @@ public:
 
 	MVKCmdSetScissor(MVKCommandTypePool<MVKCmdSetScissor>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	uint32_t _firstScissor;
 	MVKVectorInline<MTLScissorRect, kMVKCachedViewportScissorCount> _mtlScissors;
 };
@@ -163,7 +177,9 @@ public:
 
     MVKCmdSetLineWidth(MVKCommandTypePool<MVKCmdSetLineWidth>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     float _lineWidth;
 };
 
@@ -184,7 +200,9 @@ public:
 
     MVKCmdSetDepthBias(MVKCommandTypePool<MVKCmdSetDepthBias>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     float _depthBiasConstantFactor;
     float _depthBiasClamp;
     float _depthBiasSlopeFactor;
@@ -205,7 +223,9 @@ public:
 
     MVKCmdSetBlendConstants(MVKCommandTypePool<MVKCmdSetBlendConstants>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     float _red;
     float _green;
     float _blue;
@@ -228,7 +248,9 @@ public:
 
     MVKCmdSetDepthBounds(MVKCommandTypePool<MVKCmdSetDepthBounds>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     float _minDepthBounds;
     float _maxDepthBounds;
 };
@@ -249,7 +271,9 @@ public:
 
     MVKCmdSetStencilCompareMask(MVKCommandTypePool<MVKCmdSetStencilCompareMask>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     VkStencilFaceFlags _faceMask;
     uint32_t _stencilCompareMask;
 };
@@ -270,7 +294,9 @@ public:
 
     MVKCmdSetStencilWriteMask(MVKCommandTypePool<MVKCmdSetStencilWriteMask>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     VkStencilFaceFlags _faceMask;
     uint32_t _stencilWriteMask;
 };
@@ -291,7 +317,9 @@ public:
 
     MVKCmdSetStencilReference(MVKCommandTypePool<MVKCmdSetStencilReference>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     VkStencilFaceFlags _faceMask;
     uint32_t _stencilReference;
 };

@@ -23,28 +23,11 @@
 #pragma mark -
 #pragma mark MVKCommand
 
-// TODO: Manage command resources in Command Pool
-//	Opt 1: Leave arrays & rezs allocated in command, per current practice
-//  Opt 2: Allocate arrays & rezs from pools in Command pool, and return in returnToPool
-
-void MVKCommand::returnToPool() { _pool->returnObject(this); }
+void MVKCommand::returnToPool(MVKCommandPool* cmdPool) { getTypePool(cmdPool)->returnObject(this); }
 
 
 #pragma mark -
 #pragma mark MVKCommandTypePool
 
 MVKVulkanAPIObject* mvkCommandPoolGetVulkanAPIObject(MVKCommandPool* cmdPool) { return cmdPool->getVulkanAPIObject(); }
-
-
-#pragma mark -
-#pragma mark MVKLoadStoreOverrideMixin
-
-void MVKLoadStoreOverrideMixin::setLoadOverride(bool loadOverride) {
-	_loadOverride = loadOverride;
-}
-
-void MVKLoadStoreOverrideMixin::setStoreOverride(bool storeOverride) {
-	_storeOverride = storeOverride;
-}
-
 

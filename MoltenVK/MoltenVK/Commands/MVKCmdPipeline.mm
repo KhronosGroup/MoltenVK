@@ -30,6 +30,8 @@
 #pragma mark -
 #pragma mark MVKCmdPipelineBarrier
 
+MVKFuncionOverride_getTypePool(PipelineBarrier)
+
 VkResult MVKCmdPipelineBarrier::setContent(MVKCommandBuffer* cmdBuff,
 										   VkPipelineStageFlags srcStageMask,
 										   VkPipelineStageFlags dstStageMask,
@@ -131,6 +133,8 @@ MVKCmdPipelineBarrier::MVKCmdPipelineBarrier(MVKCommandTypePool<MVKCmdPipelineBa
 #pragma mark -
 #pragma mark MVKCmdBindPipeline
 
+MVKFuncionOverride_getTypePool(BindPipeline)
+
 VkResult MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff,
 										VkPipelineBindPoint pipelineBindPoint,
 										VkPipeline pipeline) {
@@ -159,6 +163,8 @@ bool MVKCmdBindPipeline::isTessellationPipeline() {
 
 #pragma mark -
 #pragma mark MVKCmdBindDescriptorSets
+
+MVKFuncionOverride_getTypePool(BindDescriptorSets)
 
 VkResult MVKCmdBindDescriptorSets::setContent(MVKCommandBuffer* cmdBuff,
 											  VkPipelineBindPoint pipelineBindPoint,
@@ -200,6 +206,8 @@ MVKCmdBindDescriptorSets::MVKCmdBindDescriptorSets(MVKCommandTypePool<MVKCmdBind
 #pragma mark -
 #pragma mark MVKCmdPushConstants
 
+MVKFuncionOverride_getTypePool(PushConstants)
+
 VkResult MVKCmdPushConstants::setContent(MVKCommandBuffer* cmdBuff,
 										 VkPipelineLayout layout,
 										 VkShaderStageFlags stageFlags,
@@ -237,6 +245,8 @@ MVKCmdPushConstants::MVKCmdPushConstants(MVKCommandTypePool<MVKCmdPushConstants>
 
 #pragma mark -
 #pragma mark MVKCmdPushDescriptorSet
+
+MVKFuncionOverride_getTypePool(PushDescriptorSet)
 
 VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 											 VkPipelineBindPoint pipelineBindPoint,
@@ -335,6 +345,8 @@ void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
 #pragma mark -
 #pragma mark MVKCmdPushDescriptorSetWithTemplate
 
+MVKFuncionOverride_getTypePool(PushDescriptorSetWithTemplate)
+
 VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBuff,
 														 VkDescriptorUpdateTemplateKHR descUpdateTemplate,
 														 VkPipelineLayout layout,
@@ -401,6 +413,8 @@ MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
 #pragma mark -
 #pragma mark MVKCmdSetResetEvent
 
+MVKFuncionOverride_getTypePool(SetResetEvent)
+
 VkResult MVKCmdSetResetEvent::setContent(MVKCommandBuffer* cmdBuff,
 										 VkEvent event,
 										 VkPipelineStageFlags stageMask,
@@ -421,6 +435,8 @@ MVKCmdSetResetEvent::MVKCmdSetResetEvent(MVKCommandTypePool<MVKCmdSetResetEvent>
 
 #pragma mark -
 #pragma mark MVKCmdWaitEvents
+
+MVKFuncionOverride_getTypePool(WaitEvents)
 
 VkResult MVKCmdWaitEvents::setContent(MVKCommandBuffer* cmdBuff,
 									  uint32_t eventCount,

@@ -40,6 +40,8 @@ public:
     MVKCmdDispatch(MVKCommandTypePool<MVKCmdDispatch>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     MTLRegion  _mtlThreadgroupCount;
 };
 
@@ -58,6 +60,8 @@ public:
 	MVKCmdDispatchIndirect(MVKCommandTypePool<MVKCmdDispatchIndirect>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	id<MTLBuffer> _mtlIndirectBuffer;
 	NSUInteger _mtlIndirectBufferOffset;
 };

@@ -122,7 +122,7 @@ void MVKCommandPool::trim() {
 	_cmdDispatchPool.clear();
 	_cmdDispatchIndirectPool.clear();
 	_cmdPushDescriptorSetPool.clear();
-	_cmdPushSetWithTemplatePool.clear();
+	_cmdPushDescriptorSetWithTemplatePool.clear();
 	_cmdDebugMarkerBeginPool.clear();
 	_cmdDebugMarkerEndPool.clear();
 	_cmdDebugMarkerInsertPool.clear();
@@ -180,7 +180,7 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 	_cmdDispatchPool(this, usePooling),
 	_cmdDispatchIndirectPool(this, usePooling),
 	_cmdPushDescriptorSetPool(this, usePooling),
-	_cmdPushSetWithTemplatePool(this, usePooling),
+	_cmdPushDescriptorSetWithTemplatePool(this, usePooling),
 	_cmdDebugMarkerBeginPool(this, usePooling),
 	_cmdDebugMarkerEndPool(this, usePooling),
 	_cmdDebugMarkerInsertPool(this, usePooling),

@@ -43,6 +43,8 @@ public:
     MVKCmdBindVertexBuffers(MVKCommandTypePool<MVKCmdBindVertexBuffers>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     MVKVectorInline<MVKMTLBufferBinding, 8> _bindings;
 };
 
@@ -64,6 +66,8 @@ public:
 	MVKCmdBindIndexBuffer(MVKCommandTypePool<MVKCmdBindIndexBuffer>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     MVKIndexMTLBufferBinding _binding;
 };
 
@@ -86,6 +90,8 @@ public:
     MVKCmdDraw(MVKCommandTypePool<MVKCmdDraw>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	uint32_t _firstVertex;
 	uint32_t _vertexCount;
 	uint32_t _firstInstance;
@@ -112,6 +118,8 @@ public:
 	MVKCmdDrawIndexed(MVKCommandTypePool<MVKCmdDrawIndexed>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	uint32_t _firstIndex;
 	uint32_t _indexCount;
 	int32_t	_vertexOffset;
@@ -138,6 +146,8 @@ public:
 	MVKCmdDrawIndirect(MVKCommandTypePool<MVKCmdDrawIndirect>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	id<MTLBuffer> _mtlIndirectBuffer;
 	NSUInteger _mtlIndirectBufferOffset;
 	uint32_t _mtlIndirectBufferStride;
@@ -163,6 +173,8 @@ public:
 	MVKCmdDrawIndexedIndirect(MVKCommandTypePool<MVKCmdDrawIndexedIndirect>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	id<MTLBuffer> _mtlIndirectBuffer;
 	VkDeviceSize _mtlIndirectBufferOffset;
 	uint32_t _mtlIndirectBufferStride;

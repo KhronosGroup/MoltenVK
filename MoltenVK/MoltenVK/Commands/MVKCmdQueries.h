@@ -60,6 +60,8 @@ public:
     MVKCmdBeginQuery(MVKCommandTypePool<MVKCmdBeginQuery>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     VkQueryControlFlags _flags;
 };
 
@@ -74,6 +76,10 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
     MVKCmdEndQuery(MVKCommandTypePool<MVKCmdEndQuery>* pool);
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 };
 
 
@@ -94,6 +100,8 @@ public:
     MVKCmdWriteTimestamp(MVKCommandTypePool<MVKCmdWriteTimestamp>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     VkPipelineStageFlagBits _pipelineStage;
 };
 
@@ -115,6 +123,8 @@ public:
     MVKCmdResetQueryPool(MVKCommandTypePool<MVKCmdResetQueryPool>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     uint32_t _queryCount;
 };
 
@@ -140,6 +150,8 @@ public:
     MVKCmdCopyQueryPoolResults(MVKCommandTypePool<MVKCmdCopyQueryPoolResults>* pool);
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     uint32_t _queryCount;
     MVKBuffer* _destBuffer;
     VkDeviceSize _destOffset;

@@ -52,6 +52,7 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						VkImage srcImage,
 						VkImageLayout srcImageLayout,
@@ -115,6 +116,7 @@ public:
 	~MVKCmdBlitImage() override;
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool canCopy(const VkImageBlit& region);
 	void addImageBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
 	void addImageCopyRegionFromBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
@@ -155,7 +157,8 @@ public:
     ~MVKCmdResolveImage() override;
 
 protected:
-    void addExpansionRegion(const VkImageResolve& resolveRegion);
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	void addExpansionRegion(const VkImageResolve& resolveRegion);
     void addCopyRegion(const VkImageResolve& resolveRegion);
     void addResolveSlices(const VkImageResolve& resolveRegion);
     void initMTLRenderPassDescriptor();
@@ -191,6 +194,7 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	MVKBuffer* _srcBuffer;
 	MVKBuffer* _dstBuffer;
@@ -219,6 +223,7 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool isArrayTexture();
 
     MVKBuffer* _buffer;
@@ -248,6 +253,7 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     void populateVertices(float attWidth, float attHeight);
     void populateVertices(VkClearRect& clearRect, float attWidth, float attHeight);
 
@@ -283,6 +289,7 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     uint32_t populateMetalCopyRegions(const VkImageBlit* pRegion, uint32_t cpyRgnIdx);
     uint32_t populateMetalBlitRenders(const VkImageBlit* pRegion, uint32_t rendRgnIdx);
     void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit* pRegion);
@@ -316,7 +323,9 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
-    MVKBuffer* _dstBuffer;
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKBuffer* _dstBuffer;
     VkDeviceSize _dstOffset;
     uint32_t _wordCount;
     uint32_t _dataValue;
@@ -342,7 +351,9 @@ public:
 		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
-    MVKBuffer* _dstBuffer;
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKBuffer* _dstBuffer;
     VkDeviceSize _dstOffset;
     VkDeviceSize _dataSize;
     MVKVectorDefault<uint8_t> _srcDataCache;

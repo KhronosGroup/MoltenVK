@@ -51,7 +51,9 @@ public:
 
 	MVKCmdPipelineBarrier(MVKCommandTypePool<MVKCmdPipelineBarrier>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	VkPipelineStageFlags _srcStageMask;
 	VkPipelineStageFlags _dstStageMask;
 	VkDependencyFlags _dependencyFlags;
@@ -78,7 +80,9 @@ public:
 
 	bool isTessellationPipeline();
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	VkPipelineBindPoint _bindPoint;
 	MVKPipeline* _pipeline;
 
@@ -105,7 +109,9 @@ public:
 
 	MVKCmdBindDescriptorSets(MVKCommandTypePool<MVKCmdBindDescriptorSets>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	VkPipelineBindPoint _pipelineBindPoint;
 	MVKPipelineLayout* _pipelineLayout;
 	MVKVectorInline<MVKDescriptorSet*, 8> _descriptorSets;
@@ -132,7 +138,9 @@ public:
 
 	MVKCmdPushConstants(MVKCommandTypePool<MVKCmdPushConstants>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	MVKPipelineLayout* _pipelineLayout;
 	VkShaderStageFlags _stageFlags;
 	uint32_t _offset;
@@ -160,7 +168,8 @@ public:
 
 	~MVKCmdPushDescriptorSet() override;
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	void clearDescriptorWrites();
 
 	VkPipelineBindPoint _pipelineBindPoint;
@@ -189,7 +198,9 @@ public:
 
 	~MVKCmdPushDescriptorSetWithTemplate() override;
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	MVKDescriptorUpdateTemplate* _descUpdateTemplate;
 	MVKPipelineLayout* _pipelineLayout;
 	uint32_t _set;
@@ -213,7 +224,9 @@ public:
 
 	MVKCmdSetResetEvent(MVKCommandTypePool<MVKCmdSetResetEvent>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	MVKEvent* _mvkEvent;
 	bool _status;
 
@@ -243,7 +256,9 @@ public:
 
 	MVKCmdWaitEvents(MVKCommandTypePool<MVKCmdWaitEvents>* pool);
 
-private:
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	MVKVectorInline<MVKEvent*, 4> _mvkEvents;
 
 };
