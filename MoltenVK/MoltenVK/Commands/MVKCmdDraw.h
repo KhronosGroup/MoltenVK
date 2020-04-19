@@ -40,8 +40,6 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdBindVertexBuffers(MVKCommandTypePool<MVKCmdBindVertexBuffers>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -62,8 +60,6 @@ public:
 						VkIndexType indexType);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-	MVKCmdBindIndexBuffer(MVKCommandTypePool<MVKCmdBindIndexBuffer>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -86,8 +82,6 @@ public:
 						uint32_t firstInstance);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
-
-    MVKCmdDraw(MVKCommandTypePool<MVKCmdDraw>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -115,8 +109,6 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdDrawIndexed(MVKCommandTypePool<MVKCmdDrawIndexed>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -143,8 +135,6 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdDrawIndirect(MVKCommandTypePool<MVKCmdDrawIndirect>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -169,8 +159,6 @@ public:
 						uint32_t stride);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-	MVKCmdDrawIndexedIndirect(MVKCommandTypePool<MVKCmdDrawIndexedIndirect>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

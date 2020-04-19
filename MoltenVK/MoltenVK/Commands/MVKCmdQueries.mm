@@ -34,8 +34,6 @@ VkResult MVKCmdQuery::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-MVKCmdQuery::MVKCmdQuery(MVKCommandTypePool<MVKCommand>* pool) : MVKCommand::MVKCommand(pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdBeginQuery
@@ -59,9 +57,6 @@ void MVKCmdBeginQuery::encode(MVKCommandEncoder* cmdEncoder) {
     _queryPool->beginQuery(_query, _flags, cmdEncoder);
 }
 
-MVKCmdBeginQuery::MVKCmdBeginQuery(MVKCommandTypePool<MVKCmdBeginQuery>* pool)
-    : MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdEndQuery
@@ -71,9 +66,6 @@ MVKFuncionOverride_getTypePool(EndQuery)
 void MVKCmdEndQuery::encode(MVKCommandEncoder* cmdEncoder) {
     _queryPool->endQuery(_query, cmdEncoder);
 }
-
-MVKCmdEndQuery::MVKCmdEndQuery(MVKCommandTypePool<MVKCmdEndQuery>* pool)
-    : MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -97,9 +89,6 @@ void MVKCmdWriteTimestamp::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->markTimestamp(_queryPool, _query);
 }
 
-MVKCmdWriteTimestamp::MVKCmdWriteTimestamp(MVKCommandTypePool<MVKCmdWriteTimestamp>* pool)
-		: MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdResetQueryPool
@@ -121,9 +110,6 @@ VkResult MVKCmdResetQueryPool::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdResetQueryPool::encode(MVKCommandEncoder* cmdEncoder) {
     _queryPool->resetResults(_query, _queryCount, cmdEncoder);
 }
-
-MVKCmdResetQueryPool::MVKCmdResetQueryPool(MVKCommandTypePool<MVKCmdResetQueryPool>* pool)
-    : MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -160,7 +146,4 @@ void MVKCmdCopyQueryPoolResults::encode(MVKCommandEncoder* cmdEncoder) {
         _queryPool->encodeCopyResults(cmdEncoder, _query, _queryCount, _destBuffer, _destOffset, _destStride, _flags);
     }
 }
-
-MVKCmdCopyQueryPoolResults::MVKCmdCopyQueryPoolResults(MVKCommandTypePool<MVKCmdCopyQueryPoolResults>* pool)
-    : MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
 

@@ -59,10 +59,6 @@ void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
 			   threadsPerThreadgroup: cmdEncoder->_mtlThreadgroupSize];
 }
 
-MVKCmdDispatch::MVKCmdDispatch(MVKCommandTypePool<MVKCmdDispatch>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {
-}
-
 
 #pragma mark -
 #pragma mark MVKCmdDispatchIndirect
@@ -85,7 +81,4 @@ void MVKCmdDispatchIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 																				indirectBufferOffset: _mtlIndirectBufferOffset
 																			   threadsPerThreadgroup: cmdEncoder->_mtlThreadgroupSize];
 }
-
-MVKCmdDispatchIndirect::MVKCmdDispatchIndirect(MVKCommandTypePool<MVKCmdDispatchIndirect>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 

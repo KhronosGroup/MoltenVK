@@ -34,9 +34,6 @@ VkResult MVKCmdDebugMarker::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-MVKCmdDebugMarker::MVKCmdDebugMarker(MVKCommandTypePool<MVKCmdDebugMarker>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 MVKCmdDebugMarker::~MVKCmdDebugMarker() {
 	[_markerName release];
 }
@@ -57,9 +54,6 @@ void MVKCmdDebugMarkerBegin::encode(MVKCommandEncoder* cmdEncoder) {
 	}
 }
 
-MVKCmdDebugMarkerBegin::MVKCmdDebugMarkerBegin(MVKCommandTypePool<MVKCmdDebugMarkerBegin>* pool)
-	: MVKCmdDebugMarker::MVKCmdDebugMarker((MVKCommandTypePool<MVKCmdDebugMarker>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerEnd
@@ -79,9 +73,6 @@ void MVKCmdDebugMarkerEnd::encode(MVKCommandEncoder* cmdEncoder) {
 	}
 }
 
-MVKCmdDebugMarkerEnd::MVKCmdDebugMarkerEnd(MVKCommandTypePool<MVKCmdDebugMarkerEnd>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerInsert
@@ -91,9 +82,6 @@ MVKFuncionOverride_getTypePool(DebugMarkerInsert)
 void MVKCmdDebugMarkerInsert::encode(MVKCommandEncoder* cmdEncoder) {
 	[cmdEncoder->getMTLEncoder() insertDebugSignpost: _markerName];
 }
-
-MVKCmdDebugMarkerInsert::MVKCmdDebugMarkerInsert(MVKCommandTypePool<MVKCmdDebugMarkerInsert>* pool)
-	: MVKCmdDebugMarker::MVKCmdDebugMarker((MVKCommandTypePool<MVKCmdDebugMarker>*)pool) {}
 
 
 #pragma mark -

@@ -49,8 +49,6 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdPipelineBarrier(MVKCommandTypePool<MVKCmdPipelineBarrier>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -75,8 +73,6 @@ public:
 						VkPipeline pipeline);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-	MVKCmdBindPipeline(MVKCommandTypePool<MVKCmdBindPipeline>* pool);
 
 	bool isTessellationPipeline();
 
@@ -107,8 +103,6 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdBindDescriptorSets(MVKCommandTypePool<MVKCmdBindDescriptorSets>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -136,8 +130,6 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdPushConstants(MVKCommandTypePool<MVKCmdPushConstants>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -163,8 +155,6 @@ public:
 						const VkWriteDescriptorSet* pDescriptorWrites);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-	MVKCmdPushDescriptorSet(MVKCommandTypePool<MVKCmdPushDescriptorSet>* pool);
 
 	~MVKCmdPushDescriptorSet() override;
 
@@ -194,8 +184,6 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdPushDescriptorSetWithTemplate(MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate>* pool);
-
 	~MVKCmdPushDescriptorSetWithTemplate() override;
 
 protected:
@@ -221,8 +209,6 @@ public:
 						bool status);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-	MVKCmdSetResetEvent(MVKCommandTypePool<MVKCmdSetResetEvent>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -253,8 +239,6 @@ public:
 						const VkImageMemoryBarrier* pImageMemoryBarriers);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-	MVKCmdWaitEvents(MVKCommandTypePool<MVKCmdWaitEvents>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

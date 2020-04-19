@@ -32,8 +32,6 @@ class MVKCmdDebugMarker : public MVKCommand {
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff, const char* pMarkerName, const float color[4]);
 
-    MVKCmdDebugMarker(MVKCommandTypePool<MVKCmdDebugMarker>* pool);
-
 	~MVKCmdDebugMarker() override;
 
 protected:
@@ -49,8 +47,6 @@ class MVKCmdDebugMarkerBegin : public MVKCmdDebugMarker {
 
 public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-	MVKCmdDebugMarkerBegin(MVKCommandTypePool<MVKCmdDebugMarkerBegin>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -69,8 +65,6 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdDebugMarkerEnd(MVKCommandTypePool<MVKCmdDebugMarkerEnd>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -85,8 +79,6 @@ class MVKCmdDebugMarkerInsert : public MVKCmdDebugMarker {
 
 public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-	MVKCmdDebugMarkerInsert(MVKCommandTypePool<MVKCmdDebugMarkerInsert>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

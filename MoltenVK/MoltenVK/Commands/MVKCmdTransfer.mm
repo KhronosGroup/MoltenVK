@@ -205,7 +205,7 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 		tempBuffData.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 		MVKBuffer* tempBuff = cmdEncoder->getCommandEncodingPool()->getTransferMVKBuffer(tempBuffData);
 
-		MVKCmdBufferImageCopy cpyCmd(&cmdEncoder->_cmdBuffer->getCommandPool()->_cmdBufferImageCopyPool);
+		MVKCmdBufferImageCopy cpyCmd;
 
 		// Copy from source image to buffer
 		// Create and execute a temporary buffer image command.
@@ -428,9 +428,7 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark Construction
 
-MVKCmdBlitImage::MVKCmdBlitImage(MVKCommandTypePool<MVKCmdBlitImage>* pool)
-        : MVKCmdCopyImage::MVKCmdCopyImage((MVKCommandTypePool<MVKCmdCopyImage>*)pool) {
-
+MVKCmdBlitImage::MVKCmdBlitImage() {
     initMTLRenderPassDescriptor();
 }
 
@@ -582,7 +580,7 @@ void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
     // To be threadsafe...do NOT acquire and return the command from the pool.
     uint32_t expRgnCnt = uint32_t(_expansionRegions.size());
     if (expRgnCnt > 0) {
-        MVKCmdBlitImage expandCmd(&cmdEncoder->_cmdBuffer->getCommandPool()->_cmdBlitImagePool);
+        MVKCmdBlitImage expandCmd;
         expandCmd.setContent(cmdEncoder->_cmdBuffer,
 							 (VkImage)_dstImage, _dstLayout, (VkImage)xfrImage, _dstLayout,
                              expRgnCnt, _expansionRegions.data(),
@@ -595,7 +593,7 @@ void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
     // To be threadsafe...do NOT acquire and return the command from the pool.
     uint32_t cpyRgnCnt = uint32_t(_copyRegions.size());
     if (cpyRgnCnt > 0) {
-        MVKCmdCopyImage copyCmd(&cmdEncoder->_cmdBuffer->getCommandPool()->_cmdCopyImagePool);
+        MVKCmdCopyImage copyCmd;
         copyCmd.setContent(cmdEncoder->_cmdBuffer,
 						   (VkImage)_srcImage, _srcLayout, (VkImage)xfrImage, _dstLayout,
                            cpyRgnCnt, _copyRegions.data(), kMVKCommandUseResolveCopyImage);
@@ -624,9 +622,7 @@ void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
     }
 }
 
-MVKCmdResolveImage::MVKCmdResolveImage(MVKCommandTypePool<MVKCmdResolveImage>* pool)
-        : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {
-
+MVKCmdResolveImage::MVKCmdResolveImage() {
     initMTLRenderPassDescriptor();
 }
 

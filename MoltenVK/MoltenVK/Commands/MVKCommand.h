@@ -24,8 +24,26 @@
 class MVKCommandBuffer;
 class MVKCommandEncoder;
 class MVKCommandPool;
-//class MVKCommandEncodingPool;
-template <class T> class MVKCommandTypePool;
+
+
+#pragma mark -
+#pragma mark MVKCommandTypePool
+
+/** A pool of MVKCommand instances of a particular type. */
+template <class T>
+class MVKCommandTypePool : public MVKObjectPool<T> {
+
+public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; }
+
+	/** Returns a new command instance. */
+	T* newObject() override { return new T(); }
+
+	MVKCommandTypePool(bool isPooling = true) : MVKObjectPool<T>(isPooling) {}
+
+};
 
 
 #pragma mark -
@@ -34,8 +52,8 @@ template <class T> class MVKCommandTypePool;
 /**
  * Abstract class that represents a Vulkan command.
  *
- * To allow the command contents to be populated, all concrete
- * subclasses must support a member function of the following form:
+ * To allow command contents to be populated in a standard way, all concrete
+ * subclasses must support a public member function of the following form:
  *
  *     VkResult setContent(MVKCommandBuffer* cmdBuff, ...);
  */
@@ -49,23 +67,9 @@ public:
 	/** Encodes this command on the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder) = 0;
 
-	/** 
-     * Returns this object back to the type pool associated with the subclass type,
-	 * contained in the command pool.
-     *
-     * This method is not thread-safe. Vulkan Command Pools are externally synchronized. 
-     * For a particular MVKCommandTypePool instance, all calls to pool->aquireObject(), 
-     * and returnToPool() (or pool->returnObject()), MUST be called from the same thread.
-     *
-     * Do not call this function if a subclass instance has been created inline to
-	 * perform a transient sub-command operation. Instead, let the instance be destroyed
-	 * automatically at the end of the inline scope, as usual for inline instantiation.
-     */
-    void returnToPool(MVKCommandPool* cmdPool);
-
-    MVKCommand(MVKCommandTypePool<MVKCommand>* pool) {}
-
 protected:
+	friend MVKCommandBuffer;
+
 	virtual MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) = 0;
 
 	// Macro to implement a subclass override of the getTypePool(MVKCommandPool* cmdPool) function.
@@ -73,43 +77,6 @@ protected:
 	MVKCommandTypePool<MVKCommand>* MVKCmd ##cmdType ::getTypePool(MVKCommandPool* cmdPool) {	\
 		return (MVKCommandTypePool<MVKCommand>*)&cmdPool->_cmd  ##cmdType ##Pool;				\
 	}
-};
-
-
-#pragma mark -
-#pragma mark MVKCommandTypePool
-
-/**
- * Static function for MVKCommandTypePool template to call to resolve its own getVulkanAPIObject()
- * from its MVKCommandPool. Needed because MVKCommandTypePool template cannot have a function
- * implementation outside the template, and MVKCommandPool is not fully defined in this header file.
- */
-MVKVulkanAPIObject* mvkCommandPoolGetVulkanAPIObject(MVKCommandPool* cmdPool);
-
-
-/** A pool of MVKCommand instances of a particular type. */
-template <class T>
-class MVKCommandTypePool : public MVKObjectPool<T> {
-
-public:
-
-	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override { return mvkCommandPoolGetVulkanAPIObject(_commandPool); };
-
-    /** Some commands require access to the command pool to access resources. */
-    MVKCommandPool* getCommandPool() { return _commandPool; }
-
-    /** Returns a new command instance. */
-    T* newObject() override { return new T(this); }
-
-    /**
-     * Configures this instance to either use pooling, or not, depending on the
-     * value of isPooling, which defaults to true if not indicated explicitly.
-     */
-    MVKCommandTypePool(MVKCommandPool* cmdPool, bool isPooling = true) : MVKObjectPool<T>(isPooling), _commandPool(cmdPool) {}
-
-protected:
-    MVKCommandPool* _commandPool;
 };
 
 

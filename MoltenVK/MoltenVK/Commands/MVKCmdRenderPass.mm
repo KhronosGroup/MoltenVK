@@ -57,9 +57,6 @@ void MVKCmdBeginRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->beginRenderpass(_contents, _renderPass, _framebuffer, _info.renderArea, &_clearValues, _loadOverride, _storeOverride);
 }
 
-MVKCmdBeginRenderPass::MVKCmdBeginRenderPass(MVKCommandTypePool<MVKCmdBeginRenderPass>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdNextSubpass
@@ -77,9 +74,6 @@ void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->beginNextSubpass(_contents);
 }
 
-MVKCmdNextSubpass::MVKCmdNextSubpass(MVKCommandTypePool<MVKCmdNextSubpass>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdEndRenderPass
@@ -95,9 +89,6 @@ void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdEndRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
 	cmdEncoder->endRenderpass();
 }
-
-MVKCmdEndRenderPass::MVKCmdEndRenderPass(MVKCommandTypePool<MVKCmdEndRenderPass>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -121,9 +112,6 @@ VkResult MVKCmdExecuteCommands::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdExecuteCommands::encode(MVKCommandEncoder* cmdEncoder) {
     for (auto& cb : _secondaryCommandBuffers) { cmdEncoder->encodeSecondary(cb); }
 }
-
-MVKCmdExecuteCommands::MVKCmdExecuteCommands(MVKCommandTypePool<MVKCmdExecuteCommands>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -149,9 +137,6 @@ void MVKCmdSetViewport::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_viewportState.setViewports(_mtlViewports, _firstViewport, true);
 }
 
-MVKCmdSetViewport::MVKCmdSetViewport(MVKCommandTypePool<MVKCmdSetViewport>* pool)
-		: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdSetScissor
@@ -176,9 +161,6 @@ void MVKCmdSetScissor::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_scissorState.setScissors(_mtlScissors, _firstScissor, true);
 }
 
-MVKCmdSetScissor::MVKCmdSetScissor(MVKCommandTypePool<MVKCmdSetScissor>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdSetLineWidth
@@ -198,9 +180,6 @@ VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {}
-
-MVKCmdSetLineWidth::MVKCmdSetLineWidth(MVKCommandTypePool<MVKCmdSetLineWidth>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -225,9 +204,6 @@ void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
                                              _depthBiasClamp);
 }
 
-MVKCmdSetDepthBias::MVKCmdSetDepthBias(MVKCommandTypePool<MVKCmdSetDepthBias>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdSetBlendConstants
@@ -247,9 +223,6 @@ VkResult MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_blendColorState.setBlendColor(_red, _green, _blue, _alpha, true);
 }
-
-MVKCmdSetBlendConstants::MVKCmdSetBlendConstants(MVKCommandTypePool<MVKCmdSetBlendConstants>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -273,9 +246,6 @@ VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
 
 void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {}
 
-MVKCmdSetDepthBounds::MVKCmdSetDepthBounds(MVKCommandTypePool<MVKCmdSetDepthBounds>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdSetStencilCompareMask
@@ -294,9 +264,6 @@ VkResult MVKCmdSetStencilCompareMask::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdSetStencilCompareMask::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_depthStencilState.setStencilCompareMask(_faceMask, _stencilCompareMask);
 }
-
-MVKCmdSetStencilCompareMask::MVKCmdSetStencilCompareMask(MVKCommandTypePool<MVKCmdSetStencilCompareMask>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -317,9 +284,6 @@ void MVKCmdSetStencilWriteMask::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_depthStencilState.setStencilWriteMask(_faceMask, _stencilWriteMask);
 }
 
-MVKCmdSetStencilWriteMask::MVKCmdSetStencilWriteMask(MVKCommandTypePool<MVKCmdSetStencilWriteMask>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdSetStencilReference
@@ -338,7 +302,4 @@ VkResult MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdSetStencilReference::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_stencilReferenceValueState.setReferenceValues(_faceMask, _stencilReference);
 }
-
-MVKCmdSetStencilReference::MVKCmdSetStencilReference(MVKCommandTypePool<MVKCmdSetStencilReference>* pool)
-    : MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 

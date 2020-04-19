@@ -58,7 +58,7 @@ void MVKCommandBuffer::releaseCommands() {
 	MVKCommand* cmd = _head;
 	while (cmd) {
 		MVKCommand* nextCmd = cmd->_next;	// Establish next before returning current to pool.
-		cmd->returnToPool(getCommandPool());
+		(cmd->getTypePool(getCommandPool()))->returnObject(cmd);
 		cmd = nextCmd;
 	}
 	_head = nullptr;
@@ -421,7 +421,7 @@ void MVKCommandEncoder::clearRenderArea() {
 
     // Create and execute a temporary clear attachments command.
     // To be threadsafe...do NOT acquire and return the command from the pool.
-    MVKCmdClearAttachments cmd(&_cmdBuffer->getCommandPool()->_cmdClearAttachmentsPool);
+    MVKCmdClearAttachments cmd;
     cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
     cmd.encode(this);
 }

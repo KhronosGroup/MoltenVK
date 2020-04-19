@@ -37,8 +37,6 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdDispatch(MVKCommandTypePool<MVKCmdDispatch>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -56,8 +54,6 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
-
-	MVKCmdDispatchIndirect(MVKCommandTypePool<MVKCmdDispatchIndirect>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

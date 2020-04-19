@@ -35,8 +35,6 @@ public:
 						VkQueryPool queryPool,
 						uint32_t query);
 
-    MVKCmdQuery(MVKCommandTypePool<MVKCommand>* pool);
-
 protected:
     MVKQueryPool* _queryPool;
     uint32_t _query;
@@ -57,8 +55,6 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdBeginQuery(MVKCommandTypePool<MVKCmdBeginQuery>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -74,8 +70,6 @@ class MVKCmdEndQuery : public MVKCmdQuery {
 
 public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
-
-    MVKCmdEndQuery(MVKCommandTypePool<MVKCmdEndQuery>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -97,8 +91,6 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdWriteTimestamp(MVKCommandTypePool<MVKCmdWriteTimestamp>* pool);
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -119,8 +111,6 @@ public:
 						uint32_t queryCount);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
-
-    MVKCmdResetQueryPool(MVKCommandTypePool<MVKCmdResetQueryPool>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -146,8 +136,6 @@ public:
 						VkQueryResultFlags flags);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
-
-    MVKCmdCopyQueryPoolResults(MVKCommandTypePool<MVKCmdCopyQueryPoolResults>* pool);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

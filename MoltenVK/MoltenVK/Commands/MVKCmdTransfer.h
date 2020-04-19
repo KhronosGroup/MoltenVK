@@ -48,9 +48,6 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdCopyImage(MVKCommandTypePool<MVKCmdCopyImage>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
@@ -111,7 +108,7 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdBlitImage(MVKCommandTypePool<MVKCmdBlitImage>* pool);
+	MVKCmdBlitImage();
 
 	~MVKCmdBlitImage() override;
 
@@ -152,7 +149,7 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdResolveImage(MVKCommandTypePool<MVKCmdResolveImage>* pool);
+    MVKCmdResolveImage();
 
     ~MVKCmdResolveImage() override;
 
@@ -190,9 +187,6 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdCopyBuffer(MVKCommandTypePool<MVKCmdCopyBuffer>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -218,9 +212,6 @@ public:
 						bool toImage);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
-
-    MVKCmdBufferImageCopy(MVKCommandTypePool<MVKCmdBufferImageCopy>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -248,9 +239,6 @@ public:
 						const VkClearRect* pRects);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
-
-    MVKCmdClearAttachments(MVKCommandTypePool<MVKCmdClearAttachments>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -285,9 +273,6 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdClearImage(MVKCommandTypePool<MVKCmdClearImage>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     uint32_t populateMetalCopyRegions(const VkImageBlit* pRegion, uint32_t cpyRgnIdx);
@@ -319,9 +304,6 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdFillBuffer(MVKCommandTypePool<MVKCmdFillBuffer>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
@@ -346,9 +328,6 @@ public:
 						const void* pData);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
-
-    MVKCmdUpdateBuffer(MVKCommandTypePool<MVKCmdUpdateBuffer>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;

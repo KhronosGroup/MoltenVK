@@ -126,9 +126,6 @@ void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
     }
 }
 
-MVKCmdPipelineBarrier::MVKCmdPipelineBarrier(MVKCommandTypePool<MVKCmdPipelineBarrier>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdBindPipeline
@@ -149,9 +146,6 @@ VkResult MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdBindPipeline::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->bindPipeline(_bindPoint, _pipeline);
 }
-
-MVKCmdBindPipeline::MVKCmdBindPipeline(MVKCommandTypePool<MVKCmdBindPipeline>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 bool MVKCmdBindPipeline::isTessellationPipeline() {
 	if (_bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
@@ -199,9 +193,6 @@ void MVKCmdBindDescriptorSets::encode(MVKCommandEncoder* cmdEncoder) {
 	_pipelineLayout->bindDescriptorSets(cmdEncoder, _descriptorSets, _firstSet, _dynamicOffsets);
 }
 
-MVKCmdBindDescriptorSets::MVKCmdBindDescriptorSets(MVKCommandTypePool<MVKCmdBindDescriptorSets>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdPushConstants
@@ -238,9 +229,6 @@ void MVKCmdPushConstants::encode(MVKCommandEncoder* cmdEncoder) {
         }
     }
 }
-
-MVKCmdPushConstants::MVKCmdPushConstants(MVKCommandTypePool<MVKCmdPushConstants>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -310,9 +298,6 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
 	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descriptorWrites, _set);
 }
-
-MVKCmdPushDescriptorSet::MVKCmdPushDescriptorSet(MVKCommandTypePool<MVKCmdPushDescriptorSet>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {
 	clearDescriptorWrites();
@@ -401,10 +386,6 @@ void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) 
 	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descUpdateTemplate, _set, _pData);
 }
 
-MVKCmdPushDescriptorSetWithTemplate::MVKCmdPushDescriptorSetWithTemplate(
-	MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
 	if (_pData) delete[] (char*)_pData;
 }
@@ -428,9 +409,6 @@ VkResult MVKCmdSetResetEvent::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdSetResetEvent::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->signalEvent(_mvkEvent, _status);
 }
-
-MVKCmdSetResetEvent::MVKCmdSetResetEvent(MVKCommandTypePool<MVKCmdSetResetEvent>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -463,7 +441,4 @@ void MVKCmdWaitEvents::encode(MVKCommandEncoder* cmdEncoder) {
 		mvkEvt->encodeWait(cmdEncoder->_mtlCmdBuffer);
 	}
 }
-
-MVKCmdWaitEvents::MVKCmdWaitEvents(MVKCommandTypePool<MVKCmdWaitEvents>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
 
