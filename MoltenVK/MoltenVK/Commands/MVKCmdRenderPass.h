@@ -179,8 +179,8 @@ class MVKCmdSetDepthBias : public MVKCommand {
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						float depthBiasConstantFactor,
-						float depthBiasSlopeFactor,
-						float depthBiasClamp);
+						float depthBiasClamp,
+						float depthBiasSlopeFactor);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 

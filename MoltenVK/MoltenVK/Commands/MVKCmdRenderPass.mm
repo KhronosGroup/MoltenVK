@@ -189,8 +189,8 @@ MVKFuncionOverride_getTypePool(SetDepthBias)
 
 VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
 										float depthBiasConstantFactor,
-										float depthBiasSlopeFactor,
-										float depthBiasClamp) {
+										float depthBiasClamp,
+										float depthBiasSlopeFactor) {
     _depthBiasConstantFactor = depthBiasConstantFactor;
     _depthBiasSlopeFactor = depthBiasSlopeFactor;
     _depthBiasClamp = depthBiasClamp;
