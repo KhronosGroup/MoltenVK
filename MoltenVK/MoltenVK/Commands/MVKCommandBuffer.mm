@@ -58,7 +58,7 @@ void MVKCommandBuffer::releaseCommands() {
 	MVKCommand* cmd = _head;
 	while (cmd) {
 		MVKCommand* nextCmd = cmd->_next;	// Establish next before returning current to pool.
-		cmd->returnToPool();
+		(cmd->getTypePool(getCommandPool()))->returnObject(cmd);
 		cmd = nextCmd;
 	}
 	_head = nullptr;
@@ -102,10 +102,6 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
     _tail = command;
     if ( !_head ) { _head = command; }
     _commandCount++;
-
-    command->added(this);
-
-    setConfigurationResult(command->getConfigurationResult());
 }
 
 void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
@@ -199,7 +195,7 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 
 
 #pragma mark -
-#pragma mark Constituent render pass management
+#pragma mark Tessellation constituent command management
 
 void MVKCommandBuffer::recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass) {
 	_lastBeginRenderPass = mvkBeginRenderPass;
@@ -248,10 +244,10 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 
 	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
 
-    MVKCommand* cmd = _cmdBuffer->_head;
+	MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
-        if (cmd->canEncode()) { cmd->encode(this); }
-        cmd = cmd->_next;
+		cmd->encode(this);
+		cmd = cmd->_next;
 	}
 
 	endCurrentMetalEncoding();
@@ -425,8 +421,8 @@ void MVKCommandEncoder::clearRenderArea() {
 
     // Create and execute a temporary clear attachments command.
     // To be threadsafe...do NOT acquire and return the command from the pool.
-    MVKCmdClearAttachments cmd(&_cmdBuffer->_commandPool->_cmdClearAttachmentsPool);
-    cmd.setContent(clearAttCnt, clearAtts.data(), 1, &clearRect);
+    MVKCmdClearAttachments cmd;
+    cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
     cmd.encode(this);
 }
 
@@ -554,7 +550,9 @@ const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger len
     return mtlBuffAlloc;
 }
 
-MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _cmdBuffer->_commandPool->getCommandEncodingPool(); }
+MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
+	return _cmdBuffer->getCommandPool()->getCommandEncodingPool();
+}
 
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {

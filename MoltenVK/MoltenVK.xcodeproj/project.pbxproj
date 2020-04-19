@@ -63,8 +63,6 @@
 		A94FB7CB1C7DFB4800632CA3 /* MVKCmdDraw.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7751C7DFB4800632CA3 /* MVKCmdDraw.mm */; };
 		A94FB7CC1C7DFB4800632CA3 /* MVKCommand.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7761C7DFB4800632CA3 /* MVKCommand.h */; };
 		A94FB7CD1C7DFB4800632CA3 /* MVKCommand.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7761C7DFB4800632CA3 /* MVKCommand.h */; };
-		A94FB7CE1C7DFB4800632CA3 /* MVKCommand.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7771C7DFB4800632CA3 /* MVKCommand.mm */; };
-		A94FB7CF1C7DFB4800632CA3 /* MVKCommand.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7771C7DFB4800632CA3 /* MVKCommand.mm */; };
 		A94FB7D01C7DFB4800632CA3 /* MVKCommandBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7781C7DFB4800632CA3 /* MVKCommandBuffer.h */; };
 		A94FB7D11C7DFB4800632CA3 /* MVKCommandBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7781C7DFB4800632CA3 /* MVKCommandBuffer.h */; };
 		A94FB7D21C7DFB4800632CA3 /* MVKCommandBuffer.mm in Sources */ = {isa = PBXBuildFile; fileRef = A94FB7791C7DFB4800632CA3 /* MVKCommandBuffer.mm */; };
@@ -334,7 +332,6 @@
 		A94FB7741C7DFB4800632CA3 /* MVKCmdDraw.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCmdDraw.h; sourceTree = "<group>"; };
 		A94FB7751C7DFB4800632CA3 /* MVKCmdDraw.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdDraw.mm; sourceTree = "<group>"; };
 		A94FB7761C7DFB4800632CA3 /* MVKCommand.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommand.h; sourceTree = "<group>"; };
-		A94FB7771C7DFB4800632CA3 /* MVKCommand.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCommand.mm; sourceTree = "<group>"; };
 		A94FB7781C7DFB4800632CA3 /* MVKCommandBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommandBuffer.h; sourceTree = "<group>"; };
 		A94FB7791C7DFB4800632CA3 /* MVKCommandBuffer.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCommandBuffer.mm; sourceTree = "<group>"; };
 		A94FB77A1C7DFB4800632CA3 /* MVKCommandPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommandPool.h; sourceTree = "<group>"; };
@@ -471,7 +468,6 @@
 				A94FB76C1C7DFB4800632CA3 /* MVKCmdTransfer.h */,
 				A94FB76D1C7DFB4800632CA3 /* MVKCmdTransfer.mm */,
 				A94FB7761C7DFB4800632CA3 /* MVKCommand.h */,
-				A94FB7771C7DFB4800632CA3 /* MVKCommand.mm */,
 				A94FB7781C7DFB4800632CA3 /* MVKCommandBuffer.h */,
 				A94FB7791C7DFB4800632CA3 /* MVKCommandBuffer.mm */,
 				A95B7D671D3EE486003183D3 /* MVKCommandEncoderState.h */,
@@ -1037,7 +1033,6 @@
 				A95B7D6B1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */,
 				A93E83352121F0C8001FEBD4 /* MVKGPUCapture.mm in Sources */,
 				A9B51BD7225E986A00AC74D2 /* MVKOSExtensions.mm in Sources */,
-				A94FB7CE1C7DFB4800632CA3 /* MVKCommand.mm in Sources */,
 				A94FB80E1C7DFB4800632CA3 /* MVKShaderModule.mm in Sources */,
 				A94FB81A1C7DFB4800632CA3 /* MVKSync.mm in Sources */,
 				45557A5221C9EFF3008868BD /* MVKCodec.cpp in Sources */,
@@ -1095,7 +1090,6 @@
 				A95B7D6C1D3EE486003183D3 /* MVKCommandEncoderState.mm in Sources */,
 				A93E83362121F0C8001FEBD4 /* MVKGPUCapture.mm in Sources */,
 				A9B51BD8225E986A00AC74D2 /* MVKOSExtensions.mm in Sources */,
-				A94FB7CF1C7DFB4800632CA3 /* MVKCommand.mm in Sources */,
 				A94FB80F1C7DFB4800632CA3 /* MVKShaderModule.mm in Sources */,
 				A94FB81B1C7DFB4800632CA3 /* MVKSync.mm in Sources */,
 				45557A5321C9EFF3008868BD /* MVKCodec.cpp in Sources */,

@@ -28,58 +28,66 @@
 #pragma mark -
 #pragma mark MVKCmdBindVertexBuffers
 
-void MVKCmdBindVertexBuffers::setContent(uint32_t startBinding,
-										 uint32_t bindingCount,
-										 const VkBuffer* pBuffers,
-										 const VkDeviceSize* pOffsets) {
+MVKFuncionOverride_getTypePool(BindVertexBuffers)
 
-    _bindings.clear();	// Clear for reuse
+VkResult MVKCmdBindVertexBuffers::setContent(MVKCommandBuffer* cmdBuff,
+											 uint32_t startBinding,
+											 uint32_t bindingCount,
+											 const VkBuffer* pBuffers,
+											 const VkDeviceSize* pOffsets) {
+
+	MVKDevice* mvkDvc = cmdBuff->getDevice();
+	_bindings.clear();	// Clear for reuse
     _bindings.reserve(bindingCount);
     MVKMTLBufferBinding b;
     for (uint32_t bindIdx = 0; bindIdx < bindingCount; bindIdx++) {
         MVKBuffer* mvkBuffer = (MVKBuffer*)pBuffers[bindIdx];
-        b.index = getDevice()->getMetalBufferIndexForVertexAttributeBinding(startBinding + bindIdx);
+        b.index = mvkDvc->getMetalBufferIndexForVertexAttributeBinding(startBinding + bindIdx);
         b.mtlBuffer = mvkBuffer->getMTLBuffer();
         b.offset = mvkBuffer->getMTLBufferOffset() + pOffsets[bindIdx];
         _bindings.push_back(b);
     }
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdBindVertexBuffers::encode(MVKCommandEncoder* cmdEncoder) {
     for (auto& b : _bindings) { cmdEncoder->_graphicsResourcesState.bindBuffer(kMVKShaderStageVertex, b); }
 }
 
-MVKCmdBindVertexBuffers::MVKCmdBindVertexBuffers(MVKCommandTypePool<MVKCmdBindVertexBuffers>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdBindIndexBuffer
 
-void MVKCmdBindIndexBuffer::setContent(VkBuffer buffer,
-                                       VkDeviceSize offset,
-                                       VkIndexType indexType) {
+MVKFuncionOverride_getTypePool(BindIndexBuffer)
+
+VkResult MVKCmdBindIndexBuffer::setContent(MVKCommandBuffer* cmdBuff,
+										   VkBuffer buffer,
+										   VkDeviceSize offset,
+										   VkIndexType indexType) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	_binding.mtlBuffer = mvkBuffer->getMTLBuffer();
 	_binding.offset = mvkBuffer->getMTLBufferOffset() + offset;
 	_binding.mtlIndexType = mvkMTLIndexTypeFromVkIndexType(indexType);
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_graphicsResourcesState.bindIndexBuffer(_binding);
 }
 
-MVKCmdBindIndexBuffer::MVKCmdBindIndexBuffer(MVKCommandTypePool<MVKCmdBindIndexBuffer>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdDraw
 
-void MVKCmdDraw::setContent(uint32_t vertexCount,
-							uint32_t instanceCount,
-							uint32_t firstVertex,
-							uint32_t firstInstance) {
+MVKFuncionOverride_getTypePool(Draw)
+
+VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
+								uint32_t vertexCount,
+								uint32_t instanceCount,
+								uint32_t firstVertex,
+								uint32_t firstInstance) {
 	_vertexCount = vertexCount;
 	_instanceCount = instanceCount;
 	_firstVertex = firstVertex;
@@ -88,9 +96,12 @@ void MVKCmdDraw::setContent(uint32_t vertexCount,
 	_storeOverride = false;
 
     // Validate
-    if ((_firstInstance != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance."));
+    if ((_firstInstance != 0) && !(cmdBuff->getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
+        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance.");
     }
+
+	cmdBuff->recordDraw(this);
+	return VK_SUCCESS;
 }
 
 void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
@@ -256,19 +267,18 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
     }
 }
 
-MVKCmdDraw::MVKCmdDraw(MVKCommandTypePool<MVKCmdDraw>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {
-}
-
 
 #pragma mark -
 #pragma mark MVKCmdDrawIndexed
 
-void MVKCmdDrawIndexed::setContent(uint32_t indexCount,
-                                   uint32_t instanceCount,
-                                   uint32_t firstIndex,
-                                   int32_t vertexOffset,
-                                   uint32_t firstInstance) {
+MVKFuncionOverride_getTypePool(DrawIndexed)
+
+VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
+									   uint32_t indexCount,
+									   uint32_t instanceCount,
+									   uint32_t firstIndex,
+									   int32_t vertexOffset,
+									   uint32_t firstInstance) {
 	_indexCount = indexCount;
 	_instanceCount = instanceCount;
 	_firstIndex = firstIndex;
@@ -278,12 +288,16 @@ void MVKCmdDrawIndexed::setContent(uint32_t indexCount,
 	_storeOverride = false;
 
     // Validate
-    if ((_firstInstance != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base instance."));
+	MVKDevice* mvkDvc = cmdBuff->getDevice();
+    if ((_firstInstance != 0) && !(mvkDvc->_pMetalFeatures->baseVertexInstanceDrawing)) {
+        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base instance.");
     }
-    if ((_vertexOffset != 0) && !(getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex."));
+    if ((_vertexOffset != 0) && !(mvkDvc->_pMetalFeatures->baseVertexInstanceDrawing)) {
+        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex.");
     }
+
+	cmdBuff->recordDraw(this);
+	return VK_SUCCESS;
 }
 
 void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
@@ -321,7 +335,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
             // Yeah, this sucks. But there aren't many good ways for dealing with this issue.
             mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl);
             tcIndexBuff = cmdEncoder->getTempMTLBuffer(_instanceCount * patchCount * outControlPointCount * idxSize);
-            id<MTLComputePipelineState> mtlCopyIndexState = getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
+            id<MTLComputePipelineState> mtlCopyIndexState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
             [mtlTessCtlEncoder setComputePipelineState: mtlCopyIndexState];
             [mtlTessCtlEncoder setBuffer: ibb.mtlBuffer
                                   offset: ibb.offset
@@ -490,14 +504,14 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
     }
 }
 
-MVKCmdDrawIndexed::MVKCmdDrawIndexed(MVKCommandTypePool<MVKCmdDrawIndexed>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdDrawIndirect
 
-void MVKCmdDrawIndirect::setContent(VkBuffer buffer,
+MVKFuncionOverride_getTypePool(DrawIndirect)
+
+VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
+										VkBuffer buffer,
 										VkDeviceSize offset,
 										uint32_t drawCount,
 										uint32_t stride) {
@@ -510,9 +524,12 @@ void MVKCmdDrawIndirect::setContent(VkBuffer buffer,
 	_storeOverride = false;
 
     // Validate
-    if ( !(getDevice()->_pMetalFeatures->indirectDrawing) ) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing."));
+    if ( !(cmdBuff->getDevice()->_pMetalFeatures->indirectDrawing) ) {
+        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing.");
     }
+
+	cmdBuff->recordDraw(this);
+	return VK_SUCCESS;
 }
 
 // This is totally arbitrary, but we're forced to do this because we don't know how many vertices
@@ -590,7 +607,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 // to do it, since it will require switching to compute anyway. Do it all
                 // at once to get it over with.
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl);
-                id<MTLComputePipelineState> mtlConvertState = getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(false);
+                id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(false);
                 [mtlTessCtlEncoder setComputePipelineState: mtlConvertState];
                 [mtlTessCtlEncoder setBuffer: _mtlIndirectBuffer
                                       offset: _mtlIndirectBufferOffset
@@ -733,17 +750,17 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     }
 }
 
-MVKCmdDrawIndirect::MVKCmdDrawIndirect(MVKCommandTypePool<MVKCmdDrawIndirect>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdDrawIndexedIndirect
 
-void MVKCmdDrawIndexedIndirect::setContent(VkBuffer buffer,
-										VkDeviceSize offset,
-										uint32_t drawCount,
-										uint32_t stride) {
+MVKFuncionOverride_getTypePool(DrawIndexedIndirect)
+
+VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
+											   VkBuffer buffer,
+											   VkDeviceSize offset,
+											   uint32_t drawCount,
+											   uint32_t stride) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
@@ -753,9 +770,12 @@ void MVKCmdDrawIndexedIndirect::setContent(VkBuffer buffer,
 	_storeOverride = false;
 
     // Validate
-    if ( !(getDevice()->_pMetalFeatures->indirectDrawing) ) {
-        setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing."));
+    if ( !(cmdBuff->getDevice()->_pMetalFeatures->indirectDrawing) ) {
+        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing.");
     }
+
+	cmdBuff->recordDraw(this);
+	return VK_SUCCESS;
 }
 
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
@@ -818,7 +838,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 // to do it, since it will require switching to compute anyway. Do it all
                 // at once to get it over with.
                 if (drawIdx == 0) {
-                    id<MTLComputePipelineState> mtlConvertState = getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(true);
+                    id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(true);
                     [mtlTessCtlEncoder setComputePipelineState: mtlConvertState];
                     [mtlTessCtlEncoder setBuffer: _mtlIndirectBuffer
                                           offset: _mtlIndirectBufferOffset
@@ -849,7 +869,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 // or not there are gaps in it, because there's no way to tell Metal to
                 // offset an index buffer from a value in an indirect buffer. This also
                 // means that, to make a copy, we have to use a compute shader.
-                id<MTLComputePipelineState> mtlCopyIndexState = getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
+                id<MTLComputePipelineState> mtlCopyIndexState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
                 [mtlTessCtlEncoder setComputePipelineState: mtlCopyIndexState];
                 [mtlTessCtlEncoder setBuffer: ibb.mtlBuffer
                                       offset: ibb.offset
@@ -989,76 +1009,4 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         }
     }
 }
-
-MVKCmdDrawIndexedIndirect::MVKCmdDrawIndexedIndirect(MVKCommandTypePool<MVKCmdDrawIndexedIndirect>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
-
-#pragma mark -
-#pragma mark Command creation functions
-
-void mvkCmdBindVertexBuffers(MVKCommandBuffer* cmdBuff,
-							 uint32_t startBinding,
-							 uint32_t bindingCount,
-							 const VkBuffer* pBuffers,
-							 const VkDeviceSize* pOffsets) {
-	MVKCmdBindVertexBuffers* cmd = cmdBuff->_commandPool->_cmdBindVertexBuffersPool.acquireObject();
-	cmd->setContent(startBinding, bindingCount, pBuffers, pOffsets);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDraw(MVKCommandBuffer* cmdBuff,
-				uint32_t vertexCount,
-				uint32_t instanceCount,
-				uint32_t firstVertex,
-				uint32_t firstInstance) {
-	MVKCmdDraw* cmd = cmdBuff->_commandPool->_cmdDrawPool.acquireObject();
-	cmd->setContent(vertexCount, instanceCount, firstVertex, firstInstance);
-	cmdBuff->recordDraw(cmd);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDrawIndexed(MVKCommandBuffer* cmdBuff,
-					   uint32_t indexCount,
-					   uint32_t instanceCount,
-					   uint32_t firstIndex,
-					   int32_t vertexOffset,
-					   uint32_t firstInstance) {
-	MVKCmdDrawIndexed* cmd = cmdBuff->_commandPool->_cmdDrawIndexedPool.acquireObject();
-	cmd->setContent(indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
-	cmdBuff->recordDraw(cmd);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdBindIndexBuffer(MVKCommandBuffer* cmdBuff,
-						   VkBuffer buffer,
-						   VkDeviceSize offset,
-						   VkIndexType indexType) {
-	MVKCmdBindIndexBuffer* cmd = cmdBuff->_commandPool->_cmdBindIndexBufferPool.acquireObject();
-	cmd->setContent(buffer, offset, indexType);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDrawIndirect(MVKCommandBuffer* cmdBuff,
-						VkBuffer buffer,
-						VkDeviceSize offset,
-						uint32_t drawCount,
-						uint32_t stride) {
-	MVKCmdDrawIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndirectPool.acquireObject();
-	cmd->setContent(buffer, offset, drawCount, stride);
-	cmdBuff->recordDraw(cmd);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDrawIndexedIndirect(MVKCommandBuffer* cmdBuff,
-							   VkBuffer buffer,
-							   VkDeviceSize offset,
-							   uint32_t drawCount,
-							   uint32_t stride) {
-	MVKCmdDrawIndexedIndirect* cmd = cmdBuff->_commandPool->_cmdDrawIndexedIndirectPool.acquireObject();
-	cmd->setContent(buffer, offset, drawCount, stride);
-	cmdBuff->recordDraw(cmd);
-	cmdBuff->addCommand(cmd);
-}
-
 

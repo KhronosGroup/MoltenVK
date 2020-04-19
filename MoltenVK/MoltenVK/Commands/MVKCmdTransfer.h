@@ -37,25 +37,28 @@ class MVKBuffer;
 class MVKCmdCopyImage : public MVKCommand {
 
 public:
-	void setContent(VkImage srcImage,
-					VkImageLayout srcImageLayout,
-					VkImage dstImage,
-					VkImageLayout dstImageLayout,
-					uint32_t regionCount,
-					const VkImageCopy* pRegions,
-                    MVKCommandUse commandUse = kMVKCommandUseCopyImage);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkImage srcImage,
+						VkImageLayout srcImageLayout,
+						VkImage dstImage,
+						VkImageLayout dstImageLayout,
+						uint32_t regionCount,
+						const VkImageCopy* pRegions,
+						MVKCommandUse commandUse = kMVKCommandUseCopyImage);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdCopyImage(MVKCommandTypePool<MVKCmdCopyImage>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
-	void setContent(VkImage srcImage, VkImageLayout srcImageLayout,
-					VkImage dstImage, VkImageLayout dstImageLayout,
-					bool formatsMustMatch, MVKCommandUse commandUse);
-	void addImageCopyRegion(const VkImageCopy& region);
-	void addTempBufferImageCopyRegion(const VkImageCopy& region);
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkImage srcImage,
+						VkImageLayout srcImageLayout,
+						VkImage dstImage,
+						VkImageLayout dstImageLayout,
+						bool formatsMustMatch,
+						MVKCommandUse commandUse);
+	void addImageCopyRegion(const VkImageCopy& region, MVKPixelFormats* pixFmts);
+	void addTempBufferImageCopyRegion(const VkImageCopy& region, MVKPixelFormats* pixFmts);
 
 	MVKImage* _srcImage;
 	VkImageLayout _srcLayout;
@@ -93,25 +96,27 @@ typedef struct {
 class MVKCmdBlitImage : public MVKCmdCopyImage {
 
 public:
-	void setContent(VkImage srcImage,
-					VkImageLayout srcImageLayout,
-					VkImage dstImage,
-					VkImageLayout dstImageLayout,
-					uint32_t regionCount,
-					const VkImageBlit* pRegions,
-                    VkFilter filter,
-                    MVKCommandUse commandUse = kMVKCommandUseBlitImage);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkImage srcImage,
+						VkImageLayout srcImageLayout,
+						VkImage dstImage,
+						VkImageLayout dstImageLayout,
+						uint32_t regionCount,
+						const VkImageBlit* pRegions,
+						VkFilter filter,
+						MVKCommandUse commandUse = kMVKCommandUseBlitImage);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdBlitImage(MVKCommandTypePool<MVKCmdBlitImage>* pool);
+	MVKCmdBlitImage();
 
 	~MVKCmdBlitImage() override;
 
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool canCopy(const VkImageBlit& region);
-	void addImageBlitRegion(const VkImageBlit& region);
-	void addImageCopyRegionFromBlitRegion(const VkImageBlit& region);
+	void addImageBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
+	void addImageCopyRegionFromBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
 	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region);
     void initMTLRenderPassDescriptor();
 
@@ -134,21 +139,23 @@ typedef struct {
 class MVKCmdResolveImage : public MVKCommand {
 
 public:
-    void setContent(VkImage srcImage,
-                    VkImageLayout srcImageLayout,
-                    VkImage dstImage,
-                    VkImageLayout dstImageLayout,
-                    uint32_t regionCount,
-                    const VkImageResolve* pRegions);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkImage srcImage,
+						VkImageLayout srcImageLayout,
+						VkImage dstImage,
+						VkImageLayout dstImageLayout,
+						uint32_t regionCount,
+						const VkImageResolve* pRegions);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdResolveImage(MVKCommandTypePool<MVKCmdResolveImage>* pool);
+    MVKCmdResolveImage();
 
     ~MVKCmdResolveImage() override;
 
 protected:
-    void addExpansionRegion(const VkImageResolve& resolveRegion);
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	void addExpansionRegion(const VkImageResolve& resolveRegion);
     void addCopyRegion(const VkImageResolve& resolveRegion);
     void addResolveSlices(const VkImageResolve& resolveRegion);
     void initMTLRenderPassDescriptor();
@@ -172,17 +179,16 @@ protected:
 class MVKCmdCopyBuffer : public MVKCommand {
 
 public:
-	void setContent(VkBuffer srcBuffer,
-					VkBuffer destBuffer,
-					uint32_t regionCount,
-					const VkBufferCopy* pRegions);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBuffer srcBuffer,
+						VkBuffer destBuffer,
+						uint32_t regionCount,
+						const VkBufferCopy* pRegions);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdCopyBuffer(MVKCommandTypePool<MVKCmdCopyBuffer>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	MVKBuffer* _srcBuffer;
 	MVKBuffer* _dstBuffer;
@@ -197,19 +203,18 @@ protected:
 class MVKCmdBufferImageCopy : public MVKCommand {
 
 public:
-    void setContent(VkBuffer buffer,
-                    VkImage image,
-                    VkImageLayout imageLayout,
-                    uint32_t regionCount,
-                    const VkBufferImageCopy* pRegions,
-                    bool toImage);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBuffer buffer,
+						VkImage image,
+						VkImageLayout imageLayout,
+						uint32_t regionCount,
+						const VkBufferImageCopy* pRegions,
+						bool toImage);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdBufferImageCopy(MVKCommandTypePool<MVKCmdBufferImageCopy>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool isArrayTexture();
 
     MVKBuffer* _buffer;
@@ -227,17 +232,16 @@ protected:
 class MVKCmdClearAttachments : public MVKCommand {
 
 public:
-    void setContent(uint32_t attachmentCount,
-                    const VkClearAttachment* pAttachments,
-                    uint32_t rectCount,
-                    const VkClearRect* pRects);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t attachmentCount,
+						const VkClearAttachment* pAttachments,
+						uint32_t rectCount,
+						const VkClearRect* pRects);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdClearAttachments(MVKCommandTypePool<MVKCmdClearAttachments>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     void populateVertices(float attWidth, float attHeight);
     void populateVertices(VkClearRect& clearRect, float attWidth, float attHeight);
 
@@ -259,19 +263,18 @@ protected:
 class MVKCmdClearImage : public MVKCommand {
 
 public:
-    void setContent(VkImage image,
-                    VkImageLayout imageLayout,
-                    const VkClearValue& clearValue,
-                    uint32_t rangeCount,
-                    const VkImageSubresourceRange* pRanges,
-                    bool isDepthStencilClear);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkImage image,
+						VkImageLayout imageLayout,
+						const VkClearValue& clearValue,
+						uint32_t rangeCount,
+						const VkImageSubresourceRange* pRanges,
+						bool isDepthStencilClear);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdClearImage(MVKCommandTypePool<MVKCmdClearImage>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     uint32_t populateMetalCopyRegions(const VkImageBlit* pRegion, uint32_t cpyRgnIdx);
     uint32_t populateMetalBlitRenders(const VkImageBlit* pRegion, uint32_t rendRgnIdx);
     void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit* pRegion);
@@ -293,15 +296,18 @@ protected:
 class MVKCmdFillBuffer : public MVKCommand {
 
 public:
-    void setContent(VkBuffer dstBuffer, VkDeviceSize dstOffset, VkDeviceSize size, uint32_t data);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBuffer dstBuffer,
+						VkDeviceSize dstOffset,
+						VkDeviceSize size,
+						uint32_t data);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdFillBuffer(MVKCommandTypePool<MVKCmdFillBuffer>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
-    MVKBuffer* _dstBuffer;
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKBuffer* _dstBuffer;
     VkDeviceSize _dstOffset;
     uint32_t _wordCount;
     uint32_t _dataValue;
@@ -315,112 +321,19 @@ protected:
 class MVKCmdUpdateBuffer : public MVKCommand {
 
 public:
-    void setContent(VkBuffer dstBuffer,
-                    VkDeviceSize dstOffset,
-                    VkDeviceSize dataSize,
-                    const void* pData,
-                    bool useDataCache);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkBuffer dstBuffer,
+						VkDeviceSize dstOffset,
+						VkDeviceSize dataSize,
+						const void* pData);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdUpdateBuffer(MVKCommandTypePool<MVKCmdUpdateBuffer>* pool) :
-		MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 protected:
-    MVKBuffer* _dstBuffer;
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKBuffer* _dstBuffer;
     VkDeviceSize _dstOffset;
     VkDeviceSize _dataSize;
     MVKVectorDefault<uint8_t> _srcDataCache;
 };
-
-
-#pragma mark -
-#pragma mark Command creation functions
-
-/** Adds a copy image command to the specified command buffer. */
-void mvkCmdCopyImage(MVKCommandBuffer* cmdBuff,
-					 VkImage srcImage,
-					 VkImageLayout srcImageLayout,
-					 VkImage dstImage,
-					 VkImageLayout dstImageLayout,
-					 uint32_t regionCount,
-					 const VkImageCopy* pRegions);
-
-/** Adds a BLIT image command to the specified command buffer. */
-void mvkCmdBlitImage(MVKCommandBuffer* cmdBuff,
-					 VkImage srcImage,
-					 VkImageLayout srcImageLayout,
-					 VkImage dstImage,
-					 VkImageLayout dstImageLayout,
-					 uint32_t regionCount,
-					 const VkImageBlit* pRegions,
-					 VkFilter filter);
-
-/** Adds a resolve image command to the specified command buffer. */
-void mvkCmdResolveImage(MVKCommandBuffer* cmdBuff,
-                     VkImage srcImage,
-                     VkImageLayout srcImageLayout,
-                     VkImage dstImage,
-                     VkImageLayout dstImageLayout,
-                     uint32_t regionCount,
-                     const VkImageResolve* pRegions);
-
-/** Adds a copy buffer command to the specified command buffer. */
-void mvkCmdCopyBuffer(MVKCommandBuffer* cmdBuff,
-					  VkBuffer srcBuffer,
-					  VkBuffer dstBuffer,
-					  uint32_t regionCount,
-					  const VkBufferCopy* pRegions);
-
-/** Adds a copy buffer to image command to the specified command buffer. */
-void mvkCmdCopyBufferToImage(MVKCommandBuffer* cmdBuff,
-                             VkBuffer srcBuffer,
-                             VkImage dstImage,
-                             VkImageLayout dstImageLayout,
-                             uint32_t regionCount,
-                             const VkBufferImageCopy* pRegions);
-
-/** Adds a copy buffer to image command to the specified command buffer. */
-void mvkCmdCopyImageToBuffer(MVKCommandBuffer* cmdBuff,
-                             VkImage srcImage,
-                             VkImageLayout srcImageLayout,
-                             VkBuffer dstBuffer,
-                             uint32_t regionCount,
-                             const VkBufferImageCopy* pRegions);
-
-/** Adds a clear attachments command to the specified command buffer. */
-void mvkCmdClearAttachments(MVKCommandBuffer* cmdBuff,
-                            uint32_t attachmentCount,
-                            const VkClearAttachment* pAttachments,
-                            uint32_t rectCount,
-                            const VkClearRect* pRects);
-
-/** Adds a clear color image command to the specified command buffer. */
-void mvkCmdClearColorImage(MVKCommandBuffer* cmdBuff,
-						   VkImage image,
-						   VkImageLayout imageLayout,
-						   const VkClearColorValue* pColor,
-						   uint32_t rangeCount,
-						   const VkImageSubresourceRange* pRanges);
-
-/** Adds a clear depth stencil image command to the specified command buffer. */
-void mvkCmdClearDepthStencilImage(MVKCommandBuffer* cmdBuff,
-                                  VkImage image,
-                                  VkImageLayout imageLayout,
-                                  const VkClearDepthStencilValue* pDepthStencil,
-                                  uint32_t rangeCount,
-                                  const VkImageSubresourceRange* pRanges);
-
-/** Adds a fill buffer command to the specified command buffer. */
-void mvkCmdFillBuffer(MVKCommandBuffer* cmdBuff,
-                      VkBuffer dstBuffer,
-                      VkDeviceSize dstOffset,
-                      VkDeviceSize size,
-                      uint32_t data);
-
-/** Adds a buffer update command to the specified command buffer. */
-void mvkCmdUpdateBuffer(MVKCommandBuffer* cmdBuff,
-                        VkBuffer dstBuffer,
-                        VkDeviceSize dstOffset,
-                        VkDeviceSize dataSize,
-                        const void* pData);

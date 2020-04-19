@@ -47,7 +47,7 @@
 
 
 #pragma mark -
-#pragma mark Tracing Vulkan calls
+#pragma mark Vulkan call templates
 
 typedef enum {
 	MVKVulkanCallTraceLevelNone = 0,
@@ -113,6 +113,19 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 
 #define MVKTraceVulkanCallStart()	uint64_t tvcStartTime = MVKTraceVulkanCallStartImpl(__FUNCTION__)
 #define MVKTraceVulkanCallEnd()		MVKTraceVulkanCallEndImpl(__FUNCTION__, tvcStartTime)
+
+// Create and configure a command of particular type.
+// If the command is configured correctly, add it to the buffer,
+// otherwise indicate the configuration error to the command buffer.
+#define MVKAddCmd(cmdType, vkCmdBuff, ...)  										\
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(vkCmdBuff);	\
+	MVKCmd ##cmdType* cmd = cmdBuff->getCommandPool()->_cmd ##cmdType ##Pool.acquireObject();	\
+	VkResult cmdRslt = cmd->setContent(cmdBuff, ##__VA_ARGS__);						\
+	if(cmdRslt == VK_SUCCESS) {														\
+		cmdBuff->addCommand(cmd);													\
+	} else {																		\
+		cmdBuff->setConfigurationResult(cmdRslt);									\
+	}
 
 
 #pragma mark -
@@ -1328,8 +1341,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindPipeline(
     VkPipeline                                  pipeline) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdBindPipeline(cmdBuff, pipelineBindPoint, pipeline);
+	MVKAddCmd(BindPipeline, commandBuffer, pipelineBindPoint, pipeline);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1340,8 +1352,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetViewport(
 	const VkViewport*                           pViewports) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdSetViewport(cmdBuff, firstViewport, viewportCount, pViewports);
+	MVKAddCmd(SetViewport, commandBuffer, firstViewport, viewportCount, pViewports);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1352,8 +1363,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetScissor(
 	const VkRect2D*                             pScissors) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdSetScissor(cmdBuff, firstScissor, scissorCount, pScissors);
+	MVKAddCmd(SetScissor, commandBuffer, firstScissor, scissorCount, pScissors);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1362,8 +1372,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetLineWidth(
 	float                                       lineWidth) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdSetLineWidth(cmdBuff, lineWidth);
+    MVKAddCmd(SetLineWidth, commandBuffer, lineWidth);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1374,8 +1383,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetDepthBias(
 	float                                       depthBiasSlopeFactor) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdSetDepthBias(cmdBuff,depthBiasConstantFactor, depthBiasClamp, depthBiasSlopeFactor);
+    MVKAddCmd(SetDepthBias, commandBuffer,depthBiasConstantFactor, depthBiasClamp, depthBiasSlopeFactor);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1384,8 +1392,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetBlendConstants(
 	const float                                 blendConst[4]) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdSetBlendConstants(cmdBuff, blendConst);
+    MVKAddCmd(SetBlendConstants, commandBuffer, blendConst);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1395,8 +1402,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetDepthBounds(
 	float                                       maxDepthBounds) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdSetDepthBounds(cmdBuff, minDepthBounds, maxDepthBounds);
+    MVKAddCmd(SetDepthBounds, commandBuffer, minDepthBounds, maxDepthBounds);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1406,8 +1412,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetStencilCompareMask(
 	uint32_t                                    stencilCompareMask) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdSetStencilCompareMask(cmdBuff, faceMask, stencilCompareMask);
+    MVKAddCmd(SetStencilCompareMask, commandBuffer, faceMask, stencilCompareMask);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1417,8 +1422,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetStencilWriteMask(
 	uint32_t                                    stencilWriteMask) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdSetStencilWriteMask(cmdBuff, faceMask, stencilWriteMask);
+    MVKAddCmd(SetStencilWriteMask, commandBuffer, faceMask, stencilWriteMask);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1428,8 +1432,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetStencilReference(
 	uint32_t                                    stencilReference) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdSetStencilReference(cmdBuff, faceMask, stencilReference);
+    MVKAddCmd(SetStencilReference, commandBuffer, faceMask, stencilReference);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1444,9 +1447,8 @@ MVK_PUBLIC_SYMBOL void vkCmdBindDescriptorSets(
     const uint32_t*                             pDynamicOffsets) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdBindDescriptorSets(cmdBuff, pipelineBindPoint, layout, firstSet, setCount,
-							 pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
+	MVKAddCmd(BindDescriptorSets, commandBuffer, pipelineBindPoint, layout,
+			  firstSet, setCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1457,8 +1459,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindIndexBuffer(
     VkIndexType                                 indexType) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdBindIndexBuffer(cmdBuff, buffer, offset, indexType);
+	MVKAddCmd(BindIndexBuffer, commandBuffer, buffer, offset, indexType);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1470,8 +1471,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindVertexBuffers(
     const VkDeviceSize*                         pOffsets) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdBindVertexBuffers(cmdBuff, startBinding, bindingCount, pBuffers, pOffsets);
+	MVKAddCmd(BindVertexBuffers, commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1483,8 +1483,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDraw(
 	uint32_t                                    firstInstance) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDraw(cmdBuff, vertexCount, instanceCount, firstVertex, firstInstance);
+	MVKAddCmd(Draw, commandBuffer, vertexCount, instanceCount, firstVertex, firstInstance);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1497,8 +1496,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndexed(
 	uint32_t                                    firstInstance) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDrawIndexed(cmdBuff, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
+	MVKAddCmd(DrawIndexed, commandBuffer, indexCount, instanceCount, firstIndex, vertexOffset, firstInstance);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1510,8 +1508,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndirect(
     uint32_t                                    stride) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDrawIndirect(cmdBuff, buffer, offset, drawCount, stride);
+	MVKAddCmd(DrawIndirect, commandBuffer, buffer, offset, drawCount, stride);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1523,8 +1520,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndexedIndirect(
     uint32_t                                    stride) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDrawIndexedIndirect(cmdBuff, buffer, offset, drawCount, stride);
+	MVKAddCmd(DrawIndexedIndirect, commandBuffer, buffer, offset, drawCount, stride);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1535,8 +1531,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDispatch(
     uint32_t                                    z) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDispatch(cmdBuff, x, y, z);
+	MVKAddCmd(Dispatch, commandBuffer, 0, 0, 0, x, y, z);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1546,8 +1541,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDispatchIndirect(
     VkDeviceSize                                offset) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdDispatchIndirect(cmdBuff, buffer, offset);
+    MVKAddCmd(DispatchIndirect, commandBuffer, buffer, offset);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1559,8 +1553,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBuffer(
     const VkBufferCopy*                         pRegions) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdCopyBuffer(cmdBuff, srcBuffer, destBuffer, regionCount, pRegions);
+	MVKAddCmd(CopyBuffer, commandBuffer, srcBuffer, destBuffer, regionCount, pRegions);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1574,11 +1567,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImage(
     const VkImageCopy*                          pRegions) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdCopyImage(cmdBuff,
-					srcImage, srcImageLayout,
-					dstImage, dstImageLayout,
-					regionCount, pRegions);
+	MVKAddCmd(CopyImage, commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1593,11 +1582,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBlitImage(
     VkFilter                                    filter) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdBlitImage(cmdBuff,
-					srcImage, srcImageLayout,
-					dstImage, dstImageLayout,
-					regionCount, pRegions, filter);
+	MVKAddCmd(BlitImage, commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1610,9 +1595,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBufferToImage(
     const VkBufferImageCopy*                    pRegions) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdCopyBufferToImage(cmdBuff, srcBuffer, dstImage,
-                            dstImageLayout, regionCount, pRegions);
+    MVKAddCmd(BufferImageCopy, commandBuffer, srcBuffer, dstImage, dstImageLayout, regionCount, pRegions, true);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1625,9 +1608,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImageToBuffer(
     const VkBufferImageCopy*                    pRegions) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdCopyImageToBuffer(cmdBuff, srcImage, srcImageLayout,
-                            dstBuffer, regionCount, pRegions);
+	MVKAddCmd(BufferImageCopy, commandBuffer, dstBuffer, srcImage, srcImageLayout, regionCount, pRegions, false);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1639,8 +1620,7 @@ MVK_PUBLIC_SYMBOL void vkCmdUpdateBuffer(
     const void*                                 pData) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdUpdateBuffer(cmdBuff, dstBuffer, dstOffset, dataSize, pData);
+    MVKAddCmd(UpdateBuffer, commandBuffer, dstBuffer, dstOffset, dataSize, pData);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1652,8 +1632,7 @@ MVK_PUBLIC_SYMBOL void vkCmdFillBuffer(
     uint32_t                                    data) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdFillBuffer(cmdBuff, dstBuffer, dstOffset, size, data);
+    MVKAddCmd(FillBuffer, commandBuffer, dstBuffer, dstOffset, size, data);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1666,8 +1645,9 @@ MVK_PUBLIC_SYMBOL void vkCmdClearColorImage(
     const VkImageSubresourceRange*              pRanges) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdClearColorImage(cmdBuff, image, imageLayout, pColor, rangeCount, pRanges);
+	VkClearValue clrVal;
+	clrVal.color = *pColor;
+	MVKAddCmd(ClearImage, commandBuffer, image, imageLayout, clrVal, rangeCount, pRanges, false);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1680,8 +1660,9 @@ MVK_PUBLIC_SYMBOL void vkCmdClearDepthStencilImage(
     const VkImageSubresourceRange*              pRanges) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdClearDepthStencilImage(cmdBuff, image, imageLayout, pDepthStencil, rangeCount, pRanges);
+	VkClearValue clrVal;
+	clrVal.depthStencil = *pDepthStencil;
+    MVKAddCmd(ClearImage, commandBuffer, image, imageLayout, clrVal, rangeCount, pRanges, true);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1693,8 +1674,7 @@ MVK_PUBLIC_SYMBOL void vkCmdClearAttachments(
 	const VkClearRect*                          pRects) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdClearAttachments(cmdBuff, attachmentCount, pAttachments, rectCount, pRects);
+	MVKAddCmd(ClearAttachments, commandBuffer, attachmentCount, pAttachments, rectCount, pRects);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1708,9 +1688,8 @@ MVK_PUBLIC_SYMBOL void vkCmdResolveImage(
     const VkImageResolve*                       pRegions) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdResolveImage(cmdBuff, srcImage, srcImageLayout,
-                       dstImage, dstImageLayout, regionCount, pRegions);
+	MVKAddCmd(ResolveImage, commandBuffer, srcImage, srcImageLayout,
+			  dstImage, dstImageLayout, regionCount, pRegions);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1720,8 +1699,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetEvent(
     VkPipelineStageFlags                        stageMask) {
 	
 	MVKTraceVulkanCallStart();
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdSetEvent(cmdBuff, event, stageMask);
+	MVKAddCmd(SetResetEvent, commandBuffer, event, stageMask, true);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1731,8 +1709,7 @@ MVK_PUBLIC_SYMBOL void vkCmdResetEvent(
     VkPipelineStageFlags                        stageMask) {
 	
 	MVKTraceVulkanCallStart();
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdResetEvent(cmdBuff, event, stageMask);
+	MVKAddCmd(SetResetEvent, commandBuffer, event, stageMask, false);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1750,12 +1727,11 @@ MVK_PUBLIC_SYMBOL void vkCmdWaitEvents(
 	const VkImageMemoryBarrier*                 pImageMemoryBarriers) {
 
 	MVKTraceVulkanCallStart();
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdWaitEvents(cmdBuff, eventCount, pEvents,
-					 srcStageMask, dstStageMask,
-					 memoryBarrierCount, pMemoryBarriers,
-					 bufferMemoryBarrierCount, pBufferMemoryBarriers,
-					 imageMemoryBarrierCount, pImageMemoryBarriers);
+	MVKAddCmd(WaitEvents, commandBuffer, eventCount, pEvents,
+			  srcStageMask, dstStageMask,
+			  memoryBarrierCount, pMemoryBarriers,
+			  bufferMemoryBarrierCount, pBufferMemoryBarriers,
+			  imageMemoryBarrierCount, pImageMemoryBarriers);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1772,11 +1748,10 @@ MVK_PUBLIC_SYMBOL void vkCmdPipelineBarrier(
 	const VkImageMemoryBarrier*                 pImageMemoryBarriers) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdPipelineBarrier(cmdBuff, srcStageMask, dstStageMask, dependencyFlags,
-						  memoryBarrierCount, pMemoryBarriers,
-						  bufferMemoryBarrierCount, pBufferMemoryBarriers,
-						  imageMemoryBarrierCount, pImageMemoryBarriers);
+	MVKAddCmd(PipelineBarrier, commandBuffer, srcStageMask, dstStageMask, dependencyFlags,
+			  memoryBarrierCount, pMemoryBarriers,
+			  bufferMemoryBarrierCount, pBufferMemoryBarriers,
+			  imageMemoryBarrierCount, pImageMemoryBarriers);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1787,8 +1762,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginQuery(
     VkQueryControlFlags                         flags) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdBeginQuery(cmdBuff, queryPool, query, flags);
+    MVKAddCmd(BeginQuery, commandBuffer, queryPool, query, flags);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1798,8 +1772,7 @@ MVK_PUBLIC_SYMBOL void vkCmdEndQuery(
     uint32_t                                    query) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdEndQuery(cmdBuff, queryPool, query);
+    MVKAddCmd(EndQuery, commandBuffer, queryPool, query);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1810,8 +1783,7 @@ MVK_PUBLIC_SYMBOL void vkCmdResetQueryPool(
     uint32_t                                    queryCount) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdResetQueryPool(cmdBuff, queryPool, firstQuery, queryCount);
+    MVKAddCmd(ResetQueryPool, commandBuffer, queryPool, firstQuery, queryCount);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1822,8 +1794,7 @@ MVK_PUBLIC_SYMBOL void vkCmdWriteTimestamp(
 	uint32_t                                    query) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdWriteTimestamp(cmdBuff, pipelineStage, queryPool, query);
+	MVKAddCmd(WriteTimestamp, commandBuffer, pipelineStage, queryPool, query);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1838,9 +1809,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyQueryPoolResults(
     VkQueryResultFlags                          flags) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdCopyQueryPoolResults(cmdBuff, queryPool, firstQuery, queryCount,
-                               destBuffer, destOffset, destStride, flags);
+	MVKAddCmd(CopyQueryPoolResults, commandBuffer, queryPool, firstQuery,
+			  queryCount, destBuffer, destOffset, destStride, flags);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1853,8 +1823,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPushConstants(
     const void*                                 pValues) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdPushConstants(cmdBuff, layout, stageFlags, offset, size, pValues);
+	MVKAddCmd(PushConstants, commandBuffer, layout, stageFlags, offset, size, pValues);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1864,8 +1833,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
     VkSubpassContents							contents) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdBeginRenderPass(cmdBuff,pRenderPassBegin, contents);
+	MVKAddCmd(BeginRenderPass, commandBuffer,pRenderPassBegin, contents);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1874,8 +1842,7 @@ MVK_PUBLIC_SYMBOL void vkCmdNextSubpass(
     VkSubpassContents							contents) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdNextSubpass(cmdBuff, contents);
+	MVKAddCmd(NextSubpass, commandBuffer, contents);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1883,8 +1850,7 @@ MVK_PUBLIC_SYMBOL void vkCmdEndRenderPass(
     VkCommandBuffer                             commandBuffer) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdEndRenderPass(cmdBuff);
+	MVKAddCmd(EndRenderPass, commandBuffer);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1894,8 +1860,7 @@ MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
     const VkCommandBuffer*						pCommandBuffers) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdExecuteCommands(cmdBuff, cmdBuffersCount, pCommandBuffers);
+	MVKAddCmd(ExecuteCommands, commandBuffer, cmdBuffersCount, pCommandBuffers);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2000,8 +1965,8 @@ MVK_PUBLIC_SYMBOL void vkCmdSetDeviceMaskKHR(
     uint32_t                                    deviceMask) {
 
     MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdSetDeviceMask(cmdBuff, deviceMask);
+	// No-op for now...
+//    MVKAddCmd(SetDeviceMask, commandBuffer, deviceMask);
     MVKTraceVulkanCallEnd();
 }
 
@@ -2015,8 +1980,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDispatchBaseKHR(
     uint32_t                                    groupCountZ) {
 	
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDispatchBase(cmdBuff, baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
+	MVKAddCmd(Dispatch, commandBuffer, baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2204,8 +2168,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetKHR(
     const VkWriteDescriptorSet*                 pDescriptorWrites) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdPushDescriptorSet(cmdBuff, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
+    MVKAddCmd(PushDescriptorSet, commandBuffer, pipelineBindPoint, layout, set, descriptorWriteCount, pDescriptorWrites);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2217,8 +2180,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
     const void*                                pData) {
 
 	MVKTraceVulkanCallStart();
-    MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-    mvkCmdPushDescriptorSetWithTemplate(cmdBuff, descriptorUpdateTemplate, layout, set, pData);
+    MVKAddCmd(PushDescriptorSetWithTemplate, commandBuffer, descriptorUpdateTemplate, layout, set, pData);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2525,8 +2487,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerBeginEXT(
 	const VkDebugMarkerMarkerInfoEXT*           pMarkerInfo) {
 
 	MVKTraceVulkanCallStart();
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDebugMarkerBegin(cmdBuff, pMarkerInfo);
+	MVKAddCmd(DebugMarkerBegin, commandBuffer, pMarkerInfo->pMarkerName, pMarkerInfo->color);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2534,8 +2495,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerEndEXT(
 	VkCommandBuffer                             commandBuffer) {
 
 	MVKTraceVulkanCallStart();
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDebugMarkerEnd(cmdBuff);
+	MVKAddCmd(DebugMarkerEnd, commandBuffer);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2544,8 +2504,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerInsertEXT(
 	const VkDebugMarkerMarkerInfoEXT*           pMarkerInfo) {
 
 	MVKTraceVulkanCallStart();
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdDebugMarkerInsert(cmdBuff, pMarkerInfo);
+	MVKAddCmd(DebugMarkerInsert, commandBuffer, pMarkerInfo->pMarkerName, pMarkerInfo->color);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2602,8 +2561,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginDebugUtilsLabelEXT(
 	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
 
 	MVKTraceVulkanCallStart();
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdBeginDebugUtilsLabel(cmdBuff, pLabelInfo);
+	MVKAddCmd(DebugMarkerBegin, commandBuffer, pLabelInfo->pLabelName, pLabelInfo->color);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2611,8 +2569,7 @@ MVK_PUBLIC_SYMBOL void vkCmdEndDebugUtilsLabelEXT(
 	VkCommandBuffer                             commandBuffer) {
 
 	MVKTraceVulkanCallStart();
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdEndDebugUtilsLabel(cmdBuff);
+	MVKAddCmd(DebugMarkerEnd, commandBuffer);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2621,8 +2578,7 @@ MVK_PUBLIC_SYMBOL void vkCmdInsertDebugUtilsLabelEXT(
 	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
 
 	MVKTraceVulkanCallStart();
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(commandBuffer);
-	mvkCmdInsertDebugUtilsLabel(cmdBuff, pLabelInfo);
+	MVKAddCmd(DebugMarkerInsert, commandBuffer, pLabelInfo->pLabelName, pLabelInfo->color);
 	MVKTraceVulkanCallEnd();
 }
 

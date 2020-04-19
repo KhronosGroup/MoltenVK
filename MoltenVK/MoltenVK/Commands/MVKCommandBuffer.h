@@ -79,14 +79,14 @@ public:
 	/** Returns the number of commands currently in this command buffer. */
 	inline uint32_t getCommandCount() { return _commandCount; }
 
+	/** Returns the command pool backing this command buffer. */
+	inline MVKCommandPool* getCommandPool() { return _commandPool; }
+
 	/** Submit the commands in this buffer as part of the queue submission. */
 	void submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit);
 
     /** Returns whether this command buffer can be submitted to a queue more than once. */
     inline bool getIsReusable() { return _isReusable; }
-
-	/** The command pool that is the source of commands for this buffer. */
-	MVKCommandPool* _commandPool;
 
     /**
      * Metal requires that a visibility buffer is established when a render pass is created, 
@@ -98,7 +98,7 @@ public:
     id<MTLBuffer> _initialVisibilityResultMTLBuffer;
 
 
-#pragma mark Constituent render pass management
+#pragma mark Tessellation constituent command management
     /** Preps metadata for recording render pass */
 	void recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass);
 	
@@ -157,6 +157,7 @@ protected:
 	MVKCommand* _head = nullptr;
 	MVKCommand* _tail = nullptr;
 	uint32_t _commandCount;
+	MVKCommandPool* _commandPool;
 	std::atomic_flag _isExecutingNonConcurrently;
 	VkCommandBufferInheritanceInfo _secondaryInheritanceInfo;
 	id<MTLCommandBuffer> _prefilledMTLCmdBuffer = nil;
