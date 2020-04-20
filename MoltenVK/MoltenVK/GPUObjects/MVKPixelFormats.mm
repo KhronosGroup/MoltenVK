@@ -1231,9 +1231,9 @@ void MVKPixelFormats::buildVkFormatMaps() {
 			MVKFormatType fmtType = vkDesc.formatType;
 			MVKMTLFmtCaps mtlPixFmtCaps = getMTLPixelFormatDesc(vkFmt).mtlFmtCaps;
 			MVKMTLFmtCaps mtlVtxFmtCaps = getMTLVertexFormatDesc(vkFmt).mtlFmtCaps;
-			vkDesc.properties = { getLinearTilingFeatures(mtlPixFmtCaps, fmtType),
-								  getOptimalTilingFeatures(mtlPixFmtCaps),
-								  getBufferFeatures(mtlPixFmtCaps, mtlVtxFmtCaps, fmtType) };
+			vkDesc.properties = { getLinearTilingFeatures(vkFmt, mtlPixFmtCaps, fmtType),
+								  getOptimalTilingFeatures(vkFmt, mtlPixFmtCaps),
+								  getBufferFeatures(vkFmt, mtlPixFmtCaps, mtlVtxFmtCaps, fmtType) };
 		}
 	}
 }
@@ -1262,7 +1262,8 @@ typedef enum : VkFormatFeatureFlags {
 	if (mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCaps ##CAP)) {  \
 		vkFeatures |= kMVKVkFormatFeatureFlagsTex ##CAP;  \
 	}
-VkFormatFeatureFlags MVKPixelFormats::getOptimalTilingFeatures(MVKMTLFmtCaps mtlFmtCaps) {
+VkFormatFeatureFlags MVKPixelFormats::getOptimalTilingFeatures(VkFormat vkFormat,
+															   MVKMTLFmtCaps mtlFmtCaps) {
 	VkFormatFeatureFlags vkFeatures = kMVKVkFormatFeatureFlagsTexNone;
 	enableTexFormatFeatures(Read);
 	enableTexFormatFeatures(Filter);
@@ -1270,10 +1271,16 @@ VkFormatFeatureFlags MVKPixelFormats::getOptimalTilingFeatures(MVKMTLFmtCaps mtl
 	enableTexFormatFeatures(ColorAtt);
 	enableTexFormatFeatures(DSAtt);
 	enableTexFormatFeatures(Blend);
+	// Only support atomics on R32UI/R32I images for now. Until Metal supports this
+	// for real, we need to use the underlying buffer to support image atomics.
+	if (vkFormat != VK_FORMAT_R32_UINT && vkFormat != VK_FORMAT_R32_SINT) {
+		mvkDisableFlags(vkFeatures, VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT);
+	}
 	return vkFeatures;
 }
 
-VkFormatFeatureFlags MVKPixelFormats::getLinearTilingFeatures(MVKMTLFmtCaps mtlFmtCaps,
+VkFormatFeatureFlags MVKPixelFormats::getLinearTilingFeatures(VkFormat vkFormat,
+															  MVKMTLFmtCaps mtlFmtCaps,
 															  MVKFormatType mvkFmtType) {
 
 	// Depth-stencil or compressed formats cannot be used for linear textures.
@@ -1282,7 +1289,7 @@ VkFormatFeatureFlags MVKPixelFormats::getLinearTilingFeatures(MVKMTLFmtCaps mtlF
 	}
 
 	// Start with the optimal features.
-	VkFormatFeatureFlags vkFeatures = getOptimalTilingFeatures(mtlFmtCaps);
+	VkFormatFeatureFlags vkFeatures = getOptimalTilingFeatures(vkFormat, mtlFmtCaps);
 
 #if MVK_MACOS
 	// On macOS, linear textures cannot be used as attachments, so disable those features.
@@ -1294,7 +1301,8 @@ VkFormatFeatureFlags MVKPixelFormats::getLinearTilingFeatures(MVKMTLFmtCaps mtlF
 	return vkFeatures;
 }
 
-VkFormatFeatureFlags MVKPixelFormats::getBufferFeatures(MVKMTLFmtCaps mtlPixFmtCaps,
+VkFormatFeatureFlags MVKPixelFormats::getBufferFeatures(VkFormat vkFormat,
+														MVKMTLFmtCaps mtlPixFmtCaps,
 														MVKMTLFmtCaps mtlVtxFmtCaps,
 														MVKFormatType mvkFmtType) {
 
@@ -1312,6 +1320,11 @@ VkFormatFeatureFlags MVKPixelFormats::getBufferFeatures(MVKMTLFmtCaps mtlPixFmtC
 	}
 	if (mvkAreAllFlagsEnabled(mtlVtxFmtCaps, kMVKMTLFmtCapsVertex)) {
 		vkFeatures |= kMVKVkFormatFeatureFlagsBufVertex;
+	}
+	// Only support atomics on R32UI/R32I images for now. Until Metal supports this
+	// for real, we need to use the underlying buffer to support image atomics.
+	if (vkFormat != VK_FORMAT_R32_UINT && vkFormat != VK_FORMAT_R32_SINT) {
+		mvkDisableFlags(vkFeatures, VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT);
 	}
 	return vkFeatures;
 }
