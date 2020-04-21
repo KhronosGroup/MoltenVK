@@ -295,7 +295,7 @@ public:
     bool supportsDynamicState(VkDynamicState state);
 
 	/** Clips the scissor to ensure it fits inside the render area.  */
-	MTLScissorRect clipToRenderArea(MTLScissorRect mtlScissor);
+	VkRect2D clipToRenderArea(VkRect2D scissor);
 
 	/** Called by each graphics draw command to establish any outstanding state just prior to performing the draw. */
 	void finalizeDrawState(MVKGraphicsStage stage);

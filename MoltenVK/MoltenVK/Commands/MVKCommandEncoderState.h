@@ -140,7 +140,7 @@ public:
 	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
 	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
 	 */
-	void setViewports(const MVKVector<MTLViewport> &mtlViewports,
+	void setViewports(const MVKVector<VkViewport> &viewports,
 					  uint32_t firstViewport,
 					  bool isSettingDynamically);
 
@@ -152,7 +152,7 @@ protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
-    MVKVectorInline<MTLViewport, kMVKCachedViewportScissorCount> _mtlViewports, _mtlDynamicViewports;
+    MVKVectorInline<VkViewport, kMVKCachedViewportScissorCount> _viewports, _dynamicViewports;
 };
 
 
@@ -169,7 +169,7 @@ public:
 	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
 	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
 	 */
-	void setScissors(const MVKVector<MTLScissorRect> &mtlScissors,
+	void setScissors(const MVKVector<VkRect2D> &scissors,
 					 uint32_t firstScissor,
 					 bool isSettingDynamically);
 
@@ -181,7 +181,7 @@ protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
-    MVKVectorInline<MTLScissorRect, kMVKCachedViewportScissorCount> _mtlScissors, _mtlDynamicScissors;
+    MVKVectorInline<VkRect2D, kMVKCachedViewportScissorCount> _scissors, _dynamicScissors;
 };
 
 

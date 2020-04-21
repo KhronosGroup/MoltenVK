@@ -254,8 +254,8 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             cmdEncoder->_blendColorState.setBlendColor(_blendConstants[0], _blendConstants[1],
                                                        _blendConstants[2], _blendConstants[3], false);
             cmdEncoder->_depthBiasState.setDepthBias(_rasterInfo);
-            cmdEncoder->_viewportState.setViewports(_mtlViewports, 0, false);
-            cmdEncoder->_scissorState.setScissors(_mtlScissors, 0, false);
+            cmdEncoder->_viewportState.setViewports(_viewports, 0, false);
+            cmdEncoder->_scissorState.setScissors(_scissors, 0, false);
             cmdEncoder->_mtlPrimitiveType = _mtlPrimitiveType;
 
             [mtlCmdEnc setCullMode: _mtlCullMode];
@@ -376,24 +376,24 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_hasDepthStencilInfo = mvkSetOrClear(&_depthStencilInfo, pCreateInfo->pDepthStencilState);
 
 	// Viewports and scissors
-	if (pCreateInfo->pViewportState) {
-		_mtlViewports.reserve(pCreateInfo->pViewportState->viewportCount);
-		for (uint32_t i = 0; i < pCreateInfo->pViewportState->viewportCount; i++) {
+	auto pVPState = pCreateInfo->pViewportState;
+	if (pVPState) {
+		uint32_t vpCnt = pVPState->viewportCount;
+		_viewports.reserve(vpCnt);
+		for (uint32_t vpIdx = 0; vpIdx < vpCnt; vpIdx++) {
 			// If viewport is dyanamic, we still add a dummy so that the count will be tracked.
-			MTLViewport mtlVP;
-			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_VIEWPORT] ) {
-				mtlVP = mvkMTLViewportFromVkViewport(pCreateInfo->pViewportState->pViewports[i]);
-			}
-			_mtlViewports.push_back(mtlVP);
+			VkViewport vp;
+			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_VIEWPORT] ) { vp = pVPState->pViewports[vpIdx]; }
+			_viewports.push_back(vp);
 		}
-		_mtlScissors.reserve(pCreateInfo->pViewportState->scissorCount);
-		for (uint32_t i = 0; i < pCreateInfo->pViewportState->scissorCount; i++) {
+
+		uint32_t sCnt = pVPState->scissorCount;
+		_scissors.reserve(sCnt);
+		for (uint32_t sIdx = 0; sIdx < sCnt; sIdx++) {
 			// If scissor is dyanamic, we still add a dummy so that the count will be tracked.
-			MTLScissorRect mtlSc;
-			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_SCISSOR] ) {
-				mtlSc = mvkMTLScissorRectFromVkRect2D(pCreateInfo->pViewportState->pScissors[i]);
-			}
-			_mtlScissors.push_back(mtlSc);
+			VkRect2D sc;
+			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_SCISSOR] ) { sc = pVPState->pScissors[sIdx]; }
+			_scissors.push_back(sc);
 		}
 	}
 }
