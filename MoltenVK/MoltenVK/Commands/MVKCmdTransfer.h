@@ -64,8 +64,6 @@ protected:
 	VkImageLayout _srcLayout;
 	MVKImage* _dstImage;
 	VkImageLayout _dstLayout;
-	MTLPixelFormat _srcMTLPixFmt;
-	MTLPixelFormat _dstMTLPixFmt;
 	uint32_t _srcSampleCount;
 	uint32_t _dstSampleCount;
 	bool _isSrcCompressed;
@@ -131,8 +129,8 @@ protected:
 
 /** Describes Metal texture resolve parameters. */
 typedef struct {
-    NSUInteger	level;
-    NSUInteger	slice;
+    uint32_t	level;
+    uint32_t	slice;
 } MVKMetalResolveSlice;
 
 /** Vulkan command to resolve image regions. */
@@ -282,9 +280,7 @@ protected:
     MVKImage* _image;
     VkImageLayout _imgLayout;
 	MVKVectorInline<VkImageSubresourceRange, 4> _subresourceRanges;
-	MTLClearColor _mtlColorClearValue;
-	double _mtlDepthClearValue;
-    uint32_t _mtlStencilClearValue;
+	VkClearValue _clearValue;
     bool _isDepthStencilClear;
 };
 

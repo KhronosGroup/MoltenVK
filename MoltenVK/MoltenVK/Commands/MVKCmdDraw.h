@@ -139,7 +139,7 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	id<MTLBuffer> _mtlIndirectBuffer;
-	NSUInteger _mtlIndirectBufferOffset;
+	VkDeviceSize _mtlIndirectBufferOffset;
 	uint32_t _mtlIndirectBufferStride;
 	uint32_t _drawCount;
 };

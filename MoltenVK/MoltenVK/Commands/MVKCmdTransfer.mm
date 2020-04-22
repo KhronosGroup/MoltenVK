@@ -88,23 +88,23 @@ VkResult MVKCmdCopyImage::setContent(MVKCommandBuffer* cmdBuff,
 
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
-	_srcMTLPixFmt = _srcImage->getMTLPixelFormat();
 	_srcSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_srcImage->getSampleCount());
 	_isSrcCompressed = _srcImage->getIsCompressed();
-	uint32_t srcBytesPerBlock = pixFmts->getMTLPixelFormatBytesPerBlock(_srcMTLPixFmt);
+	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
+	uint32_t srcBytesPerBlock = pixFmts->getMTLPixelFormatBytesPerBlock(srcMTLPixFmt);
 
 	_dstImage = (MVKImage*)dstImage;
 	_dstLayout = dstImageLayout;
-	_dstMTLPixFmt = _dstImage->getMTLPixelFormat();
 	_dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
 	_isDstCompressed = _dstImage->getIsCompressed();
-	uint32_t dstBytesPerBlock = pixFmts->getMTLPixelFormatBytesPerBlock(_dstMTLPixFmt);
+	MTLPixelFormat dstMTLPixFmt = _dstImage->getMTLPixelFormat();
+	uint32_t dstBytesPerBlock = pixFmts->getMTLPixelFormatBytesPerBlock(dstMTLPixFmt);
 
 	_canCopyFormats = (_dstSampleCount == _srcSampleCount) && (formatsMustMatch
-																? (_dstMTLPixFmt == _srcMTLPixFmt)
+																? (dstMTLPixFmt == srcMTLPixFmt)
 																: (dstBytesPerBlock == srcBytesPerBlock));
 
-	_useTempBuffer = (_srcMTLPixFmt != _dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);	// Different formats and at least one is compressed
+	_useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);	// Different formats and at least one is compressed
 
 	_commandUse = commandUse;
 	_tmpBuffSize = 0;
@@ -141,9 +141,10 @@ void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region, MV
 	// Extent is provided in source texels. If the source is compressed but the
 	// destination is not, each destination pixel will consume an entire source block,
 	// so we must downscale the destination extent by the size of the source block.
+	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
 	VkExtent3D dstExtent = region.extent;
 	if (_isSrcCompressed && !_isDstCompressed) {
-		VkExtent2D srcBlockExtent = pixFmts->getMTLPixelFormatBlockTexelSize(_srcMTLPixFmt);
+		VkExtent2D srcBlockExtent = pixFmts->getMTLPixelFormatBlockTexelSize(srcMTLPixFmt);
 		dstExtent.width /= srcBlockExtent.width;
 		dstExtent.height /= srcBlockExtent.height;
 	}
@@ -155,8 +156,8 @@ void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region, MV
 	buffImgCpy.imageExtent = dstExtent;
 	_dstTmpBuffImgCopies.push_back(buffImgCpy);
 
-	NSUInteger bytesPerRow = pixFmts->getMTLPixelFormatBytesPerRow(_srcMTLPixFmt, region.extent.width);
-	NSUInteger bytesPerRegion = pixFmts->getMTLPixelFormatBytesPerLayer(_srcMTLPixFmt, bytesPerRow, region.extent.height);
+	NSUInteger bytesPerRow = pixFmts->getMTLPixelFormatBytesPerRow(srcMTLPixFmt, region.extent.width);
+	NSUInteger bytesPerRegion = pixFmts->getMTLPixelFormatBytesPerLayer(srcMTLPixFmt, bytesPerRow, region.extent.height);
 	_tmpBuffSize += bytesPerRegion;
 }
 
@@ -164,7 +165,7 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 	// Unless we need to use an intermediary buffer copy, map the source pixel format to the
 	// dest pixel format through a texture view on the source texture. If the source and dest
 	// pixel formats are the same, this will simply degenerate to the source texture itself.
-	MTLPixelFormat mapSrcMTLPixFmt = _useTempBuffer ? _srcMTLPixFmt : _dstMTLPixFmt;
+	MTLPixelFormat mapSrcMTLPixFmt = (_useTempBuffer ? _srcImage : _dstImage)->getMTLPixelFormat();
 	id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(mapSrcMTLPixFmt);
 	id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
 	if ( !srcMTLTex || !dstMTLTex ) { return; }
@@ -251,9 +252,9 @@ VkResult MVKCmdBlitImage::setContent(MVKCommandBuffer* cmdBuff,
 
 	VkResult rslt = MVKCmdCopyImage::setContent(cmdBuff, srcImage, srcImageLayout, dstImage, dstImageLayout, true, commandUse);
 
-	_blitKey.srcMTLPixelFormat = _srcMTLPixFmt;
+	_blitKey.srcMTLPixelFormat = _srcImage->getMTLPixelFormat();
 	_blitKey.srcMTLTextureType = _srcImage->getMTLTextureType();
-	_blitKey.dstMTLPixelFormat = _dstMTLPixFmt;
+	_blitKey.dstMTLPixelFormat = _dstImage->getMTLPixelFormat();
 	_blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
 	_blitKey.dstSampleCount = _dstSampleCount;
 
@@ -265,9 +266,10 @@ VkResult MVKCmdBlitImage::setContent(MVKCommandBuffer* cmdBuff,
 	}
 
 	// Validate
+	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
 	if ( !_mvkImageBlitRenders.empty() &&
-		(pixFmts->mtlPixelFormatIsDepthFormat(_srcMTLPixFmt) ||
-		 pixFmts->mtlPixelFormatIsStencilFormat(_srcMTLPixFmt)) ) {
+		(pixFmts->mtlPixelFormatIsDepthFormat(srcMTLPixFmt) ||
+		 pixFmts->mtlPixelFormatIsStencilFormat(srcMTLPixFmt)) ) {
 
 		_mvkImageBlitRenders.clear();
 		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting depth/stencil images is not supported.");
@@ -1118,12 +1120,8 @@ VkResult MVKCmdClearImage::setContent(MVKCommandBuffer* cmdBuff,
 									  bool isDepthStencilClear) {
     _image = (MVKImage*)image;
     _imgLayout = imageLayout;
+	_clearValue = clearValue;
     _isDepthStencilClear = isDepthStencilClear;
-
-	MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
-	_mtlColorClearValue = pixFmts->getMTLClearColorFromVkClearValue(clearValue, _image->getVkFormat());
-	_mtlDepthClearValue = pixFmts->getMTLClearDepthFromVkClearValue(clearValue);
-	_mtlStencilClearValue = pixFmts->getMTLClearStencilFromVkClearValue(clearValue);
 
     // Add subresource ranges
     _subresourceRanges.clear();		// Clear for reuse
@@ -1136,10 +1134,10 @@ VkResult MVKCmdClearImage::setContent(MVKCommandBuffer* cmdBuff,
 	if (_image->getImageType() == VK_IMAGE_TYPE_1D) {
 		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Native 1D images cannot be cleared on this device. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D.");
 	}
-	MVKMTLFmtCaps mtlFmtCaps = pixFmts->getMTLPixelFormatCapabilities(_image->getMTLPixelFormat());
+	MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getMTLPixelFormatCapabilities(_image->getMTLPixelFormat());
 	if ((_isDepthStencilClear && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsDSAtt)) ||
 		( !_isDepthStencilClear && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsColorAtt))) {
-		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", pixFmts->getVkFormatName(_image->getVkFormat()));
+		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", cmdBuff->getPixelFormats()->getVkFormatName(_image->getVkFormat()));
 	}
 
 	return VK_SUCCESS;
@@ -1155,6 +1153,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 
 	cmdEncoder->endCurrentMetalEncoding();
 
+	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 	for (auto& srRange : _subresourceRanges) {
 
 		MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
@@ -1171,7 +1170,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPCADesc.texture = imgMTLTex;
 			mtlRPCADesc.loadAction = MTLLoadActionClear;
 			mtlRPCADesc.storeAction = MTLStoreActionStore;
-			mtlRPCADesc.clearColor = _mtlColorClearValue;
+			mtlRPCADesc.clearColor = pixFmts->getMTLClearColorFromVkClearValue(_clearValue, _image->getVkFormat());
 		}
 
 		if (isClearingDepth) {
@@ -1179,7 +1178,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPDADesc.texture = imgMTLTex;
 			mtlRPDADesc.loadAction = MTLLoadActionClear;
 			mtlRPDADesc.storeAction = MTLStoreActionStore;
-			mtlRPDADesc.clearDepth = _mtlDepthClearValue;
+			mtlRPDADesc.clearDepth = pixFmts->getMTLClearDepthFromVkClearValue(_clearValue);
 		}
 
 		if (isClearingStencil) {
@@ -1187,7 +1186,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPSADesc.texture = imgMTLTex;
 			mtlRPSADesc.loadAction = MTLLoadActionClear;
 			mtlRPSADesc.storeAction = MTLStoreActionStore;
-			mtlRPSADesc.clearStencil = _mtlStencilClearValue;
+			mtlRPSADesc.clearStencil = pixFmts->getMTLClearStencilFromVkClearValue(_clearValue);
 		}
 
         // Extract the mipmap levels that are to be updated

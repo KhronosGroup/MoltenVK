@@ -40,7 +40,12 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    MTLRegion  _mtlThreadgroupCount;
+	uint32_t _baseGroupX;
+	uint32_t _baseGroupY;
+	uint32_t _baseGroupZ;
+	uint32_t _groupCountX;
+	uint32_t _groupCountY;
+	uint32_t _groupCountZ;
 };
 
 
@@ -59,6 +64,6 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	id<MTLBuffer> _mtlIndirectBuffer;
-	NSUInteger _mtlIndirectBufferOffset;
+	VkDeviceSize _mtlIndirectBufferOffset;
 };
 
