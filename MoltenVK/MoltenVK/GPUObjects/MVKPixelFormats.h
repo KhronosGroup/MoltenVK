@@ -291,9 +291,9 @@ protected:
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
-	VkFormatFeatureFlags getOptimalTilingFeatures(MVKMTLFmtCaps mtlFmtCaps);
-	VkFormatFeatureFlags getLinearTilingFeatures(MVKMTLFmtCaps mtlFmtCaps, MVKFormatType mvkFmtType);
-	VkFormatFeatureFlags getBufferFeatures(MVKMTLFmtCaps mtlFmtTexCaps, MVKMTLFmtCaps mtlFmtVtxCaps, MVKFormatType mvkFmtType);
+	VkFormatFeatureFlags getOptimalTilingFeatures(VkFormat vkFormat, MVKMTLFmtCaps mtlFmtCaps);
+	VkFormatFeatureFlags getLinearTilingFeatures(VkFormat vkFormat, MVKMTLFmtCaps mtlFmtCaps, MVKFormatType mvkFmtType);
+	VkFormatFeatureFlags getBufferFeatures(VkFormat vkFormat, MVKMTLFmtCaps mtlFmtTexCaps, MVKMTLFmtCaps mtlFmtVtxCaps, MVKFormatType mvkFmtType);
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
