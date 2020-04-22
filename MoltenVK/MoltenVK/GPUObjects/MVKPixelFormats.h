@@ -291,14 +291,12 @@ protected:
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
-	VkFormatFeatureFlags getOptimalTilingFeatures(VkFormat vkFormat, MVKMTLFmtCaps mtlFmtCaps);
-	VkFormatFeatureFlags getLinearTilingFeatures(VkFormat vkFormat, MVKMTLFmtCaps mtlFmtCaps, MVKFormatType mvkFmtType);
-	VkFormatFeatureFlags getBufferFeatures(VkFormat vkFormat, MVKMTLFmtCaps mtlFmtTexCaps, MVKMTLFmtCaps mtlFmtVtxCaps, MVKFormatType mvkFmtType);
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
 	void buildMTLFormatMaps();
 	void buildVkFormatMaps();
+	void setFormatProperties(MVKVkFormatDesc& vkDesc);
 	void modifyMTLFormatCapabilities();
 	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
 	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
