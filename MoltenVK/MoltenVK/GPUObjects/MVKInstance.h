@@ -199,6 +199,7 @@ protected:
 	bool _useCreationCallbacks;
 	const char* _debugReportCallbackLayerPrefix;
 	int32_t _autoGPUCaptureScope;
+	std::string _autoGPUCaptureOutputFile;
 };
 
 

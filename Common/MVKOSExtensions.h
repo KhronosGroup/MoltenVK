@@ -115,6 +115,13 @@ bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
 		cfgVal = (int32_t)std::min(std::max(val, (int64_t)INT32_MIN), (int64_t)INT32_MAX);	\
 	} while(false)
 
+#define MVK_SET_FROM_ENV_OR_BUILD_STRING(cfgVal, EV)	\
+	do {												\
+		bool wasFound = false;							\
+		std::string ev = mvkGetEnvVar(#EV, &wasFound);	\
+		cfgVal = wasFound ? std::move(ev) : EV;			\
+	} while(false)
+
 
 #pragma mark -
 #pragma mark System memory

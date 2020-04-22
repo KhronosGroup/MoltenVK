@@ -128,7 +128,7 @@ typedef unsigned long MTLLanguageVersion;
  *     synchronization behaviour, by default.
  *
  * 5.  The MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE runtime environment variable or MoltenVK compile-time
- *     build setting controls whether Xcode should run an automatic GPU capture without the user
+ *     build setting controls whether Metal should run an automatic GPU capture without the user
  *     having to trigger it manually via the Xcode user interface, and controls the scope under
  *     which that GPU capture will occur. This is useful when trying to capture a one-shot GPU
  *     trace, such as when running a Vulkan CTS test case. For the automatic GPU capture to occur,
@@ -137,6 +137,12 @@ typedef unsigned long MTLLanguageVersion;
  *     Xcode user interface.
  *       0: No automatic GPU capture.
  *       1: Capture all GPU commands issued during the lifetime of the VkDevice.
+ *     If MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE is also set, it is a filename where the automatic
+ *     GPU capture should be saved. In this case, the Xcode scheme need not have Metal GPU capture
+ *     enabled, and in fact the app need not be run under Xcode's control at all. This is useful
+ *     in case the app cannot be run under Xcode's control. A path starting with '~' can be used
+ *     to place it in a user's home directory, as in the shell. This feature requires Metal 3.0
+ *     (macOS 10.15, iOS 13).
  *     If none of these is set, no automatic GPU capture will occur.
  *
  * 6.  The MVK_CONFIG_TEXTURE_1D_AS_2D runtime environment variable or MoltenVK compile-time build
