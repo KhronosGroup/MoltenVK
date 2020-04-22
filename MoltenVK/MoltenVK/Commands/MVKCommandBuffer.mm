@@ -373,19 +373,19 @@ bool MVKCommandEncoder::supportsDynamicState(VkDynamicState state) {
     return !gpl || gpl->supportsDynamicState(state);
 }
 
-MTLScissorRect MVKCommandEncoder::clipToRenderArea(MTLScissorRect mtlScissor) {
+VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D scissor) {
 
-	NSUInteger raLeft = _renderArea.offset.x;
-	NSUInteger raRight = raLeft + _renderArea.extent.width;
-	NSUInteger raBottom = _renderArea.offset.y;
-	NSUInteger raTop = raBottom + _renderArea.extent.height;
+	int32_t raLeft = _renderArea.offset.x;
+	int32_t raRight = raLeft + _renderArea.extent.width;
+	int32_t raBottom = _renderArea.offset.y;
+	int32_t raTop = raBottom + _renderArea.extent.height;
 
-	mtlScissor.x		= mvkClamp(mtlScissor.x, raLeft, max(raRight - 1, raLeft));
-	mtlScissor.y		= mvkClamp(mtlScissor.y, raBottom, max(raTop - 1, raBottom));
-	mtlScissor.width	= min(mtlScissor.width, raRight - mtlScissor.x);
-	mtlScissor.height	= min(mtlScissor.height, raTop - mtlScissor.y);
+	scissor.offset.x		= mvkClamp(scissor.offset.x, raLeft, max(raRight - 1, raLeft));
+	scissor.offset.y		= mvkClamp(scissor.offset.y, raBottom, max(raTop - 1, raBottom));
+	scissor.extent.width	= min<int32_t>(scissor.extent.width, raRight - scissor.offset.x);
+	scissor.extent.height	= min<int32_t>(scissor.extent.height, raTop - scissor.offset.y);
 
-	return mtlScissor;
+	return scissor;
 }
 
 void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {

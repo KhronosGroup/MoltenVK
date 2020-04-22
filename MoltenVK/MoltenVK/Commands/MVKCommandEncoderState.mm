@@ -58,98 +58,106 @@ void MVKPipelineCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKViewportCommandEncoderState
 
-void MVKViewportCommandEncoderState::setViewports(const MVKVector<MTLViewport> &mtlViewports,
+void MVKViewportCommandEncoderState::setViewports(const MVKVector<VkViewport> &viewports,
 												  uint32_t firstViewport,
 												  bool isSettingDynamically) {
 
+	size_t vpCnt = viewports.size();
 	uint32_t maxViewports = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
-	if ((firstViewport + mtlViewports.size() > maxViewports) ||
+	if ((firstViewport + vpCnt > maxViewports) ||
 		(firstViewport >= maxViewports) ||
-		(isSettingDynamically && mtlViewports.size() == 0))
+		(isSettingDynamically && vpCnt == 0))
 		return;
 
-	auto& usingMTLViewports = isSettingDynamically ? _mtlDynamicViewports : _mtlViewports;
+	auto& usingViewports = isSettingDynamically ? _dynamicViewports : _viewports;
 
-	if (firstViewport + mtlViewports.size() > usingMTLViewports.size()) {
-		usingMTLViewports.resize(firstViewport + mtlViewports.size());
+	if (firstViewport + vpCnt > usingViewports.size()) {
+		usingViewports.resize(firstViewport + vpCnt);
 	}
 
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_VIEWPORT);
-
-	if (isSettingDynamically ||
-		(!mustSetDynamically && mtlViewports.size() > 0))
-		std::copy(mtlViewports.begin(), mtlViewports.end(), usingMTLViewports.begin() + firstViewport);
-	else
-		usingMTLViewports.clear();
+	if (isSettingDynamically || (!mustSetDynamically && vpCnt > 0)) {
+		std::copy(viewports.begin(), viewports.end(), usingViewports.begin() + firstViewport);
+	} else {
+		usingViewports.clear();
+	}
 
 	markDirty();
 }
 
 void MVKViewportCommandEncoderState::encodeImpl(uint32_t stage) {
     if (stage != kMVKGraphicsStageRasterization) { return; }
-	auto& usingMTLViewports = _mtlViewports.size() > 0 ? _mtlViewports : _mtlDynamicViewports;
-	if (usingMTLViewports.empty()) { return; }
+	auto& usingViewports = _viewports.size() > 0 ? _viewports : _dynamicViewports;
+	if (usingViewports.empty()) { return; }
+
     if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
-        [_cmdEncoder->_mtlRenderEncoder setViewports: &usingMTLViewports[0] count: usingMTLViewports.size()];
+		size_t vpCnt = usingViewports.size();
+		MTLViewport mtlViewports[vpCnt];
+		for (uint32_t vpIdx = 0; vpIdx < vpCnt; vpIdx++) {
+			mtlViewports[vpIdx] = mvkMTLViewportFromVkViewport(usingViewports[vpIdx]);
+		}
+        [_cmdEncoder->_mtlRenderEncoder setViewports: mtlViewports count: vpCnt];
     } else {
-        [_cmdEncoder->_mtlRenderEncoder setViewport: usingMTLViewports[0]];
+        [_cmdEncoder->_mtlRenderEncoder setViewport: mvkMTLViewportFromVkViewport(usingViewports[0])];
     }
 }
 
 void MVKViewportCommandEncoderState::resetImpl() {
-    _mtlViewports.clear();
-	_mtlDynamicViewports.clear();
+    _viewports.clear();
+	_dynamicViewports.clear();
 }
 
 
 #pragma mark -
 #pragma mark MVKScissorCommandEncoderState
 
-void MVKScissorCommandEncoderState::setScissors(const MVKVector<MTLScissorRect> &mtlScissors,
+void MVKScissorCommandEncoderState::setScissors(const MVKVector<VkRect2D> &scissors,
                                                 uint32_t firstScissor,
 												bool isSettingDynamically) {
 
+	size_t sCnt = scissors.size();
 	uint32_t maxScissors = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
-	if ((firstScissor + mtlScissors.size() > maxScissors) ||
+	if ((firstScissor + sCnt > maxScissors) ||
 		(firstScissor >= maxScissors) ||
-		(isSettingDynamically && mtlScissors.size() == 0))
+		(isSettingDynamically && sCnt == 0))
 		return;
 
-	auto& usingMTLScissors = isSettingDynamically ? _mtlDynamicScissors : _mtlScissors;
+	auto& usingScissors = isSettingDynamically ? _dynamicScissors : _scissors;
 
-	if (firstScissor + mtlScissors.size() > usingMTLScissors.size()) {
-		usingMTLScissors.resize(firstScissor + mtlScissors.size());
+	if (firstScissor + sCnt > usingScissors.size()) {
+		usingScissors.resize(firstScissor + sCnt);
 	}
 
 	bool mustSetDynamically = _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_SCISSOR);
-
-	if (isSettingDynamically ||
-		(!mustSetDynamically && mtlScissors.size() > 0))
-		std::copy(mtlScissors.begin(), mtlScissors.end(), usingMTLScissors.begin() + firstScissor);
-	else
-		usingMTLScissors.clear();
+	if (isSettingDynamically || (!mustSetDynamically && sCnt > 0)) {
+		std::copy(scissors.begin(), scissors.end(), usingScissors.begin() + firstScissor);
+	} else {
+		usingScissors.clear();
+	}
 
 	markDirty();
 }
 
 void MVKScissorCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
-	auto& usingMTLScissors = _mtlScissors.size() > 0 ? _mtlScissors : _mtlDynamicScissors;
-	if (usingMTLScissors.empty()) { return; }
-	auto clippedScissors(usingMTLScissors);
-	std::for_each(clippedScissors.begin(), clippedScissors.end(), [this](MTLScissorRect& scissor) {
-		scissor = _cmdEncoder->clipToRenderArea(scissor);
-	});
+	auto& usingScissors = _scissors.size() > 0 ? _scissors : _dynamicScissors;
+	if (usingScissors.empty()) { return; }
+
 	if (_cmdEncoder->_pDeviceFeatures->multiViewport) {
-		[_cmdEncoder->_mtlRenderEncoder setScissorRects: &clippedScissors[0] count: clippedScissors.size()];
+		size_t sCnt = usingScissors.size();
+		MTLScissorRect mtlScissors[sCnt];
+		for (uint32_t sIdx = 0; sIdx < sCnt; sIdx++) {
+			mtlScissors[sIdx] = mvkMTLScissorRectFromVkRect2D(_cmdEncoder->clipToRenderArea(usingScissors[sIdx]));
+		}
+		[_cmdEncoder->_mtlRenderEncoder setScissorRects: mtlScissors count: sCnt];
 	} else {
-		[_cmdEncoder->_mtlRenderEncoder setScissorRect: clippedScissors[0]];
+		[_cmdEncoder->_mtlRenderEncoder setScissorRect: mvkMTLScissorRectFromVkRect2D(_cmdEncoder->clipToRenderArea(usingScissors[0]))];
 	}
 }
 
 void MVKScissorCommandEncoderState::resetImpl() {
-    _mtlScissors.clear();
-	_mtlDynamicScissors.clear();
+    _scissors.clear();
+	_dynamicScissors.clear();
 }
 
 

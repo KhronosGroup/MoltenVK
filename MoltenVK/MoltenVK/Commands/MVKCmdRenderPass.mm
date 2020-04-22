@@ -124,17 +124,17 @@ VkResult MVKCmdSetViewport::setContent(MVKCommandBuffer* cmdBuff,
 									   uint32_t viewportCount,
 									   const VkViewport* pViewports) {
 	_firstViewport = firstViewport;
-	_mtlViewports.clear();	// Clear for reuse
-	_mtlViewports.reserve(viewportCount);
-	for (uint32_t i = 0; i < viewportCount; i++) {
-		_mtlViewports.push_back(mvkMTLViewportFromVkViewport(pViewports[i]));
+	_viewports.clear();	// Clear for reuse
+	_viewports.reserve(viewportCount);
+	for (uint32_t vpIdx = 0; vpIdx < viewportCount; vpIdx++) {
+		_viewports.push_back(pViewports[vpIdx]);
 	}
 
 	return VK_SUCCESS;
 }
 
 void MVKCmdSetViewport::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_viewportState.setViewports(_mtlViewports, _firstViewport, true);
+    cmdEncoder->_viewportState.setViewports(_viewports, _firstViewport, true);
 }
 
 
@@ -148,17 +148,17 @@ VkResult MVKCmdSetScissor::setContent(MVKCommandBuffer* cmdBuff,
 									  uint32_t scissorCount,
 									  const VkRect2D* pScissors) {
 	_firstScissor = firstScissor;
-	_mtlScissors.clear();	// Clear for reuse
-	_mtlScissors.reserve(scissorCount);
-	for (uint32_t i = 0; i < scissorCount; i++) {
-		_mtlScissors.push_back(mvkMTLScissorRectFromVkRect2D(pScissors[i]));
+	_scissors.clear();	// Clear for reuse
+	_scissors.reserve(scissorCount);
+	for (uint32_t sIdx = 0; sIdx < scissorCount; sIdx++) {
+		_scissors.push_back(pScissors[sIdx]);
 	}
 
 	return VK_SUCCESS;
 }
 
 void MVKCmdSetScissor::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_scissorState.setScissors(_mtlScissors, _firstScissor, true);
+    cmdEncoder->_scissorState.setScissors(_scissors, _firstScissor, true);
 }
 
 

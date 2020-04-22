@@ -125,7 +125,7 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	uint32_t _firstViewport;
-	MVKVectorInline<MTLViewport, kMVKCachedViewportScissorCount> _mtlViewports;
+	MVKVectorInline<VkViewport, kMVKCachedViewportScissorCount> _viewports;
 };
 
 
@@ -147,7 +147,7 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	uint32_t _firstScissor;
-	MVKVectorInline<MTLScissorRect, kMVKCachedViewportScissorCount> _mtlScissors;
+	MVKVectorInline<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
 };
 
 
