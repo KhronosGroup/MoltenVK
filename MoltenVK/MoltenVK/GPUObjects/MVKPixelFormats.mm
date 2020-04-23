@@ -1108,9 +1108,9 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 
 	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, RG8Snorm, All );
 
-	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Uint, Write );
-	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Sint, Write );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Uint, RWC );
 	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Uint, Atomic );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Sint, RWC );
 	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Sint, Atomic );
 
 	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, R32Float, RWCMB );
