@@ -35,67 +35,67 @@ using namespace std;
 static MVKPixelFormats _platformPixelFormats;
 
 MVK_PUBLIC_SYMBOL bool mvkVkFormatIsSupported(VkFormat vkFormat) {
-	return _platformPixelFormats.vkFormatIsSupported(vkFormat);
+	return _platformPixelFormats.isSupported(vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsSupported(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.mtlPixelFormatIsSupported(mtlFormat);
+	return _platformPixelFormats.isSupported(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL MVKFormatType mvkFormatTypeFromVkFormat(VkFormat vkFormat) {
-	return _platformPixelFormats.getFormatTypeFromVkFormat(vkFormat);
+	return _platformPixelFormats.getFormatType(vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL MVKFormatType mvkFormatTypeFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.getFormatTypeFromMTLPixelFormat(mtlFormat);
+	return _platformPixelFormats.getFormatType(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL MTLPixelFormat mvkMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
-	return _platformPixelFormats.getMTLPixelFormatFromVkFormat(vkFormat);
+	return _platformPixelFormats.getMTLPixelFormat(vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL VkFormat mvkVkFormatFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.getVkFormatFromMTLPixelFormat(mtlFormat);
+	return _platformPixelFormats.getVkFormat(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL uint32_t mvkVkFormatBytesPerBlock(VkFormat vkFormat) {
-	return _platformPixelFormats.getVkFormatBytesPerBlock(vkFormat);
+	return _platformPixelFormats.getBytesPerBlock(vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL uint32_t mvkMTLPixelFormatBytesPerBlock(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.getMTLPixelFormatBytesPerBlock(mtlFormat);
+	return _platformPixelFormats.getBytesPerBlock(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL VkExtent2D mvkVkFormatBlockTexelSize(VkFormat vkFormat) {
-	return _platformPixelFormats.getVkFormatBlockTexelSize(vkFormat);
+	return _platformPixelFormats.getBlockTexelSize(vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL VkExtent2D mvkMTLPixelFormatBlockTexelSize(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.getMTLPixelFormatBlockTexelSize(mtlFormat);
+	return _platformPixelFormats.getBlockTexelSize(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL float mvkVkFormatBytesPerTexel(VkFormat vkFormat) {
-	return _platformPixelFormats.getVkFormatBytesPerTexel(vkFormat);
+	return _platformPixelFormats.getBytesPerTexel(vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL float mvkMTLPixelFormatBytesPerTexel(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.getMTLPixelFormatBytesPerTexel(mtlFormat);
+	return _platformPixelFormats.getBytesPerTexel(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL size_t mvkVkFormatBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow) {
-	return _platformPixelFormats.getVkFormatBytesPerRow(vkFormat, texelsPerRow);
+	return _platformPixelFormats.getBytesPerRow(vkFormat, texelsPerRow);
 }
 
 MVK_PUBLIC_SYMBOL size_t mvkMTLPixelFormatBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow) {
-	return _platformPixelFormats.getMTLPixelFormatBytesPerRow(mtlFormat, texelsPerRow);
+	return _platformPixelFormats.getBytesPerRow(mtlFormat, texelsPerRow);
 }
 
 MVK_PUBLIC_SYMBOL size_t mvkVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
-	return _platformPixelFormats.getVkFormatBytesPerLayer(vkFormat, bytesPerRow, texelRowsPerLayer);
+	return _platformPixelFormats.getBytesPerLayer(vkFormat, bytesPerRow, texelRowsPerLayer);
 }
 
 MVK_PUBLIC_SYMBOL size_t mvkMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
-	return _platformPixelFormats.getMTLPixelFormatBytesPerLayer(mtlFormat, bytesPerRow, texelRowsPerLayer);
+	return _platformPixelFormats.getBytesPerLayer(mtlFormat, bytesPerRow, texelRowsPerLayer);
 }
 
 MVK_PUBLIC_SYMBOL VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat) {
@@ -103,40 +103,40 @@ MVK_PUBLIC_SYMBOL VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat) {
 }
 
 MVK_PUBLIC_SYMBOL const char* mvkVkFormatName(VkFormat vkFormat) {
-	return _platformPixelFormats.getVkFormatName(vkFormat);
+	return _platformPixelFormats.getName(vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL const char* mvkMTLPixelFormatName(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.getMTLPixelFormatName(mtlFormat);
+	return _platformPixelFormats.getName(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
-	return _platformPixelFormats.getMTLVertexFormatFromVkFormat(vkFormat);
+	return _platformPixelFormats.getMTLVertexFormat(vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL MTLClearColor mvkMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
 																 VkFormat vkFormat) {
-	return _platformPixelFormats.getMTLClearColorFromVkClearValue(vkClearValue, vkFormat);
+	return _platformPixelFormats.getMTLClearColor(vkClearValue, vkFormat);
 }
 
 MVK_PUBLIC_SYMBOL double mvkMTLClearDepthFromVkClearValue(VkClearValue vkClearValue) {
-	return _platformPixelFormats.getMTLClearDepthFromVkClearValue(vkClearValue);
+	return _platformPixelFormats.getMTLClearDepthValue(vkClearValue);
 }
 
 MVK_PUBLIC_SYMBOL uint32_t mvkMTLClearStencilFromVkClearValue(VkClearValue vkClearValue) {
-	return _platformPixelFormats.getMTLClearStencilFromVkClearValue(vkClearValue);
+	return _platformPixelFormats.getMTLClearStencilValue(vkClearValue);
 }
 
 MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.mtlPixelFormatIsDepthFormat(mtlFormat);
+	return _platformPixelFormats.isDepthFormat(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.mtlPixelFormatIsStencilFormat(mtlFormat);
+	return _platformPixelFormats.isStencilFormat(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL bool mvkMTLPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.mtlPixelFormatIsPVRTCFormat(mtlFormat);
+	return _platformPixelFormats.isPVRTCFormat(mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vkImageType,
@@ -192,11 +192,11 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageVie
 }
 
 MVK_PUBLIC_SYMBOL MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags, MTLPixelFormat mtlPixFmt) {
-	return _platformPixelFormats.getMTLTextureUsageFromVkImageUsageFlags(vkImageUsageFlags, mtlPixFmt);
+	return _platformPixelFormats.getMTLTextureUsage(vkImageUsageFlags, mtlPixFmt);
 }
 
 MVK_PUBLIC_SYMBOL VkImageUsageFlags mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat) {
-	return _platformPixelFormats.getVkImageUsageFlagsFromMTLTextureUsage(mtlUsage, mtlFormat);
+	return _platformPixelFormats.getVkImageUsageFlags(mtlUsage, mtlFormat);
 }
 
 MVK_PUBLIC_SYMBOL uint32_t mvkSampleCountFromVkSampleCountFlagBits(VkSampleCountFlagBits vkSampleCountFlag) {

@@ -118,8 +118,8 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
     }
 	MVKPixelFormats* pixFmts = getPixelFormats();
     MTLPixelFormat mtlDSFormat = (MTLPixelFormat)attKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex];
-    if (pixFmts->mtlPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
-    if (pixFmts->mtlPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
+    if (pixFmts->isDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
+    if (pixFmts->isStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
     MTLVertexDescriptor* vtxDesc = plDesc.vertexDescriptor;
 
@@ -277,7 +277,7 @@ id<MTLFunction> MVKCommandResourceFactory::newClearFragFunction(MVKRPSKeyClearAt
 }
 
 NSString* MVKCommandResourceFactory::getMTLFormatTypeString(MTLPixelFormat mtlPixFmt) {
-	switch (getPixelFormats()->getFormatTypeFromMTLPixelFormat(mtlPixFmt)) {
+	switch (getPixelFormats()->getFormatType(mtlPixFmt)) {
 		case kMVKFormatColorHalf:		return @"half";
 		case kMVKFormatColorFloat:		return @"float";
 		case kMVKFormatColorInt8:

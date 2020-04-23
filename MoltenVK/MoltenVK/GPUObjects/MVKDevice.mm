@@ -231,7 +231,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 													 VkImageCreateFlags flags,
 													 VkImageFormatProperties* pImageFormatProperties) {
 
-	if ( !_pixelFormats.vkFormatIsSupported(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+	if ( !_pixelFormats.isSupported(format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	if ( !pImageFormatProperties ) { return VK_SUCCESS; }
 
@@ -241,7 +241,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		return VK_ERROR_FORMAT_NOT_SUPPORTED;
 	}
 
-	MVKFormatType mvkFmt = _pixelFormats.getFormatTypeFromVkFormat(format);
+	MVKFormatType mvkFmt = _pixelFormats.getFormatType(format);
 	bool hasAttachmentUsage = mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
@@ -252,7 +252,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 	uint32_t maxLevels = 1;
 	uint32_t maxLayers = hasAttachmentUsage ? pLimits->maxFramebufferLayers : pLimits->maxImageArrayLayers;
 
-	bool supportsMSAA =  mvkAreAllFlagsEnabled(_pixelFormats.getVkFormatCapabilities(format), kMVKMTLFmtCapsMSAA);
+	bool supportsMSAA =  mvkAreAllFlagsEnabled(_pixelFormats.getCapabilities(format), kMVKMTLFmtCapsMSAA);
 	VkSampleCountFlags sampleCounts = supportsMSAA ? _metalFeatures.supportedSampleCounts : VK_SAMPLE_COUNT_1_BIT;
 
 	switch (type) {
@@ -364,7 +364,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
         return VK_ERROR_FORMAT_NOT_SUPPORTED;
     }
 
-    if ( !_pixelFormats.vkFormatIsSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+    if ( !_pixelFormats.isSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	if ( !getImageViewIsSupported(pImageFormatInfo) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
@@ -528,7 +528,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	}
 
 	uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
-	if ( !_pixelFormats.mtlPixelFormatIsSupported(MTLPixelFormatBGR10A2Unorm) ) { mtlFmtsCnt--; }
+	if ( !_pixelFormats.isSupported(MTLPixelFormatBGR10A2Unorm) ) { mtlFmtsCnt--; }
 
 	const uint vkFmtsCnt = mtlFmtsCnt * (uint)colorSpaces.size();
 
@@ -545,7 +545,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	// Now populate the supplied array
 	for (uint csIdx = 0, idx = 0; idx < *pCount && csIdx < colorSpaces.size(); csIdx++) {
 		for (uint fmtIdx = 0; idx < *pCount && fmtIdx < mtlFmtsCnt; fmtIdx++, idx++) {
-			pSurfaceFormats[idx].format = _pixelFormats.getVkFormatFromMTLPixelFormat(mtlFormats[fmtIdx]);
+			pSurfaceFormats[idx].format = _pixelFormats.getVkFormat(mtlFormats[fmtIdx]);
 			pSurfaceFormats[idx].colorSpace = colorSpaces[csIdx];
 		}
 	}
@@ -1222,7 +1222,7 @@ void MVKPhysicalDevice::initProperties() {
         uint32_t maxStorage = 0, maxUniform = 0;
         bool singleTexelStorage = true, singleTexelUniform = true;
         _pixelFormats.enumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
-			MTLPixelFormat mtlFmt = _pixelFormats.getMTLPixelFormatFromVkFormat(vk);
+			MTLPixelFormat mtlFmt = _pixelFormats.getMTLPixelFormat(vk);
 			if ( !mtlFmt ) { return false; }	// If format is invalid, avoid validation errors on MTLDevice format alignment calls
 
             NSUInteger alignment;
@@ -1236,12 +1236,12 @@ void MVKPhysicalDevice::initProperties() {
             // Note that no implementations of Metal support compressed formats
             // in a linear texture (including texture buffers). It's likely that even
             // if they did, this would be the absolute minimum alignment.
-            uint32_t texelSize = _pixelFormats.getVkFormatBytesPerBlock(vk);
+            uint32_t texelSize = _pixelFormats.getBytesPerBlock(vk);
             // From the spec:
             //   "If the size of a single texel is a multiple of three bytes, then
             //    the size of a single component of the format is used instead."
             if (texelSize % 3 == 0) {
-                switch (_pixelFormats.getFormatTypeFromVkFormat(vk)) {
+                switch (_pixelFormats.getFormatType(vk)) {
                 case kMVKFormatColorInt8:
                 case kMVKFormatColorUInt8:
                     texelSize = 1;
@@ -2547,7 +2547,7 @@ VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBase
 	VkDeviceSize deviceAlignment = 0;
 	id<MTLDevice> mtlDev = getMTLDevice();
 	if ([mtlDev respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
-		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: getPixelFormats()->getMTLPixelFormatFromVkFormat(format)];
+		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: getPixelFormats()->getMTLPixelFormat(format)];
 	}
 	return deviceAlignment ? deviceAlignment : _pProperties->limits.minTexelBufferOffsetAlignment;
 }

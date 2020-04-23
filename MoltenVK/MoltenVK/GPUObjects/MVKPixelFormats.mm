@@ -118,19 +118,19 @@ using namespace std;
 
 MVKVulkanAPIObject* MVKPixelFormats::getVulkanAPIObject() { return _physicalDevice; };
 
-bool MVKPixelFormats::vkFormatIsSupported(VkFormat vkFormat) {
+bool MVKPixelFormats::isSupported(VkFormat vkFormat) {
 	return getVkFormatDesc(vkFormat).isSupported();
 }
 
-bool MVKPixelFormats::vkFormatIsSupportedOrSubstitutable(VkFormat vkFormat) {
+bool MVKPixelFormats::isSupportedOrSubstitutable(VkFormat vkFormat) {
 	return getVkFormatDesc(vkFormat).isSupportedOrSubstitutable();
 }
 
-bool MVKPixelFormats::mtlPixelFormatIsSupported(MTLPixelFormat mtlFormat) {
+bool MVKPixelFormats::isSupported(MTLPixelFormat mtlFormat) {
 	return getMTLPixelFormatDesc(mtlFormat).isSupported();
 }
 
-bool MVKPixelFormats::mtlPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {
+bool MVKPixelFormats::isDepthFormat(MTLPixelFormat mtlFormat) {
 	switch (mtlFormat) {
 		case MTLPixelFormatDepth32Float:
 #if MVK_MACOS
@@ -144,7 +144,7 @@ bool MVKPixelFormats::mtlPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat) {
 	}
 }
 
-bool MVKPixelFormats::mtlPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat) {
+bool MVKPixelFormats::isStencilFormat(MTLPixelFormat mtlFormat) {
 	switch (mtlFormat) {
 		case MTLPixelFormatStencil8:
 #if MVK_MACOS
@@ -159,7 +159,7 @@ bool MVKPixelFormats::mtlPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat) {
 	}
 }
 
-bool MVKPixelFormats::mtlPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) {
+bool MVKPixelFormats::isPVRTCFormat(MTLPixelFormat mtlFormat) {
 	switch (mtlFormat) {
 #if MVK_IOS
 		case MTLPixelFormatPVRTC_RGBA_2BPP:
@@ -177,15 +177,15 @@ bool MVKPixelFormats::mtlPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat) {
 	}
 }
 
-MVKFormatType MVKPixelFormats::getFormatTypeFromVkFormat(VkFormat vkFormat) {
+MVKFormatType MVKPixelFormats::getFormatType(VkFormat vkFormat) {
 	return getVkFormatDesc(vkFormat).formatType;
 }
 
-MVKFormatType MVKPixelFormats::getFormatTypeFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
+MVKFormatType MVKPixelFormats::getFormatType(MTLPixelFormat mtlFormat) {
 	return getVkFormatDesc(mtlFormat).formatType;
 }
 
-MTLPixelFormat MVKPixelFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
+MTLPixelFormat MVKPixelFormats::getMTLPixelFormat(VkFormat vkFormat) {
 	auto& vkDesc = getVkFormatDesc(vkFormat);
 	MTLPixelFormat mtlPixFmt = vkDesc.mtlPixelFormat;
 
@@ -216,49 +216,49 @@ MTLPixelFormat MVKPixelFormats::getMTLPixelFormatFromVkFormat(VkFormat vkFormat)
 	return mtlPixFmt;
 }
 
-VkFormat MVKPixelFormats::getVkFormatFromMTLPixelFormat(MTLPixelFormat mtlFormat) {
+VkFormat MVKPixelFormats::getVkFormat(MTLPixelFormat mtlFormat) {
     return getMTLPixelFormatDesc(mtlFormat).vkFormat;
 }
 
-uint32_t MVKPixelFormats::getVkFormatBytesPerBlock(VkFormat vkFormat) {
+uint32_t MVKPixelFormats::getBytesPerBlock(VkFormat vkFormat) {
     return getVkFormatDesc(vkFormat).bytesPerBlock;
 }
 
-uint32_t MVKPixelFormats::getMTLPixelFormatBytesPerBlock(MTLPixelFormat mtlFormat) {
+uint32_t MVKPixelFormats::getBytesPerBlock(MTLPixelFormat mtlFormat) {
     return getVkFormatDesc(mtlFormat).bytesPerBlock;
 }
 
-VkExtent2D MVKPixelFormats::getVkFormatBlockTexelSize(VkFormat vkFormat) {
+VkExtent2D MVKPixelFormats::getBlockTexelSize(VkFormat vkFormat) {
     return getVkFormatDesc(vkFormat).blockTexelSize;
 }
 
-VkExtent2D MVKPixelFormats::getMTLPixelFormatBlockTexelSize(MTLPixelFormat mtlFormat) {
+VkExtent2D MVKPixelFormats::getBlockTexelSize(MTLPixelFormat mtlFormat) {
     return getVkFormatDesc(mtlFormat).blockTexelSize;
 }
 
-float MVKPixelFormats::getVkFormatBytesPerTexel(VkFormat vkFormat) {
+float MVKPixelFormats::getBytesPerTexel(VkFormat vkFormat) {
     return getVkFormatDesc(vkFormat).bytesPerTexel();
 }
 
-float MVKPixelFormats::getMTLPixelFormatBytesPerTexel(MTLPixelFormat mtlFormat) {
+float MVKPixelFormats::getBytesPerTexel(MTLPixelFormat mtlFormat) {
     return getVkFormatDesc(mtlFormat).bytesPerTexel();
 }
 
-size_t MVKPixelFormats::getVkFormatBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow) {
+size_t MVKPixelFormats::getBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow) {
     auto& vkDesc = getVkFormatDesc(vkFormat);
     return mvkCeilingDivide(texelsPerRow, vkDesc.blockTexelSize.width) * vkDesc.bytesPerBlock;
 }
 
-size_t MVKPixelFormats::getMTLPixelFormatBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow) {
+size_t MVKPixelFormats::getBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow) {
 	auto& vkDesc = getVkFormatDesc(mtlFormat);
     return mvkCeilingDivide(texelsPerRow, vkDesc.blockTexelSize.width) * vkDesc.bytesPerBlock;
 }
 
-size_t MVKPixelFormats::getVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
+size_t MVKPixelFormats::getBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
     return mvkCeilingDivide(texelRowsPerLayer, getVkFormatDesc(vkFormat).blockTexelSize.height) * bytesPerRow;
 }
 
-size_t MVKPixelFormats::getMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
+size_t MVKPixelFormats::getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer) {
     return mvkCeilingDivide(texelRowsPerLayer, getVkFormatDesc(mtlFormat).blockTexelSize.height) * bytesPerRow;
 }
 
@@ -266,19 +266,19 @@ VkFormatProperties MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
 	return	getVkFormatDesc(vkFormat).properties;
 }
 
-MVKMTLFmtCaps MVKPixelFormats::getVkFormatCapabilities(VkFormat vkFormat) {
+MVKMTLFmtCaps MVKPixelFormats::getCapabilities(VkFormat vkFormat) {
 	return getMTLPixelFormatDesc(vkFormat).mtlFmtCaps;
 }
 
-MVKMTLFmtCaps MVKPixelFormats::getMTLPixelFormatCapabilities(MTLPixelFormat mtlFormat) {
+MVKMTLFmtCaps MVKPixelFormats::getCapabilities(MTLPixelFormat mtlFormat) {
 	return getMTLPixelFormatDesc(mtlFormat).mtlFmtCaps;
 }
 
-const char* MVKPixelFormats::getVkFormatName(VkFormat vkFormat) {
+const char* MVKPixelFormats::getName(VkFormat vkFormat) {
     return getVkFormatDesc(vkFormat).name;
 }
 
-const char* MVKPixelFormats::getMTLPixelFormatName(MTLPixelFormat mtlFormat) {
+const char* MVKPixelFormats::getName(MTLPixelFormat mtlFormat) {
     return getMTLPixelFormatDesc(mtlFormat).name;
 }
 
@@ -302,7 +302,7 @@ void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, b
 	}
 }
 
-MTLVertexFormat MVKPixelFormats::getMTLVertexFormatFromVkFormat(VkFormat vkFormat) {
+MTLVertexFormat MVKPixelFormats::getMTLVertexFormat(VkFormat vkFormat) {
 	auto& vkDesc = getVkFormatDesc(vkFormat);
 	MTLVertexFormat mtlVtxFmt = vkDesc.mtlVertexFormat;
 
@@ -328,10 +328,9 @@ MTLVertexFormat MVKPixelFormats::getMTLVertexFormatFromVkFormat(VkFormat vkForma
 	return mtlVtxFmt;
 }
 
-MTLClearColor MVKPixelFormats::getMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
-														   VkFormat vkFormat) {
+MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFormat vkFormat) {
 	MTLClearColor mtlClr;
-	switch (getFormatTypeFromVkFormat(vkFormat)) {
+	switch (getFormatType(vkFormat)) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
 			mtlClr.red		= vkClearValue.color.float32[0];
@@ -365,16 +364,16 @@ MTLClearColor MVKPixelFormats::getMTLClearColorFromVkClearValue(VkClearValue vkC
 	return mtlClr;
 }
 
-double MVKPixelFormats::getMTLClearDepthFromVkClearValue(VkClearValue vkClearValue) {
+double MVKPixelFormats::getMTLClearDepthValue(VkClearValue vkClearValue) {
 	return vkClearValue.depthStencil.depth;
 }
 
-uint32_t MVKPixelFormats::getMTLClearStencilFromVkClearValue(VkClearValue vkClearValue) {
+uint32_t MVKPixelFormats::getMTLClearStencilValue(VkClearValue vkClearValue) {
 	return vkClearValue.depthStencil.stencil;
 }
 
-VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage,
-																		   MTLPixelFormat mtlFormat) {
+VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlags(MTLTextureUsage mtlUsage,
+														MTLPixelFormat mtlFormat) {
     VkImageUsageFlags vkImageUsageFlags = 0;
 
     if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageShaderRead) ) {
@@ -384,7 +383,7 @@ VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlagsFromMTLTextureUsage(MTLTe
     }
     if ( mvkAreAllFlagsEnabled(mtlUsage, MTLTextureUsageRenderTarget) ) {
         mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-        if (mtlPixelFormatIsDepthFormat(mtlFormat) || mtlPixelFormatIsStencilFormat(mtlFormat)) {
+        if (isDepthFormat(mtlFormat) || isStencilFormat(mtlFormat)) {
             mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
         } else {
             mvkEnableFlags(vkImageUsageFlags, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
@@ -397,15 +396,15 @@ VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlagsFromMTLTextureUsage(MTLTe
     return vkImageUsageFlags;
 }
 
-MTLTextureUsage MVKPixelFormats::getMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags,
-																		 MTLPixelFormat mtlFormat,
-																		 MTLTextureUsage minUsage) {
-	bool isDepthFmt = mtlPixelFormatIsDepthFormat(mtlFormat);
-	bool isStencilFmt = mtlPixelFormatIsStencilFormat(mtlFormat);
+MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
+													MTLPixelFormat mtlFormat,
+													MTLTextureUsage minUsage) {
+	bool isDepthFmt = isDepthFormat(mtlFormat);
+	bool isStencilFmt = isStencilFormat(mtlFormat);
 	bool isCombinedDepthStencilFmt = isDepthFmt && isStencilFmt;
 	bool isColorFormat = !(isDepthFmt || isStencilFmt);
 	bool supportsStencilViews = _physicalDevice ? _physicalDevice->getMetalFeatures()->stencilViews : false;
-	MVKMTLFmtCaps mtlFmtCaps = getMTLPixelFormatCapabilities(mtlFormat);
+	MVKMTLFmtCaps mtlFmtCaps = getCapabilities(mtlFormat);
 
 	MTLTextureUsage mtlUsage = minUsage;
 
@@ -1353,50 +1352,50 @@ void MVKPixelFormats::test() {
 			if (fd.isSupportedOrSubstitutable()) {
 				MVKLogInfo("Testing %s", fd.name);
 
-				testFmt(vkFormatIsSupported(vkFmt), mvkVkFormatIsSupported(vkFmt));
-				testFmt(mtlPixelFormatIsSupported(mtlFmt), mvkMTLPixelFormatIsSupported(mtlFmt));
-				testFmt(mtlPixelFormatIsDepthFormat(mtlFmt), mvkMTLPixelFormatIsDepthFormat(mtlFmt));
-				testFmt(mtlPixelFormatIsStencilFormat(mtlFmt), mvkMTLPixelFormatIsStencilFormat(mtlFmt));
-				testFmt(mtlPixelFormatIsPVRTCFormat(mtlFmt), mvkMTLPixelFormatIsPVRTCFormat(mtlFmt));
-				testFmt(getFormatTypeFromVkFormat(vkFmt), mvkFormatTypeFromVkFormat(vkFmt));
-				testFmt(getFormatTypeFromMTLPixelFormat(mtlFmt), mvkFormatTypeFromMTLPixelFormat(mtlFmt));
-				testFmt(getMTLPixelFormatFromVkFormat(vkFmt), mvkMTLPixelFormatFromVkFormat(vkFmt));
-				testFmt(getVkFormatFromMTLPixelFormat(mtlFmt), mvkVkFormatFromMTLPixelFormat(mtlFmt));
-				testFmt(getVkFormatBytesPerBlock(vkFmt), mvkVkFormatBytesPerBlock(vkFmt));
-				testFmt(getMTLPixelFormatBytesPerBlock(mtlFmt), mvkMTLPixelFormatBytesPerBlock(mtlFmt));
-				testFmt(getVkFormatBlockTexelSize(vkFmt), mvkVkFormatBlockTexelSize(vkFmt));
-				testFmt(getMTLPixelFormatBlockTexelSize(mtlFmt), mvkMTLPixelFormatBlockTexelSize(mtlFmt));
-				testFmt(getVkFormatBytesPerTexel(vkFmt), mvkVkFormatBytesPerTexel(vkFmt));
-				testFmt(getMTLPixelFormatBytesPerTexel(mtlFmt), mvkMTLPixelFormatBytesPerTexel(mtlFmt));
-				testFmt(getVkFormatBytesPerRow(vkFmt, 4), mvkVkFormatBytesPerRow(vkFmt, 4));
-				testFmt(getMTLPixelFormatBytesPerRow(mtlFmt, 4), mvkMTLPixelFormatBytesPerRow(mtlFmt, 4));
-				testFmt(getVkFormatBytesPerLayer(vkFmt, 256, 4), mvkVkFormatBytesPerLayer(vkFmt, 256, 4));
-				testFmt(getMTLPixelFormatBytesPerLayer(mtlFmt, 256, 4), mvkMTLPixelFormatBytesPerLayer(mtlFmt, 256, 4));
+				testFmt(isSupported(vkFmt), mvkVkFormatIsSupported(vkFmt));
+				testFmt(isSupported(mtlFmt), mvkMTLPixelFormatIsSupported(mtlFmt));
+				testFmt(isDepthFormat(mtlFmt), mvkMTLPixelFormatIsDepthFormat(mtlFmt));
+				testFmt(isStencilFormat(mtlFmt), mvkMTLPixelFormatIsStencilFormat(mtlFmt));
+				testFmt(isPVRTCFormat(mtlFmt), mvkMTLPixelFormatIsPVRTCFormat(mtlFmt));
+				testFmt(getFormatType(vkFmt), mvkFormatTypeFromVkFormat(vkFmt));
+				testFmt(getFormatType(mtlFmt), mvkFormatTypeFromMTLPixelFormat(mtlFmt));
+				testFmt(getMTLPixelFormat(vkFmt), mvkMTLPixelFormatFromVkFormat(vkFmt));
+				testFmt(getVkFormat(mtlFmt), mvkVkFormatFromMTLPixelFormat(mtlFmt));
+				testFmt(getBytesPerBlock(vkFmt), mvkVkFormatBytesPerBlock(vkFmt));
+				testFmt(getBytesPerBlock(mtlFmt), mvkMTLPixelFormatBytesPerBlock(mtlFmt));
+				testFmt(getBlockTexelSize(vkFmt), mvkVkFormatBlockTexelSize(vkFmt));
+				testFmt(getBlockTexelSize(mtlFmt), mvkMTLPixelFormatBlockTexelSize(mtlFmt));
+				testFmt(getBytesPerTexel(vkFmt), mvkVkFormatBytesPerTexel(vkFmt));
+				testFmt(getBytesPerTexel(mtlFmt), mvkMTLPixelFormatBytesPerTexel(mtlFmt));
+				testFmt(getBytesPerRow(vkFmt, 4), mvkVkFormatBytesPerRow(vkFmt, 4));
+				testFmt(getBytesPerRow(mtlFmt, 4), mvkMTLPixelFormatBytesPerRow(mtlFmt, 4));
+				testFmt(getBytesPerLayer(vkFmt, 256, 4), mvkVkFormatBytesPerLayer(vkFmt, 256, 4));
+				testFmt(getBytesPerLayer(mtlFmt, 256, 4), mvkMTLPixelFormatBytesPerLayer(mtlFmt, 256, 4));
 				testProps(getVkFormatProperties(vkFmt), mvkVkFormatProperties(vkFmt));
-				testFmt(strcmp(getVkFormatName(vkFmt), mvkVkFormatName(vkFmt)), 0);
-				testFmt(strcmp(getMTLPixelFormatName(mtlFmt), mvkMTLPixelFormatName(mtlFmt)), 0);
-				testFmt(getMTLClearColorFromVkClearValue(VkClearValue(), vkFmt),
+				testFmt(strcmp(getName(vkFmt), mvkVkFormatName(vkFmt)), 0);
+				testFmt(strcmp(getName(mtlFmt), mvkMTLPixelFormatName(mtlFmt)), 0);
+				testFmt(getMTLClearColor(VkClearValue(), vkFmt),
 						mvkMTLClearColorFromVkClearValue(VkClearValue(), vkFmt));
 
-				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageUnknown, mtlFmt),
+				testFmt(getVkImageUsageFlags(MTLTextureUsageUnknown, mtlFmt),
 						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageUnknown, mtlFmt));
-				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderRead, mtlFmt),
+				testFmt(getVkImageUsageFlags(MTLTextureUsageShaderRead, mtlFmt),
 						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderRead, mtlFmt));
-				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderWrite, mtlFmt),
+				testFmt(getVkImageUsageFlags(MTLTextureUsageShaderWrite, mtlFmt),
 						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageShaderWrite, mtlFmt));
-				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageRenderTarget, mtlFmt),
+				testFmt(getVkImageUsageFlags(MTLTextureUsageRenderTarget, mtlFmt),
 						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsageRenderTarget, mtlFmt));
-				testFmt(getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsagePixelFormatView, mtlFmt),
+				testFmt(getVkImageUsageFlags(MTLTextureUsagePixelFormatView, mtlFmt),
 						mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsagePixelFormatView, mtlFmt));
 
 				VkImageUsageFlags vkUsage;
 				vkUsage = VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
-				testFmt(getMTLTextureUsageFromVkImageUsageFlags(vkUsage, mtlFmt), mvkMTLTextureUsageFromVkImageUsageFlags(vkUsage, mtlFmt));
+				testFmt(getMTLTextureUsage(vkUsage, mtlFmt), mvkMTLTextureUsageFromVkImageUsageFlags(vkUsage, mtlFmt));
 
 				vkUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_STORAGE_BIT;
-				testFmt(getMTLTextureUsageFromVkImageUsageFlags(vkUsage, mtlFmt), mvkMTLTextureUsageFromVkImageUsageFlags(vkUsage, mtlFmt));
+				testFmt(getMTLTextureUsage(vkUsage, mtlFmt), mvkMTLTextureUsageFromVkImageUsageFlags(vkUsage, mtlFmt));
 
-				testFmt(getMTLVertexFormatFromVkFormat(vkFmt), mvkMTLVertexFormatFromVkFormat(vkFmt));
+				testFmt(getMTLVertexFormat(vkFmt), mvkMTLVertexFormatFromVkFormat(vkFmt));
 
 			} else {
 				MVKLogInfo("%s not supported or substitutable on this device.", fd.name);
