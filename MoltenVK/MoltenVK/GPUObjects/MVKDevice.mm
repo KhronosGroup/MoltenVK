@@ -2613,7 +2613,33 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	initQueues(pCreateInfo);
 
 	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
-		[[MTLCaptureManager sharedCaptureManager] startCaptureWithDevice: getMTLDevice()];
+		MTLCaptureManager *captureMgr = [MTLCaptureManager sharedCaptureManager];
+		if (!getInstance()->_autoGPUCaptureOutputFile.empty()) {
+			if ( ![captureMgr respondsToSelector: @selector(supportsDestination:)] ||
+				 ![captureMgr supportsDestination: MTLCaptureDestinationGPUTraceDocument] ) {
+				reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Capturing GPU traces to a file requires macOS 10.15 or iOS 13.0. Falling back to Xcode GPU capture.");
+				[captureMgr startCaptureWithDevice: getMTLDevice()];
+			} else {
+				NSError *err = nil;
+				NSString *path, *expandedPath;
+				MTLCaptureDescriptor *captureDesc = [MTLCaptureDescriptor new];
+				captureDesc.captureObject = getMTLDevice();
+				captureDesc.destination = MTLCaptureDestinationGPUTraceDocument;
+				path = [NSString stringWithUTF8String: getInstance()->_autoGPUCaptureOutputFile.c_str()];
+				expandedPath = path.stringByExpandingTildeInPath;
+				captureDesc.outputURL = [NSURL fileURLWithPath: expandedPath];
+				if (![captureMgr startCaptureWithDescriptor: captureDesc error: &err]) {
+					reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to start GPU capture session to %s (Error code %li): %s", getInstance()->_autoGPUCaptureOutputFile.c_str(), (long)err.code, err.localizedDescription.UTF8String);
+					[err release];
+				}
+				[captureDesc.outputURL release];
+				[captureDesc release];
+				[expandedPath release];
+				[path release];
+			}
+		} else {
+			[captureMgr startCaptureWithDevice: getMTLDevice()];
+		}
 	}
 
 	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
