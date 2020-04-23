@@ -44,12 +44,13 @@ typedef enum : uint16_t {
 	kMVKMTLFmtCapsRead     = (1<<0),
 	kMVKMTLFmtCapsFilter   = (1<<1),
 	kMVKMTLFmtCapsWrite    = (1<<2),
-	kMVKMTLFmtCapsColorAtt = (1<<3),
-	kMVKMTLFmtCapsDSAtt    = (1<<4),
-	kMVKMTLFmtCapsBlend    = (1<<5),
-	kMVKMTLFmtCapsMSAA     = (1<<6),
-	kMVKMTLFmtCapsResolve  = (1<<7),
-	kMVKMTLFmtCapsVertex   = (1<<8),
+	kMVKMTLFmtCapsAtomic   = (1<<3),
+	kMVKMTLFmtCapsColorAtt = (1<<4),
+	kMVKMTLFmtCapsDSAtt    = (1<<5),
+	kMVKMTLFmtCapsBlend    = (1<<6),
+	kMVKMTLFmtCapsMSAA     = (1<<7),
+	kMVKMTLFmtCapsResolve  = (1<<8),
+	kMVKMTLFmtCapsVertex   = (1<<9),
 
 	kMVKMTLFmtCapsRF       = (kMVKMTLFmtCapsRead | kMVKMTLFmtCapsFilter),
 	kMVKMTLFmtCapsRC       = (kMVKMTLFmtCapsRead | kMVKMTLFmtCapsColorAtt),
@@ -291,14 +292,12 @@ protected:
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
-	VkFormatFeatureFlags getOptimalTilingFeatures(VkFormat vkFormat, MVKMTLFmtCaps mtlFmtCaps);
-	VkFormatFeatureFlags getLinearTilingFeatures(VkFormat vkFormat, MVKMTLFmtCaps mtlFmtCaps, MVKFormatType mvkFmtType);
-	VkFormatFeatureFlags getBufferFeatures(VkFormat vkFormat, MVKMTLFmtCaps mtlFmtTexCaps, MVKMTLFmtCaps mtlFmtVtxCaps, MVKFormatType mvkFmtType);
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
 	void initMTLVertexFormatCapabilities();
 	void buildMTLFormatMaps();
 	void buildVkFormatMaps();
+	void setFormatProperties(MVKVkFormatDesc& vkDesc);
 	void modifyMTLFormatCapabilities();
 	void modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice);
 	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
