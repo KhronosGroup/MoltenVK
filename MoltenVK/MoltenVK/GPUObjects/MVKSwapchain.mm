@@ -126,7 +126,7 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
                                                        __watermarkTextureWidth,
                                                        __watermarkTextureHeight,
                                                        __watermarkTextureFormat,
-                                                       getPixelFormats()->getMTLPixelFormatBytesPerRow(__watermarkTextureFormat, __watermarkTextureWidth),
+                                                       getPixelFormats()->getBytesPerRow(__watermarkTextureFormat, __watermarkTextureWidth),
                                                        __watermarkShaderSource);
         }
 		_licenseWatermark->render(mtlTexture, mtlCmdBuff, 0.02f);
@@ -260,7 +260,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 
 	_mtlLayer = mvkSrfc->getCAMetalLayer();
 	_mtlLayer.device = getMTLDevice();
-	_mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormatFromVkFormat(pCreateInfo->imageFormat);
+	_mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
 	_mtlLayer.maximumDrawableCountMVK = imgCnt;
 	_mtlLayer.displaySyncEnabledMVK = (pCreateInfo->presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 	_mtlLayer.magnificationFilter = _device->_pMVKConfig->swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
@@ -349,7 +349,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = getPixelFormats()->getVkFormatFromMTLPixelFormat(_mtlLayer.pixelFormat),
+        .format = getPixelFormats()->getVkFormat(_mtlLayer.pixelFormat),
         .extent = { imgExtent.width, imgExtent.height, 1 },
         .mipLevels = 1,
         .arrayLayers = 1,

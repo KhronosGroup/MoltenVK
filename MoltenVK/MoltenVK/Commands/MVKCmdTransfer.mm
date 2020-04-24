@@ -91,14 +91,14 @@ VkResult MVKCmdCopyImage::setContent(MVKCommandBuffer* cmdBuff,
 	_srcSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_srcImage->getSampleCount());
 	_isSrcCompressed = _srcImage->getIsCompressed();
 	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
-	uint32_t srcBytesPerBlock = pixFmts->getMTLPixelFormatBytesPerBlock(srcMTLPixFmt);
+	uint32_t srcBytesPerBlock = pixFmts->getBytesPerBlock(srcMTLPixFmt);
 
 	_dstImage = (MVKImage*)dstImage;
 	_dstLayout = dstImageLayout;
 	_dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
 	_isDstCompressed = _dstImage->getIsCompressed();
 	MTLPixelFormat dstMTLPixFmt = _dstImage->getMTLPixelFormat();
-	uint32_t dstBytesPerBlock = pixFmts->getMTLPixelFormatBytesPerBlock(dstMTLPixFmt);
+	uint32_t dstBytesPerBlock = pixFmts->getBytesPerBlock(dstMTLPixFmt);
 
 	_canCopyFormats = (_dstSampleCount == _srcSampleCount) && (formatsMustMatch
 																? (dstMTLPixFmt == srcMTLPixFmt)
@@ -144,7 +144,7 @@ void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region, MV
 	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
 	VkExtent3D dstExtent = region.extent;
 	if (_isSrcCompressed && !_isDstCompressed) {
-		VkExtent2D srcBlockExtent = pixFmts->getMTLPixelFormatBlockTexelSize(srcMTLPixFmt);
+		VkExtent2D srcBlockExtent = pixFmts->getBlockTexelSize(srcMTLPixFmt);
 		dstExtent.width /= srcBlockExtent.width;
 		dstExtent.height /= srcBlockExtent.height;
 	}
@@ -156,8 +156,8 @@ void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region, MV
 	buffImgCpy.imageExtent = dstExtent;
 	_dstTmpBuffImgCopies.push_back(buffImgCpy);
 
-	NSUInteger bytesPerRow = pixFmts->getMTLPixelFormatBytesPerRow(srcMTLPixFmt, region.extent.width);
-	NSUInteger bytesPerRegion = pixFmts->getMTLPixelFormatBytesPerLayer(srcMTLPixFmt, bytesPerRow, region.extent.height);
+	NSUInteger bytesPerRow = pixFmts->getBytesPerRow(srcMTLPixFmt, region.extent.width);
+	NSUInteger bytesPerRegion = pixFmts->getBytesPerLayer(srcMTLPixFmt, bytesPerRow, region.extent.height);
 	_tmpBuffSize += bytesPerRegion;
 }
 
@@ -268,8 +268,7 @@ VkResult MVKCmdBlitImage::setContent(MVKCommandBuffer* cmdBuff,
 	// Validate
 	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
 	if ( !_mvkImageBlitRenders.empty() &&
-		(pixFmts->mtlPixelFormatIsDepthFormat(srcMTLPixFmt) ||
-		 pixFmts->mtlPixelFormatIsStencilFormat(srcMTLPixFmt)) ) {
+		(pixFmts->isDepthFormat(srcMTLPixFmt) || pixFmts->isStencilFormat(srcMTLPixFmt)) ) {
 
 		_mvkImageBlitRenders.clear();
 		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting depth/stencil images is not supported.");
@@ -490,8 +489,8 @@ VkResult MVKCmdResolveImage::setContent(MVKCommandBuffer* cmdBuff,
 	_transferImageData.samples = _srcImage->getSampleCount();
 
 	// Validate
-	if ( !mvkAreAllFlagsEnabled(cmdBuff->getPixelFormats()->getMTLPixelFormatCapabilities(_dstImage->getMTLPixelFormat()), kMVKMTLFmtCapsResolve) ) {
-		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdResolveImage(): %s cannot be used as a resolve destination on this device.", cmdBuff->getPixelFormats()->getVkFormatName(_dstImage->getVkFormat()));
+	if ( !mvkAreAllFlagsEnabled(cmdBuff->getPixelFormats()->getCapabilities(_dstImage->getMTLPixelFormat()), kMVKMTLFmtCapsResolve) ) {
+		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdResolveImage(): %s cannot be used as a resolve destination on this device.", cmdBuff->getPixelFormats()->getName(_dstImage->getVkFormat()));
 	}
 
 	return VK_SUCCESS;
@@ -755,7 +754,7 @@ VkResult MVKCmdBufferImageCopy::setContent(MVKCommandBuffer* cmdBuff,
     // Validate
     if ( !_image->hasExpectedTexelSize() ) {
         const char* cmdName = _toImage ? "vkCmdCopyBufferToImage" : "vkCmdCopyImageToBuffer";
-        return reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, cmdBuff->getPixelFormats()->getMTLPixelFormatName(_image->getMTLPixelFormat()), cmdBuff->getPixelFormats()->getVkFormatName(_image->getVkFormat()));
+        return reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, cmdBuff->getPixelFormats()->getName(_image->getMTLPixelFormat()), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
     }
 
 	return VK_SUCCESS;
@@ -786,14 +785,13 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
         uint32_t buffImgHt = cpyRgn.bufferImageHeight;
         if (buffImgHt == 0) { buffImgHt = cpyRgn.imageExtent.height; }
 
-        NSUInteger bytesPerRow = pixFmts->getMTLPixelFormatBytesPerRow(mtlPixFmt, buffImgWd);
-        NSUInteger bytesPerImg = pixFmts->getMTLPixelFormatBytesPerLayer(mtlPixFmt, bytesPerRow, buffImgHt);
+        NSUInteger bytesPerRow = pixFmts->getBytesPerRow(mtlPixFmt, buffImgWd);
+        NSUInteger bytesPerImg = pixFmts->getBytesPerLayer(mtlPixFmt, bytesPerRow, buffImgHt);
 
         // If the format combines BOTH depth and stencil, determine whether one or both
         // components are to be copied, and adjust the byte counts and copy options accordingly.
         MTLBlitOption blitOptions = MTLBlitOptionNone;
-        if (pixFmts->mtlPixelFormatIsDepthFormat(mtlPixFmt) &&
-			pixFmts->mtlPixelFormatIsStencilFormat(mtlPixFmt)) {
+        if (pixFmts->isDepthFormat(mtlPixFmt) && pixFmts->isStencilFormat(mtlPixFmt)) {
 
             VkImageAspectFlags imgFlags = cpyRgn.imageSubresource.aspectMask;
             bool wantDepth = mvkAreAllFlagsEnabled(imgFlags, VK_IMAGE_ASPECT_DEPTH_BIT);
@@ -802,7 +800,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             // The stencil component is always 1 byte per pixel.
 			// Don't reduce depths of 32-bit depth/stencil formats.
             if (wantDepth && !wantStencil) {
-				if (pixFmts->getMTLPixelFormatBytesPerTexel(mtlPixFmt) != 4) {
+				if (pixFmts->getBytesPerTexel(mtlPixFmt) != 4) {
 					bytesPerRow -= buffImgWd;
 					bytesPerImg -= buffImgWd * buffImgHt;
 				}
@@ -815,7 +813,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
         }
 
 #if MVK_IOS
-		if (pixFmts->mtlPixelFormatIsPVRTCFormat(mtlPixFmt)) {
+		if (pixFmts->isPVRTCFormat(mtlPixFmt)) {
 			blitOptions |= MTLBlitOptionRowLinearPVRTC;
 		}
 #endif
@@ -845,8 +843,8 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             [mtlComputeEnc setBuffer: mtlBuffer offset: mtlBuffOffset atIndex: 0];
             MVKBuffer* tempBuff;
             if (needsTempBuff) {
-                NSUInteger bytesPerDestRow = pixFmts->getMTLPixelFormatBytesPerRow(mtlTexture.pixelFormat, info.extent.width);
-                NSUInteger bytesPerDestImg = pixFmts->getMTLPixelFormatBytesPerLayer(mtlTexture.pixelFormat, bytesPerDestRow, info.extent.height);
+                NSUInteger bytesPerDestRow = pixFmts->getBytesPerRow(mtlTexture.pixelFormat, info.extent.width);
+                NSUInteger bytesPerDestImg = pixFmts->getBytesPerLayer(mtlTexture.pixelFormat, bytesPerDestRow, info.extent.height);
                 // We're going to copy from the temporary buffer now, so use the
                 // temp buffer parameters in the copy below.
                 bytesPerRow = bytesPerDestRow;
@@ -870,7 +868,7 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
             // Now work out how big to make the grid, and from there, the size and number of threadgroups.
             // One thread is run per block. Each block decompresses to an m x n array of texels.
             // So the size of the grid is (ceil(width/m), ceil(height/n), depth).
-            VkExtent2D blockExtent = pixFmts->getMTLPixelFormatBlockTexelSize(mtlPixFmt);
+            VkExtent2D blockExtent = pixFmts->getBlockTexelSize(mtlPixFmt);
             MTLSize mtlGridSize = MTLSizeMake(mvkCeilingDivide<NSUInteger>(mtlTxtSize.width, blockExtent.width),
                                               mvkCeilingDivide<NSUInteger>(mtlTxtSize.height, blockExtent.height),
                                               mtlTxtSize.depth);
@@ -970,13 +968,13 @@ VkResult MVKCmdClearAttachments::setContent(MVKCommandBuffer* cmdBuff,
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT)) {
             _isClearingDepth = true;
             _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
-            mtlDepthVal = pixFmts->getMTLClearDepthFromVkClearValue(clrAtt.clearValue);
+            mtlDepthVal = pixFmts->getMTLClearDepthValue(clrAtt.clearValue);
         }
 
         if (mvkIsAnyFlagEnabled(clrAtt.aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT)) {
             _isClearingStencil = true;
             _rpsKey.enableAttachment(kMVKClearAttachmentDepthStencilIndex);
-            _mtlStencilValue = pixFmts->getMTLClearStencilFromVkClearValue(clrAtt.clearValue);
+            _mtlStencilValue = pixFmts->getMTLClearStencilValue(clrAtt.clearValue);
         }
     }
 
@@ -1072,17 +1070,17 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t caCnt = subpass->getColorAttachmentCount();
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
         VkFormat vkAttFmt = subpass->getColorAttachmentFormat(caIdx);
-		_rpsKey.attachmentMTLPixelFormats[caIdx] = pixFmts->getMTLPixelFormatFromVkFormat(vkAttFmt);
-		MTLClearColor mtlCC = pixFmts->getMTLClearColorFromVkClearValue(_vkClearValues[caIdx], vkAttFmt);
+		_rpsKey.attachmentMTLPixelFormats[caIdx] = pixFmts->getMTLPixelFormat(vkAttFmt);
+		MTLClearColor mtlCC = pixFmts->getMTLClearColor(_vkClearValues[caIdx], vkAttFmt);
 		_clearColors[caIdx] = { (float)mtlCC.red, (float)mtlCC.green, (float)mtlCC.blue, (float)mtlCC.alpha};
     }
 
     VkFormat vkAttFmt = subpass->getDepthStencilFormat();
-	MTLPixelFormat mtlAttFmt = pixFmts->getMTLPixelFormatFromVkFormat(vkAttFmt);
+	MTLPixelFormat mtlAttFmt = pixFmts->getMTLPixelFormat(vkAttFmt);
     _rpsKey.attachmentMTLPixelFormats[kMVKClearAttachmentDepthStencilIndex] = mtlAttFmt;
 
-	bool isClearingDepth = _isClearingDepth && pixFmts->mtlPixelFormatIsDepthFormat(mtlAttFmt);
-	bool isClearingStencil = _isClearingStencil && pixFmts->mtlPixelFormatIsStencilFormat(mtlAttFmt);
+	bool isClearingDepth = _isClearingDepth && pixFmts->isDepthFormat(mtlAttFmt);
+	bool isClearingStencil = _isClearingStencil && pixFmts->isStencilFormat(mtlAttFmt);
 
     // Render the clear colors to the attachments
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
@@ -1134,10 +1132,10 @@ VkResult MVKCmdClearImage::setContent(MVKCommandBuffer* cmdBuff,
 	if (_image->getImageType() == VK_IMAGE_TYPE_1D) {
 		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Native 1D images cannot be cleared on this device. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D.");
 	}
-	MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getMTLPixelFormatCapabilities(_image->getMTLPixelFormat());
+	MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getCapabilities(_image->getMTLPixelFormat());
 	if ((_isDepthStencilClear && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsDSAtt)) ||
 		( !_isDepthStencilClear && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsColorAtt))) {
-		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", cmdBuff->getPixelFormats()->getVkFormatName(_image->getVkFormat()));
+		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
 	}
 
 	return VK_SUCCESS;
@@ -1170,7 +1168,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPCADesc.texture = imgMTLTex;
 			mtlRPCADesc.loadAction = MTLLoadActionClear;
 			mtlRPCADesc.storeAction = MTLStoreActionStore;
-			mtlRPCADesc.clearColor = pixFmts->getMTLClearColorFromVkClearValue(_clearValue, _image->getVkFormat());
+			mtlRPCADesc.clearColor = pixFmts->getMTLClearColor(_clearValue, _image->getVkFormat());
 		}
 
 		if (isClearingDepth) {
@@ -1178,7 +1176,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPDADesc.texture = imgMTLTex;
 			mtlRPDADesc.loadAction = MTLLoadActionClear;
 			mtlRPDADesc.storeAction = MTLStoreActionStore;
-			mtlRPDADesc.clearDepth = pixFmts->getMTLClearDepthFromVkClearValue(_clearValue);
+			mtlRPDADesc.clearDepth = pixFmts->getMTLClearDepthValue(_clearValue);
 		}
 
 		if (isClearingStencil) {
@@ -1186,7 +1184,7 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPSADesc.texture = imgMTLTex;
 			mtlRPSADesc.loadAction = MTLLoadActionClear;
 			mtlRPSADesc.storeAction = MTLStoreActionStore;
-			mtlRPSADesc.clearStencil = pixFmts->getMTLClearStencilFromVkClearValue(_clearValue);
+			mtlRPSADesc.clearStencil = pixFmts->getMTLClearStencilValue(_clearValue);
 		}
 
         // Extract the mipmap levels that are to be updated

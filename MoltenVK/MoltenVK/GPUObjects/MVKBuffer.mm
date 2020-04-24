@@ -251,9 +251,9 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 	MVKPixelFormats* pixFmts = getPixelFormats();
     _buffer = (MVKBuffer*)pCreateInfo->buffer;
     _mtlBufferOffset = _buffer->getMTLBufferOffset() + pCreateInfo->offset;
-    _mtlPixelFormat = pixFmts->getMTLPixelFormatFromVkFormat(pCreateInfo->format);
-    VkExtent2D fmtBlockSize = pixFmts->getVkFormatBlockTexelSize(pCreateInfo->format);  // Pixel size of format
-    size_t bytesPerBlock = pixFmts->getVkFormatBytesPerBlock(pCreateInfo->format);
+    _mtlPixelFormat = pixFmts->getMTLPixelFormat(pCreateInfo->format);
+    VkExtent2D fmtBlockSize = pixFmts->getBlockTexelSize(pCreateInfo->format);  // Pixel size of format
+    size_t bytesPerBlock = pixFmts->getBytesPerBlock(pCreateInfo->format);
 	_mtlTexture = nil;
 
     // Layout texture as a 1D array of texel blocks (which are texels for non-compressed textures) that covers the bytes

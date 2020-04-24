@@ -126,76 +126,76 @@ public:
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
 	/** Returns whether the VkFormat is supported by this implementation. */
-	bool vkFormatIsSupported(VkFormat vkFormat);
+	bool isSupported(VkFormat vkFormat);
 
 	/** Returns whether the VkFormat is supported by this implementation, or can be substituted by one that is. */
-	bool vkFormatIsSupportedOrSubstitutable(VkFormat vkFormat);
+	bool isSupportedOrSubstitutable(VkFormat vkFormat);
 
 	/** Returns whether the MTLPixelFormat is supported by this implementation. */
-	bool mtlPixelFormatIsSupported(MTLPixelFormat mtlFormat);
+	bool isSupported(MTLPixelFormat mtlFormat);
 
 	/** Returns whether the specified Metal MTLPixelFormat can be used as a depth format. */
-	bool mtlPixelFormatIsDepthFormat(MTLPixelFormat mtlFormat);
+	bool isDepthFormat(MTLPixelFormat mtlFormat);
 
 	/** Returns whether the specified Metal MTLPixelFormat can be used as a stencil format. */
-	bool mtlPixelFormatIsStencilFormat(MTLPixelFormat mtlFormat);
+	bool isStencilFormat(MTLPixelFormat mtlFormat);
 
 	/** Returns whether the specified Metal MTLPixelFormat is a PVRTC format. */
-	bool mtlPixelFormatIsPVRTCFormat(MTLPixelFormat mtlFormat);
+	bool isPVRTCFormat(MTLPixelFormat mtlFormat);
 
 	/** Returns the format type corresponding to the specified Vulkan VkFormat, */
-	MVKFormatType getFormatTypeFromVkFormat(VkFormat vkFormat);
+	MVKFormatType getFormatType(VkFormat vkFormat);
 
 	/** Returns the format type corresponding to the specified Metal MTLPixelFormat, */
-	MVKFormatType getFormatTypeFromMTLPixelFormat(MTLPixelFormat mtlFormat);
+	MVKFormatType getFormatType(MTLPixelFormat mtlFormat);
 
 	/**
 	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
 	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
 	 */
-	MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat);
+	MTLPixelFormat getMTLPixelFormat(VkFormat vkFormat);
 
 	/**
 	 * Returns the Vulkan VkFormat corresponding to the specified Metal MTLPixelFormat,
 	 * or returns VK_FORMAT_UNDEFINED if no corresponding VkFormat exists.
 	 */
-	VkFormat getVkFormatFromMTLPixelFormat(MTLPixelFormat mtlFormat);
+	VkFormat getVkFormat(MTLPixelFormat mtlFormat);
 
 	/**
 	 * Returns the size, in bytes, of a texel block of the specified Vulkan format.
 	 * For uncompressed formats, the returned value corresponds to the size in bytes of a single texel.
 	 */
-	uint32_t getVkFormatBytesPerBlock(VkFormat vkFormat);
+	uint32_t getBytesPerBlock(VkFormat vkFormat);
 
 	/**
 	 * Returns the size, in bytes, of a texel block of the specified Metal format.
 	 * For uncompressed formats, the returned value corresponds to the size in bytes of a single texel.
 	 */
-	uint32_t getMTLPixelFormatBytesPerBlock(MTLPixelFormat mtlFormat);
+	uint32_t getBytesPerBlock(MTLPixelFormat mtlFormat);
 
 	/**
 	 * Returns the size of the compression block, measured in texels for a Vulkan format.
 	 * The returned value will be {1, 1} for non-compressed formats.
 	 */
-	VkExtent2D getVkFormatBlockTexelSize(VkFormat vkFormat);
+	VkExtent2D getBlockTexelSize(VkFormat vkFormat);
 
 	/**
 	 * Returns the size of the compression block, measured in texels for a Metal format.
 	 * The returned value will be {1, 1} for non-compressed formats.
 	 */
-	VkExtent2D getMTLPixelFormatBlockTexelSize(MTLPixelFormat mtlFormat);
+	VkExtent2D getBlockTexelSize(MTLPixelFormat mtlFormat);
 
 	/**
 	 * Returns the size, in bytes, of a texel of the specified Vulkan format.
 	 * The returned value may be fractional for certain compressed formats.
 	 */
-	float getVkFormatBytesPerTexel(VkFormat vkFormat);
+	float getBytesPerTexel(VkFormat vkFormat);
 
 	/**
 	 * Returns the size, in bytes, of a texel of the specified Metal format.
 	 * The returned value may be fractional for certain compressed formats.
 	 */
-	float getMTLPixelFormatBytesPerTexel(MTLPixelFormat mtlFormat);
+	float getBytesPerTexel(MTLPixelFormat mtlFormat);
 
 	/**
 	 * Returns the size, in bytes, of a row of texels of the specified Vulkan format.
@@ -204,7 +204,7 @@ public:
 	 * and texelsPerRow should specify the width in texels, not blocks. The result is rounded
 	 * up if texelsPerRow is not an integer multiple of the compression block width.
 	 */
-	size_t getVkFormatBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow);
+	size_t getBytesPerRow(VkFormat vkFormat, uint32_t texelsPerRow);
 
 	/**
 	 * Returns the size, in bytes, of a row of texels of the specified Metal format.
@@ -213,7 +213,7 @@ public:
 	 * and texelsPerRow should specify the width in texels, not blocks. The result is rounded
 	 * up if texelsPerRow is not an integer multiple of the compression block width.
 	 */
-	size_t getMTLPixelFormatBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow);
+	size_t getBytesPerRow(MTLPixelFormat mtlFormat, uint32_t texelsPerRow);
 
 	/**
 	 * Returns the size, in bytes, of a texture layer of the specified Vulkan format.
@@ -222,7 +222,7 @@ public:
 	 * and texelRowsPerLayer should specify the height in texels, not blocks. The result is
 	 * rounded up if texelRowsPerLayer is not an integer multiple of the compression block height.
 	 */
-	size_t getVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
+	size_t getBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 
 	/**
 	 * Returns the size, in bytes, of a texture layer of the specified Metal format.
@@ -230,46 +230,45 @@ public:
 	 * and texelRowsPerLayer should specify the height in texels, not blocks. The result is
 	 * rounded up if texelRowsPerLayer is not an integer multiple of the compression block height.
 	 */
-	size_t getMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
+	size_t getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 
 	/** Returns the default properties for the specified Vulkan format. */
 	VkFormatProperties getVkFormatProperties(VkFormat vkFormat);
 
 	/** Returns the Metal format capabilities supported by the specified Vulkan format. */
-	MVKMTLFmtCaps getVkFormatCapabilities(VkFormat vkFormat);
+	MVKMTLFmtCaps getCapabilities(VkFormat vkFormat);
 
 	/** Returns the Metal format capabilities supported by the specified Metal format. */
-	MVKMTLFmtCaps getMTLPixelFormatCapabilities(MTLPixelFormat mtlFormat);
+	MVKMTLFmtCaps getCapabilities(MTLPixelFormat mtlFormat);
 
 	/** Returns the name of the specified Vulkan format. */
-	const char* getVkFormatName(VkFormat vkFormat);
+	const char* getName(VkFormat vkFormat);
 
 	/** Returns the name of the specified Metal pixel format. */
-	const char* getMTLPixelFormatName(MTLPixelFormat mtlFormat);
+	const char* getName(MTLPixelFormat mtlFormat);
 
 	/**
 	 * Returns the MTLClearColor value corresponding to the color value in the VkClearValue,
 	 * extracting the color value that is VkFormat for the VkFormat.
 	 */
-	MTLClearColor getMTLClearColorFromVkClearValue(VkClearValue vkClearValue,
-												   VkFormat vkFormat);
+	MTLClearColor getMTLClearColor(VkClearValue vkClearValue, VkFormat vkFormat);
 
 	/** Returns the Metal depth value corresponding to the depth value in the specified VkClearValue. */
-	double getMTLClearDepthFromVkClearValue(VkClearValue vkClearValue);
+	double getMTLClearDepthValue(VkClearValue vkClearValue);
 
 	/** Returns the Metal stencil value corresponding to the stencil value in the specified VkClearValue. */
-	uint32_t getMTLClearStencilFromVkClearValue(VkClearValue vkClearValue);
+	uint32_t getMTLClearStencilValue(VkClearValue vkClearValue);
 
 	/** Returns the Vulkan image usage from the Metal texture usage and format. */
-	VkImageUsageFlags getVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat);
+	VkImageUsageFlags getVkImageUsageFlags(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat);
 
 	/**
 	 * Returns the Metal texture usage from the Vulkan image usage and Metal format, ensuring that at least the
 	 * usages in minUsage are included, even if they wouldn't naturally be included based on the other two parameters.
 	 */
-	MTLTextureUsage getMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags,
-															MTLPixelFormat mtlFormat,
-															MTLTextureUsage minUsage = MTLTextureUsageUnknown);
+	MTLTextureUsage getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
+									   MTLPixelFormat mtlFormat,
+									   MTLTextureUsage minUsage = MTLTextureUsageUnknown);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
 	void enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
@@ -278,7 +277,7 @@ public:
 	 * Returns the Metal MTLVertexFormat corresponding to the specified
 	 * Vulkan VkFormat as used as a vertex attribute format.
 	 */
-	MTLVertexFormat getMTLVertexFormatFromVkFormat(VkFormat vkFormat);
+	MTLVertexFormat getMTLVertexFormat(VkFormat vkFormat);
 
 
 #pragma mark Construction
