@@ -79,55 +79,10 @@ id<MTLCommandBuffer> MVKCommandPool::newMTLCommandBuffer(uint32_t queueIndex) {
 	return [[_device->getQueue(_queueFamilyIndex, queueIndex)->getMTLCommandQueue() commandBuffer] retain];
 }
 
+// Clear the command type pool member variables.
 void MVKCommandPool::trim() {
-	_commandBufferPool.clear();
-	_commandEncodingPool.clear();
-	_cmdPipelineBarrierPool.clear();
-	_cmdBindPipelinePool.clear();
-	_cmdBeginRenderPassPool.clear();
-	_cmdNextSubpassPool.clear();
-	_cmdExecuteCommandsPool.clear();
-	_cmdEndRenderPassPool.clear();
-	_cmdBindDescriptorSetsPool.clear();
-	_cmdSetViewportPool.clear();
-	_cmdSetScissorPool.clear();
-	_cmdSetLineWidthPool.clear();
-	_cmdSetDepthBiasPool.clear();
-	_cmdSetBlendConstantsPool.clear();
-	_cmdSetDepthBoundsPool.clear();
-	_cmdSetStencilCompareMaskPool.clear();
-	_cmdSetStencilWriteMaskPool.clear();
-	_cmdSetStencilReferencePool.clear();
-	_cmdBindVertexBuffersPool.clear();
-	_cmdBindIndexBufferPool.clear();
-	_cmdDrawPool.clear();
-	_cmdDrawIndexedPool.clear();
-	_cmdDrawIndirectPool.clear();
-	_cmdDrawIndexedIndirectPool.clear();
-	_cmdCopyImagePool.clear();
-	_cmdBlitImagePool.clear();
-	_cmdResolveImagePool.clear();
-	_cmdFillBufferPool.clear();
-	_cmdUpdateBufferPool.clear();
-	_cmdCopyBufferPool.clear();
-	_cmdBufferImageCopyPool.clear();
-	_cmdClearAttachmentsPool.clear();
-	_cmdClearImagePool.clear();
-	_cmdBeginQueryPool.clear();
-	_cmdEndQueryPool.clear();
-	_cmdWriteTimestampPool.clear();
-	_cmdResetQueryPoolPool.clear();
-	_cmdCopyQueryPoolResultsPool.clear();
-	_cmdPushConstantsPool.clear();
-	_cmdDispatchPool.clear();
-	_cmdDispatchIndirectPool.clear();
-	_cmdPushDescriptorSetPool.clear();
-	_cmdPushDescriptorSetWithTemplatePool.clear();
-	_cmdDebugMarkerBeginPool.clear();
-	_cmdDebugMarkerEndPool.clear();
-	_cmdDebugMarkerInsertPool.clear();
-	_cmdSetResetEventPool.clear();
-	_cmdWaitEventsPool.clear();
+#	define MVK_CMD_TYPE_POOL(cmdType)  _cmd ##cmdType ##Pool.clear();
+#	include "MVKCommandTypePools.def"
 }
 
 
@@ -140,53 +95,12 @@ MVKCommandPool::MVKCommandPool(MVKDevice* device,
 	_queueFamilyIndex(pCreateInfo->queueFamilyIndex),
 	_commandBufferPool(device, usePooling),
 	_commandEncodingPool(this),
-	_cmdPipelineBarrierPool(usePooling),
-	_cmdBindPipelinePool(usePooling),
-	_cmdBeginRenderPassPool(usePooling),
-	_cmdNextSubpassPool(usePooling),
-	_cmdExecuteCommandsPool(usePooling),
-	_cmdEndRenderPassPool(usePooling),
-	_cmdBindDescriptorSetsPool(usePooling),
-	_cmdSetViewportPool(usePooling),
-	_cmdSetScissorPool(usePooling),
-	_cmdSetLineWidthPool(usePooling),
-	_cmdSetDepthBiasPool(usePooling),
-	_cmdSetBlendConstantsPool(usePooling),
-	_cmdSetDepthBoundsPool(usePooling),
-	_cmdSetStencilCompareMaskPool(usePooling),
-	_cmdSetStencilWriteMaskPool(usePooling),
-	_cmdSetStencilReferencePool(usePooling),
-	_cmdBindVertexBuffersPool(usePooling),
-	_cmdBindIndexBufferPool(usePooling),
-	_cmdDrawPool(usePooling),
-	_cmdDrawIndexedPool(usePooling),
-	_cmdDrawIndirectPool(usePooling),
-	_cmdDrawIndexedIndirectPool(usePooling),
-	_cmdCopyImagePool(usePooling),
-	_cmdBlitImagePool(usePooling),
-	_cmdResolveImagePool(usePooling),
-	_cmdFillBufferPool(usePooling),
-	_cmdUpdateBufferPool(usePooling),
-	_cmdCopyBufferPool(usePooling),
-	_cmdBufferImageCopyPool(usePooling),
-	_cmdClearAttachmentsPool(usePooling),
-	_cmdClearImagePool(usePooling),
-	_cmdBeginQueryPool(usePooling),
-	_cmdEndQueryPool(usePooling),
-	_cmdWriteTimestampPool(usePooling),
-	_cmdResetQueryPoolPool(usePooling),
-	_cmdCopyQueryPoolResultsPool(usePooling),
-	_cmdPushConstantsPool(usePooling),
-	_cmdDispatchPool(usePooling),
-	_cmdDispatchIndirectPool(usePooling),
-	_cmdPushDescriptorSetPool(usePooling),
-	_cmdPushDescriptorSetWithTemplatePool(usePooling),
-	_cmdDebugMarkerBeginPool(usePooling),
-	_cmdDebugMarkerEndPool(usePooling),
-	_cmdDebugMarkerInsertPool(usePooling),
-	_cmdSetResetEventPool(usePooling),
-	_cmdWaitEventsPool(usePooling)
-// when extending be sure to add to trim() as well
+
+// Initialize the command type pool member variables.
+#	define MVK_CMD_TYPE_POOL_LAST(cmdType)  _cmd ##cmdType ##Pool(usePooling)
+#	define MVK_CMD_TYPE_POOL(cmdType)  MVK_CMD_TYPE_POOL_LAST(cmdType),
+#	include "MVKCommandTypePools.def"
+
 {}
 
 MVKCommandPool::~MVKCommandPool() {
