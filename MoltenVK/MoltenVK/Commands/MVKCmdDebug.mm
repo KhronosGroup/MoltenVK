@@ -41,8 +41,6 @@ MVKCmdDebugMarker::~MVKCmdDebugMarker() {
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerBegin
 
-MVKFuncionOverride_getTypePool(DebugMarkerBegin)
-
 // Vulkan debug groups are more general than Metal's.
 // If a renderpass is active, push on the render command encoder, otherwise push on the command buffer.
 void MVKCmdDebugMarkerBegin::encode(MVKCommandEncoder* cmdEncoder) {
@@ -57,8 +55,6 @@ void MVKCmdDebugMarkerBegin::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerEnd
-
-MVKFuncionOverride_getTypePool(DebugMarkerEnd)
 
 VkResult MVKCmdDebugMarkerEnd::setContent(MVKCommandBuffer* cmdBuff) { return VK_SUCCESS; }
 
@@ -76,8 +72,6 @@ void MVKCmdDebugMarkerEnd::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerInsert
-
-MVKFuncionOverride_getTypePool(DebugMarkerInsert)
 
 void MVKCmdDebugMarkerInsert::encode(MVKCommandEncoder* cmdEncoder) {
 	[cmdEncoder->getMTLEncoder() insertDebugSignpost: _markerName];

@@ -70,13 +70,10 @@ public:
 protected:
 	friend MVKCommandBuffer;
 
+	// Returns the command type pool used by this command, from the command pool.
+	// This function is overridden in each concrete subclass declaration, but the implementation of
+	// this function in each subclass is automatically generated in the MVKCommandPool implementation.
 	virtual MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) = 0;
-
-	// Macro to implement a subclass override of the getTypePool(MVKCommandPool* cmdPool) function.
-#	define MVKFuncionOverride_getTypePool(cmdType)					  							\
-	MVKCommandTypePool<MVKCommand>* MVKCmd ##cmdType ::getTypePool(MVKCommandPool* cmdPool) {	\
-		return (MVKCommandTypePool<MVKCommand>*)&cmdPool->_cmd  ##cmdType ##Pool;				\
-	}
 };
 
 

@@ -28,8 +28,6 @@
 #pragma mark -
 #pragma mark MVKCmdBindVertexBuffers
 
-MVKFuncionOverride_getTypePool(BindVertexBuffers)
-
 VkResult MVKCmdBindVertexBuffers::setContent(MVKCommandBuffer* cmdBuff,
 											 uint32_t startBinding,
 											 uint32_t bindingCount,
@@ -59,8 +57,6 @@ void MVKCmdBindVertexBuffers::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdBindIndexBuffer
 
-MVKFuncionOverride_getTypePool(BindIndexBuffer)
-
 VkResult MVKCmdBindIndexBuffer::setContent(MVKCommandBuffer* cmdBuff,
 										   VkBuffer buffer,
 										   VkDeviceSize offset,
@@ -80,8 +76,6 @@ void MVKCmdBindIndexBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdDraw
-
-MVKFuncionOverride_getTypePool(Draw)
 
 VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
 								uint32_t vertexCount,
@@ -270,8 +264,6 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdDrawIndexed
-
-MVKFuncionOverride_getTypePool(DrawIndexed)
 
 VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
 									   uint32_t indexCount,
@@ -507,8 +499,6 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdDrawIndirect
-
-MVKFuncionOverride_getTypePool(DrawIndirect)
 
 VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 										VkBuffer buffer,
@@ -753,8 +743,6 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdDrawIndexedIndirect
-
-MVKFuncionOverride_getTypePool(DrawIndexedIndirect)
 
 VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 											   VkBuffer buffer,

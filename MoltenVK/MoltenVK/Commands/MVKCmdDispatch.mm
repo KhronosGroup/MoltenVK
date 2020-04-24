@@ -28,8 +28,6 @@
 #pragma mark -
 #pragma mark MVKCmdDispatch
 
-MVKFuncionOverride_getTypePool(Dispatch)
-
 VkResult MVKCmdDispatch::setContent(MVKCommandBuffer* cmdBuff,
 									uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
 									uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
@@ -69,8 +67,6 @@ void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdDispatchIndirect
-
-MVKFuncionOverride_getTypePool(DispatchIndirect)
 
 VkResult MVKCmdDispatchIndirect::setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
