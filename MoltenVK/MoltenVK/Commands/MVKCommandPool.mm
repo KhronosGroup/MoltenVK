@@ -113,7 +113,8 @@ MVKCommandPool::~MVKCommandPool() {
 #pragma mark MVKCommand subclass getTypePool() functions
 
 // Implementations of the MVKCommand subclass getTypePool() functions.
-#define MVK_CMD_TYPE_POOL(cmdType)					  							\
+#define MVK_TMPLT_DECL  template<>
+#define MVK_CMD_TYPE_POOL(cmdType)					  										\
 MVKCommandTypePool<MVKCommand>* MVKCmd ##cmdType ::getTypePool(MVKCommandPool* cmdPool) {	\
 	return (MVKCommandTypePool<MVKCommand>*)&cmdPool->_cmd  ##cmdType ##Pool;				\
 }

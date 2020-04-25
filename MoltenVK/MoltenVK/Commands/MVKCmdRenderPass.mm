@@ -109,10 +109,11 @@ void MVKCmdExecuteCommands::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdSetViewport
 
-VkResult MVKCmdSetViewport::setContent(MVKCommandBuffer* cmdBuff,
-									   uint32_t firstViewport,
-									   uint32_t viewportCount,
-									   const VkViewport* pViewports) {
+template <size_t N>
+VkResult MVKCmdSetViewport<N>::setContent(MVKCommandBuffer* cmdBuff,
+										  uint32_t firstViewport,
+										  uint32_t viewportCount,
+										  const VkViewport* pViewports) {
 	_firstViewport = firstViewport;
 	_viewports.clear();	// Clear for reuse
 	_viewports.reserve(viewportCount);
@@ -123,18 +124,23 @@ VkResult MVKCmdSetViewport::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdSetViewport::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_viewportState.setViewports(_viewports, _firstViewport, true);
+template <size_t N>
+void MVKCmdSetViewport<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_viewportState.setViewports(_viewports, _firstViewport, true);
 }
+
+template class MVKCmdSetViewport<1>;
+template class MVKCmdSetViewport<kMVKCachedViewportScissorCount>;
 
 
 #pragma mark -
 #pragma mark MVKCmdSetScissor
 
-VkResult MVKCmdSetScissor::setContent(MVKCommandBuffer* cmdBuff,
-									  uint32_t firstScissor,
-									  uint32_t scissorCount,
-									  const VkRect2D* pScissors) {
+template <size_t N>
+VkResult MVKCmdSetScissor<N>::setContent(MVKCommandBuffer* cmdBuff,
+										 uint32_t firstScissor,
+										 uint32_t scissorCount,
+										 const VkRect2D* pScissors) {
 	_firstScissor = firstScissor;
 	_scissors.clear();	// Clear for reuse
 	_scissors.reserve(scissorCount);
@@ -145,9 +151,13 @@ VkResult MVKCmdSetScissor::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdSetScissor::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdSetScissor<N>::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_scissorState.setScissors(_scissors, _firstScissor, true);
 }
+
+template class MVKCmdSetScissor<1>;
+template class MVKCmdSetScissor<kMVKCachedViewportScissorCount>;
 
 
 #pragma mark -

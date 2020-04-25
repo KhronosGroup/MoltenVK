@@ -21,15 +21,24 @@
 // If the last entry needs to be different (for example to avoid a dangling ',' at the
 // end of an initializer list, also define a macro MVK_CMD_TYPE_POOL_LAST(cmdType).
 
+// MVK_TMPLT_DECL is used to support adding a "template<>" prefix when this file is used
+// to define function implementations for a concrete implementation of a class template
+
 // To add a new command type, simply add an MVK_CMD_TYPE_POOL() line below.
 // The last line in the list must be MVK_CMD_TYPE_POOL_LAST().
+// If the command is a concrete implementation of a template class, include the
+// MVK_TMPLT_DECL prefix.
+
+#ifndef MVK_TMPLT_DECL
+#	define MVK_TMPLT_DECL
+#endif
 
 #ifndef MVK_CMD_TYPE_POOL
-#error MVK_CMD_TYPE_POOL must be defined before including this file
+#	error MVK_CMD_TYPE_POOL must be defined before including this file
 #endif
 
 #ifndef MVK_CMD_TYPE_POOL_LAST
-#define MVK_CMD_TYPE_POOL_LAST(cmdType) MVK_CMD_TYPE_POOL(cmdType)
+#	define MVK_CMD_TYPE_POOL_LAST(cmdType) MVK_CMD_TYPE_POOL(cmdType)
 #endif
 
 MVK_CMD_TYPE_POOL(PipelineBarrier)
@@ -39,8 +48,10 @@ MVK_CMD_TYPE_POOL(NextSubpass)
 MVK_CMD_TYPE_POOL(EndRenderPass)
 MVK_CMD_TYPE_POOL(ExecuteCommands)
 MVK_CMD_TYPE_POOL(BindDescriptorSets)
-MVK_CMD_TYPE_POOL(SetViewport)
-MVK_CMD_TYPE_POOL(SetScissor)
+MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(SetViewport1)
+MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(SetViewportMulti)
+MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(SetScissor1)
+MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(SetScissorMulti)
 MVK_CMD_TYPE_POOL(SetLineWidth)
 MVK_CMD_TYPE_POOL(SetDepthBias)
 MVK_CMD_TYPE_POOL(SetBlendConstants)
@@ -81,3 +92,4 @@ MVK_CMD_TYPE_POOL_LAST(WaitEvents)
 
 #undef MVK_CMD_TYPE_POOL
 #undef MVK_CMD_TYPE_POOL_LAST
+#undef MVK_TMPLT_DECL

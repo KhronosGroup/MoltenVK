@@ -107,10 +107,17 @@ protected:
 	MVKVectorInline<MVKCommandBuffer*, 64> _secondaryCommandBuffers;
 };
 
+
 #pragma mark -
 #pragma mark MVKCmdSetViewport
 
-/** Vulkan command to set the viewports. */
+/**
+ * Vulkan command to set the viewports.
+ * This is a template class to support different vector pre-allocations, so we can balance
+ * in-line memory allocation betweeen the very common case of a single viewport, and the
+ * maximal number, by choosing which concrete implementation to use based on viewport count.
+ */
+template <size_t N>
 class MVKCmdSetViewport : public MVKCommand {
 
 public:
@@ -125,14 +132,24 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	uint32_t _firstViewport;
-	MVKVectorInline<VkViewport, kMVKCachedViewportScissorCount> _viewports;
+	MVKVectorInline<VkViewport, N> _viewports;
 };
+
+// Concrete template class implemenations.
+typedef MVKCmdSetViewport<1> MVKCmdSetViewport1;
+typedef MVKCmdSetViewport<kMVKCachedViewportScissorCount> MVKCmdSetViewportMulti;
 
 
 #pragma mark -
 #pragma mark MVKCmdSetScissor
 
-/** Vulkan command to set the scissor rectangles. */
+/**
+ * Vulkan command to set the scissor rectangles.
+ * This is a template class to support different vector pre-allocations, so we can balance
+ * in-line memory allocation betweeen the very common case of a single scissor, and the
+ * maximal number, by choosing which concrete implementation to use based on scissor count.
+ */
+template <size_t N>
 class MVKCmdSetScissor : public MVKCommand {
 
 public:
@@ -147,8 +164,12 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	uint32_t _firstScissor;
-	MVKVectorInline<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
+	MVKVectorInline<VkRect2D, N> _scissors;
 };
+
+// Concrete template class implemenations.
+typedef MVKCmdSetScissor<1> MVKCmdSetScissor1;
+typedef MVKCmdSetScissor<kMVKCachedViewportScissorCount> MVKCmdSetScissorMulti;
 
 
 #pragma mark -

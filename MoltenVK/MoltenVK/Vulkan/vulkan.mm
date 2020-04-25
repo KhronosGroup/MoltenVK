@@ -1352,7 +1352,11 @@ MVK_PUBLIC_SYMBOL void vkCmdSetViewport(
 	const VkViewport*                           pViewports) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(SetViewport, commandBuffer, firstViewport, viewportCount, pViewports);
+	if (viewportCount <= 1) {
+		MVKAddCmd(SetViewport1, commandBuffer, firstViewport, viewportCount, pViewports);
+	} else {
+		MVKAddCmd(SetViewportMulti, commandBuffer, firstViewport, viewportCount, pViewports);
+	}
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1363,7 +1367,11 @@ MVK_PUBLIC_SYMBOL void vkCmdSetScissor(
 	const VkRect2D*                             pScissors) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(SetScissor, commandBuffer, firstScissor, scissorCount, pScissors);
+	if (scissorCount <= 1) {
+		MVKAddCmd(SetScissor1, commandBuffer, firstScissor, scissorCount, pScissors);
+	} else {
+		MVKAddCmd(SetScissorMulti, commandBuffer, firstScissor, scissorCount, pScissors);
+	}
 	MVKTraceVulkanCallEnd();
 }
 
