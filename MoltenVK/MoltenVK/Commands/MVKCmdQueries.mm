@@ -38,8 +38,6 @@ VkResult MVKCmdQuery::setContent(MVKCommandBuffer* cmdBuff,
 #pragma mark -
 #pragma mark MVKCmdBeginQuery
 
-MVKFuncionOverride_getTypePool(BeginQuery)
-
 VkResult MVKCmdBeginQuery::setContent(MVKCommandBuffer* cmdBuff,
 									  VkQueryPool queryPool,
 									  uint32_t query,
@@ -61,8 +59,6 @@ void MVKCmdBeginQuery::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdEndQuery
 
-MVKFuncionOverride_getTypePool(EndQuery)
-
 void MVKCmdEndQuery::encode(MVKCommandEncoder* cmdEncoder) {
     _queryPool->endQuery(_query, cmdEncoder);
 }
@@ -70,8 +66,6 @@ void MVKCmdEndQuery::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdWriteTimestamp
-
-MVKFuncionOverride_getTypePool(WriteTimestamp)
 
 VkResult MVKCmdWriteTimestamp::setContent(MVKCommandBuffer* cmdBuff,
 										  VkPipelineStageFlagBits pipelineStage,
@@ -93,8 +87,6 @@ void MVKCmdWriteTimestamp::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdResetQueryPool
 
-MVKFuncionOverride_getTypePool(ResetQueryPool)
-
 VkResult MVKCmdResetQueryPool::setContent(MVKCommandBuffer* cmdBuff,
 										  VkQueryPool queryPool,
 										  uint32_t firstQuery,
@@ -114,8 +106,6 @@ void MVKCmdResetQueryPool::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdCopyQueryPoolResults
-
-MVKFuncionOverride_getTypePool(CopyQueryPoolResults)
 
 VkResult MVKCmdCopyQueryPoolResults::setContent(MVKCommandBuffer* cmdBuff,
 												VkQueryPool queryPool,

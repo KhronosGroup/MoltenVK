@@ -47,8 +47,6 @@ static inline MTLSize mvkClampMTLSize(MTLSize size, MTLOrigin origin, MTLSize ma
 #pragma mark -
 #pragma mark MVKCmdCopyImage
 
-MVKFuncionOverride_getTypePool(CopyImage)
-
 VkResult MVKCmdCopyImage::setContent(MVKCommandBuffer* cmdBuff,
 									 VkImage srcImage,
 									 VkImageLayout srcImageLayout,
@@ -237,8 +235,6 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdBlitImage
-
-MVKFuncionOverride_getTypePool(BlitImage)
 
 VkResult MVKCmdBlitImage::setContent(MVKCommandBuffer* cmdBuff,
 									 VkImage srcImage,
@@ -449,8 +445,6 @@ MVKCmdBlitImage::~MVKCmdBlitImage() {
 #pragma mark -
 #pragma mark MVKCmdResolveImage
 
-MVKFuncionOverride_getTypePool(ResolveImage)
-
 VkResult MVKCmdResolveImage::setContent(MVKCommandBuffer* cmdBuff,
 										VkImage srcImage,
 										VkImageLayout srcImageLayout,
@@ -643,8 +637,6 @@ MVKCmdResolveImage::~MVKCmdResolveImage() {
 #pragma mark -
 #pragma mark MVKCmdCopyBuffer
 
-MVKFuncionOverride_getTypePool(CopyBuffer)
-
 // Matches shader struct.
 typedef struct {
 	uint32_t srcOffset;
@@ -714,8 +706,6 @@ void MVKCmdCopyBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdBufferImageCopy
-
-MVKFuncionOverride_getTypePool(BufferImageCopy)
 
 // Matches shader struct.
 typedef struct {
@@ -937,8 +927,6 @@ bool MVKCmdBufferImageCopy::isArrayTexture() {
 #pragma mark -
 #pragma mark MVKCmdClearAttachments
 
-MVKFuncionOverride_getTypePool(ClearAttachments)
-
 VkResult MVKCmdClearAttachments::setContent(MVKCommandBuffer* cmdBuff,
 											uint32_t attachmentCount,
 											const VkClearAttachment* pAttachments,
@@ -1107,8 +1095,6 @@ void MVKCmdClearAttachments::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdClearImage
 
-MVKFuncionOverride_getTypePool(ClearImage)
-
 VkResult MVKCmdClearImage::setContent(MVKCommandBuffer* cmdBuff,
 									  VkImage image,
 									  VkImageLayout imageLayout,
@@ -1224,8 +1210,6 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdFillBuffer
 
-MVKFuncionOverride_getTypePool(FillBuffer)
-
 VkResult MVKCmdFillBuffer::setContent(MVKCommandBuffer* cmdBuff,
 									  VkBuffer dstBuffer,
 									  VkDeviceSize dstOffset,
@@ -1291,8 +1275,6 @@ void MVKCmdFillBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdUpdateBuffer
-
-MVKFuncionOverride_getTypePool(UpdateBuffer)
 
 VkResult MVKCmdUpdateBuffer::setContent(MVKCommandBuffer* cmdBuff,
 										VkBuffer dstBuffer,

@@ -59,99 +59,10 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_COMMAND_POOL_EXT; }
 
-#pragma mark Command type pools
-
-	MVKCommandTypePool<MVKCmdPipelineBarrier> _cmdPipelineBarrierPool;
-
-	MVKCommandTypePool<MVKCmdBindPipeline> _cmdBindPipelinePool;
-
-	MVKCommandTypePool<MVKCmdBeginRenderPass> _cmdBeginRenderPassPool;
-
-	MVKCommandTypePool<MVKCmdNextSubpass> _cmdNextSubpassPool;
-
-	MVKCommandTypePool<MVKCmdEndRenderPass> _cmdEndRenderPassPool;
-
-	MVKCommandTypePool<MVKCmdExecuteCommands> _cmdExecuteCommandsPool;
-
-	MVKCommandTypePool<MVKCmdBindDescriptorSets> _cmdBindDescriptorSetsPool;
-
-	MVKCommandTypePool<MVKCmdSetViewport> _cmdSetViewportPool;
-
-	MVKCommandTypePool<MVKCmdSetScissor> _cmdSetScissorPool;
-
-    MVKCommandTypePool<MVKCmdSetLineWidth> _cmdSetLineWidthPool;
-
-    MVKCommandTypePool<MVKCmdSetDepthBias> _cmdSetDepthBiasPool;
-
-    MVKCommandTypePool<MVKCmdSetBlendConstants> _cmdSetBlendConstantsPool;
-
-    MVKCommandTypePool<MVKCmdSetDepthBounds> _cmdSetDepthBoundsPool;
-
-    MVKCommandTypePool<MVKCmdSetStencilCompareMask> _cmdSetStencilCompareMaskPool;
-
-    MVKCommandTypePool<MVKCmdSetStencilWriteMask> _cmdSetStencilWriteMaskPool;
-
-    MVKCommandTypePool<MVKCmdSetStencilReference> _cmdSetStencilReferencePool;
-
-	MVKCommandTypePool<MVKCmdBindVertexBuffers> _cmdBindVertexBuffersPool;
-
-	MVKCommandTypePool<MVKCmdBindIndexBuffer> _cmdBindIndexBufferPool;
-
-	MVKCommandTypePool<MVKCmdDraw> _cmdDrawPool;
-
-	MVKCommandTypePool<MVKCmdDrawIndexed> _cmdDrawIndexedPool;
-
-	MVKCommandTypePool<MVKCmdDrawIndirect> _cmdDrawIndirectPool;
-
-	MVKCommandTypePool<MVKCmdDrawIndexedIndirect> _cmdDrawIndexedIndirectPool;
-
-	MVKCommandTypePool<MVKCmdCopyImage> _cmdCopyImagePool;
-
-	MVKCommandTypePool<MVKCmdBlitImage> _cmdBlitImagePool;
-
-    MVKCommandTypePool<MVKCmdResolveImage> _cmdResolveImagePool;
-
-    MVKCommandTypePool<MVKCmdFillBuffer> _cmdFillBufferPool;
-
-    MVKCommandTypePool<MVKCmdUpdateBuffer> _cmdUpdateBufferPool;
-
-	MVKCommandTypePool<MVKCmdCopyBuffer> _cmdCopyBufferPool;
-
-    MVKCommandTypePool<MVKCmdBufferImageCopy> _cmdBufferImageCopyPool;
-
-	MVKCommandTypePool<MVKCmdClearAttachments> _cmdClearAttachmentsPool;
-
-	MVKCommandTypePool<MVKCmdClearImage> _cmdClearImagePool;
-
-    MVKCommandTypePool<MVKCmdBeginQuery> _cmdBeginQueryPool;
-
-    MVKCommandTypePool<MVKCmdEndQuery> _cmdEndQueryPool;
-
-	MVKCommandTypePool<MVKCmdWriteTimestamp> _cmdWriteTimestampPool;
-
-    MVKCommandTypePool<MVKCmdResetQueryPool> _cmdResetQueryPoolPool;
-
-    MVKCommandTypePool<MVKCmdCopyQueryPoolResults> _cmdCopyQueryPoolResultsPool;
-
-	MVKCommandTypePool<MVKCmdPushConstants> _cmdPushConstantsPool;
-
-    MVKCommandTypePool<MVKCmdDispatch> _cmdDispatchPool;
-
-    MVKCommandTypePool<MVKCmdDispatchIndirect> _cmdDispatchIndirectPool;
-
-    MVKCommandTypePool<MVKCmdPushDescriptorSet> _cmdPushDescriptorSetPool;
-
-    MVKCommandTypePool<MVKCmdPushDescriptorSetWithTemplate> _cmdPushDescriptorSetWithTemplatePool;
-
-	MVKCommandTypePool<MVKCmdDebugMarkerBegin> _cmdDebugMarkerBeginPool;
-
-	MVKCommandTypePool<MVKCmdDebugMarkerEnd> _cmdDebugMarkerEndPool;
-
-	MVKCommandTypePool<MVKCmdDebugMarkerInsert> _cmdDebugMarkerInsertPool;
-
-	MVKCommandTypePool<MVKCmdSetResetEvent> _cmdSetResetEventPool;
-
-	MVKCommandTypePool<MVKCmdWaitEvents> _cmdWaitEventsPool;
+	// Command type pool member variables.
+	// Each has a form similar to (here for a draw command):  MVKCommandTypePool<MVKCmdDraw> _cmdDrawPool;
+#	define MVK_CMD_TYPE_POOL(cmdType)  MVKCommandTypePool<MVKCmd ##cmdType> _cmd ##cmdType ##Pool;
+#	include "MVKCommandTypePools.def"
 
 
 #pragma mark Command resources

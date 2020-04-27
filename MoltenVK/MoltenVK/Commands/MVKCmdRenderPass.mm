@@ -28,8 +28,6 @@
 #pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
-MVKFuncionOverride_getTypePool(BeginRenderPass)
-
 VkResult MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
 										   const VkRenderPassBeginInfo* pRenderPassBegin,
 										   VkSubpassContents contents) {
@@ -61,8 +59,6 @@ void MVKCmdBeginRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdNextSubpass
 
-MVKFuncionOverride_getTypePool(NextSubpass)
-
 VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 									   VkSubpassContents contents) {
 	_contents = contents;
@@ -78,8 +74,6 @@ void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdEndRenderPass
 
-MVKFuncionOverride_getTypePool(EndRenderPass)
-
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
 	cmdBuff->recordEndRenderPass(this);
 	return VK_SUCCESS;
@@ -93,8 +87,6 @@ void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdExecuteCommands
-
-MVKFuncionOverride_getTypePool(ExecuteCommands)
 
 VkResult MVKCmdExecuteCommands::setContent(MVKCommandBuffer* cmdBuff,
 										   uint32_t commandBuffersCount,
@@ -117,12 +109,11 @@ void MVKCmdExecuteCommands::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdSetViewport
 
-MVKFuncionOverride_getTypePool(SetViewport)
-
-VkResult MVKCmdSetViewport::setContent(MVKCommandBuffer* cmdBuff,
-									   uint32_t firstViewport,
-									   uint32_t viewportCount,
-									   const VkViewport* pViewports) {
+template <size_t N>
+VkResult MVKCmdSetViewport<N>::setContent(MVKCommandBuffer* cmdBuff,
+										  uint32_t firstViewport,
+										  uint32_t viewportCount,
+										  const VkViewport* pViewports) {
 	_firstViewport = firstViewport;
 	_viewports.clear();	// Clear for reuse
 	_viewports.reserve(viewportCount);
@@ -133,20 +124,23 @@ VkResult MVKCmdSetViewport::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdSetViewport::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_viewportState.setViewports(_viewports, _firstViewport, true);
+template <size_t N>
+void MVKCmdSetViewport<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_viewportState.setViewports(_viewports, _firstViewport, true);
 }
+
+template class MVKCmdSetViewport<1>;
+template class MVKCmdSetViewport<kMVKCachedViewportScissorCount>;
 
 
 #pragma mark -
 #pragma mark MVKCmdSetScissor
 
-MVKFuncionOverride_getTypePool(SetScissor)
-
-VkResult MVKCmdSetScissor::setContent(MVKCommandBuffer* cmdBuff,
-									  uint32_t firstScissor,
-									  uint32_t scissorCount,
-									  const VkRect2D* pScissors) {
+template <size_t N>
+VkResult MVKCmdSetScissor<N>::setContent(MVKCommandBuffer* cmdBuff,
+										 uint32_t firstScissor,
+										 uint32_t scissorCount,
+										 const VkRect2D* pScissors) {
 	_firstScissor = firstScissor;
 	_scissors.clear();	// Clear for reuse
 	_scissors.reserve(scissorCount);
@@ -157,15 +151,17 @@ VkResult MVKCmdSetScissor::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdSetScissor::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdSetScissor<N>::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->_scissorState.setScissors(_scissors, _firstScissor, true);
 }
+
+template class MVKCmdSetScissor<1>;
+template class MVKCmdSetScissor<kMVKCachedViewportScissorCount>;
 
 
 #pragma mark -
 #pragma mark MVKCmdSetLineWidth
-
-MVKFuncionOverride_getTypePool(SetLineWidth)
 
 VkResult MVKCmdSetLineWidth::setContent(MVKCommandBuffer* cmdBuff,
 										float lineWidth) {
@@ -184,8 +180,6 @@ void MVKCmdSetLineWidth::encode(MVKCommandEncoder* cmdEncoder) {}
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthBias
-
-MVKFuncionOverride_getTypePool(SetDepthBias)
 
 VkResult MVKCmdSetDepthBias::setContent(MVKCommandBuffer* cmdBuff,
 										float depthBiasConstantFactor,
@@ -208,8 +202,6 @@ void MVKCmdSetDepthBias::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdSetBlendConstants
 
-MVKFuncionOverride_getTypePool(SetBlendConstants)
-
 VkResult MVKCmdSetBlendConstants::setContent(MVKCommandBuffer* cmdBuff,
 											 const float blendConst[4]) {
     _red = blendConst[0];
@@ -227,8 +219,6 @@ void MVKCmdSetBlendConstants::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdSetDepthBounds
-
-MVKFuncionOverride_getTypePool(SetDepthBounds)
 
 VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
 										  float minDepthBounds,
@@ -250,8 +240,6 @@ void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {}
 #pragma mark -
 #pragma mark MVKCmdSetStencilCompareMask
 
-MVKFuncionOverride_getTypePool(SetStencilCompareMask)
-
 VkResult MVKCmdSetStencilCompareMask::setContent(MVKCommandBuffer* cmdBuff,
 												 VkStencilFaceFlags faceMask,
 												 uint32_t stencilCompareMask) {
@@ -269,8 +257,6 @@ void MVKCmdSetStencilCompareMask::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdSetStencilWriteMask
 
-MVKFuncionOverride_getTypePool(SetStencilWriteMask)
-
 VkResult MVKCmdSetStencilWriteMask::setContent(MVKCommandBuffer* cmdBuff,
 											   VkStencilFaceFlags faceMask,
 											   uint32_t stencilWriteMask) {
@@ -287,8 +273,6 @@ void MVKCmdSetStencilWriteMask::encode(MVKCommandEncoder* cmdEncoder) {
 
 #pragma mark -
 #pragma mark MVKCmdSetStencilReference
-
-MVKFuncionOverride_getTypePool(SetStencilReference)
 
 VkResult MVKCmdSetStencilReference::setContent(MVKCommandBuffer* cmdBuff,
 											   VkStencilFaceFlags faceMask,
