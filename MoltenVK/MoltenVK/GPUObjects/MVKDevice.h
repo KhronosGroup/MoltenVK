@@ -23,6 +23,8 @@
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
 #include "MVKVector.h"
+#include "MVKPixelFormats.h"
+#include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
 #include "vk_mvk_moltenvk.h"
 #include <string>
@@ -41,7 +43,7 @@ class MVKResource;
 class MVKBuffer;
 class MVKBufferView;
 class MVKImage;
-class MVKSwapchainImage;
+class MVKPresentableSwapchainImage;
 class MVKImageView;
 class MVKSwapchain;
 class MVKDeviceMemory;
@@ -110,9 +112,6 @@ public:
 
 	/** Returns the name of this device. */
 	inline const char* getName() { return _properties.deviceName; }
-
-	/** Returns whether the specified format is supported on this device. */
-	bool getFormatIsSupported(VkFormat format);
 
 	/** Populates the specified structure with the format properties of this device. */
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
@@ -289,9 +288,6 @@ public:
 	
 #pragma mark Metal
 
-	/** Returns whether the underlying MTLDevice supports the GPU family. */
-	bool getSupportsGPUFamily(MTLGPUFamily gpuFamily);
-
 	/** Populates the specified structure with the Metal-specific features of this device. */
 	inline const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
 
@@ -360,6 +356,7 @@ protected:
 	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
 	MVKVectorInline<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
+	MVKPixelFormats _pixelFormats;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
 	uint32_t _hostCoherentMemoryTypes;
@@ -392,6 +389,9 @@ public:
 
 	/** Returns the physical device underlying this logical device. */
 	inline MVKPhysicalDevice* getPhysicalDevice() { return _physicalDevice; }
+
+	/** Returns info about the pixel format supported by the physical device. */
+	inline MVKPixelFormats* getPixelFormats() { return &_physicalDevice->_pixelFormats; }
 
 	/** Returns the name of this device. */
 	inline const char* getName() { return _pProperties->deviceName; }
@@ -451,12 +451,12 @@ public:
 	void destroySwapchain(MVKSwapchain* mvkSwpChn,
 						  const VkAllocationCallbacks* pAllocator);
 
-	MVKSwapchainImage* createSwapchainImage(const VkImageCreateInfo* pCreateInfo,
-											MVKSwapchain* swapchain,
-											uint32_t swapchainIndex,
-											const VkAllocationCallbacks* pAllocator);
-	void destroySwapchainImage(MVKSwapchainImage* mvkImg,
-							   const VkAllocationCallbacks* pAllocator);
+	MVKPresentableSwapchainImage* createPresentableSwapchainImage(const VkImageCreateInfo* pCreateInfo,
+																  MVKSwapchain* swapchain,
+																  uint32_t swapchainIndex,
+																  const VkAllocationCallbacks* pAllocator);
+	void destroyPresentableSwapchainImage(MVKPresentableSwapchainImage* mvkImg,
+										  const VkAllocationCallbacks* pAllocator);
 
 	MVKFence* createFence(const VkFenceCreateInfo* pCreateInfo,
 						  const VkAllocationCallbacks* pAllocator);
@@ -567,9 +567,7 @@ public:
 	 * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
 	 * can be used to perform this calculation.
      */
-    inline uint64_t getPerformanceTimestamp() {
-		return _pMVKConfig->performanceTracking ? getPerformanceTimestampImpl() : 0;
-	}
+    inline uint64_t getPerformanceTimestamp() { return _pMVKConfig->performanceTracking ? mvkGetTimestamp() : 0; }
 
     /**
      * If performance is being tracked, adds the performance for an activity with a duration
@@ -580,7 +578,11 @@ public:
     inline void addActivityPerformance(MVKPerformanceTracker& activityTracker,
 									   uint64_t startTime, uint64_t endTime = 0) {
 		if (_pMVKConfig->performanceTracking) {
-			addActivityPerformanceImpl(activityTracker, startTime, endTime);
+			updateActivityPerformance(activityTracker, startTime, endTime);
+
+			// Log call not locked. Very minor chance that the tracker data will be updated during log call,
+			// resulting in an inconsistent report. Not worth taking lock perf hit for rare inline reporting.
+			if (_logActivityPerformanceInline) { logActivityPerformance(activityTracker, _performanceStatistics, true); }
 		}
 	};
 
@@ -589,6 +591,9 @@ public:
 
 	/** Invalidates the memory regions. */
 	VkResult invalidateMappedMemoryRanges(uint32_t memRangeCount, const VkMappedMemoryRange* pMemRanges);
+
+	/** Log all performance statistics. */
+	void logPerformanceSummary();
 
 
 #pragma mark Metal
@@ -601,23 +606,6 @@ public:
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);
-
-	/**
-	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
-	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
-	 *
-	 * This function uses the MoltenVK API function mvkMTLPixelFormatFromVkFormat(), but 
-     * not all MTLPixelFormats returned by that API function are supported by all GPU's.
-	 * This function may substitute and return a MTLPixelFormat value that is different than
-	 * the value returned by the mvkMTLPixelFormatFromVkFormat() function, but is compatible
-	 * with the GPU underlying this instance.
-	 *
-	 * Not all macOS GPU's support the MTLPixelFormatDepth24Unorm_Stencil8 pixel format, and
-	 * in that case, this function will return MTLPixelFormatDepth32Float_Stencil8 instead.
-	 *
-	 * All other pixel formats are returned unchanged.
-	 */
-	MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat, MVKBaseObject* mvkObj);
 
 	/** Returns the memory alignment required for the format when used in a texel buffer. */
 	VkDeviceSize getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj);
@@ -675,16 +663,6 @@ public:
     /** Performance statistics. */
     MVKPerformanceStatistics _performanceStatistics;
 
-	// Indicates whether semaphores should use a MTLFence if available.
-	// Set by the MVK_ALLOW_METAL_FENCES environment variable if MTLFences are available.
-	// This should be a temporary fix after some repair to semaphore handling.
-	bool _useMTLFenceForSemaphores;
-
-	// Indicates whether semaphores should use a MTLEvent if available.
-	// Set by the MVK_ALLOW_METAL_EVENTS environment variable if MTLEvents are available.
-	// This should be a temporary fix after some repair to semaphore handling.
-	bool _useMTLEventForSemaphores;
-
 
 #pragma mark Construction
 
@@ -718,10 +696,9 @@ protected:
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
-    const char* getActivityPerformanceDescription(MVKPerformanceTracker& activityTracker);
-	uint64_t getPerformanceTimestampImpl();
-	void addActivityPerformanceImpl(MVKPerformanceTracker& activityTracker,
-									uint64_t startTime, uint64_t endTime);
+    const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
+	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
+	void updateActivityPerformance(MVKPerformanceTracker& activity, uint64_t startTime, uint64_t endTime);
 
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
@@ -733,6 +710,10 @@ protected:
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;
     uint32_t _globalVisibilityQueryCount;
     std::mutex _vizLock;
+	bool _useMTLFenceForSemaphores;
+	bool _useMTLEventForSemaphores;
+	bool _useCommandPooling;
+	bool _logActivityPerformanceInline;
 };
 
 
@@ -741,7 +722,6 @@ protected:
 
 /**
  * This mixin class adds the ability for an object to track the device that created it.
- * Implementation supports an instance where the device is null.
  *
  * As a mixin, this class should only be used as a component of multiple inheritance.
  * Any class that inherits from this class should also inherit from MVKBaseObject.
@@ -755,28 +735,19 @@ public:
 	inline MVKDevice* getDevice() { return _device; }
 
 	/** Returns the underlying Metal device. */
-	inline id<MTLDevice> getMTLDevice() { return _device ? _device->getMTLDevice() : nil; }
+	inline id<MTLDevice> getMTLDevice() { return _device->getMTLDevice(); }
 
-	/**
-	 * Returns the Metal MTLPixelFormat corresponding to the specified Vulkan VkFormat,
-	 * or returns MTLPixelFormatInvalid if no corresponding MTLPixelFormat exists.
-	 *
-	 * This function delegates to the MVKDevice::getMTLPixelFormatFromVkFormat() function.
-	 * See the notes for that function for more information about how MTLPixelFormats
-	 * are managed for each platform device.
-	 */
-	inline MTLPixelFormat getMTLPixelFormatFromVkFormat(VkFormat vkFormat) {
-		return _device ? _device->getMTLPixelFormatFromVkFormat(vkFormat, getBaseObject())
-					   : mvkMTLPixelFormatFromVkFormatInObj(vkFormat, getBaseObject());
-	}
+	/** Returns info about the pixel format supported by the physical device. */
+	inline MVKPixelFormats* getPixelFormats() { return _device->getPixelFormats(); }
 
 	/** Constructs an instance for the specified device. */
-    MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) {}
+    MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
 
 	virtual ~MVKDeviceTrackingMixin() {}
 
 protected:
 	virtual MVKBaseObject* getBaseObject() = 0;
+
 	MVKDevice* _device;
 };
 

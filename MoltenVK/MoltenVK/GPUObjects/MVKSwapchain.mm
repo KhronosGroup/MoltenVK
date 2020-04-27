@@ -35,32 +35,19 @@
 using namespace std;
 
 
+#pragma mark -
 #pragma mark MVKSwapchain
-
-bool MVKSwapchainImageAvailability::operator< (const MVKSwapchainImageAvailability& rhs) const {
-	if (  isAvailable && !rhs.isAvailable) { return true; }
-	if ( !isAvailable &&  rhs.isAvailable) { return false; }
-
-	if (waitCount < rhs.waitCount) { return true; }
-	if (waitCount > rhs.waitCount) { return false; }
-
-	return acquisitionID < rhs.acquisitionID;
-}
 
 void MVKSwapchain::propogateDebugName() {
 	if (_debugName) {
-		size_t imgCnt = _surfaceImages.size();
+		size_t imgCnt = _presentableImages.size();
 		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
 			NSString* nsName = [[NSString alloc] initWithFormat: @"%@(%lu)", _debugName, imgIdx];	// temp retain
-			_surfaceImages[imgIdx]->setDebugName(nsName.UTF8String);
+			_presentableImages[imgIdx]->setDebugName(nsName.UTF8String);
 			[nsName release];																		// release temp string
 		}
 	}
 }
-
-uint32_t MVKSwapchain::getImageCount() { return (uint32_t)_imageAvailability.size(); }
-
-MVKSwapchainImage* MVKSwapchain::getImage(uint32_t index) { return _surfaceImages[index]; }
 
 VkResult MVKSwapchain::getImages(uint32_t* pCount, VkImage* pSwapchainImages) {
 
@@ -79,141 +66,46 @@ VkResult MVKSwapchain::getImages(uint32_t* pCount, VkImage* pSwapchainImages) {
 
 	// Now populate the images
 	for (uint32_t imgIdx = 0; imgIdx < *pCount; imgIdx++) {
-		pSwapchainImages[imgIdx] = (VkImage)_surfaceImages[imgIdx];
+		pSwapchainImages[imgIdx] = (VkImage)_presentableImages[imgIdx];
 	}
 
 	return result;
 }
 
 VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
-                                           VkSemaphore semaphore,
-                                           VkFence fence,
+										   VkSemaphore semaphore,
+										   VkFence fence,
 										   uint32_t deviceMask,
-                                           uint32_t* pImageIndex) {
+										   uint32_t* pImageIndex) {
 
-    if ( getIsSurfaceLost() ) { return VK_ERROR_SURFACE_LOST_KHR; }
+	if ( getIsSurfaceLost() ) { return VK_ERROR_SURFACE_LOST_KHR; }
 
-    // Find the image that has the smallest availability measure
-    uint32_t minWaitIndex = 0;
-    MVKSwapchainImageAvailability minAvailability = { .acquisitionID = kMVKUndefinedLargeUInt64,
-													  .waitCount = kMVKUndefinedLargeUInt32,
-													  .isAvailable = false };
-    for (uint32_t imgIdx = 0; imgIdx < _imageAvailability.size(); imgIdx++) {
-        const Availability& avail = _imageAvailability[imgIdx];
-        if (avail.status < minAvailability) {
-            minAvailability = avail.status;
-            minWaitIndex = imgIdx;
-        }
-    }
+	// Find the image that has the shortest wait by finding the smallest availability measure.
+	MVKPresentableSwapchainImage* minWaitImage = nullptr;
+	MVKSwapchainImageAvailability minAvailability = { kMVKUndefinedLargeUInt64, false };
+	uint32_t imgCnt = getImageCount();
+	for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
+		auto* img = getPresentableImage(imgIdx);
+		auto imgAvail = img->getAvailability();
+		if (imgAvail < minAvailability) {
+			minAvailability = imgAvail;
+			minWaitImage = img;
+		}
+	}
 
-    *pImageIndex = minWaitIndex;	// Return the index of the image with the shortest wait
-    signalWhenAvailable(minWaitIndex, (MVKSemaphore*)semaphore, (MVKFence*)fence);
-    return getHasSurfaceSizeChanged() ? VK_ERROR_OUT_OF_DATE_KHR : VK_SUCCESS;
-}
+	// Return the index of the image with the shortest wait,
+	// and signal the semaphore and fence when it's available
+	*pImageIndex = minWaitImage->_swapchainIndex;
+	minWaitImage->acquireAndSignalWhenAvailable((MVKSemaphore*)semaphore, (MVKFence*)fence);
 
-bool MVKSwapchain::getHasSurfaceSizeChanged() {
-	return !CGSizeEqualToSize(_mtlLayer.naturalDrawableSizeMVK, _mtlLayerOrigDrawSize);
+	return getSurfaceStatus();
 }
 
 uint64_t MVKSwapchain::getNextAcquisitionID() { return ++_currentAcquisitionID; }
 
-/**
- * Releases any surfaces that are not currently being displayed,
- * so they can be used by a different swapchain.
- */
+// Releases any surfaces that are not currently being displayed,
+// so they can be used by a different swapchain.
 void MVKSwapchain::releaseUndisplayedSurfaces() {}
-
-// Makes an image available for acquisition by the app.
-// If any semaphores are waiting to be signaled when this image becomes available, the
-// earliest semaphore is signaled, and this image remains unavailable for other uses.
-void MVKSwapchain::makeAvailable(uint32_t imgIdx) {
-	lock_guard<mutex> lock(_availabilityLock);
-	auto& availability = _imageAvailability[imgIdx].status;
-
-	// Mark when this event happened, relative to that of other images
-	availability.acquisitionID = getNextAcquisitionID();
-
-	// Mark this image as available if no semaphores or fences are waiting to be signaled.
-	availability.isAvailable = _imageAvailability[imgIdx].signalers.empty();
-
-	MVKSwapchainSignaler signaler;
-	if (availability.isAvailable) {
-		// If this image is available, signal the semaphore and fence that were associated
-		// with the last time this image was acquired while available. This is a workaround for
-		// when an app uses a single semaphore or fence for more than one swapchain image.
-		// Becuase the semaphore or fence will be signaled by more than one image, it will
-		// get out of sync, and the final use of the image would not be signaled as a result.
-		signaler = _imageAvailability[imgIdx].preSignaled;
-	} else {
-		// If this image is not yet available, extract and signal the first semaphore and fence.
-		auto& imgSignalers = _imageAvailability[imgIdx].signalers;
-		auto sigIter = imgSignalers.begin();
-		signaler = *sigIter;
-		imgSignalers.erase(sigIter);
-	}
-
-	// Signal the semaphore and fence, and let them know they are no longer being tracked.
-	signal(signaler, nil);
-	unmarkAsTracked(signaler);
-
-//	MVKLogDebug("Signaling%s swapchain image %p semaphore %p from present, with %lu remaining semaphores.", (_availability.isAvailable ? " pre-signaled" : ""), this, signaler.first, _availabilitySignalers.size());
-}
-
-void MVKSwapchain::signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaphore, MVKFence* fence) {
-	lock_guard<mutex> lock(_availabilityLock);
-	auto signaler = make_pair(semaphore, fence);
-	auto& availability = _imageAvailability[imageIndex].status;
-	if (availability.isAvailable) {
-		availability.isAvailable = false;
-
-		// If signalling through a MTLEvent, use an ephemeral MTLCommandBuffer.
-		// Another option would be to use MTLSharedEvent in MVKSemaphore, but that might
-		// impose unacceptable performance costs to handle this particular case.
-		@autoreleasepool {
-			MVKSemaphore* mvkSem = signaler.first;
-			id<MTLCommandBuffer> mtlCmdBuff = (mvkSem && mvkSem->isUsingCommandEncoding()
-											   ? [_device->getAnyQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences]
-											   : nil);
-			signal(signaler, mtlCmdBuff);
-			[mtlCmdBuff commit];
-		}
-
-		_imageAvailability[imageIndex].preSignaled = signaler;
-	} else {
-		_imageAvailability[imageIndex].signalers.push_back(signaler);
-	}
-	markAsTracked(signaler);
-
-//	MVKLogDebug("%s swapchain image %p semaphore %p in acquire with %lu other semaphores.", (_availability.isAvailable ? "Signaling" : "Tracking"), this, semaphore, _availabilitySignalers.size());
-}
-
-// Signal either or both of the semaphore and fence in the specified tracker pair.
-void MVKSwapchain::signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff) {
-	if (signaler.first) { signaler.first->encodeSignal(mtlCmdBuff); }
-	if (signaler.second) { signaler.second->signal(); }
-}
-
-// If present, signal the semaphore for the first waiter for the given image.
-void MVKSwapchain::signalPresentationSemaphore(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff) {
-	lock_guard<mutex> lock(_availabilityLock);
-	auto& imgSignalers = _imageAvailability[imgIdx].signalers;
-	if ( !imgSignalers.empty() ) {
-		MVKSemaphore* mvkSem = imgSignalers.front().first;
-		if (mvkSem) { mvkSem->encodeSignal(mtlCmdBuff); }
-	}
-}
-
-// Tell the semaphore and fence that they are being tracked for future signaling.
-void MVKSwapchain::markAsTracked(MVKSwapchainSignaler& signaler) {
-	if (signaler.first) { signaler.first->retain(); }
-	if (signaler.second) { signaler.second->retain(); }
-}
-
-// Tell the semaphore and fence that they are no longer being tracked for future signaling.
-void MVKSwapchain::unmarkAsTracked(MVKSwapchainSignaler& signaler) {
-	if (signaler.first) { signaler.first->release(); }
-	if (signaler.second) { signaler.second->release(); }
-}
 
 
 #pragma mark Rendering
@@ -234,10 +126,10 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
                                                        __watermarkTextureWidth,
                                                        __watermarkTextureHeight,
                                                        __watermarkTextureFormat,
-                                                       mvkMTLPixelFormatBytesPerRow(__watermarkTextureFormat, __watermarkTextureWidth),
+                                                       getPixelFormats()->getBytesPerRow(__watermarkTextureFormat, __watermarkTextureWidth),
                                                        __watermarkShaderSource);
         }
-        _licenseWatermark->render(mtlTexture, mtlCmdBuff, _performanceStatistics.lastFrameInterval / 1000.0);
+		_licenseWatermark->render(mtlTexture, mtlCmdBuff, 0.02f);
     } else {
         if (_licenseWatermark) {
             _licenseWatermark->destroy();
@@ -248,33 +140,23 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
 
 // Calculates and remembers the time interval between frames.
 void MVKSwapchain::markFrameInterval() {
-    if ( !(_device->_pMVKConfig->performanceTracking || _licenseWatermark) ) { return; }
+	if ( !(_device->_pMVKConfig->performanceTracking || _licenseWatermark) ) { return; }
 
-    uint64_t prevFrameTime = _lastFrameTime;
-    _lastFrameTime = mvkGetTimestamp();
-    _performanceStatistics.lastFrameInterval = mvkGetElapsedMilliseconds(prevFrameTime, _lastFrameTime);
+	uint64_t prevFrameTime = _lastFrameTime;
+	_lastFrameTime = mvkGetTimestamp();
 
-    // Low pass filter.
-    // y[i] := α * x[i] + (1-α) * y[i-1]  OR
-    // y[i] := y[i-1] + α * (x[i] - y[i-1])
-    _performanceStatistics.averageFrameInterval += _averageFrameIntervalFilterAlpha * (_performanceStatistics.lastFrameInterval - _performanceStatistics.averageFrameInterval);
-    _performanceStatistics.averageFramesPerSecond = 1000.0 / _performanceStatistics.averageFrameInterval;
+	if (prevFrameTime == 0) { return; }		// First frame starts at first presentation
 
-// Uncomment for per-frame logging.
-//	MVKLogDebug("Frame interval: %.2f ms. Avg frame interval: %.2f ms. Frame number: %d.",
-//				_performanceStatistics.lastFrameInterval,
-//				_performanceStatistics.averageFrameInterval,
-//				_currentPerfLogFrameCount + 1);
+	_device->addActivityPerformance(_device->_performanceStatistics.queue.frameInterval, prevFrameTime, _lastFrameTime);
 
-    uint32_t perfLogCntLimit = _device->_pMVKConfig->performanceLoggingFrameCount;
-    if ((perfLogCntLimit > 0) && (++_currentPerfLogFrameCount >= perfLogCntLimit)) {
+	uint32_t perfLogCntLimit = _device->_pMVKConfig->performanceLoggingFrameCount;
+	if ((perfLogCntLimit > 0) && (++_currentPerfLogFrameCount >= perfLogCntLimit)) {
 		_currentPerfLogFrameCount = 0;
-		MVKLogInfo("Frame interval: %.2f ms. Avg frame interval: %.2f ms. Avg FPS: %.2f. Reporting every: %d frames. Elapsed time: %.3f seconds.",
-				   _performanceStatistics.lastFrameInterval,
-				   _performanceStatistics.averageFrameInterval,
-				   _performanceStatistics.averageFramesPerSecond,
+		MVKLogInfo("Performance statistics reporting every: %d frames, avg FPS: %.2f, elapsed time: %.3f seconds:",
 				   perfLogCntLimit,
+				   (1000.0 / _device->_performanceStatistics.queue.frameInterval.averageDuration),
 				   mvkGetElapsedMilliseconds() / 1000.0);
+		_device->logPerformanceSummary();
 	}
 }
 
@@ -343,37 +225,17 @@ void MVKSwapchain::setHDRMetadataEXT(const VkHdrMetadataEXT& metadata) {
 }
 
 
-#pragma mark Metal
-
-id<CAMetalDrawable> MVKSwapchain::getCAMetalDrawable(uint32_t imageIndex) {
-	id<CAMetalDrawable> nextDrwbl = _mtlDrawables[imageIndex];
-	while ( !nextDrwbl ) {
-		@autoreleasepool {      // Allow auto-released drawable object to be reclaimed before end of loop
-			uint64_t startTime = _device->getPerformanceTimestamp();
-
-			nextDrwbl = _mtlLayer.nextDrawable;
-			if ( !nextDrwbl ) { MVKLogError("Drawable could not be retrieved! Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds()); }
-			_mtlDrawables[imageIndex] = [nextDrwbl retain];
-
-			_device->addActivityPerformance(_device->_performanceStatistics.queue.nextCAMetalDrawable, startTime);
-		}
-	}
-	return nextDrwbl;
-}
-
-// Removes and releases a Metal drawable object, so that it can be lazily created by getCAMetalDrawable().
-void MVKSwapchain::resetCAMetalDrawable(uint32_t imgIdx) {
-	[_mtlDrawables[imgIdx] release];
-	_mtlDrawables[imgIdx] = nil;
-}
-
-
 #pragma mark Construction
 
 MVKSwapchain::MVKSwapchain(MVKDevice* device,
-						   const VkSwapchainCreateInfoKHR* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _surfaceLost(false) {
-	_currentAcquisitionID = 0;
-	_layerObserver = nil;
+						   const VkSwapchainCreateInfoKHR* pCreateInfo) :
+	MVKVulkanAPIDeviceObject(device),
+	_surfaceLost(false),
+	_currentAcquisitionID(0),
+	_layerObserver(nil),
+	_currentPerfLogFrameCount(0),
+	_lastFrameTime(0),
+	_licenseWatermark(nil) {
 
 	// If applicable, release any surfaces (not currently being displayed) from the old swapchain.
 	MVKSwapchain* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
@@ -384,9 +246,6 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
 							   _device->_pMetalFeatures->maxSwapchainImageCount);
 	initCAMetalLayer(pCreateInfo, imgCnt);
     initSurfaceImages(pCreateInfo, imgCnt);		// After initCAMetalLayer()
-    initFrameIntervalTracking();
-
-    _licenseWatermark = NULL;
 }
 
 // Initializes the CAMetalLayer underlying the surface of this swapchain.
@@ -401,7 +260,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 
 	_mtlLayer = mvkSrfc->getCAMetalLayer();
 	_mtlLayer.device = getMTLDevice();
-	_mtlLayer.pixelFormat = getMTLPixelFormatFromVkFormat(pCreateInfo->imageFormat);
+	_mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
 	_mtlLayer.maximumDrawableCountMVK = imgCnt;
 	_mtlLayer.displaySyncEnabledMVK = (pCreateInfo->presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
 	_mtlLayer.magnificationFilter = _device->_pMVKConfig->swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
@@ -482,9 +341,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 // The CAMetalLayer should already be initialized when this is called.
 void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt) {
 
-    if ( getIsSurfaceLost() ) {
-        return;
-    }
+    if ( getIsSurfaceLost() ) { return; }
 
     VkExtent2D imgExtent = mvkVkExtent2DFromCGSize(_mtlLayerOrigDrawSize);
 
@@ -492,7 +349,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
         .pNext = VK_NULL_HANDLE,
         .imageType = VK_IMAGE_TYPE_2D,
-        .format = mvkVkFormatFromMTLPixelFormat(_mtlLayer.pixelFormat),
+        .format = getPixelFormats()->getVkFormat(_mtlLayer.pixelFormat),
         .extent = { imgExtent.width, imgExtent.height, 1 },
         .mipLevels = 1,
         .arrayLayers = 1,
@@ -503,43 +360,22 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
     };
 
 	if (mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)) {
-		mvkEnableFlag(imgInfo.flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
+		mvkEnableFlags(imgInfo.flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
 	}
 	if (mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR)) {
 		// We don't really support this, but set the flag anyway.
-		mvkEnableFlag(imgInfo.flags, VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT);
+		mvkEnableFlags(imgInfo.flags, VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT);
 	}
 
-	_surfaceImages.reserve(imgCnt);
-	_mtlDrawables.resize(imgCnt);
-	_imageAvailability.resize(imgCnt);
-    for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
-        _surfaceImages.push_back(_device->createSwapchainImage(&imgInfo, this, imgIdx, NULL));
-        _imageAvailability[imgIdx].status.acquisitionID = getNextAcquisitionID();
-        _imageAvailability[imgIdx].status.isAvailable = true;
-        _imageAvailability[imgIdx].preSignaled = make_pair(nullptr, nullptr);
-        _mtlDrawables[imgIdx] = nil;
-    }
+	for (uint32_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
+		_presentableImages.push_back(_device->createPresentableSwapchainImage(&imgInfo, this, imgIdx, NULL));
+	}
 
     MVKLogInfo("Created %d swapchain images with initial size (%d, %d).", imgCnt, imgExtent.width, imgExtent.height);
 }
 
-// Initialize frame interval tracking, including start time and filtering parameters.
-void MVKSwapchain::initFrameIntervalTracking() {
-    _performanceStatistics.lastFrameInterval = 0;
-    _performanceStatistics.averageFrameInterval = 0;
-    _performanceStatistics.averageFramesPerSecond = 0;
-    _currentPerfLogFrameCount = 0;
-
-	_lastFrameTime = mvkGetTimestamp();
-
-    // Establish the alpha parameter of a low-pass filter for averaging frame intervals.
-    double RC_over_dt = 10.0;
-    _averageFrameIntervalFilterAlpha = 1.0 / (1.0 + RC_over_dt);
-}
-
 MVKSwapchain::~MVKSwapchain() {
-	for (auto& img : _surfaceImages) { _device->destroySwapchainImage(img, NULL); }
+	for (auto& img : _presentableImages) { _device->destroyPresentableSwapchainImage(img, NULL); }
 
     if (_licenseWatermark) { _licenseWatermark->destroy(); }
     [this->_layerObserver release];

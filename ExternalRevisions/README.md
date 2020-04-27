@@ -180,17 +180,7 @@ library. However, after updating the version of *glslang* (which adds *SPIRV-Too
 as described [above](#updating), if you encounter any building errors, you may need to re-add 
 the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follows:
 
-1. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
-   `External/SPIRV-Tools`.
-
-2. Drag the `External/glslang/External/spirv-tools/source` file folder to the `External/SPIRV-Tools` 
-   group in the *Project Navigator* panel. In the _**Choose options for adding these files**_ dialog 
-   that opens, select the _**Create groups**_ option, add the files to *both* the `SPIRV-Tools-macOS` 
-   and `SPIRV-Tools-iOS` targets, and click the ***Finish*** button.
-
-3. Remove the *Group* named `fuzz` from under the *Group* named `External/SPIRV-Tools/source`.
-
-4. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
+1. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
    select the `SPIRV-Tools-macOS` target, and open the *Build Settings* tab. Locate the build 
    setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
 
@@ -200,11 +190,21 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
 		"$(SRCROOT)/External/glslang/External/spirv-tools/external/spirv-headers/include"
 		"$(SRCROOT)/External/glslang/External/spirv-tools/build"
 
-5. Repeat *Step 4* for the `SPIRV-Tools-iOS` target within the `ExternalDependencies` *Xcode* project
+2. Repeat *Step 1* for the `SPIRV-Tools-iOS` target within the `ExternalDependencies` *Xcode* project
 
-6. Update `Templates/spirv-tools/build.zip` from the `*.h` and `*.inc` files in 
-   `External/glslang/External/spirv-tools/build`, remove hidden `.*` files, and test 
-   by running `./fetchDependencies --skip-spirv-tools-build`, and a **MoltenVK** build.
+3. In the *Project Navigator*, remove the *Group* named `source` from under the *Group* named
+   `External/SPIRV-Tools`.
+
+4. Drag the `External/glslang/External/spirv-tools/source` file folder to the `External/SPIRV-Tools` 
+   group in the *Project Navigator* panel. In the _**Choose options for adding these files**_ dialog 
+   that opens, select the _**Create groups**_ option, add the files to *both* the `SPIRV-Tools-macOS` 
+   and `SPIRV-Tools-iOS` targets, and click the ***Finish*** button.
+
+5. Remove the *Group* named `fuzz` from under the *Group* named `External/SPIRV-Tools/source`.
+
+6. In the `Scripts` folder, run `./packagePregenSpirvToolsHeaders` to update `Templates/spirv-tools/build.zip` 
+   from the `*.h` and `*.inc` files in `External/glslang/External/spirv-tools/build`, and test by running 
+   `./fetchDependencies --skip-spirv-tools-build`, and a **MoltenVK** build.
 
 
 
@@ -217,10 +217,19 @@ library. However, after updating the version of *glslang*, as described [above](
 if you encounter any building errors, you may need to re-add the *glslang* library to the
 `ExternalDependencies` *Xcode* project as follows:
 
-1. In the *Project Navigator*, remove all *Groups* from under the *Group* named
+1. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
+   select the `glslang-macOS` target, and open the *Build Settings* tab. Locate the build 
+   setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
+
+		$(inherited) 
+		"$(SRCROOT)/External/glslang"
+
+2. Repeat *Step 1* for the `glslang-iOS` target within the `ExternalDependencies` *Xcode* project
+
+3. In the *Project Navigator*, remove all *Groups* from under the *Group* named
    `External/glslang`.
 
-2. Drag the following folders from the `External/glslang` file folder to the `External/glslang` 
+4. Drag the following folders from the `External/glslang` file folder to the `External/glslang` 
    *Group* in the *Project Navigator* panel:
 
 		glslang
@@ -230,19 +239,11 @@ if you encounter any building errors, you may need to re-add the *glslang* libra
    In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 
    add the files to *both* the `glslang-macOS` and `glslang-iOS` targets, and click the ***Finish*** button.
 
-3. In the *Project Navigator* panel, remove the references to the following files and folders:
+5. In the *Project Navigator* panel, remove the references to the following files and folders:
 
 		External/glslang/glslang/MachineIndependant/glslang.y
 		External/glslang/glslang/OSDependent/Windows
 
 
-4. In the *Project Navigator* panel, select the `ExternalDependencies` *Xcode* project, then 
-   select the `glslang-macOS` target, and open the *Build Settings* tab. Locate the build 
-   setting entry **Header Search Paths** (`HEADER_SEARCH_PATHS`) and add the following paths:
-
-		$(inherited) 
-		"$(SRCROOT)/External/glslang"
-
-5. Repeat *Step 4* for the `glslang-iOS` target within the `ExternalDependencies` *Xcode* project
 
 

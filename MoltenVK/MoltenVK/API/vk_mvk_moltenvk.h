@@ -50,12 +50,12 @@ typedef unsigned long MTLLanguageVersion;
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   41
+#define MVK_VERSION_PATCH   42
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            24
+#define VK_MVK_MOLTENVK_SPEC_VERSION            25
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -95,65 +95,101 @@ typedef unsigned long MTLLanguageVersion;
  * In addition to the configuration parmeters in this structure, there are several settings that
  * can be configured through runtime environment variables or MoltenVK compile-time build settings:
  *
- * 1. The MVK_CONFIG_LOG_LEVEL runtime environment variable or MoltenVK compile-time build setting
- *    controls the level of logging performned by MoltenVK using the following numeric values:
- *      0: No logging.
- *      1: Log errors only.
- *      2: Log errors and informational messages.
- *    If none of these is set, errors and informational messages are logged.
+ * 1.  The MVK_CONFIG_LOG_LEVEL runtime environment variable or MoltenVK compile-time build setting
+ *     controls the level of logging performned by MoltenVK using the following numeric values:
+ *       0: No logging.
+ *       1: Log errors only.
+ *       2: Log errors and informational messages.
+ *     If none of these is set, errors and informational messages are logged.
  *
- * 2. The MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time build
- *    setting causes MoltenVK to log the name of each Vulkan call made by the application, along with
- *    the Mach thread ID, global system thread ID, and thread name. The logging format options can be
- *    controlled by setting the value of MVK_CONFIG_TRACE_VULKAN_CALLS as follows:
- *        0: No Vulkan call logging.
- *        1: Log the name of each Vulkan call when the call is entered.
- *        2: Log the name of each Vulkan call when the call is entered and exited. This effectively
- *           brackets any other logging activity within the scope of the Vulkan call.
- *        3: Same as option 2, plus logs the time spent inside the Vulkan function.
- *    If none of these is set, no Vulkan call logging will occur.
+ * 2.  The MVK_CONFIG_TRACE_VULKAN_CALLS runtime environment variable or MoltenVK compile-time build
+ *     setting causes MoltenVK to log the name of each Vulkan call made by the application, along with
+ *     the Mach thread ID, global system thread ID, and thread name. The logging format options can be
+ *     controlled by setting the value of MVK_CONFIG_TRACE_VULKAN_CALLS as follows:
+ *         0: No Vulkan call logging.
+ *         1: Log the name of each Vulkan call when the call is entered.
+ *         2: Log the name of each Vulkan call when the call is entered and exited. This effectively
+ *            brackets any other logging activity within the scope of the Vulkan call.
+ *         3: Same as option 2, plus logs the time spent inside the Vulkan function.
+ *     If none of these is set, no Vulkan call logging will occur.
  *
- * 3. Setting the MVK_CONFIG_FORCE_LOW_POWER_GPU runtime environment variable or MoltenVK compile-time
- *    build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.
- *    By default, this setting is disabled, allowing both low-power and high-power GPU's to be used.
+ * 3.  Setting the MVK_CONFIG_FORCE_LOW_POWER_GPU runtime environment variable or MoltenVK compile-time
+ *     build setting to 1 will force MoltenVK to use a low-power GPU, if one is availble on the device.
+ *     By default, this setting is disabled, allowing both low-power and high-power GPU's to be used.
  *
- * 4. Setting the MVK_ALLOW_METAL_FENCES or MVK_ALLOW_METAL_EVENTS runtime environment variable
- *    or MoltenVK compile-time build setting to 1 will cause MoltenVK to use MTLFence or MTLEvent,
- *    respectively, if it is available on the device, for VkSemaphore synchronization behaviour.
- *    If both variables are set, MVK_ALLOW_METAL_FENCES takes priority over MVK_ALLOW_METAL_EVENTS.
- *    If both are disabled, or if MTLFence or MTLEvent is not available on the device, MoltenVK
- *    will use CPU synchronization to control VkSemaphore synchronization behaviour.
- *    By default, MVK_ALLOW_METAL_FENCES is enabled and MVK_ALLOW_METAL_EVENTS is disabled,
- *    meaning MoltenVK will use MTLFences, if they are available, to control VkSemaphore
- *    synchronization behaviour, by default.
+ * 4.  Setting the MVK_ALLOW_METAL_FENCES or MVK_ALLOW_METAL_EVENTS runtime environment variable
+ *     or MoltenVK compile-time build setting to 1 will cause MoltenVK to use MTLFence or MTLEvent,
+ *     respectively, if it is available on the device, for VkSemaphore synchronization behaviour.
+ *     If both variables are set, MVK_ALLOW_METAL_FENCES takes priority over MVK_ALLOW_METAL_EVENTS.
+ *     If both are disabled, or if MTLFence or MTLEvent is not available on the device, MoltenVK
+ *     will use CPU synchronization to control VkSemaphore synchronization behaviour.
+ *     By default, MVK_ALLOW_METAL_FENCES is enabled and MVK_ALLOW_METAL_EVENTS is disabled,
+ *     meaning MoltenVK will use MTLFences, if they are available, to control VkSemaphore
+ *     synchronization behaviour, by default.
  *
- * 5. The MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE runtime environment variable or MoltenVK compile-time
- *    build setting controls whether Xcode should run an automatic GPU capture without the user
- *    having to trigger it manually via the Xcode user interface, and controls the scope under
- *    which that GPU capture will occur. This is useful when trying to capture a one-shot GPU
- *    trace, such as when running a Vulkan CTS test case. For the automatic GPU capture to occur,
- *    the Xcode scheme under which the app is run must have the Metal GPU capture option turned on.
- *    MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE should not be set to manually trigger a GPU capture via the
- *    Xcode user interface.
- *      0: No automatic GPU capture.
- *      1: Capture all GPU commands issued during the lifetime of the VkDevice.
- *    If none of these is set, no automatic GPU capture will occur.
+ * 5.  The MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE runtime environment variable or MoltenVK compile-time
+ *     build setting controls whether Metal should run an automatic GPU capture without the user
+ *     having to trigger it manually via the Xcode user interface, and controls the scope under
+ *     which that GPU capture will occur. This is useful when trying to capture a one-shot GPU
+ *     trace, such as when running a Vulkan CTS test case. For the automatic GPU capture to occur,
+ *     the Xcode scheme under which the app is run must have the Metal GPU capture option turned on.
+ *     MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE should not be set to manually trigger a GPU capture via the
+ *     Xcode user interface.
+ *       0: No automatic GPU capture.
+ *       1: Capture all GPU commands issued during the lifetime of the VkDevice.
+ *     If MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE is also set, it is a filename where the automatic
+ *     GPU capture should be saved. In this case, the Xcode scheme need not have Metal GPU capture
+ *     enabled, and in fact the app need not be run under Xcode's control at all. This is useful
+ *     in case the app cannot be run under Xcode's control. A path starting with '~' can be used
+ *     to place it in a user's home directory, as in the shell. This feature requires Metal 3.0
+ *     (macOS 10.15, iOS 13).
+ *     If none of these is set, no automatic GPU capture will occur.
  *
- * 6. The MVK_CONFIG_TEXTURE_1D_AS_2D runtime environment variable or MoltenVK compile-time build
- *    setting controls whether MoltenVK should use a Metal 2D texture with a height of 1 for a
- *    Vulkan 1D image, or use a native Metal 1D texture. Metal imposes significant restrictions
- *    on native 1D textures, including not being renderable, clearable, or permitting mipmaps.
- *    Using a Metal 2D texture allows Vulkan 1D textures to support this additional functionality.
- *    This setting is enabled by default, and MoltenVK will use a Metal 2D texture for each Vulkan 1D image.
+ * 6.  The MVK_CONFIG_TEXTURE_1D_AS_2D runtime environment variable or MoltenVK compile-time build
+ *     setting controls whether MoltenVK should use a Metal 2D texture with a height of 1 for a
+ *     Vulkan 1D image, or use a native Metal 1D texture. Metal imposes significant restrictions
+ *     on native 1D textures, including not being renderable, clearable, or permitting mipmaps.
+ *     Using a Metal 2D texture allows Vulkan 1D textures to support this additional functionality.
+ *     This setting is enabled by default, and MoltenVK will use a Metal 2D texture for each Vulkan 1D image.
  *
- * 7. The MVK_CONFIG_PREALLOCATE_DESCRIPTORS runtime environment variable or MoltenVK compile-time
- *    build setting controls whether MoltenVK should preallocate memory in each VkDescriptorPool
- *    according to the values of the VkDescriptorPoolSize parameters. Doing so may improve
- *    descriptor set allocation performance at a cost of preallocated application memory.
- *    If this environment variable is disabled, the descriptors required for a descriptor set will
- *    be dynamically allocated in application memory when the descriptor set itself is allocated.
- *    This setting is disabled by default, and MoltenVK will dynamically allocate descriptors
- *    when the containing descriptor set is allocated.
+ * 7.  The MVK_CONFIG_PREALLOCATE_DESCRIPTORS runtime environment variable or MoltenVK compile-time
+ *     build setting controls whether MoltenVK should preallocate memory in each VkDescriptorPool
+ *     according to the values of the VkDescriptorPoolSize parameters. Doing so may improve
+ *     descriptor set allocation performance at a cost of preallocated application memory.
+ *     If this setting is disabled, the descriptors required for a descriptor set will
+ *     be dynamically allocated in application memory when the descriptor set itself is allocated.
+ *     This setting is disabled by default, and MoltenVK will dynamically allocate descriptors
+ *     when the containing descriptor set is allocated.
+ *
+ * 8.  The MVK_CONFIG_USE_COMMAND_POOLING runtime environment variable or MoltenVK compile-time
+ *     build setting controls whether MoltenVK should use pools to manage memory used when
+ *     adding commands to command buffers. If this setting is enabled, MoltenVK
+ *     will use a pool to hold command resources for reuse during command execution. If this
+ *     setting is disabled, command memory is allocated and destroyed each time
+ *     a command is executed. This is a classic time-space trade off. When command pooling is
+ *     active, the memory in the pool can be cleared via a call to the vkTrimCommandPoolKHR()
+ *     command. This setting is enabled by default, and MoltenVK will pool command memory.
+ *
+ * 9.  The MVK_CONFIG_USE_MTLHEAP runtime environment variable or MoltenVK compile-time build
+ *     setting controls whether MoltenVK should use MTLHeaps for allocating textures and buffers
+ *     from device memory. If this setting is enabled, and placement MTLHeaps are
+ *     available on the platform, MoltenVK will allocate a placement MTLHeap for each VkDeviceMemory
+ *     instance, and allocate textures and buffers from that placement heap. If this environment
+ *     variable is disabled, MoltenVK will allocate textures and buffers from general device memory.
+ *     Apple recommends that MTLHeaps should only be used for specific requirements such as aliasing
+ *     or hazard tracking, and MoltenVK testing has shown that allocating multiple textures of
+ *     different types or usages from one MTLHeap can occassionally cause corruption issues under
+ *     certain circumstances. Because of this, this setting is disabled by default, and MoltenVK
+ *     will allocate texures and buffers from general device memory.
+ *
+ * 10. The MVK_CONFIG_PERFORMANCE_LOGGING_INLINE runtime environment variable or MoltenVK
+ *     compile-time build setting controls whether MoltenVK should log the performance of
+ *     individual activities as they happen. If this setting is enabled, activity performance
+ *     will be logged when each activity happens. If this setting is disabled, activity
+ *     performance will be logged when frame peformance is logged as determined by the
+ *     MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT environment variable or MoltenVK
+ *     compile-time build setting. This setting is disabled by default, and activity
+ *     performance will be logged only when frame activity is logged.
  */
 typedef struct {
 
@@ -332,8 +368,9 @@ typedef struct {
 	 * If enabled, performance statistics, as defined by the MVKPerformanceStatistics structure,
 	 * are collected, and can be retrieved via the vkGetPerformanceStatisticsMVK() function.
 	 *
-	 * You can also use the performanceLoggingFrameCount parameter to automatically log the
-	 * performance statistics collected by this parameter.
+	 * You can also use the performanceLoggingFrameCount parameter or MVK_CONFIG_PERFORMANCE_LOGGING_INLINE
+	 * environment variable or MoltenVK compile-time build setting to automatically log the performance
+	 * statistics collected by this parameter.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -346,12 +383,10 @@ typedef struct {
 	VkBool32 performanceTracking;
 
 	/**
-	 * If non-zero, performance statistics, as defined by the MVKPerformanceStatistics structure,
-	 * will be logged to the console. Frame-based statistics will be logged, on a repeating cycle,
-	 * once per this many frames. Non-frame-based statistics will be logged as they occur.
-	 *
-	 * The performanceTracking parameter must also be enabled. If this parameter is zero, or
-	 * the performanceTracking parameter is disabled, no performance statistics will be logged.
+	 * If non-zero, performance statistics, frame-based statistics will be logged, on a
+	 * repeating cycle, once per this many frames. The performanceTracking parameter must
+	 * also be enabled. If this parameter is zero, or the performanceTracking parameter
+	 * is disabled, no frame-based performance statistics will be logged.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -577,29 +612,10 @@ typedef struct {
 	VkDeviceSize pushConstantSizeAlignment;     /**< The alignment used internally when allocating memory for push constants. Must be PoT. */
 } MVKPhysicalDeviceMetalFeatures;
 
-/**
- * MoltenVK swapchain performance statistics. You can retrieve a copy of this structure using
- * the vkGetSwapchainPerformanceMVK() function.
- *
- * This structure may be extended as new features are added to MoltenVK. If you are linking to
- * an implementation of MoltenVK that was compiled from a different VK_MVK_MOLTENVK_SPEC_VERSION
- * than your app was, the size of this structure in your app may be larger or smaller than the
- * struct in MoltenVK. See the description of the vkGetSwapchainPerformanceMVK() function for
- * information about how to handle this.
- *
- * TO SUPPORT DYNAMIC LINKING TO THIS STRUCTURE AS DESCRIBED ABOVE, THIS STRUCTURE SHOULD NOT
- * BE CHANGED EXCEPT TO ADD ADDITIONAL MEMBERS ON THE END. EXISTING MEMBERS, AND THEIR ORDER,
- * SHOULD NOT BE CHANGED.
- */
-typedef struct {
-    double lastFrameInterval;           /**< The time interval between this frame and the immediately previous frame, in milliseconds. */
-    double averageFrameInterval;        /**< The rolling average time interval between frames, in miliseconds. This value has less volatility than the lastFrameInterval value. */
-    double averageFramesPerSecond;      /**< The rolling average number of frames per second. This is simply the 1000 divided by the averageFrameInterval value. */
-} MVKSwapchainPerformance;
-
 /** MoltenVK performance of a particular type of activity. */
 typedef struct {
     uint32_t count;             /**< The number of activities of this type. */
+	double latestDuration;      /**< The latest (most recent) duration of the activity, in milliseconds. */
     double averageDuration;     /**< The average duration of the activity, in milliseconds. */
     double minimumDuration;     /**< The minimum duration of the activity, in milliseconds. */
     double maximumDuration;     /**< The maximum duration of the activity, in milliseconds. */
@@ -630,6 +646,7 @@ typedef struct {
 	MVKPerformanceTracker mtlQueueAccess;               /** Create an MTLCommmandQueue or access an existing cached instance. */
 	MVKPerformanceTracker mtlCommandBufferCompletion;   /** Completion of a MTLCommandBuffer on the GPU, from commit to completion callback. */
 	MVKPerformanceTracker nextCAMetalDrawable;			/** Retrieve next CAMetalDrawable from CAMetalLayer during presentation. */
+	MVKPerformanceTracker frameInterval;				/** Frame presentation interval (1000/FPS). */
 } MVKQueuePerformance;
 
 /**
@@ -658,7 +675,6 @@ typedef struct {
 typedef VkResult (VKAPI_PTR *PFN_vkGetMoltenVKConfigurationMVK)(VkInstance instance, MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
 typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(VkInstance instance, MVKConfiguration* pConfiguration, size_t* pConfigurationSize);
 typedef VkResult (VKAPI_PTR *PFN_vkGetPhysicalDeviceMetalFeaturesMVK)(VkPhysicalDevice physicalDevice, MVKPhysicalDeviceMetalFeatures* pMetalFeatures, size_t* pMetalFeaturesSize);
-typedef VkResult (VKAPI_PTR *PFN_vkGetSwapchainPerformanceMVK)(VkDevice device, VkSwapchainKHR swapchain, MVKSwapchainPerformance* pSwapchainPerf, size_t* pSwapchainPerfSize);
 typedef VkResult (VKAPI_PTR *PFN_vkGetPerformanceStatisticsMVK)(VkDevice device, MVKPerformanceStatistics* pPerf, size_t* pPerfSize);
 typedef void (VKAPI_PTR *PFN_vkGetVersionStringsMVK)(char* pMoltenVersionStringBuffer, uint32_t moltenVersionStringBufferLength, char* pVulkanVersionStringBuffer, uint32_t vulkanVersionStringBufferLength);
 
@@ -790,40 +806,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkGetPhysicalDeviceMetalFeaturesMVK(
 	VkPhysicalDevice                            physicalDevice,
 	MVKPhysicalDeviceMetalFeatures*             pMetalFeatures,
 	size_t*                                     pMetalFeaturesSize);
-
-/**
- * Populates the pSwapchainPerf structure with the current performance statistics for the swapchain.
- *
- * If you are linking to an implementation of MoltenVK that was compiled from a different
- * VK_MVK_MOLTENVK_SPEC_VERSION than your app was, the size of the MVKSwapchainPerformance
- * structure in your app may be larger or smaller than the same struct as expected by MoltenVK.
- *
- * When calling this function, set the value of *pSwapchainPerfSize to sizeof(MVKSwapchainPerformance),
- * to tell MoltenVK the limit of the size of your MVKSwapchainPerformance structure. Upon return from
- * this function, the value of *pSwapchainPerfSize will hold the actual number of bytes copied into
- * your passed MVKSwapchainPerformance structure, which will be the smaller of what your app thinks
- * is the size of MVKSwapchainPerformance, and what MoltenVK thinks it is. This represents the safe
- * access area within the structure for both MoltenVK and your app.
- *
- * If the size that MoltenVK expects for MVKSwapchainPerformance is different than the value passed in
- * *pSwapchainPerfSize, this function will return VK_INCOMPLETE, otherwise it will return VK_SUCCESS.
- *
- * Although it is not necessary, you can use this function to determine in advance the value
- * that MoltenVK expects the size of MVKSwapchainPerformance to be by setting the value of
- * pSwapchainPerf to NULL. In that case, this function will set *pSwapchainPerfSize to the
- * size that MoltenVK expects MVKSwapchainPerformance to be.
- *
- * This function is not supported by the Vulkan SDK Loader and Layers framework.
- * The VkDevice and VkSwapchainKHR objects you provide here must have been retrieved directly
- * from MoltenVK, and not through the Vulkan SDK Loader and Layers framework. Opaque Vulkan
- * objects are often changed by layers, and passing them from one layer to another,
- * or from a layer directly to MoltenVK, will result in undefined behaviour.
- */
-VKAPI_ATTR VkResult VKAPI_CALL vkGetSwapchainPerformanceMVK(
-	VkDevice                                    device,
-	VkSwapchainKHR                              swapchain,
-	MVKSwapchainPerformance*                    pSwapchainPerf,
-	size_t*                                     pSwapchainPerfSize);
 
 /**
  * Populates the pPerf structure with the current performance statistics for the device.

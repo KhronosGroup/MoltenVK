@@ -171,12 +171,12 @@
 		A9093C561C58013D0094110D /* MoltenVKSPIRVToMSLConverter */ = {
 			isa = PBXGroup;
 			children = (
-				450A4F5D220CB180007203D7 /* SPIRVReflection.cpp */,
-				450A4F5E220CB180007203D7 /* SPIRVReflection.h */,
 				A925B70B1C7754B2006E7ECD /* FileSupport.h */,
 				A925B70A1C7754B2006E7ECD /* FileSupport.mm */,
 				A928C9171D0488DC00071B88 /* SPIRVConversion.h */,
 				A928C9181D0488DC00071B88 /* SPIRVConversion.mm */,
+				450A4F5D220CB180007203D7 /* SPIRVReflection.cpp */,
+				450A4F5E220CB180007203D7 /* SPIRVReflection.h */,
 				A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */,
 				A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */,
 			);
@@ -186,10 +186,10 @@
 		A90940A11C5808BB0094110D /* MoltenVKGLSLToSPIRVConverter */ = {
 			isa = PBXGroup;
 			children = (
+				A90941A21C581F840094110D /* GLSLConversion.h */,
+				A90941A11C581F840094110D /* GLSLConversion.mm */,
 				A90940A31C5808BB0094110D /* GLSLToSPIRVConverter.cpp */,
 				A90940A41C5808BB0094110D /* GLSLToSPIRVConverter.h */,
-				A90941A11C581F840094110D /* GLSLConversion.mm */,
-				A90941A21C581F840094110D /* GLSLConversion.h */,
 			);
 			path = MoltenVKGLSLToSPIRVConverter;
 			sourceTree = "<group>";
@@ -224,11 +224,11 @@
 		A97CC73C1C7527F3004A5C7E /* MoltenVKShaderConverterTool */ = {
 			isa = PBXGroup;
 			children = (
-				A95096BE2003D32400F10950 /* OSSupport.h */,
-				A95096BD2003D32400F10950 /* OSSupport.mm */,
 				A97CC73D1C7527F3004A5C7E /* main.cpp */,
 				A97CC73E1C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp */,
 				A97CC73F1C7527F3004A5C7E /* MoltenVKShaderConverterTool.h */,
+				A95096BE2003D32400F10950 /* OSSupport.h */,
+				A95096BD2003D32400F10950 /* OSSupport.mm */,
 			);
 			path = MoltenVKShaderConverterTool;
 			sourceTree = "<group>";
@@ -415,7 +415,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1130;
+				LastUpgradeCheck = 1140;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9092A8C1A81717B00051823 = {

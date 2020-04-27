@@ -22,25 +22,16 @@
 #include "MVKImage.h"
 #include "MVKVector.h"
 
+#import "CAMetalLayer+MoltenVK.h"
+#import <Metal/Metal.h>
+
 class MVKWatermark;
 
 @class MVKBlockObserver;
 
 
-/** Indicates the relative availability of each image in the swapchain. */
-typedef struct MVKSwapchainImageAvailability {
-	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
-	uint32_t waitCount;				/**< The number of semaphores already waiting for this image. */
-	bool isAvailable;				/**< Indicates whether this image is currently available. */
-
-	bool operator< (const MVKSwapchainImageAvailability& rhs) const;
-} MVKSwapchainImageAvailability;
-
-
+#pragma mark -
 #pragma mark MVKSwapchain
-
-/** Tracks a semaphore and fence for later signaling. */
-typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
 
 /** Represents a Vulkan swapchain. */
 class MVKSwapchain : public MVKVulkanAPIDeviceObject {
@@ -54,10 +45,10 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SWAPCHAIN_KHR_EXT; }
 
 	/** Returns the number of images in this swapchain. */
-	uint32_t getImageCount();
+	inline uint32_t getImageCount() { return (uint32_t)_presentableImages.size(); }
 
 	/** Returns the image at the specified index. */
-	MVKSwapchainImage* getImage(uint32_t index);
+	inline MVKPresentableSwapchainImage* getPresentableImage(uint32_t index) { return _presentableImages[index]; }
 
 	/**
 	 * Returns the array of presentable images associated with this swapchain.
@@ -81,37 +72,23 @@ public:
 								 uint32_t deviceMask,
 								 uint32_t* pImageIndex);
 
-	/** Returns whether the surface size has changed since the last time this function was called. */
-	bool getHasSurfaceSizeChanged();
-
 	/** Returns whether the parent surface is now lost and this swapchain must be recreated. */
-	bool getIsSurfaceLost() { return _surfaceLost; }
+	inline bool getIsSurfaceLost() { return _surfaceLost; }
 
-	/** Returns the specified performance stats structure. */
-	const MVKSwapchainPerformance* getPerformanceStatistics() { return &_performanceStatistics; }
+	/** Returns whether the surface size has changed since the last time this function was called. */
+	inline bool getHasSurfaceSizeChanged() {
+		return !CGSizeEqualToSize(_mtlLayer.naturalDrawableSizeMVK, _mtlLayerOrigDrawSize);
+	}
+
+	/** Returns the status of the surface. Surface loss takes precedence over out-of-date errors. */
+	inline VkResult getSurfaceStatus() {
+		if (getIsSurfaceLost()) { return VK_ERROR_SURFACE_LOST_KHR; }
+		if (getHasSurfaceSizeChanged()) { return VK_ERROR_OUT_OF_DATE_KHR; }
+		return VK_SUCCESS;
+	}
 
 	/** Adds HDR metadata to this swapchain. */
 	void setHDRMetadataEXT(const VkHdrMetadataEXT& metadata);
-
-	/**
-	 * Registers a semaphore and/or fence that will be signaled when the image at the given index becomes available.
-	 * This function accepts both a semaphore and a fence, and either none, one, or both may be provided.
-	 * If this image is available already, the semaphore and fence are immediately signaled.
-	 */
-	void signalWhenAvailable(uint32_t imageIndex, MVKSemaphore* semaphore, MVKFence* fence);
-
-	
-#pragma mark Metal
-
-	/** 
-	 * Returns the Metal drawable providing backing for the image at the given
-	 * index in this swapchain. If none is established, the next available
-	 * drawable is acquired and returned.
-	 *
-	 * This function may block until the next drawable is available, 
-	 * and may return nil if no drawable is available at all.
-	 */
-	id<CAMetalDrawable> getCAMetalDrawable(uint32_t imgIdx);
 
 
 #pragma mark Construction
@@ -121,41 +98,23 @@ public:
 	~MVKSwapchain() override;
 
 protected:
-	friend class MVKSwapchainImage;
-
-	struct Availability {
-		MVKSwapchainImageAvailability status;
-		MVKVectorInline<MVKSwapchainSignaler, 1> signalers;
-		MVKSwapchainSignaler preSignaled;
-	};
+	friend class MVKPresentableSwapchainImage;
 
 	void propogateDebugName() override;
 	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
-    void initFrameIntervalTracking();
 	void releaseUndisplayedSurfaces();
 	uint64_t getNextAcquisitionID();
     void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
-	void resetCAMetalDrawable(uint32_t imgIdx);
-	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
-	void signalPresentationSemaphore(uint32_t imgIdx, id<MTLCommandBuffer> mtlCmdBuff);
-	static void markAsTracked(MVKSwapchainSignaler& signaler);
-	static void unmarkAsTracked(MVKSwapchainSignaler& signaler);
-	void makeAvailable(uint32_t imgIdx);
 
 	CAMetalLayer* _mtlLayer;
     MVKWatermark* _licenseWatermark;
-	MVKVectorInline<MVKSwapchainImage*, kMVKMaxSwapchainImageCount> _surfaceImages;
-	MVKVectorInline<id<CAMetalDrawable>, kMVKMaxSwapchainImageCount> _mtlDrawables;
-	MVKVectorInline<Availability, kMVKMaxSwapchainImageCount> _imageAvailability;
-	std::mutex _availabilityLock;
+	MVKVectorInline<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
 	std::atomic<uint64_t> _currentAcquisitionID;
     CGSize _mtlLayerOrigDrawSize;
-    MVKSwapchainPerformance _performanceStatistics;
     uint64_t _lastFrameTime;
-    double _averageFrameIntervalFilterAlpha;
     uint32_t _currentPerfLogFrameCount;
     std::atomic<bool> _surfaceLost;
     MVKBlockObserver* _layerObserver;

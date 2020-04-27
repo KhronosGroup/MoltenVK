@@ -14,16 +14,55 @@ For best results, use a Markdown reader.*
 
 
 
-MoltenVK 1.0.41
+MoltenVK 1.0.42
 ---------------
 
 Released TBD
 
+- Reinstate `VulkanSamples API-Samples` demo apps and add 
+  `input_attachment` and `push_descriptors` demos.
+- `vkQueuePresentKHR()` returns a `VkResult` for each swapchain.
+- Consolidate frame and non-frame performance reporting.
+	- Remove `vkGetSwapchainPerformanceMVK()` from API.
+	- Swapchain performance can be retrieved with other activity performance 
+	  through `vkGetPerformanceStatisticsMVK()`.
+	- Add `MVK_CONFIG_PERFORMANCE_LOGGING_INLINE` env var to enable/disable
+	  logging of performance of each activity when it happens. 
+
+
+
+MoltenVK 1.0.41
+---------------
+
+Released 2020/04/05
+
+- Accurately populate Vulkan `VkFormatProperties` from `MTLPixelFormat` capabilities, 
+  taking into consideration variations across `MTLDevice` Features Sets.
+- Validate format capabilities for MSAA, renderpass attachments, and `vkCmdResolveImage()`.
 - Fix issue where immutable samplers are removed during descriptor update.
-- Guard against Metal validation assertion from reuse of query number 
-  within a single `MTLRenderEncoder`.
+- Guard against Metal validation assertion from reuse of query number within a single `MTLRenderEncoder`.
 - Increase value of `VkPhysicalDeviceLimits::minStorageBufferOffsetAlignment` 
   to `16` to avoid Metal validation assertions.
+- Add ability to disable command memory pooling using `MVK_CONFIG_USE_COMMAND_POOLING`
+  environment variable.
+- Fix memory leak when pre-filling `MTLCommandBuffers` using `MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS`.
+- Fix issue causing screen captures from swapchain image to deadlock.
+- Fix memory estimates for iOS 13+.
+- Broaden conditions for host read sync for image memory barriers on macOS.
+- Fix issue of reseting `CAMetalDrawable` and `MTLTexture` of peer swapchain images.
+- Fix the `make install` build command to overwrite the existing framework in the system
+  framework library, and update `README.md` to clarify the instructions for using `make install`. 
+- Update the `README.md` and `MoltenVK_Runtime_UserGuide.md` documents to clarify that 
+  **MoltenVK** is not a fully-compliant implementation of *Vulkan*.
+- Support Xcode 11.4.
+- Disable `API-Samples` demos and document in `Demos/README.md`.
+- Update dependency libraries to match *Vulkan SDK 1.2.135*.
+- Update to latest SPIRV-Cross version:
+	- MSL: Support inline uniform blocks in argument buffers.
+	- MSL: Move inline uniform blocks to the end of the argument buffer.
+	- MSL: Fix access chain for deep struct hierarchy on array of buffers.
+	- MSL: Remove old memory_scope flag from iOS barriers.
+	- MSL: Fixes to array handling.
 
 
 

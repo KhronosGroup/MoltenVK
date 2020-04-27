@@ -53,13 +53,11 @@ distribution package, see the main [`README.md`](../README.md) document in the `
 About **MoltenVK**
 ------------------
 
-**MoltenVK** is an implementation of the [*Vulkan 1.0*](https://www.khronos.org/vulkan) 
-graphics and compute API, that runs on Apple's [*Metal*](https://developer.apple.com/metal) 
-graphics and compute framework on both *iOS* and *macOS*.
-
-**MoltenVK** allows you to use the *Vulkan* graphics and compute API to develop modern, 
-cross-platform, high-performance graphical games and applications, and to run them across 
-many platforms, including both *iOS* and *macOS*.
+**MoltenVK** is a layered implementation of [*Vulkan 1.0*](https://www.khronos.org/vulkan) 
+graphics and compute functionality, that is built on Apple's [*Metal*](https://developer.apple.com/metal) 
+graphics and compute framework on both *iOS* and *macOS*. **MoltenVK** allows you to use *Vulkan* graphics 
+and compute functionality to develop modern, cross-platform, high-performance graphical games and applications, 
+and to run them across many platforms, including both *iOS* and *macOS*.
 
 *Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than 
 *Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
@@ -239,7 +237,7 @@ in your source code files as follows:
 
 	#include <vulkan/vulkan.h>
 
-In addition to the core *Vulkan* API, **MoltenVK**  also supports the following *Vulkan* extensions:
+In addition to core *Vulkan* functionality, **MoltenVK**  also supports the following *Vulkan* extensions:
 
 - `VK_KHR_16bit_storage`
 - `VK_KHR_8bit_storage`
@@ -303,9 +301,9 @@ a convenient way to enable this extension automatically.
 <a name="moltenvk_extension"></a>
 ### MoltenVK `VK_MVK_moltenvk` Extension
 
-The `VK_MVK_moltenvk` *Vulkan* extension provides functionality beyond the standard *Vulkan* API, to 
-support configuration options and behaviour that is specific to the **MoltenVK** implementation of *Vulkan*. 
-You can access this functionality by including the `vk_mvk_moltenvk.h` header file in your code. 
+The `VK_MVK_moltenvk` *Vulkan* extension provides functionality beyond standard *Vulkan* functionality, 
+to support configuration options and behaviour that is specific to the **MoltenVK** implementation of *Vulkan* 
+functionality. You can access this functionality by including the `vk_mvk_moltenvk.h` header file in your code. 
 The `vk_mvk_moltenvk.h` file also includes the API documentation for this `VK_MVK_moltenvk` extension.
 
 The following API header files are included in the **MoltenVK** package, each of which 
@@ -545,11 +543,9 @@ Known **MoltenVK** Limitations
 
 This section documents the known limitations in this version of **MoltenVK**.
 
-- **MoltenVK** is a Layer-0 driver implementation of *Vulkan 1.0*
-  Since it takes on the role of a driver in the Vulkan architecture, it does not load *Vulkan Layers*
-  on its own.
-  In order to use Vulkan layers such as the validation layers, use the Vulkan loader and layers from the
-  [LunarG Vulkan SDK](https://vulkan.lunarg.com).
+- Since **MoltenVK** is an implementation of *Vulkan* functionality, it does not load 
+  *Vulkan Layers* on its own. In order to use *Vulkan Layers*, such as the validation layers, 
+  use the *Vulkan Loader and Layers* from the [LunarG Vulkan SDK](https://vulkan.lunarg.com).
 
 - Application-controlled memory allocations using `VkAllocationCallbacks` are ignored.
 

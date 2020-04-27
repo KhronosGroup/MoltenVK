@@ -31,7 +31,10 @@ typedef float MVKOSVersion;
  * - (10.12.3) => 10.1203
  * - (8.0.2) => 8.0002
  */
-MVKOSVersion mvkOSVersion(void);
+MVKOSVersion mvkOSVersion();
+
+/** Returns whether the operating system version is at least minVer. */
+inline bool mvkOSVersionIsAtLeast(MVKOSVersion minVer) { return mvkOSVersion() >= minVer; }
 
 /**
  * Returns a monotonic timestamp value for use in Vulkan and performance timestamping.
@@ -110,6 +113,13 @@ bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
 		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);			\
 		int64_t val = wasFound ? ev : EV;						\
 		cfgVal = (int32_t)std::min(std::max(val, (int64_t)INT32_MIN), (int64_t)INT32_MAX);	\
+	} while(false)
+
+#define MVK_SET_FROM_ENV_OR_BUILD_STRING(cfgVal, EV)	\
+	do {												\
+		bool wasFound = false;							\
+		std::string ev = mvkGetEnvVar(#EV, &wasFound);	\
+		cfgVal = wasFound ? std::move(ev) : EV;			\
 	} while(false)
 
 

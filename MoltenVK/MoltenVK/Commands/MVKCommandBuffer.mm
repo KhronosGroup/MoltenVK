@@ -54,18 +54,20 @@ VkResult MVKCommandBuffer::begin(const VkCommandBufferBeginInfo* pBeginInfo) {
 	return getConfigurationResult();
 }
 
-VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
+void MVKCommandBuffer::releaseCommands() {
 	MVKCommand* cmd = _head;
 	while (cmd) {
 		MVKCommand* nextCmd = cmd->_next;	// Establish next before returning current to pool.
-		cmd->returnToPool();
+		(cmd->getTypePool(getCommandPool()))->returnObject(cmd);
 		cmd = nextCmd;
 	}
-
-	clearPrefilledMTLCommandBuffer();
-
 	_head = nullptr;
 	_tail = nullptr;
+}
+
+VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
+	clearPrefilledMTLCommandBuffer();
+	releaseCommands();
 	_doesContinueRenderPass = false;
 	_canAcceptCommands = false;
 	_isReusable = false;
@@ -100,10 +102,6 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
     _tail = command;
     if ( !_head ) { _head = command; }
     _commandCount++;
-
-    command->added(this);
-
-    setConfigurationResult(command->getConfigurationResult());
 }
 
 void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
@@ -140,18 +138,24 @@ bool MVKCommandBuffer::canExecute() {
 	return true;
 }
 
-// If we can, prefill a MTLCommandBuffer with the commands in this command buffer
+// If we can, prefill a MTLCommandBuffer with the commands in this command buffer.
+// Wrap in autorelease pool to capture autoreleased Metal encoding activity.
 void MVKCommandBuffer::prefill() {
+	@autoreleasepool {
+		clearPrefilledMTLCommandBuffer();
 
-	clearPrefilledMTLCommandBuffer();
+		if ( !canPrefill() ) { return; }
 
-	if ( !canPrefill() ) { return; }
+		uint32_t qIdx = 0;
+		_prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);	// retain
 
-	uint32_t qIdx = 0;
-	_prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);	// retain
+		MVKCommandEncoder encoder(this);
+		encoder.encode(_prefilledMTLCmdBuffer);
 
-	MVKCommandEncoder encoder(this);
-	encoder.encode(_prefilledMTLCmdBuffer);
+		// Once encoded onto Metal, if this command buffer is not reusable, we don't need the
+		// MVKCommand instances anymore, so release them in order to reduce memory pressure.
+		if ( !_isReusable ) { releaseCommands(); }
+	}
 }
 
 bool MVKCommandBuffer::canPrefill() {
@@ -191,7 +195,7 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 
 
 #pragma mark -
-#pragma mark Constituent render pass management
+#pragma mark Tessellation constituent command management
 
 void MVKCommandBuffer::recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass) {
 	_lastBeginRenderPass = mvkBeginRenderPass;
@@ -240,10 +244,10 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 
 	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
 
-    MVKCommand* cmd = _cmdBuffer->_head;
+	MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
-        if (cmd->canEncode()) { cmd->encode(this); }
-        cmd = cmd->_next;
+		cmd->encode(this);
+		cmd = cmd->_next;
 	}
 
 	endCurrentMetalEncoding();
@@ -369,19 +373,19 @@ bool MVKCommandEncoder::supportsDynamicState(VkDynamicState state) {
     return !gpl || gpl->supportsDynamicState(state);
 }
 
-MTLScissorRect MVKCommandEncoder::clipToRenderArea(MTLScissorRect mtlScissor) {
+VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D scissor) {
 
-	NSUInteger raLeft = _renderArea.offset.x;
-	NSUInteger raRight = raLeft + _renderArea.extent.width;
-	NSUInteger raBottom = _renderArea.offset.y;
-	NSUInteger raTop = raBottom + _renderArea.extent.height;
+	int32_t raLeft = _renderArea.offset.x;
+	int32_t raRight = raLeft + _renderArea.extent.width;
+	int32_t raBottom = _renderArea.offset.y;
+	int32_t raTop = raBottom + _renderArea.extent.height;
 
-	mtlScissor.x		= mvkClamp(mtlScissor.x, raLeft, max(raRight - 1, raLeft));
-	mtlScissor.y		= mvkClamp(mtlScissor.y, raBottom, max(raTop - 1, raBottom));
-	mtlScissor.width	= min(mtlScissor.width, raRight - mtlScissor.x);
-	mtlScissor.height	= min(mtlScissor.height, raTop - mtlScissor.y);
+	scissor.offset.x		= mvkClamp(scissor.offset.x, raLeft, max(raRight - 1, raLeft));
+	scissor.offset.y		= mvkClamp(scissor.offset.y, raBottom, max(raTop - 1, raBottom));
+	scissor.extent.width	= min<int32_t>(scissor.extent.width, raRight - scissor.offset.x);
+	scissor.extent.height	= min<int32_t>(scissor.extent.height, raTop - scissor.offset.y);
 
-	return mtlScissor;
+	return scissor;
 }
 
 void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
@@ -417,8 +421,8 @@ void MVKCommandEncoder::clearRenderArea() {
 
     // Create and execute a temporary clear attachments command.
     // To be threadsafe...do NOT acquire and return the command from the pool.
-    MVKCmdClearAttachments cmd(&_cmdBuffer->_commandPool->_cmdClearAttachmentsPool);
-    cmd.setContent(clearAttCnt, clearAtts.data(), 1, &clearRect);
+    MVKCmdClearAttachments cmd;
+    cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
     cmd.encode(this);
 }
 
@@ -546,7 +550,9 @@ const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger len
     return mtlBuffAlloc;
 }
 
-MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() { return _cmdBuffer->_commandPool->getCommandEncodingPool(); }
+MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
+	return _cmdBuffer->getCommandPool()->getCommandEncodingPool();
+}
 
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {

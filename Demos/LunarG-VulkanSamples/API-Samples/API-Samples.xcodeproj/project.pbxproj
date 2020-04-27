@@ -90,6 +90,7 @@
 		A964BC631E4EA6FC00CA9AF1 /* util_init.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = util_init.cpp; sourceTree = "<group>"; };
 		A964BC641E4EA6FC00CA9AF1 /* util_init.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = util_init.hpp; sourceTree = "<group>"; };
 		A977BCFE1B66BB010067E5BF /* API-Samples.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "API-Samples.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		A99B2F0D24436190001117F7 /* generateSPIRVShaders */ = {isa = PBXFileReference; lastKnownFileType = text; path = generateSPIRVShaders; sourceTree = "<group>"; };
 		A9B67B6B1C3AAE9800373FFD /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		A9B67B6C1C3AAE9800373FFD /* AppDelegate.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
 		A9B67B6E1C3AAE9800373FFD /* DemoViewController.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DemoViewController.h; sourceTree = "<group>"; };
@@ -151,6 +152,7 @@
 			isa = PBXGroup;
 			children = (
 				A92F37071C7E1B2B008F8BC9 /* Samples.h */,
+				A99B2F0D24436190001117F7 /* generateSPIRVShaders */,
 				A95C03971C98FBED00CC653D /* API-Samples */,
 				A9B67B6A1C3AAE9800373FFD /* iOS */,
 				A9B67B811C3AAEA200373FFD /* macOS */,
@@ -545,7 +547,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1130;
+				LastUpgradeCheck = 1140;
 			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "API-Samples" */;
 			compatibilityVersion = "Xcode 8.0";

@@ -72,7 +72,7 @@
 #   define MVK_MTLEVENT_MIN_OS  12.0
 #endif
 #ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS
-#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    (mvkOSVersion() >= MVK_MTLEVENT_MIN_OS)
+#   define MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS    mvkOSVersionIsAtLeast(MVK_MTLEVENT_MIN_OS)
 #endif
 
 /** Fill a Metal command buffers when each Vulkan command buffer is filled. */
@@ -164,6 +164,17 @@
 #define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE	1
 #ifndef MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE
 #   define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE    	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
+#endif
+
+/**
+ * The file to capture automatic GPU traces to, instead of capturing to Xcode. This is
+ * useful when trying to capture a one-shot trace, but the program cannot be run under
+ * Xcode's control. Tilde paths may be used to place the trace document in a user's home
+ * directory. This functionality requires macOS 10.15 or iOS 13. If left blank, automatic
+ * traces will be captured to Xcode.
+ */
+#ifndef MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE
+#	define MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE	""
 #endif
 
 /** Force the use of a low-power GPU if it exists. Disabled by default. */

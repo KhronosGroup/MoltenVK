@@ -95,6 +95,7 @@ namespace mvk {
 		std::string _spvInFilePath;
 		std::string _spvOutFilePath;
 		std::string _mslOutFilePath;
+		std::string _hdrOutVarName;
 		std::string _origPathExtnSep;
 		std::vector<std::string> _glslVtxFileExtns;
 		std::vector<std::string> _glslFragFileExtns;
@@ -118,6 +119,8 @@ namespace mvk {
 		bool _shouldIncludeOrigPathExtn;
 		bool _shouldLogConversions;
 		bool _shouldReportPerformance;
+		bool _shouldOutputAsHeaders;
+		bool _quietMode;
 	};
 
 

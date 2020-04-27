@@ -65,20 +65,11 @@ public:
     /** Returns the Vulkan image format of this image. */
     VkFormat getVkFormat();
 
+	/** Returns whether this image has a depth or stencil format. */
+	bool getIsDepthStencil();
+
 	/** Returns whether this image is compressed. */
 	bool getIsCompressed();
-
-	/**
-	 * Returns whether the format of this image supports ANY of the indicated feature flags,
-	 * taking into consideration whether this image is using linear or optimal tiling.
-	 */
-	bool getSupportsAnyFormatFeature(VkFormatFeatureFlags requiredFormatFeatureFlags);
-
-	/**
-	 * Returns whether the format of this image supports ALL of the indicated feature flags,
-	 * taking into consideration whether this image is using linear or optimal tiling.
-	 */
-	bool getSupportsAllFormatFeatures(VkFormatFeatureFlags requiredFormatFeatureFlags);
 
 	/** 
 	 * Returns the 3D extent of this image at the base mipmap level.
@@ -156,7 +147,7 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image. */
-	id<MTLTexture> getMTLTexture();
+	virtual id<MTLTexture> getMTLTexture();
 
 	/** Returns a Metal texture that interprets the pixels in the specified format. */
 	id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
@@ -199,9 +190,6 @@ public:
 
 	/** Returns the Metal texture type of this image. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
-
-	/** Returns the Metal texture usage of this image. */
-	MTLTextureUsage getMTLTextureUsage();
 
     /** 
      * Returns whether the Metal texel size is the same as the Vulkan texel size.
@@ -247,9 +235,9 @@ protected:
 	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
-	virtual id<MTLTexture> newMTLTexture();
-	void resetMTLTexture();
-    void resetIOSurface();
+	id<MTLTexture> newMTLTexture();
+	void releaseMTLTexture();
+    void releaseIOSurface();
 	MTLTextureDescriptor* newMTLTextureDescriptor();
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
@@ -280,6 +268,132 @@ protected:
 	bool _isLinear;
 	bool _is3DCompressed;
 	bool _isAliasable;
+};
+
+
+#pragma mark -
+#pragma mark MVKSwapchainImage
+
+/** Abstract class of Vulkan image used as a rendering destination within a swapchain. */
+class MVKSwapchainImage : public MVKImage {
+
+public:
+
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+
+#pragma mark Metal
+
+	/** Returns the Metal texture used by the CAMetalDrawable underlying this image. */
+	id<MTLTexture> getMTLTexture() override;
+
+
+#pragma mark Construction
+
+	/** Constructs an instance for the specified device and swapchain. */
+	MVKSwapchainImage(MVKDevice* device,
+					  const VkImageCreateInfo* pCreateInfo,
+					  MVKSwapchain* swapchain,
+					  uint32_t swapchainIndex);
+
+protected:
+	friend class MVKPeerSwapchainImage;
+
+	virtual id<CAMetalDrawable> getCAMetalDrawable() = 0;
+
+	MVKSwapchain* _swapchain;
+	uint32_t _swapchainIndex;
+};
+
+
+#pragma mark -
+#pragma mark MVKPresentableSwapchainImage
+
+/** Indicates the relative availability of each image in the swapchain. */
+typedef struct MVKSwapchainImageAvailability {
+	uint64_t acquisitionID;			/**< When this image was last made available, relative to the other images in the swapchain. Smaller value is earlier. */
+	bool isAvailable;				/**< Indicates whether this image is currently available. */
+
+	bool operator< (const MVKSwapchainImageAvailability& rhs) const;
+} MVKSwapchainImageAvailability;
+
+/** Tracks a semaphore and fence for later signaling. */
+typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
+
+
+/** Represents a Vulkan swapchain image that can be submitted to the presentation engine. */
+class MVKPresentableSwapchainImage : public MVKSwapchainImage {
+
+public:
+
+#pragma mark Metal
+
+	/**
+	 * Presents the contained drawable to the OS, releases the Metal drawable and its
+	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
+	 *
+	 * If mtlCmdBuff is not nil, the contained drawable is scheduled for presentation using
+	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
+	 * drawable is presented immediately using the present method of the drawable.
+	 */
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff);
+
+
+#pragma mark Construction
+
+	/** Constructs an instance for the specified device and swapchain. */
+	MVKPresentableSwapchainImage(MVKDevice* device,
+								 const VkImageCreateInfo* pCreateInfo,
+								 MVKSwapchain* swapchain,
+								 uint32_t swapchainIndex);
+
+	~MVKPresentableSwapchainImage() override;
+
+protected:
+	friend MVKSwapchain;
+
+	id<CAMetalDrawable> getCAMetalDrawable() override;
+	void releaseMetalDrawable();
+	MVKSwapchainImageAvailability getAvailability();
+	void makeAvailable();
+	void acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
+	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
+	void signalPresentationSemaphore(id<MTLCommandBuffer> mtlCmdBuff);
+	static void markAsTracked(MVKSwapchainSignaler& signaler);
+	static void unmarkAsTracked(MVKSwapchainSignaler& signaler);
+	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
+
+	id<CAMetalDrawable> _mtlDrawable;
+	MVKSwapchainImageAvailability _availability;
+	MVKVectorInline<MVKSwapchainSignaler, 1> _availabilitySignalers;
+	MVKSwapchainSignaler _preSignaler;
+	std::mutex _availabilityLock;
+};
+
+
+#pragma mark -
+#pragma mark MVKPeerSwapchainImage
+
+/** Represents a Vulkan swapchain image that can be associated as a peer to a swapchain image. */
+class MVKPeerSwapchainImage : public MVKSwapchainImage {
+
+public:
+
+	/** Binds this resource according to the specified bind information. */
+	VkResult bindDeviceMemory2(const void* pBindInfo) override;
+
+
+#pragma mark Construction
+
+	/** Constructs an instance for the specified device and swapchain. */
+	MVKPeerSwapchainImage(MVKDevice* device,
+						  const VkImageCreateInfo* pCreateInfo,
+						  MVKSwapchain* swapchain,
+						  uint32_t swapchainIndex);
+
+protected:
+	id<CAMetalDrawable> getCAMetalDrawable() override;
+
 };
 
 
@@ -323,6 +437,30 @@ public:
 	 */
 	void populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc);
 
+	/**
+	 * Returns, in mtlPixFmt, a MTLPixelFormat, based on the MTLPixelFormat converted from
+	 * the VkFormat, but possibly modified by the swizzles defined in the VkComponentMapping
+	 * of the VkImageViewCreateInfo.
+	 *
+	 * Metal prior to version 3.0 does not support native per-texture swizzles, so if the swizzle
+	 * is not an identity swizzle, this function attempts to find an alternate MTLPixelFormat that
+	 * coincidentally matches the swizzled format.
+	 *
+	 * If a replacement MTLFormat was found, it is returned and useSwizzle is set to false.
+	 * If a replacement MTLFormat could not be found, the original MTLPixelFormat is returned,
+	 * and the useSwizzle is set to true, indicating that either native or shader swizzling
+	 * should be used for this image view.
+	 *
+	 * This is a static function that can be used to validate image view formats prior to creating one.
+	 */
+	static VkResult validateSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo,
+												   MVKPixelFormats* mvkPixFmts,
+												   MVKVulkanAPIObject* apiObject,
+												   bool hasNativeSwizzleSupport,
+												   bool hasShaderSwizzleSupport,
+												   MTLPixelFormat& mtlPixFmt,
+												   bool& useSwizzle);
+
 
 #pragma mark Construction
 
@@ -336,10 +474,6 @@ protected:
 	void propogateDebugName() override;
 	id<MTLTexture> newMTLTexture();
 	void initMTLTextureViewSupport();
-    MTLPixelFormat getSwizzledMTLPixelFormat(VkFormat format,
-											 VkComponentMapping components,
-											 bool& useSwizzle,
-											 const MVKConfiguration* pMVKConfig);
 	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
 
     MVKImage* _image;
@@ -393,58 +527,3 @@ protected:
 	SPIRV_CROSS_NAMESPACE::MSLConstexprSampler _constExprSampler;
 	bool _requiresConstExprSampler;
 };
-
-
-#pragma mark -
-#pragma mark MVKSwapchainImage
-
-/** Represents a Vulkan image used as a rendering destination within a swapchain. */
-class MVKSwapchainImage : public MVKImage {
-
-public:
-
-	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
-
-	/** Binds this resource according to the specified bind information. */
-	VkResult bindDeviceMemory2(const void* pBindInfo) override;
-
-	
-#pragma mark Metal
-
-	/**
-	 * Presents the contained drawable to the OS, releases the Metal drawable and its 
-	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
-	 *
-	 * If mtlCmdBuff is not nil, the contained drawable is scheduled for presentation using
-	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
-	 * drawable is presented immediately using the present method of the drawable.
-	 */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff);
-
-
-#pragma mark Construction
-	
-	/** Constructs an instance for the specified device and swapchain. */
-	MVKSwapchainImage(MVKDevice* device,
-					  const VkImageCreateInfo* pCreateInfo,
-					  MVKSwapchain* swapchain,
-					  uint32_t swapchainIndex);
-
-	/** Constructs an instance for the specified device and swapchain, without binding to a particular swapchain image index. */
-	MVKSwapchainImage(MVKDevice* device,
-					  const VkImageCreateInfo* pCreateInfo,
-					  MVKSwapchain* swapchain);
-
-	~MVKSwapchainImage() override;
-
-protected:
-	id<MTLTexture> newMTLTexture() override;
-	id<CAMetalDrawable> getCAMetalDrawable();
-    void resetMetalSurface();
-    void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
-
-	MVKSwapchain* _swapchain;
-	uint32_t _swapchainIndex;
-};
-

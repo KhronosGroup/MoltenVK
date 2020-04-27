@@ -29,8 +29,8 @@ namespace mvk {
 	/** Returns an absolute path from the specified path, which may be absolute or relative. */
 	std::string absolutePath(const std::string& path);
 
-	/** Returns the last component of the specified path. */
-	std::string lastPathComponent(const std::string& path);
+	/** Returns the file name from the path, with or without the file extension. */
+	std::string fileName(const std::string& path, bool includeExtenison = true);
 
 	/** Returns the extension component (after the .) of the specified path. */
 	std::string pathExtension(const std::string& path);

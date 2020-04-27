@@ -163,21 +163,8 @@ size_t mvkVkFormatBytesPerLayer(VkFormat vkFormat, size_t bytesPerRow, uint32_t 
  */
 size_t mvkMTLPixelFormatBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 
-/** 
- * Returns the default properties for the specified Vulkan format.
- *
- * Not all MTLPixelFormats returned by this function are supported by all GPU's, and, as a
- * result, MoltenVK may return a different value from the vkGetPhysicalDeviceFormatProperties()
- * function than is returned here. Use the vkGetPhysicalDeviceFormatProperties() function to
- * return the properties for a particular GPU.
- *
- * Setting assumeGPUSupportsDefault to true allows the default format properties to be returned.
- * The assumeGPUSupportsDefault flag can be set to false if it is already known that the format
- * is not supported by a particular GPU for images, in which case all of the returned properties
- * will be disabled, except possibly VK_FORMAT_FEATURE_VERTEX_BUFFER_BIT, which may be supported
- * for the format even without image support.
- */
-VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat, bool assumeGPUSupportsDefault = true);
+/** Returns the default properties for the specified Vulkan format. */
+VkFormatProperties mvkVkFormatProperties(VkFormat vkFormat);
 
 /** Returns the name of the specified Vulkan format. */
 const char* mvkVkFormatName(VkFormat vkFormat);
@@ -218,8 +205,8 @@ VkImageType mvkVkImageTypeFromMTLTextureType(MTLTextureType mtlTextureType);
 /** Returns the Metal MTLTextureType corresponding to the Vulkan VkImageViewType. */
 MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageViewType vkImageViewType, bool isMultisample);
 
-/** Returns the Metal texture usage from the Vulkan image usage. */
-MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags);
+/** Returns the Metal texture usage from the Vulkan image usage taking into considertion usage limits for the pixel format. */
+MTLTextureUsage mvkMTLTextureUsageFromVkImageUsageFlags(VkImageUsageFlags vkImageUsageFlags, MTLPixelFormat mtlPixFmt);
 
 /** Returns the Vulkan image usage from the Metal texture usage and format. */
 VkImageUsageFlags mvkVkImageUsageFlagsFromMTLTextureUsage(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat);
@@ -370,7 +357,7 @@ MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(VkPolygonMode vkFill
 MTLLoadAction mvkMTLLoadActionFromVkAttachmentLoadOp(VkAttachmentLoadOp vkLoadOp);
 
 /** Returns the Metal MTLStoreAction corresponding to the specified Vulkan VkAttachmentStoreOp. */
-MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment = false);
+MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOp(VkAttachmentStoreOp vkStoreOp, bool hasResolveAttachment);
 
 /** Returns the Metal MTLViewport corresponding to the specified Vulkan VkViewport. */
 MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport);

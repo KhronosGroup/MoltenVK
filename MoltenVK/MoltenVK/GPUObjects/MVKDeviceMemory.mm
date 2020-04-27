@@ -93,6 +93,7 @@ VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, 
 		if (!_mtlHeap) {
 			lock_guard<mutex> lock(_rezLock);
 			for (auto& img : _images) { img->flushToDevice(offset, memSize); }
+			for (auto& buf : _buffers) { buf->flushToDevice(offset, memSize); }
 		}
 	}
 	return VK_SUCCESS;
@@ -107,6 +108,7 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) && !_mtlHeap) {
 		lock_guard<mutex> lock(_rezLock);
         for (auto& img : _images) { img->pullFromDevice(offset, memSize); }
+        for (auto& buf : _buffers) { buf->pullFromDevice(offset, memSize); }
 
 #if MVK_MACOS
 		if (pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {

@@ -18,9 +18,11 @@
 
 
 #include "MVKOSExtensions.h"
+#include "MVKCommonEnvironment.h"
 #include <mach/mach_host.h>
 #include <mach/mach_time.h>
 #include <mach/task.h>
+#include <os/proc.h>
 
 #import <Foundation/Foundation.h>
 
@@ -109,7 +111,7 @@ uint64_t mvkGetSystemMemorySize() {
 
 uint64_t mvkGetAvailableMemorySize() {
 #if MVK_IOS
-	if (mvkOSVersion() >= 13.0) { return os_proc_available_memory(); }
+	if (mvkOSVersionIsAtLeast(13.0)) { return os_proc_available_memory(); }
 #endif
 	mach_port_t host_port;
 	mach_msg_type_number_t host_size;

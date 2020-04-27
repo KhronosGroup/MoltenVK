@@ -18,8 +18,8 @@ Table of Contents
 
 - [LunarG Vulkan Samples](#lunarg-vulkan-samples)
 	- [*Cube*](#lunarg-vulkan-samples-cube)
-	- [*API-Samples*](#lunarg-vulkan-samples-api)
 	- [*Hologram*](#lunarg-vulkan-samples-hologram)
+	- [*API-Samples*](#lunarg-vulkan-samples-api)
 - [Sascha Willems Vulkan Samples](#sascha-willems-vulkan-samples)
 	- [Installing the *Sascha Willems* Library](#sascha-willems-install)
 - [Cinder Vulkan Samples](#cinder-vulkan-samples)
@@ -60,38 +60,10 @@ the **MoltenVK** *dynamic library* is embedded in the application, but it could 
 as a system library instead.
 
 
-
-<a name="lunarg-vulkan-samples-api"></a>
-### *API-Samples*
-
-This *Xcode* project actually contains a large number of modular demos, with each demo
-demonstrating a particular *Vulkan* feature, or suite of calls.
-
-This demo can be found in the `LunarG-VulkanSamples/API-Samples` folder, and in the 
-`LunarG-VulkanSamples/API-Samples` group in the *Xcode Project Navigator* in the 
-`Demos.xcworkspace` *Xcode* workspace.
-
-To run this demo, run either the `API-Samples-iOS` or `API-Samples-macOS` *Scheme* from within *Xcode*.
-
-To specify which of the many modular demos to run, open the `Samples.h` in the `API-Samples`
-project in the *Xcode Project Navigator* in the `Demos.xcworkspace` *Xcode* workspace, and
-follow the instructions in the comments within that file.
-
-> **Note:** For simplicity, the `API-Samples` demos are bare-bones. Each of the `API-Samples` 
-> demos renders a single frame during app startup, and then leaves the rendered image static. 
-> There is no display loop or motion in any of these demos.
-> **This is normal for these demos, and the demo has not "hung" or "crashed" when this occurs.**
-
-To see descriptions and screenshots of each of the demos, open 
-[this summary document](LunarG-VulkanSamples/VulkanSamples/samples_index.html#AdditionalVulkan).
-
-The `API-Samples` demo is a simple example of installing **MoltenVK** as a *static framework*.
-
-
 <a name="lunarg-vulkan-samples-hologram"></a>
 ### *Hologram*
 
-> **Note:** In order to build the `Hologram` demo, you must have *Python3* installed
+> **_Note:_** In order to build the `Hologram` demo, you must have *Python3* installed
 > on your build computer.
 
 This is a sophisticated particle demo that populates command buffers from multiple threads.
@@ -110,6 +82,43 @@ To customize, modify the arguments created in the `DemoViewController viewDidLoa
 found in the `iOS/DemoViewController.mm` or `macOS/DemoViewController.mm` file.
 
 The `Hologram` demo is a simple example of installing **MoltenVK** as a *static library*.
+
+
+<a name="lunarg-vulkan-samples-api"></a>
+### *API-Samples*
+
+This *Xcode* project contains a large number of modular demos, with each demo
+demonstrating a particular *Vulkan* feature, or suite of calls.
+
+This demo can be found in the `LunarG-VulkanSamples/API-Samples` folder, and in the 
+`LunarG-VulkanSamples/API-Samples` group in the *Xcode Project Navigator* in the 
+`Demos.xcworkspace` *Xcode* workspace.
+
+Each of the `API-Samples` demos loads *SPIR-V* shader code from a file. Before any of the 
+`API-Samples` demos are run, these *SPIR-V* files need to be generated as follows:
+
+	cd MoltenVK/Demos/LunarG-VulkanSamples/API-Samples
+	./generateSPIRVShaders
+ 
+You only need to do this step once. It generates the *SPIR-V* shader code files for
+all of the `API-Samples` demos.
+
+To run any of the `API-Samples` demos, run either the `API-Samples-iOS` or `API-Samples-macOS` 
+*Scheme* from within *Xcode*.
+
+To specify which of the many modular demos to run, open the `Samples.h` in the `API-Samples`
+project in the *Xcode Project Navigator* in the `Demos.xcworkspace` *Xcode* workspace, and
+follow the instructions in the comments within that file.
+
+> **_Note:_** For simplicity, the `API-Samples` demos are bare-bones. Each of the `API-Samples` 
+> demos renders a single frame during app startup, and then leaves the rendered image static. 
+> There is no display loop or motion in any of these demos.
+> **This is normal for these demos, and the demo has not "hung" or "crashed" when this occurs.**
+
+To see descriptions and screenshots of each of the demos, open 
+[this summary document](LunarG-VulkanSamples/VulkanSamples/samples_index.html#AdditionalVulkan).
+
+The `API-Samples` demo is a simple example of installing **MoltenVK** as a *static framework*.
 
 
 

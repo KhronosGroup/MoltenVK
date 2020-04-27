@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKCommand.h"
+#include "MVKBuffer.h"
 
 class MVKQueryPool;
 
@@ -30,9 +31,9 @@ class MVKQueryPool;
 class MVKCmdQuery : public MVKCommand {
 
 public:
-    void setContent(VkQueryPool queryPool, uint32_t query);
-
-    MVKCmdQuery(MVKCommandTypePool<MVKCommand>* pool);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t query);
 
 protected:
     MVKQueryPool* _queryPool;
@@ -47,15 +48,16 @@ protected:
 class MVKCmdBeginQuery : public MVKCmdQuery {
 
 public:
-    void setContent(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags);
-
-    void added(MVKCommandBuffer* cmdBuffer) override;
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t query,
+						VkQueryControlFlags flags);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdBeginQuery(MVKCommandTypePool<MVKCmdBeginQuery>* pool);
-
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     VkQueryControlFlags _flags;
 };
 
@@ -69,7 +71,9 @@ class MVKCmdEndQuery : public MVKCmdQuery {
 public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdEndQuery(MVKCommandTypePool<MVKCmdEndQuery>* pool);
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 };
 
 
@@ -80,15 +84,16 @@ public:
 class MVKCmdWriteTimestamp : public MVKCmdQuery {
 
 public:
-    void setContent(VkPipelineStageFlagBits pipelineStage,
-                    VkQueryPool queryPool,
-                    uint32_t query);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkPipelineStageFlagBits pipelineStage,
+						VkQueryPool queryPool,
+						uint32_t query);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdWriteTimestamp(MVKCommandTypePool<MVKCmdWriteTimestamp>* pool);
-
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     VkPipelineStageFlagBits _pipelineStage;
 };
 
@@ -100,13 +105,16 @@ protected:
 class MVKCmdResetQueryPool : public MVKCmdQuery {
 
 public:
-    void setContent(VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t firstQuery,
+						uint32_t queryCount);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdResetQueryPool(MVKCommandTypePool<MVKCmdResetQueryPool>* pool);
-
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     uint32_t _queryCount;
 };
 
@@ -118,61 +126,23 @@ protected:
 class MVKCmdCopyQueryPoolResults : public MVKCmdQuery {
 
 public:
-    void setContent(VkQueryPool queryPool,
-                    uint32_t firstQuery,
-                    uint32_t queryCount,
-                    VkBuffer destBuffer,
-                    VkDeviceSize destOffset,
-                    VkDeviceSize destStride,
-                    VkQueryResultFlags flags);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkQueryPool queryPool,
+						uint32_t firstQuery,
+						uint32_t queryCount,
+						VkBuffer destBuffer,
+						VkDeviceSize destOffset,
+						VkDeviceSize destStride,
+						VkQueryResultFlags flags);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdCopyQueryPoolResults(MVKCommandTypePool<MVKCmdCopyQueryPoolResults>* pool);
-
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
     uint32_t _queryCount;
     MVKBuffer* _destBuffer;
     VkDeviceSize _destOffset;
     VkDeviceSize _destStride;
     VkQueryResultFlags _flags;
 };
-
-
-#pragma mark -
-#pragma mark Command creation functions
-
-/** Adds a begin query command to the specified command buffer. */
-void mvkCmdBeginQuery(MVKCommandBuffer* cmdBuff,
-                      VkQueryPool queryPool,
-                      uint32_t query,
-                      VkQueryControlFlags flags);
-
-/** Adds an end query command to the specified command buffer. */
-void mvkCmdEndQuery(MVKCommandBuffer* cmdBuff,
-                    VkQueryPool queryPool,
-                    uint32_t query);
-
-/** Adds a write timestamp command to the specified command buffer. */
-void mvkCmdWriteTimestamp(MVKCommandBuffer* cmdBuff,
-						  VkPipelineStageFlagBits pipelineStage,
-						  VkQueryPool queryPool,
-						  uint32_t query);
-
-/** Adds a reset query pool command to the specified command buffer. */
-void mvkCmdResetQueryPool(MVKCommandBuffer* cmdBuff,
-                          VkQueryPool queryPool,
-                          uint32_t firstQuery,
-                          uint32_t queryCount);
-
-/** Adds a copy query pool results command to the specified command buffer. */
-void mvkCmdCopyQueryPoolResults(MVKCommandBuffer* cmdBuff,
-                                VkQueryPool queryPool,
-                                uint32_t firstQuery,
-                                uint32_t queryCount,
-                                VkBuffer destBuffer,
-                                VkDeviceSize destOffset,
-                                VkDeviceSize destStride,
-                                VkQueryResultFlags flags);
-
-

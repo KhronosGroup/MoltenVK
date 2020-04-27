@@ -55,7 +55,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConv
 	if (mslOptions.shader_tess_factor_buffer_index != other.mslOptions.shader_tess_factor_buffer_index) { return false; }
 	if (mslOptions.buffer_size_buffer_index != other.mslOptions.buffer_size_buffer_index) { return false; }
 	if (mslOptions.shader_input_wg_index != other.mslOptions.shader_input_wg_index) { return false; }
+	if (mslOptions.enable_frag_output_mask != other.mslOptions.enable_frag_output_mask) { return false; }
 	if (!!mslOptions.enable_point_size_builtin != !!other.mslOptions.enable_point_size_builtin) { return false; }
+	if (!!mslOptions.enable_frag_depth_builtin != !!other.mslOptions.enable_frag_depth_builtin) { return false; }
+	if (!!mslOptions.enable_frag_stencil_ref_builtin != !!other.mslOptions.enable_frag_stencil_ref_builtin) { return false; }
 	if (!!mslOptions.disable_rasterization != !!other.mslOptions.disable_rasterization) { return false; }
 	if (!!mslOptions.capture_output_to_buffer != !!other.mslOptions.capture_output_to_buffer) { return false; }
 	if (!!mslOptions.swizzle_texture_samples != !!other.mslOptions.swizzle_texture_samples) { return false; }

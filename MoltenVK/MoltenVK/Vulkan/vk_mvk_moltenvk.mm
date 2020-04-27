@@ -75,16 +75,6 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceMetalFeaturesMVK(
 	return mvkCopy(pMetalFeatures, mvkPD->getMetalFeatures(), pMetalFeaturesSize);
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetSwapchainPerformanceMVK(
-	VkDevice                                    device,
-	VkSwapchainKHR                              swapchain,
-	MVKSwapchainPerformance*                    pSwapchainPerf,
-	size_t*                                     pSwapchainPerfSize) {
-
-	MVKSwapchain* mvkSC = (MVKSwapchain*)swapchain;
-	return mvkCopy(pSwapchainPerf, mvkSC->getPerformanceStatistics(), pSwapchainPerfSize);
-}
-
 MVK_PUBLIC_SYMBOL VkResult vkGetPerformanceStatisticsMVK(
 	VkDevice                                    device,
 	MVKPerformanceStatistics*            		pPerf,
