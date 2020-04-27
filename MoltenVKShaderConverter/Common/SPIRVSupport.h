@@ -30,6 +30,12 @@ namespace mvk {
 	/** Converts the SPIR-V code to an array of bytes (suitable for writing to a file). */
 	void spirvToBytes(const std::vector<uint32_t>& spv, std::vector<char>& bytes);
 
+	/**
+	 * Converts the SPIR-V code to header content (suitable for writing to a file)
+	 * with the SPIR-V content assigned to a named uint32_t variable.
+	 */
+	void spirvToHeaderBytes(const std::vector<uint32_t>& spv, std::vector<char>& bytes, const std::string& varName);
+
 	/** Converts an array of bytes (as read from a file) to SPIR-V code. */
 	void bytesToSPIRV(const std::vector<char>& bytes, std::vector<uint32_t>& spv);
 

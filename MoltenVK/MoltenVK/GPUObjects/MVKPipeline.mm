@@ -254,8 +254,8 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             cmdEncoder->_blendColorState.setBlendColor(_blendConstants[0], _blendConstants[1],
                                                        _blendConstants[2], _blendConstants[3], false);
             cmdEncoder->_depthBiasState.setDepthBias(_rasterInfo);
-            cmdEncoder->_viewportState.setViewports(_mtlViewports, 0, false);
-            cmdEncoder->_scissorState.setScissors(_mtlScissors, 0, false);
+            cmdEncoder->_viewportState.setViewports(_viewports, 0, false);
+            cmdEncoder->_scissorState.setScissors(_scissors, 0, false);
             cmdEncoder->_mtlPrimitiveType = _mtlPrimitiveType;
 
             [mtlCmdEnc setCullMode: _mtlCullMode];
@@ -376,24 +376,24 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_hasDepthStencilInfo = mvkSetOrClear(&_depthStencilInfo, pCreateInfo->pDepthStencilState);
 
 	// Viewports and scissors
-	if (pCreateInfo->pViewportState) {
-		_mtlViewports.reserve(pCreateInfo->pViewportState->viewportCount);
-		for (uint32_t i = 0; i < pCreateInfo->pViewportState->viewportCount; i++) {
+	auto pVPState = pCreateInfo->pViewportState;
+	if (pVPState) {
+		uint32_t vpCnt = pVPState->viewportCount;
+		_viewports.reserve(vpCnt);
+		for (uint32_t vpIdx = 0; vpIdx < vpCnt; vpIdx++) {
 			// If viewport is dyanamic, we still add a dummy so that the count will be tracked.
-			MTLViewport mtlVP;
-			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_VIEWPORT] ) {
-				mtlVP = mvkMTLViewportFromVkViewport(pCreateInfo->pViewportState->pViewports[i]);
-			}
-			_mtlViewports.push_back(mtlVP);
+			VkViewport vp;
+			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_VIEWPORT] ) { vp = pVPState->pViewports[vpIdx]; }
+			_viewports.push_back(vp);
 		}
-		_mtlScissors.reserve(pCreateInfo->pViewportState->scissorCount);
-		for (uint32_t i = 0; i < pCreateInfo->pViewportState->scissorCount; i++) {
+
+		uint32_t sCnt = pVPState->scissorCount;
+		_scissors.reserve(sCnt);
+		for (uint32_t sIdx = 0; sIdx < sCnt; sIdx++) {
 			// If scissor is dyanamic, we still add a dummy so that the count will be tracked.
-			MTLScissorRect mtlSc;
-			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_SCISSOR] ) {
-				mtlSc = mvkMTLScissorRectFromVkRect2D(pCreateInfo->pViewportState->pScissors[i]);
-			}
-			_mtlScissors.push_back(mtlSc);
+			VkRect2D sc;
+			if ( !_dynamicStateEnabled[VK_DYNAMIC_STATE_SCISSOR] ) { sc = pVPState->pScissors[sIdx]; }
+			_scissors.push_back(sc);
 		}
 	}
 }
@@ -628,7 +628,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 		offset = (uint32_t)mvkAlignByteCount(offset, sizeOfOutput(output));
 		if (shaderContext.isVertexAttributeLocationUsed(output.location)) {
 			plDesc.stageInputDescriptor.attributes[output.location].bufferIndex = kMVKTessCtlInputBufferIndex;
-			plDesc.stageInputDescriptor.attributes[output.location].format = (MTLAttributeFormat)mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.stageInputDescriptor.attributes[output.location].format = (MTLAttributeFormat)getPixelFormats()->getMTLVertexFormat(mvkFormatFromOutput(output));
 			plDesc.stageInputDescriptor.attributes[output.location].offset = offset;
 		}
 		offset += sizeOfOutput(output);
@@ -720,7 +720,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 		} else if (output.perPatch) {
 			patchOffset = (uint32_t)mvkAlignByteCount(patchOffset, sizeOfOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalPatchInputBufferIndex;
-			plDesc.vertexDescriptor.attributes[output.location].format = mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormat(mvkFormatFromOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].offset = patchOffset;
 			patchOffset += sizeOfOutput(output);
 			if (!firstPatch) { firstPatch = &output; }
@@ -728,7 +728,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 		} else {
 			offset = (uint32_t)mvkAlignByteCount(offset, sizeOfOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].bufferIndex = kMVKTessEvalInputBufferIndex;
-			plDesc.vertexDescriptor.attributes[output.location].format = mvkMTLVertexFormatFromVkFormat(mvkFormatFromOutput(output));
+			plDesc.vertexDescriptor.attributes[output.location].format = getPixelFormats()->getMTLVertexFormat(mvkFormatFromOutput(output));
 			plDesc.vertexDescriptor.attributes[output.location].offset = offset;
 			offset += sizeOfOutput(output);
 			if (!firstVertex) { firstVertex = &output; }
@@ -980,7 +980,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 			}
 
 			MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
-            vaDesc.format = mvkMTLVertexFormatFromVkFormat(pVKVA->format);
+            vaDesc.format = getPixelFormats()->getMTLVertexFormat(pVKVA->format);
             vaDesc.bufferIndex = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
             vaDesc.offset = pVKVA->offset;
         }
@@ -1084,7 +1084,7 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
             const VkPipelineColorBlendAttachmentState* pCA = &pCreateInfo->pColorBlendState->pAttachments[caIdx];
 
             MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
-            colorDesc.pixelFormat = getMTLPixelFormatFromVkFormat(mvkRenderSubpass->getColorAttachmentFormat(caIdx));
+            colorDesc.pixelFormat = getPixelFormats()->getMTLPixelFormat(mvkRenderSubpass->getColorAttachmentFormat(caIdx));
             colorDesc.writeMask = mvkMTLColorWriteMaskFromVkChannelFlags(pCA->colorWriteMask);
             // Don't set the blend state if we're not using this attachment.
             // The pixel format will be MTLPixelFormatInvalid in that case, and
@@ -1103,14 +1103,14 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
     }
 
     // Depth & stencil attachments
-    MTLPixelFormat mtlDSFormat = getMTLPixelFormatFromVkFormat(mvkRenderSubpass->getDepthStencilFormat());
-    if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
-    if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
+	MVKPixelFormats* pixFmts = getPixelFormats();
+    MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkRenderSubpass->getDepthStencilFormat());
+    if (pixFmts->isDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
+    if (pixFmts->isStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
-    // In Vulkan, it's perfectly valid to render with no attachments. Not so
-    // in Metal. If we have no attachments, then we'll have to add a dummy
-    // attachment.
-    if (!caCnt && !mvkMTLPixelFormatIsDepthFormat(mtlDSFormat) && !mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
+    // In Vulkan, it's perfectly valid to render with no attachments. Not so in Metal.
+	// If we have no attachments, then we'll have to add a dummy attachment.
+    if (!caCnt && !pixFmts->isDepthFormat(mtlDSFormat) && !pixFmts->isStencilFormat(mtlDSFormat)) {
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[0];
         colorDesc.pixelFormat = MTLPixelFormatR8Unorm;
         colorDesc.writeMask = MTLColorWriteMaskNone;
@@ -1158,8 +1158,24 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     _tessCtlPatchOutputBufferIndex = layout->getTessCtlPatchOutputBufferIndex();
     _tessCtlLevelBufferIndex = layout->getTessCtlLevelBufferIndex();
 
+    MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
+    MVKRenderSubpass* mvkRenderSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
+	MVKPixelFormats* pixFmts = getPixelFormats();
+    MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkRenderSubpass->getDepthStencilFormat());
+
+	shaderContext.options.mslOptions.enable_frag_output_mask = 0;
+	if (pCreateInfo->pColorBlendState) {
+		for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
+			if (mvkRenderSubpass->isColorAttachmentUsed(caIdx)) {
+				mvkEnableFlags(shaderContext.options.mslOptions.enable_frag_output_mask, 1 << caIdx);
+			}
+		}
+	}
+
 	shaderContext.options.mslOptions.texture_1D_as_2D = mvkTreatTexture1DAs2D();
     shaderContext.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo, reflectData);
+	shaderContext.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(mtlDSFormat);
+	shaderContext.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(mtlDSFormat);
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
     shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderContext.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
@@ -1188,7 +1204,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
         // to match the vertex attribute. So tell SPIRV-Cross if we're expecting an unsigned format.
         // Only do this if the attribute could be reasonably expected to fit in the shader's
         // declared type. Programs that try to invoke undefined behavior are on their own.
-        switch (mvkFormatTypeFromVkFormat(pVKVA->format) ) {
+        switch (getPixelFormats()->getFormatType(pVKVA->format) ) {
         case kMVKFormatColorUInt8:
             va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT8;
             break;
@@ -1243,7 +1259,7 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConverterContext(SPIRVToMSLC
         va.vertexAttribute.location = shaderOutputs[vaIdx].location;
         va.vertexAttribute.builtin = shaderOutputs[vaIdx].builtin;
 
-        switch (mvkFormatTypeFromVkFormat(mvkFormatFromOutput(shaderOutputs[vaIdx]) ) ) {
+        switch (getPixelFormats()->getFormatType(mvkFormatFromOutput(shaderOutputs[vaIdx]) ) ) {
             case kMVKFormatColorUInt8:
                 va.vertexAttribute.format = MSL_VERTEX_FORMAT_UINT8;
                 break;
@@ -1544,7 +1560,7 @@ void MVKPipelineCache::readData(const VkPipelineCacheCreateInfo* pCreateInfo) {
 		if (NSSwapLittleIntToHost(hdrComponent) !=  pDevProps->deviceID) { return; }
 
 		reader(pcUUID);			// Pipeline cache UUID
-		if (memcmp(pcUUID, pDevProps->pipelineCacheUUID, VK_UUID_SIZE) != 0) { return; }
+		if ( !mvkAreEqual(pcUUID, pDevProps->pipelineCacheUUID, VK_UUID_SIZE) ) { return; }
 
 		bool done = false;
 		while ( !done ) {
@@ -1622,7 +1638,10 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.dynamic_offsets_buffer_index,
 				opt.shader_input_wg_index,
 				opt.device_index,
+				opt.enable_frag_output_mask,
 				opt.enable_point_size_builtin,
+				opt.enable_frag_depth_builtin,
+				opt.enable_frag_stencil_ref_builtin,
 				opt.disable_rasterization,
 				opt.capture_output_to_buffer,
 				opt.swizzle_texture_samples,
@@ -1632,8 +1651,16 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.dispatch_base,
 				opt.texture_1D_as_2D,
 				opt.argument_buffers,
+				opt.enable_base_index_zero,
 				opt.pad_fragment_output_components,
-				opt.texture_buffer_native);
+				opt.ios_support_base_vertex_instance,
+				opt.ios_use_framebuffer_fetch_subpasses,
+				opt.invariant_float_math,
+				opt.emulate_cube_array,
+				opt.enable_decoration_binding,
+				opt.texture_buffer_native,
+				opt.force_active_argument_buffer_resources,
+				opt.force_native_arrays);
 	}
 
 	template<class Archive>
@@ -1671,9 +1698,19 @@ namespace SPIRV_CROSS_NAMESPACE {
 				cs.lod_clamp_min,
 				cs.lod_clamp_max,
 				cs.max_anisotropy,
+				cs.planes,
+				cs.resolution,
+				cs.chroma_filter,
+				cs.x_chroma_offset,
+				cs.y_chroma_offset,
+				cs.swizzle,
+				cs.ycbcr_model,
+				cs.ycbcr_range,
+				cs.bpc,
 				cs.compare_enable,
 				cs.lod_clamp_enable,
-				cs.anisotropy_enable);
+				cs.anisotropy_enable,
+				cs.ycbcr_conversion_enable);
 	}
 
 }
@@ -1721,7 +1758,9 @@ namespace mvk {
 
 	template<class Archive>
 	void serialize(Archive & archive, SPIRVToMSLConversionConfiguration& ctx) {
-		archive(ctx.options, ctx.vertexAttributes, ctx.resourceBindings);
+		archive(ctx.options,
+				ctx.vertexAttributes,
+				ctx.resourceBindings);
 	}
 
 	template<class Archive>
@@ -1740,7 +1779,8 @@ namespace mvk {
 
 template<class Archive>
 void serialize(Archive & archive, MVKShaderModuleKey& k) {
-	archive(k.codeSize, k.codeHash);
+	archive(k.codeSize,
+			k.codeHash);
 }
 
 

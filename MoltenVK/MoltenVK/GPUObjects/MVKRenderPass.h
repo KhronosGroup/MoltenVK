@@ -84,7 +84,7 @@ private:
 	friend class MVKRenderPass;
 	friend class MVKRenderPassAttachment;
 
-	bool isUsingAttachmentAt(uint32_t rpAttIdx);
+	MVKMTLFmtCaps getRequiredFormatCapabilitiesForAttachmentAt(uint32_t rpAttIdx);
 
 	MVKRenderPass* _renderPass;
 	uint32_t _subpassIndex;
@@ -134,8 +134,6 @@ public:
 							const VkAttachmentDescription* pCreateInfo);
 
 protected:
-	VkAttachmentDescription validate(const VkAttachmentDescription* pCreateInfo);
-
 	VkAttachmentDescription _info;
 	MVKRenderPass* _renderPass;
 	uint32_t _attachmentIndex;

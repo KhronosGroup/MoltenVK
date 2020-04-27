@@ -24,6 +24,9 @@
 
 namespace mvk {
 
+#pragma mark -
+#pragma mark Strings
+
     static std::string _mvkDefaultWhitespaceChars = " \f\n\r\t\v";
 
     /** Returns a string with whitespace trimmed from the right end of the specified string. */
@@ -45,6 +48,21 @@ namespace mvk {
         return ( (startPos != std::string::npos) && (endPos != std::string::npos) ) ? s.substr(startPos, endPos + 1) : "";
     }
 
+	/** Cleanse variable name by replacing any illegal chars and leading digit with underscores. */
+	inline std::string cleanseVarName(const std::string& name) {
+		std::string varName(name);
+		size_t cCnt = varName.length();
+		for (size_t cIdx = 0; cIdx < cCnt; cIdx++) {
+			char& c = varName[cIdx];
+			if ( !(c == '_' || isalpha(c) || (isdigit(c) && cIdx > 0)) ) { c = '_'; }
+		}
+		return varName;
+	}
+
+
+#pragma mark -
+#pragma mark Streams
+
 	/** A memory-based stream buffer. */
 	class membuf : public std::streambuf {
 	public:
@@ -63,6 +81,19 @@ namespace mvk {
 			buffSize += n;
 			return n;
 		}
+	};
+
+	/** A stream buffer underpinned by a vector<char>. */
+	class charvectorbuf : public std::streambuf {
+	public:
+		charvectorbuf(std::vector<char>* pVec) : _pVec(pVec) {}
+	private:
+		std::streamsize xsputn (const char* s, std::streamsize n) override {
+			_pVec->insert(_pVec->end(), s, s + n);
+			return n;
+		}
+
+		std::vector<char>* _pVec;
 	};
 
 }

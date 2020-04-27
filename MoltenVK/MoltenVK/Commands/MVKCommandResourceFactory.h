@@ -112,25 +112,21 @@ namespace std {
  * This structure can be used as a key in a std::map and std::unordered_map.
  */
 typedef struct MVKRPSKeyClearAtt {
-    uint16_t attachmentMTLPixelFormats[kMVKClearAttachmentCount];
+	uint16_t flags;				// bitcount > kMVKClearAttachmentLayeredRenderingBitIndex
 	uint16_t mtlSampleCount;
-    uint16_t flags;			// bitcount > kMVKClearAttachmentLayeredRenderingBitIndex
+	uint16_t attachmentMTLPixelFormats[kMVKClearAttachmentCount];
 
     const static uint32_t bitFlag = 1;
 
-    void enableAttachment(uint32_t attIdx) { mvkEnableFlag(flags, bitFlag << attIdx); }
+    void enableAttachment(uint32_t attIdx) { mvkEnableFlags(flags, bitFlag << attIdx); }
 
     bool isAttachmentEnabled(uint32_t attIdx) { return mvkIsAnyFlagEnabled(flags, bitFlag << attIdx); }
 
-	void enableLayeredRendering() { mvkEnableFlag(flags, bitFlag << kMVKClearAttachmentLayeredRenderingBitIndex); }
+	void enableLayeredRendering() { mvkEnableFlags(flags, bitFlag << kMVKClearAttachmentLayeredRenderingBitIndex); }
 
 	bool isLayeredRenderingEnabled() { return mvkIsAnyFlagEnabled(flags, bitFlag << kMVKClearAttachmentLayeredRenderingBitIndex); }
 
-    bool operator==(const MVKRPSKeyClearAtt& rhs) const {
-        return ((flags == rhs.flags) &&
-				(mtlSampleCount == rhs.mtlSampleCount) &&
-                (memcmp(attachmentMTLPixelFormats, rhs.attachmentMTLPixelFormats, sizeof(attachmentMTLPixelFormats)) == 0));
-    }
+    bool operator==(const MVKRPSKeyClearAtt& rhs) const { return mvkAreEqual(this, &rhs); }
 
 	std::size_t hash() const {
 		std::size_t hash = mvkHash(&flags);
@@ -212,9 +208,7 @@ typedef struct MVKMTLDepthStencilDescriptorData {
     MVKMTLStencilDescriptorData frontFaceStencilData;
     MVKMTLStencilDescriptorData backFaceStencilData;
 
-	bool operator==(const MVKMTLDepthStencilDescriptorData& rhs) const {
-		return (memcmp(this, &rhs, sizeof(*this)) == 0);
-	}
+	bool operator==(const MVKMTLDepthStencilDescriptorData& rhs) const { return mvkAreEqual(this, &rhs); }
 
 	std::size_t hash() const {
 		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
@@ -270,9 +264,7 @@ typedef struct MVKImageDescriptorData {
     VkSampleCountFlagBits    samples;
     VkImageUsageFlags        usage;
 
-    bool operator==(const MVKImageDescriptorData& rhs) const {
-        return (memcmp(this, &rhs, sizeof(*this)) == 0);
-    }
+    bool operator==(const MVKImageDescriptorData& rhs) const { return mvkAreEqual(this, &rhs); }
 
 	std::size_t hash() const {
 		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));
@@ -307,9 +299,7 @@ typedef struct MVKBufferDescriptorData {
     VkDeviceSize             size;
     VkBufferUsageFlags       usage;
 
-    bool operator==(const MVKBufferDescriptorData& rhs) const {
-        return (memcmp(this, &rhs, sizeof(*this)) == 0);
-    }
+    bool operator==(const MVKBufferDescriptorData& rhs) const { return mvkAreEqual(this, &rhs); }
 
 	std::size_t hash() const {
 		return mvkHash((uint64_t*)this, sizeof(*this) / sizeof(uint64_t));

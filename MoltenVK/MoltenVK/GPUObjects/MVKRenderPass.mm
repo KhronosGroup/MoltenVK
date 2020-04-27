@@ -73,6 +73,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 													   bool isRenderingEntireAttachment,
 													   bool loadOverride,
 													   bool storeOverride) {
+	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
+
 	// Populate the Metal color attachments
 	uint32_t caCnt = getColorAttachmentCount();
 	uint32_t caUsedCnt = 0;
@@ -98,7 +100,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                        hasResolveAttachment, false,
                                                                        loadOverride,
                                                                        storeOverride)) {
-				mtlColorAttDesc.clearColor = mvkMTLClearColorFromVkClearValue(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
+				mtlColorAttDesc.clearColor = pixFmts->getMTLClearColor(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
 			}
 		}
 	}
@@ -110,7 +112,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		MVKImageView* dsImage = framebuffer->getAttachment(dsRPAttIdx);
 		MTLPixelFormat mtlDSFormat = dsImage->getMTLPixelFormat();
 
-		if (mvkMTLPixelFormatIsDepthFormat(mtlDSFormat)) {
+		if (pixFmts->isDepthFormat(mtlDSFormat)) {
 			MTLRenderPassDepthAttachmentDescriptor* mtlDepthAttDesc = mtlRPDesc.depthAttachment;
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
@@ -118,10 +120,10 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                       false, false,
                                                                       loadOverride,
                                                                       storeOverride)) {
-                mtlDepthAttDesc.clearDepth = mvkMTLClearDepthFromVkClearValue(clearValues[dsRPAttIdx]);
+                mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthValue(clearValues[dsRPAttIdx]);
 			}
 		}
-		if (mvkMTLPixelFormatIsStencilFormat(mtlDSFormat)) {
+		if (pixFmts->isStencilFormat(mtlDSFormat)) {
 			MTLRenderPassStencilAttachmentDescriptor* mtlStencilAttDesc = mtlRPDesc.stencilAttachment;
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
@@ -129,7 +131,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                       false, true,
                                                                       loadOverride,
                                                                       storeOverride)) {
-				mtlStencilAttDesc.clearStencil = mvkMTLClearStencilFromVkClearValue(clearValues[dsRPAttIdx]);
+				mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilValue(clearValues[dsRPAttIdx]);
 			}
 		}
 	}
@@ -144,7 +146,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			mtlTexDesc.arrayLength = framebuffer->getLayerCount();
 		}
 #if MVK_IOS
-		if ([_renderPass->getDevice()->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
+		if ([_renderPass->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
 			mtlTexDesc.storageMode = MTLStorageModeMemoryless;
 		} else {
 			mtlTexDesc.storageMode = MTLStorageModePrivate;
@@ -153,7 +155,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		mtlTexDesc.storageMode = MTLStorageModePrivate;
 #endif
 		mtlTexDesc.usage = MTLTextureUsageRenderTarget;
-		_mtlDummyTex = [_renderPass->getDevice()->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];  // not retained
+		_mtlDummyTex = [_renderPass->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];  // not retained
 		[_mtlDummyTex setPurgeableState: MTLPurgeableStateVolatile];
 		MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
 		mtlColorAttDesc.texture = _mtlDummyTex;
@@ -187,31 +189,42 @@ void MVKRenderSubpass::populateClearAttachments(MVKVector<VkClearAttachment>& cl
 		cAtt.colorAttachment = 0;
 		cAtt.clearValue = clearValues[attIdx];
 
-		MTLPixelFormat mtlDSFmt = _renderPass->getMTLPixelFormatFromVkFormat(getDepthStencilFormat());
-		if (mvkMTLPixelFormatIsDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
-		if (mvkMTLPixelFormatIsStencilFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT; }
+		MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
+		MTLPixelFormat mtlDSFmt = _renderPass->getPixelFormats()->getMTLPixelFormat(getDepthStencilFormat());
+		if (pixFmts->isDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
+		if (pixFmts->isStencilFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT; }
 		if (cAtt.aspectMask) { clearAtts.push_back(cAtt); }
 	}
 }
 
-/**
- * Returns whether this subpass uses the attachment at the specified index within the
- * parent renderpass, as any of input, color, resolve, or depth/stencil attachment type.
- */
-bool MVKRenderSubpass::isUsingAttachmentAt(uint32_t rpAttIdx) {
+// Returns the format capabilities required by this render subpass.
+// It is possible for a subpass to use a single framebuffer attachment for multiple purposes.
+// For example, a subpass may use a color or depth attachment as an input attachment as well.
+// So, accumulate the capabilities from all possible attachments, just to be safe.
+MVKMTLFmtCaps MVKRenderSubpass::getRequiredFormatCapabilitiesForAttachmentAt(uint32_t rpAttIdx) {
+	MVKMTLFmtCaps caps = kMVKMTLFmtCapsNone;
 
 	for (auto& att : _inputAttachments) {
-		if (att.attachment == rpAttIdx) { return true; }
+		if (att.attachment == rpAttIdx) {
+			mvkEnableFlags(caps, kMVKMTLFmtCapsRead);
+			break;
+		}
 	}
 	for (auto& att : _colorAttachments) {
-		if (att.attachment == rpAttIdx) { return true; }
+		if (att.attachment == rpAttIdx) {
+			mvkEnableFlags(caps, kMVKMTLFmtCapsColorAtt);
+			break;
+		}
 	}
 	for (auto& att : _resolveAttachments) {
-		if (att.attachment == rpAttIdx) { return true; }
+		if (att.attachment == rpAttIdx) {
+			mvkEnableFlags(caps, kMVKMTLFmtCapsResolve);
+			break;
+		}
 	}
-	if (_depthStencilAttachment.attachment == rpAttIdx) { return true; }
+	if (_depthStencilAttachment.attachment == rpAttIdx) { mvkEnableFlags(caps, kMVKMTLFmtCapsDSAtt); }
 
-	return false;
+	return caps;
 }
 
 MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
@@ -307,33 +320,35 @@ bool MVKRenderPassAttachment::shouldUseClearAttachment(MVKRenderSubpass* subpass
 
 MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 												 const VkAttachmentDescription* pCreateInfo) {
+	_info = *pCreateInfo;
 	_renderPass = renderPass;
 	_attachmentIndex = uint32_t(_renderPass->_attachments.size());
 
-	// Determine the indices of the first and last render subpasses to use that attachment.
+	// Validate pixel format is supported
+	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
+	if ( !pixFmts->isSupportedOrSubstitutable(_info.format) ) {
+		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", _renderPass->getPixelFormats()->getName(_info.format)));
+	}
+
+	// Determine the indices of the first and last render subpasses to use this attachment.
 	_firstUseSubpassIdx = kMVKUndefinedLargeUInt32;
 	_lastUseSubpassIdx = 0;
 	for (auto& subPass : _renderPass->_subpasses) {
-		if (subPass.isUsingAttachmentAt(_attachmentIndex)) {
+		// If it uses this attachment, the subpass will identify required format capabilities.
+		MVKMTLFmtCaps reqCaps = subPass.getRequiredFormatCapabilitiesForAttachmentAt(_attachmentIndex);
+		if (reqCaps) {
 			uint32_t spIdx = subPass._subpassIndex;
-			_firstUseSubpassIdx = MIN(spIdx, _firstUseSubpassIdx);
-			_lastUseSubpassIdx = MAX(spIdx, _lastUseSubpassIdx);
+			_firstUseSubpassIdx = min(spIdx, _firstUseSubpassIdx);
+			_lastUseSubpassIdx = max(spIdx, _lastUseSubpassIdx);
+
+			// Validate that the attachment pixel format supports the capabilities required by the subpass.
+			if ( !mvkAreAllFlagsEnabled(pixFmts->getCapabilities(_info.format), reqCaps) ) {
+				_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s on this device does not support the VkFormat attachment capabilities required by the subpass at index %d.", _renderPass->getPixelFormats()->getName(_info.format), spIdx));
+			}
 		}
 	}
-
-	_info = validate(pCreateInfo);
 }
 
-// Validate and potentially modify the create info
-VkAttachmentDescription MVKRenderPassAttachment::validate(const VkAttachmentDescription* pCreateInfo) {
-	VkAttachmentDescription info = *pCreateInfo;
-
-	if ( !_renderPass->getMTLPixelFormatFromVkFormat(info.format) ) {
-		_renderPass->setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateRenderPass(): Attachment format %s is not supported on this device.", mvkVkFormatName(info.format)));
-	}
-
-	return info;
-}
 
 #pragma mark -
 #pragma mark MVKRenderPass

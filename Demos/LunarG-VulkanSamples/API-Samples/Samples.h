@@ -30,6 +30,14 @@
  *
  * If you choose to add a #define statement to this file, be sure to clear the existing macro
  * from the Preprocessor Macros (aka GCC_PREPROCESSOR_DEFINITIONS) compiler setting in Xcode.
+ *
+ * Each of the `API-Samples` demos loads SPIR-V shader code from a file. Before running
+ * any of these demos, generate these SPIR-V files from a command line as follows:
+ *
+ *     cd MoltenVK/Demos/LunarG-VulkanSamples/API-Samples
+ *     ./generateSPIRVShaders
+ *
+ * You only need to do this step once. It generates the SPIR-V shader code files for all of these demos.
  */
 
 #include <MoltenVK/mvk_vulkan.h>
@@ -39,6 +47,8 @@
 
 
 #ifdef MVK_SAMP_15_draw_cube
+#	define _5_draw_cube_vert __draw_cube_vert
+#	define _5_draw_cube_frag __draw_cube_frag
 #	include "../VulkanSamples/API-Samples/15-draw_cube/15-draw_cube.cpp"
 #endif
 
@@ -60,6 +70,10 @@
 
 #ifdef MVK_SAMP_immutable_sampler
 #	include "../VulkanSamples/API-Samples/immutable_sampler/immutable_sampler.cpp"
+#endif
+
+#ifdef MVK_SAMP_input_attachment
+#	include "../VulkanSamples/API-Samples/input_attachment/input_attachment.cpp"
 #endif
 
 #ifdef MVK_SAMP_memory_barriers
@@ -86,6 +100,10 @@
 #	include "../VulkanSamples/API-Samples/push_constants/push_constants.cpp"
 #endif
 
+#ifdef MVK_SAMP_push_descriptors
+#	include "../VulkanSamples/API-Samples/push_descriptors/push_descriptors.cpp"
+#endif
+
 #ifdef MVK_SAMP_secondary_command_buffer
 #	include "../VulkanSamples/API-Samples/secondary_command_buffer/secondary_command_buffer.cpp"
 #endif
@@ -94,10 +112,7 @@
 #	include "../VulkanSamples/API-Samples/separate_image_sampler/separate_image_sampler.cpp"
 #endif
 
-#ifdef MVK_SAMP_template
-#	include "../VulkanSamples/API-Samples/template/template.cpp"
-#endif
-
+// Does not run on macOS, which does not support textures in host-coherent memory.
 #ifdef MVK_SAMP_texel_buffer
 #	include "../VulkanSamples/API-Samples/texel_buffer/texel_buffer.cpp"
 #endif

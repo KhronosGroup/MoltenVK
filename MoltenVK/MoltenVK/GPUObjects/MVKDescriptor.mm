@@ -186,10 +186,17 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
                 tb.mtlTexture = imageView->getMTLTexture();
-                if (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE && imageView) {
+                if (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE) {
                     tb.swizzle = imageView->getPackedSwizzle();
                 } else {
                     tb.swizzle = 0;
+                }
+                if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+                    id<MTLTexture> mtlTex = tb.mtlTexture;
+                    if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }
+                    bb.mtlBuffer = mtlTex.buffer;
+                    bb.offset = mtlTex.bufferOffset;
+                    bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
                 }
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
@@ -198,6 +205,14 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
 							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
                         } else {
 							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
+                        }
+                        if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+                            bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                            if (i == kMVKShaderStageCompute) {
+                                if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
+                            } else {
+                                if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+                            }
                         }
                     }
                 }
@@ -209,6 +224,12 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 auto* bufferView = get<MVKBufferView*>(pData, stride, rezIdx - dstArrayElement);
                 tb.mtlTexture = bufferView->getMTLTexture();
                 tb.swizzle = 0;
+                if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+                    id<MTLTexture> mtlTex = tb.mtlTexture;
+                    bb.mtlBuffer = mtlTex.buffer;
+                    bb.offset = mtlTex.bufferOffset;
+                    bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
+                }
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
                         tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
@@ -216,6 +237,14 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
 							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
                         } else {
 							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
+                        }
+                        if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+                            bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                            if (i == kMVKShaderStageCompute) {
+                                if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
+                            } else {
+                                if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+                            }
                         }
                     }
                 }
@@ -407,11 +436,14 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
 			}
             break;
 
-        case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+        case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+            pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
+            pDescSetCounts->bufferIndex += pBinding->descriptorCount;
+            // fallthrough
+        case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-        case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
             pBindingIndexes->textureIndex = pDescSetCounts->textureIndex;
             pDescSetCounts->textureIndex += pBinding->descriptorCount;
 
@@ -649,6 +681,7 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 							  MVKVector<uint32_t>& dynamicOffsets,
 							  uint32_t* pDynamicOffsetIndex) {
 	MVKMTLTextureBinding tb;
+	MVKMTLBufferBinding bb;
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -657,10 +690,18 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 			if (_mvkImageView) {
 				tb.mtlTexture = _mvkImageView->getMTLTexture();
 			}
-			if (descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE && tb.mtlTexture) {
+			if ((descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
+				tb.mtlTexture) {
 				tb.swizzle = _mvkImageView->getPackedSwizzle();
 			} else {
 				tb.swizzle = 0;
+			}
+			if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && tb.mtlTexture) {
+				id<MTLTexture> mtlTex = tb.mtlTexture;
+				if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }
+				bb.mtlBuffer = mtlTex.buffer;
+				bb.offset = mtlTex.bufferOffset;
+				bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
 			}
 			for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
 				if (stages[i]) {
@@ -669,6 +710,14 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 						if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
 					} else {
 						if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
+					}
+					if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+						bb.index = mtlIndexes.stages[i].bufferIndex + descriptorIndex;
+						if (i == kMVKShaderStageCompute) {
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
+						} else {
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+						}
 					}
 				}
 			}
@@ -1011,11 +1060,18 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 									MVKVector<uint32_t>& dynamicOffsets,
 									uint32_t* pDynamicOffsetIndex) {
 	MVKMTLTextureBinding tb;
+	MVKMTLBufferBinding bb;
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER: {
 			if (_mvkBufferView) {
 				tb.mtlTexture = _mvkBufferView->getMTLTexture();
+				if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+					id<MTLTexture> mtlTex = tb.mtlTexture;
+					bb.mtlBuffer = mtlTex.buffer;
+					bb.offset = mtlTex.bufferOffset;
+					bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
+				}
 			}
 			for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
 				if (stages[i]) {
@@ -1024,6 +1080,14 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 						if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
 					} else {
 						if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
+					}
+					if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+						bb.index = mtlIndexes.stages[i].bufferIndex + descriptorIndex;
+						if (i == kMVKShaderStageCompute) {
+							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
+						} else {
+							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+						}
 					}
 				}
 			}

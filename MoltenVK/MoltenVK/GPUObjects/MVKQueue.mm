@@ -249,7 +249,7 @@ void MVKQueueCommandBufferSubmission::setActiveMTLCommandBuffer(id<MTLCommandBuf
 
 	if (_activeMTLCommandBuffer) { commitActiveMTLCommandBuffer(); }
 
-	_activeMTLCommandBuffer = mtlCmdBuff;	// not retained
+	_activeMTLCommandBuffer = [mtlCmdBuff retain];		// retained to handle prefilled
 	[_activeMTLCommandBuffer enqueue];
 }
 
@@ -276,8 +276,9 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 
 	// Use temp var because callback may destroy this instance before this function ends.
 	id<MTLCommandBuffer> mtlCmdBuff = _activeMTLCommandBuffer;
-	_activeMTLCommandBuffer = nil;			// not retained
+	_activeMTLCommandBuffer = nil;
 	[mtlCmdBuff commit];
+	[mtlCmdBuff release];		// retained
 }
 
 void MVKQueueCommandBufferSubmission::finish() {
@@ -338,7 +339,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	// The semaphores know what to do.
 	id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();
 	for (auto& ws : _waitSemaphores) { ws->encodeWait(mtlCmdBuff); }
-	for (auto& si : _surfaceImages) { si->presentCAMetalDrawable(mtlCmdBuff); }
+	for (auto& img : _presentableImages) { img->presentCAMetalDrawable(mtlCmdBuff); }
 	for (auto& ws : _waitSemaphores) { ws->encodeWait(nil); }
 	[mtlCmdBuff commit];
 
@@ -359,19 +360,18 @@ id<MTLCommandBuffer> MVKQueuePresentSurfaceSubmission::getMTLCommandBuffer() {
 
 MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* queue,
 																   const VkPresentInfoKHR* pPresentInfo)
-		: MVKQueueSubmission(queue, pPresentInfo->waitSemaphoreCount, pPresentInfo->pWaitSemaphores) {
+	: MVKQueueSubmission(queue, pPresentInfo->waitSemaphoreCount, pPresentInfo->pWaitSemaphores) {
 
-	// Populate the array of swapchain images, testing each one for a change in surface size
-	_surfaceImages.reserve(pPresentInfo->swapchainCount);
-	for (uint32_t i = 0; i < pPresentInfo->swapchainCount; i++) {
-		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[i];
-		_surfaceImages.push_back(mvkSC->getImage(pPresentInfo->pImageIndices[i]));
-		// Surface loss takes precedence over out-of-date errors.
-		if (mvkSC->getIsSurfaceLost()) {
-			setConfigurationResult(VK_ERROR_SURFACE_LOST_KHR);
-		} else if (mvkSC->getHasSurfaceSizeChanged() && getConfigurationResult() != VK_ERROR_SURFACE_LOST_KHR) {
-			setConfigurationResult(VK_ERROR_OUT_OF_DATE_KHR);
-		}
+	// Populate the array of swapchain images, testing each one for status
+	uint32_t scCnt = pPresentInfo->swapchainCount;
+	VkResult* pSCRslts = pPresentInfo->pResults;
+	_presentableImages.reserve(scCnt);
+	for (uint32_t scIdx = 0; scIdx < scCnt; scIdx++) {
+		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[scIdx];
+		_presentableImages.push_back(mvkSC->getPresentableImage(pPresentInfo->pImageIndices[scIdx]));
+		VkResult scRslt = mvkSC->getSurfaceStatus();
+		if (pSCRslts) { pSCRslts[scIdx] = scRslt; }
+		setConfigurationResult(scRslt);
 	}
 }
 

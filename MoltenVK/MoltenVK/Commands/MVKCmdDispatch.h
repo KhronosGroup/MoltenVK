@@ -31,15 +31,21 @@
 class MVKCmdDispatch : public MVKCommand {
 
 public:
-    void setContent(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
-                    uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
+						uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdDispatch(MVKCommandTypePool<MVKCmdDispatch>* pool);
-
 protected:
-    MTLRegion  _mtlThreadgroupCount;
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	uint32_t _baseGroupX;
+	uint32_t _baseGroupY;
+	uint32_t _baseGroupZ;
+	uint32_t _groupCountX;
+	uint32_t _groupCountY;
+	uint32_t _groupCountZ;
 };
 
 
@@ -50,27 +56,14 @@ protected:
 class MVKCmdDispatchIndirect : public MVKCommand {
 
 public:
-	void setContent(VkBuffer buffer, VkDeviceSize offset);
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdDispatchIndirect(MVKCommandTypePool<MVKCmdDispatchIndirect>* pool);
-
 protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 	id<MTLBuffer> _mtlIndirectBuffer;
-	NSUInteger _mtlIndirectBufferOffset;
+	VkDeviceSize _mtlIndirectBufferOffset;
 };
-
-
-#pragma mark -
-#pragma mark Command creation functions
-
-/** Adds a compute threadgroup dispatch command to the specified command buffer. */
-void mvkCmdDispatch(MVKCommandBuffer* cmdBuff, uint32_t x, uint32_t y, uint32_t z);
-
-/** Adds an indirect compute threadgroup dispatch command to the specified command buffer. */
-void mvkCmdDispatchIndirect(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset);
-
-/** Adds a compute threadgroup dispatch command to the specified command buffer, with thread IDs starting from the given base. */
-void mvkCmdDispatchBase(MVKCommandBuffer* cmdBuff, uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ, uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ);
 

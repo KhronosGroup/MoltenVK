@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKEnvironment.h"
+#include "MVKDevice.h"
 #include "MVKLayers.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKVector.h"
@@ -27,8 +28,6 @@
 #include <string>
 #include <mutex>
 
-class MVKPhysicalDevice;
-class MVKDevice;
 class MVKSurface;
 class MVKDebugReportCallback;
 class MVKDebugUtilsMessenger;
@@ -190,7 +189,7 @@ protected:
 
 	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
-	MVKVectorInline<MVKPhysicalDevice*, 1> _physicalDevices;
+	MVKVectorInline<MVKPhysicalDevice, 2> _physicalDevices;
 	MVKVectorDefault<MVKDebugReportCallback*> _debugReportCallbacks;
 	MVKVectorDefault<MVKDebugUtilsMessenger*> _debugUtilMessengers;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
@@ -200,6 +199,7 @@ protected:
 	bool _useCreationCallbacks;
 	const char* _debugReportCallbackLayerPrefix;
 	int32_t _autoGPUCaptureScope;
+	std::string _autoGPUCaptureOutputFile;
 };
 
 

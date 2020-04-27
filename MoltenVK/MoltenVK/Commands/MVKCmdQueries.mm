@@ -25,33 +25,35 @@
 #pragma mark -
 #pragma mark MVKCmdQuery
 
-void MVKCmdQuery::setContent(VkQueryPool queryPool, uint32_t query) {
+VkResult MVKCmdQuery::setContent(MVKCommandBuffer* cmdBuff,
+								 VkQueryPool queryPool,
+								 uint32_t query) {
     _queryPool = (MVKQueryPool*)queryPool;
     _query = query;
-}
 
-MVKCmdQuery::MVKCmdQuery(MVKCommandTypePool<MVKCommand>* pool) : MVKCommand::MVKCommand(pool) {}
+	return VK_SUCCESS;
+}
 
 
 #pragma mark -
 #pragma mark MVKCmdBeginQuery
 
-void MVKCmdBeginQuery::added(MVKCommandBuffer* cmdBuffer) {
-	MVKCommand::added(cmdBuffer);
-    _queryPool->beginQueryAddedTo(_query, cmdBuffer);
-};
+VkResult MVKCmdBeginQuery::setContent(MVKCommandBuffer* cmdBuff,
+									  VkQueryPool queryPool,
+									  uint32_t query,
+									  VkQueryControlFlags flags) {
 
-void MVKCmdBeginQuery::setContent(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags) {
-    MVKCmdQuery::setContent(queryPool, query);
-    _flags = flags;
+    VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, query);
+
+	_flags = flags;
+	_queryPool->beginQueryAddedTo(_query, cmdBuff);
+
+	return rslt;
 }
 
 void MVKCmdBeginQuery::encode(MVKCommandEncoder* cmdEncoder) {
     _queryPool->beginQuery(_query, _flags, cmdEncoder);
 }
-
-MVKCmdBeginQuery::MVKCmdBeginQuery(MVKCommandTypePool<MVKCmdBeginQuery>* pool)
-    : MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
 
 
 #pragma mark -
@@ -61,60 +63,68 @@ void MVKCmdEndQuery::encode(MVKCommandEncoder* cmdEncoder) {
     _queryPool->endQuery(_query, cmdEncoder);
 }
 
-MVKCmdEndQuery::MVKCmdEndQuery(MVKCommandTypePool<MVKCmdEndQuery>* pool)
-    : MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdWriteTimestamp
 
-void MVKCmdWriteTimestamp::setContent(VkPipelineStageFlagBits pipelineStage,
-									  VkQueryPool queryPool,
-									  uint32_t query) {
-    MVKCmdQuery::setContent(queryPool, query);
+VkResult MVKCmdWriteTimestamp::setContent(MVKCommandBuffer* cmdBuff,
+										  VkPipelineStageFlagBits pipelineStage,
+										  VkQueryPool queryPool,
+										  uint32_t query) {
+
+	VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, query);
+
 	_pipelineStage = pipelineStage;
+
+	return rslt;
 }
 
 void MVKCmdWriteTimestamp::encode(MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->markTimestamp(_queryPool, _query);
 }
 
-MVKCmdWriteTimestamp::MVKCmdWriteTimestamp(MVKCommandTypePool<MVKCmdWriteTimestamp>* pool)
-		: MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdResetQueryPool
 
-void MVKCmdResetQueryPool::setContent(VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount) {
-    MVKCmdQuery::setContent(queryPool, firstQuery);
-    _queryCount = queryCount;
+VkResult MVKCmdResetQueryPool::setContent(MVKCommandBuffer* cmdBuff,
+										  VkQueryPool queryPool,
+										  uint32_t firstQuery,
+										  uint32_t queryCount) {
+
+	VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, firstQuery);
+
+	_queryCount = queryCount;
+
+	return rslt;
 }
 
 void MVKCmdResetQueryPool::encode(MVKCommandEncoder* cmdEncoder) {
     _queryPool->resetResults(_query, _queryCount, cmdEncoder);
 }
 
-MVKCmdResetQueryPool::MVKCmdResetQueryPool(MVKCommandTypePool<MVKCmdResetQueryPool>* pool)
-    : MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
-
 
 #pragma mark -
 #pragma mark MVKCmdCopyQueryPoolResults
 
-void MVKCmdCopyQueryPoolResults::setContent(VkQueryPool queryPool,
-                                            uint32_t firstQuery,
-                                            uint32_t queryCount,
-                                            VkBuffer destBuffer,
-                                            VkDeviceSize destOffset,
-                                            VkDeviceSize destStride,
-                                            VkQueryResultFlags flags) {
-    MVKCmdQuery::setContent(queryPool, firstQuery);
-    _queryCount = queryCount;
+VkResult MVKCmdCopyQueryPoolResults::setContent(MVKCommandBuffer* cmdBuff,
+												VkQueryPool queryPool,
+												uint32_t firstQuery,
+												uint32_t queryCount,
+												VkBuffer destBuffer,
+												VkDeviceSize destOffset,
+												VkDeviceSize destStride,
+												VkQueryResultFlags flags) {
+
+	VkResult rslt = MVKCmdQuery::setContent(cmdBuff, queryPool, firstQuery);
+
+	_queryCount = queryCount;
     _destBuffer = (MVKBuffer*) destBuffer;
     _destOffset = destOffset;
     _destStride = destStride;
     _flags = flags;
+
+	return rslt;
 }
 
 void MVKCmdCopyQueryPoolResults::encode(MVKCommandEncoder* cmdEncoder) {
@@ -125,60 +135,5 @@ void MVKCmdCopyQueryPoolResults::encode(MVKCommandEncoder* cmdEncoder) {
     } else {
         _queryPool->encodeCopyResults(cmdEncoder, _query, _queryCount, _destBuffer, _destOffset, _destStride, _flags);
     }
-}
-
-MVKCmdCopyQueryPoolResults::MVKCmdCopyQueryPoolResults(MVKCommandTypePool<MVKCmdCopyQueryPoolResults>* pool)
-    : MVKCmdQuery::MVKCmdQuery((MVKCommandTypePool<MVKCommand>*)pool) {}
-
-
-#pragma mark -
-#pragma mark Command creation functions
-
-void mvkCmdBeginQuery(MVKCommandBuffer* cmdBuff,
-                      VkQueryPool queryPool,
-                      uint32_t query,
-                      VkQueryControlFlags flags) {
-    MVKCmdBeginQuery* cmd = cmdBuff->_commandPool->_cmdBeginQueryPool.acquireObject();
-    cmd->setContent(queryPool, query, flags);
-    cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdEndQuery(MVKCommandBuffer* cmdBuff,
-                    VkQueryPool queryPool,
-                    uint32_t query) {
-    MVKCmdEndQuery* cmd = cmdBuff->_commandPool->_cmdEndQueryPool.acquireObject();
-    cmd->setContent(queryPool, query);
-    cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdWriteTimestamp(MVKCommandBuffer* cmdBuff,
-						  VkPipelineStageFlagBits pipelineStage,
-						  VkQueryPool queryPool,
-						  uint32_t query) {
-	MVKCmdWriteTimestamp* cmd = cmdBuff->_commandPool->_cmdWriteTimestampPool.acquireObject();
-	cmd->setContent(pipelineStage, queryPool, query);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdResetQueryPool(MVKCommandBuffer* cmdBuff,
-                          VkQueryPool queryPool,
-                          uint32_t firstQuery,
-                          uint32_t queryCount) {
-    MVKCmdResetQueryPool* cmd = cmdBuff->_commandPool->_cmdResetQueryPoolPool.acquireObject();
-    cmd->setContent(queryPool, firstQuery, queryCount);
-    cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdCopyQueryPoolResults(MVKCommandBuffer* cmdBuff,
-                                VkQueryPool queryPool,
-                                uint32_t firstQuery,
-                                uint32_t queryCount,
-                                VkBuffer destBuffer,
-                                VkDeviceSize destOffset,
-                                VkDeviceSize destStride,
-                                VkQueryResultFlags flags) {
-    MVKCmdCopyQueryPoolResults* cmd = cmdBuff->_commandPool->_cmdCopyQueryPoolResultsPool.acquireObject();
-    cmd->setContent(queryPool, firstQuery, queryCount, destBuffer, destOffset, destStride, flags);
-    cmdBuff->addCommand(cmd);
 }
 

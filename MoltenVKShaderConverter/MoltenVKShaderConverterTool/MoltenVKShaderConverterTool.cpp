@@ -111,7 +111,7 @@ bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 
 	path = glslInFile;
 	if (readFile(path, fileContents, errMsg)) {
-		string logMsg = "Read GLSL from file: " + lastPathComponent(path);
+		string logMsg = "Read GLSL from file: " + fileName(path);
 		log(logMsg.data());
 	} else {
 		errMsg = "Could not read GLSL file. " + errMsg;
@@ -153,11 +153,16 @@ bool MoltenVKShaderConverterTool::convertGLSL(string& glslInFile,
 	// If no file has been supplied, create one from the GLSL file name.
 	if (_shouldWriteSPIRV) {
 		path = spvOutFile;
-		if (path.empty()) { path = pathWithExtension(glslInFile, "spv", _shouldIncludeOrigPathExtn, _origPathExtnSep); }
+		if (path.empty()) { path = pathWithExtension(glslInFile, _shouldOutputAsHeaders ? "h" : "spv",
+													 _shouldIncludeOrigPathExtn, _origPathExtnSep); }
+		if (_shouldOutputAsHeaders) {
+			spirvToHeaderBytes(spv, fileContents, fileName(path, false));
+		} else {
+			spirvToBytes(spv, fileContents);
+		}
 
-		spirvToBytes(spv, fileContents);
 		if (writeFile(path, fileContents, errMsg)) {
-			string logMsg = "Saved SPIR-V to file: " + lastPathComponent(path);
+			string logMsg = "Saved SPIR-V to file: " + fileName(path);
 			log(logMsg.data());
 		} else {
 			errMsg = "Could not write SPIR-V file. " + errMsg;
@@ -184,7 +189,7 @@ bool MoltenVKShaderConverterTool::convertSPIRV(string& spvInFile, string& mslOut
 
 	path = spvInFile;
 	if (readFile(path, fileContents, errMsg)) {
-		string logMsg = "Read SPIR-V from file: " + lastPathComponent(path);
+		string logMsg = "Read SPIR-V from file: " + fileName(path);
 		log(logMsg.data());
 	} else {
 		errMsg = "Could not read SPIR-V file. " + errMsg;
@@ -244,7 +249,7 @@ bool MoltenVKShaderConverterTool::convertSPIRV(const vector<uint32_t>& spv,
 	fileContents.insert(fileContents.end(), msl.begin(), msl.end());
 	string writeErrMsg;
 	if (writeFile(path, fileContents, writeErrMsg)) {
-		string logMsg = "Saved MSL to file: " + lastPathComponent(path);
+		string logMsg = "Saved MSL to file: " + fileName(path);
 		log(logMsg.c_str());
 		return true;
 	} else {
@@ -274,10 +279,15 @@ bool MoltenVKShaderConverterTool::isSPIRVFileExtension(string& pathExtension) {
 }
 
 // Log the specified message to the console.
-void MoltenVKShaderConverterTool::log(const char* logMsg) { printf("%s\n", logMsg); }
+void MoltenVKShaderConverterTool::log(const char* logMsg) {
+	if ( !_quietMode ) { printf("%s\n", logMsg); }
+}
 
 // Display usage information about this application on the console.
 void MoltenVKShaderConverterTool::showUsage() {
+	bool qm = _quietMode;
+	_quietMode = false;
+
 	string line = "\n\e[1m" + _processName + "\e[0m converts OpenGL Shading Language (GLSL) source code to";
 	log((const char*)line.c_str());
 	log("SPIR-V code, and/or to Metal Shading Language (MSL) source code, or converts");
@@ -294,21 +304,21 @@ void MoltenVKShaderConverterTool::showUsage() {
 	log("                       the current working directory.");
 	log("  -r                 - (when using -d) Process directories recursively.");
 	log("  -gi [\"glslInFile\"] - Indicates that GLSL shader code should be input.");
-	log("                       The optional path parameter specifies the path to a");
+	log("                       The optional glslInFile parameter specifies the path to a");
 	log("                       single file containing GLSL source code to be converted.");
-	log("                       When using the -d option, the path parameter is ignored.");
+	log("                       When using the -d option, the glslInFile parameter is ignored.");
 	log("  -si [\"spvInFile\"]  - Indicates that SPIR-V shader code should be input.");
-	log("                       The optional path parameter specifies the path to a");
+	log("                       The optional spvInFile parameter specifies the path to a");
 	log("                       single file containing SPIR-V code to be converted.");
-	log("                       When using the -d option, the path parameter is ignored.");
+	log("                       When using the -d option, the spvInFile parameter is ignored.");
 	log("  -so [\"spvOutFile\"] - Indicates that SPIR-V shader code should be output.");
-	log("                       The optional path parameter specifies the path to a single");
+	log("                       The optional spvOutFile parameter specifies the path to a single");
 	log("                       file to contain the SPIR-V code. When using the -d option,");
-	log("                       the path parameter is ignored.");
+	log("                       the spvOutFile parameter is ignored.");
 	log("  -mo [\"mslOutFile\"] - Indicates that MSL shader source code should be output.");
-	log("                       The optional path parameter specifies the path to a single");
+	log("                       The optional mslOutFile parameter specifies the path to a single");
 	log("                       file to contain the MSL code. When using the -d option,");
-	log("                       the path parameter is ignored.");
+	log("                       the mslOutFile parameter is ignored.");
 	log("  -mv mslVersion     - MSL version to output.");
 	log("                       Must be in form n[.n][.n] (eg. 2, 2.1, or 2.1.0).");
 	log("                       Defaults to the most recent MSL version for the platform");
@@ -319,6 +329,11 @@ void MoltenVKShaderConverterTool::showUsage() {
 	log("                       May be omitted to auto-detect.");
 	log("  -c                 - Combine the GLSL and converted Metal Shader source code");
 	log("                       into a single ouput file.");
+	log("  -oh [varName]      - Save the output as header (.h) files.");
+	log("                       Affects the output of the -so option.");
+	log("                       The optional varName parameter specifies the name of the");
+	log("                       variable in the header file to which the output code is assigned.");
+	log("                       When using the -d option, the varName parameter is ignored.");
 	log("  -Iv                - Disable inversion of the vertex coordinate Y-axis");
     log("                       (default is to invert vertex coordinates).");
 	log("  -xs \"xtnSep\"       - Separator to use when including file extension of original");
@@ -337,7 +352,10 @@ void MoltenVKShaderConverterTool::showUsage() {
 	log("                       May be omitted for defaults (\"spv spirv\").");
 	log("  -l                 - Log the conversion results to the console (to aid debugging).");
 	log("  -p                 - Log the performance of the shader conversions.");
+	log("  -q                 - Quiet mode. Stops logging of informational messages.");
 	log("");
+
+	_quietMode = qm;
 }
 
 void MoltenVKShaderConverterTool::reportPerformance() {
@@ -383,9 +401,11 @@ MoltenVKShaderConverterTool::MoltenVKShaderConverterTool(int argc, const char* a
 	_shouldIncludeOrigPathExtn = true;
 	_shouldLogConversions = false;
 	_shouldReportPerformance = false;
+	_shouldOutputAsHeaders = false;
+	_quietMode = false;
 
 	_mslVersionMajor = 2;
-	_mslVersionMinor = 1;
+	_mslVersionMinor = 2;
 	_mslVersionPatch = 0;
 	_mslPlatform = SPIRVToMSLConversionOptions().mslOptions.platform;
 
@@ -397,7 +417,7 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 	if (argc == 0) { return false; }
 
 	string execPath(argv[0]);
-	_processName = lastPathComponent(execPath);
+	_processName = fileName(execPath, false);
 
 	for (int argIdx = 1; argIdx < argc; argIdx++) {
 		string arg = argv[argIdx];
@@ -501,6 +521,12 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 			continue;
 		}
 
+		if(equal(arg, "-oh", true)) {
+			_shouldOutputAsHeaders = true;
+			argIdx = optionalParam(_hdrOutVarName, argIdx, argc, argv);
+			continue;
+		}
+
         if(equal(arg, "-Iv", true)) {
             _shouldFlipVertexY = false;
             continue;
@@ -561,6 +587,11 @@ bool MoltenVKShaderConverterTool::parseArgs(int argc, const char* argv[]) {
 
 		if(equal(arg, "-p", true)) {
 			_shouldReportPerformance = true;
+			continue;
+		}
+
+		if(equal(arg, "-q", true)) {
+			_quietMode = true;
 			continue;
 		}
 

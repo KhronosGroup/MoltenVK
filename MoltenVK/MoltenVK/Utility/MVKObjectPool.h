@@ -23,6 +23,9 @@
 #include <mutex>
 
 
+#pragma mark -
+#pragma mark MVKLinkableMixin
+
 /**
  * Instances of sublcasses of this mixin can participate in a typed linked list or pool.
  * A simple implementation of the CRTP (https://en.wikipedia.org/wiki/Curiously_recurring_template_pattern).
@@ -46,6 +49,13 @@ protected:
 
 #pragma mark -
 #pragma mark MVKObjectPool
+
+/** Track pool stats. */
+typedef struct {
+	uint64_t created = 0;
+	uint64_t alive = 0;
+	uint64_t resident = 0;
+} MVKObjectPoolCounts;
 
 /**
  * Manages a pool of instances of a particular object type.
@@ -80,9 +90,13 @@ public:
      * aquireObject() and returnObject() must be made from the same thread.
 	 */
 	T* acquireObject() {
-		T* obj = VK_NULL_HANDLE;
+		T* obj = nullptr;
 		if (_isPooling) { obj = nextObject(); }
-		if ( !obj ) { obj = newObject(); }
+		if ( !obj ) {
+			obj = newObject();
+			_counts.created++;
+			_counts.alive++;
+		}
 
 		return obj;
 	}
@@ -102,11 +116,12 @@ public:
 
 		if (_isPooling) {
 			if (_tail) { _tail->_next = obj; }
-			obj->_next = VK_NULL_HANDLE;
+			obj->_next = nullptr;
 			_tail = obj;
 			if ( !_head ) { _head = obj; }
+			_counts.resident++;
 		} else {
-			obj->destroy();
+			destroyObject(obj);
 		}
 	}
 
@@ -122,11 +137,14 @@ public:
 		returnObject(obj);
 	}
 
-	/** Clears all the objects from this pool, deleting each one. This method is thread-safe. */
+	/** Clears all the objects from this pool, destroying each one. This method is thread-safe. */
 	void clear() {
         std::lock_guard<std::mutex> lock(_lock);
-		while ( T* obj = nextObject() ) { obj->destroy(); }
+		while ( T* obj = nextObject() ) { destroyObject(obj); }
 	}
+
+	/** Returns the current counts. */
+	MVKObjectPoolCounts getCounts() { return _counts; }
 
 	/**
 	 * Configures this instance to either use pooling, or not, depending on the
@@ -146,9 +164,10 @@ protected:
     T* nextObject() {
         T* obj = _head;
         if (obj) {
-            _head = (T*)obj->_next;						// Will be null for last object in pool
-            if ( !_head ) { _tail = VK_NULL_HANDLE; }	// If last, also clear tail
-            obj->_next = VK_NULL_HANDLE;				// Objects in the wild should never think they are still part of this pool
+            _head = (T*)obj->_next;				// Will be null for last object in pool
+            if ( !_head ) { _tail = nullptr; }	// If last, also clear tail
+            obj->_next = nullptr;				// Objects in the wild should never think they are still part of this pool
+			_counts.resident--;
         }
         return obj;
     }
@@ -156,9 +175,16 @@ protected:
     /** Returns a new instance of the type of object managed by this pool. */
     virtual T* newObject() = 0;
 
+	/** Destroys the object. */
+	void destroyObject(T* obj) {
+		obj->destroy();
+		_counts.alive--;
+	}
+
     std::mutex _lock;
 	T* _head = nullptr;
 	T* _tail = nullptr;
 	bool _isPooling;
+	MVKObjectPoolCounts _counts;
 };
 

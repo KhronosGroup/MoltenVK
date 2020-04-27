@@ -28,14 +28,24 @@
 #pragma mark -
 #pragma mark MVKCmdDispatch
 
-void MVKCmdDispatch::setContent(uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
-                                uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
-    _mtlThreadgroupCount = MTLRegionMake3D(baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
+VkResult MVKCmdDispatch::setContent(MVKCommandBuffer* cmdBuff,
+									uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
+									uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
+	_baseGroupX = baseGroupX;
+	_baseGroupY = baseGroupY;
+	_baseGroupZ = baseGroupZ;
+
+	_groupCountX = groupCountX;
+	_groupCountY = groupCountY;
+	_groupCountZ = groupCountZ;
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
 //    MVKLogDebug("vkCmdDispatch() dispatching (%d, %d, %d) threadgroups.", _x, _y, _z);
 
+	MTLRegion mtlThreadgroupCount = MTLRegionMake3D(_baseGroupX, _baseGroupY, _baseGroupZ, _groupCountX, _groupCountY, _groupCountZ);
 	cmdEncoder->finalizeDispatchState();	// Ensure all updated state has been submitted to Metal
 	id<MTLComputeCommandEncoder> mtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
 	auto* pipeline = (MVKComputePipeline*)cmdEncoder->_computePipelineState.getPipeline();
@@ -43,29 +53,27 @@ void MVKCmdDispatch::encode(MVKCommandEncoder* cmdEncoder) {
 		if ([mtlEncoder respondsToSelector: @selector(setStageInRegion:)]) {
 			// We'll use the stage-input region to pass the base along to the shader.
 			// Hopefully Metal won't complain that we didn't set up a stage-input descriptor.
-			[mtlEncoder setStageInRegion: _mtlThreadgroupCount];
+			[mtlEncoder setStageInRegion: mtlThreadgroupCount];
 		} else {
 			// We have to pass the base group in a buffer.
-			unsigned int base[3] = {(uint32_t)_mtlThreadgroupCount.origin.x, (uint32_t)_mtlThreadgroupCount.origin.y, (uint32_t)_mtlThreadgroupCount.origin.z};
+			uint32_t base[3] = {(uint32_t)mtlThreadgroupCount.origin.x, (uint32_t)mtlThreadgroupCount.origin.y, (uint32_t)mtlThreadgroupCount.origin.z};
 			cmdEncoder->setComputeBytes(mtlEncoder, base, sizeof(base), pipeline->getIndirectParamsIndex().stages[kMVKShaderStageCompute]);
 		}
 	}
-	[mtlEncoder dispatchThreadgroups: _mtlThreadgroupCount.size
+	[mtlEncoder dispatchThreadgroups: mtlThreadgroupCount.size
 			   threadsPerThreadgroup: cmdEncoder->_mtlThreadgroupSize];
-}
-
-MVKCmdDispatch::MVKCmdDispatch(MVKCommandTypePool<MVKCmdDispatch>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {
 }
 
 
 #pragma mark -
 #pragma mark MVKCmdDispatchIndirect
 
-void MVKCmdDispatchIndirect::setContent(VkBuffer buffer, VkDeviceSize offset) {
+VkResult MVKCmdDispatchIndirect::setContent(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
 	MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
 	_mtlIndirectBuffer = mvkBuffer->getMTLBuffer();
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
+
+	return VK_SUCCESS;
 }
 
 void MVKCmdDispatchIndirect::encode(MVKCommandEncoder* cmdEncoder) {
@@ -76,33 +84,4 @@ void MVKCmdDispatchIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 																				indirectBufferOffset: _mtlIndirectBufferOffset
 																			   threadsPerThreadgroup: cmdEncoder->_mtlThreadgroupSize];
 }
-
-MVKCmdDispatchIndirect::MVKCmdDispatchIndirect(MVKCommandTypePool<MVKCmdDispatchIndirect>* pool)
-	: MVKCommand::MVKCommand((MVKCommandTypePool<MVKCommand>*)pool) {}
-
-
-
-
-#pragma mark -
-#pragma mark Command creation functions
-
-void mvkCmdDispatch(MVKCommandBuffer* cmdBuff, uint32_t x, uint32_t y, uint32_t z) {
-	MVKCmdDispatch* cmd = cmdBuff->_commandPool->_cmdDispatchPool.acquireObject();
-	cmd->setContent(0, 0, 0, x, y, z);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDispatchIndirect(MVKCommandBuffer* cmdBuff, VkBuffer buffer, VkDeviceSize offset) {
-	MVKCmdDispatchIndirect* cmd = cmdBuff->_commandPool->_cmdDispatchIndirectPool.acquireObject();
-	cmd->setContent(buffer, offset);
-	cmdBuff->addCommand(cmd);
-}
-
-void mvkCmdDispatchBase(MVKCommandBuffer* cmdBuff, uint32_t baseGroupX, uint32_t baseGroupY, uint32_t baseGroupZ,
-						uint32_t groupCountX, uint32_t groupCountY, uint32_t groupCountZ) {
-	MVKCmdDispatch* cmd = cmdBuff->_commandPool->_cmdDispatchPool.acquireObject();
-	cmd->setContent(baseGroupX, baseGroupY, baseGroupZ, groupCountX, groupCountY, groupCountZ);
-	cmdBuff->addCommand(cmd);
-}
-
 

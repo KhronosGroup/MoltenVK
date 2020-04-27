@@ -20,7 +20,7 @@
 
 #include "MVKCommand.h"
 
-#import <Foundation/NSString.h>
+#import <Metal/Metal.h>
 
 
 #pragma mark -
@@ -30,9 +30,7 @@
 class MVKCmdDebugMarker : public MVKCommand {
 
 public:
-	void setContent(const char* pMarkerName, const float color[4]);
-
-    MVKCmdDebugMarker(MVKCommandTypePool<MVKCmdDebugMarker>* pool);
+	VkResult setContent(MVKCommandBuffer* cmdBuff, const char* pMarkerName, const float color[4]);
 
 	~MVKCmdDebugMarker() override;
 
@@ -50,7 +48,9 @@ class MVKCmdDebugMarkerBegin : public MVKCmdDebugMarker {
 public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdDebugMarkerBegin(MVKCommandTypePool<MVKCmdDebugMarkerBegin>* pool);
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 };
 
 
@@ -61,39 +61,29 @@ public:
 class MVKCmdDebugMarkerEnd : public MVKCommand {
 
 public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff);
+
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdDebugMarkerEnd(MVKCommandTypePool<MVKCmdDebugMarkerEnd>* pool);
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
 };
 
 
 #pragma mark -
 #pragma mark MVKCmdDebugMarkerInsert
 
-	/** Vulkan command to insert a debug marker into the command encoder. */
-	class MVKCmdDebugMarkerInsert : public MVKCmdDebugMarker {
+/** Vulkan command to insert a debug marker into the command encoder. */
+class MVKCmdDebugMarkerInsert : public MVKCmdDebugMarker {
 
-	public:
-		void encode(MVKCommandEncoder* cmdEncoder) override;
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-		MVKCmdDebugMarkerInsert(MVKCommandTypePool<MVKCmdDebugMarkerInsert>* pool);
-	};
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-
-#pragma mark -
-#pragma mark Command creation functions
-
-void mvkCmdDebugMarkerBegin(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo);
-
-void mvkCmdDebugMarkerEnd(MVKCommandBuffer* cmdBuff);
-
-void mvkCmdDebugMarkerInsert(MVKCommandBuffer* cmdBuff, const VkDebugMarkerMarkerInfoEXT* pMarkerInfo);
-
-void mvkCmdBeginDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo);
-
-void mvkCmdEndDebugUtilsLabel(MVKCommandBuffer* cmdBuff);
-
-void mvkCmdInsertDebugUtilsLabel(MVKCommandBuffer* cmdBuff, const VkDebugUtilsLabelEXT* pLabelInfo);
+};
 
 
 #pragma mark -

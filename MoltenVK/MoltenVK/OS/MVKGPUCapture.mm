@@ -58,7 +58,7 @@ void MVKGPUCaptureScope::makeDefault() {
 
 MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue, const char* purpose) : _queue(mvkQueue) {
 	_mtlQueue = [_queue->getMTLCommandQueue() retain];	// retained
-	if (mvkOSVersion() >= kMinOSVersionMTLCaptureScope) {
+	if (mvkOSVersionIsAtLeast(kMinOSVersionMTLCaptureScope)) {
 		NSString* nsQLbl = [[NSString alloc] initWithUTF8String: (_queue->getName() + "-" + purpose).c_str()];		// temp retained
 		_mtlCaptureScope = [[MTLCaptureManager sharedCaptureManager] newCaptureScopeWithCommandQueue: _mtlQueue];	// retained
 		_mtlCaptureScope.label = nsQLbl;
