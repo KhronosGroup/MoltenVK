@@ -230,7 +230,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties(
 
 	MVKTraceVulkanCallStart();
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	mvkPD->getPhysicalDeviceMemoryProperties(pMemoryProperties);
+	mvkPD->getMemoryProperties(pMemoryProperties);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2113,7 +2113,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties2KHR(
 
 	MVKTraceVulkanCallStart();
     MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    mvkPD->getPhysicalDeviceMemoryProperties(pMemoryProperties);
+    mvkPD->getMemoryProperties(pMemoryProperties);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2660,6 +2660,21 @@ MVK_PUBLIC_SYMBOL void vkResetQueryPoolEXT(
 	MVKTraceVulkanCallStart();
     auto* mvkQueryPool = (MVKQueryPool*)queryPool;
     mvkQueryPool->resetResults(firstQuery, queryCount, nullptr);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_external_memory_capabilities extension
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalBufferPropertiesKHR(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
+	VkExternalBufferProperties*                 pExternalBufferProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getExternalBufferProperties(pExternalBufferInfo, pExternalBufferProperties);
 	MVKTraceVulkanCallEnd();
 }
 

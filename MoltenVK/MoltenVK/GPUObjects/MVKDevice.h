@@ -117,12 +117,9 @@ public:
 	void getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties);
 
 	/** Populates the specified structure with the format properties of this device. */
-	void getFormatProperties(VkFormat format, VkFormatProperties2KHR* pFormatProperties);
+	void getFormatProperties(VkFormat format, VkFormatProperties2* pFormatProperties);
 
-    /** 
-     * Populates the specified structure with the image format properties
-     * supported for the specified image characteristics on this device.
-     */
+	/** Populates the image format properties supported on this device. */
     VkResult getImageFormatProperties(VkFormat format,
                                       VkImageType type,
                                       VkImageTiling tiling,
@@ -130,12 +127,13 @@ public:
                                       VkImageCreateFlags flags,
                                       VkImageFormatProperties* pImageFormatProperties);
 
-    /** 
-     * Populates the specified structure with the image format properties
-     * supported for the specified image characteristics on this device.
-     */
-    VkResult getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2KHR* pImageFormatInfo,
-                                      VkImageFormatProperties2KHR* pImageFormatProperties);
+    /** Populates the image format properties supported on this device. */
+    VkResult getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2* pImageFormatInfo,
+                                      VkImageFormatProperties2* pImageFormatProperties);
+
+	/** Populates the external buffer properties supported on this device. */
+	void getExternalBufferProperties(const VkPhysicalDeviceExternalBufferInfo* pExternalBufferInfo,
+									 VkExternalBufferProperties* pExternalBufferProperties);
 
 #pragma mark Surfaces
 
@@ -244,13 +242,13 @@ public:
 #pragma mark Memory models
 
 	/** Returns a pointer to the memory characteristics of this device. */
-    inline const VkPhysicalDeviceMemoryProperties* getPhysicalDeviceMemoryProperties() { return &_memoryProperties; }
+    inline const VkPhysicalDeviceMemoryProperties* getMemoryProperties() { return &_memoryProperties; }
 
 	/** Populates the specified memory properties with the memory characteristics of this device. */
-	VkResult getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties* pMemoryProperties);
+	VkResult getMemoryProperties(VkPhysicalDeviceMemoryProperties* pMemoryProperties);
 
 	/** Populates the specified memory properties with the memory characteristics of this device. */
-	VkResult getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties2* pMemoryProperties);
+	VkResult getMemoryProperties(VkPhysicalDeviceMemoryProperties2* pMemoryProperties);
 
 	/**
 	 * Returns a bit mask of all memory type indices. 
@@ -344,7 +342,11 @@ protected:
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
 	uint64_t getSpirvCrossRevision();
-	bool getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo);
+	bool getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo);
+	void populate(VkPhysicalDeviceIDProperties* pDevIdProps);
+	void populate(VkExternalMemoryProperties& xmProps,
+				  VkExternalMemoryHandleTypeFlagBits handleType,
+				  VkExternalMemoryHandleTypeFlagBits supportedHandleType);
 	void logGPUInfo();
 
 	id<MTLDevice> _mtlDevice;

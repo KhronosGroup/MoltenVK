@@ -19,6 +19,9 @@ MoltenVK 1.0.42
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_KHR_external_memory_capabilities`
+- Memory consumption improvements when handling Vulkan commands.
 - Reinstate `VulkanSamples API-Samples` demo apps and add 
   `input_attachment` and `push_descriptors` demos.
 - `vkQueuePresentKHR()` returns a `VkResult` for each swapchain.
