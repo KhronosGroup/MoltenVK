@@ -88,4 +88,6 @@ protected:
 	VkDeviceSize _deviceMemoryOffset = 0;
     VkDeviceSize _byteCount = 0;
     VkDeviceSize _byteAlignment = 0;
+	VkExternalMemoryHandleTypeFlags _externalMemoryHandleTypes = 0;
+	bool _requiresDedicatedMemoryAllocation = false;
 };

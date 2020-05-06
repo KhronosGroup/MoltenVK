@@ -92,6 +92,7 @@ protected:
 	bool shouldFlushHostMemory();
 	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
 	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
+	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 
 	VkBufferUsageFlags _usage;
 	bool _isHostCoherentTexelBuffer = false;

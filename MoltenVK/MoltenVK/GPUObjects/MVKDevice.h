@@ -283,6 +283,12 @@ public:
 	/** Returns whether this is a unified memory device. */
 	bool getHasUnifiedMemory();
 
+	/** Returns the external memory properties supported for buffers for the handle type. */
+	VkExternalMemoryProperties& getExternalBufferProperties(VkExternalMemoryHandleTypeFlagBits handleType);
+
+	/** Returns the external memory properties supported for images for the handle type. */
+	VkExternalMemoryProperties& getExternalImageProperties(VkExternalMemoryHandleTypeFlagBits handleType);
+
 	
 #pragma mark Metal
 
@@ -337,6 +343,7 @@ protected:
 	uint64_t getVRAMSize();
 	uint64_t getRecommendedMaxWorkingSetSize();
 	uint64_t getCurrentAllocatedSize();
+	void initExternalMemoryProperties();
 	void initExtensions();
 	MVKVector<MVKQueueFamily*>& getQueueFamilies();
 	void initPipelineCacheUUID();
@@ -344,9 +351,6 @@ protected:
 	uint64_t getSpirvCrossRevision();
 	bool getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo);
 	void populate(VkPhysicalDeviceIDProperties* pDevIdProps);
-	void populate(VkExternalMemoryProperties& xmProps,
-				  VkExternalMemoryHandleTypeFlagBits handleType,
-				  VkExternalMemoryHandleTypeFlagBits supportedHandleType);
 	void logGPUInfo();
 
 	id<MTLDevice> _mtlDevice;
@@ -364,6 +368,8 @@ protected:
 	uint32_t _hostCoherentMemoryTypes;
 	uint32_t _privateMemoryTypes;
 	uint32_t _lazilyAllocatedMemoryTypes;
+	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
+	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
 };
 
 

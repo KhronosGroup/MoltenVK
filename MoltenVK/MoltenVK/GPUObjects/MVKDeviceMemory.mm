@@ -266,10 +266,7 @@ void MVKDeviceMemory::freeHostMemory() {
 
 MVKResource* MVKDeviceMemory::getDedicatedResource() {
 	MVKAssert(_isDedicated, "This method should only be called on dedicated allocations!");
-	if (_buffers.empty())
-		return _images[0];
-	else
-		return _buffers[0];
+	return _buffers.empty() ? (MVKResource*)_images[0] : (MVKResource*)_buffers[0];
 }
 
 MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
@@ -284,21 +281,27 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 
 	VkImage dedicatedImage = VK_NULL_HANDLE;
 	VkBuffer dedicatedBuffer = VK_NULL_HANDLE;
-	auto* next = (VkStructureType*)pAllocateInfo->pNext;
-	while (next) {
-		switch (*next) {
-		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: {
-			auto* pDedicatedInfo = (VkMemoryDedicatedAllocateInfo*)next;
-			dedicatedImage = pDedicatedInfo->image;
-			dedicatedBuffer = pDedicatedInfo->buffer;
-			next = (VkStructureType*)pDedicatedInfo->pNext;
-			break;
-		}
-		default:
-			next = (VkStructureType*)((VkMemoryAllocateInfo*)next)->pNext;
-			break;
+	VkExternalMemoryHandleTypeFlags handleTypes = 0;
+	for (const auto* next = (const VkBaseInStructure*)pAllocateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_ALLOCATE_INFO: {
+				auto* pDedicatedInfo = (VkMemoryDedicatedAllocateInfo*)next;
+				dedicatedImage = pDedicatedInfo->image;
+				dedicatedBuffer = pDedicatedInfo->buffer;
+				_isDedicated = dedicatedImage || dedicatedBuffer;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_EXPORT_MEMORY_ALLOCATE_INFO: {
+				auto* pExpMemInfo = (VkExportMemoryAllocateInfo*)next;
+				handleTypes = pExpMemInfo->handleTypes;
+				break;
+			}
+			default:
+				break;
 		}
 	}
+
+	initExternalMemory(handleTypes);	// After setting _isDedicated
 
 	// "Dedicated" means this memory can only be used for this image or buffer.
 	if (dedicatedImage) {
@@ -316,14 +319,16 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			}
 		}
 #endif
-		_isDedicated = true;
 		_images.push_back((MVKImage*)dedicatedImage);
 		return;
 	}
 
-	// If we can, create a MTLHeap. This should happen before creating the buffer
-	// allowing us to map its contents.
-	if (!dedicatedImage && !dedicatedBuffer) {
+	if (dedicatedBuffer) {
+		_buffers.push_back((MVKBuffer*)dedicatedBuffer);
+	}
+
+	// If we can, create a MTLHeap. This should happen before creating the buffer, allowing us to map its contents.
+	if ( !_isDedicated ) {
 		if (!ensureMTLHeap()) {
 			setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate VkDeviceMemory of size %llu bytes.", _allocationSize));
 			return;
@@ -334,10 +339,26 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 	if (isMemoryHostCoherent() && !ensureMTLBuffer() ) {
 		setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not allocate a host-coherent VkDeviceMemory of size %llu bytes. The maximum memory-aligned size of a host-coherent VkDeviceMemory is %llu bytes.", _allocationSize, _device->_pMetalFeatures->maxMTLBufferSize));
 	}
+}
 
-	if (dedicatedBuffer) {
-		_isDedicated = true;
-		_buffers.push_back((MVKBuffer*)dedicatedBuffer);
+void MVKDeviceMemory::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if ( !handleTypes ) { return; }
+	
+	if ( !mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR | VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR) ) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): Only external memory handle types VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR or VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR are supported."));
+	}
+
+	bool requiresDedicated = false;
+	if (mvkIsAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR)) {
+		auto& xmProps = _device->getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR);
+		requiresDedicated = requiresDedicated || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+	}
+	if (mvkIsAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
+		auto& xmProps = _device->getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
+		requiresDedicated = requiresDedicated || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+	}
+	if (requiresDedicated && !_isDedicated) {
+		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "vkAllocateMemory(): External memory requires a dedicated VkBuffer or VkImage."));
 	}
 }
 

@@ -235,6 +235,7 @@ protected:
 	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
+	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 	id<MTLTexture> newMTLTexture();
 	void releaseMTLTexture();
     void releaseIOSurface();

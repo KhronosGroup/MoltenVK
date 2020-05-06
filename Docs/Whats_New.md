@@ -20,7 +20,10 @@ MoltenVK 1.0.42
 Released TBD
 
 - Add support for extensions:
-	- `VK_KHR_external_memory_capabilities`
+	- `VK_KHR_external_memory` (non-functional groundwork for future 
+	  Metal-resource Vulkan extension).
+	- `VK_KHR_external_memory_capabilities` (non-functional groundwork 
+	   for future Metal-resource Vulkan extension).
 - Memory consumption improvements when handling Vulkan commands.
 - Reinstate `VulkanSamples API-Samples` demo apps and add 
   `input_attachment` and `push_descriptors` demos.

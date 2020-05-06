@@ -182,8 +182,9 @@ VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMe
 		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
 			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
 			bool writable = mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-			dedicatedReqs->prefersDedicatedAllocation = !_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps);
-			dedicatedReqs->requiresDedicatedAllocation = VK_FALSE;
+			dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
+			dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
+														 (!_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps)));
 			break;
 		}
 		default:
@@ -615,6 +616,18 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	}
 
     initSubresources(pCreateInfo);
+
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
+				auto* pExtMemInfo = (const VkExternalMemoryImageCreateInfo*)next;
+				initExternalMemory(pExtMemInfo->handleTypes);
+				break;
+			}
+			default:
+				break;
+		}
+	}
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
@@ -782,6 +795,16 @@ void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 	layout.size = bytesPerLayerCurrLevel;
 	layout.rowPitch = getBytesPerRow(currMipLevel);
 	layout.depthPitch = bytesPerLayerCurrLevel;
+}
+
+void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
+		_externalMemoryHandleTypes = handleTypes;
+		auto& xmProps = _device->getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
+		_requiresDedicatedMemoryAllocation = _requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+	} else {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR is supported."));
+	}
 }
 
 MVKImage::~MVKImage() {

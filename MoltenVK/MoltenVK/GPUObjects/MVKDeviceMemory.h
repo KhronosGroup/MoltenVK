@@ -27,6 +27,10 @@
 class MVKBuffer;
 class MVKImage;
 
+// TODO: These are inoperable placeholders until VK_KHR_external_memory_metal defines them properly
+static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+
 
 #pragma mark MVKDeviceMemory
 
@@ -141,6 +145,7 @@ protected:
 	bool ensureHostMemory();
 	void freeHostMemory();
 	MVKResource* getDedicatedResource();
+	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 
 	MVKVectorInline<MVKBuffer*, 4> _buffers;
 	MVKVectorInline<MVKImage*, 4> _images;

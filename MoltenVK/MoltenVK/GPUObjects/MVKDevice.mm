@@ -419,10 +419,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 				for (auto* nextProps = (VkBaseOutStructure*)pImageFormatProperties->pNext; nextProps; nextProps = nextProps->pNext) {
 					if (nextProps->sType == VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES) {
 						auto* pExtImgFmtProps = (VkExternalImageFormatProperties*)nextProps;
-
-						// TODO: This is an inoperable placeholder until VK_KHR_external_memory_metal is ratified and implemented
-						const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
-						populate(pExtImgFmtProps->externalMemoryProperties, pExtImgFmtInfo->handleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
+						pExtImgFmtProps->externalMemoryProperties = getExternalImageProperties(pExtImgFmtInfo->handleType);
 					}
 				}
 				break;
@@ -482,24 +479,22 @@ bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageForma
 
 void MVKPhysicalDevice::getExternalBufferProperties(const VkPhysicalDeviceExternalBufferInfo* pExternalBufferInfo,
 													VkExternalBufferProperties* pExternalBufferProperties) {
-
-	// TODO: This is an inoperable placeholder until VK_KHR_external_memory_metal is ratified and implemented
-	const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
-	populate(pExternalBufferProperties->externalMemoryProperties, pExternalBufferInfo->handleType, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR);
+	pExternalBufferProperties->externalMemoryProperties = getExternalBufferProperties(pExternalBufferInfo->handleType);
 }
 
-// If the handleType is the supported handle type, populates xmProps accordingly, otherwise xmProps is cleared.
-void MVKPhysicalDevice::populate(VkExternalMemoryProperties& xmProps,
-								 VkExternalMemoryHandleTypeFlagBits handleType,
-								 VkExternalMemoryHandleTypeFlagBits supportedHandleType) {
-	if (handleType == supportedHandleType) {
-		xmProps.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
-										  VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
-										  VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
-		xmProps.exportFromImportedHandleTypes = supportedHandleType;
-		xmProps.compatibleHandleTypes = supportedHandleType;
-	} else {
-		mvkClear(&xmProps);
+static VkExternalMemoryProperties _emptyExtMemProps = {};
+
+VkExternalMemoryProperties& MVKPhysicalDevice::getExternalBufferProperties(VkExternalMemoryHandleTypeFlagBits handleType) {
+	switch (handleType) {
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR:		return _mtlBufferExternalMemoryProperties;
+		default: 													return _emptyExtMemProps;
+	}
+}
+
+VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkExternalMemoryHandleTypeFlagBits handleType) {
+	switch (handleType) {
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR:		return _mtlTextureExternalMemoryProperties;
+		default: 													return _emptyExtMemProps;
 	}
 }
 
@@ -847,8 +842,9 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initMetalFeatures();        		// Call first.
 	initFeatures();             		// Call second.
 	initProperties();           		// Call third.
-	initMemoryProperties();
 	initExtensions();
+	initMemoryProperties();
+	initExternalMemoryProperties();
 	logGPUInfo();
 }
 
@@ -1971,6 +1967,23 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 #if MVK_MACOS
 	return 0;
 #endif
+}
+
+void MVKPhysicalDevice::initExternalMemoryProperties() {
+
+	// Buffers
+	_mtlBufferExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
+																 VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+																 VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
+	_mtlBufferExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
+	_mtlBufferExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
+
+	// Images
+	_mtlTextureExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
+																  VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+																  VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
+	_mtlTextureExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
+	_mtlTextureExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
 }
 
 void MVKPhysicalDevice::initExtensions() {
