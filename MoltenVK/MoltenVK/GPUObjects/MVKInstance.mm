@@ -383,8 +383,7 @@ void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 	_hasDebugUtilsMessengers = false;
 	_debugReportCallbackLayerPrefix = getDriverLayer()->getName();
 
-	MVKVkAPIStructHeader* next = (MVKVkAPIStructHeader*)pCreateInfo->pNext;
-	while (next) {
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_DEBUG_REPORT_CALLBACK_CREATE_INFO_EXT:
 				createDebugReportCallback((VkDebugReportCallbackCreateInfoEXT*)next, nullptr);
@@ -395,7 +394,6 @@ void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 			default:
 				break;
 		}
-		next = (MVKVkAPIStructHeader*)next->pNext;
 	}
 }
 

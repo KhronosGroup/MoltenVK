@@ -1002,11 +1002,9 @@ VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
 			default:
 				break;
 		}
-		if (swapchainInfo) { break; }
 	}
-	if (!swapchainInfo) {
-		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-	}
+	if (!swapchainInfo) { return VK_ERROR_OUT_OF_DEVICE_MEMORY; }
+
 	_swapchainIndex = swapchainInfo->imageIndex;
 	return VK_SUCCESS;
 }
@@ -1114,17 +1112,14 @@ MVKImageView::MVKImageView(MVKDevice* device,
 	_image = (MVKImage*)pCreateInfo->image;
 	_usage = _image->_usage;
 
-	auto* next = (MVKVkAPIStructHeader*)pCreateInfo->pNext;
-	while (next) {
-		switch ((uint32_t)next->sType) {
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
 				auto* pViewUsageInfo = (VkImageViewUsageCreateInfo*)next;
 				if (!(pViewUsageInfo->usage & ~_usage)) { _usage = pViewUsageInfo->usage; }
-				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 			}
 			default:
-				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 		}
 	}

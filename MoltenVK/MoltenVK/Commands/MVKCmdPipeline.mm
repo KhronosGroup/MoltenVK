@@ -261,18 +261,17 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 		}
         if (mvkDvc->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
             const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-            for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
-            {
+			for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
                 switch (next->sType) {
                 case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-                    pInlineUniformBlock = next;
+                    pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
                     break;
                 }
                 default:
                     break;
                 }
             }
-            if (pInlineUniformBlock != nullptr) {
+            if (pInlineUniformBlock) {
                 auto *pNewInlineUniformBlock = new VkWriteDescriptorSetInlineUniformBlockEXT(*pInlineUniformBlock);
                 pNewInlineUniformBlock->pNext = nullptr; // clear pNext just in case, no other extensions are supported at this time
                 descWrite.pNext = pNewInlineUniformBlock;
@@ -300,11 +299,10 @@ void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
 		if (descWrite.pTexelBufferView) { delete[] descWrite.pTexelBufferView; }
 
 		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
-		for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
-		{
+		for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
 			switch (next->sType) {
 				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-					pInlineUniformBlock = next;
+					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
 					break;
 				}
 				default:
