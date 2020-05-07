@@ -197,13 +197,13 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 #pragma mark -
 #pragma mark Tessellation constituent command management
 
-void MVKCommandBuffer::recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass) {
+void MVKCommandBuffer::recordBeginRenderPass(MVKLoadStoreOverrideMixin* mvkBeginRenderPass) {
 	_lastBeginRenderPass = mvkBeginRenderPass;
 	_lastTessellationPipeline = nullptr;
 	_lastTessellationDraw = nullptr;
 }
 
-void MVKCommandBuffer::recordEndRenderPass(MVKCmdEndRenderPass* /*mvkEndRenderPass*/) {
+void MVKCommandBuffer::recordEndRenderPass() {
 	// Unset the store override for the last draw call
 	if (_lastTessellationDraw != nullptr)
 	{

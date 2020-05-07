@@ -39,8 +39,6 @@ class MVKQueryPool;
 class MVKPipeline;
 class MVKGraphicsPipeline;
 class MVKComputePipeline;
-class MVKCmdBeginRenderPass;
-class MVKCmdEndRenderPass;
 class MVKLoadStoreOverrideMixin;
 
 typedef uint64_t MVKMTLCommandBufferID;
@@ -99,11 +97,12 @@ public:
 
 
 #pragma mark Tessellation constituent command management
+
     /** Preps metadata for recording render pass */
-	void recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass);
+	void recordBeginRenderPass(MVKLoadStoreOverrideMixin* mvkBeginRenderPass);
 	
 	/** Finishes metadata for recording render pass */
-	void recordEndRenderPass(MVKCmdEndRenderPass* mvkEndRenderPass);
+	void recordEndRenderPass();
 	
 	/** Update the last recorded pipeline if it will end and start a new Metal render pass (ie, in tessellation) */
 	void recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline);
@@ -112,7 +111,7 @@ public:
 	void recordDraw(MVKLoadStoreOverrideMixin* mvkDraw);
 	
 	/** The most recent recorded begin renderpass */
-	MVKCmdBeginRenderPass* _lastBeginRenderPass;
+	MVKLoadStoreOverrideMixin* _lastBeginRenderPass;
 	
 	/** The most recent recorded multi-pass (ie, tessellation) pipeline */
 	MVKCmdBindPipeline* _lastTessellationPipeline;

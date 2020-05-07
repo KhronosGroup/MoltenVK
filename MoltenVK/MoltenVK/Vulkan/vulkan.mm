@@ -117,14 +117,22 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 // Create and configure a command of particular type.
 // If the command is configured correctly, add it to the buffer,
 // otherwise indicate the configuration error to the command buffer.
-#define MVKAddCmd(cmdType, vkCmdBuff, ...)  										\
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(vkCmdBuff);	\
+#define MVKAddCmd(cmdType, vkCmdBuff, ...)  													\
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(vkCmdBuff);				\
 	MVKCmd ##cmdType* cmd = cmdBuff->getCommandPool()->_cmd ##cmdType ##Pool.acquireObject();	\
-	VkResult cmdRslt = cmd->setContent(cmdBuff, ##__VA_ARGS__);						\
-	if (cmdRslt == VK_SUCCESS) {														\
-		cmdBuff->addCommand(cmd);													\
-	} else {																		\
-		cmdBuff->setConfigurationResult(cmdRslt);									\
+	VkResult cmdRslt = cmd->setContent(cmdBuff, ##__VA_ARGS__);									\
+	if (cmdRslt == VK_SUCCESS) {																\
+		cmdBuff->addCommand(cmd);																\
+	} else {																					\
+		cmdBuff->setConfigurationResult(cmdRslt);												\
+	}
+
+// Add one of two commands, based on comparing a command parameter against a threshold value
+#define MVKAddCmdFromThreshold(baseCmdType, value, threshold, vkCmdBuff, ...)	\
+	if (value <= threshold) {													\
+		MVKAddCmd(baseCmdType ##threshold, vkCmdBuff, ##__VA_ARGS__);			\
+	} else {																	\
+		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);				\
 	}
 
 
@@ -1325,11 +1333,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetViewport(
 	const VkViewport*                           pViewports) {
 
 	MVKTraceVulkanCallStart();
-	if (viewportCount <= 1) {
-		MVKAddCmd(SetViewport1, commandBuffer, firstViewport, viewportCount, pViewports);
-	} else {
-		MVKAddCmd(SetViewportMulti, commandBuffer, firstViewport, viewportCount, pViewports);
-	}
+	MVKAddCmdFromThreshold(SetViewport, viewportCount, 1, commandBuffer, firstViewport, viewportCount, pViewports);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1340,11 +1344,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetScissor(
 	const VkRect2D*                             pScissors) {
 
 	MVKTraceVulkanCallStart();
-	if (scissorCount <= 1) {
-		MVKAddCmd(SetScissor1, commandBuffer, firstScissor, scissorCount, pScissors);
-	} else {
-		MVKAddCmd(SetScissorMulti, commandBuffer, firstScissor, scissorCount, pScissors);
-	}
+	MVKAddCmdFromThreshold(SetScissor, scissorCount, 1, commandBuffer, firstScissor, scissorCount, pScissors);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1814,7 +1814,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
     VkSubpassContents							contents) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BeginRenderPass, commandBuffer,pRenderPassBegin, contents);
+	MVKAddCmdFromThreshold(BeginRenderPass, pRenderPassBegin->clearValueCount, 2, commandBuffer,pRenderPassBegin, contents);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1841,7 +1841,7 @@ MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
     const VkCommandBuffer*						pCommandBuffers) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(ExecuteCommands, commandBuffer, cmdBuffersCount, pCommandBuffers);
+	MVKAddCmdFromThreshold(ExecuteCommands, cmdBuffersCount, 1, commandBuffer, cmdBuffersCount, pCommandBuffers);
 	MVKTraceVulkanCallEnd();
 }
 
