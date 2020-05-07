@@ -93,6 +93,10 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 	return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
 }
 
+VkResult MVKBuffer::bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo) {
+	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
+}
+
 void MVKBuffer::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
 								   VkMemoryBarrier* pMemoryBarrier,

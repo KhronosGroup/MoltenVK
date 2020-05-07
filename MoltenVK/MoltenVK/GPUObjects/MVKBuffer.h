@@ -48,6 +48,9 @@ public:
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
 
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	VkResult bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo);
+
 	/** Applies the specified global memory barrier. */
     void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
                             VkPipelineStageFlags dstStageMask,

@@ -207,6 +207,10 @@ VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOff
 	return _deviceMemory ? _deviceMemory->addImage(this) : VK_SUCCESS;
 }
 
+VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
+	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
+}
+
 bool MVKImage::validateUseTexelBuffer() {
 	VkExtent2D blockExt = getPixelFormats()->getBlockTexelSize(_mtlPixelFormat);
 	bool isUncompressed = blockExt.width == 1 && blockExt.height == 1;
@@ -1014,10 +1018,9 @@ MVKPresentableSwapchainImage::~MVKPresentableSwapchainImage() {
 #pragma mark -
 #pragma mark MVKPeerSwapchainImage
 
-VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
-	const auto* imageInfo = (const VkBindImageMemoryInfo*)pBindInfo;
+VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
 	const VkBindImageMemorySwapchainInfoKHR* swapchainInfo = nullptr;
-	for (const auto* next = (const VkBaseInStructure*)imageInfo->pNext; next; next = next->pNext) {
+	for (const auto* next = (const VkBaseInStructure*)pBindInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR:
 				swapchainInfo = (const VkBindImageMemorySwapchainInfoKHR*)next;
