@@ -493,6 +493,40 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKSamplerYcbcrConversion
+
+/** Represents a Vulkan sampler ycbcr conversion. */
+class MVKSamplerYcbcrConversion : public MVKVulkanAPIDeviceObject {
+
+public:
+    /** Returns the Vulkan type of this object. */
+    VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION; }
+
+    /** Returns the debug report object type of this object. */
+    VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT; }
+
+    /** Writes this conversion settings to a MSL constant sampler */
+    void updateConstExprSampler(SPIRV_CROSS_NAMESPACE::MSLConstexprSampler& constExprSampler) const;
+
+    MVKSamplerYcbcrConversion(MVKDevice* device, const VkSamplerYcbcrConversionCreateInfo* pCreateInfo);
+
+    ~MVKSamplerYcbcrConversion() override {}
+
+protected:
+    void propogateDebugName() override {}
+
+    uint32_t _planes, _bpc;
+    SPIRV_CROSS_NAMESPACE::MSLFormatResolution _resolution;
+    SPIRV_CROSS_NAMESPACE::MSLSamplerFilter _chroma_filter;
+    SPIRV_CROSS_NAMESPACE::MSLChromaLocation _x_chroma_offset, _y_chroma_offset;
+    SPIRV_CROSS_NAMESPACE::MSLComponentSwizzle _swizzle[4];
+    SPIRV_CROSS_NAMESPACE::MSLSamplerYCbCrModelConversion _ycbcr_model;
+    SPIRV_CROSS_NAMESPACE::MSLSamplerYCbCrRange _ycbcr_range;
+    bool _forceExplicitReconstruction; // TODO
+};
+
+
+#pragma mark -
 #pragma mark MVKSampler
 
 /** Represents a Vulkan sampler. */
@@ -529,5 +563,6 @@ protected:
 
 	id<MTLSamplerState> _mtlSamplerState;
 	SPIRV_CROSS_NAMESPACE::MSLConstexprSampler _constExprSampler;
+	MVKSamplerYcbcrConversion* _ycbcrConversion;
 	bool _requiresConstExprSampler;
 };

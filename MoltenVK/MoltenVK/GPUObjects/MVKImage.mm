@@ -35,6 +35,12 @@ using namespace SPIRV_CROSS_NAMESPACE;
 
 #pragma mark MVKImage
 
+static uint32_t getPlaneFromVkImageAspectFlags(VkImageAspectFlags aspectMask) {
+	return (aspectMask & VK_IMAGE_ASPECT_PLANE_2_BIT) ? 2 :
+	       (aspectMask & VK_IMAGE_ASPECT_PLANE_1_BIT) ? 1 :
+	       0;
+}
+
 void MVKImage::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
 
 VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_mtlTextureType); }
@@ -60,12 +66,13 @@ VkDeviceSize MVKImage::getBytesPerLayer(uint32_t mipLevel) {
 
 VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,
 										VkSubresourceLayout* pLayout) {
-	MVKImageSubresource* pImgRez = getSubresource(pSubresource->mipLevel,
-												  pSubresource->arrayLayer);
-	if ( !pImgRez ) { return VK_INCOMPLETE; }
+    // TODO: getPlaneFromVkImageAspectFlags(pSubresource->aspectMask)
+    MVKImageSubresource* pImgRez = getSubresource(pSubresource->mipLevel,
+                                                  pSubresource->arrayLayer);
+    if ( !pImgRez ) { return VK_INCOMPLETE; }
 
-	*pLayout = pImgRez->layout;
-	return VK_SUCCESS;
+    *pLayout = pImgRez->layout;
+    return VK_SUCCESS;
 }
 
 void MVKImage::getTransferDescriptorData(MVKImageDescriptorData& imgData) {
@@ -176,7 +183,6 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 
 VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
 	pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
-	getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
 	for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
@@ -187,10 +193,17 @@ VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMe
 														 (!_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps)));
 			break;
 		}
+		case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
+			auto* planeReqs = (VkImagePlaneMemoryRequirementsInfo*)next;
+			uint32_t plane = getPlaneFromVkImageAspectFlags(planeReqs->planeAspect);
+			// TODO
+			break;
+		}
 		default:
 			break;
 		}
 	}
+	getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
 	return VK_SUCCESS;
 }
 
@@ -208,7 +221,19 @@ VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOff
 }
 
 VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
-	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
+    for (const auto* next = (const VkBaseInStructure*)pBindInfo->pNext; next; next = next->pNext) {
+        switch (next->sType) {
+            case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
+                const VkBindImagePlaneMemoryInfo* imagePlaneMemoryInfo = (const VkBindImagePlaneMemoryInfo*)next;
+                uint32_t plane = getPlaneFromVkImageAspectFlags(imagePlaneMemoryInfo->planeAspect);
+                // TODO: For images created with VK_IMAGE_CREATE_DISJOINT_BIT
+                break;
+            }
+            default:
+                break;
+        }
+    }
+    return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
 }
 
 bool MVKImage::validateUseTexelBuffer() {
@@ -618,6 +643,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 			_byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
 		}
 	}
+
+    // TODO: pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT
 
     initSubresources(pCreateInfo);
 
@@ -1330,6 +1357,91 @@ MVKImageView::~MVKImageView() {
 
 
 #pragma mark -
+#pragma mark MVKSamplerYcbcrConversion
+
+void MVKSamplerYcbcrConversion::updateConstExprSampler(MSLConstexprSampler& constExprSampler) const {
+	constExprSampler.planes = _planes;
+	constExprSampler.resolution = _resolution;
+	constExprSampler.chroma_filter = _chroma_filter;
+	constExprSampler.x_chroma_offset = _x_chroma_offset;
+	constExprSampler.y_chroma_offset = _y_chroma_offset;
+	for(uint32_t i = 0; i < 4; ++i)
+		constExprSampler.swizzle[i] = _swizzle[i];
+	constExprSampler.ycbcr_model = _ycbcr_model;
+	constExprSampler.ycbcr_range = _ycbcr_range;
+    constExprSampler.bpc = _bpc;
+	constExprSampler.ycbcr_conversion_enable = true;
+}
+
+static MSLSamplerFilter getSpvMinMagFilterFromVkFilter(VkFilter vkFilter) {
+    switch (vkFilter) {
+        case VK_FILTER_LINEAR:    return MSL_SAMPLER_FILTER_LINEAR;
+
+        case VK_FILTER_NEAREST:
+        default:
+            return MSL_SAMPLER_FILTER_NEAREST;
+    }
+}
+
+static MSLChromaLocation getSpvChromaLocationFromVkChromaLocation(VkChromaLocation vkChromaLocation) {
+	switch (vkChromaLocation) {
+		default:
+		case VK_CHROMA_LOCATION_COSITED_EVEN:   return MSL_CHROMA_LOCATION_COSITED_EVEN;
+		case VK_CHROMA_LOCATION_MIDPOINT:       return MSL_CHROMA_LOCATION_MIDPOINT;
+	}
+}
+
+static MSLComponentSwizzle getSpvComponentSwizzleFromVkComponentMapping(VkComponentSwizzle vkComponentSwizzle) {
+	switch (vkComponentSwizzle) {
+		default:
+		case VK_COMPONENT_SWIZZLE_IDENTITY:     return MSL_COMPONENT_SWIZZLE_IDENTITY;
+		case VK_COMPONENT_SWIZZLE_ZERO:         return MSL_COMPONENT_SWIZZLE_ZERO;
+		case VK_COMPONENT_SWIZZLE_ONE:          return MSL_COMPONENT_SWIZZLE_ONE;
+		case VK_COMPONENT_SWIZZLE_R:            return MSL_COMPONENT_SWIZZLE_R;
+		case VK_COMPONENT_SWIZZLE_G:            return MSL_COMPONENT_SWIZZLE_G;
+		case VK_COMPONENT_SWIZZLE_B:            return MSL_COMPONENT_SWIZZLE_B;
+		case VK_COMPONENT_SWIZZLE_A:            return MSL_COMPONENT_SWIZZLE_A;
+	}
+}
+
+static MSLSamplerYCbCrModelConversion getSpvSamplerYCbCrModelConversionFromVkSamplerYcbcrModelConversion(VkSamplerYcbcrModelConversion vkSamplerYcbcrModelConversion) {
+	switch (vkSamplerYcbcrModelConversion) {
+		default:
+		case VK_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY:   return MSL_SAMPLER_YCBCR_MODEL_CONVERSION_RGB_IDENTITY;
+		case VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_IDENTITY: return MSL_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_IDENTITY;
+		case VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_709:      return MSL_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_BT_709;
+		case VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_601:      return MSL_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_BT_601;
+		case VK_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_2020:     return MSL_SAMPLER_YCBCR_MODEL_CONVERSION_YCBCR_BT_2020;
+	}
+}
+
+static MSLSamplerYCbCrRange getSpvSamplerYcbcrRangeFromVkSamplerYcbcrRange(VkSamplerYcbcrRange vkSamplerYcbcrRange) {
+	switch (vkSamplerYcbcrRange) {
+		default:
+		case VK_SAMPLER_YCBCR_RANGE_ITU_FULL:   return MSL_SAMPLER_YCBCR_RANGE_ITU_FULL;
+		case VK_SAMPLER_YCBCR_RANGE_ITU_NARROW: return MSL_SAMPLER_YCBCR_RANGE_ITU_NARROW;
+	}
+}
+
+MVKSamplerYcbcrConversion::MVKSamplerYcbcrConversion(MVKDevice* device, const VkSamplerYcbcrConversionCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+	MVKPixelFormats* pixFmts = getPixelFormats();
+	_planes = pixFmts->getChromaSubsamplingPlanes(pCreateInfo->format);
+	_bpc = pixFmts->getChromaSubsamplingComponentBits(pCreateInfo->format);
+	_resolution = pixFmts->getChromaSubsamplingResolution(pCreateInfo->format);
+	_chroma_filter = getSpvMinMagFilterFromVkFilter(pCreateInfo->chromaFilter);
+	_x_chroma_offset = getSpvChromaLocationFromVkChromaLocation(pCreateInfo->xChromaOffset);
+	_y_chroma_offset = getSpvChromaLocationFromVkChromaLocation(pCreateInfo->yChromaOffset);
+	_swizzle[0] = getSpvComponentSwizzleFromVkComponentMapping(pCreateInfo->components.r);
+	_swizzle[1] = getSpvComponentSwizzleFromVkComponentMapping(pCreateInfo->components.g);
+	_swizzle[2] = getSpvComponentSwizzleFromVkComponentMapping(pCreateInfo->components.b);
+	_swizzle[3] = getSpvComponentSwizzleFromVkComponentMapping(pCreateInfo->components.a);
+	_ycbcr_model = getSpvSamplerYCbCrModelConversionFromVkSamplerYcbcrModelConversion(pCreateInfo->ycbcrModel);
+	_ycbcr_range = getSpvSamplerYcbcrRangeFromVkSamplerYcbcrRange(pCreateInfo->ycbcrRange);
+	_forceExplicitReconstruction = pCreateInfo->forceExplicitReconstruction;
+}
+
+
+#pragma mark -
 #pragma mark MVKSampler
 
 bool MVKSampler::getConstexprSampler(mvk::MSLResourceBinding& resourceBinding) {
@@ -1386,23 +1498,25 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 }
 
 MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
-	_requiresConstExprSampler = pCreateInfo->compareEnable && !_device->_pMetalFeatures->depthSampleCompare;
+    for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR: {
+				const VkSamplerYcbcrConversionInfoKHR* sampConvInfo = (const VkSamplerYcbcrConversionInfoKHR*)next;
+				_ycbcrConversion = (MVKSamplerYcbcrConversion*)(sampConvInfo->conversion);
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	_requiresConstExprSampler = (pCreateInfo->compareEnable && !_device->_pMetalFeatures->depthSampleCompare) || _ycbcrConversion;
 
 	MTLSamplerDescriptor* mtlSampDesc = newMTLSamplerDescriptor(pCreateInfo);	// temp retain
     _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: mtlSampDesc];
 	[mtlSampDesc release];														// temp release
 
 	initConstExprSampler(pCreateInfo);
-}
-
-static MSLSamplerFilter getSpvMinMagFilterFromVkFilter(VkFilter vkFilter) {
-	switch (vkFilter) {
-		case VK_FILTER_LINEAR:	return MSL_SAMPLER_FILTER_LINEAR;
-
-		case VK_FILTER_NEAREST:
-		default:
-			return MSL_SAMPLER_FILTER_NEAREST;
-	}
 }
 
 static MSLSamplerMipFilter getSpvMipFilterFromVkMipMode(VkSamplerMipmapMode vkMipMode) {
@@ -1460,7 +1574,7 @@ static MSLSamplerBorderColor getSpvBorderColorFromVkBorderColor(VkBorderColor vk
 			return MSL_SAMPLER_BORDER_COLOR_TRANSPARENT_BLACK;
 	}
 }
-\
+
 void MVKSampler::initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo) {
 	if ( !_requiresConstExprSampler ) { return; }
 
@@ -1479,6 +1593,8 @@ void MVKSampler::initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo) {
 	_constExprSampler.compare_enable = pCreateInfo->compareEnable;
 	_constExprSampler.lod_clamp_enable = false;
 	_constExprSampler.anisotropy_enable = pCreateInfo->anisotropyEnable;
+    if(_ycbcrConversion)
+        _ycbcrConversion->updateConstExprSampler(_constExprSampler);
 }
 
 MVKSampler::~MVKSampler() {

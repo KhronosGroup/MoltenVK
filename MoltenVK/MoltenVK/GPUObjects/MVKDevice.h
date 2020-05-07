@@ -56,6 +56,7 @@ class MVKPipelineCache;
 class MVKPipelineLayout;
 class MVKPipeline;
 class MVKSampler;
+class MVKSamplerYcbcrConversion;
 class MVKDescriptorSetLayout;
 class MVKDescriptorPool;
 class MVKDescriptorUpdateTemplate;
@@ -520,6 +521,11 @@ public:
 	void destroySampler(MVKSampler* mvkSamp,
 						const VkAllocationCallbacks* pAllocator);
 
+	MVKSamplerYcbcrConversion* createSamplerYcbcrConversion(const VkSamplerYcbcrConversionCreateInfo* pCreateInfo,
+										                    const VkAllocationCallbacks* pAllocator);
+	void destroySamplerYcbcrConversion(MVKSamplerYcbcrConversion* mvkSampConv,
+								       const VkAllocationCallbacks* pAllocator);
+
 	MVKDescriptorSetLayout* createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 													  const VkAllocationCallbacks* pAllocator);
 	void destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
@@ -651,6 +657,7 @@ public:
 	const VkPhysicalDeviceVariablePointerFeatures _enabledVarPtrFeatures;
 	const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT _enabledInterlockFeatures;
 	const VkPhysicalDeviceHostQueryResetFeaturesEXT _enabledHostQryResetFeatures;
+	const VkPhysicalDeviceSamplerYcbcrConversionFeatures _enabledSamplerYcbcrConversionFeatures;
 	const VkPhysicalDeviceScalarBlockLayoutFeaturesEXT _enabledScalarLayoutFeatures;
 	const VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT _enabledTexelBuffAlignFeatures;
 	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;

@@ -2194,6 +2194,37 @@ MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_sampler_ycbcr_conversion extension
+
+MVK_PUBLIC_SYMBOL VkResult vkCreateSamplerYcbcrConversionKHR(
+    VkDevice                                    device,
+    const VkSamplerYcbcrConversionCreateInfo*   pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkSamplerYcbcrConversion*                   pYcbcrConversion) {
+
+    MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	MVKSamplerYcbcrConversion* mvkSampConv = mvkDev->createSamplerYcbcrConversion(pCreateInfo, pAllocator);
+	*pYcbcrConversion = (VkSamplerYcbcrConversion)mvkSampConv;
+	VkResult rslt = mvkSampConv->getConfigurationResult();
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_SYMBOL void vkDestroySamplerYcbcrConversionKHR(
+    VkDevice                                    device,
+    VkSamplerYcbcrConversion                    ycbcrConversion,
+    const VkAllocationCallbacks*                pAllocator) {
+
+    MVKTraceVulkanCallStart();
+	if ( !ycbcrConversion ) { return; }
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	mvkDev->destroySamplerYcbcrConversion((MVKSamplerYcbcrConversion*)ycbcrConversion, pAllocator);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_swapchain extension
 
 MVK_PUBLIC_SYMBOL VkResult vkCreateSwapchainKHR(

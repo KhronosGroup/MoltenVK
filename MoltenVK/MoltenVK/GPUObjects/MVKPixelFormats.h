@@ -21,6 +21,7 @@
 #include "mvk_datatypes.h"
 #include "MVKEnvironment.h"
 #include "MVKBaseObject.h"
+#include <SPIRV-Cross/spirv_msl.hpp>
 #include <unordered_map>
 
 #import <Metal/Metal.h>
@@ -69,6 +70,8 @@ typedef enum : uint16_t {
 	kMVKMTLFmtCapsDRMR     = (kMVKMTLFmtCapsDRM | kMVKMTLFmtCapsResolve),
 	kMVKMTLFmtCapsDRFMR    = (kMVKMTLFmtCapsDRMR | kMVKMTLFmtCapsFilter),
 
+	kMVKMTLFmtCapsChromaSubsampling = kMVKMTLFmtCapsNone,
+	kMVKMTLFmtCapsMultiPlanar = kMVKMTLFmtCapsNone,
 } MVKMTLFmtCaps;
 
 
@@ -175,15 +178,24 @@ public:
 
 	/**
 	 * Returns the size of the compression block, measured in texels for a Vulkan format.
-	 * The returned value will be {1, 1} for non-compressed formats.
+	 * The returned value will be {1, 1} for non-compressed formats without chroma-subsampling.
 	 */
 	VkExtent2D getBlockTexelSize(VkFormat vkFormat);
 
 	/**
 	 * Returns the size of the compression block, measured in texels for a Metal format.
-	 * The returned value will be {1, 1} for non-compressed formats.
+	 * The returned value will be {1, 1} for non-compressed formats without chroma-subsampling.
 	 */
 	VkExtent2D getBlockTexelSize(MTLPixelFormat mtlFormat);
+
+	/** Returns the number of planes of the specified chroma-subsampling (YCbCr) VkFormat */
+	uint32_t getChromaSubsamplingPlanes(VkFormat vkFormat);
+
+	/** Returns the number of bits per channel of the specified chroma-subsampling (YCbCr) VkFormat */
+	uint32_t getChromaSubsamplingComponentBits(VkFormat vkFormat);
+
+	/** Returns the MSLFormatResolution of the specified chroma-subsampling (YCbCr) VkFormat */
+	SPIRV_CROSS_NAMESPACE::MSLFormatResolution getChromaSubsamplingResolution(VkFormat vkFormat);
 
 	/**
 	 * Returns the size, in bytes, of a texel of the specified Vulkan format.

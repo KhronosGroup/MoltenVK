@@ -139,6 +139,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->samplerMipLodBias = false;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+				auto* samplerYcbcrConvFeatures = (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)next;
+				samplerYcbcrConvFeatures->samplerYcbcrConversion = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
 				auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
@@ -202,6 +207,11 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
 				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
 				portabilityProps->minVertexInputBindingStrideAlignment = 4;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
+				auto* samplerYcbcrConvProps = (VkSamplerYcbcrConversionImageFormatProperties*)next;
+				samplerYcbcrConvProps->combinedImageSamplerDescriptorCount = 3;
 				break;
 			}
 			default:
@@ -2434,6 +2444,16 @@ void MVKDevice::destroySampler(MVKSampler* mvkSamp,
 	mvkSamp->destroy();
 }
 
+MVKSamplerYcbcrConversion* MVKDevice::createSamplerYcbcrConversion(const VkSamplerYcbcrConversionCreateInfo* pCreateInfo,
+																   const VkAllocationCallbacks* pAllocator) {
+	return new MVKSamplerYcbcrConversion(this, pCreateInfo);
+}
+
+void MVKDevice::destroySamplerYcbcrConversion(MVKSamplerYcbcrConversion* mvkSampConv,
+											  const VkAllocationCallbacks* pAllocator) {
+	mvkSampConv->destroy();
+}
+
 MVKDescriptorSetLayout* MVKDevice::createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
 															 const VkAllocationCallbacks* pAllocator) {
 	return new MVKDescriptorSetLayout(this, pCreateInfo);
@@ -2685,6 +2705,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledVarPtrFeatures(),
 	_enabledInterlockFeatures(),
 	_enabledHostQryResetFeatures(),
+	_enabledSamplerYcbcrConversionFeatures(),
 	_enabledScalarLayoutFeatures(),
 	_enabledTexelBuffAlignFeatures(),
 	_enabledVtxAttrDivFeatures(),
@@ -2846,6 +2867,7 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledVarPtrFeatures);
 	mvkClear(&_enabledInterlockFeatures);
 	mvkClear(&_enabledHostQryResetFeatures);
+	mvkClear(&_enabledSamplerYcbcrConversionFeatures);
 	mvkClear(&_enabledScalarLayoutFeatures);
 	mvkClear(&_enabledTexelBuffAlignFeatures);
 	mvkClear(&_enabledVtxAttrDivFeatures);
@@ -2868,9 +2890,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	pdScalarLayoutFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT;
 	pdScalarLayoutFeatures.pNext = &pdTexelBuffAlignFeatures;
 
+	VkPhysicalDeviceSamplerYcbcrConversionFeatures pdSamplerYcbcrConversionFeatures;
+	pdScalarLayoutFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES;
+	pdScalarLayoutFeatures.pNext = &pdScalarLayoutFeatures;
+
 	VkPhysicalDeviceHostQueryResetFeaturesEXT pdHostQryResetFeatures;
 	pdHostQryResetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
-	pdHostQryResetFeatures.pNext = &pdScalarLayoutFeatures;
+	pdHostQryResetFeatures.pNext = &pdSamplerYcbcrConversionFeatures;
 
 	VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT pdInterlockFeatures;
 	pdInterlockFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
@@ -2965,6 +2991,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledHostQryResetFeatures.hostQueryReset,
 							   &requestedFeatures->hostQueryReset,
 							   &pdHostQryResetFeatures.hostQueryReset, 1);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)next;
+				enableFeatures(&_enabledSamplerYcbcrConversionFeatures.samplerYcbcrConversion,
+							   &requestedFeatures->samplerYcbcrConversion,
+							   &pdSamplerYcbcrConversionFeatures.samplerYcbcrConversion, 1);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
