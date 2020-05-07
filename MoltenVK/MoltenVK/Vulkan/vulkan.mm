@@ -121,7 +121,7 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(vkCmdBuff);	\
 	MVKCmd ##cmdType* cmd = cmdBuff->getCommandPool()->_cmd ##cmdType ##Pool.acquireObject();	\
 	VkResult cmdRslt = cmd->setContent(cmdBuff, ##__VA_ARGS__);						\
-	if(cmdRslt == VK_SUCCESS) {														\
+	if (cmdRslt == VK_SUCCESS) {														\
 		cmdBuff->addCommand(cmd);													\
 	} else {																		\
 		cmdBuff->setConfigurationResult(cmdRslt);									\
@@ -149,8 +149,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyInstance(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !instance ) { return; }
-	MVKInstance::getMVKInstance(instance)->destroy();
+	if (instance) { MVKInstance::getMVKInstance(instance)->destroy(); }
 	MVKTraceVulkanCallEnd();
 }
 
@@ -287,8 +286,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDevice(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !device ) { return; }
-	MVKDevice::getMVKDevice(device)->destroy();
+	if (device) { MVKDevice::getMVKDevice(device)->destroy(); }
 	MVKTraceVulkanCallEnd();
 }
 
@@ -345,10 +343,8 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceQueue(
     VkQueue*                                    pQueue) {
 
 	MVKTraceVulkanCallStart();
-	if (pQueue) {
-		MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-		*pQueue = mvkDev->getQueue(queueFamilyIndex, queueIndex)->getVkQueue();
-	}
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	*pQueue = mvkDev->getQueue(queueFamilyIndex, queueIndex)->getVkQueue();
 	MVKTraceVulkanCallEnd();
 }
 
@@ -406,7 +402,6 @@ MVK_PUBLIC_SYMBOL void vkFreeMemory(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !mem ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->freeMemory((MVKDeviceMemory*)mem, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -472,8 +467,6 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceMemoryCommitment(
     VkDeviceSize*                               pCommittedMemoryInBytes) {
 
 	MVKTraceVulkanCallStart();
-    if ( !pCommittedMemoryInBytes ) { return; }
-
     MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)memory;
     *pCommittedMemoryInBytes = mvkMem->getDeviceMemoryCommitment();
 	MVKTraceVulkanCallEnd();
@@ -599,7 +592,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyFence(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !fence ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyFence((MVKFence*)fence, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -662,7 +654,6 @@ MVK_PUBLIC_SYMBOL void vkDestroySemaphore(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !semaphore ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroySemaphore((MVKSemaphore*)semaphore, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -689,7 +680,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyEvent(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !event ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyEvent((MVKEvent*)event, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -749,7 +739,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyQueryPool(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !queryPool ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyQueryPool((MVKQueryPool*)queryPool, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -793,7 +782,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyBuffer(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !buffer ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyBuffer((MVKBuffer*)buffer, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -820,7 +808,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyBufferView(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !bufferView ) { return; }
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroyBufferView((MVKBufferView*)bufferView, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -847,7 +834,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyImage(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !image ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyImage((MVKImage*)image, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -886,7 +872,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyImageView(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !imageView ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyImageView((MVKImageView*)imageView, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -913,7 +898,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyShaderModule(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !shaderModule ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyShaderModule((MVKShaderModule*)shaderModule, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -940,7 +924,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipelineCache(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !pipelineCache ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyPipelineCache((MVKPipelineCache*)pipelineCache, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1008,7 +991,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipeline(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !pipeline ) { return; }
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroyPipeline((MVKPipeline*)pipeline, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1035,7 +1017,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipelineLayout(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !pipelineLayout ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyPipelineLayout((MVKPipelineLayout*)pipelineLayout, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1062,7 +1043,6 @@ MVK_PUBLIC_SYMBOL void vkDestroySampler(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !sampler ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroySampler((MVKSampler*)sampler, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1089,7 +1069,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorSetLayout(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !descriptorSetLayout ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyDescriptorSetLayout((MVKDescriptorSetLayout*)descriptorSetLayout, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1116,7 +1095,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorPool(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !descriptorPool ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyDescriptorPool((MVKDescriptorPool*)descriptorPool, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1194,7 +1172,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyFramebuffer(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !framebuffer ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyFramebuffer((MVKFramebuffer*)framebuffer, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1221,7 +1198,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyRenderPass(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !renderPass ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyRenderPass((MVKRenderPass*)renderPass, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1233,8 +1209,6 @@ MVK_PUBLIC_SYMBOL void vkGetRenderAreaGranularity(
     VkExtent2D*                                 pGranularity) {
 
 	MVKTraceVulkanCallStart();
-    if ( !pGranularity ) { return; }
-
     MVKRenderPass* mvkRendPass = (MVKRenderPass*)renderPass;
     *pGranularity = mvkRendPass->getRenderAreaGranularity();
 	MVKTraceVulkanCallEnd();
@@ -1261,7 +1235,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyCommandPool(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !commandPool ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyCommandPool((MVKCommandPool*)commandPool, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1934,7 +1907,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorUpdateTemplateKHR(
     const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-    if (!descriptorUpdateTemplate) { return; }
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroyDescriptorUpdateTemplate((MVKDescriptorUpdateTemplate*)descriptorUpdateTemplate, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -2217,7 +2189,6 @@ MVK_PUBLIC_SYMBOL void vkDestroySwapchainKHR(
     const VkAllocationCallbacks*             pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !swapchain ) { return; }
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroySwapchain((MVKSwapchain*)swapchain, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -2326,7 +2297,6 @@ MVK_PUBLIC_SYMBOL void vkDestroySurfaceKHR(
     const VkAllocationCallbacks*                 pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !surface ) { return; }
     MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
     mvkInst->destroySurface((MVKSurface*)surface, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -2443,7 +2413,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDebugReportCallbackEXT(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !callback ) { return; }
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
 	mvkInst->destroyDebugReportCallback((MVKDebugReportCallback*)callback, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -2611,7 +2580,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDebugUtilsMessengerEXT(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !messenger ) { return; }
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
 	mvkInst->destroyDebugUtilsMessenger((MVKDebugUtilsMessenger*)messenger, pAllocator);
 	MVKTraceVulkanCallEnd();

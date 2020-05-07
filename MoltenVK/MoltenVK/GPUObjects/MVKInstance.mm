@@ -108,7 +108,7 @@ MVKSurface* MVKInstance::createSurface(const Vk_PLATFORM_SurfaceCreateInfoMVK* p
 
 void MVKInstance::destroySurface(MVKSurface* mvkSrfc,
 								const VkAllocationCallbacks* pAllocator) {
-	mvkSrfc->destroy();
+	if (mvkSrfc) { mvkSrfc->destroy(); }
 }
 
 MVKDebugReportCallback* MVKInstance::createDebugReportCallback(const VkDebugReportCallbackCreateInfoEXT* pCreateInfo,
@@ -123,6 +123,8 @@ MVKDebugReportCallback* MVKInstance::createDebugReportCallback(const VkDebugRepo
 
 void MVKInstance::destroyDebugReportCallback(MVKDebugReportCallback* mvkDRCB,
 								const VkAllocationCallbacks* pAllocator) {
+	if ( !mvkDRCB ) { return; }
+
 	lock_guard<mutex> lock(_dcbLock);
 
 	mvkRemoveAllOccurances(_debugReportCallbacks, mvkDRCB);
@@ -166,6 +168,8 @@ MVKDebugUtilsMessenger* MVKInstance::createDebugUtilsMessenger(const VkDebugUtil
 
 void MVKInstance::destroyDebugUtilsMessenger(MVKDebugUtilsMessenger* mvkDUM,
 											 const VkAllocationCallbacks* pAllocator) {
+	if ( !mvkDUM ) { return; }
+
 	lock_guard<mutex> lock(_dcbLock);
 
 	mvkRemoveAllOccurances(_debugUtilMessengers, mvkDUM);
