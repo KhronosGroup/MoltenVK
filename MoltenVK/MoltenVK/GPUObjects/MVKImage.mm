@@ -182,8 +182,9 @@ VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMe
 		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
 			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
 			bool writable = mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-			dedicatedReqs->prefersDedicatedAllocation = !_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps);
-			dedicatedReqs->requiresDedicatedAllocation = VK_FALSE;
+			dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
+			dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
+														 (!_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps)));
 			break;
 		}
 		default:
@@ -204,6 +205,10 @@ VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOff
 	flushToDevice(getDeviceMemoryOffset(), getByteCount());
 
 	return _deviceMemory ? _deviceMemory->addImage(this) : VK_SUCCESS;
+}
+
+VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
+	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
 }
 
 bool MVKImage::validateUseTexelBuffer() {
@@ -615,6 +620,18 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	}
 
     initSubresources(pCreateInfo);
+
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
+				auto* pExtMemInfo = (const VkExternalMemoryImageCreateInfo*)next;
+				initExternalMemory(pExtMemInfo->handleTypes);
+				break;
+			}
+			default:
+				break;
+		}
+	}
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
@@ -782,6 +799,16 @@ void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 	layout.size = bytesPerLayerCurrLevel;
 	layout.rowPitch = getBytesPerRow(currMipLevel);
 	layout.depthPitch = bytesPerLayerCurrLevel;
+}
+
+void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
+		_externalMemoryHandleTypes = handleTypes;
+		auto& xmProps = _device->getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
+		_requiresDedicatedMemoryAllocation = _requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+	} else {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR is supported."));
+	}
 }
 
 MVKImage::~MVKImage() {
@@ -991,10 +1018,9 @@ MVKPresentableSwapchainImage::~MVKPresentableSwapchainImage() {
 #pragma mark -
 #pragma mark MVKPeerSwapchainImage
 
-VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
-	const auto* imageInfo = (const VkBindImageMemoryInfo*)pBindInfo;
+VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
 	const VkBindImageMemorySwapchainInfoKHR* swapchainInfo = nullptr;
-	for (const auto* next = (const VkBaseInStructure*)imageInfo->pNext; next; next = next->pNext) {
+	for (const auto* next = (const VkBaseInStructure*)pBindInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR:
 				swapchainInfo = (const VkBindImageMemorySwapchainInfoKHR*)next;
@@ -1002,11 +1028,9 @@ VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
 			default:
 				break;
 		}
-		if (swapchainInfo) { break; }
 	}
-	if (!swapchainInfo) {
-		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-	}
+	if (!swapchainInfo) { return VK_ERROR_OUT_OF_DEVICE_MEMORY; }
+
 	_swapchainIndex = swapchainInfo->imageIndex;
 	return VK_SUCCESS;
 }
@@ -1114,17 +1138,14 @@ MVKImageView::MVKImageView(MVKDevice* device,
 	_image = (MVKImage*)pCreateInfo->image;
 	_usage = _image->_usage;
 
-	auto* next = (MVKVkAPIStructHeader*)pCreateInfo->pNext;
-	while (next) {
-		switch ((uint32_t)next->sType) {
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
 				auto* pViewUsageInfo = (VkImageViewUsageCreateInfo*)next;
 				if (!(pViewUsageInfo->usage & ~_usage)) { _usage = pViewUsageInfo->usage; }
-				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 			}
 			default:
-				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 		}
 	}

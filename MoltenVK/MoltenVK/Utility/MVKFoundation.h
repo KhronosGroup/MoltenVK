@@ -55,12 +55,6 @@ typedef uint16_t MVKHalfFloat;
 /** A representation of the value of 1.0 as a 16-bit half-float. */
 #define kHalfFloat1	0x3C00
 
-/** Common header for many standard Vulkan API structures. */
-typedef struct {
-	VkStructureType sType;
-	const void* pNext;
-} MVKVkAPIStructHeader;
-
 
 #pragma mark -
 #pragma mark Vertex content structures

@@ -47,54 +47,30 @@ static VkExtensionProperties kVkExtProps_ ##EXT = mvkMakeExtProps(VK_ ##EXT ##_E
 // Returns whether the specified properties are valid for this platform
 static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #if MVK_MACOS
-	if (pProperties == &kVkExtProps_EXT_HDR_METADATA) {
-		return mvkOSVersionIsAtLeast(10.15);
-	}
-	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) {
-		return mvkOSVersionIsAtLeast(10.13);
-	}
-	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
-		return mvkOSVersionIsAtLeast(10.13);
-	}
-	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return false; }
-	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) {
-		return mvkOSVersionIsAtLeast(10.14);
-	}
-	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) {
-		return mvkOSVersionIsAtLeast(10.13);
-	}
 	if (pProperties == &kVkExtProps_MVK_IOS_SURFACE) { return false; }
-	if (pProperties == &kVkExtProps_AMD_SHADER_IMAGE_LOAD_STORE_LOD) { return false; }
-	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) {
-		return mvkOSVersionIsAtLeast(10.14);
-	}
 	if (pProperties == &kVkExtProps_IMG_FORMAT_PVRTC) { return false; }
+	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return false; }
+	if (pProperties == &kVkExtProps_AMD_SHADER_IMAGE_LOAD_STORE_LOD) { return false; }
+
+	if (pProperties == &kVkExtProps_EXT_HDR_METADATA) { return mvkOSVersionIsAtLeast(10.15); }
+	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) { return mvkOSVersionIsAtLeast(10.13); }
+	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) { return mvkOSVersionIsAtLeast(10.13); }
+	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) { return mvkOSVersionIsAtLeast(10.14); }
+	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) { return mvkOSVersionIsAtLeast(10.13); }
+	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) { return mvkOSVersionIsAtLeast(10.14); }
 #endif
 #if MVK_IOS
+	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
 	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
 	if (pProperties == &kVkExtProps_EXT_HDR_METADATA) { return false; }
-	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) {
-		return mvkOSVersionIsAtLeast(11.0);
-	}
-	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) {
-		return mvkOSVersionIsAtLeast(11.0);
-	}
-	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) {
-		return mvkOSVersionIsAtLeast(11.0);
-	}
-	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) {
-		return mvkOSVersionIsAtLeast(12.0);
-	}
-	if (pProperties == &kVkExtProps_EXT_SWAPCHAIN_COLOR_SPACE) {
-		return mvkOSVersionIsAtLeast(9.0);
-	}
-	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) {
-		return mvkOSVersionIsAtLeast(11.0);
-	}
-	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
-	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) {
-		return mvkOSVersionIsAtLeast(12.0);
-	}
+
+	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) { return mvkOSVersionIsAtLeast(11.0); }
+	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) { return mvkOSVersionIsAtLeast(11.0); }
+	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return mvkOSVersionIsAtLeast(11.0); }
+	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) { return mvkOSVersionIsAtLeast(12.0); }
+	if (pProperties == &kVkExtProps_EXT_SWAPCHAIN_COLOR_SPACE) { return mvkOSVersionIsAtLeast(9.0); }
+	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) { return mvkOSVersionIsAtLeast(11.0); }
+	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) { return mvkOSVersionIsAtLeast(12.0); }
 #endif
 
 	return true;
@@ -127,17 +103,19 @@ void MVKExtensionList::initCount() {
 #include "MVKExtensions.def"
 }
 
+#define MVK_ENSURE_EXTENSION_TYPE(var, EXT, type) vk_ ##var.enabled = vk_ ##var.enabled && MVK_EXTENSION_ ##type;
+
 void MVKExtensionList::disableAllButEnabledInstanceExtensions() {
-#define MVK_EXTENSION_INSTANCE	true
-#define MVK_EXTENSION_DEVICE	false
-#define MVK_EXTENSION(var, EXT, type) vk_ ##var.enabled = type && vk_ ##var.enabled;
+#define MVK_EXTENSION_INSTANCE         true
+#define MVK_EXTENSION_DEVICE           false
+#define MVK_EXTENSION(var, EXT, type)  MVK_ENSURE_EXTENSION_TYPE(var, EXT, type)
 #include "MVKExtensions.def"
 }
 
 void MVKExtensionList::disableAllButEnabledDeviceExtensions() {
-#define MVK_EXTENSION_INSTANCE	false
-#define MVK_EXTENSION_DEVICE	true
-#define MVK_EXTENSION(var, EXT, type) vk_ ##var.enabled = type && vk_ ##var.enabled;
+#define MVK_EXTENSION_INSTANCE         false
+#define MVK_EXTENSION_DEVICE           true
+#define MVK_EXTENSION(var, EXT, type)  MVK_ENSURE_EXTENSION_TYPE(var, EXT, type)
 #include "MVKExtensions.def"
 }
 

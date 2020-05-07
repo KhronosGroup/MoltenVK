@@ -944,15 +944,12 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 												   const SPIRVToMSLConversionConfiguration& shaderContext) {
     // Collect extension structures
     VkPipelineVertexInputDivisorStateCreateInfoEXT* pVertexInputDivisorState = nullptr;
-    auto* next = (MVKVkAPIStructHeader*)pVI->pNext;
-    while (next) {
+	for (const auto* next = (VkBaseInStructure*)pVI->pNext; next; next = next->pNext) {
         switch (next->sType) {
         case VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_DIVISOR_STATE_CREATE_INFO_EXT:
             pVertexInputDivisorState = (VkPipelineVertexInputDivisorStateCreateInfoEXT*)next;
-            next = (MVKVkAPIStructHeader*)pVertexInputDivisorState->pNext;
             break;
         default:
-            next = (MVKVkAPIStructHeader*)next->pNext;
             break;
         }
     }
@@ -1032,15 +1029,12 @@ void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor*
 
 	VkPipelineTessellationDomainOriginStateCreateInfo* pTessDomainOriginState = nullptr;
 	if (reflectData.patchKind == spv::ExecutionModeTriangles) {
-		auto* next = (MVKVkAPIStructHeader*)pTS->pNext;
-		while (next) {
+		for (const auto* next = (VkBaseInStructure*)pTS->pNext; next; next = next->pNext) {
 			switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO:
 				pTessDomainOriginState = (VkPipelineTessellationDomainOriginStateCreateInfo*)next;
-				next = (MVKVkAPIStructHeader*)pTessDomainOriginState->pNext;
 				break;
 			default:
-				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 			}
 		}
@@ -1131,15 +1125,12 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
 
     VkPipelineTessellationDomainOriginStateCreateInfo* pTessDomainOriginState = nullptr;
     if (pCreateInfo->pTessellationState) {
-        auto* next = (MVKVkAPIStructHeader*)pCreateInfo->pTessellationState->pNext;
-        while (next) {
+		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pTessellationState->pNext; next; next = next->pNext) {
             switch (next->sType) {
             case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO:
                 pTessDomainOriginState = (VkPipelineTessellationDomainOriginStateCreateInfo*)next;
-                next = (MVKVkAPIStructHeader*)pTessDomainOriginState->pNext;
                 break;
             default:
-                next = (MVKVkAPIStructHeader*)next->pNext;
                 break;
             }
         }

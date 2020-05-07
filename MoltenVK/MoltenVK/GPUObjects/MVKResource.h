@@ -47,9 +47,6 @@ public:
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
 
-	/** Binds this resource according to the specified bind information. */
-	virtual VkResult bindDeviceMemory2(const void* pBindInfo);
-
 	/** Returns the device memory underlying this resource. */
 	inline MVKDeviceMemory* getDeviceMemory() { return _deviceMemory; }
 
@@ -88,4 +85,6 @@ protected:
 	VkDeviceSize _deviceMemoryOffset = 0;
     VkDeviceSize _byteCount = 0;
     VkDeviceSize _byteAlignment = 0;
+	VkExternalMemoryHandleTypeFlags _externalMemoryHandleTypes = 0;
+	bool _requiresDedicatedMemoryAllocation = false;
 };

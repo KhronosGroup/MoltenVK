@@ -109,11 +109,10 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         const VkBufferView* pTexelBufferView = descWrite.pTexelBufferView;
         const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
         if (_device->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
-            for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
-            {
+			for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
                 switch (next->sType) {
                 case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-                    pInlineUniformBlock = next;
+					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
                     break;
                 }
                 default:
@@ -689,11 +688,10 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 
 		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
 		if (dstSet->getDevice()->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
-			for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)pDescWrite->pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
-			{
+			for (const auto* next = (VkBaseInStructure*)pDescWrite->pNext; next; next = next->pNext) {
 				switch (next->sType) {
 				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-					pInlineUniformBlock = next;
+					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
 					break;
 				}
 				default:

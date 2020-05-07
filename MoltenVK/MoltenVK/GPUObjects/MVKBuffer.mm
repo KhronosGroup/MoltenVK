@@ -66,8 +66,8 @@ VkResult MVKBuffer::getMemoryRequirements(const void*, VkMemoryRequirements2* pM
 		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
 			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
-			dedicatedReqs->prefersDedicatedAllocation = VK_FALSE;
-			dedicatedReqs->requiresDedicatedAllocation = VK_FALSE;
+			dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
+			dedicatedReqs->prefersDedicatedAllocation = dedicatedReqs->requiresDedicatedAllocation;
 			break;
 		}
 		default:
@@ -91,6 +91,10 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 	propogateDebugName();
 
 	return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
+}
+
+VkResult MVKBuffer::bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo) {
+	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
 }
 
 void MVKBuffer::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
@@ -192,6 +196,28 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) : MVKResource(device), _usage(pCreateInfo->usage) {
     _byteAlignment = _device->_pMetalFeatures->mtlBufferAlignment;
     _byteCount = pCreateInfo->size;
+
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: {
+				auto* pExtMemInfo = (const VkExternalMemoryBufferCreateInfo*)next;
+				initExternalMemory(pExtMemInfo->handleTypes);
+				break;
+			}
+			default:
+				break;
+		}
+	}
+}
+
+void MVKBuffer::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR)) {
+		_externalMemoryHandleTypes = handleTypes;
+		auto& xmProps = _device->getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR);
+		_requiresDedicatedMemoryAllocation = _requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+	} else {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateBuffer(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR is supported."));
+	}
 }
 
 MVKBuffer::~MVKBuffer() {

@@ -62,166 +62,216 @@ VkResult MVKPhysicalDevice::getExtensionProperties(const char* pLayerName, uint3
 }
 
 void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures* features) {
-    if (features) { *features = _features; }
+    *features = _features;
 }
 
 void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
-    if (features) {
-        features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-        features->features = _features;
-        for (auto* next = (VkBaseOutStructure*)features->pNext; next; next = next->pNext) {
-            switch ((uint32_t)next->sType) {
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
-                    auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
-                    storageFeatures->storageBuffer16BitAccess = true;
-                    storageFeatures->uniformAndStorageBuffer16BitAccess = true;
-                    storageFeatures->storagePushConstant16 = true;
-                    storageFeatures->storageInputOutput16 = true;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
-                    auto* storageFeatures = (VkPhysicalDevice8BitStorageFeaturesKHR*)next;
-                    storageFeatures->storageBuffer8BitAccess = true;
-                    storageFeatures->uniformAndStorageBuffer8BitAccess = true;
-                    storageFeatures->storagePushConstant8 = true;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
-                    auto* f16Features = (VkPhysicalDeviceFloat16Int8FeaturesKHR*)next;
-                    f16Features->shaderFloat16 = true;
-                    f16Features->shaderInt8 = true;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
-                    auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
-                    uboLayoutFeatures->uniformBufferStandardLayout = true;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
-                    auto* varPtrFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
-                    varPtrFeatures->variablePointersStorageBuffer = true;
-                    varPtrFeatures->variablePointers = true;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
-                    auto* interlockFeatures = (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*)next;
-                    interlockFeatures->fragmentShaderSampleInterlock = _metalFeatures.rasterOrderGroups;
-                    interlockFeatures->fragmentShaderPixelInterlock = _metalFeatures.rasterOrderGroups;
-                    interlockFeatures->fragmentShaderShadingRateInterlock = false;    // Requires variable rate shading; not supported yet in Metal
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
-                    auto* hostQueryResetFeatures = (VkPhysicalDeviceHostQueryResetFeaturesEXT*)next;
-                    hostQueryResetFeatures->hostQueryReset = true;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
-                    auto* scalarLayoutFeatures = (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*)next;
-                    scalarLayoutFeatures->scalarBlockLayout = true;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
-                    auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
-                    texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
-                    auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
-                    divisorFeatures->vertexAttributeInstanceRateDivisor = true;
-                    divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
-                    auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
-                    portabilityFeatures->triangleFans = false;
-                    portabilityFeatures->separateStencilMaskRef = true;
-					portabilityFeatures->events = true;
-                    portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle || _metalFeatures.nativeTextureSwizzle;
-                    portabilityFeatures->samplerMipLodBias = false;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
-                    auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
-                    shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
-                    break;
-                }
-                case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
-                    auto* inlineUniformBlockFeatures = (VkPhysicalDeviceInlineUniformBlockFeaturesEXT*)next;
-                    inlineUniformBlockFeatures->inlineUniformBlock = true;
-                    inlineUniformBlockFeatures->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
-                    break;
-                }
-                default:
-                    break;
-            }
-        }
-    }
+	features->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+	features->features = _features;
+	for (auto* next = (VkBaseOutStructure*)features->pNext; next; next = next->pNext) {
+		switch ((uint32_t)next->sType) {
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_16BIT_STORAGE_FEATURES: {
+				auto* storageFeatures = (VkPhysicalDevice16BitStorageFeatures*)next;
+				storageFeatures->storageBuffer16BitAccess = true;
+				storageFeatures->uniformAndStorageBuffer16BitAccess = true;
+				storageFeatures->storagePushConstant16 = true;
+				storageFeatures->storageInputOutput16 = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_8BIT_STORAGE_FEATURES_KHR: {
+				auto* storageFeatures = (VkPhysicalDevice8BitStorageFeaturesKHR*)next;
+				storageFeatures->storageBuffer8BitAccess = true;
+				storageFeatures->uniformAndStorageBuffer8BitAccess = true;
+				storageFeatures->storagePushConstant8 = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FLOAT16_INT8_FEATURES_KHR: {
+				auto* f16Features = (VkPhysicalDeviceFloat16Int8FeaturesKHR*)next;
+				f16Features->shaderFloat16 = true;
+				f16Features->shaderInt8 = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
+				auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
+				uboLayoutFeatures->uniformBufferStandardLayout = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES: {
+				auto* varPtrFeatures = (VkPhysicalDeviceVariablePointerFeatures*)next;
+				varPtrFeatures->variablePointersStorageBuffer = true;
+				varPtrFeatures->variablePointers = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
+				auto* interlockFeatures = (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*)next;
+				interlockFeatures->fragmentShaderSampleInterlock = _metalFeatures.rasterOrderGroups;
+				interlockFeatures->fragmentShaderPixelInterlock = _metalFeatures.rasterOrderGroups;
+				interlockFeatures->fragmentShaderShadingRateInterlock = false;    // Requires variable rate shading; not supported yet in Metal
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT: {
+				auto* hostQueryResetFeatures = (VkPhysicalDeviceHostQueryResetFeaturesEXT*)next;
+				hostQueryResetFeatures->hostQueryReset = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
+				auto* scalarLayoutFeatures = (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*)next;
+				scalarLayoutFeatures->scalarBlockLayout = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
+				auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
+				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
+				auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
+				divisorFeatures->vertexAttributeInstanceRateDivisor = true;
+				divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
+				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
+				portabilityFeatures->triangleFans = false;
+				portabilityFeatures->separateStencilMaskRef = true;
+				portabilityFeatures->events = true;
+				portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle || _metalFeatures.nativeTextureSwizzle;
+				portabilityFeatures->samplerMipLodBias = false;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
+				auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
+				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_FEATURES_EXT: {
+				auto* inlineUniformBlockFeatures = (VkPhysicalDeviceInlineUniformBlockFeaturesEXT*)next;
+				inlineUniformBlockFeatures->inlineUniformBlock = true;
+				inlineUniformBlockFeatures->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
+				break;
+			}
+			default:
+				break;
+		}
+	}
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties* properties) {
-    if (properties) { *properties = _properties; }
+	*properties = _properties;
 }
 
 void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
-    if (properties) {
-        properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
-        properties->properties = _properties;
-		for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
-			switch ((uint32_t)next->sType) {
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
-                auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
-                pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
-                break;
-            }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
-                auto* maint3Props = (VkPhysicalDeviceMaintenance3Properties*)next;
-                maint3Props->maxPerSetDescriptors = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount + _metalFeatures.maxPerStageSamplerCount) * 4;
-                maint3Props->maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
-                break;
-            }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
-                auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
-                pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
-                break;
-            }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
-                auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)next;
-                // Save the 'next' pointer; we'll unintentionally overwrite it
-                // on the next line. Put it back when we're done.
-                void* savedNext = texelBuffAlignProps->pNext;
-                *texelBuffAlignProps = _texelBuffAlignProperties;
-                texelBuffAlignProps->pNext = savedNext;
-                break;
-            }
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
-                auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
-                divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
-                break;
-            }
+	properties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2;
+	properties->properties = _properties;
+	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
+		switch ((uint32_t)next->sType) {
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+				auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
+				pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
+				auto* maint3Props = (VkPhysicalDeviceMaintenance3Properties*)next;
+				maint3Props->maxPerSetDescriptors = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount + _metalFeatures.maxPerStageSamplerCount) * 4;
+				maint3Props->maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
+				auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
+				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+				auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)next;
+				// Save the 'next' pointer; we'll unintentionally overwrite it
+				// on the next line. Put it back when we're done.
+				void* savedNext = texelBuffAlignProps->pNext;
+				*texelBuffAlignProps = _texelBuffAlignProperties;
+				texelBuffAlignProps->pNext = savedNext;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
+				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+				populate((VkPhysicalDeviceIDProperties*)next);
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
 				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
 				portabilityProps->minVertexInputBindingStrideAlignment = 4;
 				break;
 			}
-            default:
-                break;
-            }
-        }
-    }
+			default:
+				break;
+		}
+	}
+}
+
+// Populates the device ID properties structure
+void MVKPhysicalDevice::populate(VkPhysicalDeviceIDProperties* pDevIdProps) {
+
+	uint8_t* uuid;
+	size_t uuidComponentOffset;
+
+	//  ---- Device ID ----------------------------------------------
+	uuid = pDevIdProps->deviceUUID;
+	uuidComponentOffset = 0;
+	mvkClear(uuid, VK_UUID_SIZE);
+
+	// First 4 bytes contains GPU vendor ID
+	uint32_t vendorID = _properties.vendorID;
+	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(vendorID);
+	uuidComponentOffset += sizeof(vendorID);
+
+	// Next 4 bytes contains GPU device ID
+	uint32_t deviceID = _properties.deviceID;
+	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(deviceID);
+	uuidComponentOffset += sizeof(deviceID);
+
+	// Last 8 bytes contain the GPU registry ID
+	uint64_t regID = mvkGetRegistryID(_mtlDevice);
+	*(uint64_t*)&uuid[uuidComponentOffset] = NSSwapHostLongLongToBig(regID);
+	uuidComponentOffset += sizeof(regID);
+
+
+	// ---- Driver ID ----------------------------------------------
+	uuid = pDevIdProps->driverUUID;
+	uuidComponentOffset = 0;
+	mvkClear(uuid, VK_UUID_SIZE);
+
+	// First 4 bytes contains MoltenVK prefix
+	const char* mvkPfx = "MVK";
+	size_t mvkPfxLen = strlen(mvkPfx);
+	mvkCopy(&uuid[uuidComponentOffset], (uint8_t*)mvkPfx, mvkPfxLen);
+	uuidComponentOffset += mvkPfxLen + 1;
+
+	// Next 4 bytes contains MoltenVK version
+	uint32_t mvkVersion = MVK_VERSION;
+	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(mvkVersion);
+	uuidComponentOffset += sizeof(mvkVersion);
+
+	// Next 4 bytes contains highest Metal feature set supported by this device
+	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
+	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
+	uuidComponentOffset += sizeof(mtlFeatSet);
+
+
+	// ---- LUID ignored for Metal devices ------------------------
+	mvkClear(pDevIdProps->deviceLUID, VK_LUID_SIZE);
+	pDevIdProps->deviceNodeMask = 0;
+	pDevIdProps->deviceLUIDValid = VK_FALSE;
 }
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties* pFormatProperties) {
-    if (pFormatProperties) {
-		*pFormatProperties = _pixelFormats.getVkFormatProperties(format);
-	}
+	*pFormatProperties = _pixelFormats.getVkFormatProperties(format);
 }
 
-void MVKPhysicalDevice::getFormatProperties(VkFormat format,
-                                            VkFormatProperties2KHR* pFormatProperties) {
-	if (pFormatProperties) {
-		pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
-		pFormatProperties->formatProperties = _pixelFormats.getVkFormatProperties(format);
-	}
+void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties2KHR* pFormatProperties) {
+	pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
+	pFormatProperties->formatProperties = _pixelFormats.getVkFormatProperties(format);
 }
 
 VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
@@ -357,32 +407,41 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 	return VK_SUCCESS;
 }
 
-VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo,
-                                                     VkImageFormatProperties2KHR* pImageFormatProperties) {
+VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo,
+													 VkImageFormatProperties2* pImageFormatProperties) {
 
-    if ( !pImageFormatInfo || pImageFormatInfo->sType != VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_FORMAT_INFO_2_KHR ) {
-        return VK_ERROR_FORMAT_NOT_SUPPORTED;
-    }
+	for (const auto* nextInfo = (VkBaseInStructure*)pImageFormatInfo->pNext; nextInfo; nextInfo = nextInfo->pNext) {
+		switch (nextInfo->sType) {
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_EXTERNAL_IMAGE_FORMAT_INFO: {
+				// Return information about external memory support for MTLTexture.
+				// Search VkImageFormatProperties2 for the corresponding VkExternalImageFormatProperties and populate it.
+				auto* pExtImgFmtInfo = (VkPhysicalDeviceExternalImageFormatInfo*)nextInfo;
+				for (auto* nextProps = (VkBaseOutStructure*)pImageFormatProperties->pNext; nextProps; nextProps = nextProps->pNext) {
+					if (nextProps->sType == VK_STRUCTURE_TYPE_EXTERNAL_IMAGE_FORMAT_PROPERTIES) {
+						auto* pExtImgFmtProps = (VkExternalImageFormatProperties*)nextProps;
+						pExtImgFmtProps->externalMemoryProperties = getExternalImageProperties(pExtImgFmtInfo->handleType);
+					}
+				}
+				break;
+			}
+			default:
+				break;
+		}
+	}
 
-    if ( !_pixelFormats.isSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+	if ( !_pixelFormats.isSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
 	if ( !getImageViewIsSupported(pImageFormatInfo) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
-	if (pImageFormatProperties) {
-		pImageFormatProperties->sType = VK_STRUCTURE_TYPE_IMAGE_FORMAT_PROPERTIES_2_KHR;
-		return getImageFormatProperties(pImageFormatInfo->format, pImageFormatInfo->type,
-										pImageFormatInfo->tiling, pImageFormatInfo->usage,
-										pImageFormatInfo->flags,
-										&pImageFormatProperties->imageFormatProperties);
-	}
-
-	return VK_SUCCESS;
+	return getImageFormatProperties(pImageFormatInfo->format, pImageFormatInfo->type,
+									pImageFormatInfo->tiling, pImageFormatInfo->usage,
+									pImageFormatInfo->flags,
+									&pImageFormatProperties->imageFormatProperties);
 }
 
 // If the image format info links portability image view info, test if an image view of that configuration is supported
-bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2KHR *pImageFormatInfo) {
-	auto* next = (MVKVkAPIStructHeader*)pImageFormatInfo->pNext;
-	while (next) {
+bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo) {
+	for (const auto* next = (VkBaseInStructure*)pImageFormatInfo->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_SUPPORT_EXTX: {
 				auto* portImgViewInfo = (VkPhysicalDeviceImageViewSupportEXTX*)next;
@@ -390,7 +449,7 @@ bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageForma
 				// Create an image view and test whether it could be configured
 				VkImageViewCreateInfo viewInfo = {
 					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-					.pNext = (VkStructureType*)portImgViewInfo->pNext,
+					.pNext = portImgViewInfo->pNext,
 					.flags = portImgViewInfo->flags,
 					.image = nullptr,
 					.viewType = portImgViewInfo->viewType,
@@ -411,12 +470,32 @@ bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageForma
 																	 mtlPixFmt, useSwizzle) == VK_SUCCESS);
 			}
 			default:
-				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 		}
 	}
 
 	return true;
+}
+
+void MVKPhysicalDevice::getExternalBufferProperties(const VkPhysicalDeviceExternalBufferInfo* pExternalBufferInfo,
+													VkExternalBufferProperties* pExternalBufferProperties) {
+	pExternalBufferProperties->externalMemoryProperties = getExternalBufferProperties(pExternalBufferInfo->handleType);
+}
+
+static VkExternalMemoryProperties _emptyExtMemProps = {};
+
+VkExternalMemoryProperties& MVKPhysicalDevice::getExternalBufferProperties(VkExternalMemoryHandleTypeFlagBits handleType) {
+	switch (handleType) {
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR:		return _mtlBufferExternalMemoryProperties;
+		default: 													return _emptyExtMemProps;
+	}
+}
+
+VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkExternalMemoryHandleTypeFlagBits handleType) {
+	switch (handleType) {
+		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR:		return _mtlTextureExternalMemoryProperties;
+		default: 													return _emptyExtMemProps;
+	}
 }
 
 
@@ -722,17 +801,16 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 #pragma mark Memory models
 
 /** Populates the specified memory properties with the memory characteristics of this device. */
-VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties* pMemoryProperties) {
+VkResult MVKPhysicalDevice::getMemoryProperties(VkPhysicalDeviceMemoryProperties* pMemoryProperties) {
 	*pMemoryProperties = _memoryProperties;
 	return VK_SUCCESS;
 }
 
-VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMemoryProperties2* pMemoryProperties) {
-	if (pMemoryProperties) {
-		pMemoryProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
-		pMemoryProperties->memoryProperties = _memoryProperties;
-		for (auto* next = (VkBaseOutStructure*)pMemoryProperties->pNext; next; next = next->pNext) {
-			switch (next->sType) {
+VkResult MVKPhysicalDevice::getMemoryProperties(VkPhysicalDeviceMemoryProperties2* pMemoryProperties) {
+	pMemoryProperties->sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_PROPERTIES_2;
+	pMemoryProperties->memoryProperties = _memoryProperties;
+	for (auto* next = (VkBaseOutStructure*)pMemoryProperties->pNext; next; next = next->pNext) {
+		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
 				auto* budgetProps = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)next;
 				mvkClear(budgetProps->heapBudget, VK_MAX_MEMORY_HEAPS);
@@ -747,7 +825,6 @@ VkResult MVKPhysicalDevice::getPhysicalDeviceMemoryProperties(VkPhysicalDeviceMe
 			}
 			default:
 				break;
-			}
 		}
 	}
 	return VK_SUCCESS;
@@ -765,8 +842,9 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initMetalFeatures();        		// Call first.
 	initFeatures();             		// Call second.
 	initProperties();           		// Call third.
-	initMemoryProperties();
 	initExtensions();
+	initMemoryProperties();
+	initExternalMemoryProperties();
 	logGPUInfo();
 }
 
@@ -1470,8 +1548,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	if (regID) {
 		entry = IOServiceGetMatchingService(kIOMasterPortDefault, IORegistryEntryIDMatching(regID));
 		if (entry) {
-			// That returned the IOGraphicsAccelerator nub. Its parent, then, is the actual
-			// PCI device.
+			// That returned the IOGraphicsAccelerator nub. Its parent, then, is the actual PCI device.
 			io_registry_entry_t parent;
 			if (IORegistryEntryGetParentEntry(entry, kIOServicePlane, &parent) == kIOReturnSuccess) {
 				isFound = true;
@@ -1665,7 +1742,7 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mvkVersion);
 	uuidComponentOffset += sizeof(mvkVersion);
 
-	// Next 4 bytes contains hightest Metal feature set supported by this device
+	// Next 4 bytes contains highest Metal feature set supported by this device
 	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
 	uuidComponentOffset += sizeof(mtlFeatSet);
@@ -1890,6 +1967,23 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 #if MVK_MACOS
 	return 0;
 #endif
+}
+
+void MVKPhysicalDevice::initExternalMemoryProperties() {
+
+	// Buffers
+	_mtlBufferExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
+																 VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+																 VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
+	_mtlBufferExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
+	_mtlBufferExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
+
+	// Images
+	_mtlTextureExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
+																  VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+																  VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
+	_mtlTextureExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
+	_mtlTextureExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
 }
 
 void MVKPhysicalDevice::initExtensions() {
@@ -2815,8 +2909,7 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 					   &pdFeats2.features.robustBufferAccess, 55);
 	}
 
-	auto* next = (MVKVkAPIStructHeader*)pCreateInfo->pNext;
-	while (next) {
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2: {
 				auto* requestedFeatures = (VkPhysicalDeviceFeatures2*)next;
@@ -2905,7 +2998,6 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 			default:
 				break;
 		}
-		next = (MVKVkAPIStructHeader*)next->pNext;
 	}
 }
 

@@ -130,6 +130,9 @@ public:
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
 
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
+
 	/** Applies the specified global memory barrier. */
     void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
                             VkPipelineStageFlags dstStageMask,
@@ -235,6 +238,7 @@ protected:
 	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
+	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 	id<MTLTexture> newMTLTexture();
 	void releaseMTLTexture();
     void releaseIOSurface();
@@ -380,7 +384,7 @@ class MVKPeerSwapchainImage : public MVKSwapchainImage {
 public:
 
 	/** Binds this resource according to the specified bind information. */
-	VkResult bindDeviceMemory2(const void* pBindInfo) override;
+	VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) override;
 
 
 #pragma mark Construction
