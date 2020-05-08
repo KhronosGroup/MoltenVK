@@ -41,15 +41,15 @@ MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::operator+= (const 
 
 #pragma mark MVKShaderResourceBinding
 
-uint32_t MVKShaderResourceBinding::getMaxBufferIndex() {
+uint16_t MVKShaderResourceBinding::getMaxBufferIndex() {
 	return std::max({stages[kMVKShaderStageVertex].bufferIndex, stages[kMVKShaderStageTessCtl].bufferIndex, stages[kMVKShaderStageTessEval].bufferIndex, stages[kMVKShaderStageFragment].bufferIndex, stages[kMVKShaderStageCompute].bufferIndex});
 }
 
-uint32_t MVKShaderResourceBinding::getMaxTextureIndex() {
+uint16_t MVKShaderResourceBinding::getMaxTextureIndex() {
 	return std::max({stages[kMVKShaderStageVertex].textureIndex, stages[kMVKShaderStageTessCtl].textureIndex, stages[kMVKShaderStageTessEval].textureIndex, stages[kMVKShaderStageFragment].textureIndex, stages[kMVKShaderStageCompute].textureIndex});
 }
 
-uint32_t MVKShaderResourceBinding::getMaxSamplerIndex() {
+uint16_t MVKShaderResourceBinding::getMaxSamplerIndex() {
 	return std::max({stages[kMVKShaderStageVertex].samplerIndex, stages[kMVKShaderStageTessCtl].samplerIndex, stages[kMVKShaderStageTessEval].samplerIndex, stages[kMVKShaderStageFragment].samplerIndex, stages[kMVKShaderStageCompute].samplerIndex});
 }
 

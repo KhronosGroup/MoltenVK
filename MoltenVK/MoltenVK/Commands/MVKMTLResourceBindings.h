@@ -23,15 +23,15 @@
 /** Describes a MTLTexture resource binding. */
 typedef struct {
     union { id<MTLTexture> mtlTexture = nil; id<MTLTexture> mtlResource; }; // aliases
-    uint32_t index = 0;
     uint32_t swizzle = 0;
+	uint16_t index = 0;
     bool isDirty = true;
 } MVKMTLTextureBinding;
 
 /** Describes a MTLSamplerState resource binding. */
 typedef struct {
     union { id<MTLSamplerState> mtlSamplerState = nil; id<MTLSamplerState> mtlResource; }; // aliases
-    uint32_t index = 0;
+    uint16_t index = 0;
     bool isDirty = true;
 } MVKMTLSamplerStateBinding;
 
@@ -39,8 +39,8 @@ typedef struct {
 typedef struct {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
     NSUInteger offset = 0;
-    uint32_t index = 0;
     uint32_t size = 0;
+	uint16_t index = 0;
     bool isDirty = true;
     bool isInline = false;
 } MVKMTLBufferBinding;
@@ -49,6 +49,6 @@ typedef struct {
 typedef struct {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases
     NSUInteger offset = 0;
-    MTLIndexType mtlIndexType;
+    uint8_t mtlIndexType;		// MTLIndexType
     bool isDirty = true;
 } MVKIndexMTLBufferBinding;

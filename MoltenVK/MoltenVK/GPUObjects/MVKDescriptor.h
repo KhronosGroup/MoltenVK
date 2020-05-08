@@ -31,9 +31,9 @@ class MVKCommandEncoder;
 
 /** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
 typedef struct MVKShaderStageResourceBinding {
-	uint32_t bufferIndex = 0;
-	uint32_t textureIndex = 0;
-	uint32_t samplerIndex = 0;
+	uint16_t bufferIndex = 0;
+	uint16_t textureIndex = 0;
+	uint16_t samplerIndex = 0;
 
 	MVKShaderStageResourceBinding operator+ (const MVKShaderStageResourceBinding& rhs);
 	MVKShaderStageResourceBinding& operator+= (const MVKShaderStageResourceBinding& rhs);
@@ -47,9 +47,9 @@ typedef struct MVKShaderStageResourceBinding {
 typedef struct MVKShaderResourceBinding {
 	MVKShaderStageResourceBinding stages[kMVKShaderStageMax];
 
-	uint32_t getMaxBufferIndex();
-	uint32_t getMaxTextureIndex();
-	uint32_t getMaxSamplerIndex();
+	uint16_t getMaxBufferIndex();
+	uint16_t getMaxTextureIndex();
+	uint16_t getMaxSamplerIndex();
 
 	MVKShaderResourceBinding operator+ (const MVKShaderResourceBinding& rhs);
 	MVKShaderResourceBinding& operator+= (const MVKShaderResourceBinding& rhs);
