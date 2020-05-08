@@ -128,11 +128,21 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 	}
 
 // Add one of two commands, based on comparing a command parameter against a threshold value
-#define MVKAddCmdFromThreshold(baseCmdType, value, threshold, vkCmdBuff, ...)	\
-	if (value <= threshold) {													\
-		MVKAddCmd(baseCmdType ##threshold, vkCmdBuff, ##__VA_ARGS__);			\
-	} else {																	\
-		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);				\
+#define MVKAddCmdFromThreshold(baseCmdType, value, threshold, vkCmdBuff, ...)					\
+	if (value <= threshold) {																	\
+		MVKAddCmd(baseCmdType ##threshold, vkCmdBuff, ##__VA_ARGS__);							\
+	} else {																					\
+		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);								\
+	}
+
+// Add one of three commands, based on comparing a command parameter against two threshold values
+#define MVKAddCmdFromTwoThresholds(baseCmdType, value, threshold1, threshold2, vkCmdBuff, ...)	\
+	if (value <= threshold1) {																	\
+		MVKAddCmd(baseCmdType ##threshold1, vkCmdBuff, ##__VA_ARGS__);							\
+	} else if (value <= threshold2) {															\
+		MVKAddCmd(baseCmdType ##threshold2, vkCmdBuff, ##__VA_ARGS__);							\
+	} else {																					\
+		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);								\
 	}
 
 
@@ -1452,7 +1462,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindVertexBuffers(
     const VkDeviceSize*                         pOffsets) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BindVertexBuffers, commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
+	MVKAddCmdFromTwoThresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1814,7 +1824,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
     VkSubpassContents							contents) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmdFromThreshold(BeginRenderPass, pRenderPassBegin->clearValueCount, 2, commandBuffer,pRenderPassBegin, contents);
+	MVKAddCmdFromTwoThresholds(BeginRenderPass, pRenderPassBegin->clearValueCount, 1, 2, commandBuffer,pRenderPassBegin, contents);
 	MVKTraceVulkanCallEnd();
 }
 

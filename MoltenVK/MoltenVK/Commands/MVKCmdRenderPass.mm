@@ -58,6 +58,7 @@ void MVKCmdBeginRenderPass<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->beginRenderpass(_contents, _renderPass, _framebuffer, _renderArea, &_clearValues, _loadOverride, _storeOverride);
 }
 
+template class MVKCmdBeginRenderPass<1>;
 template class MVKCmdBeginRenderPass<2>;
 template class MVKCmdBeginRenderPass<9>;
 

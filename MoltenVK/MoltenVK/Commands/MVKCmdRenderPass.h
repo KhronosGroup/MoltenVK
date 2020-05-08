@@ -56,6 +56,7 @@ protected:
 };
 
 // Concrete template class implementations.
+typedef MVKCmdBeginRenderPass<1> MVKCmdBeginRenderPass1;
 typedef MVKCmdBeginRenderPass<2> MVKCmdBeginRenderPass2;
 typedef MVKCmdBeginRenderPass<9> MVKCmdBeginRenderPassMulti;
 

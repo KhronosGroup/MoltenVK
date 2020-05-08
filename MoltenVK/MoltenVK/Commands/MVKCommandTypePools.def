@@ -45,10 +45,15 @@
 	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold)		\
 	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi)
 
+#define MVK_CMD_TYPE_POOLS_FROM_TWO_THRESHOLDS(cmdType, threshold1, threshold2)	\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold1)						\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold2)						\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi)
+
 
 MVK_CMD_TYPE_POOL(PipelineBarrier)
 MVK_CMD_TYPE_POOL(BindPipeline)
-MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(BeginRenderPass, 2)
+MVK_CMD_TYPE_POOLS_FROM_TWO_THRESHOLDS(BeginRenderPass, 1, 2)
 MVK_CMD_TYPE_POOL(NextSubpass)
 MVK_CMD_TYPE_POOL(EndRenderPass)
 MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(ExecuteCommands, 1)
@@ -62,7 +67,7 @@ MVK_CMD_TYPE_POOL(SetDepthBounds)
 MVK_CMD_TYPE_POOL(SetStencilCompareMask)
 MVK_CMD_TYPE_POOL(SetStencilWriteMask)
 MVK_CMD_TYPE_POOL(SetStencilReference)
-MVK_CMD_TYPE_POOL(BindVertexBuffers)
+MVK_CMD_TYPE_POOLS_FROM_TWO_THRESHOLDS(BindVertexBuffers, 1, 2)
 MVK_CMD_TYPE_POOL(BindIndexBuffer)
 MVK_CMD_TYPE_POOL(Draw)
 MVK_CMD_TYPE_POOL(DrawIndexed)

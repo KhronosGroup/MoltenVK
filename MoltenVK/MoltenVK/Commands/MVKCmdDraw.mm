@@ -28,11 +28,12 @@
 #pragma mark -
 #pragma mark MVKCmdBindVertexBuffers
 
-VkResult MVKCmdBindVertexBuffers::setContent(MVKCommandBuffer* cmdBuff,
-											 uint32_t startBinding,
-											 uint32_t bindingCount,
-											 const VkBuffer* pBuffers,
-											 const VkDeviceSize* pOffsets) {
+template <size_t N>
+VkResult MVKCmdBindVertexBuffers<N>::setContent(MVKCommandBuffer* cmdBuff,
+												uint32_t startBinding,
+												uint32_t bindingCount,
+												const VkBuffer* pBuffers,
+												const VkDeviceSize* pOffsets) {
 
 	MVKDevice* mvkDvc = cmdBuff->getDevice();
 	_bindings.clear();	// Clear for reuse
@@ -49,9 +50,14 @@ VkResult MVKCmdBindVertexBuffers::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdBindVertexBuffers::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdBindVertexBuffers<N>::encode(MVKCommandEncoder* cmdEncoder) {
     for (auto& b : _bindings) { cmdEncoder->_graphicsResourcesState.bindBuffer(kMVKShaderStageVertex, b); }
 }
+
+template class MVKCmdBindVertexBuffers<1>;
+template class MVKCmdBindVertexBuffers<2>;
+template class MVKCmdBindVertexBuffers<8>;
 
 
 #pragma mark -
