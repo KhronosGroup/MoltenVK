@@ -119,10 +119,9 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char*
 
 	// If message is too big for original buffer, allocate a buffer big enough to hold it and
 	// write the message out again. We only want to do this double writing if we have to.
-	// Create the redoBuff outside scope of if block to allow it to be referencable by pMessage later below.
 	int redoBuffSize = (msgLen >= kOrigBuffSize) ? msgLen + 1 : 0;
-	char redoBuff[redoBuffSize];
-	if (redoBuffSize > 0) {
+	char *redoBuff = NULL;
+	if (redoBuffSize > 0 && (redoBuff = (char *)malloc(redoBuffSize))) {
 		pMessage = redoBuff;
 		vsnprintf(redoBuff, redoBuffSize, format, redoArgs);
 	}
@@ -135,6 +134,8 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char*
 
 	// Broadcast the message to any Vulkan debug report callbacks
 	if (hasDebugCallbacks) { mvkInst->debugReportMessage(mvkAPIObj, aslLvl, pMessage); }
+
+	free(redoBuff);
 }
 
 VkResult MVKBaseObject::reportError(VkResult vkErr, const char* format, ...) {
