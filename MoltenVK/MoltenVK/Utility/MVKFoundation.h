@@ -321,6 +321,9 @@ static inline bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkCompone
 			mvkVKComponentSwizzlesMatch(cm1.a, cm2.a, VK_COMPONENT_SWIZZLE_A));
 }
 
+/** Print the size of the type. */
+#define mvkPrintSizeOf(type)    printf("Size of " #type " is %lu.\n", sizeof(type))
+
 
 #pragma mark -
 #pragma mark Template functions

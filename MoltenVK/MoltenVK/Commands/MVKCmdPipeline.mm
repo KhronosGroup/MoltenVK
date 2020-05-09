@@ -30,99 +30,123 @@
 #pragma mark -
 #pragma mark MVKCmdPipelineBarrier
 
-VkResult MVKCmdPipelineBarrier::setContent(MVKCommandBuffer* cmdBuff,
-										   VkPipelineStageFlags srcStageMask,
-										   VkPipelineStageFlags dstStageMask,
-										   VkDependencyFlags dependencyFlags,
-										   uint32_t memoryBarrierCount,
-										   const VkMemoryBarrier* pMemoryBarriers,
-										   uint32_t bufferMemoryBarrierCount,
-										   const VkBufferMemoryBarrier* pBufferMemoryBarriers,
-										   uint32_t imageMemoryBarrierCount,
-										   const VkImageMemoryBarrier* pImageMemoryBarriers) {
+template <size_t N>
+VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
+											  VkPipelineStageFlags srcStageMask,
+											  VkPipelineStageFlags dstStageMask,
+											  VkDependencyFlags dependencyFlags,
+											  uint32_t memoryBarrierCount,
+											  const VkMemoryBarrier* pMemoryBarriers,
+											  uint32_t bufferMemoryBarrierCount,
+											  const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+											  uint32_t imageMemoryBarrierCount,
+											  const VkImageMemoryBarrier* pImageMemoryBarriers) {
 	_srcStageMask = srcStageMask;
 	_dstStageMask = dstStageMask;
 	_dependencyFlags = dependencyFlags;
 
-	_memoryBarriers.clear();	// Clear for reuse
-	_memoryBarriers.reserve(memoryBarrierCount);
+	_barriers.clear();	// Clear for reuse
+	_barriers.reserve(memoryBarrierCount + bufferMemoryBarrierCount + imageMemoryBarrierCount);
+
 	for (uint32_t i = 0; i < memoryBarrierCount; i++) {
-		_memoryBarriers.push_back(pMemoryBarriers[i]);
+		_barriers.emplace_back(pMemoryBarriers[i]);
 	}
-
-	_bufferMemoryBarriers.clear();	// Clear for reuse
-	_bufferMemoryBarriers.reserve(bufferMemoryBarrierCount);
 	for (uint32_t i = 0; i < bufferMemoryBarrierCount; i++) {
-		_bufferMemoryBarriers.push_back(pBufferMemoryBarriers[i]);
+		_barriers.emplace_back(pBufferMemoryBarriers[i]);
 	}
-
-	_imageMemoryBarriers.clear();	// Clear for reuse
-	_imageMemoryBarriers.reserve(imageMemoryBarrierCount);
 	for (uint32_t i = 0; i < imageMemoryBarrierCount; i++) {
-		_imageMemoryBarriers.push_back(pImageMemoryBarriers[i]);
+		_barriers.emplace_back(pImageMemoryBarriers[i]);
 	}
 
 	return VK_SUCCESS;
 }
 
-void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 #if MVK_MACOS
-    // Calls below invoke MTLBlitCommandEncoder so must apply this first.
+	// Calls below invoke MTLBlitCommandEncoder so must apply this first.
 	// Check if pipeline barriers are available and we are in a renderpass.
 	if (cmdEncoder->getDevice()->_pMetalFeatures->memoryBarriers && cmdEncoder->_mtlRenderEncoder) {
 		MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_srcStageMask, false);
 		MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_dstStageMask, true);
-		for (auto& mb : _memoryBarriers) {
-			MTLBarrierScope scope = mvkMTLBarrierScopeFromVkAccessFlags(mb.dstAccessMask);
-			scope |= mvkMTLBarrierScopeFromVkAccessFlags(mb.srcAccessMask);
-			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithScope: scope
-													  afterStages: srcStages
-													 beforeStages: dstStages];
+
+		id<MTLResource> resources[_barriers.size()];
+		uint32_t rezCnt = 0;
+
+		for (auto& b : _barriers) {
+			switch (b.type) {
+				case MVKPipelineBarrier::Memory: {
+					MTLBarrierScope scope = (mvkMTLBarrierScopeFromVkAccessFlags(b.srcAccessMask) |
+											 mvkMTLBarrierScopeFromVkAccessFlags(b.dstAccessMask));
+					[cmdEncoder->_mtlRenderEncoder memoryBarrierWithScope: scope
+															  afterStages: srcStages
+															 beforeStages: dstStages];
+					break;
+				}
+
+				case MVKPipelineBarrier::Buffer:
+					resources[rezCnt++] = b.mvkBuffer->getMTLBuffer();
+					break;
+
+				case MVKPipelineBarrier::Image:
+					resources[rezCnt++] = b.mvkImage->getMTLTexture();
+					break;
+
+				default:
+					break;
+			}
 		}
-		MVKVectorInline<id<MTLResource>, 16> resources;
-		resources.reserve(_bufferMemoryBarriers.size() + _imageMemoryBarriers.size());
-		for (auto& mb : _bufferMemoryBarriers) {
-			auto* mvkBuff = (MVKBuffer*)mb.buffer;
-			resources.push_back(mvkBuff->getMTLBuffer());
-		}
-		for (auto& mb : _imageMemoryBarriers) {
-			auto* mvkImg = (MVKImage*)mb.image;
-			resources.push_back(mvkImg->getMTLTexture());
-		}
-		if ( !resources.empty() ) {
-			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: resources.data()
-																count: resources.size()
+
+		if (rezCnt) {
+			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: resources
+																count: rezCnt
 														  afterStages: srcStages
 														 beforeStages: dstStages];
 		}
 	} else {
-		if ( !(_memoryBarriers.empty() && _imageMemoryBarriers.empty()) ) {
-			[cmdEncoder->_mtlRenderEncoder textureBarrier];
-		}
+		if (coversTextures()) { [cmdEncoder->_mtlRenderEncoder textureBarrier]; }
 	}
 #endif
 
 	MVKDevice* mvkDvc = cmdEncoder->getDevice();
-    MVKCommandUse cmdUse = kMVKCommandUsePipelineBarrier;
+	MVKCommandUse cmdUse = kMVKCommandUsePipelineBarrier;
 
-	// Apply global memory barriers
-    for (auto& mb : _memoryBarriers) {
-        mvkDvc->applyMemoryBarrier(_srcStageMask, _dstStageMask, &mb, cmdEncoder, cmdUse);
-    }
+	for (auto& b : _barriers) {
+		switch (b.type) {
+			case MVKPipelineBarrier::Memory:
+				mvkDvc->applyMemoryBarrier(_srcStageMask, _dstStageMask, b, cmdEncoder, cmdUse);
+				break;
 
-    // Apply specific buffer barriers
-    for (auto& mb : _bufferMemoryBarriers) {
-        MVKBuffer* mvkBuff = (MVKBuffer*)mb.buffer;
-        mvkBuff->applyBufferMemoryBarrier(_srcStageMask, _dstStageMask, &mb, cmdEncoder, cmdUse);
-    }
+			case MVKPipelineBarrier::Buffer:
+				b.mvkBuffer->applyBufferMemoryBarrier(_srcStageMask, _dstStageMask, b, cmdEncoder, cmdUse);
+				break;
 
-    // Apply specific image barriers
-    for (auto& mb : _imageMemoryBarriers) {
-        MVKImage* mvkImg = (MVKImage*)mb.image;
-        mvkImg->applyImageMemoryBarrier(_srcStageMask, _dstStageMask, &mb, cmdEncoder, cmdUse);
-    }
+			case MVKPipelineBarrier::Image:
+				b.mvkImage->applyImageMemoryBarrier(_srcStageMask, _dstStageMask, b, cmdEncoder, cmdUse);
+				break;
+
+			default:
+				break;
+		}
+	}
 }
+
+template <size_t N>
+bool MVKCmdPipelineBarrier<N>::coversTextures() {
+	for (auto& b : _barriers) {
+		switch (b.type) {
+			case MVKPipelineBarrier::Memory:	return true;
+			case MVKPipelineBarrier::Image: 	return true;
+			default: 							break;
+		}
+	}
+	return false;
+}
+
+template class MVKCmdPipelineBarrier<1>;
+template class MVKCmdPipelineBarrier<4>;
+template class MVKCmdPipelineBarrier<32>;
 
 
 #pragma mark -

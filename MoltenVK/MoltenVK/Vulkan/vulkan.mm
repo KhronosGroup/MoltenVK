@@ -1739,10 +1739,11 @@ MVK_PUBLIC_SYMBOL void vkCmdPipelineBarrier(
 	const VkImageMemoryBarrier*                 pImageMemoryBarriers) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(PipelineBarrier, commandBuffer, srcStageMask, dstStageMask, dependencyFlags,
-			  memoryBarrierCount, pMemoryBarriers,
-			  bufferMemoryBarrierCount, pBufferMemoryBarriers,
-			  imageMemoryBarrierCount, pImageMemoryBarriers);
+	uint32_t barrierCount = memoryBarrierCount + bufferMemoryBarrierCount + imageMemoryBarrierCount;
+	MVKAddCmdFromTwoThresholds(PipelineBarrier, barrierCount, 1, 4, commandBuffer, srcStageMask, dstStageMask, dependencyFlags,
+							   memoryBarrierCount, pMemoryBarriers,
+							   bufferMemoryBarrierCount, pBufferMemoryBarriers,
+							   imageMemoryBarrierCount, pImageMemoryBarriers);
 	MVKTraceVulkanCallEnd();
 }
 

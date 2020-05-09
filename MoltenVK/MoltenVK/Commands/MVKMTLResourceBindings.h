@@ -18,7 +18,15 @@
 
 #pragma once
 
+#include "mvk_vulkan.h"
+
 #import <Metal/Metal.h>
+
+
+class MVKResource;
+class MVKBuffer;
+class MVKImage;
+
 
 /** Describes a MTLTexture resource binding. */
 typedef struct {
@@ -38,7 +46,7 @@ typedef struct {
 /** Describes a MTLBuffer resource binding. */
 typedef struct {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
-    NSUInteger offset = 0;
+    VkDeviceSize offset = 0;
     uint32_t size = 0;
 	uint16_t index = 0;
     bool isDirty = true;
@@ -48,7 +56,78 @@ typedef struct {
 /** Describes a MTLBuffer resource binding as used for an index buffer. */
 typedef struct {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases
-    NSUInteger offset = 0;
-    uint8_t mtlIndexType;		// MTLIndexType
+    VkDeviceSize offset = 0;
+    uint8_t mtlIndexType = 0;		// MTLIndexType
     bool isDirty = true;
 } MVKIndexMTLBufferBinding;
+
+/** Concise and consistent structure for holding pipeline barrier info. */
+typedef struct MVKPipelineBarrier {
+
+	typedef enum : uint8_t {
+		None,
+		Memory,
+		Buffer,
+		Image,
+	} MVKPipelineBarrierType;
+
+	union { MVKBuffer* mvkBuffer = nullptr; MVKImage* mvkImage; MVKResource* mvkResource; };
+	union {
+		struct {
+			VkDeviceSize offset = 0;
+			VkDeviceSize size = 0;
+		};
+		struct {
+			VkImageLayout newLayout;
+			VkImageAspectFlags aspectMask;
+			uint16_t baseArrayLayer;
+			uint16_t layerCount;
+			uint8_t baseMipLevel;
+			uint8_t levelCount;
+		};
+	};
+	VkAccessFlags srcAccessMask = 0;
+	VkAccessFlags dstAccessMask = 0;
+	uint8_t srcQueueFamilyIndex = 0;
+	uint8_t dstQueueFamilyIndex = 0;
+
+	MVKPipelineBarrierType type = None;
+
+	bool isMemoryBarrier() { return type == Memory; }
+	bool isBufferBarrier() { return type == Buffer; }
+	bool isImageBarrier() { return type == Image; }
+
+	MVKPipelineBarrier(const VkMemoryBarrier& vkBarrier) :
+		type(Memory),
+		srcAccessMask(vkBarrier.srcAccessMask),
+		dstAccessMask(vkBarrier.dstAccessMask)
+		{}
+
+	MVKPipelineBarrier(const VkBufferMemoryBarrier& vkBarrier) :
+		type(Buffer),
+		srcAccessMask(vkBarrier.srcAccessMask),
+		dstAccessMask(vkBarrier.dstAccessMask),
+		srcQueueFamilyIndex(vkBarrier.srcQueueFamilyIndex),
+		dstQueueFamilyIndex(vkBarrier.dstQueueFamilyIndex),
+		mvkBuffer((MVKBuffer*)vkBarrier.buffer),
+		offset(vkBarrier.offset),
+		size(vkBarrier.size)
+		{}
+
+	MVKPipelineBarrier(const VkImageMemoryBarrier& vkBarrier) :
+		type(Image),
+		srcAccessMask(vkBarrier.srcAccessMask),
+		dstAccessMask(vkBarrier.dstAccessMask),
+		newLayout(vkBarrier.newLayout),
+		srcQueueFamilyIndex(vkBarrier.srcQueueFamilyIndex),
+		dstQueueFamilyIndex(vkBarrier.dstQueueFamilyIndex),
+		mvkImage((MVKImage*)vkBarrier.image),
+		aspectMask(vkBarrier.subresourceRange.aspectMask),
+		baseMipLevel(vkBarrier.subresourceRange.baseMipLevel),
+		levelCount(vkBarrier.subresourceRange.levelCount),
+		baseArrayLayer(vkBarrier.subresourceRange.baseArrayLayer),
+		layerCount(vkBarrier.subresourceRange.layerCount)
+		{}
+
+} MVKPipelineBarrier;
+

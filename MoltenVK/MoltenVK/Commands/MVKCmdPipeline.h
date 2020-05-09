@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKCommand.h"
+#include "MVKMTLResourceBindings.h"
 #include "MVKSync.h"
 #include "MVKVector.h"
 
@@ -32,7 +33,11 @@ class MVKDescriptorUpdateTemplate;
 #pragma mark -
 #pragma mark MVKCmdPipelineBarrier
 
-/** Represents an abstract Vulkan command to add a pipeline barrier. */
+/**
+ * Represents an abstract Vulkan command to add a pipeline barrier.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdPipelineBarrier : public MVKCommand {
 
 public:
@@ -51,14 +56,18 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	bool coversTextures();
 
 	VkPipelineStageFlags _srcStageMask;
 	VkPipelineStageFlags _dstStageMask;
 	VkDependencyFlags _dependencyFlags;
-	MVKVectorInline<VkMemoryBarrier, 4> _memoryBarriers;
-	MVKVectorInline<VkBufferMemoryBarrier, 4> _bufferMemoryBarriers;
-	MVKVectorInline<VkImageMemoryBarrier, 4> _imageMemoryBarriers;
+	MVKVectorInline<MVKPipelineBarrier, N> _barriers;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdPipelineBarrier<1> MVKCmdPipelineBarrier1;
+typedef MVKCmdPipelineBarrier<4> MVKCmdPipelineBarrier4;
+typedef MVKCmdPipelineBarrier<32> MVKCmdPipelineBarrierMulti;
 
 
 #pragma mark -

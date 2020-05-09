@@ -2529,14 +2529,14 @@ MVKResource* MVKDevice::removeResource(MVKResource* rez) {
 
 void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
-								   VkMemoryBarrier* pMemoryBarrier,
-                                   MVKCommandEncoder* cmdEncoder,
-                                   MVKCommandUse cmdUse) {
+								   MVKPipelineBarrier& barrier,
+								   MVKCommandEncoder* cmdEncoder,
+								   MVKCommandUse cmdUse) {
 	if (!mvkIsAnyFlagEnabled(dstStageMask, VK_PIPELINE_STAGE_HOST_BIT) ||
-		!mvkIsAnyFlagEnabled(pMemoryBarrier->dstAccessMask, VK_ACCESS_HOST_READ_BIT) ) { return; }
+		!mvkIsAnyFlagEnabled(barrier.dstAccessMask, VK_ACCESS_HOST_READ_BIT) ) { return; }
 	lock_guard<mutex> lock(_rezLock);
-    for (auto& rez : _resources) {
-		rez->applyMemoryBarrier(srcStageMask, dstStageMask, pMemoryBarrier, cmdEncoder, cmdUse);
+	for (auto& rez : _resources) {
+		rez->applyMemoryBarrier(srcStageMask, dstStageMask, barrier, cmdEncoder, cmdUse);
 	}
 }
 

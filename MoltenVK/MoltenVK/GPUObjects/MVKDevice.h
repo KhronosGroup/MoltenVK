@@ -20,6 +20,7 @@
 
 #include "MVKFoundation.h"
 #include "MVKVulkanAPIObject.h"
+#include "MVKMTLResourceBindings.h"
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
 #include "MVKVector.h"
@@ -561,9 +562,9 @@ public:
 	/** Applies the specified global memory barrier to all resource issued by this device. */
 	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 							VkPipelineStageFlags dstStageMask,
-							VkMemoryBarrier* pMemoryBarrier,
-                            MVKCommandEncoder* cmdEncoder,
-                            MVKCommandUse cmdUse);
+							MVKPipelineBarrier& barrier,
+							MVKCommandEncoder* cmdEncoder,
+							MVKCommandUse cmdUse);
 
     /**
 	 * If performance is being tracked, returns a monotonic timestamp value for use performance timestamping.
