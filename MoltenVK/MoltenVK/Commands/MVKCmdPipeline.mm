@@ -406,33 +406,44 @@ MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
 
 VkResult MVKCmdSetResetEvent::setContent(MVKCommandBuffer* cmdBuff,
 										 VkEvent event,
-										 VkPipelineStageFlags stageMask,
-										 bool status) {
+										 VkPipelineStageFlags stageMask) {
 	_mvkEvent = (MVKEvent*)event;
-	_status = status;
 
 	return VK_SUCCESS;
 }
 
-void MVKCmdSetResetEvent::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->signalEvent(_mvkEvent, _status);
+
+#pragma mark -
+#pragma mark MVKCmdSetEvent
+
+void MVKCmdSetEvent::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->signalEvent(_mvkEvent, true);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdResetEvent
+
+void MVKCmdResetEvent::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->signalEvent(_mvkEvent, false);
 }
 
 
 #pragma mark -
 #pragma mark MVKCmdWaitEvents
 
-VkResult MVKCmdWaitEvents::setContent(MVKCommandBuffer* cmdBuff,
-									  uint32_t eventCount,
-									  const VkEvent* pEvents,
-									  VkPipelineStageFlags srcStageMask,
-									  VkPipelineStageFlags dstStageMask,
-									  uint32_t memoryBarrierCount,
-									  const VkMemoryBarrier* pMemoryBarriers,
-									  uint32_t bufferMemoryBarrierCount,
-									  const VkBufferMemoryBarrier* pBufferMemoryBarriers,
-									  uint32_t imageMemoryBarrierCount,
-									  const VkImageMemoryBarrier* pImageMemoryBarriers) {
+template <size_t N>
+VkResult MVKCmdWaitEvents<N>::setContent(MVKCommandBuffer* cmdBuff,
+										 uint32_t eventCount,
+										 const VkEvent* pEvents,
+										 VkPipelineStageFlags srcStageMask,
+										 VkPipelineStageFlags dstStageMask,
+										 uint32_t memoryBarrierCount,
+										 const VkMemoryBarrier* pMemoryBarriers,
+										 uint32_t bufferMemoryBarrierCount,
+										 const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+										 uint32_t imageMemoryBarrierCount,
+										 const VkImageMemoryBarrier* pImageMemoryBarriers) {
 	_mvkEvents.clear();	// Clear for reuse
 	_mvkEvents.reserve(eventCount);
 	for (uint32_t i = 0; i < eventCount; i++) {
@@ -442,9 +453,13 @@ VkResult MVKCmdWaitEvents::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdWaitEvents::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdWaitEvents<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	for (MVKEvent* mvkEvt : _mvkEvents) {
 		mvkEvt->encodeWait(cmdEncoder->_mtlCmdBuffer);
 	}
 }
+
+template class MVKCmdWaitEvents<1>;
+template class MVKCmdWaitEvents<8>;
 

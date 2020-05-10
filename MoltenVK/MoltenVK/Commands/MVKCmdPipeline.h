@@ -34,7 +34,7 @@ class MVKDescriptorUpdateTemplate;
 #pragma mark MVKCmdPipelineBarrier
 
 /**
- * Represents an abstract Vulkan command to add a pipeline barrier.
+ * Vulkan command to add a pipeline barrier.
  * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
 template <size_t N>
@@ -208,22 +208,46 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdSetResetEvent
 
-/** Vulkan command to set or reset an event. */
+/** Abstract Vulkan command to set or reset an event. */
 class MVKCmdSetResetEvent : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						VkEvent event,
-						VkPipelineStageFlags stageMask,
-						bool status);
+						VkPipelineStageFlags stageMask);
 
+protected:
+	MVKEvent* _mvkEvent;
+
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetEvent
+
+/** Vulkan command to set an event. */
+class MVKCmdSetEvent : public MVKCmdSetResetEvent {
+
+public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKEvent* _mvkEvent;
-	bool _status;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdResetEvent
+
+/** Vulkan command to reset an event. */
+class MVKCmdResetEvent : public MVKCmdSetResetEvent {
+
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 };
 
@@ -232,6 +256,11 @@ protected:
 #pragma mark MVKCmdWaitEvents
 
 /** Vulkan command to wait for an event to be signaled. */
+/**
+ * Vulkan command to wait for an event to be signaled.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdWaitEvents : public MVKCommand {
 
 public:
@@ -252,6 +281,10 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<MVKEvent*, 4> _mvkEvents;
+	MVKVectorInline<MVKEvent*, N> _mvkEvents;
 
 };
+
+// Concrete template class implementations.
+typedef MVKCmdWaitEvents<1> MVKCmdWaitEvents1;
+typedef MVKCmdWaitEvents<8> MVKCmdWaitEventsMulti;

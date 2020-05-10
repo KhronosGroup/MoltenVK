@@ -1688,9 +1688,9 @@ MVK_PUBLIC_SYMBOL void vkCmdSetEvent(
     VkCommandBuffer                             commandBuffer,
     VkEvent                                     event,
     VkPipelineStageFlags                        stageMask) {
-	
+
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(SetResetEvent, commandBuffer, event, stageMask, true);
+	MVKAddCmd(SetEvent, commandBuffer, event, stageMask);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1698,9 +1698,9 @@ MVK_PUBLIC_SYMBOL void vkCmdResetEvent(
     VkCommandBuffer                             commandBuffer,
     VkEvent                                     event,
     VkPipelineStageFlags                        stageMask) {
-	
+
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(SetResetEvent, commandBuffer, event, stageMask, false);
+	MVKAddCmd(ResetEvent, commandBuffer, event, stageMask);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1718,11 +1718,11 @@ MVK_PUBLIC_SYMBOL void vkCmdWaitEvents(
 	const VkImageMemoryBarrier*                 pImageMemoryBarriers) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(WaitEvents, commandBuffer, eventCount, pEvents,
-			  srcStageMask, dstStageMask,
-			  memoryBarrierCount, pMemoryBarriers,
-			  bufferMemoryBarrierCount, pBufferMemoryBarriers,
-			  imageMemoryBarrierCount, pImageMemoryBarriers);
+	MVKAddCmdFromThreshold(WaitEvents, eventCount, 1, commandBuffer,
+						   eventCount, pEvents, srcStageMask, dstStageMask,
+						   memoryBarrierCount, pMemoryBarriers,
+						   bufferMemoryBarrierCount, pBufferMemoryBarriers,
+						   imageMemoryBarrierCount, pImageMemoryBarriers);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1740,7 +1740,8 @@ MVK_PUBLIC_SYMBOL void vkCmdPipelineBarrier(
 
 	MVKTraceVulkanCallStart();
 	uint32_t barrierCount = memoryBarrierCount + bufferMemoryBarrierCount + imageMemoryBarrierCount;
-	MVKAddCmdFromTwoThresholds(PipelineBarrier, barrierCount, 1, 4, commandBuffer, srcStageMask, dstStageMask, dependencyFlags,
+	MVKAddCmdFromTwoThresholds(PipelineBarrier, barrierCount, 1, 4, commandBuffer,
+							   srcStageMask, dstStageMask, dependencyFlags,
 							   memoryBarrierCount, pMemoryBarriers,
 							   bufferMemoryBarrierCount, pBufferMemoryBarriers,
 							   imageMemoryBarrierCount, pImageMemoryBarriers);
