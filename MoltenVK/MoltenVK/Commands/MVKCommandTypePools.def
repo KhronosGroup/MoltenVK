@@ -52,7 +52,8 @@
 
 
 MVK_CMD_TYPE_POOLS_FROM_TWO_THRESHOLDS(PipelineBarrier, 1, 4)
-MVK_CMD_TYPE_POOL(BindPipeline)
+MVK_CMD_TYPE_POOL(BindGraphicsPipeline)
+MVK_CMD_TYPE_POOL(BindComputePipeline)
 MVK_CMD_TYPE_POOLS_FROM_TWO_THRESHOLDS(BeginRenderPass, 1, 2)
 MVK_CMD_TYPE_POOL(NextSubpass)
 MVK_CMD_TYPE_POOL(EndRenderPass)

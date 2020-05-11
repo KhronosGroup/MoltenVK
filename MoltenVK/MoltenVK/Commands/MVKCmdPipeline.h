@@ -73,23 +73,48 @@ typedef MVKCmdPipelineBarrier<32> MVKCmdPipelineBarrierMulti;
 #pragma mark -
 #pragma mark MVKCmdBindPipeline
 
-/** Vulkan command to bind the pipeline state. */
+/** Abstract Vulkan command to bind a pipeline. */
 class MVKCmdBindPipeline : public MVKCommand {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkPipelineBindPoint pipelineBindPoint,
-						VkPipeline pipeline);
+	VkResult setContent(MVKCommandBuffer* cmdBuff, VkPipeline pipeline);
 
+	virtual bool isTessellationPipeline() { return false; };
+
+protected:
+	MVKPipeline* _pipeline;
+
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdBindGraphicsPipeline
+
+/** Vulkan command to bind a graphics pipeline. */
+class MVKCmdBindGraphicsPipeline : public MVKCmdBindPipeline {
+
+public:
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	bool isTessellationPipeline();
+	bool isTessellationPipeline() override;
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	VkPipelineBindPoint _bindPoint;
-	MVKPipeline* _pipeline;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdBindComputePipeline
+
+/** Vulkan command to bind a compute pipeline. */
+class MVKCmdBindComputePipeline : public MVKCmdBindPipeline {
+
+public:
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 };
 

@@ -152,10 +152,7 @@ template class MVKCmdPipelineBarrier<32>;
 #pragma mark -
 #pragma mark MVKCmdBindPipeline
 
-VkResult MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff,
-										VkPipelineBindPoint pipelineBindPoint,
-										VkPipeline pipeline) {
-	_bindPoint = pipelineBindPoint;
+VkResult MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff, VkPipeline pipeline) {
 	_pipeline = (MVKPipeline*)pipeline;
 
 	cmdBuff->recordBindPipeline(this);
@@ -163,15 +160,24 @@ VkResult MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdBindPipeline::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->bindPipeline(_bindPoint, _pipeline);
+
+#pragma mark -
+#pragma mark MVKCmdBindGraphicsPipeline
+
+void MVKCmdBindGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline);
 }
 
-bool MVKCmdBindPipeline::isTessellationPipeline() {
-	if (_bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
-		return ((MVKGraphicsPipeline*)_pipeline)->isTessellationPipeline();
-	else
-		return false;
+bool MVKCmdBindGraphicsPipeline::isTessellationPipeline() {
+	return ((MVKGraphicsPipeline*)_pipeline)->isTessellationPipeline();
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdBindComputePipeline
+
+void MVKCmdBindComputePipeline::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, _pipeline);
 }
 
 

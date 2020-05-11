@@ -1332,7 +1332,18 @@ MVK_PUBLIC_SYMBOL void vkCmdBindPipeline(
     VkPipeline                                  pipeline) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BindPipeline, commandBuffer, pipelineBindPoint, pipeline);
+	switch (pipelineBindPoint) {
+		case VK_PIPELINE_BIND_POINT_GRAPHICS: {
+			MVKAddCmd(BindGraphicsPipeline, commandBuffer, pipeline);
+			break;
+		}
+		case VK_PIPELINE_BIND_POINT_COMPUTE: {
+			MVKAddCmd(BindComputePipeline, commandBuffer, pipeline);
+			break;
+		}
+		default:
+			break;
+	}
 	MVKTraceVulkanCallEnd();
 }
 
