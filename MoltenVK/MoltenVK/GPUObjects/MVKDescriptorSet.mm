@@ -38,7 +38,7 @@ uint32_t MVKDescriptorSetLayout::getDescriptorIndex(uint32_t binding, uint32_t e
 void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                MVKDescriptorSet* descSet,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                                               MVKVector<uint32_t>& dynamicOffsets,
+                                               MVKVector<uint32_t>* pDynamicOffsets,
                                                uint32_t* pDynamicOffsetIndex) {
     if (_isPushDescriptorLayout) return;
 
@@ -46,7 +46,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
     uint32_t bindCnt = (uint32_t)_bindings.size();
     for (uint32_t descIdx = 0, bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		descIdx += _bindings[bindIdx].bind(cmdEncoder, descSet, descIdx,
-										   dslMTLRezIdxOffsets, dynamicOffsets,
+										   dslMTLRezIdxOffsets, pDynamicOffsets,
 										   pDynamicOffsetIndex);
     }
 }

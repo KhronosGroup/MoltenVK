@@ -182,16 +182,15 @@ void MVKCmdBindComputePipeline::encode(MVKCommandEncoder* cmdEncoder) {
 
 
 #pragma mark -
-#pragma mark MVKCmdBindDescriptorSets
+#pragma mark MVKCmdBindDescriptorSetsStatic
 
-VkResult MVKCmdBindDescriptorSets::setContent(MVKCommandBuffer* cmdBuff,
-											  VkPipelineBindPoint pipelineBindPoint,
-											  VkPipelineLayout layout,
-											  uint32_t firstSet,
-											  uint32_t setCount,
-											  const VkDescriptorSet* pDescriptorSets,
-											  uint32_t dynamicOffsetCount,
-											  const uint32_t* pDynamicOffsets) {
+template <size_t N>
+VkResult MVKCmdBindDescriptorSetsStatic<N>::setContent(MVKCommandBuffer* cmdBuff,
+													   VkPipelineBindPoint pipelineBindPoint,
+													   VkPipelineLayout layout,
+													   uint32_t firstSet,
+													   uint32_t setCount,
+													   const VkDescriptorSet* pDescriptorSets) {
 	_pipelineBindPoint = pipelineBindPoint;
 	_pipelineLayout = (MVKPipelineLayout*)layout;
 	_firstSet = firstSet;
@@ -203,6 +202,35 @@ VkResult MVKCmdBindDescriptorSets::setContent(MVKCommandBuffer* cmdBuff,
 		_descriptorSets.push_back((MVKDescriptorSet*)pDescriptorSets[dsIdx]);
 	}
 
+	return VK_SUCCESS;
+}
+
+template <size_t N>
+void MVKCmdBindDescriptorSetsStatic<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	_pipelineLayout->bindDescriptorSets(cmdEncoder, _descriptorSets, _firstSet, nullptr);
+}
+
+template class MVKCmdBindDescriptorSetsStatic<1>;
+template class MVKCmdBindDescriptorSetsStatic<4>;
+template class MVKCmdBindDescriptorSetsStatic<8>;
+
+
+#pragma mark -
+#pragma mark MVKCmdBindDescriptorSetsDynamic
+
+template <size_t N>
+VkResult MVKCmdBindDescriptorSetsDynamic<N>::setContent(MVKCommandBuffer* cmdBuff,
+														VkPipelineBindPoint pipelineBindPoint,
+														VkPipelineLayout layout,
+														uint32_t firstSet,
+														uint32_t setCount,
+														const VkDescriptorSet* pDescriptorSets,
+														uint32_t dynamicOffsetCount,
+														const uint32_t* pDynamicOffsets) {
+
+	MVKCmdBindDescriptorSetsStatic<N>::setContent(cmdBuff, pipelineBindPoint, layout,
+												  firstSet, setCount, pDescriptorSets);
+
 	// Add the dynamic offsets
 	_dynamicOffsets.clear();	// Clear for reuse
 	_dynamicOffsets.reserve(dynamicOffsetCount);
@@ -213,9 +241,13 @@ VkResult MVKCmdBindDescriptorSets::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdBindDescriptorSets::encode(MVKCommandEncoder* cmdEncoder) {
-	_pipelineLayout->bindDescriptorSets(cmdEncoder, _descriptorSets, _firstSet, _dynamicOffsets);
+template <size_t N>
+void MVKCmdBindDescriptorSetsDynamic<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	MVKCmdBindDescriptorSetsStatic<N>::_pipelineLayout->bindDescriptorSets(cmdEncoder, MVKCmdBindDescriptorSetsStatic<N>::_descriptorSets, MVKCmdBindDescriptorSetsStatic<N>::_firstSet, &_dynamicOffsets);
 }
+
+template class MVKCmdBindDescriptorSetsDynamic<4>;
+template class MVKCmdBindDescriptorSetsDynamic<8>;
 
 
 #pragma mark -

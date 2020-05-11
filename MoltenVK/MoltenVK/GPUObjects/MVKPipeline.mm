@@ -40,7 +40,7 @@ using namespace SPIRV_CROSS_NAMESPACE;
 void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
                                            MVKVector<MVKDescriptorSet*>& descriptorSets,
                                            uint32_t firstSet,
-                                           MVKVector<uint32_t>& dynamicOffsets) {
+                                           MVKVector<uint32_t>* pDynamicOffsets) {
 	clearConfigurationResult();
 	uint32_t pDynamicOffsetIndex = 0;
 	uint32_t dsCnt = (uint32_t)descriptorSets.size();
@@ -50,7 +50,7 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[dslIdx];
 		dsl->bindDescriptorSet(cmdEncoder, descSet,
 							   _dslMTLResourceIndexOffsets[dslIdx],
-							   dynamicOffsets, &pDynamicOffsetIndex);
+							   pDynamicOffsets, &pDynamicOffsetIndex);
 		setConfigurationResult(dsl->getConfigurationResult());
 	}
 }

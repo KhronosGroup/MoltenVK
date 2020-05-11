@@ -1449,8 +1449,13 @@ MVK_PUBLIC_SYMBOL void vkCmdBindDescriptorSets(
     const uint32_t*                             pDynamicOffsets) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BindDescriptorSets, commandBuffer, pipelineBindPoint, layout,
-			  firstSet, setCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
+	if (dynamicOffsetCount) {
+		MVKAddCmdFromThreshold(BindDescriptorSetsDynamic, setCount, 4, commandBuffer, pipelineBindPoint, layout,
+				  firstSet, setCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
+	} else {
+		MVKAddCmdFromTwoThresholds(BindDescriptorSetsStatic, setCount, 1, 4, commandBuffer, pipelineBindPoint, layout,
+				  firstSet, setCount, pDescriptorSets);
+	}
 	MVKTraceVulkanCallEnd();
 }
 

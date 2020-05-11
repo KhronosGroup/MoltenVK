@@ -120,10 +120,49 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKCmdBindDescriptorSets
+#pragma mark MVKCmdBindDescriptorSetsStatic
 
-/** Vulkan command to bind descriptor sets. */
-class MVKCmdBindDescriptorSets : public MVKCommand {
+/**
+ * Vulkan command to bind descriptor sets without dynamic offsets.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdBindDescriptorSetsStatic : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						VkPipelineBindPoint pipelineBindPoint,
+						VkPipelineLayout layout,
+						uint32_t firstSet,
+						uint32_t setCount,
+						const VkDescriptorSet* pDescriptorSets);
+
+	void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+	MVKVectorInline<MVKDescriptorSet*, N> _descriptorSets;
+	MVKPipelineLayout* _pipelineLayout;
+	VkPipelineBindPoint _pipelineBindPoint;
+	uint32_t _firstSet;
+};
+
+// Concrete template class implementations.
+typedef MVKCmdBindDescriptorSetsStatic<1> MVKCmdBindDescriptorSetsStatic1;
+typedef MVKCmdBindDescriptorSetsStatic<4> MVKCmdBindDescriptorSetsStatic4;
+typedef MVKCmdBindDescriptorSetsStatic<8> MVKCmdBindDescriptorSetsStaticMulti;
+
+
+#pragma mark -
+#pragma mark MVKCmdBindDescriptorSetsDynamic
+
+/**
+ * Vulkan command to bind descriptor sets with dynamic offsets.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdBindDescriptorSetsDynamic : public MVKCmdBindDescriptorSetsStatic<N> {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
@@ -140,12 +179,12 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	VkPipelineBindPoint _pipelineBindPoint;
-	MVKPipelineLayout* _pipelineLayout;
-	MVKVectorInline<MVKDescriptorSet*, 8> _descriptorSets;
-	MVKVectorInline<uint32_t, 8>          _dynamicOffsets;
-	uint32_t _firstSet;
+	MVKVectorInline<uint32_t, N> _dynamicOffsets;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdBindDescriptorSetsDynamic<4> MVKCmdBindDescriptorSetsDynamic4;
+typedef MVKCmdBindDescriptorSetsDynamic<8> MVKCmdBindDescriptorSetsDynamicMulti;
 
 
 #pragma mark -

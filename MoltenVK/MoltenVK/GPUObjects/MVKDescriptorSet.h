@@ -46,7 +46,7 @@ public:
     void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                            MVKDescriptorSet* descSet,
                            MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                           MVKVector<uint32_t>& dynamicOffsets,
+                           MVKVector<uint32_t>* pDynamicOffsets,
                            uint32_t* pDynamicOffsetIndex);
 
 
