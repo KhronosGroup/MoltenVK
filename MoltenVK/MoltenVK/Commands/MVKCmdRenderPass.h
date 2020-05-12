@@ -48,11 +48,11 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKVectorInline<VkClearValue, N> _clearValues;
 	MVKRenderPass* _renderPass;
 	MVKFramebuffer* _framebuffer;
 	VkRect2D _renderArea;
 	VkSubpassContents _contents;
-	MVKVectorInline<VkClearValue, N> _clearValues;
 };
 
 // Concrete template class implementations.
@@ -146,8 +146,8 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	uint32_t _firstViewport;
 	MVKVectorInline<VkViewport, N> _viewports;
+	uint32_t _firstViewport;
 };
 
 // Concrete template class implementations.
@@ -176,8 +176,8 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	uint32_t _firstScissor;
 	MVKVectorInline<VkRect2D, N> _scissors;
+	uint32_t _firstScissor;
 };
 
 // Concrete template class implementations.

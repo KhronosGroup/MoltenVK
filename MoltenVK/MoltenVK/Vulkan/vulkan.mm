@@ -1832,7 +1832,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPushConstants(
     const void*                                 pValues) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(PushConstants, commandBuffer, layout, stageFlags, offset, size, pValues);
+	MVKAddCmdFromTwoThresholds(PushConstants, size, 64, 128, commandBuffer, layout, stageFlags, offset, size, pValues);
 	MVKTraceVulkanCallEnd();
 }
 

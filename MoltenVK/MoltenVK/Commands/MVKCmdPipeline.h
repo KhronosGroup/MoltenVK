@@ -190,7 +190,11 @@ typedef MVKCmdBindDescriptorSetsDynamic<8> MVKCmdBindDescriptorSetsDynamicMulti;
 #pragma mark -
 #pragma mark MVKCmdPushConstants
 
-/** Vulkan command to bind push constants. */
+/**
+ * Vulkan command to bind push constants.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdPushConstants : public MVKCommand {
 
 public:
@@ -206,11 +210,16 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKVectorInline<char, N> _pushConstants;
 	MVKPipelineLayout* _pipelineLayout;
 	VkShaderStageFlags _stageFlags;
 	uint32_t _offset;
-	MVKVectorInline<char, 128> _pushConstants;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdPushConstants<64> MVKCmdPushConstants64;
+typedef MVKCmdPushConstants<128> MVKCmdPushConstants128;
+typedef MVKCmdPushConstants<512> MVKCmdPushConstantsMulti;
 
 
 #pragma mark -
@@ -235,9 +244,9 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	void clearDescriptorWrites();
 
-	VkPipelineBindPoint _pipelineBindPoint;
+	MVKVectorInline<VkWriteDescriptorSet, 1> _descriptorWrites;
 	MVKPipelineLayout* _pipelineLayout;
-	MVKVectorInline<VkWriteDescriptorSet, 8> _descriptorWrites;
+	VkPipelineBindPoint _pipelineBindPoint;
 	uint32_t _set;
 };
 
@@ -264,8 +273,8 @@ protected:
 
 	MVKDescriptorUpdateTemplate* _descUpdateTemplate;
 	MVKPipelineLayout* _pipelineLayout;
-	uint32_t _set;
 	void* _pData = nullptr;
+	uint32_t _set;
 };
 
 

@@ -253,12 +253,13 @@ template class MVKCmdBindDescriptorSetsDynamic<8>;
 #pragma mark -
 #pragma mark MVKCmdPushConstants
 
-VkResult MVKCmdPushConstants::setContent(MVKCommandBuffer* cmdBuff,
-										 VkPipelineLayout layout,
-										 VkShaderStageFlags stageFlags,
-										 uint32_t offset,
-										 uint32_t size,
-										 const void* pValues) {
+template <size_t N>
+VkResult MVKCmdPushConstants<N>::setContent(MVKCommandBuffer* cmdBuff,
+											VkPipelineLayout layout,
+											VkShaderStageFlags stageFlags,
+											uint32_t offset,
+											uint32_t size,
+											const void* pValues) {
 	_pipelineLayout = (MVKPipelineLayout*)layout;
 	_stageFlags = stageFlags;
 	_offset = offset;
@@ -269,7 +270,8 @@ VkResult MVKCmdPushConstants::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdPushConstants::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdPushConstants<N>::encode(MVKCommandEncoder* cmdEncoder) {
     VkShaderStageFlagBits stages[] = {
         VK_SHADER_STAGE_VERTEX_BIT,
         VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
@@ -283,6 +285,10 @@ void MVKCmdPushConstants::encode(MVKCommandEncoder* cmdEncoder) {
         }
     }
 }
+
+template class MVKCmdPushConstants<64>;
+template class MVKCmdPushConstants<128>;
+template class MVKCmdPushConstants<512>;
 
 
 #pragma mark -
