@@ -75,7 +75,7 @@ public:
 	id<MTLBuffer> getMTLBuffer();
 
 	/** Returns the offset at which the contents of this instance starts within the underlying Metal buffer. */
-	inline NSUInteger getMTLBufferOffset() { return _deviceMemory && _deviceMemory->getMTLHeap() && !_isHostCoherentTexelBuffer ? 0 : _deviceMemoryOffset; }
+	inline NSUInteger getMTLBufferOffset() { return !_deviceMemory || _deviceMemory->getMTLHeap() || _isHostCoherentTexelBuffer ? 0 : _deviceMemoryOffset; }
 
 
 #pragma mark Construction

@@ -449,6 +449,10 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 void MVKCommandEncoder::endCurrentMetalEncoding() {
 	endMetalRenderEncoding();
 
+	_computePipelineState.markDirty();
+	_computeResourcesState.markDirty();
+	_computePushConstants.markDirty();
+
 	[_mtlComputeEncoder endEncoding];
 	_mtlComputeEncoder = nil;       // not retained
 	_mtlComputeEncoderUse = kMVKCommandUseNone;

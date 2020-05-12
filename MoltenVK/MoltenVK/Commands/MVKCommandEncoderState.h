@@ -514,6 +514,8 @@ public:
     /** Sets the current buffer size buffer state. */
     void bindBufferSizeBuffer(const MVKShaderImplicitRezBinding& binding, bool needSizeBuffer);
 
+    void markDirty() override;
+
 #pragma mark Construction
 
     /** Constructs this instance for the specified command encoder. */
@@ -522,7 +524,6 @@ public:
 protected:
     void encodeImpl(uint32_t) override;
     void resetImpl() override;
-    void markDirty() override;
 
     MVKVectorInline<MVKMTLBufferBinding, 4> _bufferBindings;
     MVKVectorInline<MVKMTLTextureBinding, 4> _textureBindings;
