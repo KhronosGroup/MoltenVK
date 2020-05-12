@@ -70,7 +70,7 @@ typedef struct {
 #pragma mark Vulkan support
 
 /** Tracks the Vulkan command currently being used. */
-typedef enum {
+typedef enum : uint8_t {
     kMVKCommandUseNone,                     /**< No use defined. */
     kMVKCommandUseQueueSubmit,              /**< vkQueueSubmit. */
     kMVKCommandUseQueuePresent,             /**< vkQueuePresentKHR. */

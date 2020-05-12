@@ -136,13 +136,26 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 	}
 
 // Add one of three commands, based on comparing a command parameter against two threshold values
-#define MVKAddCmdFromTwoThresholds(baseCmdType, value, threshold1, threshold2, vkCmdBuff, ...)	\
+#define MVKAddCmdFrom2Thresholds(baseCmdType, value, threshold1, threshold2, vkCmdBuff, ...)	\
 	if (value <= threshold1) {																	\
 		MVKAddCmd(baseCmdType ##threshold1, vkCmdBuff, ##__VA_ARGS__);							\
 	} else if (value <= threshold2) {															\
 		MVKAddCmd(baseCmdType ##threshold2, vkCmdBuff, ##__VA_ARGS__);							\
 	} else {																					\
 		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);								\
+	}
+
+
+// Add one of four commands, based on comparing a command parameter against two threshold values
+#define MVKAddCmdFrom3Thresholds(baseCmdType, value, threshold1, threshold2, threshold3, vkCmdBuff, ...)	\
+	if (value <= threshold1) {																				\
+		MVKAddCmd(baseCmdType ##threshold1, vkCmdBuff, ##__VA_ARGS__);										\
+	} else if (value <= threshold2) {																		\
+		MVKAddCmd(baseCmdType ##threshold2, vkCmdBuff, ##__VA_ARGS__);										\
+	} else if (value <= threshold3) {																		\
+		MVKAddCmd(baseCmdType ##threshold3, vkCmdBuff, ##__VA_ARGS__);										\
+	} else {																								\
+		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);											\
 	}
 
 
@@ -1453,7 +1466,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindDescriptorSets(
 		MVKAddCmdFromThreshold(BindDescriptorSetsDynamic, setCount, 4, commandBuffer, pipelineBindPoint, layout,
 				  firstSet, setCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
 	} else {
-		MVKAddCmdFromTwoThresholds(BindDescriptorSetsStatic, setCount, 1, 4, commandBuffer, pipelineBindPoint, layout,
+		MVKAddCmdFrom2Thresholds(BindDescriptorSetsStatic, setCount, 1, 4, commandBuffer, pipelineBindPoint, layout,
 				  firstSet, setCount, pDescriptorSets);
 	}
 	MVKTraceVulkanCallEnd();
@@ -1478,7 +1491,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindVertexBuffers(
     const VkDeviceSize*                         pOffsets) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmdFromTwoThresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
+	MVKAddCmdFrom2Thresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1560,7 +1573,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBuffer(
     const VkBufferCopy*                         pRegions) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(CopyBuffer, commandBuffer, srcBuffer, destBuffer, regionCount, pRegions);
+	MVKAddCmdFromThreshold(CopyBuffer, regionCount, 1, commandBuffer, srcBuffer, destBuffer, regionCount, pRegions);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1574,7 +1587,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImage(
     const VkImageCopy*                          pRegions) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(CopyImage, commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
+	MVKAddCmdFromThreshold(CopyImage, regionCount, 1, commandBuffer,
+						   srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1589,7 +1603,8 @@ MVK_PUBLIC_SYMBOL void vkCmdBlitImage(
     VkFilter                                    filter) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BlitImage, commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
+	MVKAddCmdFromThreshold(BlitImage, regionCount, 1, commandBuffer,
+						   srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1602,7 +1617,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBufferToImage(
     const VkBufferImageCopy*                    pRegions) {
 	
 	MVKTraceVulkanCallStart();
-    MVKAddCmd(BufferImageCopy, commandBuffer, srcBuffer, dstImage, dstImageLayout, regionCount, pRegions, true);
+    MVKAddCmdFrom3Thresholds(BufferImageCopy, regionCount, 1, 4, 8, commandBuffer,
+							 srcBuffer, dstImage, dstImageLayout, regionCount, pRegions, true);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1615,7 +1631,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImageToBuffer(
     const VkBufferImageCopy*                    pRegions) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BufferImageCopy, commandBuffer, dstBuffer, srcImage, srcImageLayout, regionCount, pRegions, false);
+	MVKAddCmdFrom3Thresholds(BufferImageCopy, regionCount, 1, 4, 8, commandBuffer,
+							 dstBuffer, srcImage, srcImageLayout, regionCount, pRegions, false);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1654,7 +1671,8 @@ MVK_PUBLIC_SYMBOL void vkCmdClearColorImage(
 	MVKTraceVulkanCallStart();
 	VkClearValue clrVal;
 	clrVal.color = *pColor;
-	MVKAddCmd(ClearImage, commandBuffer, image, imageLayout, clrVal, rangeCount, pRanges, false);
+	MVKAddCmdFromThreshold(ClearColorImage, rangeCount, 1, commandBuffer,
+						   image, imageLayout, clrVal, rangeCount, pRanges);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1669,7 +1687,8 @@ MVK_PUBLIC_SYMBOL void vkCmdClearDepthStencilImage(
 	MVKTraceVulkanCallStart();
 	VkClearValue clrVal;
 	clrVal.depthStencil = *pDepthStencil;
-    MVKAddCmd(ClearImage, commandBuffer, image, imageLayout, clrVal, rangeCount, pRanges, true);
+    MVKAddCmdFromThreshold(ClearDepthStencilImage, rangeCount, 1, commandBuffer,
+						   image, imageLayout, clrVal, rangeCount, pRanges);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1681,7 +1700,7 @@ MVK_PUBLIC_SYMBOL void vkCmdClearAttachments(
 	const VkClearRect*                          pRects) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(ClearAttachments, commandBuffer, attachmentCount, pAttachments, rectCount, pRects);
+	MVKAddCmdFromThreshold(ClearAttachments, rectCount, 1, commandBuffer, attachmentCount, pAttachments, rectCount, pRects);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1695,8 +1714,8 @@ MVK_PUBLIC_SYMBOL void vkCmdResolveImage(
     const VkImageResolve*                       pRegions) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(ResolveImage, commandBuffer, srcImage, srcImageLayout,
-			  dstImage, dstImageLayout, regionCount, pRegions);
+	MVKAddCmdFromThreshold(ResolveImage, regionCount, 1, commandBuffer,
+						   srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1756,7 +1775,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPipelineBarrier(
 
 	MVKTraceVulkanCallStart();
 	uint32_t barrierCount = memoryBarrierCount + bufferMemoryBarrierCount + imageMemoryBarrierCount;
-	MVKAddCmdFromTwoThresholds(PipelineBarrier, barrierCount, 1, 4, commandBuffer,
+	MVKAddCmdFrom2Thresholds(PipelineBarrier, barrierCount, 1, 4, commandBuffer,
 							   srcStageMask, dstStageMask, dependencyFlags,
 							   memoryBarrierCount, pMemoryBarriers,
 							   bufferMemoryBarrierCount, pBufferMemoryBarriers,
@@ -1832,7 +1851,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPushConstants(
     const void*                                 pValues) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmdFromTwoThresholds(PushConstants, size, 64, 128, commandBuffer, layout, stageFlags, offset, size, pValues);
+	MVKAddCmdFrom2Thresholds(PushConstants, size, 64, 128, commandBuffer, layout, stageFlags, offset, size, pValues);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1842,7 +1861,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
     VkSubpassContents							contents) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmdFromTwoThresholds(BeginRenderPass, pRenderPassBegin->clearValueCount, 1, 2, commandBuffer,pRenderPassBegin, contents);
+	MVKAddCmdFrom2Thresholds(BeginRenderPass, pRenderPassBegin->clearValueCount, 1, 2, commandBuffer,pRenderPassBegin, contents);
 	MVKTraceVulkanCallEnd();
 }
 
