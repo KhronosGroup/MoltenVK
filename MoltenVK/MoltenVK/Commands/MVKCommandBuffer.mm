@@ -421,7 +421,7 @@ void MVKCommandEncoder::clearRenderArea() {
 
     // Create and execute a temporary clear attachments command.
     // To be threadsafe...do NOT acquire and return the command from the pool.
-    MVKCmdClearAttachments<1> cmd;
+    MVKCmdClearMultiAttachments<1> cmd;
     cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
     cmd.encode(this);
 }

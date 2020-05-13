@@ -993,7 +993,7 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
             uint32_t caIdx = clrAtt.colorAttachment;        // Might be VK_ATTACHMENT_UNUSED
             if (caIdx != VK_ATTACHMENT_UNUSED) {
                 _rpsKey.enableAttachment(caIdx);
-                _vkClearValues[caIdx] = clrAtt.clearValue;
+                setClearValue(caIdx, clrAtt.clearValue);
             }
         }
 
@@ -1016,23 +1016,27 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
         _clearRects.push_back(pRects[i]);
     }
 
-	_vertices.clear();			// Clear for reuse
-    _vertices.reserve(rectCount * 6);
-
 	return VK_SUCCESS;
 }
 
 // Populates the vertices for all clear rectangles within an attachment of the specified size.
 template <size_t N>
-void MVKCmdClearAttachments<N>::populateVertices(float attWidth, float attHeight) {
-    for (auto& rect : _clearRects) { populateVertices(rect, attWidth, attHeight); }
+void MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices, float attWidth, float attHeight) {
+	uint32_t vtxIdx = 0;
+    for (auto& rect : _clearRects) {
+		vtxIdx = populateVertices(vertices, vtxIdx, rect, attWidth, attHeight);
+	}
 }
 
-// Populates the vertices from the specified rectangle within an attachment of the specified size.
+// Populates the vertices, starting at the vertex, from the specified rectangle within
+// an attachment of the specified size. Returns the next vertex that needs to be populated.
 template <size_t N>
-void MVKCmdClearAttachments<N>::populateVertices(VkClearRect& clearRect, float attWidth, float attHeight) {
-
-    // Determine the positions of the four edges of the
+uint32_t MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices,
+													 uint32_t startVertex,
+													 VkClearRect& clearRect,
+													 float attWidth,
+													 float attHeight) {
+	// Determine the positions of the four edges of the
     // clear rectangle as a fraction of the attachment size.
     float leftPos = (float)(clearRect.rect.offset.x) / attWidth;
     float rightPos = (float)(clearRect.rect.extent.width) / attWidth + leftPos;
@@ -1048,6 +1052,7 @@ void MVKCmdClearAttachments<N>::populateVertices(VkClearRect& clearRect, float a
 
     simd::float4 vtx;
 
+	uint32_t vtxIdx = startVertex;
 	uint32_t startLayer = clearRect.baseArrayLayer;
 	uint32_t endLayer = startLayer + clearRect.layerCount;
 	for (uint32_t layer = startLayer; layer < endLayer; layer++) {
@@ -1058,43 +1063,48 @@ void MVKCmdClearAttachments<N>::populateVertices(VkClearRect& clearRect, float a
 		// Top left vertex	- First triangle
 		vtx.y = topPos;
 		vtx.x = leftPos;
-		_vertices.push_back(vtx);
+		vertices[vtxIdx++] = vtx;
 
 		// Bottom left vertex
 		vtx.y = bottomPos;
 		vtx.x = leftPos;
-		_vertices.push_back(vtx);
+		vertices[vtxIdx++] = vtx;
 
 		// Bottom right vertex
 		vtx.y = bottomPos;
 		vtx.x = rightPos;
-		_vertices.push_back(vtx);
+		vertices[vtxIdx++] = vtx;
 
 		// Bottom right vertex	- Second triangle
-		_vertices.push_back(vtx);
+		vertices[vtxIdx++] = vtx;
 
 		// Top right vertex
 		vtx.y = topPos;
 		vtx.x = rightPos;
-		_vertices.push_back(vtx);
+		vertices[vtxIdx++] = vtx;
 
 		// Top left vertex
 		vtx.y = topPos;
 		vtx.x = leftPos;
-		_vertices.push_back(vtx);
+		vertices[vtxIdx++] = vtx;
 	}
+
+	return vtxIdx;
 }
 
 template <size_t N>
 void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
+	uint32_t vtxCnt = (uint32_t)_clearRects.size() * 6;
+	simd::float4 vertices[vtxCnt];
+	simd::float4 clearColors[kMVKClearAttachmentCount];
+
+	VkExtent2D fbExtent = cmdEncoder->_framebuffer->getExtent2D();
+	populateVertices(vertices, fbExtent.width, fbExtent.height);
+
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
     MVKRenderSubpass* subpass = cmdEncoder->getSubpass();
-    VkExtent2D fbExtent = cmdEncoder->_framebuffer->getExtent2D();
-    populateVertices(fbExtent.width, fbExtent.height);
-    uint32_t vtxCnt = (uint32_t)_vertices.size();
     uint32_t vtxBuffIdx = cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
-	simd::float4 clearColors[kMVKClearAttachmentCount];
 
     // Populate the render pipeline state attachment key with info from the subpass and framebuffer.
 	_rpsKey.mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getSampleCount());
@@ -1104,7 +1114,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
         VkFormat vkAttFmt = subpass->getColorAttachmentFormat(caIdx);
 		_rpsKey.attachmentMTLPixelFormats[caIdx] = pixFmts->getMTLPixelFormat(vkAttFmt);
-		MTLClearColor mtlCC = pixFmts->getMTLClearColor(_vkClearValues[caIdx], vkAttFmt);
+		MTLClearColor mtlCC = pixFmts->getMTLClearColor(getClearValue(caIdx), vkAttFmt);
 		clearColors[caIdx] = { (float)mtlCC.red, (float)mtlCC.green, (float)mtlCC.blue, (float)mtlCC.alpha};
     }
 
@@ -1128,7 +1138,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
     cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
     cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
-    cmdEncoder->setVertexBytes(mtlRendEnc, _vertices.data(), vtxCnt * sizeof(_vertices[0]), vtxBuffIdx);
+    cmdEncoder->setVertexBytes(mtlRendEnc, vertices, vtxCnt * sizeof(vertices[0]), vtxBuffIdx);
     [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: vtxCnt];
     [mtlRendEnc popDebugGroup];
 
@@ -1141,6 +1151,12 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 template class MVKCmdClearAttachments<1>;
 template class MVKCmdClearAttachments<4>;
+
+template class MVKCmdClearSingleAttachment<1>;
+template class MVKCmdClearSingleAttachment<4>;
+
+template class MVKCmdClearMultiAttachments<1>;
+template class MVKCmdClearMultiAttachments<4>;
 
 
 #pragma mark -

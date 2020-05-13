@@ -267,7 +267,7 @@ typedef MVKCmdBufferImageCopy<16> MVKCmdBufferImageCopyMulti;
 #pragma mark MVKCmdClearAttachments
 
 /**
- * Vulkan command to clear attachment regions.
+ * Abstract Vulkan command to clear attachment regions.
  * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
 template <size_t N>
@@ -283,22 +283,63 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-    void populateVertices(float attWidth, float attHeight);
-    void populateVertices(VkClearRect& clearRect, float attWidth, float attHeight);
+    void populateVertices(simd::float4* vertices, float attWidth, float attHeight);
+	uint32_t populateVertices(simd::float4* vertices, uint32_t startVertex,
+							  VkClearRect& clearRect, float attWidth, float attHeight);
+	virtual VkClearValue& getClearValue(uint32_t attIdx) = 0;
+	virtual void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) = 0;
 
 	MVKVectorInline<VkClearRect, N> _clearRects;
-	MVKVectorInline<simd::float4, (N * 6)> _vertices;
-    VkClearValue _vkClearValues[kMVKClearAttachmentCount];
     MVKRPSKeyClearAtt _rpsKey;
+	bool _isClearingDepth;
+	bool _isClearingStencil;
 	float _mtlDepthVal;
     uint32_t _mtlStencilValue;
-    bool _isClearingDepth;
-    bool _isClearingStencil;
 };
 
-typedef MVKCmdClearAttachments<1> MVKCmdClearAttachments1;
-typedef MVKCmdClearAttachments<4> MVKCmdClearAttachmentsMulti;
+
+#pragma mark -
+#pragma mark MVKCmdClearSingleAttachment
+
+/**
+ * Vulkan command to clear regions in a single attachment.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdClearSingleAttachment : public MVKCmdClearAttachments<N> {
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	VkClearValue& getClearValue(uint32_t attIdx) override { return _vkClearValue; }
+	void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) override { _vkClearValue = clearValue; }
+
+	VkClearValue _vkClearValue;
+};
+
+typedef MVKCmdClearSingleAttachment<1> MVKCmdClearSingleAttachment1;
+typedef MVKCmdClearSingleAttachment<4> MVKCmdClearSingleAttachmentMulti;
+
+
+#pragma mark -
+#pragma mark MVKCmdClearMultiAttachments
+
+/**
+ * Vulkan command to clear regions multiple attachment.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdClearMultiAttachments : public MVKCmdClearAttachments<N> {
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	VkClearValue& getClearValue(uint32_t attIdx) override { return _vkClearValues[attIdx]; }
+	void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) override { _vkClearValues[attIdx] = clearValue; }
+
+	VkClearValue _vkClearValues[kMVKCachedColorAttachmentCount];
+};
+
+typedef MVKCmdClearMultiAttachments<1> MVKCmdClearMultiAttachments1;
+typedef MVKCmdClearMultiAttachments<4> MVKCmdClearMultiAttachmentsMulti;
 
 
 #pragma mark -

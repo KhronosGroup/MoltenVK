@@ -1700,7 +1700,13 @@ MVK_PUBLIC_SYMBOL void vkCmdClearAttachments(
 	const VkClearRect*                          pRects) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmdFromThreshold(ClearAttachments, rectCount, 1, commandBuffer, attachmentCount, pAttachments, rectCount, pRects);
+	if (attachmentCount > 1) {
+		MVKAddCmdFromThreshold(ClearMultiAttachments, rectCount, 1, commandBuffer,
+							   attachmentCount, pAttachments, rectCount, pRects);
+	} else {
+		MVKAddCmdFromThreshold(ClearSingleAttachment, rectCount, 1, commandBuffer,
+							   attachmentCount, pAttachments, rectCount, pRects);
+	}
 	MVKTraceVulkanCallEnd();
 }
 
