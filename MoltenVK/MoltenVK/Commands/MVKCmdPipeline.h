@@ -58,10 +58,10 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool coversTextures();
 
+	MVKVectorInline<MVKPipelineBarrier, N> _barriers;
 	VkPipelineStageFlags _srcStageMask;
 	VkPipelineStageFlags _dstStageMask;
 	VkDependencyFlags _dependencyFlags;
-	MVKVectorInline<MVKPipelineBarrier, N> _barriers;
 };
 
 // Concrete template class implementations.

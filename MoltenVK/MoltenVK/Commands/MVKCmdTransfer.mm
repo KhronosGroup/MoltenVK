@@ -54,15 +54,12 @@ VkResult MVKCmdCopyImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 										VkImage dstImage,
 										VkImageLayout dstImageLayout,
 										uint32_t regionCount,
-										const VkImageCopy* pRegions,
-										MVKCommandUse commandUse) {
+										const VkImageCopy* pRegions) {
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
 
 	_dstImage = (MVKImage*)dstImage;
 	_dstLayout = dstImageLayout;
-
-	_commandUse = commandUse;
 
 	_vkImageCopies.clear();		// Clear for reuse
 	for (uint32_t i = 0; i < regionCount; i++) {
@@ -83,7 +80,7 @@ VkResult MVKCmdCopyImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 template <size_t N>
-void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
+void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse commandUse) {
 
 	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
 	bool isSrcCompressed = _srcImage->getIsCompressed();
@@ -160,7 +157,7 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture();
 		if ( !srcMTLTex || !dstMTLTex ) { return; }
 
-		id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(_commandUse);
+		id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(commandUse);
 
 		// If copies can be performed using direct texture-texture copying, do so
 		for (auto& cpyRgn : _vkImageCopies) {
@@ -205,8 +202,7 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 										VkImageLayout dstImageLayout,
 										uint32_t regionCount,
 										const VkImageBlit* pRegions,
-										VkFilter filter,
-										MVKCommandUse commandUse) {
+										VkFilter filter) {
 
 	MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
 
@@ -217,7 +213,6 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 	_dstLayout = dstImageLayout;
 
 	_filter = filter;
-	_commandUse = commandUse;
 
 	_vkImageBlits.clear();		// Clear for reuse
 	for (uint32_t i = 0; i < regionCount; i++) {
@@ -312,7 +307,7 @@ void MVKCmdBlitImage<N>::populateVertices(MVKVertexPosTex* vertices, const VkIma
 }
 
 template <size_t N>
-void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
+void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse commandUse) {
 
 	size_t vkIBCnt = _vkImageBlits.size();
 	VkImageCopy vkImageCopies[vkIBCnt];
@@ -351,8 +346,8 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		copyCmd.setContent(cmdEncoder->_cmdBuffer,
 						   (VkImage)_srcImage, _srcLayout,
 						   (VkImage)_dstImage, _dstLayout,
-						   copyCnt, vkImageCopies, kMVKCommandUseBlitImage);
-		copyCmd.encode(cmdEncoder);
+						   copyCnt, vkImageCopies);
+		copyCmd.encode(cmdEncoder, kMVKCommandUseBlitImage);
 	}
 
 	// Perform those BLITs that require rendering to destination texture.
@@ -388,7 +383,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 				// Update the render pass descriptor for the texture level and slice, and create a render encoder.
 				mtlColorAttDesc.slice = mvkIBR.region.dstSubresource.baseArrayLayer + layIdx;
 				id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPD];
-				setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(_commandUse));
+				setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(commandUse));
 
 				[mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
 				[mtlRendEnc setRenderPipelineState: mtlRPS];
@@ -525,15 +520,16 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		MVKCmdBlitImage<N> expCmd;
 		expCmd.setContent(cmdEncoder->_cmdBuffer,
 						  (VkImage)_dstImage, _dstLayout, (VkImage)xfrImage, _dstLayout,
-						  expCnt, expansionRegions, VK_FILTER_LINEAR, kMVKCommandUseResolveExpandImage);
-		expCmd.encode(cmdEncoder);
+						  expCnt, expansionRegions, VK_FILTER_LINEAR);
+		expCmd.encode(cmdEncoder, kMVKCommandUseResolveExpandImage);
 
 		// Copy the resolve regions of the source image to the temporary transfer image.
 		MVKCmdCopyImage<N> copyCmd;
 		copyCmd.setContent(cmdEncoder->_cmdBuffer,
-						   (VkImage)_srcImage, _srcLayout, (VkImage)xfrImage, _dstLayout,
-						   copyCnt, copyRegions, kMVKCommandUseResolveCopyImage);
-		copyCmd.encode(cmdEncoder);
+						   (VkImage)_srcImage, _srcLayout,
+						   (VkImage)xfrImage, _dstLayout,
+						   copyCnt, copyRegions);
+		copyCmd.encode(cmdEncoder, kMVKCommandUseResolveCopyImage);
 
 		srcMTLTex = xfrImage->getMTLTexture();
 	}

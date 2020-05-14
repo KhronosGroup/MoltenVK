@@ -47,10 +47,11 @@ public:
 						VkImage dstImage,
 						VkImageLayout dstImageLayout,
 						uint32_t regionCount,
-						const VkImageCopy* pRegions,
-						MVKCommandUse commandUse = kMVKCommandUseCopyImage);
+						const VkImageCopy* pRegions);
 
-	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encode(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder, kMVKCommandUseCopyImage); }
+
+	void encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse commandUse);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -60,7 +61,6 @@ protected:
 	MVKImage* _dstImage;
 	VkImageLayout _srcLayout;
 	VkImageLayout _dstLayout;
-	MVKCommandUse _commandUse;
 };
 
 // Concrete template class implementations.
@@ -95,10 +95,11 @@ public:
 						VkImageLayout dstImageLayout,
 						uint32_t regionCount,
 						const VkImageBlit* pRegions,
-						VkFilter filter,
-						MVKCommandUse commandUse = kMVKCommandUseBlitImage);
+						VkFilter filter);
 
-	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encode(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder, kMVKCommandUseBlitImage); }
+
+	void encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse commandUse);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
@@ -112,7 +113,6 @@ protected:
 	VkImageLayout _srcLayout;
 	VkImageLayout _dstLayout;
 	VkFilter _filter;
-	MVKCommandUse _commandUse;
 };
 
 // Concrete template class implementations.
