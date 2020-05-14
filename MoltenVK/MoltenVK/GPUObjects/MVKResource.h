@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKDeviceMemory.h"
+#include "MVKMTLResourceBindings.h"
 
 class MVKCommandEncoder;
 
@@ -67,9 +68,9 @@ public:
 	/** Applies the specified global memory barrier. */
 	virtual void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 									VkPipelineStageFlags dstStageMask,
-									VkMemoryBarrier* pMemoryBarrier,
-                                    MVKCommandEncoder* cmdEncoder,
-                                    MVKCommandUse cmdUse) = 0;
+									MVKPipelineBarrier& barrier,
+									MVKCommandEncoder* cmdEncoder,
+									MVKCommandUse cmdUse) = 0;
 
 	
 #pragma mark Construction

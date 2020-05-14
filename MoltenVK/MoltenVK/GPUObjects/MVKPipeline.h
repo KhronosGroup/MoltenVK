@@ -56,7 +56,7 @@ public:
     void bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
                             MVKVector<MVKDescriptorSet*>& descriptorSets,
                             uint32_t firstSet,
-                            MVKVector<uint32_t>& dynamicOffsets);
+                            MVKVector<uint32_t>* pDynamicOffsets);
 
 	/** Updates a descriptor set in a command encoder. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,

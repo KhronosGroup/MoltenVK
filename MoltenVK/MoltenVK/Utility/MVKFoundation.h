@@ -70,7 +70,7 @@ typedef struct {
 #pragma mark Vulkan support
 
 /** Tracks the Vulkan command currently being used. */
-typedef enum {
+typedef enum : uint8_t {
     kMVKCommandUseNone,                     /**< No use defined. */
     kMVKCommandUseQueueSubmit,              /**< vkQueueSubmit. */
     kMVKCommandUseQueuePresent,             /**< vkQueuePresentKHR. */
@@ -320,6 +320,9 @@ static inline bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkCompone
 			mvkVKComponentSwizzlesMatch(cm1.b, cm2.b, VK_COMPONENT_SWIZZLE_B) &&
 			mvkVKComponentSwizzlesMatch(cm1.a, cm2.a, VK_COMPONENT_SWIZZLE_A));
 }
+
+/** Print the size of the type. */
+#define mvkPrintSizeOf(type)    printf("Size of " #type " is %lu.\n", sizeof(type))
 
 
 #pragma mark -

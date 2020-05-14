@@ -52,18 +52,18 @@ public:
 	VkResult bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo);
 
 	/** Applies the specified global memory barrier. */
-    void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                            VkPipelineStageFlags dstStageMask,
-                            VkMemoryBarrier* pMemoryBarrier,
-                            MVKCommandEncoder* cmdEncoder,
-                            MVKCommandUse cmdUse) override;
+	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+							VkPipelineStageFlags dstStageMask,
+							MVKPipelineBarrier& barrier,
+							MVKCommandEncoder* cmdEncoder,
+							MVKCommandUse cmdUse) override;
 
 	/** Applies the specified buffer memory barrier. */
-    void applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                                  VkPipelineStageFlags dstStageMask,
-                                  VkBufferMemoryBarrier* pBufferMemoryBarrier,
-                                  MVKCommandEncoder* cmdEncoder,
-                                  MVKCommandUse cmdUse);
+	void applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								  VkPipelineStageFlags dstStageMask,
+								  MVKPipelineBarrier& barrier,
+								  MVKCommandEncoder* cmdEncoder,
+								  MVKCommandUse cmdUse);
 
     /** Returns the intended usage of this buffer. */
     VkBufferUsageFlags getUsage() const { return _usage; }
@@ -91,7 +91,7 @@ protected:
 	void propogateDebugName() override;
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
-						   VkBufferMemoryBarrier* pBufferMemoryBarrier);
+						   MVKPipelineBarrier& barrier);
 	bool shouldFlushHostMemory();
 	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
 	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);

@@ -197,13 +197,13 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 #pragma mark -
 #pragma mark Tessellation constituent command management
 
-void MVKCommandBuffer::recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass) {
+void MVKCommandBuffer::recordBeginRenderPass(MVKLoadStoreOverrideMixin* mvkBeginRenderPass) {
 	_lastBeginRenderPass = mvkBeginRenderPass;
 	_lastTessellationPipeline = nullptr;
 	_lastTessellationDraw = nullptr;
 }
 
-void MVKCommandBuffer::recordEndRenderPass(MVKCmdEndRenderPass* /*mvkEndRenderPass*/) {
+void MVKCommandBuffer::recordEndRenderPass() {
 	// Unset the store override for the last draw call
 	if (_lastTessellationDraw != nullptr)
 	{
@@ -421,7 +421,7 @@ void MVKCommandEncoder::clearRenderArea() {
 
     // Create and execute a temporary clear attachments command.
     // To be threadsafe...do NOT acquire and return the command from the pool.
-    MVKCmdClearAttachments cmd;
+    MVKCmdClearMultiAttachments<1> cmd;
     cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
     cmd.encode(this);
 }

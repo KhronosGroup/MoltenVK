@@ -28,7 +28,11 @@
 #pragma mark -
 #pragma mark MVKCmdBindVertexBuffers
 
-/** Vulkan command to bind buffers containing vertex content. */
+/**
+ * Vulkan command to bind buffers containing vertex content.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdBindVertexBuffers : public MVKCommand {
 
 public:
@@ -43,8 +47,13 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    MVKVectorInline<MVKMTLBufferBinding, 8> _bindings;
+    MVKVectorInline<MVKMTLBufferBinding, N> _bindings;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdBindVertexBuffers<1> MVKCmdBindVertexBuffers1;
+typedef MVKCmdBindVertexBuffers<2> MVKCmdBindVertexBuffers2;
+typedef MVKCmdBindVertexBuffers<8> MVKCmdBindVertexBuffersMulti;
 
 
 #pragma mark -

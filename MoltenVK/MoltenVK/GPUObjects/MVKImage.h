@@ -134,18 +134,18 @@ public:
 	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
 
 	/** Applies the specified global memory barrier. */
-    void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                            VkPipelineStageFlags dstStageMask,
-                            VkMemoryBarrier* pMemoryBarrier,
-                            MVKCommandEncoder* cmdEncoder,
-                            MVKCommandUse cmdUse) override;
+	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+							VkPipelineStageFlags dstStageMask,
+							MVKPipelineBarrier& barrier,
+							MVKCommandEncoder* cmdEncoder,
+							MVKCommandUse cmdUse) override;
 
 	/** Applies the specified image memory barrier. */
-    void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                                 VkPipelineStageFlags dstStageMask,
-                                 VkImageMemoryBarrier* pImageMemoryBarrier,
-                                 MVKCommandEncoder* cmdEncoder,
-                                 MVKCommandUse cmdUse);
+	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								 VkPipelineStageFlags dstStageMask,
+								 MVKPipelineBarrier& barrier,
+								 MVKCommandEncoder* cmdEncoder,
+								 MVKCommandUse cmdUse);
 
 #pragma mark Metal
 
@@ -250,7 +250,7 @@ protected:
 	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
-						   VkImageMemoryBarrier* pImageMemoryBarrier);
+						   MVKPipelineBarrier& barrier);
 
 	MVKVectorInline<MVKImageSubresource, 1> _subresources;
 	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;

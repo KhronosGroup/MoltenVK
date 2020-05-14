@@ -33,7 +33,11 @@ class MVKBuffer;
 #pragma mark -
 #pragma mark MVKCmdCopyImage
 
-/** Vulkan command to copy image regions. */
+/**
+ * Vulkan command to copy image regions.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdCopyImage : public MVKCommand {
 
 public:
@@ -43,39 +47,25 @@ public:
 						VkImage dstImage,
 						VkImageLayout dstImageLayout,
 						uint32_t regionCount,
-						const VkImageCopy* pRegions,
-						MVKCommandUse commandUse = kMVKCommandUseCopyImage);
+						const VkImageCopy* pRegions);
 
-	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encode(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder, kMVKCommandUseCopyImage); }
+
+	void encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse commandUse);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkImage srcImage,
-						VkImageLayout srcImageLayout,
-						VkImage dstImage,
-						VkImageLayout dstImageLayout,
-						bool formatsMustMatch,
-						MVKCommandUse commandUse);
-	void addImageCopyRegion(const VkImageCopy& region, MVKPixelFormats* pixFmts);
-	void addTempBufferImageCopyRegion(const VkImageCopy& region, MVKPixelFormats* pixFmts);
 
+	MVKVectorInline<VkImageCopy, N> _vkImageCopies;
 	MVKImage* _srcImage;
-	VkImageLayout _srcLayout;
 	MVKImage* _dstImage;
+	VkImageLayout _srcLayout;
 	VkImageLayout _dstLayout;
-	uint32_t _srcSampleCount;
-	uint32_t _dstSampleCount;
-	bool _isSrcCompressed;
-	bool _isDstCompressed;
-	bool _canCopyFormats;
-	bool _useTempBuffer;
-	MVKVectorInline<VkImageCopy, 4> _imageCopyRegions;
-	MVKVectorInline<VkBufferImageCopy, 4> _srcTmpBuffImgCopies;
-	MVKVectorInline<VkBufferImageCopy, 4> _dstTmpBuffImgCopies;
-	size_t _tmpBuffSize;
-    MVKCommandUse _commandUse;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdCopyImage<1> MVKCmdCopyImage1;
+typedef MVKCmdCopyImage<4> MVKCmdCopyImageMulti;
 
 
 #pragma mark -
@@ -90,8 +80,12 @@ typedef struct {
 	MVKVertexPosTex vertices[kMVKBlitVertexCount];
 } MVKImageBlitRender;
 
-/** Vulkan command to BLIT image regions. */
-class MVKCmdBlitImage : public MVKCmdCopyImage {
+/**
+ * Vulkan command to BLIT image regions.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdBlitImage : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
@@ -101,27 +95,29 @@ public:
 						VkImageLayout dstImageLayout,
 						uint32_t regionCount,
 						const VkImageBlit* pRegions,
-						VkFilter filter,
-						MVKCommandUse commandUse = kMVKCommandUseBlitImage);
+						VkFilter filter);
 
-	void encode(MVKCommandEncoder* cmdEncoder) override;
+	void encode(MVKCommandEncoder* cmdEncoder) override { encode(cmdEncoder, kMVKCommandUseBlitImage); }
 
-	MVKCmdBlitImage();
-
-	~MVKCmdBlitImage() override;
+	void encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse commandUse);
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	bool canCopyFormats();
 	bool canCopy(const VkImageBlit& region);
-	void addImageBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
-	void addImageCopyRegionFromBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
 	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region);
-    void initMTLRenderPassDescriptor();
 
-	MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
-	MVKRPSKeyBlitImg _blitKey;
-	MVKVectorInline<MVKImageBlitRender, 4> _mvkImageBlitRenders;
+	MVKVectorInline<VkImageBlit, N> _vkImageBlits;
+	MVKImage* _srcImage;
+	MVKImage* _dstImage;
+	VkImageLayout _srcLayout;
+	VkImageLayout _dstLayout;
+	VkFilter _filter;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdBlitImage<1> MVKCmdBlitImage1;
+typedef MVKCmdBlitImage<4> MVKCmdBlitImageMulti;
 
 
 #pragma mark -
@@ -133,7 +129,11 @@ typedef struct {
     uint32_t	slice;
 } MVKMetalResolveSlice;
 
-/** Vulkan command to resolve image regions. */
+/**
+ * Vulkan command to resolve image regions.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdResolveImage : public MVKCommand {
 
 public:
@@ -147,33 +147,29 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdResolveImage();
-
-    ~MVKCmdResolveImage() override;
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-	void addExpansionRegion(const VkImageResolve& resolveRegion);
-    void addCopyRegion(const VkImageResolve& resolveRegion);
-    void addResolveSlices(const VkImageResolve& resolveRegion);
-    void initMTLRenderPassDescriptor();
 
+	MVKVectorInline<VkImageResolve, N> _vkImageResolves;
     MVKImage* _srcImage;
+	MVKImage* _dstImage;
     VkImageLayout _srcLayout;
-    MVKImage* _dstImage;
     VkImageLayout _dstLayout;
-    MVKImageDescriptorData _transferImageData;
-    MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
-	MVKVectorInline<VkImageBlit, 4> _expansionRegions;
-	MVKVectorInline<VkImageCopy, 4> _copyRegions;
-	MVKVectorInline<MVKMetalResolveSlice, 4> _mtlResolveSlices;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdResolveImage<1> MVKCmdResolveImage1;
+typedef MVKCmdResolveImage<4> MVKCmdResolveImageMulti;
 
 
 #pragma mark -
 #pragma mark MVKCmdCopyBuffer
 
-/** Vulkan command to copy buffer regions. */
+/**
+ * Vulkan command to copy buffer regions.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdCopyBuffer : public MVKCommand {
 
 public:
@@ -188,16 +184,24 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKVectorInline<VkBufferCopy, N> _bufferCopyRegions;
 	MVKBuffer* _srcBuffer;
 	MVKBuffer* _dstBuffer;
-	MVKVectorInline<VkBufferCopy, 4> _mtlBuffCopyRegions;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdCopyBuffer<1> MVKCmdCopyBuffer1;
+typedef MVKCmdCopyBuffer<4> MVKCmdCopyBufferMulti;
 
 
 #pragma mark -
 #pragma mark MVKCmdBufferImageCopy
 
-/** Command to copy either from a buffer to an image, or from an image to a buffer. */
+/**
+ * Vulkan command to copy either from a buffer to an image, or from an image to a buffer.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdBufferImageCopy : public MVKCommand {
 
 public:
@@ -215,18 +219,28 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool isArrayTexture();
 
+	MVKVectorInline<VkBufferImageCopy, N> _bufferImageCopyRegions;
     MVKBuffer* _buffer;
     MVKImage* _image;
     VkImageLayout _imageLayout;
-	MVKVectorInline<VkBufferImageCopy, 4> _bufferImageCopyRegions;
     bool _toImage = false;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdBufferImageCopy<1> MVKCmdBufferImageCopy1;
+typedef MVKCmdBufferImageCopy<4> MVKCmdBufferImageCopy4;	// To support MVKCmdCopyImage
+typedef MVKCmdBufferImageCopy<8> MVKCmdBufferImageCopy8;
+typedef MVKCmdBufferImageCopy<16> MVKCmdBufferImageCopyMulti;
 
 
 #pragma mark -
 #pragma mark MVKCmdClearAttachments
 
-/** Vulkan command to clear attachment regions. */
+/**
+ * Abstract Vulkan command to clear attachment regions.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdClearAttachments : public MVKCommand {
 
 public:
@@ -239,25 +253,73 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-    void populateVertices(float attWidth, float attHeight);
-    void populateVertices(VkClearRect& clearRect, float attWidth, float attHeight);
+    void populateVertices(simd::float4* vertices, float attWidth, float attHeight);
+	uint32_t populateVertices(simd::float4* vertices, uint32_t startVertex,
+							  VkClearRect& clearRect, float attWidth, float attHeight);
+	virtual VkClearValue& getClearValue(uint32_t attIdx) = 0;
+	virtual void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) = 0;
 
-	MVKVectorInline<VkClearRect, 4> _clearRects;
-	MVKVectorInline<simd::float4, (4 * 6)> _vertices;
-    simd::float4 _clearColors[kMVKClearAttachmentCount];
-    VkClearValue _vkClearValues[kMVKClearAttachmentCount];
+	MVKVectorInline<VkClearRect, N> _clearRects;
     MVKRPSKeyClearAtt _rpsKey;
+	bool _isClearingDepth;
+	bool _isClearingStencil;
+	float _mtlDepthVal;
     uint32_t _mtlStencilValue;
-    bool _isClearingDepth;
-    bool _isClearingStencil;
 };
+
+
+#pragma mark -
+#pragma mark MVKCmdClearSingleAttachment
+
+/**
+ * Vulkan command to clear regions in a single attachment.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdClearSingleAttachment : public MVKCmdClearAttachments<N> {
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	VkClearValue& getClearValue(uint32_t attIdx) override { return _vkClearValue; }
+	void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) override { _vkClearValue = clearValue; }
+
+	VkClearValue _vkClearValue;
+};
+
+typedef MVKCmdClearSingleAttachment<1> MVKCmdClearSingleAttachment1;
+typedef MVKCmdClearSingleAttachment<4> MVKCmdClearSingleAttachmentMulti;
+
+
+#pragma mark -
+#pragma mark MVKCmdClearMultiAttachments
+
+/**
+ * Vulkan command to clear regions multiple attachment.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdClearMultiAttachments : public MVKCmdClearAttachments<N> {
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	VkClearValue& getClearValue(uint32_t attIdx) override { return _vkClearValues[attIdx]; }
+	void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) override { _vkClearValues[attIdx] = clearValue; }
+
+	VkClearValue _vkClearValues[kMVKCachedColorAttachmentCount];
+};
+
+typedef MVKCmdClearMultiAttachments<1> MVKCmdClearMultiAttachments1;
+typedef MVKCmdClearMultiAttachments<4> MVKCmdClearMultiAttachmentsMulti;
 
 
 #pragma mark -
 #pragma mark MVKCmdClearImage
 
-/** Vulkan command to clear an image. */
+/**
+ * Abstract Vulkan command to clear an image.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdClearImage : public MVKCommand {
 
 public:
@@ -266,23 +328,57 @@ public:
 						VkImageLayout imageLayout,
 						const VkClearValue& clearValue,
 						uint32_t rangeCount,
-						const VkImageSubresourceRange* pRanges,
-						bool isDepthStencilClear);
+						const VkImageSubresourceRange* pRanges);
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
-	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
     uint32_t populateMetalCopyRegions(const VkImageBlit* pRegion, uint32_t cpyRgnIdx);
     uint32_t populateMetalBlitRenders(const VkImageBlit* pRegion, uint32_t rendRgnIdx);
     void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit* pRegion);
-    
-    MVKImage* _image;
-    VkImageLayout _imgLayout;
-	MVKVectorInline<VkImageSubresourceRange, 4> _subresourceRanges;
+	virtual bool isDepthStencilClear() = 0;
+
+	MVKVectorInline<VkImageSubresourceRange, N> _subresourceRanges;
+	MVKImage* _image;
 	VkClearValue _clearValue;
-    bool _isDepthStencilClear;
 };
+
+#pragma mark -
+#pragma mark MVKCmdClearColorImage
+
+/**
+ * Abstract Vulkan command to clear a color image.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdClearColorImage : public MVKCmdClearImage<N> {
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	bool isDepthStencilClear() override { return false; }
+};
+
+typedef MVKCmdClearColorImage<1> MVKCmdClearColorImage1;
+typedef MVKCmdClearColorImage<4> MVKCmdClearColorImageMulti;
+
+
+#pragma mark -
+#pragma mark MVKCmdClearDepthStencilImage
+
+/**
+ * Abstract Vulkan command to clear a depth stencil image.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKCmdClearDepthStencilImage : public MVKCmdClearImage<N> {
+
+protected:
+	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	bool isDepthStencilClear() override { return true; }
+};
+
+typedef MVKCmdClearDepthStencilImage<1> MVKCmdClearDepthStencilImage1;
+typedef MVKCmdClearDepthStencilImage<4> MVKCmdClearDepthStencilImageMulti;
 
 
 #pragma mark -
@@ -328,8 +424,8 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKVectorDefault<uint8_t> _srcDataCache;
 	MVKBuffer* _dstBuffer;
     VkDeviceSize _dstOffset;
     VkDeviceSize _dataSize;
-    MVKVectorDefault<uint8_t> _srcDataCache;
 };

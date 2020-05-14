@@ -1972,16 +1972,15 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 void MVKPhysicalDevice::initExternalMemoryProperties() {
 
 	// Buffers
-	_mtlBufferExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
-																 VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+	_mtlBufferExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
 																 VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
 	_mtlBufferExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
 	_mtlBufferExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
 
 	// Images
-	_mtlTextureExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
-																  VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
-																  VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
+	_mtlTextureExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+																  VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT |
+																  VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
 	_mtlTextureExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
 	_mtlTextureExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
 }
@@ -2203,8 +2202,10 @@ MVKBuffer* MVKDevice::createBuffer(const VkBufferCreateInfo* pCreateInfo,
 
 void MVKDevice::destroyBuffer(MVKBuffer* mvkBuff,
 							  const VkAllocationCallbacks* pAllocator) {
-	removeResource(mvkBuff);
-	mvkBuff->destroy();
+	if (mvkBuff) {
+		removeResource(mvkBuff);
+		mvkBuff->destroy();
+	}
 }
 
 MVKBufferView* MVKDevice::createBufferView(const VkBufferViewCreateInfo* pCreateInfo,
@@ -2214,7 +2215,7 @@ MVKBufferView* MVKDevice::createBufferView(const VkBufferViewCreateInfo* pCreate
 
 void MVKDevice::destroyBufferView(MVKBufferView* mvkBuffView,
                                   const VkAllocationCallbacks* pAllocator) {
-    mvkBuffView->destroy();
+	if (mvkBuffView) { mvkBuffView->destroy(); }
 }
 
 MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
@@ -2238,8 +2239,10 @@ MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
 
 void MVKDevice::destroyImage(MVKImage* mvkImg,
 							 const VkAllocationCallbacks* pAllocator) {
-	removeResource(mvkImg);
-	mvkImg->destroy();
+	if (mvkImg) {
+		removeResource(mvkImg);
+		mvkImg->destroy();
+	}
 }
 
 MVKImageView* MVKDevice::createImageView(const VkImageViewCreateInfo* pCreateInfo,
@@ -2249,7 +2252,7 @@ MVKImageView* MVKDevice::createImageView(const VkImageViewCreateInfo* pCreateInf
 
 void MVKDevice::destroyImageView(MVKImageView* mvkImgView,
 								 const VkAllocationCallbacks* pAllocator) {
-	mvkImgView->destroy();
+	if (mvkImgView) { mvkImgView->destroy(); }
 }
 
 MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreateInfo,
@@ -2259,7 +2262,7 @@ MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreate
 
 void MVKDevice::destroySwapchain(MVKSwapchain* mvkSwpChn,
 								 const VkAllocationCallbacks* pAllocator) {
-	mvkSwpChn->destroy();
+	if (mvkSwpChn) { mvkSwpChn->destroy(); }
 }
 
 MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const VkImageCreateInfo* pCreateInfo,
@@ -2271,8 +2274,10 @@ MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const V
 
 void MVKDevice::destroyPresentableSwapchainImage(MVKPresentableSwapchainImage* mvkImg,
 												 const VkAllocationCallbacks* pAllocator) {
-	removeResource(mvkImg);
-	mvkImg->destroy();
+	if (mvkImg) {
+		removeResource(mvkImg);
+		mvkImg->destroy();
+	}
 }
 
 MVKFence* MVKDevice::createFence(const VkFenceCreateInfo* pCreateInfo,
@@ -2282,7 +2287,7 @@ MVKFence* MVKDevice::createFence(const VkFenceCreateInfo* pCreateInfo,
 
 void MVKDevice::destroyFence(MVKFence* mvkFence,
 							 const VkAllocationCallbacks* pAllocator) {
-	mvkFence->destroy();
+	if (mvkFence) { mvkFence->destroy(); }
 }
 
 MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInfo,
@@ -2298,7 +2303,7 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 
 void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
 								 const VkAllocationCallbacks* pAllocator) {
-	mvkSem4->destroy();
+	if (mvkSem4) { mvkSem4->destroy(); }
 }
 
 MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,
@@ -2311,7 +2316,7 @@ MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,
 }
 
 void MVKDevice::destroyEvent(MVKEvent* mvkEvent, const VkAllocationCallbacks* pAllocator) {
-	mvkEvent->destroy();
+	if (mvkEvent) { mvkEvent->destroy(); }
 }
 
 MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInfo,
@@ -2330,7 +2335,7 @@ MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInf
 
 void MVKDevice::destroyQueryPool(MVKQueryPool* mvkQP,
 								 const VkAllocationCallbacks* pAllocator) {
-	mvkQP->destroy();
+	if (mvkQP) { mvkQP->destroy(); }
 }
 
 MVKShaderModule* MVKDevice::createShaderModule(const VkShaderModuleCreateInfo* pCreateInfo,
@@ -2340,7 +2345,7 @@ MVKShaderModule* MVKDevice::createShaderModule(const VkShaderModuleCreateInfo* p
 
 void MVKDevice::destroyShaderModule(MVKShaderModule* mvkShdrMod,
 									const VkAllocationCallbacks* pAllocator) {
-	mvkShdrMod->destroy();
+	if (mvkShdrMod) { mvkShdrMod->destroy(); }
 }
 
 MVKPipelineCache* MVKDevice::createPipelineCache(const VkPipelineCacheCreateInfo* pCreateInfo,
@@ -2350,7 +2355,7 @@ MVKPipelineCache* MVKDevice::createPipelineCache(const VkPipelineCacheCreateInfo
 
 void MVKDevice::destroyPipelineCache(MVKPipelineCache* mvkPLC,
 									 const VkAllocationCallbacks* pAllocator) {
-	mvkPLC->destroy();
+	if (mvkPLC) { mvkPLC->destroy(); }
 }
 
 MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
@@ -2360,7 +2365,7 @@ MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateI
 
 void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 									  const VkAllocationCallbacks* pAllocator) {
-	mvkPLL->destroy();
+	if (mvkPLL) { mvkPLL->destroy(); }
 }
 
 template<typename PipelineType, typename PipelineInfoType>
@@ -2421,7 +2426,7 @@ template VkResult MVKDevice::createPipelines<MVKComputePipeline, VkComputePipeli
 
 void MVKDevice::destroyPipeline(MVKPipeline* mvkPL,
                                 const VkAllocationCallbacks* pAllocator) {
-    mvkPL->destroy();
+	if (mvkPL) { mvkPL->destroy(); }
 }
 
 MVKSampler* MVKDevice::createSampler(const VkSamplerCreateInfo* pCreateInfo,
@@ -2431,7 +2436,7 @@ MVKSampler* MVKDevice::createSampler(const VkSamplerCreateInfo* pCreateInfo,
 
 void MVKDevice::destroySampler(MVKSampler* mvkSamp,
 							   const VkAllocationCallbacks* pAllocator) {
-	mvkSamp->destroy();
+	if (mvkSamp) { mvkSamp->destroy(); }
 }
 
 MVKDescriptorSetLayout* MVKDevice::createDescriptorSetLayout(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
@@ -2441,7 +2446,7 @@ MVKDescriptorSetLayout* MVKDevice::createDescriptorSetLayout(const VkDescriptorS
 
 void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
 										   const VkAllocationCallbacks* pAllocator) {
-	mvkDSL->destroy();
+	if (mvkDSL) { mvkDSL->destroy(); }
 }
 
 MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
@@ -2451,7 +2456,7 @@ MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateI
 
 void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 									  const VkAllocationCallbacks* pAllocator) {
-	mvkDP->destroy();
+	if (mvkDP) { mvkDP->destroy(); }
 }
 
 MVKDescriptorUpdateTemplate* MVKDevice::createDescriptorUpdateTemplate(
@@ -2462,7 +2467,7 @@ MVKDescriptorUpdateTemplate* MVKDevice::createDescriptorUpdateTemplate(
 
 void MVKDevice::destroyDescriptorUpdateTemplate(MVKDescriptorUpdateTemplate* mvkDUT,
 												const VkAllocationCallbacks* pAllocator) {
-	mvkDUT->destroy();
+	if (mvkDUT) { mvkDUT->destroy(); }
 }
 
 MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCreateInfo,
@@ -2472,7 +2477,7 @@ MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCre
 
 void MVKDevice::destroyFramebuffer(MVKFramebuffer* mvkFB,
 								   const VkAllocationCallbacks* pAllocator) {
-	mvkFB->destroy();
+	if (mvkFB) { mvkFB->destroy(); }
 }
 
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
@@ -2482,7 +2487,7 @@ MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreate
 
 void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,
 								  const VkAllocationCallbacks* pAllocator) {
-	mvkRP->destroy();
+	if (mvkRP) { mvkRP->destroy(); }
 }
 
 MVKCommandPool* MVKDevice::createCommandPool(const VkCommandPoolCreateInfo* pCreateInfo,
@@ -2492,7 +2497,7 @@ MVKCommandPool* MVKDevice::createCommandPool(const VkCommandPoolCreateInfo* pCre
 
 void MVKDevice::destroyCommandPool(MVKCommandPool* mvkCmdPool,
 								   const VkAllocationCallbacks* pAllocator) {
-	mvkCmdPool->destroy();
+	if (mvkCmdPool) { mvkCmdPool->destroy(); }
 }
 
 MVKDeviceMemory* MVKDevice::allocateMemory(const VkMemoryAllocateInfo* pAllocateInfo,
@@ -2502,7 +2507,7 @@ MVKDeviceMemory* MVKDevice::allocateMemory(const VkMemoryAllocateInfo* pAllocate
 
 void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 						   const VkAllocationCallbacks* pAllocator) {
-	mvkDevMem->destroy();
+	if (mvkDevMem) { mvkDevMem->destroy(); }
 }
 
 
@@ -2524,14 +2529,14 @@ MVKResource* MVKDevice::removeResource(MVKResource* rez) {
 
 void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
-								   VkMemoryBarrier* pMemoryBarrier,
-                                   MVKCommandEncoder* cmdEncoder,
-                                   MVKCommandUse cmdUse) {
+								   MVKPipelineBarrier& barrier,
+								   MVKCommandEncoder* cmdEncoder,
+								   MVKCommandUse cmdUse) {
 	if (!mvkIsAnyFlagEnabled(dstStageMask, VK_PIPELINE_STAGE_HOST_BIT) ||
-		!mvkIsAnyFlagEnabled(pMemoryBarrier->dstAccessMask, VK_ACCESS_HOST_READ_BIT) ) { return; }
+		!mvkIsAnyFlagEnabled(barrier.dstAccessMask, VK_ACCESS_HOST_READ_BIT) ) { return; }
 	lock_guard<mutex> lock(_rezLock);
-    for (auto& rez : _resources) {
-		rez->applyMemoryBarrier(srcStageMask, dstStageMask, pMemoryBarrier, cmdEncoder, cmdUse);
+	for (auto& rez : _resources) {
+		rez->applyMemoryBarrier(srcStageMask, dstStageMask, barrier, cmdEncoder, cmdUse);
 	}
 }
 

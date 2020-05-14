@@ -28,21 +28,23 @@
 #pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
-VkResult MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
-										   const VkRenderPassBeginInfo* pRenderPassBegin,
-										   VkSubpassContents contents) {
-	_info = *pRenderPassBegin;
+template <size_t N>
+VkResult MVKCmdBeginRenderPass<N>::setContent(MVKCommandBuffer* cmdBuff,
+											  const VkRenderPassBeginInfo* pRenderPassBegin,
+											  VkSubpassContents contents) {
 	_contents = contents;
-	_renderPass = (MVKRenderPass*)_info.renderPass;
-	_framebuffer = (MVKFramebuffer*)_info.framebuffer;
+	_renderPass = (MVKRenderPass*)pRenderPassBegin->renderPass;
+	_framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
+	_renderArea = pRenderPassBegin->renderArea;
     _loadOverride = false;
     _storeOverride = false;
 
 	// Add clear values
+	uint32_t cvCnt = pRenderPassBegin->clearValueCount;
 	_clearValues.clear();	// Clear for reuse
-	_clearValues.reserve(_info.clearValueCount);
-	for (uint32_t i = 0; i < _info.clearValueCount; i++) {
-		_clearValues.push_back(_info.pClearValues[i]);
+	_clearValues.reserve(cvCnt);
+	for (uint32_t i = 0; i < cvCnt; i++) {
+		_clearValues.push_back(pRenderPassBegin->pClearValues[i]);
 	}
 
 	cmdBuff->recordBeginRenderPass(this);
@@ -50,10 +52,15 @@ VkResult MVKCmdBeginRenderPass::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdBeginRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdBeginRenderPass<N>::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdBeginRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-	cmdEncoder->beginRenderpass(_contents, _renderPass, _framebuffer, _info.renderArea, &_clearValues, _loadOverride, _storeOverride);
+	cmdEncoder->beginRenderpass(_contents, _renderPass, _framebuffer, _renderArea, &_clearValues, _loadOverride, _storeOverride);
 }
+
+template class MVKCmdBeginRenderPass<1>;
+template class MVKCmdBeginRenderPass<2>;
+template class MVKCmdBeginRenderPass<9>;
 
 
 #pragma mark -
@@ -75,7 +82,7 @@ void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdEndRenderPass
 
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
-	cmdBuff->recordEndRenderPass(this);
+	cmdBuff->recordEndRenderPass();
 	return VK_SUCCESS;
 }
 
@@ -88,9 +95,10 @@ void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark -
 #pragma mark MVKCmdExecuteCommands
 
-VkResult MVKCmdExecuteCommands::setContent(MVKCommandBuffer* cmdBuff,
-										   uint32_t commandBuffersCount,
-										   const VkCommandBuffer* pCommandBuffers) {
+template <size_t N>
+VkResult MVKCmdExecuteCommands<N>::setContent(MVKCommandBuffer* cmdBuff,
+											  uint32_t commandBuffersCount,
+											  const VkCommandBuffer* pCommandBuffers) {
 	// Add clear values
 	_secondaryCommandBuffers.clear();	// Clear for reuse
 	_secondaryCommandBuffers.reserve(commandBuffersCount);
@@ -101,9 +109,13 @@ VkResult MVKCmdExecuteCommands::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdExecuteCommands::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdExecuteCommands<N>::encode(MVKCommandEncoder* cmdEncoder) {
     for (auto& cb : _secondaryCommandBuffers) { cmdEncoder->encodeSecondary(cb); }
 }
+
+template class MVKCmdExecuteCommands<1>;
+template class MVKCmdExecuteCommands<16>;
 
 
 #pragma mark -

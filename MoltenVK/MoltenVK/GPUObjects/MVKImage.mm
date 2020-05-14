@@ -83,11 +83,11 @@ void MVKImage::getTransferDescriptorData(MVKImageDescriptorData& imgData) {
 
 void MVKImage::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								  VkPipelineStageFlags dstStageMask,
-								  VkMemoryBarrier* pMemoryBarrier,
-                                  MVKCommandEncoder* cmdEncoder,
-                                  MVKCommandUse cmdUse) {
+								  MVKPipelineBarrier& barrier,
+								  MVKCommandEncoder* cmdEncoder,
+								  MVKCommandUse cmdUse) {
 #if MVK_MACOS
-	if ( needsHostReadSync(srcStageMask, dstStageMask, pMemoryBarrier) ) {
+	if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
 		[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: getMTLTexture()];
 	}
 #endif
@@ -95,27 +95,24 @@ void MVKImage::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 
 void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 									   VkPipelineStageFlags dstStageMask,
-									   VkImageMemoryBarrier* pImageMemoryBarrier,
-                                       MVKCommandEncoder* cmdEncoder,
-                                       MVKCommandUse cmdUse) {
-	const VkImageSubresourceRange& srRange = pImageMemoryBarrier->subresourceRange;
+									   MVKPipelineBarrier& barrier,
+									   MVKCommandEncoder* cmdEncoder,
+									   MVKCommandUse cmdUse) {
 
 	// Extract the mipmap levels that are to be updated
-	uint32_t mipLvlStart = srRange.baseMipLevel;
-	uint32_t mipLvlCnt = srRange.levelCount;
-	uint32_t mipLvlEnd = (mipLvlCnt == VK_REMAINING_MIP_LEVELS
+	uint32_t mipLvlStart = barrier.baseMipLevel;
+	uint32_t mipLvlEnd = (barrier.levelCount == (uint8_t)VK_REMAINING_MIP_LEVELS
 						  ? getMipLevelCount()
-						  : (mipLvlStart + mipLvlCnt));
+						  : (mipLvlStart + barrier.levelCount));
 
 	// Extract the cube or array layers (slices) that are to be updated
-	uint32_t layerStart = srRange.baseArrayLayer;
-	uint32_t layerCnt = srRange.layerCount;
-	uint32_t layerEnd = (layerCnt == VK_REMAINING_ARRAY_LAYERS
+	uint32_t layerStart = barrier.baseArrayLayer;
+	uint32_t layerEnd = (barrier.layerCount == (uint16_t)VK_REMAINING_ARRAY_LAYERS
 						 ? getLayerCount()
-						 : (layerStart + layerCnt));
+						 : (layerStart + barrier.layerCount));
 
 #if MVK_MACOS
-	bool needsSync = needsHostReadSync(srcStageMask, dstStageMask, pImageMemoryBarrier);
+	bool needsSync = needsHostReadSync(srcStageMask, dstStageMask, barrier);
 	id<MTLTexture> mtlTex = needsSync ? getMTLTexture() : nil;
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = needsSync ? cmdEncoder->getMTLBlitEncoder(cmdUse) : nil;
 #endif
@@ -124,7 +121,7 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 	for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {
 		for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
 			MVKImageSubresource* pImgRez = getSubresource(mipLvl, layer);
-			if (pImgRez) { pImgRez->layoutState = pImageMemoryBarrier->newLayout; }
+			if (pImgRez) { pImgRez->layoutState = barrier.newLayout; }
 #if MVK_MACOS
 			if (needsSync) { [mtlBlitEncoder synchronizeTexture: mtlTex slice: layer level: mipLvl]; }
 #endif
@@ -136,14 +133,14 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 // texture and host memory for the purpose of the host reading texture memory.
 bool MVKImage::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 								 VkPipelineStageFlags dstStageMask,
-								 VkImageMemoryBarrier* pImageMemoryBarrier) {
+								 MVKPipelineBarrier& barrier) {
+#if MVK_MACOS
+	return ((barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
+			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
+			isMemoryHostAccessible() && !isMemoryHostCoherent());
+#endif
 #if MVK_IOS
 	return false;
-#endif
-#if MVK_MACOS
-	return ((pImageMemoryBarrier->newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
-			mvkIsAnyFlagEnabled(pImageMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
-			isMemoryHostAccessible() && !isMemoryHostCoherent());
 #endif
 }
 
