@@ -54,29 +54,13 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						VkImage srcImage,
-						VkImageLayout srcImageLayout,
-						VkImage dstImage,
-						VkImageLayout dstImageLayout,
-						bool formatsMustMatch,
-						MVKCommandUse commandUse);
-	void addImageCopyRegion(const VkImageCopy& region, MVKPixelFormats* pixFmts);
-	void addTempBufferImageCopyRegion(const VkImageCopy& region, MVKPixelFormats* pixFmts);
 
-	MVKVectorInline<VkImageCopy, N> _imageCopyRegions;
-	MVKVectorInline<VkBufferImageCopy, N> _srcTmpBuffImgCopies;
-	MVKVectorInline<VkBufferImageCopy, N> _dstTmpBuffImgCopies;
-	size_t _tmpBuffSize;
+	MVKVectorInline<VkImageCopy, N> _vkImageCopies;
 	MVKImage* _srcImage;
 	MVKImage* _dstImage;
 	VkImageLayout _srcLayout;
 	VkImageLayout _dstLayout;
 	MVKCommandUse _commandUse;
-	bool _isSrcCompressed;
-	bool _isDstCompressed;
-	bool _canCopyFormats;
-	bool _useTempBuffer;
 };
 
 // Concrete template class implementations.
@@ -101,7 +85,7 @@ typedef struct {
  * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
 template <size_t N>
-class MVKCmdBlitImage : public MVKCmdCopyImage<N> {
+class MVKCmdBlitImage : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
@@ -116,21 +100,19 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
-	MVKCmdBlitImage();
-
-	~MVKCmdBlitImage() override;
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	bool canCopyFormats();
 	bool canCopy(const VkImageBlit& region);
-	void addImageBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
-	void addImageCopyRegionFromBlitRegion(const VkImageBlit& region, MVKPixelFormats* pixFmts);
 	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region);
-    void initMTLRenderPassDescriptor();
 
-	MVKVectorInline<MVKImageBlitRender, N> _mvkImageBlitRenders;
-	MVKRPSKeyBlitImg _blitKey;
-	MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
+	MVKVectorInline<VkImageBlit, N> _vkImageBlits;
+	MVKImage* _srcImage;
+	MVKImage* _dstImage;
+	VkImageLayout _srcLayout;
+	VkImageLayout _dstLayout;
+	VkFilter _filter;
+	MVKCommandUse _commandUse;
 };
 
 // Concrete template class implementations.
@@ -165,22 +147,10 @@ public:
 
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
-    MVKCmdResolveImage();
-
-    ~MVKCmdResolveImage() override;
-
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-	void addExpansionRegion(const VkImageResolve& resolveRegion);
-    void addCopyRegion(const VkImageResolve& resolveRegion);
-    void addResolveSlices(const VkImageResolve& resolveRegion);
-    void initMTLRenderPassDescriptor();
 
-	MVKVectorInline<VkImageCopy, N> _copyRegions;
-	MVKVectorInline<VkImageBlit, N> _expansionRegions;
-	MVKVectorInline<MVKMetalResolveSlice, N> _mtlResolveSlices;
-	MVKImageDescriptorData _transferImageData;
-	MTLRenderPassDescriptor* _mtlRenderPassDescriptor;
+	MVKVectorInline<VkImageResolve, N> _vkImageResolves;
     MVKImage* _srcImage;
 	MVKImage* _dstImage;
     VkImageLayout _srcLayout;
