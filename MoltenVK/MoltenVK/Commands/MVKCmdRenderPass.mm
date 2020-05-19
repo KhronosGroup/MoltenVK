@@ -55,7 +55,7 @@ VkResult MVKCmdBeginRenderPass<N>::setContent(MVKCommandBuffer* cmdBuff,
 template <size_t N>
 void MVKCmdBeginRenderPass<N>::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdBeginRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-	cmdEncoder->beginRenderpass(_contents, _renderPass, _framebuffer, _renderArea, &_clearValues, _loadOverride, _storeOverride);
+	cmdEncoder->beginRenderpass(_contents, _renderPass, _framebuffer, _renderArea, _clearValues.contents(), _loadOverride, _storeOverride);
 }
 
 template class MVKCmdBeginRenderPass<1>;
@@ -138,7 +138,7 @@ VkResult MVKCmdSetViewport<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetViewport<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->_viewportState.setViewports(_viewports, _firstViewport, true);
+	cmdEncoder->_viewportState.setViewports(_viewports.contents(), _firstViewport, true);
 }
 
 template class MVKCmdSetViewport<1>;
@@ -165,7 +165,7 @@ VkResult MVKCmdSetScissor<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N>
 void MVKCmdSetScissor<N>::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->_scissorState.setScissors(_scissors, _firstScissor, true);
+    cmdEncoder->_scissorState.setScissors(_scissors.contents(), _firstScissor, true);
 }
 
 template class MVKCmdSetScissor<1>;

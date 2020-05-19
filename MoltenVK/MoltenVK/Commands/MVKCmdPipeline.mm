@@ -207,7 +207,7 @@ VkResult MVKCmdBindDescriptorSetsStatic<N>::setContent(MVKCommandBuffer* cmdBuff
 
 template <size_t N>
 void MVKCmdBindDescriptorSetsStatic<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	_pipelineLayout->bindDescriptorSets(cmdEncoder, _descriptorSets, _firstSet, nullptr);
+	_pipelineLayout->bindDescriptorSets(cmdEncoder, _descriptorSets.contents(), _firstSet, MVKArrayRef<uint32_t>());
 }
 
 template class MVKCmdBindDescriptorSetsStatic<1>;
@@ -243,7 +243,7 @@ VkResult MVKCmdBindDescriptorSetsDynamic<N>::setContent(MVKCommandBuffer* cmdBuf
 
 template <size_t N>
 void MVKCmdBindDescriptorSetsDynamic<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	MVKCmdBindDescriptorSetsStatic<N>::_pipelineLayout->bindDescriptorSets(cmdEncoder, MVKCmdBindDescriptorSetsStatic<N>::_descriptorSets, MVKCmdBindDescriptorSetsStatic<N>::_firstSet, &_dynamicOffsets);
+	MVKCmdBindDescriptorSetsStatic<N>::_pipelineLayout->bindDescriptorSets(cmdEncoder, MVKCmdBindDescriptorSetsStatic<N>::_descriptorSets.contents(), MVKCmdBindDescriptorSetsStatic<N>::_firstSet, _dynamicOffsets.contents());
 }
 
 template class MVKCmdBindDescriptorSetsDynamic<4>;
@@ -281,7 +281,7 @@ void MVKCmdPushConstants<N>::encode(MVKCommandEncoder* cmdEncoder) {
     };
     for (auto stage : stages) {
         if (mvkAreAllFlagsEnabled(_stageFlags, stage)) {
-            cmdEncoder->getPushConstants(stage)->setPushConstants(_offset, _pushConstants);
+			cmdEncoder->getPushConstants(stage)->setPushConstants(_offset, _pushConstants.contents());
         }
     }
 }
@@ -353,7 +353,7 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
-	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descriptorWrites, _set);
+	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descriptorWrites.contents(), _set);
 }
 
 MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {

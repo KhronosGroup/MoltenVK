@@ -54,13 +54,13 @@ public:
 
 	/** Binds descriptor sets to a command encoder. */
     void bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
-                            MVKVector<MVKDescriptorSet*>& descriptorSets,
+                            MVKArrayRef<MVKDescriptorSet*> descriptorSets,
                             uint32_t firstSet,
-                            MVKVector<uint32_t>* pDynamicOffsets);
+                            MVKArrayRef<uint32_t> dynamicOffsets);
 
 	/** Updates a descriptor set in a command encoder. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   MVKVector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
 						   uint32_t set);
 
 	/** Updates a descriptor set from a template in a command encoder. */

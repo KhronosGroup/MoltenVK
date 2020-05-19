@@ -38,26 +38,26 @@ using namespace SPIRV_CROSS_NAMESPACE;
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
-                                           MVKVector<MVKDescriptorSet*>& descriptorSets,
+                                           MVKArrayRef<MVKDescriptorSet*> descriptorSets,
                                            uint32_t firstSet,
-                                           MVKVector<uint32_t>* pDynamicOffsets) {
+                                           MVKArrayRef<uint32_t> dynamicOffsets) {
 	clearConfigurationResult();
 	uint32_t pDynamicOffsetIndex = 0;
-	uint32_t dsCnt = (uint32_t)descriptorSets.size();
+	size_t dsCnt = descriptorSets.size;
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 		MVKDescriptorSet* descSet = descriptorSets[dsIdx];
 		uint32_t dslIdx = firstSet + dsIdx;
 		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[dslIdx];
 		dsl->bindDescriptorSet(cmdEncoder, descSet,
 							   _dslMTLResourceIndexOffsets[dslIdx],
-							   pDynamicOffsets, &pDynamicOffsetIndex);
+							   dynamicOffsets, &pDynamicOffsetIndex);
 		setConfigurationResult(dsl->getConfigurationResult());
 	}
 }
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-                                          MVKVector<VkWriteDescriptorSet>& descriptorWrites,
+                                          MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
                                           uint32_t set) {
 	clearConfigurationResult();
 	MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[set];
@@ -254,8 +254,8 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
             cmdEncoder->_blendColorState.setBlendColor(_blendConstants[0], _blendConstants[1],
                                                        _blendConstants[2], _blendConstants[3], false);
             cmdEncoder->_depthBiasState.setDepthBias(_rasterInfo);
-            cmdEncoder->_viewportState.setViewports(_viewports, 0, false);
-            cmdEncoder->_scissorState.setScissors(_scissors, 0, false);
+            cmdEncoder->_viewportState.setViewports(_viewports.contents(), 0, false);
+            cmdEncoder->_scissorState.setScissors(_scissors.contents(), 0, false);
             cmdEncoder->_mtlPrimitiveType = _mtlPrimitiveType;
 
             [mtlCmdEnc setCullMode: _mtlCullMode];

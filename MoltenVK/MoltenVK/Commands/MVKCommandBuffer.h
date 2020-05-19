@@ -268,7 +268,7 @@ public:
 						 MVKRenderPass* renderPass,
 						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
-						 MVKVector<VkClearValue>* clearValues,
+						 MVKArrayRef<VkClearValue> clearValues,
 						 bool loadOverride = false,
 						 bool storeOverride = false);
 

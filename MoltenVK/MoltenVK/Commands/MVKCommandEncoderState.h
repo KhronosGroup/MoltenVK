@@ -140,7 +140,7 @@ public:
 	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
 	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
 	 */
-	void setViewports(const MVKVector<VkViewport> &viewports,
+	void setViewports(const MVKArrayRef<VkViewport> viewports,
 					  uint32_t firstViewport,
 					  bool isSettingDynamically);
 
@@ -169,7 +169,7 @@ public:
 	 * The isSettingDynamically indicates that the scissor is being changed dynamically,
 	 * which is only allowed if the pipeline was created as VK_DYNAMIC_STATE_SCISSOR.
 	 */
-	void setScissors(const MVKVector<VkRect2D> &scissors,
+	void setScissors(const MVKArrayRef<VkRect2D> scissors,
 					 uint32_t firstScissor,
 					 bool isSettingDynamically);
 
@@ -194,7 +194,7 @@ class MVKPushConstantsCommandEncoderState : public MVKCommandEncoderState {
 public:
 
     /** Sets the specified push constants. */
-    void setPushConstants(uint32_t offset, MVKVector<char>& pushConstants);
+    void setPushConstants(uint32_t offset, MVKArrayRef<char> pushConstants);
 
     /** Sets the index of the Metal buffer used to hold the push constants. */
     void setMTLBufferIndex(uint32_t mtlBufferIndex);

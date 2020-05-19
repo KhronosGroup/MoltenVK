@@ -21,7 +21,7 @@
 #include "MVKCommand.h"
 #include "MVKMTLResourceBindings.h"
 #include "MVKSync.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 class MVKCommandBuffer;
 class MVKPipeline;
@@ -58,7 +58,7 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool coversTextures();
 
-	MVKVectorInline<MVKPipelineBarrier, N> _barriers;
+	MVKSmallVector<MVKPipelineBarrier, N> _barriers;
 	VkPipelineStageFlags _srcStageMask;
 	VkPipelineStageFlags _dstStageMask;
 	VkDependencyFlags _dependencyFlags;
@@ -142,7 +142,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<MVKDescriptorSet*, N> _descriptorSets;
+	MVKSmallVector<MVKDescriptorSet*, N> _descriptorSets;
 	MVKPipelineLayout* _pipelineLayout;
 	VkPipelineBindPoint _pipelineBindPoint;
 	uint32_t _firstSet;
@@ -179,7 +179,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<uint32_t, N> _dynamicOffsets;
+	MVKSmallVector<uint32_t, N> _dynamicOffsets;
 };
 
 // Concrete template class implementations.
@@ -210,7 +210,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<char, N> _pushConstants;
+	MVKSmallVector<char, N> _pushConstants;
 	MVKPipelineLayout* _pipelineLayout;
 	VkShaderStageFlags _stageFlags;
 	uint32_t _offset;
@@ -244,7 +244,7 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	void clearDescriptorWrites();
 
-	MVKVectorInline<VkWriteDescriptorSet, 1> _descriptorWrites;
+	MVKSmallVector<VkWriteDescriptorSet, 1> _descriptorWrites;
 	MVKPipelineLayout* _pipelineLayout;
 	VkPipelineBindPoint _pipelineBindPoint;
 	uint32_t _set;
@@ -354,7 +354,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<MVKEvent*, N> _mvkEvents;
+	MVKSmallVector<MVKEvent*, N> _mvkEvents;
 
 };
 

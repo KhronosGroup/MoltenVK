@@ -46,13 +46,13 @@ public:
     void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                            MVKDescriptorSet* descSet,
                            MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                           MVKVector<uint32_t>* pDynamicOffsets,
+                           MVKArrayRef<uint32_t> dynamicOffsets,
                            uint32_t* pDynamicOffsetIndex);
 
 
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   MVKVector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKArrayRef<VkWriteDescriptorSet>& descriptorWrites,
 						   MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
 

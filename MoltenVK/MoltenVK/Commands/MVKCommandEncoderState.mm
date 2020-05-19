@@ -58,11 +58,11 @@ void MVKPipelineCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKViewportCommandEncoderState
 
-void MVKViewportCommandEncoderState::setViewports(const MVKVector<VkViewport> &viewports,
+void MVKViewportCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> viewports,
 												  uint32_t firstViewport,
 												  bool isSettingDynamically) {
 
-	size_t vpCnt = viewports.size();
+	size_t vpCnt = viewports.size;
 	uint32_t maxViewports = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
 	if ((firstViewport + vpCnt > maxViewports) ||
 		(firstViewport >= maxViewports) ||
@@ -111,11 +111,11 @@ void MVKViewportCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKScissorCommandEncoderState
 
-void MVKScissorCommandEncoderState::setScissors(const MVKVector<VkRect2D> &scissors,
+void MVKScissorCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scissors,
                                                 uint32_t firstScissor,
 												bool isSettingDynamically) {
 
-	size_t sCnt = scissors.size();
+	size_t sCnt = scissors.size;
 	uint32_t maxScissors = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
 	if ((firstScissor + sCnt > maxScissors) ||
 		(firstScissor >= maxScissors) ||
@@ -164,12 +164,12 @@ void MVKScissorCommandEncoderState::resetImpl() {
 #pragma mark -
 #pragma mark MVKPushConstantsCommandEncoderState
 
-void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVKVector<char>& pushConstants) {
+void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVKArrayRef<char> pushConstants) {
 	// MSL structs can have a larger size than the equivalent C struct due to MSL alignment needs.
 	// Typically any MSL struct that contains a float4 will also have a size that is rounded up to a multiple of a float4 size.
 	// Ensure that we pass along enough content to cover this extra space even if it is never actually accessed by the shader.
 	size_t pcSizeAlign = _cmdEncoder->getDevice()->_pMetalFeatures->pushConstantSizeAlignment;
-    size_t pcSize = pushConstants.size();
+    size_t pcSize = pushConstants.size;
 	size_t pcBuffSize = mvkAlignByteCount(offset + pcSize, pcSizeAlign);
     mvkEnsureSize(_pushConstants, pcBuffSize);
     copy(pushConstants.begin(), pushConstants.end(), _pushConstants.begin() + offset);
