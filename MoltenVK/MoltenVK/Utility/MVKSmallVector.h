@@ -1,5 +1,5 @@
 /*
- * MVKVector.h
+ * MVKSmallVector.h
  *
  * Copyright (c) 2012-2020 Dr. Torsten Hans (hans@ipacs.de)
  *
@@ -19,34 +19,28 @@
 #pragma once
 
 //
-// in case MVKVector should use std::vector
+// in case MVKSmallVector should use std::vector
 //
 #if 0
 
 template<typename T, size_t N = 0>
-using MVKVectorInline = std::vector<T>;
-
-template<typename T>
-using MVKVectorDefault = std::vector<T>;
-
-template<typename T>
-using MVKVector = std::vector<T>;
+using MVKSmallVector = std::vector<T>;
 
 #else
 
 //
-// MVKVector.h is a sequence container that (optionally) implements a small
+// MVKSmallVector.h is a sequence container that (optionally) implements a small
 // buffer optimization.
 // It behaves similarly to std::vector, except until a certain number of
 // elements are reserved, it does not use the heap.
-// Like std::vector, MVKVector is guaranteed to use contiguous memory, so if the
+// Like std::vector, MVKSmallVector is guaranteed to use contiguous memory, so if the
 // preallocated number of elements are exceeded, all elements are then in heap.
-// MVKVector supports just the necessary members to be compatible with MoltenVK
+// MVKSmallVector supports just the necessary members to be compatible with MoltenVK
 // If C++17 will be the default in the future, code can be simplified quite a bit.
 //
 // Example:
 //
-//  MVKVectorInline<int, 3> vector;
+//  MVKSmallVector<int, 3> vector;
 //  vector.emplace_back( 1 );
 //  vector.emplace_back( 2 );
 //  vector.emplace_back( 3 );
@@ -54,172 +48,35 @@ using MVKVector = std::vector<T>;
 //  vector.emplace_back( 4 );
 //
 // If you don't need any inline storage use
-//  MVKVectorDefault<int> vector;   // this is essentially the same as using std::vector
+//  MVKSmallVector<int> vector;   // this is essentially the same as using std::vector
 //
-// Passing MVKVectorInline to a function would require to use the same template
-// parameters that have been used for declaration. To avoid this MVKVectorInline
-// is derived from MVKVector. If you want to pass MVKVectorInline to a function
-// use MVKVector.
-//
-#include "MVKVectorAllocator.h"
+// The memory overhead per-instance of MVKSmallVector (16 bytes) is smaller than MVKVector (40 bytes),
+// but MVKSmallVector lacks the polymorphism of MVKVector, that allows MVKVector to be passed around
+// to functions without reference to its pre-allocation size. MVKSmallVector supports the contents()
+// function to derive an MVKVector from its contents, to allow a reference to the contents to be
+// passed around without reference to its pre-allocaton size.
+
+#include "MVKSmallVectorAllocator.h"
 #include "MVKFoundation.h"
 #include <type_traits>
 #include <initializer_list>
 #include <utility>
 
 
-template<class Type> class MVKVector
+template<typename Type, typename Allocator = mvk_smallvector_allocator<Type, 0>>
+class MVKSmallVectorImpl
 {
-  mvk_vector_allocator_base<Type> *alc_ptr;
-
-public:
-  class iterator : public std::iterator<std::forward_iterator_tag, Type>
-  {
-    const MVKVector *vector;
-    size_t           index;
-
-  public:
-    iterator() = delete;
-    iterator( const size_t _index, const MVKVector &_vector ) : vector{ &_vector }, index{ _index } { }
-    iterator &operator=( const iterator &it ) = delete;
-
-    Type *operator->() const { return &vector->alc_ptr->ptr[index]; }
-    Type &operator*()  const { return  vector->alc_ptr->ptr[index]; }
-    operator Type*( )  const { return &vector->alc_ptr->ptr[index]; }
-
-    bool operator==( const iterator &it ) const { return vector == it.vector && index == it.index; }
-    bool operator!=( const iterator &it ) const { return vector != it.vector || index != it.index; }
-
-    iterator& operator++()      {                 ++index; return *this; }
-    iterator  operator++( int ) { auto t = *this; ++index; return t; }
-
-    bool   is_valid()     const { return index < vector->size(); }
-    size_t get_position() const { return index; }
-  };
-
-public:
-  typedef Type value_type;
-
-  MVKVector() = delete;
-  MVKVector( mvk_vector_allocator_base<Type> *a ) : alc_ptr{ a } { }
-  virtual ~MVKVector() { }
-
-  iterator begin() const { return iterator( 0,               *this ); }
-  iterator end()   const { return iterator( alc_ptr->size(), *this ); }
-
-  const MVKArrayRef<Type> contents() const { return MVKArrayRef<Type>(data(), size()); }
-        MVKArrayRef<Type> contents()       { return MVKArrayRef<Type>(data(), size()); }
-
-  virtual const Type &operator[]( const size_t i ) const                  = 0;
-  virtual       Type &operator[]( const size_t i )                        = 0;
-  virtual const Type &at( const size_t i ) const                          = 0;
-  virtual       Type &at( const size_t i )                                = 0;
-  virtual const Type &front() const                                       = 0;
-  virtual       Type &front()                                             = 0;
-  virtual const Type &back() const                                        = 0;
-  virtual       Type &back()                                              = 0;
-  virtual const Type *data() const                                        = 0;
-  virtual       Type *data()                                              = 0;
-
-  virtual size_t      size()     const                                    = 0;
-  virtual bool        empty()    const                                    = 0;
-  virtual size_t      capacity() const                                    = 0;
-
-  virtual void        pop_back()                                          = 0;
-  virtual void        clear()                                             = 0;
-  virtual void        reset()                                             = 0;
-  virtual void        reserve( const size_t new_size )                    = 0;
-  virtual void        assign( const size_t new_size, const Type &t )      = 0;
-  virtual void        resize( const size_t new_size, const Type t = { } ) = 0;
-  virtual void        shrink_to_fit()                                     = 0;
-  virtual void        push_back( const Type &t )                          = 0;
-  virtual void        push_back( Type &&t )                               = 0;
-};
-
-
-template<class Type> class MVKVector<Type *>
-{
-  mvk_vector_allocator_base<Type*> *alc_ptr;
-
-  class iterator : public std::iterator<std::forward_iterator_tag, Type*>
-  {
-    const MVKVector *vector;
-    size_t           index;
-
-  public:
-    iterator() = delete;
-    iterator( const size_t _index, const MVKVector &_vector ) : vector{ &_vector }, index{ _index } { }
-    iterator &operator=( const iterator &it ) = delete;
-
-    Type *operator->() const { return vector->alc_ptr->ptr[index]; }
-    Type *&operator*()       { return vector->alc_ptr->ptr[index]; }
-    operator Type*&()  const { return &vector->alc_ptr->ptr[index]; }
-
-    bool operator==( const iterator &it ) const { return vector == it.vector && index == it.index; }
-    bool operator!=( const iterator &it ) const { return vector != it.vector || index != it.index; }
-
-    iterator& operator++()      {                 ++index; return *this; }
-    iterator  operator++( int ) { auto t = *this; ++index; return t; }
-
-    bool   is_valid()     const { return index < vector->size(); }
-    size_t get_position() const { return index; }
-  };
-
-public:
-  typedef Type* value_type;
-
-  MVKVector() = delete;
-  MVKVector( mvk_vector_allocator_base<Type*> *a ) : alc_ptr{ a } { }
-  virtual ~MVKVector() { }
-
-  iterator begin() const { return iterator( 0,               *this ); }
-  iterator end()   const { return iterator( alc_ptr->size(), *this ); }
-
-  const MVKArrayRef<Type*> contents() const { return MVKArrayRef<Type*>(data(), size()); }
-        MVKArrayRef<Type*> contents()       { return MVKArrayRef<Type*>(data(), size()); }
-
-  virtual const Type * const  operator[]( const size_t i ) const             = 0;
-  virtual       Type *       &operator[]( const size_t i )                   = 0;
-  virtual const Type * const  at( const size_t i ) const                     = 0;
-  virtual       Type *       &at( const size_t i )                           = 0;
-  virtual const Type * const  front() const                                  = 0;
-  virtual       Type *       &front()                                        = 0;
-  virtual const Type * const  back() const                                   = 0;
-  virtual       Type *       &back()                                         = 0;
-  virtual const Type * const *data() const                                   = 0;
-  virtual       Type *       *data()                                         = 0;
-
-  virtual size_t              size() const                                   = 0;
-  virtual bool                empty() const                                  = 0;
-  virtual size_t              capacity() const                               = 0;
-
-  virtual void                pop_back()                                     = 0;
-  virtual void                clear()                                        = 0;
-  virtual void                reset()                                        = 0;
-  virtual void                reserve( const size_t new_size )               = 0;
-  virtual void                assign( const size_t new_size, const Type *t ) = 0;
-  virtual void                resize( const size_t new_size, const Type *t = nullptr ) = 0;
-  virtual void                shrink_to_fit()                                = 0;
-  virtual void                push_back( const Type *t )                     = 0;
-};
-
-
-// this is the actual implementation of MVKVector
-template<class Type, typename Allocator = mvk_vector_allocator_default<Type>> class MVKVectorImpl : public MVKVector<Type>
-{
-  friend class MVKVectorImpl;
-
   Allocator  alc;
   
 public:
   class iterator : public std::iterator<std::forward_iterator_tag, Type>
   {
-    const MVKVectorImpl *vector;
+    const MVKSmallVectorImpl *vector;
     size_t               index;
 
   public:
     iterator() = delete;
-    iterator( const size_t _index, const MVKVectorImpl &_vector ) : vector{ &_vector }, index{ _index } { }
+    iterator( const size_t _index, const MVKSmallVectorImpl &_vector ) : vector{ &_vector }, index{ _index } { }
 
     iterator &operator=( const iterator &it )
     {
@@ -265,11 +122,11 @@ private:
   }
 
 public:
-  MVKVectorImpl() : MVKVector<Type>{ &alc }
+  MVKSmallVectorImpl()
   {
   }
 
-  MVKVectorImpl( const size_t n, const Type t ) : MVKVector<Type>{ &alc }
+  MVKSmallVectorImpl( const size_t n, const Type t )
   {
     if( n > 0 )
     {
@@ -284,7 +141,7 @@ public:
     }
   }
 
-  MVKVectorImpl( const MVKVectorImpl &a ) : MVKVector<Type>{ &alc }
+  MVKSmallVectorImpl( const MVKSmallVectorImpl &a )
   {
     const size_t n = a.size();
 
@@ -302,7 +159,7 @@ public:
   }
 
   template<typename U>
-  MVKVectorImpl( const U &a ) : MVKVector<Type>{ &alc }
+  MVKSmallVectorImpl( const U &a )
   {
     const size_t n = a.size();
 
@@ -319,11 +176,11 @@ public:
     }
   }
 
-  MVKVectorImpl( MVKVectorImpl &&a ) : MVKVector<Type>{ &alc }, alc{ std::move( a.alc ) }
+  MVKSmallVectorImpl( MVKSmallVectorImpl &&a ) : alc{ std::move( a.alc ) }
   {
   }
 
-  MVKVectorImpl( std::initializer_list<Type> vector ) : MVKVector<Type>{ &alc }
+  MVKSmallVectorImpl( std::initializer_list<Type> vector )
   {
     if( vector.size() > capacity() )
     {
@@ -338,16 +195,16 @@ public:
     }
   }
 
-  ~MVKVectorImpl()
+  ~MVKSmallVectorImpl()
   {
   }
 
   template<typename U>
-  MVKVectorImpl& operator=( const U &a )
+  MVKSmallVectorImpl& operator=( const U &a )
   {
-    static_assert( std::is_base_of<MVKVector<Type>, U>::value, "argument is not of type MVKVector" );
+    static_assert( std::is_base_of<MVKSmallVectorImpl<Type>, U>::value, "argument is not of type MVKSmallVectorImpl" );
 
-    if( this != reinterpret_cast<const MVKVector<Type>*>( &a ) )
+    if( this != reinterpret_cast<const MVKSmallVectorImpl<Type>*>( &a ) )
     {
       const auto n = a.size();
 
@@ -381,13 +238,13 @@ public:
     return *this;
   }
 
-  MVKVectorImpl& operator=( MVKVectorImpl &&a )
+  MVKSmallVectorImpl& operator=( MVKSmallVectorImpl &&a )
   {
     alc.swap( a.alc );
     return *this;
   }
 
-  bool operator==( const MVKVectorImpl &a ) const
+  bool operator==( const MVKSmallVectorImpl &a ) const
   {
     if( alc.num_elements_used != a.alc.num_elements_used )
       return false;
@@ -399,7 +256,7 @@ public:
     return true;
   }
 
-  bool operator!=( const MVKVectorImpl &a ) const
+  bool operator!=( const MVKSmallVectorImpl &a ) const
   {
     if( alc.num_elements_used != a.alc.num_elements_used )
       return true;
@@ -411,7 +268,7 @@ public:
     return false;
   }
 
-  void swap( MVKVectorImpl &a )
+  void swap( MVKSmallVectorImpl &a )
   {
     alc.swap( a.alc );
   }
@@ -419,22 +276,25 @@ public:
   iterator begin() const { return iterator( 0, *this ); }
   iterator end()   const { return iterator( alc.num_elements_used, *this ); }
 
-  const Type &operator[]( const size_t i ) const override { return alc[i]; }
-        Type &operator[]( const size_t i )       override { return alc[i]; }
-  const Type &at( const size_t i )         const override { return alc[i]; }
-        Type &at( const size_t i )               override { return alc[i]; }
-  const Type &front()                      const override { return alc[0]; }
-        Type &front()                            override { return alc[0]; }
-  const Type &back()                       const override { return alc[alc.num_elements_used - 1]; }
-        Type &back()                             override { return alc[alc.num_elements_used - 1]; }
-  const Type *data()                       const override { return alc.ptr; }
-        Type *data()                             override { return alc.ptr; }
+  const MVKArrayRef<Type> contents() const { return MVKArrayRef<Type>(data(), size()); }
+        MVKArrayRef<Type> contents()       { return MVKArrayRef<Type>(data(), size()); }
 
-  size_t      size()                       const override { return alc.num_elements_used; }
-  bool        empty()                      const override { return alc.num_elements_used == 0; }
-  size_t      capacity()                   const override { return alc.get_capacity(); }
+  const Type &operator[]( const size_t i ) const { return alc[i]; }
+        Type &operator[]( const size_t i )        { return alc[i]; }
+  const Type &at( const size_t i )         const { return alc[i]; }
+        Type &at( const size_t i )                { return alc[i]; }
+  const Type &front()                      const  { return alc[0]; }
+        Type &front()                             { return alc[0]; }
+  const Type &back()                       const  { return alc[alc.num_elements_used - 1]; }
+        Type &back()                              { return alc[alc.num_elements_used - 1]; }
+  const Type *data()                       const  { return alc.ptr; }
+        Type *data()                              { return alc.ptr; }
 
-  void pop_back() override
+  size_t      size()                       const { return alc.num_elements_used; }
+  bool        empty()                      const { return alc.num_elements_used == 0; }
+  size_t      capacity()                   const { return alc.get_capacity(); }
+
+  void pop_back()
   {
     if( alc.num_elements_used > 0 )
     {
@@ -443,17 +303,17 @@ public:
     }
   }
 
-  void clear() override
+  void clear()
   {
     alc.template destruct_all<Type>();
   }
 
-  void reset() override
+  void reset()
   {
     alc.deallocate();
   }
 
-  void reserve( const size_t new_size ) override
+  void reserve( const size_t new_size )
   {
     if( new_size > capacity() )
     {
@@ -461,7 +321,7 @@ public:
     }
   }
 
-  void assign( const size_t new_size, const Type &t ) override
+  void assign( const size_t new_size, const Type &t )
   {
     if( new_size <= capacity() )
     {
@@ -492,7 +352,7 @@ public:
     }
   }
 
-  void resize( const size_t new_size, const Type t = { } ) override
+  void resize( const size_t new_size, const Type t = { } )
   {
     if( new_size == alc.num_elements_used )
     {
@@ -536,7 +396,7 @@ public:
   }
 
   // trims the capacity of the slist to the number of alc.ptr
-  void shrink_to_fit() override
+  void shrink_to_fit()
   {
     alc.shrink_to_fit();
   }
@@ -605,7 +465,7 @@ public:
     }
   }
 
-  void push_back( const Type &t ) override
+  void push_back( const Type &t )
   {
     if( alc.num_elements_used == capacity() )
       vector_ReAllocate( vector_GetNextCapacity() );
@@ -614,7 +474,7 @@ public:
     ++alc.num_elements_used;
   }
 
-  void push_back( Type &&t ) override
+  void push_back( Type &&t )
   {
     if( alc.num_elements_used == capacity() )
       vector_ReAllocate( vector_GetNextCapacity() );
@@ -637,21 +497,21 @@ public:
 };
 
 // specialization for pointer types
-template<class Type, typename Allocator> class MVKVectorImpl<Type*, Allocator> : public MVKVector<Type*>
+template<typename Type, typename Allocator>
+class MVKSmallVectorImpl<Type*, Allocator>
 {
-  friend class MVKVectorImpl;
 
   Allocator  alc;
 
 public:
   class iterator : public std::iterator<std::forward_iterator_tag, Type*>
   {
-    MVKVectorImpl *vector;
+    MVKSmallVectorImpl *vector;
     size_t         index;
 
   public:
     iterator() = delete;
-    iterator( const size_t _index, MVKVectorImpl &_vector ) : vector{ &_vector }, index{ _index } { }
+    iterator( const size_t _index, MVKSmallVectorImpl &_vector ) : vector{ &_vector }, index{ _index } { }
 
     iterator &operator=( const iterator &it )
     {
@@ -695,11 +555,11 @@ private:
   }
 
 public:
-  MVKVectorImpl() : MVKVector<Type*>{ &alc }
+  MVKSmallVectorImpl()
   {
   }
 
-  MVKVectorImpl( const size_t n, const Type *t ) : MVKVector<Type*>{ &alc }
+  MVKSmallVectorImpl( const size_t n, const Type *t )
   {
     if ( n > 0 )
     {
@@ -714,7 +574,7 @@ public:
     }
   }
 
-  MVKVectorImpl( const MVKVectorImpl &a ) : MVKVector<Type*>{ &alc }
+  MVKSmallVectorImpl( const MVKSmallVectorImpl &a )
   {
     const size_t n = a.size();
 
@@ -731,11 +591,11 @@ public:
     }
   }
 
-  MVKVectorImpl( MVKVectorImpl &&a ) : MVKVector<Type*>{ &alc }, alc{ std::move( a.alc ) }
+  MVKSmallVectorImpl( MVKSmallVectorImpl &&a ) : alc{ std::move( a.alc ) }
   {
   }
 
-  MVKVectorImpl( std::initializer_list<Type*> vector ) : MVKVector<Type*>{ &alc }
+  MVKSmallVectorImpl( std::initializer_list<Type*> vector )
   {
     if ( vector.size() > capacity() )
     {
@@ -750,16 +610,16 @@ public:
     }
   }
 
-  ~MVKVectorImpl()
+  ~MVKSmallVectorImpl()
   {
   }
 
   template<typename U>
-  MVKVectorImpl& operator=( const U &a )
+  MVKSmallVectorImpl& operator=( const U &a )
   {
-    static_assert( std::is_base_of<MVKVector<U>, U>::value, "argument is not of type MVKVector" );
+    static_assert( std::is_base_of<MVKSmallVectorImpl<U>, U>::value, "argument is not of type MVKSmallVectorImpl" );
 
-    if ( this != reinterpret_cast< const MVKVector<Type>* >( &a ) )
+    if ( this != reinterpret_cast< const MVKSmallVectorImpl<Type>* >( &a ) )
     {
       const auto n = a.size();
 
@@ -789,13 +649,13 @@ public:
     return *this;
   }
 
-  MVKVectorImpl& operator=( MVKVectorImpl &&a )
+  MVKSmallVectorImpl& operator=( MVKSmallVectorImpl &&a )
   {
     alc.swap( a.alc );
     return *this;
   }
 
-  bool operator==( const MVKVectorImpl &a ) const
+  bool operator==( const MVKSmallVectorImpl &a ) const
   {
     if ( alc.num_elements_used != a.alc.num_elements_used )
       return false;
@@ -807,7 +667,7 @@ public:
     return true;
   }
 
-  bool operator!=( const MVKVectorImpl &a ) const
+  bool operator!=( const MVKSmallVectorImpl &a ) const
   {
     if ( alc.num_elements_used != a.alc.num_elements_used )
       return true;
@@ -819,7 +679,7 @@ public:
     return false;
   }
 
-  void swap( MVKVectorImpl &a )
+  void swap( MVKSmallVectorImpl &a )
   {
     alc.swap( a.alc );
   }
@@ -827,22 +687,25 @@ public:
   iterator begin()        { return iterator( 0, *this ); }
   iterator end()          { return iterator( alc.num_elements_used, *this ); }
 
-  const Type * const  at( const size_t i )         const override { return alc[i]; }
-        Type *       &at( const size_t i )               override { return alc[i]; }
-  const Type * const  operator[]( const size_t i ) const override { return alc[i]; }
-        Type *       &operator[]( const size_t i )       override { return alc[i]; }
-  const Type * const  front()                      const override { return alc[0]; }
-        Type *       &front()                            override { return alc[0]; }
-  const Type * const  back()                       const override { return alc[alc.num_elements_used - 1]; }
-        Type *       &back()                             override { return alc[alc.num_elements_used - 1]; }
-  const Type * const *data()                       const override { return alc.ptr; }
-        Type *       *data()                             override { return alc.ptr; }
+  const MVKArrayRef<Type*> contents() const { return MVKArrayRef<Type*>(data(), size()); }
+        MVKArrayRef<Type*> contents()       { return MVKArrayRef<Type*>(data(), size()); }
 
-  size_t   size()                                  const override { return alc.num_elements_used; }
-  bool     empty()                                 const override { return alc.num_elements_used == 0; }
-  size_t   capacity()                              const override { return alc.get_capacity(); }
+  const Type * const  at( const size_t i )         const { return alc[i]; }
+        Type *       &at( const size_t i )               { return alc[i]; }
+  const Type * const  operator[]( const size_t i ) const { return alc[i]; }
+        Type *       &operator[]( const size_t i )       { return alc[i]; }
+  const Type * const  front()                      const { return alc[0]; }
+        Type *       &front()                            { return alc[0]; }
+  const Type * const  back()                       const { return alc[alc.num_elements_used - 1]; }
+        Type *       &back()                             { return alc[alc.num_elements_used - 1]; }
+  const Type * const *data()                       const { return alc.ptr; }
+        Type *       *data()                             { return alc.ptr; }
 
-  void pop_back() override
+  size_t   size()                                  const { return alc.num_elements_used; }
+  bool     empty()                                 const { return alc.num_elements_used == 0; }
+  size_t   capacity()                              const { return alc.get_capacity(); }
+
+  void pop_back()
   {
     if ( alc.num_elements_used > 0 )
     {
@@ -850,17 +713,17 @@ public:
     }
   }
 
-  void clear() override
+  void clear()
   {
     alc.num_elements_used = 0;
   }
 
-  void reset() override
+  void reset()
   {
     alc.deallocate();
   }
 
-  void reserve( const size_t new_size ) override
+  void reserve( const size_t new_size )
   {
     if ( new_size > capacity() )
     {
@@ -868,7 +731,7 @@ public:
     }
   }
 
-  void assign( const size_t new_size, const Type *t ) override
+  void assign( const size_t new_size, const Type *t )
   {
     if ( new_size <= capacity() )
     {
@@ -887,7 +750,7 @@ public:
     alc.num_elements_used = new_size;
   }
 
-  void resize( const size_t new_size, const Type *t = nullptr ) override
+  void resize( const size_t new_size, const Type *t = nullptr )
   {
     if ( new_size == alc.num_elements_used )
     {
@@ -919,8 +782,8 @@ public:
     }
   }
 
-  // trims the capacity of the MVKVector to the number of used elements
-  void shrink_to_fit() override
+  // trims the capacity of the MVKSmallVectorImpl to the number of used elements
+  void shrink_to_fit()
   {
     alc.shrink_to_fit();
   }
@@ -977,7 +840,7 @@ public:
     }
   }
 
-  void push_back( const Type *t ) override
+  void push_back( const Type *t )
   {
     if ( alc.num_elements_used == capacity() )
       vector_ReAllocate( vector_GetNextCapacity() );
@@ -987,13 +850,8 @@ public:
   }
 };
 
-
-template<typename Type>
-using MVKVectorDefault = MVKVectorImpl<Type, mvk_vector_allocator_default<Type>>;
-
-template<typename Type, size_t N = 8>
-using MVKVectorInline  = MVKVectorImpl<Type, mvk_vector_allocator_with_stack<Type, N>>;
-
+template<typename Type, size_t N = 0>
+using MVKSmallVector = MVKSmallVectorImpl<Type, mvk_smallvector_allocator<Type, N>>;
 
 #endif
 
