@@ -125,7 +125,7 @@ protected:
     std::atomic<bool> _surfaceLost;
     MVKBlockObserver* _layerObserver;
 	static const int kMaxPresentationHistory = 60;
-	VkPastPresentationTimingGOOGLE _presentTimingHistory[60];
+	VkPastPresentationTimingGOOGLE _presentTimingHistory[kMaxPresentationHistory];
 	uint32_t _presentHistoryCount;
 	uint32_t _presentHistoryIndex;
 	uint32_t _presentHistoryHeadIndex;
