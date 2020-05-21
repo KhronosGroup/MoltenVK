@@ -30,6 +30,10 @@
 #import "CAMetalLayer+MoltenVK.h"
 #import "MVKBlockObserver.h"
 
+#if MVK_IOS
+#	include <UIKit/UIScreen.h>
+#endif
+
 #include <libkern/OSByteOrder.h>
 
 using namespace std;
@@ -235,8 +239,12 @@ MVKSwapchain::MVKSwapchain(MVKDevice* device,
 	_layerObserver(nil),
 	_currentPerfLogFrameCount(0),
 	_lastFrameTime(0),
-	_licenseWatermark(nil) {
+	_licenseWatermark(nil),
+	_presentHistoryCount(0),
+	_presentHistoryIndex(0),
+	_presentHistoryHeadIndex(0) {
 
+	memset(_presentTimingHistory, 0, sizeof(_presentTimingHistory));
 	// If applicable, release any surfaces (not currently being displayed) from the old swapchain.
 	MVKSwapchain* oldSwapchain = (MVKSwapchain*)pCreateInfo->oldSwapchain;
 	if (oldSwapchain) { oldSwapchain->releaseUndisplayedSurfaces(); }
@@ -372,6 +380,53 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 	}
 
     MVKLogInfo("Created %d swapchain images with initial size (%d, %d).", imgCnt, imgExtent.width, imgExtent.height);
+}
+
+VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
+#if MVK_IOS
+	NSInteger framesPerSecond = [UIScreen mainScreen].maximumFramesPerSecond;
+#endif
+#if MVK_MACOS
+	// TODO: hook this up for macOS, probably need to use CGDisplayModeGetRefeshRate
+	NSInteger framesPerSecond = 60;
+#endif
+	pRefreshCycleDuration->refreshDuration = 1e9 / ( uint64_t ) framesPerSecond;
+	return VK_SUCCESS;
+}
+
+VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresentationTimingGOOGLE *pPresentationTimings) {
+	std::lock_guard<std::mutex> lock(_presentHistoryLock);
+	if (pCount && pPresentationTimings == nullptr) {
+		*pCount = _presentHistoryCount;
+	} else if (pPresentationTimings) {
+		uint32_t index = _presentHistoryHeadIndex;
+		uint32_t countRemaining = std::min(_presentHistoryCount, *pCount);
+		uint32_t outIndex = 0;
+		while (countRemaining > 0) {
+			pPresentationTimings[outIndex] = _presentTimingHistory[index];
+			countRemaining--;
+			index = (index + 1) % kMaxPresentationHistory;
+			outIndex++;
+		}
+	}
+	return VK_SUCCESS;
+}
+
+void MVKSwapchain::recordPresentTime(uint32_t presentID, uint64_t desiredPresentTime, uint64_t actualPresentTime) {
+	std::lock_guard<std::mutex> lock(_presentHistoryLock);
+	if (_presentHistoryCount < kMaxPresentationHistory) {
+		_presentHistoryCount++;
+		_presentHistoryHeadIndex = 0;
+	} else {
+		_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
+	}
+	_presentTimingHistory[_presentHistoryIndex].presentID = presentID;
+	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = desiredPresentTime;
+	_presentTimingHistory[_presentHistoryIndex].actualPresentTime = actualPresentTime;
+	// These details are not available in Metal
+	_presentTimingHistory[_presentHistoryIndex].earliestPresentTime = actualPresentTime;
+	_presentTimingHistory[_presentHistoryIndex].presentMargin = 0;
+	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
 }
 
 MVKSwapchain::~MVKSwapchain() {

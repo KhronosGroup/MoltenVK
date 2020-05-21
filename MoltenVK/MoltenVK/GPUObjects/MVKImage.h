@@ -340,7 +340,7 @@ public:
 	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
 	 * drawable is presented immediately using the present method of the drawable.
 	 */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff);
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, bool hasPresentTime, uint32_t presentID, uint64_t desiredPresentTime);
 
 
 #pragma mark Construction
