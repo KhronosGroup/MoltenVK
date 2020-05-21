@@ -991,13 +991,18 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 	}];
 	
 	if (hasPresentTime) {
-		[_mtlDrawable addPresentedHandler: ^(id<MTLDrawable> drawable) {
-			// Record the presentation time
-			CFTimeInterval presentedTimeSeconds = drawable.presentedTime;
-			uint64_t presentedTimeNanoseconds = (uint64_t)(presentedTimeSeconds * 1.0e9);
-			_swapchain->recordPresentTime(presentID, desiredPresentTime, presentedTimeNanoseconds);
-		}];
-
+		if (@available(iOS 10.3, macOS 10.15.4, *)) {
+			[_mtlDrawable addPresentedHandler: ^(id<MTLDrawable> drawable) {
+				// Record the presentation time
+				CFTimeInterval presentedTimeSeconds = drawable.presentedTime;
+				uint64_t presentedTimeNanoseconds = (uint64_t)(presentedTimeSeconds * 1.0e9);
+				_swapchain->recordPresentTime(presentID, desiredPresentTime, presentedTimeNanoseconds);
+			}];
+		} else {
+			// If MTLDrawable.presentedTime/addPresentedHandler isn't supported, just treat it as if the
+			// present happened when requrested
+			_swapchain->recordPresentTime(presentID, desiredPresentTime, desiredPresentTime);
+		}
 	}
 }
 
