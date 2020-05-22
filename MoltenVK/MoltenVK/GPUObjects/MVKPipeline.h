@@ -22,7 +22,7 @@
 #include "MVKDescriptorSet.h"
 #include "MVKShaderModule.h"
 #include "MVKSync.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVReflection.h>
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
@@ -143,9 +143,6 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT; }
 
-	/** Returns the order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
-	virtual void getStages(MVKVector<uint32_t>& stages) = 0;
-
 	/** Binds this pipeline to the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) = 0;
 
@@ -187,6 +184,8 @@ protected:
 #pragma mark -
 #pragma mark MVKGraphicsPipeline
 
+typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
+
 /** The number of dynamic states possible in Vulkan. */
 static const uint32_t kMVKVkDynamicStateCount = 32;
 
@@ -195,8 +194,8 @@ class MVKGraphicsPipeline : public MVKPipeline {
 
 public:
 
-	/** Returns the number and order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
-	void getStages(MVKVector<uint32_t>& stages) override;
+	/** Returns the number and order of stages in this pipeline. Draws commands must encode this pipeline once per stage. */
+	void getStages(MVKPiplineStages& stages);
 
 	/** Binds this pipeline to the specified command encoder. */
 	void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) override;
@@ -315,9 +314,6 @@ protected:
 class MVKComputePipeline : public MVKPipeline {
 
 public:
-
-	/** Returns the number and order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
-	void getStages(MVKVector<uint32_t>& stages) override;
 
 	/** Binds this pipeline to the specified command encoder. */
 	void encode(MVKCommandEncoder* cmdEncoder, uint32_t = 0) override;

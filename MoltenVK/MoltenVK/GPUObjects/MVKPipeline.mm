@@ -176,7 +176,7 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 #pragma mark -
 #pragma mark MVKGraphicsPipeline
 
-void MVKGraphicsPipeline::getStages(MVKVector<uint32_t>& stages) {
+void MVKGraphicsPipeline::getStages(MVKPiplineStages& stages) {
     if (isTessellationPipeline()) {
         stages.push_back(kMVKGraphicsStageVertex);
         stages.push_back(kMVKGraphicsStageTessControl);
@@ -1287,10 +1287,6 @@ MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 
 #pragma mark -
 #pragma mark MVKComputePipeline
-
-void MVKComputePipeline::getStages(MVKVector<uint32_t>& stages) {
-    stages.push_back(0);
-}
 
 void MVKComputePipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t) {
 	if ( !_hasValidMTLPipelineStates ) { return; }

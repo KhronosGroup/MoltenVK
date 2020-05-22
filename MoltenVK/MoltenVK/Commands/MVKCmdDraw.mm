@@ -108,7 +108,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
-    MVKVectorInline<uint32_t, 4> stages;
+	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     const MVKMTLBufferAllocation* vtxOutBuff = nullptr;
@@ -302,7 +302,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
-    MVKVectorInline<uint32_t, 4> stages;
+	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     MVKIndexMTLBufferBinding& ibb = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
@@ -588,7 +588,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         }
     }
 
-    MVKVectorInline<uint32_t, 4> stages;
+	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
@@ -816,7 +816,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         tcIndexBuff = cmdEncoder->getTempMTLBuffer(patchCount * outControlPointCount * idxSize);
     }
 
-    MVKVectorInline<uint32_t, 4> stages;
+	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
