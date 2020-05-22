@@ -21,7 +21,7 @@
 #include "MVKMTLResourceBindings.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKDevice.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <unordered_map>
 
 class MVKCommandEncoder;
@@ -152,7 +152,7 @@ protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
-    MVKVectorInline<VkViewport, kMVKCachedViewportScissorCount> _viewports, _dynamicViewports;
+    MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports, _dynamicViewports;
 };
 
 
@@ -181,7 +181,7 @@ protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
 
-    MVKVectorInline<VkRect2D, kMVKCachedViewportScissorCount> _scissors, _dynamicScissors;
+    MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors, _dynamicScissors;
 };
 
 
@@ -209,7 +209,7 @@ protected:
     void resetImpl() override;
 	bool isTessellating();
 
-    MVKVectorInline<char, 128> _pushConstants;
+    MVKSmallVector<char, 128> _pushConstants;
     VkShaderStageFlagBits _shaderStage;
     uint32_t _mtlBufferIndex = 0;
 };
@@ -365,8 +365,8 @@ protected:
 
     // Template function that updates an existing binding or adds a new binding to a vector
     // of bindings, and marks the binding, the vector, and this instance as dirty
-    template<class T, class U>
-    void bind(const T& b, U& bindings, bool& bindingsDirtyFlag) {
+    template<class T, class V>
+    void bind(const T& b, V& bindings, bool& bindingsDirtyFlag) {
 
         if ( !b.mtlResource ) { return; }
 
@@ -385,31 +385,37 @@ protected:
     }
 
 	// For texture bindings, we also keep track of whether any bindings need a texture swizzle
-	void bind(const MVKMTLTextureBinding& tb, MVKVector<MVKMTLTextureBinding>& texBindings,
-			  bool& bindingsDirtyFlag, bool& needsSwizzleFlag) {
+	template<class V>
+	void bind(const MVKMTLTextureBinding& tb, V& texBindings, bool& bindingsDirtyFlag, bool& needsSwizzleFlag) {
 		bind(tb, texBindings, bindingsDirtyFlag);
 		if (tb.swizzle != 0) { needsSwizzleFlag = true; }
 	}
 
     // Template function that executes a lambda expression on each dirty element of
     // a vector of bindings, and marks the bindings and the vector as no longer dirty.
-    template<class T>
-    void encodeBinding(MVKVector<T>& bindings,
-                       bool& bindingsDirtyFlag,
-                       std::function<void(MVKCommandEncoder* cmdEncoder, T& b)> mtlOperation) {
-        if (bindingsDirtyFlag) {
-            bindingsDirtyFlag = false;
-            for (auto& b : bindings) {
-                if (b.isDirty) {
-                    mtlOperation(_cmdEncoder, b);
-                    b.isDirty = false;
-                }
-            }
-        }
-    }
+	template<class T, class V>
+	void encodeBinding(V& bindings,
+					   bool& bindingsDirtyFlag,
+					   std::function<void(MVKCommandEncoder* cmdEncoder, T& b)> mtlOperation) {
+		if (bindingsDirtyFlag) {
+			bindingsDirtyFlag = false;
+			for (auto& b : bindings) {
+				if (b.isDirty) {
+					mtlOperation(_cmdEncoder, b);
+					b.isDirty = false;
+				}
+			}
+		}
+	}
 
-	void updateImplicitBuffer(MVKVector<uint32_t> &contents, uint32_t index, uint32_t value);
-	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, MVKVector<MVKMTLTextureBinding>& texBindings);
+	// Updates a value at the given index in the given vector, resizing if needed.
+	template<class V>
+	void updateImplicitBuffer(V &contents, uint32_t index, uint32_t value) {
+		if (index >= contents.size()) { contents.resize(index + 1); }
+		contents[index] = value;
+	}
+
+	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding>& texBindings);
 
 };
 
@@ -457,7 +463,7 @@ public:
                         const char* pStageName,
                         bool fullImageViewSwizzle,
                         std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
-                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, MVKVector<uint32_t>&)> bindImplicitBuffer,
+                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>&)> bindImplicitBuffer,
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 
@@ -472,11 +478,11 @@ protected:
     void markDirty() override;
 
     struct ShaderStage {
-        MVKVectorInline<MVKMTLBufferBinding, 8> bufferBindings;
-        MVKVectorInline<MVKMTLTextureBinding, 8> textureBindings;
-        MVKVectorInline<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
-        MVKVectorInline<uint32_t, 8> swizzleConstants;
-        MVKVectorInline<uint32_t, 8> bufferSizes;
+        MVKSmallVector<MVKMTLBufferBinding, 8> bufferBindings;
+        MVKSmallVector<MVKMTLTextureBinding, 8> textureBindings;
+        MVKSmallVector<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
+        MVKSmallVector<uint32_t, 8> swizzleConstants;
+        MVKSmallVector<uint32_t, 8> bufferSizes;
         MVKMTLBufferBinding swizzleBufferBinding;
         MVKMTLBufferBinding bufferSizeBufferBinding;
 
@@ -525,11 +531,11 @@ protected:
     void encodeImpl(uint32_t) override;
     void resetImpl() override;
 
-    MVKVectorInline<MVKMTLBufferBinding, 4> _bufferBindings;
-    MVKVectorInline<MVKMTLTextureBinding, 4> _textureBindings;
-    MVKVectorInline<MVKMTLSamplerStateBinding, 4> _samplerStateBindings;
-    MVKVectorInline<uint32_t, 4> _swizzleConstants;
-    MVKVectorInline<uint32_t, 4> _bufferSizes;
+    MVKSmallVector<MVKMTLBufferBinding, 4> _bufferBindings;
+    MVKSmallVector<MVKMTLTextureBinding, 4> _textureBindings;
+    MVKSmallVector<MVKMTLSamplerStateBinding, 4> _samplerStateBindings;
+    MVKSmallVector<uint32_t, 4> _swizzleConstants;
+    MVKSmallVector<uint32_t, 4> _bufferSizes;
     MVKMTLBufferBinding _swizzleBufferBinding;
     MVKMTLBufferBinding _bufferSizeBufferBinding;
 
