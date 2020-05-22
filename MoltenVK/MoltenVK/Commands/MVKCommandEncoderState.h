@@ -417,6 +417,40 @@ protected:
 
 	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding>& texBindings);
 
+	template<size_t N>
+	struct ResourceBindings {
+		MVKSmallVector<MVKMTLBufferBinding, N> bufferBindings;
+		MVKSmallVector<MVKMTLTextureBinding, N> textureBindings;
+		MVKSmallVector<MVKMTLSamplerStateBinding, N> samplerStateBindings;
+		MVKSmallVector<uint32_t, N> swizzleConstants;
+		MVKSmallVector<uint32_t, N> bufferSizes;
+
+		MVKMTLBufferBinding swizzleBufferBinding;
+		MVKMTLBufferBinding bufferSizeBufferBinding;
+
+		bool areBufferBindingsDirty = false;
+		bool areTextureBindingsDirty = false;
+		bool areSamplerStateBindingsDirty = false;
+
+		bool needsSwizzle = false;
+
+		void reset() {
+			bufferBindings.clear();
+			textureBindings.clear();
+			samplerStateBindings.clear();
+			swizzleConstants.clear();
+			bufferSizes.clear();
+
+			areBufferBindingsDirty = false;
+			areTextureBindingsDirty = false;
+			areSamplerStateBindingsDirty = false;
+			swizzleBufferBinding.isDirty = false;
+			bufferSizeBufferBinding.isDirty = false;
+
+			needsSwizzle = false;
+		}
+	};
+
 };
 
 
@@ -477,23 +511,7 @@ protected:
     void resetImpl() override;
     void markDirty() override;
 
-    struct ShaderStage {
-        MVKSmallVector<MVKMTLBufferBinding, 8> bufferBindings;
-        MVKSmallVector<MVKMTLTextureBinding, 8> textureBindings;
-        MVKSmallVector<MVKMTLSamplerStateBinding, 8> samplerStateBindings;
-        MVKSmallVector<uint32_t, 8> swizzleConstants;
-        MVKSmallVector<uint32_t, 8> bufferSizes;
-        MVKMTLBufferBinding swizzleBufferBinding;
-        MVKMTLBufferBinding bufferSizeBufferBinding;
-
-        bool areBufferBindingsDirty = false;
-        bool areTextureBindingsDirty = false;
-        bool areSamplerStateBindingsDirty = false;
-
-        bool needsSwizzle = false;
-    };
-
-    ShaderStage _shaderStages[4];
+    ResourceBindings<8> _shaderStageResourceBindings[4];
 };
 
 
@@ -531,19 +549,7 @@ protected:
     void encodeImpl(uint32_t) override;
     void resetImpl() override;
 
-    MVKSmallVector<MVKMTLBufferBinding, 4> _bufferBindings;
-    MVKSmallVector<MVKMTLTextureBinding, 4> _textureBindings;
-    MVKSmallVector<MVKMTLSamplerStateBinding, 4> _samplerStateBindings;
-    MVKSmallVector<uint32_t, 4> _swizzleConstants;
-    MVKSmallVector<uint32_t, 4> _bufferSizes;
-    MVKMTLBufferBinding _swizzleBufferBinding;
-    MVKMTLBufferBinding _bufferSizeBufferBinding;
-
-    bool _areBufferBindingsDirty = false;
-    bool _areTextureBindingsDirty = false;
-    bool _areSamplerStateBindingsDirty = false;
-
-    bool _needsSwizzle = false;
+	ResourceBindings<4> _resourceBindings;
 };
 
 
