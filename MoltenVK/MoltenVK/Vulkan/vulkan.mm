@@ -2719,6 +2719,32 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateMetalSurfaceEXT(
 }
 
 #pragma mark -
+#pragma mark VK_GOOGLE_display_timing extension
+
+MVK_PUBLIC_SYMBOL VkResult vkGetRefreshCycleDurationGOOGLE(
+	VkDevice                                    device,
+	VkSwapchainKHR                              swapchain,
+	VkRefreshCycleDurationGOOGLE*               pDisplayTimingProperties) {
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
+	VkResult rslt = mvkSwapchain->getRefreshCycleDuration(pDisplayTimingProperties);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
+	VkDevice                                    device,
+	VkSwapchainKHR                              swapchain,
+	uint32_t*                                   pPresentationTimingCount,
+	VkPastPresentationTimingGOOGLE*             pPresentationTimings) {
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
+	VkResult rslt = mvkSwapchain->getPastPresentationTiming(pPresentationTimingCount, pPresentationTimings);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+#pragma mark -
 #pragma mark iOS & macOS surface extensions
 
 MVK_PUBLIC_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(

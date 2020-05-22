@@ -339,7 +339,10 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	// The semaphores know what to do.
 	id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();
 	for (auto& ws : _waitSemaphores) { ws->encodeWait(mtlCmdBuff); }
-	for (auto& img : _presentableImages) { img->presentCAMetalDrawable(mtlCmdBuff); }
+	for (int i = 0; i < _presentInfo.size(); i++ ) {
+		MVKPresentableSwapchainImage *img = _presentInfo[i].presentableImage;
+		img->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i].hasPresentTime, _presentInfo[i].presentID, _presentInfo[i].desiredPresentTime);
+	}
 	for (auto& ws : _waitSemaphores) { ws->encodeWait(nil); }
 	[mtlCmdBuff commit];
 
@@ -362,13 +365,40 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 																   const VkPresentInfoKHR* pPresentInfo)
 	: MVKQueueSubmission(queue, pPresentInfo->waitSemaphoreCount, pPresentInfo->pWaitSemaphores) {
 
+	const VkPresentTimesInfoGOOGLE *pPresentTimesInfoGOOGLE = nullptr;
+	for ( const auto *next = ( VkBaseInStructure* ) pPresentInfo->pNext; next; next = next->pNext )
+	{
+		switch ( next->sType )
+		{
+			case VK_STRUCTURE_TYPE_PRESENT_TIMES_INFO_GOOGLE:
+				pPresentTimesInfoGOOGLE = ( const VkPresentTimesInfoGOOGLE * ) next;
+				break;
+			default:
+				break;
+		}
+	}
+
 	// Populate the array of swapchain images, testing each one for status
 	uint32_t scCnt = pPresentInfo->swapchainCount;
+	const VkPresentTimeGOOGLE *pPresentTimesGOOGLE = nullptr;
+	if ( pPresentTimesInfoGOOGLE && pPresentTimesInfoGOOGLE->pTimes ) {
+		pPresentTimesGOOGLE = pPresentTimesInfoGOOGLE->pTimes;
+		MVKAssert( pPresentTimesInfoGOOGLE->swapchainCount == pPresentInfo->swapchainCount, "VkPresentTimesInfoGOOGLE swapchainCount must match VkPresentInfo swapchainCount" );
+	}
 	VkResult* pSCRslts = pPresentInfo->pResults;
-	_presentableImages.reserve(scCnt);
+	_presentInfo.reserve(scCnt);
 	for (uint32_t scIdx = 0; scIdx < scCnt; scIdx++) {
 		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[scIdx];
-		_presentableImages.push_back(mvkSC->getPresentableImage(pPresentInfo->pImageIndices[scIdx]));
+		PresentInfo presentInfo = {};
+		presentInfo.presentableImage = mvkSC->getPresentableImage(pPresentInfo->pImageIndices[scIdx]);
+		if ( pPresentTimesGOOGLE ) {
+			presentInfo.hasPresentTime = true;
+			presentInfo.presentID = pPresentTimesGOOGLE[scIdx].presentID;
+			presentInfo.desiredPresentTime = pPresentTimesGOOGLE[scIdx].desiredPresentTime;
+		} else {
+			presentInfo.hasPresentTime = false;
+		}
+		_presentInfo.push_back(presentInfo);
 		VkResult scRslt = mvkSC->getSurfaceStatus();
 		if (pSCRslts) { pSCRslts[scIdx] = scRslt; }
 		setConfigurationResult(scRslt);
