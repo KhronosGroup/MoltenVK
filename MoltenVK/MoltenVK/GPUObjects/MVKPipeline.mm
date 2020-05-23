@@ -606,9 +606,8 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 																					SPIRVToMSLConversionConfiguration& shaderContext) {
 	MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];		// retained
 
-	std::vector<SPIRVShaderOutput> vtxOutputs;
+	SPIRVShaderOutputs vtxOutputs;
 	std::string errorLog;
-	// Unfortunately, MoltenVKShaderConverter doesn't know about MVKSmallVector, so we can't use that here.
 	if (!getShaderOutputs(((MVKShaderModule*)_pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, _pVertexSS->pName, vtxOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
 		return nil;
@@ -654,7 +653,7 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLTessRasterStageDescripto
 																				  SPIRVToMSLConversionConfiguration& shaderContext) {
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// retained
 
-	std::vector<SPIRVShaderOutput> tcOutputs;
+	SPIRVShaderOutputs tcOutputs;
 	std::string errorLog;
 	if (!getShaderOutputs(((MVKShaderModule*)_pTessCtlSS->module)->getSPIRV(), spv::ExecutionModelTessellationControl, _pTessCtlSS->pName, tcOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get tessellation control outputs: %s", errorLog.c_str()));
@@ -823,7 +822,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc,
 													 const VkGraphicsPipelineCreateInfo* pCreateInfo,
 													 SPIRVToMSLConversionConfiguration& shaderContext,
-													 std::vector<SPIRVShaderOutput>& vtxOutputs) {
+													 SPIRVShaderOutputs& vtxOutputs) {
 	shaderContext.options.entryPointStage = spv::ExecutionModelTessellationControl;
 	shaderContext.options.entryPointName = _pTessCtlSS->pName;
 	shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessCtl];
@@ -876,7 +875,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc,
 													  const VkGraphicsPipelineCreateInfo* pCreateInfo,
 													  SPIRVToMSLConversionConfiguration& shaderContext,
-													  std::vector<SPIRVShaderOutput>& tcOutputs) {
+													  SPIRVShaderOutputs& tcOutputs) {
 	shaderContext.options.entryPointStage = spv::ExecutionModelTessellationEvaluation;
 	shaderContext.options.entryPointName = _pTessEvalSS->pName;
 	shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessEval];
@@ -1241,7 +1240,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
 
 // Initializes the vertex attributes in a shader converter context from the previous stage output.
 void MVKGraphicsPipeline::addPrevStageOutputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderContext,
-                                                                     std::vector<SPIRVShaderOutput>& shaderOutputs) {
+                                                                     SPIRVShaderOutputs& shaderOutputs) {
     // Set the shader context vertex attribute information
     shaderContext.vertexAttributes.clear();
     uint32_t vaCnt = (uint32_t)shaderOutputs.size();

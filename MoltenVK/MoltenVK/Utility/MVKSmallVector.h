@@ -62,13 +62,15 @@ class MVKSmallVectorImpl
   Allocator  alc;
   
 public:
-  class iterator : public std::iterator<std::forward_iterator_tag, Type>
+  class iterator : public std::iterator<std::random_access_iterator_tag, Type>
   {
     const MVKSmallVectorImpl *vector;
     size_t               index;
 
   public:
-    iterator() = delete;
+    typedef typename std::iterator_traits<iterator>::difference_type diff_type;
+
+    iterator() : vector{ nullptr }, index{ 0 } { }
     iterator( const size_t _index, const MVKSmallVectorImpl &_vector ) : vector{ &_vector }, index{ _index } { }
 
     iterator &operator=( const iterator &it )
@@ -87,6 +89,23 @@ public:
 
     iterator& operator++()      {                 ++index; return *this; }
     iterator  operator++( int ) { auto t = *this; ++index; return t; }
+    iterator& operator--()      {                 --index; return *this; }
+    iterator  operator--( int ) { auto t = *this; --index; return t; }
+
+    iterator operator+ (const diff_type n)   { return iterator( index + n, *vector ); }
+    iterator& operator+= (const diff_type n) { index += n; return *this; }
+    iterator operator- (const diff_type n)   { return iterator( index - n, *vector ); }
+    iterator& operator-= (const diff_type n) { index -= n; return *this; }
+
+    diff_type operator- (const iterator& it) { return index - it.index; }
+
+    bool operator< (const iterator& it)  { return index < it.index; }
+    bool operator<= (const iterator& it) { return index <= it.index; }
+    bool operator> (const iterator& it)  { return index > it.index; }
+    bool operator>= (const iterator& it) { return index >= it.index; }
+
+    const Type &operator[]( const diff_type i ) const { return vector->alc.ptr[index + i]; }
+    Type &operator[]( const diff_type i )             { return vector->alc.ptr[index + i]; }
 
     bool   is_valid()     const { return index < vector->alc.size(); }
     size_t get_position() const { return index; }
@@ -497,13 +516,15 @@ class MVKSmallVectorImpl<Type*, Allocator>
   Allocator  alc;
 
 public:
-  class iterator : public std::iterator<std::forward_iterator_tag, Type*>
+  class iterator : public std::iterator<std::random_access_iterator_tag, Type*>
   {
     MVKSmallVectorImpl *vector;
     size_t         index;
 
   public:
-    iterator() = delete;
+    typedef typename std::iterator_traits<iterator>::difference_type diff_type;
+
+    iterator() : vector{ nullptr }, index{ 0 } { }
     iterator( const size_t _index, MVKSmallVectorImpl &_vector ) : vector{ &_vector }, index{ _index } { }
 
     iterator &operator=( const iterator &it )
@@ -518,8 +539,25 @@ public:
     bool operator==( const iterator &it ) const { return vector == it.vector && index == it.index; }
     bool operator!=( const iterator &it ) const { return vector != it.vector || index != it.index; }
 
-    iterator& operator++() { ++index; return *this; }
+    iterator& operator++()      { ++index; return *this; }
     iterator  operator++( int ) { auto t = *this; ++index; return t; }
+    iterator& operator--()      {                 --index; return *this; }
+    iterator  operator--( int ) { auto t = *this; --index; return t; }
+
+    iterator operator+ (const diff_type n)   { return iterator( index + n, *vector ); }
+    iterator& operator+= (const diff_type n) { index += n; return *this; }
+    iterator operator- (const diff_type n)   { return iterator( index - n, *vector ); }
+    iterator& operator-= (const diff_type n) { index -= n; return *this; }
+
+    diff_type operator- (const iterator& it) { return index - it.index; }
+
+    bool operator< (const iterator& it)  { return index < it.index; }
+    bool operator<= (const iterator& it) { return index <= it.index; }
+    bool operator> (const iterator& it)  { return index > it.index; }
+    bool operator>= (const iterator& it) { return index >= it.index; }
+
+    const Type &operator[]( const diff_type i ) const { return vector->alc.ptr[index + i]; }
+    Type &operator[]( const diff_type i )             { return vector->alc.ptr[index + i]; }
 
     bool   is_valid()     const { return index < vector->alc.size(); }
     size_t get_position() const { return index; }
