@@ -69,7 +69,7 @@ VkSampleCountFlagBits MVKRenderSubpass::getSampleCount() {
 
 void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 													   MVKFramebuffer* framebuffer,
-													   MVKVector<VkClearValue>& clearValues,
+													   const MVKArrayRef<VkClearValue>& clearValues,
 													   bool isRenderingEntireAttachment,
 													   bool loadOverride,
 													   bool storeOverride) {
@@ -167,8 +167,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	}
 }
 
-void MVKRenderSubpass::populateClearAttachments(MVKVector<VkClearAttachment>& clearAtts,
-												MVKVector<VkClearValue>& clearValues) {
+void MVKRenderSubpass::populateClearAttachments(MVKClearAttachments& clearAtts,
+												const MVKArrayRef<VkClearValue>& clearValues) {
 	VkClearAttachment cAtt;
 
 	uint32_t attIdx;

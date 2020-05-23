@@ -20,6 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 #import <Metal/Metal.h>
 
@@ -30,6 +31,8 @@ class MVKFramebuffer;
 // Parameters to define the sizing of inline collections
 const static uint32_t kMVKDefaultAttachmentCount = 8;
 
+/** Collection of attachment clears . */
+typedef MVKSmallVector<VkClearAttachment, kMVKDefaultAttachmentCount> MVKClearAttachments;
 
 #pragma mark -
 #pragma mark MVKRenderSubpass
@@ -64,7 +67,7 @@ public:
 	 */
 	void populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 										 MVKFramebuffer* framebuffer,
-										 MVKVector<VkClearValue>& clearValues,
+										 const MVKArrayRef<VkClearValue>& clearValues,
 										 bool isRenderingEntireAttachment,
                                          bool loadOverride = false,
                                          bool storeOverride = false);
@@ -73,8 +76,8 @@ public:
 	 * Populates the specified vector with the attachments that need to be cleared
 	 * when the render area is smaller than the full framebuffer size.
 	 */
-	void populateClearAttachments(MVKVector<VkClearAttachment>& clearAtts,
-								  MVKVector<VkClearValue>& clearValues);
+	void populateClearAttachments(MVKClearAttachments& clearAtts,
+								  const MVKArrayRef<VkClearValue>& clearValues);
 
 	/** Constructs an instance for the specified parent renderpass. */
 	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo);
