@@ -19,7 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <mutex>
 #include <condition_variable>
 
@@ -127,8 +127,8 @@ protected:
 		Available           /**< Query is available to the host. */
 	};
 
-	MVKVectorInline<Status, kMVKDefaultQueryCount> _availability;
-	MVKVectorInline<DeferredCopy, 4> _deferredCopies;
+	MVKSmallVector<Status, kMVKDefaultQueryCount> _availability;
+	MVKSmallVector<DeferredCopy, 4> _deferredCopies;
 	uint32_t _queryElementCount;
 	std::mutex _availabilityLock;
 	std::condition_variable _availabilityBlocker;
@@ -156,7 +156,7 @@ protected:
 	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
 	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
-	MVKVectorInline<uint64_t, kMVKDefaultQueryCount> _timestamps;
+	MVKSmallVector<uint64_t, kMVKDefaultQueryCount> _timestamps;
 };
 
 

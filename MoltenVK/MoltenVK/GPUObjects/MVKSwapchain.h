@@ -20,7 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKImage.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 #import "CAMetalLayer+MoltenVK.h"
 #import <Metal/Metal.h>
@@ -111,7 +111,7 @@ protected:
 
 	CAMetalLayer* _mtlLayer;
     MVKWatermark* _licenseWatermark;
-	MVKVectorInline<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
+	MVKSmallVector<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
 	std::atomic<uint64_t> _currentAcquisitionID;
     CGSize _mtlLayerOrigDrawSize;
     uint64_t _lastFrameTime;

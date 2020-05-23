@@ -608,7 +608,7 @@ MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescrip
 
 	std::vector<SPIRVShaderOutput> vtxOutputs;
 	std::string errorLog;
-	// Unfortunately, MoltenVKShaderConverter doesn't know about MVKVector, so we can't use that here.
+	// Unfortunately, MoltenVKShaderConverter doesn't know about MVKSmallVector, so we can't use that here.
 	if (!getShaderOutputs(((MVKShaderModule*)_pVertexSS->module)->getSPIRV(), spv::ExecutionModelVertex, _pVertexSS->pName, vtxOutputs, errorLog) ) {
 		setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to get vertex outputs: %s", errorLog.c_str()));
 		return nil;

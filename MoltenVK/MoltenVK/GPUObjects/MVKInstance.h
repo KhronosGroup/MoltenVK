@@ -22,7 +22,7 @@
 #include "MVKDevice.h"
 #include "MVKLayers.h"
 #include "MVKVulkanAPIObject.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include "vk_mvk_moltenvk.h"
 #include <unordered_map>
 #include <string>
@@ -189,9 +189,9 @@ protected:
 
 	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
-	MVKVectorInline<MVKPhysicalDevice, 2> _physicalDevices;
-	MVKVectorDefault<MVKDebugReportCallback*> _debugReportCallbacks;
-	MVKVectorDefault<MVKDebugUtilsMessenger*> _debugUtilMessengers;
+	MVKSmallVector<MVKPhysicalDevice, 2> _physicalDevices;
+	MVKSmallVector<MVKDebugReportCallback*> _debugReportCallbacks;
+	MVKSmallVector<MVKDebugUtilsMessenger*> _debugUtilMessengers;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
 	std::mutex _dcbLock;
 	bool _hasDebugReportCallbacks;

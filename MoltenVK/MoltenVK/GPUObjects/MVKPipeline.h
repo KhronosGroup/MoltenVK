@@ -107,9 +107,9 @@ public:
 protected:
 	void propogateDebugName() override {}
 
-	MVKVectorInline<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
-	MVKVectorInline<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
-	MVKVectorDefault<VkPushConstantRange> _pushConstants;
+	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
+	MVKSmallVector<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
+	MVKSmallVector<VkPushConstantRange> _pushConstants;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
@@ -268,8 +268,8 @@ protected:
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 
-	MVKVectorInline<VkViewport, kMVKCachedViewportScissorCount> _viewports;
-	MVKVectorInline<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
+	MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports;
+	MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
 
 	MTLComputePipelineDescriptor* _mtlTessControlStageDesc = nil;
 

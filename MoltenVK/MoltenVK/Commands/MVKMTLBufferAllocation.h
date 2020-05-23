@@ -22,7 +22,7 @@
 #include "MVKFoundation.h"
 #include "MVKObjectPool.h"
 #include "MVKDevice.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 class MVKMTLBufferAllocationPool;
 
@@ -97,7 +97,7 @@ protected:
     NSUInteger _nextOffset;
     NSUInteger _allocationLength;
     NSUInteger _mtlBufferLength;
-	MVKVectorInline<id<MTLBuffer>, 64> _mtlBuffers;
+	MVKSmallVector<id<MTLBuffer>, 64> _mtlBuffers;
     MVKDevice* _device;
 };
 
@@ -142,7 +142,7 @@ public:
     ~MVKMTLBufferAllocator() override;
 
 protected:
-	MVKVectorInline<MVKMTLBufferAllocationPool*, 32> _regionPools;
+	MVKSmallVector<MVKMTLBufferAllocationPool*, 32> _regionPools;
     NSUInteger _maxAllocationLength;
 	bool _makeThreadSafe;
 

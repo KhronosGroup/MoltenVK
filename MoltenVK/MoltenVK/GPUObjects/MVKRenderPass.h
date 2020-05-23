@@ -19,7 +19,6 @@
 #pragma once
 
 #include "MVKDevice.h"
-#include "MVKVector.h"
 #include "MVKSmallVector.h"
 
 #import <Metal/Metal.h>
@@ -91,10 +90,10 @@ private:
 
 	MVKRenderPass* _renderPass;
 	uint32_t _subpassIndex;
-	MVKVectorInline<VkAttachmentReference, kMVKDefaultAttachmentCount> _inputAttachments;
-	MVKVectorInline<VkAttachmentReference, kMVKDefaultAttachmentCount> _colorAttachments;
-	MVKVectorInline<VkAttachmentReference, kMVKDefaultAttachmentCount> _resolveAttachments;
-	MVKVectorInline<uint32_t, kMVKDefaultAttachmentCount> _preserveAttachments;
+	MVKSmallVector<VkAttachmentReference, kMVKDefaultAttachmentCount> _inputAttachments;
+	MVKSmallVector<VkAttachmentReference, kMVKDefaultAttachmentCount> _colorAttachments;
+	MVKSmallVector<VkAttachmentReference, kMVKDefaultAttachmentCount> _resolveAttachments;
+	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _preserveAttachments;
 	VkAttachmentReference _depthStencilAttachment;
 	id<MTLTexture> _mtlDummyTex = nil;
 };
@@ -174,9 +173,9 @@ protected:
 
 	void propogateDebugName() override {}
 
-	MVKVectorInline<MVKRenderPassAttachment, kMVKDefaultAttachmentCount> _attachments;
-	MVKVectorInline<MVKRenderSubpass, 1> _subpasses;
-	MVKVectorDefault<VkSubpassDependency> _subpassDependencies;
+	MVKSmallVector<MVKRenderPassAttachment, kMVKDefaultAttachmentCount> _attachments;
+	MVKSmallVector<MVKRenderSubpass, 1> _subpasses;
+	MVKSmallVector<VkSubpassDependency> _subpassDependencies;
 
 };
 

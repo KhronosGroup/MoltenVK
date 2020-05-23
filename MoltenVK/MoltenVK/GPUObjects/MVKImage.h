@@ -21,7 +21,7 @@
 #include "MVKResource.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKSync.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_map>
 #include <mutex>
@@ -252,7 +252,7 @@ protected:
 						   VkPipelineStageFlags dstStageMask,
 						   MVKPipelineBarrier& barrier);
 
-	MVKVectorInline<MVKImageSubresource, 1> _subresources;
+	MVKSmallVector<MVKImageSubresource, 1> _subresources;
 	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     VkExtent3D _extent;
     uint32_t _mipLevels;
@@ -369,7 +369,7 @@ protected:
 
 	id<CAMetalDrawable> _mtlDrawable;
 	MVKSwapchainImageAvailability _availability;
-	MVKVectorInline<MVKSwapchainSignaler, 1> _availabilitySignalers;
+	MVKSmallVector<MVKSwapchainSignaler, 1> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaler;
 	std::mutex _availabilityLock;
 };

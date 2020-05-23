@@ -18,9 +18,7 @@
 
 #pragma once
 
-//
-// in case MVKSmallVector should use std::vector
-//
+// In case MVKSmallVector should use just std::vector instead
 #if 0
 
 template<typename T, size_t N = 0>
@@ -28,33 +26,28 @@ using MVKSmallVector = std::vector<T>;
 
 #else
 
-//
-// MVKSmallVector.h is a sequence container that (optionally) implements a small
-// buffer optimization.
-// It behaves similarly to std::vector, except until a certain number of
-// elements are reserved, it does not use the heap.
-// Like std::vector, MVKSmallVector is guaranteed to use contiguous memory, so if the
-// preallocated number of elements are exceeded, all elements are then in heap.
-// MVKSmallVector supports just the necessary members to be compatible with MoltenVK
+// MVKSmallVector.h is a sequence container that (optionally) implements a small buffer optimization.
+// It behaves similarly to std::vector, except until a certain number of elements are reserved,
+// it does not use the heap. Like std::vector, MVKSmallVector is guaranteed to use contiguous memory,
+// so if the preallocated number of elements are exceeded, all elements are then in heap.
+// MVKSmallVector supports just the necessary members to be compatible with MoltenVK.
 // If C++17 will be the default in the future, code can be simplified quite a bit.
 //
 // Example:
 //
-//  MVKSmallVector<int, 3> vector;
-//  vector.emplace_back( 1 );
-//  vector.emplace_back( 2 );
-//  vector.emplace_back( 3 );
-//  // adding another element now reserves memory from heap
-//  vector.emplace_back( 4 );
+//  MVKSmallVector<int, 2> sv;
+//  sv.push_back( 1 );  // no allocation, uses pre-allocated memory
+//  sv.push_back( 2 );	// no allocation, uses pre-allocated memory
+//  sv.push_back( 3 );	// adding another element now reserves memory from heap and copies from pre-allocated memory
 //
-// If you don't need any inline storage use
-//  MVKSmallVector<int> vector;   // this is essentially the same as using std::vector
+// If you don't need any inline storage use:
+//  MVKSmallVector<int> v;   // this is essentially the same as using std::vector
 //
-// The memory overhead per-instance of MVKSmallVector (16 bytes) is smaller than MVKVector (40 bytes),
-// but MVKSmallVector lacks the polymorphism of MVKVector, that allows MVKVector to be passed around
-// to functions without reference to its pre-allocation size. MVKSmallVector supports the contents()
-// function to derive an MVKVector from its contents, to allow a reference to the contents to be
-// passed around without reference to its pre-allocaton size.
+// The per-instance memory overhead of MVKSmallVector (16 bytes) is smaller than MVKVector (40 bytes)
+// and std::vector (24 bytes), but MVKSmallVector lacks the polymorphism of MVKVector (or std::vector),
+// that allows them to be passed around to functions without reference to the pre-allocation size.
+// MVKSmallVector supports the contents() function to derive an MVKArrayRef from its contents,
+// which can be passed around without reference to the pre-allocaton size.
 
 #include "MVKSmallVectorAllocator.h"
 #include "MVKFoundation.h"

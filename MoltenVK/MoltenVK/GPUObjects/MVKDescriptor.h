@@ -19,7 +19,6 @@
 #pragma once
 
 #include "MVKImage.h"
-#include "MVKVector.h"
 #include <vector>
 
 class MVKDescriptorSet;

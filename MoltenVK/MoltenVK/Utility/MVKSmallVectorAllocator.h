@@ -50,8 +50,11 @@ public:
 	size_t  num_elements_used;
 
 private:
-	static constexpr size_t STACK_SIZE = N * sizeof( T );
-	alignas( alignof( T ) ) unsigned char   elements_stack[ MAX( STACK_SIZE, sizeof(void*) ) ];
+	// Once dynamic allocation is in use, the preallocated content memory space will be re-purposed to
+	// hold the capacity count. Ensure preallocated memory is large enough to hold the capacity count.
+	static constexpr size_t STACK_SIZE = ( N * sizeof( T ) );
+	static constexpr size_t CAP_CNT_SIZE = sizeof( size_t );
+	alignas( alignof( T ) ) unsigned char elements_stack[ STACK_SIZE > CAP_CNT_SIZE ? STACK_SIZE : CAP_CNT_SIZE ];
 
   void set_num_elements_reserved( const size_t num_elements_reserved )
   {
@@ -134,7 +137,6 @@ public:
   template<class S> typename std::enable_if< std::is_trivially_destructible<S>::value >::type
     swap_stack( mvk_smallvector_allocator &a )
   {
-//    constexpr int STACK_SIZE = N * sizeof( T );
     for( int i = 0; i < STACK_SIZE; ++i )
     {
       const auto v = elements_stack[i];
@@ -148,7 +150,7 @@ public:
   {
   }
 
-  mvk_smallvector_allocator( mvk_smallvector_allocator &&a ) : mvk_smallvector_allocator(nullptr, a.num_elements_used)
+  mvk_smallvector_allocator( mvk_smallvector_allocator &&a )
   {
     // is a heap based -> steal ptr from a
     if( !a.get_data_on_stack() )
@@ -168,6 +170,7 @@ public:
       }
     }
 
+	num_elements_used = a.num_elements_used;
     a.num_elements_used = 0;
   }
 

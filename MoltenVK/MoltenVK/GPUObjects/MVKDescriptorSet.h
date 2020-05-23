@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKDescriptor.h"
+#include "MVKSmallVector.h"
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -283,7 +284,7 @@ protected:
 	void propogateDebugName() override {}
 
 	VkDescriptorUpdateTemplateTypeKHR _type;
-	MVKVectorInline<VkDescriptorUpdateTemplateEntryKHR, 1> _entries;
+	MVKSmallVector<VkDescriptorUpdateTemplateEntryKHR, 1> _entries;
 };
 
 #pragma mark -

@@ -22,7 +22,7 @@
 #include "MVKCommandBuffer.h"
 #include "MVKImage.h"
 #include "MVKSync.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <mutex>
 
 #import <Metal/Metal.h>
@@ -64,7 +64,7 @@ protected:
 	MVKPhysicalDevice* _physicalDevice;
     uint32_t _queueFamilyIndex;
 	VkQueueFamilyProperties _properties;
-	MVKVectorInline<id<MTLCommandQueue>, kMVKQueueCountPerQueueFamily> _mtlQueues;
+	MVKSmallVector<id<MTLCommandQueue>, kMVKQueueCountPerQueueFamily> _mtlQueues;
 	std::mutex _qLock;
 };
 
@@ -179,7 +179,7 @@ protected:
 	friend class MVKQueue;
 
 	MVKQueue* _queue;
-	MVKVectorInline<MVKSemaphore*, 8> _waitSemaphores;
+	MVKSmallVector<MVKSemaphore*, 8> _waitSemaphores;
 	bool _trackPerformance;
 };
 
@@ -206,8 +206,8 @@ protected:
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
 	void finish();
 
-	MVKVectorInline<MVKCommandBuffer*, 32> _cmdBuffers;
-	MVKVectorInline<MVKSemaphore*, 8> _signalSemaphores;
+	MVKSmallVector<MVKCommandBuffer*, 32> _cmdBuffers;
+	MVKSmallVector<MVKSemaphore*, 8> _signalSemaphores;
 	MVKFence* _fence;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
 };
@@ -228,6 +228,6 @@ public:
 protected:
 	id<MTLCommandBuffer> getMTLCommandBuffer();
 
-	MVKVectorInline<MVKPresentableSwapchainImage*, 4> _presentableImages;
+	MVKSmallVector<MVKPresentableSwapchainImage*, 4> _presentableImages;
 };
 

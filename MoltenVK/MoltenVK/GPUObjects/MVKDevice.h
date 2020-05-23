@@ -23,7 +23,7 @@
 #include "MVKMTLResourceBindings.h"
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
@@ -346,7 +346,7 @@ protected:
 	uint64_t getCurrentAllocatedSize();
 	void initExternalMemoryProperties();
 	void initExtensions();
-	MVKVector<MVKQueueFamily*>& getQueueFamilies();
+	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
 	uint64_t getSpirvCrossRevision();
@@ -362,7 +362,7 @@ protected:
 	VkPhysicalDeviceProperties _properties;
 	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
-	MVKVectorInline<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
+	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	MVKPixelFormats _pixelFormats;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
@@ -712,8 +712,8 @@ protected:
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
 	MTLCompileOptions* _mtlCompileOptions;
-	MVKVectorInline<MVKVectorInline<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
-	MVKVectorInline<MVKResource*, 256> _resources;
+	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
+	MVKSmallVector<MVKResource*, 256> _resources;
 	std::mutex _rezLock;
     std::mutex _perfLock;
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;

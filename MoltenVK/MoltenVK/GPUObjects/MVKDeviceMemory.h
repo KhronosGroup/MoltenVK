@@ -19,7 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <mutex>
 
 #import <Metal/Metal.h>
@@ -147,8 +147,8 @@ protected:
 	MVKResource* getDedicatedResource();
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 
-	MVKVectorInline<MVKBuffer*, 4> _buffers;
-	MVKVectorInline<MVKImage*, 4> _images;
+	MVKSmallVector<MVKBuffer*, 4> _buffers;
+	MVKSmallVector<MVKImage*, 4> _images;
 	std::mutex _rezLock;
     VkDeviceSize _allocationSize = 0;
 	VkDeviceSize _mapOffset = 0;
