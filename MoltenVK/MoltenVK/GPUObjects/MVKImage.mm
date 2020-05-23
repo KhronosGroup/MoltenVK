@@ -196,7 +196,7 @@ VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMe
 		case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
 			auto* planeReqs = (VkImagePlaneMemoryRequirementsInfo*)next;
 			uint32_t plane = getPlaneFromVkImageAspectFlags(planeReqs->planeAspect);
-			// TODO
+			// TODO: For multi planar images
 			break;
 		}
 		default:
@@ -334,6 +334,7 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 
 	if (_ioSurface) {
 		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc iosurface: _ioSurface plane: 0];
+        // TODO: For multi planar images
 	} else if (_usesTexelBuffer) {
 		mtlTex = [_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
 															  offset: getDeviceMemoryOffset()
@@ -404,6 +405,9 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
     releaseIOSurface();
 
 	MVKPixelFormats* pixFmts = getPixelFormats();
+    VkExtent2D blockTexelSizeOfPlane[3];
+    uint32_t bytesPerBlockOfPlane[3];
+    uint32_t planeCount = pixFmts->getChromaSubsamplingPlanes(getVkFormat(), blockTexelSizeOfPlane, bytesPerBlockOfPlane);
 
 	if (ioSurface) {
 		if (IOSurfaceGetWidth(ioSurface) != _extent.width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface width %zu does not match VkImage width %d.", IOSurfaceGetWidth(ioSurface), _extent.width); }
@@ -411,24 +415,45 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 		if (IOSurfaceGetBytesPerElement(ioSurface) != pixFmts->getBytesPerBlock(_mtlPixelFormat)) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface bytes per element %zu does not match VkImage bytes per element %d.", IOSurfaceGetBytesPerElement(ioSurface), pixFmts->getBytesPerBlock(_mtlPixelFormat)); }
 		if (IOSurfaceGetElementWidth(ioSurface) != pixFmts->getBlockTexelSize(_mtlPixelFormat).width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element width %zu does not match VkImage element width %d.", IOSurfaceGetElementWidth(ioSurface), pixFmts->getBlockTexelSize(_mtlPixelFormat).width); }
 		if (IOSurfaceGetElementHeight(ioSurface) != pixFmts->getBlockTexelSize(_mtlPixelFormat).height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element height %zu does not match VkImage element height %d.", IOSurfaceGetElementHeight(ioSurface), pixFmts->getBlockTexelSize(_mtlPixelFormat).height); }
+        if (IOSurfaceGetPlaneCount(ioSurface) != planeCount) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface plane count %zu does not match VkImage plane count %d.", IOSurfaceGetPlaneCount(ioSurface), planeCount); }
+        for(size_t planeIndex = 0; planeIndex < planeCount; ++planeIndex) {
+            if (IOSurfaceGetWidthOfPlane(ioSurface, planeIndex) != _extent.width/blockTexelSizeOfPlane[planeIndex].width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface width %zu of plane %zu does not match VkImage width %d.", IOSurfaceGetWidthOfPlane(ioSurface, planeIndex), planeIndex, _extent.width/blockTexelSizeOfPlane[planeIndex].width); }
+            if (IOSurfaceGetHeightOfPlane(ioSurface, planeIndex) != _extent.height/blockTexelSizeOfPlane[planeIndex].height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface height %zu of plane %zu does not match VkImage height %d.", IOSurfaceGetHeightOfPlane(ioSurface, planeIndex), planeIndex, _extent.height/blockTexelSizeOfPlane[planeIndex].height); }
+            if (IOSurfaceGetBytesPerElementOfPlane(ioSurface, planeIndex) != bytesPerBlockOfPlane[planeIndex]) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface bytes per element %zu of plane %zu does not match VkImage bytes per element %d.", IOSurfaceGetBytesPerElementOfPlane(ioSurface, planeIndex), planeIndex, bytesPerBlockOfPlane[planeIndex]); }
+            if (IOSurfaceGetElementWidthOfPlane(ioSurface, planeIndex) != blockTexelSizeOfPlane[planeIndex].width) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element width %zu of plane %zu does not match VkImage element width %d.", IOSurfaceGetElementWidthOfPlane(ioSurface, planeIndex), planeIndex, blockTexelSizeOfPlane[planeIndex].width); }
+            if (IOSurfaceGetElementHeightOfPlane(ioSurface, planeIndex) != blockTexelSizeOfPlane[planeIndex].height) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "vkUseIOSurfaceMVK() : IOSurface element height %zu of plane %zu does not match VkImage element height %d.", IOSurfaceGetElementHeightOfPlane(ioSurface, planeIndex), planeIndex, blockTexelSizeOfPlane[planeIndex].height); }
+        }
 
         _ioSurface = ioSurface;
         CFRetain(_ioSurface);
     } else {
+        @autoreleasepool {
+            CFMutableDictionaryRef properties = CFDictionaryCreateMutableCopy(NULL, 0, (CFDictionaryRef)@{
+			    (id)kIOSurfaceWidth: @(_extent.width),
+			    (id)kIOSurfaceHeight: @(_extent.height),
+			    (id)kIOSurfaceBytesPerElement: @(pixFmts->getBytesPerBlock(_mtlPixelFormat)),
+			    (id)kIOSurfaceElementWidth: @(pixFmts->getBlockTexelSize(_mtlPixelFormat).width),
+			    (id)kIOSurfaceElementHeight: @(pixFmts->getBlockTexelSize(_mtlPixelFormat).height),
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-		@autoreleasepool {
-			_ioSurface = IOSurfaceCreate((CFDictionaryRef)@{
-															(id)kIOSurfaceWidth: @(_extent.width),
-															(id)kIOSurfaceHeight: @(_extent.height),
-															(id)kIOSurfaceBytesPerElement: @(pixFmts->getBytesPerBlock(_mtlPixelFormat)),
-															(id)kIOSurfaceElementWidth: @(pixFmts->getBlockTexelSize(_mtlPixelFormat).width),
-															(id)kIOSurfaceElementHeight: @(pixFmts->getBlockTexelSize(_mtlPixelFormat).height),
-															(id)kIOSurfaceIsGlobal: @(true),    // Deprecated but needed for interprocess transfers
-															});
-		}
+			    (id)kIOSurfaceIsGlobal: @(true), // Deprecated but needed for interprocess transfers
 #pragma clang diagnostic pop
-
+            });
+            if(planeCount > 0) {
+                CFMutableArrayRef planeProperties = CFArrayCreateMutable(NULL, planeCount, NULL);
+                for(size_t planeIndex = 0; planeIndex < planeCount; ++planeIndex) {
+                    CFArrayAppendValue(planeProperties, (CFDictionaryRef)@{
+                        (id)kIOSurfacePlaneWidth: @(_extent.width/blockTexelSizeOfPlane[planeIndex].width),
+                        (id)kIOSurfacePlaneHeight: @(_extent.height/blockTexelSizeOfPlane[planeIndex].height),
+                        (id)kIOSurfacePlaneBytesPerElement: @(bytesPerBlockOfPlane[planeIndex]),
+                        (id)kIOSurfacePlaneElementWidth: @(blockTexelSizeOfPlane[planeIndex].width),
+                        (id)kIOSurfacePlaneElementHeight: @(blockTexelSizeOfPlane[planeIndex].height),
+                    });
+                }
+                CFDictionaryAddValue(properties, (id)kIOSurfacePlaneInfo, planeProperties);
+            }
+            _ioSurface = IOSurfaceCreate(properties);
+        }
     }
 
 #endif
@@ -1425,7 +1450,7 @@ static MSLSamplerYCbCrRange getSpvSamplerYcbcrRangeFromVkSamplerYcbcrRange(VkSam
 
 MVKSamplerYcbcrConversion::MVKSamplerYcbcrConversion(MVKDevice* device, const VkSamplerYcbcrConversionCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	MVKPixelFormats* pixFmts = getPixelFormats();
-	_planes = pixFmts->getChromaSubsamplingPlanes(pCreateInfo->format);
+	_planes = pixFmts->getChromaSubsamplingPlaneCount(pCreateInfo->format);
 	_bpc = pixFmts->getChromaSubsamplingComponentBits(pCreateInfo->format);
 	_resolution = pixFmts->getChromaSubsamplingResolution(pCreateInfo->format);
 	_chroma_filter = getSpvMinMagFilterFromVkFilter(pCreateInfo->chromaFilter);

@@ -236,9 +236,11 @@ VkExtent2D MVKPixelFormats::getBlockTexelSize(MTLPixelFormat mtlFormat) {
     return getVkFormatDesc(mtlFormat).blockTexelSize;
 }
 
-uint32_t MVKPixelFormats::getChromaSubsamplingPlanes(VkFormat vkFormat) {
+uint32_t MVKPixelFormats::getChromaSubsamplingPlaneCount(VkFormat vkFormat) {
 	switch (vkFormat) {
 		default:
+            return 0;
+
 		case VK_FORMAT_G8B8G8R8_422_UNORM_KHR:
 		case VK_FORMAT_B8G8R8G8_422_UNORM_KHR:
 		case VK_FORMAT_G10X6B10X6G10X6R10X6_422_UNORM_4PACK16_KHR:
@@ -357,6 +359,42 @@ SPIRV_CROSS_NAMESPACE::MSLFormatResolution MVKPixelFormats::getChromaSubsampling
 		case VK_FORMAT_G16_B16_R16_3PLANE_420_UNORM_KHR:
 			return SPIRV_CROSS_NAMESPACE::MSL_FORMAT_RESOLUTION_420;
 	}
+}
+
+uint32_t MVKPixelFormats::getChromaSubsamplingPlanes(VkFormat vkFormat, VkExtent2D blockTexelSize[3], uint32_t bytesPerBlock[3]) {
+    uint32_t planes = getChromaSubsamplingPlaneCount(vkFormat);
+    uint32_t bits = getChromaSubsamplingComponentBits(vkFormat);
+    SPIRV_CROSS_NAMESPACE::MSLFormatResolution resolution = getChromaSubsamplingResolution(vkFormat);
+    bytesPerBlock[0] = mvkCeilingDivide(bits, 8U);
+    switch(resolution) {
+        default:
+            return 0;
+        case SPIRV_CROSS_NAMESPACE::MSL_FORMAT_RESOLUTION_444:
+            blockTexelSize[0] = blockTexelSize[1] = blockTexelSize[2] = VkExtent2D{1, 1};
+            break;
+        case SPIRV_CROSS_NAMESPACE::MSL_FORMAT_RESOLUTION_422:
+            blockTexelSize[0] = blockTexelSize[1] = blockTexelSize[2] = VkExtent2D{2, 1};
+            break;
+        case SPIRV_CROSS_NAMESPACE::MSL_FORMAT_RESOLUTION_420:
+            blockTexelSize[0] = blockTexelSize[1] = blockTexelSize[2] = VkExtent2D{2, 2};
+            break;
+    }
+    switch(planes) {
+        default:
+            return 0;
+        case 1:
+            bytesPerBlock[0] *= 4;
+            break;
+        case 2:
+            blockTexelSize[0] = VkExtent2D{1, 1};
+            bytesPerBlock[1] = bytesPerBlock[0]*2;
+            break;
+        case 3:
+            blockTexelSize[0] = VkExtent2D{1, 1};
+            bytesPerBlock[1] = bytesPerBlock[2] = bytesPerBlock[0];
+            break;
+    }
+    return planes;
 }
 
 float MVKPixelFormats::getBytesPerTexel(VkFormat vkFormat) {
@@ -873,37 +911,37 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	// Extension VK_KHR_sampler_ycbcr_conversion
 	addVkFormatDesc( G8B8G8R8_422_UNORM, GBGR422, Invalid, Invalid, Invalid, 2, 1, 4, ColorFloat );
 	addVkFormatDesc( B8G8R8G8_422_UNORM, BGRG422, Invalid, Invalid, Invalid, 2, 1, 4, ColorFloat );
-	addVkFormatDesc( G8_B8_R8_3PLANE_420_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 2, 3, ColorFloat );
-	addVkFormatDesc( G8_B8R8_2PLANE_420_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 2, 3, ColorFloat );
-	addVkFormatDesc( G8_B8_R8_3PLANE_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 3, ColorFloat );
-	addVkFormatDesc( G8_B8R8_2PLANE_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 3, ColorFloat );
+	addVkFormatDesc( G8_B8_R8_3PLANE_420_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 2, 6, ColorFloat );
+	addVkFormatDesc( G8_B8R8_2PLANE_420_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 2, 6, ColorFloat );
+	addVkFormatDesc( G8_B8_R8_3PLANE_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 4, ColorFloat );
+	addVkFormatDesc( G8_B8R8_2PLANE_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 4, ColorFloat );
 	addVkFormatDesc( G8_B8_R8_3PLANE_444_UNORM, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( R10X6_UNORM_PACK16, Invalid, R16Uint, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R10X6G10X6_UNORM_2PACK16, Invalid, RG16Uint, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R10X6G10X6B10X6A10X6_UNORM_4PACK16, Invalid, RGBA16Uint, Invalid, Invalid, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R10X6_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R10X6G10X6_UNORM_2PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R10X6G10X6B10X6A10X6_UNORM_4PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
 	addVkFormatDesc( G10X6B10X6G10X6R10X6_422_UNORM_4PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
 	addVkFormatDesc( B10X6G10X6R10X6G10X6_422_UNORM_4PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
-	addVkFormatDesc( G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 2, 6, ColorFloat );
-	addVkFormatDesc( G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 2, 6, ColorFloat );
-	addVkFormatDesc( G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 6, ColorFloat );
-	addVkFormatDesc( G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 4, ColorFloat );
+	addVkFormatDesc( G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 2, 12, ColorFloat );
+	addVkFormatDesc( G10X6_B10X6R10X6_2PLANE_420_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 2, 12, ColorFloat );
+	addVkFormatDesc( G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
+	addVkFormatDesc( G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
 	addVkFormatDesc( G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 6, ColorFloat );
-	addVkFormatDesc( R12X4_UNORM_PACK16, Invalid, R16Uint, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R12X4G12X4_UNORM_2PACK16, Invalid, RG16Uint, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R12X4G12X4B12X4A12X4_UNORM_4PACK16, Invalid, RGBA16Uint, Invalid, Invalid, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R12X4_UNORM_PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R12X4G12X4_UNORM_2PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R12X4G12X4B12X4A12X4_UNORM_4PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
 	addVkFormatDesc( G12X4B12X4G12X4R12X4_422_UNORM_4PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
 	addVkFormatDesc( B12X4G12X4R12X4G12X4_422_UNORM_4PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
-	addVkFormatDesc( G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 2, 6, ColorFloat );
-	addVkFormatDesc( G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 2, 6, ColorFloat );
-	addVkFormatDesc( G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 6, ColorFloat );
-	addVkFormatDesc( G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 6, ColorFloat );
+	addVkFormatDesc( G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 2, 12, ColorFloat );
+	addVkFormatDesc( G12X4_B12X4R12X4_2PLANE_420_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 2, 12, ColorFloat );
+	addVkFormatDesc( G12X4_B12X4_R12X4_3PLANE_422_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
+	addVkFormatDesc( G12X4_B12X4R12X4_2PLANE_422_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
 	addVkFormatDesc( G12X4_B12X4_R12X4_3PLANE_444_UNORM_3PACK16, Invalid, Invalid, Invalid, Invalid, 1, 1, 6, ColorFloat );
 	addVkFormatDesc( G16B16G16R16_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
 	addVkFormatDesc( B16G16R16G16_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
-	addVkFormatDesc( G16_B16_R16_3PLANE_420_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 2, 6, ColorFloat );
-	addVkFormatDesc( G16_B16R16_2PLANE_420_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 2, 6, ColorFloat );
-	addVkFormatDesc( G16_B16_R16_3PLANE_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 6, ColorFloat );
-	addVkFormatDesc( G16_B16R16_2PLANE_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 6, ColorFloat );
+	addVkFormatDesc( G16_B16_R16_3PLANE_420_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 2, 12, ColorFloat );
+	addVkFormatDesc( G16_B16R16_2PLANE_420_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 2, 12, ColorFloat );
+	addVkFormatDesc( G16_B16_R16_3PLANE_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
+	addVkFormatDesc( G16_B16R16_2PLANE_422_UNORM, Invalid, Invalid, Invalid, Invalid, 2, 1, 8, ColorFloat );
 	addVkFormatDesc( G16_B16_R16_3PLANE_444_UNORM, Invalid, Invalid, Invalid, Invalid, 1, 1, 6, ColorFloat );
 
 	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
@@ -1290,44 +1328,44 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, RGBA32Sint, RWC );
 	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v2, RGBA32Float, RWC );
 
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_4x4_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_4x4_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_5x4_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_5x4_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_5x5_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_5x5_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_6x5_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_6x5_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_6x6_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_6x6_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x5_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x5_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x6_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x6_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x8_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_8x8_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x5_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x5_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x6_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x6_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x8_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x8_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x10_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_10x10_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_12x10_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_12x10_sRGB, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_12x12_LDR, RF );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily2_v1, ASTC_12x12_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_4x4_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_4x4_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_5x4_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_5x4_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_5x5_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_5x5_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_6x5_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_6x5_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_6x6_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_6x6_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_8x5_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_8x5_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_8x6_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_8x6_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_8x8_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_8x8_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_10x5_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_10x5_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_10x6_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_10x6_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_10x8_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_10x8_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_10x10_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_10x10_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_12x10_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_12x10_sRGB, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_12x12_LDR, RF );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v1, ASTC_12x12_sRGB, RF );
 
 	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, Depth32Float, DRMR );
 	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, Depth32Float_Stencil8, DRMR );
 
-	addMTLPixelFormatCapabilities(iOS_GPUFamily3_v2, BGRA10_XR, All );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily3_v2, BGRA10_XR_sRGB, All );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily3_v2, BGR10_XR, All );
-	addMTLPixelFormatCapabilities(iOS_GPUFamily3_v2, BGR10_XR_sRGB, All );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v2, BGRA10_XR, All );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v2, BGRA10_XR_sRGB, All );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v2, BGR10_XR, All );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v2, BGR10_XR_sRGB, All );
 
-	addMTLPixelFormatCapabilities(iOS_GPUFamily1_v4, BGR10A2Unorm, All );
+	addMTLPixelFormatCapabilities( iOS_GPUFamily1_v4, BGR10A2Unorm, All );
 
 	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, UCharNormalized, Vertex );
 	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, CharNormalized, Vertex );
@@ -1468,12 +1506,12 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 		enableFormatFeatures(Vertex, Buf, getMTLVertexFormatDesc(vkFmt).mtlFmtCaps, vkProps.bufferFeatures);
 	}
 
-	if (getChromaSubsamplingResolution(vkFmt) != SPIRV_CROSS_NAMESPACE::MSL_FORMAT_RESOLUTION_INT_MAX) {
+	if (getChromaSubsamplingPlaneCount(vkFmt) > 0) {
 		enableFormatFeatures(ChromaSubsampling, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 		enableFormatFeatures(ChromaSubsampling, Tex, mtlPixFmtCaps, vkProps.linearTilingFeatures);
 	}
 
-	/* if (getChromaSubsamplingPlanes(vkFmt) > 1) {
+	/* if (getChromaSubsamplingPlaneCount(vkFmt) > 1) {
 		enableFormatFeatures(MultiPlanar, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 		enableFormatFeatures(MultiPlanar, Tex, mtlPixFmtCaps, vkProps.linearTilingFeatures);
 	} */
