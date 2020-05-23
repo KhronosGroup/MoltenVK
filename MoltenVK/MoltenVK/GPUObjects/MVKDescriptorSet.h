@@ -86,7 +86,7 @@ protected:
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex);
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 
-	std::vector<MVKDescriptorSetLayoutBinding> _bindings;
+	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint32_t _descriptorCount;
@@ -138,7 +138,7 @@ protected:
 
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;
-	std::vector<MVKDescriptor*> _descriptors;
+	MVKSmallVector<MVKDescriptor*, 1> _descriptors;		// same overhead as count
 };
 
 
@@ -165,8 +165,8 @@ protected:
 	void freeDescriptor(MVKDescriptor* mvkDesc);
 	void reset();
 
-	std::vector<DescriptorClass> _descriptors;
-	std::vector<bool> _availability;
+	MVKSmallVector<DescriptorClass> _descriptors;
+	MVKSmallVector<bool, 8> _availability;		// same overhead as count
 	uint32_t _nextAvailableIndex;
 	bool _supportAvailability;
 };

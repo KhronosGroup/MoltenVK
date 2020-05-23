@@ -19,7 +19,7 @@
 #pragma once
 
 #include "MVKImage.h"
-#include <vector>
+#include "MVKSmallVector.h"
 
 class MVKDescriptorSet;
 class MVKDescriptorSetLayout;
@@ -122,7 +122,7 @@ protected:
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
-	std::vector<MVKSampler*> _immutableSamplers;
+	MVKSmallVector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	bool _applyToStage[kMVKShaderStageMax];
 };
