@@ -32,14 +32,144 @@
 using namespace std;
 using namespace SPIRV_CROSS_NAMESPACE;
 
-
-#pragma mark MVKImage
+#pragma mark -
+#pragma mark MVKImagePlane
 
 static uint32_t getPlaneFromVkImageAspectFlags(VkImageAspectFlags aspectMask) {
-	return (aspectMask & VK_IMAGE_ASPECT_PLANE_2_BIT) ? 2 :
-	       (aspectMask & VK_IMAGE_ASPECT_PLANE_1_BIT) ? 1 :
-	       0;
+    return (aspectMask & VK_IMAGE_ASPECT_PLANE_2_BIT) ? 2 :
+           (aspectMask & VK_IMAGE_ASPECT_PLANE_1_BIT) ? 1 :
+           0;
 }
+
+
+#pragma mark -
+#pragma mark MVKImageMemoryBinding
+
+VkResult MVKImageMemoryBinding::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) {
+    pMemoryRequirements->size = _byteCount;
+    pMemoryRequirements->alignment = _byteAlignment;
+    return VK_SUCCESS;
+}
+
+VkResult MVKImageMemoryBinding::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
+    pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+    for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
+        switch (next->sType) {
+        case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
+            auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
+            bool writable = mvkIsAnyFlagEnabled(_image->_usage, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
+            dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
+            dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
+                                                        (!_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps)));
+            break;
+        }
+        default:
+            break;
+        }
+    }
+    return VK_SUCCESS;
+}
+
+// Memory may have been mapped before image was bound, and needs to be loaded into the MTLTexture.
+VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
+    if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
+    MVKResource::bindDeviceMemory(mvkMem, memOffset);
+
+    VkExtent2D blockExt = getPixelFormats()->getBlockTexelSize(_image->_mtlPixelFormat);
+    bool isUncompressed = blockExt.width == 1 && blockExt.height == 1; // TODO: What about chroma subsampling?
+
+    _usesTexelBuffer = _device->_pMetalFeatures->texelBuffers;                                // Texel buffers available
+    _usesTexelBuffer = _usesTexelBuffer && (isMemoryHostAccessible() || _device->_pMetalFeatures->placementHeaps) && _image->_isLinear && isUncompressed;    // Applicable memory layout
+    _usesTexelBuffer = _usesTexelBuffer && _deviceMemory && _deviceMemory->_mtlBuffer;                // Buffer is available to overlay
+
+#if MVK_MACOS
+    // macOS cannot use shared memory for texel buffers.
+    // Test _deviceMemory->isMemoryHostCoherent() directly because local version overrides.
+    _usesTexelBuffer = _usesTexelBuffer && _deviceMemory && !_deviceMemory->isMemoryHostCoherent();
+#endif
+
+    flushToDevice(getDeviceMemoryOffset(), getByteCount());
+    return _deviceMemory ? _deviceMemory->addImageMemoryBinding(this) : VK_SUCCESS;
+}
+
+void MVKImageMemoryBinding::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+                                               VkPipelineStageFlags dstStageMask,
+                                               VkMemoryBarrier* pMemoryBarrier,
+                                               MVKCommandEncoder* cmdEncoder,
+                                               MVKCommandUse cmdUse) {
+#if MVK_MACOS
+    if ( needsHostReadSync(srcStageMask, dstStageMask, pMemoryBarrier) ) {
+        [cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: _image->getMTLTexture()];
+    }
+#endif
+}
+
+void MVKImageMemoryBinding::propogateDebugName() { setLabelIfNotNil(_image->_mtlTexture, _image->_debugName); }
+
+// Returns whether the specified image memory barrier requires a sync between this
+// texture and host memory for the purpose of the host reading texture memory.
+bool MVKImageMemoryBinding::needsHostReadSync(VkPipelineStageFlags srcStageMask,
+                                              VkPipelineStageFlags dstStageMask,
+                                              VkMemoryBarrier* pImageMemoryBarrier) {
+#if MVK_IOS
+    return false;
+#elif MVK_MACOS
+    return ((((VkImageMemoryBarrier*)pImageMemoryBarrier)->newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
+            mvkIsAnyFlagEnabled(pImageMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
+            isMemoryHostAccessible() && !isMemoryHostCoherent());
+#endif
+}
+
+bool MVKImageMemoryBinding::shouldFlushHostMemory() { return isMemoryHostAccessible() && !_usesTexelBuffer; }
+
+// Flushes the device memory at the specified memory range into the MTLTexture. Updates
+// all subresources that overlap the specified range and are in an updatable layout state.
+VkResult MVKImageMemoryBinding::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
+    if (shouldFlushHostMemory()) {
+        for (auto& subRez : _image->_subresources) {
+            switch (subRez.layoutState) {
+                case VK_IMAGE_LAYOUT_UNDEFINED:
+                case VK_IMAGE_LAYOUT_PREINITIALIZED:
+                case VK_IMAGE_LAYOUT_GENERAL: {
+                    _image->updateMTLTextureContent(subRez, offset, size);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    }
+    return VK_SUCCESS;
+}
+
+// Pulls content from the MTLTexture into the device memory at the specified memory range.
+// Pulls from all subresources that overlap the specified range and are in an updatable layout state.
+VkResult MVKImageMemoryBinding::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
+    if (shouldFlushHostMemory()) {
+        for (auto& subRez : _image->_subresources) {
+            switch (subRez.layoutState) {
+                case VK_IMAGE_LAYOUT_GENERAL: {
+                    _image->getMTLTextureContent(subRez, offset, size);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
+    }
+    return VK_SUCCESS;
+}
+
+MVKImageMemoryBinding::MVKImageMemoryBinding(MVKDevice* device, MVKImage* image) : MVKResource(device), _image(image), _usesTexelBuffer(false) {
+    
+}
+
+MVKImageMemoryBinding::~MVKImageMemoryBinding() {
+    if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
+}
+
+
+#pragma mark MVKImage
 
 void MVKImage::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
 
@@ -88,18 +218,6 @@ void MVKImage::getTransferDescriptorData(MVKImageDescriptorData& imgData) {
 
 #pragma mark Resource memory
 
-void MVKImage::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-								  VkPipelineStageFlags dstStageMask,
-								  VkMemoryBarrier* pMemoryBarrier,
-                                  MVKCommandEncoder* cmdEncoder,
-                                  MVKCommandUse cmdUse) {
-#if MVK_MACOS
-	if ( needsHostReadSync(srcStageMask, dstStageMask, pMemoryBarrier) ) {
-		[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: getMTLTexture()];
-	}
-#endif
-}
-
 void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 									   VkPipelineStageFlags dstStageMask,
 									   VkImageMemoryBarrier* pImageMemoryBarrier,
@@ -122,7 +240,7 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 						 : (layerStart + layerCnt));
 
 #if MVK_MACOS
-	bool needsSync = needsHostReadSync(srcStageMask, dstStageMask, pImageMemoryBarrier);
+	bool needsSync = _memoryBinding->needsHostReadSync(srcStageMask, dstStageMask, (VkMemoryBarrier*)pImageMemoryBarrier);
 	id<MTLTexture> mtlTex = needsSync ? getMTLTexture() : nil;
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = needsSync ? cmdEncoder->getMTLBlitEncoder(cmdUse) : nil;
 #endif
@@ -139,21 +257,6 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 	}
 }
 
-// Returns whether the specified image memory barrier requires a sync between this
-// texture and host memory for the purpose of the host reading texture memory.
-bool MVKImage::needsHostReadSync(VkPipelineStageFlags srcStageMask,
-								 VkPipelineStageFlags dstStageMask,
-								 VkImageMemoryBarrier* pImageMemoryBarrier) {
-#if MVK_IOS
-	return false;
-#endif
-#if MVK_MACOS
-	return ((pImageMemoryBarrier->newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
-			mvkIsAnyFlagEnabled(pImageMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
-			isMemoryHostAccessible() && !isMemoryHostCoherent());
-#endif
-}
-
 // Returns a pointer to the internal subresource for the specified MIP level layer.
 MVKImageSubresource* MVKImage::getSubresource(uint32_t mipLevel, uint32_t arrayLayer) {
 	uint32_t srIdx = (mipLevel * _arrayLayers) + arrayLayer;
@@ -161,38 +264,27 @@ MVKImageSubresource* MVKImage::getSubresource(uint32_t mipLevel, uint32_t arrayL
 }
 
 VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) {
-	pMemoryRequirements->size = _byteCount;
-	pMemoryRequirements->alignment = _byteAlignment;
-	pMemoryRequirements->memoryTypeBits = (_isDepthStencilAttachment
-										   ? _device->getPhysicalDevice()->getPrivateMemoryTypes()
-										   : _device->getPhysicalDevice()->getAllMemoryTypes());
+    pMemoryRequirements->memoryTypeBits = (_isDepthStencilAttachment)
+                                          ? _device->getPhysicalDevice()->getPrivateMemoryTypes()
+                                          : _device->getPhysicalDevice()->getAllMemoryTypes();
 #if MVK_MACOS
-	// Metal on macOS does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
-	if ( !_isLinear ) {
-		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
-	}
+    // Metal on macOS does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
+    if ( !_isLinear ) {
+        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
+    }
 #endif
 #if MVK_IOS
-	// Only transient attachments may use memoryless storage
-	if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
-		mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
-	}
+    // Only transient attachments may use memoryless storage
+    if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
+        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
+    }
 #endif
-	return VK_SUCCESS;
+    return _memoryBinding->getMemoryRequirements(pMemoryRequirements);
 }
 
-VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMemoryRequirements) {
-	pMemoryRequirements->sType = VK_STRUCTURE_TYPE_MEMORY_REQUIREMENTS_2;
+VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) {
 	for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
 		switch (next->sType) {
-		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
-			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
-			bool writable = mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-			dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
-			dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
-														 (!_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps)));
-			break;
-		}
 		case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
 			auto* planeReqs = (VkImagePlaneMemoryRequirementsInfo*)next;
 			uint32_t plane = getPlaneFromVkImageAspectFlags(planeReqs->planeAspect);
@@ -203,21 +295,12 @@ VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMe
 			break;
 		}
 	}
-	getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
-	return VK_SUCCESS;
+    _memoryBinding->getMemoryRequirements(pInfo, pMemoryRequirements);
+    return getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
 }
 
-// Memory may have been mapped before image was bound, and needs to be loaded into the MTLTexture.
 VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
-	if (_deviceMemory) { _deviceMemory->removeImage(this); }
-
-	MVKResource::bindDeviceMemory(mvkMem, memOffset);
-
-	_usesTexelBuffer = validateUseTexelBuffer();
-
-	flushToDevice(getDeviceMemoryOffset(), getByteCount());
-
-	return _deviceMemory ? _deviceMemory->addImage(this) : VK_SUCCESS;
+    return _memoryBinding->bindDeviceMemory(mvkMem, memOffset);
 }
 
 VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
@@ -233,64 +316,7 @@ VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
                 break;
         }
     }
-    return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
-}
-
-bool MVKImage::validateUseTexelBuffer() {
-	VkExtent2D blockExt = getPixelFormats()->getBlockTexelSize(_mtlPixelFormat);
-	bool isUncompressed = blockExt.width == 1 && blockExt.height == 1;
-
-	bool useTexelBuffer = _device->_pMetalFeatures->texelBuffers;								// Texel buffers available
-	useTexelBuffer = useTexelBuffer && (isMemoryHostAccessible() || _device->_pMetalFeatures->placementHeaps) && _isLinear && isUncompressed;	// Applicable memory layout
-	useTexelBuffer = useTexelBuffer && _deviceMemory && _deviceMemory->_mtlBuffer;				// Buffer is available to overlay
-
-#if MVK_MACOS
-	// macOS cannot use shared memory for texel buffers.
-	// Test _deviceMemory->isMemoryHostCoherent() directly because local version overrides.
-	useTexelBuffer = useTexelBuffer && _deviceMemory && !_deviceMemory->isMemoryHostCoherent();
-#endif
-
-	return useTexelBuffer;
-}
-
-bool MVKImage::shouldFlushHostMemory() { return isMemoryHostAccessible() && !_usesTexelBuffer; }
-
-// Flushes the device memory at the specified memory range into the MTLTexture. Updates
-// all subresources that overlap the specified range and are in an updatable layout state.
-VkResult MVKImage::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
-	if (shouldFlushHostMemory()) {
-		for (auto& subRez : _subresources) {
-			switch (subRez.layoutState) {
-				case VK_IMAGE_LAYOUT_UNDEFINED:
-				case VK_IMAGE_LAYOUT_PREINITIALIZED:
-				case VK_IMAGE_LAYOUT_GENERAL: {
-					updateMTLTextureContent(subRez, offset, size);
-					break;
-				}
-				default:
-					break;
-			}
-		}
-	}
-	return VK_SUCCESS;
-}
-
-// Pulls content from the MTLTexture into the device memory at the specified memory range.
-// Pulls from all subresources that overlap the specified range and are in an updatable layout state.
-VkResult MVKImage::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
-	if (shouldFlushHostMemory()) {
-		for (auto& subRez : _subresources) {
-			switch (subRez.layoutState) {
-				case VK_IMAGE_LAYOUT_GENERAL: {
-					getMTLTextureContent(subRez, offset, size);
-					break;
-				}
-				default:
-					break;
-			}
-		}
-	}
-	return VK_SUCCESS;
+    return _memoryBinding->bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
 }
 
 
@@ -335,13 +361,13 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 	if (_ioSurface) {
 		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc iosurface: _ioSurface plane: 0];
         // TODO: For multi planar images
-	} else if (_usesTexelBuffer) {
-		mtlTex = [_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
-															  offset: getDeviceMemoryOffset()
+	} else if (_memoryBinding->_usesTexelBuffer) {
+		mtlTex = [_memoryBinding->_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
+															  offset: _memoryBinding->getDeviceMemoryOffset()
 														 bytesPerRow: _subresources[0].layout.rowPitch];
-	} else if (_deviceMemory->_mtlHeap && !getIsDepthStencil()) {	// Metal support for depth/stencil from heaps is flaky
-		mtlTex = [_deviceMemory->_mtlHeap newTextureWithDescriptor: mtlTexDesc
-															offset: getDeviceMemoryOffset()];
+	} else if (_memoryBinding->_deviceMemory->_mtlHeap && !getIsDepthStencil()) {	// Metal support for depth/stencil from heaps is flaky
+		mtlTex = [_memoryBinding->_deviceMemory->_mtlHeap newTextureWithDescriptor: mtlTexDesc
+															offset: _memoryBinding->getDeviceMemoryOffset()];
 		if (_isAliasable) [mtlTex makeAliasable];
 	} else {
 		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
@@ -492,9 +518,9 @@ MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
 }
 
 MTLStorageMode MVKImage::getMTLStorageMode() {
-    if ( !_deviceMemory ) return MTLStorageModePrivate;
+    if ( !_memoryBinding->_deviceMemory ) return MTLStorageModePrivate;
 
-    MTLStorageMode stgMode = _deviceMemory->getMTLStorageMode();
+    MTLStorageMode stgMode = _memoryBinding->_deviceMemory->getMTLStorageMode();
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
@@ -506,7 +532,7 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 }
 
 MTLCPUCacheMode MVKImage::getMTLCPUCacheMode() {
-	return _deviceMemory ? _deviceMemory->getMTLCPUCacheMode() : MTLCPUCacheModeDefaultCache;
+	return _memoryBinding->_deviceMemory ? _memoryBinding->_deviceMemory->getMTLCPUCacheMode() : MTLCPUCacheModeDefaultCache;
 }
 
 bool MVKImage::isMemoryHostCoherent() {
@@ -529,7 +555,7 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
     if (imgStart >= memEnd || imgEnd <= memStart) { return; }
 
 	// Don't update if host memory has not been mapped yet.
-	void* pHostMem = getHostMemoryAddress();
+	void* pHostMem = _memoryBinding->getHostMemoryAddress();
 	if ( !pHostMem ) { return; }
 
     VkExtent3D mipExtent = getExtent3D(imgSubRez.mipLevel);
@@ -594,7 +620,7 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
     if (imgStart >= memEnd || imgEnd <= memStart) { return; }
 
 	// Don't update if host memory has not been mapped yet.
-	void* pHostMem = getHostMemoryAddress();
+	void* pHostMem = _memoryBinding->getHostMemoryAddress();
 	if ( !pHostMem ) { return; }
 
     VkExtent3D mipExtent = getExtent3D(imgSubRez.mipLevel);
@@ -616,11 +642,10 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
 
 #pragma mark Construction
 
-MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKResource(device) {
+MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _memoryBinding(new MVKImageMemoryBinding(device, this)) {
 
 	_mtlTexture = nil;
 	_ioSurface = nil;
-	_usesTexelBuffer = false;
 
     // Adjust the info components to be compatible with Metal, then use the modified versions to set other
 	// config info. Vulkan allows unused extent dimensions to be zero, but Metal requires minimum of one.
@@ -658,14 +683,14 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 		MTLTextureDescriptor *mtlTexDesc = newMTLTextureDescriptor();	// temp retain
 		MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
 		[mtlTexDesc release];
-		_byteCount = sizeAndAlign.size;
-		_byteAlignment = sizeAndAlign.align;
+		_memoryBinding->_byteCount = sizeAndAlign.size;
+		_memoryBinding->_byteAlignment = sizeAndAlign.align;
 		_isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
 	} else {
 		// Calc _byteCount after _rowByteAlignment
-		_byteAlignment = _rowByteAlignment;
+		_memoryBinding->_byteAlignment = _rowByteAlignment;
 		for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
-			_byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
+			_memoryBinding->_byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
 		}
 	}
 
@@ -855,16 +880,15 @@ void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 
 void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
 	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
-		_externalMemoryHandleTypes = handleTypes;
+		_memoryBinding->_externalMemoryHandleTypes = handleTypes;
 		auto& xmProps = _device->getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
-		_requiresDedicatedMemoryAllocation = _requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+		_memoryBinding->_requiresDedicatedMemoryAllocation = _memoryBinding->_requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
 	} else {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR is supported."));
 	}
 }
 
 MVKImage::~MVKImage() {
-	if (_deviceMemory) { _deviceMemory->removeImage(this); }
 	releaseMTLTexture();
     releaseIOSurface();
 }
@@ -1197,6 +1221,11 @@ MVKImageView::MVKImageView(MVKDevice* device,
 				if (!(pViewUsageInfo->usage & ~_usage)) { _usage = pViewUsageInfo->usage; }
 				break;
 			}
+            case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR: {
+                const VkSamplerYcbcrConversionInfoKHR* sampConvInfo = (const VkSamplerYcbcrConversionInfoKHR*)next;
+                // TODO
+                break;
+            }
 			default:
 				break;
 		}

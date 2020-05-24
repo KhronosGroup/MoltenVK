@@ -92,7 +92,7 @@ VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, 
 		// If we have an MTLHeap object, there's no need to sync memory manually between images and the buffer.
 		if (!_mtlHeap) {
 			lock_guard<mutex> lock(_rezLock);
-			for (auto& img : _images) { img->flushToDevice(offset, memSize); }
+			for (auto& img : _imageMemoryBindings) { img->flushToDevice(offset, memSize); }
 			for (auto& buf : _buffers) { buf->flushToDevice(offset, memSize); }
 		}
 	}
@@ -107,7 +107,7 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
     VkDeviceSize memSize = adjustMemorySize(size, offset);
 	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) && !_mtlHeap) {
 		lock_guard<mutex> lock(_rezLock);
-        for (auto& img : _images) { img->pullFromDevice(offset, memSize); }
+        for (auto& img : _imageMemoryBindings) { img->pullFromDevice(offset, memSize); }
         for (auto& buf : _buffers) { buf->pullFromDevice(offset, memSize); }
 
 #if MVK_MACOS
@@ -152,23 +152,23 @@ void MVKDeviceMemory::removeBuffer(MVKBuffer* mvkBuff) {
 	mvkRemoveAllOccurances(_buffers, mvkBuff);
 }
 
-VkResult MVKDeviceMemory::addImage(MVKImage* mvkImg) {
+VkResult MVKDeviceMemory::addImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
 	lock_guard<mutex> lock(_rezLock);
 
 	// If a dedicated alloc, ensure this image is the one and only image
 	// I am dedicated to.
-	if (_isDedicated && (_images.empty() || _images[0] != mvkImg) ) {
+	if (_isDedicated && (_imageMemoryBindings.empty() || _imageMemoryBindings[0] != mvkImg) ) {
 		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
 	}
 
-	if (!_isDedicated) { _images.push_back(mvkImg); }
+	if (!_isDedicated) { _imageMemoryBindings.push_back(mvkImg); }
 
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::removeImage(MVKImage* mvkImg) {
+void MVKDeviceMemory::removeImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
 	lock_guard<mutex> lock(_rezLock);
-	mvkRemoveAllOccurances(_images, mvkImg);
+	mvkRemoveAllOccurances(_imageMemoryBindings, mvkImg);
 }
 
 // Ensures that this instance is backed by a MTLHeap object,
@@ -266,7 +266,7 @@ void MVKDeviceMemory::freeHostMemory() {
 
 MVKResource* MVKDeviceMemory::getDedicatedResource() {
 	MVKAssert(_isDedicated, "This method should only be called on dedicated allocations!");
-	return _buffers.empty() ? (MVKResource*)_images[0] : (MVKResource*)_buffers[0];
+	return _buffers.empty() ? (MVKResource*)_imageMemoryBindings[0] : (MVKResource*)_buffers[0];
 }
 
 MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
@@ -319,7 +319,7 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			}
 		}
 #endif
-		_images.push_back((MVKImage*)dedicatedImage);
+        _imageMemoryBindings.push_back(((MVKImage*)dedicatedImage)->_memoryBinding.get());
 		return;
 	}
 
@@ -367,7 +367,7 @@ MVKDeviceMemory::~MVKDeviceMemory() {
     // to allow the resource to callback to remove itself from the collection.
     auto buffCopies = _buffers;
     for (auto& buf : buffCopies) { buf->bindDeviceMemory(nullptr, 0); }
-	auto imgCopies = _images;
+	auto imgCopies = _imageMemoryBindings;
 	for (auto& img : imgCopies) { img->bindDeviceMemory(nullptr, 0); }
 
 	[_mtlBuffer release];

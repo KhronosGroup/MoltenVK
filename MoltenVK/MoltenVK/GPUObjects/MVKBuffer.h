@@ -40,13 +40,13 @@ public:
 #pragma mark Resource memory
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
-	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) override;
+	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements);
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
-	VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) override;
+	VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	VkResult bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo);

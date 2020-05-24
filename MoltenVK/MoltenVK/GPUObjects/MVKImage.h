@@ -35,17 +35,67 @@ class MVKCommandEncoder;
 
 /** Tracks the state of an image subresource.  */
 typedef struct {
-	VkImageSubresource subresource;
-	VkSubresourceLayout layout;
-	VkImageLayout layoutState;
+    VkImageSubresource subresource;
+    VkSubresourceLayout layout;
+    VkImageLayout layoutState;
 } MVKImageSubresource;
+
+
+#pragma mark -
+#pragma mark MVKImageMemoryBinding
+
+class MVKImageMemoryBinding : public MVKResource {
+
+public:
+    
+    /** Returns the Vulkan type of this object. */
+    VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_UNKNOWN; }
+
+    /** Returns the debug report object type of this object. */
+    VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }
+
+    /** Returns the memory requirements of this resource by populating the specified structure. */
+    VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements);
+
+    /** Returns the memory requirements of this resource by populating the specified structure. */
+    VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements);
+
+    /** Binds this resource to the specified offset within the specified memory allocation. */
+    VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
+
+    /** Applies the specified global memory barrier. */
+    void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+                            VkPipelineStageFlags dstStageMask,
+                            VkMemoryBarrier* pMemoryBarrier,
+                            MVKCommandEncoder* cmdEncoder,
+                            MVKCommandUse cmdUse) override;
+
+    ~MVKImageMemoryBinding();
+    
+protected:
+    friend MVKDeviceMemory;
+    friend MVKImage;
+
+    void propogateDebugName() override;
+    bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
+    VkPipelineStageFlags dstStageMask,
+    VkMemoryBarrier* pImageMemoryBarrier) override;
+    bool shouldFlushHostMemory();
+    VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
+    VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
+
+    MVKImageMemoryBinding(MVKDevice* device, MVKImage* image);
+
+    MVKImage* _image;
+    bool _usesTexelBuffer;
+};
 
 
 #pragma mark -
 #pragma mark MVKImage
 
 /** Represents a Vulkan image. */
-class MVKImage : public MVKResource {
+class MVKImage : public MVKVulkanAPIDeviceObject {
 
 public:
 
@@ -122,23 +172,16 @@ public:
 #pragma mark Resource memory
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
-	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) override;
+	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements);
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
-	VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) override;
+	VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
-
-	/** Applies the specified global memory barrier. */
-    void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                            VkPipelineStageFlags dstStageMask,
-                            VkMemoryBarrier* pMemoryBarrier,
-                            MVKCommandEncoder* cmdEncoder,
-                            MVKCommandUse cmdUse) override;
 
 	/** Applies the specified image memory barrier. */
     void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
@@ -225,9 +268,10 @@ public:
 	~MVKImage() override;
 
 protected:
-	friend class MVKDeviceMemory;
-	friend class MVKImageView;
-	using MVKResource::needsHostReadSync;
+    friend MVKImageMemoryBinding;
+    friend MVKDeviceMemory;
+    friend MVKDevice;
+	friend MVKImageView;
 
 	void propogateDebugName() override;
 	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
@@ -235,7 +279,6 @@ protected:
 	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	bool validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
-	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
@@ -245,13 +288,8 @@ protected:
 	MTLTextureDescriptor* newMTLTextureDescriptor();
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
-	bool shouldFlushHostMemory();
-	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
-	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
-	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
-						   VkPipelineStageFlags dstStageMask,
-						   VkImageMemoryBarrier* pImageMemoryBarrier);
 
+    std::unique_ptr<MVKImageMemoryBinding> _memoryBinding;
 	MVKVectorInline<MVKImageSubresource, 1> _subresources;
 	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     VkExtent3D _extent;
@@ -268,7 +306,6 @@ protected:
     bool _isDepthStencilAttachment;
 	bool _canSupportMTLTextureView;
     bool _hasExpectedTexelSize;
-	bool _usesTexelBuffer;
 	bool _isLinear;
 	bool _is3DCompressed;
 	bool _isAliasable;
