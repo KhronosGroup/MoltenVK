@@ -41,7 +41,7 @@ namespace mvk_smallvector_memory_allocator
 // mvk_smallvector_allocator -> malloc based MVKSmallVector allocator with preallocated storage
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-template <typename T, int N>
+template <typename T, int M>
 class mvk_smallvector_allocator final
 {
 public:
@@ -50,11 +50,23 @@ public:
 	size_t  num_elements_used;
 
 private:
-	// Once dynamic allocation is in use, the preallocated content memory space will be re-purposed to
-	// hold the capacity count. Ensure preallocated memory is large enough to hold the capacity count.
-	static constexpr size_t STACK_SIZE = ( N * sizeof( T ) );
+
+	// Once dynamic allocation is in use, the preallocated content memory space will
+	// be re-purposed to hold the capacity count. If the content type is small, ensure
+	// preallocated memory is large enough to hold the capacity count, and increase
+	// the number of preallocated elements accordintly, to make use of this memory.
+	// In addition, increase the number of pre-allocated elements to fill any space created
+	// by the alignment of this structure, to maximize the use of the preallocated memory.
 	static constexpr size_t CAP_CNT_SIZE = sizeof( size_t );
-	alignas( alignof( T ) ) unsigned char elements_stack[ STACK_SIZE > CAP_CNT_SIZE ? STACK_SIZE : CAP_CNT_SIZE ];
+	static constexpr size_t ALIGN_CNT = CAP_CNT_SIZE / sizeof( T );
+	static constexpr size_t ALIGN_MASK = (ALIGN_CNT > 0) ? (ALIGN_CNT - 1) : 0;
+
+	static constexpr size_t MIN_CNT = M > ALIGN_CNT ? M : ALIGN_CNT;
+	static constexpr size_t N = (MIN_CNT + ALIGN_MASK) & ~ALIGN_MASK;
+
+	static constexpr size_t MIN_STACK_SIZE = ( N * sizeof( T ) );
+	static constexpr size_t STACK_SIZE = MIN_STACK_SIZE > CAP_CNT_SIZE ? MIN_STACK_SIZE : CAP_CNT_SIZE;
+	alignas( alignof( T ) ) unsigned char elements_stack[ STACK_SIZE ];
 
   void set_num_elements_reserved( const size_t num_elements_reserved )
   {
