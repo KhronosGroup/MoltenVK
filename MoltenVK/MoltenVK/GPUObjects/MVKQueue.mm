@@ -97,7 +97,27 @@ VkResult MVKQueue::submit(uint32_t submitCount, const VkSubmitInfo* pSubmits, Vk
     VkResult rslt = VK_SUCCESS;
     for (uint32_t sIdx = 0; sIdx < submitCount; sIdx++) {
         VkFence fenceOrNil = (sIdx == (submitCount - 1)) ? fence : VK_NULL_HANDLE; // last one gets the fence
-        VkResult subRslt = submit(new MVKQueueCommandBufferSubmission(this, &pSubmits[sIdx], fenceOrNil));
+
+		const VkSubmitInfo* pVkSub = &pSubmits[sIdx];
+		MVKQueueCommandBufferSubmission* mvkSub;
+		uint32_t cbCnt = pVkSub->commandBufferCount;
+		if (cbCnt <= 1) {
+			mvkSub = new MVKQueueFullCommandBufferSubmission<1>(this, pVkSub, fenceOrNil);
+		} else if (cbCnt <= 16) {
+			mvkSub = new MVKQueueFullCommandBufferSubmission<16>(this, pVkSub, fenceOrNil);
+		} else if (cbCnt <= 32) {
+			mvkSub = new MVKQueueFullCommandBufferSubmission<32>(this, pVkSub, fenceOrNil);
+		} else if (cbCnt <= 64) {
+			mvkSub = new MVKQueueFullCommandBufferSubmission<64>(this, pVkSub, fenceOrNil);
+		} else if (cbCnt <= 128) {
+			mvkSub = new MVKQueueFullCommandBufferSubmission<128>(this, pVkSub, fenceOrNil);
+		} else if (cbCnt <= 256) {
+			mvkSub = new MVKQueueFullCommandBufferSubmission<256>(this, pVkSub, fenceOrNil);
+		} else {
+			mvkSub = new MVKQueueFullCommandBufferSubmission<512>(this, pVkSub, fenceOrNil);
+		}
+
+        VkResult subRslt = submit(mvkSub);
         if (rslt == VK_SUCCESS) { rslt = subRslt; }
     }
     return rslt;
@@ -226,7 +246,7 @@ void MVKQueueCommandBufferSubmission::execute() {
 	for (auto* ws : _waitSemaphores) { ws->encodeWait(getActiveMTLCommandBuffer()); }
 
 	// Submit each command buffer.
-	for (auto& cb : _cmdBuffers) { cb->submit(this); }
+	submitCommandBuffers();
 
 	// If using encoded semaphore signaling, do so now.
 	for (auto* ss : _signalSemaphores) { ss->encodeSignal(getActiveMTLCommandBuffer()); }
@@ -307,14 +327,6 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
 
     // pSubmit can be null if just tracking the fence alone
     if (pSubmit) {
-        uint32_t cbCnt = pSubmit->commandBufferCount;
-        _cmdBuffers.reserve(cbCnt);
-        for (uint32_t i = 0; i < cbCnt; i++) {
-            MVKCommandBuffer* cb = MVKCommandBuffer::getMVKCommandBuffer(pSubmit->pCommandBuffers[i]);
-            _cmdBuffers.push_back(cb);
-            setConfigurationResult(cb->getConfigurationResult());
-        }
-
         uint32_t ssCnt = pSubmit->signalSemaphoreCount;
         _signalSemaphores.reserve(ssCnt);
         for (uint32_t i = 0; i < ssCnt; i++) {

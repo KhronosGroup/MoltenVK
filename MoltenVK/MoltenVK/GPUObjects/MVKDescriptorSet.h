@@ -138,7 +138,7 @@ protected:
 
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;
-	MVKSmallVector<MVKDescriptor*, 1> _descriptors;		// same overhead as count
+	MVKSmallVector<MVKDescriptor*> _descriptors;
 };
 
 
@@ -166,7 +166,7 @@ protected:
 	void reset();
 
 	MVKSmallVector<DescriptorClass> _descriptors;
-	MVKSmallVector<bool, 8> _availability;		// same overhead as count
+	MVKSmallVector<bool> _availability;
 	uint32_t _nextAvailableIndex;
 	bool _supportAvailability;
 };

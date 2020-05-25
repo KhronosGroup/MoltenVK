@@ -179,7 +179,7 @@ protected:
 	friend class MVKQueue;
 
 	MVKQueue* _queue;
-	MVKSmallVector<MVKSemaphore*, 8> _waitSemaphores;
+	MVKSmallVector<MVKSemaphore*> _waitSemaphores;
 	bool _trackPerformance;
 };
 
@@ -193,10 +193,7 @@ class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 public:
 	void execute() override;
 
-	/** Constructs an instance for the queue. */
-	MVKQueueCommandBufferSubmission(MVKQueue* queue,
-									const VkSubmitInfo* pSubmit,
-									VkFence fence);
+	MVKQueueCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence);
 
 protected:
 	friend MVKCommandBuffer;
@@ -205,11 +202,41 @@ protected:
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
 	void finish();
+	virtual void submitCommandBuffers() {}
 
-	MVKSmallVector<MVKCommandBuffer*, 32> _cmdBuffers;
-	MVKSmallVector<MVKSemaphore*, 8> _signalSemaphores;
+	MVKSmallVector<MVKSemaphore*> _signalSemaphores;
 	MVKFence* _fence;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
+};
+
+
+/**
+ * Submits the commands in a set of command buffers to the queue.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
+class MVKQueueFullCommandBufferSubmission : public MVKQueueCommandBufferSubmission {
+
+public:
+	MVKQueueFullCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence) :
+		MVKQueueCommandBufferSubmission(queue, pSubmit, fence) {
+
+			// pSubmit can be null if just tracking the fence alone
+			if (pSubmit) {
+				uint32_t cbCnt = pSubmit->commandBufferCount;
+				_cmdBuffers.reserve(cbCnt);
+				for (uint32_t i = 0; i < cbCnt; i++) {
+					MVKCommandBuffer* cb = MVKCommandBuffer::getMVKCommandBuffer(pSubmit->pCommandBuffers[i]);
+					_cmdBuffers.push_back(cb);
+					setConfigurationResult(cb->getConfigurationResult());
+				}
+			}
+		}
+
+protected:
+	void submitCommandBuffers() override { for (auto& cb : _cmdBuffers) { cb->submit(this); } }
+
+	MVKSmallVector<MVKCommandBuffer*, N> _cmdBuffers;
 };
 
 
