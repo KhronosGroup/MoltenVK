@@ -242,7 +242,7 @@ private:
   //size_t  num_elements_reserved; // uhh, num_elements_reserved is mapped onto the stack elements, let the fun begin
   alignas( alignof( T ) ) unsigned char   elements_stack[N * sizeof( T )];
 
-  static_assert( N * sizeof( T ) >= sizeof( size_t ), "Bummer, nasty optimization doesn't work" );
+  static_assert( N * sizeof( T ) >= sizeof( size_t ), "Initial static allocation must be at least 8 bytes. Increase the count of pre-allocated elements." );
 
   void set_num_elements_reserved( const size_t num_elements_reserved )
   {

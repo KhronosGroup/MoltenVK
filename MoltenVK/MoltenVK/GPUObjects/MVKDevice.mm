@@ -559,7 +559,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 		MTLPixelFormatBGR10A2Unorm,
 	};
 
-	MVKVectorInline<VkColorSpaceKHR, 16> colorSpaces;
+	MVKSmallVector<VkColorSpaceKHR, 16> colorSpaces;
 	colorSpaces.push_back(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
 	if (getInstance()->_enabledExtensions.vk_EXT_swapchain_colorspace.enabled) {
 #if MVK_MACOS
@@ -719,7 +719,7 @@ VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
 // In addition, Metal queues are always general purpose, so the default behaviour is for all
 // queue families to support graphics + compute + transfer, unless the app indicates it
 // requires queue family specialization.
-MVKVector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
+MVKArrayRef<MVKQueueFamily*> MVKPhysicalDevice::getQueueFamilies() {
 	if (_queueFamilies.empty()) {
 		VkQueueFamilyProperties qfProps;
 		bool specialize = _mvkInstance->getMoltenVKConfiguration()->specializedQueueFamilies;
@@ -747,14 +747,13 @@ MVKVector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
 
 		MVKAssert(kMVKQueueFamilyCount >= _queueFamilies.size(), "Adjust value of kMVKQueueFamilyCount.");
 	}
-	return _queueFamilies;
+	return _queueFamilies.contents();
 }
 
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 													 VkQueueFamilyProperties* pQueueFamilyProperties) {
-
-	auto& qFams = getQueueFamilies();
-	uint32_t qfCnt = uint32_t(qFams.size());
+	auto qFams = getQueueFamilies();
+	uint32_t qfCnt = uint32_t(qFams.size);
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pQueueFamilyProperties ) {
@@ -778,7 +777,6 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 													 VkQueueFamilyProperties2KHR* pQueueFamilyProperties) {
-
 	VkResult rslt;
 	if (pQueueFamilyProperties) {
 		// Populate temp array of VkQueueFamilyProperties then copy into array of VkQueueFamilyProperties2KHR.
@@ -3024,7 +3022,7 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 
 // Create the command queues
 void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
-	auto& qFams = _physicalDevice->getQueueFamilies();
+	auto qFams = _physicalDevice->getQueueFamilies();
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
 	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
 		const VkDeviceQueueCreateInfo* pQFInfo = &pCreateInfo->pQueueCreateInfos[qrIdx];

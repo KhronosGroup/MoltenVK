@@ -370,6 +370,23 @@ std::size_t mvkHash(const N* pVals, std::size_t count = 1, std::size_t seed = 53
 
 #pragma mark Containers
 
+/**
+ * Structure to reference an array of typed elements in contiguous memory.
+ * Allocation and management of the memory is handled externally.
+ */
+template<typename Type>
+struct MVKArrayRef {
+	Type* data;
+	const size_t size;
+
+	const Type* begin() const { return data; }
+	const Type* end() const { return &data[size]; }
+	const Type& operator[]( const size_t i ) const { return data[i]; }
+	Type& operator[]( const size_t i ) { return data[i]; }
+	MVKArrayRef() : MVKArrayRef(nullptr, 0) {}
+	MVKArrayRef(Type* d, size_t s) : data(d), size(s) {}
+};
+
 /** Ensures the size of the specified container is at least the specified size. */
 template<typename C, typename S>
 void mvkEnsureSize(C& container, S size) {

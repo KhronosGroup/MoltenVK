@@ -22,9 +22,10 @@
 #include "MVKCommand.h"
 #include "MVKCommandEncoderState.h"
 #include "MVKMTLBufferAllocation.h"
+#include "MVKRenderPass.h"
 #include "MVKCmdPipeline.h"
 #include "MVKQueryPool.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <unordered_map>
 
 class MVKCommandPool;
@@ -241,7 +242,7 @@ protected:
 
 
 /*** Holds a collection of active queries for each query pool. */
-typedef std::unordered_map<MVKQueryPool*, MVKVectorInline<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
+typedef std::unordered_map<MVKQueryPool*, MVKSmallVector<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
 
 /** 
  * MVKCommandEncoder uses a visitor design pattern iterate the commands in a MVKCommandBuffer, 
@@ -268,7 +269,7 @@ public:
 						 MVKRenderPass* renderPass,
 						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
-						 MVKVector<VkClearValue>* clearValues,
+						 MVKArrayRef<VkClearValue> clearValues,
 						 bool loadOverride = false,
 						 bool storeOverride = false);
 
@@ -452,7 +453,7 @@ protected:
 	uint32_t _renderSubpassIndex;
 	VkRect2D _renderArea;
     MVKActivatedQueries* _pActivatedQueries;
-	MVKVectorInline<VkClearValue, 8> _clearValues;
+	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	MVKCommandUse _mtlComputeEncoderUse;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;

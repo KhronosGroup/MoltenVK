@@ -20,7 +20,7 @@
 
 #include "MVKCommand.h"
 #include "MVKDevice.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 #import <Metal/Metal.h>
 
@@ -48,7 +48,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<VkClearValue, N> _clearValues;
+	MVKSmallVector<VkClearValue, N> _clearValues;
 	MVKRenderPass* _renderPass;
 	MVKFramebuffer* _framebuffer;
 	VkRect2D _renderArea;
@@ -117,7 +117,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<MVKCommandBuffer*, N> _secondaryCommandBuffers;
+	MVKSmallVector<MVKCommandBuffer*, N> _secondaryCommandBuffers;
 };
 
 // Concrete template class implementations.
@@ -146,7 +146,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<VkViewport, N> _viewports;
+	MVKSmallVector<VkViewport, N> _viewports;
 	uint32_t _firstViewport;
 };
 
@@ -176,7 +176,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<VkRect2D, N> _scissors;
+	MVKSmallVector<VkRect2D, N> _scissors;
 	uint32_t _firstScissor;
 };
 

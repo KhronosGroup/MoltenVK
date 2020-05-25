@@ -22,7 +22,7 @@
 #include "MVKMTLBufferAllocation.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKFoundation.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 #import <Metal/Metal.h>
 
@@ -56,7 +56,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<VkImageCopy, N> _vkImageCopies;
+	MVKSmallVector<VkImageCopy, N> _vkImageCopies;
 	MVKImage* _srcImage;
 	MVKImage* _dstImage;
 	VkImageLayout _srcLayout;
@@ -107,7 +107,7 @@ protected:
 	bool canCopy(const VkImageBlit& region);
 	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region);
 
-	MVKVectorInline<VkImageBlit, N> _vkImageBlits;
+	MVKSmallVector<VkImageBlit, N> _vkImageBlits;
 	MVKImage* _srcImage;
 	MVKImage* _dstImage;
 	VkImageLayout _srcLayout;
@@ -150,7 +150,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<VkImageResolve, N> _vkImageResolves;
+	MVKSmallVector<VkImageResolve, N> _vkImageResolves;
     MVKImage* _srcImage;
 	MVKImage* _dstImage;
     VkImageLayout _srcLayout;
@@ -184,7 +184,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<VkBufferCopy, N> _bufferCopyRegions;
+	MVKSmallVector<VkBufferCopy, N> _bufferCopyRegions;
 	MVKBuffer* _srcBuffer;
 	MVKBuffer* _dstBuffer;
 };
@@ -219,7 +219,7 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 	bool isArrayTexture();
 
-	MVKVectorInline<VkBufferImageCopy, N> _bufferImageCopyRegions;
+	MVKSmallVector<VkBufferImageCopy, N> _bufferImageCopyRegions;
     MVKBuffer* _buffer;
     MVKImage* _image;
     VkImageLayout _imageLayout;
@@ -259,7 +259,7 @@ protected:
 	virtual VkClearValue& getClearValue(uint32_t attIdx) = 0;
 	virtual void setClearValue(uint32_t attIdx, const VkClearValue& clearValue) = 0;
 
-	MVKVectorInline<VkClearRect, N> _clearRects;
+	MVKSmallVector<VkClearRect, N> _clearRects;
     MVKRPSKeyClearAtt _rpsKey;
 	bool _isClearingDepth;
 	bool _isClearingStencil;
@@ -338,7 +338,7 @@ protected:
     void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit* pRegion);
 	virtual bool isDepthStencilClear() = 0;
 
-	MVKVectorInline<VkImageSubresourceRange, N> _subresourceRanges;
+	MVKSmallVector<VkImageSubresourceRange, N> _subresourceRanges;
 	MVKImage* _image;
 	VkClearValue _clearValue;
 };
@@ -424,7 +424,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorDefault<uint8_t> _srcDataCache;
+	MVKSmallVector<uint8_t> _srcDataCache;
 	MVKBuffer* _dstBuffer;
     VkDeviceSize _dstOffset;
     VkDeviceSize _dataSize;

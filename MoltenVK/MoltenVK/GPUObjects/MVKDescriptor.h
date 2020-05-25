@@ -19,8 +19,7 @@
 #pragma once
 
 #include "MVKImage.h"
-#include "MVKVector.h"
-#include <vector>
+#include "MVKSmallVector.h"
 
 class MVKDescriptorSet;
 class MVKDescriptorSetLayout;
@@ -89,7 +88,7 @@ public:
 				  MVKDescriptorSet* descSet,
 				  uint32_t descStartIndex,
 				  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-				  MVKVector<uint32_t>* pDynamicOffsets,
+				  MVKArrayRef<uint32_t> dynamicOffsets,
 				  uint32_t* pDynamicOffsetIndex);
 
     /** Encodes this binding layout and the specified descriptor on the specified command encoder immediately. */
@@ -123,7 +122,7 @@ protected:
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
-	std::vector<MVKSampler*> _immutableSamplers;
+	MVKSmallVector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	bool _applyToStage[kMVKShaderStageMax];
 };
@@ -148,7 +147,7 @@ public:
 					  uint32_t descriptorIndex,
 					  bool stages[],
 					  MVKShaderResourceBinding& mtlIndexes,
-					  MVKVector<uint32_t>* pDynamicOffsets,
+					  MVKArrayRef<uint32_t> dynamicOffsets,
 					  uint32_t* pDynamicOffsetIndex) = 0;
 
 	/**
@@ -202,7 +201,7 @@ public:
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKVector<uint32_t>* pDynamicOffsets,
+			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t* pDynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
@@ -280,7 +279,7 @@ public:
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKVector<uint32_t>* pDynamicOffsets,
+			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t* pDynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
@@ -319,7 +318,7 @@ public:
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKVector<uint32_t>* pDynamicOffsets,
+			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t* pDynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
@@ -391,7 +390,7 @@ protected:
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKVector<uint32_t>* pDynamicOffsets,
+			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t* pDynamicOffsetIndex);
 
 	void write(MVKDescriptorSet* mvkDescSet,
@@ -433,7 +432,7 @@ public:
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKVector<uint32_t>* pDynamicOffsets,
+			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t* pDynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
@@ -473,7 +472,7 @@ public:
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKVector<uint32_t>* pDynamicOffsets,
+			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t* pDynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
@@ -511,7 +510,7 @@ public:
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
-			  MVKVector<uint32_t>* pDynamicOffsets,
+			  MVKArrayRef<uint32_t> dynamicOffsets,
 			  uint32_t* pDynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,

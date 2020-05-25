@@ -20,7 +20,7 @@
 
 #include "MVKCommand.h"
 #include "MVKMTLResourceBindings.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 #import <Metal/Metal.h>
 
@@ -47,7 +47,7 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    MVKVectorInline<MVKMTLBufferBinding, N> _bindings;
+    MVKSmallVector<MVKMTLBufferBinding, N> _bindings;
 };
 
 // Concrete template class implementations.

@@ -19,7 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <mutex>
 #include <condition_variable>
 
@@ -57,7 +57,7 @@ public:
     virtual void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder);
 
     /** Finishes the specified queries and marks them as available. */
-    virtual void finishQueries(MVKVector<uint32_t>& queries);
+    virtual void finishQueries(const MVKArrayRef<uint32_t>& queries);
 
 	/** Resets the results and availability status of the specified queries. */
 	virtual void resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder);
@@ -127,8 +127,8 @@ protected:
 		Available           /**< Query is available to the host. */
 	};
 
-	MVKVectorInline<Status, kMVKDefaultQueryCount> _availability;
-	MVKVectorInline<DeferredCopy, 4> _deferredCopies;
+	MVKSmallVector<Status, kMVKDefaultQueryCount> _availability;
+	MVKSmallVector<DeferredCopy, 4> _deferredCopies;
 	uint32_t _queryElementCount;
 	std::mutex _availabilityLock;
 	std::condition_variable _availabilityBlocker;
@@ -143,7 +143,7 @@ protected:
 class MVKTimestampQueryPool : public MVKQueryPool {
 
 public:
-    void finishQueries(MVKVector<uint32_t>& queries) override;
+    void finishQueries(const MVKArrayRef<uint32_t>& queries) override;
 
 
 #pragma mark Construction
@@ -156,7 +156,7 @@ protected:
 	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
 	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
-	MVKVectorInline<uint64_t, kMVKDefaultQueryCount> _timestamps;
+	MVKSmallVector<uint64_t, kMVKDefaultQueryCount> _timestamps;
 };
 
 

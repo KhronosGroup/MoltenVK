@@ -34,6 +34,7 @@ Released TBD
 	  through `vkGetPerformanceStatisticsMVK()`.
 	- Add `MVK_CONFIG_PERFORMANCE_LOGGING_INLINE` env var to enable/disable
 	  logging of performance of each activity when it happens. 
+- Support Xcode 11.5.
 
 
 
