@@ -146,7 +146,7 @@ protected:
 	friend class MVKCommandPool;
 
 	MVKBaseObject* getBaseObject() override { return this; };
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();
 	bool canPrefill();

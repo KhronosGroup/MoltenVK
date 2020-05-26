@@ -81,7 +81,7 @@ protected:
 	friend class MVKDescriptorSet;
 	friend class MVKDescriptorPool;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex);
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
@@ -133,7 +133,7 @@ protected:
 	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKDescriptorPool;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	inline MVKDescriptor* getDescriptor(uint32_t index) { return _descriptors[index]; }
 
 	MVKDescriptorSetLayout* _layout;
@@ -239,7 +239,7 @@ public:
 protected:
 	friend class MVKDescriptorSet;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, VkDescriptorSet* pVKDS);
 	void freeDescriptorSet(MVKDescriptorSet* mvkDS);
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
@@ -281,7 +281,7 @@ public:
 	~MVKDescriptorUpdateTemplate() override = default;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	VkDescriptorUpdateTemplateTypeKHR _type;
 	MVKSmallVector<VkDescriptorUpdateTemplateEntryKHR, 1> _entries;

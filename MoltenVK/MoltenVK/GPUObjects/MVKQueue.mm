@@ -62,7 +62,7 @@ MVKQueueFamily::~MVKQueueFamily() {
 #pragma mark -
 #pragma mark MVKQueue
 
-void MVKQueue::propogateDebugName() { setLabelIfNotNil(_mtlQueue, _debugName); }
+void MVKQueue::propagateDebugName() { setLabelIfNotNil(_mtlQueue, _debugName); }
 
 
 #pragma mark Queue submissions

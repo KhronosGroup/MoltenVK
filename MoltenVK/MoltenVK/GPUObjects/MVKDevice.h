@@ -332,7 +332,7 @@ public:
 protected:
 	friend class MVKDevice;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	MTLFeatureSet getMaximalMTLFeatureSet();
     void initMetalFeatures();
 	void initFeatures();
@@ -695,7 +695,7 @@ public:
     }
 
 protected:
-	void propogateDebugName() override  {}
+	void propagateDebugName() override  {}
 	MVKResource* addResource(MVKResource* rez);
 	MVKResource* removeResource(MVKResource* rez);
     void initPerformanceTracking();

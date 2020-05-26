@@ -35,7 +35,7 @@ using namespace SPIRV_CROSS_NAMESPACE;
 
 #pragma mark MVKImage
 
-void MVKImage::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
+void MVKImage::propagateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
 
 VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_mtlTextureType); }
 
@@ -277,7 +277,7 @@ id<MTLTexture> MVKImage::getMTLTexture() {
 
 		_mtlTexture = newMTLTexture();   // retained
 
-		propogateDebugName();
+		propagateDebugName();
 	}
 	return _mtlTexture;
 }
@@ -1075,7 +1075,7 @@ MVKPeerSwapchainImage::MVKPeerSwapchainImage(MVKDevice* device,
 #pragma mark -
 #pragma mark MVKImageView
 
-void MVKImageView::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
+void MVKImageView::propagateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     mtlAttDesc.texture = getMTLTexture();           // Use image view, necessary if image view format differs from image format
@@ -1115,7 +1115,7 @@ id<MTLTexture> MVKImageView::getMTLTexture() {
 
 			_mtlTexture = newMTLTexture(); // retained
 
-			propogateDebugName();
+			propagateDebugName();
 		}
 		return _mtlTexture;
 	} else {

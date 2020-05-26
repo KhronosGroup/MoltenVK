@@ -134,7 +134,7 @@ protected:
 	friend MVKBuffer;
 	friend MVKImage;
 
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);
 	VkResult addBuffer(MVKBuffer* mvkBuff);
 	void removeBuffer(MVKBuffer* mvkBuff);

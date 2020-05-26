@@ -76,7 +76,7 @@ public:
 	~MVKSurface() override;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	void initLayerObserver();
 
 	MVKInstance* _mvkInstance;

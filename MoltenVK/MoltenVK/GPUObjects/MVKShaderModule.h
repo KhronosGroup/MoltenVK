@@ -224,7 +224,7 @@ public:
 protected:
 	friend MVKShaderCacheIterator;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConversionConfiguration* pContext);
 
 	MVKShaderLibraryCache _shaderLibraryCache;

@@ -32,7 +32,7 @@ using namespace std;
 
 #pragma mark MVKDeviceMemory
 
-void MVKDeviceMemory::propogateDebugName() {
+void MVKDeviceMemory::propagateDebugName() {
 	setLabelIfNotNil(_mtlHeap, _debugName);
 	setLabelIfNotNil(_mtlBuffer, _debugName);
 }
@@ -205,7 +205,7 @@ bool MVKDeviceMemory::ensureMTLHeap() {
 	[heapDesc release];
 	if (!_mtlHeap) { return false; }
 
-	propogateDebugName();
+	propagateDebugName();
 
 	return true;
 }
@@ -237,7 +237,7 @@ bool MVKDeviceMemory::ensureMTLBuffer() {
 	if (!_mtlBuffer) { return false; }
 	_pMemory = isMemoryHostAccessible() ? _mtlBuffer.contents : nullptr;
 
-	propogateDebugName();
+	propagateDebugName();
 
 	return true;
 }
