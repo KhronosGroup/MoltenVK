@@ -117,7 +117,7 @@ public:
 	/** Returns the Metal CPU cache mode used by this memory allocation. */
 	inline MTLCPUCacheMode getMTLCPUCacheMode() { return _mtlCPUCacheMode; }
 
-	/** Returns the Metal reource options used by this memory allocation. */
+	/** Returns the Metal resource options used by this memory allocation. */
 	inline MTLResourceOptions getMTLResourceOptions() { return mvkMTLResourceOptions(_mtlStorageMode, _mtlCPUCacheMode); }
 
 
