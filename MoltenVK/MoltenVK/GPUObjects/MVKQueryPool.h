@@ -151,7 +151,7 @@ public:
 	MVKTimestampQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	void getResult(uint32_t query, void* pQryData, bool shouldOutput64Bit) override;
 	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
 	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
@@ -187,7 +187,7 @@ public:
     ~MVKOcclusionQueryPool() override;
 
 protected:
-	void propogateDebugName() override;
+	void propagateDebugName() override;
     void getResult(uint32_t query, void* pQryData, bool shouldOutput64Bit) override;
 	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
 	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
@@ -207,7 +207,7 @@ public:
     MVKPipelineStatisticsQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 };
 
 
@@ -221,6 +221,6 @@ public:
 	MVKUnsupportedQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 };
 

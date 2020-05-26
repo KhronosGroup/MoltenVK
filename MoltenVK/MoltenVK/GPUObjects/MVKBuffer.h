@@ -88,7 +88,7 @@ protected:
 	friend class MVKDeviceMemory;
 	using MVKResource::needsHostReadSync;
 
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   MVKPipelineBarrier& barrier);
@@ -129,7 +129,7 @@ public:
     ~MVKBufferView() override;
 
 protected:
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 
     MVKBuffer* _buffer;
 	id<MTLTexture> _mtlTexture;

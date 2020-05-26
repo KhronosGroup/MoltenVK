@@ -105,7 +105,7 @@ public:
 protected:
 	friend class MVKPresentableSwapchainImage;
 
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	void releaseUndisplayedSurfaces();

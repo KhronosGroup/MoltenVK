@@ -171,7 +171,7 @@ protected:
 	friend class MVKRenderSubpass;
 	friend class MVKRenderPassAttachment;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	MVKSmallVector<MVKRenderPassAttachment, kMVKDefaultAttachmentCount> _attachments;
 	MVKSmallVector<MVKRenderSubpass, 1> _subpasses;

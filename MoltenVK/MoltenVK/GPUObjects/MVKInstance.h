@@ -177,7 +177,7 @@ public:
 protected:
 	friend MVKDevice;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	void initProcAddrs();
 	void initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo);
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromASLLevel(int aslLvl);
@@ -233,7 +233,7 @@ public:
 protected:
 	friend MVKInstance;
 	
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	MVKInstance* _mvkInstance;
 	VkDebugReportCallbackCreateInfoEXT _info;
@@ -271,7 +271,7 @@ public:
 protected:
 	friend MVKInstance;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	MVKInstance* _mvkInstance;
 	VkDebugUtilsMessengerCreateInfoEXT _info;

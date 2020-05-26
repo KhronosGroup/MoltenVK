@@ -229,7 +229,7 @@ protected:
 	friend class MVKImageView;
 	using MVKResource::needsHostReadSync;
 
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
 	void validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
@@ -475,7 +475,7 @@ public:
 	~MVKImageView() override;
 
 protected:
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	id<MTLTexture> newMTLTexture();
 	void initMTLTextureViewSupport();
 	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
@@ -523,7 +523,7 @@ public:
 	~MVKSampler() override;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	MTLSamplerDescriptor* newMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
 	void initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo);
 

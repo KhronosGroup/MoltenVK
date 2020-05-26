@@ -28,7 +28,7 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKBuffer
 
-void MVKBuffer::propogateDebugName() {
+void MVKBuffer::propagateDebugName() {
 	if (!_debugName) { return; }
 	if (_deviceMemory &&
 		_deviceMemory->isDedicatedAllocation() &&
@@ -88,7 +88,7 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 	}
 #endif
 
-	propogateDebugName();
+	propagateDebugName();
 
 	return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
 }
@@ -171,7 +171,7 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 			_mtlBuffer = [_deviceMemory->getMTLHeap() newBufferWithLength: getByteCount()
 																  options: _deviceMemory->getMTLResourceOptions()
 																   offset: _deviceMemoryOffset];	// retained
-			propogateDebugName();
+			propagateDebugName();
 			return _mtlBuffer;
 #if MVK_MACOS
 		} else if (_isHostCoherentTexelBuffer) {
@@ -179,7 +179,7 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 			// But texel buffers on Mac cannot use shared memory. So we need to use host-cached memory here.
 			_mtlBuffer = [_device->getMTLDevice() newBufferWithLength: getByteCount()
 															  options: MTLResourceStorageModeManaged];	// retained
-			propogateDebugName();
+			propagateDebugName();
 			return _mtlBuffer;
 #endif
 		} else {
@@ -228,7 +228,7 @@ MVKBuffer::~MVKBuffer() {
 #pragma mark -
 #pragma mark MVKBufferView
 
-void MVKBufferView::propogateDebugName() {
+void MVKBufferView::propagateDebugName() {
 	setLabelIfNotNil(_mtlTexture, _debugName);
 }
 
@@ -264,7 +264,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 		_mtlTexture = [mtlBuff newTextureWithDescriptor: mtlTexDesc
 												 offset: _mtlBufferOffset
 											bytesPerRow: _mtlBytesPerRow];
-		propogateDebugName();
+		propagateDebugName();
     }
     return _mtlTexture;
 }

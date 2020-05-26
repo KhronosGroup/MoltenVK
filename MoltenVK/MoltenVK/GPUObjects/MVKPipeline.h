@@ -105,7 +105,7 @@ public:
 	~MVKPipelineLayout() override;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
 	MVKSmallVector<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
@@ -168,7 +168,7 @@ public:
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent);
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
@@ -378,7 +378,7 @@ public:
 	~MVKPipelineCache() override;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	MVKShaderLibraryCache* getShaderLibraryCache(MVKShaderModuleKey smKey);
 	void readData(const VkPipelineCacheCreateInfo* pCreateInfo);
 	void writeData(std::ostream& outstream, bool isCounting = false);

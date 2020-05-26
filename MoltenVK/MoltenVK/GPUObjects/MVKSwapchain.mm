@@ -42,7 +42,7 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKSwapchain
 
-void MVKSwapchain::propogateDebugName() {
+void MVKSwapchain::propagateDebugName() {
 	if (_debugName) {
 		size_t imgCnt = _presentableImages.size();
 		for (size_t imgIdx = 0; imgIdx < imgCnt; imgIdx++) {
