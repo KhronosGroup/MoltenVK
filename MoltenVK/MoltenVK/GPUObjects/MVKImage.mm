@@ -160,8 +160,9 @@ VkResult MVKImageMemoryBinding::pullFromDevice(VkDeviceSize offset, VkDeviceSize
     return VK_SUCCESS;
 }
 
-MVKImageMemoryBinding::MVKImageMemoryBinding(MVKDevice* device, MVKImage* image) : MVKResource(device), _image(image), _usesTexelBuffer(false) {
-    
+MVKImageMemoryBinding::MVKImageMemoryBinding(MVKDevice* device, MVKImage* image) : MVKResource(device) {
+    _image = image;
+    _usesTexelBuffer = false;
 }
 
 MVKImageMemoryBinding::~MVKImageMemoryBinding() {
@@ -196,7 +197,8 @@ VkDeviceSize MVKImage::getBytesPerLayer(uint32_t mipLevel) {
 
 VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,
 										VkSubresourceLayout* pLayout) {
-    // TODO: getPlaneFromVkImageAspectFlags(pSubresource->aspectMask)
+    // TODO: Multi planar images
+    // getPlaneFromVkImageAspectFlags(pSubresource->aspectMask)
     MVKImageSubresource* pImgRez = getSubresource(pSubresource->mipLevel,
                                                   pSubresource->arrayLayer);
     if ( !pImgRez ) { return VK_INCOMPLETE; }
@@ -240,7 +242,7 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 						 : (layerStart + layerCnt));
 
 #if MVK_MACOS
-	bool needsSync = _memoryBinding->needsHostReadSync(srcStageMask, dstStageMask, (VkMemoryBarrier*)pImageMemoryBarrier);
+	bool needsSync = _memoryBindings[0]->needsHostReadSync(srcStageMask, dstStageMask, (VkMemoryBarrier*)pImageMemoryBarrier);
 	id<MTLTexture> mtlTex = needsSync ? getMTLTexture() : nil;
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = needsSync ? cmdEncoder->getMTLBlitEncoder(cmdUse) : nil;
 #endif
@@ -263,7 +265,7 @@ MVKImageSubresource* MVKImage::getSubresource(uint32_t mipLevel, uint32_t arrayL
 	return (srIdx < _subresources.size()) ? &_subresources[srIdx] : NULL;
 }
 
-VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) {
+VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements, uint32_t planeIndex) {
     pMemoryRequirements->memoryTypeBits = (_isDepthStencilAttachment)
                                           ? _device->getPhysicalDevice()->getPrivateMemoryTypes()
                                           : _device->getPhysicalDevice()->getAllMemoryTypes();
@@ -279,44 +281,43 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
     }
 #endif
-    return _memoryBinding->getMemoryRequirements(pMemoryRequirements);
+    return _memoryBindings[planeIndex]->getMemoryRequirements(pMemoryRequirements);
 }
 
 VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) {
+    uint32_t planeIndex = 0;
 	for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
 			auto* planeReqs = (VkImagePlaneMemoryRequirementsInfo*)next;
-			uint32_t plane = getPlaneFromVkImageAspectFlags(planeReqs->planeAspect);
-			// TODO: For multi planar images
+            planeIndex = getPlaneFromVkImageAspectFlags(planeReqs->planeAspect);
 			break;
 		}
 		default:
 			break;
 		}
 	}
-    _memoryBinding->getMemoryRequirements(pInfo, pMemoryRequirements);
-    return getMemoryRequirements(&pMemoryRequirements->memoryRequirements);
+    return getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
 }
 
-VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) {
-    return _memoryBinding->bindDeviceMemory(mvkMem, memOffset);
+VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint32_t planeIndex) {
+    return _memoryBindings[planeIndex]->bindDeviceMemory(mvkMem, memOffset);
 }
 
 VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
+    uint32_t planeIndex = 0;
     for (const auto* next = (const VkBaseInStructure*)pBindInfo->pNext; next; next = next->pNext) {
         switch (next->sType) {
             case VK_STRUCTURE_TYPE_BIND_IMAGE_PLANE_MEMORY_INFO: {
                 const VkBindImagePlaneMemoryInfo* imagePlaneMemoryInfo = (const VkBindImagePlaneMemoryInfo*)next;
-                uint32_t plane = getPlaneFromVkImageAspectFlags(imagePlaneMemoryInfo->planeAspect);
-                // TODO: For images created with VK_IMAGE_CREATE_DISJOINT_BIT
+                planeIndex = getPlaneFromVkImageAspectFlags(imagePlaneMemoryInfo->planeAspect);
                 break;
             }
             default:
                 break;
         }
     }
-    return _memoryBinding->bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
+    return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset, planeIndex);
 }
 
 
@@ -358,16 +359,16 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 	id<MTLTexture> mtlTex = nil;
 	MTLTextureDescriptor* mtlTexDesc = newMTLTextureDescriptor();	// temp retain
 
-	if (_ioSurface) {
+	if (_ioSurface) { // TODO: Multi planar images
 		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc iosurface: _ioSurface plane: 0];
-        // TODO: For multi planar images
-	} else if (_memoryBinding->_usesTexelBuffer) {
-		mtlTex = [_memoryBinding->_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
-															  offset: _memoryBinding->getDeviceMemoryOffset()
+	} else if (_memoryBindings[0]->_usesTexelBuffer) { // TODO: Multi planar images
+		mtlTex = [_memoryBindings[0]->_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
+															  offset: _memoryBindings[0]->getDeviceMemoryOffset()
 														 bytesPerRow: _subresources[0].layout.rowPitch];
-	} else if (_memoryBinding->_deviceMemory->_mtlHeap && !getIsDepthStencil()) {	// Metal support for depth/stencil from heaps is flaky
-		mtlTex = [_memoryBinding->_deviceMemory->_mtlHeap newTextureWithDescriptor: mtlTexDesc
-															offset: _memoryBinding->getDeviceMemoryOffset()];
+	} else if (_memoryBindings[0]->_deviceMemory->_mtlHeap && !getIsDepthStencil()) { // TODO: Multi planar images
+        // Metal support for depth/stencil from heaps is flaky
+		mtlTex = [_memoryBindings[0]->_deviceMemory->_mtlHeap newTextureWithDescriptor: mtlTexDesc
+															offset: _memoryBindings[0]->getDeviceMemoryOffset()];
 		if (_isAliasable) [mtlTex makeAliasable];
 	} else {
 		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
@@ -518,9 +519,9 @@ MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
 }
 
 MTLStorageMode MVKImage::getMTLStorageMode() {
-    if ( !_memoryBinding->_deviceMemory ) return MTLStorageModePrivate;
+    if ( !_memoryBindings[0]->_deviceMemory ) return MTLStorageModePrivate;
 
-    MTLStorageMode stgMode = _memoryBinding->_deviceMemory->getMTLStorageMode();
+    MTLStorageMode stgMode = _memoryBindings[0]->_deviceMemory->getMTLStorageMode();
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
@@ -532,7 +533,7 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 }
 
 MTLCPUCacheMode MVKImage::getMTLCPUCacheMode() {
-	return _memoryBinding->_deviceMemory ? _memoryBinding->_deviceMemory->getMTLCPUCacheMode() : MTLCPUCacheModeDefaultCache;
+	return _memoryBindings[0]->_deviceMemory ? _memoryBindings[0]->_deviceMemory->getMTLCPUCacheMode() : MTLCPUCacheModeDefaultCache;
 }
 
 bool MVKImage::isMemoryHostCoherent() {
@@ -555,7 +556,7 @@ void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
     if (imgStart >= memEnd || imgEnd <= memStart) { return; }
 
 	// Don't update if host memory has not been mapped yet.
-	void* pHostMem = _memoryBinding->getHostMemoryAddress();
+	void* pHostMem = _memoryBindings[0]->getHostMemoryAddress(); // TODO: Multi planar images
 	if ( !pHostMem ) { return; }
 
     VkExtent3D mipExtent = getExtent3D(imgSubRez.mipLevel);
@@ -620,7 +621,7 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
     if (imgStart >= memEnd || imgEnd <= memStart) { return; }
 
 	// Don't update if host memory has not been mapped yet.
-	void* pHostMem = _memoryBinding->getHostMemoryAddress();
+	void* pHostMem = _memoryBindings[0]->getHostMemoryAddress(); // TODO: Multi planar images
 	if ( !pHostMem ) { return; }
 
     VkExtent3D mipExtent = getExtent3D(imgSubRez.mipLevel);
@@ -642,8 +643,7 @@ void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
 
 #pragma mark Construction
 
-MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device), _memoryBinding(new MVKImageMemoryBinding(device, this)) {
-
+MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_mtlTexture = nil;
 	_ioSurface = nil;
 
@@ -677,24 +677,28 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
 	_hasExpectedTexelSize = (pixFmts->getBytesPerBlock(_mtlPixelFormat) == pixFmts->getBytesPerBlock(pCreateInfo->format));
-
 	_rowByteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
+
+    uint32_t planeCount = pixFmts->getChromaSubsamplingPlaneCount(pCreateInfo->format),
+             memoryBindingCount = (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT) ? planeCount : 1;
+    for(uint32_t planeIndex = 0; planeIndex < memoryBindingCount; ++planeIndex)
+        _memoryBindings.push_back(std::unique_ptr<MVKImageMemoryBinding>(new MVKImageMemoryBinding(device, this)));
+
+    // TODO: Multi planar images
 	if (!_isLinear && _device->_pMetalFeatures->placementHeaps) {
 		MTLTextureDescriptor *mtlTexDesc = newMTLTextureDescriptor();	// temp retain
 		MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
 		[mtlTexDesc release];
-		_memoryBinding->_byteCount = sizeAndAlign.size;
-		_memoryBinding->_byteAlignment = sizeAndAlign.align;
+		_memoryBindings[0]->_byteCount = sizeAndAlign.size;
+		_memoryBindings[0]->_byteAlignment = sizeAndAlign.align;
 		_isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
 	} else {
 		// Calc _byteCount after _rowByteAlignment
-		_memoryBinding->_byteAlignment = _rowByteAlignment;
+		_memoryBindings[0]->_byteAlignment = _rowByteAlignment;
 		for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
-			_memoryBinding->_byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
+			_memoryBindings[0]->_byteCount += getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers;
 		}
 	}
-
-    // TODO: pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT
 
     initSubresources(pCreateInfo);
 
@@ -880,9 +884,11 @@ void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 
 void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
 	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
-		_memoryBinding->_externalMemoryHandleTypes = handleTypes;
-		auto& xmProps = _device->getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
-		_memoryBinding->_requiresDedicatedMemoryAllocation = _memoryBinding->_requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+        auto& xmProps = _device->getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
+        for(auto& memoryBinding : _memoryBindings) {
+            memoryBinding->_externalMemoryHandleTypes = handleTypes;
+            memoryBinding->_requiresDedicatedMemoryAllocation = memoryBinding->_requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+        }
 	} else {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR is supported."));
 	}
@@ -897,7 +903,7 @@ MVKImage::~MVKImage() {
 #pragma mark -
 #pragma mark MVKSwapchainImage
 
-VkResult MVKSwapchainImage::bindDeviceMemory(MVKDeviceMemory*, VkDeviceSize) {
+VkResult MVKSwapchainImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint32_t planeIndex) {
 	return VK_ERROR_OUT_OF_DEVICE_MEMORY;
 }
 
@@ -1223,7 +1229,7 @@ MVKImageView::MVKImageView(MVKDevice* device,
 			}
             case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR: {
                 const VkSamplerYcbcrConversionInfoKHR* sampConvInfo = (const VkSamplerYcbcrConversionInfoKHR*)next;
-                // TODO
+                // TODO: Multi planar images
                 break;
             }
 			default:

@@ -319,7 +319,8 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			}
 		}
 #endif
-        _imageMemoryBindings.push_back(((MVKImage*)dedicatedImage)->_memoryBinding.get());
+        for(auto& memoryBinding : ((MVKImage*)dedicatedImage)->_memoryBindings)
+            _imageMemoryBindings.push_back(memoryBinding.get());
 		return;
 	}
 

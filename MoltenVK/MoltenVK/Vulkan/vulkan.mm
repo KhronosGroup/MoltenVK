@@ -502,7 +502,7 @@ MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory(
 	MVKTraceVulkanCallStart();
 	MVKImage* mvkImg = (MVKImage*)image;
 	MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)mem;
-	VkResult rslt = mvkImg->bindDeviceMemory(mvkMem, memOffset);
+	VkResult rslt = mvkImg->bindDeviceMemory(mvkMem, memOffset, 0);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -525,7 +525,7 @@ MVK_PUBLIC_SYMBOL void vkGetImageMemoryRequirements(
 	
 	MVKTraceVulkanCallStart();
 	MVKImage* mvkImg = (MVKImage*)image;
-	mvkImg->getMemoryRequirements(pMemoryRequirements);
+	mvkImg->getMemoryRequirements(pMemoryRequirements, 0);
 	MVKTraceVulkanCallEnd();
 }
 

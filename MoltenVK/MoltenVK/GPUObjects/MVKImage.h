@@ -33,12 +33,26 @@ class MVKSwapchain;
 class MVKCommandEncoder;
 
 
+#pragma mark -
+#pragma mark MVKImagePlane
+
 /** Tracks the state of an image subresource.  */
 typedef struct {
     VkImageSubresource subresource;
     VkSubresourceLayout layout;
     VkImageLayout layoutState;
 } MVKImageSubresource;
+
+class MVKImagePlane {
+
+public:
+    
+protected:
+    MVKImage* _image;
+    id<MTLTexture> _mtlTexture;
+    std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
+    MVKVectorInline<MVKImageSubresource, 1> _subresources;
+};
 
 
 #pragma mark -
@@ -172,13 +186,13 @@ public:
 #pragma mark Resource memory
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
-	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements);
+	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements, uint32_t planeIndex);
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
 	VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
+	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint32_t planeIndex);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
@@ -289,7 +303,7 @@ protected:
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
 
-    std::unique_ptr<MVKImageMemoryBinding> _memoryBinding;
+    std::vector<std::unique_ptr<MVKImageMemoryBinding>> _memoryBindings;
 	MVKVectorInline<MVKImageSubresource, 1> _subresources;
 	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     VkExtent3D _extent;
@@ -321,7 +335,7 @@ class MVKSwapchainImage : public MVKImage {
 public:
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint32_t planeIndex) override;
 
 #pragma mark Metal
 
