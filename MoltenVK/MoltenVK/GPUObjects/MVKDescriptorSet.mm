@@ -569,7 +569,7 @@ VkResult MVKDescriptorPool::allocateDescriptor(VkDescriptorType descriptorType,
 		return _preallocatedDescriptors->allocateDescriptor(descriptorType, pMVKDesc);
 	}
 
-	// Otherwise instantiate one of the apporpriate type now
+	// Otherwise instantiate one of the appropriate type now
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 			*pMVKDesc = new MVKUniformBufferDescriptor();
