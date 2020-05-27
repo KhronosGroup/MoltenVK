@@ -384,7 +384,12 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
 #if MVK_IOS
-	NSInteger framesPerSecond = [UIScreen mainScreen].maximumFramesPerSecond;
+	NSInteger framesPerSecond = 60;
+	if (@available(iOS 10.3, *)) {
+		framesPerSecond = [UIScreen mainScreen].maximumFramesPerSecond;
+	} else {
+		// TODO: fallback
+	}
 #endif
 #if MVK_MACOS
 	// TODO: hook this up for macOS, probably need to use CGDisplayModeGetRefeshRate
