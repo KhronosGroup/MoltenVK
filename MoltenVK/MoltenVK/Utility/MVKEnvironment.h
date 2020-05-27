@@ -200,6 +200,15 @@
 #   define MVK_CONFIG_TEXTURE_1D_AS_2D    1
 #endif
 
+ /**
+  * Allow format reinterpetation in vkCmdCopyImage which requires MoltenVK to
+  * set MTLTextureUsagePixelFormatView on all VK_IMAGE_TRANSFER_SRC_BIT textures.
+  * Enabled by default (required by Vulkan to be fully conformat, but can be disabled if
+  * an application knows it will never do format reinterpreting-copies).
+  * */
+#ifndef MVK_CONFIG_ALLOW_IMAGE_COPY_FORMAT_REINTERPRETATION
+#   define MVK_CONFIG_ALLOW_IMAGE_COPY_FORMAT_REINTERPRETATION    1
+#endif
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.
  *

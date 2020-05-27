@@ -552,6 +552,31 @@ typedef struct {
 	 * If neither is set, the value of this parameter defaults to zero (the first queue).
 	 */
 	uint32_t defaultGPUCaptureScopeQueueIndex;
+	
+	/**
+	 * The Vulkan specification requires that vkCmdCopyImage is allowed between
+	 * formats that are compatible according to the Format Compatibility Classes
+	 * section of the specification.  This allows reinterpretation of formats that are the same number of bits,
+	 * for example converting from VK_FORMAT_R8G8B8A8_UNORM -> VK_FORMAT_R32_UINT.
+	 * In order to support this conversion, MoltenVK needs to set MTLTextureUsagePixelFormatView
+	 * on all textures with VK_IMAGE_USAGE_TRANSFER_SRC_BIT set because it doesn't
+	 * know until the time the copy is issued whether a format conversion is required.  Setting
+	 * MTLTextureUsagePixelFormatView on iOS devices with GPU family 5 or later disables
+	 * lossless compression so it comes at a performance cost.
+	 *
+	 * Disabling format reinterpretation tells MoltenVK that all copies issued by the application will not
+	 * involve format reinterpretation so it can avoid setting MTLTextureUsagePixelFormatView.  Performing
+	 * format reinterpreting copies with this disabled will fail.
+	 *
+	 * The value of this parameter must be changed before creating a VkDevice,
+	 * for the change to take effect.
+	 *
+	 * The initial value of this parameter is set by the
+	 * MVK_CONFIG_ALLOW_IMAGE_COPY_FORMAT_REINTERPRETATION
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to true.
+	 */
+	VkBool32 allowImageCopyFormatReinterpretation;
 
 } MVKConfiguration;
 

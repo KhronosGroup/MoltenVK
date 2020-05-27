@@ -398,7 +398,8 @@ VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlags(MTLTextureUsage mtlUsage
 
 MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
 													MTLPixelFormat mtlFormat,
-													MTLTextureUsage minUsage) {
+													MTLTextureUsage minUsage,
+													VkBool32 allowImageCopyReinterpretation) {
 	bool isDepthFmt = isDepthFormat(mtlFormat);
 	bool isStencilFmt = isStencilFormat(mtlFormat);
 	bool isCombinedDepthStencilFmt = isDepthFmt && isStencilFmt;
@@ -432,16 +433,16 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 		mvkEnableFlags(mtlUsage, MTLTextureUsageRenderTarget);
 	}
 
-	// Create view on, but only on color formats, or combined depth-stencil formats if supported by the GPU...
-	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |	 		// May use temp view if transfer involves format change
-												VK_IMAGE_USAGE_SAMPLED_BIT |
-												VK_IMAGE_USAGE_STORAGE_BIT |
-												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-												VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
-		(isColorFormat || (isCombinedDepthStencilFmt && supportsStencilViews))) {
-
-		mvkEnableFlags(mtlUsage, MTLTextureUsagePixelFormatView);
+	// MTLTextureUsagePixelFormatView is required only for reinterpretation of formats.  vkCmdCopyImage
+	// allows format reinterpretations for formats of the same bits, so this must be set for VK_IMAGE_USAGE_TRANSFER_SRC_BIT.
+	// However, on iOS GPU family 5 and later, this will disable lossless compression causing a performance impact,
+	// so there is an MVKConfig option to disable this (allowImageCopyReinterpretation).  It's the application's
+	// way of telling MoltenVK that it doesn't require format converting copies.
+	if (allowImageCopyReinterpretation) {
+		if (mvkIsAnyFlagEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_SRC_BIT) &&
+			(isColorFormat || (isCombinedDepthStencilFmt && supportsStencilViews))) {
+			mvkEnableFlags(mtlUsage, MTLTextureUsagePixelFormatView);
+		}
 	}
 
 	return mtlUsage;
