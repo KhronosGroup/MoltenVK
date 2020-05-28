@@ -271,7 +271,7 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties*
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties2KHR* pFormatProperties) {
 	pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
-	pFormatProperties->formatProperties = _pixelFormats.getVkFormatProperties(format);
+	getFormatProperties(format, &pFormatProperties->formatProperties);
 }
 
 VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
@@ -1307,7 +1307,7 @@ void MVKPhysicalDevice::initProperties() {
             } else {
                 alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mtlFmt];
             }
-            VkFormatProperties props = _pixelFormats.getVkFormatProperties(vk);
+            VkFormatProperties& props = _pixelFormats.getVkFormatProperties(vk);
             // For uncompressed formats, this is the size of a single texel.
             // Note that no implementations of Metal support compressed formats
             // in a linear texture (including texture buffers). It's likely that even
