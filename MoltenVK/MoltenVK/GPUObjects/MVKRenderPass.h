@@ -173,8 +173,8 @@ protected:
 
 	void propagateDebugName() override {}
 
-	MVKSmallVector<MVKRenderPassAttachment, kMVKDefaultAttachmentCount> _attachments;
-	MVKSmallVector<MVKRenderSubpass, 1> _subpasses;
+	MVKSmallVector<MVKRenderPassAttachment> _attachments;
+	MVKSmallVector<MVKRenderSubpass> _subpasses;
 	MVKSmallVector<VkSubpassDependency> _subpassDependencies;
 
 };

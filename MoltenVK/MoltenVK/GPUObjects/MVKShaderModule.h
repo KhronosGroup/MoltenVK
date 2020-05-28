@@ -151,7 +151,7 @@ protected:
 	void merge(MVKShaderLibraryCache* other);
 
 	MVKVulkanAPIDeviceObject* _owner;
-	MVKSmallVector<std::pair<SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>, 1> _shaderLibraries;
+	MVKSmallVector<std::pair<SPIRVToMSLConversionConfiguration, MVKShaderLibrary*>> _shaderLibraries;
 };
 
 

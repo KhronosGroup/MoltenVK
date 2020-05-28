@@ -1457,6 +1457,7 @@ void MVKPhysicalDevice::initProperties() {
 		_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
 #endif
 	}
+	_properties.limits.maxSamplerLodBias = 0;	// Bias not supported in API, but can be applied in shader directly.
 
     _properties.limits.minTexelOffset = -8;
     _properties.limits.maxTexelOffset = 7;
@@ -1488,8 +1489,6 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.subTexelPrecisionBits = 4;
     _properties.limits.mipmapPrecisionBits = 4;
     _properties.limits.viewportSubPixelBits = 0;
-
-    _properties.limits.maxSamplerLodBias = 2;
 
     _properties.limits.discreteQueuePriorities = 2;
 
