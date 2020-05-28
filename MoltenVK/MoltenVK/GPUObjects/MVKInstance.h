@@ -19,7 +19,6 @@
 #pragma once
 
 #include "MVKEnvironment.h"
-#include "MVKDevice.h"
 #include "MVKLayers.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKSmallVector.h"
@@ -28,6 +27,8 @@
 #include <string>
 #include <mutex>
 
+class MVKPhysicalDevice;
+class MVKDevice;
 class MVKSurface;
 class MVKDebugReportCallback;
 class MVKDebugUtilsMessenger;
@@ -189,7 +190,7 @@ protected:
 
 	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
-	MVKSmallVector<MVKPhysicalDevice, 2> _physicalDevices;
+	MVKSmallVector<MVKPhysicalDevice*, 2> _physicalDevices;
 	MVKSmallVector<MVKDebugReportCallback*> _debugReportCallbacks;
 	MVKSmallVector<MVKDebugUtilsMessenger*> _debugUtilMessengers;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;

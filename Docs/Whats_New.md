@@ -17,14 +17,14 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.42
 ---------------
 
-Released TBD
+Released 2020/06/01
 
 - Add support for extensions:
 	- `VK_KHR_external_memory` (non-functional groundwork for future 
 	  Metal-resource Vulkan extension).
 	- `VK_KHR_external_memory_capabilities` (non-functional groundwork 
 	   for future Metal-resource Vulkan extension).
-- Memory consumption improvements when handling Vulkan commands.
+- Memory consumption improvements.
 - Reinstate `VulkanSamples API-Samples` demo apps and add 
   `input_attachment` and `push_descriptors` demos.
 - `vkQueuePresentKHR()` returns a `VkResult` for each swapchain.
@@ -34,6 +34,7 @@ Released TBD
 	  through `vkGetPerformanceStatisticsMVK()`.
 	- Add `MVK_CONFIG_PERFORMANCE_LOGGING_INLINE` env var to enable/disable
 	  logging of performance of each activity when it happens. 
+- Fix crash when more than two GPUs.
 - Support Xcode 11.5.
 
 

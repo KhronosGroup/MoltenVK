@@ -452,9 +452,10 @@ MVK_PUBLIC_SYMBOL MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonMode(Vk
 MTLTriangleFillMode mvkMTLTriangleFillModeFromVkPolygonModeInObj(VkPolygonMode vkFillMode, MVKBaseObject* mvkObj) {
 	switch (vkFillMode) {
 		case VK_POLYGON_MODE_FILL:
-		case VK_POLYGON_MODE_POINT:
 			return MTLTriangleFillModeFill;
 
+		case VK_POLYGON_MODE_POINT:
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkPolygonMode value VK_POLYGON_MODE_POINT is not supported for render pipelines.");
 		case VK_POLYGON_MODE_LINE:
 			return MTLTriangleFillModeLines;
 
