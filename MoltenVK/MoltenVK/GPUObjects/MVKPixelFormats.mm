@@ -263,12 +263,7 @@ size_t MVKPixelFormats::getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesP
 }
 
 VkFormatProperties& MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
-	auto& vkDesc = getVkFormatDesc(vkFormat);
-	if ( !vkDesc.isSupported() ) {
-		MVKBaseObject::reportError(_physicalDevice, VK_ERROR_FORMAT_NOT_SUPPORTED,
-								   "VkFormat %s is not supported on this device.", vkDesc.name);
-	}
-	return vkDesc.properties;
+	return getVkFormatDesc(vkFormat).properties;
 }
 
 MVKMTLFmtCaps MVKPixelFormats::getCapabilities(VkFormat vkFormat) {
