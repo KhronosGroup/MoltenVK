@@ -35,7 +35,7 @@ using namespace SPIRV_CROSS_NAMESPACE;
 
 #pragma mark MVKImage
 
-void MVKImage::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
+void MVKImage::propagateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
 
 VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_mtlTextureType); }
 
@@ -83,11 +83,11 @@ void MVKImage::getTransferDescriptorData(MVKImageDescriptorData& imgData) {
 
 void MVKImage::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								  VkPipelineStageFlags dstStageMask,
-								  VkMemoryBarrier* pMemoryBarrier,
-                                  MVKCommandEncoder* cmdEncoder,
-                                  MVKCommandUse cmdUse) {
+								  MVKPipelineBarrier& barrier,
+								  MVKCommandEncoder* cmdEncoder,
+								  MVKCommandUse cmdUse) {
 #if MVK_MACOS
-	if ( needsHostReadSync(srcStageMask, dstStageMask, pMemoryBarrier) ) {
+	if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
 		[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: getMTLTexture()];
 	}
 #endif
@@ -95,27 +95,24 @@ void MVKImage::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 
 void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 									   VkPipelineStageFlags dstStageMask,
-									   VkImageMemoryBarrier* pImageMemoryBarrier,
-                                       MVKCommandEncoder* cmdEncoder,
-                                       MVKCommandUse cmdUse) {
-	const VkImageSubresourceRange& srRange = pImageMemoryBarrier->subresourceRange;
+									   MVKPipelineBarrier& barrier,
+									   MVKCommandEncoder* cmdEncoder,
+									   MVKCommandUse cmdUse) {
 
 	// Extract the mipmap levels that are to be updated
-	uint32_t mipLvlStart = srRange.baseMipLevel;
-	uint32_t mipLvlCnt = srRange.levelCount;
-	uint32_t mipLvlEnd = (mipLvlCnt == VK_REMAINING_MIP_LEVELS
+	uint32_t mipLvlStart = barrier.baseMipLevel;
+	uint32_t mipLvlEnd = (barrier.levelCount == (uint8_t)VK_REMAINING_MIP_LEVELS
 						  ? getMipLevelCount()
-						  : (mipLvlStart + mipLvlCnt));
+						  : (mipLvlStart + barrier.levelCount));
 
 	// Extract the cube or array layers (slices) that are to be updated
-	uint32_t layerStart = srRange.baseArrayLayer;
-	uint32_t layerCnt = srRange.layerCount;
-	uint32_t layerEnd = (layerCnt == VK_REMAINING_ARRAY_LAYERS
+	uint32_t layerStart = barrier.baseArrayLayer;
+	uint32_t layerEnd = (barrier.layerCount == (uint16_t)VK_REMAINING_ARRAY_LAYERS
 						 ? getLayerCount()
-						 : (layerStart + layerCnt));
+						 : (layerStart + barrier.layerCount));
 
 #if MVK_MACOS
-	bool needsSync = needsHostReadSync(srcStageMask, dstStageMask, pImageMemoryBarrier);
+	bool needsSync = needsHostReadSync(srcStageMask, dstStageMask, barrier);
 	id<MTLTexture> mtlTex = needsSync ? getMTLTexture() : nil;
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = needsSync ? cmdEncoder->getMTLBlitEncoder(cmdUse) : nil;
 #endif
@@ -124,7 +121,7 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 	for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {
 		for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
 			MVKImageSubresource* pImgRez = getSubresource(mipLvl, layer);
-			if (pImgRez) { pImgRez->layoutState = pImageMemoryBarrier->newLayout; }
+			if (pImgRez) { pImgRez->layoutState = barrier.newLayout; }
 #if MVK_MACOS
 			if (needsSync) { [mtlBlitEncoder synchronizeTexture: mtlTex slice: layer level: mipLvl]; }
 #endif
@@ -136,14 +133,14 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 // texture and host memory for the purpose of the host reading texture memory.
 bool MVKImage::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 								 VkPipelineStageFlags dstStageMask,
-								 VkImageMemoryBarrier* pImageMemoryBarrier) {
+								 MVKPipelineBarrier& barrier) {
+#if MVK_MACOS
+	return ((barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
+			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
+			isMemoryHostAccessible() && !isMemoryHostCoherent());
+#endif
 #if MVK_IOS
 	return false;
-#endif
-#if MVK_MACOS
-	return ((pImageMemoryBarrier->newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
-			mvkIsAnyFlagEnabled(pImageMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
-			isMemoryHostAccessible() && !isMemoryHostCoherent());
 #endif
 }
 
@@ -182,8 +179,9 @@ VkResult MVKImage::getMemoryRequirements(const void*, VkMemoryRequirements2* pMe
 		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
 			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
 			bool writable = mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_STORAGE_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT);
-			dedicatedReqs->prefersDedicatedAllocation = !_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps);
-			dedicatedReqs->requiresDedicatedAllocation = VK_FALSE;
+			dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
+			dedicatedReqs->prefersDedicatedAllocation = (dedicatedReqs->requiresDedicatedAllocation ||
+														 (!_usesTexelBuffer && (writable || !_device->_pMetalFeatures->placementHeaps)));
 			break;
 		}
 		default:
@@ -204,6 +202,10 @@ VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOff
 	flushToDevice(getDeviceMemoryOffset(), getByteCount());
 
 	return _deviceMemory ? _deviceMemory->addImage(this) : VK_SUCCESS;
+}
+
+VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
+	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
 }
 
 bool MVKImage::validateUseTexelBuffer() {
@@ -275,7 +277,7 @@ id<MTLTexture> MVKImage::getMTLTexture() {
 
 		_mtlTexture = newMTLTexture();   // retained
 
-		propogateDebugName();
+		propagateDebugName();
 	}
 	return _mtlTexture;
 }
@@ -615,6 +617,18 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	}
 
     initSubresources(pCreateInfo);
+
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
+				auto* pExtMemInfo = (const VkExternalMemoryImageCreateInfo*)next;
+				initExternalMemory(pExtMemInfo->handleTypes);
+				break;
+			}
+			default:
+				break;
+		}
+	}
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
@@ -784,6 +798,16 @@ void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
 	layout.depthPitch = bytesPerLayerCurrLevel;
 }
 
+void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
+		_externalMemoryHandleTypes = handleTypes;
+		auto& xmProps = _device->getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
+		_requiresDedicatedMemoryAllocation = _requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+	} else {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR is supported."));
+	}
+}
+
 MVKImage::~MVKImage() {
 	if (_deviceMemory) { _deviceMemory->removeImage(this); }
 	releaseMTLTexture();
@@ -943,12 +967,19 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 }
 
 // Present the drawable and make myself available only once the command buffer has completed.
-void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff) {
+void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, bool hasPresentTime, uint32_t presentID, uint64_t desiredPresentTime) {
 	_swapchain->willPresentSurface(getMTLTexture(), mtlCmdBuff);
 
 	NSString* scName = _swapchain->getDebugName();
 	if (scName) { mvkPushDebugGroup(mtlCmdBuff, scName); }
-	[mtlCmdBuff presentDrawable: getCAMetalDrawable()];
+	if (!hasPresentTime) {
+		[mtlCmdBuff presentDrawable: getCAMetalDrawable()];
+	}
+	else {
+		// Convert from nsecs to seconds
+		CFTimeInterval presentTimeSeconds = ( double ) desiredPresentTime * 1.0e-9;
+		[mtlCmdBuff presentDrawable: getCAMetalDrawable() atTime:(CFTimeInterval)presentTimeSeconds];
+	}
 	if (scName) { mvkPopDebugGroup(mtlCmdBuff); }
 
 	signalPresentationSemaphore(mtlCmdBuff);
@@ -958,6 +989,21 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 		makeAvailable();
 		release();
 	}];
+	
+	if (hasPresentTime) {
+		if (@available(iOS 10.3, macOS 10.15.4, *)) {
+			[_mtlDrawable addPresentedHandler: ^(id<MTLDrawable> drawable) {
+				// Record the presentation time
+				CFTimeInterval presentedTimeSeconds = drawable.presentedTime;
+				uint64_t presentedTimeNanoseconds = (uint64_t)(presentedTimeSeconds * 1.0e9);
+				_swapchain->recordPresentTime(presentID, desiredPresentTime, presentedTimeNanoseconds);
+			}];
+		} else {
+			// If MTLDrawable.presentedTime/addPresentedHandler isn't supported, just treat it as if the
+			// present happened when requrested
+			_swapchain->recordPresentTime(presentID, desiredPresentTime, desiredPresentTime);
+		}
+	}
 }
 
 // Resets the MTLTexture and CAMetalDrawable underlying this image.
@@ -991,10 +1037,9 @@ MVKPresentableSwapchainImage::~MVKPresentableSwapchainImage() {
 #pragma mark -
 #pragma mark MVKPeerSwapchainImage
 
-VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
-	const auto* imageInfo = (const VkBindImageMemoryInfo*)pBindInfo;
+VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
 	const VkBindImageMemorySwapchainInfoKHR* swapchainInfo = nullptr;
-	for (const auto* next = (const VkBaseInStructure*)imageInfo->pNext; next; next = next->pNext) {
+	for (const auto* next = (const VkBaseInStructure*)pBindInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_BIND_IMAGE_MEMORY_SWAPCHAIN_INFO_KHR:
 				swapchainInfo = (const VkBindImageMemorySwapchainInfoKHR*)next;
@@ -1002,11 +1047,9 @@ VkResult MVKPeerSwapchainImage::bindDeviceMemory2(const void* pBindInfo) {
 			default:
 				break;
 		}
-		if (swapchainInfo) { break; }
 	}
-	if (!swapchainInfo) {
-		return VK_ERROR_OUT_OF_DEVICE_MEMORY;
-	}
+	if (!swapchainInfo) { return VK_ERROR_OUT_OF_DEVICE_MEMORY; }
+
 	_swapchainIndex = swapchainInfo->imageIndex;
 	return VK_SUCCESS;
 }
@@ -1032,7 +1075,7 @@ MVKPeerSwapchainImage::MVKPeerSwapchainImage(MVKDevice* device,
 #pragma mark -
 #pragma mark MVKImageView
 
-void MVKImageView::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
+void MVKImageView::propagateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     mtlAttDesc.texture = getMTLTexture();           // Use image view, necessary if image view format differs from image format
@@ -1072,7 +1115,7 @@ id<MTLTexture> MVKImageView::getMTLTexture() {
 
 			_mtlTexture = newMTLTexture(); // retained
 
-			propogateDebugName();
+			propagateDebugName();
 		}
 		return _mtlTexture;
 	} else {
@@ -1114,17 +1157,14 @@ MVKImageView::MVKImageView(MVKDevice* device,
 	_image = (MVKImage*)pCreateInfo->image;
 	_usage = _image->_usage;
 
-	auto* next = (MVKVkAPIStructHeader*)pCreateInfo->pNext;
-	while (next) {
-		switch ((uint32_t)next->sType) {
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
 				auto* pViewUsageInfo = (VkImageViewUsageCreateInfo*)next;
 				if (!(pViewUsageInfo->usage & ~_usage)) { _usage = pViewUsageInfo->usage; }
-				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 			}
 			default:
-				next = (MVKVkAPIStructHeader*)next->pNext;
 				break;
 		}
 	}

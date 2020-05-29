@@ -28,11 +28,12 @@
 #pragma mark -
 #pragma mark MVKCmdBindVertexBuffers
 
-VkResult MVKCmdBindVertexBuffers::setContent(MVKCommandBuffer* cmdBuff,
-											 uint32_t startBinding,
-											 uint32_t bindingCount,
-											 const VkBuffer* pBuffers,
-											 const VkDeviceSize* pOffsets) {
+template <size_t N>
+VkResult MVKCmdBindVertexBuffers<N>::setContent(MVKCommandBuffer* cmdBuff,
+												uint32_t startBinding,
+												uint32_t bindingCount,
+												const VkBuffer* pBuffers,
+												const VkDeviceSize* pOffsets) {
 
 	MVKDevice* mvkDvc = cmdBuff->getDevice();
 	_bindings.clear();	// Clear for reuse
@@ -49,9 +50,14 @@ VkResult MVKCmdBindVertexBuffers::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdBindVertexBuffers::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdBindVertexBuffers<N>::encode(MVKCommandEncoder* cmdEncoder) {
     for (auto& b : _bindings) { cmdEncoder->_graphicsResourcesState.bindBuffer(kMVKShaderStageVertex, b); }
 }
+
+template class MVKCmdBindVertexBuffers<1>;
+template class MVKCmdBindVertexBuffers<2>;
+template class MVKCmdBindVertexBuffers<8>;
 
 
 #pragma mark -
@@ -102,7 +108,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
-    MVKVectorInline<uint32_t, 4> stages;
+	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     const MVKMTLBufferAllocation* vtxOutBuff = nullptr;
@@ -296,11 +302,11 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
-    MVKVectorInline<uint32_t, 4> stages;
+	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     MVKIndexMTLBufferBinding& ibb = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
-    size_t idxSize = mvkMTLIndexTypeSizeInBytes(ibb.mtlIndexType);
+    size_t idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType);
     VkDeviceSize idxBuffOffset = ibb.offset + (_firstIndex * idxSize);
 
     const MVKMTLBufferAllocation* vtxOutBuff = nullptr;
@@ -327,7 +333,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
             // Yeah, this sucks. But there aren't many good ways for dealing with this issue.
             mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl);
             tcIndexBuff = cmdEncoder->getTempMTLBuffer(_instanceCount * patchCount * outControlPointCount * idxSize);
-            id<MTLComputePipelineState> mtlCopyIndexState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
+            id<MTLComputePipelineState> mtlCopyIndexState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState((MTLIndexType)ibb.mtlIndexType);
             [mtlTessCtlEncoder setComputePipelineState: mtlCopyIndexState];
             [mtlTessCtlEncoder setBuffer: ibb.mtlBuffer
                                   offset: ibb.offset
@@ -376,7 +382,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                 if (cmdEncoder->_pDeviceMetalFeatures->baseVertexInstanceDrawing) {
                     [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: MTLPrimitiveTypePoint
                                                               indexCount: _indexCount
-                                                               indexType: ibb.mtlIndexType
+                                                               indexType: (MTLIndexType)ibb.mtlIndexType
                                                              indexBuffer: ibb.mtlBuffer
                                                        indexBufferOffset: idxBuffOffset
                                                            instanceCount: _instanceCount
@@ -385,7 +391,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                 } else {
                     [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: MTLPrimitiveTypePoint
                                                               indexCount: _indexCount
-                                                               indexType: ibb.mtlIndexType
+                                                               indexType: (MTLIndexType)ibb.mtlIndexType
                                                              indexBuffer: ibb.mtlBuffer
                                                        indexBufferOffset: idxBuffOffset
                                                            instanceCount: _instanceCount];
@@ -476,7 +482,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     if (cmdEncoder->_pDeviceMetalFeatures->baseVertexInstanceDrawing) {
                         [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
                                                                   indexCount: _indexCount
-                                                                   indexType: ibb.mtlIndexType
+                                                                   indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
                                                            indexBufferOffset: idxBuffOffset
                                                                instanceCount: _instanceCount
@@ -485,7 +491,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
                     } else {
                         [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
                                                                   indexCount: _indexCount
-                                                                   indexType: ibb.mtlIndexType
+                                                                   indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
                                                            indexBufferOffset: idxBuffOffset
                                                                instanceCount: _instanceCount];
@@ -582,7 +588,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         }
     }
 
-    MVKVectorInline<uint32_t, 4> stages;
+	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
@@ -769,7 +775,7 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
     MVKIndexMTLBufferBinding& ibb = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
-    size_t idxSize = mvkMTLIndexTypeSizeInBytes(ibb.mtlIndexType);
+    size_t idxSize = mvkMTLIndexTypeSizeInBytes((MTLIndexType)ibb.mtlIndexType);
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
     // The indirect calls for dispatchThreadgroups:... and drawPatches:... have different formats.
     // We have to convert from the drawIndexedPrimitives:... format to them.
@@ -810,7 +816,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         tcIndexBuff = cmdEncoder->getTempMTLBuffer(patchCount * outControlPointCount * idxSize);
     }
 
-    MVKVectorInline<uint32_t, 4> stages;
+	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
@@ -857,7 +863,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 // or not there are gaps in it, because there's no way to tell Metal to
                 // offset an index buffer from a value in an indirect buffer. This also
                 // means that, to make a copy, we have to use a compute shader.
-                id<MTLComputePipelineState> mtlCopyIndexState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(ibb.mtlIndexType);
+                id<MTLComputePipelineState> mtlCopyIndexState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState((MTLIndexType)ibb.mtlIndexType);
                 [mtlTessCtlEncoder setComputePipelineState: mtlCopyIndexState];
                 [mtlTessCtlEncoder setBuffer: ibb.mtlBuffer
                                       offset: ibb.offset
@@ -896,7 +902,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                                               atIndex: pipeline->getIndirectParamsIndex().stages[kMVKShaderStageVertex]];
                     }
                     [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: MTLPrimitiveTypePoint
-                                                               indexType: ibb.mtlIndexType
+                                                               indexType: (MTLIndexType)ibb.mtlIndexType
                                                              indexBuffer: ibb.mtlBuffer
                                                        indexBufferOffset: ibb.offset
                                                           indirectBuffer: _mtlIndirectBuffer
@@ -985,7 +991,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                         cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
                     } else {
                         [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
-                                                                   indexType: ibb.mtlIndexType
+                                                                   indexType: (MTLIndexType)ibb.mtlIndexType
                                                                  indexBuffer: ibb.mtlBuffer
                                                            indexBufferOffset: ibb.offset
                                                               indirectBuffer: _mtlIndirectBuffer

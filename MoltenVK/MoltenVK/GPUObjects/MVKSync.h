@@ -159,7 +159,7 @@ public:
     MVKSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {}
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 };
 
@@ -270,7 +270,7 @@ public:
 		MVKVulkanAPIDeviceObject(device), _isSignaled(mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_FENCE_CREATE_SIGNALED_BIT)) {}
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	void notifySitters();
 
 	std::mutex _lock;
@@ -349,7 +349,7 @@ public:
 	MVKEvent(MVKDevice* device, const VkEventCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {}
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 };
 

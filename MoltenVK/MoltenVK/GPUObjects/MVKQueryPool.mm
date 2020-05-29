@@ -47,7 +47,7 @@ void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
 }
 
 // Mark queries as available
-void MVKQueryPool::finishQueries(MVKVector<uint32_t>& queries) {
+void MVKQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries) {
     lock_guard<mutex> lock(_availabilityLock);
     for (uint32_t qry : queries) { _availability[qry] = Available; }
     _availabilityBlocker.notify_all();      // Predicate of each wait() call will check whether all required queries are available
@@ -184,7 +184,7 @@ void MVKQueryPool::deferCopyResults(uint32_t firstQuery,
 #pragma mark MVKTimestampQueryPool
 
 // Update timestamp values, then mark queries as available
-void MVKTimestampQueryPool::finishQueries(MVKVector<uint32_t>& queries) {
+void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries) {
     uint64_t ts = mvkGetTimestamp();
     for (uint32_t qry : queries) { _timestamps[qry] = ts; }
 
@@ -223,7 +223,7 @@ MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device,
 #pragma mark -
 #pragma mark MVKOcclusionQueryPool
 
-void MVKOcclusionQueryPool::propogateDebugName() { setLabelIfNotNil(_visibilityResultMTLBuffer, _debugName); }
+void MVKOcclusionQueryPool::propagateDebugName() { setLabelIfNotNil(_visibilityResultMTLBuffer, _debugName); }
 
 // If a dedicated visibility buffer has been established, use it, otherwise fetch the
 // current global visibility buffer, but don't cache it because it could be replaced later.

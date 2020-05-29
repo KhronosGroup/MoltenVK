@@ -20,7 +20,7 @@
 
 #include "MVKCommand.h"
 #include "MVKDevice.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 #import <Metal/Metal.h>
 
@@ -31,7 +31,11 @@ class MVKFramebuffer;
 #pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
-/** Vulkan command to begin a render pass. */
+/**
+ * Vulkan command to begin a render pass.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdBeginRenderPass : public MVKCommand, public MVKLoadStoreOverrideMixin {
 
 public:
@@ -44,12 +48,17 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	VkRenderPassBeginInfo _info;
-	VkSubpassContents _contents;
+	MVKSmallVector<VkClearValue, N> _clearValues;
 	MVKRenderPass* _renderPass;
 	MVKFramebuffer* _framebuffer;
-	MVKVectorInline<VkClearValue, 8> _clearValues;
+	VkRect2D _renderArea;
+	VkSubpassContents _contents;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdBeginRenderPass<1> MVKCmdBeginRenderPass1;
+typedef MVKCmdBeginRenderPass<2> MVKCmdBeginRenderPass2;
+typedef MVKCmdBeginRenderPass<9> MVKCmdBeginRenderPassMulti;
 
 
 #pragma mark -
@@ -91,7 +100,11 @@ protected:
 #pragma mark -
 #pragma mark MVKCmdExecuteCommands
 
-/** Vulkan command to execute secondary command buffers. */
+/**
+ * Vulkan command to execute secondary command buffers.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
+ */
+template <size_t N>
 class MVKCmdExecuteCommands : public MVKCommand {
 
 public:
@@ -104,8 +117,12 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKVectorInline<MVKCommandBuffer*, 64> _secondaryCommandBuffers;
+	MVKSmallVector<MVKCommandBuffer*, N> _secondaryCommandBuffers;
 };
+
+// Concrete template class implementations.
+typedef MVKCmdExecuteCommands<1> MVKCmdExecuteCommands1;
+typedef MVKCmdExecuteCommands<16> MVKCmdExecuteCommandsMulti;
 
 
 #pragma mark -
@@ -113,9 +130,7 @@ protected:
 
 /**
  * Vulkan command to set the viewports.
- * This is a template class to support different vector pre-allocations, so we can balance
- * in-line memory allocation betweeen the very common case of a single viewport, and the
- * maximal number, by choosing which concrete implementation to use based on viewport count.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
 template <size_t N>
 class MVKCmdSetViewport : public MVKCommand {
@@ -131,11 +146,11 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKSmallVector<VkViewport, N> _viewports;
 	uint32_t _firstViewport;
-	MVKVectorInline<VkViewport, N> _viewports;
 };
 
-// Concrete template class implemenations.
+// Concrete template class implementations.
 typedef MVKCmdSetViewport<1> MVKCmdSetViewport1;
 typedef MVKCmdSetViewport<kMVKCachedViewportScissorCount> MVKCmdSetViewportMulti;
 
@@ -145,9 +160,7 @@ typedef MVKCmdSetViewport<kMVKCachedViewportScissorCount> MVKCmdSetViewportMulti
 
 /**
  * Vulkan command to set the scissor rectangles.
- * This is a template class to support different vector pre-allocations, so we can balance
- * in-line memory allocation betweeen the very common case of a single scissor, and the
- * maximal number, by choosing which concrete implementation to use based on scissor count.
+ * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
 template <size_t N>
 class MVKCmdSetScissor : public MVKCommand {
@@ -163,11 +176,11 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
+	MVKSmallVector<VkRect2D, N> _scissors;
 	uint32_t _firstScissor;
-	MVKVectorInline<VkRect2D, N> _scissors;
 };
 
-// Concrete template class implemenations.
+// Concrete template class implementations.
 typedef MVKCmdSetScissor<1> MVKCmdSetScissor1;
 typedef MVKCmdSetScissor<kMVKCachedViewportScissorCount> MVKCmdSetScissorMulti;
 

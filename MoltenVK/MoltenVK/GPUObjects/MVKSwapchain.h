@@ -20,7 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKImage.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 #import "CAMetalLayer+MoltenVK.h"
 #import <Metal/Metal.h>
@@ -89,8 +89,13 @@ public:
 
 	/** Adds HDR metadata to this swapchain. */
 	void setHDRMetadataEXT(const VkHdrMetadataEXT& metadata);
-
-
+	
+	/** VK_GOOGLE_display_timing - returns the duration of the refresh cycle */
+	VkResult getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration);
+	
+	/** VK_GOOGLE_display_timing - returns past presentation times */
+	VkResult getPastPresentationTiming(uint32_t *pCount, VkPastPresentationTimingGOOGLE *pPresentationTimings);
+	
 #pragma mark Construction
 	
 	MVKSwapchain(MVKDevice* device, const VkSwapchainCreateInfoKHR* pCreateInfo);
@@ -100,7 +105,7 @@ public:
 protected:
 	friend class MVKPresentableSwapchainImage;
 
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	void initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	void initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt);
 	void releaseUndisplayedSurfaces();
@@ -108,15 +113,22 @@ protected:
     void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
+	void recordPresentTime(uint32_t presentID, uint64_t desiredPresentTime, uint64_t actualPresentTime);
 
 	CAMetalLayer* _mtlLayer;
     MVKWatermark* _licenseWatermark;
-	MVKVectorInline<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
+	MVKSmallVector<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
 	std::atomic<uint64_t> _currentAcquisitionID;
     CGSize _mtlLayerOrigDrawSize;
     uint64_t _lastFrameTime;
     uint32_t _currentPerfLogFrameCount;
     std::atomic<bool> _surfaceLost;
     MVKBlockObserver* _layerObserver;
+	static const int kMaxPresentationHistory = 60;
+	VkPastPresentationTimingGOOGLE _presentTimingHistory[kMaxPresentationHistory];
+	uint32_t _presentHistoryCount;
+	uint32_t _presentHistoryIndex;
+	uint32_t _presentHistoryHeadIndex;
+	std::mutex _presentHistoryLock;
 };
 

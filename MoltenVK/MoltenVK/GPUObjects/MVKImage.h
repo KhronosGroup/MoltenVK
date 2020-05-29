@@ -21,7 +21,7 @@
 #include "MVKResource.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKSync.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_map>
 #include <mutex>
@@ -130,19 +130,22 @@ public:
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
 
+	/** Binds this resource to the specified offset within the specified memory allocation. */
+	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
+
 	/** Applies the specified global memory barrier. */
-    void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                            VkPipelineStageFlags dstStageMask,
-                            VkMemoryBarrier* pMemoryBarrier,
-                            MVKCommandEncoder* cmdEncoder,
-                            MVKCommandUse cmdUse) override;
+	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+							VkPipelineStageFlags dstStageMask,
+							MVKPipelineBarrier& barrier,
+							MVKCommandEncoder* cmdEncoder,
+							MVKCommandUse cmdUse) override;
 
 	/** Applies the specified image memory barrier. */
-    void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                                 VkPipelineStageFlags dstStageMask,
-                                 VkImageMemoryBarrier* pImageMemoryBarrier,
-                                 MVKCommandEncoder* cmdEncoder,
-                                 MVKCommandUse cmdUse);
+	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								 VkPipelineStageFlags dstStageMask,
+								 MVKPipelineBarrier& barrier,
+								 MVKCommandEncoder* cmdEncoder,
+								 MVKCommandUse cmdUse);
 
 #pragma mark Metal
 
@@ -226,7 +229,7 @@ protected:
 	friend class MVKImageView;
 	using MVKResource::needsHostReadSync;
 
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
 	void validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
@@ -235,6 +238,7 @@ protected:
 	bool validateUseTexelBuffer();
 	void initSubresources(const VkImageCreateInfo* pCreateInfo);
 	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
+	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 	id<MTLTexture> newMTLTexture();
 	void releaseMTLTexture();
     void releaseIOSurface();
@@ -246,9 +250,9 @@ protected:
 	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
-						   VkImageMemoryBarrier* pImageMemoryBarrier);
+						   MVKPipelineBarrier& barrier);
 
-	MVKVectorInline<MVKImageSubresource, 1> _subresources;
+	MVKSmallVector<MVKImageSubresource, 1> _subresources;
 	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     VkExtent3D _extent;
     uint32_t _mipLevels;
@@ -336,7 +340,7 @@ public:
 	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
 	 * drawable is presented immediately using the present method of the drawable.
 	 */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff);
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, bool hasPresentTime, uint32_t presentID, uint64_t desiredPresentTime);
 
 
 #pragma mark Construction
@@ -365,7 +369,7 @@ protected:
 
 	id<CAMetalDrawable> _mtlDrawable;
 	MVKSwapchainImageAvailability _availability;
-	MVKVectorInline<MVKSwapchainSignaler, 1> _availabilitySignalers;
+	MVKSmallVector<MVKSwapchainSignaler, 1> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaler;
 	std::mutex _availabilityLock;
 };
@@ -380,7 +384,7 @@ class MVKPeerSwapchainImage : public MVKSwapchainImage {
 public:
 
 	/** Binds this resource according to the specified bind information. */
-	VkResult bindDeviceMemory2(const void* pBindInfo) override;
+	VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) override;
 
 
 #pragma mark Construction
@@ -471,7 +475,7 @@ public:
 	~MVKImageView() override;
 
 protected:
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	id<MTLTexture> newMTLTexture();
 	void initMTLTextureViewSupport();
 	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
@@ -519,7 +523,7 @@ public:
 	~MVKSampler() override;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	MTLSamplerDescriptor* newMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
 	void initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo);
 

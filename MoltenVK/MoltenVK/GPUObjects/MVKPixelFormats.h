@@ -31,7 +31,8 @@ class MVKPhysicalDevice;
 // Validate these values periodically as new formats are added over time.
 static const uint32_t _vkFormatCount = 256;
 static const uint32_t _vkFormatCoreCount = VK_FORMAT_ASTC_12x12_SRGB_BLOCK + 1;
-static const uint32_t _mtlPixelFormatCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
+static const uint32_t _mtlPixelFormatCount = 128;
+static const uint32_t _mtlPixelFormatCoreCount = MTLPixelFormatX32_Stencil8 + 2;     // The actual last enum value is not available on iOS
 static const uint32_t _mtlVertexFormatCount = MTLVertexFormatHalf + 1;
 
 
@@ -233,7 +234,7 @@ public:
 	size_t getBytesPerLayer(MTLPixelFormat mtlFormat, size_t bytesPerRow, uint32_t texelRowsPerLayer);
 
 	/** Returns the default properties for the specified Vulkan format. */
-	VkFormatProperties getVkFormatProperties(VkFormat vkFormat);
+	VkFormatProperties& getVkFormatProperties(VkFormat vkFormat);
 
 	/** Returns the Metal format capabilities supported by the specified Vulkan format. */
 	MVKMTLFmtCaps getCapabilities(VkFormat vkFormat);
@@ -323,7 +324,10 @@ protected:
 	uint16_t _vkFormatDescIndicesByVkFormatsCore[_vkFormatCoreCount];
 	std::unordered_map<uint32_t, uint32_t> _vkFormatDescIndicesByVkFormatsExt;
 
-	// Metal formats have small values and are mapped by simple lookup array.
-	uint16_t _mtlFormatDescIndicesByMTLPixelFormats[_mtlPixelFormatCount];
+	// Most Metal formats have small values and are mapped by simple lookup array.
+	// Outliers are mapped by a map.
+	uint16_t _mtlFormatDescIndicesByMTLPixelFormatsCore[_mtlPixelFormatCoreCount];
+	std::unordered_map<NSUInteger, uint32_t> _mtlFormatDescIndicesByMTLPixelFormatsExt;
+
 	uint16_t _mtlFormatDescIndicesByMTLVertexFormats[_mtlVertexFormatCount];
 };

@@ -20,7 +20,7 @@
 
 #include "MVKDevice.h"
 #include "MVKImage.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 
 
 #pragma mark MVKFramebuffer
@@ -52,10 +52,10 @@ public:
 	MVKFramebuffer(MVKDevice* device, const VkFramebufferCreateInfo* pCreateInfo);
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	VkExtent2D _extent;
 	uint32_t _layerCount;
-	MVKVectorInline<MVKImageView*, 4> _attachments;
+	MVKSmallVector<MVKImageView*, 4> _attachments;
 };
 

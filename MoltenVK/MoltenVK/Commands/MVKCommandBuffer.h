@@ -22,9 +22,10 @@
 #include "MVKCommand.h"
 #include "MVKCommandEncoderState.h"
 #include "MVKMTLBufferAllocation.h"
+#include "MVKRenderPass.h"
 #include "MVKCmdPipeline.h"
 #include "MVKQueryPool.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <unordered_map>
 
 class MVKCommandPool;
@@ -39,8 +40,6 @@ class MVKQueryPool;
 class MVKPipeline;
 class MVKGraphicsPipeline;
 class MVKComputePipeline;
-class MVKCmdBeginRenderPass;
-class MVKCmdEndRenderPass;
 class MVKLoadStoreOverrideMixin;
 
 typedef uint64_t MVKMTLCommandBufferID;
@@ -92,18 +91,19 @@ public:
      * Metal requires that a visibility buffer is established when a render pass is created, 
      * but Vulkan permits it to be set during a render pass. When the first occlusion query
      * command is added, it sets this value so that it can be applied when the first renderpass
-     * is begun. The execution of subsequent occlusion query commmands may change the visibility
+     * is begun. The execution of subsequent occlusion query commands may change the visibility
      * buffer during command execution, and begin a new Metal renderpass.
      */
     id<MTLBuffer> _initialVisibilityResultMTLBuffer;
 
 
 #pragma mark Tessellation constituent command management
+
     /** Preps metadata for recording render pass */
-	void recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass);
+	void recordBeginRenderPass(MVKLoadStoreOverrideMixin* mvkBeginRenderPass);
 	
 	/** Finishes metadata for recording render pass */
-	void recordEndRenderPass(MVKCmdEndRenderPass* mvkEndRenderPass);
+	void recordEndRenderPass();
 	
 	/** Update the last recorded pipeline if it will end and start a new Metal render pass (ie, in tessellation) */
 	void recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline);
@@ -112,7 +112,7 @@ public:
 	void recordDraw(MVKLoadStoreOverrideMixin* mvkDraw);
 	
 	/** The most recent recorded begin renderpass */
-	MVKCmdBeginRenderPass* _lastBeginRenderPass;
+	MVKLoadStoreOverrideMixin* _lastBeginRenderPass;
 	
 	/** The most recent recorded multi-pass (ie, tessellation) pipeline */
 	MVKCmdBindPipeline* _lastTessellationPipeline;
@@ -146,7 +146,7 @@ protected:
 	friend class MVKCommandPool;
 
 	MVKBaseObject* getBaseObject() override { return this; };
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	void init(const VkCommandBufferAllocateInfo* pAllocateInfo);
 	bool canExecute();
 	bool canPrefill();
@@ -242,7 +242,7 @@ protected:
 
 
 /*** Holds a collection of active queries for each query pool. */
-typedef std::unordered_map<MVKQueryPool*, MVKVectorInline<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
+typedef std::unordered_map<MVKQueryPool*, MVKSmallVector<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
 
 /** 
  * MVKCommandEncoder uses a visitor design pattern iterate the commands in a MVKCommandBuffer, 
@@ -269,7 +269,7 @@ public:
 						 MVKRenderPass* renderPass,
 						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
-						 MVKVector<VkClearValue>* clearValues,
+						 MVKArrayRef<VkClearValue> clearValues,
 						 bool loadOverride = false,
 						 bool storeOverride = false);
 
@@ -318,7 +318,7 @@ public:
 	void endMetalRenderEncoding();
 
 	/** 
-	 * Returns trhe current Metal compute encoder for the specified use,
+	 * Returns the current Metal compute encoder for the specified use,
 	 * which determines the label assigned to the returned encoder.
 	 *
 	 * If the current encoder is not a compute encoder, this function ends current before 
@@ -337,7 +337,7 @@ public:
 
 	/**
 	 * Returns the current Metal encoder, which may be any of the Metal render,
-	 * comupte, or Blit encoders, or nil if no encoding is currently occurring.
+	 * compute, or Blit encoders, or nil if no encoding is currently occurring.
 	 */
 	id<MTLCommandEncoder> getMTLEncoder();
 
@@ -361,10 +361,10 @@ public:
 
 #pragma mark Queries
 
-    /** Begins an occulusion query. */
+    /** Begins an occlusion query. */
     void beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags);
 
-    /** Ends the current occulusion query. */
+    /** Ends the current occlusion query. */
     void endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query);
 
     /** Marks a timestamp for the specified query. */
@@ -453,7 +453,7 @@ protected:
 	uint32_t _renderSubpassIndex;
 	VkRect2D _renderArea;
     MVKActivatedQueries* _pActivatedQueries;
-	MVKVectorInline<VkClearValue, 8> _clearValues;
+	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	MVKCommandUse _mtlComputeEncoderUse;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;

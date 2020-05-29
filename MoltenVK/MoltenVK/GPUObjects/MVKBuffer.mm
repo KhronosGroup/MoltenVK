@@ -28,7 +28,7 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKBuffer
 
-void MVKBuffer::propogateDebugName() {
+void MVKBuffer::propagateDebugName() {
 	if (!_debugName) { return; }
 	if (_deviceMemory &&
 		_deviceMemory->isDedicatedAllocation() &&
@@ -66,8 +66,8 @@ VkResult MVKBuffer::getMemoryRequirements(const void*, VkMemoryRequirements2* pM
 		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_MEMORY_DEDICATED_REQUIREMENTS: {
 			auto* dedicatedReqs = (VkMemoryDedicatedRequirements*)next;
-			dedicatedReqs->prefersDedicatedAllocation = VK_FALSE;
-			dedicatedReqs->requiresDedicatedAllocation = VK_FALSE;
+			dedicatedReqs->requiresDedicatedAllocation = _requiresDedicatedMemoryAllocation;
+			dedicatedReqs->prefersDedicatedAllocation = dedicatedReqs->requiresDedicatedAllocation;
 			break;
 		}
 		default:
@@ -88,18 +88,22 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 	}
 #endif
 
-	propogateDebugName();
+	propagateDebugName();
 
 	return _deviceMemory ? _deviceMemory->addBuffer(this) : VK_SUCCESS;
 }
 
+VkResult MVKBuffer::bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo) {
+	return bindDeviceMemory((MVKDeviceMemory*)pBindInfo->memory, pBindInfo->memoryOffset);
+}
+
 void MVKBuffer::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
-								   VkMemoryBarrier* pMemoryBarrier,
+								   MVKPipelineBarrier& barrier,
                                    MVKCommandEncoder* cmdEncoder,
                                    MVKCommandUse cmdUse) {
 #if MVK_MACOS
-	if ( needsHostReadSync(srcStageMask, dstStageMask, pMemoryBarrier) ) {
+	if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
 		[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: getMTLBuffer()];
 	}
 #endif
@@ -107,13 +111,28 @@ void MVKBuffer::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 
 void MVKBuffer::applyBufferMemoryBarrier(VkPipelineStageFlags srcStageMask,
 										 VkPipelineStageFlags dstStageMask,
-										 VkBufferMemoryBarrier* pBufferMemoryBarrier,
+										 MVKPipelineBarrier& barrier,
                                          MVKCommandEncoder* cmdEncoder,
                                          MVKCommandUse cmdUse) {
 #if MVK_MACOS
-	if ( needsHostReadSync(srcStageMask, dstStageMask, pBufferMemoryBarrier) ) {
+	if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
 		[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: getMTLBuffer()];
 	}
+#endif
+}
+
+// Returns whether the specified buffer memory barrier requires a sync between this
+// buffer and host memory for the purpose of the host reading texture memory.
+bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
+								  VkPipelineStageFlags dstStageMask,
+								  MVKPipelineBarrier& barrier) {
+#if MVK_MACOS
+	return (mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
+			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
+			isMemoryHostAccessible() && (!isMemoryHostCoherent() || _isHostCoherentTexelBuffer));
+#endif
+#if MVK_IOS
+	return false;
 #endif
 }
 
@@ -142,21 +161,6 @@ VkResult MVKBuffer::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
 	return VK_SUCCESS;
 }
 
-// Returns whether the specified buffer memory barrier requires a sync between this
-// buffer and host memory for the purpose of the host reading texture memory.
-bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
-								  VkPipelineStageFlags dstStageMask,
-								  VkBufferMemoryBarrier* pBufferMemoryBarrier) {
-#if MVK_IOS
-	return false;
-#endif
-#if MVK_MACOS
-	return (mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
-			mvkIsAnyFlagEnabled(pBufferMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
-			isMemoryHostAccessible() && (!isMemoryHostCoherent() || _isHostCoherentTexelBuffer));
-#endif
-}
-
 
 #pragma mark Metal
 
@@ -167,16 +171,15 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 			_mtlBuffer = [_deviceMemory->getMTLHeap() newBufferWithLength: getByteCount()
 																  options: _deviceMemory->getMTLResourceOptions()
 																   offset: _deviceMemoryOffset];	// retained
-			propogateDebugName();
+			propagateDebugName();
 			return _mtlBuffer;
 #if MVK_MACOS
 		} else if (_isHostCoherentTexelBuffer) {
 			// According to the Vulkan spec, buffers, like linear images, can always use host-coherent memory.
-                        // But texel buffers on Mac cannot use shared memory. So we need to use host-cached
-                        // memory here.
+			// But texel buffers on Mac cannot use shared memory. So we need to use host-cached memory here.
 			_mtlBuffer = [_device->getMTLDevice() newBufferWithLength: getByteCount()
 															  options: MTLResourceStorageModeManaged];	// retained
-			propogateDebugName();
+			propagateDebugName();
 			return _mtlBuffer;
 #endif
 		} else {
@@ -192,6 +195,28 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 MVKBuffer::MVKBuffer(MVKDevice* device, const VkBufferCreateInfo* pCreateInfo) : MVKResource(device), _usage(pCreateInfo->usage) {
     _byteAlignment = _device->_pMetalFeatures->mtlBufferAlignment;
     _byteCount = pCreateInfo->size;
+
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_BUFFER_CREATE_INFO: {
+				auto* pExtMemInfo = (const VkExternalMemoryBufferCreateInfo*)next;
+				initExternalMemory(pExtMemInfo->handleTypes);
+				break;
+			}
+			default:
+				break;
+		}
+	}
+}
+
+void MVKBuffer::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
+	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR)) {
+		_externalMemoryHandleTypes = handleTypes;
+		auto& xmProps = _device->getPhysicalDevice()->getExternalBufferProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR);
+		_requiresDedicatedMemoryAllocation = _requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
+	} else {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateBuffer(): Only external memory handle type VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR is supported."));
+	}
 }
 
 MVKBuffer::~MVKBuffer() {
@@ -203,7 +228,7 @@ MVKBuffer::~MVKBuffer() {
 #pragma mark -
 #pragma mark MVKBufferView
 
-void MVKBufferView::propogateDebugName() {
+void MVKBufferView::propagateDebugName() {
 	setLabelIfNotNil(_mtlTexture, _debugName);
 }
 
@@ -239,7 +264,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 		_mtlTexture = [mtlBuff newTextureWithDescriptor: mtlTexDesc
 												 offset: _mtlBufferOffset
 											bytesPerRow: _mtlBytesPerRow];
-		propogateDebugName();
+		propagateDebugName();
     }
     return _mtlTexture;
 }

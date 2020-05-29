@@ -19,13 +19,17 @@
 #pragma once
 
 #include "MVKDevice.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <mutex>
 
 #import <Metal/Metal.h>
 
 class MVKBuffer;
 class MVKImage;
+
+// TODO: These are inoperable placeholders until VK_KHR_external_memory_metal defines them properly
+static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
+static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
 
 
 #pragma mark MVKDeviceMemory
@@ -113,7 +117,7 @@ public:
 	/** Returns the Metal CPU cache mode used by this memory allocation. */
 	inline MTLCPUCacheMode getMTLCPUCacheMode() { return _mtlCPUCacheMode; }
 
-	/** Returns the Metal reource options used by this memory allocation. */
+	/** Returns the Metal resource options used by this memory allocation. */
 	inline MTLResourceOptions getMTLResourceOptions() { return mvkMTLResourceOptions(_mtlStorageMode, _mtlCPUCacheMode); }
 
 
@@ -130,7 +134,7 @@ protected:
 	friend MVKBuffer;
 	friend MVKImage;
 
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);
 	VkResult addBuffer(MVKBuffer* mvkBuff);
 	void removeBuffer(MVKBuffer* mvkBuff);
@@ -141,9 +145,10 @@ protected:
 	bool ensureHostMemory();
 	void freeHostMemory();
 	MVKResource* getDedicatedResource();
+	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 
-	MVKVectorInline<MVKBuffer*, 4> _buffers;
-	MVKVectorInline<MVKImage*, 4> _images;
+	MVKSmallVector<MVKBuffer*, 4> _buffers;
+	MVKSmallVector<MVKImage*, 4> _images;
 	std::mutex _rezLock;
     VkDeviceSize _allocationSize = 0;
 	VkDeviceSize _mapOffset = 0;

@@ -38,12 +38,12 @@ uint32_t MVKDescriptorSetLayout::getDescriptorIndex(uint32_t binding, uint32_t e
 void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                MVKDescriptorSet* descSet,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                                               MVKVector<uint32_t>& dynamicOffsets,
+                                               MVKArrayRef<uint32_t> dynamicOffsets,
                                                uint32_t* pDynamicOffsetIndex) {
     if (_isPushDescriptorLayout) return;
 
 	clearConfigurationResult();
-    uint32_t bindCnt = (uint32_t)_bindings.size();
+    size_t bindCnt = _bindings.size();
     for (uint32_t descIdx = 0, bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		descIdx += _bindings[bindIdx].bind(cmdEncoder, descSet, descIdx,
 										   dslMTLRezIdxOffsets, dynamicOffsets,
@@ -94,7 +94,7 @@ static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorI
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-                                               MVKVector<VkWriteDescriptorSet>& descriptorWrites,
+                                               MVKArrayRef<VkWriteDescriptorSet>& descriptorWrites,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
 
     if (!_isPushDescriptorLayout) return;
@@ -109,11 +109,10 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         const VkBufferView* pTexelBufferView = descWrite.pTexelBufferView;
         const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
         if (_device->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
-            for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)descWrite.pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
-            {
+			for (const auto* next = (VkBaseInStructure*)descWrite.pNext; next; next = next->pNext) {
                 switch (next->sType) {
                 case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-                    pInlineUniformBlock = next;
+					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
                     break;
                 }
                 default:
@@ -570,7 +569,7 @@ VkResult MVKDescriptorPool::allocateDescriptor(VkDescriptorType descriptorType,
 		return _preallocatedDescriptors->allocateDescriptor(descriptorType, pMVKDesc);
 	}
 
-	// Otherwise instantiate one of the apporpriate type now
+	// Otherwise instantiate one of the appropriate type now
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 			*pMVKDesc = new MVKUniformBufferDescriptor();
@@ -689,11 +688,10 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 
 		const VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock = nullptr;
 		if (dstSet->getDevice()->_enabledExtensions.vk_EXT_inline_uniform_block.enabled) {
-			for (auto* next = (VkWriteDescriptorSetInlineUniformBlockEXT*)pDescWrite->pNext; next; next = (VkWriteDescriptorSetInlineUniformBlockEXT*)next->pNext)
-			{
+			for (const auto* next = (VkBaseInStructure*)pDescWrite->pNext; next; next = next->pNext) {
 				switch (next->sType) {
 				case VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_INLINE_UNIFORM_BLOCK_EXT: {
-					pInlineUniformBlock = next;
+					pInlineUniformBlock = (VkWriteDescriptorSetInlineUniformBlockEXT*)next;
 					break;
 				}
 				default:

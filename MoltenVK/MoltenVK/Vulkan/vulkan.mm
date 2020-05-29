@@ -117,14 +117,45 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 // Create and configure a command of particular type.
 // If the command is configured correctly, add it to the buffer,
 // otherwise indicate the configuration error to the command buffer.
-#define MVKAddCmd(cmdType, vkCmdBuff, ...)  										\
-	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(vkCmdBuff);	\
+#define MVKAddCmd(cmdType, vkCmdBuff, ...)  													\
+	MVKCommandBuffer* cmdBuff = MVKCommandBuffer::getMVKCommandBuffer(vkCmdBuff);				\
 	MVKCmd ##cmdType* cmd = cmdBuff->getCommandPool()->_cmd ##cmdType ##Pool.acquireObject();	\
-	VkResult cmdRslt = cmd->setContent(cmdBuff, ##__VA_ARGS__);						\
-	if(cmdRslt == VK_SUCCESS) {														\
-		cmdBuff->addCommand(cmd);													\
-	} else {																		\
-		cmdBuff->setConfigurationResult(cmdRslt);									\
+	VkResult cmdRslt = cmd->setContent(cmdBuff, ##__VA_ARGS__);									\
+	if (cmdRslt == VK_SUCCESS) {																\
+		cmdBuff->addCommand(cmd);																\
+	} else {																					\
+		cmdBuff->setConfigurationResult(cmdRslt);												\
+	}
+
+// Add one of two commands, based on comparing a command parameter against a threshold value
+#define MVKAddCmdFromThreshold(baseCmdType, value, threshold, vkCmdBuff, ...)					\
+	if (value <= threshold) {																	\
+		MVKAddCmd(baseCmdType ##threshold, vkCmdBuff, ##__VA_ARGS__);							\
+	} else {																					\
+		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);								\
+	}
+
+// Add one of three commands, based on comparing a command parameter against two threshold values
+#define MVKAddCmdFrom2Thresholds(baseCmdType, value, threshold1, threshold2, vkCmdBuff, ...)	\
+	if (value <= threshold1) {																	\
+		MVKAddCmd(baseCmdType ##threshold1, vkCmdBuff, ##__VA_ARGS__);							\
+	} else if (value <= threshold2) {															\
+		MVKAddCmd(baseCmdType ##threshold2, vkCmdBuff, ##__VA_ARGS__);							\
+	} else {																					\
+		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);								\
+	}
+
+
+// Add one of four commands, based on comparing a command parameter against two threshold values
+#define MVKAddCmdFrom3Thresholds(baseCmdType, value, threshold1, threshold2, threshold3, vkCmdBuff, ...)	\
+	if (value <= threshold1) {																				\
+		MVKAddCmd(baseCmdType ##threshold1, vkCmdBuff, ##__VA_ARGS__);										\
+	} else if (value <= threshold2) {																		\
+		MVKAddCmd(baseCmdType ##threshold2, vkCmdBuff, ##__VA_ARGS__);										\
+	} else if (value <= threshold3) {																		\
+		MVKAddCmd(baseCmdType ##threshold3, vkCmdBuff, ##__VA_ARGS__);										\
+	} else {																								\
+		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);											\
 	}
 
 
@@ -149,8 +180,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyInstance(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !instance ) { return; }
-	MVKInstance::getMVKInstance(instance)->destroy();
+	if (instance) { MVKInstance::getMVKInstance(instance)->destroy(); }
 	MVKTraceVulkanCallEnd();
 }
 
@@ -230,7 +260,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties(
 
 	MVKTraceVulkanCallStart();
 	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	mvkPD->getPhysicalDeviceMemoryProperties(pMemoryProperties);
+	mvkPD->getMemoryProperties(pMemoryProperties);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -287,8 +317,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDevice(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !device ) { return; }
-	MVKDevice::getMVKDevice(device)->destroy();
+	if (device) { MVKDevice::getMVKDevice(device)->destroy(); }
 	MVKTraceVulkanCallEnd();
 }
 
@@ -345,10 +374,8 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceQueue(
     VkQueue*                                    pQueue) {
 
 	MVKTraceVulkanCallStart();
-	if (pQueue) {
-		MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-		*pQueue = mvkDev->getQueue(queueFamilyIndex, queueIndex)->getVkQueue();
-	}
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	*pQueue = mvkDev->getQueue(queueFamilyIndex, queueIndex)->getVkQueue();
 	MVKTraceVulkanCallEnd();
 }
 
@@ -406,7 +433,6 @@ MVK_PUBLIC_SYMBOL void vkFreeMemory(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !mem ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->freeMemory((MVKDeviceMemory*)mem, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -472,8 +498,6 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceMemoryCommitment(
     VkDeviceSize*                               pCommittedMemoryInBytes) {
 
 	MVKTraceVulkanCallStart();
-    if ( !pCommittedMemoryInBytes ) { return; }
-
     MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)memory;
     *pCommittedMemoryInBytes = mvkMem->getDeviceMemoryCommitment();
 	MVKTraceVulkanCallEnd();
@@ -599,7 +623,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyFence(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !fence ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyFence((MVKFence*)fence, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -662,7 +685,6 @@ MVK_PUBLIC_SYMBOL void vkDestroySemaphore(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !semaphore ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroySemaphore((MVKSemaphore*)semaphore, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -689,7 +711,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyEvent(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !event ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyEvent((MVKEvent*)event, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -749,7 +770,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyQueryPool(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !queryPool ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyQueryPool((MVKQueryPool*)queryPool, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -793,7 +813,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyBuffer(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !buffer ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyBuffer((MVKBuffer*)buffer, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -820,7 +839,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyBufferView(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !bufferView ) { return; }
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroyBufferView((MVKBufferView*)bufferView, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -847,7 +865,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyImage(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !image ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyImage((MVKImage*)image, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -886,7 +903,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyImageView(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !imageView ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyImageView((MVKImageView*)imageView, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -913,7 +929,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyShaderModule(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !shaderModule ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyShaderModule((MVKShaderModule*)shaderModule, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -940,7 +955,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipelineCache(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !pipelineCache ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyPipelineCache((MVKPipelineCache*)pipelineCache, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1008,7 +1022,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipeline(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !pipeline ) { return; }
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroyPipeline((MVKPipeline*)pipeline, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1035,7 +1048,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipelineLayout(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !pipelineLayout ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyPipelineLayout((MVKPipelineLayout*)pipelineLayout, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1062,7 +1074,6 @@ MVK_PUBLIC_SYMBOL void vkDestroySampler(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !sampler ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroySampler((MVKSampler*)sampler, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1089,7 +1100,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorSetLayout(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !descriptorSetLayout ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyDescriptorSetLayout((MVKDescriptorSetLayout*)descriptorSetLayout, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1116,7 +1126,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorPool(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !descriptorPool ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyDescriptorPool((MVKDescriptorPool*)descriptorPool, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1194,7 +1203,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyFramebuffer(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !framebuffer ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyFramebuffer((MVKFramebuffer*)framebuffer, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1221,7 +1229,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyRenderPass(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !renderPass ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyRenderPass((MVKRenderPass*)renderPass, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1233,8 +1240,6 @@ MVK_PUBLIC_SYMBOL void vkGetRenderAreaGranularity(
     VkExtent2D*                                 pGranularity) {
 
 	MVKTraceVulkanCallStart();
-    if ( !pGranularity ) { return; }
-
     MVKRenderPass* mvkRendPass = (MVKRenderPass*)renderPass;
     *pGranularity = mvkRendPass->getRenderAreaGranularity();
 	MVKTraceVulkanCallEnd();
@@ -1261,7 +1266,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyCommandPool(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !commandPool ) { return; }
 	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
 	mvkDev->destroyCommandPool((MVKCommandPool*)commandPool, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -1341,7 +1345,18 @@ MVK_PUBLIC_SYMBOL void vkCmdBindPipeline(
     VkPipeline                                  pipeline) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BindPipeline, commandBuffer, pipelineBindPoint, pipeline);
+	switch (pipelineBindPoint) {
+		case VK_PIPELINE_BIND_POINT_GRAPHICS: {
+			MVKAddCmd(BindGraphicsPipeline, commandBuffer, pipeline);
+			break;
+		}
+		case VK_PIPELINE_BIND_POINT_COMPUTE: {
+			MVKAddCmd(BindComputePipeline, commandBuffer, pipeline);
+			break;
+		}
+		default:
+			break;
+	}
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1352,11 +1367,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetViewport(
 	const VkViewport*                           pViewports) {
 
 	MVKTraceVulkanCallStart();
-	if (viewportCount <= 1) {
-		MVKAddCmd(SetViewport1, commandBuffer, firstViewport, viewportCount, pViewports);
-	} else {
-		MVKAddCmd(SetViewportMulti, commandBuffer, firstViewport, viewportCount, pViewports);
-	}
+	MVKAddCmdFromThreshold(SetViewport, viewportCount, 1, commandBuffer, firstViewport, viewportCount, pViewports);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1367,11 +1378,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetScissor(
 	const VkRect2D*                             pScissors) {
 
 	MVKTraceVulkanCallStart();
-	if (scissorCount <= 1) {
-		MVKAddCmd(SetScissor1, commandBuffer, firstScissor, scissorCount, pScissors);
-	} else {
-		MVKAddCmd(SetScissorMulti, commandBuffer, firstScissor, scissorCount, pScissors);
-	}
+	MVKAddCmdFromThreshold(SetScissor, scissorCount, 1, commandBuffer, firstScissor, scissorCount, pScissors);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1455,8 +1462,13 @@ MVK_PUBLIC_SYMBOL void vkCmdBindDescriptorSets(
     const uint32_t*                             pDynamicOffsets) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BindDescriptorSets, commandBuffer, pipelineBindPoint, layout,
-			  firstSet, setCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
+	if (dynamicOffsetCount) {
+		MVKAddCmdFromThreshold(BindDescriptorSetsDynamic, setCount, 4, commandBuffer, pipelineBindPoint, layout,
+				  firstSet, setCount, pDescriptorSets, dynamicOffsetCount, pDynamicOffsets);
+	} else {
+		MVKAddCmdFrom2Thresholds(BindDescriptorSetsStatic, setCount, 1, 4, commandBuffer, pipelineBindPoint, layout,
+				  firstSet, setCount, pDescriptorSets);
+	}
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1479,7 +1491,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindVertexBuffers(
     const VkDeviceSize*                         pOffsets) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BindVertexBuffers, commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
+	MVKAddCmdFrom2Thresholds(BindVertexBuffers, bindingCount, 1, 2, commandBuffer, startBinding, bindingCount, pBuffers, pOffsets);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1561,7 +1573,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBuffer(
     const VkBufferCopy*                         pRegions) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(CopyBuffer, commandBuffer, srcBuffer, destBuffer, regionCount, pRegions);
+	MVKAddCmdFromThreshold(CopyBuffer, regionCount, 1, commandBuffer, srcBuffer, destBuffer, regionCount, pRegions);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1575,7 +1587,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImage(
     const VkImageCopy*                          pRegions) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(CopyImage, commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
+	MVKAddCmdFromThreshold(CopyImage, regionCount, 1, commandBuffer,
+						   srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1590,7 +1603,8 @@ MVK_PUBLIC_SYMBOL void vkCmdBlitImage(
     VkFilter                                    filter) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BlitImage, commandBuffer, srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
+	MVKAddCmdFromThreshold(BlitImage, regionCount, 1, commandBuffer,
+						   srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions, filter);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1603,7 +1617,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBufferToImage(
     const VkBufferImageCopy*                    pRegions) {
 	
 	MVKTraceVulkanCallStart();
-    MVKAddCmd(BufferImageCopy, commandBuffer, srcBuffer, dstImage, dstImageLayout, regionCount, pRegions, true);
+    MVKAddCmdFrom3Thresholds(BufferImageCopy, regionCount, 1, 4, 8, commandBuffer,
+							 srcBuffer, dstImage, dstImageLayout, regionCount, pRegions, true);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1616,7 +1631,8 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImageToBuffer(
     const VkBufferImageCopy*                    pRegions) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BufferImageCopy, commandBuffer, dstBuffer, srcImage, srcImageLayout, regionCount, pRegions, false);
+	MVKAddCmdFrom3Thresholds(BufferImageCopy, regionCount, 1, 4, 8, commandBuffer,
+							 dstBuffer, srcImage, srcImageLayout, regionCount, pRegions, false);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1655,7 +1671,8 @@ MVK_PUBLIC_SYMBOL void vkCmdClearColorImage(
 	MVKTraceVulkanCallStart();
 	VkClearValue clrVal;
 	clrVal.color = *pColor;
-	MVKAddCmd(ClearImage, commandBuffer, image, imageLayout, clrVal, rangeCount, pRanges, false);
+	MVKAddCmdFromThreshold(ClearColorImage, rangeCount, 1, commandBuffer,
+						   image, imageLayout, clrVal, rangeCount, pRanges);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1670,7 +1687,8 @@ MVK_PUBLIC_SYMBOL void vkCmdClearDepthStencilImage(
 	MVKTraceVulkanCallStart();
 	VkClearValue clrVal;
 	clrVal.depthStencil = *pDepthStencil;
-    MVKAddCmd(ClearImage, commandBuffer, image, imageLayout, clrVal, rangeCount, pRanges, true);
+    MVKAddCmdFromThreshold(ClearDepthStencilImage, rangeCount, 1, commandBuffer,
+						   image, imageLayout, clrVal, rangeCount, pRanges);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1682,7 +1700,13 @@ MVK_PUBLIC_SYMBOL void vkCmdClearAttachments(
 	const VkClearRect*                          pRects) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(ClearAttachments, commandBuffer, attachmentCount, pAttachments, rectCount, pRects);
+	if (attachmentCount > 1) {
+		MVKAddCmdFromThreshold(ClearMultiAttachments, rectCount, 1, commandBuffer,
+							   attachmentCount, pAttachments, rectCount, pRects);
+	} else {
+		MVKAddCmdFromThreshold(ClearSingleAttachment, rectCount, 1, commandBuffer,
+							   attachmentCount, pAttachments, rectCount, pRects);
+	}
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1696,8 +1720,8 @@ MVK_PUBLIC_SYMBOL void vkCmdResolveImage(
     const VkImageResolve*                       pRegions) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(ResolveImage, commandBuffer, srcImage, srcImageLayout,
-			  dstImage, dstImageLayout, regionCount, pRegions);
+	MVKAddCmdFromThreshold(ResolveImage, regionCount, 1, commandBuffer,
+						   srcImage, srcImageLayout, dstImage, dstImageLayout, regionCount, pRegions);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1705,9 +1729,9 @@ MVK_PUBLIC_SYMBOL void vkCmdSetEvent(
     VkCommandBuffer                             commandBuffer,
     VkEvent                                     event,
     VkPipelineStageFlags                        stageMask) {
-	
+
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(SetResetEvent, commandBuffer, event, stageMask, true);
+	MVKAddCmd(SetEvent, commandBuffer, event, stageMask);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1715,9 +1739,9 @@ MVK_PUBLIC_SYMBOL void vkCmdResetEvent(
     VkCommandBuffer                             commandBuffer,
     VkEvent                                     event,
     VkPipelineStageFlags                        stageMask) {
-	
+
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(SetResetEvent, commandBuffer, event, stageMask, false);
+	MVKAddCmd(ResetEvent, commandBuffer, event, stageMask);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1735,11 +1759,11 @@ MVK_PUBLIC_SYMBOL void vkCmdWaitEvents(
 	const VkImageMemoryBarrier*                 pImageMemoryBarriers) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(WaitEvents, commandBuffer, eventCount, pEvents,
-			  srcStageMask, dstStageMask,
-			  memoryBarrierCount, pMemoryBarriers,
-			  bufferMemoryBarrierCount, pBufferMemoryBarriers,
-			  imageMemoryBarrierCount, pImageMemoryBarriers);
+	MVKAddCmdFromThreshold(WaitEvents, eventCount, 1, commandBuffer,
+						   eventCount, pEvents, srcStageMask, dstStageMask,
+						   memoryBarrierCount, pMemoryBarriers,
+						   bufferMemoryBarrierCount, pBufferMemoryBarriers,
+						   imageMemoryBarrierCount, pImageMemoryBarriers);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1756,10 +1780,12 @@ MVK_PUBLIC_SYMBOL void vkCmdPipelineBarrier(
 	const VkImageMemoryBarrier*                 pImageMemoryBarriers) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(PipelineBarrier, commandBuffer, srcStageMask, dstStageMask, dependencyFlags,
-			  memoryBarrierCount, pMemoryBarriers,
-			  bufferMemoryBarrierCount, pBufferMemoryBarriers,
-			  imageMemoryBarrierCount, pImageMemoryBarriers);
+	uint32_t barrierCount = memoryBarrierCount + bufferMemoryBarrierCount + imageMemoryBarrierCount;
+	MVKAddCmdFrom2Thresholds(PipelineBarrier, barrierCount, 1, 4, commandBuffer,
+							   srcStageMask, dstStageMask, dependencyFlags,
+							   memoryBarrierCount, pMemoryBarriers,
+							   bufferMemoryBarrierCount, pBufferMemoryBarriers,
+							   imageMemoryBarrierCount, pImageMemoryBarriers);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1831,7 +1857,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPushConstants(
     const void*                                 pValues) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(PushConstants, commandBuffer, layout, stageFlags, offset, size, pValues);
+	MVKAddCmdFrom2Thresholds(PushConstants, size, 64, 128, commandBuffer, layout, stageFlags, offset, size, pValues);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1841,7 +1867,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
     VkSubpassContents							contents) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(BeginRenderPass, commandBuffer,pRenderPassBegin, contents);
+	MVKAddCmdFrom2Thresholds(BeginRenderPass, pRenderPassBegin->clearValueCount, 1, 2, commandBuffer,pRenderPassBegin, contents);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1868,7 +1894,7 @@ MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
     const VkCommandBuffer*						pCommandBuffers) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmd(ExecuteCommands, commandBuffer, cmdBuffersCount, pCommandBuffers);
+	MVKAddCmdFromThreshold(ExecuteCommands, cmdBuffersCount, 1, commandBuffer, cmdBuffersCount, pCommandBuffers);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -1934,7 +1960,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorUpdateTemplateKHR(
     const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-    if (!descriptorUpdateTemplate) { return; }
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroyDescriptorUpdateTemplate((MVKDescriptorUpdateTemplate*)descriptorUpdateTemplate, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -2113,7 +2138,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties2KHR(
 
 	MVKTraceVulkanCallStart();
     MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    mvkPD->getPhysicalDeviceMemoryProperties(pMemoryProperties);
+    mvkPD->getMemoryProperties(pMemoryProperties);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2217,7 +2242,6 @@ MVK_PUBLIC_SYMBOL void vkDestroySwapchainKHR(
     const VkAllocationCallbacks*             pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !swapchain ) { return; }
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     mvkDev->destroySwapchain((MVKSwapchain*)swapchain, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -2326,7 +2350,6 @@ MVK_PUBLIC_SYMBOL void vkDestroySurfaceKHR(
     const VkAllocationCallbacks*                 pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !surface ) { return; }
     MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
     mvkInst->destroySurface((MVKSurface*)surface, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -2443,7 +2466,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDebugReportCallbackEXT(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !callback ) { return; }
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
 	mvkInst->destroyDebugReportCallback((MVKDebugReportCallback*)callback, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -2611,7 +2633,6 @@ MVK_PUBLIC_SYMBOL void vkDestroyDebugUtilsMessengerEXT(
 	const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
-	if ( !messenger ) { return; }
 	MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
 	mvkInst->destroyDebugUtilsMessenger((MVKDebugUtilsMessenger*)messenger, pAllocator);
 	MVKTraceVulkanCallEnd();
@@ -2665,6 +2686,21 @@ MVK_PUBLIC_SYMBOL void vkResetQueryPoolEXT(
 
 
 #pragma mark -
+#pragma mark VK_KHR_external_memory_capabilities extension
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalBufferPropertiesKHR(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
+	VkExternalBufferProperties*                 pExternalBufferProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getExternalBufferProperties(pExternalBufferInfo, pExternalBufferProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_metal_surface extension
 
 MVK_PUBLIC_SYMBOL VkResult vkCreateMetalSurfaceEXT(
@@ -2678,6 +2714,32 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateMetalSurfaceEXT(
 	MVKSurface* mvkSrfc = mvkInst->createSurface(pCreateInfo, pAllocator);
 	*pSurface = (VkSurfaceKHR)mvkSrfc;
 	VkResult rslt = mvkSrfc->getConfigurationResult();
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+#pragma mark -
+#pragma mark VK_GOOGLE_display_timing extension
+
+MVK_PUBLIC_SYMBOL VkResult vkGetRefreshCycleDurationGOOGLE(
+	VkDevice                                    device,
+	VkSwapchainKHR                              swapchain,
+	VkRefreshCycleDurationGOOGLE*               pDisplayTimingProperties) {
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
+	VkResult rslt = mvkSwapchain->getRefreshCycleDuration(pDisplayTimingProperties);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
+	VkDevice                                    device,
+	VkSwapchainKHR                              swapchain,
+	uint32_t*                                   pPresentationTimingCount,
+	VkPastPresentationTimingGOOGLE*             pPresentationTimings) {
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
+	VkResult rslt = mvkSwapchain->getPastPresentationTiming(pPresentationTimingCount, pPresentationTimings);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
