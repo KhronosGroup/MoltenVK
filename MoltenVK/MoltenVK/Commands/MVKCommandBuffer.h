@@ -91,7 +91,7 @@ public:
      * Metal requires that a visibility buffer is established when a render pass is created, 
      * but Vulkan permits it to be set during a render pass. When the first occlusion query
      * command is added, it sets this value so that it can be applied when the first renderpass
-     * is begun. The execution of subsequent occlusion query commmands may change the visibility
+     * is begun. The execution of subsequent occlusion query commands may change the visibility
      * buffer during command execution, and begin a new Metal renderpass.
      */
     id<MTLBuffer> _initialVisibilityResultMTLBuffer;
@@ -318,7 +318,7 @@ public:
 	void endMetalRenderEncoding();
 
 	/** 
-	 * Returns trhe current Metal compute encoder for the specified use,
+	 * Returns the current Metal compute encoder for the specified use,
 	 * which determines the label assigned to the returned encoder.
 	 *
 	 * If the current encoder is not a compute encoder, this function ends current before 
@@ -337,7 +337,7 @@ public:
 
 	/**
 	 * Returns the current Metal encoder, which may be any of the Metal render,
-	 * comupte, or Blit encoders, or nil if no encoding is currently occurring.
+	 * compute, or Blit encoders, or nil if no encoding is currently occurring.
 	 */
 	id<MTLCommandEncoder> getMTLEncoder();
 
@@ -361,10 +361,10 @@ public:
 
 #pragma mark Queries
 
-    /** Begins an occulusion query. */
+    /** Begins an occlusion query. */
     void beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags);
 
-    /** Ends the current occulusion query. */
+    /** Ends the current occlusion query. */
     void endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query);
 
     /** Marks a timestamp for the specified query. */
