@@ -960,7 +960,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
         const VkVertexInputAttributeDescription* pVKVA = &pVI->pVertexAttributeDescriptions[i];
         if (shaderContext.isVertexAttributeLocationUsed(pVKVA->location)) {
 
-      // Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
+			// Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
 			// Only check non-zero offsets, as it's common for both to be zero when step rate is instance.
 			if (pVKVA->offset > 0) {
 				const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
@@ -985,8 +985,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
     // Vertex buffer bindings
     for (uint32_t i = 0; i < vbCnt; i++) {
         const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
-        uint32_t vbIdx = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-        if (shaderContext.isVertexBufferUsed(vbIdx)) {
+        if (shaderContext.isVertexBufferUsed(pVKVB->binding)) {
 
 			// Vulkan allows any stride, but Metal only allows multiples of 4.
             // TODO: We should try to expand the buffer to the required alignment in that case.
@@ -995,6 +994,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
                 return false;
             }
 
+			uint32_t vbIdx = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 			MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
 			vbDesc.stride = (pVKVB->stride == 0) ? sizeof(simd::float4) : pVKVB->stride;      // Vulkan allows zero stride but Metal doesn't. Default to float4
             vbDesc.stepFunction = mvkMTLVertexStepFunctionFromVkVertexInputRate(pVKVB->inputRate);
@@ -1186,8 +1186,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
         // Set binding and offset from Vulkan vertex attribute
         MSLVertexAttribute va;
         va.vertexAttribute.location = pVKVA->location;
-        va.vertexAttribute.msl_buffer = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
-        va.vertexAttribute.msl_offset = pVKVA->offset;
+        va.binding = pVKVA->binding;
 
         // Metal can't do signedness conversions on vertex buffers (rdar://45922847). If the shader
         // and the vertex attribute have mismatched signedness, we have to fix the shader
@@ -1221,17 +1220,6 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
         default:
             break;
 
-        }
-
-        // Set stride and input rate of vertex attribute from corresponding Vulkan vertex bindings
-        uint32_t vbCnt = pCreateInfo->pVertexInputState->vertexBindingDescriptionCount;
-        for (uint32_t vbIdx = 0; vbIdx < vbCnt; vbIdx++) {
-            const VkVertexInputBindingDescription* pVKVB = &pCreateInfo->pVertexInputState->pVertexBindingDescriptions[vbIdx];
-            if (pVKVB->binding == pVKVA->binding) {
-                va.vertexAttribute.msl_stride = pVKVB->stride;
-                va.vertexAttribute.per_instance = (pVKVB->inputRate == VK_VERTEX_INPUT_RATE_INSTANCE);
-                break;
-            }
         }
 
         shaderContext.vertexAttributes.push_back(va);
@@ -1652,10 +1640,6 @@ namespace SPIRV_CROSS_NAMESPACE {
 	template<class Archive>
 	void serialize(Archive & archive, MSLVertexAttr& va) {
 		archive(va.location,
-				va.msl_buffer,
-				va.msl_offset,
-				va.msl_stride,
-				va.per_instance,
 				va.format,
 				va.builtin);
 	}
@@ -1731,6 +1715,7 @@ namespace mvk {
 	template<class Archive>
 	void serialize(Archive & archive, MSLVertexAttribute& va) {
 		archive(va.vertexAttribute,
+				va.binding,
 				va.isUsedByShader);
 	}
 

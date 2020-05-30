@@ -20,22 +20,53 @@ MoltenVK 1.0.42
 Released 2020/06/01
 
 - Add support for extensions:
+	- `VK_GOOGLE_display_timing`
 	- `VK_KHR_external_memory` (non-functional groundwork for future 
 	  Metal-resource Vulkan extension).
 	- `VK_KHR_external_memory_capabilities` (non-functional groundwork 
 	   for future Metal-resource Vulkan extension).
-- Memory consumption improvements.
+- Memory consumption improvements in command handling and vector pre-allocation optimizations.
+- `vkQueuePresentKHR()` returns a `VkResult` for each swapchain.
+- `MVKPipeline` disable fragment shader outputs for unused attachments.
+- `MVKBuffer` support texel buffers in host-coherent memory on Mac.
+- `MVKDescriptor` pass buffers to shaders that do atomic image accesses.
+- Fix crash when more than two GPUs.
+- Fix issue where `vkGetPhysicalDeviceFormatProperties()` incorrectly returned 
+  properties for unsupported formats.
+- Fix stack overflow in when logging and reporting very long messages.
+- Fix situation where compute pipeline state not retained across copy and renderpass operations.
+- Fix buffer offset calculation.
+- Fixes to maximum FPS calculations.
+- Enables format atomic capabilities only when format supports it.
+- Add `MVKSmallVector` as a more memory efficient substitute of `MVKVector`.
 - Reinstate `VulkanSamples API-Samples` demo apps and add 
   `input_attachment` and `push_descriptors` demos.
-- `vkQueuePresentKHR()` returns a `VkResult` for each swapchain.
+- Add `MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE` environment variable 
 - Consolidate frame and non-frame performance reporting.
 	- Remove `vkGetSwapchainPerformanceMVK()` from API.
 	- Swapchain performance can be retrieved with other activity performance 
 	  through `vkGetPerformanceStatisticsMVK()`.
 	- Add `MVK_CONFIG_PERFORMANCE_LOGGING_INLINE` env var to enable/disable
 	  logging of performance of each activity when it happens. 
-- Fix crash when more than two GPUs.
+	- Reduce thread locking on performance statistics collection.
+  to support capturing GPU traces to a file.
+- Numerous documentation typo corrections.
 - Support Xcode 11.5.
+- Update to latest SPIRV-Cross version:
+	- MSL: mark `BuiltInFragCoord` as implicitly used for subpass reads.
+	- MSL: Deal with cases where builtin is implicitly needed, declared, but unused.
+	- MSL: Do not use base expression with PhysicalTypeID `OpCompositeExtract`.
+	- MSL: Add options to control emission of fragment outputs.
+	- MSL: Force disabled fragment builtins to have the right name.
+	- MSL: Allow removing clip distance user varyings.
+	- MSL: Support edge case with DX layout in scalar block layout.
+	- MSL: Deal correctly with initializers on Private variables.
+	- MSL: Fix case where `subpassInput` is passed to leaf functions.
+	- MSL: Redirect member indices when buffer has been sorted by Offset.
+	- MSL: If the packed type is scalar, don't emit "pack_" prefix.
+	- MSL: Avoid packed arrays in more cases.
+	- Do not add NonWritable/NonReadable decorations for regular images.
+	- Expose a query if samplers or images are comparison resources.
 
 
 
