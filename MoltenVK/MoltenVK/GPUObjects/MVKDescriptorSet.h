@@ -229,7 +229,7 @@ public:
 	/** Free's up the specified descriptor set. */
 	VkResult freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets);
 
-	/** Destoys all currently allocated descriptor sets. */
+	/** Destroys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
 	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
