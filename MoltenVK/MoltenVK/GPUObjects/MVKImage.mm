@@ -41,6 +41,183 @@ static uint32_t getPlaneFromVkImageAspectFlags(VkImageAspectFlags aspectMask) {
            0;
 }
 
+id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
+    if ( !_mtlTexture && _image->_mtlPixelFormat ) {
+        // Lock and check again in case another thread has created the texture.
+        lock_guard<mutex> lock(_image->_lock);
+        if (_mtlTexture) { return _mtlTexture; }
+        _mtlTexture = _image->newMTLTexture();   // retained
+        _image->propogateDebugName();
+    }
+    if (mtlPixFmt == _image->_mtlPixelFormat) { return _mtlTexture; }
+    id<MTLTexture> mtlTex = _mtlTextureViews[mtlPixFmt];
+    if ( !mtlTex ) {
+        // Lock and check again in case another thread has created the view texture.
+        // baseTex retreived outside of lock to avoid deadlock if it too needs to be lazily created.
+        lock_guard<mutex> lock(_image->_lock);
+        mtlTex = _mtlTextureViews[mtlPixFmt];
+        if ( !mtlTex ) {
+            mtlTex = [_mtlTexture newTextureViewWithPixelFormat: mtlPixFmt];    // retained
+            _mtlTextureViews[mtlPixFmt] = mtlTex;
+        }
+    }
+    return mtlTex;
+}
+
+// Initializes the subresource definitions.
+void MVKImagePlane::initSubresources(const VkImageCreateInfo* pCreateInfo) {
+    _subresources.reserve(_image->_mipLevels * _image->_arrayLayers);
+
+    MVKImageSubresource subRez;
+    subRez.layoutState = pCreateInfo->initialLayout;
+
+    for (uint32_t mipLvl = 0; mipLvl < _image->_mipLevels; mipLvl++) {
+        subRez.subresource.mipLevel = mipLvl;
+        VkDeviceSize bytesPerLayerCurrLevel = _image->getBytesPerLayer(mipLvl);
+
+        for (uint32_t layer = 0; layer < _image->_arrayLayers; layer++) {
+            subRez.subresource.arrayLayer = layer;
+
+            // Accumulate the byte offset for the specified sub-resource.
+            // This is the sum of the bytes consumed by all layers in all mipmap levels before the
+            // desired level, plus the layers before the desired layer at the desired level.
+            VkDeviceSize offset = 0;
+            for (uint32_t i = 0; i < mipLvl; i++) {
+                offset += (_image->getBytesPerLayer(i) * _image->_extent.depth * _image->_arrayLayers);
+            }
+            offset += (bytesPerLayerCurrLevel * layer);
+
+            VkSubresourceLayout& layout = subRez.layout;
+            layout.offset = offset;
+            layout.size = bytesPerLayerCurrLevel;
+            layout.rowPitch = _image->getBytesPerRow(mipLvl);
+            layout.depthPitch = bytesPerLayerCurrLevel;
+            _subresources.push_back(subRez);
+        }
+    }
+}
+
+// Returns a pointer to the internal subresource for the specified MIP level layer.
+MVKImageSubresource* MVKImagePlane::getSubresource(uint32_t mipLevel, uint32_t arrayLayer) {
+    uint32_t srIdx = (mipLevel * _image->_arrayLayers) + arrayLayer;
+    return (srIdx < _subresources.size()) ? &_subresources[srIdx] : NULL;
+}
+
+// Updates the contents of the underlying MTLTexture, corresponding to the
+// specified subresource definition, from the underlying memory buffer.
+void MVKImagePlane::updateMTLTextureContent(MVKImageSubresource& subresource,
+                                            VkDeviceSize offset, VkDeviceSize size) {
+
+    VkImageSubresource& imgSubRez = subresource.subresource;
+    VkSubresourceLayout& imgLayout = subresource.layout;
+
+    // Check if subresource overlaps the memory range.
+    VkDeviceSize memStart = offset;
+    VkDeviceSize memEnd = offset + size;
+    VkDeviceSize imgStart = imgLayout.offset;
+    VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
+    if (imgStart >= memEnd || imgEnd <= memStart) { return; }
+
+    // Don't update if host memory has not been mapped yet.
+    void* pHostMem = _image->_memoryBindings[0]->getHostMemoryAddress(); // TODO: Multi planar images
+    if ( !pHostMem ) { return; }
+
+    VkExtent3D mipExtent = _image->getExtent3D(imgSubRez.mipLevel);
+    void* pImgBytes = (void*)((uintptr_t)pHostMem + imgLayout.offset);
+
+    MTLRegion mtlRegion;
+    mtlRegion.origin = MTLOriginMake(0, 0, 0);
+    mtlRegion.size = mvkMTLSizeFromVkExtent3D(mipExtent);
+
+#if MVK_MACOS
+    std::unique_ptr<char[]> decompBuffer;
+    if (_image->_is3DCompressed) {
+        // We cannot upload the texture data directly in this case. But we
+        // can upload the decompressed image data.
+        std::unique_ptr<MVKCodec> codec = mvkCreateCodec(_image->getVkFormat());
+        if (!codec) {
+            _image->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "A 3D texture used a compressed format that MoltenVK does not yet support.");
+            return;
+        }
+        VkSubresourceLayout destLayout;
+        destLayout.rowPitch = 4 * mipExtent.width;
+        destLayout.depthPitch = destLayout.rowPitch * mipExtent.height;
+        destLayout.size = destLayout.depthPitch * mipExtent.depth;
+        decompBuffer = std::unique_ptr<char[]>(new char[destLayout.size]);
+        codec->decompress(decompBuffer.get(), pImgBytes, destLayout, imgLayout, mipExtent);
+        pImgBytes = decompBuffer.get();
+        imgLayout = destLayout;
+    }
+#endif
+
+    VkImageType imgType = _image->getImageType();
+    VkDeviceSize bytesPerRow = (imgType != VK_IMAGE_TYPE_1D) ? imgLayout.rowPitch : 0;
+    VkDeviceSize bytesPerImage = (imgType == VK_IMAGE_TYPE_3D) ? imgLayout.depthPitch : 0;
+
+    id<MTLTexture> mtlTex = getMTLTexture(_image->_mtlPixelFormat);
+    if (_image->getPixelFormats()->isPVRTCFormat(mtlTex.pixelFormat)) {
+        bytesPerRow = 0;
+        bytesPerImage = 0;
+    }
+
+    [mtlTex replaceRegion: mtlRegion
+              mipmapLevel: imgSubRez.mipLevel
+                    slice: imgSubRez.arrayLayer
+                withBytes: pImgBytes
+              bytesPerRow: bytesPerRow
+            bytesPerImage: bytesPerImage];
+}
+
+// Updates the contents of the underlying memory buffer from the contents of
+// the underlying MTLTexture, corresponding to the specified subresource definition.
+void MVKImagePlane::getMTLTextureContent(MVKImageSubresource& subresource,
+                                         VkDeviceSize offset, VkDeviceSize size) {
+
+    VkImageSubresource& imgSubRez = subresource.subresource;
+    VkSubresourceLayout& imgLayout = subresource.layout;
+
+    // Check if subresource overlaps the memory range.
+    VkDeviceSize memStart = offset;
+    VkDeviceSize memEnd = offset + size;
+    VkDeviceSize imgStart = imgLayout.offset;
+    VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
+    if (imgStart >= memEnd || imgEnd <= memStart) { return; }
+
+    // Don't update if host memory has not been mapped yet.
+    void* pHostMem = _image->_memoryBindings[0]->getHostMemoryAddress(); // TODO: Multi planar images
+    if ( !pHostMem ) { return; }
+
+    VkExtent3D mipExtent = _image->getExtent3D(imgSubRez.mipLevel);
+    void* pImgBytes = (void*)((uintptr_t)pHostMem + imgLayout.offset);
+
+    MTLRegion mtlRegion;
+    mtlRegion.origin = MTLOriginMake(0, 0, 0);
+    mtlRegion.size = mvkMTLSizeFromVkExtent3D(mipExtent);
+
+    VkImageType imgType = _image->getImageType();
+    VkDeviceSize bytesPerRow = (imgType != VK_IMAGE_TYPE_1D) ? imgLayout.rowPitch : 0;
+    VkDeviceSize bytesPerImage = (imgType == VK_IMAGE_TYPE_3D) ? imgLayout.depthPitch : 0;
+
+    [_mtlTexture getBytes: pImgBytes
+              bytesPerRow: bytesPerRow
+            bytesPerImage: bytesPerImage
+               fromRegion: mtlRegion
+              mipmapLevel: imgSubRez.mipLevel
+                    slice: imgSubRez.arrayLayer];
+}
+
+MVKImagePlane::MVKImagePlane(MVKImage* image) {
+    _image = image;
+    _mtlTexture = nil;
+}
+
+MVKImagePlane::~MVKImagePlane() {
+    [_mtlTexture release];
+    for (auto elem : _mtlTextureViews) {
+        [elem.second release];
+    }
+}
+
 
 #pragma mark -
 #pragma mark MVKImageMemoryBinding
@@ -88,7 +265,7 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     _usesTexelBuffer = _usesTexelBuffer && _deviceMemory && !_deviceMemory->isMemoryHostCoherent();
 #endif
 
-    flushToDevice(getDeviceMemoryOffset(), getByteCount());
+    flushToDevice(getDeviceMemoryOffset(), getByteCount()); // TODO: Multi planar images
     return _deviceMemory ? _deviceMemory->addImageMemoryBinding(this) : VK_SUCCESS;
 }
 
@@ -99,12 +276,12 @@ void MVKImageMemoryBinding::applyMemoryBarrier(VkPipelineStageFlags srcStageMask
                                                MVKCommandUse cmdUse) {
 #if MVK_MACOS
     if ( needsHostReadSync(srcStageMask, dstStageMask, pMemoryBarrier) ) {
-        [cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: _image->getMTLTexture()];
+        [cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: _image->_plane->_mtlTexture];
     }
 #endif
 }
 
-void MVKImageMemoryBinding::propogateDebugName() { setLabelIfNotNil(_image->_mtlTexture, _image->_debugName); }
+void MVKImageMemoryBinding::propogateDebugName() { setLabelIfNotNil(_image->_plane->_mtlTexture, _image->_debugName); }
 
 // Returns whether the specified image memory barrier requires a sync between this
 // texture and host memory for the purpose of the host reading texture memory.
@@ -125,13 +302,14 @@ bool MVKImageMemoryBinding::shouldFlushHostMemory() { return isMemoryHostAccessi
 // Flushes the device memory at the specified memory range into the MTLTexture. Updates
 // all subresources that overlap the specified range and are in an updatable layout state.
 VkResult MVKImageMemoryBinding::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
-    if (shouldFlushHostMemory()) {
-        for (auto& subRez : _image->_subresources) {
+    if (shouldFlushHostMemory()) { // TODO: Multi planar images
+        MVKImagePlane* plane = _image->_plane.get();
+        for (auto& subRez : plane->_subresources) {
             switch (subRez.layoutState) {
                 case VK_IMAGE_LAYOUT_UNDEFINED:
                 case VK_IMAGE_LAYOUT_PREINITIALIZED:
                 case VK_IMAGE_LAYOUT_GENERAL: {
-                    _image->updateMTLTextureContent(subRez, offset, size);
+                    plane->updateMTLTextureContent(subRez, offset, size);
                     break;
                 }
                 default:
@@ -145,11 +323,12 @@ VkResult MVKImageMemoryBinding::flushToDevice(VkDeviceSize offset, VkDeviceSize 
 // Pulls content from the MTLTexture into the device memory at the specified memory range.
 // Pulls from all subresources that overlap the specified range and are in an updatable layout state.
 VkResult MVKImageMemoryBinding::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
-    if (shouldFlushHostMemory()) {
-        for (auto& subRez : _image->_subresources) {
+    if (shouldFlushHostMemory()) { // TODO: Multi planar images
+        MVKImagePlane* plane = _image->_plane.get();
+        for (auto& subRez : plane->_subresources) {
             switch (subRez.layoutState) {
                 case VK_IMAGE_LAYOUT_GENERAL: {
-                    _image->getMTLTextureContent(subRez, offset, size);
+                    plane->getMTLTextureContent(subRez, offset, size);
                     break;
                 }
                 default:
@@ -172,7 +351,7 @@ MVKImageMemoryBinding::~MVKImageMemoryBinding() {
 
 #pragma mark MVKImage
 
-void MVKImage::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
+void MVKImage::propogateDebugName() { setLabelIfNotNil(_plane->_mtlTexture, _debugName); }
 
 VkImageType MVKImage::getImageType() { return mvkVkImageTypeFromMTLTextureType(_mtlTextureType); }
 
@@ -199,8 +378,7 @@ VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,
 										VkSubresourceLayout* pLayout) {
     // TODO: Multi planar images
     // getPlaneFromVkImageAspectFlags(pSubresource->aspectMask)
-    MVKImageSubresource* pImgRez = getSubresource(pSubresource->mipLevel,
-                                                  pSubresource->arrayLayer);
+    MVKImageSubresource* pImgRez = _plane->getSubresource(pSubresource->mipLevel, pSubresource->arrayLayer);
     if ( !pImgRez ) { return VK_INCOMPLETE; }
 
     *pLayout = pImgRez->layout;
@@ -243,26 +421,20 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 
 #if MVK_MACOS
 	bool needsSync = _memoryBindings[0]->needsHostReadSync(srcStageMask, dstStageMask, (VkMemoryBarrier*)pImageMemoryBarrier);
-	id<MTLTexture> mtlTex = needsSync ? getMTLTexture() : nil;
+	id<MTLTexture> mtlTex = needsSync ? _plane->_mtlTexture : nil;
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = needsSync ? cmdEncoder->getMTLBlitEncoder(cmdUse) : nil;
 #endif
 
 	// Iterate across mipmap levels and layers, and update the image layout state for each
 	for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {
 		for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
-			MVKImageSubresource* pImgRez = getSubresource(mipLvl, layer);
+			MVKImageSubresource* pImgRez = _plane->getSubresource(mipLvl, layer);
 			if (pImgRez) { pImgRez->layoutState = pImageMemoryBarrier->newLayout; }
 #if MVK_MACOS
 			if (needsSync) { [mtlBlitEncoder synchronizeTexture: mtlTex slice: layer level: mipLvl]; }
 #endif
 		}
 	}
-}
-
-// Returns a pointer to the internal subresource for the specified MIP level layer.
-MVKImageSubresource* MVKImage::getSubresource(uint32_t mipLevel, uint32_t arrayLayer) {
-	uint32_t srIdx = (mipLevel * _arrayLayers) + arrayLayer;
-	return (srIdx < _subresources.size()) ? &_subresources[srIdx] : NULL;
 }
 
 VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements, uint32_t planeIndex) {
@@ -324,35 +496,11 @@ VkResult MVKImage::bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo) {
 #pragma mark Metal
 
 id<MTLTexture> MVKImage::getMTLTexture() {
-	if ( !_mtlTexture && _mtlPixelFormat ) {
-
-		// Lock and check again in case another thread has created the texture.
-		lock_guard<mutex> lock(_lock);
-		if (_mtlTexture) { return _mtlTexture; }
-
-		_mtlTexture = newMTLTexture();   // retained
-
-		propogateDebugName();
-	}
-	return _mtlTexture;
+	return _plane->getMTLTexture(_mtlPixelFormat);
 }
 
 id<MTLTexture> MVKImage::getMTLTexture(MTLPixelFormat mtlPixFmt) {
-	if (mtlPixFmt == _mtlPixelFormat) { return getMTLTexture(); }
-
-	id<MTLTexture> mtlTex = _mtlTextureViews[mtlPixFmt];
-	if ( !mtlTex ) {
-		// Lock and check again in case another thread has created the view texture.
-		// baseTex retreived outside of lock to avoid deadlock if it too needs to be lazily created.
-		id<MTLTexture> baseTex = getMTLTexture();
-		lock_guard<mutex> lock(_lock);
-		mtlTex = _mtlTextureViews[mtlPixFmt];
-		if ( !mtlTex ) {
-			mtlTex = [baseTex newTextureViewWithPixelFormat: mtlPixFmt];	// retained
-			_mtlTextureViews[mtlPixFmt] = mtlTex;
-		}
-	}
-	return mtlTex;
+    return _plane->getMTLTexture(mtlPixFmt);
 }
 
 id<MTLTexture> MVKImage::newMTLTexture() {
@@ -362,12 +510,12 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 	if (_ioSurface) { // TODO: Multi planar images
 		mtlTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc iosurface: _ioSurface plane: 0];
 	} else if (_memoryBindings[0]->_usesTexelBuffer) { // TODO: Multi planar images
-		mtlTex = [_memoryBindings[0]->_deviceMemory->_mtlBuffer newTextureWithDescriptor: mtlTexDesc
+		mtlTex = [_memoryBindings[0]->_deviceMemory->getMTLBuffer() newTextureWithDescriptor: mtlTexDesc
 															  offset: _memoryBindings[0]->getDeviceMemoryOffset()
-														 bytesPerRow: _subresources[0].layout.rowPitch];
-	} else if (_memoryBindings[0]->_deviceMemory->_mtlHeap && !getIsDepthStencil()) { // TODO: Multi planar images
+														 bytesPerRow: _plane->_subresources[0].layout.rowPitch];
+	} else if (_memoryBindings[0]->_deviceMemory->getMTLHeap() && !getIsDepthStencil()) { // TODO: Multi planar images
         // Metal support for depth/stencil from heaps is flaky
-		mtlTex = [_memoryBindings[0]->_deviceMemory->_mtlHeap newTextureWithDescriptor: mtlTexDesc
+		mtlTex = [_memoryBindings[0]->_deviceMemory->getMTLHeap() newTextureWithDescriptor: mtlTexDesc
 															offset: _memoryBindings[0]->getDeviceMemoryOffset()];
 		if (_isAliasable) [mtlTex makeAliasable];
 	} else {
@@ -381,10 +529,10 @@ id<MTLTexture> MVKImage::newMTLTexture() {
 VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
 	lock_guard<mutex> lock(_lock);
 
-	releaseMTLTexture();
+    _plane = std::unique_ptr<MVKImagePlane>(new MVKImagePlane(this));
 	releaseIOSurface();
 
-	_mtlTexture = [mtlTexture retain];		// retained
+	_plane->_mtlTexture = [mtlTexture retain];		// retained
 
 	_mtlPixelFormat = mtlTexture.pixelFormat;
 	_mtlTextureType = mtlTexture.textureType;
@@ -404,14 +552,6 @@ VkResult MVKImage::setMTLTexture(id<MTLTexture> mtlTexture) {
 	return VK_SUCCESS;
 }
 
-// Removes and releases the MTLTexture object, and all associated texture views
-void MVKImage::releaseMTLTexture() {
-	[_mtlTexture release];
-	_mtlTexture = nil;
-	for (auto elem : _mtlTextureViews) { [elem.second release]; }
-	_mtlTextureViews.clear();
-}
-
 void MVKImage::releaseIOSurface() {
     if (_ioSurface) {
         CFRelease(_ioSurface);
@@ -428,7 +568,7 @@ VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 
 #if MVK_SUPPORT_IOSURFACE_BOOL
 
-    releaseMTLTexture();
+    _plane = std::unique_ptr<MVKImagePlane>(new MVKImagePlane(this));
     releaseIOSurface();
 
 	MVKPixelFormats* pixFmts = getPixelFormats();
@@ -540,111 +680,9 @@ bool MVKImage::isMemoryHostCoherent() {
     return (getMTLStorageMode() == MTLStorageModeShared);
 }
 
-// Updates the contents of the underlying MTLTexture, corresponding to the
-// specified subresource definition, from the underlying memory buffer.
-void MVKImage::updateMTLTextureContent(MVKImageSubresource& subresource,
-                                       VkDeviceSize offset, VkDeviceSize size) {
-
-	VkImageSubresource& imgSubRez = subresource.subresource;
-	VkSubresourceLayout& imgLayout = subresource.layout;
-
-	// Check if subresource overlaps the memory range.
-    VkDeviceSize memStart = offset;
-    VkDeviceSize memEnd = offset + size;
-    VkDeviceSize imgStart = imgLayout.offset;
-    VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
-    if (imgStart >= memEnd || imgEnd <= memStart) { return; }
-
-	// Don't update if host memory has not been mapped yet.
-	void* pHostMem = _memoryBindings[0]->getHostMemoryAddress(); // TODO: Multi planar images
-	if ( !pHostMem ) { return; }
-
-    VkExtent3D mipExtent = getExtent3D(imgSubRez.mipLevel);
-    VkImageType imgType = getImageType();
-    void* pImgBytes = (void*)((uintptr_t)pHostMem + imgLayout.offset);
-
-    MTLRegion mtlRegion;
-    mtlRegion.origin = MTLOriginMake(0, 0, 0);
-    mtlRegion.size = mvkMTLSizeFromVkExtent3D(mipExtent);
-
-#if MVK_MACOS
-    std::unique_ptr<char[]> decompBuffer;
-    if (_is3DCompressed) {
-        // We cannot upload the texture data directly in this case. But we
-        // can upload the decompressed image data.
-        std::unique_ptr<MVKCodec> codec = mvkCreateCodec(getVkFormat());
-        if (!codec) {
-            reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "A 3D texture used a compressed format that MoltenVK does not yet support.");
-            return;
-        }
-        VkSubresourceLayout destLayout;
-        destLayout.rowPitch = 4 * mipExtent.width;
-        destLayout.depthPitch = destLayout.rowPitch * mipExtent.height;
-        destLayout.size = destLayout.depthPitch * mipExtent.depth;
-        decompBuffer = std::unique_ptr<char[]>(new char[destLayout.size]);
-        codec->decompress(decompBuffer.get(), pImgBytes, destLayout, imgLayout, mipExtent);
-        pImgBytes = decompBuffer.get();
-        imgLayout = destLayout;
-    }
-#endif
-
-	VkDeviceSize bytesPerRow = (imgType != VK_IMAGE_TYPE_1D) ? imgLayout.rowPitch : 0;
-	VkDeviceSize bytesPerImage = (imgType == VK_IMAGE_TYPE_3D) ? imgLayout.depthPitch : 0;
-
-	id<MTLTexture> mtlTex = getMTLTexture();
-	if (getPixelFormats()->isPVRTCFormat(mtlTex.pixelFormat)) {
-		bytesPerRow = 0;
-		bytesPerImage = 0;
-	}
-
-	[mtlTex replaceRegion: mtlRegion
-			  mipmapLevel: imgSubRez.mipLevel
-					slice: imgSubRez.arrayLayer
-				withBytes: pImgBytes
-			  bytesPerRow: bytesPerRow
-			bytesPerImage: bytesPerImage];
-}
-
-// Updates the contents of the underlying memory buffer from the contents of
-// the underlying MTLTexture, corresponding to the specified subresource definition.
-void MVKImage::getMTLTextureContent(MVKImageSubresource& subresource,
-                                    VkDeviceSize offset, VkDeviceSize size) {
-
-	VkImageSubresource& imgSubRez = subresource.subresource;
-	VkSubresourceLayout& imgLayout = subresource.layout;
-
-	// Check if subresource overlaps the memory range.
-    VkDeviceSize memStart = offset;
-    VkDeviceSize memEnd = offset + size;
-    VkDeviceSize imgStart = imgLayout.offset;
-    VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
-    if (imgStart >= memEnd || imgEnd <= memStart) { return; }
-
-	// Don't update if host memory has not been mapped yet.
-	void* pHostMem = _memoryBindings[0]->getHostMemoryAddress(); // TODO: Multi planar images
-	if ( !pHostMem ) { return; }
-
-    VkExtent3D mipExtent = getExtent3D(imgSubRez.mipLevel);
-    VkImageType imgType = getImageType();
-    void* pImgBytes = (void*)((uintptr_t)pHostMem + imgLayout.offset);
-
-    MTLRegion mtlRegion;
-    mtlRegion.origin = MTLOriginMake(0, 0, 0);
-    mtlRegion.size = mvkMTLSizeFromVkExtent3D(mipExtent);
-
-    [getMTLTexture() getBytes: pImgBytes
-                  bytesPerRow: (imgType != VK_IMAGE_TYPE_1D ? imgLayout.rowPitch : 0)
-                bytesPerImage: (imgType == VK_IMAGE_TYPE_3D ? imgLayout.depthPitch : 0)
-                   fromRegion: mtlRegion
-                  mipmapLevel: imgSubRez.mipLevel
-                        slice: imgSubRez.arrayLayer];
-}
-
-
 #pragma mark Construction
 
 MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
-	_mtlTexture = nil;
 	_ioSurface = nil;
 
     // Adjust the info components to be compatible with Metal, then use the modified versions to set other
@@ -681,8 +719,13 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
     uint32_t planeCount = pixFmts->getChromaSubsamplingPlaneCount(pCreateInfo->format),
              memoryBindingCount = (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT) ? planeCount : 1;
-    for(uint32_t planeIndex = 0; planeIndex < memoryBindingCount; ++planeIndex)
+    for (uint32_t planeIndex = 0; planeIndex < memoryBindingCount; ++planeIndex) {
         _memoryBindings.push_back(std::unique_ptr<MVKImageMemoryBinding>(new MVKImageMemoryBinding(device, this)));
+    }
+    _plane = std::unique_ptr<MVKImagePlane>(new MVKImagePlane(this)); // TODO: Multi planar images
+    // for (uint32_t planeIndex = 0; planeIndex < planeCount; ++planeIndex) {
+        // _planes.push_back(std::unique_ptr<MVKImagePlane>(new MVKImagePlane(this)));
+    // }
 
     // TODO: Multi planar images
 	if (!_isLinear && _device->_pMetalFeatures->placementHeaps) {
@@ -700,7 +743,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 		}
 	}
 
-    initSubresources(pCreateInfo);
+    _plane->initSubresources(pCreateInfo);
 
 	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
@@ -839,49 +882,6 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	return isLin;
 }
 
-
-// Initializes the subresource definitions.
-void MVKImage::initSubresources(const VkImageCreateInfo* pCreateInfo) {
-	_subresources.reserve(_mipLevels * _arrayLayers);
-
-	MVKImageSubresource subRez;
-	subRez.layoutState = pCreateInfo->initialLayout;
-
-	for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
-		subRez.subresource.mipLevel = mipLvl;
-
-		for (uint32_t layer = 0; layer < _arrayLayers; layer++) {
-			subRez.subresource.arrayLayer = layer;
-			initSubresourceLayout(subRez);
-			_subresources.push_back(subRez);
-		}
-	}
-}
-
-// Initializes the layout element of the specified image subresource.
-void MVKImage::initSubresourceLayout(MVKImageSubresource& imgSubRez) {
-	VkImageSubresource subresource = imgSubRez.subresource;
-	uint32_t currMipLevel = subresource.mipLevel;
-	uint32_t currArrayLayer = subresource.arrayLayer;
-
-	VkDeviceSize bytesPerLayerCurrLevel = getBytesPerLayer(currMipLevel);
-
-	// Accumulate the byte offset for the specified sub-resource.
-	// This is the sum of the bytes consumed by all layers in all mipmap levels before the
-	// desired level, plus the layers before the desired layer at the desired level.
-	VkDeviceSize offset = 0;
-	for (uint32_t mipLvl = 0; mipLvl < currMipLevel; mipLvl++) {
-		offset += (getBytesPerLayer(mipLvl) * _extent.depth * _arrayLayers);
-	}
-	offset += (bytesPerLayerCurrLevel * currArrayLayer);
-
-	VkSubresourceLayout& layout = imgSubRez.layout;
-	layout.offset = offset;
-	layout.size = bytesPerLayerCurrLevel;
-	layout.rowPitch = getBytesPerRow(currMipLevel);
-	layout.depthPitch = bytesPerLayerCurrLevel;
-}
-
 void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
 	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
         auto& xmProps = _device->getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
@@ -895,7 +895,6 @@ void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
 }
 
 MVKImage::~MVKImage() {
-	releaseMTLTexture();
     releaseIOSurface();
 }
 
@@ -1071,8 +1070,8 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 
 // Resets the MTLTexture and CAMetalDrawable underlying this image.
 void MVKPresentableSwapchainImage::releaseMetalDrawable() {
-	releaseMTLTexture();			// Release texture first so drawable will be last to release it
-	[_mtlDrawable release];
+    _plane.reset();
+    [_mtlDrawable release];
 	_mtlDrawable = nil;
 }
 

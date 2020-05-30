@@ -46,8 +46,21 @@ typedef struct {
 class MVKImagePlane {
 
 public:
-    
+    /** Returns a Metal texture that interprets the pixels in the specified format. */
+    id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
+
+    ~MVKImagePlane();
+
 protected:
+    void initSubresources(const VkImageCreateInfo* pCreateInfo);
+    MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
+    void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
+    void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
+
+    MVKImagePlane(MVKImage* image);
+
+    friend class MVKImageMemoryBinding;
+    friend MVKImage;
     MVKImage* _image;
     id<MTLTexture> _mtlTexture;
     std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
@@ -83,11 +96,12 @@ public:
                             VkMemoryBarrier* pMemoryBarrier,
                             MVKCommandEncoder* cmdEncoder,
                             MVKCommandUse cmdUse) override;
-
-    ~MVKImageMemoryBinding();
     
+    ~MVKImageMemoryBinding();
+
 protected:
     friend MVKDeviceMemory;
+    friend MVKImagePlane;
     friend MVKImage;
 
     void propogateDebugName() override;
@@ -282,30 +296,24 @@ public:
 	~MVKImage() override;
 
 protected:
-    friend MVKImageMemoryBinding;
     friend MVKDeviceMemory;
     friend MVKDevice;
+    friend MVKImageMemoryBinding;
+    friend MVKImagePlane;
 	friend MVKImageView;
 
 	void propogateDebugName() override;
-	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
 	void validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	bool validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
-	void initSubresources(const VkImageCreateInfo* pCreateInfo);
-	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 	id<MTLTexture> newMTLTexture();
-	void releaseMTLTexture();
     void releaseIOSurface();
 	MTLTextureDescriptor* newMTLTextureDescriptor();
-    void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
-    void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
 
     std::vector<std::unique_ptr<MVKImageMemoryBinding>> _memoryBindings;
-	MVKVectorInline<MVKImageSubresource, 1> _subresources;
-	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
+    std::unique_ptr<MVKImagePlane> _plane;
     VkExtent3D _extent;
     uint32_t _mipLevels;
     uint32_t _arrayLayers;
@@ -313,7 +321,6 @@ protected:
     VkImageUsageFlags _usage;
 	MTLPixelFormat _mtlPixelFormat;
 	MTLTextureType _mtlTextureType;
-    id<MTLTexture> _mtlTexture;
     std::mutex _lock;
     IOSurfaceRef _ioSurface;
 	VkDeviceSize _rowByteAlignment;

@@ -2243,15 +2243,17 @@ MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
     MVKImage* mvkImg = (swapchainInfo)
         ? new MVKPeerSwapchainImage(this, pCreateInfo, (MVKSwapchain*)swapchainInfo->swapchain, uint32_t(-1))
         : new MVKImage(this, pCreateInfo);
-    for(auto& memoryBinding : mvkImg->_memoryBindings)
+    for (auto& memoryBinding : mvkImg->_memoryBindings) {
         addResource(memoryBinding.get());
+    }
 	return mvkImg;
 }
 
 void MVKDevice::destroyImage(MVKImage* mvkImg,
 							 const VkAllocationCallbacks* pAllocator) {
-    for(auto& memoryBinding : mvkImg->_memoryBindings)
+    for (auto& memoryBinding : mvkImg->_memoryBindings) {
         removeResource(memoryBinding.get());
+    }
 	mvkImg->destroy();
 }
 
@@ -2280,15 +2282,17 @@ MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const V
 																		 uint32_t swapchainIndex,
 																		 const VkAllocationCallbacks* pAllocator) {
     MVKPresentableSwapchainImage* mvkImg = new MVKPresentableSwapchainImage(this, pCreateInfo, swapchain, swapchainIndex);
-    for(auto& memoryBinding : mvkImg->_memoryBindings)
+    for (auto& memoryBinding : mvkImg->_memoryBindings) {
         addResource(memoryBinding.get());
+    }
     return mvkImg;
 }
 
 void MVKDevice::destroyPresentableSwapchainImage(MVKPresentableSwapchainImage* mvkImg,
 												 const VkAllocationCallbacks* pAllocator) {
-    for(auto& memoryBinding : mvkImg->_memoryBindings)
+    for (auto& memoryBinding : mvkImg->_memoryBindings) {
         removeResource(memoryBinding.get());
+    }
 	mvkImg->destroy();
 }
 

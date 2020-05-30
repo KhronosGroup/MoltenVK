@@ -24,9 +24,7 @@
 
 #import <Metal/Metal.h>
 
-class MVKBuffer;
 class MVKImageMemoryBinding;
-class MVKImage; // TODO: Remove
 
 // TODO: These are inoperable placeholders until VK_KHR_external_memory_metal defines them properly
 static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
@@ -132,9 +130,8 @@ public:
     ~MVKDeviceMemory() override;
 
 protected:
-	friend MVKBuffer;
-    friend MVKImageMemoryBinding;
-    friend MVKImage; // TODO: Remove
+	friend class MVKBuffer;
+    friend class MVKImageMemoryBinding;
 
 	void propogateDebugName() override;
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);
