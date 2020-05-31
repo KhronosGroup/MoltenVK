@@ -189,16 +189,16 @@ public:
 	VkExtent2D getBlockTexelSize(MTLPixelFormat mtlFormat);
 
 	/** Returns the number of planes of the specified chroma-subsampling (YCbCr) VkFormat */
-	uint32_t getChromaSubsamplingPlaneCount(VkFormat vkFormat);
+	uint8_t getChromaSubsamplingPlaneCount(VkFormat vkFormat);
 
 	/** Returns the number of bits per channel of the specified chroma-subsampling (YCbCr) VkFormat */
-	uint32_t getChromaSubsamplingComponentBits(VkFormat vkFormat);
+	uint8_t getChromaSubsamplingComponentBits(VkFormat vkFormat);
 
 	/** Returns the MSLFormatResolution of the specified chroma-subsampling (YCbCr) VkFormat */
 	SPIRV_CROSS_NAMESPACE::MSLFormatResolution getChromaSubsamplingResolution(VkFormat vkFormat);
 
     /** Returns the number of planes, blockTexelSize and bytesPerBlock of each plane of the specified chroma-subsampling (YCbCr) VkFormat into the given arrays */
-    uint32_t getChromaSubsamplingPlanes(VkFormat vkFormat, VkExtent2D blockTexelSize[3], uint32_t bytesPerBlock[3]);
+    uint8_t getChromaSubsamplingPlanes(VkFormat vkFormat, VkExtent2D blockTexelSize[3], uint32_t bytesPerBlock[3]);
 
 	/**
 	 * Returns the size, in bytes, of a texel of the specified Vulkan format.

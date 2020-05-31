@@ -88,7 +88,7 @@ void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
 		}
 		for (auto& mb : _imageMemoryBarriers) {
 			auto* mvkImg = (MVKImage*)mb.image;
-			resources.push_back(mvkImg->getMTLTexture());
+			resources.push_back(mvkImg->getMTLTexture(0)); // TODO: Multi planar images
 		}
 		if ( !resources.empty() ) {
 			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: resources.data()

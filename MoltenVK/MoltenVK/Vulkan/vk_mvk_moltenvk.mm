@@ -115,7 +115,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetMTLTextureMVK(
     id<MTLTexture>                              mtlTexture) {
 
     MVKImage* mvkImg = (MVKImage*)image;
-    return mvkImg->setMTLTexture(mtlTexture);
+    return mvkImg->setMTLTexture(0, mtlTexture); // TODO: Multi planar images
 }
 
 MVK_PUBLIC_SYMBOL void vkGetMTLTextureMVK(
@@ -123,7 +123,7 @@ MVK_PUBLIC_SYMBOL void vkGetMTLTextureMVK(
     id<MTLTexture>*                             pMTLTexture) {
 
     MVKImage* mvkImg = (MVKImage*)image;
-    *pMTLTexture = mvkImg->getMTLTexture();
+    *pMTLTexture = mvkImg->getMTLTexture(0); // TODO: Multi planar images
 }
 
 MVK_PUBLIC_SYMBOL void vkGetMTLBufferMVK(

@@ -236,7 +236,7 @@ VkExtent2D MVKPixelFormats::getBlockTexelSize(MTLPixelFormat mtlFormat) {
     return getVkFormatDesc(mtlFormat).blockTexelSize;
 }
 
-uint32_t MVKPixelFormats::getChromaSubsamplingPlaneCount(VkFormat vkFormat) {
+uint8_t MVKPixelFormats::getChromaSubsamplingPlaneCount(VkFormat vkFormat) {
 	switch (vkFormat) {
 		default:
             return 0;
@@ -277,7 +277,7 @@ uint32_t MVKPixelFormats::getChromaSubsamplingPlaneCount(VkFormat vkFormat) {
 	}
 }
 
-uint32_t MVKPixelFormats::getChromaSubsamplingComponentBits(VkFormat vkFormat) {
+uint8_t MVKPixelFormats::getChromaSubsamplingComponentBits(VkFormat vkFormat) {
     switch (vkFormat) {
 		default:
             return 0;
@@ -361,11 +361,11 @@ SPIRV_CROSS_NAMESPACE::MSLFormatResolution MVKPixelFormats::getChromaSubsampling
 	}
 }
 
-uint32_t MVKPixelFormats::getChromaSubsamplingPlanes(VkFormat vkFormat, VkExtent2D blockTexelSize[3], uint32_t bytesPerBlock[3]) {
-    uint32_t planes = getChromaSubsamplingPlaneCount(vkFormat);
-    uint32_t bits = getChromaSubsamplingComponentBits(vkFormat);
+uint8_t MVKPixelFormats::getChromaSubsamplingPlanes(VkFormat vkFormat, VkExtent2D blockTexelSize[3], uint32_t bytesPerBlock[3]) {
+    uint8_t planes = getChromaSubsamplingPlaneCount(vkFormat);
+    uint8_t bits = getChromaSubsamplingComponentBits(vkFormat);
     SPIRV_CROSS_NAMESPACE::MSLFormatResolution resolution = getChromaSubsamplingResolution(vkFormat);
-    bytesPerBlock[0] = mvkCeilingDivide(bits, 8U);
+    bytesPerBlock[0] = mvkCeilingDivide((uint32_t)bits/8U, 1U);
     switch(resolution) {
         default:
             return 0;

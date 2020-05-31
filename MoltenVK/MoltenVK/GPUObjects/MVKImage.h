@@ -46,8 +46,13 @@ typedef struct {
 class MVKImagePlane {
 
 public:
+    /** Returns the Metal texture underlying this image plane. */
+    id<MTLTexture> getMTLTexture();
+
     /** Returns a Metal texture that interprets the pixels in the specified format. */
     id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
+
+    void releaseMTLTexture();
 
     ~MVKImagePlane();
 
@@ -56,12 +61,15 @@ protected:
     MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
+    void propogateDebugName();
+    MVKImageMemoryBinding* getMemoryBinding() const;
 
-    MVKImagePlane(MVKImage* image);
+    MVKImagePlane(MVKImage* image, uint8_t planeIndex);
 
     friend class MVKImageMemoryBinding;
     friend MVKImage;
     MVKImage* _image;
+    uint8_t _planeIndex;
     id<MTLTexture> _mtlTexture;
     std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     MVKVectorInline<MVKImageSubresource, 1> _subresources;
@@ -111,10 +119,13 @@ protected:
     bool shouldFlushHostMemory();
     VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
     VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
+    uint8_t beginPlaneIndex() const;
+    uint8_t endPlaneIndex() const;
 
-    MVKImageMemoryBinding(MVKDevice* device, MVKImage* image);
+    MVKImageMemoryBinding(MVKDevice* device, MVKImage* image, uint8_t planeIndex);
 
     MVKImage* _image;
+    uint8_t _planeIndex;
     bool _usesTexelBuffer;
 };
 
@@ -141,7 +152,7 @@ public:
     VkImageType getImageType();
 
     /** Returns the Vulkan image format of this image. */
-    VkFormat getVkFormat();
+    VkFormat getVkFormat() { return _vkFormat; };
 
 	/** Returns whether this image has a depth or stencil format. */
 	bool getIsDepthStencil();
@@ -200,13 +211,13 @@ public:
 #pragma mark Resource memory
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
-	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements, uint32_t planeIndex);
+	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements, uint8_t planeIndex);
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
 	VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint32_t planeIndex);
+	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
@@ -221,10 +232,10 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image. */
-	virtual id<MTLTexture> getMTLTexture();
+	virtual id<MTLTexture> getMTLTexture(uint8_t planeIndex);
 
 	/** Returns a Metal texture that interprets the pixels in the specified format. */
-	id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex, MTLPixelFormat mtlPixFmt);
 
     /**
      * Sets this image to use the specified MTLTexture.
@@ -234,7 +245,7 @@ public:
      *
      * If a MTLTexture has already been created for this image, it will be destroyed.
      */
-    VkResult setMTLTexture(id<MTLTexture> mtlTexture);
+    VkResult setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture);
 
     /**
      * Indicates that this VkImage should use an IOSurface to underlay the Metal texture.
@@ -260,7 +271,7 @@ public:
     IOSurfaceRef getIOSurface();
 
 	/** Returns the Metal pixel format of this image. */
-	inline MTLPixelFormat getMTLPixelFormat() { return _mtlPixelFormat; }
+	inline MTLPixelFormat getMTLPixelFormat() { return getPixelFormats()->getMTLPixelFormat(_vkFormat); }
 
 	/** Returns the Metal texture type of this image. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
@@ -308,18 +319,17 @@ protected:
 	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	bool validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
-	id<MTLTexture> newMTLTexture();
     void releaseIOSurface();
 	MTLTextureDescriptor* newMTLTextureDescriptor();
 
     std::vector<std::unique_ptr<MVKImageMemoryBinding>> _memoryBindings;
-    std::unique_ptr<MVKImagePlane> _plane;
+    std::vector<std::unique_ptr<MVKImagePlane>> _planes;
     VkExtent3D _extent;
     uint32_t _mipLevels;
     uint32_t _arrayLayers;
     VkSampleCountFlagBits _samples;
     VkImageUsageFlags _usage;
-	MTLPixelFormat _mtlPixelFormat;
+    VkFormat _vkFormat;
 	MTLTextureType _mtlTextureType;
     std::mutex _lock;
     IOSurfaceRef _ioSurface;
@@ -342,12 +352,12 @@ class MVKSwapchainImage : public MVKImage {
 public:
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint32_t planeIndex) override;
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex) override;
 
 #pragma mark Metal
 
 	/** Returns the Metal texture used by the CAMetalDrawable underlying this image. */
-	id<MTLTexture> getMTLTexture() override;
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex) override;
 
 
 #pragma mark Construction

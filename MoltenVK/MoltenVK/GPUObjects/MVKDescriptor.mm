@@ -276,7 +276,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
-                tb.mtlTexture = imageView->getMTLTexture();
+                tb.mtlTexture = imageView->getMTLTexture(); // TODO: imageView->aspectMask
                 if (imageView) {
                     tb.swizzle = imageView->getPackedSwizzle();
                 } else {
