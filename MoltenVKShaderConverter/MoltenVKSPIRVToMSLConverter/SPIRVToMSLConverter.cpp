@@ -155,12 +155,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isVertexAttributeLocat
     return false;
 }
 
-// Check them all in case inactive VA's duplicate buffers used by active VA's.
-MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isVertexBufferUsed(uint32_t binding) const {
-    for (auto& va : vertexAttributes) {
-        if ((va.binding == binding) && va.isUsedByShader) { return true; }
-    }
-    return false;
+MVK_PUBLIC_SYMBOL uint32_t SPIRVToMSLConversionConfiguration::countVertexAttributesAt(uint32_t binding) const {
+	uint32_t vaCnt = 0;
+	for (auto& va : vertexAttributes) {
+		if ((va.binding == binding) && va.isUsedByShader) { vaCnt++; }
+	}
+	return vaCnt;
 }
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllAttributesAndResourcesUsed() {

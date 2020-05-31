@@ -136,8 +136,11 @@ namespace mvk {
         /** Returns whether the vertex attribute at the specified location is used by the shader. */
         bool isVertexAttributeLocationUsed(uint32_t location) const;
 
+		/** Returns the number of vertex attributes bound to the specified Vulkan buffer binding, and used by the shader. */
+		uint32_t countVertexAttributesAt(uint32_t binding) const;
+
         /** Returns whether the vertex buffer at the specified Vulkan binding is used by the shader. */
-        bool isVertexBufferUsed(uint32_t binding) const;
+		bool isVertexBufferUsed(uint32_t binding) const { return countVertexAttributesAt(binding) > 0; }
 
 		/** Marks all vertex attributes and resources as being used by the shader. */
 		void markAllAttributesAndResourcesUsed();

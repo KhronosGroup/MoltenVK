@@ -184,6 +184,13 @@ protected:
 #pragma mark -
 #pragma mark MVKGraphicsPipeline
 
+/** Describes a buffer binding to accommodate vertex attributes with offsets greater than the stride. */
+struct MVKTranslatedVertexBinding {
+	uint16_t binding;
+	uint16_t translationBinding;
+	uint32_t translationOffset;
+};
+
 typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
 
 /** The number of dynamic states possible in Vulkan. */
@@ -230,6 +237,12 @@ public:
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
 	bool needsTessCtlPatchOutputBuffer() { return _needsTessCtlPatchOutputBuffer; }
 
+	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
+	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) { return _device->getMetalBufferIndexForVertexAttributeBinding(binding); }
+
+	/** Returns the collection of translated vertex bindings. */
+	MVKArrayRef<MVKTranslatedVertexBinding> getTranslatedVertexBindings() { return _translatedVertexBindings.contents(); }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
 						MVKPipelineCache* pipelineCache,
@@ -260,6 +273,7 @@ protected:
     void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo, bool isTessellationVertexPipeline = false);
     bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
 	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name, uint32_t reservedBuffers);
+	uint32_t getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
@@ -272,6 +286,7 @@ protected:
 
 	MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports;
 	MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
+	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 
 	MTLComputePipelineDescriptor* _mtlTessControlStageDesc = nil;
 

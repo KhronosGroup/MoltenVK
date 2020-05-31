@@ -953,36 +953,9 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
         }
     }
 
-    // Vertex attributes
-    uint32_t vaCnt = pVI->vertexAttributeDescriptionCount;
-	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;
-    for (uint32_t i = 0; i < vaCnt; i++) {
-        const VkVertexInputAttributeDescription* pVKVA = &pVI->pVertexAttributeDescriptions[i];
-        if (shaderContext.isVertexAttributeLocationUsed(pVKVA->location)) {
-
-			// Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
-			// Only check non-zero offsets, as it's common for both to be zero when step rate is instance.
-			if (pVKVA->offset > 0) {
-				const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
-				for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
-					if (pVKVB->binding == pVKVA->binding) {
-						if (pVKVA->offset >= pVKVB->stride) {
-							setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute offsets must not exceed the vertex buffer stride."));
-							return false;
-						}
-						break;
-					}
-				}
-			}
-
-			MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
-            vaDesc.format = getPixelFormats()->getMTLVertexFormat(pVKVA->format);
-            vaDesc.bufferIndex = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVA->binding);
-            vaDesc.offset = pVKVA->offset;
-        }
-    }
-
     // Vertex buffer bindings
+	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;
+	uint32_t maxBinding = 0;
     for (uint32_t i = 0; i < vbCnt; i++) {
         const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
         if (shaderContext.isVertexBufferUsed(pVKVB->binding)) {
@@ -994,7 +967,8 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
                 return false;
             }
 
-			uint32_t vbIdx = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+			maxBinding = max(pVKVB->binding, maxBinding);
+			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 			MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
 			vbDesc.stride = (pVKVB->stride == 0) ? sizeof(simd::float4) : pVKVB->stride;      // Vulkan allows zero stride but Metal doesn't. Default to float4
             vbDesc.stepFunction = mvkMTLVertexStepFunctionFromVkVertexInputRate(pVKVB->inputRate);
@@ -1007,7 +981,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
         vbCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
         for (uint32_t i = 0; i < vbCnt; i++) {
             const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
-            uint32_t vbIdx = _device->getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+            uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
             if (shaderContext.isVertexBufferUsed(vbIdx)) {
                 MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
                 if (vbDesc.stepFunction == MTLVertexStepFunctionPerInstance) {
@@ -1019,7 +993,91 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
         }
     }
 
+	// Vertex attributes
+	uint32_t vaCnt = pVI->vertexAttributeDescriptionCount;
+	for (uint32_t i = 0; i < vaCnt; i++) {
+		const VkVertexInputAttributeDescription* pVKVA = &pVI->pVertexAttributeDescriptions[i];
+		if (shaderContext.isVertexAttributeLocationUsed(pVKVA->location)) {
+			uint32_t vaBinding = pVKVA->binding;
+			uint32_t vaOffset = pVKVA->offset;
+
+			// Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
+			// If this is the case, fetch an a translated artificial buffer binding, using the same MTLBuffer,
+			// but that is translated so that the reduced VA offset fits into the binding stride.
+			// Only check non-zero offsets, as it's common for both to be zero when step rate is instance.
+			if (vaOffset > 0) {
+				const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
+				for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
+					if (pVKVB->binding == pVKVA->binding) {
+						if (vaOffset >= pVKVB->stride) {
+							// Move vertex attribute offset into the stride. This vertex attribute may be
+							// combined with other vertex attributes into the same translated buffer binding.
+							// But if the reduced offset combined with the vertex attribute size still won't
+							// fit into the buffer binding stride, force the vertex attribute offset to zero,
+							// effectively dedicating this vertex attribute to its own buffer binding.
+							uint32_t origOffset = vaOffset;
+							vaOffset %= pVKVB->stride;
+							if (vaOffset + getPixelFormats()->getBytesPerBlock(pVKVA->format) > pVKVB->stride) {
+								vaOffset = 0;
+							}
+							vaBinding = getTranslatedVertexBinding(vaBinding, origOffset - vaOffset, maxBinding);
+						}
+						break;
+					}
+				}
+			}
+
+			MTLVertexAttributeDescriptor* vaDesc = plDesc.vertexDescriptor.attributes[pVKVA->location];
+			vaDesc.format = getPixelFormats()->getMTLVertexFormat(pVKVA->format);
+			vaDesc.bufferIndex = getMetalBufferIndexForVertexAttributeBinding(vaBinding);
+			vaDesc.offset = vaOffset;
+		}
+	}
+
+	// Run through the vertex bindings. Add a new Metal vertex layout for each translated binding,
+	// identical to the original layout. The translated binding will index into the same MTLBuffer,
+	// but at an offset that is one or more strides away from the original.
+	for (uint32_t i = 0; i < vbCnt; i++) {
+		const VkVertexInputBindingDescription* pVKVB = &pVI->pVertexBindingDescriptions[i];
+		uint32_t vbVACnt = shaderContext.countVertexAttributesAt(pVKVB->binding);
+		if (vbVACnt > 0) {
+			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+			MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
+
+			uint32_t xldtVACnt = 0;
+			for (auto& xltdBind : _translatedVertexBindings) {
+				if (xltdBind.binding == pVKVB->binding) {
+					uint32_t vbXltdIdx = getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding);
+					MTLVertexBufferLayoutDescriptor* vbXltdDesc = plDesc.vertexDescriptor.layouts[vbXltdIdx];
+					vbXltdDesc.stride = vbDesc.stride;
+					vbXltdDesc.stepFunction = vbDesc.stepFunction;
+					vbXltdDesc.stepRate = vbDesc.stepRate;
+					xldtVACnt++;
+				}
+			}
+
+			// If all of the vertex attributes at this vertex buffer binding have been translated, remove it.
+			if (xldtVACnt == vbVACnt) { vbDesc.stride = 0; }
+		}
+	}
+
 	return true;
+}
+
+// Returns a translated binding for the existing binding and translation offset, creating it if needed.
+uint32_t MVKGraphicsPipeline::getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding) {
+	// See if a translated binding already exists (for example if more than one VA needs the same translation).
+	for (auto& xltdBind : _translatedVertexBindings) {
+		if (xltdBind.binding == binding && xltdBind.translationOffset == translationOffset) {
+			return xltdBind.translationBinding;
+		}
+	}
+
+	// Get next available binding point and add a translation binding description for it
+	uint16_t xltdBindPt = (uint16_t)(maxBinding + _translatedVertexBindings.size() + 1);
+	_translatedVertexBindings.push_back( {.binding = (uint16_t)binding, .translationBinding = xltdBindPt, .translationOffset = translationOffset} );
+
+	return xltdBindPt;
 }
 
 void MVKGraphicsPipeline::addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc,

@@ -30,6 +30,7 @@ Released 2020/06/01
 - `MVKPipeline` disable fragment shader outputs for unused attachments.
 - `MVKBuffer` support texel buffers in host-coherent memory on Mac.
 - `MVKDescriptor` pass buffers to shaders that do atomic image accesses.
+- Support vertex attribute offsets larger than the vertex buffer stride.
 - Fix crash when more than two GPUs.
 - Fix issue where `vkGetPhysicalDeviceFormatProperties()` incorrectly returned 
   properties for unsupported formats.
