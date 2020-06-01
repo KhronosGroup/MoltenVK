@@ -500,7 +500,7 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 				if (_buffRange == VK_WHOLE_SIZE)
 					bb.size = (uint32_t)(_mvkBuffer->getByteCount() - bb.offset);
 				else
-					bb.size = _buffRange;
+					bb.size = (uint32_t)_buffRange;
 			}
 			for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
 				if (stages[i]) {
