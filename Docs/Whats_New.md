@@ -43,6 +43,7 @@ Released 2020/06/01
 - Reinstate `VulkanSamples API-Samples` demo apps and add 
   `input_attachment` and `push_descriptors` demos.
 - Add `MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE` environment variable 
+  to support capturing GPU traces to a file.
 - Consolidate frame and non-frame performance reporting.
 	- Remove `vkGetSwapchainPerformanceMVK()` from API.
 	- Swapchain performance can be retrieved with other activity performance 
@@ -50,7 +51,6 @@ Released 2020/06/01
 	- Add `MVK_CONFIG_PERFORMANCE_LOGGING_INLINE` env var to enable/disable
 	  logging of performance of each activity when it happens. 
 	- Reduce thread locking on performance statistics collection.
-  to support capturing GPU traces to a file.
 - Numerous documentation typo corrections.
 - Support Xcode 11.5.
 - Update to latest SPIRV-Cross version:
