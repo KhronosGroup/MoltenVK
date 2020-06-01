@@ -91,7 +91,7 @@ public:
 	 * to coherent memory can be forced by setting evenIfCoherent to true.
 	 *
 	 * If pBlitEnc is not null, it points to a holder for a MTLBlitCommandEncoder and its
-	 * assocated MTLCommandBuffer. If this instance has a MTLBuffer using managed memory,
+	 * associated MTLCommandBuffer. If this instance has a MTLBuffer using managed memory,
 	 * this function may call synchronizeResource: on the MTLBlitCommandEncoder to
 	 * synchronize the GPU contents to the CPU. If the contents of the pBlitEnc do not
 	 * include a MTLBlitCommandEncoder and MTLCommandBuffer, this function will create
