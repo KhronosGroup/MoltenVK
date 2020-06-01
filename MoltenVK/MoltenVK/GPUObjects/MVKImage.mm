@@ -1231,6 +1231,16 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 
 	// If we have an identity swizzle, we're all good.
 	if (SWIZZLE_MATCHES(R, G, B, A)) {
+		// Change to stencil-only format if only stencil aspect is requested
+		if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+			if (mtlPixFmt == MTLPixelFormatDepth32Float_Stencil8)
+				mtlPixFmt = MTLPixelFormatX32_Stencil8;
+#if MVK_MACOS
+			else if (mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8)
+				mtlPixFmt = MTLPixelFormatX24_Stencil8;
+#endif
+		}
+
 		return VK_SUCCESS;
 	}
 

@@ -148,7 +148,11 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 MVKBuffer* buffer = (MVKBuffer*)bufferInfo.buffer;
                 bb.mtlBuffer = buffer->getMTLBuffer();
                 bb.offset = buffer->getMTLBufferOffset() + bufferInfo.offset;
-				bb.size = (uint32_t)buffer->getByteCount();
+                if (bufferInfo.range == VK_WHOLE_SIZE)
+                    bb.size = (uint32_t)(buffer->getByteCount() - bb.offset);
+                else
+                    bb.size = (uint32_t)bufferInfo.range;
+
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
                         bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
@@ -493,7 +497,10 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 			if (_mvkBuffer) {
 				bb.mtlBuffer = _mvkBuffer->getMTLBuffer();
 				bb.offset = _mvkBuffer->getMTLBufferOffset() + _buffOffset + bufferDynamicOffset;
-				bb.size = (uint32_t)_mvkBuffer->getByteCount();
+				if (_buffRange == VK_WHOLE_SIZE)
+					bb.size = (uint32_t)(_mvkBuffer->getByteCount() - bb.offset);
+				else
+					bb.size = _buffRange;
 			}
 			for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
 				if (stages[i]) {
