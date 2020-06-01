@@ -88,7 +88,15 @@ void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
 		}
 		for (auto& mb : _imageMemoryBarriers) {
 			auto* mvkImg = (MVKImage*)mb.image;
-			resources.push_back(mvkImg->getMTLTexture(0)); // TODO: Multi planar images
+            if (mb.subresourceRange.aspectMask & (VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT)) {
+                for (uint8_t planeIndex = 0; planeIndex < 3; planeIndex++) {
+                    if (mb.subresourceRange.aspectMask & (VK_IMAGE_ASPECT_PLANE_0_BIT << planeIndex)) {
+                        resources.push_back(mvkImg->getMTLTexture(planeIndex));
+                    }
+                }
+            } else {
+                resources.push_back(mvkImg->getMTLTexture(0));
+            }
 		}
 		if ( !resources.empty() ) {
 			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: resources.data()

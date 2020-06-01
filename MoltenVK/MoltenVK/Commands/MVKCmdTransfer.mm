@@ -164,14 +164,15 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 	// dest pixel format through a texture view on the source texture. If the source and dest
 	// pixel formats are the same, this will simply degenerate to the source texture itself.
 	MTLPixelFormat mapSrcMTLPixFmt = (_useTempBuffer ? _srcImage : _dstImage)->getMTLPixelFormat();
-	id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(0, mapSrcMTLPixFmt); // TODO: Multi planar images
-	id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(0); // TODO: Multi planar images
-	if ( !srcMTLTex || !dstMTLTex ) { return; }
 
 	id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(_commandUse);
 
 	// If copies can be performed using direct texture-texture copying, do so
 	for (auto& cpyRgn : _imageCopyRegions) {
+        id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.srcSubresource.aspectMask), mapSrcMTLPixFmt);
+        id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.dstSubresource.aspectMask));
+        if ( !srcMTLTex || !dstMTLTex ) { continue; }
+        
 		uint32_t  srcLevel = cpyRgn.srcSubresource.mipLevel;
 		MTLOrigin srcOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.srcOffset);
 		MTLSize   srcSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(cpyRgn.extent),
@@ -380,18 +381,16 @@ void MVKCmdBlitImage::encode(MVKCommandEncoder* cmdEncoder) {
 
 		cmdEncoder->endCurrentMetalEncoding();
 
-		id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(0); // TODO: Multi planar images
-		id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(0); // TODO: Multi planar images
-		if ( !srcMTLTex || !dstMTLTex ) { return; }
-
-		MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = _mtlRenderPassDescriptor.colorAttachments[0];
-		mtlColorAttDesc.texture = dstMTLTex;
-
 		uint32_t vtxBuffIdx = cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
 		id<MTLRenderPipelineState> mtlRPS = cmdEncoder->getCommandEncodingPool()->getCmdBlitImageMTLRenderPipelineState(_blitKey);
 
 		for (auto& bltRend : _mvkImageBlitRenders) {
-
+            id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(bltRend.region.srcSubresource.aspectMask));
+            id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(bltRend.region.dstSubresource.aspectMask));
+            if ( !srcMTLTex || !dstMTLTex ) { continue; }
+            
+            MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = _mtlRenderPassDescriptor.colorAttachments[0];
+            mtlColorAttDesc.texture = dstMTLTex;
 			mtlColorAttDesc.level = bltRend.region.dstSubresource.mipLevel;
 
 			uint32_t layCnt = bltRend.region.srcSubresource.layerCount;
@@ -566,8 +565,8 @@ void MVKCmdResolveImage::addResolveSlices(const VkImageResolve& resolveRegion) {
 void MVKCmdResolveImage::encode(MVKCommandEncoder* cmdEncoder) {
     MVKImage* xfrImage = cmdEncoder->getCommandEncodingPool()->getTransferMVKImage(_transferImageData);
 
-    id<MTLTexture> xfrMTLTex = xfrImage->getMTLTexture(0); // TODO: Multi planar images
-    id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(0); // TODO: Multi planar images
+    id<MTLTexture> xfrMTLTex = xfrImage->getMTLTexture(0);
+    id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(0);
     if ( !xfrMTLTex || !dstMTLTex ) { return; }
 
     // Expand the current content of the destination image to the temporary transfer image.
@@ -752,8 +751,7 @@ VkResult MVKCmdBufferImageCopy::setContent(MVKCommandBuffer* cmdBuff,
 
 void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
     id<MTLBuffer> mtlBuffer = _buffer->getMTLBuffer();
-    id<MTLTexture> mtlTexture = _image->getMTLTexture(0); // TODO: Multi planar images
-    if ( !mtlBuffer || !mtlTexture ) { return; }
+    if ( !mtlBuffer ) { return; }
 
 	NSUInteger mtlBuffOffsetBase = _buffer->getMTLBufferOffset();
     MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat();
@@ -761,6 +759,8 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 
     for (auto& cpyRgn : _bufferImageCopyRegions) {
+        id<MTLTexture> mtlTexture = _image->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.imageSubresource.aspectMask));
+        if ( !mtlTexture ) { continue; }
 
 		uint32_t mipLevel = cpyRgn.imageSubresource.mipLevel;
         MTLOrigin mtlTxtOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.imageOffset);
@@ -1128,9 +1128,6 @@ VkResult MVKCmdClearImage::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
-	id<MTLTexture> imgMTLTex = _image->getMTLTexture(0); // TODO: Multi planar images
-    if ( !imgMTLTex ) { return; }
-
 	NSString* mtlRendEncName = (_isDepthStencilClear
 								? mvkMTLRenderCommandEncoderLabel(kMVKCommandUseClearDepthStencilImage)
 								: mvkMTLRenderCommandEncoderLabel(kMVKCommandUseClearColorImage));
@@ -1139,6 +1136,8 @@ void MVKCmdClearImage::encode(MVKCommandEncoder* cmdEncoder) {
 
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 	for (auto& srRange : _subresourceRanges) {
+        id<MTLTexture> imgMTLTex = _image->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(srRange.aspectMask));
+        if ( !imgMTLTex ) { continue; }
 
 		MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
 		MTLRenderPassColorAttachmentDescriptor* mtlRPCADesc = nil;

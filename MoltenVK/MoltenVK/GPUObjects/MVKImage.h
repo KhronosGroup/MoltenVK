@@ -57,6 +57,7 @@ public:
     ~MVKImagePlane();
 
 protected:
+    MTLTextureDescriptor* newMTLTextureDescriptor();
     void initSubresources(const VkImageCreateInfo* pCreateInfo);
     MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
@@ -143,6 +144,9 @@ public:
 
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT; }
+
+    /** Returns the plane index of VkImageAspectFlags. */
+    static uint8_t getPlaneFromVkImageAspectFlags(VkImageAspectFlags aspectMask);
 
 	/**
 	 * Returns the Vulkan image type of this image.
@@ -320,7 +324,6 @@ protected:
 	bool validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
     void releaseIOSurface();
-	MTLTextureDescriptor* newMTLTextureDescriptor();
 
     std::vector<std::unique_ptr<MVKImageMemoryBinding>> _memoryBindings;
     std::vector<std::unique_ptr<MVKImagePlane>> _planes;
