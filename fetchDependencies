@@ -4,7 +4,7 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [-v] [--debug] [--skip-spirv-tools-build]
+# macOS usage: ./fetchDependencies [-v] [--debug] [--build-spirv-tools]
 #                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
 #
 #      --debug
@@ -16,10 +16,15 @@
 #              This repository does need to be built and the build directory must be in the
 #              specified directory. It should be built the same way this script builds it.
 #
-#      --skip-spirv-tools-build
-#              Skip the spirv-tools build and install a template of pre-generated SPIRV-Tools header files
-#              instead. The primary purpose of this is to allow Travis CI to skip the SPIRV-Tools build
-#              because Travis cannot support the required use of Python3 by the SPIRV-Tools build.
+#      --build-spirv-tools
+#              Build the full spirv-tools distribution. Normally this is not needed, because
+#              MoltenVK includes a template of pre-generated SPIRV-Tools header files, which
+#              is all that is needed. Avoiding the spirv-tools build saves significant time
+#              during the running of this script, and is necessary during CI because Travis CI
+#              cannot support the required use of Python3 by the spirv-tools build. This flag
+#              is used by the packagePregenSpirvToolsHeaders script which regenerates the
+#              spirv-tools header files and repackages the Templates/spirv-tools/build.zip
+#              file when the spirv-tools library version is upgraded.
 #
 #      --spirv-cross-root path
 #              "path" specifies a directory path to a KhronosGroup/SPIRV-Cross repository.
@@ -41,7 +46,7 @@ XC_BUILD_VERBOSITY="-quiet"
 V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
 GLSLANG_ROOT=""
-SKIP_SPV_TLS_BLD=""
+BLD_SPV_TLS=""
 
 while (( "$#" )); do
   case "$1" in
@@ -53,8 +58,12 @@ while (( "$#" )); do
          XC_BUILD_VERBOSITY=""
          shift 1
          ;;
-       --skip-spirv-tools-build)
-         SKIP_SPV_TLS_BLD="Y"
+       --build-spirv-tools)
+         BLD_SPV_TLS="Y"
+         shift 1
+         ;;
+       --skip-spirv-tools-build)	#deprecated
+         BLD_SPV_TLS=""
          shift 1
          ;;
        --v-headers-root)
@@ -226,11 +235,11 @@ fi
 
 # Build the embedded spirv-tools, or use option of pre-generated headers
 SPV_TLS_DIR="${REPO_NAME}/External/spirv-tools"
-if [ ! "$SKIP_SPV_TLS_BLD" = "" ]; then
+if [ "$BLD_SPV_TLS" = "Y" ]; then
+	build_repo "${SPV_TLS_DIR}"
+else
 	unzip -o -q -d "${SPV_TLS_DIR}" ../Templates/spirv-tools/build.zip
 	rm -rf "${SPV_TLS_DIR}/__MACOSX"
-else
-	build_repo "${SPV_TLS_DIR}"
 fi
 
 
