@@ -269,7 +269,8 @@ public:
 	MTLTextureUsage getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
 									   MTLPixelFormat mtlFormat,
 									   MTLTextureUsage minUsage = MTLTextureUsageUnknown,
-									   VkBool32 allowImageCopyFormatReinterpretation = true);
+									   VkBool32 allowImageCopyFormatReinterpretation = true,
+									   VkBool32 nativeTextureSwizzle = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
 	void enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);

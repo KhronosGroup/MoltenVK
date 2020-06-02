@@ -431,7 +431,7 @@ MTLTextureDescriptor* MVKImage::newMTLTextureDescriptor() {
 	mtlTexDesc.mipmapLevelCount = _mipLevels;
 	mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_samples);
 	mtlTexDesc.arrayLength = _arrayLayers;
-	mtlTexDesc.usageMVK = getPixelFormats()->getMTLTextureUsage(_usage, mtlPixFmt, minUsage, _device->_pMVKConfig->allowImageCopyFormatReinterpretation);
+	mtlTexDesc.usageMVK = getPixelFormats()->getMTLTextureUsage(_usage, mtlPixFmt, minUsage, _device->_pMVKConfig->allowImageCopyFormatReinterpretation, _device->_pMetalFeatures->nativeTextureSwizzle);
 	mtlTexDesc.storageModeMVK = getMTLStorageMode();
 	mtlTexDesc.cpuCacheMode = getMTLCPUCacheMode();
 
@@ -1234,73 +1234,75 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 		return VK_SUCCESS;
 	}
 
-	switch (mtlPixFmt) {
-		case MTLPixelFormatR8Unorm:
-			if (SWIZZLE_MATCHES(ZERO, ANY, ANY, R)) {
-				mtlPixFmt = MTLPixelFormatA8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatA8Unorm:
-			if (SWIZZLE_MATCHES(A, ANY, ANY, ZERO)) {
-				mtlPixFmt = MTLPixelFormatR8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatRGBA8Unorm:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				mtlPixFmt = MTLPixelFormatBGRA8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatRGBA8Unorm_sRGB:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				mtlPixFmt = MTLPixelFormatBGRA8Unorm_sRGB;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatBGRA8Unorm:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				mtlPixFmt = MTLPixelFormatRGBA8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatBGRA8Unorm_sRGB:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				mtlPixFmt = MTLPixelFormatRGBA8Unorm_sRGB;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatDepth32Float_Stencil8:
-			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-				mtlPixFmt = MTLPixelFormatX32_Stencil8;
-				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+	if (!hasNativeSwizzleSupport) { // Always use swizzle if we can if it's supported.
+		switch (mtlPixFmt) {
+			case MTLPixelFormatR8Unorm:
+				if (SWIZZLE_MATCHES(ZERO, ANY, ANY, R)) {
+					mtlPixFmt = MTLPixelFormatA8Unorm;
 					return VK_SUCCESS;
 				}
-			}
-			break;
+				break;
 
-#if MVK_MACOS
-		case MTLPixelFormatDepth24Unorm_Stencil8:
-			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
-				mtlPixFmt = MTLPixelFormatX24_Stencil8;
-				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+			case MTLPixelFormatA8Unorm:
+				if (SWIZZLE_MATCHES(A, ANY, ANY, ZERO)) {
+					mtlPixFmt = MTLPixelFormatR8Unorm;
 					return VK_SUCCESS;
 				}
-			}
-			break;
-#endif
+				break;
 
-		default:
-			break;
+			case MTLPixelFormatRGBA8Unorm:
+				if (SWIZZLE_MATCHES(B, G, R, A)) {
+					mtlPixFmt = MTLPixelFormatBGRA8Unorm;
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatRGBA8Unorm_sRGB:
+				if (SWIZZLE_MATCHES(B, G, R, A)) {
+					mtlPixFmt = MTLPixelFormatBGRA8Unorm_sRGB;
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatBGRA8Unorm:
+				if (SWIZZLE_MATCHES(B, G, R, A)) {
+					mtlPixFmt = MTLPixelFormatRGBA8Unorm;
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatBGRA8Unorm_sRGB:
+				if (SWIZZLE_MATCHES(B, G, R, A)) {
+					mtlPixFmt = MTLPixelFormatRGBA8Unorm_sRGB;
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatDepth32Float_Stencil8:
+				// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
+				if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+					mtlPixFmt = MTLPixelFormatX32_Stencil8;
+					if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+						return VK_SUCCESS;
+					}
+				}
+				break;
+
+	#if MVK_MACOS
+			case MTLPixelFormatDepth24Unorm_Stencil8:
+				// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
+				if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+					mtlPixFmt = MTLPixelFormatX24_Stencil8;
+					if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+						return VK_SUCCESS;
+					}
+				}
+				break;
+	#endif
+
+			default:
+				break;
+		}
 	}
 
 	// No format transformation swizzles were found, so we'll need to use either native or shader swizzling.

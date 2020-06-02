@@ -568,6 +568,9 @@ typedef struct {
 	 * involve format reinterpretation so it can avoid setting MTLTextureUsagePixelFormatView.  Performing
 	 * format reinterpreting copies with this disabled will fail.
 	 *
+	 * This option only makes a difference if MVKPhysicalDeviceMetalFeatures.nativeTextureSwizzle is true,
+	 * since otherwise pixel format conversions are needed for handling swizzles and not just image copies.
+	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
 	 *
