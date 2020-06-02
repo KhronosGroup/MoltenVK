@@ -39,6 +39,7 @@ Released 2020/06/01
 - Fix buffer offset calculation.
 - Fixes to maximum FPS calculations.
 - Fix buffer size passed to shaders when `VkDescriptorBufferInfo.range` set to `VK_WHOLE_SIZE`.
+- Update maximum number of framebuffer layers to 2048.
 - Support stencil only image formats in identity swizzle case.
 - Enables format atomic capabilities only when format supports it.
 - Add `MVKSmallVector` as a more memory efficient substitute of `MVKVector`.

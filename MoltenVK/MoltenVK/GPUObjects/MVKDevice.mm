@@ -867,6 +867,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	_metalFeatures.pushConstantSizeAlignment = 16;     // Min float4 alignment for typical uniform structs.
 
+	_metalFeatures.maxTextureLayers = (2 * KIBI);
+
 	_metalFeatures.ioSurfaces = MVK_SUPPORT_IOSURFACE_BOOL;
 
 	// Metal supports 2 or 3 concurrent CAMetalLayer drawables.
@@ -1235,7 +1237,7 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxImageDimensionCube = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxFramebufferWidth = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxFramebufferHeight = _metalFeatures.maxTextureDimension;
-	_properties.limits.maxFramebufferLayers = _metalFeatures.layeredRendering ?  256 : 1;
+	_properties.limits.maxFramebufferLayers = _metalFeatures.layeredRendering ? _metalFeatures.maxTextureLayers : 1;
 
     _properties.limits.maxViewportDimensions[0] = _metalFeatures.maxTextureDimension;
     _properties.limits.maxViewportDimensions[1] = _metalFeatures.maxTextureDimension;
@@ -1244,8 +1246,8 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.viewportBoundsRange[1] = (2.0 * maxVPDim) - 1;
     _properties.limits.maxViewports = _features.multiViewport ? kMVKCachedViewportScissorCount : 1;
 
-	_properties.limits.maxImageDimension3D = (2 * KIBI);
-	_properties.limits.maxImageArrayLayers = (2 * KIBI);
+	_properties.limits.maxImageDimension3D = _metalFeatures.maxTextureLayers;
+	_properties.limits.maxImageArrayLayers = _metalFeatures.maxTextureLayers;
 	_properties.limits.maxSamplerAnisotropy = 16;
 
     _properties.limits.maxVertexInputAttributes = 31;
