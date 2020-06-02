@@ -38,6 +38,9 @@ Released 2020/06/01
 - Fix situation where compute pipeline state not retained across copy and renderpass operations.
 - Fix buffer offset calculation.
 - Fixes to maximum FPS calculations.
+- Fix buffer size passed to shaders when `VkDescriptorBufferInfo.range` set to `VK_WHOLE_SIZE`.
+- Update maximum number of framebuffer layers to 2048.
+- Support stencil only image formats in identity swizzle case.
 - Enables format atomic capabilities only when format supports it.
 - Add `MVKSmallVector` as a more memory efficient substitute of `MVKVector`.
 - Reinstate `VulkanSamples API-Samples` demo apps and add 
@@ -53,6 +56,7 @@ Released 2020/06/01
 	- Reduce thread locking on performance statistics collection.
 - Numerous documentation typo corrections.
 - Support Xcode 11.5.
+- Update dependency libraries to match *Vulkan SDK 1.2.141*.
 - Update to latest SPIRV-Cross version:
 	- MSL: mark `BuiltInFragCoord` as implicitly used for subpass reads.
 	- MSL: Deal with cases where builtin is implicitly needed, declared, but unused.
