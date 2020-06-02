@@ -169,15 +169,17 @@ void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
 
 	// If copies can be performed using direct texture-texture copying, do so
 	for (auto& cpyRgn : _imageCopyRegions) {
-        id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.srcSubresource.aspectMask), mapSrcMTLPixFmt);
-        id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.dstSubresource.aspectMask));
+        uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.srcSubresource.aspectMask);
+        uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.dstSubresource.aspectMask);
+        id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(srcPlaneIndex, mapSrcMTLPixFmt);
+        id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(dstPlaneIndex);
         if ( !srcMTLTex || !dstMTLTex ) { continue; }
         
 		uint32_t  srcLevel = cpyRgn.srcSubresource.mipLevel;
 		MTLOrigin srcOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.srcOffset);
 		MTLSize   srcSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(cpyRgn.extent),
 											srcOrigin,
-											mvkMTLSizeFromVkExtent3D(_srcImage->getExtent3D(srcLevel)));
+											mvkMTLSizeFromVkExtent3D(_srcImage->getExtent3D(srcPlaneIndex, srcLevel)));
 		uint32_t  dstLevel = cpyRgn.dstSubresource.mipLevel;
 		MTLOrigin dstOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.dstOffset);
 		uint32_t  srcBaseLayer = cpyRgn.srcSubresource.baseArrayLayer;
@@ -318,8 +320,10 @@ void MVKCmdBlitImage::populateVertices(MVKVertexPosTex* vertices, const VkImageB
     const VkOffset3D& do1 = region.dstOffsets[1];
 
     // Get the extents of the source and destination textures.
-    VkExtent3D srcExtent = _srcImage->getExtent3D(region.srcSubresource.mipLevel);
-    VkExtent3D dstExtent = _dstImage->getExtent3D(region.dstSubresource.mipLevel);
+    uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region.srcSubresource.aspectMask);
+    uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(region.dstSubresource.aspectMask);
+    VkExtent3D srcExtent = _srcImage->getExtent3D(srcPlaneIndex, region.srcSubresource.mipLevel);
+    VkExtent3D dstExtent = _dstImage->getExtent3D(dstPlaneIndex, region.dstSubresource.mipLevel);
 
     // Determine the bottom-left and top-right corners of the source and destination
     // texture regions, each as a fraction of the corresponding texture size.
@@ -504,9 +508,11 @@ VkResult MVKCmdResolveImage::setContent(MVKCommandBuffer* cmdBuff,
  * as the source image of this command.
  */
 void MVKCmdResolveImage::addExpansionRegion(const VkImageResolve& resolveRegion) {
+    uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(resolveRegion.srcSubresource.aspectMask);
+    uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(resolveRegion.dstSubresource.aspectMask);
     uint32_t mipLvl = resolveRegion.dstSubresource.mipLevel;
-    VkExtent3D srcImgExt = _srcImage->getExtent3D(mipLvl);
-    VkExtent3D dstImgExt = _dstImage->getExtent3D(mipLvl);
+    VkExtent3D srcImgExt = _srcImage->getExtent3D(srcPlaneIndex, mipLvl);
+    VkExtent3D dstImgExt = _dstImage->getExtent3D(dstPlaneIndex, mipLvl);
 
     // No need to add an expansion region if the entire content of
     // the source image is being resolved to the destination image.
@@ -759,14 +765,15 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 
     for (auto& cpyRgn : _bufferImageCopyRegions) {
-        id<MTLTexture> mtlTexture = _image->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.imageSubresource.aspectMask));
+        uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.imageSubresource.aspectMask);
+        id<MTLTexture> mtlTexture = _image->getMTLTexture(planeIndex);
         if ( !mtlTexture ) { continue; }
 
 		uint32_t mipLevel = cpyRgn.imageSubresource.mipLevel;
         MTLOrigin mtlTxtOrigin = mvkMTLOriginFromVkOffset3D(cpyRgn.imageOffset);
 		MTLSize mtlTxtSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(cpyRgn.imageExtent),
 											 mtlTxtOrigin,
-											 mvkMTLSizeFromVkExtent3D(_image->getExtent3D(mipLevel)));
+											 mvkMTLSizeFromVkExtent3D(_image->getExtent3D(planeIndex, mipLevel)));
 		NSUInteger mtlBuffOffset = mtlBuffOffsetBase + cpyRgn.bufferOffset;
 
         uint32_t buffImgWd = cpyRgn.bufferRowLength;

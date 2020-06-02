@@ -185,7 +185,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
-                tb.mtlTexture = imageView->getMTLTexture(); // TODO: imageView->aspectMask
+                tb.mtlTexture = imageView->getMTLTexture();
                 if (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE) {
                     tb.swizzle = imageView->getPackedSwizzle();
                 } else {
@@ -276,7 +276,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
-                tb.mtlTexture = imageView->getMTLTexture(); // TODO: imageView->aspectMask
+                tb.mtlTexture = imageView->getMTLTexture();
                 if (imageView) {
                     tb.swizzle = imageView->getPackedSwizzle();
                 } else {

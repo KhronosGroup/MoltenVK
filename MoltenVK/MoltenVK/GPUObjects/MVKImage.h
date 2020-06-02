@@ -71,6 +71,9 @@ protected:
     friend MVKImage;
     MVKImage* _image;
     uint8_t _planeIndex;
+    VkExtent2D _blockTexelSize;
+    uint32_t _bytesPerBlock;
+    MTLPixelFormat _mtlPixFmt;
     id<MTLTexture> _mtlTexture;
     std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
     MVKVectorInline<MVKImageSubresource, 1> _subresources;
@@ -174,7 +177,7 @@ public:
 	 * Returns the 3D extent of this image at the specified mipmap level. 
 	 * For 2D or cube images, the Z component will be 1.
 	 */
-	VkExtent3D getExtent3D(uint32_t mipLevel);
+	VkExtent3D getExtent3D(uint32_t planeIndex, uint32_t mipLevel);
 
 	/** Returns the number of mipmap levels in this image. */
 	inline uint32_t getMipLevelCount() { return _mipLevels; }
@@ -194,7 +197,7 @@ public:
       * For compressed formats, this is the number of bytes in a row of blocks, which
       * will typically span more than one row of texels.
 	  */
-	VkDeviceSize getBytesPerRow(uint32_t mipLevel);
+	VkDeviceSize getBytesPerRow(uint32_t planeIndex, uint32_t mipLevel);
 
 	/**
 	 * Returns the number of bytes per image layer (for cube, array, or 3D images) 
@@ -202,7 +205,7 @@ public:
 	 * of bytes per row (as returned by the getBytesPerRow() function, multiplied by 
 	 * the height of each 2D image.
 	 */
-	VkDeviceSize getBytesPerLayer(uint32_t mipLevel);
+	VkDeviceSize getBytesPerLayer(uint32_t planeIndex, uint32_t mipLevel);
 
 	/** Populates the specified layout for the specified sub-resource. */
 	VkResult getSubresourceLayout(const VkImageSubresource* pSubresource,
@@ -340,6 +343,7 @@ protected:
     bool _isDepthStencilAttachment;
 	bool _canSupportMTLTextureView;
     bool _hasExpectedTexelSize;
+    bool _hasChromaSubsampling;
 	bool _isLinear;
 	bool _is3DCompressed;
 	bool _isAliasable;
