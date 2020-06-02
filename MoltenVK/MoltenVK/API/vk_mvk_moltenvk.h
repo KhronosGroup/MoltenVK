@@ -643,7 +643,7 @@ typedef struct {
 
 /** MoltenVK performance of queue activities. */
 typedef struct {
-	MVKPerformanceTracker mtlQueueAccess;               /** Create an MTLCommmandQueue or access an existing cached instance. */
+	MVKPerformanceTracker mtlQueueAccess;               /** Create an MTLCommandQueue or access an existing cached instance. */
 	MVKPerformanceTracker mtlCommandBufferCompletion;   /** Completion of a MTLCommandBuffer on the GPU, from commit to completion callback. */
 	MVKPerformanceTracker nextCAMetalDrawable;			/** Retrieve next CAMetalDrawable from CAMetalLayer during presentation. */
 	MVKPerformanceTracker frameInterval;				/** Frame presentation interval (1000/FPS). */
