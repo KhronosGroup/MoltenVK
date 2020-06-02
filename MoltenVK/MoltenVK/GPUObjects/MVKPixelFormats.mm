@@ -449,7 +449,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 		// so there is an MVKConfig option to disable this (allowImageCopyReinterpretation).  It's the application's
 		// way of telling MoltenVK that it doesn't require format converting copies.  This also requires nativeTextureSwizzle
 		// in order to not need format reinterpretation for swizzling
-		if (!allowImageCopyReinterpretation || !nativeTextureSwizzle) {
+		if (allowImageCopyReinterpretation || !nativeTextureSwizzle) {
 			mvkEnableFlags(mtlUsage, MTLTextureUsagePixelFormatView);
 		}
 	}
