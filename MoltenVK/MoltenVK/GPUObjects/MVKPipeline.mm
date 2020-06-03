@@ -1009,7 +1009,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 				const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
 				for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
 					if (pVKVB->binding == pVKVA->binding) {
-						if (vaOffset >= pVKVB->stride) {
+						if (pVKVB->stride && vaOffset >= pVKVB->stride) {
 							// Move vertex attribute offset into the stride. This vertex attribute may be
 							// combined with other vertex attributes into the same translated buffer binding.
 							// But if the reduced offset combined with the vertex attribute size still won't
