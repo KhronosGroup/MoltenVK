@@ -288,7 +288,7 @@ id<MTLTexture> MVKImage::getMTLTexture(MTLPixelFormat mtlPixFmt) {
 	id<MTLTexture> mtlTex = _mtlTextureViews[mtlPixFmt];
 	if ( !mtlTex ) {
 		// Lock and check again in case another thread has created the view texture.
-		// baseTex retreived outside of lock to avoid deadlock if it too needs to be lazily created.
+		// baseTex retrieved outside of lock to avoid deadlock if it too needs to be lazily created.
 		id<MTLTexture> baseTex = getMTLTexture();
 		lock_guard<mutex> lock(_lock);
 		mtlTex = _mtlTextureViews[mtlPixFmt];
@@ -872,7 +872,7 @@ void MVKPresentableSwapchainImage::makeAvailable() {
 		// If this image is available, signal the semaphore and fence that were associated
 		// with the last time this image was acquired while available. This is a workaround for
 		// when an app uses a single semaphore or fence for more than one swapchain image.
-		// Becuase the semaphore or fence will be signaled by more than one image, it will
+		// Because the semaphore or fence will be signaled by more than one image, it will
 		// get out of sync, and the final use of the image would not be signaled as a result.
 		signaler = _preSignaler;
 	} else {
@@ -1000,7 +1000,7 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 			}];
 		} else {
 			// If MTLDrawable.presentedTime/addPresentedHandler isn't supported, just treat it as if the
-			// present happened when requrested
+			// present happened when requested
 			_swapchain->recordPresentTime(presentID, desiredPresentTime, desiredPresentTime);
 		}
 	}
