@@ -110,7 +110,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 	if (dsRPAttIdx != VK_ATTACHMENT_UNUSED) {
 		MVKRenderPassAttachment* dsMVKRPAtt = &_renderPass->_attachments[dsRPAttIdx];
 		MVKImageView* dsImage = framebuffer->getAttachment(dsRPAttIdx);
-		MTLPixelFormat mtlDSFormat = dsImage->getMTLPixelFormat();
+		MTLPixelFormat mtlDSFormat = dsImage->getMTLPixelFormat(0);
 
 		if (pixFmts->isDepthFormat(mtlDSFormat)) {
 			MTLRenderPassDepthAttachmentDescriptor* mtlDepthAttDesc = mtlRPDesc.depthAttachment;

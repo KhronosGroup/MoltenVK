@@ -321,11 +321,8 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     if (_deviceMemory) { _deviceMemory->removeImageMemoryBinding(this); }
     MVKResource::bindDeviceMemory(mvkMem, memOffset);
 
-    VkExtent2D blockExt = getPixelFormats()->getBlockTexelSize(_image->_vkFormat);
-    bool isUncompressed = (blockExt.width == 1 && blockExt.height == 1) || getPixelFormats()->getChromaSubsamplingPlaneCount(_image->_vkFormat) > 0;
-
     _usesTexelBuffer = _device->_pMetalFeatures->texelBuffers && _deviceMemory && _deviceMemory->_mtlBuffer; // Texel buffers available
-    _usesTexelBuffer = _usesTexelBuffer && (isMemoryHostAccessible() || _device->_pMetalFeatures->placementHeaps) && _image->_isLinear && isUncompressed; // Applicable memory layout
+    _usesTexelBuffer = _usesTexelBuffer && (isMemoryHostAccessible() || _device->_pMetalFeatures->placementHeaps) && _image->_isLinear && !_image->getIsCompressed(); // Applicable memory layout
 
 #if MVK_MACOS
     // macOS cannot use shared memory for texel buffers.
@@ -759,7 +756,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
 	_canSupportMTLTextureView = !_isDepthStencilAttachment || _device->_pMetalFeatures->stencilViews;
-	_hasExpectedTexelSize = (pixFmts->getBytesPerBlock(getMTLPixelFormat()) == pixFmts->getBytesPerBlock(_vkFormat));
 	_rowByteAlignment = _isLinear ? _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this) : mvkEnsurePowerOfTwo(pixFmts->getBytesPerBlock(pCreateInfo->format));
 
     VkExtent2D blockTexelSizeOfPlane[3];
@@ -776,12 +772,12 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 
     for (uint8_t planeIndex = 0; planeIndex < planeCount; ++planeIndex) {
         _planes.push_back(std::unique_ptr<MVKImagePlane>(new MVKImagePlane(this, planeIndex)));
-        if (subsamplingPlaneCount > 0) {
+        if (_hasChromaSubsampling) {
             _planes[planeIndex]->_blockTexelSize = blockTexelSizeOfPlane[planeIndex];
             _planes[planeIndex]->_bytesPerBlock = bytesPerBlockOfPlane[planeIndex];
             _planes[planeIndex]->_mtlPixFmt = mtlPixFmtOfPlane[planeIndex];
         } else {
-            _planes[planeIndex]->_mtlPixFmt = getMTLPixelFormat();
+            _planes[planeIndex]->_mtlPixFmt = getPixelFormats()->getMTLPixelFormat(_vkFormat);
         }
         _planes[planeIndex]->initSubresources(pCreateInfo);
         MVKImageMemoryBinding* memoryBinding = _planes[planeIndex]->getMemoryBinding();
@@ -799,6 +795,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
             memoryBinding->_byteAlignment = std::max(memoryBinding->_byteAlignment, _rowByteAlignment);
         }
     }
+    _hasExpectedTexelSize = _hasChromaSubsampling || (pixFmts->getBytesPerBlock(_planes[0]->_mtlPixFmt) == pixFmts->getBytesPerBlock(_vkFormat));
 
 	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
@@ -1192,12 +1189,79 @@ MVKPeerSwapchainImage::MVKPeerSwapchainImage(MVKDevice* device,
 
 
 #pragma mark -
+#pragma mark MVKImageViewPlane
+
+void MVKImageViewPlane::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _imageView->_debugName); }
+
+
+#pragma mark Metal
+
+id<MTLTexture> MVKImageViewPlane::getMTLTexture() {
+    // If we can use a Metal texture view, lazily create it, otherwise use the image texture directly.
+    if (_imageView->_useMTLTextureView) {
+        if ( !_mtlTexture && _mtlPixFmt ) {
+
+            // Lock and check again in case another thread created the texture view
+            lock_guard<mutex> lock(_imageView->_lock);
+            if (_mtlTexture) { return _mtlTexture; }
+
+            _mtlTexture = newMTLTexture(); // retained
+
+            propogateDebugName();
+        }
+        return _mtlTexture;
+    } else {
+        return _imageView->_image->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(_imageView->_subresourceRange.aspectMask));
+    }
+}
+
+// Creates and returns a retained Metal texture as an
+// overlay on the Metal texture of the underlying image.
+id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
+    MTLTextureType mtlTextureType = _imageView->_mtlTextureType;
+    NSRange sliceRange = NSMakeRange(_imageView->_subresourceRange.baseArrayLayer, _imageView->_subresourceRange.layerCount);
+    // Fake support for 2D views of 3D textures.
+    if (_imageView->_image->getImageType() == VK_IMAGE_TYPE_3D &&
+        (mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray)) {
+        mtlTextureType = MTLTextureType3D;
+        sliceRange = NSMakeRange(0, 1);
+    }
+    id<MTLTexture> mtlTex = _imageView->_image->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(_imageView->_subresourceRange.aspectMask));
+    if (_imageView->_device->_pMetalFeatures->nativeTextureSwizzle && _imageView->_packedSwizzle) {
+        return [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
+                                         textureType: mtlTextureType
+                                              levels: NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount)
+                                              slices: sliceRange
+                                             swizzle: mvkMTLTextureSwizzleChannelsFromVkComponentMapping(mvkUnpackSwizzle(_imageView->_packedSwizzle))];    // retained
+    } else {
+        return [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
+                                         textureType: mtlTextureType
+                                              levels: NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount)
+                                              slices: sliceRange];    // retained
+    }
+}
+
+
+#pragma mark Construction
+
+MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView, uint8_t planeIndex) {
+    _imageView = imageView;
+    _planeIndex = planeIndex;
+    _mtlTexture = nil;
+}
+
+MVKImageViewPlane::~MVKImageViewPlane() {
+    [_mtlTexture release];
+}
+
+
+#pragma mark -
 #pragma mark MVKImageView
 
-void MVKImageView::propogateDebugName() { setLabelIfNotNil(_mtlTexture, _debugName); }
+void MVKImageView::propogateDebugName() { _plane->propogateDebugName(); }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
-    mtlAttDesc.texture = getMTLTexture();           // Use image view, necessary if image view format differs from image format
+    mtlAttDesc.texture = getMTLTexture(0);           // Use image view, necessary if image view format differs from image format
     mtlAttDesc.level = _useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.texture.textureType == MTLTextureType3D) {
         mtlAttDesc.slice = 0;
@@ -1209,7 +1273,7 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttach
 }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
-    mtlAttDesc.resolveTexture = getMTLTexture();    // Use image view, necessary if image view format differs from image format
+    mtlAttDesc.resolveTexture = getMTLTexture(0);    // Use image view, necessary if image view format differs from image format
     mtlAttDesc.resolveLevel = _useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.resolveTexture.textureType == MTLTextureType3D) {
         mtlAttDesc.resolveSlice = 0;
@@ -1221,59 +1285,12 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPas
 }
 
 
-#pragma mark Metal
-
-id<MTLTexture> MVKImageView::getMTLTexture() {
-	// If we can use a Metal texture view, lazily create it, otherwise use the image texture directly.
-	if (_useMTLTextureView) {
-		if ( !_mtlTexture && _mtlPixelFormat ) {
-
-			// Lock and check again in case another thread created the texture view
-			lock_guard<mutex> lock(_lock);
-			if (_mtlTexture) { return _mtlTexture; }
-
-			_mtlTexture = newMTLTexture(); // retained
-
-			propogateDebugName();
-		}
-		return _mtlTexture;
-	} else {
-		return _image->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(_subresourceRange.aspectMask));
-	}
-}
-
-// Creates and returns a retained Metal texture as an
-// overlay on the Metal texture of the underlying image.
-id<MTLTexture> MVKImageView::newMTLTexture() {
-    MTLTextureType mtlTextureType = _mtlTextureType;
-    NSRange sliceRange = NSMakeRange(_subresourceRange.baseArrayLayer, _subresourceRange.layerCount);
-    // Fake support for 2D views of 3D textures.
-    if (_image->getImageType() == VK_IMAGE_TYPE_3D &&
-        (mtlTextureType == MTLTextureType2D || mtlTextureType == MTLTextureType2DArray)) {
-        mtlTextureType = MTLTextureType3D;
-        sliceRange = NSMakeRange(0, 1);
-    }
-    id<MTLTexture> mtlTex = _image->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(_subresourceRange.aspectMask));
-    if (_device->_pMetalFeatures->nativeTextureSwizzle && _packedSwizzle) {
-        return [mtlTex newTextureViewWithPixelFormat: _mtlPixelFormat
-                                         textureType: mtlTextureType
-                                              levels: NSMakeRange(_subresourceRange.baseMipLevel, _subresourceRange.levelCount)
-                                              slices: sliceRange
-                                             swizzle: mvkMTLTextureSwizzleChannelsFromVkComponentMapping(mvkUnpackSwizzle(_packedSwizzle))];	// retained
-    } else {
-        return [mtlTex newTextureViewWithPixelFormat: _mtlPixelFormat
-                                         textureType: mtlTextureType
-                                              levels: NSMakeRange(_subresourceRange.baseMipLevel, _subresourceRange.levelCount)
-                                              slices: sliceRange];	// retained
-    }
-}
-
-
 #pragma mark Construction
 
 MVKImageView::MVKImageView(MVKDevice* device,
 						   const VkImageViewCreateInfo* pCreateInfo,
 						   const MVKConfiguration* pAltMVKConfig) : MVKVulkanAPIDeviceObject(device) {
+    _plane = std::unique_ptr<MVKImageViewPlane>(new MVKImageViewPlane(this, 0));
 	_image = (MVKImage*)pCreateInfo->image;
 	_usage = _image->_usage;
 
@@ -1293,7 +1310,23 @@ MVKImageView::MVKImageView(MVKDevice* device,
 		}
 	}
 
-	validateImageViewConfig(pCreateInfo);
+    // Validate whether the image view configuration can be supported
+    if ( _image ) {
+        VkImageType imgType = _image->getImageType();
+        VkImageViewType viewType = pCreateInfo->viewType;
+
+        // VK_KHR_maintenance1 supports taking 2D image views of 3D slices. No dice in Metal.
+        if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
+            if (pCreateInfo->subresourceRange.layerCount != _image->_extent.depth) {
+                reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
+            }
+            if ( !mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ) {
+                setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments."));
+            } else if (mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+                reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments.");
+            }
+        }
+    }
 
 	// Remember the subresource range, and determine the actual number of mip levels and texture slices
     _subresourceRange = pCreateInfo->subresourceRange;
@@ -1304,39 +1337,32 @@ MVKImageView::MVKImageView(MVKDevice* device,
 		_subresourceRange.layerCount = _image->getLayerCount() - _subresourceRange.baseArrayLayer;
 	}
 
-	_mtlTexture = nil;
 	bool useSwizzle;
 	setConfigurationResult(validateSwizzledMTLPixelFormat(pCreateInfo, getPixelFormats(), this,
 														  _device->_pMetalFeatures->nativeTextureSwizzle,
 														  _device->_pMVKConfig->fullImageViewSwizzle,
-														  _mtlPixelFormat, useSwizzle));
+                                                          _plane->_mtlPixFmt, useSwizzle));
 	_packedSwizzle = useSwizzle ? mvkPackSwizzle(pCreateInfo->components) : 0;
 	_mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType,
 														   _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT);
-	initMTLTextureViewSupport();
-}
 
-// Validate whether the image view configuration can be supported
-void MVKImageView::validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo) {
-
-	// No image if we are just validating view config
-	MVKImage* image = (MVKImage*)pCreateInfo->image;
-	if ( !image ) { return; }
-
-	VkImageType imgType = image->getImageType();
-	VkImageViewType viewType = pCreateInfo->viewType;
-
-	// VK_KHR_maintenance1 supports taking 2D image views of 3D slices. No dice in Metal.
-	if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
-		if (pCreateInfo->subresourceRange.layerCount != image->_extent.depth) {
-			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
-		}
-		if ( !mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments."));
-		} else if (mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-			reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments.");
-		}
-	}
+    // Determine whether this image view should use a Metal texture view,
+    // and set the _useMTLTextureView variable appropriately.
+    if ( _image ) {
+        _useMTLTextureView = _image->_canSupportMTLTextureView;
+        bool is3D = _image->_mtlTextureType == MTLTextureType3D;
+        // If the view is identical to underlying image, don't bother using a Metal view
+        if (_plane->_mtlPixFmt == _image->getMTLPixelFormat(0) &&
+            (_mtlTextureType == _image->_mtlTextureType ||
+             ((_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray) && is3D)) &&
+            _subresourceRange.levelCount == _image->_mipLevels &&
+            (is3D || _subresourceRange.layerCount == _image->_arrayLayers) &&
+            (!_device->_pMetalFeatures->nativeTextureSwizzle || !_packedSwizzle)) {
+            _useMTLTextureView = false;
+        }
+    } else {
+        _useMTLTextureView = false;
+    }
 }
 
 VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo,
@@ -1441,34 +1467,6 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 								  pCreateInfo->image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX",
 								  mvkVkComponentSwizzleName(components.r), mvkVkComponentSwizzleName(components.g),
 								  mvkVkComponentSwizzleName(components.b), mvkVkComponentSwizzleName(components.a));
-}
-
-// Determine whether this image view should use a Metal texture view,
-// and set the _useMTLTextureView variable appropriately.
-void MVKImageView::initMTLTextureViewSupport() {
-
-	// If no image we're just validating image iview config
-	if ( !_image ) {
-		_useMTLTextureView = false;
-		return;
-	}
-
-	_useMTLTextureView = _image->_canSupportMTLTextureView;
-
-	bool is3D = _image->_mtlTextureType == MTLTextureType3D;
-	// If the view is identical to underlying image, don't bother using a Metal view
-	if (_mtlPixelFormat == _image->getMTLPixelFormat() &&
-		(_mtlTextureType == _image->_mtlTextureType ||
-		 ((_mtlTextureType == MTLTextureType2D || _mtlTextureType == MTLTextureType2DArray) && is3D)) &&
-		_subresourceRange.levelCount == _image->_mipLevels &&
-		(is3D || _subresourceRange.layerCount == _image->_arrayLayers) &&
-		(!_device->_pMetalFeatures->nativeTextureSwizzle || !_packedSwizzle)) {
-		_useMTLTextureView = false;
-	}
-}
-
-MVKImageView::~MVKImageView() {
-	[_mtlTexture release];
 }
 
 

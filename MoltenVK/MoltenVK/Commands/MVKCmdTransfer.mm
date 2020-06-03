@@ -88,21 +88,21 @@ VkResult MVKCmdCopyImage::setContent(MVKCommandBuffer* cmdBuff,
 	_srcLayout = srcImageLayout;
 	_srcSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_srcImage->getSampleCount());
 	_isSrcCompressed = _srcImage->getIsCompressed();
-	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
-	uint32_t srcBytesPerBlock = pixFmts->getBytesPerBlock(srcMTLPixFmt);
+	VkFormat srcFmt = _srcImage->getVkFormat();
+	uint32_t srcBytesPerBlock = pixFmts->getBytesPerBlock(srcFmt);
 
 	_dstImage = (MVKImage*)dstImage;
 	_dstLayout = dstImageLayout;
 	_dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
 	_isDstCompressed = _dstImage->getIsCompressed();
-	MTLPixelFormat dstMTLPixFmt = _dstImage->getMTLPixelFormat();
-	uint32_t dstBytesPerBlock = pixFmts->getBytesPerBlock(dstMTLPixFmt);
+	VkFormat dstFmt = _dstImage->getVkFormat();
+	uint32_t dstBytesPerBlock = pixFmts->getBytesPerBlock(dstFmt);
 
 	_canCopyFormats = (_dstSampleCount == _srcSampleCount) && (formatsMustMatch
-																? (dstMTLPixFmt == srcMTLPixFmt)
+																? (dstFmt == srcFmt)
 																: (dstBytesPerBlock == srcBytesPerBlock));
 
-	_useTempBuffer = (srcMTLPixFmt != dstMTLPixFmt) && (_isSrcCompressed || _isDstCompressed);	// Different formats and at least one is compressed
+	_useTempBuffer = (srcFmt != dstFmt) && (_isSrcCompressed || _isDstCompressed);	// Different formats and at least one is compressed
 
 	_commandUse = commandUse;
 	_tmpBuffSize = 0;
@@ -139,10 +139,10 @@ void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region, MV
 	// Extent is provided in source texels. If the source is compressed but the
 	// destination is not, each destination pixel will consume an entire source block,
 	// so we must downscale the destination extent by the size of the source block.
-	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
+	VkFormat srcFmt = _srcImage->getVkFormat();
 	VkExtent3D dstExtent = region.extent;
 	if (_isSrcCompressed && !_isDstCompressed) {
-		VkExtent2D srcBlockExtent = pixFmts->getBlockTexelSize(srcMTLPixFmt);
+		VkExtent2D srcBlockExtent = pixFmts->getBlockTexelSize(srcFmt);
 		dstExtent.width /= srcBlockExtent.width;
 		dstExtent.height /= srcBlockExtent.height;
 	}
@@ -154,23 +154,24 @@ void MVKCmdCopyImage::addTempBufferImageCopyRegion(const VkImageCopy& region, MV
 	buffImgCpy.imageExtent = dstExtent;
 	_dstTmpBuffImgCopies.push_back(buffImgCpy);
 
-	NSUInteger bytesPerRow = pixFmts->getBytesPerRow(srcMTLPixFmt, region.extent.width);
-	NSUInteger bytesPerRegion = pixFmts->getBytesPerLayer(srcMTLPixFmt, bytesPerRow, region.extent.height);
+	NSUInteger bytesPerRow = pixFmts->getBytesPerRow(srcFmt, region.extent.width);
+	NSUInteger bytesPerRegion = pixFmts->getBytesPerLayer(srcFmt, bytesPerRow, region.extent.height);
 	_tmpBuffSize += bytesPerRegion;
 }
 
 void MVKCmdCopyImage::encode(MVKCommandEncoder* cmdEncoder) {
-	// Unless we need to use an intermediary buffer copy, map the source pixel format to the
-	// dest pixel format through a texture view on the source texture. If the source and dest
-	// pixel formats are the same, this will simply degenerate to the source texture itself.
-	MTLPixelFormat mapSrcMTLPixFmt = (_useTempBuffer ? _srcImage : _dstImage)->getMTLPixelFormat();
-
 	id<MTLBlitCommandEncoder> mtlBlitEnc = cmdEncoder->getMTLBlitEncoder(_commandUse);
 
 	// If copies can be performed using direct texture-texture copying, do so
 	for (auto& cpyRgn : _imageCopyRegions) {
         uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.srcSubresource.aspectMask);
         uint8_t dstPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.dstSubresource.aspectMask);
+        
+        // Unless we need to use an intermediary buffer copy, map the source pixel format to the
+        // dest pixel format through a texture view on the source texture. If the source and dest
+        // pixel formats are the same, this will simply degenerate to the source texture itself.
+        MTLPixelFormat mapSrcMTLPixFmt = _useTempBuffer ? _srcImage->getMTLPixelFormat(srcPlaneIndex) : _dstImage->getMTLPixelFormat(dstPlaneIndex);
+
         id<MTLTexture> srcMTLTex = _srcImage->getMTLTexture(srcPlaneIndex, mapSrcMTLPixFmt);
         id<MTLTexture> dstMTLTex = _dstImage->getMTLTexture(dstPlaneIndex);
         if ( !srcMTLTex || !dstMTLTex ) { continue; }
@@ -251,9 +252,9 @@ VkResult MVKCmdBlitImage::setContent(MVKCommandBuffer* cmdBuff,
 
 	VkResult rslt = MVKCmdCopyImage::setContent(cmdBuff, srcImage, srcImageLayout, dstImage, dstImageLayout, true, commandUse);
 
-	_blitKey.srcMTLPixelFormat = _srcImage->getMTLPixelFormat();
+	_blitKey.srcMTLPixelFormat = _srcImage->getMTLPixelFormat(0);
 	_blitKey.srcMTLTextureType = _srcImage->getMTLTextureType();
-	_blitKey.dstMTLPixelFormat = _dstImage->getMTLPixelFormat();
+	_blitKey.dstMTLPixelFormat = _dstImage->getMTLPixelFormat(0);
 	_blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(filter);
 	_blitKey.dstSampleCount = _dstSampleCount;
 
@@ -265,9 +266,8 @@ VkResult MVKCmdBlitImage::setContent(MVKCommandBuffer* cmdBuff,
 	}
 
 	// Validate
-	MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat();
 	if ( !_mvkImageBlitRenders.empty() &&
-		(pixFmts->isDepthFormat(srcMTLPixFmt) || pixFmts->isStencilFormat(srcMTLPixFmt)) ) {
+		(pixFmts->isDepthFormat((MTLPixelFormat)_blitKey.srcMTLPixelFormat) || pixFmts->isStencilFormat((MTLPixelFormat)_blitKey.srcMTLPixelFormat)) ) {
 
 		_mvkImageBlitRenders.clear();
 		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting depth/stencil images is not supported.");
@@ -486,7 +486,7 @@ VkResult MVKCmdResolveImage::setContent(MVKCommandBuffer* cmdBuff,
 	_transferImageData.samples = _srcImage->getSampleCount();
 
 	// Validate
-	if ( !mvkAreAllFlagsEnabled(cmdBuff->getPixelFormats()->getCapabilities(_dstImage->getMTLPixelFormat()), kMVKMTLFmtCapsResolve) ) {
+	if ( !mvkAreAllFlagsEnabled(cmdBuff->getPixelFormats()->getCapabilities(_dstImage->getMTLPixelFormat(0)), kMVKMTLFmtCapsResolve) ) {
 		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdResolveImage(): %s cannot be used as a resolve destination on this device.", cmdBuff->getPixelFormats()->getName(_dstImage->getVkFormat()));
 	}
 
@@ -744,12 +744,13 @@ VkResult MVKCmdBufferImageCopy::setContent(MVKCommandBuffer* cmdBuff,
     _bufferImageCopyRegions.reserve(regionCount);
     for (uint32_t i = 0; i < regionCount; i++) {
         _bufferImageCopyRegions.push_back(pRegions[i]);
-    }
-
-    // Validate
-    if ( !_image->hasExpectedTexelSize() ) {
-        const char* cmdName = _toImage ? "vkCmdCopyBufferToImage" : "vkCmdCopyImageToBuffer";
-        return reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, cmdBuff->getPixelFormats()->getName(_image->getMTLPixelFormat()), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
+        
+        // Validate
+        if ( !_image->hasExpectedTexelSize() ) {
+            MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat(MVKImage::getPlaneFromVkImageAspectFlags(pRegions[i].imageSubresource.aspectMask));
+            const char* cmdName = _toImage ? "vkCmdCopyBufferToImage" : "vkCmdCopyImageToBuffer";
+            return reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "%s(): The image is using Metal format %s as a substitute for Vulkan format %s. Since the pixel size is different, content for the image cannot be copied to or from a buffer.", cmdName, cmdBuff->getPixelFormats()->getName(mtlPixFmt), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
+        }
     }
 
 	return VK_SUCCESS;
@@ -760,12 +761,12 @@ void MVKCmdBufferImageCopy::encode(MVKCommandEncoder* cmdEncoder) {
     if ( !mtlBuffer ) { return; }
 
 	NSUInteger mtlBuffOffsetBase = _buffer->getMTLBufferOffset();
-    MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat();
     MVKCommandUse cmdUse = _toImage ? kMVKCommandUseCopyBufferToImage : kMVKCommandUseCopyImageToBuffer;
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 
     for (auto& cpyRgn : _bufferImageCopyRegions) {
         uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(cpyRgn.imageSubresource.aspectMask);
+        MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat(planeIndex);
         id<MTLTexture> mtlTexture = _image->getMTLTexture(planeIndex);
         if ( !mtlTexture ) { continue; }
 
@@ -1119,16 +1120,19 @@ VkResult MVKCmdClearImage::setContent(MVKCommandBuffer* cmdBuff,
     _subresourceRanges.reserve(rangeCount);
     for (uint32_t i = 0; i < rangeCount; i++) {
         _subresourceRanges.push_back(pRanges[i]);
+        
+        // Validate
+        MTLPixelFormat mtlPixFmt = _image->getMTLPixelFormat(MVKImage::getPlaneFromVkImageAspectFlags(pRanges[i].aspectMask));
+        MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getCapabilities(mtlPixFmt);
+        if ((_isDepthStencilClear && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsDSAtt)) ||
+            ( !_isDepthStencilClear && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsColorAtt))) {
+            return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
+        }
     }
 
 	// Validate
 	if (_image->getImageType() == VK_IMAGE_TYPE_1D) {
 		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Native 1D images cannot be cleared on this device. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D.");
-	}
-	MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getCapabilities(_image->getMTLPixelFormat());
-	if ((_isDepthStencilClear && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsDSAtt)) ||
-		( !_isDepthStencilClear && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsColorAtt))) {
-		return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClearImage(): Format %s cannot be cleared on this device.", cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
 	}
 
 	return VK_SUCCESS;

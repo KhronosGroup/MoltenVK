@@ -185,7 +185,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
-                tb.mtlTexture = imageView->getMTLTexture();
+                tb.mtlTexture = imageView->getMTLTexture(0); // TODO: Multi Planar Images
                 if (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE) {
                     tb.swizzle = imageView->getPackedSwizzle();
                 } else {
@@ -276,7 +276,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
-                tb.mtlTexture = imageView->getMTLTexture();
+                tb.mtlTexture = imageView->getMTLTexture(0); // TODO: Multi Planar Images
                 if (imageView) {
                     tb.swizzle = imageView->getPackedSwizzle();
                 } else {
@@ -323,7 +323,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
 // If depth compare is required, but unavailable on the device, the sampler can only be used as an immutable sampler
 bool MVKDescriptorSetLayoutBinding::validate(MVKSampler* mvkSampler) {
 	if (mvkSampler->getRequiresConstExprSampler()) {
-		mvkSampler->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdPushDescriptorSet/vkCmdPushDescriptorSetWithTemplate(): Depth texture samplers using a compare operation can only be used as immutable samplers on this device.");
+		mvkSampler->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdPushDescriptorSet/vkCmdPushDescriptorSetWithTemplate(): Tried to push an immutable sampler.");
 		return false;
 	}
 	return true;
@@ -688,7 +688,7 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
 			if (_mvkImageView) {
-				tb.mtlTexture = _mvkImageView->getMTLTexture();
+				tb.mtlTexture = _mvkImageView->getMTLTexture(0); // TODO: Multi Planar Images
 			}
 			if ((descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE || descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
 				tb.mtlTexture) {
@@ -837,7 +837,7 @@ void MVKSamplerDescriptorMixin::write(MVKDescriptorSet* mvkDescSet,
 				const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcIndex);
 				_mvkSampler = (MVKSampler*)pImgInfo->sampler;
 				if (_mvkSampler && _mvkSampler->getRequiresConstExprSampler()) {
-					_mvkSampler->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUpdateDescriptorSets(): Depth texture samplers using a compare operation can only be used as immutable samplers on this device.");
+					_mvkSampler->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUpdateDescriptorSets(): Tried to push an immutable sampler.");
 				}
 
 				if (_mvkSampler) { _mvkSampler->retain(); }

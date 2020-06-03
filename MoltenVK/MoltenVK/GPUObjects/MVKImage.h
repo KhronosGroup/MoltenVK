@@ -278,7 +278,7 @@ public:
     IOSurfaceRef getIOSurface();
 
 	/** Returns the Metal pixel format of this image. */
-	inline MTLPixelFormat getMTLPixelFormat() { return getPixelFormats()->getMTLPixelFormat(_vkFormat); }
+	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _planes[planeIndex]->_mtlPixFmt; }
 
 	/** Returns the Metal texture type of this image. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
@@ -477,6 +477,35 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKImageViewPlane
+
+class MVKImageViewPlane {
+
+public:
+    /** Returns the Metal texture underlying this image view. */
+    id<MTLTexture> getMTLTexture();
+
+    /** Returns the Metal pixel format of this image view. */
+    inline MTLPixelFormat getMTLPixelFormat() { return _mtlPixFmt; }
+
+    void releaseMTLTexture();
+
+    ~MVKImageViewPlane();
+
+protected:
+    void propogateDebugName();
+    id<MTLTexture> newMTLTexture();
+    MVKImageViewPlane(MVKImageView* imageView, uint8_t planeIndex);
+
+    friend MVKImageView;
+    MVKImageView* _imageView;
+    uint8_t _planeIndex;
+    MTLPixelFormat _mtlPixFmt;
+    id<MTLTexture> _mtlTexture;
+};
+
+
+#pragma mark -
 #pragma mark MVKImageView
 
 /** Represents a Vulkan image view. */
@@ -493,10 +522,10 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image view. */
-	id<MTLTexture> getMTLTexture();
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex) { return _plane->getMTLTexture(); }
 
 	/** Returns the Metal pixel format of this image view. */
-	inline MTLPixelFormat getMTLPixelFormat() { return _mtlPixelFormat; }
+	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _plane->_mtlPixFmt; }
 
 	/** Returns the Metal texture type of this image view. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
@@ -547,20 +576,16 @@ public:
 				 const VkImageViewCreateInfo* pCreateInfo,
 				 const MVKConfiguration* pAltMVKConfig = nullptr);
 
-	~MVKImageView() override;
-
 protected:
+    friend MVKImageViewPlane;
+    
 	void propogateDebugName() override;
-	id<MTLTexture> newMTLTexture();
-	void initMTLTextureViewSupport();
-	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
 
     MVKImage* _image;
+    std::unique_ptr<MVKImageViewPlane> _plane;
     VkImageSubresourceRange _subresourceRange;
     VkImageUsageFlags _usage;
-	id<MTLTexture> _mtlTexture;
 	std::mutex _lock;
-	MTLPixelFormat _mtlPixelFormat;
 	MTLTextureType _mtlTextureType;
 	uint32_t _packedSwizzle;
 	bool _useMTLTextureView;

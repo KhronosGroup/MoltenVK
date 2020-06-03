@@ -1510,15 +1510,15 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 		enableFormatFeatures(Vertex, Buf, getMTLVertexFormatDesc(vkFmt).mtlFmtCaps, vkProps.bufferFeatures);
 	}
 
-	if (getChromaSubsamplingPlaneCount(vkFmt) > 0) {
+    uint8_t planeCount = getChromaSubsamplingPlaneCount(vkFmt);
+	if (planeCount > 0) {
 		enableFormatFeatures(ChromaSubsampling, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 		enableFormatFeatures(ChromaSubsampling, Tex, mtlPixFmtCaps, vkProps.linearTilingFeatures);
 	}
-
-	/* if (getChromaSubsamplingPlaneCount(vkFmt) > 1) {
+	if (planeCount > 1) {
 		enableFormatFeatures(MultiPlanar, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 		enableFormatFeatures(MultiPlanar, Tex, mtlPixFmtCaps, vkProps.linearTilingFeatures);
-	} */
+	}
 }
 
 
