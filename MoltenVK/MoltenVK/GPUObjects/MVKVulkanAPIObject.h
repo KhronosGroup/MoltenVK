@@ -103,7 +103,7 @@ public:
 protected:
 	virtual void propagateDebugName() = 0;
 
-	std::atomic<uint32_t> _refCount;
+	std::atomic<uint64_t> _refCount;
 	NSString* _debugName = nil;
 };
 

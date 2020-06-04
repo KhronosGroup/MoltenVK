@@ -25,11 +25,16 @@ using namespace std;
 #pragma mark MVKVulkanAPIObject
 
 void MVKVulkanAPIObject::retain() {
-	_refCount++;
+    // https://www.boost.org/doc/libs/1_73_0/doc/html/atomic/usage_examples.html
+	_refCount.fetch_add(1, std::memory_order_relaxed);
 }
 
 void MVKVulkanAPIObject::release() {
-	if (--_refCount == 0) { MVKConfigurableObject::destroy(); }
+    // https://www.boost.org/doc/libs/1_73_0/doc/html/atomic/usage_examples.html
+	if (_refCount.fetch_sub(1, std::memory_order_release) == 1) {
+        std::atomic_thread_fence(std::memory_order_acquire);
+        MVKConfigurableObject::destroy();
+	}
 }
 
 void MVKVulkanAPIObject::destroy() {
