@@ -472,9 +472,9 @@ bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageForma
 						.baseArrayLayer = 0,
 						.layerCount = 1},
 				};
-				MTLPixelFormat mtlPixFmt;
+                MTLPixelFormat mtlPixFmt = _pixelFormats.getMTLPixelFormat(viewInfo.format);
 				bool useSwizzle;
-				return (MVKImageView::validateSwizzledMTLPixelFormat(&viewInfo, &_pixelFormats, this,
+				return (MVKImageView::validateSwizzledMTLPixelFormat(&viewInfo, this,
 																	 _metalFeatures.nativeTextureSwizzle,
 																	 _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle,
 																	 mtlPixFmt, useSwizzle) == VK_SUCCESS);

@@ -318,6 +318,7 @@ protected:
     friend MVKDevice;
     friend MVKImageMemoryBinding;
     friend MVKImagePlane;
+    friend class MVKImageViewPlane;
 	friend MVKImageView;
 
 	void propogateDebugName() override;
@@ -485,9 +486,6 @@ public:
     /** Returns the Metal texture underlying this image view. */
     id<MTLTexture> getMTLTexture();
 
-    /** Returns the Metal pixel format of this image view. */
-    inline MTLPixelFormat getMTLPixelFormat() { return _mtlPixFmt; }
-
     void releaseMTLTexture();
 
     ~MVKImageViewPlane();
@@ -495,13 +493,15 @@ public:
 protected:
     void propogateDebugName();
     id<MTLTexture> newMTLTexture();
-    MVKImageViewPlane(MVKImageView* imageView, uint8_t planeIndex);
+    MVKImageViewPlane(MVKImageView* imageView, uint8_t planeIndex, MTLPixelFormat mtlPixFmt, const VkImageViewCreateInfo* pCreateInfo);
 
     friend MVKImageView;
     MVKImageView* _imageView;
     uint8_t _planeIndex;
     MTLPixelFormat _mtlPixFmt;
+    uint32_t _packedSwizzle;
     id<MTLTexture> _mtlTexture;
+    bool _useMTLTextureView;
 };
 
 
@@ -522,16 +522,16 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image view. */
-	id<MTLTexture> getMTLTexture(uint8_t planeIndex) { return _plane->getMTLTexture(); }
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex) { return _planes[planeIndex]->getMTLTexture(); }
 
 	/** Returns the Metal pixel format of this image view. */
-	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _plane->_mtlPixFmt; }
+	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _planes[planeIndex]->_mtlPixFmt; }
+    
+    /** Returns the packed component swizzle of this image view. */
+    inline uint32_t getPackedSwizzle(uint8_t planeIndex) { return _planes[planeIndex]->_packedSwizzle; }
 
 	/** Returns the Metal texture type of this image view. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
-
-	/** Returns the packed component swizzle of this image view. */
-	inline uint32_t getPackedSwizzle() { return _packedSwizzle; }
 
 	/**
 	 * Populates the texture of the specified render pass descriptor
@@ -562,7 +562,6 @@ public:
 	 * This is a static function that can be used to validate image view formats prior to creating one.
 	 */
 	static VkResult validateSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo,
-												   MVKPixelFormats* mvkPixFmts,
 												   MVKVulkanAPIObject* apiObject,
 												   bool hasNativeSwizzleSupport,
 												   bool hasShaderSwizzleSupport,
@@ -582,13 +581,11 @@ protected:
 	void propogateDebugName() override;
 
     MVKImage* _image;
-    std::unique_ptr<MVKImageViewPlane> _plane;
+    std::vector<std::unique_ptr<MVKImageViewPlane>> _planes;
     VkImageSubresourceRange _subresourceRange;
     VkImageUsageFlags _usage;
 	std::mutex _lock;
 	MTLTextureType _mtlTextureType;
-	uint32_t _packedSwizzle;
-	bool _useMTLTextureView;
 };
 
 
