@@ -970,9 +970,17 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 			maxBinding = max(pVKVB->binding, maxBinding);
 			uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
 			MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
-			vbDesc.stride = (pVKVB->stride == 0) ? sizeof(simd::float4) : pVKVB->stride;      // Vulkan allows zero stride but Metal doesn't. Default to float4
-            vbDesc.stepFunction = mvkMTLVertexStepFunctionFromVkVertexInputRate(pVKVB->inputRate);
-            vbDesc.stepRate = 1;
+			if (pVKVB->stride == 0) {
+				// Stride can't be 0, it will be set later to attributes' maximum offset + size
+				// to prevent it from being larger than the underlying buffer permits.
+				vbDesc.stride = 0;
+				vbDesc.stepFunction = MTLVertexStepFunctionConstant;
+				vbDesc.stepRate = 0;
+			} else {
+				vbDesc.stride = pVKVB->stride;
+				vbDesc.stepFunction = mvkMTLVertexStepFunctionFromVkVertexInputRate(pVKVB->inputRate);
+				vbDesc.stepRate = 1;
+			}
         }
     }
 
@@ -1004,26 +1012,31 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 			// Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
 			// If this is the case, fetch an a translated artificial buffer binding, using the same MTLBuffer,
 			// but that is translated so that the reduced VA offset fits into the binding stride.
-			// Only check non-zero offsets, as it's common for both to be zero when step rate is instance.
-			if (vaOffset > 0) {
-				const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
-				for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
-					if (pVKVB->binding == pVKVA->binding) {
-						if (pVKVB->stride && vaOffset >= pVKVB->stride) {
-							// Move vertex attribute offset into the stride. This vertex attribute may be
-							// combined with other vertex attributes into the same translated buffer binding.
-							// But if the reduced offset combined with the vertex attribute size still won't
-							// fit into the buffer binding stride, force the vertex attribute offset to zero,
-							// effectively dedicating this vertex attribute to its own buffer binding.
-							uint32_t origOffset = vaOffset;
-							vaOffset %= pVKVB->stride;
-							if (vaOffset + getPixelFormats()->getBytesPerBlock(pVKVA->format) > pVKVB->stride) {
-								vaOffset = 0;
-							}
-							vaBinding = getTranslatedVertexBinding(vaBinding, origOffset - vaOffset, maxBinding);
+			const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
+			for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
+				if (pVKVB->binding == pVKVA->binding) {
+					uint32_t attrSize = getPixelFormats()->getBytesPerBlock(pVKVA->format);
+					if (pVKVB->stride == 0) {
+						// The step is set to constant, but we need to change stride to be non-zero for metal.
+						// Look for the maximum offset + size to set as the stride.
+						uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+						MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
+						uint32_t strideLowBound = vaOffset + attrSize;
+						if (vbDesc.stride < strideLowBound) vbDesc.stride = strideLowBound;
+					} else if (vaOffset >= pVKVB->stride) {
+						// Move vertex attribute offset into the stride. This vertex attribute may be
+						// combined with other vertex attributes into the same translated buffer binding.
+						// But if the reduced offset combined with the vertex attribute size still won't
+						// fit into the buffer binding stride, force the vertex attribute offset to zero,
+						// effectively dedicating this vertex attribute to its own buffer binding.
+						uint32_t origOffset = vaOffset;
+						vaOffset %= pVKVB->stride;
+						if (vaOffset + attrSize > pVKVB->stride) {
+							vaOffset = 0;
 						}
-						break;
+						vaBinding = getTranslatedVertexBinding(vaBinding, origOffset - vaOffset, maxBinding);
 					}
+					break;
 				}
 			}
 
