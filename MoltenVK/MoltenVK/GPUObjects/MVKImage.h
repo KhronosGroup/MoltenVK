@@ -529,6 +529,9 @@ public:
     
     /** Returns the packed component swizzle of this image view. */
     inline uint32_t getPackedSwizzle(uint8_t planeIndex) { return _planes[planeIndex]->_packedSwizzle; }
+    
+    /** Returns the number of planes of this image view. */
+    inline uint8_t getPlaneCount() { return _planes.size(); }
 
 	/** Returns the Metal texture type of this image view. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
@@ -601,6 +604,9 @@ public:
 
     /** Returns the debug report object type of this object. */
     VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT; }
+    
+    /** Returns the number of planes of this ycbcr conversion. */
+    inline uint8_t getPlaneCount() { return _planes; }
 
     /** Writes this conversion settings to a MSL constant sampler */
     void updateConstExprSampler(SPIRV_CROSS_NAMESPACE::MSLConstexprSampler& constExprSampler) const;
@@ -612,14 +618,14 @@ public:
 protected:
     void propogateDebugName() override {}
 
-    uint32_t _planes, _bpc;
+    uint8_t _planes, _bpc;
     SPIRV_CROSS_NAMESPACE::MSLFormatResolution _resolution;
     SPIRV_CROSS_NAMESPACE::MSLSamplerFilter _chroma_filter;
     SPIRV_CROSS_NAMESPACE::MSLChromaLocation _x_chroma_offset, _y_chroma_offset;
     SPIRV_CROSS_NAMESPACE::MSLComponentSwizzle _swizzle[4];
     SPIRV_CROSS_NAMESPACE::MSLSamplerYCbCrModelConversion _ycbcr_model;
     SPIRV_CROSS_NAMESPACE::MSLSamplerYCbCrRange _ycbcr_range;
-    bool _forceExplicitReconstruction; // TODO
+    bool _forceExplicitReconstruction;
 };
 
 
@@ -639,6 +645,10 @@ public:
 
 	/** Returns the Metal sampler state. */
 	inline id<MTLSamplerState> getMTLSamplerState() { return _mtlSamplerState; }
+    
+    /** Returns the number of planes if this is a ycbcr conversion or 0 otherwise. */
+    inline uint8_t getPlaneCount() { return (_ycbcrConversion) ? _ycbcrConversion->getPlaneCount() : 0; }
+
 
 	/**
 	 * If this sampler requires hardcoding in MSL, populates the hardcoded sampler in the resource binding.

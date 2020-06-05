@@ -185,29 +185,32 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT: {
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
-                tb.mtlTexture = imageView->getMTLTexture(0);
-                tb.swizzle = (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE) ? imageView->getPackedSwizzle(0) : 0;
-                if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-                    id<MTLTexture> mtlTex = tb.mtlTexture;
-                    if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }
-                    bb.mtlBuffer = mtlTex.buffer;
-                    bb.offset = mtlTex.bufferOffset;
-                    bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
-                }
-                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-                    if (_applyToStage[i]) {
-                        tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
-                        if (i == kMVKShaderStageCompute) {
-							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
-                        } else {
-							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
-                        }
-                        if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-                            bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                uint8_t planeCount = (imageView) ? imageView->getPlaneCount() : 1;
+                for (uint8_t planeIndex = 0; planeIndex < planeCount; planeIndex++) {
+                    tb.mtlTexture = imageView->getMTLTexture(planeIndex);
+                    tb.swizzle = (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE) ? imageView->getPackedSwizzle(0) : 0;
+                    if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+                        id<MTLTexture> mtlTex = tb.mtlTexture;
+                        if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }
+                        bb.mtlBuffer = mtlTex.buffer;
+                        bb.offset = mtlTex.bufferOffset;
+                        bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
+                    }
+                    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                        if (_applyToStage[i]) {
+                            tb.index = mtlIdxs.stages[i].textureIndex + rezIdx + planeIndex;
                             if (i == kMVKShaderStageCompute) {
-                                if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
+                                if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
                             } else {
-                                if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+                                if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
+                            }
+                            if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+                                bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                                if (i == kMVKShaderStageCompute) {
+                                    if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
+                                } else {
+                                    if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+                                }
                             }
                         }
                     }
@@ -272,26 +275,29 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
                 const auto& imageInfo = get<VkDescriptorImageInfo>(pData, stride, rezIdx - dstArrayElement);
                 MVKImageView* imageView = (MVKImageView*)imageInfo.imageView;
-                tb.mtlTexture = imageView->getMTLTexture(0); // TODO: Multi Planar Images
-                tb.swizzle = (imageView) ? imageView->getPackedSwizzle(0) : 0;
-				MVKSampler* sampler;
-				if (_immutableSamplers.empty()) {
-					sampler = (MVKSampler*)imageInfo.sampler;
-					validate(sampler);
-				} else {
-					sampler = _immutableSamplers[rezIdx];
-				}
-                sb.mtlSamplerState = sampler->getMTLSamplerState();
-                for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-                    if (_applyToStage[i]) {
-                        tb.index = mtlIdxs.stages[i].textureIndex + rezIdx;
-                        sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
-                        if (i == kMVKShaderStageCompute) {
-							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
-							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindSamplerState(sb); }
-                        } else {
-							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
-							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb); }
+                uint8_t planeCount = (imageView) ? imageView->getPlaneCount() : 1;
+                for (uint8_t planeIndex = 0; planeIndex < planeCount; planeIndex++) {
+                    tb.mtlTexture = imageView->getMTLTexture(planeIndex);
+                    tb.swizzle = (imageView) ? imageView->getPackedSwizzle(0) : 0;
+                    MVKSampler* sampler;
+                    if (_immutableSamplers.empty()) {
+                        sampler = (MVKSampler*)imageInfo.sampler;
+                        validate(sampler);
+                    } else {
+                        sampler = _immutableSamplers[rezIdx];
+                    }
+                    sb.mtlSamplerState = sampler->getMTLSamplerState();
+                    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                        if (_applyToStage[i]) {
+                            tb.index = mtlIdxs.stages[i].textureIndex + rezIdx + planeIndex;
+                            sb.index = mtlIdxs.stages[i].samplerIndex + rezIdx;
+                            if (i == kMVKShaderStageCompute) {
+                                if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
+                                if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindSamplerState(sb); }
+                            } else {
+                                if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
+                                if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindSamplerState(MVKShaderStage(i), sb); }
+                            }
                         }
                     }
                 }
@@ -425,7 +431,19 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
 				if ( !_device->_pMetalFeatures->arrayOfSamplers ) {
 					_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
 				}
+                if ( pBinding->pImmutableSamplers ) {
+                    _layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Sampler arrays contaning multi planar samplers are not supported."));
+                }
 			}
+
+            if ( pBinding->pImmutableSamplers ) {
+                for (uint32_t i = 0; i < pBinding->descriptorCount; i++) {
+                    uint8_t planeCount = ((MVKSampler*)pBinding->pImmutableSamplers[i])->getPlaneCount();
+                    if (planeCount > 1) {
+                        pDescSetCounts->textureIndex += planeCount - 1;
+                    }
+                }
+            }
             break;
 
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -672,50 +690,54 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 							  MVKShaderResourceBinding& mtlIndexes,
 							  MVKVector<uint32_t>& dynamicOffsets,
 							  uint32_t* pDynamicOffsetIndex) {
-	MVKMTLTextureBinding tb;
-	MVKMTLBufferBinding bb;
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-			if (_mvkImageView) {
-				tb.mtlTexture = _mvkImageView->getMTLTexture(0); // TODO: Multi Planar Images
-			}
-            tb.swizzle = ((descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
-                           descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
-                           tb.mtlTexture) ? _mvkImageView->getPackedSwizzle(0) : 0;
-			if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && tb.mtlTexture) {
-				id<MTLTexture> mtlTex = tb.mtlTexture;
-				if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }
-				bb.mtlBuffer = mtlTex.buffer;
-				bb.offset = mtlTex.bufferOffset;
-				bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
-			}
-			for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-				if (stages[i]) {
-					tb.index = mtlIndexes.stages[i].textureIndex + descriptorIndex;
-					if (i == kMVKShaderStageCompute) {
-						if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
-					} else {
-						if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
-					}
-					if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-						bb.index = mtlIndexes.stages[i].bufferIndex + descriptorIndex;
-						if (i == kMVKShaderStageCompute) {
-							if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
-						} else {
-							if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
-						}
-					}
-				}
-			}
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 			break;
-		}
 
 		default:
-			break;
+			return;
 	}
+    
+    uint8_t planeCount = (_mvkImageView) ? _mvkImageView->getPlaneCount() : 1;
+    for (uint8_t planeIndex = 0; planeIndex < planeCount; planeIndex++) {
+        MVKMTLTextureBinding tb;
+        MVKMTLBufferBinding bb;
+        
+        if (_mvkImageView) {
+            tb.mtlTexture = _mvkImageView->getMTLTexture(planeIndex);
+        }
+        tb.swizzle = ((descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
+                       descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
+                       tb.mtlTexture) ? _mvkImageView->getPackedSwizzle(planeIndex) : 0;
+        if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && tb.mtlTexture) {
+            id<MTLTexture> mtlTex = tb.mtlTexture;
+            if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }
+            bb.mtlBuffer = mtlTex.buffer;
+            bb.offset = mtlTex.bufferOffset;
+            bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
+        }
+        for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+            if (stages[i]) {
+                tb.index = mtlIndexes.stages[i].textureIndex + descriptorIndex + planeIndex;
+                if (i == kMVKShaderStageCompute) {
+                    if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindTexture(tb); }
+                } else {
+                    if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindTexture(MVKShaderStage(i), tb); }
+                }
+                if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+                    bb.index = mtlIndexes.stages[i].bufferIndex + descriptorIndex + planeIndex;
+                    if (i == kMVKShaderStageCompute) {
+                        if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
+                    } else {
+                        if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+                    }
+                }
+            }
+        }
+    }
 }
 
 void MVKImageDescriptor::write(MVKDescriptorSet* mvkDescSet,

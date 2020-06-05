@@ -1383,8 +1383,13 @@ MVKImageView::MVKImageView(MVKDevice* device,
     if (subsamplingPlaneCount == 0) {
         endPlaneIndex = 1;
         mtlPixFmtOfPlane[0] = getPixelFormats()->getMTLPixelFormat(pCreateInfo->format);
-    } else if (_subresourceRange.aspectMask & (VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT)) {
-        beginPlaneIndex = endPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(_subresourceRange.aspectMask);
+    } else {
+        if (!mvkVkComponentMappingsMatch(pCreateInfo->components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A})) {
+            setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Image view swizzling for multi planar formats is not supported."));
+        }
+        if (_subresourceRange.aspectMask & (VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT)) {
+            beginPlaneIndex = endPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(_subresourceRange.aspectMask);
+        }
     }
     for (uint8_t planeIndex = beginPlaneIndex; planeIndex < endPlaneIndex; planeIndex++) {
         _planes.push_back(std::unique_ptr<MVKImageViewPlane>(new MVKImageViewPlane(
@@ -1508,8 +1513,9 @@ void MVKSamplerYcbcrConversion::updateConstExprSampler(MSLConstexprSampler& cons
 	constExprSampler.chroma_filter = _chroma_filter;
 	constExprSampler.x_chroma_offset = _x_chroma_offset;
 	constExprSampler.y_chroma_offset = _y_chroma_offset;
-	for(uint32_t i = 0; i < 4; ++i)
+    for (uint32_t i = 0; i < 4; ++i) {
 		constExprSampler.swizzle[i] = _swizzle[i];
+    }
 	constExprSampler.ycbcr_model = _ycbcr_model;
 	constExprSampler.ycbcr_range = _ycbcr_range;
     constExprSampler.bpc = _bpc;
@@ -1737,8 +1743,9 @@ void MVKSampler::initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo) {
 	_constExprSampler.compare_enable = pCreateInfo->compareEnable;
 	_constExprSampler.lod_clamp_enable = false;
 	_constExprSampler.anisotropy_enable = pCreateInfo->anisotropyEnable;
-    if(_ycbcrConversion)
+    if (_ycbcrConversion) {
         _ycbcrConversion->updateConstExprSampler(_constExprSampler);
+    }
 }
 
 MVKSampler::~MVKSampler() {
