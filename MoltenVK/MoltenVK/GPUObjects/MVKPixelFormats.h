@@ -70,8 +70,8 @@ typedef enum : uint16_t {
 	kMVKMTLFmtCapsDRMR     = (kMVKMTLFmtCapsDRM | kMVKMTLFmtCapsResolve),
 	kMVKMTLFmtCapsDRFMR    = (kMVKMTLFmtCapsDRMR | kMVKMTLFmtCapsFilter),
 
-	kMVKMTLFmtCapsChromaSubsampling = kMVKMTLFmtCapsNone,
-	kMVKMTLFmtCapsMultiPlanar = kMVKMTLFmtCapsNone,
+	kMVKMTLFmtCapsChromaSubsampling = kMVKMTLFmtCapsRF,
+	kMVKMTLFmtCapsMultiPlanar = kMVKMTLFmtCapsChromaSubsampling,
 } MVKMTLFmtCaps;
 
 
@@ -85,16 +85,18 @@ typedef struct {
 	MTLPixelFormat mtlPixelFormatSubstitute;
 	MTLVertexFormat mtlVertexFormat;
 	MTLVertexFormat mtlVertexFormatSubstitute;
+    uint8_t chromaSubsamplingPlaneCount;
+    uint8_t chromaSubsamplingComponentBits;
 	VkExtent2D blockTexelSize;
 	uint32_t bytesPerBlock;
 	MVKFormatType formatType;
 	VkFormatProperties properties;
 	const char* name;
 	bool hasReportedSubstitution;
+    
+    inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); };
 
-	inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); };
-
-	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid); };
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid || chromaSubsamplingPlaneCount > 0); };
 	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlPixelFormatSubstitute != MTLPixelFormatInvalid); };
 	inline MTLPixelFormat getMTLPixelFormatOrSubstitute() const { return mtlPixelFormat ? mtlPixelFormat : mtlPixelFormatSubstitute; }
 
