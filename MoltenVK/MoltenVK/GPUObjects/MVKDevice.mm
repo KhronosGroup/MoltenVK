@@ -281,7 +281,7 @@ void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties*
 
 void MVKPhysicalDevice::getFormatProperties(VkFormat format, VkFormatProperties2KHR* pFormatProperties) {
 	pFormatProperties->sType = VK_STRUCTURE_TYPE_FORMAT_PROPERTIES_2_KHR;
-	pFormatProperties->formatProperties = _pixelFormats.getVkFormatProperties(format);
+	getFormatProperties(format, &pFormatProperties->formatProperties);
 }
 
 VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
@@ -569,7 +569,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 		MTLPixelFormatBGR10A2Unorm,
 	};
 
-	MVKVectorInline<VkColorSpaceKHR, 16> colorSpaces;
+	MVKSmallVector<VkColorSpaceKHR, 16> colorSpaces;
 	colorSpaces.push_back(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
 	if (getInstance()->_enabledExtensions.vk_EXT_swapchain_colorspace.enabled) {
 #if MVK_MACOS
@@ -729,7 +729,7 @@ VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
 // In addition, Metal queues are always general purpose, so the default behaviour is for all
 // queue families to support graphics + compute + transfer, unless the app indicates it
 // requires queue family specialization.
-MVKVector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
+MVKArrayRef<MVKQueueFamily*> MVKPhysicalDevice::getQueueFamilies() {
 	if (_queueFamilies.empty()) {
 		VkQueueFamilyProperties qfProps;
 		bool specialize = _mvkInstance->getMoltenVKConfiguration()->specializedQueueFamilies;
@@ -757,14 +757,13 @@ MVKVector<MVKQueueFamily*>& MVKPhysicalDevice::getQueueFamilies() {
 
 		MVKAssert(kMVKQueueFamilyCount >= _queueFamilies.size(), "Adjust value of kMVKQueueFamilyCount.");
 	}
-	return _queueFamilies;
+	return _queueFamilies.contents();
 }
 
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 													 VkQueueFamilyProperties* pQueueFamilyProperties) {
-
-	auto& qFams = getQueueFamilies();
-	uint32_t qfCnt = uint32_t(qFams.size());
+	auto qFams = getQueueFamilies();
+	uint32_t qfCnt = uint32_t(qFams.size);
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pQueueFamilyProperties ) {
@@ -788,7 +787,6 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 
 VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 													 VkQueueFamilyProperties2KHR* pQueueFamilyProperties) {
-
 	VkResult rslt;
 	if (pQueueFamilyProperties) {
 		// Populate temp array of VkQueueFamilyProperties then copy into array of VkQueueFamilyProperties2KHR.
@@ -878,6 +876,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.maxQueryBufferSize = (64 * KIBI);
 
 	_metalFeatures.pushConstantSizeAlignment = 16;     // Min float4 alignment for typical uniform structs.
+
+	_metalFeatures.maxTextureLayers = (2 * KIBI);
 
 	_metalFeatures.ioSurfaces = MVK_SUPPORT_IOSURFACE_BOOL;
 
@@ -1247,7 +1247,7 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.limits.maxImageDimensionCube = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxFramebufferWidth = _metalFeatures.maxTextureDimension;
 	_properties.limits.maxFramebufferHeight = _metalFeatures.maxTextureDimension;
-	_properties.limits.maxFramebufferLayers = _metalFeatures.layeredRendering ?  256 : 1;
+	_properties.limits.maxFramebufferLayers = _metalFeatures.layeredRendering ? _metalFeatures.maxTextureLayers : 1;
 
     _properties.limits.maxViewportDimensions[0] = _metalFeatures.maxTextureDimension;
     _properties.limits.maxViewportDimensions[1] = _metalFeatures.maxTextureDimension;
@@ -1256,8 +1256,8 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.viewportBoundsRange[1] = (2.0 * maxVPDim) - 1;
     _properties.limits.maxViewports = _features.multiViewport ? kMVKCachedViewportScissorCount : 1;
 
-	_properties.limits.maxImageDimension3D = (2 * KIBI);
-	_properties.limits.maxImageArrayLayers = (2 * KIBI);
+	_properties.limits.maxImageDimension3D = _metalFeatures.maxTextureLayers;
+	_properties.limits.maxImageArrayLayers = _metalFeatures.maxTextureLayers;
 	_properties.limits.maxSamplerAnisotropy = 16;
 
     _properties.limits.maxVertexInputAttributes = 31;
@@ -1320,7 +1320,7 @@ void MVKPhysicalDevice::initProperties() {
             } else {
                 alignment = [_mtlDevice minimumLinearTextureAlignmentForPixelFormat: mtlFmt];
             }
-            VkFormatProperties props = _pixelFormats.getVkFormatProperties(vk);
+            VkFormatProperties& props = _pixelFormats.getVkFormatProperties(vk);
             // For uncompressed formats, this is the size of a single texel.
             // Note that no implementations of Metal support compressed formats
             // in a linear texture (including texture buffers). It's likely that even
@@ -1470,6 +1470,7 @@ void MVKPhysicalDevice::initProperties() {
 		_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
 #endif
 	}
+	_properties.limits.maxSamplerLodBias = 0;	// Bias not supported in API, but can be applied in shader directly.
 
     _properties.limits.minTexelOffset = -8;
     _properties.limits.maxTexelOffset = 7;
@@ -1501,8 +1502,6 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.subTexelPrecisionBits = 4;
     _properties.limits.mipmapPrecisionBits = 4;
     _properties.limits.viewportSubPixelBits = 0;
-
-    _properties.limits.maxSamplerLodBias = 2;
 
     _properties.limits.discreteQueuePriorities = 2;
 
@@ -1983,16 +1982,15 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 void MVKPhysicalDevice::initExternalMemoryProperties() {
 
 	// Buffers
-	_mtlBufferExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
-																 VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+	_mtlBufferExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
 																 VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
 	_mtlBufferExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
 	_mtlBufferExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR;
 
 	// Images
-	_mtlTextureExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT |
-																  VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
-																  VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT);
+	_mtlTextureExternalMemoryProperties.externalMemoryFeatures = (VK_EXTERNAL_MEMORY_FEATURE_EXPORTABLE_BIT |
+																  VK_EXTERNAL_MEMORY_FEATURE_IMPORTABLE_BIT |
+																  VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
 	_mtlTextureExternalMemoryProperties.exportFromImportedHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
 	_mtlTextureExternalMemoryProperties.compatibleHandleTypes = VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR;
 }
@@ -2214,8 +2212,10 @@ MVKBuffer* MVKDevice::createBuffer(const VkBufferCreateInfo* pCreateInfo,
 
 void MVKDevice::destroyBuffer(MVKBuffer* mvkBuff,
 							  const VkAllocationCallbacks* pAllocator) {
-	removeResource(mvkBuff);
-	mvkBuff->destroy();
+	if (mvkBuff) {
+		removeResource(mvkBuff);
+		mvkBuff->destroy();
+	}
 }
 
 MVKBufferView* MVKDevice::createBufferView(const VkBufferViewCreateInfo* pCreateInfo,
@@ -2225,7 +2225,7 @@ MVKBufferView* MVKDevice::createBufferView(const VkBufferViewCreateInfo* pCreate
 
 void MVKDevice::destroyBufferView(MVKBufferView* mvkBuffView,
                                   const VkAllocationCallbacks* pAllocator) {
-    mvkBuffView->destroy();
+	if (mvkBuffView) { mvkBuffView->destroy(); }
 }
 
 MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
@@ -2252,10 +2252,12 @@ MVKImage* MVKDevice::createImage(const VkImageCreateInfo* pCreateInfo,
 
 void MVKDevice::destroyImage(MVKImage* mvkImg,
 							 const VkAllocationCallbacks* pAllocator) {
-    for (auto& memoryBinding : mvkImg->_memoryBindings) {
-        removeResource(memoryBinding.get());
-    }
-	mvkImg->destroy();
+	if (mvkImg) {
+		for (auto& memoryBinding : mvkImg->_memoryBindings) {
+            removeResource(memoryBinding.get());
+        }
+		mvkImg->destroy();
+	}
 }
 
 MVKImageView* MVKDevice::createImageView(const VkImageViewCreateInfo* pCreateInfo,
@@ -2265,7 +2267,7 @@ MVKImageView* MVKDevice::createImageView(const VkImageViewCreateInfo* pCreateInf
 
 void MVKDevice::destroyImageView(MVKImageView* mvkImgView,
 								 const VkAllocationCallbacks* pAllocator) {
-	mvkImgView->destroy();
+	if (mvkImgView) { mvkImgView->destroy(); }
 }
 
 MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreateInfo,
@@ -2275,7 +2277,7 @@ MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreate
 
 void MVKDevice::destroySwapchain(MVKSwapchain* mvkSwpChn,
 								 const VkAllocationCallbacks* pAllocator) {
-	mvkSwpChn->destroy();
+	if (mvkSwpChn) { mvkSwpChn->destroy(); }
 }
 
 MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const VkImageCreateInfo* pCreateInfo,
@@ -2291,10 +2293,12 @@ MVKPresentableSwapchainImage* MVKDevice::createPresentableSwapchainImage(const V
 
 void MVKDevice::destroyPresentableSwapchainImage(MVKPresentableSwapchainImage* mvkImg,
 												 const VkAllocationCallbacks* pAllocator) {
-    for (auto& memoryBinding : mvkImg->_memoryBindings) {
-        removeResource(memoryBinding.get());
-    }
-	mvkImg->destroy();
+	if (mvkImg) {
+		for (auto& memoryBinding : mvkImg->_memoryBindings) {
+            removeResource(memoryBinding.get());
+        }
+		mvkImg->destroy();
+	}
 }
 
 MVKFence* MVKDevice::createFence(const VkFenceCreateInfo* pCreateInfo,
@@ -2304,7 +2308,7 @@ MVKFence* MVKDevice::createFence(const VkFenceCreateInfo* pCreateInfo,
 
 void MVKDevice::destroyFence(MVKFence* mvkFence,
 							 const VkAllocationCallbacks* pAllocator) {
-	mvkFence->destroy();
+	if (mvkFence) { mvkFence->destroy(); }
 }
 
 MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInfo,
@@ -2320,7 +2324,7 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 
 void MVKDevice::destroySemaphore(MVKSemaphore* mvkSem4,
 								 const VkAllocationCallbacks* pAllocator) {
-	mvkSem4->destroy();
+	if (mvkSem4) { mvkSem4->destroy(); }
 }
 
 MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,
@@ -2333,7 +2337,7 @@ MVKEvent* MVKDevice::createEvent(const VkEventCreateInfo* pCreateInfo,
 }
 
 void MVKDevice::destroyEvent(MVKEvent* mvkEvent, const VkAllocationCallbacks* pAllocator) {
-	mvkEvent->destroy();
+	if (mvkEvent) { mvkEvent->destroy(); }
 }
 
 MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInfo,
@@ -2352,7 +2356,7 @@ MVKQueryPool* MVKDevice::createQueryPool(const VkQueryPoolCreateInfo* pCreateInf
 
 void MVKDevice::destroyQueryPool(MVKQueryPool* mvkQP,
 								 const VkAllocationCallbacks* pAllocator) {
-	mvkQP->destroy();
+	if (mvkQP) { mvkQP->destroy(); }
 }
 
 MVKShaderModule* MVKDevice::createShaderModule(const VkShaderModuleCreateInfo* pCreateInfo,
@@ -2362,7 +2366,7 @@ MVKShaderModule* MVKDevice::createShaderModule(const VkShaderModuleCreateInfo* p
 
 void MVKDevice::destroyShaderModule(MVKShaderModule* mvkShdrMod,
 									const VkAllocationCallbacks* pAllocator) {
-	mvkShdrMod->destroy();
+	if (mvkShdrMod) { mvkShdrMod->destroy(); }
 }
 
 MVKPipelineCache* MVKDevice::createPipelineCache(const VkPipelineCacheCreateInfo* pCreateInfo,
@@ -2372,7 +2376,7 @@ MVKPipelineCache* MVKDevice::createPipelineCache(const VkPipelineCacheCreateInfo
 
 void MVKDevice::destroyPipelineCache(MVKPipelineCache* mvkPLC,
 									 const VkAllocationCallbacks* pAllocator) {
-	mvkPLC->destroy();
+	if (mvkPLC) { mvkPLC->destroy(); }
 }
 
 MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateInfo* pCreateInfo,
@@ -2382,7 +2386,7 @@ MVKPipelineLayout* MVKDevice::createPipelineLayout(const VkPipelineLayoutCreateI
 
 void MVKDevice::destroyPipelineLayout(MVKPipelineLayout* mvkPLL,
 									  const VkAllocationCallbacks* pAllocator) {
-	mvkPLL->destroy();
+	if (mvkPLL) { mvkPLL->destroy(); }
 }
 
 template<typename PipelineType, typename PipelineInfoType>
@@ -2443,7 +2447,7 @@ template VkResult MVKDevice::createPipelines<MVKComputePipeline, VkComputePipeli
 
 void MVKDevice::destroyPipeline(MVKPipeline* mvkPL,
                                 const VkAllocationCallbacks* pAllocator) {
-    mvkPL->destroy();
+	if (mvkPL) { mvkPL->destroy(); }
 }
 
 MVKSampler* MVKDevice::createSampler(const VkSamplerCreateInfo* pCreateInfo,
@@ -2453,7 +2457,7 @@ MVKSampler* MVKDevice::createSampler(const VkSamplerCreateInfo* pCreateInfo,
 
 void MVKDevice::destroySampler(MVKSampler* mvkSamp,
 							   const VkAllocationCallbacks* pAllocator) {
-	mvkSamp->destroy();
+	if (mvkSamp) { mvkSamp->destroy(); }
 }
 
 MVKSamplerYcbcrConversion* MVKDevice::createSamplerYcbcrConversion(const VkSamplerYcbcrConversionCreateInfo* pCreateInfo,
@@ -2473,7 +2477,7 @@ MVKDescriptorSetLayout* MVKDevice::createDescriptorSetLayout(const VkDescriptorS
 
 void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
 										   const VkAllocationCallbacks* pAllocator) {
-	mvkDSL->destroy();
+	if (mvkDSL) { mvkDSL->destroy(); }
 }
 
 MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
@@ -2483,7 +2487,7 @@ MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateI
 
 void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
 									  const VkAllocationCallbacks* pAllocator) {
-	mvkDP->destroy();
+	if (mvkDP) { mvkDP->destroy(); }
 }
 
 MVKDescriptorUpdateTemplate* MVKDevice::createDescriptorUpdateTemplate(
@@ -2494,7 +2498,7 @@ MVKDescriptorUpdateTemplate* MVKDevice::createDescriptorUpdateTemplate(
 
 void MVKDevice::destroyDescriptorUpdateTemplate(MVKDescriptorUpdateTemplate* mvkDUT,
 												const VkAllocationCallbacks* pAllocator) {
-	mvkDUT->destroy();
+	if (mvkDUT) { mvkDUT->destroy(); }
 }
 
 MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCreateInfo,
@@ -2504,7 +2508,7 @@ MVKFramebuffer* MVKDevice::createFramebuffer(const VkFramebufferCreateInfo* pCre
 
 void MVKDevice::destroyFramebuffer(MVKFramebuffer* mvkFB,
 								   const VkAllocationCallbacks* pAllocator) {
-	mvkFB->destroy();
+	if (mvkFB) { mvkFB->destroy(); }
 }
 
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
@@ -2514,7 +2518,7 @@ MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreate
 
 void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,
 								  const VkAllocationCallbacks* pAllocator) {
-	mvkRP->destroy();
+	if (mvkRP) { mvkRP->destroy(); }
 }
 
 MVKCommandPool* MVKDevice::createCommandPool(const VkCommandPoolCreateInfo* pCreateInfo,
@@ -2524,7 +2528,7 @@ MVKCommandPool* MVKDevice::createCommandPool(const VkCommandPoolCreateInfo* pCre
 
 void MVKDevice::destroyCommandPool(MVKCommandPool* mvkCmdPool,
 								   const VkAllocationCallbacks* pAllocator) {
-	mvkCmdPool->destroy();
+	if (mvkCmdPool) { mvkCmdPool->destroy(); }
 }
 
 MVKDeviceMemory* MVKDevice::allocateMemory(const VkMemoryAllocateInfo* pAllocateInfo,
@@ -2534,7 +2538,7 @@ MVKDeviceMemory* MVKDevice::allocateMemory(const VkMemoryAllocateInfo* pAllocate
 
 void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 						   const VkAllocationCallbacks* pAllocator) {
-	mvkDevMem->destroy();
+	if (mvkDevMem) { mvkDevMem->destroy(); }
 }
 
 
@@ -2556,14 +2560,14 @@ MVKResource* MVKDevice::removeResource(MVKResource* rez) {
 
 void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
-								   VkMemoryBarrier* pMemoryBarrier,
-                                   MVKCommandEncoder* cmdEncoder,
-                                   MVKCommandUse cmdUse) {
+								   MVKPipelineBarrier& barrier,
+								   MVKCommandEncoder* cmdEncoder,
+								   MVKCommandUse cmdUse) {
 	if (!mvkIsAnyFlagEnabled(dstStageMask, VK_PIPELINE_STAGE_HOST_BIT) ||
-		!mvkIsAnyFlagEnabled(pMemoryBarrier->dstAccessMask, VK_ACCESS_HOST_READ_BIT) ) { return; }
+		!mvkIsAnyFlagEnabled(barrier.dstAccessMask, VK_ACCESS_HOST_READ_BIT) ) { return; }
 	lock_guard<mutex> lock(_rezLock);
-    for (auto& rez : _resources) {
-		rez->applyMemoryBarrier(srcStageMask, dstStageMask, pMemoryBarrier, cmdEncoder, cmdUse);
+	for (auto& rez : _resources) {
+		rez->applyMemoryBarrier(srcStageMask, dstStageMask, barrier, cmdEncoder, cmdUse);
 	}
 }
 
@@ -3064,7 +3068,7 @@ void MVKDevice::enableExtensions(const VkDeviceCreateInfo* pCreateInfo) {
 
 // Create the command queues
 void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
-	auto& qFams = _physicalDevice->getQueueFamilies();
+	auto qFams = _physicalDevice->getQueueFamilies();
 	uint32_t qrCnt = pCreateInfo->queueCreateInfoCount;
 	for (uint32_t qrIdx = 0; qrIdx < qrCnt; qrIdx++) {
 		const VkDeviceQueueCreateInfo* pQFInfo = &pCreateInfo->pQueueCreateInfos[qrIdx];

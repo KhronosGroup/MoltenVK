@@ -103,12 +103,9 @@ MVK_PUBLIC_SYMBOL SPIRVToMSLConversionOptions::SPIRVToMSLConversionOptions() {
 
 MVK_PUBLIC_SYMBOL bool MSLVertexAttribute::matches(const MSLVertexAttribute& other) const {
 	if (vertexAttribute.location != other.vertexAttribute.location) { return false; }
-	if (vertexAttribute.msl_buffer != other.vertexAttribute.msl_buffer) { return false; }
-	if (vertexAttribute.msl_offset != other.vertexAttribute.msl_offset) { return false; }
-	if (vertexAttribute.msl_stride != other.vertexAttribute.msl_stride) { return false; }
 	if (vertexAttribute.format != other.vertexAttribute.format) { return false; }
 	if (vertexAttribute.builtin != other.vertexAttribute.builtin) { return false; }
-	if (!!vertexAttribute.per_instance != !!other.vertexAttribute.per_instance) { return false; }
+	if (binding != other.binding) { return false; }
 	return true;
 }
 
@@ -171,12 +168,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isVertexAttributeLocat
     return false;
 }
 
-// Check them all in case inactive VA's duplicate buffers used by active VA's.
-MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isVertexBufferUsed(uint32_t mslBuffer) const {
-    for (auto& va : vertexAttributes) {
-        if ((va.vertexAttribute.msl_buffer == mslBuffer) && va.isUsedByShader) { return true; }
-    }
-    return false;
+MVK_PUBLIC_SYMBOL uint32_t SPIRVToMSLConversionConfiguration::countVertexAttributesAt(uint32_t binding) const {
+	uint32_t vaCnt = 0;
+	for (auto& va : vertexAttributes) {
+		if ((va.binding == binding) && va.isUsedByShader) { vaCnt++; }
+	}
+	return vaCnt;
 }
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllAttributesAndResourcesUsed() {

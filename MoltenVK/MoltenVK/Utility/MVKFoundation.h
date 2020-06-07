@@ -70,7 +70,7 @@ typedef struct {
 #pragma mark Vulkan support
 
 /** Tracks the Vulkan command currently being used. */
-typedef enum {
+typedef enum : uint8_t {
     kMVKCommandUseNone,                     /**< No use defined. */
     kMVKCommandUseQueueSubmit,              /**< vkQueueSubmit. */
     kMVKCommandUseQueuePresent,             /**< vkQueuePresentKHR. */
@@ -321,6 +321,9 @@ static inline bool mvkVkComponentMappingsMatch(VkComponentMapping cm1, VkCompone
 			mvkVKComponentSwizzlesMatch(cm1.a, cm2.a, VK_COMPONENT_SWIZZLE_A));
 }
 
+/** Print the size of the type. */
+#define mvkPrintSizeOf(type)    printf("Size of " #type " is %lu.\n", sizeof(type))
+
 
 #pragma mark -
 #pragma mark Template functions
@@ -366,6 +369,23 @@ std::size_t mvkHash(const N* pVals, std::size_t count = 1, std::size_t seed = 53
 
 
 #pragma mark Containers
+
+/**
+ * Structure to reference an array of typed elements in contiguous memory.
+ * Allocation and management of the memory is handled externally.
+ */
+template<typename Type>
+struct MVKArrayRef {
+	Type* data;
+	const size_t size;
+
+	const Type* begin() const { return data; }
+	const Type* end() const { return &data[size]; }
+	const Type& operator[]( const size_t i ) const { return data[i]; }
+	Type& operator[]( const size_t i ) { return data[i]; }
+	MVKArrayRef() : MVKArrayRef(nullptr, 0) {}
+	MVKArrayRef(Type* d, size_t s) : data(d), size(s) {}
+};
 
 /** Ensures the size of the specified container is at least the specified size. */
 template<typename C, typename S>

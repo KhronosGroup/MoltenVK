@@ -19,7 +19,7 @@
 #pragma once
 
 #include "MVKDevice.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <mutex>
 
 #import <Metal/Metal.h>
@@ -90,7 +90,7 @@ public:
 	 * to coherent memory can be forced by setting evenIfCoherent to true.
 	 *
 	 * If pBlitEnc is not null, it points to a holder for a MTLBlitCommandEncoder and its
-	 * assocated MTLCommandBuffer. If this instance has a MTLBuffer using managed memory,
+	 * associated MTLCommandBuffer. If this instance has a MTLBuffer using managed memory,
 	 * this function may call synchronizeResource: on the MTLBlitCommandEncoder to
 	 * synchronize the GPU contents to the CPU. If the contents of the pBlitEnc do not
 	 * include a MTLBlitCommandEncoder and MTLCommandBuffer, this function will create
@@ -116,7 +116,7 @@ public:
 	/** Returns the Metal CPU cache mode used by this memory allocation. */
 	inline MTLCPUCacheMode getMTLCPUCacheMode() { return _mtlCPUCacheMode; }
 
-	/** Returns the Metal reource options used by this memory allocation. */
+	/** Returns the Metal resource options used by this memory allocation. */
 	inline MTLResourceOptions getMTLResourceOptions() { return mvkMTLResourceOptions(_mtlStorageMode, _mtlCPUCacheMode); }
 
 
@@ -133,7 +133,7 @@ protected:
 	friend class MVKBuffer;
     friend class MVKImageMemoryBinding;
 
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);
 	VkResult addBuffer(MVKBuffer* mvkBuff);
 	void removeBuffer(MVKBuffer* mvkBuff);
@@ -146,8 +146,8 @@ protected:
 	MVKResource* getDedicatedResource();
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 
-	MVKVectorInline<MVKBuffer*, 4> _buffers;
-	MVKVectorInline<MVKImageMemoryBinding*, 4> _imageMemoryBindings;
+	MVKSmallVector<MVKBuffer*, 4> _buffers;
+	MVKSmallVector<MVKImageMemoryBinding*, 4> _imageMemoryBindings;
 	std::mutex _rezLock;
     VkDeviceSize _allocationSize = 0;
 	VkDeviceSize _mapOffset = 0;

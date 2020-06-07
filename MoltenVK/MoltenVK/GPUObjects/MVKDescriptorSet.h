@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKDescriptor.h"
+#include "MVKSmallVector.h"
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -46,13 +47,13 @@ public:
     void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                            MVKDescriptorSet* descSet,
                            MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                           MVKVector<uint32_t>& dynamicOffsets,
+                           MVKArrayRef<uint32_t> dynamicOffsets,
                            uint32_t* pDynamicOffsetIndex);
 
 
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   MVKVector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKArrayRef<VkWriteDescriptorSet>& descriptorWrites,
 						   MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
 
@@ -80,12 +81,12 @@ protected:
 	friend class MVKDescriptorSet;
 	friend class MVKDescriptorPool;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
 	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex);
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 
-	std::vector<MVKDescriptorSetLayoutBinding> _bindings;
+	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint32_t _descriptorCount;
@@ -132,12 +133,12 @@ protected:
 	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKDescriptorPool;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	inline MVKDescriptor* getDescriptor(uint32_t index) { return _descriptors[index]; }
 
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;
-	std::vector<MVKDescriptor*> _descriptors;
+	MVKSmallVector<MVKDescriptor*> _descriptors;
 };
 
 
@@ -164,8 +165,8 @@ protected:
 	void freeDescriptor(MVKDescriptor* mvkDesc);
 	void reset();
 
-	std::vector<DescriptorClass> _descriptors;
-	std::vector<bool> _availability;
+	MVKSmallVector<DescriptorClass> _descriptors;
+	MVKSmallVector<bool> _availability;
 	uint32_t _nextAvailableIndex;
 	bool _supportAvailability;
 };
@@ -228,7 +229,7 @@ public:
 	/** Free's up the specified descriptor set. */
 	VkResult freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets);
 
-	/** Destoys all currently allocated descriptor sets. */
+	/** Destroys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
 	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
@@ -238,7 +239,7 @@ public:
 protected:
 	friend class MVKDescriptorSet;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, VkDescriptorSet* pVKDS);
 	void freeDescriptorSet(MVKDescriptorSet* mvkDS);
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
@@ -280,10 +281,10 @@ public:
 	~MVKDescriptorUpdateTemplate() override = default;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	VkDescriptorUpdateTemplateTypeKHR _type;
-	MVKVectorInline<VkDescriptorUpdateTemplateEntryKHR, 1> _entries;
+	MVKSmallVector<VkDescriptorUpdateTemplateEntryKHR, 1> _entries;
 };
 
 #pragma mark -

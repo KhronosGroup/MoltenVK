@@ -74,6 +74,7 @@ namespace mvk {
 	typedef struct MSLVertexAttribute {
 		SPIRV_CROSS_NAMESPACE::MSLVertexAttr vertexAttribute;
 
+		uint32_t binding = 0;
 		bool isUsedByShader = false;
 
 		/**
@@ -135,8 +136,11 @@ namespace mvk {
         /** Returns whether the vertex attribute at the specified location is used by the shader. */
         bool isVertexAttributeLocationUsed(uint32_t location) const;
 
-        /** Returns whether the vertex buffer at the specified Metal binding index is used by the shader. */
-        bool isVertexBufferUsed(uint32_t mslBuffer) const;
+		/** Returns the number of vertex attributes bound to the specified Vulkan buffer binding, and used by the shader. */
+		uint32_t countVertexAttributesAt(uint32_t binding) const;
+
+        /** Returns whether the vertex buffer at the specified Vulkan binding is used by the shader. */
+		bool isVertexBufferUsed(uint32_t binding) const { return countVertexAttributesAt(binding) > 0; }
 
 		/** Marks all vertex attributes and resources as being used by the shader. */
 		void markAllAttributesAndResourcesUsed();

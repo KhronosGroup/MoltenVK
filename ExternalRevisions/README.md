@@ -202,9 +202,10 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
 
 5. Remove the *Group* named `fuzz` from under the *Group* named `External/SPIRV-Tools/source`.
 
-6. In the `Scripts` folder, run `./packagePregenSpirvToolsHeaders` to update `Templates/spirv-tools/build.zip` 
-   from the `*.h` and `*.inc` files in `External/glslang/External/spirv-tools/build`, and test by running 
-   `./fetchDependencies --skip-spirv-tools-build`, and a **MoltenVK** build.
+6. In the `Scripts` folder, run `./packagePregenSpirvToolsHeaders`, which will fetch and build the 
+   full `SPIRV-Tools` library and will update `Templates/spirv-tools/build.zip` from the `*.h` and 
+   `*.inc` files in `External/glslang/External/spirv-tools/build`. Test by running `./fetchDependencies` 
+   and a **MoltenVK** build.
 
 
 

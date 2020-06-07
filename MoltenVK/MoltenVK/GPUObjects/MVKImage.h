@@ -21,7 +21,7 @@
 #include "MVKResource.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKSync.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_map>
 #include <mutex>
@@ -62,7 +62,7 @@ protected:
     MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
-    void propogateDebugName();
+    void propagateDebugName();
     MVKImageMemoryBinding* getMemoryBinding() const;
 
     MVKImagePlane(MVKImage* image, uint8_t planeIndex);
@@ -76,7 +76,7 @@ protected:
     MTLPixelFormat _mtlPixFmt;
     id<MTLTexture> _mtlTexture;
     std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
-    MVKVectorInline<MVKImageSubresource, 1> _subresources;
+    MVKSmallVector<MVKImageSubresource, 1> _subresources;
 };
 
 
@@ -105,7 +105,7 @@ public:
     /** Applies the specified global memory barrier. */
     void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
                             VkPipelineStageFlags dstStageMask,
-                            VkMemoryBarrier* pMemoryBarrier,
+                            MVKPipelineBarrier& barrier,
                             MVKCommandEncoder* cmdEncoder,
                             MVKCommandUse cmdUse) override;
     
@@ -116,10 +116,10 @@ protected:
     friend MVKImagePlane;
     friend MVKImage;
 
-    void propogateDebugName() override;
+    void propagateDebugName() override;
     bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
-    VkPipelineStageFlags dstStageMask,
-    VkMemoryBarrier* pImageMemoryBarrier) override;
+                           VkPipelineStageFlags dstStageMask,
+                           VkMemoryBarrier* pMemoryBarrier) override;
     bool shouldFlushHostMemory();
     VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
     VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
@@ -177,7 +177,7 @@ public:
 	 * Returns the 3D extent of this image at the specified mipmap level. 
 	 * For 2D or cube images, the Z component will be 1.
 	 */
-	VkExtent3D getExtent3D(uint32_t planeIndex, uint32_t mipLevel);
+	VkExtent3D getExtent3D(uint8_t planeIndex, uint32_t mipLevel);
 
 	/** Returns the number of mipmap levels in this image. */
 	inline uint32_t getMipLevelCount() { return _mipLevels; }
@@ -197,7 +197,7 @@ public:
       * For compressed formats, this is the number of bytes in a row of blocks, which
       * will typically span more than one row of texels.
 	  */
-	VkDeviceSize getBytesPerRow(uint32_t planeIndex, uint32_t mipLevel);
+	VkDeviceSize getBytesPerRow(uint8_t planeIndex, uint32_t mipLevel);
 
 	/**
 	 * Returns the number of bytes per image layer (for cube, array, or 3D images) 
@@ -205,7 +205,10 @@ public:
 	 * of bytes per row (as returned by the getBytesPerRow() function, multiplied by 
 	 * the height of each 2D image.
 	 */
-	VkDeviceSize getBytesPerLayer(uint32_t planeIndex, uint32_t mipLevel);
+	VkDeviceSize getBytesPerLayer(uint8_t planeIndex, uint32_t mipLevel);
+    
+    /** Returns the number of planes of this image view. */
+    inline uint8_t getPlaneCount() { return _planes.size(); }
 
 	/** Populates the specified layout for the specified sub-resource. */
 	VkResult getSubresourceLayout(const VkImageSubresource* pSubresource,
@@ -230,11 +233,11 @@ public:
 	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
 
 	/** Applies the specified image memory barrier. */
-    void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
-                                 VkPipelineStageFlags dstStageMask,
-                                 VkImageMemoryBarrier* pImageMemoryBarrier,
-                                 MVKCommandEncoder* cmdEncoder,
-                                 MVKCommandUse cmdUse);
+	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								 VkPipelineStageFlags dstStageMask,
+								 MVKPipelineBarrier& barrier,
+								 MVKCommandEncoder* cmdEncoder,
+								 MVKCommandUse cmdUse);
 
 #pragma mark Metal
 
@@ -321,7 +324,7 @@ protected:
     friend class MVKImageViewPlane;
 	friend MVKImageView;
 
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 	void validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
@@ -416,7 +419,7 @@ public:
 	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
 	 * drawable is presented immediately using the present method of the drawable.
 	 */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff);
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, bool hasPresentTime, uint32_t presentID, uint64_t desiredPresentTime);
 
 
 #pragma mark Construction
@@ -445,7 +448,7 @@ protected:
 
 	id<CAMetalDrawable> _mtlDrawable;
 	MVKSwapchainImageAvailability _availability;
-	MVKVectorInline<MVKSwapchainSignaler, 1> _availabilitySignalers;
+	MVKSmallVector<MVKSwapchainSignaler, 1> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaler;
 	std::mutex _availabilityLock;
 };
@@ -491,7 +494,7 @@ public:
     ~MVKImageViewPlane();
 
 protected:
-    void propogateDebugName();
+    void propagateDebugName();
     id<MTLTexture> newMTLTexture();
     MVKImageViewPlane(MVKImageView* imageView, uint8_t planeIndex, MTLPixelFormat mtlPixFmt, const VkImageViewCreateInfo* pCreateInfo);
 
@@ -581,7 +584,7 @@ public:
 protected:
     friend MVKImageViewPlane;
     
-	void propogateDebugName() override;
+	void propagateDebugName() override;
 
     MVKImage* _image;
     std::vector<std::unique_ptr<MVKImageViewPlane>> _planes;
@@ -616,7 +619,7 @@ public:
     ~MVKSamplerYcbcrConversion() override {}
 
 protected:
-    void propogateDebugName() override {}
+    void propagateDebugName() override {}
 
     uint8_t _planes, _bpc;
     SPIRV_CROSS_NAMESPACE::MSLFormatResolution _resolution;
@@ -664,7 +667,7 @@ public:
 	~MVKSampler() override;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	MTLSamplerDescriptor* newMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo);
 	void initConstExprSampler(const VkSamplerCreateInfo* pCreateInfo);
 

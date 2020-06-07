@@ -19,15 +19,16 @@
 #pragma once
 
 #include "MVKEnvironment.h"
-#include "MVKDevice.h"
 #include "MVKLayers.h"
 #include "MVKVulkanAPIObject.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include "vk_mvk_moltenvk.h"
 #include <unordered_map>
 #include <string>
 #include <mutex>
 
+class MVKPhysicalDevice;
+class MVKDevice;
 class MVKSurface;
 class MVKDebugReportCallback;
 class MVKDebugUtilsMessenger;
@@ -177,7 +178,7 @@ public:
 protected:
 	friend MVKDevice;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	void initProcAddrs();
 	void initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo);
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromASLLevel(int aslLvl);
@@ -189,9 +190,9 @@ protected:
 
 	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
-	MVKVectorInline<MVKPhysicalDevice, 2> _physicalDevices;
-	MVKVectorDefault<MVKDebugReportCallback*> _debugReportCallbacks;
-	MVKVectorDefault<MVKDebugUtilsMessenger*> _debugUtilMessengers;
+	MVKSmallVector<MVKPhysicalDevice*, 2> _physicalDevices;
+	MVKSmallVector<MVKDebugReportCallback*> _debugReportCallbacks;
+	MVKSmallVector<MVKDebugUtilsMessenger*> _debugUtilMessengers;
 	std::unordered_map<std::string, MVKEntryPoint> _entryPoints;
 	std::mutex _dcbLock;
 	bool _hasDebugReportCallbacks;
@@ -233,7 +234,7 @@ public:
 protected:
 	friend MVKInstance;
 	
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	MVKInstance* _mvkInstance;
 	VkDebugReportCallbackCreateInfoEXT _info;
@@ -271,7 +272,7 @@ public:
 protected:
 	friend MVKInstance;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	MVKInstance* _mvkInstance;
 	VkDebugUtilsMessengerCreateInfoEXT _info;

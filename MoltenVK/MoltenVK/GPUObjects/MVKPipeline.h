@@ -22,7 +22,7 @@
 #include "MVKDescriptorSet.h"
 #include "MVKShaderModule.h"
 #include "MVKSync.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVReflection.h>
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
 #include <unordered_set>
@@ -54,13 +54,13 @@ public:
 
 	/** Binds descriptor sets to a command encoder. */
     void bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
-                            MVKVector<MVKDescriptorSet*>& descriptorSets,
+                            MVKArrayRef<MVKDescriptorSet*> descriptorSets,
                             uint32_t firstSet,
-                            MVKVector<uint32_t>& dynamicOffsets);
+                            MVKArrayRef<uint32_t> dynamicOffsets);
 
 	/** Updates a descriptor set in a command encoder. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   MVKVector<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
 						   uint32_t set);
 
 	/** Updates a descriptor set from a template in a command encoder. */
@@ -105,11 +105,11 @@ public:
 	~MVKPipelineLayout() override;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
-	MVKVectorInline<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
-	MVKVectorInline<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
-	MVKVectorDefault<VkPushConstantRange> _pushConstants;
+	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
+	MVKSmallVector<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
+	MVKSmallVector<VkPushConstantRange> _pushConstants;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
@@ -143,9 +143,6 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_PIPELINE_EXT; }
 
-	/** Returns the order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
-	virtual void getStages(MVKVector<uint32_t>& stages) = 0;
-
 	/** Binds this pipeline to the specified command encoder. */
 	virtual void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) = 0;
 
@@ -171,7 +168,7 @@ public:
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent);
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
@@ -187,6 +184,15 @@ protected:
 #pragma mark -
 #pragma mark MVKGraphicsPipeline
 
+/** Describes a buffer binding to accommodate vertex attributes with offsets greater than the stride. */
+struct MVKTranslatedVertexBinding {
+	uint16_t binding;
+	uint16_t translationBinding;
+	uint32_t translationOffset;
+};
+
+typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
+
 /** The number of dynamic states possible in Vulkan. */
 static const uint32_t kMVKVkDynamicStateCount = 32;
 
@@ -195,8 +201,8 @@ class MVKGraphicsPipeline : public MVKPipeline {
 
 public:
 
-	/** Returns the number and order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
-	void getStages(MVKVector<uint32_t>& stages) override;
+	/** Returns the number and order of stages in this pipeline. Draws commands must encode this pipeline once per stage. */
+	void getStages(MVKPiplineStages& stages);
 
 	/** Binds this pipeline to the specified command encoder. */
 	void encode(MVKCommandEncoder* cmdEncoder, uint32_t stage = 0) override;
@@ -231,6 +237,12 @@ public:
 	/** Returns true if the tessellation control shader needs a buffer to store its per-patch output. */
 	bool needsTessCtlPatchOutputBuffer() { return _needsTessCtlPatchOutputBuffer; }
 
+	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
+	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding) { return _device->getMetalBufferIndexForVertexAttributeBinding(binding); }
+
+	/** Returns the collection of translated vertex bindings. */
+	MVKArrayRef<MVKTranslatedVertexBinding> getTranslatedVertexBindings() { return _translatedVertexBindings.contents(); }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
 						MVKPipelineCache* pipelineCache,
@@ -240,25 +252,28 @@ public:
 	~MVKGraphicsPipeline() override;
 
 protected:
+	typedef MVKSmallVector<SPIRVShaderOutput, 32> SPIRVShaderOutputs;
+
     id<MTLRenderPipelineState> getOrCompilePipeline(MTLRenderPipelineDescriptor* plDesc, id<MTLRenderPipelineState>& plState);
     id<MTLComputePipelineState> getOrCompilePipeline(MTLComputePipelineDescriptor* plDesc, id<MTLComputePipelineState>& plState, const char* compilerType);
     void initMTLRenderPipelineState(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
     void initMVKShaderConverterContext(SPIRVToMSLConversionConfiguration& _shaderContext, const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
     void addVertexInputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderContext, const VkGraphicsPipelineCreateInfo* pCreateInfo);
-    void addPrevStageOutputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderContext, std::vector<SPIRVShaderOutput>& outputs);
+    void addPrevStageOutputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderContext, SPIRVShaderOutputs& outputs);
     MTLRenderPipelineDescriptor* newMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
     MTLRenderPipelineDescriptor* newMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
 	MTLComputePipelineDescriptor* newMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
 	MTLRenderPipelineDescriptor* newMTLTessRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
 	bool addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext);
-	bool addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, std::vector<SPIRVShaderOutput>& prevOutput);
-	bool addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, std::vector<SPIRVShaderOutput>& prevOutput);
+	bool addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, SPIRVShaderOutputs& prevOutput);
+	bool addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, SPIRVShaderOutputs& prevOutput);
     bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext);
 	bool addVertexInputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConversionConfiguration& shaderContext);
     void addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS);
     void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo, bool isTessellationVertexPipeline = false);
     bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
 	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name, uint32_t reservedBuffers);
+	uint32_t getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
@@ -269,8 +284,9 @@ protected:
 	VkPipelineRasterizationStateCreateInfo _rasterInfo;
 	VkPipelineDepthStencilStateCreateInfo _depthStencilInfo;
 
-	MVKVectorInline<VkViewport, kMVKCachedViewportScissorCount> _viewports;
-	MVKVectorInline<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
+	MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports;
+	MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
+	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 
 	MTLComputePipelineDescriptor* _mtlTessControlStageDesc = nil;
 
@@ -315,9 +331,6 @@ protected:
 class MVKComputePipeline : public MVKPipeline {
 
 public:
-
-	/** Returns the number and order of stages in this pipeline. Draws and dispatches must encode this pipeline once per stage. */
-	void getStages(MVKVector<uint32_t>& stages) override;
 
 	/** Binds this pipeline to the specified command encoder. */
 	void encode(MVKCommandEncoder* cmdEncoder, uint32_t = 0) override;
@@ -380,7 +393,7 @@ public:
 	~MVKPipelineCache() override;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	MVKShaderLibraryCache* getShaderLibraryCache(MVKShaderModuleKey smKey);
 	void readData(const VkPipelineCacheCreateInfo* pCreateInfo);
 	void writeData(std::ostream& outstream, bool isCounting = false);

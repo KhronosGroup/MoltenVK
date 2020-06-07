@@ -140,9 +140,9 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-    uint32_t _queryCount;
     MVKBuffer* _destBuffer;
     VkDeviceSize _destOffset;
     VkDeviceSize _destStride;
     VkQueryResultFlags _flags;
+	uint32_t _queryCount;
 };

@@ -100,7 +100,7 @@ public:
 	~MVKCommandPool() override;
 
 protected:
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	MVKDeviceObjectPool<MVKCommandBuffer> _commandBufferPool;
 	std::unordered_set<MVKCommandBuffer*> _allocatedCommandBuffers;
 	MVKCommandEncodingPool _commandEncodingPool;

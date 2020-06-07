@@ -41,17 +41,33 @@
 #	define MVK_CMD_TYPE_POOL_LAST(cmdType) MVK_CMD_TYPE_POOL(cmdType)
 #endif
 
-MVK_CMD_TYPE_POOL(PipelineBarrier)
-MVK_CMD_TYPE_POOL(BindPipeline)
-MVK_CMD_TYPE_POOL(BeginRenderPass)
+#define MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(cmdType, threshold)	\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold)		\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi)
+
+#define MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(cmdType, threshold1, threshold2)	\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold1)						\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold2)						\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi)
+
+#define MVK_CMD_TYPE_POOLS_FROM_3_THRESHOLDS(cmdType, threshold1, threshold2, threshold3)	\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold1)									\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold2)									\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold3)									\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi)
+
+
+MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(PipelineBarrier, 1, 4)
+MVK_CMD_TYPE_POOL(BindGraphicsPipeline)
+MVK_CMD_TYPE_POOL(BindComputePipeline)
+MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(BeginRenderPass, 1, 2)
 MVK_CMD_TYPE_POOL(NextSubpass)
 MVK_CMD_TYPE_POOL(EndRenderPass)
-MVK_CMD_TYPE_POOL(ExecuteCommands)
-MVK_CMD_TYPE_POOL(BindDescriptorSets)
-MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(SetViewport1)
-MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(SetViewportMulti)
-MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(SetScissor1)
-MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(SetScissorMulti)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(ExecuteCommands, 1)
+MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(BindDescriptorSetsStatic, 1, 4)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(BindDescriptorSetsDynamic, 4)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(SetViewport, 1)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(SetScissor, 1)
 MVK_CMD_TYPE_POOL(SetLineWidth)
 MVK_CMD_TYPE_POOL(SetDepthBias)
 MVK_CMD_TYPE_POOL(SetBlendConstants)
@@ -59,27 +75,29 @@ MVK_CMD_TYPE_POOL(SetDepthBounds)
 MVK_CMD_TYPE_POOL(SetStencilCompareMask)
 MVK_CMD_TYPE_POOL(SetStencilWriteMask)
 MVK_CMD_TYPE_POOL(SetStencilReference)
-MVK_CMD_TYPE_POOL(BindVertexBuffers)
+MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(BindVertexBuffers, 1, 2)
 MVK_CMD_TYPE_POOL(BindIndexBuffer)
 MVK_CMD_TYPE_POOL(Draw)
 MVK_CMD_TYPE_POOL(DrawIndexed)
 MVK_CMD_TYPE_POOL(DrawIndirect)
 MVK_CMD_TYPE_POOL(DrawIndexedIndirect)
-MVK_CMD_TYPE_POOL(CopyImage)
-MVK_CMD_TYPE_POOL(BlitImage)
-MVK_CMD_TYPE_POOL(ResolveImage)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(CopyImage, 1)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(BlitImage, 1)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(ResolveImage, 1)
 MVK_CMD_TYPE_POOL(FillBuffer)
 MVK_CMD_TYPE_POOL(UpdateBuffer)
-MVK_CMD_TYPE_POOL(CopyBuffer)
-MVK_CMD_TYPE_POOL(BufferImageCopy)
-MVK_CMD_TYPE_POOL(ClearAttachments)
-MVK_CMD_TYPE_POOL(ClearImage)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(CopyBuffer, 1)
+MVK_CMD_TYPE_POOLS_FROM_3_THRESHOLDS(BufferImageCopy, 1, 4, 8)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(ClearSingleAttachment, 1)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(ClearMultiAttachments, 1)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(ClearColorImage, 1)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(ClearDepthStencilImage, 1)
 MVK_CMD_TYPE_POOL(BeginQuery)
 MVK_CMD_TYPE_POOL(EndQuery)
 MVK_CMD_TYPE_POOL(WriteTimestamp)
 MVK_CMD_TYPE_POOL(ResetQueryPool)
 MVK_CMD_TYPE_POOL(CopyQueryPoolResults)
-MVK_CMD_TYPE_POOL(PushConstants)
+MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(PushConstants, 64, 128)
 MVK_CMD_TYPE_POOL(Dispatch)
 MVK_CMD_TYPE_POOL(DispatchIndirect)
 MVK_CMD_TYPE_POOL(PushDescriptorSet)
@@ -87,8 +105,9 @@ MVK_CMD_TYPE_POOL(PushDescriptorSetWithTemplate)
 MVK_CMD_TYPE_POOL(DebugMarkerBegin)
 MVK_CMD_TYPE_POOL(DebugMarkerEnd)
 MVK_CMD_TYPE_POOL(DebugMarkerInsert)
-MVK_CMD_TYPE_POOL(SetResetEvent)
-MVK_CMD_TYPE_POOL_LAST(WaitEvents)
+MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(WaitEvents, 1)
+MVK_CMD_TYPE_POOL(SetEvent)
+MVK_CMD_TYPE_POOL_LAST(ResetEvent)
 
 #undef MVK_CMD_TYPE_POOL
 #undef MVK_CMD_TYPE_POOL_LAST

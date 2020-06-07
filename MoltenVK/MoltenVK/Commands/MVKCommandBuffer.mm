@@ -20,7 +20,6 @@
 #include "MVKCommandPool.h"
 #include "MVKQueue.h"
 #include "MVKPipeline.h"
-#include "MVKRenderPass.h"
 #include "MVKFramebuffer.h"
 #include "MVKQueryPool.h"
 #include "MVKFoundation.h"
@@ -197,13 +196,13 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 #pragma mark -
 #pragma mark Tessellation constituent command management
 
-void MVKCommandBuffer::recordBeginRenderPass(MVKCmdBeginRenderPass* mvkBeginRenderPass) {
+void MVKCommandBuffer::recordBeginRenderPass(MVKLoadStoreOverrideMixin* mvkBeginRenderPass) {
 	_lastBeginRenderPass = mvkBeginRenderPass;
 	_lastTessellationPipeline = nullptr;
 	_lastTessellationDraw = nullptr;
 }
 
-void MVKCommandBuffer::recordEndRenderPass(MVKCmdEndRenderPass* /*mvkEndRenderPass*/) {
+void MVKCommandBuffer::recordEndRenderPass() {
 	// Unset the store override for the last draw call
 	if (_lastTessellationDraw != nullptr)
 	{
@@ -266,7 +265,7 @@ void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
 										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
-										MVKVector<VkClearValue>* clearValues,
+										MVKArrayRef<VkClearValue> clearValues,
 										bool loadOverride,
 										bool storeOverride) {
 	_renderPass = renderPass;
@@ -274,7 +273,7 @@ void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
 	_renderArea = renderArea;
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebuffer->getExtent2D()));
-	_clearValues.assign(clearValues->begin(), clearValues->end());
+	_clearValues.assign(clearValues.begin(), clearValues.end());
 	setSubpass(subpassContents, 0, loadOverride, storeOverride);
 }
 
@@ -301,7 +300,7 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride, bool storeOverri
     endCurrentMetalEncoding();
 
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues, _isRenderingEntireAttachment, loadOverride, storeOverride);
+    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues.contents(), _isRenderingEntireAttachment, loadOverride, storeOverride);
     mtlRPDesc.visibilityResultBuffer = _occlusionQueryState.getVisibilityResultMTLBuffer();
 
 	// Only set the layered rendering properties if layered rendering is supported and the framebuffer really has multiple layers
@@ -407,8 +406,8 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
 // Clears the render area of the framebuffer attachments.
 void MVKCommandEncoder::clearRenderArea() {
 
-	MVKVectorInline<VkClearAttachment, kMVKDefaultAttachmentCount> clearAtts;
-	getSubpass()->populateClearAttachments(clearAtts, _clearValues);
+	MVKClearAttachments clearAtts;
+	getSubpass()->populateClearAttachments(clearAtts, _clearValues.contents());
 
 	uint32_t clearAttCnt = (uint32_t)clearAtts.size();
 
@@ -421,7 +420,7 @@ void MVKCommandEncoder::clearRenderArea() {
 
     // Create and execute a temporary clear attachments command.
     // To be threadsafe...do NOT acquire and return the command from the pool.
-    MVKCmdClearAttachments cmd;
+    MVKCmdClearMultiAttachments<1> cmd;
     cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
     cmd.encode(this);
 }
@@ -448,6 +447,10 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 
 void MVKCommandEncoder::endCurrentMetalEncoding() {
 	endMetalRenderEncoding();
+
+	_computePipelineState.markDirty();
+	_computeResourcesState.markDirty();
+	_computePushConstants.markDirty();
 
 	[_mtlComputeEncoder endEncoding];
 	_mtlComputeEncoder = nil;       // not retained
@@ -593,7 +596,7 @@ void MVKCommandEncoder::finishQueries() {
     MVKActivatedQueries* pAQs = _pActivatedQueries;
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
         for (auto& qryPair : *pAQs) {
-            qryPair.first->finishQueries(qryPair.second);
+            qryPair.first->finishQueries(qryPair.second.contents());
         }
         delete pAQs;
     }];

@@ -20,9 +20,10 @@
 
 #include "MVKFoundation.h"
 #include "MVKVulkanAPIObject.h"
+#include "MVKMTLResourceBindings.h"
 #include "MVKLayers.h"
 #include "MVKObjectPool.h"
-#include "MVKVector.h"
+#include "MVKSmallVector.h"
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
@@ -332,7 +333,7 @@ public:
 protected:
 	friend class MVKDevice;
 
-	void propogateDebugName() override {}
+	void propagateDebugName() override {}
 	MTLFeatureSet getMaximalMTLFeatureSet();
     void initMetalFeatures();
 	void initFeatures();
@@ -346,7 +347,7 @@ protected:
 	uint64_t getCurrentAllocatedSize();
 	void initExternalMemoryProperties();
 	void initExtensions();
-	MVKVector<MVKQueueFamily*>& getQueueFamilies();
+	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
 	uint64_t getSpirvCrossRevision();
@@ -362,7 +363,7 @@ protected:
 	VkPhysicalDeviceProperties _properties;
 	VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT _texelBuffAlignProperties;
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
-	MVKVectorInline<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
+	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	MVKPixelFormats _pixelFormats;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
@@ -567,9 +568,9 @@ public:
 	/** Applies the specified global memory barrier to all resource issued by this device. */
 	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 							VkPipelineStageFlags dstStageMask,
-							VkMemoryBarrier* pMemoryBarrier,
-                            MVKCommandEncoder* cmdEncoder,
-                            MVKCommandUse cmdUse);
+							MVKPipelineBarrier& barrier,
+							MVKCommandEncoder* cmdEncoder,
+							MVKCommandUse cmdUse);
 
     /**
 	 * If performance is being tracked, returns a monotonic timestamp value for use performance timestamping.
@@ -701,7 +702,7 @@ public:
     }
 
 protected:
-	void propogateDebugName() override  {}
+	void propagateDebugName() override  {}
 	MVKResource* addResource(MVKResource* rez);
 	MVKResource* removeResource(MVKResource* rez);
     void initPerformanceTracking();
@@ -718,8 +719,8 @@ protected:
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
 	MTLCompileOptions* _mtlCompileOptions;
-	MVKVectorInline<MVKVectorInline<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
-	MVKVectorInline<MVKResource*, 256> _resources;
+	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
+	MVKSmallVector<MVKResource*, 256> _resources;
 	std::mutex _rezLock;
     std::mutex _perfLock;
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;

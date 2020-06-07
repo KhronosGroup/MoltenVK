@@ -19,7 +19,6 @@
 #pragma once
 
 #include "MVKCommand.h"
-#include "MVKMTLResourceBindings.h"
 
 #import <Metal/Metal.h>
 

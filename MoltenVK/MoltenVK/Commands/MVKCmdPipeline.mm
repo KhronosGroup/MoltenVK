@@ -30,116 +30,131 @@
 #pragma mark -
 #pragma mark MVKCmdPipelineBarrier
 
-VkResult MVKCmdPipelineBarrier::setContent(MVKCommandBuffer* cmdBuff,
-										   VkPipelineStageFlags srcStageMask,
-										   VkPipelineStageFlags dstStageMask,
-										   VkDependencyFlags dependencyFlags,
-										   uint32_t memoryBarrierCount,
-										   const VkMemoryBarrier* pMemoryBarriers,
-										   uint32_t bufferMemoryBarrierCount,
-										   const VkBufferMemoryBarrier* pBufferMemoryBarriers,
-										   uint32_t imageMemoryBarrierCount,
-										   const VkImageMemoryBarrier* pImageMemoryBarriers) {
+template <size_t N>
+VkResult MVKCmdPipelineBarrier<N>::setContent(MVKCommandBuffer* cmdBuff,
+											  VkPipelineStageFlags srcStageMask,
+											  VkPipelineStageFlags dstStageMask,
+											  VkDependencyFlags dependencyFlags,
+											  uint32_t memoryBarrierCount,
+											  const VkMemoryBarrier* pMemoryBarriers,
+											  uint32_t bufferMemoryBarrierCount,
+											  const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+											  uint32_t imageMemoryBarrierCount,
+											  const VkImageMemoryBarrier* pImageMemoryBarriers) {
 	_srcStageMask = srcStageMask;
 	_dstStageMask = dstStageMask;
 	_dependencyFlags = dependencyFlags;
 
-	_memoryBarriers.clear();	// Clear for reuse
-	_memoryBarriers.reserve(memoryBarrierCount);
+	_barriers.clear();	// Clear for reuse
+	_barriers.reserve(memoryBarrierCount + bufferMemoryBarrierCount + imageMemoryBarrierCount);
+
 	for (uint32_t i = 0; i < memoryBarrierCount; i++) {
-		_memoryBarriers.push_back(pMemoryBarriers[i]);
+		_barriers.emplace_back(pMemoryBarriers[i]);
 	}
-
-	_bufferMemoryBarriers.clear();	// Clear for reuse
-	_bufferMemoryBarriers.reserve(bufferMemoryBarrierCount);
 	for (uint32_t i = 0; i < bufferMemoryBarrierCount; i++) {
-		_bufferMemoryBarriers.push_back(pBufferMemoryBarriers[i]);
+		_barriers.emplace_back(pBufferMemoryBarriers[i]);
 	}
-
-	_imageMemoryBarriers.clear();	// Clear for reuse
-	_imageMemoryBarriers.reserve(imageMemoryBarrierCount);
 	for (uint32_t i = 0; i < imageMemoryBarrierCount; i++) {
-		_imageMemoryBarriers.push_back(pImageMemoryBarriers[i]);
+		_barriers.emplace_back(pImageMemoryBarriers[i]);
 	}
 
 	return VK_SUCCESS;
 }
 
-void MVKCmdPipelineBarrier::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 #if MVK_MACOS
-    // Calls below invoke MTLBlitCommandEncoder so must apply this first.
+	// Calls below invoke MTLBlitCommandEncoder so must apply this first.
 	// Check if pipeline barriers are available and we are in a renderpass.
 	if (cmdEncoder->getDevice()->_pMetalFeatures->memoryBarriers && cmdEncoder->_mtlRenderEncoder) {
 		MTLRenderStages srcStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_srcStageMask, false);
 		MTLRenderStages dstStages = mvkMTLRenderStagesFromVkPipelineStageFlags(_dstStageMask, true);
-		for (auto& mb : _memoryBarriers) {
-			MTLBarrierScope scope = mvkMTLBarrierScopeFromVkAccessFlags(mb.dstAccessMask);
-			scope |= mvkMTLBarrierScopeFromVkAccessFlags(mb.srcAccessMask);
-			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithScope: scope
-													  afterStages: srcStages
-													 beforeStages: dstStages];
-		}
-		MVKVectorInline<id<MTLResource>, 16> resources;
-		resources.reserve(_bufferMemoryBarriers.size() + _imageMemoryBarriers.size());
-		for (auto& mb : _bufferMemoryBarriers) {
-			auto* mvkBuff = (MVKBuffer*)mb.buffer;
-			resources.push_back(mvkBuff->getMTLBuffer());
-		}
-		for (auto& mb : _imageMemoryBarriers) {
-			auto* mvkImg = (MVKImage*)mb.image;
-            if (mb.subresourceRange.aspectMask & (VK_IMAGE_ASPECT_PLANE_0_BIT | VK_IMAGE_ASPECT_PLANE_1_BIT | VK_IMAGE_ASPECT_PLANE_2_BIT)) {
-                for (uint8_t planeIndex = 0; planeIndex < 3; planeIndex++) {
-                    if (mb.subresourceRange.aspectMask & (VK_IMAGE_ASPECT_PLANE_0_BIT << planeIndex)) {
-                        resources.push_back(mvkImg->getMTLTexture(planeIndex));
+
+		id<MTLResource> resources[_barriers.size()];
+		uint32_t rezCnt = 0;
+
+		for (auto& b : _barriers) {
+			switch (b.type) {
+				case MVKPipelineBarrier::Memory: {
+					MTLBarrierScope scope = (mvkMTLBarrierScopeFromVkAccessFlags(b.srcAccessMask) |
+											 mvkMTLBarrierScopeFromVkAccessFlags(b.dstAccessMask));
+					[cmdEncoder->_mtlRenderEncoder memoryBarrierWithScope: scope
+															  afterStages: srcStages
+															 beforeStages: dstStages];
+					break;
+				}
+
+				case MVKPipelineBarrier::Buffer:
+					resources[rezCnt++] = b.mvkBuffer->getMTLBuffer();
+					break;
+
+				case MVKPipelineBarrier::Image:
+                    for (uint8_t planeIndex = 0; planeIndex < b.mvkImage->getPlaneCount(); planeIndex++) {
+                        resources[rezCnt++] = b.mvkImage->getMTLTexture(planeIndex);
                     }
-                }
-            } else {
-                resources.push_back(mvkImg->getMTLTexture(0));
-            }
+					break;
+
+				default:
+					break;
+			}
 		}
-		if ( !resources.empty() ) {
-			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: resources.data()
-																count: resources.size()
+
+		if (rezCnt) {
+			[cmdEncoder->_mtlRenderEncoder memoryBarrierWithResources: resources
+																count: rezCnt
 														  afterStages: srcStages
 														 beforeStages: dstStages];
 		}
 	} else {
-		if ( !(_memoryBarriers.empty() && _imageMemoryBarriers.empty()) ) {
-			[cmdEncoder->_mtlRenderEncoder textureBarrier];
-		}
+		if (coversTextures()) { [cmdEncoder->_mtlRenderEncoder textureBarrier]; }
 	}
 #endif
 
 	MVKDevice* mvkDvc = cmdEncoder->getDevice();
-    MVKCommandUse cmdUse = kMVKCommandUsePipelineBarrier;
+	MVKCommandUse cmdUse = kMVKCommandUsePipelineBarrier;
 
-	// Apply global memory barriers
-    for (auto& mb : _memoryBarriers) {
-        mvkDvc->applyMemoryBarrier(_srcStageMask, _dstStageMask, &mb, cmdEncoder, cmdUse);
-    }
+	for (auto& b : _barriers) {
+		switch (b.type) {
+			case MVKPipelineBarrier::Memory:
+				mvkDvc->applyMemoryBarrier(_srcStageMask, _dstStageMask, b, cmdEncoder, cmdUse);
+				break;
 
-    // Apply specific buffer barriers
-    for (auto& mb : _bufferMemoryBarriers) {
-        MVKBuffer* mvkBuff = (MVKBuffer*)mb.buffer;
-        mvkBuff->applyBufferMemoryBarrier(_srcStageMask, _dstStageMask, &mb, cmdEncoder, cmdUse);
-    }
+			case MVKPipelineBarrier::Buffer:
+				b.mvkBuffer->applyBufferMemoryBarrier(_srcStageMask, _dstStageMask, b, cmdEncoder, cmdUse);
+				break;
 
-    // Apply specific image barriers
-    for (auto& mb : _imageMemoryBarriers) {
-        MVKImage* mvkImg = (MVKImage*)mb.image;
-        mvkImg->applyImageMemoryBarrier(_srcStageMask, _dstStageMask, &mb, cmdEncoder, cmdUse);
-    }
+			case MVKPipelineBarrier::Image:
+				b.mvkImage->applyImageMemoryBarrier(_srcStageMask, _dstStageMask, b, cmdEncoder, cmdUse);
+				break;
+
+			default:
+				break;
+		}
+	}
 }
+
+template <size_t N>
+bool MVKCmdPipelineBarrier<N>::coversTextures() {
+	for (auto& b : _barriers) {
+		switch (b.type) {
+			case MVKPipelineBarrier::Memory:	return true;
+			case MVKPipelineBarrier::Image: 	return true;
+			default: 							break;
+		}
+	}
+	return false;
+}
+
+template class MVKCmdPipelineBarrier<1>;
+template class MVKCmdPipelineBarrier<4>;
+template class MVKCmdPipelineBarrier<32>;
 
 
 #pragma mark -
 #pragma mark MVKCmdBindPipeline
 
-VkResult MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff,
-										VkPipelineBindPoint pipelineBindPoint,
-										VkPipeline pipeline) {
-	_bindPoint = pipelineBindPoint;
+VkResult MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff, VkPipeline pipeline) {
 	_pipeline = (MVKPipeline*)pipeline;
 
 	cmdBuff->recordBindPipeline(this);
@@ -147,29 +162,37 @@ VkResult MVKCmdBindPipeline::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdBindPipeline::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->bindPipeline(_bindPoint, _pipeline);
+
+#pragma mark -
+#pragma mark MVKCmdBindGraphicsPipeline
+
+void MVKCmdBindGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->bindPipeline(VK_PIPELINE_BIND_POINT_GRAPHICS, _pipeline);
 }
 
-bool MVKCmdBindPipeline::isTessellationPipeline() {
-	if (_bindPoint == VK_PIPELINE_BIND_POINT_GRAPHICS)
-		return ((MVKGraphicsPipeline*)_pipeline)->isTessellationPipeline();
-	else
-		return false;
+bool MVKCmdBindGraphicsPipeline::isTessellationPipeline() {
+	return ((MVKGraphicsPipeline*)_pipeline)->isTessellationPipeline();
 }
 
 
 #pragma mark -
-#pragma mark MVKCmdBindDescriptorSets
+#pragma mark MVKCmdBindComputePipeline
 
-VkResult MVKCmdBindDescriptorSets::setContent(MVKCommandBuffer* cmdBuff,
-											  VkPipelineBindPoint pipelineBindPoint,
-											  VkPipelineLayout layout,
-											  uint32_t firstSet,
-											  uint32_t setCount,
-											  const VkDescriptorSet* pDescriptorSets,
-											  uint32_t dynamicOffsetCount,
-											  const uint32_t* pDynamicOffsets) {
+void MVKCmdBindComputePipeline::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->bindPipeline(VK_PIPELINE_BIND_POINT_COMPUTE, _pipeline);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdBindDescriptorSetsStatic
+
+template <size_t N>
+VkResult MVKCmdBindDescriptorSetsStatic<N>::setContent(MVKCommandBuffer* cmdBuff,
+													   VkPipelineBindPoint pipelineBindPoint,
+													   VkPipelineLayout layout,
+													   uint32_t firstSet,
+													   uint32_t setCount,
+													   const VkDescriptorSet* pDescriptorSets) {
 	_pipelineBindPoint = pipelineBindPoint;
 	_pipelineLayout = (MVKPipelineLayout*)layout;
 	_firstSet = firstSet;
@@ -181,6 +204,35 @@ VkResult MVKCmdBindDescriptorSets::setContent(MVKCommandBuffer* cmdBuff,
 		_descriptorSets.push_back((MVKDescriptorSet*)pDescriptorSets[dsIdx]);
 	}
 
+	return VK_SUCCESS;
+}
+
+template <size_t N>
+void MVKCmdBindDescriptorSetsStatic<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	_pipelineLayout->bindDescriptorSets(cmdEncoder, _descriptorSets.contents(), _firstSet, MVKArrayRef<uint32_t>());
+}
+
+template class MVKCmdBindDescriptorSetsStatic<1>;
+template class MVKCmdBindDescriptorSetsStatic<4>;
+template class MVKCmdBindDescriptorSetsStatic<8>;
+
+
+#pragma mark -
+#pragma mark MVKCmdBindDescriptorSetsDynamic
+
+template <size_t N>
+VkResult MVKCmdBindDescriptorSetsDynamic<N>::setContent(MVKCommandBuffer* cmdBuff,
+														VkPipelineBindPoint pipelineBindPoint,
+														VkPipelineLayout layout,
+														uint32_t firstSet,
+														uint32_t setCount,
+														const VkDescriptorSet* pDescriptorSets,
+														uint32_t dynamicOffsetCount,
+														const uint32_t* pDynamicOffsets) {
+
+	MVKCmdBindDescriptorSetsStatic<N>::setContent(cmdBuff, pipelineBindPoint, layout,
+												  firstSet, setCount, pDescriptorSets);
+
 	// Add the dynamic offsets
 	_dynamicOffsets.clear();	// Clear for reuse
 	_dynamicOffsets.reserve(dynamicOffsetCount);
@@ -191,20 +243,25 @@ VkResult MVKCmdBindDescriptorSets::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdBindDescriptorSets::encode(MVKCommandEncoder* cmdEncoder) {
-	_pipelineLayout->bindDescriptorSets(cmdEncoder, _descriptorSets, _firstSet, _dynamicOffsets);
+template <size_t N>
+void MVKCmdBindDescriptorSetsDynamic<N>::encode(MVKCommandEncoder* cmdEncoder) {
+	MVKCmdBindDescriptorSetsStatic<N>::_pipelineLayout->bindDescriptorSets(cmdEncoder, MVKCmdBindDescriptorSetsStatic<N>::_descriptorSets.contents(), MVKCmdBindDescriptorSetsStatic<N>::_firstSet, _dynamicOffsets.contents());
 }
+
+template class MVKCmdBindDescriptorSetsDynamic<4>;
+template class MVKCmdBindDescriptorSetsDynamic<8>;
 
 
 #pragma mark -
 #pragma mark MVKCmdPushConstants
 
-VkResult MVKCmdPushConstants::setContent(MVKCommandBuffer* cmdBuff,
-										 VkPipelineLayout layout,
-										 VkShaderStageFlags stageFlags,
-										 uint32_t offset,
-										 uint32_t size,
-										 const void* pValues) {
+template <size_t N>
+VkResult MVKCmdPushConstants<N>::setContent(MVKCommandBuffer* cmdBuff,
+											VkPipelineLayout layout,
+											VkShaderStageFlags stageFlags,
+											uint32_t offset,
+											uint32_t size,
+											const void* pValues) {
 	_pipelineLayout = (MVKPipelineLayout*)layout;
 	_stageFlags = stageFlags;
 	_offset = offset;
@@ -215,7 +272,8 @@ VkResult MVKCmdPushConstants::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdPushConstants::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdPushConstants<N>::encode(MVKCommandEncoder* cmdEncoder) {
     VkShaderStageFlagBits stages[] = {
         VK_SHADER_STAGE_VERTEX_BIT,
         VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT,
@@ -225,10 +283,14 @@ void MVKCmdPushConstants::encode(MVKCommandEncoder* cmdEncoder) {
     };
     for (auto stage : stages) {
         if (mvkAreAllFlagsEnabled(_stageFlags, stage)) {
-            cmdEncoder->getPushConstants(stage)->setPushConstants(_offset, _pushConstants);
+			cmdEncoder->getPushConstants(stage)->setPushConstants(_offset, _pushConstants.contents());
         }
     }
 }
+
+template class MVKCmdPushConstants<64>;
+template class MVKCmdPushConstants<128>;
+template class MVKCmdPushConstants<512>;
 
 
 #pragma mark -
@@ -293,7 +355,7 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
-	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descriptorWrites, _set);
+	_pipelineLayout->pushDescriptorSet(cmdEncoder, _descriptorWrites.contents(), _set);
 }
 
 MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {
@@ -390,33 +452,44 @@ MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
 
 VkResult MVKCmdSetResetEvent::setContent(MVKCommandBuffer* cmdBuff,
 										 VkEvent event,
-										 VkPipelineStageFlags stageMask,
-										 bool status) {
+										 VkPipelineStageFlags stageMask) {
 	_mvkEvent = (MVKEvent*)event;
-	_status = status;
 
 	return VK_SUCCESS;
 }
 
-void MVKCmdSetResetEvent::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->signalEvent(_mvkEvent, _status);
+
+#pragma mark -
+#pragma mark MVKCmdSetEvent
+
+void MVKCmdSetEvent::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->signalEvent(_mvkEvent, true);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdResetEvent
+
+void MVKCmdResetEvent::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->signalEvent(_mvkEvent, false);
 }
 
 
 #pragma mark -
 #pragma mark MVKCmdWaitEvents
 
-VkResult MVKCmdWaitEvents::setContent(MVKCommandBuffer* cmdBuff,
-									  uint32_t eventCount,
-									  const VkEvent* pEvents,
-									  VkPipelineStageFlags srcStageMask,
-									  VkPipelineStageFlags dstStageMask,
-									  uint32_t memoryBarrierCount,
-									  const VkMemoryBarrier* pMemoryBarriers,
-									  uint32_t bufferMemoryBarrierCount,
-									  const VkBufferMemoryBarrier* pBufferMemoryBarriers,
-									  uint32_t imageMemoryBarrierCount,
-									  const VkImageMemoryBarrier* pImageMemoryBarriers) {
+template <size_t N>
+VkResult MVKCmdWaitEvents<N>::setContent(MVKCommandBuffer* cmdBuff,
+										 uint32_t eventCount,
+										 const VkEvent* pEvents,
+										 VkPipelineStageFlags srcStageMask,
+										 VkPipelineStageFlags dstStageMask,
+										 uint32_t memoryBarrierCount,
+										 const VkMemoryBarrier* pMemoryBarriers,
+										 uint32_t bufferMemoryBarrierCount,
+										 const VkBufferMemoryBarrier* pBufferMemoryBarriers,
+										 uint32_t imageMemoryBarrierCount,
+										 const VkImageMemoryBarrier* pImageMemoryBarriers) {
 	_mvkEvents.clear();	// Clear for reuse
 	_mvkEvents.reserve(eventCount);
 	for (uint32_t i = 0; i < eventCount; i++) {
@@ -426,9 +499,13 @@ VkResult MVKCmdWaitEvents::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
-void MVKCmdWaitEvents::encode(MVKCommandEncoder* cmdEncoder) {
+template <size_t N>
+void MVKCmdWaitEvents<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	for (MVKEvent* mvkEvt : _mvkEvents) {
 		mvkEvt->encodeWait(cmdEncoder->_mtlCmdBuffer);
 	}
 }
+
+template class MVKCmdWaitEvents<1>;
+template class MVKCmdWaitEvents<8>;
 
