@@ -13,6 +13,10 @@ macos:
 ios:
 	xcodebuild -quiet -project "$(XCODE_PROJ)" -scheme "$(XCODE_SCHEME_BASE) (iOS only)" build
 
+.PHONY: tvos
+tvos:
+	xcodebuild -quiet -project "$(XCODE_PROJ)" -scheme "$(XCODE_SCHEME_BASE) (tvOS only)" build
+
 .PHONY: clean
 clean:
 	xcodebuild -quiet -project "$(XCODE_PROJ)" -scheme "$(XCODE_SCHEME_BASE)" clean

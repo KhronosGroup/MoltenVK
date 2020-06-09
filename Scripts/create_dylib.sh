@@ -35,7 +35,7 @@ ${MVK_SAN} \
 ${MVK_LINK_WARN} \
 -isysroot ${SDK_DIR} \
 -iframework ${MVK_SYS_FWK_DIR}  \
--framework Metal ${MVK_IOSURFACE_FWK} -framework ${MVK_UX_FWK} -framework QuartzCore -framework CoreGraphics -framework IOKit -framework Foundation \
+-framework Metal ${MVK_IOSURFACE_FWK} -framework ${MVK_UX_FWK} -framework QuartzCore -framework CoreGraphics ${MVK_IOKIT_FWK} -framework Foundation \
 --library-directory ${MVK_USR_LIB_DIR} \
 -o "${BUILT_PRODUCTS_DIR}/dynamic/${MVK_DYLIB_NAME}" \
 -force_load "${BUILT_PRODUCTS_DIR}/lib${PRODUCT_NAME}.a"
