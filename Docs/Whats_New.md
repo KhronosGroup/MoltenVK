@@ -13,6 +13,14 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.44
+---------------
+
+Released TBD
+
+- Refactor **MoltenVK** *Xcode* build architectures
+
+
 MoltenVK 1.0.43
 ---------------
 
