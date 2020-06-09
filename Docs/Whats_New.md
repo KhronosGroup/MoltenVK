@@ -21,6 +21,8 @@ Released 2020/06/09
 - Fix issue in reporting properties of substitutable `VkFormats`.
 - Fix vertex attribute offset adjustments when vertex buffer stride is zero.
 - Update `fetchDependencies` script to use pre-built `spirv-tools` files by default.
+- Update `maxVertexInputBindingStride` and `maxVertexInputAttributeOffset` 
+  to minimum Vulkan values.
 - Numerous documentation typo corrections.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `26`.
 - Update Travis CI to Xcode 11.5.

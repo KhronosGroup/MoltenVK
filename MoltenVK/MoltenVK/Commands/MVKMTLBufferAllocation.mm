@@ -81,7 +81,7 @@ const MVKMTLBufferAllocation* MVKMTLBufferAllocator::acquireMTLBufferRegion(NSUI
 	MVKAssert(length <= _maxAllocationLength, "This MVKMTLBufferAllocator has been configured to dispense MVKMTLBufferRegions no larger than %lu bytes.", (unsigned long)_maxAllocationLength);
 
     // Convert max length to the next power-of-two exponent to use as a lookup
-    uint32_t p2Exp = mvkPowerOfTwoExponent(length);
+    NSUInteger p2Exp = mvkPowerOfTwoExponent(length);
 	MVKMTLBufferAllocationPool* pRP = _regionPools[p2Exp];
 	return _makeThreadSafe ? pRP->acquireObjectSafely() : pRP->acquireObject();
 }
@@ -91,7 +91,7 @@ MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRe
 	_makeThreadSafe = makeThreadSafe;
 
     // Convert max length to the next power-of-two exponent
-    uint32_t maxP2Exp = mvkPowerOfTwoExponent(_maxAllocationLength);
+    NSUInteger maxP2Exp = mvkPowerOfTwoExponent(_maxAllocationLength);
 
     // Populate the array of region pools to cover the maximum region size
     _regionPools.reserve(maxP2Exp + 1);
