@@ -39,14 +39,8 @@ public:
     /** Returns the byte offset in the bound device memory. */
     inline VkDeviceSize getDeviceMemoryOffset() { return _deviceMemoryOffset; }
 
-	/** Returns the memory requirements of this resource by populating the specified structure. */
-	virtual VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) = 0;
-
-	/** Returns the memory requirements of this resource by populating the specified structure. */
-	virtual VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) = 0;
-
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
 
 	/** Returns the device memory underlying this resource. */
 	inline MVKDeviceMemory* getDeviceMemory() { return _deviceMemory; }

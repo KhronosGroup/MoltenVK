@@ -103,7 +103,7 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
-	bool canCopyFormats();
+	bool canCopyFormats(const VkImageBlit& region);
 	bool canCopy(const VkImageBlit& region);
 	void populateVertices(MVKVertexPosTex* vertices, const VkImageBlit& region);
 
@@ -125,8 +125,9 @@ typedef MVKCmdBlitImage<4> MVKCmdBlitImageMulti;
 
 /** Describes Metal texture resolve parameters. */
 typedef struct {
-    uint32_t	level;
-    uint32_t	slice;
+    VkImageCopy* copyRegion;
+    uint32_t level;
+    uint32_t slice;
 } MVKMetalResolveSlice;
 
 /**

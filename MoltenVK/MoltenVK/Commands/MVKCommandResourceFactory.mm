@@ -369,7 +369,7 @@ MVKImage* MVKCommandResourceFactory::newMVKImage(MVKImageDescriptorData& imgData
         .initialLayout = VK_IMAGE_LAYOUT_PREINITIALIZED
     };
 	MVKImage* mvkImg = _device->createImage(&createInfo, nullptr);
-	mvkImg->bindDeviceMemory(_transferImageMemory, 0);
+	mvkImg->bindDeviceMemory(_transferImageMemory, 0, 0);
 	return mvkImg;
 }
 

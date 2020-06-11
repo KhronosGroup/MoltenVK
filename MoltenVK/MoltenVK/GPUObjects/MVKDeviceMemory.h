@@ -24,8 +24,7 @@
 
 #import <Metal/Metal.h>
 
-class MVKBuffer;
-class MVKImage;
+class MVKImageMemoryBinding;
 
 // TODO: These are inoperable placeholders until VK_KHR_external_memory_metal defines them properly
 static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLBUFFER_BIT_KHR = VK_EXTERNAL_MEMORY_HANDLE_TYPE_FLAG_BITS_MAX_ENUM;
@@ -131,15 +130,15 @@ public:
     ~MVKDeviceMemory() override;
 
 protected:
-	friend MVKBuffer;
-	friend MVKImage;
+	friend class MVKBuffer;
+    friend class MVKImageMemoryBinding;
 
 	void propagateDebugName() override;
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);
 	VkResult addBuffer(MVKBuffer* mvkBuff);
 	void removeBuffer(MVKBuffer* mvkBuff);
-	VkResult addImage(MVKImage* mvkImg);
-	void removeImage(MVKImage* mvkImg);
+	VkResult addImageMemoryBinding(MVKImageMemoryBinding* mvkImg);
+	void removeImageMemoryBinding(MVKImageMemoryBinding* mvkImg);
 	bool ensureMTLHeap();
 	bool ensureMTLBuffer();
 	bool ensureHostMemory();
@@ -148,7 +147,7 @@ protected:
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
 
 	MVKSmallVector<MVKBuffer*, 4> _buffers;
-	MVKSmallVector<MVKImage*, 4> _images;
+	MVKSmallVector<MVKImageMemoryBinding*, 4> _imageMemoryBindings;
 	std::mutex _rezLock;
     VkDeviceSize _allocationSize = 0;
 	VkDeviceSize _mapOffset = 0;
