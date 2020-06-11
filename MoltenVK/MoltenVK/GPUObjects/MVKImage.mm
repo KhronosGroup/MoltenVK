@@ -991,7 +991,7 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 	}];
 	
 	if (hasPresentTime) {
-		if (@available(iOS 10.3, macOS 10.15.4, *)) {
+		if ([_mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
 			[_mtlDrawable addPresentedHandler: ^(id<MTLDrawable> drawable) {
 				// Record the presentation time
 				CFTimeInterval presentedTimeSeconds = drawable.presentedTime;
