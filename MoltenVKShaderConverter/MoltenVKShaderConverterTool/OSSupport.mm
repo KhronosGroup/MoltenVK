@@ -19,6 +19,7 @@
 #include "OSSupport.h"
 #include "FileSupport.h"
 #include "MoltenVKShaderConverterTool.h"
+#include "MVKOSExtensions.h"
 
 #import <Foundation/Foundation.h>
 #import <Metal/Metal.h>
@@ -71,13 +72,9 @@ bool mvk::compile(const string& mslSourceCode,
 
 	MTLLanguageVersion mslVerEnum = (MTLLanguageVersion)0;
 	if (mslVer(2, 1, 0)) {
-		if (@available(macOS 10.14, *)) {
-			mslVerEnum = MTLLanguageVersion2_1;
-		}
+		mslVerEnum = MTLLanguageVersion2_1;
 	} else if (mslVer(2, 0, 0)) {
-		if (@available(macOS 10.13, *)) {
-			mslVerEnum = MTLLanguageVersion2_0;
-		}
+		mslVerEnum = MTLLanguageVersion2_0;
 	} else if (mslVer(1, 2, 0)) {
 		mslVerEnum = MTLLanguageVersion1_2;
 	} else if (mslVer(1, 1, 0)) {
