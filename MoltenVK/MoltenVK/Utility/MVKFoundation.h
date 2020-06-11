@@ -29,18 +29,6 @@
 
 #pragma mark Math
 
-/**
- * The following constants are used to indicate values that have no defined limit.
- * They are ridiculously large numbers, but low enough to be safely used as both
- * uint and int values without risking overflowing between positive and negative values.
- */
-static int32_t kMVKUndefinedLargeNegativeInt32 = std::numeric_limits<int32_t>::min() / 2;
-static int32_t kMVKUndefinedLargePositiveInt32 = std::numeric_limits<int32_t>::max() / 2;
-static uint32_t kMVKUndefinedLargeUInt32 = kMVKUndefinedLargePositiveInt32;
-static int64_t kMVKUndefinedLargeNegativeInt64 = std::numeric_limits<int64_t>::min() / 2;
-static int64_t kMVKUndefinedLargePositiveInt64 = std::numeric_limits<int64_t>::max() / 2;
-static uint64_t kMVKUndefinedLargeUInt64 = kMVKUndefinedLargePositiveInt64;
-
 // Common scaling multipliers
 #define KIBI		(1024)
 #define MEBI		(KIBI * KIBI)
@@ -136,21 +124,23 @@ static inline std::string mvkGetMoltenVKVersionString(uint32_t mvkVersion) {
 #pragma mark -
 #pragma mark Alignment functions
 
-/** Returns whether the specified value is a power-of-two. */
-static inline bool mvkIsPowerOfTwo(uintptr_t value) {
+/** Returns whether the specified positive value is a power-of-two. */
+template<typename T>
+static inline bool mvkIsPowerOfTwo(T value) {
 	// Test POT:  (x != 0) && ((x & (x - 1)) == 0)
 	return value && ((value & (value - 1)) == 0);
 }
 
 /**
- * Ensures the specified value is a power-of-two. Returns the specified value if it is a
- * power-of-two value. If it is not, returns the next power-of-two value that is larger
- * than the specified value is returned.
+ * Ensures the specified positive value is a power-of-two. Returns the specified value
+ * if it is a power-of-two value. If it is not, returns the next power-of-two value
+ * that is larger than the specified value is returned.
  */
-static inline uintptr_t mvkEnsurePowerOfTwo(uintptr_t value) {
+template<typename T>
+static inline T mvkEnsurePowerOfTwo(T value) {
 	if (mvkIsPowerOfTwo(value)) { return value; }
 
-	uintptr_t pot = 1;
+	T pot = 1;
 	while(pot <= value) { pot <<= 1; };
 	return pot;
 }
@@ -161,12 +151,13 @@ static inline uintptr_t mvkEnsurePowerOfTwo(uintptr_t value) {
  *
  * This implementation returns zero for both zero and one as inputs.
  */
-static inline uint32_t mvkPowerOfTwoExponent(uintptr_t value) {
-    uintptr_t p2Value = mvkEnsurePowerOfTwo(value);
+template<typename T>
+static inline T mvkPowerOfTwoExponent(T value) {
+    T p2Value = mvkEnsurePowerOfTwo(value);
 
     // Count the trailing zeros
     p2Value = (p2Value ^ (p2Value - 1)) >> 1;  // Set trailing 0s to 1s and zero rest
-    uint32_t potExp = 0;
+    T potExp = 0;
     while (p2Value) {
         p2Value >>= 1;
         potExp++;
@@ -229,6 +220,18 @@ static inline uintptr_t mvkAlignByteCount(uintptr_t byteCount, uintptr_t byteAli
  * bytes in the data block must be at least (bytesPerRow * rowCount).
  */
 void mvkFlipVertically(void* rowMajorData, uint32_t rowCount, size_t bytesPerRow);
+
+/**
+ * The following constants are used to indicate values that have no defined limit.
+ * They are ridiculously large numbers, but low enough to be safely used as both
+ * uint and int values without risking overflowing between positive and negative values.
+ */
+static  int32_t kMVKUndefinedLargePositiveInt32 =  mvkEnsurePowerOfTwo(std::numeric_limits<int32_t>::max() / 2);
+static  int32_t kMVKUndefinedLargeNegativeInt32 = -kMVKUndefinedLargePositiveInt32;
+static uint32_t kMVKUndefinedLargeUInt32        =  kMVKUndefinedLargePositiveInt32;
+static  int64_t kMVKUndefinedLargePositiveInt64 =  mvkEnsurePowerOfTwo(std::numeric_limits<int64_t>::max() / 2);
+static  int64_t kMVKUndefinedLargeNegativeInt64 = -kMVKUndefinedLargePositiveInt64;
+static uint64_t kMVKUndefinedLargeUInt64        =  kMVKUndefinedLargePositiveInt64;
 
 
 #pragma mark Vulkan structure support functions

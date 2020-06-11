@@ -1263,8 +1263,8 @@ void MVKPhysicalDevice::initProperties() {
     _properties.limits.maxVertexInputAttributes = 31;
     _properties.limits.maxVertexInputBindings = 31;
 
-    _properties.limits.maxVertexInputAttributeOffset = (4 * KIBI);
-    _properties.limits.maxVertexInputBindingStride = _properties.limits.maxVertexInputAttributeOffset - 1;
+    _properties.limits.maxVertexInputBindingStride = (2 * KIBI);
+	_properties.limits.maxVertexInputAttributeOffset = _properties.limits.maxVertexInputBindingStride - 1;
 
 	_properties.limits.maxPerStageDescriptorSamplers = _metalFeatures.maxPerStageSamplerCount;
 	_properties.limits.maxPerStageDescriptorUniformBuffers = _metalFeatures.maxPerStageBufferCount;

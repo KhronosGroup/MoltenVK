@@ -322,7 +322,7 @@ VkFormatProperties& MVKPixelFormats::getVkFormatProperties(VkFormat vkFormat) {
 }
 
 MVKMTLFmtCaps MVKPixelFormats::getCapabilities(VkFormat vkFormat) {
-	return getMTLPixelFormatDesc(vkFormat).mtlFmtCaps;
+	return getMTLPixelFormatDesc(getVkFormatDesc(vkFormat).mtlPixelFormat).mtlFmtCaps;
 }
 
 MVKMTLFmtCaps MVKPixelFormats::getCapabilities(MTLPixelFormat mtlFormat) {
@@ -515,22 +515,12 @@ MVKVkFormatDesc& MVKPixelFormats::getVkFormatDesc(MTLPixelFormat mtlFormat) {
 	return getVkFormatDesc(getMTLPixelFormatDesc(mtlFormat).vkFormat);
 }
 
-// Return a reference to the Metal format descriptor corresponding to the VkFormat.
-MVKMTLFormatDesc& MVKPixelFormats::getMTLPixelFormatDesc(VkFormat vkFormat) {
-	return getMTLPixelFormatDesc(getVkFormatDesc(vkFormat).getMTLPixelFormatOrSubstitute());
-}
-
 // Return a reference to the Metal format descriptor corresponding to the MTLPixelFormat.
 MVKMTLFormatDesc& MVKPixelFormats::getMTLPixelFormatDesc(MTLPixelFormat mtlFormat) {
 	uint16_t fmtIdx = ((mtlFormat < _mtlPixelFormatCoreCount)
 					   ? _mtlFormatDescIndicesByMTLPixelFormatsCore[mtlFormat]
 					   : _mtlFormatDescIndicesByMTLPixelFormatsExt[mtlFormat]);
 	return _mtlPixelFormatDescriptions[fmtIdx];
-}
-
-// Return a reference to the Metal format descriptor corresponding to the VkFormat.
-MVKMTLFormatDesc& MVKPixelFormats::getMTLVertexFormatDesc(VkFormat vkFormat) {
-	return getMTLVertexFormatDesc(getVkFormatDesc(vkFormat).getMTLVertexFormatOrSubstitute());
 }
 
 // Return a reference to the Metal format descriptor corresponding to the MTLVertexFormat.
@@ -1384,17 +1374,16 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 		mvkEnableFlags(VK_FEATS, kMVKVkFormatFeatureFlags ##TYPE ##CAP);  \
 	}
 
-	VkFormat vkFmt = vkDesc.vkFormat;
 	VkFormatProperties& vkProps = vkDesc.properties;
-	MVKMTLFmtCaps mtlPixFmtCaps = getMTLPixelFormatDesc(vkFmt).mtlFmtCaps;
+	MVKMTLFmtCaps mtlPixFmtCaps = getMTLPixelFormatDesc(vkDesc.mtlPixelFormat).mtlFmtCaps;
     vkProps.optimalTilingFeatures = kMVKVkFormatFeatureFlagsTexNone;
     vkProps.linearTilingFeatures = kMVKVkFormatFeatureFlagsTexNone;
 
     // Chroma subsampling and multi planar features
-    if (getChromaSubsamplingComponentBits(vkFmt) > 0) {
+    if (getChromaSubsamplingComponentBits(vkDesc.vkFormat) > 0) {
         vkProps.optimalTilingFeatures = kMVKVkFormatFeatureFlagsTexTransfer;
     }
-    uint8_t chromaSubsamplingPlaneCount = getChromaSubsamplingPlaneCount(vkFmt);
+    uint8_t chromaSubsamplingPlaneCount = getChromaSubsamplingPlaneCount(vkDesc.vkFormat);
     if (chromaSubsamplingPlaneCount > 0) {
         mtlPixFmtCaps = kMVKMTLFmtCapsRF;
         enableFormatFeatures(ChromaSubsampling, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
@@ -1433,7 +1422,7 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 		enableFormatFeatures(Read, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Write, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Atomic, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
-		enableFormatFeatures(Vertex, Buf, getMTLVertexFormatDesc(vkFmt).mtlFmtCaps, vkProps.bufferFeatures);
+		enableFormatFeatures(Vertex, Buf, getMTLVertexFormatDesc(vkDesc.mtlVertexFormat).mtlFmtCaps, vkProps.bufferFeatures);
 	}
 }
 

@@ -99,11 +99,9 @@ typedef struct {
 
 	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid || chromaSubsamplingPlaneCount > 0); };
 	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlPixelFormatSubstitute != MTLPixelFormatInvalid); };
-	inline MTLPixelFormat getMTLPixelFormatOrSubstitute() const { return mtlPixelFormat ? mtlPixelFormat : mtlPixelFormatSubstitute; }
 
 	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); };
 	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
-	inline MTLVertexFormat getMTLVertexFormatOrSubstitute() const { return mtlVertexFormat ? mtlVertexFormat : mtlVertexFormatSubstitute; }
 } MVKVkFormatDesc;
 
 /** Describes the properties of a MTLPixelFormat or MTLVertexFormat. */
@@ -253,7 +251,7 @@ public:
 	/** Returns the default properties for the specified Vulkan format. */
 	VkFormatProperties& getVkFormatProperties(VkFormat vkFormat);
 
-	/** Returns the Metal format capabilities supported by the specified Vulkan format. */
+	/** Returns the Metal format capabilities supported by the specified Vulkan format, without substitution. */
 	MVKMTLFmtCaps getCapabilities(VkFormat vkFormat);
 
 	/** Returns the Metal format capabilities supported by the specified Metal format. */
@@ -305,9 +303,7 @@ public:
 protected:
 	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);
 	MVKVkFormatDesc& getVkFormatDesc(MTLPixelFormat mtlFormat);
-	MVKMTLFormatDesc& getMTLPixelFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
-	MVKMTLFormatDesc& getMTLVertexFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
