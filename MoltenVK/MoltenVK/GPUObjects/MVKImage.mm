@@ -359,8 +359,8 @@ void MVKImageMemoryBinding::propagateDebugName() {
 bool MVKImageMemoryBinding::needsHostReadSync(VkPipelineStageFlags srcStageMask,
                                               VkPipelineStageFlags dstStageMask,
                                               VkMemoryBarrier* pMemoryBarrier) {
-    MVKPipelineBarrier& barrier = *(MVKPipelineBarrier*)pMemoryBarrier;
 #if MVK_MACOS
+    MVKPipelineBarrier& barrier = *(MVKPipelineBarrier*)pMemoryBarrier;
     return ((barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
             isMemoryHostAccessible() && !isMemoryHostCoherent());

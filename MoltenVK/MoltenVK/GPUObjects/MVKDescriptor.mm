@@ -192,7 +192,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 uint8_t planeCount = (imageView) ? imageView->getPlaneCount() : 1;
                 for (uint8_t planeIndex = 0; planeIndex < planeCount; planeIndex++) {
                     tb.mtlTexture = imageView->getMTLTexture(planeIndex);
-                    tb.swizzle = (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE) ? imageView->getPackedSwizzle(0) : 0;
+                    tb.swizzle = (_info.descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE) ? imageView->getPackedSwizzle() : 0;
                     if (_info.descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
                         id<MTLTexture> mtlTex = tb.mtlTexture;
                         if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }
@@ -282,7 +282,7 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 uint8_t planeCount = (imageView) ? imageView->getPlaneCount() : 1;
                 for (uint8_t planeIndex = 0; planeIndex < planeCount; planeIndex++) {
                     tb.mtlTexture = imageView->getMTLTexture(planeIndex);
-                    tb.swizzle = (imageView) ? imageView->getPackedSwizzle(0) : 0;
+                    tb.swizzle = (imageView) ? imageView->getPackedSwizzle() : 0;
                     MVKSampler* sampler;
                     if (_immutableSamplers.empty()) {
                         sampler = (MVKSampler*)imageInfo.sampler;
@@ -719,7 +719,7 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
         }
         tb.swizzle = ((descriptorType == VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE ||
                        descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) &&
-                       tb.mtlTexture) ? _mvkImageView->getPackedSwizzle(planeIndex) : 0;
+                       tb.mtlTexture) ? _mvkImageView->getPackedSwizzle() : 0;
         if (descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && tb.mtlTexture) {
             id<MTLTexture> mtlTex = tb.mtlTexture;
             if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }

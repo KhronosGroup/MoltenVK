@@ -73,12 +73,14 @@ VkResult MVKCmdCopyImage<N>::setContent(MVKCommandBuffer* cmdBuff,
             (pixFmts->getBytesPerBlock(_dstImage->getMTLPixelFormat(dstPlaneIndex)) != pixFmts->getBytesPerBlock(_srcImage->getMTLPixelFormat(srcPlaneIndex)))) {
             return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Cannot copy between incompatible formats, such as formats of different pixel sizes, or between images with different sample counts.");
         }
-        if ((_srcImage->getMTLTextureType() == MTLTextureType3D) != (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
-            return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture.");
-        }
         
 		_vkImageCopies.push_back(vkIR);
 	}
+    
+    // Validate
+    if ((_srcImage->getMTLTextureType() == MTLTextureType3D) != (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
+        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture.");
+    }
 
 	return VK_SUCCESS;
 }
@@ -1096,15 +1098,12 @@ VkResult MVKCmdClearImage<N>::setContent(MVKCommandBuffer* cmdBuff,
     // Add subresource ranges
     _subresourceRanges.clear();		// Clear for reuse
     _subresourceRanges.reserve(rangeCount);
+    bool isDS = isDepthStencilClear();
     for (uint32_t rangeIdx = 0; rangeIdx < rangeCount; rangeIdx++) {
         auto& vkIR = pRanges[rangeIdx];
         uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIR.aspectMask);
 
         // Validate
-        bool isDS = isDepthStencilClear();
-        if (_image->getImageType() == VK_IMAGE_TYPE_1D) {
-            return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClear%sImage(): Native 1D images cannot be cleared on this device. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D.", (isDS ? "DepthStencil" : "Color"));
-        }
         MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getCapabilities(_image->getMTLPixelFormat(planeIndex));
         if ((isDS && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsDSAtt)) ||
             ( !isDS && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsColorAtt))) {
@@ -1112,6 +1111,11 @@ VkResult MVKCmdClearImage<N>::setContent(MVKCommandBuffer* cmdBuff,
         }
         
         _subresourceRanges.push_back(vkIR);
+    }
+    
+    // Validate
+    if (_image->getImageType() == VK_IMAGE_TYPE_1D) {
+        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClear%sImage(): Native 1D images cannot be cleared on this device. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D.", (isDS ? "DepthStencil" : "Color"));
     }
 
 	return VK_SUCCESS;

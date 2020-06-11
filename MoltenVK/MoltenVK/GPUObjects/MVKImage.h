@@ -332,8 +332,8 @@ protected:
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
     void releaseIOSurface();
 
-    std::vector<std::unique_ptr<MVKImageMemoryBinding>> _memoryBindings;
-    std::vector<std::unique_ptr<MVKImagePlane>> _planes;
+    MVKSmallVector<std::unique_ptr<MVKImageMemoryBinding>, 3> _memoryBindings;
+    MVKSmallVector<std::unique_ptr<MVKImagePlane>, 3> _planes;
     VkExtent3D _extent;
     uint32_t _mipLevels;
     uint32_t _arrayLayers;
@@ -531,7 +531,7 @@ public:
 	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _planes[planeIndex]->_mtlPixFmt; }
     
     /** Returns the packed component swizzle of this image view. */
-    inline uint32_t getPackedSwizzle(uint8_t planeIndex) { return _planes[planeIndex]->_packedSwizzle; }
+    inline uint32_t getPackedSwizzle() { return _planes[0]->_packedSwizzle; }
     
     /** Returns the number of planes of this image view. */
     inline uint8_t getPlaneCount() { return _planes.size(); }
@@ -587,7 +587,7 @@ protected:
 	void propagateDebugName() override;
 
     MVKImage* _image;
-    std::vector<std::unique_ptr<MVKImageViewPlane>> _planes;
+    MVKSmallVector<std::unique_ptr<MVKImageViewPlane>, 3> _planes;
     VkImageSubresourceRange _subresourceRange;
     VkImageUsageFlags _usage;
 	std::mutex _lock;
