@@ -598,22 +598,33 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
-    MVKPipeline* pipeline = _cmdEncoder->_graphicsPipelineState.getPipeline();
+    MVKGraphicsPipeline* pipeline = (MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline();
     bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || _cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle;
-    bool forTessellation = ((MVKGraphicsPipeline*)pipeline)->isTessellationPipeline();
+    bool forTessellation = pipeline->isTessellationPipeline();
 
     if (stage == (forTessellation ? kMVKGraphicsStageVertex : kMVKGraphicsStageRasterization)) {
         encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
-                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-                           if (b.isInline)
+                       [pipeline](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+					       if (b.isInline) {
                                cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
                                                           b.mtlBytes,
                                                           b.size,
                                                           b.index);
-                           else
+					       } else {
                                [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
                                                                        offset: b.offset
                                                                       atIndex: b.index];
+
+							   // Add any translated vertex bindings for this binding
+							   auto xltdVtxBindings = pipeline->getTranslatedVertexBindings();
+							   for (auto& xltdBind : xltdVtxBindings) {
+								   if (b.index == pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.binding)) {
+									   [cmdEncoder->_mtlRenderEncoder setVertexBuffer: b.mtlBuffer
+																			   offset: b.offset + xltdBind.translationOffset
+																			  atIndex: pipeline->getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding)];
+								   }
+							   }
+					       }
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t>& s)->void {
                            cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,

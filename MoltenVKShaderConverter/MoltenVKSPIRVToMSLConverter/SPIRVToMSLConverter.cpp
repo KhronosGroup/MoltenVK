@@ -103,12 +103,9 @@ MVK_PUBLIC_SYMBOL SPIRVToMSLConversionOptions::SPIRVToMSLConversionOptions() {
 
 MVK_PUBLIC_SYMBOL bool MSLVertexAttribute::matches(const MSLVertexAttribute& other) const {
 	if (vertexAttribute.location != other.vertexAttribute.location) { return false; }
-	if (vertexAttribute.msl_buffer != other.vertexAttribute.msl_buffer) { return false; }
-	if (vertexAttribute.msl_offset != other.vertexAttribute.msl_offset) { return false; }
-	if (vertexAttribute.msl_stride != other.vertexAttribute.msl_stride) { return false; }
 	if (vertexAttribute.format != other.vertexAttribute.format) { return false; }
 	if (vertexAttribute.builtin != other.vertexAttribute.builtin) { return false; }
-	if (!!vertexAttribute.per_instance != !!other.vertexAttribute.per_instance) { return false; }
+	if (binding != other.binding) { return false; }
 	return true;
 }
 
@@ -136,9 +133,22 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 		if (constExprSampler.lod_clamp_min != other.constExprSampler.lod_clamp_min) { return false; }
 		if (constExprSampler.lod_clamp_max != other.constExprSampler.lod_clamp_max) { return false; }
 		if (constExprSampler.max_anisotropy != other.constExprSampler.max_anisotropy) { return false; }
+
+		if (constExprSampler.planes != other.constExprSampler.planes) { return false; }
+		if (constExprSampler.resolution != other.constExprSampler.resolution) { return false; }
+		if (constExprSampler.chroma_filter != other.constExprSampler.chroma_filter) { return false; }
+		if (constExprSampler.x_chroma_offset != other.constExprSampler.x_chroma_offset) { return false; }
+		if (constExprSampler.y_chroma_offset != other.constExprSampler.y_chroma_offset) { return false; }
+		for(uint32_t i = 0; i < 4; ++i)
+			if (constExprSampler.swizzle[i] != other.constExprSampler.swizzle[i]) { return false; }
+		if (constExprSampler.ycbcr_model != other.constExprSampler.ycbcr_model) { return false; }
+		if (constExprSampler.ycbcr_range != other.constExprSampler.ycbcr_range) { return false; }
+		if (constExprSampler.bpc != other.constExprSampler.bpc) { return false; }
+
 		if (constExprSampler.compare_enable != other.constExprSampler.compare_enable) { return false; }
 		if (constExprSampler.lod_clamp_enable != other.constExprSampler.lod_clamp_enable) { return false; }
 		if (constExprSampler.anisotropy_enable != other.constExprSampler.anisotropy_enable) { return false; }
+		if (constExprSampler.ycbcr_conversion_enable != other.constExprSampler.ycbcr_conversion_enable) { return false; }
 	}
 
 	return true;
@@ -158,12 +168,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isVertexAttributeLocat
     return false;
 }
 
-// Check them all in case inactive VA's duplicate buffers used by active VA's.
-MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isVertexBufferUsed(uint32_t mslBuffer) const {
-    for (auto& va : vertexAttributes) {
-        if ((va.vertexAttribute.msl_buffer == mslBuffer) && va.isUsedByShader) { return true; }
-    }
-    return false;
+MVK_PUBLIC_SYMBOL uint32_t SPIRVToMSLConversionConfiguration::countVertexAttributesAt(uint32_t binding) const {
+	uint32_t vaCnt = 0;
+	for (auto& va : vertexAttributes) {
+		if ((va.binding == binding) && va.isUsedByShader) { vaCnt++; }
+	}
+	return vaCnt;
 }
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllAttributesAndResourcesUsed() {

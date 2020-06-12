@@ -63,7 +63,7 @@ and to run them across many platforms, including both *iOS* and *macOS*.
 *Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
 to their *MSL* equivalents. This can be performed transparently at run time, using the 
 **Runtime Shader Conversion** feature of **MoltenVK**, or at development time using the 
-[**MoltenVKShaderConverter**] (#shader_converter_tool) tool provided with this **MoltenVK** 
+[**MoltenVKShaderConverter**](#shader_converter_tool) tool provided with this **MoltenVK** 
 distribution package.
 
 To provide *Vulkan* capability to the *iOS* and *macOS* platforms, **MoltenVK** uses *Apple's* 
@@ -256,6 +256,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_push_descriptor`
 - `VK_KHR_relaxed_block_layout`
 - `VK_KHR_sampler_mirror_clamp_to_edge` *(macOS)*
+- `VK_KHR_sampler_ycbcr_conversion`
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float16_int8`
 - `VK_KHR_storage_buffer_storage_class`

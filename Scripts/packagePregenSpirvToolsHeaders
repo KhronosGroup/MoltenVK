@@ -14,6 +14,11 @@ SPV_TLS_BLD_DIR="${EXT_DIR}/glslang/External/spirv-tools/build"
 TPLT_DIR=../Templates/spirv-tools
 TPLT_BLD_DIR="${TPLT_DIR}/build"
 
+# Ensure the SPIRV-Tools library is fully built
+cd ".."
+./fetchDependencies --build-spirv-tools
+cd -  > /dev/null
+
 rm -rf "${TPLT_BLD_DIR}"
 mkdir -p "${TPLT_BLD_DIR}"
 cp -a "${SPV_TLS_BLD_DIR}/"*.h "${SPV_TLS_BLD_DIR}/"*.inc "${TPLT_BLD_DIR}"

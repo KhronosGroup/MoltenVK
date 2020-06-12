@@ -21,6 +21,7 @@
 #include "mvk_datatypes.h"
 #include "MVKEnvironment.h"
 #include "MVKBaseObject.h"
+#include <SPIRV-Cross/spirv_msl.hpp>
 #include <unordered_map>
 
 #import <Metal/Metal.h>
@@ -70,6 +71,8 @@ typedef enum : uint16_t {
 	kMVKMTLFmtCapsDRMR     = (kMVKMTLFmtCapsDRM | kMVKMTLFmtCapsResolve),
 	kMVKMTLFmtCapsDRFMR    = (kMVKMTLFmtCapsDRMR | kMVKMTLFmtCapsFilter),
 
+	kMVKMTLFmtCapsChromaSubsampling = kMVKMTLFmtCapsRF,
+	kMVKMTLFmtCapsMultiPlanar = kMVKMTLFmtCapsChromaSubsampling,
 } MVKMTLFmtCaps;
 
 
@@ -83,22 +86,22 @@ typedef struct {
 	MTLPixelFormat mtlPixelFormatSubstitute;
 	MTLVertexFormat mtlVertexFormat;
 	MTLVertexFormat mtlVertexFormatSubstitute;
+    uint8_t chromaSubsamplingPlaneCount;
+    uint8_t chromaSubsamplingComponentBits;
 	VkExtent2D blockTexelSize;
 	uint32_t bytesPerBlock;
 	MVKFormatType formatType;
 	VkFormatProperties properties;
 	const char* name;
 	bool hasReportedSubstitution;
+    
+    inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); };
 
-	inline double bytesPerTexel() const { return (double)bytesPerBlock / (double)(blockTexelSize.width * blockTexelSize.height); };
-
-	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid); };
+	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid || chromaSubsamplingPlaneCount > 0); };
 	inline bool isSupportedOrSubstitutable() const { return isSupported() || (mtlPixelFormatSubstitute != MTLPixelFormatInvalid); };
-	inline MTLPixelFormat getMTLPixelFormatOrSubstitute() const { return mtlPixelFormat ? mtlPixelFormat : mtlPixelFormatSubstitute; }
 
 	inline bool vertexIsSupported() const { return (mtlVertexFormat != MTLVertexFormatInvalid); };
 	inline bool vertexIsSupportedOrSubstitutable() const { return vertexIsSupported() || (mtlVertexFormatSubstitute != MTLVertexFormatInvalid); };
-	inline MTLVertexFormat getMTLVertexFormatOrSubstitute() const { return mtlVertexFormat ? mtlVertexFormat : mtlVertexFormatSubstitute; }
 } MVKVkFormatDesc;
 
 /** Describes the properties of a MTLPixelFormat or MTLVertexFormat. */
@@ -176,15 +179,27 @@ public:
 
 	/**
 	 * Returns the size of the compression block, measured in texels for a Vulkan format.
-	 * The returned value will be {1, 1} for non-compressed formats.
+	 * The returned value will be {1, 1} for non-compressed formats without chroma-subsampling.
 	 */
 	VkExtent2D getBlockTexelSize(VkFormat vkFormat);
 
 	/**
 	 * Returns the size of the compression block, measured in texels for a Metal format.
-	 * The returned value will be {1, 1} for non-compressed formats.
+	 * The returned value will be {1, 1} for non-compressed formats without chroma-subsampling.
 	 */
 	VkExtent2D getBlockTexelSize(MTLPixelFormat mtlFormat);
+
+	/** Returns the number of planes of the specified chroma-subsampling (YCbCr) VkFormat */
+	uint8_t getChromaSubsamplingPlaneCount(VkFormat vkFormat);
+
+	/** Returns the number of bits per channel of the specified chroma-subsampling (YCbCr) VkFormat */
+	uint8_t getChromaSubsamplingComponentBits(VkFormat vkFormat);
+
+	/** Returns the MSLFormatResolution of the specified chroma-subsampling (YCbCr) VkFormat */
+	SPIRV_CROSS_NAMESPACE::MSLFormatResolution getChromaSubsamplingResolution(VkFormat vkFormat);
+
+    /** Returns the number of planes, blockTexelSize,  bytesPerBlock and mtlPixFmt of each plane of the specified chroma-subsampling (YCbCr) VkFormat into the given arrays */
+    uint8_t getChromaSubsamplingPlanes(VkFormat vkFormat, VkExtent2D blockTexelSize[3], uint32_t bytesPerBlock[3], MTLPixelFormat mtlPixFmt[3]);
 
 	/**
 	 * Returns the size, in bytes, of a texel of the specified Vulkan format.
@@ -236,7 +251,7 @@ public:
 	/** Returns the default properties for the specified Vulkan format. */
 	VkFormatProperties& getVkFormatProperties(VkFormat vkFormat);
 
-	/** Returns the Metal format capabilities supported by the specified Vulkan format. */
+	/** Returns the Metal format capabilities supported by the specified Vulkan format, without substitution. */
 	MVKMTLFmtCaps getCapabilities(VkFormat vkFormat);
 
 	/** Returns the Metal format capabilities supported by the specified Metal format. */
@@ -288,9 +303,7 @@ public:
 protected:
 	MVKVkFormatDesc& getVkFormatDesc(VkFormat vkFormat);
 	MVKVkFormatDesc& getVkFormatDesc(MTLPixelFormat mtlFormat);
-	MVKMTLFormatDesc& getMTLPixelFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLPixelFormatDesc(MTLPixelFormat mtlFormat);
-	MVKMTLFormatDesc& getMTLVertexFormatDesc(VkFormat vkFormat);
 	MVKMTLFormatDesc& getMTLVertexFormatDesc(MTLVertexFormat mtlFormat);
 	void initVkFormatCapabilities();
 	void initMTLPixelFormatCapabilities();
