@@ -119,7 +119,7 @@ protected:
     void propagateDebugName() override;
     bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
                            VkPipelineStageFlags dstStageMask,
-                           VkMemoryBarrier* pMemoryBarrier) override;
+                           MVKPipelineBarrier& barrier);
     bool shouldFlushHostMemory();
     VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
     VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);

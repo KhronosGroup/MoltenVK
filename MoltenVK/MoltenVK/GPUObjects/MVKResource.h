@@ -72,10 +72,6 @@ public:
     MVKResource(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 
 protected:
-	virtual bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
-								   VkPipelineStageFlags dstStageMask,
-								   VkMemoryBarrier* pMemoryBarrier);
-
 	MVKDeviceMemory* _deviceMemory = nullptr;
 	VkDeviceSize _deviceMemoryOffset = 0;
     VkDeviceSize _byteCount = 0;

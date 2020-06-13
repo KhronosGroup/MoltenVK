@@ -86,7 +86,6 @@ public:
 
 protected:
 	friend class MVKDeviceMemory;
-	using MVKResource::needsHostReadSync;
 
 	void propagateDebugName() override;
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,

@@ -340,7 +340,7 @@ void MVKImageMemoryBinding::applyMemoryBarrier(VkPipelineStageFlags srcStageMask
                                                MVKCommandEncoder* cmdEncoder,
                                                MVKCommandUse cmdUse) {
 #if MVK_MACOS
-    if ( needsHostReadSync(srcStageMask, dstStageMask, (VkMemoryBarrier*)&barrier) ) {
+    if ( needsHostReadSync(srcStageMask, dstStageMask, barrier) ) {
         for(uint8_t planeIndex = beginPlaneIndex(); planeIndex < endPlaneIndex(); planeIndex++) {
             [cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeResource: _image->_planes[planeIndex]->_mtlTexture];
         }
@@ -358,9 +358,8 @@ void MVKImageMemoryBinding::propagateDebugName() {
 // texture and host memory for the purpose of the host reading texture memory.
 bool MVKImageMemoryBinding::needsHostReadSync(VkPipelineStageFlags srcStageMask,
                                               VkPipelineStageFlags dstStageMask,
-                                              VkMemoryBarrier* pMemoryBarrier) {
+                                              MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
-    MVKPipelineBarrier& barrier = *(MVKPipelineBarrier*)pMemoryBarrier;
     return ((barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
             isMemoryHostAccessible() && !isMemoryHostCoherent());
@@ -522,7 +521,7 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
                 MVKImageSubresource* pImgRez = _planes[planeIndex]->getSubresource(mipLvl, layer);
                 if (pImgRez) { pImgRez->layoutState = barrier.newLayout; }
 #if MVK_MACOS
-                bool needsSync = _planes[planeIndex]->getMemoryBinding()->needsHostReadSync(srcStageMask, dstStageMask, (VkMemoryBarrier*)&barrier);
+                bool needsSync = _planes[planeIndex]->getMemoryBinding()->needsHostReadSync(srcStageMask, dstStageMask, barrier);
                 id<MTLBlitCommandEncoder> mtlBlitEncoder = needsSync ? cmdEncoder->getMTLBlitEncoder(cmdUse) : nil;
                 if (needsSync) { [mtlBlitEncoder synchronizeTexture: _planes[planeIndex]->_mtlTexture slice: layer level: mipLvl]; }
 #endif
