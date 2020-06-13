@@ -209,11 +209,6 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				portabilityProps->minVertexInputBindingStrideAlignment = 4;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
-				auto* samplerYcbcrConvProps = (VkSamplerYcbcrConversionImageFormatProperties*)next;
-				samplerYcbcrConvProps->combinedImageSamplerDescriptorCount = 3;
-				break;
-			}
 			default:
 				break;
 		}
@@ -438,6 +433,18 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 				break;
 		}
 	}
+
+    for (const auto* nextProps = (VkBaseInStructure*)pImageFormatProperties->pNext; nextProps; nextProps = nextProps->pNext) {
+        switch (nextProps->sType) {
+            case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
+                auto* samplerYcbcrConvProps = (VkSamplerYcbcrConversionImageFormatProperties*)nextProps;
+                samplerYcbcrConvProps->combinedImageSamplerDescriptorCount = _pixelFormats.getChromaSubsamplingPlaneCount(pImageFormatInfo->format);
+                break;
+            }
+            default:
+                break;
+        }
+    }
 
 	if ( !_pixelFormats.isSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
