@@ -488,7 +488,7 @@ protected:
 #pragma mark -
 #pragma mark MVKImageViewPlane
 
-class MVKImageViewPlane : public MVKBaseObject {
+class MVKImageViewPlane : public MVKBaseDeviceObject {
 
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
