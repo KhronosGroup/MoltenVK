@@ -46,7 +46,7 @@ public:
 	VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	VkResult bindDeviceMemory2(const VkBindBufferMemoryInfo* pBindInfo);

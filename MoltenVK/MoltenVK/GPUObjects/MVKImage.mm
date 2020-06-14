@@ -279,6 +279,38 @@ MVKImageMemoryBinding* MVKImagePlane::getMemoryBinding() const {
     return (_image->_memoryBindings.size() > 1) ? _image->_memoryBindings[_planeIndex] : _image->_memoryBindings[0];
 }
 
+void MVKImagePlane::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
+											VkPipelineStageFlags dstStageMask,
+											MVKPipelineBarrier& barrier,
+											MVKCommandEncoder* cmdEncoder,
+											MVKCommandUse cmdUse) {
+
+	// Extract the mipmap levels that are to be updated
+	uint32_t mipLvlStart = barrier.baseMipLevel;
+	uint32_t mipLvlEnd = (barrier.levelCount == (uint8_t)VK_REMAINING_MIP_LEVELS
+						  ? _image->getMipLevelCount()
+						  : (mipLvlStart + barrier.levelCount));
+
+	// Extract the cube or array layers (slices) that are to be updated
+	uint32_t layerStart = barrier.baseArrayLayer;
+	uint32_t layerEnd = (barrier.layerCount == (uint16_t)VK_REMAINING_ARRAY_LAYERS
+						 ? _image->getLayerCount()
+						 : (layerStart + barrier.layerCount));
+
+	// Iterate across mipmap levels and layers, and update the image layout state for each
+	for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {
+		for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
+			MVKImageSubresource* pImgRez = getSubresource(mipLvl, layer);
+			if (pImgRez) { pImgRez->layoutState = barrier.newLayout; }
+#if MVK_MACOS
+			if (getMemoryBinding()->needsHostReadSync(srcStageMask, dstStageMask, barrier)) {
+				[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeTexture: _mtlTexture slice: layer level: mipLvl];
+			}
+#endif
+		}
+	}
+}
+
 MVKImagePlane::MVKImagePlane(MVKImage* image, uint8_t planeIndex) {
     _image = image;
     _planeIndex = planeIndex;
@@ -503,32 +535,10 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 									   MVKCommandEncoder* cmdEncoder,
 									   MVKCommandUse cmdUse) {
 
-	// Extract the mipmap levels that are to be updated
-	uint32_t mipLvlStart = barrier.baseMipLevel;
-	uint32_t mipLvlEnd = (barrier.levelCount == (uint8_t)VK_REMAINING_MIP_LEVELS
-						  ? getMipLevelCount()
-						  : (mipLvlStart + barrier.levelCount));
-
-	// Extract the cube or array layers (slices) that are to be updated
-	uint32_t layerStart = barrier.baseArrayLayer;
-	uint32_t layerEnd = (barrier.layerCount == (uint16_t)VK_REMAINING_ARRAY_LAYERS
-						 ? getLayerCount()
-						 : (layerStart + barrier.layerCount));
-
-	// Iterate across mipmap levels and layers, and update the image layout state for each
-    for (uint8_t planeIndex = 0; planeIndex < _planes.size(); planeIndex++) {
-        if (_hasChromaSubsampling && (barrier.aspectMask & (VK_IMAGE_ASPECT_PLANE_0_BIT << planeIndex)) == 0) { continue; }
-        for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {
-            for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
-                MVKImageSubresource* pImgRez = _planes[planeIndex]->getSubresource(mipLvl, layer);
-                if (pImgRez) { pImgRez->layoutState = barrier.newLayout; }
-#if MVK_MACOS
-                bool needsSync = _planes[planeIndex]->getMemoryBinding()->needsHostReadSync(srcStageMask, dstStageMask, barrier);
-                id<MTLBlitCommandEncoder> mtlBlitEncoder = needsSync ? cmdEncoder->getMTLBlitEncoder(cmdUse) : nil;
-                if (needsSync) { [mtlBlitEncoder synchronizeTexture: _planes[planeIndex]->_mtlTexture slice: layer level: mipLvl]; }
-#endif
-            }
-        }
+	for (uint8_t planeIndex = 0; planeIndex < _planes.size(); planeIndex++) {
+		if ( !_hasChromaSubsampling || mvkIsAnyFlagEnabled(barrier.aspectMask, (VK_IMAGE_ASPECT_PLANE_0_BIT << planeIndex)) ) {
+			_planes[planeIndex]->applyImageMemoryBarrier(srcStageMask, dstStageMask, barrier, cmdEncoder, cmdUse);
+		}
     }
 }
 
