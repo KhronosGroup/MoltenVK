@@ -28,6 +28,7 @@
 
 #import <IOSurface/IOSurfaceRef.h>
 
+class MVKImage;
 class MVKImageView;
 class MVKSwapchain;
 class MVKCommandEncoder;
@@ -43,10 +44,14 @@ typedef struct {
     VkImageLayout layoutState;
 } MVKImageSubresource;
 
-class MVKImagePlane {
+class MVKImagePlane : public MVKBaseObject {
 
 public:
-    /** Returns the Metal texture underlying this image plane. */
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
+
+	/** Returns the Metal texture underlying this image plane. */
     id<MTLTexture> getMTLTexture();
 
     /** Returns a Metal texture that interprets the pixels in the specified format. */
@@ -332,8 +337,8 @@ protected:
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
     void releaseIOSurface();
 
-    MVKSmallVector<std::unique_ptr<MVKImageMemoryBinding>, 3> _memoryBindings;
-    MVKSmallVector<std::unique_ptr<MVKImagePlane>, 3> _planes;
+    MVKSmallVector<MVKImageMemoryBinding*, 3> _memoryBindings;
+    MVKSmallVector<MVKImagePlane*, 3> _planes;
     VkExtent3D _extent;
     uint32_t _mipLevels;
     uint32_t _arrayLayers;
@@ -483,7 +488,10 @@ protected:
 #pragma mark -
 #pragma mark MVKImageViewPlane
 
-class MVKImageViewPlane {
+class MVKImageViewPlane : public MVKBaseObject {
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
 public:
     /** Returns the Metal texture underlying this image view. */
@@ -581,13 +589,15 @@ public:
 				 const VkImageViewCreateInfo* pCreateInfo,
 				 const MVKConfiguration* pAltMVKConfig = nullptr);
 
+	~MVKImageView();
+
 protected:
     friend MVKImageViewPlane;
     
 	void propagateDebugName() override;
 
     MVKImage* _image;
-    MVKSmallVector<std::unique_ptr<MVKImageViewPlane>, 3> _planes;
+    MVKSmallVector<MVKImageViewPlane*, 3> _planes;
     VkImageSubresourceRange _subresourceRange;
     VkImageUsageFlags _usage;
 	std::mutex _lock;

@@ -35,6 +35,8 @@ using namespace SPIRV_CROSS_NAMESPACE;
 #pragma mark -
 #pragma mark MVKImagePlane
 
+MVKVulkanAPIObject* MVKImagePlane::getVulkanAPIObject() { return _image; }
+
 id<MTLTexture> MVKImagePlane::getMTLTexture() {
     if ( !_mtlTexture && _image->_vkFormat ) {
         // Lock and check again in case another thread has created the texture.
@@ -274,7 +276,7 @@ void MVKImagePlane::propagateDebugName() {
 }
 
 MVKImageMemoryBinding* MVKImagePlane::getMemoryBinding() const {
-    return (_image->_memoryBindings.size() > 1) ? _image->_memoryBindings[_planeIndex].get() : _image->_memoryBindings[0].get();
+    return (_image->_memoryBindings.size() > 1) ? _image->_memoryBindings[_planeIndex] : _image->_memoryBindings[0];
 }
 
 MVKImagePlane::MVKImagePlane(MVKImage* image, uint8_t planeIndex) {
@@ -759,17 +761,17 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     VkExtent2D blockTexelSizeOfPlane[3];
     uint32_t bytesPerBlockOfPlane[3];
     MTLPixelFormat mtlPixFmtOfPlane[3];
-    uint8_t subsamplingPlaneCount = pixFmts->getChromaSubsamplingPlanes(_vkFormat, blockTexelSizeOfPlane, bytesPerBlockOfPlane, mtlPixFmtOfPlane),
-            planeCount = std::max(subsamplingPlaneCount, (uint8_t)1),
-            memoryBindingCount = (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT) ? planeCount : 1;
+	uint8_t subsamplingPlaneCount = pixFmts->getChromaSubsamplingPlanes(_vkFormat, blockTexelSizeOfPlane, bytesPerBlockOfPlane, mtlPixFmtOfPlane);
+	uint8_t planeCount = std::max(subsamplingPlaneCount, (uint8_t)1);
+    uint8_t memoryBindingCount = (pCreateInfo->flags & VK_IMAGE_CREATE_DISJOINT_BIT) ? planeCount : 1;
     _hasChromaSubsampling = (subsamplingPlaneCount > 0);
 
     for (uint8_t planeIndex = 0; planeIndex < memoryBindingCount; ++planeIndex) {
-        _memoryBindings.push_back(std::unique_ptr<MVKImageMemoryBinding>(new MVKImageMemoryBinding(device, this, planeIndex)));
+        _memoryBindings.push_back(new MVKImageMemoryBinding(device, this, planeIndex));
     }
 
     for (uint8_t planeIndex = 0; planeIndex < planeCount; ++planeIndex) {
-        _planes.push_back(std::unique_ptr<MVKImagePlane>(new MVKImagePlane(this, planeIndex)));
+        _planes.push_back(new MVKImagePlane(this, planeIndex));
         if (_hasChromaSubsampling) {
             _planes[planeIndex]->_blockTexelSize = blockTexelSizeOfPlane[planeIndex];
             _planes[planeIndex]->_bytesPerBlock = bytesPerBlockOfPlane[planeIndex];
@@ -945,6 +947,8 @@ void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
 }
 
 MVKImage::~MVKImage() {
+	mvkDestroyContainerContents(_memoryBindings);
+	mvkDestroyContainerContents(_planes);
     releaseIOSurface();
 }
 
@@ -1211,6 +1215,8 @@ MVKPeerSwapchainImage::MVKPeerSwapchainImage(MVKDevice* device,
 #pragma mark -
 #pragma mark MVKImageViewPlane
 
+MVKVulkanAPIObject* MVKImageViewPlane::getVulkanAPIObject() { return _imageView; }
+
 void MVKImageViewPlane::propagateDebugName() { setLabelIfNotNil(_mtlTexture, _imageView->_debugName); }
 
 
@@ -1315,7 +1321,7 @@ void MVKImageView::propagateDebugName() {
 }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
-    MVKImageViewPlane* plane = _planes[0].get();
+    MVKImageViewPlane* plane = _planes[0];
     mtlAttDesc.texture = plane->getMTLTexture();           // Use image view, necessary if image view format differs from image format
     mtlAttDesc.level = plane->_useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.texture.textureType == MTLTextureType3D) {
@@ -1328,7 +1334,7 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttach
 }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
-    MVKImageViewPlane* plane = _planes[0].get();
+    MVKImageViewPlane* plane = _planes[0];
     mtlAttDesc.resolveTexture = plane->getMTLTexture();    // Use image view, necessary if image view format differs from image format
     mtlAttDesc.resolveLevel = plane->_useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.resolveTexture.textureType == MTLTextureType3D) {
@@ -1412,12 +1418,7 @@ MVKImageView::MVKImageView(MVKDevice* device,
         }
     }
     for (uint8_t planeIndex = beginPlaneIndex; planeIndex < endPlaneIndex; planeIndex++) {
-        _planes.push_back(std::unique_ptr<MVKImageViewPlane>(new MVKImageViewPlane(
-            this,
-            planeIndex,
-            mtlPixFmtOfPlane[planeIndex],
-            pCreateInfo
-        )));
+        _planes.push_back(new MVKImageViewPlane(this, planeIndex, mtlPixFmtOfPlane[planeIndex], pCreateInfo));
     }
 }
 
@@ -1531,6 +1532,10 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 								  pCreateInfo->image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX",
 								  mvkVkComponentSwizzleName(components.r), mvkVkComponentSwizzleName(components.g),
 								  mvkVkComponentSwizzleName(components.b), mvkVkComponentSwizzleName(components.a));
+}
+
+MVKImageView::~MVKImageView() {
+	mvkDestroyContainerContents(_planes);
 }
 
 
