@@ -77,7 +77,7 @@ public:
 	/** Unmaps a previously mapped memory range. */
 	void unmap();
 
-	/** 
+	/**
 	 * If this memory is host-visible, the specified memory range is flushed to the device.
 	 * Normally, flushing will only occur if the device memory is non-coherent, but flushing
 	 * to coherent memory can be forced by setting evenIfCoherent to true.
