@@ -71,7 +71,7 @@ public:
 	inline uint32_t getBinding() { return _info.binding; }
 
 	/** Returns the number of descriptors in this layout. */
-	inline uint32_t getDescriptorCount() { return _info.descriptorCount; }
+    inline uint32_t getDescriptorCount() { return (_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) ? 1 : _info.descriptorCount; }
 
 	/** Returns the descriptor type of this layout. */
 	inline VkDescriptorType getDescriptorType() { return _info.descriptorType; }
@@ -284,17 +284,19 @@ public:
 
 	void write(MVKDescriptorSet* mvkDescSet,
 			   VkDescriptorType descriptorType,
-			   uint32_t srcIndex,
+			   uint32_t dstIndex,
 			   size_t stride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSet* mvkDescSet,
 			  VkDescriptorType descriptorType,
-			  uint32_t dstIndex,
+			  uint32_t srcIndex,
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+    
+    void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) override;
 
 	void reset() override;
 
@@ -302,7 +304,6 @@ public:
 
 protected:
 	id<MTLBuffer> _mtlBuffer = nil;
-	uint32_t _dataSize = 0;
 };
 
 

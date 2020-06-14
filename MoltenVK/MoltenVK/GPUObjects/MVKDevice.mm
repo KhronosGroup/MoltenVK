@@ -209,6 +209,15 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				portabilityProps->minVertexInputBindingStrideAlignment = 4;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
+				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)next;
+				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
+                inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
+                inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
+                inlineUniformBlockProps->maxDescriptorSetInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
+                inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
+				break;
+			}
 			default:
 				break;
 		}
