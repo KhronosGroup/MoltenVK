@@ -892,7 +892,7 @@
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = appletvos;
 				TARGETED_DEVICE_FAMILY = 3;
@@ -911,7 +911,7 @@
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
 				GCC_WARN_CHECK_SWITCH_STATEMENTS = NO;
 				GCC_WARN_UNUSED_PARAMETER = NO;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = appletvos;
 				TARGETED_DEVICE_FAMILY = 3;
@@ -930,7 +930,7 @@
 					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
 				);
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = appletvos;
 				TARGETED_DEVICE_FAMILY = 3;
@@ -949,7 +949,7 @@
 					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
 				);
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = appletvos;
 				TARGETED_DEVICE_FAMILY = 3;
