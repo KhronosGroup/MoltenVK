@@ -449,7 +449,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		2FEA0ABA24902F9F00EEF3AD /* libMoltenVK-tvOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libMoltenVK-tvOS.a"; sourceTree = BUILT_PRODUCTS_DIR; };
+		2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVK.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		45003E6F214AD4C900E989CB /* MVKExtensions.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKExtensions.def; sourceTree = "<group>"; };
 		4553AEF62251617100E8EBCD /* MVKBlockObserver.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = MVKBlockObserver.m; sourceTree = "<group>"; };
 		4553AEFA2251617100E8EBCD /* MVKBlockObserver.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKBlockObserver.h; sourceTree = "<group>"; };
@@ -806,7 +806,7 @@
 			children = (
 				A9B8EE0A1A98D796009C5A02 /* libMoltenVK.a */,
 				A9CBEE011B6299D800E45FDC /* libMoltenVK.a */,
-				2FEA0ABA24902F9F00EEF3AD /* libMoltenVK-tvOS.a */,
+				2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1050,7 +1050,7 @@
 			);
 			name = "MoltenVK-tvOS";
 			productName = MoltenVK;
-			productReference = 2FEA0ABA24902F9F00EEF3AD /* libMoltenVK-tvOS.a */;
+			productReference = 2FEA0ABA24902F9F00EEF3AD /* libMoltenVK.a */;
 			productType = "com.apple.product-type.library.static";
 		};
 		A9B8EE091A98D796009C5A02 /* MoltenVK-iOS */ = {
@@ -1502,7 +1502,7 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				BITCODE_GENERATION_MODE = bitcode;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = MoltenVK;
 				SDKROOT = appletvos;
 				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
@@ -1515,7 +1515,7 @@
 				ARCHS = "$(ARCHS_STANDARD)";
 				BITCODE_GENERATION_MODE = bitcode;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				PRODUCT_NAME = "$(TARGET_NAME)";
+				PRODUCT_NAME = MoltenVK;
 				SDKROOT = appletvos;
 				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
