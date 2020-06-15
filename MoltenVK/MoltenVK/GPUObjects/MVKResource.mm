@@ -39,7 +39,7 @@ VkResult MVKResource::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize mem
 bool MVKResource::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 									VkPipelineStageFlags dstStageMask,
 									VkMemoryBarrier* pMemoryBarrier) {
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	return false;
 #endif
 #if MVK_MACOS

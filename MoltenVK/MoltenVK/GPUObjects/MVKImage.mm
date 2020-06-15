@@ -139,7 +139,7 @@ bool MVKImage::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 			mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
 			isMemoryHostAccessible() && !isMemoryHostCoherent());
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	return false;
 #endif
 }

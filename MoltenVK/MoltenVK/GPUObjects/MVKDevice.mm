@@ -875,6 +875,15 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.minSwapchainImageCount = kMVKMinSwapchainImageCount;
 	_metalFeatures.maxSwapchainImageCount = kMVKMaxSwapchainImageCount;
 
+#if MVK_TVOS
+	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_0;
+    _metalFeatures.maxPerStageTextureCount = 31;
+    _metalFeatures.mtlBufferAlignment = 64;
+	_metalFeatures.mtlCopyBufferAlignment = 1;
+    _metalFeatures.texelBuffers = true;
+	_metalFeatures.maxTextureDimension = (4 * KIBI);
+#endif
+
 #if MVK_IOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_0;
     _metalFeatures.maxPerStageTextureCount = 31;
@@ -1075,6 +1084,10 @@ void MVKPhysicalDevice::initFeatures() {
         _features.drawIndirectFirstInstance = true;
     }
 
+#if MVK_TVOS
+    _features.textureCompressionETC2 = true;
+#endif
+
 #if MVK_IOS
     _features.textureCompressionETC2 = true;
 
@@ -1206,6 +1219,9 @@ void MVKPhysicalDevice::initProperties() {
 	initPipelineCacheUUID();
 
 	// Limits
+#if MVK_TVOS
+    _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
+#endif
 #if MVK_IOS
     if (supportsMTLFeatureSet(iOS_GPUFamily2_v1)) {
         _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
@@ -1354,6 +1370,9 @@ void MVKPhysicalDevice::initProperties() {
         _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = singleTexelUniform;
         _properties.limits.minTexelBufferOffsetAlignment = max(maxStorage, maxUniform);
     } else {
+#if MVK_TVOS
+        _properties.limits.minTexelBufferOffsetAlignment = 64;
+#endif
 #if MVK_IOS
         if (supportsMTLFeatureSet(iOS_GPUFamily3_v1)) {
             _properties.limits.minTexelBufferOffsetAlignment = 16;

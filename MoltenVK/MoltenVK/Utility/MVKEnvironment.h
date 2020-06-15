@@ -68,7 +68,7 @@
 #if MVK_MACOS
 #   define MVK_MTLEVENT_MIN_OS  10.14
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 #   define MVK_MTLEVENT_MIN_OS  12.0
 #endif
 #ifndef MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS

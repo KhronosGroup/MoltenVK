@@ -1102,7 +1102,8 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 #if MVK_TVOS
 void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 }
-#elif MVK_IOS
+#endif
+#if MVK_IOS
 void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v3, R8Unorm_sRGB, All );
 	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, R8Unorm_sRGB, All );
