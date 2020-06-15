@@ -1202,7 +1202,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_ios.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_tvos.sh\"\n";
 		};
 		2FEA0AB624902F9F00EEF3AD /* Create Framework */ = {
 			isa = PBXShellScriptBuildPhase;
