@@ -27,6 +27,9 @@
 #if MVK_MACOS
 	return self.renderTargetArrayLength;
 #endif
+#if MVK_TVOS
+  return 0;
+#endif
 #if MVK_IOS
 	if ( [self respondsToSelector: @selector(renderTargetArrayLength)] ) {
 		return self.renderTargetArrayLength;
@@ -51,7 +54,7 @@
 
 -(NSUInteger) renderTargetWidthMVK {
 
-#if MVK_MACOS
+#if MVK_MACOS || MVK_TVOS
 	return 0;
 #endif
 #if MVK_IOS
@@ -73,7 +76,7 @@
 
 -(NSUInteger) renderTargetHeightMVK {
 
-#if MVK_MACOS
+#if MVK_MACOS || MVK_TVOS
 	return 0;
 #endif
 #if MVK_IOS

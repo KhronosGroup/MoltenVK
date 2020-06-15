@@ -1803,6 +1803,11 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	uint32_t minFS = (uint32_t)MTLFeatureSet_iOS_GPUFamily1_v1;
 #endif
 
+#if MVK_TVOS
+  uint32_t maxFS = (uint32_t)MTLFeatureSet_tvOS_GPUFamily2_v2;
+  uint32_t minFS = (uint32_t)MTLFeatureSet_tvOS_GPUFamily1_v1;
+#endif
+
 #if MVK_MACOS
 	uint32_t maxFS = (uint32_t)MTLFeatureSet_macOS_GPUFamily2_v1;
 	uint32_t minFS = (uint32_t)MTLFeatureSet_macOS_GPUFamily1_v1;
