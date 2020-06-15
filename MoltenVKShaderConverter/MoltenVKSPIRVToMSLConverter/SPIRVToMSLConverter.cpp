@@ -99,6 +99,9 @@ MVK_PUBLIC_SYMBOL SPIRVToMSLConversionOptions::SPIRVToMSLConversionOptions() {
 #if MVK_IOS
 	mslOptions.platform = CompilerMSL::Options::iOS;
 #endif
+#if MVK_TVOS
+ 	mslOptions.platform = CompilerMSL::Options::iOS;
+#endif
 }
 
 MVK_PUBLIC_SYMBOL bool MSLVertexAttribute::matches(const MSLVertexAttribute& other) const {

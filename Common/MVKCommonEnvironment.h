@@ -51,6 +51,15 @@ extern "C" {
 #    endif
 #endif
 
+/** Building for tvOS. Use ifdef instead of defined() operator to allow MVK_TVOS to be used in expansions */
+#ifndef MVK_TVOS
+#    ifdef __TV_OS_VERSION_MAX_ALLOWED
+#        define MVK_TVOS            1
+#    else
+#        define MVK_TVOS            0
+#    endif
+#endif
+
 /** Building for macOS. Use ifdef instead of defined() operator to allow MVK_MACOS to be used in expansions */
 #ifndef MVK_MACOS
 #    ifdef __MAC_OS_X_VERSION_MAX_ALLOWED

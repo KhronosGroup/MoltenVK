@@ -1099,7 +1099,10 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, UChar4Normalized_BGRA, Vertex );
 }
 #endif
-#if MVK_IOS
+#if MVK_TVOS
+void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
+}
+#elif MVK_IOS
 void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v3, R8Unorm_sRGB, All );
 	addMTLPixelFormatCapabilities( iOS_GPUFamily3_v1, R8Unorm_sRGB, All );
