@@ -212,6 +212,7 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 	uint32_t descCnt = pDescriptorAction->descriptorCount;
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
         uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, 0);
+        // For inline buffers we are using the index argument as dst offset not as src descIdx
         _descriptors[dstStartIdx]->write(this, descType, pDescriptorAction->dstArrayElement, stride, pData);
     } else {
         uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding,
@@ -241,6 +242,7 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
         pInlineUniformBlock->dataSize = pDescriptorCopy->descriptorCount;
         uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, 0);
+        // For inline buffers we are using the index argument as src offset not as dst descIdx
         _descriptors[srcStartIdx]->read(this, descType, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
     } else {
         uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding,
