@@ -355,19 +355,19 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
-		2FEA0A3D24902F9F00EEF3AD /* PBXContainerItemProxy */ = {
+		2F21D82C24983488009BEA5F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */;
 			proxyType = 1;
-			remoteGlobalIDString = A93903B81C57E9D700FE90DC;
-			remoteInfo = "MVKSPIRVToMSLConverter-iOS";
+			remoteGlobalIDString = 2FEA0AC42490305800EEF3AD;
+			remoteInfo = "MoltenVKGLSLToSPIRVConverter-tvOS";
 		};
-		2FEA0A3F24902F9F00EEF3AD /* PBXContainerItemProxy */ = {
+		2F21D82E24983488009BEA5F /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A9C86CB61C55B8350096CAF2 /* MoltenVKShaderConverter.xcodeproj */;
 			proxyType = 1;
-			remoteGlobalIDString = A937472B1A9A8B2900F29B34;
-			remoteInfo = "MoltenVKGLSLToSPIRVConverter-iOS";
+			remoteGlobalIDString = 2FEA0CFF2490381A00EEF3AD;
+			remoteInfo = "MoltenVKSPIRVToMSLConverter-tvOS";
 		};
 		2FEA0D19249040CA00EEF3AD /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -1045,8 +1045,8 @@
 			buildRules = (
 			);
 			dependencies = (
-				2FEA0A3C24902F9F00EEF3AD /* PBXTargetDependency */,
-				2FEA0A3E24902F9F00EEF3AD /* PBXTargetDependency */,
+				2F21D82D24983488009BEA5F /* PBXTargetDependency */,
+				2F21D82F24983488009BEA5F /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-tvOS";
 			productName = MoltenVK;
@@ -1463,15 +1463,15 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
-		2FEA0A3C24902F9F00EEF3AD /* PBXTargetDependency */ = {
+		2F21D82D24983488009BEA5F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "MVKSPIRVToMSLConverter-iOS";
-			targetProxy = 2FEA0A3D24902F9F00EEF3AD /* PBXContainerItemProxy */;
+			name = "MoltenVKGLSLToSPIRVConverter-tvOS";
+			targetProxy = 2F21D82C24983488009BEA5F /* PBXContainerItemProxy */;
 		};
-		2FEA0A3E24902F9F00EEF3AD /* PBXTargetDependency */ = {
+		2F21D82F24983488009BEA5F /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			name = "MoltenVKGLSLToSPIRVConverter-iOS";
-			targetProxy = 2FEA0A3F24902F9F00EEF3AD /* PBXContainerItemProxy */;
+			name = "MoltenVKSPIRVToMSLConverter-tvOS";
+			targetProxy = 2F21D82E24983488009BEA5F /* PBXContainerItemProxy */;
 		};
 		A96B8157227BF6FD008A772B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1499,28 +1499,26 @@
 		2FEA0AB824902F9F00EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
+				ARCHS = "$(ARCHS_STANDARD)";
 				BITCODE_GENERATION_MODE = bitcode;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;
 				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
-				VALID_ARCHS = arm64;
 			};
 			name = Debug;
 		};
 		2FEA0AB924902F9F00EEF3AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
+				ARCHS = "$(ARCHS_STANDARD)";
 				BITCODE_GENERATION_MODE = bitcode;
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = appletvos;
 				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
-				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};
