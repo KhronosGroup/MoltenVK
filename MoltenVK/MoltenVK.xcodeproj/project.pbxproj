@@ -1220,7 +1220,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_ios.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_tvos.sh\"\n";
 		};
 		A92EF78D21852B2400C8B91B /* Create Framework */ = {
 			isa = PBXShellScriptBuildPhase;
