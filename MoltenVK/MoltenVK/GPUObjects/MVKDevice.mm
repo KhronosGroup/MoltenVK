@@ -1626,6 +1626,16 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 }
 #endif	//MVK_IOS
 
+#if MVK_TVOS
+void MVKPhysicalDevice::initGPUInfoProperties() {
+  uint32_t devID = 0;
+
+  _properties.vendorID = 0x0000106b;  // Apple's PCI ID
+  _properties.deviceID = devID;
+  _properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+  strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
+}
+#endif
 
 #pragma mark VkPhysicalDeviceLimits - List of feature limits available on the device
 
