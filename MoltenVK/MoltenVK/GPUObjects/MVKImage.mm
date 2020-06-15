@@ -1419,9 +1419,6 @@ MVKImageView::MVKImageView(MVKDevice* device,
 
         // VK_KHR_maintenance1 supports taking 2D image views of 3D slices. No dice in Metal.
         if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
-            if (pCreateInfo->subresourceRange.layerCount != _image->_extent.depth) {
-                reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): Metal does not fully support views on a subset of a 3D texture.");
-            }
             if ( !mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ) {
                 setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments."));
             } else if (!mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
