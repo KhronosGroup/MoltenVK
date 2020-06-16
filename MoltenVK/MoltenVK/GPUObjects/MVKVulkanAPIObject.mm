@@ -24,18 +24,6 @@ using namespace std;
 #pragma mark -
 #pragma mark MVKVulkanAPIObject
 
-void MVKVulkanAPIObject::retain() {
-	_refCount++;
-}
-
-void MVKVulkanAPIObject::release() {
-	if (--_refCount == 0) { MVKConfigurableObject::destroy(); }
-}
-
-void MVKVulkanAPIObject::destroy() {
-	release();
-}
-
 VkResult MVKVulkanAPIObject::setDebugName(const char* pObjectName) {
 	if (pObjectName) {
 		[_debugName release];
