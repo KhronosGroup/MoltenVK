@@ -89,13 +89,12 @@ uint32_t MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
 	// Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
 
-	uint32_t descCnt = _info.descriptorCount;
+    uint32_t descCnt = getDescriptorCount();
     for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		MVKDescriptor* mvkDesc = descSet->getDescriptor(descStartIndex + descIdx);
-		mvkDesc->bind(cmdEncoder, _info.descriptorType, descIdx, _applyToStage,
-					  mtlIdxs, dynamicOffsets, pDynamicOffsetIndex);
+        MVKDescriptor* mvkDesc = descSet->getDescriptor(descStartIndex + descIdx);
+        mvkDesc->bind(cmdEncoder, _info.descriptorType, descIdx, _applyToStage, mtlIdxs, dynamicOffsets, pDynamicOffsetIndex);
     }
-	return descCnt;
+    return descCnt;
 }
 
 template<typename T>
@@ -167,13 +166,13 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
             }
 
             case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
-                const auto& inlineUniformBlock = get<VkWriteDescriptorSetInlineUniformBlockEXT>(pData, stride, rezIdx - dstArrayElement);
+                const auto& inlineUniformBlock = *(VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
                 bb.mtlBytes = inlineUniformBlock.pData;
                 bb.size = inlineUniformBlock.dataSize;
                 bb.isInline = true;
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
-                        bb.index = mtlIdxs.stages[i].bufferIndex + rezIdx;
+                        bb.index = mtlIdxs.stages[i].bufferIndex;
                         if (i == kMVKShaderStageCompute) {
                             if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
                         } else {
@@ -470,9 +469,13 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
             pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
             pDescSetCounts->bufferIndex += pBinding->descriptorCount;
+            break;
+
+        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+            pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
+            pDescSetCounts->bufferIndex += 1;
             break;
 
         default:
@@ -602,21 +605,21 @@ void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 										   MVKArrayRef<uint32_t> dynamicOffsets,
 										   uint32_t* pDynamicOffsetIndex) {
 	MVKMTLBufferBinding bb;
-
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
-			bb.mtlBuffer = _mtlBuffer;
-			bb.size = _dataSize;
-			for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-				if (stages[i]) {
-					bb.index = mtlIndexes.stages[i].bufferIndex + descriptorIndex;
-					if (i == kMVKShaderStageCompute) {
-						if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
-					} else {
-						if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
-					}
-				}
-			}
+            bb.mtlBytes = _buffer;
+            bb.size = _length;
+            bb.isInline = true;
+            for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+                if (stages[i]) {
+                    bb.index = mtlIndexes.stages[i].bufferIndex;
+                    if (i == kMVKShaderStageCompute) {
+                        if (cmdEncoder) { cmdEncoder->_computeResourcesState.bindBuffer(bb); }
+                    } else {
+                        if (cmdEncoder) { cmdEncoder->_graphicsResourcesState.bindBuffer(MVKShaderStage(i), bb); }
+                    }
+                }
+            }
 			break;
 		}
 
@@ -626,25 +629,16 @@ void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKInlineUniformBlockDescriptor::write(MVKDescriptorSet* mvkDescSet,
-									   VkDescriptorType descriptorType,
-									   uint32_t srcIndex,
-									   size_t stride,
-									   const void* pData) {
+                                            VkDescriptorType descriptorType,
+                                            uint32_t dstOffset,
+                                            size_t stride,
+                                            const void* pData) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
-			const auto& srcInlineUniformBlock = get<VkWriteDescriptorSetInlineUniformBlockEXT>(pData, stride, srcIndex);
-			_dataSize = srcInlineUniformBlock.dataSize;
-
-			[_mtlBuffer release];
-			if (srcInlineUniformBlock.dataSize > 0) {
-				MTLResourceOptions mtlBuffOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
-				_mtlBuffer = [mvkDescSet->getMTLDevice() newBufferWithBytes: srcInlineUniformBlock.pData
-																	 length: srcInlineUniformBlock.dataSize
-																	options:mtlBuffOpts];	// retained
-			} else {
-				_mtlBuffer = nil;
-			}
-
+            const auto& pInlineUniformBlock = *(VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
+            if (pInlineUniformBlock.pData && _buffer) {
+                memcpy(_buffer + dstOffset, pInlineUniformBlock.pData, pInlineUniformBlock.dataSize);
+            }
 			break;
 		}
 
@@ -654,23 +648,17 @@ void MVKInlineUniformBlockDescriptor::write(MVKDescriptorSet* mvkDescSet,
 }
 
 void MVKInlineUniformBlockDescriptor::read(MVKDescriptorSet* mvkDescSet,
-									  VkDescriptorType descriptorType,
-									  uint32_t dstIndex,
-									  VkDescriptorImageInfo* pImageInfo,
-									  VkDescriptorBufferInfo* pBufferInfo,
-									  VkBufferView* pTexelBufferView,
-									  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
+                                           VkDescriptorType descriptorType,
+                                           uint32_t srcOffset,
+                                           VkDescriptorImageInfo* pImageInfo,
+                                           VkDescriptorBufferInfo* pBufferInfo,
+                                           VkBufferView* pTexelBufferView,
+                                           VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
-			auto& dstInlineUniformBlock = pInlineUniformBlock[dstIndex];
-			void* pDstData = const_cast<void*>(dstInlineUniformBlock.pData);
-			void* pSrcData = _mtlBuffer.contents;
-			if (pSrcData && pDstData) {
-				memcpy(pDstData, pSrcData, _dataSize);
-				dstInlineUniformBlock.dataSize = _dataSize;
-			} else {
-				dstInlineUniformBlock.dataSize = 0;
-			}
+			if (_buffer && pInlineUniformBlock->pData) {
+				memcpy((void*)pInlineUniformBlock->pData, _buffer + srcOffset, pInlineUniformBlock->dataSize);
+            }
 			break;
 		}
 
@@ -679,10 +667,15 @@ void MVKInlineUniformBlockDescriptor::read(MVKDescriptorSet* mvkDescSet,
 	}
 }
 
+void MVKInlineUniformBlockDescriptor::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
+    _length = dslBinding->_info.descriptorCount;
+    _buffer = (uint8_t*)malloc(_length);
+}
+
 void MVKInlineUniformBlockDescriptor::reset() {
-	[_mtlBuffer release];
-	_mtlBuffer = nil;
-	_dataSize = 0;
+    free(_buffer);
+	_buffer = nullptr;
+    _length = 0;
 	MVKDescriptor::reset();
 }
 

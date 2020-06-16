@@ -209,12 +209,18 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 							 const void* pData) {
 
 	VkDescriptorType descType = getDescriptorType(pDescriptorAction->dstBinding);
-	uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding,
-													   pDescriptorAction->dstArrayElement);
 	uint32_t descCnt = pDescriptorAction->descriptorCount;
-	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		_descriptors[dstStartIdx + descIdx]->write(this, descType, descIdx, stride, pData);
-	}
+    if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+        uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, 0);
+        // For inline buffers we are using the index argument as dst offset not as src descIdx
+        _descriptors[dstStartIdx]->write(this, descType, pDescriptorAction->dstArrayElement, stride, pData);
+    } else {
+        uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding,
+        pDescriptorAction->dstArrayElement);
+        for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
+            _descriptors[dstStartIdx + descIdx]->write(this, descType, descIdx, stride, pData);
+        }
+    }
 }
 
 // Create concrete implementations of the three variations of the write() function.
@@ -232,13 +238,19 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 							VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 
 	VkDescriptorType descType = getDescriptorType(pDescriptorCopy->srcBinding);
-	uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding,
-													   pDescriptorCopy->srcArrayElement);
 	uint32_t descCnt = pDescriptorCopy->descriptorCount;
-	for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-		_descriptors[srcStartIdx + descIdx]->read(this, descType, descIdx, pImageInfo, pBufferInfo,
-												  pTexelBufferView, pInlineUniformBlock);
-	}
+    if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+        pInlineUniformBlock->dataSize = pDescriptorCopy->descriptorCount;
+        uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, 0);
+        // For inline buffers we are using the index argument as src offset not as dst descIdx
+        _descriptors[srcStartIdx]->read(this, descType, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+    } else {
+        uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding,
+                                                           pDescriptorCopy->srcArrayElement);
+        for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
+            _descriptors[srcStartIdx + descIdx]->read(this, descType, descIdx, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+        }
+    }
 }
 
 // If the descriptor pool fails to allocate a descriptor, record a configuration error
@@ -249,15 +261,23 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout, MVKDescriptor
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		MVKDescriptorSetLayoutBinding* mvkDSLBind = &layout->_bindings[bindIdx];
-		uint32_t descCnt = mvkDSLBind->getDescriptorCount();
-		for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-			MVKDescriptor* mvkDesc = nullptr;
-			setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
-			if ( !wasConfigurationSuccessful() ) { break; }
+        MVKDescriptor* mvkDesc = nullptr;
+        if (mvkDSLBind->getDescriptorType() == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+            setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
+            if ( !wasConfigurationSuccessful() ) { break; }
 
-			mvkDesc->setLayout(mvkDSLBind, descIdx);
-			_descriptors.push_back(mvkDesc);
-		}
+            mvkDesc->setLayout(mvkDSLBind, 0);
+            _descriptors.push_back(mvkDesc);
+        } else {
+            uint32_t descCnt = mvkDSLBind->getDescriptorCount();
+            for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
+                setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
+                if ( !wasConfigurationSuccessful() ) { break; }
+
+                mvkDesc->setLayout(mvkDSLBind, descIdx);
+                _descriptors.push_back(mvkDesc);
+            }
+        }
 		if ( !wasConfigurationSuccessful() ) { break; }
 	}
 }
