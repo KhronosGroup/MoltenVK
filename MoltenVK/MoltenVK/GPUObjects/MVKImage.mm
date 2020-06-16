@@ -177,11 +177,7 @@ void MVKImagePlane::updateMTLTextureContent(MVKImageSubresource& subresource,
     VkSubresourceLayout& imgLayout = subresource.layout;
 
     // Check if subresource overlaps the memory range.
-    VkDeviceSize memStart = offset;
-    VkDeviceSize memEnd = offset + size;
-    VkDeviceSize imgStart = imgLayout.offset;
-    VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
-    if (imgStart >= memEnd || imgEnd <= memStart) { return; }
+	if ( !overlaps(imgLayout, offset, size) ) { return; }
 
     // Don't update if host memory has not been mapped yet.
     void* pHostMem = getMemoryBinding()->getHostMemoryAddress();
@@ -242,11 +238,7 @@ void MVKImagePlane::getMTLTextureContent(MVKImageSubresource& subresource,
     VkSubresourceLayout& imgLayout = subresource.layout;
 
     // Check if subresource overlaps the memory range.
-    VkDeviceSize memStart = offset;
-    VkDeviceSize memEnd = offset + size;
-    VkDeviceSize imgStart = imgLayout.offset;
-    VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
-    if (imgStart >= memEnd || imgEnd <= memStart) { return; }
+    if ( !overlaps(imgLayout, offset, size) ) { return; }
 
     // Don't update if host memory has not been mapped yet.
     void* pHostMem = getMemoryBinding()->getHostMemoryAddress();
@@ -269,6 +261,15 @@ void MVKImagePlane::getMTLTextureContent(MVKImageSubresource& subresource,
                fromRegion: mtlRegion
               mipmapLevel: imgSubRez.mipLevel
                     slice: imgSubRez.arrayLayer];
+}
+
+// Returns whether subresource layout overlaps the memory range.
+bool MVKImagePlane::overlaps(VkSubresourceLayout& imgLayout, VkDeviceSize offset, VkDeviceSize size) {
+	VkDeviceSize memStart = offset;
+	VkDeviceSize memEnd = offset + size;
+	VkDeviceSize imgStart = imgLayout.offset;
+	VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
+	return imgStart < memEnd && imgEnd > memStart;
 }
 
 void MVKImagePlane::propagateDebugName() {
@@ -297,18 +298,48 @@ void MVKImagePlane::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 						 ? _image->getLayerCount()
 						 : (layerStart + barrier.layerCount));
 
+	MVKImageMemoryBinding* memBind = getMemoryBinding();
+	bool needsSync = memBind->needsHostReadSync(srcStageMask, dstStageMask, barrier);
+	bool needsPull = (!memBind->_usesTexelBuffer &&
+					  memBind->isMemoryHostCoherent() &&
+					  barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL &&
+					  mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)));
+	MVKDeviceMemory* dvcMem = memBind->getDeviceMemory();
+	const MVKMappedMemoryRange& mappedRange = dvcMem ? dvcMem->getMappedRange() : MVKMappedMemoryRange();
+
 	// Iterate across mipmap levels and layers, and update the image layout state for each
 	for (uint32_t mipLvl = mipLvlStart; mipLvl < mipLvlEnd; mipLvl++) {
 		for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
 			MVKImageSubresource* pImgRez = getSubresource(mipLvl, layer);
 			if (pImgRez) { pImgRez->layoutState = barrier.newLayout; }
+			if (needsSync) {
 #if MVK_MACOS
-			if (getMemoryBinding()->needsHostReadSync(srcStageMask, dstStageMask, barrier)) {
 				[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeTexture: _mtlTexture slice: layer level: mipLvl];
-			}
 #endif
+			}
+			// Check if image content should be pulled into host-mapped device memory after
+			// the GPU is done with it. This only applies if the image is intended to be
+			// host-coherent, is not using a texel buffer, is transitioning to host-readable,
+			// AND the device memory has an already-open memory mapping. If a memory mapping is
+			// created later, it will pull the image contents in at that time, so it is not needed now.
+			// The mapped range will be {0,0} if device memory is not currently mapped.
+			if (needsPull && pImgRez && overlaps(pImgRez->layout, mappedRange.offset, mappedRange.size)) {
+				pullFromDeviceOnCompletion(cmdEncoder, *pImgRez, mappedRange);
+			}
 		}
 	}
+}
+
+// Once the command buffer completes, pull the content of the subresource into host memory.
+// This is only necessary when the image memory is intended to be host-coherent, and the
+// device memory is currently mapped to host memory
+void MVKImagePlane::pullFromDeviceOnCompletion(MVKCommandEncoder* cmdEncoder,
+											   MVKImageSubresource& subresource,
+											   const MVKMappedMemoryRange& mappedRange) {
+
+	[cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
+		getMTLTextureContent(subresource, mappedRange.offset, mappedRange.size);
+	}];
 }
 
 MVKImagePlane::MVKImagePlane(MVKImage* image, uint8_t planeIndex) {
@@ -360,8 +391,7 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
 
 #if MVK_MACOS
     // macOS cannot use shared memory for texel buffers.
-    // Test _deviceMemory->isMemoryHostCoherent() directly because local version overrides.
-    _usesTexelBuffer = _usesTexelBuffer && _deviceMemory && !_deviceMemory->isMemoryHostCoherent();
+    _usesTexelBuffer = _usesTexelBuffer && !isMemoryHostCoherent();
 #endif
 
     flushToDevice(getDeviceMemoryOffset(), getByteCount());
@@ -394,9 +424,10 @@ bool MVKImageMemoryBinding::needsHostReadSync(VkPipelineStageFlags srcStageMask,
                                               VkPipelineStageFlags dstStageMask,
                                               MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
+	//  On macOS, texture memory is never host-coherent, so don't test for it.
     return ((barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
-            isMemoryHostAccessible() && !isMemoryHostCoherent());
+            isMemoryHostAccessible());
 #endif
 #if MVK_IOS
     return false;
@@ -728,9 +759,6 @@ MTLCPUCacheMode MVKImage::getMTLCPUCacheMode() {
 	return _memoryBindings[0]->_deviceMemory ? _memoryBindings[0]->_deviceMemory->getMTLCPUCacheMode() : MTLCPUCacheModeDefaultCache;
 }
 
-bool MVKImage::isMemoryHostCoherent() {
-    return (getMTLStorageMode() == MTLStorageModeShared);
-}
 
 #pragma mark Construction
 

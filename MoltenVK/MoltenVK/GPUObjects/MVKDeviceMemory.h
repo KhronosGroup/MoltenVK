@@ -33,6 +33,12 @@ static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_M
 
 #pragma mark MVKDeviceMemory
 
+typedef struct {
+	VkDeviceSize offset = 0;
+	VkDeviceSize size = 0;
+} MVKMappedMemoryRange;
+
+
 /** Represents a Vulkan device-space memory allocation. */
 class MVKDeviceMemory : public MVKVulkanAPIDeviceObject {
 
@@ -76,6 +82,16 @@ public:
 
 	/** Unmaps a previously mapped memory range. */
 	void unmap();
+
+	/**
+	 * If this device memory is currently mapped to host memory, returns the range within
+	 * this device memory that is currently mapped to host memory, or returns {0,0} if
+	 * this device memory is not currently mapped to host memory.
+	 */
+	inline const MVKMappedMemoryRange& getMappedRange() { return _mappedRange; }
+
+	/** Returns whether this device memory is currently mapped to host memory. */
+	bool isMapped() { return _mappedRange.size > 0; }
 
 	/**
 	 * If this memory is host-visible, the specified memory range is flushed to the device.
@@ -150,13 +166,11 @@ protected:
 	MVKSmallVector<MVKImageMemoryBinding*, 4> _imageMemoryBindings;
 	std::mutex _rezLock;
     VkDeviceSize _allocationSize = 0;
-	VkDeviceSize _mapOffset = 0;
-	VkDeviceSize _mapSize = 0;
+	MVKMappedMemoryRange _mappedRange;
 	id<MTLBuffer> _mtlBuffer = nil;
 	id<MTLHeap> _mtlHeap = nil;
 	void* _pMemory = nullptr;
 	void* _pHostMemory = nullptr;
-	bool _isMapped = false;
 	bool _isDedicated = false;
 	MTLStorageMode _mtlStorageMode;
 	MTLCPUCacheMode _mtlCPUCacheMode;

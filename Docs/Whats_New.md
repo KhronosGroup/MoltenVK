@@ -20,8 +20,9 @@ Released TBD
 
 - Add support for extensions:
 	- VK_KHR_sampler_ycbcr_conversion
-- Remove use of `@available()` directive as it was causing issues in some build environments
-- Refactor **MoltenVK** *Xcode* build architectures
+- Fix issue where mapped host-coherent device memory not updated from image contents on *macOS*.
+- Remove use of `@available()` directive as it was causing issues in some build environments.
+- Refactor **MoltenVK** *Xcode* build architectures.
 - Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.
 
 

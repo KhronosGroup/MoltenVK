@@ -70,6 +70,7 @@ protected:
     MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
+	bool overlaps(VkSubresourceLayout& imgLayout, VkDeviceSize offset, VkDeviceSize size);
     void propagateDebugName();
     MVKImageMemoryBinding* getMemoryBinding() const;
 	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
@@ -77,6 +78,9 @@ protected:
 								 MVKPipelineBarrier& barrier,
 								 MVKCommandEncoder* cmdEncoder,
 								 MVKCommandUse cmdUse);
+	void pullFromDeviceOnCompletion(MVKCommandEncoder* cmdEncoder,
+									MVKImageSubresource& subresource,
+									const MVKMappedMemoryRange& mappedRange);
 
     MVKImagePlane(MVKImage* image, uint8_t planeIndex);
 
@@ -119,7 +123,7 @@ public:
                             MVKPipelineBarrier& barrier,
                             MVKCommandEncoder* cmdEncoder,
                             MVKCommandUse cmdUse) override;
-    
+
     ~MVKImageMemoryBinding();
 
 protected:
@@ -314,12 +318,6 @@ public:
 
 	/** Returns the Metal CPU cache mode used by this image. */
 	MTLCPUCacheMode getMTLCPUCacheMode();
-
-	/** 
-	 * Returns whether the memory is automatically coherent between device and host. 
-	 * On macOS, this always returns false because textures cannot use Shared storage mode.
-	 */
-	bool isMemoryHostCoherent();
 
 #pragma mark Construction
 
