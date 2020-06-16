@@ -1955,7 +1955,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 }
 
 bool MVKPhysicalDevice::getHasUnifiedMemory() {
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	return true;
 #endif
 #if MVK_MACOS
@@ -1993,7 +1993,7 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 	if ( [_mtlDevice respondsToSelector: @selector(currentAllocatedSize)] ) {
 		return _mtlDevice.currentAllocatedSize;
 	}
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	// We can use the current memory used by this process as a reasonable approximation.
 	return mvkGetUsedMemorySize();
 #endif
