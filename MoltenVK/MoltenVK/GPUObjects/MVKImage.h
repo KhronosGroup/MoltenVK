@@ -62,18 +62,28 @@ public:
     ~MVKImagePlane();
 
 protected:
+	friend class MVKImageMemoryBinding;
+	friend MVKImage;
+
     MTLTextureDescriptor* newMTLTextureDescriptor();
     void initSubresources(const VkImageCreateInfo* pCreateInfo);
     MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
     void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
     void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
+	bool overlaps(VkSubresourceLayout& imgLayout, VkDeviceSize offset, VkDeviceSize size);
     void propagateDebugName();
     MVKImageMemoryBinding* getMemoryBinding() const;
+	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								 VkPipelineStageFlags dstStageMask,
+								 MVKPipelineBarrier& barrier,
+								 MVKCommandEncoder* cmdEncoder,
+								 MVKCommandUse cmdUse);
+	void pullFromDeviceOnCompletion(MVKCommandEncoder* cmdEncoder,
+									MVKImageSubresource& subresource,
+									const MVKMappedMemoryRange& mappedRange);
 
     MVKImagePlane(MVKImage* image, uint8_t planeIndex);
 
-    friend class MVKImageMemoryBinding;
-    friend MVKImage;
     MVKImage* _image;
     uint8_t _planeIndex;
     VkExtent2D _blockTexelSize;
@@ -105,7 +115,7 @@ public:
     VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements);
 
     /** Binds this resource to the specified offset within the specified memory allocation. */
-    VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
+    VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
 
     /** Applies the specified global memory barrier. */
     void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
@@ -113,7 +123,7 @@ public:
                             MVKPipelineBarrier& barrier,
                             MVKCommandEncoder* cmdEncoder,
                             MVKCommandUse cmdUse) override;
-    
+
     ~MVKImageMemoryBinding();
 
 protected:
@@ -308,12 +318,6 @@ public:
 
 	/** Returns the Metal CPU cache mode used by this image. */
 	MTLCPUCacheMode getMTLCPUCacheMode();
-
-	/** 
-	 * Returns whether the memory is automatically coherent between device and host. 
-	 * On macOS, this always returns false because textures cannot use Shared storage mode.
-	 */
-	bool isMemoryHostCoherent();
 
 #pragma mark Construction
 

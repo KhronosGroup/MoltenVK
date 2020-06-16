@@ -18,8 +18,11 @@ MoltenVK 1.0.44
 
 Released TBD
 
-- Remove use of `@available()` directive as it was causing issues in some build environments
-- Refactor **MoltenVK** *Xcode* build architectures
+- Add support for extensions:
+	- VK_KHR_sampler_ycbcr_conversion
+- Fix issue where mapped host-coherent device memory not updated from image contents on *macOS*.
+- Remove use of `@available()` directive as it was causing issues in some build environments.
+- Refactor **MoltenVK** *Xcode* build architectures.
 - Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.
 
 

@@ -43,7 +43,7 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be mapped to host memory.");
 	}
 
-	if (_isMapped) {
+	if (isMapped()) {
 		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is already mapped. Call vkUnmapMemory() first.");
 	}
 
@@ -51,9 +51,8 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 		return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Could not allocate %llu bytes of host-accessible device memory.", _allocationSize);
 	}
 
-	_mapOffset = offset;
-	_mapSize = adjustMemorySize(size, offset);
-	_isMapped = true;
+	_mappedRange.offset = offset;
+	_mappedRange.size = adjustMemorySize(size, offset);
 
 	*ppData = (void*)((uintptr_t)_pMemory + offset);
 
@@ -65,17 +64,16 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 
 void MVKDeviceMemory::unmap() {
 
-	if ( !_isMapped ) {
+	if ( !isMapped() ) {
 		reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
 		return;
 	}
 
 	// Coherent memory does not require flushing by app, so we must flush now.
-	flushToDevice(_mapOffset, _mapSize, isMemoryHostCoherent());
+	flushToDevice(_mappedRange.offset, _mappedRange.size, isMemoryHostCoherent());
 
-	_mapOffset = 0;
-	_mapSize = 0;
-	_isMapped = false;
+	_mappedRange.offset = 0;
+	_mappedRange.size = 0;
 }
 
 VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, bool evenIfCoherent) {

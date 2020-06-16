@@ -40,7 +40,7 @@ public:
     inline VkDeviceSize getDeviceMemoryOffset() { return _deviceMemoryOffset; }
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
+	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
 
 	/** Returns the device memory underlying this resource. */
 	inline MVKDeviceMemory* getDeviceMemory() { return _deviceMemory; }
