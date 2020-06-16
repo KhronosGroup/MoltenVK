@@ -881,7 +881,33 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.mtlBufferAlignment = 64;
 	_metalFeatures.mtlCopyBufferAlignment = 1;
     _metalFeatures.texelBuffers = true;
-	_metalFeatures.maxTextureDimension = (4 * KIBI);
+	_metalFeatures.maxTextureDimension = (8 * KIBI);
+
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
+        _metalFeatures.shaderSpecialization = true;
+        _metalFeatures.stencilViews = true;
+		_metalFeatures.fences = true;
+    }
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+		_metalFeatures.indirectDrawing = true;
+		_metalFeatures.baseVertexInstanceDrawing = true;
+		_metalFeatures.combinedStoreResolveAction = true;
+		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
+		_metalFeatures.maxTextureDimension = (16 * KIBI);
+		_metalFeatures.depthSampleCompare = true;
+		_metalFeatures.arrayOfTextures = true;
+		_metalFeatures.arrayOfSamplers = true;
+	}
+
+	if ( mvkOSVersionIsAtLeast(13.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
+		_metalFeatures.placementHeaps = useMTLHeaps;
+		if (supportsMTLGPUFamily(Apple4)) {
+			_metalFeatures.nativeTextureSwizzle = true;
+		}
+	}
 #endif
 
 #if MVK_IOS
@@ -1086,6 +1112,20 @@ void MVKPhysicalDevice::initFeatures() {
 
 #if MVK_TVOS
     _features.textureCompressionETC2 = true;
+    _features.textureCompressionASTC_LDR = true;
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) {
+		_features.dualSrcBlend = true;
+	}
+
+    if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+        _features.occlusionQueryPrecise = true;
+    }
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+		_features.tessellationShader = true;
+		_features.shaderTessellationAndGeometryPointSize = true;
+	}
 #endif
 
 #if MVK_IOS
@@ -2100,6 +2140,16 @@ void MVKPhysicalDevice::logGPUInfo() {
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v3)) { logMsg += "\n\t\tiOS GPU Family 1 v3"; }
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v2)) { logMsg += "\n\t\tiOS GPU Family 1 v2"; }
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v1)) { logMsg += "\n\t\tiOS GPU Family 1 v1"; }
+#endif
+
+#if MVK_TVOS
+    if (supportsMTLFeatureSet(tvOS_GPUFamily2_v2)) { logMsg += "\n\t\ttvOS GPU Family 2 v2"; }
+    if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) { logMsg += "\n\t\ttvOS GPU Family 2 v1"; }
+
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v4)) { logMsg += "\n\t\ttvOS GPU Family 1 v4"; }
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) { logMsg += "\n\t\ttvOS GPU Family 1 v3"; }
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) { logMsg += "\n\t\ttvOS GPU Family 1 v2"; }
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v1)) { logMsg += "\n\t\ttvOS GPU Family 1 v1"; }
 #endif
 
 #if MVK_MACOS
