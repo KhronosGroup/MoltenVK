@@ -1270,6 +1270,17 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v1, BGRA10_XR_sRGB, All );
 	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v1, BGR10_XR, All );
 	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v1, BGR10_XR_sRGB, All );
+
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, UCharNormalized, Vertex );
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, CharNormalized, Vertex );
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, UChar, Vertex );
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, Char, Vertex );
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, UShortNormalized, Vertex );
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, ShortNormalized, Vertex );
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, UShort, Vertex );
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, Short, Vertex );
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, Half, Vertex );
+	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v1, UChar4Normalized_BGRA, Vertex );
 }
 #endif
 #if MVK_IOS
