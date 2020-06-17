@@ -11,7 +11,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7E721CEC72F0013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-macOS" */;
 			buildPhases = (
-				A9679AB021D26C7000856BF7 /* Package External Libraries */,
+				A9679AB021D26C7000856BF7 /* Package Libraries */,
 			);
 			dependencies = (
 				A972A7E921CEC76A0013AB25 /* PBXTargetDependency */,
@@ -25,7 +25,8 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7ED21CEC8030013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-iOS" */;
 			buildPhases = (
-				A9679AAF21D26C1400856BF7 /* Package External Libraries */,
+				A932E9C6249A7B9B00D64150 /* Create Fat Libraries */,
+				A9679AAF21D26C1400856BF7 /* Package Libraries */,
 			);
 			dependencies = (
 				A972A7F121CEC8140013AB25 /* PBXTargetDependency */,
@@ -1113,6 +1114,7 @@
 		A90FD89F21CC4EAB00B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A90FD9E421CC4EB900B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gen_spirv_cross_rev_hdr.sh; sourceTree = "<group>"; };
+		A932E9C5249A743B00D64150 /* create_fat_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_libs.sh; sourceTree = "<group>"; };
 		A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */ = {isa = PBXFileReference; lastKnownFileType = text; path = packagePregenSpirvToolsHeaders; sourceTree = "<group>"; };
 		A95D90A723A7F1E500CBCC60 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		A95D90AA23A7F1E500CBCC60 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
@@ -1216,8 +1218,6 @@
 		A95D911923A7F1E500CBCC60 /* Logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
 		A95D911A23A7F1E500CBCC60 /* doc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = doc.cpp; sourceTree = "<group>"; };
 		A95D911B23A7F1E500CBCC60 /* disassemble.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = disassemble.cpp; sourceTree = "<group>"; };
-		A9679AAC21D269D900856BF7 /* package_ext_libs_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_macos.sh; sourceTree = "<group>"; };
-		A9679AAD21D269D900856BF7 /* package_ext_libs_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_ios.sh; sourceTree = "<group>"; };
 		A9679AAE21D269D900856BF7 /* package_ext_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs.sh; sourceTree = "<group>"; };
 		A972A80F21CECBBF0013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A972A82321CECBE90013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -1842,9 +1842,8 @@
 		A9679AAB21D2699800856BF7 /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
+				A932E9C5249A743B00D64150 /* create_fat_libs.sh */,
 				A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */,
-				A9679AAD21D269D900856BF7 /* package_ext_libs_ios.sh */,
-				A9679AAC21D269D900856BF7 /* package_ext_libs_macos.sh */,
 				A9679AAE21D269D900856BF7 /* package_ext_libs.sh */,
 				A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */,
 			);
@@ -3088,7 +3087,7 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/Scripts/gen_spirv_cross_rev_hdr.sh\"\n";
 		};
-		A9679AAF21D26C1400856BF7 /* Package External Libraries */ = {
+		A932E9C6249A7B9B00D64150 /* Create Fat Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -3097,16 +3096,16 @@
 			);
 			inputPaths = (
 			);
-			name = "Package External Libraries";
+			name = "Create Fat Libraries";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Scripts/package_ext_libs_ios.sh\"\n";
+			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_OS_PROD_EXTN=\"iphoneos\"\nexport MVK_SIM_PROD_EXTN=\"iphonesimulator\"\n\n\"${SRCROOT}/Scripts/create_fat_libs.sh\"\n";
 		};
-		A9679AB021D26C7000856BF7 /* Package External Libraries */ = {
+		A9679AAF21D26C1400856BF7 /* Package Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -3115,14 +3114,32 @@
 			);
 			inputPaths = (
 			);
-			name = "Package External Libraries";
+			name = "Package Libraries";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Scripts/package_ext_libs_macos.sh\"\n";
+			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n\"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+		};
+		A9679AB021D26C7000856BF7 /* Package Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Package Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "export MVK_OS=\"macOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\n\n\"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
