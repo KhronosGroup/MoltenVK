@@ -383,6 +383,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 }
 
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
+	NSInteger framesPerSecond = 60;
 #if MVK_IOS_OR_TVOS
 	UIScreen* screen = [UIScreen mainScreen];
 	if ([screen respondsToSelector: @selector(maximumFramesPerSecond)]) {
