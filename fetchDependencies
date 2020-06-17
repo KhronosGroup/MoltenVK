@@ -4,8 +4,26 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [-v] [--debug] [--build-spirv-tools]
+# macOS usage: ./fetchDependencies [--ios] [--ios-fat] [--macos] [--all]
+#                                  [-v] [--debug] [--build-spirv-tools]
 #                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
+#
+#      --ios
+#              Build the external libraries for the iOS platform.
+#
+#      --ios-fat
+#              Build a single binary for each external library, each containing code
+#              for both iOS and iOS Simulator platforms.
+#
+#      --macos
+#              Build the external libraries for the macOS platform.
+#
+#      --all
+#              Equivalent to specifying [--ios-fat --macos]. Results in two binaries for
+#              each external library: one for the iOS and iOS Simulator platforms, and
+#              another for the macOS platform.
+#
+#      Multiple platform options may be specified.
 #
 #      --debug
 #              Build the external libraries in Debug mode, which may be useful when debugging
@@ -41,7 +59,11 @@ set -e
 
 # ----------------- Functions -------------------
 
-XC_SCHEME_SFX=""
+BLD_IOS=""
+BLD_IOS_SIM=""
+BLD_MACOS=""
+BLD_SPECIFIED=""
+XC_CONFIG="Release"
 XC_BUILD_VERBOSITY="-quiet"
 V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
@@ -50,8 +72,31 @@ BLD_SPV_TLS=""
 
 while (( "$#" )); do
   case "$1" in
+       --ios)
+         BLD_IOS="Y"
+         BLD_SPECIFIED="Y"
+         shift 1
+         ;;
+       --ios-fat)
+         BLD_IOS="Y"
+         BLD_IOS_SIM="Y"
+         BLD_SPECIFIED="Y"
+         shift 1
+         ;;
+       --macos)
+         BLD_MACOS="Y"
+         BLD_SPECIFIED="Y"
+         shift 1
+         ;;
+       --all)
+         BLD_IOS="Y"
+         BLD_IOS_SIM="Y"
+         BLD_MACOS="Y"
+         BLD_SPECIFIED="Y"
+         shift 1
+         ;;
        --debug)
-         XC_SCHEME_SFX=" (Debug)"
+         XC_CONFIG="Debug"
          shift 1
          ;;
        -v)
@@ -84,6 +129,13 @@ while (( "$#" )); do
          ;;
   esac
 done
+
+# if no platform was specified, print usage message and exit
+if [ "$BLD_SPECIFIED" = "" ]; then
+	echo ERROR: You did not specify a platform to build.
+	echo Include one or more of the following platform options: --ios --ios-fat --macos --all
+	exit 1
+fi
 
 # Update a repository. If it exists, fetch it; if not, clone it.
 # $1 repo name
@@ -286,17 +338,40 @@ echo
 echo ========== Building dependency libraries quietly. Please be patient on first build. ==========
 echo
 
+# Build an Xcode scheme
+function build() {
+	echo Building external libraries for ${XC_PLTFM}
+	xcodebuild 										\
+		-project "${XC_PROJ}"						\
+		-scheme "${XC_SCHEME}"						\
+		-destination "generic/platform=${XC_PLTFM}"	\
+		-configuration "${XC_CONFIG}"				\
+		-derivedDataPath "${XC_DD_PATH}"			\
+		${XC_BUILD_VERBOSITY}						\
+		build
+}
+
 EXT_DEPS=ExternalDependencies
 XC_PROJ="${EXT_DEPS}.xcodeproj"
-XC_SCHEME="${EXT_DEPS}${XC_SCHEME_SFX}"
 XC_DD_PATH="${EXT_DIR}/build"
 
-xcodebuild 								\
-	-project "${XC_PROJ}"				\
-	-scheme "${XC_SCHEME}"				\
-	-derivedDataPath "${XC_DD_PATH}"	\
-	${XC_BUILD_VERBOSITY}				\
+if [ "$BLD_IOS" != "" ]; then
+	XC_SCHEME="${EXT_DEPS}-iOS"
+	XC_PLTFM="iOS"
 	build
+fi
+
+if [ "$BLD_IOS_SIM" != "" ]; then
+	XC_SCHEME="${EXT_DEPS}-iOS"
+	XC_PLTFM="iOS Simulator"
+	build
+fi
+
+if [ "$BLD_MACOS" != "" ]; then
+	XC_SCHEME="${EXT_DEPS}-macOS"
+	XC_PLTFM="macOS"
+	build
+fi
 
 echo ========== Done! ==========
 

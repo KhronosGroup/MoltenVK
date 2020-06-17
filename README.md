@@ -110,7 +110,19 @@ on which **MoltenVK** relies:
 3. Retrieve and build the external libraries:
 
 		cd MoltenVK
-		./fetchDependencies
+		./fetchDependencies [platform...]
+
+When running the `fetchDependencies` script, you must specify one or more platforms 
+for which to build the external libraries. The platform choices include: 
+
+	--ios --ios-fat --macos --all
+
+You can specify multiple of these selections. The `--ios-fat` selection builds one binary for 
+each external library, with each binary including code for both *iOS* and *iOS Simulator* platforms.
+The `--all` selection is the same as selecting `--ios-fat --macos` and results in two binaries
+for each external library: a *fat iOS* binary, and a *macOS* binary. The more selections you include,
+the longer the build time.
+
 
 For more information about the external open-source libraries used by **MoltenVK**,
 see the [`ExternalRevisions/README.md`](ExternalRevisions/README.md) document.
