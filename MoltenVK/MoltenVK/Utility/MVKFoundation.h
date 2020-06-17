@@ -523,7 +523,7 @@ void mvkDisableFlags(Tv& value, const Tm bitMask) { value = (Tv)(value & ~(Tv)bi
 
 /** Returns whether the specified value has ANY of the flags specified in bitMask enabled (set to 1). */
 template<typename Tv, typename Tm>
-bool mvkIsAnyFlagEnabled(Tv value, const Tm bitMask) { return !!(value & bitMask); }
+bool mvkIsAnyFlagEnabled(Tv value, const Tm bitMask) { return ((value & bitMask) != 0); }
 
 /** Returns whether the specified value has ALL of the flags specified in bitMask enabled (set to 1). */
 template<typename Tv, typename Tm>

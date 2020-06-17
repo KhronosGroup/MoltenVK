@@ -63,7 +63,7 @@ public:
 	 * Called when this instance has been retained as a reference by another object,
 	 * indicating that this instance will not be deleted until that reference is released.
 	 */
-	void retain();
+	inline void retain() { _refCount++; }
 
 	/**
 	 * Called when this instance has been released as a reference from another object.
@@ -71,14 +71,14 @@ public:
 	 * If the destroy() function has already been called on this instance by the time
 	 * this function is called, this instance will be deleted.
 	 */
-	void release();
+	inline void release() { if (--_refCount == 0) { MVKConfigurableObject::destroy(); } }
 
 	/**
 	 * Marks this instance as destroyed. If all previous references to this instance
 	 * have been released, this instance will be deleted, otherwise deletion of this
 	 * instance will automatically be deferred until all references have been released.
 	 */
-	void destroy() override;
+	void destroy() override { release(); }
 
 	/** Gets the debug object name of this instance. */
 	inline NSString* getDebugName() { return _debugName; }

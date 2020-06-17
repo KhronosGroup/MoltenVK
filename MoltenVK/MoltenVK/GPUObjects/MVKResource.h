@@ -39,12 +39,6 @@ public:
     /** Returns the byte offset in the bound device memory. */
     inline VkDeviceSize getDeviceMemoryOffset() { return _deviceMemoryOffset; }
 
-	/** Returns the memory requirements of this resource by populating the specified structure. */
-	virtual VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) = 0;
-
-	/** Returns the memory requirements of this resource by populating the specified structure. */
-	virtual VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) = 0;
-
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset);
 
@@ -78,10 +72,6 @@ public:
     MVKResource(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
 
 protected:
-	virtual bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
-								   VkPipelineStageFlags dstStageMask,
-								   VkMemoryBarrier* pMemoryBarrier);
-
 	MVKDeviceMemory* _deviceMemory = nullptr;
 	VkDeviceSize _deviceMemoryOffset = 0;
     VkDeviceSize _byteCount = 0;

@@ -29,17 +29,13 @@
 
 using namespace std;
 
-static const MVKOSVersion kMVKOSVersionUnknown = 0.0f;
-static MVKOSVersion _mvkOSVersion = kMVKOSVersionUnknown;
 MVKOSVersion mvkOSVersion() {
-    if (_mvkOSVersion == kMVKOSVersionUnknown) {
-        NSOperatingSystemVersion osVer = [[NSProcessInfo processInfo] operatingSystemVersion];
-        float maj = osVer.majorVersion;
-        float min = osVer.minorVersion;
-        float pat = osVer.patchVersion;
-        _mvkOSVersion = maj + (min / 100.0f) +  + (pat / 10000.0f);
-    }
-    return _mvkOSVersion;
+	static MVKOSVersion _mvkOSVersion = 0;
+	if ( !_mvkOSVersion ) {
+		NSOperatingSystemVersion osVer = [[NSProcessInfo processInfo] operatingSystemVersion];
+		_mvkOSVersion = mvkMakeOSVersion((uint32_t)osVer.majorVersion, (uint32_t)osVer.minorVersion, (uint32_t)osVer.patchVersion);
+	}
+	return _mvkOSVersion;
 }
 
 static uint64_t _mvkTimestampBase;

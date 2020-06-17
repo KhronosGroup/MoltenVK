@@ -71,7 +71,7 @@ public:
 	inline uint32_t getBinding() { return _info.binding; }
 
 	/** Returns the number of descriptors in this layout. */
-	inline uint32_t getDescriptorCount() { return _info.descriptorCount; }
+    inline uint32_t getDescriptorCount() { return (_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) ? 1 : _info.descriptorCount; }
 
 	/** Returns the descriptor type of this layout. */
 	inline VkDescriptorType getDescriptorType() { return _info.descriptorType; }
@@ -115,6 +115,7 @@ public:
 	~MVKDescriptorSetLayoutBinding() override;
 
 protected:
+    friend class MVKInlineUniformBlockDescriptor;
 	void initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
 									   MVKShaderStageResourceBinding* pDescSetCounts,
 									   const VkDescriptorSetLayoutBinding* pBinding);
@@ -152,11 +153,12 @@ public:
 
 	/**
 	 * Updates the internal binding from the specified content. The format of the content depends
-	 * on the descriptor type, and is extracted from pData at the location given by srcIndex * stride.
+	 * on the descriptor type, and is extracted from pData at the location given by index * stride.
+	 * MVKInlineUniformBlockDescriptor uses the index as byte offset to write to.
 	 */
 	virtual void write(MVKDescriptorSet* mvkDescSet,
 					   VkDescriptorType descriptorType,
-					   uint32_t srcIndex,
+					   uint32_t index,
 					   size_t stride,
 					   const void* pData) = 0;
 
@@ -167,12 +169,13 @@ public:
 	 * specified pImageInfo, pBufferInfo, or pTexelBufferView arrays, and the other
 	 * arrays are ignored (and may be a null pointer).
 	 *
-	 * The dstIndex parameter indicates the index of the initial descriptor element
+	 * The index parameter indicates the index of the initial descriptor element
 	 * at which to start writing.
+	 * MVKInlineUniformBlockDescriptor uses the index as byte offset to read from.
 	 */
 	virtual void read(MVKDescriptorSet* mvkDescSet,
 					  VkDescriptorType descriptorType,
-					  uint32_t dstIndex,
+					  uint32_t index,
 					  VkDescriptorImageInfo* pImageInfo,
 					  VkDescriptorBufferInfo* pBufferInfo,
 					  VkBufferView* pTexelBufferView,
@@ -284,25 +287,27 @@ public:
 
 	void write(MVKDescriptorSet* mvkDescSet,
 			   VkDescriptorType descriptorType,
-			   uint32_t srcIndex,
+			   uint32_t dstOffset, // For inline buffers we are using this parameter as dst offset not as src descIdx
 			   size_t stride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSet* mvkDescSet,
 			  VkDescriptorType descriptorType,
-			  uint32_t dstIndex,
+			  uint32_t srcOffset, // For inline buffers we are using this parameter as src offset not as dst descIdx
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
+    
+    void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) override;
 
 	void reset() override;
 
 	~MVKInlineUniformBlockDescriptor() { reset(); }
 
 protected:
-	id<MTLBuffer> _mtlBuffer = nil;
-	uint32_t _dataSize = 0;
+	uint8_t* _buffer = nullptr;
+    uint32_t _length;
 };
 
 

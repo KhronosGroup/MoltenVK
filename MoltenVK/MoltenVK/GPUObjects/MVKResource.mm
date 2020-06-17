@@ -34,18 +34,3 @@ VkResult MVKResource::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize mem
 	return VK_SUCCESS;
 }
 
-// Returns whether the specified global memory barrier requires a sync between this
-// texture and host memory for the purpose of the host reading texture memory.
-bool MVKResource::needsHostReadSync(VkPipelineStageFlags srcStageMask,
-									VkPipelineStageFlags dstStageMask,
-									VkMemoryBarrier* pMemoryBarrier) {
-#if MVK_IOS_OR_TVOS
-	return false;
-#endif
-#if MVK_MACOS
-	return (mvkIsAnyFlagEnabled(dstStageMask, (VK_PIPELINE_STAGE_HOST_BIT)) &&
-			mvkIsAnyFlagEnabled(pMemoryBarrier->dstAccessMask, (VK_ACCESS_HOST_READ_BIT)) &&
-			isMemoryHostAccessible() && !isMemoryHostCoherent());
-#endif
-}
-

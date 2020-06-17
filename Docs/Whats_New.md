@@ -13,6 +13,20 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.44
+---------------
+
+Released TBD
+
+- Add support for extensions:
+	- VK_KHR_sampler_ycbcr_conversion
+	- VK_EXT_robustness2
+- Fix issue where mapped host-coherent device memory not updated from image contents on *macOS*.
+- Remove use of `@available()` directive as it was causing issues in some build environments.
+- Refactor **MoltenVK** *Xcode* build architectures.
+- Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.
+
+
 MoltenVK 1.0.43
 ---------------
 

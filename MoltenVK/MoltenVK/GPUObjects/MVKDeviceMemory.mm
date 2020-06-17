@@ -43,7 +43,7 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Private GPU-only memory cannot be mapped to host memory.");
 	}
 
-	if (_isMapped) {
+	if (isMapped()) {
 		return reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is already mapped. Call vkUnmapMemory() first.");
 	}
 
@@ -51,9 +51,8 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 		return reportError(VK_ERROR_OUT_OF_HOST_MEMORY, "Could not allocate %llu bytes of host-accessible device memory.", _allocationSize);
 	}
 
-	_mapOffset = offset;
-	_mapSize = adjustMemorySize(size, offset);
-	_isMapped = true;
+	_mappedRange.offset = offset;
+	_mappedRange.size = adjustMemorySize(size, offset);
 
 	*ppData = (void*)((uintptr_t)_pMemory + offset);
 
@@ -65,17 +64,16 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 
 void MVKDeviceMemory::unmap() {
 
-	if ( !_isMapped ) {
+	if ( !isMapped() ) {
 		reportError(VK_ERROR_MEMORY_MAP_FAILED, "Memory is not mapped. Call vkMapMemory() first.");
 		return;
 	}
 
 	// Coherent memory does not require flushing by app, so we must flush now.
-	flushToDevice(_mapOffset, _mapSize, isMemoryHostCoherent());
+	flushToDevice(_mappedRange.offset, _mappedRange.size, isMemoryHostCoherent());
 
-	_mapOffset = 0;
-	_mapSize = 0;
-	_isMapped = false;
+	_mappedRange.offset = 0;
+	_mappedRange.size = 0;
 }
 
 VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, bool evenIfCoherent) {
@@ -92,7 +90,7 @@ VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, 
 		// If we have an MTLHeap object, there's no need to sync memory manually between images and the buffer.
 		if (!_mtlHeap) {
 			lock_guard<mutex> lock(_rezLock);
-			for (auto& img : _images) { img->flushToDevice(offset, memSize); }
+			for (auto& img : _imageMemoryBindings) { img->flushToDevice(offset, memSize); }
 			for (auto& buf : _buffers) { buf->flushToDevice(offset, memSize); }
 		}
 	}
@@ -107,7 +105,7 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
     VkDeviceSize memSize = adjustMemorySize(size, offset);
 	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) && !_mtlHeap) {
 		lock_guard<mutex> lock(_rezLock);
-        for (auto& img : _images) { img->pullFromDevice(offset, memSize); }
+        for (auto& img : _imageMemoryBindings) { img->pullFromDevice(offset, memSize); }
         for (auto& buf : _buffers) { buf->pullFromDevice(offset, memSize); }
 
 #if MVK_MACOS
@@ -152,23 +150,23 @@ void MVKDeviceMemory::removeBuffer(MVKBuffer* mvkBuff) {
 	mvkRemoveAllOccurances(_buffers, mvkBuff);
 }
 
-VkResult MVKDeviceMemory::addImage(MVKImage* mvkImg) {
+VkResult MVKDeviceMemory::addImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
 	lock_guard<mutex> lock(_rezLock);
 
 	// If a dedicated alloc, ensure this image is the one and only image
 	// I am dedicated to.
-	if (_isDedicated && (_images.empty() || _images[0] != mvkImg) ) {
+	if (_isDedicated && (_imageMemoryBindings.empty() || _imageMemoryBindings[0] != mvkImg) ) {
 		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
 	}
 
-	if (!_isDedicated) { _images.push_back(mvkImg); }
+	if (!_isDedicated) { _imageMemoryBindings.push_back(mvkImg); }
 
 	return VK_SUCCESS;
 }
 
-void MVKDeviceMemory::removeImage(MVKImage* mvkImg) {
+void MVKDeviceMemory::removeImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
 	lock_guard<mutex> lock(_rezLock);
-	mvkRemoveAllOccurances(_images, mvkImg);
+	mvkRemoveAllOccurances(_imageMemoryBindings, mvkImg);
 }
 
 // Ensures that this instance is backed by a MTLHeap object,
@@ -266,7 +264,7 @@ void MVKDeviceMemory::freeHostMemory() {
 
 MVKResource* MVKDeviceMemory::getDedicatedResource() {
 	MVKAssert(_isDedicated, "This method should only be called on dedicated allocations!");
-	return _buffers.empty() ? (MVKResource*)_images[0] : (MVKResource*)_buffers[0];
+	return _buffers.empty() ? (MVKResource*)_imageMemoryBindings[0] : (MVKResource*)_buffers[0];
 }
 
 MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
@@ -319,7 +317,9 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 			}
 		}
 #endif
-		_images.push_back((MVKImage*)dedicatedImage);
+        for (auto& memoryBinding : ((MVKImage*)dedicatedImage)->_memoryBindings) {
+            _imageMemoryBindings.push_back(memoryBinding);
+        }
 		return;
 	}
 
@@ -367,7 +367,7 @@ MVKDeviceMemory::~MVKDeviceMemory() {
     // to allow the resource to callback to remove itself from the collection.
     auto buffCopies = _buffers;
     for (auto& buf : buffCopies) { buf->bindDeviceMemory(nullptr, 0); }
-	auto imgCopies = _images;
+	auto imgCopies = _imageMemoryBindings;
 	for (auto& img : imgCopies) { img->bindDeviceMemory(nullptr, 0); }
 
 	[_mtlBuffer release];

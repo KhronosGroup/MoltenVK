@@ -136,9 +136,22 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 		if (constExprSampler.lod_clamp_min != other.constExprSampler.lod_clamp_min) { return false; }
 		if (constExprSampler.lod_clamp_max != other.constExprSampler.lod_clamp_max) { return false; }
 		if (constExprSampler.max_anisotropy != other.constExprSampler.max_anisotropy) { return false; }
+
+		if (constExprSampler.planes != other.constExprSampler.planes) { return false; }
+		if (constExprSampler.resolution != other.constExprSampler.resolution) { return false; }
+		if (constExprSampler.chroma_filter != other.constExprSampler.chroma_filter) { return false; }
+		if (constExprSampler.x_chroma_offset != other.constExprSampler.x_chroma_offset) { return false; }
+		if (constExprSampler.y_chroma_offset != other.constExprSampler.y_chroma_offset) { return false; }
+		for(uint32_t i = 0; i < 4; ++i)
+			if (constExprSampler.swizzle[i] != other.constExprSampler.swizzle[i]) { return false; }
+		if (constExprSampler.ycbcr_model != other.constExprSampler.ycbcr_model) { return false; }
+		if (constExprSampler.ycbcr_range != other.constExprSampler.ycbcr_range) { return false; }
+		if (constExprSampler.bpc != other.constExprSampler.bpc) { return false; }
+
 		if (constExprSampler.compare_enable != other.constExprSampler.compare_enable) { return false; }
 		if (constExprSampler.lod_clamp_enable != other.constExprSampler.lod_clamp_enable) { return false; }
 		if (constExprSampler.anisotropy_enable != other.constExprSampler.anisotropy_enable) { return false; }
+		if (constExprSampler.ycbcr_conversion_enable != other.constExprSampler.ycbcr_conversion_enable) { return false; }
 	}
 
 	return true;

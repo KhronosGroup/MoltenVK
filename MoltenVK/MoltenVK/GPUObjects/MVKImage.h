@@ -28,24 +28,132 @@
 
 #import <IOSurface/IOSurfaceRef.h>
 
+class MVKImage;
 class MVKImageView;
 class MVKSwapchain;
 class MVKCommandEncoder;
 
 
+#pragma mark -
+#pragma mark MVKImagePlane
+
 /** Tracks the state of an image subresource.  */
 typedef struct {
-	VkImageSubresource subresource;
-	VkSubresourceLayout layout;
-	VkImageLayout layoutState;
+    VkImageSubresource subresource;
+    VkSubresourceLayout layout;
+    VkImageLayout layoutState;
 } MVKImageSubresource;
+
+class MVKImagePlane : public MVKBaseObject {
+
+public:
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
+
+	/** Returns the Metal texture underlying this image plane. */
+    id<MTLTexture> getMTLTexture();
+
+    /** Returns a Metal texture that interprets the pixels in the specified format. */
+    id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
+
+    void releaseMTLTexture();
+
+    ~MVKImagePlane();
+
+protected:
+	friend class MVKImageMemoryBinding;
+	friend MVKImage;
+
+    MTLTextureDescriptor* newMTLTextureDescriptor();
+    void initSubresources(const VkImageCreateInfo* pCreateInfo);
+    MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
+    void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
+    void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
+	bool overlaps(VkSubresourceLayout& imgLayout, VkDeviceSize offset, VkDeviceSize size);
+    void propagateDebugName();
+    MVKImageMemoryBinding* getMemoryBinding() const;
+	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
+								 VkPipelineStageFlags dstStageMask,
+								 MVKPipelineBarrier& barrier,
+								 MVKCommandEncoder* cmdEncoder,
+								 MVKCommandUse cmdUse);
+	void pullFromDeviceOnCompletion(MVKCommandEncoder* cmdEncoder,
+									MVKImageSubresource& subresource,
+									const MVKMappedMemoryRange& mappedRange);
+
+    MVKImagePlane(MVKImage* image, uint8_t planeIndex);
+
+    MVKImage* _image;
+    uint8_t _planeIndex;
+    VkExtent2D _blockTexelSize;
+    uint32_t _bytesPerBlock;
+    MTLPixelFormat _mtlPixFmt;
+    id<MTLTexture> _mtlTexture;
+    std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
+    MVKSmallVector<MVKImageSubresource, 1> _subresources;
+};
+
+
+#pragma mark -
+#pragma mark MVKImageMemoryBinding
+
+class MVKImageMemoryBinding : public MVKResource {
+
+public:
+    
+    /** Returns the Vulkan type of this object. */
+    VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_UNKNOWN; }
+
+    /** Returns the debug report object type of this object. */
+    VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }
+
+    /** Returns the memory requirements of this resource by populating the specified structure. */
+    VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements);
+
+    /** Returns the memory requirements of this resource by populating the specified structure. */
+    VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements);
+
+    /** Binds this resource to the specified offset within the specified memory allocation. */
+    VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+
+    /** Applies the specified global memory barrier. */
+    void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
+                            VkPipelineStageFlags dstStageMask,
+                            MVKPipelineBarrier& barrier,
+                            MVKCommandEncoder* cmdEncoder,
+                            MVKCommandUse cmdUse) override;
+
+    ~MVKImageMemoryBinding();
+
+protected:
+    friend MVKDeviceMemory;
+    friend MVKImagePlane;
+    friend MVKImage;
+
+    void propagateDebugName() override;
+    bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
+                           VkPipelineStageFlags dstStageMask,
+                           MVKPipelineBarrier& barrier);
+    bool shouldFlushHostMemory();
+    VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
+    VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
+    uint8_t beginPlaneIndex() const;
+    uint8_t endPlaneIndex() const;
+
+    MVKImageMemoryBinding(MVKDevice* device, MVKImage* image, uint8_t planeIndex);
+
+    MVKImage* _image;
+    uint8_t _planeIndex;
+    bool _usesTexelBuffer;
+};
 
 
 #pragma mark -
 #pragma mark MVKImage
 
 /** Represents a Vulkan image. */
-class MVKImage : public MVKResource {
+class MVKImage : public MVKVulkanAPIDeviceObject {
 
 public:
 
@@ -55,6 +163,9 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_EXT; }
 
+    /** Returns the plane index of VkImageAspectFlags. */
+    static uint8_t getPlaneFromVkImageAspectFlags(VkImageAspectFlags aspectMask);
+
 	/**
 	 * Returns the Vulkan image type of this image.
 	 * This may be different than the value originally specified for the image
@@ -63,7 +174,7 @@ public:
     VkImageType getImageType();
 
     /** Returns the Vulkan image format of this image. */
-    VkFormat getVkFormat();
+    VkFormat getVkFormat() { return _vkFormat; };
 
 	/** Returns whether this image has a depth or stencil format. */
 	bool getIsDepthStencil();
@@ -81,7 +192,7 @@ public:
 	 * Returns the 3D extent of this image at the specified mipmap level. 
 	 * For 2D or cube images, the Z component will be 1.
 	 */
-	VkExtent3D getExtent3D(uint32_t mipLevel);
+	VkExtent3D getExtent3D(uint8_t planeIndex, uint32_t mipLevel);
 
 	/** Returns the number of mipmap levels in this image. */
 	inline uint32_t getMipLevelCount() { return _mipLevels; }
@@ -101,7 +212,7 @@ public:
       * For compressed formats, this is the number of bytes in a row of blocks, which
       * will typically span more than one row of texels.
 	  */
-	VkDeviceSize getBytesPerRow(uint32_t mipLevel);
+	VkDeviceSize getBytesPerRow(uint8_t planeIndex, uint32_t mipLevel);
 
 	/**
 	 * Returns the number of bytes per image layer (for cube, array, or 3D images) 
@@ -109,7 +220,10 @@ public:
 	 * of bytes per row (as returned by the getBytesPerRow() function, multiplied by 
 	 * the height of each 2D image.
 	 */
-	VkDeviceSize getBytesPerLayer(uint32_t mipLevel);
+	VkDeviceSize getBytesPerLayer(uint8_t planeIndex, uint32_t mipLevel);
+    
+    /** Returns the number of planes of this image view. */
+    inline uint8_t getPlaneCount() { return _planes.size(); }
 
 	/** Populates the specified layout for the specified sub-resource. */
 	VkResult getSubresourceLayout(const VkImageSubresource* pSubresource,
@@ -122,23 +236,16 @@ public:
 #pragma mark Resource memory
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
-	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements) override;
+	VkResult getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements, uint8_t planeIndex);
 
 	/** Returns the memory requirements of this resource by populating the specified structure. */
-	VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) override;
+	VkResult getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+	virtual VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex);
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
 	virtual VkResult bindDeviceMemory2(const VkBindImageMemoryInfo* pBindInfo);
-
-	/** Applies the specified global memory barrier. */
-	void applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
-							VkPipelineStageFlags dstStageMask,
-							MVKPipelineBarrier& barrier,
-							MVKCommandEncoder* cmdEncoder,
-							MVKCommandUse cmdUse) override;
 
 	/** Applies the specified image memory barrier. */
 	void applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
@@ -150,10 +257,10 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image. */
-	virtual id<MTLTexture> getMTLTexture();
+	virtual id<MTLTexture> getMTLTexture(uint8_t planeIndex);
 
 	/** Returns a Metal texture that interprets the pixels in the specified format. */
-	id<MTLTexture> getMTLTexture(MTLPixelFormat mtlPixFmt);
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex, MTLPixelFormat mtlPixFmt);
 
     /**
      * Sets this image to use the specified MTLTexture.
@@ -163,7 +270,7 @@ public:
      *
      * If a MTLTexture has already been created for this image, it will be destroyed.
      */
-    VkResult setMTLTexture(id<MTLTexture> mtlTexture);
+    VkResult setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture);
 
     /**
      * Indicates that this VkImage should use an IOSurface to underlay the Metal texture.
@@ -189,7 +296,7 @@ public:
     IOSurfaceRef getIOSurface();
 
 	/** Returns the Metal pixel format of this image. */
-	inline MTLPixelFormat getMTLPixelFormat() { return _mtlPixelFormat; }
+	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _planes[planeIndex]->_mtlPixFmt; }
 
 	/** Returns the Metal texture type of this image. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
@@ -212,12 +319,6 @@ public:
 	/** Returns the Metal CPU cache mode used by this image. */
 	MTLCPUCacheMode getMTLCPUCacheMode();
 
-	/** 
-	 * Returns whether the memory is automatically coherent between device and host. 
-	 * On macOS, this always returns false because textures cannot use Shared storage mode.
-	 */
-	bool isMemoryHostCoherent();
-
 #pragma mark Construction
 
 	MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo);
@@ -225,50 +326,37 @@ public:
 	~MVKImage() override;
 
 protected:
-	friend class MVKDeviceMemory;
-	friend class MVKImageView;
-	using MVKResource::needsHostReadSync;
+    friend MVKDeviceMemory;
+    friend MVKDevice;
+    friend MVKImageMemoryBinding;
+    friend MVKImagePlane;
+    friend class MVKImageViewPlane;
+	friend MVKImageView;
 
 	void propagateDebugName() override;
-	MVKImageSubresource* getSubresource(uint32_t mipLevel, uint32_t arrayLayer);
 	void validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	VkSampleCountFlagBits validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	uint32_t validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	bool validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
-	bool validateUseTexelBuffer();
-	void initSubresources(const VkImageCreateInfo* pCreateInfo);
-	void initSubresourceLayout(MVKImageSubresource& imgSubRez);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
-	id<MTLTexture> newMTLTexture();
-	void releaseMTLTexture();
     void releaseIOSurface();
-	MTLTextureDescriptor* newMTLTextureDescriptor();
-    void updateMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
-    void getMTLTextureContent(MVKImageSubresource& subresource, VkDeviceSize offset, VkDeviceSize size);
-	bool shouldFlushHostMemory();
-	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
-	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);
-	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
-						   VkPipelineStageFlags dstStageMask,
-						   MVKPipelineBarrier& barrier);
 
-	MVKSmallVector<MVKImageSubresource, 1> _subresources;
-	std::unordered_map<NSUInteger, id<MTLTexture>> _mtlTextureViews;
+    MVKSmallVector<MVKImageMemoryBinding*, 3> _memoryBindings;
+    MVKSmallVector<MVKImagePlane*, 3> _planes;
     VkExtent3D _extent;
     uint32_t _mipLevels;
     uint32_t _arrayLayers;
     VkSampleCountFlagBits _samples;
     VkImageUsageFlags _usage;
-	MTLPixelFormat _mtlPixelFormat;
+    VkFormat _vkFormat;
 	MTLTextureType _mtlTextureType;
-    id<MTLTexture> _mtlTexture;
     std::mutex _lock;
     IOSurfaceRef _ioSurface;
 	VkDeviceSize _rowByteAlignment;
     bool _isDepthStencilAttachment;
 	bool _canSupportMTLTextureView;
     bool _hasExpectedTexelSize;
-	bool _usesTexelBuffer;
+    bool _hasChromaSubsampling;
 	bool _isLinear;
 	bool _is3DCompressed;
 	bool _isAliasable;
@@ -284,12 +372,12 @@ class MVKSwapchainImage : public MVKImage {
 public:
 
 	/** Binds this resource to the specified offset within the specified memory allocation. */
-	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset) override;
+	VkResult bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex) override;
 
 #pragma mark Metal
 
 	/** Returns the Metal texture used by the CAMetalDrawable underlying this image. */
-	id<MTLTexture> getMTLTexture() override;
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex) override;
 
 
 #pragma mark Construction
@@ -402,6 +490,37 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKImageViewPlane
+
+class MVKImageViewPlane : public MVKBaseDeviceObject {
+
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override;
+
+public:
+    /** Returns the Metal texture underlying this image view. */
+    id<MTLTexture> getMTLTexture();
+
+    void releaseMTLTexture();
+
+    ~MVKImageViewPlane();
+
+protected:
+    void propagateDebugName();
+    id<MTLTexture> newMTLTexture();
+    MVKImageViewPlane(MVKImageView* imageView, uint8_t planeIndex, MTLPixelFormat mtlPixFmt, const VkImageViewCreateInfo* pCreateInfo);
+
+    friend MVKImageView;
+    MVKImageView* _imageView;
+    uint8_t _planeIndex;
+    MTLPixelFormat _mtlPixFmt;
+    uint32_t _packedSwizzle;
+    id<MTLTexture> _mtlTexture;
+    bool _useMTLTextureView;
+};
+
+
+#pragma mark -
 #pragma mark MVKImageView
 
 /** Represents a Vulkan image view. */
@@ -418,16 +537,19 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image view. */
-	id<MTLTexture> getMTLTexture();
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex) { return _planes[planeIndex]->getMTLTexture(); }
 
 	/** Returns the Metal pixel format of this image view. */
-	inline MTLPixelFormat getMTLPixelFormat() { return _mtlPixelFormat; }
+	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _planes[planeIndex]->_mtlPixFmt; }
+    
+    /** Returns the packed component swizzle of this image view. */
+    inline uint32_t getPackedSwizzle() { return _planes[0]->_packedSwizzle; }
+    
+    /** Returns the number of planes of this image view. */
+    inline uint8_t getPlaneCount() { return _planes.size(); }
 
 	/** Returns the Metal texture type of this image view. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
-
-	/** Returns the packed component swizzle of this image view. */
-	inline uint32_t getPackedSwizzle() { return _packedSwizzle; }
 
 	/**
 	 * Populates the texture of the specified render pass descriptor
@@ -458,7 +580,6 @@ public:
 	 * This is a static function that can be used to validate image view formats prior to creating one.
 	 */
 	static VkResult validateSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo,
-												   MVKPixelFormats* mvkPixFmts,
 												   MVKVulkanAPIObject* apiObject,
 												   bool hasNativeSwizzleSupport,
 												   bool hasShaderSwizzleSupport,
@@ -472,23 +593,56 @@ public:
 				 const VkImageViewCreateInfo* pCreateInfo,
 				 const MVKConfiguration* pAltMVKConfig = nullptr);
 
-	~MVKImageView() override;
+	~MVKImageView();
 
 protected:
+    friend MVKImageViewPlane;
+    
 	void propagateDebugName() override;
-	id<MTLTexture> newMTLTexture();
-	void initMTLTextureViewSupport();
-	void validateImageViewConfig(const VkImageViewCreateInfo* pCreateInfo);
 
     MVKImage* _image;
+    MVKSmallVector<MVKImageViewPlane*, 3> _planes;
     VkImageSubresourceRange _subresourceRange;
     VkImageUsageFlags _usage;
-	id<MTLTexture> _mtlTexture;
 	std::mutex _lock;
-	MTLPixelFormat _mtlPixelFormat;
 	MTLTextureType _mtlTextureType;
-	uint32_t _packedSwizzle;
-	bool _useMTLTextureView;
+};
+
+
+#pragma mark -
+#pragma mark MVKSamplerYcbcrConversion
+
+/** Represents a Vulkan sampler ycbcr conversion. */
+class MVKSamplerYcbcrConversion : public MVKVulkanAPIDeviceObject {
+
+public:
+    /** Returns the Vulkan type of this object. */
+    VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION; }
+
+    /** Returns the debug report object type of this object. */
+    VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SAMPLER_YCBCR_CONVERSION_EXT; }
+    
+    /** Returns the number of planes of this ycbcr conversion. */
+    inline uint8_t getPlaneCount() { return _planes; }
+
+    /** Writes this conversion settings to a MSL constant sampler */
+    void updateConstExprSampler(SPIRV_CROSS_NAMESPACE::MSLConstexprSampler& constExprSampler) const;
+
+    MVKSamplerYcbcrConversion(MVKDevice* device, const VkSamplerYcbcrConversionCreateInfo* pCreateInfo);
+
+    ~MVKSamplerYcbcrConversion() override {}
+
+protected:
+    void propagateDebugName() override {}
+
+    uint8_t _planes, _bpc;
+    SPIRV_CROSS_NAMESPACE::MSLFormatResolution _resolution;
+    SPIRV_CROSS_NAMESPACE::MSLSamplerFilter _chroma_filter;
+    SPIRV_CROSS_NAMESPACE::MSLChromaLocation _x_chroma_offset, _y_chroma_offset;
+    SPIRV_CROSS_NAMESPACE::MSLComponentSwizzle _swizzle[4];
+    SPIRV_CROSS_NAMESPACE::MSLSamplerYCbCrModelConversion _ycbcr_model;
+    SPIRV_CROSS_NAMESPACE::MSLSamplerYCbCrRange _ycbcr_range;
+    bool _forceExplicitReconstruction;
 };
 
 
@@ -508,6 +662,10 @@ public:
 
 	/** Returns the Metal sampler state. */
 	inline id<MTLSamplerState> getMTLSamplerState() { return _mtlSamplerState; }
+    
+    /** Returns the number of planes if this is a ycbcr conversion or 0 otherwise. */
+    inline uint8_t getPlaneCount() { return (_ycbcrConversion) ? _ycbcrConversion->getPlaneCount() : 0; }
+
 
 	/**
 	 * If this sampler requires hardcoding in MSL, populates the hardcoded sampler in the resource binding.
@@ -529,5 +687,6 @@ protected:
 
 	id<MTLSamplerState> _mtlSamplerState;
 	SPIRV_CROSS_NAMESPACE::MSLConstexprSampler _constExprSampler;
+	MVKSamplerYcbcrConversion* _ycbcrConversion;
 	bool _requiresConstExprSampler;
 };

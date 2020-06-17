@@ -5077,34 +5077,24 @@
 		A90FD89D21CC4EAB00B92BB2 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
 				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = iphoneos;
-				VALID_ARCHS = arm64;
 			};
 			name = Debug;
 		};
 		A90FD89E21CC4EAB00B92BB2 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
 				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = iphoneos;
-				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};
@@ -5185,10 +5175,6 @@
 		A972A80D21CECBBF0013AB25 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				DEPLOYMENT_POSTPROCESSING = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
@@ -5200,17 +5186,12 @@
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = iphoneos;
-				VALID_ARCHS = arm64;
 			};
 			name = Debug;
 		};
 		A972A80E21CECBBF0013AB25 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				DEPLOYMENT_POSTPROCESSING = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
@@ -5222,7 +5203,6 @@
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = iphoneos;
-				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};
@@ -5263,11 +5243,7 @@
 		A972ABDA21CED7BC0013AB25 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"AMD_EXTENSIONS=1",
@@ -5283,18 +5259,13 @@
 				);
 				PRODUCT_NAME = glslang;
 				SDKROOT = iphoneos;
-				VALID_ARCHS = arm64;
 			};
 			name = Debug;
 		};
 		A972ABDB21CED7BC0013AB25 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"AMD_EXTENSIONS=1",
@@ -5310,7 +5281,6 @@
 				);
 				PRODUCT_NAME = glslang;
 				SDKROOT = iphoneos;
-				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};
@@ -5362,6 +5332,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = NO;
@@ -5410,6 +5381,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
+				ARCHS = "$(ARCHS_STANDARD_64_BIT)";
 				CLANG_CXX_LANGUAGE_STANDARD = "c++0x";
 				CLANG_CXX_LIBRARY = "libc++";
 				CLANG_ENABLE_MODULES = NO;

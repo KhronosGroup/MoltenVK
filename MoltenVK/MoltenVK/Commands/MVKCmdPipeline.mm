@@ -90,7 +90,9 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 					break;
 
 				case MVKPipelineBarrier::Image:
-					resources[rezCnt++] = b.mvkImage->getMTLTexture();
+                    for (uint8_t planeIndex = 0; planeIndex < b.mvkImage->getPlaneCount(); planeIndex++) {
+                        resources[rezCnt++] = b.mvkImage->getMTLTexture(planeIndex);
+                    }
 					break;
 
 				default:
