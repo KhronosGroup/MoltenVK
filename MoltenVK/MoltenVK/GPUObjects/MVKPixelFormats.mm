@@ -1194,28 +1194,45 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 #endif
 #if MVK_TVOS
 void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
-	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v3, R8Unorm_sRGB, All );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v2, R8Unorm_sRGB, All );
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, R8Unorm_sRGB, All );
 
-	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, R8Snorm, All );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v2, R8Snorm, All );
 
-	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v3, RG8Unorm_sRGB, All );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v2, RG8Unorm_sRGB, All );
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, RG8Unorm_sRGB, All );
 
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, RG8Snorm, All );
 
-	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v3, RGBA8Unorm_sRGB, All );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, RGBA8Snorm, All );
+
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, R32Uint, RWC );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, R32Uint, Atomic );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, R32Sint, RWC );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, R32Sint, Atomic );
+
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, R32Float, RWCMB );
+
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v2, RGBA8Unorm_sRGB, All );
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, RGBA8Unorm_sRGB, All );
 
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, RGBA8Snorm, All );
 
-	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v3, BGRA8Unorm_sRGB, All );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v2, BGRA8Unorm_sRGB, All );
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, BGRA8Unorm_sRGB, All );
 
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, RGB10A2Unorm, All );
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, RGB10A2Uint, RWCM );
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, RG11B10Float, All );
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, RGB9E5Float, All );
+
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, RG32Uint, RWC );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, RG32Sint, RWC );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, RG32Float, RWCB );
+
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, RGBA32Uint, RWC );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, RGBA32Sint, RWC );
+	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v1, RGBA32Float, RWC );
 
 	addMTLPixelFormatCapabilities(tvOS_GPUFamily1_v1, ASTC_4x4_LDR, RF );
 	addMTLPixelFormatCapabilities(tvOS_GPUFamily1_v1, ASTC_4x4_sRGB, RF );
@@ -1249,10 +1266,10 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, Depth32Float, DRMR );
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily2_v1, Depth32Float_Stencil8, DRMR );
 
-	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v2, BGRA10_XR, All );
-	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v2, BGRA10_XR_sRGB, All );
-	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v2, BGR10_XR, All );
-	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v2, BGR10_XR_sRGB, All );
+	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v1, BGRA10_XR, All );
+	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v1, BGRA10_XR_sRGB, All );
+	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v1, BGR10_XR, All );
+	addMTLPixelFormatCapabilities(tvOS_GPUFamily2_v1, BGR10_XR_sRGB, All );
 }
 #endif
 #if MVK_IOS
