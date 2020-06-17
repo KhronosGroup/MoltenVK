@@ -917,7 +917,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxSwapchainImageCount = kMVKMaxSwapchainImageCount;
 
 #if MVK_TVOS
-	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_0;
+	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
     _metalFeatures.maxPerStageTextureCount = 31;
     _metalFeatures.mtlBufferAlignment = 64;
 	_metalFeatures.mtlCopyBufferAlignment = 1;
@@ -930,6 +930,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.stencilViews = true;
 		_metalFeatures.fences = true;
     }
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
+	}
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v4)) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
+	}
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
 		_metalFeatures.indirectDrawing = true;
