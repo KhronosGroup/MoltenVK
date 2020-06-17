@@ -1716,8 +1716,14 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 #endif	//MVK_IOS
 
 #if MVK_TVOS
+
+// For tvOS devices, the Device ID is the SoC model (A8, A10X...), in the hex form 0xaMMX, where
+//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
 void MVKPhysicalDevice::initGPUInfoProperties() {
-  uint32_t devID = 0;
+	uint32_t devID = 0xa080;
+	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+		devID = 0xa100;
+	}
 
   _properties.vendorID = 0x0000106b;  // Apple's PCI ID
   _properties.deviceID = devID;
