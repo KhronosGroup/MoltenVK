@@ -90,7 +90,7 @@ using namespace std;
 #   define MTLPixelFormatBGR10_XR_sRGB			MTLPixelFormatInvalid
 #endif
 
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 #   define MTLPixelFormatDepth16Unorm           MTLPixelFormatInvalid
 #   define MTLPixelFormatDepth24Unorm_Stencil8  MTLPixelFormatInvalid
 #   define MTLPixelFormatX24_Stencil8           MTLPixelFormatInvalid
@@ -722,7 +722,6 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( S8_UINT, Stencil8, Invalid, Invalid, Invalid, 1, 1, 1, DepthStencil );
 
 	addVkFormatDesc( D16_UNORM, Depth16Unorm, Depth32Float, Invalid, Invalid, 1, 1, 2, DepthStencil );
-#if !MVK_TVOS
 	addVkFormatDesc( D16_UNORM_S8_UINT, Invalid, Depth16Unorm_Stencil8, Invalid, Invalid, 1, 1, 3, DepthStencil );
 	addVkFormatDesc( D24_UNORM_S8_UINT, Depth24Unorm_Stencil8, Depth32Float_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil );
 
@@ -750,7 +749,6 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 	addVkFormatDesc( BC7_UNORM_BLOCK, BC7_RGBAUnorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
 	addVkFormatDesc( BC7_SRGB_BLOCK, BC7_RGBAUnorm_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
-#endif
 
 	addVkFormatDesc( ETC2_R8G8B8_UNORM_BLOCK, ETC2_RGB8, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
 	addVkFormatDesc( ETC2_R8G8B8_SRGB_BLOCK, ETC2_RGB8_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
@@ -976,7 +974,6 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc( ASTC_12x12_LDR, None, None );
 	addMTLPixelFormatDesc( ASTC_12x12_sRGB, None, None );
 
-#if !MVK_TVOS
 	addMTLPixelFormatDesc( BC1_RGBA, None, RF );
 	addMTLPixelFormatDesc( BC1_RGBA_sRGB, None, RF );
 	addMTLPixelFormatDesc( BC1_RGBA, None, RF );
@@ -993,7 +990,6 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc( BC6H_RGBFloat, None, RF );
 	addMTLPixelFormatDesc( BC7_RGBAUnorm, None, RF );
 	addMTLPixelFormatDesc( BC7_RGBAUnorm_sRGB, None, RF );
-#endif
 
 	// YUV pixel formats
 	addMTLPixelFormatDesc( GBGR422, RF, RF );
@@ -1003,14 +999,9 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc( Depth16Unorm, None, None );
 	addMTLPixelFormatDesc( Depth32Float, DRM, DRFMR );
 	addMTLPixelFormatDesc( Stencil8, DRM, DRM );
-#if !MVK_TVOS
 	addMTLPixelFormatDesc( Depth24Unorm_Stencil8, None, None );
-#endif
 	addMTLPixelFormatDesc( Depth32Float_Stencil8, DRM, DRFMR );
-#if !MVK_TVOS
-  addMTLPixelFormatDesc( X24_Stencil8, None, DRM );
-#endif
-
+	addMTLPixelFormatDesc( X24_Stencil8, None, DRM );
 	addMTLPixelFormatDesc( X32_Stencil8, DRM, DRM );
 
 	// Extended range and wide color pixel formats
