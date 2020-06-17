@@ -15,7 +15,7 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "2FEA0A3B24902F9F00EEF3AD"
-               BuildableName = "libMoltenVK-tvOS.a"
+               BuildableName = "libMoltenVK.a"
                BlueprintName = "MoltenVK-tvOS"
                ReferencedContainer = "container:MoltenVK.xcodeproj">
             </BuildableReference>
@@ -29,6 +29,8 @@
       shouldUseLaunchSchemeArgsEnv = "YES">
       <Testables>
       </Testables>
+      <AdditionalOptions>
+      </AdditionalOptions>
    </TestAction>
    <LaunchAction
       buildConfiguration = "Debug"
@@ -40,6 +42,17 @@
       debugDocumentVersioning = "YES"
       debugServiceExtension = "internal"
       allowLocationSimulation = "YES">
+      <MacroExpansion>
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "2FEA0A3B24902F9F00EEF3AD"
+            BuildableName = "libMoltenVK.a"
+            BlueprintName = "MoltenVK-tvOS"
+            ReferencedContainer = "container:MoltenVK.xcodeproj">
+         </BuildableReference>
+      </MacroExpansion>
+      <AdditionalOptions>
+      </AdditionalOptions>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -51,7 +64,7 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "2FEA0A3B24902F9F00EEF3AD"
-            BuildableName = "libMoltenVK-tvOS.a"
+            BuildableName = "libMoltenVK.a"
             BlueprintName = "MoltenVK-tvOS"
             ReferencedContainer = "container:MoltenVK.xcodeproj">
          </BuildableReference>
