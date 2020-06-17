@@ -1173,7 +1173,6 @@ void MVKPhysicalDevice::initFeatures() {
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
 		_features.tessellationShader = true;
-		_features.shaderTessellationAndGeometryPointSize = true;
 	}
 #endif
 
