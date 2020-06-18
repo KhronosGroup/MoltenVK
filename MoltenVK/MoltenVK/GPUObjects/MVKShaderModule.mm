@@ -278,7 +278,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 		_device->addActivityPerformance(_device->_performanceStatistics.shaderCompilation.shaderLibraryFromCache, startTime);
 	} else {
 		mvkLib->setEntryPointName(pContext->options.entryPointName);
-		pContext->markAllAttributesAndResourcesUsed();
+		pContext->markAllInputsAndResourcesUsed();
 	}
 
 	return mvkLib ? mvkLib->getMTLFunction(pSpecializationInfo, this) : MVKMTLFunctionNull;

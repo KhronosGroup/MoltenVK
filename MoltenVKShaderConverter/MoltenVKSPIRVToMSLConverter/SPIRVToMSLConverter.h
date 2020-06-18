@@ -68,11 +68,11 @@ namespace mvk {
 	 * shader conversion configurations to be compared only against the attributes that are
 	 * actually used by the shader.
 	 *
-	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIPELINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
-	typedef struct MSLVertexAttribute {
-		SPIRV_CROSS_NAMESPACE::MSLVertexAttr vertexAttribute;
+	typedef struct MSLShaderInput {
+		SPIRV_CROSS_NAMESPACE::MSLShaderInput shaderInput;
 
 		uint32_t binding = 0;
 		bool isUsedByShader = false;
@@ -81,9 +81,9 @@ namespace mvk {
 		 * Returns whether the specified vertex attribute match this one.
 		 * It does if all corresponding elements except isUsedByShader are equal.
 		 */
-		bool matches(const MSLVertexAttribute& other) const;
+		bool matches(const MSLShaderInput& other) const;
 
-	} MSLVertexAttribute;
+	} MSLShaderInput;
 
 	/**
 	 * Matches the binding index of a MSL resource for a binding within a descriptor set.
@@ -127,23 +127,23 @@ namespace mvk {
 	 */
 	typedef struct SPIRVToMSLConversionConfiguration {
 		SPIRVToMSLConversionOptions options;
-		std::vector<MSLVertexAttribute> vertexAttributes;
+		std::vector<MSLShaderInput> shaderInputs;
 		std::vector<MSLResourceBinding> resourceBindings;
 
 		/** Returns whether the pipeline stage being converted supports vertex attributes. */
 		bool stageSupportsVertexAttributes() const;
 
-        /** Returns whether the vertex attribute at the specified location is used by the shader. */
-        bool isVertexAttributeLocationUsed(uint32_t location) const;
+        /** Returns whether the shader input variable at the specified location is used by the shader. */
+        bool isShaderInputLocationUsed(uint32_t location) const;
 
-		/** Returns the number of vertex attributes bound to the specified Vulkan buffer binding, and used by the shader. */
-		uint32_t countVertexAttributesAt(uint32_t binding) const;
+		/** Returns the number of shader input variables bound to the specified Vulkan buffer binding, and used by the shader. */
+		uint32_t countShaderInputsAt(uint32_t binding) const;
 
         /** Returns whether the vertex buffer at the specified Vulkan binding is used by the shader. */
-		bool isVertexBufferUsed(uint32_t binding) const { return countVertexAttributesAt(binding) > 0; }
+		bool isVertexBufferUsed(uint32_t binding) const { return countShaderInputsAt(binding) > 0; }
 
-		/** Marks all vertex attributes and resources as being used by the shader. */
-		void markAllAttributesAndResourcesUsed();
+		/** Marks all input variables and resources as being used by the shader. */
+		void markAllInputsAndResourcesUsed();
 
         /**
          * Returns whether this configuration matches the other context. It does if the
