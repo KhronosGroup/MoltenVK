@@ -103,6 +103,7 @@ uint64_t mvkGetSystemMemorySize() {
 	if (host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&info, &host_size) == KERN_SUCCESS) {
 		return info.max_mem;
 	}
+	return 0;
 #endif
 #if MVK_TVOS
 	return 0;
