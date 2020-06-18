@@ -1722,7 +1722,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 void MVKPhysicalDevice::initGPUInfoProperties() {
 	uint32_t devID = 0xa080;
 	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
-		devID = 0xa100;
+		devID = 0xa101;
 	}
 
   _properties.vendorID = 0x0000106b;  // Apple's PCI ID
