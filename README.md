@@ -110,7 +110,19 @@ on which **MoltenVK** relies:
 3. Retrieve and build the external libraries:
 
 		cd MoltenVK
-		./fetchDependencies
+		./fetchDependencies [platform...]
+
+When running the `fetchDependencies` script, you must specify one or more platforms 
+for which to build the external libraries. The platform choices include: 
+
+	--ios --iosfat --tvos --tvosfat --macos --all
+
+You can specify multiple of these selections. The `--iosfat` and `--tvosfat` selection builds one 
+binary for each external library, with each binary including code for both *iOS* and *iOS Simulator* 
+platforms, or  *tvOS* and *tvOS Simulator* platforms, respectively. The `--all` selection is the same 
+as selecting `--iosfat --tvosfat --macos` and results in three binaries for each external library: 
+a *fat iOS* binary, a *fat tvOS* binary, and a *macOS* binary. The more selections you include,
+the longer the build time.
 
 For more information about the external open-source libraries used by **MoltenVK**,
 see the [`ExternalRevisions/README.md`](ExternalRevisions/README.md) document.
@@ -141,12 +153,13 @@ and package the entire **MoltenVK** runtime distribution package, or to build in
 
 To build a **MoltenVK** runtime distribution package, suitable for testing and integrating into an app, 
 open `MoltenVKPackaging.xcodeproj` in *Xcode*, and use one of the following *Xcode Schemes*, depending
-on whether you want a **_Release_** or **_Debug_** configuration, and whether you want to build for both
-the *iOS* and *macOS* platforms, or just one platform (in **_Release_** configuration):
+on whether you want a **_Release_** or **_Debug_** configuration, and whether you want to build for all 
+platforms, or just one platform (in **_Release_** configuration):
 
 - **MoltenVK Package** 
 - **MoltenVK Package (Debug)** 
 - **MoltenVK Package (iOS only)**
+- **MoltenVK Package (tvOS only)**
 - **MoltenVK Package (macOS only)** 
 
 Each of these`MoltenVKPackaging.xcodeproj` *Xcode* project *Schemes* puts the resulting packages in the 
@@ -178,19 +191,22 @@ in the **_Release_** configuration from the command line. The following `make` t
 	make all
 	make macos
 	make ios
+	make iosfat
+	make tvos
+	make tvosfat
 	make clean
 	make install
 
 
-Running `make all` is the same as running both `make macos` and `make ios`. Running `make` with no 
-arguments is the same as running `make all`.
+Running `make all` is the same as running all of `make macos`, `make iosfat`, and `make tvosfat`. 
+Running `make` with no arguments is the same as running `make all`.
 
 The `install` target will copy the most recently built *macOS* `MoltenVK.framework` into 
 the `/Library/Frameworks` folder of your computer. Since `/Library/Frameworks` is protected, 
 you will generally need to run it as `sudo make install` and enter your password. 
 
 The `install` target just installs the built framework, it does not first build the framework.
-So you will first need to at least run `make macos`, or use *Xcode* to build the framework as described above.
+You will first need to at least run `make macos`, or use *Xcode* to build the framework as described above.
 
 The `make` targets all require that *Xcode* is installed on your system. 
 
