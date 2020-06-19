@@ -969,7 +969,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Debug;
@@ -985,7 +984,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
@@ -1001,7 +999,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Debug;
@@ -1017,7 +1014,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
@@ -1061,7 +1057,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1076,7 +1071,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -1119,7 +1113,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1134,7 +1127,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

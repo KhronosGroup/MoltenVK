@@ -4991,7 +4991,6 @@
 				);
 				PRODUCT_NAME = glslang;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 			};
 			name = Debug;
 		};
@@ -5014,7 +5013,6 @@
 				);
 				PRODUCT_NAME = glslang;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 			};
 			name = Release;
 		};
@@ -5031,7 +5029,6 @@
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 			};
 			name = Debug;
 		};
@@ -5048,7 +5045,6 @@
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 			};
 			name = Release;
 		};
@@ -5061,7 +5057,6 @@
 				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 			};
 			name = Debug;
 		};
@@ -5074,7 +5069,6 @@
 				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 			};
 			name = Release;
 		};
@@ -5372,7 +5366,6 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				ONLY_ACTIVE_ARCH = YES;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
 				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Debug;
@@ -5420,7 +5413,6 @@
 				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
 				TVOS_DEPLOYMENT_TARGET = 9.0;
 				VALIDATE_PRODUCT = YES;
 			};

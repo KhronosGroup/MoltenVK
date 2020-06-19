@@ -1538,7 +1538,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Debug;
@@ -1547,7 +1546,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Release;
@@ -1557,7 +1555,6 @@
 			buildSettings = {
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1566,7 +1563,6 @@
 			buildSettings = {
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
