@@ -1114,7 +1114,8 @@
 		A90FD89F21CC4EAB00B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A90FD9E421CC4EB900B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gen_spirv_cross_rev_hdr.sh; sourceTree = "<group>"; };
-		A932E9C5249A743B00D64150 /* create_fat_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_libs.sh; sourceTree = "<group>"; };
+		A932E9C5249A743B00D64150 /* create_fat_lib_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_lib_func.sh; sourceTree = "<group>"; };
+		A932E9DF249BC44D00D64150 /* create_fat_ext_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_ext_libs.sh; sourceTree = "<group>"; };
 		A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */ = {isa = PBXFileReference; lastKnownFileType = text; path = packagePregenSpirvToolsHeaders; sourceTree = "<group>"; };
 		A95D90A723A7F1E500CBCC60 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		A95D90AA23A7F1E500CBCC60 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
@@ -1842,7 +1843,8 @@
 		A9679AAB21D2699800856BF7 /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
-				A932E9C5249A743B00D64150 /* create_fat_libs.sh */,
+				A932E9DF249BC44D00D64150 /* create_fat_ext_libs.sh */,
+				A932E9C5249A743B00D64150 /* create_fat_lib_func.sh */,
 				A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */,
 				A9679AAE21D269D900856BF7 /* package_ext_libs.sh */,
 				A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */,
@@ -3103,7 +3105,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_OS_PROD_EXTN=\"iphoneos\"\nexport MVK_SIM_PROD_EXTN=\"iphonesimulator\"\n\n\"${SRCROOT}/Scripts/create_fat_libs.sh\"\n";
+			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_OS_PROD_EXTN=\"iphoneos\"\nexport MVK_SIM_PROD_EXTN=\"iphonesimulator\"\n\n. \"${SRCROOT}/Scripts/create_fat_ext_libs.sh\"\n";
 		};
 		A9679AAF21D26C1400856BF7 /* Package Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -3121,7 +3123,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n\"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
 		};
 		A9679AB021D26C7000856BF7 /* Package Libraries */ = {
 			isa = PBXShellScriptBuildPhase;

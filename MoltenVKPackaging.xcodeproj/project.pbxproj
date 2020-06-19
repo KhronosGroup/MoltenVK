@@ -184,6 +184,9 @@
 		A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_ios.sh; sourceTree = "<group>"; };
 		A9DA8340218A198C002AA662 /* .travis.yml */ = {isa = PBXFileReference; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; };
 		A9DA8341218A198C002AA662 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		A9EE084A249BD49200E523A2 /* create_fat_lib_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_lib_func.sh; sourceTree = "<group>"; };
+		A9EE084E249BD49200E523A2 /* create_fat_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_libs.sh; sourceTree = "<group>"; };
+		A9EE0851249BD71C00E523A2 /* create_fat_libs_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_libs_ios.sh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -224,6 +227,9 @@
 				A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */,
 				A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */,
 				A975D55C213F25D700D4834F /* create_dylib.sh */,
+				A9EE084A249BD49200E523A2 /* create_fat_lib_func.sh */,
+				A9EE0851249BD71C00E523A2 /* create_fat_libs_ios.sh */,
+				A9EE084E249BD49200E523A2 /* create_fat_libs.sh */,
 				A941E2B1221AEBD000890C56 /* create_framework_ios.sh */,
 				A941E2B2221AEBD000890C56 /* create_framework_macos.sh */,
 				A99A760321852584000A8E2A /* create_framework.sh */,

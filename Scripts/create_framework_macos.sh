@@ -3,6 +3,7 @@
 set -e
 
 export MVK_OS="macOS"
+export MVK_BUILT_PROD_DIR="${BUILT_PRODUCTS_DIR}"
 export MVK_FRWK_SUBPATH="Versions/Current/"
 
 . "${SRCROOT}/../Scripts/create_framework.sh"

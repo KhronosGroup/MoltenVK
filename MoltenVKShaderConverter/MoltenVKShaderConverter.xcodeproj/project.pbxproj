@@ -337,6 +337,7 @@
 				A93747271A9A8B2900F29B34 /* Sources */,
 				A972AD2821CEE6310013AB25 /* Frameworks */,
 				A9C70F49221B075700FBA31A /* Create Dynamic Library */,
+				A9303625249BDF6B00DE139C /* Create Fat Libraries */,
 				A941E2A7221AC9C300890C56 /* Create Framework */,
 			);
 			buildRules = (
@@ -375,6 +376,7 @@
 				A93903BA1C57E9D700FE90DC /* Sources */,
 				A972AD2E21CEE6F50013AB25 /* Frameworks */,
 				A9C70F4B221B077C00FBA31A /* Create Dynamic Library */,
+				A9303626249BDFA000DE139C /* Create Fat Libraries */,
 				A941E2A8221AC9E800890C56 /* Create Framework */,
 			);
 			buildRules = (
@@ -457,6 +459,42 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
+		A9303625249BDF6B00DE139C /* Create Fat Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Fat Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_ios.sh\"\n";
+		};
+		A9303626249BDFA000DE139C /* Create Fat Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Fat Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_ios.sh\"\n";
+		};
 		A941E2A7221AC9C300890C56 /* Create Framework */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;

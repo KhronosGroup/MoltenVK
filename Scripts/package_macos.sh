@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export MVK_OS="macOS"
-export MVK_BUILT_PROD_PATH="${BUILT_PRODUCTS_DIR}"
+export MVK_BUILT_PROD_DIR="${BUILT_PRODUCTS_DIR}"
 
 . "${SRCROOT}/Scripts/package_moltenvk.sh"
 . "${SRCROOT}/Scripts/package_shader_converter.sh"

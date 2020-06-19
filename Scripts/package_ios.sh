@@ -1,7 +1,7 @@
 #!/bin/bash
 
 export MVK_OS="iOS"
-export MVK_BUILT_PROD_PATH="${BUILT_PRODUCTS_DIR}-iphoneos"
+export MVK_BUILT_PROD_DIR="${BUILT_PRODUCTS_DIR}-iOS"
 
 . "${SRCROOT}/Scripts/package_moltenvk.sh"
 . "${SRCROOT}/Scripts/package_shader_converter.sh"
