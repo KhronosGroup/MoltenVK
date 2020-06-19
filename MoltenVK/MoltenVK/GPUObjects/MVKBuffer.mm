@@ -156,9 +156,9 @@ bool MVKBuffer::shouldFlushHostMemory() { return _isHostCoherentTexelBuffer; }
 VkResult MVKBuffer::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
 #if MVK_MACOS
     VkDeviceSize flushOffset, flushSize;
-	if (shouldFlushHostMemory() && overlaps(offset, size, flushOffset, flushSize)) {
-		memcpy(getMTLBuffer().contents, reinterpret_cast<const char *>(_deviceMemory->getHostMemoryAddress()) + flushOffset, flushSize);
-		[getMTLBuffer() didModifyRange: NSMakeRange(flushOffset - _deviceMemoryOffset, flushSize)];
+	if (shouldFlushHostMemory() && _mtlBufferCache && overlaps(offset, size, flushOffset, flushSize)) {
+		memcpy(_mtlBufferCache.contents, reinterpret_cast<const char *>(_deviceMemory->getHostMemoryAddress()) + flushOffset, flushSize);
+		[_mtlBufferCache didModifyRange: NSMakeRange(flushOffset - _deviceMemoryOffset, flushSize)];
 	}
 #endif
 	return VK_SUCCESS;
@@ -168,8 +168,8 @@ VkResult MVKBuffer::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
 VkResult MVKBuffer::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
 #if MVK_MACOS
     VkDeviceSize pullOffset, pullSize;
-	if (shouldFlushHostMemory() && overlaps(offset, size, pullOffset, pullSize)) {
-		memcpy(reinterpret_cast<char *>(_deviceMemory->getHostMemoryAddress()) + pullOffset, reinterpret_cast<char *>(getMTLBuffer().contents) + pullOffset - _deviceMemoryOffset, pullSize);
+	if (shouldFlushHostMemory() && _mtlBufferCache && overlaps(offset, size, pullOffset, pullSize)) {
+		memcpy(reinterpret_cast<char *>(_deviceMemory->getHostMemoryAddress()) + pullOffset, reinterpret_cast<char *>(_mtlBufferCache.contents) + pullOffset - _deviceMemoryOffset, pullSize);
 	}
 #endif
 	return VK_SUCCESS;
@@ -187,15 +187,6 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 																   offset: _deviceMemoryOffset];	// retained
 			propagateDebugName();
 			return _mtlBuffer;
-#if MVK_MACOS
-		} else if (_isHostCoherentTexelBuffer) {
-			// According to the Vulkan spec, buffers, like linear images, can always use host-coherent memory.
-			// But texel buffers on Mac cannot use shared memory. So we need to use host-cached memory here.
-			_mtlBuffer = [_device->getMTLDevice() newBufferWithLength: getByteCount()
-															  options: MTLResourceStorageModeManaged];	// retained
-			propagateDebugName();
-			return _mtlBuffer;
-#endif
 		} else {
 			return _deviceMemory->getMTLBuffer();
 		}
@@ -203,6 +194,16 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 	return nil;
 }
 
+id<MTLBuffer> MVKBuffer::getMTLBufferCache() {
+#if MVK_MACOS
+    if (_isHostCoherentTexelBuffer && !_mtlBufferCache) {
+        _mtlBufferCache = [_device->getMTLDevice() newBufferWithLength: getByteCount()
+                                                               options: MTLResourceStorageModeManaged];    // retained
+        flushToDevice(_deviceMemoryOffset, _byteCount);
+    }
+#endif
+    return _mtlBufferCache;
+}
 
 #pragma mark Construction
 
@@ -236,6 +237,7 @@ void MVKBuffer::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) 
 MVKBuffer::~MVKBuffer() {
 	if (_deviceMemory) { _deviceMemory->removeBuffer(this); }
 	if (_mtlBuffer) { [_mtlBuffer release]; }
+    if (_mtlBufferCache) { [_mtlBufferCache release]; }
 }
 
 
@@ -259,7 +261,15 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
         if ( mvkIsAnyFlagEnabled(_buffer->getUsage(), VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT) ) {
             usage |= MTLTextureUsageShaderWrite;
         }
-        id<MTLBuffer> mtlBuff = _buffer->getMTLBuffer();
+        id<MTLBuffer> mtlBuff;
+        VkDeviceSize mtlBuffOffset;
+        if (MVK_MACOS && _buffer->isMemoryHostCoherent()) {
+            mtlBuff = _buffer->getMTLBufferCache();
+            mtlBuffOffset = _offset;
+        } else {
+            mtlBuff = _buffer->getMTLBuffer();
+            mtlBuffOffset = _buffer->getMTLBufferOffset() + _offset;
+        }
         MTLTextureDescriptor* mtlTexDesc;
         if ( _device->_pMetalFeatures->textureBuffers ) {
             mtlTexDesc = [MTLTextureDescriptor textureBufferDescriptorWithPixelFormat: _mtlPixelFormat
@@ -276,7 +286,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
             mtlTexDesc.usage = usage;
         }
 		_mtlTexture = [mtlBuff newTextureWithDescriptor: mtlTexDesc
-												 offset: _mtlBufferOffset
+												 offset: mtlBuffOffset
 											bytesPerRow: _mtlBytesPerRow];
 		propagateDebugName();
     }
@@ -289,7 +299,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
 MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	MVKPixelFormats* pixFmts = getPixelFormats();
     _buffer = (MVKBuffer*)pCreateInfo->buffer;
-    _mtlBufferOffset = _buffer->getMTLBufferOffset() + pCreateInfo->offset;
+    _offset = pCreateInfo->offset;
     _mtlPixelFormat = pixFmts->getMTLPixelFormat(pCreateInfo->format);
     VkExtent2D fmtBlockSize = pixFmts->getBlockTexelSize(pCreateInfo->format);  // Pixel size of format
     size_t bytesPerBlock = pixFmts->getBytesPerBlock(pCreateInfo->format);
