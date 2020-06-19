@@ -91,6 +91,7 @@ protected:
 	bool needsHostReadSync(VkPipelineStageFlags srcStageMask,
 						   VkPipelineStageFlags dstStageMask,
 						   MVKPipelineBarrier& barrier);
+    bool overlaps(VkDeviceSize offset, VkDeviceSize size, VkDeviceSize &overlapOffset, VkDeviceSize &overlapSize);
 	bool shouldFlushHostMemory();
 	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
 	VkResult pullFromDevice(VkDeviceSize offset, VkDeviceSize size);

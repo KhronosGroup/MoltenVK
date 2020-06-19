@@ -136,6 +136,18 @@ bool MVKBuffer::needsHostReadSync(VkPipelineStageFlags srcStageMask,
 #endif
 }
 
+bool MVKBuffer::overlaps(VkDeviceSize offset, VkDeviceSize size, VkDeviceSize &overlapOffset, VkDeviceSize &overlapSize) {
+    VkDeviceSize end = offset + size;
+    VkDeviceSize bufferEnd = _deviceMemoryOffset + _byteCount;
+    if (offset < bufferEnd && end > _deviceMemoryOffset) {
+        overlapOffset = max(_deviceMemoryOffset, offset);
+        overlapSize = min(bufferEnd, end) - overlapOffset;
+        return true;
+    }
+
+    return false;
+}
+
 #if MVK_MACOS
 bool MVKBuffer::shouldFlushHostMemory() { return _isHostCoherentTexelBuffer; }
 #endif
@@ -143,9 +155,10 @@ bool MVKBuffer::shouldFlushHostMemory() { return _isHostCoherentTexelBuffer; }
 // Flushes the device memory at the specified memory range into the MTLBuffer.
 VkResult MVKBuffer::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
 #if MVK_MACOS
-	if (shouldFlushHostMemory()) {
-		memcpy(getMTLBuffer().contents, reinterpret_cast<const char *>(_deviceMemory->getHostMemoryAddress()) + offset, size);
-		[getMTLBuffer() didModifyRange: NSMakeRange(0, size)];
+    VkDeviceSize flushOffset, flushSize;
+	if (shouldFlushHostMemory() && overlaps(offset, size, flushOffset, flushSize)) {
+		memcpy(getMTLBuffer().contents, reinterpret_cast<const char *>(_deviceMemory->getHostMemoryAddress()) + flushOffset, flushSize);
+		[getMTLBuffer() didModifyRange: NSMakeRange(flushOffset - _deviceMemoryOffset, flushSize)];
 	}
 #endif
 	return VK_SUCCESS;
@@ -154,8 +167,9 @@ VkResult MVKBuffer::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
 // Pulls content from the MTLBuffer into the device memory at the specified memory range.
 VkResult MVKBuffer::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
 #if MVK_MACOS
-	if (shouldFlushHostMemory()) {
-		memcpy(reinterpret_cast<char *>(_deviceMemory->getHostMemoryAddress()) + offset, getMTLBuffer().contents, size);
+    VkDeviceSize pullOffset, pullSize;
+	if (shouldFlushHostMemory() && overlaps(offset, size, pullOffset, pullSize)) {
+		memcpy(reinterpret_cast<char *>(_deviceMemory->getHostMemoryAddress()) + pullOffset, reinterpret_cast<char *>(getMTLBuffer().contents) + pullOffset - _deviceMemoryOffset, pullSize);
 	}
 #endif
 	return VK_SUCCESS;
