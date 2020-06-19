@@ -97,16 +97,21 @@ bool mvkGetEnvVarBool(std::string varName, bool* pWasFound) {
 #pragma mark System memory
 
 uint64_t mvkGetSystemMemorySize() {
+#if MVK_MACOS || MVK_IOS
 	mach_msg_type_number_t host_size = HOST_BASIC_INFO_COUNT;
 	host_basic_info_data_t info;
 	if (host_info(mach_host_self(), HOST_BASIC_INFO, (host_info_t)&info, &host_size) == KERN_SUCCESS) {
 		return info.max_mem;
 	}
 	return 0;
+#endif
+#if MVK_TVOS
+	return 0;
+#endif
 }
 
 uint64_t mvkGetAvailableMemorySize() {
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	if (mvkOSVersionIsAtLeast(13.0)) { return os_proc_available_memory(); }
 #endif
 	mach_port_t host_port;

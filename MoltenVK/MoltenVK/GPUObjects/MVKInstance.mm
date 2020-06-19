@@ -324,10 +324,10 @@ static NSArray<id<MTLDevice>>* availableMTLDevicesArray() {
 	}
 #endif	// MVK_MACOS
 
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	id<MTLDevice> md = [MTLCreateSystemDefaultDevice() autorelease];
 	if (md) { [mtlDevs addObject: md]; }
-#endif	// MVK_IOS
+#endif	// MVK_IOS_OR_TVOS
 
 	return mtlDevs;		// retained
 }

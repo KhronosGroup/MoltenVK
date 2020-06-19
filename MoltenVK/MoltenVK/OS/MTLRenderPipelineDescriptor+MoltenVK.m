@@ -23,12 +23,12 @@
 @implementation MTLRenderPipelineDescriptor (MoltenVK)
 
 -(MTLPrimitiveTopologyClass) inputPrimitiveTopologyMVK {
-	if ( [self respondsToSelector: @selector(inputPrimitiveTopology)] ) { return self.inputPrimitiveTopology; }
+	if ( [self respondsToSelector: @selector(inputPrimitiveTopology)] ) { return [self inputPrimitiveTopology]; }
 	return MTLPrimitiveTopologyClassUnspecified;
 }
 
 -(void) setInputPrimitiveTopologyMVK: (MTLPrimitiveTopologyClass) topology {
-	if ([self respondsToSelector: @selector(setInputPrimitiveTopology:)]) { self.inputPrimitiveTopology = topology; }
+	if ([self respondsToSelector: @selector(setInputPrimitiveTopology:)]) { [self setInputPrimitiveTopology:topology]; }
 }
 
 @end

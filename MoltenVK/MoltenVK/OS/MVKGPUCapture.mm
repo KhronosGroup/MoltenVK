@@ -28,7 +28,7 @@
 #if MVK_MACOS
 static MVKOSVersion kMinOSVersionMTLCaptureScope = 10.13;
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 static MVKOSVersion kMinOSVersionMTLCaptureScope = 11.0;
 #endif
 

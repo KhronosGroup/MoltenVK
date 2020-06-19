@@ -42,9 +42,27 @@ extern "C" {
 #	endif	// DEBUG
 #endif	// MVK_DEBUG
 
+/** Building for tvOS. Use ifdef instead of defined() operator to allow MVK_TVOS to be used in expansions */
+#ifndef MVK_TVOS
+#    ifdef __TV_OS_VERSION_MAX_ALLOWED
+#        define MVK_TVOS            1
+#    else
+#        define MVK_TVOS            0
+#    endif
+#endif
+
+/** Building for iOS or tvOS. Use ifdef instead of defined() operator to allow MVK_IOS_OR_TVOS to be used in expansions */
+#ifndef MVK_IOS_OR_TVOS
+#    if __IPHONE_OS_VERSION_MAX_ALLOWED
+#        define MVK_IOS_OR_TVOS     1
+#    else
+#        define MVK_IOS_OR_TVOS     0
+#    endif
+#endif
+
 /** Building for iOS. Use ifdef instead of defined() operator to allow MVK_IOS to be used in expansions */
 #ifndef MVK_IOS
-#    ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
+#    if MVK_IOS_OR_TVOS && !MVK_TVOS
 #        define MVK_IOS            1
 #    else
 #        define MVK_IOS            0

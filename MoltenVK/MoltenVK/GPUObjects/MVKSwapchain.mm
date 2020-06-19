@@ -30,7 +30,7 @@
 #import "CAMetalLayer+MoltenVK.h"
 #import "MVKBlockObserver.h"
 
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 #	include <UIKit/UIScreen.h>
 #endif
 
@@ -384,8 +384,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
 	NSInteger framesPerSecond = 60;
-
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	UIScreen* screen = [UIScreen mainScreen];
 	if ([screen respondsToSelector: @selector(maximumFramesPerSecond)]) {
 		framesPerSecond = screen.maximumFramesPerSecond;

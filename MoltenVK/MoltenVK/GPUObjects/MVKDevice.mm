@@ -916,6 +916,49 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.minSwapchainImageCount = kMVKMinSwapchainImageCount;
 	_metalFeatures.maxSwapchainImageCount = kMVKMaxSwapchainImageCount;
 
+#if MVK_TVOS
+	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
+    _metalFeatures.maxPerStageTextureCount = 31;
+    _metalFeatures.mtlBufferAlignment = 64;
+	_metalFeatures.mtlCopyBufferAlignment = 1;
+    _metalFeatures.texelBuffers = true;
+	_metalFeatures.maxTextureDimension = (8 * KIBI);
+
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
+        _metalFeatures.shaderSpecialization = true;
+        _metalFeatures.stencilViews = true;
+		_metalFeatures.fences = true;
+    }
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
+	}
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v4)) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
+	}
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+		_metalFeatures.indirectDrawing = true;
+		_metalFeatures.baseVertexInstanceDrawing = true;
+		_metalFeatures.combinedStoreResolveAction = true;
+		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
+		_metalFeatures.maxTextureDimension = (16 * KIBI);
+		_metalFeatures.depthSampleCompare = true;
+		_metalFeatures.arrayOfTextures = true;
+		_metalFeatures.arrayOfSamplers = true;
+	}
+
+	if ( mvkOSVersionIsAtLeast(13.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
+		_metalFeatures.placementHeaps = useMTLHeaps;
+		if (supportsMTLGPUFamily(Apple4)) {
+			_metalFeatures.nativeTextureSwizzle = true;
+		}
+	}
+#endif
+
 #if MVK_IOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_0;
     _metalFeatures.maxPerStageTextureCount = 31;
@@ -1116,6 +1159,23 @@ void MVKPhysicalDevice::initFeatures() {
         _features.drawIndirectFirstInstance = true;
     }
 
+#if MVK_TVOS
+    _features.textureCompressionETC2 = true;
+    _features.textureCompressionASTC_LDR = true;
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) {
+		_features.dualSrcBlend = true;
+	}
+
+    if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+        _features.occlusionQueryPrecise = true;
+    }
+
+	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+		_features.tessellationShader = true;
+	}
+#endif
+
 #if MVK_IOS
     _features.textureCompressionETC2 = true;
 
@@ -1247,6 +1307,9 @@ void MVKPhysicalDevice::initProperties() {
 	initPipelineCacheUUID();
 
 	// Limits
+#if MVK_TVOS
+    _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
+#endif
 #if MVK_IOS
     if (supportsMTLFeatureSet(iOS_GPUFamily2_v1)) {
         _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
@@ -1396,6 +1459,9 @@ void MVKPhysicalDevice::initProperties() {
         _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = singleTexelUniform;
         _properties.limits.minTexelBufferOffsetAlignment = max(maxStorage, maxUniform);
     } else {
+#if MVK_TVOS
+        _properties.limits.minTexelBufferOffsetAlignment = 64;
+#endif
 #if MVK_IOS
         if (supportsMTLFeatureSet(iOS_GPUFamily3_v1)) {
             _properties.limits.minTexelBufferOffsetAlignment = 16;
@@ -1649,6 +1715,22 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 }
 #endif	//MVK_IOS
 
+#if MVK_TVOS
+
+// For tvOS devices, the Device ID is the SoC model (A8, A10X...), in the hex form 0xaMMX, where
+//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
+void MVKPhysicalDevice::initGPUInfoProperties() {
+	uint32_t devID = 0xa080;
+	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+		devID = 0xa101;
+	}
+
+  _properties.vendorID = 0x0000106b;  // Apple's PCI ID
+  _properties.deviceID = devID;
+  _properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
+  strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
+}
+#endif
 
 #pragma mark VkPhysicalDeviceLimits - List of feature limits available on the device
 
@@ -1826,6 +1908,11 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	uint32_t minFS = (uint32_t)MTLFeatureSet_iOS_GPUFamily1_v1;
 #endif
 
+#if MVK_TVOS
+  uint32_t maxFS = (uint32_t)MTLFeatureSet_tvOS_GPUFamily2_v2;
+  uint32_t minFS = (uint32_t)MTLFeatureSet_tvOS_GPUFamily1_v1;
+#endif
+
 #if MVK_MACOS
 	uint32_t maxFS = (uint32_t)MTLFeatureSet_macOS_GPUFamily2_v1;
 	uint32_t minFS = (uint32_t)MTLFeatureSet_macOS_GPUFamily1_v1;
@@ -1963,7 +2050,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 }
 
 bool MVKPhysicalDevice::getHasUnifiedMemory() {
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	return true;
 #endif
 #if MVK_MACOS
@@ -2001,7 +2088,7 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 	if ( [_mtlDevice respondsToSelector: @selector(currentAllocatedSize)] ) {
 		return _mtlDevice.currentAllocatedSize;
 	}
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	// We can use the current memory used by this process as a reasonable approximation.
 	return mvkGetUsedMemorySize();
 #endif
@@ -2108,6 +2195,16 @@ void MVKPhysicalDevice::logGPUInfo() {
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v3)) { logMsg += "\n\t\tiOS GPU Family 1 v3"; }
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v2)) { logMsg += "\n\t\tiOS GPU Family 1 v2"; }
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v1)) { logMsg += "\n\t\tiOS GPU Family 1 v1"; }
+#endif
+
+#if MVK_TVOS
+    if (supportsMTLFeatureSet(tvOS_GPUFamily2_v2)) { logMsg += "\n\t\ttvOS GPU Family 2 v2"; }
+    if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) { logMsg += "\n\t\ttvOS GPU Family 2 v1"; }
+
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v4)) { logMsg += "\n\t\ttvOS GPU Family 1 v4"; }
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) { logMsg += "\n\t\ttvOS GPU Family 1 v3"; }
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) { logMsg += "\n\t\ttvOS GPU Family 1 v2"; }
+    if (supportsMTLFeatureSet(tvOS_GPUFamily1_v1)) { logMsg += "\n\t\ttvOS GPU Family 1 v1"; }
 #endif
 
 #if MVK_MACOS
