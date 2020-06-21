@@ -233,6 +233,29 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
 				break;
 			}
+#if MVK_MACOS
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES:
+                if (mvkOSVersionIsAtLeast(10.14)) {
+                    auto* subgroupProps = (VkPhysicalDeviceSubgroupProperties*)next;
+                    subgroupProps->subgroupSize = _metalFeatures.subgroupSize;
+                    subgroupProps->supportedStages =
+                        VK_SHADER_STAGE_COMPUTE_BIT |
+                        VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
+                        VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
+                        VK_SHADER_STAGE_FRAGMENT_BIT;
+                    subgroupProps->supportedOperations =
+                        VK_SUBGROUP_FEATURE_BASIC_BIT |
+                        VK_SUBGROUP_FEATURE_VOTE_BIT |
+                        VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
+                        VK_SUBGROUP_FEATURE_BALLOT_BIT |
+                        VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
+                        VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
+                        // VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
+                        VK_SUBGROUP_FEATURE_QUAD_BIT;
+                    subgroupProps->quadOperationsInAllStages = true;
+                }
+				break;
+#endif
 			default:
 				break;
 		}
@@ -1093,6 +1116,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
             _metalFeatures.supportedSampleCounts |= sc;
         }
     }
+
+    static const uint32_t kAMDVendorId = 0x1002;
+    _metalFeatures.subgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
 
 #define setMSLVersion(maj, min)	\
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
