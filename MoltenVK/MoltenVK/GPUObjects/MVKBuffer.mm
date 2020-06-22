@@ -182,6 +182,8 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 	if (_mtlBuffer) { return _mtlBuffer; }
 	if (_deviceMemory) {
 		if (_deviceMemory->getMTLHeap()) {
+            lock_guard<mutex> lock(_lock);
+            if (_mtlBuffer) { return _mtlBuffer; }
 			_mtlBuffer = [_deviceMemory->getMTLHeap() newBufferWithLength: getByteCount()
 																  options: _deviceMemory->getMTLResourceOptions()
 																   offset: _deviceMemoryOffset];	// retained
@@ -197,6 +199,9 @@ id<MTLBuffer> MVKBuffer::getMTLBuffer() {
 id<MTLBuffer> MVKBuffer::getMTLBufferCache() {
 #if MVK_MACOS
     if (_isHostCoherentTexelBuffer && !_mtlBufferCache) {
+        lock_guard<mutex> lock(_lock);
+        if (_mtlBufferCache) { return _mtlBufferCache; }
+
         _mtlBufferCache = [_device->getMTLDevice() newBufferWithLength: getByteCount()
                                                                options: MTLResourceStorageModeManaged];    // retained
         flushToDevice(_deviceMemoryOffset, _byteCount);

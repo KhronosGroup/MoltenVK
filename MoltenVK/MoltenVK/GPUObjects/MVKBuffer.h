@@ -104,6 +104,7 @@ protected:
 	bool _isHostCoherentTexelBuffer = false;
     id<MTLBuffer> _mtlBufferCache = nil;
 	id<MTLBuffer> _mtlBuffer = nil;
+    std::mutex _lock;
 };
 
 
