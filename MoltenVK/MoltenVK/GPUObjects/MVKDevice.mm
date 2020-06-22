@@ -241,7 +241,6 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                     subgroupProps->supportedStages =
                         VK_SHADER_STAGE_COMPUTE_BIT |
                         VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                        VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT |
                         VK_SHADER_STAGE_FRAGMENT_BIT;
                     subgroupProps->supportedOperations =
                         VK_SUBGROUP_FEATURE_BASIC_BIT |
@@ -1117,8 +1116,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
     }
 
-    static const uint32_t kAMDVendorId = 0x1002;
-    _metalFeatures.subgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
+#if MVK_MACOS
+    if (mvkOSVersionIsAtLeast(10.14)) {
+        static const uint32_t kAMDVendorId = 0x1002;
+        _metalFeatures.subgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
+    }
+#endif
 
 #define setMSLVersion(maj, min)	\
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
