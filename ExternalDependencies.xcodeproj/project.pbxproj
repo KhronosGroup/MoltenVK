@@ -55,11 +55,12 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7F521CEC81B0013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies" */;
 			buildPhases = (
+				A9FC5F8B249DB48D003CB086 /* Package Finish */,
 			);
 			dependencies = (
+				A972A7F921CEC8500013AB25 /* PBXTargetDependency */,
 				A972A7FB21CEC8540013AB25 /* PBXTargetDependency */,
 				2FEA0CF82490344F00EEF3AD /* PBXTargetDependency */,
-				A972A7F921CEC8500013AB25 /* PBXTargetDependency */,
 			);
 			name = ExternalDependencies;
 			productName = "ExternalLibraries-macOS";
@@ -2185,6 +2186,7 @@
 		A9765DF02485758500FDD115 /* decoration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = decoration.h; sourceTree = "<group>"; };
 		A9C2104521D14FD7006BA2D3 /* fetchDependencies */ = {isa = PBXFileReference; lastKnownFileType = text; path = fetchDependencies; sourceTree = "<group>"; };
 		A9C2104721D15843006BA2D3 /* ExternalRevisions */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ExternalRevisions; sourceTree = "<group>"; };
+		A9FC5F7F249DA96D003CB086 /* package_ext_libs_finish.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_finish.sh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -2391,6 +2393,7 @@
 				A932E9DF249BC44D00D64150 /* create_fat_ext_libs.sh */,
 				A932E9C5249A743B00D64150 /* create_fat_lib_func.sh */,
 				A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */,
+				A9FC5F7F249DA96D003CB086 /* package_ext_libs_finish.sh */,
 				A9679AAE21D269D900856BF7 /* package_ext_libs.sh */,
 				A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */,
 			);
@@ -4068,6 +4071,24 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "export MVK_OS=\"tvOS\"\nexport MVK_OS_PROD_EXTN=\"appletvos\"\nexport MVK_SIM_PROD_EXTN=\"appletvsimulator\"\n\n. \"${SRCROOT}/Scripts/create_fat_ext_libs.sh\"\n";
+		};
+		A9FC5F8B249DB48D003CB086 /* Package Finish */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Package Finish";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/package_ext_libs_finish.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

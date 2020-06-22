@@ -36,6 +36,9 @@
 #              Build the external libraries in Debug mode, which may be useful when debugging
 #              and tracing calls into those libraries.
 #
+#      --no-parallel-build
+#              Build the external libraries serially instead of in parallel using background processes.
+#
 #      --glslang-root path
 #              "path" specifies a directory path to a KhronosGroup/glslang repository.
 #              This repository does need to be built and the build directory must be in the
@@ -74,6 +77,7 @@ BLD_MACOS=""
 BLD_SPECIFIED=""
 XC_CONFIG="Release"
 XC_BUILD_VERBOSITY="-quiet"
+XC_USE_BCKGND="Y"
 V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
 GLSLANG_ROOT=""
@@ -119,6 +123,10 @@ while (( "$#" )); do
          ;;
        --debug)
          XC_CONFIG="Debug"
+         shift 1
+         ;;
+       --no-parallel-build)
+         XC_USE_BCKGND=""
          shift 1
          ;;
        -v)
@@ -357,57 +365,102 @@ cd -  > /dev/null
 cd ..
 
 
-# -------------- Build MoltenVK dependencies -----------------
+# -------------- Build MoltenVK external library dependencies -----------------
 echo
-echo ========== Building dependency libraries quietly. Please be patient on first build. ==========
-echo
+echo ========== Started building dependency libraries at `date +"%r"` ==========
+echo Please be patient on first build
 
-# Build an Xcode scheme
-function build() {
+# Build an Xcode scheme for an OS and platform
+# 1 - OS
+# 2 - platform
+function build_impl() {
+	XC_OS=${1}
+	XC_PLTFM=${2}
+
+	XC_SCHEME="${EXT_DEPS}-${XC_OS}"
+	XC_LCL_DD_PATH="${XC_DD_PATH}/Intermediates/${XC_OS}"
+	XC_DEST="generic/platform=${XC_PLTFM}"
+
 	echo Building external libraries for ${XC_PLTFM}
+
 	xcodebuild 										\
 		-project "${XC_PROJ}"						\
 		-scheme "${XC_SCHEME}"						\
-		-destination "generic/platform=${XC_PLTFM}"	\
+		-destination "${XC_DEST}"					\
 		-configuration "${XC_CONFIG}"				\
-		-derivedDataPath "${XC_DD_PATH}"			\
+		-derivedDataPath "${XC_LCL_DD_PATH}"		\
 		${XC_BUILD_VERBOSITY}						\
 		build
+
+	echo Completed building external libraries for ${XC_PLTFM}
+}
+
+# Select whether or not to run the build in parallel.
+# 1 - OS
+# 2 - platform
+function build() {
+	if [ "$XC_USE_BCKGND" != "" ]; then
+		build_impl ${1} ${2} &
+	else
+		build_impl ${1} ${2}
+	fi
+}
+
+# Build a fat library for the OS containing code for the OS and its Simulator
+# Builds serially to ensure both are built
+# 1 - OS
+function build_fat_impl() {
+	XC_OS=${1}
+
+	build_impl ${XC_OS} ${XC_OS}
+	build_impl ${XC_OS} "${XC_OS} Simulator"
+}
+
+# Select whether or not to run the build in parallel.
+# 1 - OS
+function build_fat() {
+	if [ "$XC_USE_BCKGND" != "" ]; then
+		build_fat_impl ${1} &
+	else
+		build_fat_impl ${1}
+	fi
 }
 
 EXT_DEPS=ExternalDependencies
 XC_PROJ="${EXT_DEPS}.xcodeproj"
 XC_DD_PATH="${EXT_DIR}/build"
 
-if [ "$BLD_IOS" != "" ]; then
-	XC_SCHEME="${EXT_DEPS}-iOS"
-	XC_PLTFM="iOS"
-	build
+# Structure build tasks by platform so they can be built in parallel per platform.
+# Content for each platform must be built in series to avoid
+trap "exit" INT TERM ERR
+trap "kill 0" EXIT
+
+if [ "$BLD_MACOS" != "" ]; then
+	build "macOS" "macOS"
 fi
 
-if [ "$BLD_IOS_SIM" != "" ]; then
-	XC_SCHEME="${EXT_DEPS}-iOS"
-	XC_PLTFM="iOS Simulator"
-	build
+if [ "$BLD_IOS" != "" ]; then
+	if [ "$BLD_IOS_SIM" != "" ]; then
+		build_fat "iOS"
+	else
+		build "iOS" "iOS"
+	fi
 fi
 
 if [ "$BLD_TVOS" != "" ]; then
-	XC_SCHEME="${EXT_DEPS}-tvOS"
-	XC_PLTFM="tvOS"
-	build
+	if [ "$BLD_TVOS_SIM" != "" ]; then
+		build_fat "tvOS"
+	else
+		build "tvOS" "tvOS"
+	fi
 fi
 
-if [ "$BLD_TVOS_SIM" != "" ]; then
-	XC_SCHEME="${EXT_DEPS}-tvOS"
-	XC_PLTFM="tvOS Simulator"
-	build
-fi
+# Wait for any background process (if selected) to finish
+wait
 
-if [ "$BLD_MACOS" != "" ]; then
-	XC_SCHEME="${EXT_DEPS}-macOS"
-	XC_PLTFM="macOS"
-	build
-fi
+# Update latest symlink and clean MoltenVK for rebuild
+PROJECT_DIR="."
+CONFIGURATION=${XC_CONFIG}
+. "./Scripts/package_ext_libs_finish.sh"
 
-echo ========== Done! ==========
-
+echo ========== Finished at `date +"%r"` ==========

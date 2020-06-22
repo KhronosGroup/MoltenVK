@@ -6,7 +6,7 @@ osx_image: xcode11.5
 
 # Build dependencies with verbose logging to avoid Travis timing out.
 install:
-  - ./fetchDependencies -v
+  - ./fetchDependencies -v --macos
 
 script:
   - xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package"
