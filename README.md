@@ -158,9 +158,9 @@ platforms, or just one platform (in **_Release_** configuration):
 
 - **MoltenVK Package** 
 - **MoltenVK Package (Debug)** 
+- **MoltenVK Package (macOS only)** 
 - **MoltenVK Package (iOS only)**
 - **MoltenVK Package (tvOS only)**
-- **MoltenVK Package (macOS only)** 
 
 Each of these`MoltenVKPackaging.xcodeproj` *Xcode* project *Schemes* puts the resulting packages in the 
 `Package` directory, creating it if necessary. This directory contains separate `Release` and `Debug` 
