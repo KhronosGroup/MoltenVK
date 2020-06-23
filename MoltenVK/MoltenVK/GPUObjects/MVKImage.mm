@@ -885,7 +885,7 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	bool is2D = (getImageType() == VK_IMAGE_TYPE_2D);
 	bool isCompressed = pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed;
 
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	if (isCompressed && !is2D) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
 	}

@@ -723,12 +723,17 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                         [cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
                                                                             offset: tcLevelBuff->_offset
                                                                     instanceStride: 0];
+#if MVK_MACOS_OR_IOS
                         [cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
                                                   patchIndexBuffer: nil
                                             patchIndexBufferOffset: 0
                                                     indirectBuffer: tcIndirectBuff->_mtlBuffer
                                               indirectBufferOffset: mtlTCIndBuffOfst];
-                        mtlTCIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
+#endif
+#if MVK_TVOS
+						reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
+#endif
+						mtlTCIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
                         // Mark pipeline, resources, and tess control push constants as dirty
                         // so I apply them during the next stage.
                         cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
@@ -978,12 +983,17 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                         [cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
                                                                             offset: tcLevelBuff->_offset
                                                                     instanceStride: 0];
+#if MVK_MACOS_OR_IOS
                         [cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
                                                   patchIndexBuffer: nil
                                             patchIndexBufferOffset: 0
                                                     indirectBuffer: tcIndirectBuff->_mtlBuffer
                                               indirectBufferOffset: mtlTCIndBuffOfst];
-                        mtlTCIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
+#endif
+#if MVK_TVOS
+						reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
+#endif
+						mtlTCIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
                         // Mark pipeline, resources, and tess control push constants as dirty
                         // so I apply them during the next stage.
                         cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();

@@ -96,8 +96,10 @@ void MVKViewportCommandEncoderState::encodeImpl(uint32_t stage) {
 		for (uint32_t vpIdx = 0; vpIdx < vpCnt; vpIdx++) {
 			mtlViewports[vpIdx] = mvkMTLViewportFromVkViewport(usingViewports[vpIdx]);
 		}
+#if MVK_MACOS_OR_IOS
         [_cmdEncoder->_mtlRenderEncoder setViewports: mtlViewports count: vpCnt];
-    } else {
+#endif
+	} else {
         [_cmdEncoder->_mtlRenderEncoder setViewport: mvkMTLViewportFromVkViewport(usingViewports[0])];
     }
 }
@@ -149,7 +151,9 @@ void MVKScissorCommandEncoderState::encodeImpl(uint32_t stage) {
 		for (uint32_t sIdx = 0; sIdx < sCnt; sIdx++) {
 			mtlScissors[sIdx] = mvkMTLScissorRectFromVkRect2D(_cmdEncoder->clipToRenderArea(usingScissors[sIdx]));
 		}
+#if MVK_MACOS_OR_IOS
 		[_cmdEncoder->_mtlRenderEncoder setScissorRects: mtlScissors count: sCnt];
+#endif
 	} else {
 		[_cmdEncoder->_mtlRenderEncoder setScissorRect: mvkMTLScissorRectFromVkRect2D(_cmdEncoder->clipToRenderArea(usingScissors[0]))];
 	}
