@@ -611,6 +611,7 @@ typedef struct {
 	VkBool32 placementHeaps;					/**< If true, MTLHeap objects support placement of resources. */
 	VkDeviceSize pushConstantSizeAlignment;		/**< The alignment used internally when allocating memory for push constants. Must be PoT. */
 	uint32_t maxTextureLayers;					/**< The maximum number of layers in an array texture. */
+    uint32_t subgroupSize;			            /**< The number of threads in a SIMD-group. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */
