@@ -36,40 +36,50 @@ extern "C" {
  */
 #ifndef MVK_DEBUG
 #	ifdef DEBUG
-#		define MVK_DEBUG		1
+#		define MVK_DEBUG			1
 #	else
-#		define MVK_DEBUG		0
+#		define MVK_DEBUG			0
 #	endif
 #endif
 
 /** Building for macOS. */
 #ifndef MVK_MACOS
-#	define MVK_MACOS			TARGET_OS_OSX
+#	define MVK_MACOS				TARGET_OS_OSX
 #endif
 
 /** Building for iOS. */
 #ifndef MVK_IOS
-#	define MVK_IOS				TARGET_OS_IOS
+#	define MVK_IOS					TARGET_OS_IOS
 #endif
 
 /** Building for tvOS. */
 #ifndef MVK_TVOS
-#	define MVK_TVOS				TARGET_OS_TV
+#	define MVK_TVOS					TARGET_OS_TV
 #endif
 
 /** Building for iOS or tvOS. */
 #ifndef MVK_IOS_OR_TVOS
-#	define MVK_IOS_OR_TVOS		(MVK_IOS || MVK_TVOS)
+#	define MVK_IOS_OR_TVOS			(MVK_IOS || MVK_TVOS)
 #endif
 
 /** Building for iOS or tvOS. */
 #ifndef MVK_MACOS_OR_IOS
-#	define MVK_MACOS_OR_IOS		(MVK_MACOS || MVK_IOS)
+#	define MVK_MACOS_OR_IOS			(MVK_MACOS || MVK_IOS)
 #endif
 
-/** Building for iOS or tvOS Simulator. */
+/** Building for a Simulator. */
 #ifndef MVK_OS_SIMULATOR
-#	define MVK_OS_SIMULATOR		TARGET_OS_SIMULATOR
+#	define MVK_OS_SIMULATOR			TARGET_OS_SIMULATOR
+#endif
+
+/** Building for iOS Simulator. */
+#ifndef MVK_IOS_SIMULATOR
+#	define MVK_IOS_SIMULATOR		(MVK_IOS && MVK_OS_SIMULATOR)
+#endif
+
+/** Building for tvOS Simulator. */
+#ifndef MVK_TVOS_SIMULATOR
+#	define MVK_TVOS_SIMULATOR		(MVK_TVOS && MVK_OS_SIMULATOR)
 #endif
 
 /** Directive to identify public symbols. */

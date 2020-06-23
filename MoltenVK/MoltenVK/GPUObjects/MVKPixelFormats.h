@@ -317,6 +317,9 @@ protected:
 									   MTLFeatureSet mtlFeatSet,
 									   MTLPixelFormat mtlPixFmt,
 									   MVKMTLFmtCaps mtlFmtCaps);
+	void disableMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt,
+										   MVKMTLFmtCaps mtlFmtCaps);
+	void disableAllMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt);
 	void addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 										MTLFeatureSet mtlFeatSet,
 										MTLVertexFormat mtlVtxFmt,
