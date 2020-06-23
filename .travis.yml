@@ -9,6 +9,6 @@ install:
   - ./fetchDependencies -v --macos
 
 script:
-  - xcodebuild -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package"
-  - xcodebuild -workspace Demos/Demos.xcworkspace -scheme "Cube-macOS"
+  - xcodebuild build -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (macOS only)"
+  - xcodebuild build -workspace Demos/Demos.xcworkspace -scheme "Cube-macOS"
 

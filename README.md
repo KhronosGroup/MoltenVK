@@ -178,14 +178,14 @@ to test your app with either a **_Debug_** build, or a higher-performance **_Rel
 ### Building from the Command Line
 
 If you prefer to build **MoltenVK** from the command line, or to include the activity in a larger build script,
-you can do so using the following command within the `MoltenVK` repository folder, and identifying one of the 
-*Xcode Schemes* from the list above. For example, the following command will build **MoltenVK** in the 
-**_Release_** configuration for both *macOS* and *iOS*:
+you can do so by executing a command similar to the following command within the `MoltenVK` repository folder, 
+and identifying one of the *Xcode Schemes* from the list above. For example, the following command will build 
+**MoltenVK** in the **_Debug_** configuration for *macOS* only:
 
-	xcodebuild -quiet -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package" build
+	xcodebuild build -quiet -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (macOS only)" -configuration "Debug"
 
 Alternately, you can use the basic `Makefile` in the `MoltenVK` repository folder to build **MoltenVK** 
-in the **_Release_** configuration from the command line. The following `make` targets are provided:
+from the command line. The following `make` targets are provided:
 
 	make
 	make all
@@ -194,38 +194,32 @@ in the **_Release_** configuration from the command line. The following `make` t
 	make iosfat
 	make tvos
 	make tvosfat
+	
+	make all-debug
+	make macos-debug
+	make ios-debug
+	make iosfat-debug
+	make tvos-debug
+	make tvosfat-debug
+	
 	make clean
 	make install
 
-
-Running `make all` is the same as running all of `make macos`, `make iosfat`, and `make tvosfat`. 
-Running `make` with no arguments is the same as running `make all`.
-
-The `install` target will copy the most recently built *macOS* `MoltenVK.framework` into 
-the `/Library/Frameworks` folder of your computer. Since `/Library/Frameworks` is protected, 
-you will generally need to run it as `sudo make install` and enter your password. 
-
-The `install` target just installs the built framework, it does not first build the framework.
-You will first need to at least run `make macos`, or use *Xcode* to build the framework as described above.
+- The `all` target is the default target. Running `make` with no arguments is the same as running `make all`.
+- The `*fat*` targets build fat binaries containing both platform and simulator code.
+- The `*-debug` targets build the binaries using the **_Debug_** configuration.
+- The `all` target executes the `macos`, `iosfat`, and `tvosfat` targets.
+- The `all-debug` target executes the `macos-debug`, `iosfat-debug`, and `tvosfat-debug` targets.
+- The `install` target will copy the most recently built *macOS* `MoltenVK.framework` into 
+  the `/Library/Frameworks` folder of your computer. Since `/Library/Frameworks` is protected, 
+  you will generally need to run it as `sudo make install` and enter your password.
+  The `install` target just installs the   built framework, it does not first build the framework.
+  You will first need to at least run `make macos` first.
 
 The `make` targets all require that *Xcode* is installed on your system. 
 
 Building from the command line creates the same `Package` folder structure described above when 
 building from within *Xcode*.
-
-
-### Building Within a Larger External Build Environment
-
-If you build **MoltenVK** as part of a larger build environment, that does not use the scripts or *Xcode* 
-projects provided by **MoltenVK**, you may be interested in certain build options designed to allow you to 
-customize the use of **MoltenVK** within your custom build environment. These options are not available
-in the default **MoltenVK** build environment described in the previous sections.
-
-- `MoltenVKShaderConverter` uses the `SPIRV-Tools` external library to log SPIR-V code for diagnostics. 
-  If this is not useful to you, you can define the `MVK_EXCLUDE_SPIRV_TOOLS` when building the 
-  `MoltenVKShaderConverter` code base, and **MoltenVK** will not attempt to use code from the `SPIRV-Tools` 
-  repository. In this way, you will not need to retrieve or build the `SPIRV-Tools` repository, or link to 
-  a `SPIRV-Tools` external library.
 
 
 
