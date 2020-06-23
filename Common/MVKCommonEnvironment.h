@@ -24,12 +24,12 @@ extern "C" {
 #endif	//  __cplusplus
 
 
-#include <Availability.h>
+#include <TargetConditionals.h>
 
 
 /**
- * Compiler build setting that ensures a definite value for whether this build is
- * a debug build or not.
+ * Compiler build setting that ensures a definite value for whether this
+ * build is a debug build or not.
  *
  * If the standard DEBUG build setting is defined, MVK_DEBUG is set to true,
  * otherwise, it is set to false.
@@ -39,43 +39,37 @@ extern "C" {
 #		define MVK_DEBUG		1
 #	else
 #		define MVK_DEBUG		0
-#	endif	// DEBUG
-#endif	// MVK_DEBUG
-
-/** Building for tvOS. Use ifdef instead of defined() operator to allow MVK_TVOS to be used in expansions */
-#ifndef MVK_TVOS
-#    ifdef __TV_OS_VERSION_MAX_ALLOWED
-#        define MVK_TVOS            1
-#    else
-#        define MVK_TVOS            0
-#    endif
+#	endif
 #endif
 
-/** Building for iOS or tvOS. Use ifdef instead of defined() operator to allow MVK_IOS_OR_TVOS to be used in expansions */
-#ifndef MVK_IOS_OR_TVOS
-#    if __IPHONE_OS_VERSION_MAX_ALLOWED
-#        define MVK_IOS_OR_TVOS     1
-#    else
-#        define MVK_IOS_OR_TVOS     0
-#    endif
-#endif
-
-/** Building for iOS. Use ifdef instead of defined() operator to allow MVK_IOS to be used in expansions */
-#ifndef MVK_IOS
-#    if MVK_IOS_OR_TVOS && !MVK_TVOS
-#        define MVK_IOS            1
-#    else
-#        define MVK_IOS            0
-#    endif
-#endif
-
-/** Building for macOS. Use ifdef instead of defined() operator to allow MVK_MACOS to be used in expansions */
+/** Building for macOS. */
 #ifndef MVK_MACOS
-#    ifdef __MAC_OS_X_VERSION_MAX_ALLOWED
-#        define MVK_MACOS        1
-#    else
-#        define MVK_MACOS        0
-#    endif
+#	define MVK_MACOS			TARGET_OS_OSX
+#endif
+
+/** Building for iOS. */
+#ifndef MVK_IOS
+#	define MVK_IOS				TARGET_OS_IOS
+#endif
+
+/** Building for tvOS. */
+#ifndef MVK_TVOS
+#	define MVK_TVOS				TARGET_OS_TV
+#endif
+
+/** Building for iOS or tvOS. */
+#ifndef MVK_IOS_OR_TVOS
+#	define MVK_IOS_OR_TVOS		(MVK_IOS || MVK_TVOS)
+#endif
+
+/** Building for iOS or tvOS. */
+#ifndef MVK_MACOS_OR_IOS
+#	define MVK_MACOS_OR_IOS		(MVK_MACOS || MVK_IOS)
+#endif
+
+/** Building for iOS or tvOS Simulator. */
+#ifndef MVK_OS_SIMULATOR
+#	define MVK_OS_SIMULATOR		TARGET_OS_SIMULATOR
 #endif
 
 /** Directive to identify public symbols. */
