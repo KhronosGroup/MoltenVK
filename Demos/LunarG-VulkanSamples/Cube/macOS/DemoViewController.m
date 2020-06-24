@@ -43,8 +43,9 @@
 
 	self.view.wantsLayer = YES;		// Back the view with a layer created by the makeBackingLayer method.
 
-	const char* arg = "cube";
-	demo_main(&demo, self.view.layer, 1, &arg);
+	const char* argv[] = { "cube" };
+	int argc = sizeof(argv)/sizeof(char*);
+	demo_main(&demo, self.view.layer, argc, argv);
 
 	CVDisplayLinkCreateWithActiveCGDisplays(&_displayLink);
 	CVDisplayLinkSetOutputCallback(_displayLink, &DisplayLinkCallback, &demo);

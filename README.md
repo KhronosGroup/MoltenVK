@@ -17,7 +17,7 @@ For best results, use a Markdown reader.*
 Table of Contents
 -----------------
 
-- [Developing Vulkan Applications on macOS and iOS](#developing_vulkan)
+- [Developing Vulkan Applications on *macOS, iOS, and tvOS*](#developing_vulkan)
 - [Introduction to **MoltenVK**](#intro)
 - [Fetching **MoltenVK** Source Code](#install)
 - [Building **MoltenVK**](#building)
@@ -30,8 +30,8 @@ Table of Contents
 
 
 <a name="developing_vulkan"></a>
-Developing Vulkan Applications for macOS and iOS
-------------------------------------------------
+Developing Vulkan Applications for *macOS, iOS, and tvOS*
+---------------------------------------------------------
 
 The recommended method for developing a *Vulkan* application for *macOS* is to use the 
 [*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home).
@@ -43,9 +43,10 @@ tool for application developers because they identify inappropriate use of the *
 If you are developing a *Vulkan* application for *macOS*, it is highly recommended that you use the
 [*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home) and the **MoltenVK** library included in it. 
 
-If you are developing a *Vulkan* application for *iOS*, or are developing a *Vulkan* application for
-*macOS* and want to use a different **MoltenVK** runtime library than provided in the *macOS Vulkan SDK*,
-you can use this document to learn how to build a **MoltenVK** runtime library from source code.
+If you are developing a *Vulkan* application for *iOS* or *tvOS*, or are developing a *Vulkan* 
+application for *macOS* and want to use a different version of the **MoltenVK** runtime library 
+provided in the *macOS Vulkan SDK*, you can use this document to learn how to build a **MoltenVK** 
+runtime library from source code.
 
 To learn how to integrate the **MoltenVK** runtime library into a game or application, 
 see the [`MoltenVK_Runtime_UserGuide.md `](Docs/MoltenVK_Runtime_UserGuide.md) 
@@ -59,30 +60,31 @@ Introduction to MoltenVK
 
 **MoltenVK** is a layered implementation of [*Vulkan 1.0*](https://www.khronos.org/vulkan) 
 graphics and compute functionality, that is built on Apple's [*Metal*](https://developer.apple.com/metal) 
-graphics and compute framework on both *iOS* and *macOS*. **MoltenVK** allows you to use *Vulkan* graphics 
-and compute functionality to develop modern, cross-platform, high-performance graphical games and applications, 
-and to run them across many platforms, including both *iOS* and *macOS*.
+graphics and compute framework on *macOS*, *iOS*, and *tvOS*. **MoltenVK** allows you to use *Vulkan* 
+graphics and compute functionality to develop modern, cross-platform, high-performance graphical 
+games and applications, and to run them across many platforms, including *macOS*, *iOS*, and *tvOS*.
 
 *Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than 
 *Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
 to their *MSL* equivalents.
 
-To provide *Vulkan* capability to the *iOS* and *macOS* platforms, **MoltenVK** uses *Apple's* 
+To provide *Vulkan* capability to the *macOS*, *iOS*, and *tvOS* platforms, **MoltenVK** uses *Apple's* 
 publicly available API's, including *Metal*. **MoltenVK** does **_not_** use any private or
 undocumented API calls or features, so your app will be compatible with all standard distribution 
 channels, including *Apple's App Store*.
 
 The **MoltenVK** runtime package contains two products:
 
-- **MoltenVK** is a driver-level implementation of the [*Vulkan 1.0*](https://www.khronos.org/vulkan) 
-  graphics and compute API.
+- **MoltenVK** is a implementation of an almost-complete subset of the 
+  [*Vulkan 1.0*](https://www.khronos.org/vulkan) graphics and compute API.
 
 - **MoltenVKShaderConverter** converts *SPIR-V* shader code to *Metal Shading Language (MSL)*
   shader code, and converts *GLSL* shader source code to *SPIR-V* shader code and/or
-  *Metal Shading Language (MSL)* shader code. The *SPIR-V* converter is included in the 
-  **MoltenVK** runtime to automatically convert *SPIR-V* shaders to their *MSL* equivalents. 
-  In addition, both the *SPIR-V* and *GLSL* converters can be be packaged into a stand-alone 
-  command-line *macOS* tool for converting shaders at development time.
+  *Metal Shading Language (MSL)* shader code. The *SPIR-V* portion of the converter is also 
+  embedded in the **MoltenVK** runtime to automatically convert *SPIR-V* shaders to their *MSL* 
+  equivalents. In addition, both the *SPIR-V* and *GLSL* converters are packaged into a 
+  stand-alone command-line `MoltenVKShaderConverter` *macOS* tool for converting shaders 
+  at development time from the command line.
 
 
 
@@ -110,7 +112,19 @@ on which **MoltenVK** relies:
 3. Retrieve and build the external libraries:
 
 		cd MoltenVK
-		./fetchDependencies
+		./fetchDependencies [platform...]
+
+When running the `fetchDependencies` script, you must specify one or more platforms 
+for which to build the external libraries. The platform choices include: 
+
+	--all --macos --ios --iosfat --tvos --tvosfat
+
+You can specify multiple of these selections. The `--iosfat` and `--tvosfat` selection builds one 
+binary for each external library, with each binary including code for both *iOS* and *iOS Simulator* 
+platforms, or  *tvOS* and *tvOS Simulator* platforms, respectively. The `--all` selection is the same 
+as selecting `--macos --iosfat --tvosfat` and results in three binaries for each external library: 
+a *macOS* binary, a *fat iOS* binary, and a *fat tvOS* binary. The more selections you include,
+the longer the build time.
 
 For more information about the external open-source libraries used by **MoltenVK**,
 see the [`ExternalRevisions/README.md`](ExternalRevisions/README.md) document.
@@ -123,13 +137,16 @@ Building **MoltenVK**
 During building, **MoltenVK** references the latest *Apple SDK* frameworks. To access these frameworks, 
 and to avoid build errors, be sure to use the latest publicly available version of *Xcode*.
 
->***Note:*** To support `IOSurfaces` on *iOS*, **MoltenVK**, and any app that uses **MoltenVK**, 
-must be built with a minimum **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET `) build 
-setting of `iOS 11.0` or greater.
+>***Note:*** To support `IOSurfaces` on *iOS* or *tvOS*, **MoltenVK**, and any app that uses 
+**MoltenVK**, must be built with a minimum **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET `) 
+build setting of `iOS 11.0` or greater, or a minimum **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET `) 
+build setting of `tvOS 11.0` or greater.
 
-Once built, the **MoltenVK** libraries can be run on *iOS* or *macOS* devices that support *Metal*.
+Once built, the **MoltenVK** libraries can be run on *macOS*, *iOS* or *tvOS* devices that support *Metal*,
+or on the *Xcode* *iOS Simulator* or *tvOS Simulator*.
 
-- At runtime, **MoltenVK** requires at least *macOS 10.11* or *iOS 9* (or *iOS 11* if using `IOSurfaces`).
+- At runtime, **MoltenVK** requires at least *macOS 10.11*, *iOS 9*, or *tvOS 9* 
+  (or *iOS 11* or *tvOS 11* if using `IOSurfaces`).
 - Information on *macOS* devices that are compatible with *Metal* can be found in 
   [this article](http://www.idownloadblog.com/2015/06/22/how-to-find-mac-el-capitan-metal-compatible).
 - Information on *iOS* devices that are compatible with *Metal* can be found in 
@@ -141,13 +158,14 @@ and package the entire **MoltenVK** runtime distribution package, or to build in
 
 To build a **MoltenVK** runtime distribution package, suitable for testing and integrating into an app, 
 open `MoltenVKPackaging.xcodeproj` in *Xcode*, and use one of the following *Xcode Schemes*, depending
-on whether you want a **_Release_** or **_Debug_** configuration, and whether you want to build for both
-the *iOS* and *macOS* platforms, or just one platform (in **_Release_** configuration):
+on whether you want a **_Release_** or **_Debug_** configuration, and whether you want to build for all 
+platforms, or just one platform (in **_Release_** configuration):
 
 - **MoltenVK Package** 
 - **MoltenVK Package (Debug)** 
-- **MoltenVK Package (iOS only)**
 - **MoltenVK Package (macOS only)** 
+- **MoltenVK Package (iOS only)**
+- **MoltenVK Package (tvOS only)**
 
 Each of these`MoltenVKPackaging.xcodeproj` *Xcode* project *Schemes* puts the resulting packages in the 
 `Package` directory, creating it if necessary. This directory contains separate `Release` and `Debug` 
@@ -165,51 +183,48 @@ to test your app with either a **_Debug_** build, or a higher-performance **_Rel
 ### Building from the Command Line
 
 If you prefer to build **MoltenVK** from the command line, or to include the activity in a larger build script,
-you can do so using the following command within the `MoltenVK` repository folder, and identifying one of the 
-*Xcode Schemes* from the list above. For example, the following command will build **MoltenVK** in the 
-**_Release_** configuration for both *macOS* and *iOS*:
+you can do so by executing a command similar to the following command within the `MoltenVK` repository folder, 
+and identifying one of the *Xcode Schemes* from the list above. For example, the following command will build 
+**MoltenVK** in the **_Debug_** configuration for *macOS* only:
 
-	xcodebuild -quiet -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package" build
+	xcodebuild build -quiet -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (macOS only)" -configuration "Debug"
 
 Alternately, you can use the basic `Makefile` in the `MoltenVK` repository folder to build **MoltenVK** 
-in the **_Release_** configuration from the command line. The following `make` targets are provided:
+from the command line. The following `make` targets are provided:
 
 	make
 	make all
 	make macos
 	make ios
+	make iosfat
+	make tvos
+	make tvosfat
+	
+	make all-debug
+	make macos-debug
+	make ios-debug
+	make iosfat-debug
+	make tvos-debug
+	make tvosfat-debug
+	
 	make clean
 	make install
 
-
-Running `make all` is the same as running both `make macos` and `make ios`. Running `make` with no 
-arguments is the same as running `make all`.
-
-The `install` target will copy the most recently built *macOS* `MoltenVK.framework` into 
-the `/Library/Frameworks` folder of your computer. Since `/Library/Frameworks` is protected, 
-you will generally need to run it as `sudo make install` and enter your password. 
-
-The `install` target just installs the built framework, it does not first build the framework.
-So you will first need to at least run `make macos`, or use *Xcode* to build the framework as described above.
+- The `all` target is the default target. Running `make` with no arguments is the same as running `make all`.
+- The `*fat*` targets build fat binaries containing both platform and simulator code.
+- The `*-debug` targets build the binaries using the **_Debug_** configuration.
+- The `all` target executes the `macos`, `iosfat`, and `tvosfat` targets.
+- The `all-debug` target executes the `macos-debug`, `iosfat-debug`, and `tvosfat-debug` targets.
+- The `install` target will copy the most recently built *macOS* `MoltenVK.framework` into 
+  the `/Library/Frameworks` folder of your computer. Since `/Library/Frameworks` is protected, 
+  you will generally need to run it as `sudo make install` and enter your password.
+  The `install` target just installs the   built framework, it does not first build the framework.
+  You will first need to at least run `make macos` first.
 
 The `make` targets all require that *Xcode* is installed on your system. 
 
 Building from the command line creates the same `Package` folder structure described above when 
 building from within *Xcode*.
-
-
-### Building Within a Larger External Build Environment
-
-If you build **MoltenVK** as part of a larger build environment, that does not use the scripts or *Xcode* 
-projects provided by **MoltenVK**, you may be interested in certain build options designed to allow you to 
-customize the use of **MoltenVK** within your custom build environment. These options are not available
-in the default **MoltenVK** build environment described in the previous sections.
-
-- `MoltenVKShaderConverter` uses the `SPIRV-Tools` external library to log SPIR-V code for diagnostics. 
-  If this is not useful to you, you can define the `MVK_EXCLUDE_SPIRV_TOOLS` when building the 
-  `MoltenVKShaderConverter` code base, and **MoltenVK** will not attempt to use code from the `SPIRV-Tools` 
-  repository. In this way, you will not need to retrieve or build the `SPIRV-Tools` repository, or link to 
-  a `SPIRV-Tools` external library.
 
 
 
@@ -219,7 +234,7 @@ Running the **MoltenVK** Demo Applications
 
 Once you have compiled and built the **MoltenVK** runtime distribution package from this **MoltenVK** repository, 
 as described in the [Building **MoltenVK**](#building) section, you can explore how **MoltenVK** provides *Vulkan* 
-support on *iOS* and *macOS* by investigating and running the demo applications that are included in **MoltenVK**.
+support on  *macOS*, *iOS*, and *tvOS* by investigating and running the demo applications that are included in **MoltenVK**.
 
 The **MoltenVK** demo apps are located in the `Demos` folder. Each demo app is available as an *Xcode* project.
 To review and run the included demo apps, open the `Demos/Demos.xcworkspace` workspace in *Xcode*.
@@ -250,19 +265,20 @@ the contents of that directory out of this **MoltenVK** repository into your own
 **MoltenVK** and *Vulkan* Compliance
 ------------------------------------
 
-**MoltenVK** is designed to be a *Vulkan 1.0* driver that runs on *macOS* and *iOS* platforms by mapping *Vulkan*
-capability to native *Metal* capability.
+**MoltenVK** is designed to be an implementation of a *Vulkan 1.0* subset that runs on *macOS*, *iOS*, 
+and *tvOS* platforms by mapping *Vulkan* capability to native *Metal* capability.
 
 The fundamental design and development goal of **MoltenVK** is to provide this capability in a way that 
 is both maximally compliant with the *Vulkan 1.0* specification, and maximally  performant.
 
 Such compliance and performance is inherently affected by the capability available through *Metal*, as the 
-native driver on *macOS* and *iOS* platforms. *Vulkan* compliance may fall into one of the following categories:
+native graphics driver on *macOS*, *iOS*, and *tvOS* platforms. *Vulkan* compliance may fall into one of 
+the following categories:
 
-- Direct mapping between *Vulkan* capabilities and *Metal* capabilities. Within **MoltenVK**, almost all capability
-  is the result of this type of direct mapping. 
+- Direct mapping between *Vulkan* capabilities and *Metal* capabilities. Within **MoltenVK**, the vast
+  majority of *Vulkan* capability is the result of this type of direct mapping. 
   
-- Synthesized compliance through alternate implementation. A very small amount of capability is provided using
+- Synthesized compliance through alternate implementation. A small amount of capability is provided using
   this mechanism, such as via an extra render or compute shader stage.
 
 - Non-compliance. This appears where the capabilities of *Vulkan* and *Metal* are sufficiently different, that
@@ -276,10 +292,11 @@ The **MoltenVK** development team welcomes you to [post Issues](https://github.c
 of non-compliance, and engage in discussions about how compliance can be improved, and non-compliant features can 
 be implemented or worked around.
 
-**MoltenVK** is a key component of the [*Khronos Vulkan Portability Initiative*](https://www.khronos.org/vulkan/portability-initiative), 
+**MoltenVK** is a key component of the 
+[*Khronos Vulkan Portability Initiative*](https://www.khronos.org/vulkan/portability-initiative), 
 whose intention is to provide specifications, resources, and tools to allow developers to understand and design 
 their *Vulkan* apps for maximum cross-platform compatibility and portability, including on platforms, such as 
-*macOS* and *iOS*, where a native *Vulkan* driver is not available. 
+*macOS*, *iOS*, and *tvOS*, where a native *Vulkan* driver is not available. 
 
 
 

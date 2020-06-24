@@ -11,6 +11,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = 2FEA0AE52490320500EEF3AD /* Build configuration list for PBXAggregateTarget "ExternalDependencies-tvOS" */;
 			buildPhases = (
+				A9A5F2C1249D09820016D8B1 /* Create Fat Libraries */,
 				2FEA0AE42490320500EEF3AD /* Package External Libraries */,
 			);
 			dependencies = (
@@ -25,7 +26,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7E721CEC72F0013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-macOS" */;
 			buildPhases = (
-				A9679AB021D26C7000856BF7 /* Package External Libraries */,
+				A9679AB021D26C7000856BF7 /* Package Libraries */,
 			);
 			dependencies = (
 				A972A7E921CEC76A0013AB25 /* PBXTargetDependency */,
@@ -39,7 +40,8 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7ED21CEC8030013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-iOS" */;
 			buildPhases = (
-				A9679AAF21D26C1400856BF7 /* Package External Libraries */,
+				A932E9C6249A7B9B00D64150 /* Create Fat Libraries */,
+				A9679AAF21D26C1400856BF7 /* Package Libraries */,
 			);
 			dependencies = (
 				A972A7F121CEC8140013AB25 /* PBXTargetDependency */,
@@ -53,11 +55,12 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7F521CEC81B0013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies" */;
 			buildPhases = (
+				A9FC5F8B249DB48D003CB086 /* Package Finish */,
 			);
 			dependencies = (
+				A972A7F921CEC8500013AB25 /* PBXTargetDependency */,
 				A972A7FB21CEC8540013AB25 /* PBXTargetDependency */,
 				2FEA0CF82490344F00EEF3AD /* PBXTargetDependency */,
-				A972A7F921CEC8500013AB25 /* PBXTargetDependency */,
 			);
 			name = ExternalDependencies;
 			productName = "ExternalLibraries-macOS";
@@ -1652,12 +1655,13 @@
 		2FEA0B4A2490321700EEF3AD /* libglslang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libglslang.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEA0CD82490322100EEF3AD /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		2FEA0CEF2490322B00EEF3AD /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEA0CF6249032CF00EEF3AD /* package_ext_libs_tvos.sh */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.script.sh; path = package_ext_libs_tvos.sh; sourceTree = "<group>"; };
 		450A4F63221C5A95007203D7 /* spirv_reflect.hpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.h; path = spirv_reflect.hpp; sourceTree = "<group>"; };
 		450A4F64221C5A95007203D7 /* spirv_reflect.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = spirv_reflect.cpp; sourceTree = "<group>"; };
 		A90FD89F21CC4EAB00B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A90FD9E421CC4EB900B92BB2 /* libSPIRVCross.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVCross.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gen_spirv_cross_rev_hdr.sh; sourceTree = "<group>"; };
+		A932E9C5249A743B00D64150 /* create_fat_lib_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_lib_func.sh; sourceTree = "<group>"; };
+		A932E9DF249BC44D00D64150 /* create_fat_ext_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_ext_libs.sh; sourceTree = "<group>"; };
 		A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */ = {isa = PBXFileReference; lastKnownFileType = text; path = packagePregenSpirvToolsHeaders; sourceTree = "<group>"; };
 		A95D90A723A7F1E500CBCC60 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		A95D90AA23A7F1E500CBCC60 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
@@ -1761,8 +1765,6 @@
 		A95D911923A7F1E500CBCC60 /* Logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
 		A95D911A23A7F1E500CBCC60 /* doc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = doc.cpp; sourceTree = "<group>"; };
 		A95D911B23A7F1E500CBCC60 /* disassemble.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = disassemble.cpp; sourceTree = "<group>"; };
-		A9679AAC21D269D900856BF7 /* package_ext_libs_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_macos.sh; sourceTree = "<group>"; };
-		A9679AAD21D269D900856BF7 /* package_ext_libs_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_ios.sh; sourceTree = "<group>"; };
 		A9679AAE21D269D900856BF7 /* package_ext_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs.sh; sourceTree = "<group>"; };
 		A972A80F21CECBBF0013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A972A82321CECBE90013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -2184,6 +2186,7 @@
 		A9765DF02485758500FDD115 /* decoration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = decoration.h; sourceTree = "<group>"; };
 		A9C2104521D14FD7006BA2D3 /* fetchDependencies */ = {isa = PBXFileReference; lastKnownFileType = text; path = fetchDependencies; sourceTree = "<group>"; };
 		A9C2104721D15843006BA2D3 /* ExternalRevisions */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ExternalRevisions; sourceTree = "<group>"; };
+		A9FC5F7F249DA96D003CB086 /* package_ext_libs_finish.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_finish.sh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -2387,10 +2390,10 @@
 		A9679AAB21D2699800856BF7 /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
+				A932E9DF249BC44D00D64150 /* create_fat_ext_libs.sh */,
+				A932E9C5249A743B00D64150 /* create_fat_lib_func.sh */,
 				A91BF011235F9C510039B7DE /* gen_spirv_cross_rev_hdr.sh */,
-				A9679AAD21D269D900856BF7 /* package_ext_libs_ios.sh */,
-				2FEA0CF6249032CF00EEF3AD /* package_ext_libs_tvos.sh */,
-				A9679AAC21D269D900856BF7 /* package_ext_libs_macos.sh */,
+				A9FC5F7F249DA96D003CB086 /* package_ext_libs_finish.sh */,
 				A9679AAE21D269D900856BF7 /* package_ext_libs.sh */,
 				A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */,
 			);
@@ -2420,10 +2423,13 @@
 			isa = PBXGroup;
 			children = (
 				A90FD89F21CC4EAB00B92BB2 /* libSPIRVCross.a */,
+				2FEA0CEF2490322B00EEF3AD /* libSPIRVCross.a */,
 				A90FD9E421CC4EB900B92BB2 /* libSPIRVCross.a */,
 				A972A80F21CECBBF0013AB25 /* libSPIRVTools.a */,
+				2FEA0CD82490322100EEF3AD /* libSPIRVTools.a */,
 				A972A82321CECBE90013AB25 /* libSPIRVTools.a */,
 				A972ABDC21CED7BC0013AB25 /* libglslang.a */,
+				2FEA0B4A2490321700EEF3AD /* libglslang.a */,
 				A972ABF021CED7CB0013AB25 /* libglslang.a */,
 			);
 			name = Products;
@@ -2907,9 +2913,6 @@
 				A90FD9E921CC519E00B92BB2 /* External */,
 				A9679AAB21D2699800856BF7 /* Scripts */,
 				A972AD2421CEE30F0013AB25 /* Products */,
-				2FEA0CD82490322100EEF3AD /* libSPIRVTools.a */,
-				2FEA0B4A2490321700EEF3AD /* libglslang.a */,
-				2FEA0CEF2490322B00EEF3AD /* libSPIRVCross.a */,
 			);
 			sourceTree = "<group>";
 		};
@@ -3941,7 +3944,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Scripts/package_ext_libs_tvos.sh\"\n";
+			shellScript = "export MVK_OS=\"tvOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
 		};
 		2FEA0CEB2490322B00EEF3AD /* Generate Revision Header */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -3997,7 +4000,7 @@
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/Scripts/gen_spirv_cross_rev_hdr.sh\"\n";
 		};
-		A9679AAF21D26C1400856BF7 /* Package External Libraries */ = {
+		A932E9C6249A7B9B00D64150 /* Create Fat Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -4006,16 +4009,16 @@
 			);
 			inputPaths = (
 			);
-			name = "Package External Libraries";
+			name = "Create Fat Libraries";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Scripts/package_ext_libs_ios.sh\"\n";
+			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_OS_PROD_EXTN=\"iphoneos\"\nexport MVK_SIM_PROD_EXTN=\"iphonesimulator\"\n\n. \"${SRCROOT}/Scripts/create_fat_ext_libs.sh\"\n";
 		};
-		A9679AB021D26C7000856BF7 /* Package External Libraries */ = {
+		A9679AAF21D26C1400856BF7 /* Package Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -4024,14 +4027,68 @@
 			);
 			inputPaths = (
 			);
-			name = "Package External Libraries";
+			name = "Package Libraries";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "\"${SRCROOT}/Scripts/package_ext_libs_macos.sh\"\n";
+			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+		};
+		A9679AB021D26C7000856BF7 /* Package Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Package Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "export MVK_OS=\"macOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+		};
+		A9A5F2C1249D09820016D8B1 /* Create Fat Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Fat Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "export MVK_OS=\"tvOS\"\nexport MVK_OS_PROD_EXTN=\"appletvos\"\nexport MVK_SIM_PROD_EXTN=\"appletvsimulator\"\n\n. \"${SRCROOT}/Scripts/create_fat_ext_libs.sh\"\n";
+		};
+		A9FC5F8B249DB48D003CB086 /* Package Finish */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Package Finish";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/package_ext_libs_finish.sh\"\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 
@@ -4939,11 +4996,7 @@
 		2FEA0B482490321700EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"AMD_EXTENSIONS=1",
@@ -4959,19 +5012,13 @@
 				);
 				PRODUCT_NAME = glslang;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Debug;
 		};
 		2FEA0B492490321700EEF3AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"AMD_EXTENSIONS=1",
@@ -4987,19 +5034,12 @@
 				);
 				PRODUCT_NAME = glslang;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
 		};
 		2FEA0CD62490322100EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
-				DEPLOYMENT_POSTPROCESSING = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -5010,19 +5050,12 @@
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Debug;
 		};
 		2FEA0CD72490322100EEF3AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
-				DEPLOYMENT_POSTPROCESSING = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -5033,44 +5066,30 @@
 				);
 				PRODUCT_NAME = SPIRVTools;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
 		};
 		2FEA0CED2490322B00EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
 				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Debug;
 		};
 		2FEA0CEE2490322B00EEF3AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				BITCODE_GENERATION_MODE = bitcode;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				"CODE_SIGN_IDENTITY[sdk=appletvos*]" = "";
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
 				);
 				PRODUCT_NAME = SPIRVCross;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
 		};
@@ -5175,7 +5194,6 @@
 		A972A80D21CECBBF0013AB25 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				DEPLOYMENT_POSTPROCESSING = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -5192,7 +5210,6 @@
 		A972A80E21CECBBF0013AB25 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				DEPLOYMENT_POSTPROCESSING = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -5209,7 +5226,6 @@
 		A972A82121CECBE90013AB25 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				DEPLOYMENT_POSTPROCESSING = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -5226,7 +5242,6 @@
 		A972A82221CECBE90013AB25 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				DEPLOYMENT_POSTPROCESSING = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -5372,8 +5387,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				ONLY_ACTIVE_ARCH = YES;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TVOS_DEPLOYMENT_TARGET = 11.0;
+				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Debug;
 		};
@@ -5420,8 +5434,7 @@
 				MACH_O_TYPE = staticlib;
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SKIP_INSTALL = YES;
-				TARGETED_DEVICE_FAMILY = "1,2";
-				TVOS_DEPLOYMENT_TARGET = 11.0;
+				TVOS_DEPLOYMENT_TARGET = 9.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

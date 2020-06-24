@@ -1145,15 +1145,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		case MTLLanguageVersion1_1:
 			setMSLVersion(1, 1);
 			break;
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 		case MTLLanguageVersion1_0:
-			setMSLVersion(1, 0);
-			break;
-#endif
-#if MVK_MACOS
-		// Silence compiler warning catch-22 on MTLLanguageVersion1_0.
-		// But allow iOS to be explicit so it warns on future enum values
-		default:
 			setMSLVersion(1, 0);
 			break;
 #endif
