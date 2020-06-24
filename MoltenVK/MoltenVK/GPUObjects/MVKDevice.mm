@@ -2091,7 +2091,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 	}
 #endif
 #if MVK_TVOS
-	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v1)) {
+	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
 		memlessBit = 1 << typeIdx;
 		setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
 		typeIdx++;
