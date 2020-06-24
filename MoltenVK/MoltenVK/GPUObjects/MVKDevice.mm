@@ -1596,7 +1596,11 @@ void MVKPhysicalDevice::initProperties() {
 		_properties.limits.maxComputeSharedMemorySize = (uint32_t)_mtlDevice.maxThreadgroupMemoryLength;
 	} else {
 #if MVK_TVOS
-		_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
+		if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+			_properties.limits.maxComputeSharedMemorySize = (16 * KIBI);
+		} else {
+			_properties.limits.maxComputeSharedMemorySize = ((16 * KIBI) - 32);
+		}
 #endif
 #if MVK_IOS
 		if (supportsMTLFeatureSet(iOS_GPUFamily4_v1)) {
