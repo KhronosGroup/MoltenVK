@@ -1507,6 +1507,18 @@ void MVKPhysicalDevice::initProperties() {
         _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = VK_FALSE;
     }
 
+#if MVK_TVOS
+    _properties.limits.maxFragmentInputComponents = 60;
+
+    if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+        _properties.limits.optimalBufferCopyOffsetAlignment = 16;
+    } else {
+        _properties.limits.optimalBufferCopyOffsetAlignment = 64;
+    }
+
+    _properties.limits.maxTessellationGenerationLevel = 16;
+    _properties.limits.maxTessellationPatchSize = 32;
+#endif
 #if MVK_IOS
     _properties.limits.maxFragmentInputComponents = 60;
 
@@ -1583,6 +1595,9 @@ void MVKPhysicalDevice::initProperties() {
 	if ( [_mtlDevice respondsToSelector: @selector(maxThreadgroupMemoryLength)] ) {
 		_properties.limits.maxComputeSharedMemorySize = (uint32_t)_mtlDevice.maxThreadgroupMemoryLength;
 	} else {
+#if MVK_TVOS
+		_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
+#endif
 #if MVK_IOS
 		if (supportsMTLFeatureSet(iOS_GPUFamily4_v1)) {
 			_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
