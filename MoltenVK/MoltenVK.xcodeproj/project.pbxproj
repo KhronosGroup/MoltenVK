@@ -1040,6 +1040,7 @@
 				2FEA0A4024902F9F00EEF3AD /* Headers */,
 				2FEA0A8224902F9F00EEF3AD /* Sources */,
 				2FEA0AB524902F9F00EEF3AD /* Create Dynamic Library */,
+				A9FC5F6D249D39F3003CB086 /* Create Fat Libraries */,
 				2FEA0AB624902F9F00EEF3AD /* Create Framework */,
 			);
 			buildRules = (
@@ -1060,6 +1061,7 @@
 				A9B8EE071A98D796009C5A02 /* Headers */,
 				A9B8EE051A98D796009C5A02 /* Sources */,
 				A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */,
+				A9EE084F249BD4AE00E523A2 /* Create Fat Libraries */,
 				A92EF79721854B3300C8B91B /* Create Framework */,
 			);
 			buildRules = (
@@ -1286,6 +1288,42 @@
 			shellPath = /bin/sh;
 			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_ios.sh\"\n";
 		};
+		A9EE084F249BD4AE00E523A2 /* Create Fat Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Fat Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_ios.sh\"\n";
+		};
+		A9FC5F6D249D39F3003CB086 /* Create Fat Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Fat Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_tvos.sh\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -1499,26 +1537,16 @@
 		2FEA0AB824902F9F00EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				BITCODE_GENERATION_MODE = bitcode;
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				PRODUCT_NAME = MoltenVK;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
+				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Debug;
 		};
 		2FEA0AB924902F9F00EEF3AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = "$(ARCHS_STANDARD)";
-				BITCODE_GENERATION_MODE = bitcode;
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				PRODUCT_NAME = MoltenVK;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
+				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Release;
 		};
@@ -1527,7 +1555,6 @@
 			buildSettings = {
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1536,7 +1563,6 @@
 			buildSettings = {
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};

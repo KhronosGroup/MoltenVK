@@ -995,6 +995,13 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc( GBGR422, RF, RF );
 	addMTLPixelFormatDesc( BGRG422, RF, RF );
 
+	// Extended range and wide color pixel formats
+	addMTLPixelFormatDesc( BGRA10_XR, None, None );
+	addMTLPixelFormatDesc( BGRA10_XR_sRGB, None, None );
+	addMTLPixelFormatDesc( BGR10_XR, None, None );
+	addMTLPixelFormatDesc( BGR10_XR_sRGB, None, None );
+	addMTLPixelFormatDesc( BGR10A2Unorm, None, None );
+
 	// Depth and stencil pixel formats
 	addMTLPixelFormatDesc( Depth16Unorm, None, None );
 	addMTLPixelFormatDesc( Depth32Float, DRM, DRFMR );
@@ -1003,13 +1010,6 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	addMTLPixelFormatDesc( Depth32Float_Stencil8, DRM, DRFMR );
 	addMTLPixelFormatDesc( X24_Stencil8, None, DRM );
 	addMTLPixelFormatDesc( X32_Stencil8, DRM, DRM );
-
-	// Extended range and wide color pixel formats
-	addMTLPixelFormatDesc( BGRA10_XR, None, None );
-	addMTLPixelFormatDesc( BGRA10_XR_sRGB, None, None );
-	addMTLPixelFormatDesc( BGR10_XR, None, None );
-	addMTLPixelFormatDesc( BGR10_XR_sRGB, None, None );
-	addMTLPixelFormatDesc( BGR10A2Unorm, None, None );
 
 	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
 }
@@ -1137,6 +1137,16 @@ void MVKPixelFormats::addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
 	}
 }
 
+// Disable capability flags in the Metal pixel format.
+void MVKPixelFormats::disableMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt,
+														MVKMTLFmtCaps mtlFmtCaps) {
+	mvkDisableFlags(getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps, mtlFmtCaps);
+}
+
+void MVKPixelFormats::disableAllMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt) {
+	getMTLPixelFormatDesc(mtlPixFmt).mtlFmtCaps = kMVKMTLFmtCapsNone;
+}
+
 // If the device supports the feature set, add additional capabilities to a MTLVertexFormat
 void MVKPixelFormats::addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 													 MTLFeatureSet mtlFeatSet,
@@ -1161,6 +1171,12 @@ void MVKPixelFormats::modifyMTLFormatCapabilities() {
 
 #define addMTLPixelFormatCapabilities(FEAT_SET, MTL_FMT, CAPS)  \
 	addMTLPixelFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
+
+#define disableAllMTLPixelFormatCapabilities(MTL_FMT)  \
+	disableAllMTLPixelFormatCapabilities(MTLPixelFormat ##MTL_FMT)
+
+#define disableMTLPixelFormatCapabilities(MTL_FMT, CAPS)  \
+	disableMTLPixelFormatCapabilities(MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
 
 #define addMTLVertexFormatCapabilities(FEAT_SET, MTL_FMT, CAPS)  \
 	addMTLVertexFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
@@ -1192,6 +1208,7 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLVertexFormatCapabilities( macOS_GPUFamily1_v3, UChar4Normalized_BGRA, Vertex );
 }
 #endif
+
 #if MVK_TVOS
 void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLPixelFormatCapabilities( tvOS_GPUFamily1_v2, R8Unorm_sRGB, All );
@@ -1281,8 +1298,53 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v3, Short, Vertex );
 	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v3, Half, Vertex );
 	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v3, UChar4Normalized_BGRA, Vertex );
+
+	// Disable for simulator last.
+#if MVK_TVOS_SIMULATOR
+	disableAllMTLPixelFormatCapabilities(R8Unorm_sRGB);
+	disableAllMTLPixelFormatCapabilities(RG8Unorm_sRGB);
+	disableAllMTLPixelFormatCapabilities(B5G6R5Unorm);
+	disableAllMTLPixelFormatCapabilities(A1BGR5Unorm);
+	disableAllMTLPixelFormatCapabilities(ABGR4Unorm);
+	disableAllMTLPixelFormatCapabilities(BGR5A1Unorm);
+
+	disableAllMTLPixelFormatCapabilities(BGRA10_XR);
+	disableAllMTLPixelFormatCapabilities(BGRA10_XR_sRGB);
+	disableAllMTLPixelFormatCapabilities(BGR10_XR);
+	disableAllMTLPixelFormatCapabilities(BGR10_XR_sRGB);
+
+	disableAllMTLPixelFormatCapabilities(GBGR422);
+	disableAllMTLPixelFormatCapabilities(BGRG422);
+
+	disableMTLPixelFormatCapabilities(RGB9E5Float, ColorAtt);
+
+	disableMTLPixelFormatCapabilities(R8Unorm_sRGB, Write);
+	disableMTLPixelFormatCapabilities(RG8Unorm_sRGB, Write);
+	disableMTLPixelFormatCapabilities(RGBA8Unorm_sRGB, Write);
+	disableMTLPixelFormatCapabilities(BGRA8Unorm_sRGB, Write);
+	disableMTLPixelFormatCapabilities(PVRTC_RGBA_2BPP_sRGB, Write);
+	disableMTLPixelFormatCapabilities(PVRTC_RGBA_4BPP_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ETC2_RGB8_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ETC2_RGB8A1_sRGB, Write);
+	disableMTLPixelFormatCapabilities(EAC_RGBA8_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_4x4_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_5x4_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_5x5_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_6x5_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_6x6_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_8x5_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_8x6_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_8x8_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_10x5_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_10x6_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_10x8_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_10x10_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_12x10_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_12x12_sRGB, Write);
+#endif
 }
 #endif
+
 #if MVK_IOS
 void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLPixelFormatCapabilities( iOS_GPUFamily2_v3, R8Unorm_sRGB, All );
@@ -1372,9 +1434,56 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, Short, Vertex );
 	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, Half, Vertex );
 	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, UChar4Normalized_BGRA, Vertex );
+
+// Disable for simulator last.
+#if MVK_IOS_SIMULATOR
+	disableAllMTLPixelFormatCapabilities(R8Unorm_sRGB);
+	disableAllMTLPixelFormatCapabilities(RG8Unorm_sRGB);
+	disableAllMTLPixelFormatCapabilities(B5G6R5Unorm);
+	disableAllMTLPixelFormatCapabilities(A1BGR5Unorm);
+	disableAllMTLPixelFormatCapabilities(ABGR4Unorm);
+	disableAllMTLPixelFormatCapabilities(BGR5A1Unorm);
+
+	disableAllMTLPixelFormatCapabilities(BGRA10_XR);
+	disableAllMTLPixelFormatCapabilities(BGRA10_XR_sRGB);
+	disableAllMTLPixelFormatCapabilities(BGR10_XR);
+	disableAllMTLPixelFormatCapabilities(BGR10_XR_sRGB);
+
+	disableAllMTLPixelFormatCapabilities(GBGR422);
+	disableAllMTLPixelFormatCapabilities(BGRG422);
+
+	disableMTLPixelFormatCapabilities(RGB9E5Float, ColorAtt);
+
+	disableMTLPixelFormatCapabilities(R8Unorm_sRGB, Write);
+	disableMTLPixelFormatCapabilities(RG8Unorm_sRGB, Write);
+	disableMTLPixelFormatCapabilities(RGBA8Unorm_sRGB, Write);
+	disableMTLPixelFormatCapabilities(BGRA8Unorm_sRGB, Write);
+	disableMTLPixelFormatCapabilities(PVRTC_RGBA_2BPP_sRGB, Write);
+	disableMTLPixelFormatCapabilities(PVRTC_RGBA_4BPP_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ETC2_RGB8_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ETC2_RGB8A1_sRGB, Write);
+	disableMTLPixelFormatCapabilities(EAC_RGBA8_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_4x4_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_5x4_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_5x5_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_6x5_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_6x6_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_8x5_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_8x6_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_8x8_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_10x5_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_10x6_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_10x8_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_10x10_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_12x10_sRGB, Write);
+	disableMTLPixelFormatCapabilities(ASTC_12x12_sRGB, Write);
+#endif
 }
 #endif
+
 #undef addMTLPixelFormatCapabilities
+#undef disableMTLPixelFormatCapabilities
+#undef disableAllMTLPixelFormatCapabilities
 #undef addMTLVertexFormatCapabilities
 
 // Populates the VkFormat lookup maps and connects Vulkan and Metal pixel formats to one-another.

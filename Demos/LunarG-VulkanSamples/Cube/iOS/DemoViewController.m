@@ -42,8 +42,14 @@
 
 	self.view.contentScaleFactor = UIScreen.mainScreen.nativeScale;
 
-	const char* arg = "cube";
-	demo_main(&demo, self.view.layer, 1, &arg);
+#if TARGET_OS_SIMULATOR
+	// Avoid linear host-coherent texture loading on simulator
+	const char* argv[] = { "cube", "--use_staging" };
+#else
+	const char* argv[] = { "cube" };
+#endif
+	int argc = sizeof(argv)/sizeof(char*);
+	demo_main(&demo, self.view.layer, argc, argv);
 	demo_draw(&demo);
 
 	uint32_t fps = 60;

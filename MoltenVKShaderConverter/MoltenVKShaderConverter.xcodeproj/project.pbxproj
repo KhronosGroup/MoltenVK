@@ -394,6 +394,7 @@
 				2FEA0ACB2490305800EEF3AD /* Sources */,
 				2FEA0ACF2490305800EEF3AD /* Frameworks */,
 				2FEA0AD22490305800EEF3AD /* Create Dynamic Library */,
+				A9FC5F6B249D3959003CB086 /* Create Fat Libraries */,
 				2FEA0AD32490305800EEF3AD /* Create Framework */,
 			);
 			buildRules = (
@@ -413,6 +414,7 @@
 				2FEA0D072490381A00EEF3AD /* Sources */,
 				2FEA0D0C2490381A00EEF3AD /* Frameworks */,
 				2FEA0D0F2490381A00EEF3AD /* Create Dynamic Library */,
+				A9FC5F6C249D3987003CB086 /* Create Fat Libraries */,
 				2FEA0D102490381A00EEF3AD /* Create Framework */,
 			);
 			buildRules = (
@@ -450,6 +452,7 @@
 				A93747271A9A8B2900F29B34 /* Sources */,
 				A972AD2821CEE6310013AB25 /* Frameworks */,
 				A9C70F49221B075700FBA31A /* Create Dynamic Library */,
+				A9303625249BDF6B00DE139C /* Create Fat Libraries */,
 				A941E2A7221AC9C300890C56 /* Create Framework */,
 			);
 			buildRules = (
@@ -488,6 +491,7 @@
 				A93903BA1C57E9D700FE90DC /* Sources */,
 				A972AD2E21CEE6F50013AB25 /* Frameworks */,
 				A9C70F4B221B077C00FBA31A /* Create Dynamic Library */,
+				A9303626249BDFA000DE139C /* Create Fat Libraries */,
 				A941E2A8221AC9E800890C56 /* Create Framework */,
 			);
 			buildRules = (
@@ -644,6 +648,42 @@
 			shellPath = /bin/sh;
 			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_tvos.sh\"\n";
 		};
+		A9303625249BDF6B00DE139C /* Create Fat Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Fat Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_ios.sh\"\n";
+		};
+		A9303626249BDFA000DE139C /* Create Fat Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Fat Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_ios.sh\"\n";
+		};
 		A941E2A7221AC9C300890C56 /* Create Framework */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -788,6 +828,42 @@
 			shellPath = /bin/sh;
 			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_macos.sh\"\n";
 		};
+		A9FC5F6B249D3959003CB086 /* Create Fat Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Fat Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_tvos.sh\"\n";
+		};
+		A9FC5F6C249D3987003CB086 /* Create Fat Libraries */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create Fat Libraries";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_tvos.sh\"\n";
+		};
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
@@ -885,8 +961,6 @@
 		2FEA0AD52490305800EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
@@ -895,17 +969,13 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
-				VALID_ARCHS = arm64;
 			};
 			name = Debug;
 		};
 		2FEA0AD62490305800EEF3AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
 				CLANG_WARN_SUSPICIOUS_IMPLICIT_CONVERSION = NO;
 				CLANG_WARN_UNREACHABLE_CODE = NO;
 				GCC_WARN_ABOUT_MISSING_FIELD_INITIALIZERS = NO;
@@ -914,17 +984,13 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
-				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};
 		2FEA0D122490381A00EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
@@ -933,17 +999,13 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
-				VALID_ARCHS = arm64;
 			};
 			name = Debug;
 		};
 		2FEA0D132490381A00EEF3AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				ARCHS = arm64;
-				BITCODE_GENERATION_MODE = bitcode;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"$(inherited)",
 					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
@@ -952,9 +1014,7 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/tvOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = appletvos;
-				TARGETED_DEVICE_FAMILY = 3;
 				TVOS_DEPLOYMENT_TARGET = 11.0;
-				VALID_ARCHS = arm64;
 			};
 			name = Release;
 		};
@@ -997,7 +1057,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1012,7 +1071,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
 				PRODUCT_NAME = MoltenVKGLSLToSPIRVConverter;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -1055,7 +1113,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
 		};
@@ -1070,7 +1127,6 @@
 				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../External/build/Latest/iOS\"";
 				PRODUCT_NAME = MoltenVKSPIRVToMSLConverter;
 				SDKROOT = iphoneos;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
