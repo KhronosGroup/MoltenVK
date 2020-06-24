@@ -2090,6 +2090,13 @@ void MVKPhysicalDevice::initMemoryProperties() {
 		typeIdx++;
 	}
 #endif
+#if MVK_TVOS
+	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v1)) {
+		memlessBit = 1 << typeIdx;
+		setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
+		typeIdx++;
+	}
+#endif
 
 	_memoryProperties.memoryTypeCount = typeIdx;
 
@@ -2126,7 +2133,7 @@ uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
 		return _mtlDevice.recommendedMaxWorkingSetSize;
 	}
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	// GPU and CPU use shared memory. Estimate the current free memory in the system.
 	uint64_t freeMem = mvkGetAvailableMemorySize();
 	if (freeMem) { return freeMem; }
