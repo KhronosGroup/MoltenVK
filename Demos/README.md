@@ -50,10 +50,11 @@ The demo can be found in the `LunarG-VulkanSamples/Cube` folder, and in the
 `LunarG-VulkanSamples/Cube` group in the *Xcode Project Navigator* in the 
 `Cube.xcworkspace` *Xcode* workspace.
 
-To run this demo, run either the `Cube-iOS` or `Cube-macOS` *Scheme* from within *Xcode*.
+To run this demo, run the `Cube-iOS`, `Cube-tvOS`, or `Cube-macOS` *Scheme* from within *Xcode*. 
+In addition to devices, this demo will also run on the `iOS Simulator` or `tvOS Simulator` destinations.
 
-This demo includes a sizable window, and represents an example of how to detect, within your
-*Vulkan* code, when a window has been resized, and to modify the *Vulkan* swapchain accordingly.
+The *macOS* version of this demo includes a sizable window, and represents an example of how to detect,
+within your *Vulkan* code, when a window has been resized, and to modify the *Vulkan* swapchain accordingly.
 
 The `Cube` demo is a simple example of installing **MoltenVK** as a *dynamic library*. In this demo, 
 the **MoltenVK** *dynamic library* is embedded in the application, but it could have been installed 
