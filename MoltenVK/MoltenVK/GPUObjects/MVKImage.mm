@@ -583,7 +583,7 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
     }
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
     // Only transient attachments may use memoryless storage
     if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
@@ -885,7 +885,7 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	bool is2D = (getImageType() == VK_IMAGE_TYPE_2D);
 	bool isCompressed = pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed;
 
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	if (isCompressed && !is2D) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
 	}
