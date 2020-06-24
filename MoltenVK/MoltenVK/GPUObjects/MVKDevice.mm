@@ -1414,7 +1414,7 @@ void MVKPhysicalDevice::initProperties() {
 #if MVK_MACOS
 	_properties.limits.maxUniformBufferRange = (64 * KIBI);
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 #endif
 	_properties.limits.maxStorageBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
@@ -1925,7 +1925,7 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	// On newer OS's, combine highest Metal version with highest GPU family
 	// (Mac & Apple GPU lists should be mutex on platform)
 	uint32_t mtlVer = 0;
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	if (mvkOSVersionIsAtLeast(13.0)) { mtlVer = 0x30000; }
 #endif
 #if MVK_MACOS
