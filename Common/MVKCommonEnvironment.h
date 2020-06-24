@@ -62,7 +62,7 @@ extern "C" {
 #	define MVK_IOS_OR_TVOS			(MVK_IOS || MVK_TVOS)
 #endif
 
-/** Building for iOS or tvOS. */
+/** Building for macOS or iOS. */
 #ifndef MVK_MACOS_OR_IOS
 #	define MVK_MACOS_OR_IOS			(MVK_MACOS || MVK_IOS)
 #endif
