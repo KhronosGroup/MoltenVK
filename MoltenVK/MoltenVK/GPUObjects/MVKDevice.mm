@@ -945,6 +945,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mtlCopyBufferAlignment = 1;
     _metalFeatures.texelBuffers = true;
 	_metalFeatures.maxTextureDimension = (8 * KIBI);
+    _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
 
     if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
@@ -959,6 +960,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v4)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
+		_metalFeatures.events = true;
+		_metalFeatures.textureBuffers = true;
 	}
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
