@@ -41,7 +41,7 @@
 using namespace std;
 
 
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 #	include <UIKit/UIKit.h>
 #	define MVKViewClass		UIView
 #endif
@@ -425,7 +425,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			}
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
 			if (mvkFmt == kMVKFormatDepthStencil
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 				|| mvkFmt == kMVKFormatCompressed
 #endif
 				) {
@@ -643,7 +643,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
 		}
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 		// iOS 8 doesn't support anything but sRGB.
 		if (mvkOSVersionIsAtLeast(9.0)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
