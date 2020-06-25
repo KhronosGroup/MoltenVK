@@ -619,7 +619,16 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 		MTLPixelFormatBGRA8Unorm,
 		MTLPixelFormatBGRA8Unorm_sRGB,
 		MTLPixelFormatRGBA16Float,
+#if MVK_MACOS
+		MTLPixelFormatRGB10A2Unorm,
 		MTLPixelFormatBGR10A2Unorm,
+#endif
+#if MVK_IOS_OR_TVOS
+		MTLPixelFormatBGRA10_XR,
+		MTLPixelFormatBGRA10_XR_sRGB,
+		MTLPixelFormatBGR10_XR,
+		MTLPixelFormatBGR10_XR_sRGB,
+#endif
 	};
 
 	MVKSmallVector<VkColorSpaceKHR, 16> colorSpaces;
@@ -643,7 +652,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
 		}
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 		// iOS 8 doesn't support anything but sRGB.
 		if (mvkOSVersionIsAtLeast(9.0)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
@@ -670,7 +679,12 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	}
 
 	uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
+#if MVK_MACOS
 	if ( !_pixelFormats.isSupported(MTLPixelFormatBGR10A2Unorm) ) { mtlFmtsCnt--; }
+#endif
+#if MVK_IOS_OR_TVOS
+	if ( !_pixelFormats.isSupported(MTLPixelFormatBGRA10_XR) ) { mtlFmtsCnt -= 4; }
+#endif
 
 	const uint vkFmtsCnt = mtlFmtsCnt * (uint)colorSpaces.size();
 
