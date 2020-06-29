@@ -583,7 +583,7 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
     }
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
     // Only transient attachments may use memoryless storage
     if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());

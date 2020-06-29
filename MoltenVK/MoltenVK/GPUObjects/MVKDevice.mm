@@ -41,7 +41,7 @@
 using namespace std;
 
 
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 #	include <UIKit/UIKit.h>
 #	define MVKViewClass		UIView
 #endif
@@ -425,7 +425,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			}
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
 			if (mvkFmt == kMVKFormatDepthStencil
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 				|| mvkFmt == kMVKFormatCompressed
 #endif
 				) {
@@ -643,7 +643,7 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
 		}
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 		// iOS 8 doesn't support anything but sRGB.
 		if (mvkOSVersionIsAtLeast(9.0)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT);
@@ -945,6 +945,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mtlCopyBufferAlignment = 1;
     _metalFeatures.texelBuffers = true;
 	_metalFeatures.maxTextureDimension = (8 * KIBI);
+    _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
 
     if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
@@ -959,6 +960,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v4)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
+		_metalFeatures.events = true;
+		_metalFeatures.textureBuffers = true;
 	}
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
@@ -1407,7 +1410,7 @@ void MVKPhysicalDevice::initProperties() {
 #if MVK_MACOS
 	_properties.limits.maxUniformBufferRange = (64 * KIBI);
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
 #endif
 	_properties.limits.maxStorageBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
@@ -1500,6 +1503,18 @@ void MVKPhysicalDevice::initProperties() {
         _texelBuffAlignProperties.uniformTexelBufferOffsetSingleTexelAlignment = VK_FALSE;
     }
 
+#if MVK_TVOS
+    _properties.limits.maxFragmentInputComponents = 60;
+
+    if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+        _properties.limits.optimalBufferCopyOffsetAlignment = 16;
+    } else {
+        _properties.limits.optimalBufferCopyOffsetAlignment = 64;
+    }
+
+    _properties.limits.maxTessellationGenerationLevel = 16;
+    _properties.limits.maxTessellationPatchSize = 32;
+#endif
 #if MVK_IOS
     _properties.limits.maxFragmentInputComponents = 60;
 
@@ -1576,6 +1591,13 @@ void MVKPhysicalDevice::initProperties() {
 	if ( [_mtlDevice respondsToSelector: @selector(maxThreadgroupMemoryLength)] ) {
 		_properties.limits.maxComputeSharedMemorySize = (uint32_t)_mtlDevice.maxThreadgroupMemoryLength;
 	} else {
+#if MVK_TVOS
+		if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
+			_properties.limits.maxComputeSharedMemorySize = (16 * KIBI);
+		} else {
+			_properties.limits.maxComputeSharedMemorySize = ((16 * KIBI) - 32);
+		}
+#endif
 #if MVK_IOS
 		if (supportsMTLFeatureSet(iOS_GPUFamily4_v1)) {
 			_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
@@ -1903,7 +1925,7 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	// On newer OS's, combine highest Metal version with highest GPU family
 	// (Mac & Apple GPU lists should be mutex on platform)
 	uint32_t mtlVer = 0;
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	if (mvkOSVersionIsAtLeast(13.0)) { mtlVer = 0x30000; }
 #endif
 #if MVK_MACOS
@@ -2061,6 +2083,13 @@ void MVKPhysicalDevice::initMemoryProperties() {
 		typeIdx++;
 	}
 #endif
+#if MVK_TVOS
+	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
+		memlessBit = 1 << typeIdx;
+		setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
+		typeIdx++;
+	}
+#endif
 
 	_memoryProperties.memoryTypeCount = typeIdx;
 
@@ -2097,7 +2126,7 @@ uint64_t MVKPhysicalDevice::getRecommendedMaxWorkingSetSize() {
 		return _mtlDevice.recommendedMaxWorkingSetSize;
 	}
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	// GPU and CPU use shared memory. Estimate the current free memory in the system.
 	uint64_t freeMem = mvkGetAvailableMemorySize();
 	if (freeMem) { return freeMem; }
