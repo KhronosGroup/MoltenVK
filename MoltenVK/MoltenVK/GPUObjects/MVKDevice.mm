@@ -615,21 +615,22 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
 	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
 
-	const MTLPixelFormat mtlFormats[] = {
-		MTLPixelFormatBGRA8Unorm,
-		MTLPixelFormatBGRA8Unorm_sRGB,
-		MTLPixelFormatRGBA16Float,
+#define addSurfFmt(FMT) { if (_pixelFormats.isSupported(FMT)) { mtlFormats.push_back(FMT); } }
+
+	MVKSmallVector<MTLPixelFormat, 16> mtlFormats;
+	addSurfFmt(MTLPixelFormatBGRA8Unorm);
+	addSurfFmt(MTLPixelFormatBGRA8Unorm_sRGB);
+	addSurfFmt(MTLPixelFormatRGBA16Float);
 #if MVK_MACOS
-		MTLPixelFormatRGB10A2Unorm,
-		MTLPixelFormatBGR10A2Unorm,
+	addSurfFmt(MTLPixelFormatRGB10A2Unorm);
+	addSurfFmt(MTLPixelFormatBGR10A2Unorm);
 #endif
 #if MVK_IOS_OR_TVOS
-		MTLPixelFormatBGRA10_XR,
-		MTLPixelFormatBGRA10_XR_sRGB,
-		MTLPixelFormatBGR10_XR,
-		MTLPixelFormatBGR10_XR_sRGB,
+	addSurfFmt(MTLPixelFormatBGRA10_XR);
+	addSurfFmt(MTLPixelFormatBGRA10_XR_sRGB);
+	addSurfFmt(MTLPixelFormatBGR10_XR);
+	addSurfFmt(MTLPixelFormatBGR10_XR_sRGB);
 #endif
-	};
 
 	MVKSmallVector<VkColorSpaceKHR, 16> colorSpaces;
 	colorSpaces.push_back(VK_COLOR_SPACE_SRGB_NONLINEAR_KHR);
@@ -678,25 +679,18 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 #endif
 	}
 
-	uint mtlFmtsCnt = sizeof(mtlFormats) / sizeof(MTLPixelFormat);
-#if MVK_MACOS
-	if ( !_pixelFormats.isSupported(MTLPixelFormatBGR10A2Unorm) ) { mtlFmtsCnt--; }
-#endif
-#if MVK_IOS_OR_TVOS
-	if ( !_pixelFormats.isSupported(MTLPixelFormatBGRA10_XR) ) { mtlFmtsCnt -= 4; }
-#endif
-
-	const uint vkFmtsCnt = mtlFmtsCnt * (uint)colorSpaces.size();
+	size_t mtlFmtsCnt = mtlFormats.size();
+	size_t vkFmtsCnt = mtlFmtsCnt * colorSpaces.size();
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pSurfaceFormats ) {
-		*pCount = vkFmtsCnt;
+		*pCount = (uint32_t)vkFmtsCnt;
 		return VK_SUCCESS;
 	}
 
 	// Determine how many results we'll return, and return that number
 	VkResult result = (*pCount >= vkFmtsCnt) ? VK_SUCCESS : VK_INCOMPLETE;
-	*pCount = min(*pCount, vkFmtsCnt);
+	*pCount = min(*pCount, (uint32_t)vkFmtsCnt);
 
 	// Now populate the supplied array
 	for (uint csIdx = 0, idx = 0; idx < *pCount && csIdx < colorSpaces.size(); csIdx++) {
