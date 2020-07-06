@@ -28,6 +28,7 @@ Released TBD
 - `Makefile` supports building fat *Platform+Simulator* binaries, plus *Debug* builds.
 - `fetchDependencies` script supports platform build selection, plus parallel builds.
 - Fix issue where mapped host-coherent device memory not updated from image contents on *macOS*.
+- Fix small memory leak when setting swapchain color space.
 - Remove use of `@available()` directive as it was causing issues in some build environments.
 - Refactor **MoltenVK** *Xcode* build architectures.
 - Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.
