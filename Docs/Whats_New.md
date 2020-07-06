@@ -31,7 +31,8 @@ Released TBD
 - Remove use of `@available()` directive as it was causing issues in some build environments.
 - Refactor **MoltenVK** *Xcode* build architectures.
 - Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.
-
+- Update to latest SPIRV-Cross version:
+	- MSL: Workaround broken scalar access chain behavior in LLVM IR / AIR
 
 MoltenVK 1.0.43
 ---------------
