@@ -282,45 +282,45 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 
 	switch (pCreateInfo->imageColorSpace) {
 		case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceSRGB;
 			break;
 		case VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceDisplayP3);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceDisplayP3;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearSRGB);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceExtendedLinearSRGB;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedSRGB);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceExtendedSRGB;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearDisplayP3);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceExtendedLinearDisplayP3;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_DCI_P3_NONLINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceDCIP3);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceDCIP3;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_BT709_NONLINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_709);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_709;
 			break;
 		case VK_COLOR_SPACE_BT2020_LINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceExtendedLinearITUR_2020);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceExtendedLinearITUR_2020;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_HDR10_ST2084_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020_PQ_EOTF);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2020_PQ_EOTF;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_HDR10_HLG_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceITUR_2020_HLG);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2020_HLG;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
 		case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
-			_mtlLayer.colorspace = CGColorSpaceCreateWithName(kCGColorSpaceAdobeRGB1998);
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceAdobeRGB1998;
 			break;
 		case VK_COLOR_SPACE_PASS_THROUGH_EXT:
 		default:

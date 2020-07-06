@@ -76,4 +76,12 @@
 #endif
 }
 
+-(CFStringRef) colorspaceNameMVK { return CGColorSpaceGetName(self.colorspace); }
+
+-(void) setColorspaceNameMVK: (CFStringRef) name {
+	CGColorSpaceRef csRef = CGColorSpaceCreateWithName(name);
+	self.colorspace = csRef;
+	CGColorSpaceRelease(csRef);
+}
+
 @end

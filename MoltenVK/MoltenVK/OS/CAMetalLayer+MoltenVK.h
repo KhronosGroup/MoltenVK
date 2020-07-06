@@ -64,4 +64,13 @@
  */
 @property(nonatomic, readwrite) BOOL wantsExtendedDynamicRangeContentMVK;
 
+/**
+ * The name of the CGColorSpaceRef in the colorspace property of this layer.
+ *
+ * Reading this property returns the name of the CGColorSpaceRef in the colorspace property.
+ * Setting this property sets the value in the colorspace property to a CGColorSpaceRef
+ * with that name, creating and releasing the CGColorSpaceRef object itself as needed.
+ */
+@property(nonatomic, readwrite) CFStringRef colorspaceNameMVK;
+
 @end
