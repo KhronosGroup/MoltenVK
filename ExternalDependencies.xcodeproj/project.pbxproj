@@ -3944,7 +3944,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"tvOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+			shellScript = "export MVK_OS=\"tvOS\"\nexport MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
 		};
 		2FEA0CEB2490322B00EEF3AD /* Generate Revision Header */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -4034,7 +4034,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
 		};
 		A9679AB021D26C7000856BF7 /* Package Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -4052,7 +4052,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"macOS\"\nexport MVK_BUILT_PROD_PATH=\"${BUILT_PRODUCTS_DIR}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+			shellScript = "export MVK_OS=\"macOS\"\nexport MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
 		};
 		A9A5F2C1249D09820016D8B1 /* Create Fat Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
