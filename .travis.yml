@@ -4,11 +4,9 @@ language: objective-c
 os: osx
 osx_image: xcode11.5
 
-# Build dependencies with verbose logging to avoid Travis timing out.
-install:
-  - ./fetchDependencies -v --macos
-
+# Build with verbose logging to avoid Travis timing out.
 script:
+  - ./fetchDependencies -v --no-parallel-build --macos
   - xcodebuild build -project MoltenVKPackaging.xcodeproj -scheme "MoltenVK Package (macOS only)"
   - xcodebuild build -workspace Demos/Demos.xcworkspace -scheme "Cube-macOS"
 
