@@ -649,7 +649,11 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 		if (mvkOSVersionIsAtLeast(10.14)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
+		}
+		if (mvkOSVersionIsAtLeast(mvkMakeOSVersion(10, 15, 4))) {
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
+		}
+		if (mvkOSVersionIsAtLeast(11.0)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
 		}
 #endif
@@ -666,14 +670,14 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_EXTENDED_SRGB_NONLINEAR_EXT);
 		}
-		if (mvkOSVersionIsAtLeast(12.0)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
-		}
 		if (mvkOSVersionIsAtLeast(12.3)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
 		}
-		if (mvkOSVersionIsAtLeast(13.0)) {
+		if (mvkOSVersionIsAtLeast(13.4)) {
+			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
+		}
+		if (mvkOSVersionIsAtLeast(14.0)) {
 			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
 		}
 #endif
