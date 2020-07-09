@@ -650,12 +650,12 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 			colorSpaces.push_back(VK_COLOR_SPACE_DISPLAY_P3_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
 		}
-		if (mvkOSVersionIsAtLeast(mvkMakeOSVersion(10, 15, 4))) {
-			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
-		}
-		if (mvkOSVersionIsAtLeast(11.0)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
-		}
+// Awaiting Xcode 12 with macOS 11.0 and iOS/tvOS 14 SDK to build.
+// Coordinate with MVKSwapchain::initCAMetalLayer().
+//		if (mvkOSVersionIsAtLeast(11.0)) {
+//			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
+//			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
+//		}
 #endif
 #if MVK_IOS_OR_TVOS
 		// iOS 8 doesn't support anything but sRGB.
@@ -674,12 +674,12 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 			colorSpaces.push_back(VK_COLOR_SPACE_DCI_P3_LINEAR_EXT);
 			colorSpaces.push_back(VK_COLOR_SPACE_BT2020_LINEAR_EXT);
 		}
-		if (mvkOSVersionIsAtLeast(13.4)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
-		}
-		if (mvkOSVersionIsAtLeast(14.0)) {
-			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
-		}
+// Awaiting Xcode 12 with macOS 11.0 and iOS/tvOS 14 SDK to build.
+// Coordinate with MVKSwapchain::initCAMetalLayer().
+//		if (mvkOSVersionIsAtLeast(14.0)) {
+//			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_HLG_EXT);
+//			colorSpaces.push_back(VK_COLOR_SPACE_HDR10_ST2084_EXT);
+//		}
 #endif
 	}
 
