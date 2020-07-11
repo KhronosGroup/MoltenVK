@@ -221,7 +221,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
 				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
-				portabilityProps->minVertexInputBindingStrideAlignment = 4;
+				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
 				break;
 			}
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
@@ -949,6 +949,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	// Metal supports 2 or 3 concurrent CAMetalLayer drawables.
 	_metalFeatures.minSwapchainImageCount = kMVKMinSwapchainImageCount;
 	_metalFeatures.maxSwapchainImageCount = kMVKMaxSwapchainImageCount;
+
+	_metalFeatures.vertexStrideAlignment = 4;
 
 #if MVK_TVOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;

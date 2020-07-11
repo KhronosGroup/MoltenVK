@@ -55,7 +55,7 @@ typedef unsigned long MTLLanguageVersion;
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            26
+#define VK_MVK_MOLTENVK_SPEC_VERSION            27
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -612,6 +612,7 @@ typedef struct {
 	VkDeviceSize pushConstantSizeAlignment;		/**< The alignment used internally when allocating memory for push constants. Must be PoT. */
 	uint32_t maxTextureLayers;					/**< The maximum number of layers in an array texture. */
     uint32_t subgroupSize;			            /**< The number of threads in a SIMD-group. */
+	VkDeviceSize vertexStrideAlignment;         /**< The alignment used for the stride of vertex attribute bindings. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */
