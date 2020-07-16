@@ -157,7 +157,9 @@ VkResult MVKBuffer::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
 #if MVK_MACOS
     VkDeviceSize flushOffset, flushSize;
 	if (shouldFlushHostMemory() && _mtlBufferCache && overlaps(offset, size, flushOffset, flushSize)) {
-		memcpy(_mtlBufferCache.contents, reinterpret_cast<const char *>(_deviceMemory->getHostMemoryAddress()) + flushOffset, flushSize);
+		memcpy(reinterpret_cast<char *>(_mtlBufferCache.contents) + flushOffset - _deviceMemoryOffset,
+		       reinterpret_cast<const char *>(_deviceMemory->getHostMemoryAddress()) + flushOffset,
+		       flushSize);
 		[_mtlBufferCache didModifyRange: NSMakeRange(flushOffset - _deviceMemoryOffset, flushSize)];
 	}
 #endif
@@ -169,7 +171,9 @@ VkResult MVKBuffer::pullFromDevice(VkDeviceSize offset, VkDeviceSize size) {
 #if MVK_MACOS
     VkDeviceSize pullOffset, pullSize;
 	if (shouldFlushHostMemory() && _mtlBufferCache && overlaps(offset, size, pullOffset, pullSize)) {
-		memcpy(reinterpret_cast<char *>(_deviceMemory->getHostMemoryAddress()) + pullOffset, reinterpret_cast<char *>(_mtlBufferCache.contents) + pullOffset - _deviceMemoryOffset, pullSize);
+		memcpy(reinterpret_cast<char *>(_deviceMemory->getHostMemoryAddress()) + pullOffset,
+		       reinterpret_cast<const char *>(_mtlBufferCache.contents) + pullOffset - _deviceMemoryOffset,
+		       pullSize);
 	}
 #endif
 	return VK_SUCCESS;
