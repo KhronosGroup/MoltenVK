@@ -20,6 +20,7 @@
 
 #include "mvk_datatypes.h"
 #include "MVKEnvironment.h"
+#include "MVKOSExtensions.h"
 #include "MVKBaseObject.h"
 #include <SPIRV-Cross/spirv_msl.hpp>
 #include <unordered_map>
@@ -68,8 +69,9 @@ typedef enum : uint16_t {
 	kMVKMTLFmtCapsAll      = (kMVKMTLFmtCapsRFWCMB | kMVKMTLFmtCapsResolve),
 
 	kMVKMTLFmtCapsDRM      = (kMVKMTLFmtCapsDSAtt | kMVKMTLFmtCapsRead | kMVKMTLFmtCapsMSAA),
+	kMVKMTLFmtCapsDRFM     = (kMVKMTLFmtCapsDRM | kMVKMTLFmtCapsFilter),
 	kMVKMTLFmtCapsDRMR     = (kMVKMTLFmtCapsDRM | kMVKMTLFmtCapsResolve),
-	kMVKMTLFmtCapsDRFMR    = (kMVKMTLFmtCapsDRMR | kMVKMTLFmtCapsFilter),
+	kMVKMTLFmtCapsDRFMR    = (kMVKMTLFmtCapsDRFM | kMVKMTLFmtCapsResolve),
 
 	kMVKMTLFmtCapsChromaSubsampling = kMVKMTLFmtCapsRF,
 	kMVKMTLFmtCapsMultiPlanar = kMVKMTLFmtCapsChromaSubsampling,
@@ -317,11 +319,21 @@ protected:
 									   MTLFeatureSet mtlFeatSet,
 									   MTLPixelFormat mtlPixFmt,
 									   MVKMTLFmtCaps mtlFmtCaps);
+	void addMTLPixelFormatCapabilities(id<MTLDevice> mtlDevice,
+									   MTLGPUFamily gpuFamily,
+									   MVKOSVersion minOSVer,
+									   MTLPixelFormat mtlPixFmt,
+									   MVKMTLFmtCaps mtlFmtCaps);
 	void disableMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt,
 										   MVKMTLFmtCaps mtlFmtCaps);
 	void disableAllMTLPixelFormatCapabilities(MTLPixelFormat mtlPixFmt);
 	void addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
 										MTLFeatureSet mtlFeatSet,
+										MTLVertexFormat mtlVtxFmt,
+										MVKMTLFmtCaps mtlFmtCaps);
+	void addMTLVertexFormatCapabilities(id<MTLDevice> mtlDevice,
+										MTLGPUFamily gpuFamily,
+										MVKOSVersion minOSVer,
 										MTLVertexFormat mtlVtxFmt,
 										MVKMTLFmtCaps mtlFmtCaps);
 

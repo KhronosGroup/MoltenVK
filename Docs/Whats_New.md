@@ -21,6 +21,7 @@ Released TBD
 - Add support for extensions:
 	- VK_KHR_sampler_ycbcr_conversion
 	- VK_EXT_robustness2
+- Add native support for `VK_FORMAT_D16_UNORM` on **_iOS 13.0+_** and **_tvOS 13.0+_**.
 - Add support for **_tvOS_** platform.
 - Add support for **_iOS Simulator_** and **_tvOS Simulator_** build destinations.
 - Cube demo runs on **_tvOS_**, **_iOS Simulator_**, and **_tvOS Simulator_**.
