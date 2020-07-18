@@ -1299,8 +1299,8 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v3, Half, Vertex );
 	addMTLVertexFormatCapabilities( tvOS_GPUFamily1_v3, UChar4Normalized_BGRA, Vertex );
 
-	// Disable for simulator last.
-#if MVK_TVOS_SIMULATOR
+	// Disable for tvOS simulator last.
+#if MVK_OS_SIMULATOR
 	disableAllMTLPixelFormatCapabilities(R8Unorm_sRGB);
 	disableAllMTLPixelFormatCapabilities(RG8Unorm_sRGB);
 	disableAllMTLPixelFormatCapabilities(B5G6R5Unorm);
@@ -1435,8 +1435,8 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, Half, Vertex );
 	addMTLVertexFormatCapabilities( iOS_GPUFamily1_v4, UChar4Normalized_BGRA, Vertex );
 
-// Disable for simulator last.
-#if MVK_IOS_SIMULATOR
+// Disable for iOS simulator last.
+#if MVK_OS_SIMULATOR
 	disableAllMTLPixelFormatCapabilities(R8Unorm_sRGB);
 	disableAllMTLPixelFormatCapabilities(RG8Unorm_sRGB);
 	disableAllMTLPixelFormatCapabilities(B5G6R5Unorm);
