@@ -263,6 +263,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_descriptor_update_template`
 - `VK_KHR_device_group`
 - `VK_KHR_device_group_creation`
+- `VK_KHR_driver_properties`
 - `VK_KHR_get_memory_requirements2`
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
