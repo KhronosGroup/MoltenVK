@@ -259,7 +259,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				auto* physicalDeviceDriverProps = (VkPhysicalDeviceDriverPropertiesKHR*)next;
 				strcpy(physicalDeviceDriverProps->driverName, "MoltenVK");
 				strcpy(physicalDeviceDriverProps->driverInfo, mvkGetMoltenVKVersionString(MVK_VERSION).c_str());
-				physicalDeviceDriverProps->driverID = (VkDriverId) 0; /* FIXME: VK_DRIVER_ID_MOLTENVK_KHR */
+				physicalDeviceDriverProps->driverID = VK_DRIVER_ID_MOLTENVK;
 				physicalDeviceDriverProps->conformanceVersion.major = 0;
 				physicalDeviceDriverProps->conformanceVersion.minor = 0;
 				physicalDeviceDriverProps->conformanceVersion.subminor = 0;
