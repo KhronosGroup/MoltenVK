@@ -976,9 +976,10 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
         if (shaderContext.isVertexBufferUsed(pVKVB->binding)) {
 
 			// Vulkan allows any stride, but Metal only allows multiples of 4.
-            // TODO: We should try to expand the buffer to the required alignment in that case.
-            if ((pVKVB->stride % 4) != 0) {
-                setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex buffer strides must be aligned to four bytes."));
+            // TODO: We could try to expand the buffer to the required alignment in that case.
+			VkDeviceSize mtlVtxStrideAlignment = _device->_pMetalFeatures->vertexStrideAlignment;
+            if ((pVKVB->stride % mtlVtxStrideAlignment) != 0) {
+				setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED, "Under Metal, vertex attribute binding strides must be aligned to %llu bytes.", mtlVtxStrideAlignment));
                 return false;
             }
 
@@ -1025,7 +1026,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 			uint32_t vaOffset = pVKVA->offset;
 
 			// Vulkan allows offsets to exceed the buffer stride, but Metal doesn't.
-			// If this is the case, fetch an a translated artificial buffer binding, using the same MTLBuffer,
+			// If this is the case, fetch a translated artificial buffer binding, using the same MTLBuffer,
 			// but that is translated so that the reduced VA offset fits into the binding stride.
 			const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
 			for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
@@ -1038,7 +1039,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(MTLRenderPipelineDescriptor* 
 						MTLVertexBufferLayoutDescriptor* vbDesc = plDesc.vertexDescriptor.layouts[vbIdx];
 						uint32_t strideLowBound = vaOffset + attrSize;
 						if (vbDesc.stride < strideLowBound) vbDesc.stride = strideLowBound;
-					} else if (vaOffset >= pVKVB->stride) {
+					} else if (vaOffset + attrSize > pVKVB->stride) {
 						// Move vertex attribute offset into the stride. This vertex attribute may be
 						// combined with other vertex attributes into the same translated buffer binding.
 						// But if the reduced offset combined with the vertex attribute size still won't
@@ -1721,7 +1722,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.enable_decoration_binding,
 				opt.texture_buffer_native,
 				opt.force_active_argument_buffer_resources,
-				opt.force_native_arrays);
+				opt.force_native_arrays,
+				opt.enable_clip_distance_user_varying);
 	}
 
 	template<class Archive>

@@ -97,7 +97,7 @@ VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
 
     // Validate
     if ((_firstInstance != 0) && !(cmdBuff->getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
-        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance.");
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance.");
     }
 
 	cmdBuff->recordDraw(this);
@@ -288,10 +288,10 @@ VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
     // Validate
 	MVKDevice* mvkDvc = cmdBuff->getDevice();
     if ((_firstInstance != 0) && !(mvkDvc->_pMetalFeatures->baseVertexInstanceDrawing)) {
-        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base instance.");
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base instance.");
     }
     if ((_vertexOffset != 0) && !(mvkDvc->_pMetalFeatures->baseVertexInstanceDrawing)) {
-        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex.");
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex.");
     }
 
 	cmdBuff->recordDraw(this);
@@ -521,7 +521,7 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 
     // Validate
     if ( !(cmdBuff->getDevice()->_pMetalFeatures->indirectDrawing) ) {
-        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing.");
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing.");
     }
 
 	cmdBuff->recordDraw(this);
@@ -731,7 +731,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                               indirectBufferOffset: mtlTCIndBuffOfst];
 #endif
 #if MVK_TVOS
-						reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
+						cmdEncoder->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
 #endif
 						mtlTCIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
                         // Mark pipeline, resources, and tess control push constants as dirty
@@ -770,7 +770,7 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 
     // Validate
     if ( !(cmdBuff->getDevice()->_pMetalFeatures->indirectDrawing) ) {
-        return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing.");
+        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing.");
     }
 
 	cmdBuff->recordDraw(this);
@@ -991,7 +991,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                                               indirectBufferOffset: mtlTCIndBuffOfst];
 #endif
 #if MVK_TVOS
-						reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
+						cmdEncoder->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
 #endif
 						mtlTCIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
                         // Mark pipeline, resources, and tess control push constants as dirty

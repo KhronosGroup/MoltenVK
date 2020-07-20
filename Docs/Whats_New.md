@@ -21,6 +21,7 @@ Released TBD
 - Add support for extensions:
 	- VK_KHR_sampler_ycbcr_conversion
 	- VK_EXT_robustness2
+- Add native support for `VK_FORMAT_D16_UNORM` on **_iOS 13.0+_** and **_tvOS 13.0+_**.
 - Add support for **_tvOS_** platform.
 - Add support for **_iOS Simulator_** and **_tvOS Simulator_** build destinations.
 - Cube demo runs on **_tvOS_**, **_iOS Simulator_**, and **_tvOS Simulator_**.
@@ -30,11 +31,16 @@ Released TBD
 - Fix issue where mapped host-coherent device memory not updated from image contents on *macOS*.
 - Fix small memory leak when setting swapchain color space.
 - Fix new and unexpected App Store failure on newly deprecated color space values.
+- Include vertex attribute size when testing whether attribute offset exceeds stride.
+- Add `MVKPhysicalDeviceMetalFeatures::vertexStrideAlignment` to track Metal vertex binding stride alignment.
 - Remove use of `@available()` directive as it was causing issues in some build environments.
 - Refactor **MoltenVK** *Xcode* build architectures.
 - Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `27`.
 - Update to latest SPIRV-Cross version:
 	- MSL: Workaround broken scalar access chain behavior in LLVM IR / AIR
+
+
 
 MoltenVK 1.0.43
 ---------------

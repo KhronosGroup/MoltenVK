@@ -72,16 +72,6 @@ extern "C" {
 #	define MVK_OS_SIMULATOR			TARGET_OS_SIMULATOR
 #endif
 
-/** Building for iOS Simulator. */
-#ifndef MVK_IOS_SIMULATOR
-#	define MVK_IOS_SIMULATOR		(MVK_IOS && MVK_OS_SIMULATOR)
-#endif
-
-/** Building for tvOS Simulator. */
-#ifndef MVK_TVOS_SIMULATOR
-#	define MVK_TVOS_SIMULATOR		(MVK_TVOS && MVK_OS_SIMULATOR)
-#endif
-
 /** Directive to identify public symbols. */
 #define MVK_PUBLIC_SYMBOL        __attribute__((visibility("default")))
 
