@@ -1554,12 +1554,12 @@ typedef enum : VkFormatFeatureFlags {
                                                     VK_FORMAT_FEATURE_BLIT_SRC_BIT |
                                                     VK_FORMAT_FEATURE_BLIT_DST_BIT),
     kMVKVkFormatFeatureFlagsTexChromaSubsampling = (VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR),
+    kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR |
                                                     VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_SEPARATE_RECONSTRUCTION_FILTER_BIT_KHR |
                                                     VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_BIT_KHR |
-                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR),
-    kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_DISJOINT_BIT_KHR),
+                                                    VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_CHROMA_RECONSTRUCTION_EXPLICIT_FORCEABLE_BIT_KHR |
+                                                    VK_FORMAT_FEATURE_DISJOINT_BIT_KHR),
 	kMVKVkFormatFeatureFlagsBufRead     = (VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT),
 	kMVKVkFormatFeatureFlagsBufWrite    = (VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT),
 	kMVKVkFormatFeatureFlagsBufAtomic   = (VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_ATOMIC_BIT),
