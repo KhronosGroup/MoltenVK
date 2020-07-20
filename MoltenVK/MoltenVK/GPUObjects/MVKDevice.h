@@ -350,7 +350,7 @@ protected:
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
-	uint64_t getSpirvCrossRevision();
+	uint64_t getMoltenVKGitRevision();
 	bool getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo);
 	void populate(VkPhysicalDeviceIDProperties* pDevIdProps);
 	void logGPUInfo();

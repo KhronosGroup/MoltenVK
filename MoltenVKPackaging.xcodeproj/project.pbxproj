@@ -232,6 +232,7 @@
 		A941E2B1221AEBD000890C56 /* create_framework_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_framework_ios.sh; sourceTree = "<group>"; };
 		A941E2B2221AEBD000890C56 /* create_framework_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_framework_macos.sh; sourceTree = "<group>"; };
 		A975D55C213F25D700D4834F /* create_dylib.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib.sh; sourceTree = "<group>"; };
+		A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gen_moltenvk_rev_hdr.sh; sourceTree = "<group>"; };
 		A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Runtime_UserGuide.md; path = Docs/MoltenVK_Runtime_UserGuide.md; sourceTree = "<group>"; };
 		A99A760321852584000A8E2A /* create_framework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_framework.sh; sourceTree = "<group>"; };
 		A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_macos.sh; sourceTree = "<group>"; };
@@ -295,6 +296,7 @@
 				A941E2B2221AEBD000890C56 /* create_framework_macos.sh */,
 				A9FC5F69249D3843003CB086 /* create_framework_tvos.sh */,
 				A99A760321852584000A8E2A /* create_framework.sh */,
+				A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */,
 				A9FC5F60249D2ED3003CB086 /* package_all.sh */,
 				A92EF7C921856EA200C8B91B /* package_docs.sh */,
 				A92EF7C621856EA200C8B91B /* package_moltenvk.sh */,
