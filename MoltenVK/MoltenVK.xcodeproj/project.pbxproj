@@ -1037,6 +1037,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = 2FEA0AB724902F9F00EEF3AD /* Build configuration list for PBXNativeTarget "MoltenVK-tvOS" */;
 			buildPhases = (
+				A980A25D24C6288D007A8F6F /* Generate Version Header */,
 				2FEA0A4024902F9F00EEF3AD /* Headers */,
 				2FEA0A8224902F9F00EEF3AD /* Sources */,
 				2FEA0AB524902F9F00EEF3AD /* Create Dynamic Library */,
@@ -1058,6 +1059,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A9B8EE1D1A98D796009C5A02 /* Build configuration list for PBXNativeTarget "MoltenVK-iOS" */;
 			buildPhases = (
+				A980A25B24C6283D007A8F6F /* Generate Version Header */,
 				A9B8EE071A98D796009C5A02 /* Headers */,
 				A9B8EE051A98D796009C5A02 /* Sources */,
 				A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */,
@@ -1079,6 +1081,7 @@
 			isa = PBXNativeTarget;
 			buildConfigurationList = A9CBEDFE1B6299D800E45FDC /* Build configuration list for PBXNativeTarget "MoltenVK-macOS" */;
 			buildPhases = (
+				A980A25E24C62895007A8F6F /* Generate Version Header */,
 				A9CBED871B6299D800E45FDC /* Headers */,
 				A9CBEDCE1B6299D800E45FDC /* Sources */,
 				A93F47C91D7E389E002AF700 /* Create Dynamic Library */,
@@ -1287,6 +1290,60 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_ios.sh\"\n";
+		};
+		A980A25B24C6283D007A8F6F /* Generate Version Header */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Version Header";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../Scripts/gen_moltenvk_rev_hdr.sh\"\n";
+		};
+		A980A25D24C6288D007A8F6F /* Generate Version Header */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Version Header";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../Scripts/gen_moltenvk_rev_hdr.sh\"\n";
+		};
+		A980A25E24C62895007A8F6F /* Generate Version Header */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Generate Version Header";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../Scripts/gen_moltenvk_rev_hdr.sh\"\n";
 		};
 		A9EE084F249BD4AE00E523A2 /* Create Fat Libraries */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1633,6 +1690,7 @@
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../MoltenVKShaderConverter\"",
 					"\"$(SRCROOT)/../External/cereal/include\"",
+					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = YES;
@@ -1692,6 +1750,7 @@
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../MoltenVKShaderConverter\"",
 					"\"$(SRCROOT)/../External/cereal/include\"",
+					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = NO;

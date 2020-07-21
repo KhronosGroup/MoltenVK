@@ -1939,10 +1939,10 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
 	uuidComponentOffset += sizeof(mtlFeatSet);
 
-	// Last 8 bytes contain the first part of the SPIRV-Cross Git revision
-	uint64_t spvxRev = getSpirvCrossRevision();
-	*(uint64_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostLongLongToBig(spvxRev);
-	uuidComponentOffset += sizeof(spvxRev);
+	// Last 8 bytes contain the first part of the MoltenVK Git revision
+	uint64_t mvkRev = getMoltenVKGitRevision();
+	*(uint64_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostLongLongToBig(mvkRev);
+	uuidComponentOffset += sizeof(mvkRev);
 }
 
 uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
@@ -1993,12 +1993,15 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	return minFS;
 }
 
-// Retrieve the SPIRV-Cross Git revision hash from a derived header file that was created in the fetchDependencies script.
-uint64_t MVKPhysicalDevice::getSpirvCrossRevision() {
+// Retrieve the SPIRV-Cross Git revision hash from a derived header file,
+// which is generated in advance, either statically, or more typically in
+// an early build phase script, and contains a line similar to the following:
+// static const char* mvkRevString = "fc0750d67cfe825b887dd2cf25a42e9d9a013eb2";
+uint64_t MVKPhysicalDevice::getMoltenVKGitRevision() {
 
-#include <SPIRV-Cross/mvkSpirvCrossRevisionDerived.h>
+#include "mvkGitRevDerived.h"
 
-	static const string revStr(spirvCrossRevisionString, 0, 16);	// We just need the first 16 chars
+	static const string revStr(mvkRevString, 0, 16);	// We just need the first 16 chars
 	static const string lut("0123456789ABCDEF");
 
 	uint64_t revVal = 0;
