@@ -34,6 +34,7 @@ Released TBD
 - Fix new and unexpected App Store failure on newly deprecated color space values.
 - Include vertex attribute size when testing whether attribute offset exceeds stride.
 - Add `MVKPhysicalDeviceMetalFeatures::vertexStrideAlignment` to track Metal vertex binding stride alignment.
+- Add `MVKPhysicalDeviceMetalFeatures::indirectTessellationDrawing` to track if indirect tessellation drawing is supported.
 - Remove use of `@available()` directive as it was causing issues in some build environments.
 - Refactor **MoltenVK** *Xcode* build architectures.
 - Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.

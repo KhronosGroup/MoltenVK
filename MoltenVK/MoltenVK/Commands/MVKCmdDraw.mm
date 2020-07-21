@@ -520,9 +520,13 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	_storeOverride = false;
 
     // Validate
-    if ( !(cmdBuff->getDevice()->_pMetalFeatures->indirectDrawing) ) {
+	MVKDevice* mvkDvc = cmdBuff->getDevice();
+    if ( !mvkDvc->_pMetalFeatures->indirectDrawing ) {
         return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect drawing.");
     }
+	if (cmdBuff->_lastTessellationPipeline && !mvkDvc->_pMetalFeatures->indirectTessellationDrawing) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect tessellated drawing.");
+	}
 
 	cmdBuff->recordDraw(this);
 	return VK_SUCCESS;
@@ -707,32 +711,32 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {
-                        if (pipeline->needsTessCtlOutputBuffer()) {
-                            [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcOutBuff->_mtlBuffer
-                                                                    offset: tcOutBuff->_offset
-                                                                   atIndex: kMVKTessEvalInputBufferIndex];
-                        }
-                        if (pipeline->needsTessCtlPatchOutputBuffer()) {
-                            [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcPatchOutBuff->_mtlBuffer
-                                                                    offset: tcPatchOutBuff->_offset
-                                                                   atIndex: kMVKTessEvalPatchInputBufferIndex];
-                        }
-                        [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcLevelBuff->_mtlBuffer
-                                                                offset: tcLevelBuff->_offset
-                                                               atIndex: kMVKTessEvalLevelBufferIndex];
-                        [cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
-                                                                            offset: tcLevelBuff->_offset
-                                                                    instanceStride: 0];
+						if (cmdEncoder->getDevice()->_pMetalFeatures->indirectTessellationDrawing) {
+							if (pipeline->needsTessCtlOutputBuffer()) {
+								[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcOutBuff->_mtlBuffer
+																		offset: tcOutBuff->_offset
+																	   atIndex: kMVKTessEvalInputBufferIndex];
+							}
+							if (pipeline->needsTessCtlPatchOutputBuffer()) {
+								[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcPatchOutBuff->_mtlBuffer
+																		offset: tcPatchOutBuff->_offset
+																	   atIndex: kMVKTessEvalPatchInputBufferIndex];
+							}
+							[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcLevelBuff->_mtlBuffer
+																	offset: tcLevelBuff->_offset
+																   atIndex: kMVKTessEvalLevelBufferIndex];
+							[cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
+																				offset: tcLevelBuff->_offset
+																		instanceStride: 0];
 #if MVK_MACOS_OR_IOS
-                        [cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
-                                                  patchIndexBuffer: nil
-                                            patchIndexBufferOffset: 0
-                                                    indirectBuffer: tcIndirectBuff->_mtlBuffer
-                                              indirectBufferOffset: mtlTCIndBuffOfst];
+							[cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
+													  patchIndexBuffer: nil
+												patchIndexBufferOffset: 0
+														indirectBuffer: tcIndirectBuff->_mtlBuffer
+												  indirectBufferOffset: mtlTCIndBuffOfst];
 #endif
-#if MVK_TVOS
-						cmdEncoder->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
-#endif
+						}
+
 						mtlTCIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
                         // Mark pipeline, resources, and tess control push constants as dirty
                         // so I apply them during the next stage.
@@ -769,9 +773,13 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	_storeOverride = false;
 
     // Validate
-    if ( !(cmdBuff->getDevice()->_pMetalFeatures->indirectDrawing) ) {
+	MVKDevice* mvkDvc = cmdBuff->getDevice();
+    if ( !mvkDvc->_pMetalFeatures->indirectDrawing ) {
         return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect drawing.");
     }
+	if (cmdBuff->_lastTessellationPipeline && !mvkDvc->_pMetalFeatures->indirectTessellationDrawing) {
+		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
+	}
 
 	cmdBuff->recordDraw(this);
 	return VK_SUCCESS;
@@ -967,32 +975,32 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {
-                        if (pipeline->needsTessCtlOutputBuffer()) {
-                            [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcOutBuff->_mtlBuffer
-                                                                    offset: tcOutBuff->_offset
-                                                                   atIndex: kMVKTessEvalInputBufferIndex];
-                        }
-                        if (pipeline->needsTessCtlPatchOutputBuffer()) {
-                            [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcPatchOutBuff->_mtlBuffer
-                                                                    offset: tcPatchOutBuff->_offset
-                                                                   atIndex: kMVKTessEvalPatchInputBufferIndex];
-                        }
-                        [cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcLevelBuff->_mtlBuffer
-                                                                offset: tcLevelBuff->_offset
-                                                               atIndex: kMVKTessEvalLevelBufferIndex];
-                        [cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
-                                                                            offset: tcLevelBuff->_offset
-                                                                    instanceStride: 0];
+						if (cmdEncoder->getDevice()->_pMetalFeatures->indirectTessellationDrawing) {
+							if (pipeline->needsTessCtlOutputBuffer()) {
+								[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcOutBuff->_mtlBuffer
+																		offset: tcOutBuff->_offset
+																	   atIndex: kMVKTessEvalInputBufferIndex];
+							}
+							if (pipeline->needsTessCtlPatchOutputBuffer()) {
+								[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcPatchOutBuff->_mtlBuffer
+																		offset: tcPatchOutBuff->_offset
+																	   atIndex: kMVKTessEvalPatchInputBufferIndex];
+							}
+							[cmdEncoder->_mtlRenderEncoder setVertexBuffer: tcLevelBuff->_mtlBuffer
+																	offset: tcLevelBuff->_offset
+																   atIndex: kMVKTessEvalLevelBufferIndex];
+							[cmdEncoder->_mtlRenderEncoder setTessellationFactorBuffer: tcLevelBuff->_mtlBuffer
+																				offset: tcLevelBuff->_offset
+																		instanceStride: 0];
 #if MVK_MACOS_OR_IOS
-                        [cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
-                                                  patchIndexBuffer: nil
-                                            patchIndexBufferOffset: 0
-                                                    indirectBuffer: tcIndirectBuff->_mtlBuffer
-                                              indirectBufferOffset: mtlTCIndBuffOfst];
+							[cmdEncoder->_mtlRenderEncoder drawPatches: outControlPointCount
+													  patchIndexBuffer: nil
+												patchIndexBufferOffset: 0
+														indirectBuffer: tcIndirectBuff->_mtlBuffer
+												  indirectBufferOffset: mtlTCIndBuffOfst];
 #endif
-#if MVK_TVOS
-						cmdEncoder->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
-#endif
+						}
+
 						mtlTCIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
                         // Mark pipeline, resources, and tess control push constants as dirty
                         // so I apply them during the next stage.
