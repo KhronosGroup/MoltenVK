@@ -613,6 +613,7 @@ typedef struct {
 	uint32_t maxTextureLayers;					/**< The maximum number of layers in an array texture. */
     uint32_t subgroupSize;			            /**< The number of threads in a SIMD-group. */
 	VkDeviceSize vertexStrideAlignment;         /**< The alignment used for the stride of vertex attribute bindings. */
+	VkBool32 indirectTessellationDrawing;		/**< If true, tessellation draw calls support parameters held in a GPU buffer. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

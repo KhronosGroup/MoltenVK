@@ -1063,6 +1063,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
 		_metalFeatures.layeredRendering = true;
 		_metalFeatures.stencilFeedback = true;
+		_metalFeatures.indirectTessellationDrawing = true;
 	}
 
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
@@ -1080,7 +1081,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.maxPerStageTextureCount = 128;
     _metalFeatures.mtlBufferAlignment = 256;
 	_metalFeatures.mtlCopyBufferAlignment = 4;
-	_metalFeatures.indirectDrawing = true;
 	_metalFeatures.baseVertexInstanceDrawing = true;
 	_metalFeatures.layeredRendering = true;
 	_metalFeatures.maxTextureDimension = (16 * KIBI);
@@ -1088,6 +1088,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
+		_metalFeatures.indirectDrawing = true;
+		_metalFeatures.indirectTessellationDrawing = true;
         _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
