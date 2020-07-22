@@ -580,24 +580,24 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 	addVkFormatDesc( R8_UNORM, R8Unorm, Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat );
 	addVkFormatDesc( R8_SNORM, R8Snorm, Invalid, CharNormalized, Char2Normalized, 1, 1, 1, ColorFloat );
-	addVkFormatDesc( R8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat );
-	addVkFormatDesc( R8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 1, ColorFloat );
+	addVkFormatDesc( R8_USCALED, Invalid, Invalid, UChar, UChar2, 1, 1, 1, ColorFloat );
+	addVkFormatDesc( R8_SSCALED, Invalid, Invalid, Char, Char2, 1, 1, 1, ColorFloat );
 	addVkFormatDesc( R8_UINT, R8Uint, Invalid, UChar, UChar2, 1, 1, 1, ColorUInt8 );
 	addVkFormatDesc( R8_SINT, R8Sint, Invalid, Char, Char2, 1, 1, 1, ColorInt8 );
 	addVkFormatDesc( R8_SRGB, R8Unorm_sRGB, Invalid, UCharNormalized, UChar2Normalized, 1, 1, 1, ColorFloat );
 
 	addVkFormatDesc( R8G8_UNORM, RG8Unorm, Invalid, UChar2Normalized, Invalid, 1, 1, 2, ColorFloat );
 	addVkFormatDesc( R8G8_SNORM, RG8Snorm, Invalid, Char2Normalized, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R8G8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R8G8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R8G8_USCALED, Invalid, Invalid, UChar2, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R8G8_SSCALED, Invalid, Invalid, Char2, Invalid, 1, 1, 2, ColorFloat );
 	addVkFormatDesc( R8G8_UINT, RG8Uint, Invalid, UChar2, Invalid, 1, 1, 2, ColorUInt8 );
 	addVkFormatDesc( R8G8_SINT, RG8Sint, Invalid, Char2, Invalid, 1, 1, 2, ColorInt8 );
 	addVkFormatDesc( R8G8_SRGB, RG8Unorm_sRGB, Invalid, UChar2Normalized, Invalid, 1, 1, 2, ColorFloat );
 
 	addVkFormatDesc( R8G8B8_UNORM, Invalid, Invalid, UChar3Normalized, Invalid, 1, 1, 3, ColorFloat );
 	addVkFormatDesc( R8G8B8_SNORM, Invalid, Invalid, Char3Normalized, Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( R8G8B8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
-	addVkFormatDesc( R8G8B8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 3, ColorFloat );
+	addVkFormatDesc( R8G8B8_USCALED, Invalid, Invalid, UChar3, Invalid, 1, 1, 3, ColorFloat );
+	addVkFormatDesc( R8G8B8_SSCALED, Invalid, Invalid, Char3, Invalid, 1, 1, 3, ColorFloat );
 	addVkFormatDesc( R8G8B8_UINT, Invalid, Invalid, UChar3, Invalid, 1, 1, 3, ColorUInt8 );
 	addVkFormatDesc( R8G8B8_SINT, Invalid, Invalid, Char3, Invalid, 1, 1, 3, ColorInt8 );
 	addVkFormatDesc( R8G8B8_SRGB, Invalid, Invalid, UChar3Normalized, Invalid, 1, 1, 3, ColorFloat );
@@ -612,8 +612,8 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 	addVkFormatDesc( R8G8B8A8_UNORM, RGBA8Unorm, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
 	addVkFormatDesc( R8G8B8A8_SNORM, RGBA8Snorm, Invalid, Char4Normalized, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R8G8B8A8_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R8G8B8A8_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R8G8B8A8_USCALED, Invalid, Invalid, UChar4, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R8G8B8A8_SSCALED, Invalid, Invalid, Char4, Invalid, 1, 1, 4, ColorFloat );
 	addVkFormatDesc( R8G8B8A8_UINT, RGBA8Uint, Invalid, UChar4, Invalid, 1, 1, 4, ColorUInt8 );
 	addVkFormatDesc( R8G8B8A8_SINT, RGBA8Sint, Invalid, Char4, Invalid, 1, 1, 4, ColorInt8 );
 	addVkFormatDesc( R8G8B8A8_SRGB, RGBA8Unorm_sRGB, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
@@ -628,8 +628,8 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 	addVkFormatDesc( A8B8G8R8_UNORM_PACK32, RGBA8Unorm, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
 	addVkFormatDesc( A8B8G8R8_SNORM_PACK32, RGBA8Snorm, Invalid, Char4Normalized, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A8B8G8R8_USCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( A8B8G8R8_SSCALED_PACK32, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( A8B8G8R8_USCALED_PACK32, Invalid, Invalid, UChar4, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( A8B8G8R8_SSCALED_PACK32, Invalid, Invalid, Char4, Invalid, 1, 1, 4, ColorFloat );
 	addVkFormatDesc( A8B8G8R8_UINT_PACK32, RGBA8Uint, Invalid, UChar4, Invalid, 1, 1, 4, ColorUInt8 );
 	addVkFormatDesc( A8B8G8R8_SINT_PACK32, RGBA8Sint, Invalid, Char4, Invalid, 1, 1, 4, ColorInt8 );
 	addVkFormatDesc( A8B8G8R8_SRGB_PACK32, RGBA8Unorm_sRGB, Invalid, UChar4Normalized, Invalid, 1, 1, 4, ColorFloat );
@@ -650,32 +650,32 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 	addVkFormatDesc( R16_UNORM, R16Unorm, Invalid, UShortNormalized, UShort2Normalized, 1, 1, 2, ColorFloat );
 	addVkFormatDesc( R16_SNORM, R16Snorm, Invalid, ShortNormalized, Short2Normalized, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R16_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
-	addVkFormatDesc( R16_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R16_USCALED, Invalid, Invalid, UShort, UShort2, 1, 1, 2, ColorFloat );
+	addVkFormatDesc( R16_SSCALED, Invalid, Invalid, Short, Short2, 1, 1, 2, ColorFloat );
 	addVkFormatDesc( R16_UINT, R16Uint, Invalid, UShort, UShort2, 1, 1, 2, ColorUInt16 );
 	addVkFormatDesc( R16_SINT, R16Sint, Invalid, Short, Short2, 1, 1, 2, ColorInt16 );
 	addVkFormatDesc( R16_SFLOAT, R16Float, Invalid, Half, Half2, 1, 1, 2, ColorFloat );
 
 	addVkFormatDesc( R16G16_UNORM, RG16Unorm, Invalid, UShort2Normalized, Invalid, 1, 1, 4, ColorFloat );
 	addVkFormatDesc( R16G16_SNORM, RG16Snorm, Invalid, Short2Normalized, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R16G16_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
-	addVkFormatDesc( R16G16_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R16G16_USCALED, Invalid, Invalid, UShort2, Invalid, 1, 1, 4, ColorFloat );
+	addVkFormatDesc( R16G16_SSCALED, Invalid, Invalid, Short2, Invalid, 1, 1, 4, ColorFloat );
 	addVkFormatDesc( R16G16_UINT, RG16Uint, Invalid, UShort2, Invalid, 1, 1, 4, ColorUInt16 );
 	addVkFormatDesc( R16G16_SINT, RG16Sint, Invalid, Short2, Invalid, 1, 1, 4, ColorInt16 );
 	addVkFormatDesc( R16G16_SFLOAT, RG16Float, Invalid, Half2, Invalid, 1, 1, 4, ColorFloat );
 
 	addVkFormatDesc( R16G16B16_UNORM, Invalid, Invalid, UShort3Normalized, Invalid, 1, 1, 6, ColorFloat );
 	addVkFormatDesc( R16G16B16_SNORM, Invalid, Invalid, Short3Normalized, Invalid, 1, 1, 6, ColorFloat );
-	addVkFormatDesc( R16G16B16_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 6, ColorFloat );
-	addVkFormatDesc( R16G16B16_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 6, ColorFloat );
+	addVkFormatDesc( R16G16B16_USCALED, Invalid, Invalid, UShort3, Invalid, 1, 1, 6, ColorFloat );
+	addVkFormatDesc( R16G16B16_SSCALED, Invalid, Invalid, Short3, Invalid, 1, 1, 6, ColorFloat );
 	addVkFormatDesc( R16G16B16_UINT, Invalid, Invalid, UShort3, Invalid, 1, 1, 6, ColorUInt16 );
 	addVkFormatDesc( R16G16B16_SINT, Invalid, Invalid, Short3, Invalid, 1, 1, 6, ColorInt16 );
 	addVkFormatDesc( R16G16B16_SFLOAT, Invalid, Invalid, Half3, Invalid, 1, 1, 6, ColorFloat );
 
 	addVkFormatDesc( R16G16B16A16_UNORM, RGBA16Unorm, Invalid, UShort4Normalized, Invalid, 1, 1, 8, ColorFloat );
 	addVkFormatDesc( R16G16B16A16_SNORM, RGBA16Snorm, Invalid, Short4Normalized, Invalid, 1, 1, 8, ColorFloat );
-	addVkFormatDesc( R16G16B16A16_USCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
-	addVkFormatDesc( R16G16B16A16_SSCALED, Invalid, Invalid, Invalid, Invalid, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R16G16B16A16_USCALED, Invalid, Invalid, UShort4, Invalid, 1, 1, 8, ColorFloat );
+	addVkFormatDesc( R16G16B16A16_SSCALED, Invalid, Invalid, Short4, Invalid, 1, 1, 8, ColorFloat );
 	addVkFormatDesc( R16G16B16A16_UINT, RGBA16Uint, Invalid, UShort4, Invalid, 1, 1, 8, ColorUInt16 );
 	addVkFormatDesc( R16G16B16A16_SINT, RGBA16Sint, Invalid, Short4, Invalid, 1, 1, 8, ColorInt16 );
 	addVkFormatDesc( R16G16B16A16_SFLOAT, RGBA16Float, Invalid, Half4, Invalid, 1, 1, 8, ColorFloat );
