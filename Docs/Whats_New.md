@@ -32,6 +32,7 @@ Released TBD
 - Fix issue where mapped host-coherent device memory not updated from image contents on *macOS*.
 - Fix small memory leak when setting swapchain color space.
 - Fix new and unexpected App Store failure on newly deprecated color space values.
+- Fix intermittent concurrent shader specialization race condition.
 - Include vertex attribute size when testing whether attribute offset exceeds stride.
 - Add `MVKPhysicalDeviceMetalFeatures::vertexStrideAlignment` to track Metal vertex binding stride alignment.
 - Add `MVKPhysicalDeviceMetalFeatures::indirectTessellationDrawing` to track if indirect tessellation drawing is supported.
