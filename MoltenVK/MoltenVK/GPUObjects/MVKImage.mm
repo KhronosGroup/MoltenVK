@@ -1417,12 +1417,12 @@ MVKImageView::MVKImageView(MVKDevice* device,
         VkImageType imgType = _image->getImageType();
         VkImageViewType viewType = pCreateInfo->viewType;
 
-        // VK_KHR_maintenance1 supports taking 2D image views of 3D slices. No dice in Metal.
+        // VK_KHR_maintenance1 supports taking 2D image views of 3D slices for sampling.
+		// No dice in Metal. But we are able to fake out a 3D render attachment by making the Metal view
+		// itself a 3D texture (when we create it), and setting the rendering depthPlane appropriately.
         if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
-            if ( !mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT) ) {
+            if (!mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
                 setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments."));
-            } else if (!mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-                reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments.");
             }
         }
     }
