@@ -120,7 +120,7 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.mipmapLevelCount = _image->_mipLevels;
     mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_image->_samples);
     mtlTexDesc.arrayLength = _image->_arrayLayers;
-    mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage);
+    mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage, _image->_isLinear);
     mtlTexDesc.storageModeMVK = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
 
