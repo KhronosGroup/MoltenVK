@@ -147,12 +147,15 @@ void MVKImagePlane::initSubresources(const VkImageCreateInfo* pCreateInfo) {
         VkDeviceSize rowPitch = _image->getBytesPerRow(_planeIndex, mipLvl);
         VkDeviceSize depthPitch = _image->getBytesPerLayer(_planeIndex, mipLvl);
 
+        VkExtent3D mipExtent = _image->getExtent3D(_planeIndex, mipLvl);
+        
         for (uint32_t layer = 0; layer < _image->_arrayLayers; layer++) {
             subRez.subresource.arrayLayer = layer;
 
             VkSubresourceLayout& layout = subRez.layout;
             layout.offset = offset;
-            layout.size = depthPitch * _image->_extent.depth;
+            layout.size = depthPitch * mipExtent.depth;
+            
             layout.rowPitch = rowPitch;
             layout.depthPitch = depthPitch;
 
@@ -828,7 +831,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
             _isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
         } else {
             for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
-                memoryBinding->_byteCount += getBytesPerLayer(planeIndex, mipLvl) * _extent.depth * _arrayLayers;
+                VkExtent3D mipExtent = getExtent3D(planeIndex, mipLvl);
+                memoryBinding->_byteCount += getBytesPerLayer(planeIndex, mipLvl) * mipExtent.depth * _arrayLayers;
             }
             memoryBinding->_byteAlignment = std::max(memoryBinding->_byteAlignment, _rowByteAlignment);
         }
