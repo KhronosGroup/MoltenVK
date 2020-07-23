@@ -267,8 +267,8 @@ void MVKImagePlane::getMTLTextureContent(MVKImageSubresource& subresource,
 bool MVKImagePlane::overlaps(VkSubresourceLayout& imgLayout, VkDeviceSize offset, VkDeviceSize size) {
 	VkDeviceSize memStart = offset;
 	VkDeviceSize memEnd = offset + size;
-	VkDeviceSize imgStart = imgLayout.offset;
-	VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
+	VkDeviceSize imgStart = getMemoryBinding()->_deviceMemoryOffset + imgLayout.offset;
+	VkDeviceSize imgEnd = imgStart + imgLayout.size;
 	return imgStart < memEnd && imgEnd > memStart;
 }
 
