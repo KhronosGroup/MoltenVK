@@ -536,7 +536,7 @@ VkDeviceSize MVKImage::getBytesPerRow(uint8_t planeIndex, uint32_t mipLevel) {
 
 VkDeviceSize MVKImage::getBytesPerLayer(uint8_t planeIndex, uint32_t mipLevel) {
     VkExtent3D extent = getExtent3D(planeIndex, mipLevel);
-    size_t bytesPerRow = mvkAlignByteCount(getPixelFormats()->getBytesPerRow(_vkFormat, extent.width), _rowByteAlignment);
+    size_t bytesPerRow = getBytesPerRow(planeIndex, mipLevel);
     return getPixelFormats()->getBytesPerLayer(_vkFormat, bytesPerRow, extent.height);
 }
 
