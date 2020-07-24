@@ -21,6 +21,7 @@ Released TBD
 - Add support for extensions:
 	- `VK_KHR_driver_properties`
 	- `VK_KHR_sampler_ycbcr_conversion`
+	- `VK_EXT_image_robustness`
 	- `VK_EXT_robustness2`
 - Add native support for `VK_FORMAT_D16_UNORM` on **_iOS 13.0+_** and **_tvOS 13.0+_**.
 - Add support for **_tvOS_** platform.
