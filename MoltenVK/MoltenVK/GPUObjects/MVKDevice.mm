@@ -1063,6 +1063,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily4_v1)) {
 		_metalFeatures.postDepthCoverage = true;
+		_metalFeatures.nonUniformThreadgroups = true;
 	}
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
@@ -1110,6 +1111,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.arrayOfSamplers = true;
 		_metalFeatures.presentModeImmediate = true;
 		_metalFeatures.fences = true;
+		_metalFeatures.nonUniformThreadgroups = true;
     }
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v4)) {

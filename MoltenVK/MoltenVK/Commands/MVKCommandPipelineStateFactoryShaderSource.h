@@ -173,96 +173,106 @@ struct MTLStageInRegionIndirectArguments {                                      
 #if __METAL_VERSION__ >= 120                                                                                    \n\
 kernel void cmdDrawIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],                             \n\
                                           device char* destBuff [[buffer(1)]],                                  \n\
-                                          constant uint32_t& srcStride [[buffer(2)]],                           \n\
-                                          constant uint32_t& inControlPointCount [[buffer(3)]],                 \n\
-                                          constant uint32_t& outControlPointCount [[buffer(4)]],                \n\
-                                          constant uint32_t& drawCount [[buffer(5)]],                           \n\
+                                          device char* paramsBuff [[buffer(2)]],                                \n\
+                                          constant uint32_t& srcStride [[buffer(3)]],                           \n\
+                                          constant uint32_t& inControlPointCount [[buffer(4)]],                 \n\
+                                          constant uint32_t& outControlPointCount [[buffer(5)]],                \n\
+                                          constant uint32_t& drawCount [[buffer(6)]],                           \n\
+                                          constant uint32_t& vtxThreadExecWidth [[buffer(7)]],                  \n\
+                                          constant uint32_t& tcWorkgroupSize [[buffer(8)]],                     \n\
                                           uint idx [[thread_position_in_grid]]) {                               \n\
     if (idx >= drawCount) { return; }                                                                           \n\
     const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
-    device char* dest = destBuff + idx * (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments));\n\
+    device char* dest;                                                                                          \n\
+    device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * 256);                           \n\
 #if __METAL_VERSION__ >= 210                                                                                    \n\
+    dest = destBuff + idx * (sizeof(MTLStageInRegionIndirectArguments) + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));\n\
     device auto& destSI = *(device MTLStageInRegionIndirectArguments*)dest;                                     \n\
     dest += sizeof(MTLStageInRegionIndirectArguments);                                                          \n\
+#else                                                                                                           \n\
+    dest = destBuff + idx * (sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));\n\
 #endif                                                                                                          \n\
-    device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;                              \n\
-    device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));\n\
-    destTC.threadgroupsPerGrid[0] = (src.vertexCount * src.instanceCount + inControlPointCount - 1) / inControlPointCount;\n\
+    device auto& destVtx = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;                             \n\
+    device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));\n\
+    device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);\n\
+    uint32_t patchCount = (src.vertexCount * src.instanceCount + inControlPointCount - 1) / inControlPointCount;\n\
+    params[0] = inControlPointCount;                                                                            \n\
+    params[1] = patchCount;                                                                                     \n\
+    destVtx.threadgroupsPerGrid[0] = (src.vertexCount + vtxThreadExecWidth - 1) / vtxThreadExecWidth;           \n\
+    destVtx.threadgroupsPerGrid[1] = src.instanceCount;                                                         \n\
+    destVtx.threadgroupsPerGrid[2] = 1;                                                                         \n\
+    destTC.threadgroupsPerGrid[0] = (patchCount * outControlPointCount + tcWorkgroupSize - 1) / tcWorkgroupSize;\n\
     destTC.threadgroupsPerGrid[1] = destTC.threadgroupsPerGrid[2] = 1;                                          \n\
-    destTE.patchCount = destTC.threadgroupsPerGrid[0];                                                          \n\
+    destTE.patchCount = patchCount;                                                                             \n\
     destTE.instanceCount = 1;                                                                                   \n\
     destTE.patchStart = destTE.baseInstance = 0;                                                                \n\
 #if __METAL_VERSION__ >= 210                                                                                    \n\
-    destSI.stageInOrigin[0] = destSI.stageInOrigin[1] = destSI.stageInOrigin[2] = 0;                            \n\
-    destSI.stageInSize[0] = src.instanceCount * max(src.vertexCount, outControlPointCount * destTE.patchCount); \n\
-    destSI.stageInSize[1] = destSI.stageInSize[2] = 1;                                                          \n\
+    destSI.stageInOrigin[0] = src.vertexStart;                                                                  \n\
+    destSI.stageInOrigin[1] = src.baseInstance;                                                                 \n\
+    destSI.stageInOrigin[2] = 0;                                                                                \n\
+    destSI.stageInSize[0] = src.vertexCount;                                                                    \n\
+    destSI.stageInSize[1] = src.instanceCount;                                                                  \n\
+    destSI.stageInSize[2] = 1;                                                                                  \n\
 #endif                                                                                                          \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 kernel void cmdDrawIndexedIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],                      \n\
                                                  device char* destBuff [[buffer(1)]],                           \n\
-                                                 constant uint32_t& srcStride [[buffer(2)]],                    \n\
-                                                 constant uint32_t& inControlPointCount [[buffer(3)]],          \n\
-                                                 constant uint32_t& outControlPointCount [[buffer(4)]],         \n\
-                                                 constant uint32_t& drawCount [[buffer(5)]],                    \n\
+                                                 device char* paramsBuff [[buffer(2)]],                         \n\
+                                                 constant uint32_t& srcStride [[buffer(3)]],                    \n\
+                                                 constant uint32_t& inControlPointCount [[buffer(4)]],          \n\
+                                                 constant uint32_t& outControlPointCount [[buffer(5)]],         \n\
+                                                 constant uint32_t& drawCount [[buffer(6)]],                    \n\
+                                                 constant uint32_t& vtxThreadExecWidth [[buffer(7)]],           \n\
+                                                 constant uint32_t& tcWorkgroupSize [[buffer(8)]],              \n\
                                                  uint idx [[thread_position_in_grid]]) {                        \n\
     if (idx >= drawCount) { return; }                                                                           \n\
     const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
-    device char* dest = destBuff + idx * (sizeof(MTLDispatchThreadgroupsIndirectArguments) + sizeof(MTLDrawPatchIndirectArguments));\n\
+    device char* dest;                                                                                          \n\
+    device auto* params = reinterpret_cast<device uint32_t*>(paramsBuff + idx * 256);                           \n\
 #if __METAL_VERSION__ >= 210                                                                                    \n\
+    dest = destBuff + idx * (sizeof(MTLStageInRegionIndirectArguments) + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));\n\
     device auto& destSI = *(device MTLStageInRegionIndirectArguments*)dest;                                     \n\
     dest += sizeof(MTLStageInRegionIndirectArguments);                                                          \n\
+#else                                                                                                           \n\
+    dest = destBuff + idx * (sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2 + sizeof(MTLDrawPatchIndirectArguments));\n\
 #endif                                                                                                          \n\
-    device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;                              \n\
-    device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));\n\
-    destTC.threadgroupsPerGrid[0] = (src.indexCount * src.instanceCount + inControlPointCount - 1) / inControlPointCount;\n\
+    device auto& destVtx = *(device MTLDispatchThreadgroupsIndirectArguments*)dest;                             \n\
+    device auto& destTC = *(device MTLDispatchThreadgroupsIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments));\n\
+    device auto& destTE = *(device MTLDrawPatchIndirectArguments*)(dest + sizeof(MTLDispatchThreadgroupsIndirectArguments) * 2);\n\
+    uint32_t patchCount = (src.indexCount * src.instanceCount + inControlPointCount - 1) / inControlPointCount;\n\
+    params[0] = inControlPointCount;                                                                            \n\
+    params[1] = patchCount;                                                                                     \n\
+    destVtx.threadgroupsPerGrid[0] = (src.indexCount + vtxThreadExecWidth - 1) / vtxThreadExecWidth;            \n\
+    destVtx.threadgroupsPerGrid[1] = src.instanceCount;                                                         \n\
+    destVtx.threadgroupsPerGrid[2] = 1;                                                                         \n\
+    destTC.threadgroupsPerGrid[0] = (patchCount * outControlPointCount + tcWorkgroupSize - 1) / tcWorkgroupSize;\n\
     destTC.threadgroupsPerGrid[1] = destTC.threadgroupsPerGrid[2] = 1;                                          \n\
-    destTE.patchCount = destTC.threadgroupsPerGrid[0];                                                          \n\
+    destTE.patchCount = patchCount;                                                                             \n\
     destTE.instanceCount = 1;                                                                                   \n\
     destTE.patchStart = destTE.baseInstance = 0;                                                                \n\
 #if __METAL_VERSION__ >= 210                                                                                    \n\
-    destSI.stageInOrigin[0] = destSI.stageInOrigin[1] = destSI.stageInOrigin[2] = 0;                            \n\
-    destSI.stageInSize[0] = src.instanceCount * max(src.indexCount, outControlPointCount * destTE.patchCount); \n\
-    destSI.stageInSize[1] = destSI.stageInSize[2] = 1;                                                          \n\
+    destSI.stageInOrigin[0] = src.baseVertex;                                                                   \n\
+    destSI.stageInOrigin[1] = src.baseInstance;                                                                 \n\
+    destSI.stageInOrigin[2] = 0;                                                                                \n\
+    destSI.stageInSize[0] = src.indexCount;                                                                     \n\
+    destSI.stageInSize[1] = src.instanceCount;                                                                  \n\
+    destSI.stageInSize[2] = 1;                                                                                  \n\
 #endif                                                                                                          \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 kernel void cmdDrawIndexedCopyIndex16Buffer(const device uint16_t* srcBuff [[buffer(0)]],                       \n\
                                             device uint16_t* destBuff [[buffer(1)]],                            \n\
-                                            constant uint32_t& inControlPointCount [[buffer(2)]],               \n\
-                                            constant uint32_t& outControlPointCount [[buffer(3)]],              \n\
-                                            const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(4)]]) {\n\
-    uint patchCount = (params.indexCount + inControlPointCount - 1) / inControlPointCount;                      \n\
-    for (uint i = 0; i < params.instanceCount; i++) {                                                           \n\
-        for (uint j = 0; j < patchCount; j++) {                                                                 \n\
-            for (uint k = 0; k < max(inControlPointCount, outControlPointCount); k++) {                         \n\
-                if (k < inControlPointCount) {                                                                  \n\
-                    destBuff[i * params.indexCount + j * outControlPointCount + k] = srcBuff[params.indexStart + j * inControlPointCount + k] + i * params.indexCount;\n\
-                } else {                                                                                        \n\
-                    destBuff[i * params.indexCount + j * outControlPointCount + k] = 0;                         \n\
-                }                                                                                               \n\
-            }                                                                                                   \n\
-        }                                                                                                       \n\
-    }                                                                                                           \n\
+                                            const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(2)]],\n\
+                                            uint i [[thread_position_in_grid]]) {                               \n\
+    destBuff[i] = srcBuff[params.indexStart + i];                                                               \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 kernel void cmdDrawIndexedCopyIndex32Buffer(const device uint32_t* srcBuff [[buffer(0)]],                       \n\
                                             device uint32_t* destBuff [[buffer(1)]],                            \n\
-                                            constant uint32_t& inControlPointCount [[buffer(2)]],               \n\
-                                            constant uint32_t& outControlPointCount [[buffer(3)]],              \n\
-                                            const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(4)]]) {\n\
-    uint patchCount = (params.indexCount + inControlPointCount - 1) / inControlPointCount;                      \n\
-    for (uint i = 0; i < params.instanceCount; i++) {                                                           \n\
-        for (uint j = 0; j < patchCount; j++) {                                                                 \n\
-            for (uint k = 0; k < max(inControlPointCount, outControlPointCount); k++) {                         \n\
-                if (k < inControlPointCount) {                                                                  \n\
-                    destBuff[i * params.indexCount + j * outControlPointCount + k] = srcBuff[params.indexStart + j * inControlPointCount + k] + i * params.indexCount;\n\
-                } else {                                                                                        \n\
-                    destBuff[i * params.indexCount + j * outControlPointCount + k] = 0;                         \n\
-                }                                                                                               \n\
-            }                                                                                                   \n\
-        }                                                                                                       \n\
-    }                                                                                                           \n\
+                                            const device MTLDrawIndexedPrimitivesIndirectArguments& params [[buffer(2)]],\n\
+                                            uint i [[thread_position_in_grid]]) {                               \n\
+    destBuff[i] = srcBuff[params.indexStart + i];                                                               \n\
 }                                                                                                               \n\
                                                                                                                 \n\
 #endif                                                                                                          \n\

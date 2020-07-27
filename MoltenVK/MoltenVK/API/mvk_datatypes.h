@@ -344,6 +344,9 @@ MTLVertexFormat mvkMTLVertexFormatFromVkFormat(VkFormat vkFormat);
 /** Returns the Metal MTLVertexStepFunction corresponding to the specified Vulkan VkVertexInputRate. */
 MTLVertexStepFunction mvkMTLVertexStepFunctionFromVkVertexInputRate(VkVertexInputRate vkVtxStep);
 
+/** Returns the Metal MTLStepFunction corresponding to the specified Vulkan VkVertexInputRate. */
+MTLStepFunction mvkMTLStepFunctionFromVkVertexInputRate(VkVertexInputRate vkVtxStep, bool forTess = false);
+
 /** Returns the Metal MTLPrimitiveType corresponding to the specified Vulkan VkPrimitiveTopology. */
 MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology);
 

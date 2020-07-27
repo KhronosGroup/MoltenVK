@@ -23,8 +23,11 @@
 #include "MVKCommonEnvironment.h"
 #include "mvk_vulkan.h"
 #include <algorithm>
+#include <cassert>
+#include <limits>
 #include <string>
 #include <simd/simd.h>
+#include <type_traits>
 
 
 #pragma mark Math
@@ -81,7 +84,7 @@ typedef enum : uint8_t {
     kMVKCommandUseClearDepthStencilImage,   /**< vkCmdClearDepthStencilImage. */
     kMVKCommandUseResetQueryPool,           /**< vkCmdResetQueryPool. */
     kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
-    kMVKCommandUseTessellationControl,      /**< vkCmdDraw* - tessellation control stage. */
+    kMVKCommandUseTessellationVertexTessCtl,/**< vkCmdDraw* - vertex and tessellation control stages. */
     kMVKCommandUseCopyQueryPoolResults      /**< vkCmdCopyQueryPoolResults. */
 } MVKCommandUse;
 
@@ -346,10 +349,49 @@ const T& mvkClamp(const T& val, const T& lower, const T& upper) {
 }
 
 /** Returns the result of a division, rounded up. */
-template<typename T>
-T mvkCeilingDivide(T numerator, T denominator) {
+template<typename T, typename U>
+constexpr typename std::common_type<T, U>::type mvkCeilingDivide(T numerator, U denominator) {
+	typedef typename std::common_type<T, U>::type R;
 	// Short circuit very common usecase of dividing by one.
-	return (denominator == 1) ? numerator : (numerator + denominator - 1) / denominator;
+	return (denominator == 1) ? numerator : (R(numerator) + denominator - 1) / denominator;
+}
+
+/** Returns the absolute value of a number. */
+template<typename R, typename T, bool = std::is_signed<T>::value>
+struct MVKAbs;
+
+template<typename R, typename T>
+struct MVKAbs<R, T, true> {
+	static constexpr R eval(T x) noexcept {
+		return x >= 0 ? x : (x == std::numeric_limits<T>::min() ? -static_cast<R>(x) : -x);
+	}
+};
+
+template<typename R, typename T>
+struct MVKAbs<R, T, false> {
+	static constexpr R eval(T x) noexcept {
+		return x;
+	}
+};
+
+/** Returns the greatest common divisor of two numbers. */
+template<typename T>
+constexpr T mvkGreatestCommonDivisorImpl(T a, T b) {
+	return b == 0 ? a : mvkGreatestCommonDivisorImpl(b, a % b);
+}
+
+template<typename T, typename U>
+constexpr typename std::common_type<T, U>::type mvkGreatestCommonDivisor(T a, U b) {
+	typedef typename std::common_type<T, U>::type R;
+	typedef typename std::make_unsigned<R>::type UI;
+	return static_cast<R>(mvkGreatestCommonDivisorImpl(static_cast<UI>(MVKAbs<R, T>::eval(a)), static_cast<UI>(MVKAbs<R, U>::eval(b))));
+}
+
+/** Returns the least common multiple of two numbers. */
+template<typename T, typename U>
+constexpr typename std::common_type<T, U>::type mvkLeastCommonMultiple(T a, U b) {
+	typedef typename std::common_type<T, U>::type R;
+	return (a == 0 && b == 0) ? 0 : MVKAbs<R, T>::eval(a) / mvkGreatestCommonDivisor(a, b) * MVKAbs<R, U>::eval(b);
 }
 
 

@@ -380,6 +380,17 @@ MVK_PUBLIC_SYMBOL MTLVertexStepFunction mvkMTLVertexStepFunctionFromVkVertexInpu
 	}
 }
 
+MVK_PUBLIC_SYMBOL MTLStepFunction mvkMTLStepFunctionFromVkVertexInputRate(VkVertexInputRate vkVtxStep, bool forTess) {
+	if (!forTess) {
+		return (MTLStepFunction)mvkMTLVertexStepFunctionFromVkVertexInputRate(vkVtxStep);
+	}
+	switch (vkVtxStep) {
+		case VK_VERTEX_INPUT_RATE_VERTEX:		return MTLStepFunctionThreadPositionInGridX;
+		case VK_VERTEX_INPUT_RATE_INSTANCE:		return MTLStepFunctionThreadPositionInGridY;
+		default:								return MTLStepFunctionThreadPositionInGridX;
+	}
+}
+
 #undef mvkMTLPrimitiveTypeFromVkPrimitiveTopology
 MVK_PUBLIC_SYMBOL MTLPrimitiveType mvkMTLPrimitiveTypeFromVkPrimitiveTopology(VkPrimitiveTopology vkTopology) {
 	return mvkMTLPrimitiveTypeFromVkPrimitiveTopologyInObj(vkTopology, nullptr);

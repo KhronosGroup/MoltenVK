@@ -214,7 +214,7 @@ namespace mvk {
 						if (reflect.has_member_decoration(type->self, idx, spv::DecorationLocation)) {
 							memberLoc = reflect.get_member_decoration(type->self, idx, spv::DecorationLocation);
 						}
-						patch = reflect.has_member_decoration(type->self, idx, spv::DecorationPatch);
+						patch = patch || reflect.has_member_decoration(type->self, idx, spv::DecorationPatch);
 						if (reflect.has_member_decoration(type->self, idx, spv::DecorationBuiltIn)) {
 							biType = (spv::BuiltIn)reflect.get_member_decoration(type->self, idx, spv::DecorationBuiltIn);
 							isUsed = reflect.has_active_builtin(biType, var.storage);

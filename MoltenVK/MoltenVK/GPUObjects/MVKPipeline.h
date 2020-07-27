@@ -124,8 +124,7 @@ protected:
 #pragma mark MVKPipeline
 
 static const uint32_t kMVKTessCtlInputBufferIndex = 30;
-static const uint32_t kMVKTessCtlIndexBufferIndex = 29;
-static const uint32_t kMVKTessCtlNumReservedBuffers = 2;
+static const uint32_t kMVKTessCtlNumReservedBuffers = 1;
 
 static const uint32_t kMVKTessEvalInputBufferIndex = 30;
 static const uint32_t kMVKTessEvalPatchInputBufferIndex = 29;
@@ -228,6 +227,18 @@ public:
 	/** Returns the current tessellation level buffer binding for the tess. control shader. */
 	uint32_t getTessCtlLevelBufferIndex() { return _tessCtlLevelBufferIndex; }
 
+	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated draw with no indices. */
+	id<MTLComputePipelineState> getTessVertexStageState();
+
+	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated draw with 16-bit indices. */
+	id<MTLComputePipelineState> getTessVertexStageIndex16State();
+
+	/** Returns the MTLComputePipelineState object for the vertex stage of a tessellated draw with 32-bit indices. */
+	id<MTLComputePipelineState> getTessVertexStageIndex32State();
+
+	/** Returns the MTLComputePipelineState object for the tessellation control stage of a tessellated draw. */
+	id<MTLComputePipelineState> getTessControlStageState() { return _mtlTessControlStageState; }
+
 	/** Returns true if the vertex shader needs a buffer to store its output. */
 	bool needsVertexOutputBuffer() { return _needsVertexOutputBuffer; }
 
@@ -261,17 +272,19 @@ protected:
     void addVertexInputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderContext, const VkGraphicsPipelineCreateInfo* pCreateInfo);
     void addPrevStageOutputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderContext, SPIRVShaderOutputs& outputs);
     MTLRenderPipelineDescriptor* newMTLRenderPipelineDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
-    MTLRenderPipelineDescriptor* newMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
+    MTLComputePipelineDescriptor* newMTLTessVertexStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
 	MTLComputePipelineDescriptor* newMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
 	MTLRenderPipelineDescriptor* newMTLTessRasterStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData, SPIRVToMSLConversionConfiguration& shaderContext);
 	bool addVertexShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext);
+	bool addVertexShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext);
 	bool addTessCtlShaderToPipeline(MTLComputePipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, SPIRVShaderOutputs& prevOutput);
 	bool addTessEvalShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, SPIRVShaderOutputs& prevOutput);
     bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, SPIRVShaderOutputs& prevOutput);
-	bool addVertexInputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConversionConfiguration& shaderContext);
+	template<class T>
+	bool addVertexInputToPipeline(T* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConversionConfiguration& shaderContext);
     void addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS);
-    void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkGraphicsPipelineCreateInfo* pCreateInfo, bool isTessellationVertexPipeline = false);
-    bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo, const SPIRVTessReflectionData& reflectData);
+    void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo);
+    bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name, uint32_t reservedBuffers);
 	uint32_t getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding);
 
@@ -288,12 +301,13 @@ protected:
 	MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 
-	MTLComputePipelineDescriptor* _mtlTessControlStageDesc = nil;
+	MTLComputePipelineDescriptor* _mtlTessVertexStageDesc = nil;
+	id<MTLFunction> _mtlTessVertexFunctions[3] = {nil, nil, nil};
 
-	id<MTLRenderPipelineState> _mtlTessVertexStageState = nil;
+	id<MTLComputePipelineState> _mtlTessVertexStageState = nil;
+	id<MTLComputePipelineState> _mtlTessVertexStageIndex16State = nil;
+	id<MTLComputePipelineState> _mtlTessVertexStageIndex32State = nil;
 	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
-	id<MTLComputePipelineState> _mtlTessControlStageIndex16State = nil;
-	id<MTLComputePipelineState> _mtlTessControlStageIndex32State = nil;
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
 	MTLCullMode _mtlCullMode;
 	MTLWinding _mtlFrontWinding;
@@ -316,7 +330,7 @@ protected:
 	bool _needsTessCtlBufferSizeBuffer = false;
 	bool _needsTessCtlOutputBuffer = false;
 	bool _needsTessCtlPatchOutputBuffer = false;
-	bool _needsTessCtlInput = false;
+	bool _needsTessCtlInputBuffer = false;
 	bool _needsTessEvalSwizzleBuffer = false;
 	bool _needsTessEvalBufferSizeBuffer = false;
 	bool _needsFragmentSwizzleBuffer = false;
