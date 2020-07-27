@@ -38,6 +38,7 @@ Released TBD
 - Add `MVKPhysicalDeviceMetalFeatures::vertexStrideAlignment` to track Metal vertex binding stride alignment.
 - Add `MVKPhysicalDeviceMetalFeatures::indirectTessellationDrawing` to track if indirect tessellation drawing is supported.
 - Remove use of `@available()` directive as it was causing issues in some build environments.
+- Pass pipeline sample mask, if present, to SPIRV-Cross.
 - Refactor **MoltenVK** *Xcode* build architectures.
 - Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `27`.

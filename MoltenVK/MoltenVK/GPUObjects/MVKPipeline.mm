@@ -930,6 +930,9 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageFragment];
 		shaderContext.options.entryPointName = _pFragmentSS->pName;
 		shaderContext.options.mslOptions.capture_output_to_buffer = false;
+		if (pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
+			shaderContext.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
+		}
 		addPrevStageOutputToShaderConverterContext(shaderContext, shaderOutputs);
 
 		MVKMTLFunction func = ((MVKShaderModule*)_pFragmentSS->module)->getMTLFunction(&shaderContext, _pFragmentSS->pSpecializationInfo, _pipelineCache);
@@ -1700,6 +1703,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.dynamic_offsets_buffer_index,
 				opt.shader_input_wg_index,
 				opt.device_index,
+				opt.additional_fixed_sample_mask,
 				opt.enable_frag_output_mask,
 				opt.enable_point_size_builtin,
 				opt.enable_frag_depth_builtin,
