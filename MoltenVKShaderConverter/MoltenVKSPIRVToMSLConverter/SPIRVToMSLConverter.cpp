@@ -43,31 +43,9 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConv
 	if (entryPointName != other.entryPointName) { return false; }
 	if (tessPatchKind != other.tessPatchKind) { return false; }
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
-	if (!!shouldFlipVertexY != !!other.shouldFlipVertexY) { return false; }
+	if (shouldFlipVertexY != other.shouldFlipVertexY) { return false; }
 
-	if (mslOptions.platform != other.mslOptions.platform) { return false; }
-	if (mslOptions.msl_version != other.mslOptions.msl_version) { return false; }
-	if (mslOptions.texel_buffer_texture_width != other.mslOptions.texel_buffer_texture_width) { return false; }
-	if (mslOptions.swizzle_buffer_index != other.mslOptions.swizzle_buffer_index) { return false; }
-	if (mslOptions.indirect_params_buffer_index != other.mslOptions.indirect_params_buffer_index) { return false; }
-	if (mslOptions.shader_output_buffer_index != other.mslOptions.shader_output_buffer_index) { return false; }
-	if (mslOptions.shader_patch_output_buffer_index != other.mslOptions.shader_patch_output_buffer_index) { return false; }
-	if (mslOptions.shader_tess_factor_buffer_index != other.mslOptions.shader_tess_factor_buffer_index) { return false; }
-	if (mslOptions.buffer_size_buffer_index != other.mslOptions.buffer_size_buffer_index) { return false; }
-	if (mslOptions.shader_input_wg_index != other.mslOptions.shader_input_wg_index) { return false; }
-	if (mslOptions.enable_frag_output_mask != other.mslOptions.enable_frag_output_mask) { return false; }
-	if (mslOptions.additional_fixed_sample_mask != other.mslOptions.additional_fixed_sample_mask) { return false; }
-	if (!!mslOptions.enable_point_size_builtin != !!other.mslOptions.enable_point_size_builtin) { return false; }
-	if (!!mslOptions.enable_frag_depth_builtin != !!other.mslOptions.enable_frag_depth_builtin) { return false; }
-	if (!!mslOptions.enable_frag_stencil_ref_builtin != !!other.mslOptions.enable_frag_stencil_ref_builtin) { return false; }
-	if (!!mslOptions.disable_rasterization != !!other.mslOptions.disable_rasterization) { return false; }
-	if (!!mslOptions.capture_output_to_buffer != !!other.mslOptions.capture_output_to_buffer) { return false; }
-	if (!!mslOptions.swizzle_texture_samples != !!other.mslOptions.swizzle_texture_samples) { return false; }
-	if (!!mslOptions.tess_domain_origin_lower_left != !!other.mslOptions.tess_domain_origin_lower_left) { return false; }
-	if (mslOptions.argument_buffers != other.mslOptions.argument_buffers) { return false; }
-	if (mslOptions.pad_fragment_output_components != other.mslOptions.pad_fragment_output_components) { return false; }
-	if (mslOptions.texture_buffer_native != other.mslOptions.texture_buffer_native) { return false; }
-	if (mslOptions.texture_1D_as_2D != other.mslOptions.texture_1D_as_2D) { return false; }
+	if (memcmp(&mslOptions, &other.mslOptions, sizeof(mslOptions)) != 0) { return false; }
 
 	return true;
 }
@@ -92,7 +70,10 @@ MVK_PUBLIC_SYMBOL std::string SPIRVToMSLConversionOptions::printMSLVersion(uint3
 }
 
 MVK_PUBLIC_SYMBOL SPIRVToMSLConversionOptions::SPIRVToMSLConversionOptions() {
-	mslOptions.pad_fragment_output_components = true;
+	// Explicitly set mslOptions to defaults over cleared memory to ensure all instances
+	// have exactly the same memory layout when using memory comparison in matches().
+	memset(&mslOptions, 0, sizeof(mslOptions));
+	mslOptions = CompilerMSL::Options();
 
 #if MVK_MACOS
 	mslOptions.platform = CompilerMSL::Options::macOS;
@@ -103,6 +84,8 @@ MVK_PUBLIC_SYMBOL SPIRVToMSLConversionOptions::SPIRVToMSLConversionOptions() {
 #if MVK_TVOS
  	mslOptions.platform = CompilerMSL::Options::iOS;
 #endif
+
+	mslOptions.pad_fragment_output_components = true;
 }
 
 MVK_PUBLIC_SYMBOL bool mvk::MSLShaderInput::matches(const mvk::MSLShaderInput& other) const {

@@ -16,7 +16,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.0.44
 ---------------
 
-Released TBD
+Released 2020/07/28
 
 - Add support for extensions:
 	- `VK_KHR_driver_properties`
@@ -43,7 +43,19 @@ Released TBD
 - Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `27`.
 - Update to latest SPIRV-Cross version:
-	- MSL: Workaround broken scalar access chain behavior in LLVM IR / AIR
+	- MSL: Add support for processing more than one patch per workgroup.
+	- MSL: Workaround broken scalar access chain behavior in MSL LLVM IR / AIR.
+	- MSL: Do not emit swizzled writes in packing fixups.
+	- MSL: Ensure `OpStore` source operands are marked for inclusion in function arguments.
+	- MSL: Enabling setting an additional fixed `sampleMask` in fragment shaders.
+	- MSL: Remove obsolete `MSLVertexAttr` and `MSLShaderInput` members.
+	- MSL: Fix up input variables' vector lengths in all stages.
+	- MSL: Improve handling of array types in buffer objects.
+	- MSL: Deal with loading non-value-type arrays.
+	- MSL: Deal with array load-store in buffer-block structs.
+	- MSL: Use input attachment index directly for resource index fallback.
+	- Fix missing switch cases in `Y'CbCr` conversion.
+	- Implement context-sensitive expression read tracking.
 
 
 

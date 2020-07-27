@@ -1701,10 +1701,12 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.buffer_size_buffer_index,
 				opt.view_mask_buffer_index,
 				opt.dynamic_offsets_buffer_index,
+				opt.shader_input_buffer_index,
+				opt.shader_index_buffer_index,
 				opt.shader_input_wg_index,
 				opt.device_index,
-				opt.additional_fixed_sample_mask,
 				opt.enable_frag_output_mask,
+				opt.additional_fixed_sample_mask,
 				opt.enable_point_size_builtin,
 				opt.enable_frag_depth_builtin,
 				opt.enable_frag_stencil_ref_builtin,
@@ -1727,7 +1729,10 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.texture_buffer_native,
 				opt.force_active_argument_buffer_resources,
 				opt.force_native_arrays,
-				opt.enable_clip_distance_user_varying);
+				opt.enable_clip_distance_user_varying,
+				opt.multi_patch_workgroup,
+				opt.vertex_for_tessellation,
+				opt.vertex_index_type);
 	}
 
 	template<class Archive>
