@@ -312,7 +312,7 @@ public:
      * attempting to copy a depth image with a substituted format to and from a buffer.
      */
     inline bool hasExpectedTexelSize() { return _hasExpectedTexelSize; }
-
+    
 	/** Returns the Metal resource options for this image. */
     MTLStorageMode getMTLStorageMode();
 

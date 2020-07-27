@@ -120,7 +120,7 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.mipmapLevelCount = _image->_mipLevels;
     mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_image->_samples);
     mtlTexDesc.arrayLength = _image->_arrayLayers;
-    mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage);
+    mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage, _image->_isLinear);
     mtlTexDesc.storageModeMVK = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
 
@@ -147,12 +147,15 @@ void MVKImagePlane::initSubresources(const VkImageCreateInfo* pCreateInfo) {
         VkDeviceSize rowPitch = _image->getBytesPerRow(_planeIndex, mipLvl);
         VkDeviceSize depthPitch = _image->getBytesPerLayer(_planeIndex, mipLvl);
 
+        VkExtent3D mipExtent = _image->getExtent3D(_planeIndex, mipLvl);
+        
         for (uint32_t layer = 0; layer < _image->_arrayLayers; layer++) {
             subRez.subresource.arrayLayer = layer;
 
             VkSubresourceLayout& layout = subRez.layout;
             layout.offset = offset;
-            layout.size = depthPitch * _image->_extent.depth;
+            layout.size = depthPitch * mipExtent.depth;
+            
             layout.rowPitch = rowPitch;
             layout.depthPitch = depthPitch;
 
@@ -267,8 +270,8 @@ void MVKImagePlane::getMTLTextureContent(MVKImageSubresource& subresource,
 bool MVKImagePlane::overlaps(VkSubresourceLayout& imgLayout, VkDeviceSize offset, VkDeviceSize size) {
 	VkDeviceSize memStart = offset;
 	VkDeviceSize memEnd = offset + size;
-	VkDeviceSize imgStart = imgLayout.offset;
-	VkDeviceSize imgEnd = imgLayout.offset + imgLayout.size;
+	VkDeviceSize imgStart = getMemoryBinding()->_deviceMemoryOffset + imgLayout.offset;
+	VkDeviceSize imgEnd = imgStart + imgLayout.size;
 	return imgStart < memEnd && imgEnd > memStart;
 }
 
@@ -533,7 +536,7 @@ VkDeviceSize MVKImage::getBytesPerRow(uint8_t planeIndex, uint32_t mipLevel) {
 
 VkDeviceSize MVKImage::getBytesPerLayer(uint8_t planeIndex, uint32_t mipLevel) {
     VkExtent3D extent = getExtent3D(planeIndex, mipLevel);
-    size_t bytesPerRow = getPixelFormats()->getBytesPerRow(_vkFormat, extent.width);
+    size_t bytesPerRow = getBytesPerRow(planeIndex, mipLevel);
     return getPixelFormats()->getBytesPerLayer(_vkFormat, bytesPerRow, extent.height);
 }
 
@@ -828,7 +831,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
             _isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
         } else {
             for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
-                memoryBinding->_byteCount += getBytesPerLayer(planeIndex, mipLvl) * _extent.depth * _arrayLayers;
+                VkExtent3D mipExtent = getExtent3D(planeIndex, mipLvl);
+                memoryBinding->_byteCount += getBytesPerLayer(planeIndex, mipLvl) * mipExtent.depth * _arrayLayers;
             }
             memoryBinding->_byteAlignment = std::max(memoryBinding->_byteAlignment, _rowByteAlignment);
         }

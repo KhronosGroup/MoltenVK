@@ -452,7 +452,8 @@ VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlags(MTLTextureUsage mtlUsage
 
 MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
 													MTLPixelFormat mtlFormat,
-													MTLTextureUsage minUsage) {
+													MTLTextureUsage minUsage,
+                                                    bool isLinear) {
 	bool isDepthFmt = isDepthFormat(mtlFormat);
 	bool isStencilFmt = isStencilFormat(mtlFormat);
 	bool isCombinedDepthStencilFmt = isDepthFmt && isStencilFmt;
@@ -483,7 +484,13 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 												VK_IMAGE_USAGE_TRANSFER_DST_BIT)) &&	// Scaling a BLIT may use rendering.
 		mvkIsAnyFlagEnabled(mtlFmtCaps, (kMVKMTLFmtCapsColorAtt | kMVKMTLFmtCapsDSAtt))) {
 
-		mvkEnableFlags(mtlUsage, MTLTextureUsageRenderTarget);
+#if MVK_MACOS
+        if(!isLinear) {
+            mvkEnableFlags(mtlUsage, MTLTextureUsageRenderTarget);
+        }
+#else
+        mvkEnableFlags(mtlUsage, MTLTextureUsageRenderTarget);
+#endif
 	}
 
 	// Create view on, but only on color formats, or combined depth-stencil formats if supported by the GPU...

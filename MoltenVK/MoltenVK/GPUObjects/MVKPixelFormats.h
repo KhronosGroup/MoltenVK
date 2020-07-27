@@ -283,10 +283,12 @@ public:
 	/**
 	 * Returns the Metal texture usage from the Vulkan image usage and Metal format, ensuring that at least the
 	 * usages in minUsage are included, even if they wouldn't naturally be included based on the other two parameters.
+     *  isLinear further restricts the allowed usage to those that are valid for linear textures.
 	 */
 	MTLTextureUsage getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
 									   MTLPixelFormat mtlFormat,
-									   MTLTextureUsage minUsage = MTLTextureUsageUnknown);
+									   MTLTextureUsage minUsage = MTLTextureUsageUnknown,
+                                       bool isLinear = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
 	void enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
