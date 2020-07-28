@@ -781,26 +781,10 @@ void MVKComputeResourcesCommandEncoderState::markDirty() {
 
 void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
-    bool fullImageViewSwizzle = false;
     MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
-    if (pipeline)
-        fullImageViewSwizzle = pipeline->fullImageViewSwizzle();
-
-    encodeBinding<MVKMTLBufferBinding>(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty,
-									   [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
-											if (b.isInline)
-												cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
-																			b.mtlBytes,
-																			b.size,
-																			b.index);
-											else
-												[cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setBuffer: b.mtlBuffer
-																											 offset: b.offset
-																											atIndex: b.index];
-                                       });
+	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
 
     if (_resourceBindings.swizzleBufferBinding.isDirty) {
-
 		for (auto& b : _resourceBindings.textureBindings) {
 			if (b.isDirty) { updateImplicitBuffer(_resourceBindings.swizzleConstants, b.index, b.swizzle); }
 		}
@@ -825,6 +809,20 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                      _resourceBindings.bufferSizeBufferBinding.index);
 
     }
+
+	encodeBinding<MVKMTLBufferBinding>(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty,
+									   [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+		if (b.isInline) {
+			cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
+										b.mtlBytes,
+										b.size,
+										b.index);
+		} else {
+			[cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setBuffer: b.mtlBuffer
+																		 offset: b.offset
+																		atIndex: b.index];
+		}
+	});
 
     encodeBinding<MVKMTLTextureBinding>(_resourceBindings.textureBindings, _resourceBindings.areTextureBindingsDirty,
                                         [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
