@@ -41,6 +41,7 @@ Released 2020/07/28
 - Fix new and unexpected App Store failure on newly deprecated color space values.
 - Fix intermittent concurrent shader specialization race condition.
 - Fix offsets when flushing buffer data to GPU.
+- Fix issue where expected buffer-sizes buffer not bound to Metal compute encoder.
 - Ensure fragment shader inputs to have as many components as vertex shader outputs.
 - Include vertex attribute size when testing whether attribute offset exceeds stride.
 - Add support for `USCALED/SSCALED` vertex formats.
