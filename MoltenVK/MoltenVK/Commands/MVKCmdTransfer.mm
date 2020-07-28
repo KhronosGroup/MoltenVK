@@ -213,8 +213,6 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 										const VkImageBlit* pRegions,
 										VkFilter filter) {
 
-	MVKPixelFormats* pixFmts = cmdBuff->getPixelFormats();
-
 	_srcImage = (MVKImage*)srcImage;
 	_srcLayout = srcImageLayout;
 	_dstImage = (MVKImage*)dstImage;
@@ -222,22 +220,26 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 	_filter = filter;
 
+	bool isDepthStencil = _dstImage->getIsDepthStencil();
+	bool isDestUnwritableLinear = MVK_MACOS && _dstImage->getIsLinear();
+
 	_vkImageBlits.clear();		// Clear for reuse
-    for (uint32_t regionIdx = 0; regionIdx < regionCount; regionIdx++) {
-        auto& vkIR = pRegions[regionIdx];
-        uint8_t srcPlaneIndex = MVKImage::getPlaneFromVkImageAspectFlags(vkIR.srcSubresource.aspectMask);
+	for (uint32_t rIdx = 0; rIdx < regionCount; rIdx++) {
+		auto& vkIB = pRegions[rIdx];
 
-        // Validate - depth stencil formats cannot be scaled or inverted
-        MTLPixelFormat srcMTLPixFmt = _srcImage->getMTLPixelFormat(srcPlaneIndex);
-        if (pixFmts->isDepthFormat(srcMTLPixFmt) || pixFmts->isStencilFormat(srcMTLPixFmt)) {
-            for (auto& vkIB : _vkImageBlits) {
-                if ( !(canCopyFormats(vkIB) && canCopy(vkIB)) ) {
-                    return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting depth/stencil images is not supported.");
-                }
-            }
-        }
+		// Validate - depth stencil formats and macOS linear images cannot be a scaling or inversion destination
+		if (isDepthStencil || isDestUnwritableLinear) {
+			if ( !(canCopyFormats(vkIB) && canCopy(vkIB)) ) {
+				if (isDepthStencil) {
+					return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting depth/stencil images is not supported.");
+				}
+				if (isDestUnwritableLinear) {
+					return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting to a linear destination image is not supported.");
+				}
+			}
+		}
 
-		_vkImageBlits.push_back(vkIR);
+		_vkImageBlits.push_back(vkIB);
 	}
 
 	return VK_SUCCESS;

@@ -140,7 +140,8 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Cross* l
 		spirv_parser.hpp
 
    In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 
-   add the files to *both* the `SPIRV-Cross-macOS` and `SPIRV-Cross-iOS` targets, and click the ***Finish*** button.
+   add the files to *all* of the `SPIRV-Cross-macOS`, `SPIRV-Cross-iOS`, and `SPIRV-Cross-tvOS` targets, 
+   and click the ***Finish*** button.
 
 
 ### Regression Testing Your Changes to *SPIRV-Cross*
@@ -197,8 +198,8 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
 
 4. Drag the `External/glslang/External/spirv-tools/source` file folder to the `External/SPIRV-Tools` 
    group in the *Project Navigator* panel. In the _**Choose options for adding these files**_ dialog 
-   that opens, select the _**Create groups**_ option, add the files to *both* the `SPIRV-Tools-macOS` 
-   and `SPIRV-Tools-iOS` targets, and click the ***Finish*** button.
+   that opens, select the _**Create groups**_ option, add the files to *all* of the `SPIRV-Tools-macOS`, 
+   `SPIRV-Tools-iOS`, and `SPIRV-Tools-tvOS` targets, and click the ***Finish*** button.
 
 5. Remove the *Group* named `fuzz` from under the *Group* named `External/SPIRV-Tools/source`.
 
@@ -224,6 +225,7 @@ if you encounter any building errors, you may need to re-add the *glslang* libra
 
 		$(inherited) 
 		"$(SRCROOT)/External/glslang"
+		"$(SRCROOT)/External/glslang/build/include"
 
 2. Repeat *Step 1* for the `glslang-iOS` target within the `ExternalDependencies` *Xcode* project
 
@@ -238,12 +240,14 @@ if you encounter any building errors, you may need to re-add the *glslang* libra
 		SPIRV
 
    In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 
-   add the files to *both* the `glslang-macOS` and `glslang-iOS` targets, and click the ***Finish*** button.
+   add the files to *all* of the `glslang-macOS`, `glslang-iOS`, and `glslang-tvOS` targets, and click the ***Finish*** button.
 
 5. In the *Project Navigator* panel, remove the references to the following files and folders:
 
 		External/glslang/glslang/MachineIndependant/glslang.y
 		External/glslang/glslang/OSDependent/Windows
+		External/glslang/glslang/OSDependent/Web
+		External/glslang/glslang/HLSL
 
 
 
