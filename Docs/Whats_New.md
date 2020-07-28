@@ -30,11 +30,22 @@ Released 2020/07/28
 - **_MoltenVK_** Xcode schemes support building fat *Platform+Simulator* binaries.
 - `Makefile` supports building fat *Platform+Simulator* binaries, plus *Debug* builds.
 - `fetchDependencies` script supports platform build selection, plus parallel builds.
+- `vkCmdBlitImage()` returns error if scaling or inverting to linear image on *macOS*.
+- Support `VK_FORMAT_A2B10G10R10_UNORM_PACK32` as a surface format.
+- Support `VkPipelineMultisampleStateCreateInfo::pSampleMask`.
+- Support `VkPhysicalDeviceSubgroupProperties`.
+- Fix memory layout of inline uniform blocks.
 - Fix issue where mapped host-coherent device memory not updated from image contents on *macOS*.
+- Fix image memory sizing and offsets.
 - Fix small memory leak when setting swapchain color space.
 - Fix new and unexpected App Store failure on newly deprecated color space values.
 - Fix intermittent concurrent shader specialization race condition.
+- Fix offsets when flushing buffer data to GPU.
+- Ensure fragment shader inputs to have as many components as vertex shader outputs.
 - Include vertex attribute size when testing whether attribute offset exceeds stride.
+- Add support for `USCALED/SSCALED` vertex formats.
+- Add host-coherent texel buffer caching just for buffer views.
+- Include MoltenVK Git revision hash in `VkPhysicalDeviceProperties::pipelineCacheUUID`.
 - Add `MVKPhysicalDeviceMetalFeatures::vertexStrideAlignment` to track Metal vertex binding stride alignment.
 - Add `MVKPhysicalDeviceMetalFeatures::indirectTessellationDrawing` to track if indirect tessellation drawing is supported.
 - Remove use of `@available()` directive as it was causing issues in some build environments.
@@ -42,6 +53,7 @@ Released 2020/07/28
 - Refactor **MoltenVK** *Xcode* build architectures.
 - Demo `API-Samples generateSPIRVShaders` no longer builds `MoltenVKShaderController` tool.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `27`.
+- Update dependency libraries to match *Vulkan SDK 1.2.148*.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for processing more than one patch per workgroup.
 	- MSL: Workaround broken scalar access chain behavior in MSL LLVM IR / AIR.

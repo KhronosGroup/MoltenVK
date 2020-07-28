@@ -4,7 +4,7 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [--ios] [--iosfat] [--tvos] [--tvosfat] [--macos] [--all]
+# macOS usage: ./fetchDependencies [--ios] [--iosfat] [--tvos] [--tvosfat] [--macos] [--all] [--none]
 #                                  [-v] [--debug] [--build-spirv-tools]
 #                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
 #
@@ -29,6 +29,9 @@
 #              Equivalent to specifying [--iosfat --tvosfat --macos]. Results in thee
 #              binaries for each external library: one for the iOS and iOS Simulator platforms,
 #              one for the tvOS and tvOS Simulator platforms, and one for the macOS platform.
+#
+#      --none
+#              Don't build the external libraries for any platform.
 #
 #      Multiple platform options may be specified. At least one platform option must be specified.
 #
@@ -69,6 +72,7 @@ set -e
 
 # ----------------- Functions -------------------
 
+BLD_NONE=""
 BLD_IOS=""
 BLD_IOS_SIM=""
 BLD_TVOS=""
@@ -121,6 +125,11 @@ while (( "$#" )); do
          BLD_SPECIFIED="Y"
          shift 1
          ;;
+       --none)
+         BLD_NONE="Y"
+         BLD_SPECIFIED="Y"
+         shift 1
+         ;;
        --debug)
          XC_CONFIG="Debug"
          shift 1
@@ -154,26 +163,17 @@ while (( "$#" )); do
          shift 2
          ;;
        -*|--*=)
-         echo "Error: Unsupported flag $1" >&2
+         echo "Error: Unsupported option $1" >&2
          exit 1
          ;;
   esac
 done
 
-# if no platform was specified, print usage message and exit
-if [ "$BLD_SPECIFIED" = "" ]; then
-	echo "ERROR: You did not specify a platform to build."
-	echo "Include one or more of the following platform options:"
-	echo "    --ios --iosfat --tvos --tvosfat --macos --all"
-	echo "See the instructions in the fetchDependencies script for more info."
-	exit 1
-fi
-
 # Update a repository. If it exists, fetch it; if not, clone it.
 # $1 repo name
 # $2 repo url
 # $3 repo revision (commit SHA)
-update_repo() {
+function update_repo() {
 	echo "$1 repo: $2"
 	echo "$1 revision: $3"
 
@@ -193,7 +193,7 @@ update_repo() {
 
 # Build a repository
 # $1 repo name
-build_repo() {
+function build_repo() {
 	echo "Building $1"
 
 	mkdir -p $1/build
@@ -314,6 +314,10 @@ else
 
 	cd ${REPO_NAME}
 	./update_glslang_sources.py
+	rm -rf build
+	./build_info.py .        \
+		-i build_info.h.tmpl  \
+		-o build/include/glslang/build_info.h
 	cd -  > /dev/null
 fi
 
@@ -366,6 +370,16 @@ cd ..
 
 
 # -------------- Build MoltenVK external library dependencies -----------------
+
+# if no platform was specified, print usage message and exit
+if [ "$BLD_SPECIFIED" = "" ]; then
+	echo "ERROR: You did not specify a platform to build."
+	echo "Include one or more of the following platform options:"
+	echo "    --ios --iosfat --tvos --tvosfat --macos --all"
+	echo "See the instructions in the fetchDependencies script for more info."
+	exit 1
+fi
+
 echo
 echo ========== Started building dependency libraries at `date +"%r"` ==========
 echo Please be patient on first build
@@ -432,8 +446,14 @@ XC_DD_PATH="${EXT_DIR}/build"
 
 # Structure build tasks by platform so they can be built in parallel per platform.
 # Content for each platform must be built in series to avoid
-trap "exit" INT TERM ERR
-trap "kill 0" EXIT
+if [ "$XC_USE_BCKGND" != "" ]; then
+	trap "exit" INT TERM ERR
+	trap "kill 0" EXIT
+fi
+
+if [ "$BLD_NONE" != "" ]; then
+	echo Not building any platforms
+fi
 
 if [ "$BLD_MACOS" != "" ]; then
 	build "macOS" "macOS"
@@ -456,7 +476,9 @@ if [ "$BLD_TVOS" != "" ]; then
 fi
 
 # Wait for any background process (if selected) to finish
-wait
+if [ "$XC_USE_BCKGND" != "" ]; then
+	wait
+fi
 
 # Update latest symlink and clean MoltenVK for rebuild
 PROJECT_DIR="."
@@ -464,3 +486,4 @@ CONFIGURATION=${XC_CONFIG}
 . "./Scripts/package_ext_libs_finish.sh"
 
 echo ========== Finished at `date +"%r"` ==========
+exit 0

@@ -16,13 +16,15 @@ TPLT_BLD_DIR="${TPLT_DIR}/build"
 
 # Ensure the SPIRV-Tools library is fully built
 cd ".."
-./fetchDependencies --build-spirv-tools
+./fetchDependencies --build-spirv-tools --no-parallel-build --none
 cd -  > /dev/null
 
+echo Updating SPIRV-Tools template build directory
 rm -rf "${TPLT_BLD_DIR}"
 mkdir -p "${TPLT_BLD_DIR}"
 cp -a "${SPV_TLS_BLD_DIR}/"*.h "${SPV_TLS_BLD_DIR}/"*.inc "${TPLT_BLD_DIR}"
 
+echo Creating pregenerated SPIRV-Tools build.zip package
 cd "${TPLT_DIR}"
 rm -f build.zip
 zip -qr build.zip build
