@@ -42,7 +42,7 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
                                            uint32_t firstSet,
                                            MVKArrayRef<uint32_t> dynamicOffsets) {
 	clearConfigurationResult();
-	uint32_t pDynamicOffsetIndex = 0;
+	uint32_t baseDynamicOffsetIndex = 0;
 	size_t dsCnt = descriptorSets.size;
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 		MVKDescriptorSet* descSet = descriptorSets[dsIdx];
@@ -50,7 +50,8 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[dslIdx];
 		dsl->bindDescriptorSet(cmdEncoder, descSet,
 							   _dslMTLResourceIndexOffsets[dslIdx],
-							   dynamicOffsets, &pDynamicOffsetIndex);
+							   dynamicOffsets, baseDynamicOffsetIndex);
+		baseDynamicOffsetIndex += dsl->getDynamicDescriptorCount();
 		setConfigurationResult(dsl->getConfigurationResult());
 	}
 }

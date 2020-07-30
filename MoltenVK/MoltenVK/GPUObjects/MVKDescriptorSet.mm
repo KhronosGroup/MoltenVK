@@ -39,7 +39,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                                MVKDescriptorSet* descSet,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                                MVKArrayRef<uint32_t> dynamicOffsets,
-                                               uint32_t* pDynamicOffsetIndex) {
+                                               uint32_t baseDynamicOffsetIndex) {
     if (_isPushDescriptorLayout) return;
 
 	clearConfigurationResult();
@@ -47,7 +47,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
     for (uint32_t descIdx = 0, bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		descIdx += _bindings[bindIdx].bind(cmdEncoder, descSet, descIdx,
 										   dslMTLRezIdxOffsets, dynamicOffsets,
-										   pDynamicOffsetIndex);
+										   baseDynamicOffsetIndex);
     }
 }
 
@@ -188,11 +188,37 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 	// Create the descriptor layout bindings
 	_descriptorCount = 0;
     _bindings.reserve(pCreateInfo->bindingCount);
+	struct SortInfo
+	{
+		const VkDescriptorSetLayoutBinding* binding;
+		uint32_t index;
+	};
+	std::vector<SortInfo> dynamicBindings;
+
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
         _bindings.emplace_back(_device, this, &pCreateInfo->pBindings[i]);
 		_descriptorCount += _bindings.back().getDescriptorCount();
         _bindingToIndex[pCreateInfo->pBindings[i].binding] = i;
-    }
+		if (pCreateInfo->pBindings[i].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+			pCreateInfo->pBindings[i].descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+			dynamicBindings.push_back(SortInfo{ &pCreateInfo->pBindings[i], i });
+		}
+	}
+
+	// Dynamic offsets are ordered by binding index when given to vkCmdBindDescriptorSets
+	// not by the order they are provided in the layout.
+	// So we want to sort by binding, and then count how many dynamic offsets the binding
+	// has so we can assign each binding it's first dynamic offset index
+	std::sort(dynamicBindings.begin(), dynamicBindings.end(),
+				[](const SortInfo &info1, const SortInfo &info2) {
+					return info1.binding->binding < info2.binding->binding; });
+
+	uint32_t curOffsetIndex = 0;
+	for (auto &i : dynamicBindings) {
+		_bindings[i.index].setDynamicOffsetIndex(curOffsetIndex);
+		curOffsetIndex += i.binding->descriptorCount;
+	}
+	_dynamicDescriptorCount = curOffsetIndex;
 }
 
 

@@ -43,12 +43,14 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT; }
 
+	inline uint32_t getDynamicDescriptorCount() { return _dynamicDescriptorCount; }
+
 	/** Encodes this descriptor set layout and the specified descriptor set on the specified command encoder. */
     void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
                            MVKDescriptorSet* descSet,
                            MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                            MVKArrayRef<uint32_t> dynamicOffsets,
-                           uint32_t* pDynamicOffsetIndex);
+                           uint32_t baseDynamicOffsetIndex);
 
 
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
@@ -90,6 +92,7 @@ protected:
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint32_t _descriptorCount;
+	uint32_t _dynamicDescriptorCount;
 	bool _isPushDescriptorLayout;
 };
 
