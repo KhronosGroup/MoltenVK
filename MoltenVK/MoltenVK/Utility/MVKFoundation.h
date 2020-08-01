@@ -24,6 +24,7 @@
 #include "mvk_vulkan.h"
 #include <algorithm>
 #include <string>
+#include <cassert>
 #include <simd/simd.h>
 
 

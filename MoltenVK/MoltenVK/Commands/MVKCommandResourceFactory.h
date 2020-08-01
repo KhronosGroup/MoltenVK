@@ -180,7 +180,7 @@ typedef struct MVKMTLStencilDescriptorData {
         // even if the structure contains alignment gaps.
         mvkClear(this);
 
-        enabled = false,
+        enabled = false;
         stencilCompareFunction = MTLCompareFunctionAlways;
         stencilFailureOperation = MTLStencilOperationKeep;
         depthFailureOperation = MTLStencilOperationKeep;
