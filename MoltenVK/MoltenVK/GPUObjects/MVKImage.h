@@ -257,6 +257,9 @@ public:
 								 MVKCommandEncoder* cmdEncoder,
 								 MVKCommandUse cmdUse);
 
+    /** Flush underlying buffer memory into the image if necessary */
+    void flushToDevice(VkDeviceSize offset, VkDeviceSize size);
+
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image. */

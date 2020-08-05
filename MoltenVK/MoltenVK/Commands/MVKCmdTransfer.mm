@@ -93,6 +93,8 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
     VkBufferImageCopy vkDstCopies[copyCnt];
     size_t tmpBuffSize = 0;
 
+    _srcImage->flushToDevice(0, VK_WHOLE_SIZE);
+
     for (uint32_t copyIdx = 0; copyIdx < copyCnt; copyIdx++) {
         auto& vkIC = _vkImageCopies[copyIdx];
         

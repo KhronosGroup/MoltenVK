@@ -148,6 +148,7 @@ public:
 protected:
 	friend class MVKBuffer;
     friend class MVKImageMemoryBinding;
+    friend class MVKImagePlane;
 
 	void propagateDebugName() override;
 	VkDeviceSize adjustMemorySize(VkDeviceSize size, VkDeviceSize offset);

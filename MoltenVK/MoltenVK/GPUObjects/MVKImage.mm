@@ -178,7 +178,7 @@ void MVKImagePlane::updateMTLTextureContent(MVKImageSubresource& subresource,
 
     VkImageSubresource& imgSubRez = subresource.subresource;
     VkSubresourceLayout& imgLayout = subresource.layout;
-
+    size = getMemoryBinding()->getDeviceMemory()->adjustMemorySize(size, offset);
     // Check if subresource overlaps the memory range.
 	if ( !overlaps(imgLayout, offset, size) ) { return; }
 
@@ -511,6 +511,13 @@ uint8_t MVKImage::getPlaneFromVkImageAspectFlags(VkImageAspectFlags aspectMask) 
 void MVKImage::propagateDebugName() {
     for (uint8_t planeIndex = 0; planeIndex < _planes.size(); planeIndex++) {
         _planes[planeIndex]->propagateDebugName();
+    }
+}
+
+void MVKImage::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
+    for (int bindingIndex = 0; bindingIndex < _memoryBindings.size(); bindingIndex++) {
+        MVKImageMemoryBinding *binding = _memoryBindings[bindingIndex];
+        binding->flushToDevice(offset, size);
     }
 }
 
