@@ -197,7 +197,13 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
 
     switch (_shaderStage) {
         case VK_SHADER_STAGE_VERTEX_BIT:
-            if (stage == (isTessellating() ? kMVKGraphicsStageVertex : kMVKGraphicsStageRasterization)) {
+			if (stage == kMVKGraphicsStageVertex) {
+                _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
+                                             _pushConstants.data(),
+                                             _pushConstants.size(),
+                                             _mtlBufferIndex);
+				_isDirty = false;	// Okay, I changed the encoder
+			} else if (!isTessellating() && stage == kMVKGraphicsStageRasterization) {
                 _cmdEncoder->setVertexBytes(_cmdEncoder->_mtlRenderEncoder,
                                             _pushConstants.data(),
                                             _pushConstants.size(),
@@ -207,7 +213,7 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
             break;
         case VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT:
             if (stage == kMVKGraphicsStageTessControl) {
-                _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl),
+                _cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
                                              _pushConstants.data(),
                                              _pushConstants.size(),
                                              _mtlBufferIndex);
@@ -351,11 +357,6 @@ void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
 			MVKMTLDepthStencilDescriptorData adjustedDSData = _depthStencilData;
 			adjustedDSData.disable(!_hasDepthAttachment, !_hasStencilAttachment);
 			[_cmdEncoder->_mtlRenderEncoder setDepthStencilState: cmdEncPool->getMTLDepthStencilState(adjustedDSData)];
-			break;
-		}
-		case kMVKGraphicsStageVertex: {
-			// Vertex stage of tessellation pipeline requires depth/stencil testing be disabled
-			[_cmdEncoder->_mtlRenderEncoder setDepthStencilState: cmdEncPool->getMTLDepthStencilState(false, false)];
 			break;
 		}
 		default:		// Do nothing on other stages
@@ -606,7 +607,35 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
     bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || _cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
 
-    if (stage == (forTessellation ? kMVKGraphicsStageVertex : kMVKGraphicsStageRasterization)) {
+	if (stage == kMVKGraphicsStageVertex) {
+        encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
+                           if (b.isInline)
+                               cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
+                                                           b.mtlBytes,
+                                                           b.size,
+                                                           b.index);
+                           else
+                               [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBuffer: b.mtlBuffer
+                                                                                                             offset: b.offset
+                                                                                                            atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t>& s)->void {
+                           cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
+                                                       s.data,
+                                                       s.size * sizeof(uint32_t),
+                                                       b.index);
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
+                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setTexture: b.mtlTexture
+                                                                                                         atIndex: b.index];
+                       },
+                       [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
+                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setSamplerState: b.mtlSamplerState
+                                                                                                              atIndex: b.index];
+                       });
+
+	} else if (!forTessellation && stage == kMVKGraphicsStageRasterization) {
         encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
                        [pipeline](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
 					       if (b.isInline) {
@@ -651,28 +680,28 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
         encodeBindings(kMVKShaderStageTessCtl, "tessellation control", fullImageViewSwizzle,
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                            if (b.isInline)
-                               cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl),
+                               cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
                                                            b.mtlBytes,
                                                            b.size,
                                                            b.index);
                            else
-                               [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl) setBuffer: b.mtlBuffer
-                                                                                                       offset: b.offset
-                                                                                                      atIndex: b.index];
+                               [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBuffer: b.mtlBuffer
+                                                                                                             offset: b.offset
+                                                                                                            atIndex: b.index];
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b, const MVKArrayRef<uint32_t>& s)->void {
-                           cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl),
+                           cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
                                                        s.data,
                                                        s.size * sizeof(uint32_t),
                                                        b.index);
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLTextureBinding& b)->void {
-                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl) setTexture: b.mtlTexture
-                                                                                                   atIndex: b.index];
+                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setTexture: b.mtlTexture
+                                                                                                         atIndex: b.index];
                        },
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLSamplerStateBinding& b)->void {
-                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationControl) setSamplerState: b.mtlSamplerState
-                                                                                                        atIndex: b.index];
+                           [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setSamplerState: b.mtlSamplerState
+                                                                                                              atIndex: b.index];
                        });
 
     }

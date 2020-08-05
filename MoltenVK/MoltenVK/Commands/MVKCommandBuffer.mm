@@ -678,7 +678,7 @@ NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
         case kMVKCommandUseCopyBufferToImage:   return @"vkCmdCopyBufferToImage ComputeEncoder";
         case kMVKCommandUseCopyImageToBuffer:   return @"vkCmdCopyImageToBuffer ComputeEncoder";
         case kMVKCommandUseFillBuffer:          return @"vkCmdFillBuffer ComputeEncoder";
-        case kMVKCommandUseTessellationControl: return @"vkCmdDraw (tess control stage) ComputeEncoder";
+        case kMVKCommandUseTessellationVertexTessCtl: return @"vkCmdDraw (vertex and tess control stages) ComputeEncoder";
         case kMVKCommandUseCopyQueryPoolResults:return @"vkCmdCopyQueryPoolResults ComputeEncoder";
         default:                                return @"Unknown Use ComputeEncoder";
     }
