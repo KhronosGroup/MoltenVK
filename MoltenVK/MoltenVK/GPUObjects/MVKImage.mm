@@ -74,11 +74,12 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
 }
 
 id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
-    if (mtlPixFmt == _mtlPixFmt) { return _mtlTexture; }
+    if (mtlPixFmt == _mtlPixFmt) { return getMTLTexture(); }
     id<MTLTexture> mtlTex = _mtlTextureViews[mtlPixFmt];
     if ( !mtlTex ) {
         // Lock and check again in case another thread has created the view texture.
-        // baseTex retreived outside of lock to avoid deadlock if it too needs to be lazily created.
+        // Ensure the base texture is present outside of lock to avoid deadlock if it too needs to be lazily created.
+        getMTLTexture();
         lock_guard<mutex> lock(_image->_lock);
         mtlTex = _mtlTextureViews[mtlPixFmt];
         if ( !mtlTex ) {
