@@ -13,6 +13,19 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.0.45
+---------------
+
+Released TBD
+
+- Improve performance of tessellation control pipeline stage by processing multiple 
+  patches per workgroup.
+- `vkCmdBindDescriptorSets` order `pDynamicOffsets` by descriptor binding number 
+  within each descriptor set.
+- `vkCmdCopyImage` on macOS flush non-coherent image memory before copy operation.
+
+
+
 MoltenVK 1.0.44
 ---------------
 
