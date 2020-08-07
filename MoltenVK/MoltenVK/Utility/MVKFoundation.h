@@ -26,6 +26,7 @@
 #include <cassert>
 #include <limits>
 #include <string>
+#include <cassert>
 #include <simd/simd.h>
 #include <type_traits>
 
