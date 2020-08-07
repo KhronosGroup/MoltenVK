@@ -138,6 +138,14 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 
 	_mtlDummyTex = nil;
 	if (caUsedCnt == 0 && dsRPAttIdx == VK_ATTACHMENT_UNUSED) {
+        if (_renderPass->getDevice()->_pMetalFeatures->renderWithoutAttachments) {
+            // We support having no attachments.
+#if MVK_MACOS_OR_IOS
+            mtlRPDesc.defaultRasterSampleCount = 1;
+#endif
+            return;
+        }
+
 		// Add a dummy attachment so this passes validation.
 		VkExtent2D fbExtent = framebuffer->getExtent2D();
 		MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];

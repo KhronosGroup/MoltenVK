@@ -57,7 +57,7 @@
 #if MVK_TVOS
 	return 0;
 #endif
-#if MVK_MACOS || MVK_IOS
+#if MVK_MACOS_OR_IOS
 	if ([self respondsToSelector: @selector(renderTargetWidth)])
 		return self.renderTargetWidth;
 	return 0;
@@ -67,7 +67,7 @@
 
 -(void) setRenderTargetWidthMVK: (NSUInteger) width {
 
-#if MVK_MACOS || MVK_IOS
+#if MVK_MACOS_OR_IOS
 	if ([self respondsToSelector: @selector(setRenderTargetWidth:)])
 		self.renderTargetWidth = width;
 #endif
@@ -79,7 +79,7 @@
 #if MVK_TVOS
 	return 0;
 #endif
-#if MVK_MACOS || MVK_IOS
+#if MVK_MACOS_OR_IOS
 	if ([self respondsToSelector: @selector(renderTargetHeight)])
 		return self.renderTargetHeight;
 	return 0;
@@ -89,7 +89,7 @@
 
 -(void) setRenderTargetHeightMVK: (NSUInteger) height {
 
-#if MVK_MACOS || MVK_IOS
+#if MVK_MACOS_OR_IOS
 	if ([self respondsToSelector: @selector(setRenderTargetHeight:)])
 		self.renderTargetHeight = height;
 #endif
