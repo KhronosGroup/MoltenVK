@@ -615,6 +615,7 @@ typedef struct {
 	VkDeviceSize vertexStrideAlignment;         /**< The alignment used for the stride of vertex attribute bindings. */
 	VkBool32 indirectTessellationDrawing;		/**< If true, tessellation draw calls support parameters held in a GPU buffer. */
 	VkBool32 nonUniformThreadgroups;			/**< If true, the device supports arbitrary-sized grids in compute workloads. */
+	VkBool32 renderWithoutAttachments;          /**< If true, we don't have to create a dummy attachment for a render pass if there isn't one. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

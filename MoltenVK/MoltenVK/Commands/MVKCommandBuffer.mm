@@ -303,13 +303,10 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride, bool storeOverri
     getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues.contents(), _isRenderingEntireAttachment, loadOverride, storeOverride);
     mtlRPDesc.visibilityResultBuffer = _occlusionQueryState.getVisibilityResultMTLBuffer();
 
-	// Only set the layered rendering properties if layered rendering is supported and the framebuffer really has multiple layers
-	if (_isUsingLayeredRendering) {
-		VkExtent2D fbExtent = _framebuffer->getExtent2D();
-		mtlRPDesc.renderTargetWidthMVK = min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width);
-		mtlRPDesc.renderTargetHeightMVK = min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height);
-		mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
-	}
+    VkExtent2D fbExtent = _framebuffer->getExtent2D();
+    mtlRPDesc.renderTargetWidthMVK = min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width);
+    mtlRPDesc.renderTargetHeightMVK = min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height);
+    mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
 	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName());
