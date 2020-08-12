@@ -23,6 +23,7 @@ Released TBD
 - `vkCmdBindDescriptorSets` order `pDynamicOffsets` by descriptor binding number 
   within each descriptor set.
 - `vkCmdCopyImage` on macOS flush non-coherent image memory before copy operation.
+- Re-add support for bitcode generation on *iOS* and *tvOS*.
 
 
 
