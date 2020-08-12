@@ -510,6 +510,11 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t inControlPointCount = 0, outControlPointCount = 0;
 	VkDeviceSize paramsIncr = 0;
 
+    VkDeviceSize mtlTCIndBuffOfst = 0;
+    VkDeviceSize mtlParmBuffOfst = 0;
+    NSUInteger vtxThreadExecWidth = 0;
+    NSUInteger tcWorkgroupSize = 0;
+
     if (pipeline->isTessellationPipeline()) {
         // We can't read the indirect buffer CPU-side, since it may change between
         // encoding and execution. So we don't know how big to make the buffers.
@@ -526,7 +531,9 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 		paramsIncr = std::max((size_t)cmdEncoder->getDevice()->_pProperties->limits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tcIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize);
+        mtlTCIndBuffOfst = tcIndirectBuff->_offset;
 		tcParamsBuff = cmdEncoder->getTempMTLBuffer(paramsSize);
+        mtlParmBuffOfst = tcParamsBuff->_offset;
         if (pipeline->needsVertexOutputBuffer()) {
             vtxOutBuff = cmdEncoder->getTempMTLBuffer(vertexCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
         }
@@ -537,21 +544,21 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
             tcPatchOutBuff = cmdEncoder->getTempMTLBuffer(patchCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxTessellationControlPerPatchOutputComponents);
         }
         tcLevelBuff = cmdEncoder->getTempMTLBuffer(patchCount * sizeof(MTLQuadTessellationFactorsHalf));
+
+        vtxThreadExecWidth = pipeline->getTessVertexStageState().threadExecutionWidth;
+        NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
+        tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
+        while (tcWorkgroupSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
+            sgSize >>= 1;
+            tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
+        }
     }
 
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
-    VkDeviceSize mtlTCIndBuffOfst = tcIndirectBuff ? tcIndirectBuff->_offset : 0;
-	VkDeviceSize mtlParmBuffOfst = tcParamsBuff ? tcParamsBuff->_offset : 0;
-	NSUInteger vtxThreadExecWidth = pipeline->getTessVertexStageState().threadExecutionWidth;
-	NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
-	NSUInteger tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
-	while (tcWorkgroupSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
-		sgSize >>= 1;
-		tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
-	}
+
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
@@ -765,6 +772,11 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t inControlPointCount = 0, outControlPointCount = 0;
 	VkDeviceSize paramsIncr = 0;
 
+    VkDeviceSize mtlTCIndBuffOfst = 0;
+    VkDeviceSize mtlParmBuffOfst = 0;
+    NSUInteger vtxThreadExecWidth = 0;
+    NSUInteger tcWorkgroupSize = 0;
+
     if (pipeline->isTessellationPipeline()) {
         // We can't read the indirect buffer CPU-side, since it may change between
         // encoding and execution. So we don't know how big to make the buffers.
@@ -781,7 +793,9 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 		paramsIncr = std::max((size_t)cmdEncoder->getDevice()->_pProperties->limits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tcIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize);
+        mtlTCIndBuffOfst = tcIndirectBuff->_offset;
 		tcParamsBuff = cmdEncoder->getTempMTLBuffer(paramsSize);
+        mtlParmBuffOfst = tcParamsBuff->_offset;
         if (pipeline->needsVertexOutputBuffer()) {
             vtxOutBuff = cmdEncoder->getTempMTLBuffer(vertexCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
         }
@@ -793,22 +807,24 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         }
         tcLevelBuff = cmdEncoder->getTempMTLBuffer(patchCount * sizeof(MTLQuadTessellationFactorsHalf));
         vtxIndexBuff = cmdEncoder->getTempMTLBuffer(ibb.mtlBuffer.length);
+
+        id<MTLComputePipelineState> vtxState;
+        vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
+        vtxThreadExecWidth = vtxState.threadExecutionWidth;
+
+        NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
+        tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
+        while (tcWorkgroupSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
+            sgSize >>= 1;
+            tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
+        }
     }
 
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
-    VkDeviceSize mtlTCIndBuffOfst = tcIndirectBuff ? tcIndirectBuff->_offset : 0;
-	VkDeviceSize mtlParmBuffOfst = tcParamsBuff ? tcParamsBuff->_offset : 0;
-	id<MTLComputePipelineState> vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
-	NSUInteger vtxThreadExecWidth = vtxState.threadExecutionWidth;
-	NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
-	NSUInteger tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
-	while (tcWorkgroupSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
-		sgSize >>= 1;
-		tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
-	}
+    
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
