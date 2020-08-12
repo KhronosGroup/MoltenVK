@@ -1072,6 +1072,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.indirectTessellationDrawing = true;
 	}
 
+    if ( mvkOSVersionIsAtLeast(11.0) ) {
+        _metalFeatures.renderWithoutAttachments = true;
+    }
+
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = useMTLHeaps;
@@ -1130,6 +1134,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(10.15) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.native3DCompressedTextures = true;
+        _metalFeatures.renderWithoutAttachments = true;
 		if (supportsMTLGPUFamily(Mac2)) {
 			_metalFeatures.nativeTextureSwizzle = true;
 			_metalFeatures.placementHeaps = useMTLHeaps;

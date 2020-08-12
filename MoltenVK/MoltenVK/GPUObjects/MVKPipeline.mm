@@ -1275,9 +1275,11 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
     if (pixFmts->isDepthFormat(mtlDSFormat)) { plDesc.depthAttachmentPixelFormat = mtlDSFormat; }
     if (pixFmts->isStencilFormat(mtlDSFormat)) { plDesc.stencilAttachmentPixelFormat = mtlDSFormat; }
 
-    // In Vulkan, it's perfectly valid to render with no attachments. Not so in Metal.
-	// If we have no attachments, then we'll have to add a dummy attachment.
-    if (!caCnt && !pixFmts->isDepthFormat(mtlDSFormat) && !pixFmts->isStencilFormat(mtlDSFormat)) {
+    // In Vulkan, it's perfectly valid to render with no attachments. In Metal we need to check for
+    // support for it. If we have no attachments, then we may have to add a dummy attachment.
+    if (!caCnt && !pixFmts->isDepthFormat(mtlDSFormat) && !pixFmts->isStencilFormat(mtlDSFormat) &&
+        !getDevice()->_pMetalFeatures->renderWithoutAttachments) {
+
         MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[0];
         colorDesc.pixelFormat = MTLPixelFormatR8Unorm;
         colorDesc.writeMask = MTLColorWriteMaskNone;
