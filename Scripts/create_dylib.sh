@@ -9,8 +9,13 @@ export MVK_USR_LIB_DIR="${SDK_DIR}/usr/lib"
 
 mkdir -p "${MVK_BUILT_PROD_DIR}/dynamic"
 
-if test x"${ENABLE_BITCODE}" = xYES; then
-	MVK_EMBED_BITCODE="-fembed-bitcode"
+export MVK_EMBED_BITCODE=""
+if test x"${ENABLE_BITCODE}" == xYES; then
+	if test x"${BITCODE_GENERATION_MODE}" == xbitcode; then
+		MVK_EMBED_BITCODE="-fembed-bitcode"
+	else
+		MVK_EMBED_BITCODE="-fembed-bitcode-marker"
+	fi
 fi
 
 if test x"${ENABLE_THREAD_SANITIZER}" = xYES; then
