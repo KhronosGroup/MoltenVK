@@ -432,8 +432,8 @@ public:
     /** The size of the threadgroup for the compute shader. */
     MTLSize _mtlThreadgroupSize;
 
-	/** Indicates whether the current render subpass is rendering to an array (layered) framebuffer. */
-	bool _isUsingLayeredRendering;
+	/** Indicates whether the current render subpass is able to render to an array (layered) framebuffer. */
+	bool _canUseLayeredRendering;
 
 
 #pragma mark Construction

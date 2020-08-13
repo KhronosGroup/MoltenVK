@@ -1035,7 +1035,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
     // Populate the render pipeline state attachment key with info from the subpass and framebuffer.
 	_rpsKey.mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getSampleCount());
-	if (cmdEncoder->_isUsingLayeredRendering) { _rpsKey.enableLayeredRendering(); }
+	if (cmdEncoder->_canUseLayeredRendering && cmdEncoder->_framebuffer->getLayerCount() > 1) { _rpsKey.enableLayeredRendering(); }
 
     uint32_t caCnt = subpass->getColorAttachmentCount();
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {

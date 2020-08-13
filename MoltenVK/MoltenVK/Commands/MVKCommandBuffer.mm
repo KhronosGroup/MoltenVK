@@ -237,7 +237,7 @@ void MVKCommandBuffer::recordDraw(MVKLoadStoreOverrideMixin* mvkDraw) {
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 	_renderSubpassIndex = 0;
-	_isUsingLayeredRendering = false;
+	_canUseLayeredRendering = false;
 
 	_mtlCmdBuffer = mtlCmdBuff;		// not retained
 
@@ -286,10 +286,9 @@ void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t s
 	_subpassContents = subpassContents;
 	_renderSubpassIndex = subpassIndex;
 
-	_isUsingLayeredRendering = ((_framebuffer->getLayerCount() > 1) &&
-								_device->_pMetalFeatures->layeredRendering &&
-								(_device->_pMetalFeatures->multisampleLayeredRendering ||
-								 (getSubpass()->getSampleCount() == VK_SAMPLE_COUNT_1_BIT)));
+	_canUseLayeredRendering = (_device->_pMetalFeatures->layeredRendering &&
+							   (_device->_pMetalFeatures->multisampleLayeredRendering ||
+							    (getSubpass()->getSampleCount() == VK_SAMPLE_COUNT_1_BIT)));
 
 	beginMetalRenderPass(loadOverride, storeOverride);
 }
@@ -306,7 +305,9 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride, bool storeOverri
     VkExtent2D fbExtent = _framebuffer->getExtent2D();
     mtlRPDesc.renderTargetWidthMVK = min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width);
     mtlRPDesc.renderTargetHeightMVK = min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height);
-    mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
+    if (_canUseLayeredRendering) {
+        mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
+    }
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
 	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName());
