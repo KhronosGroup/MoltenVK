@@ -46,6 +46,12 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
+	/** Returns the parent render pass of this subpass. */
+	inline MVKRenderPass* getRenderPass() { return _renderPass; }
+
+	/** Returns the index of this subpass in its parent render pass. */
+	inline uint32_t getSubpassIndex() { return _subpassIndex; }
+
 	/** Returns the number of color attachments, which may be zero for depth-only rendering. */
 	inline uint32_t getColorAttachmentCount() { return uint32_t(_colorAttachments.size()); }
 
@@ -61,11 +67,31 @@ public:
 	/** Returns the Vulkan sample count of the attachments used in this subpass. */
 	VkSampleCountFlagBits getSampleCount();
 
+	/** Returns whether or not this is a multiview subpass. */
+	bool isMultiview() const { return _viewMask != 0; }
+
+	/** Returns the total number of views to be rendered. */
+	inline uint32_t getViewCount() const { return __builtin_popcount(_viewMask); }
+
+	/** Returns the number of Metal render passes needed to render all views. */
+	uint32_t getMultiviewMetalPassCount() const;
+
+	/** Returns the first view to be rendered in the given multiview pass. */
+	uint32_t getFirstViewIndexInMetalPass(uint32_t passIdx) const;
+
+	/** Returns the number of views to be rendered in the given multiview pass. */
+	uint32_t getViewCountInMetalPass(uint32_t passIdx) const;
+
+	/** Returns the number of views to be rendered in all multiview passes up to the given one. */
+	uint32_t getViewCountUpToMetalPass(uint32_t passIdx) const;
+
 	/** 
 	 * Populates the specified Metal MTLRenderPassDescriptor with content from this
-	 * instance, the specified framebuffer, and the specified array of clear values.
+	 * instance, the specified framebuffer, and the specified array of clear values
+	 * for the specified multiview pass.
 	 */
 	void populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
+										 uint32_t passIdx,
 										 MVKFramebuffer* framebuffer,
 										 const MVKArrayRef<VkClearValue>& clearValues,
 										 bool isRenderingEntireAttachment,
@@ -78,21 +104,32 @@ public:
 	void populateClearAttachments(MVKClearAttachments& clearAtts,
 								  const MVKArrayRef<VkClearValue>& clearValues);
 
+	/**
+	 * Populates the specified vector with VkClearRects for clearing views of a specified multiview
+	 * attachment on first use, when the render area is smaller than the full framebuffer size
+	 * and/or not all views used in this subpass need to be cleared.
+	 */
+	void populateMultiviewClearRects(MVKSmallVector<VkClearRect, 1>& clearRects,
+									 MVKCommandEncoder* cmdEncoder,
+									 uint32_t caIdx, VkImageAspectFlags aspectMask);
+
 	/** If a render encoder is active, sets the store actions for all attachments to it. */
 	void encodeStoreActions(MVKCommandEncoder* cmdEncoder, bool isRenderingEntireAttachment, bool storeOverride = false);
 
 	/** Constructs an instance for the specified parent renderpass. */
-	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo);
+	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo, uint32_t viewMask);
 
 private:
 
 	friend class MVKRenderPass;
 	friend class MVKRenderPassAttachment;
 
+	uint32_t getViewMaskGroupForMetalPass(uint32_t passIdx);
 	MVKMTLFmtCaps getRequiredFormatCapabilitiesForAttachmentAt(uint32_t rpAttIdx);
 
 	MVKRenderPass* _renderPass;
 	uint32_t _subpassIndex;
+	uint32_t _viewMask;
 	MVKSmallVector<VkAttachmentReference, kMVKDefaultAttachmentCount> _inputAttachments;
 	MVKSmallVector<VkAttachmentReference, kMVKDefaultAttachmentCount> _colorAttachments;
 	MVKSmallVector<VkAttachmentReference, kMVKDefaultAttachmentCount> _resolveAttachments;
@@ -139,6 +176,9 @@ public:
 					   	   bool isStencil,
 						   bool storeOverride = false);
 
+	/** Populates the specified vector with VkClearRects for clearing views of a multiview attachment on first use. */
+	void populateMultiviewClearRects(MVKSmallVector<VkClearRect, 1>& clearRects, MVKCommandEncoder* cmdEncoder);
+
     /** Returns whether this attachment should be cleared in the subpass. */
     bool shouldUseClearAttachment(MVKRenderSubpass* subpass);
 
@@ -147,6 +187,8 @@ public:
 							const VkAttachmentDescription* pCreateInfo);
 
 protected:
+	bool isFirstUseOfAttachment(MVKRenderSubpass* subpass);
+	bool isLastUseOfAttachment(MVKRenderSubpass* subpass);
 	MTLStoreAction getMTLStoreAction(MVKRenderSubpass* subpass,
 									 bool isRenderingEntireAttachment,
 									 bool hasResolveAttachment,
@@ -158,6 +200,8 @@ protected:
 	uint32_t _attachmentIndex;
 	uint32_t _firstUseSubpassIdx;
 	uint32_t _lastUseSubpassIdx;
+	MVKSmallVector<uint32_t> _firstUseViewMasks;
+	MVKSmallVector<uint32_t> _lastUseViewMasks;
 };
 
 
@@ -180,6 +224,9 @@ public:
 
 	/** Returns the format of the color attachment at the specified index. */
 	MVKRenderSubpass* getSubpass(uint32_t subpassIndex);
+
+	/** Returns whether or not this render pass is a multiview render pass. */
+	bool isMultiview() const;
 
 	/** Constructs an instance for the specified device. */
 	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo* pCreateInfo);

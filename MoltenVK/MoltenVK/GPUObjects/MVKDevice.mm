@@ -91,6 +91,13 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				f16Features->shaderInt8 = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
+				auto* multiviewFeatures = (VkPhysicalDeviceMultiviewFeatures*)next;
+				multiviewFeatures->multiview = true;
+				multiviewFeatures->multiviewGeometryShader = false;
+				multiviewFeatures->multiviewTessellationShader = false; // FIXME
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
 				auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
 				uboLayoutFeatures->uniformBufferStandardLayout = true;
@@ -193,6 +200,16 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				maint3Props->maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+                auto* multiviewProps = (VkPhysicalDeviceMultiviewProperties*)next;
+                multiviewProps->maxMultiviewViewCount = 32;
+                if (canUseInstancingForMultiview()) {
+                    multiviewProps->maxMultiviewInstanceIndex = std::numeric_limits<uint32_t>::max() / 32;
+                } else {
+                    multiviewProps->maxMultiviewInstanceIndex = std::numeric_limits<uint32_t>::max();
+                }
+				break;
+            }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
 				auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
 				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;

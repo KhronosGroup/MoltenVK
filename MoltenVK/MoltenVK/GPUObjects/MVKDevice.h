@@ -297,6 +297,9 @@ public:
 	/** Populates the specified structure with the Metal-specific features of this device. */
 	inline const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
 
+	/** Returns whether or not vertex instancing can be used to implement multiview. */
+	inline bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering && _metalFeatures.deferredStoreActions; }
+
 	/** Returns the underlying Metal device. */
 	inline id<MTLDevice> getMTLDevice() { return _mtlDevice; }
     

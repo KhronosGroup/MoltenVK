@@ -170,17 +170,41 @@ struct MTLStageInRegionIndirectArguments {                                      
 };                                                                                                              \n\
 #endif                                                                                                          \n\
                                                                                                                 \n\
+kernel void cmdDrawIndirectMultiviewConvertBuffers(const device char* srcBuff [[buffer(0)]],                    \n\
+                                                   device MTLDrawPrimitivesIndirectArguments* destBuff [[buffer(1)]],\n\
+                                                   constant uint32_t& srcStride [[buffer(2)]],                  \n\
+                                                   constant uint32_t& drawCount [[buffer(3)]],                  \n\
+                                                   constant uint32_t& viewCount [[buffer(4)]],                  \n\
+                                                   uint idx [[thread_position_in_grid]]) {                      \n\
+    if (idx >= drawCount) { return; }                                                                           \n\
+    const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
+    destBuff[idx] = src;                                                                                        \n\
+    destBuff[idx].instanceCount *= viewCount;                                                                   \n\
+}                                                                                                               \n\
+                                                                                                                \n\
+kernel void cmdDrawIndexedIndirectMultiviewConvertBuffers(const device char* srcBuff [[buffer(0)]],             \n\
+                                                          device MTLDrawIndexedPrimitivesIndirectArguments* destBuff [[buffer(1)]],\n\
+                                                          constant uint32_t& srcStride [[buffer(2)]],           \n\
+                                                          constant uint32_t& drawCount [[buffer(3)]],           \n\
+                                                          constant uint32_t& viewCount [[buffer(4)]],           \n\
+                                                          uint idx [[thread_position_in_grid]]) {               \n\
+    if (idx >= drawCount) { return; }                                                                           \n\
+    const device auto& src = *reinterpret_cast<const device MTLDrawIndexedPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
+    destBuff[idx] = src;                                                                                        \n\
+    destBuff[idx].instanceCount *= viewCount;                                                                   \n\
+}                                                                                                               \n\
+                                                                                                                \n\
 #if __METAL_VERSION__ >= 120                                                                                    \n\
-kernel void cmdDrawIndirectConvertBuffers(const device char* srcBuff [[buffer(0)]],                             \n\
-                                          device char* destBuff [[buffer(1)]],                                  \n\
-                                          device char* paramsBuff [[buffer(2)]],                                \n\
-                                          constant uint32_t& srcStride [[buffer(3)]],                           \n\
-                                          constant uint32_t& inControlPointCount [[buffer(4)]],                 \n\
-                                          constant uint32_t& outControlPointCount [[buffer(5)]],                \n\
-                                          constant uint32_t& drawCount [[buffer(6)]],                           \n\
-                                          constant uint32_t& vtxThreadExecWidth [[buffer(7)]],                  \n\
-                                          constant uint32_t& tcWorkgroupSize [[buffer(8)]],                     \n\
-                                          uint idx [[thread_position_in_grid]]) {                               \n\
+kernel void cmdDrawIndirectTessConvertBuffers(const device char* srcBuff [[buffer(0)]],                         \n\
+                                              device char* destBuff [[buffer(1)]],                              \n\
+                                              device char* paramsBuff [[buffer(2)]],                            \n\
+                                              constant uint32_t& srcStride [[buffer(3)]],                       \n\
+                                              constant uint32_t& inControlPointCount [[buffer(4)]],             \n\
+                                              constant uint32_t& outControlPointCount [[buffer(5)]],            \n\
+                                              constant uint32_t& drawCount [[buffer(6)]],                       \n\
+                                              constant uint32_t& vtxThreadExecWidth [[buffer(7)]],              \n\
+                                              constant uint32_t& tcWorkgroupSize [[buffer(8)]],                 \n\
+                                              uint idx [[thread_position_in_grid]]) {                           \n\
     if (idx >= drawCount) { return; }                                                                           \n\
     const device auto& src = *reinterpret_cast<const device MTLDrawPrimitivesIndirectArguments*>(srcBuff + idx * srcStride);\n\
     device char* dest;                                                                                          \n\

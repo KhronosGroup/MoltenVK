@@ -85,6 +85,7 @@ typedef enum : uint8_t {
     kMVKCommandUseResetQueryPool,           /**< vkCmdResetQueryPool. */
     kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
     kMVKCommandUseTessellationVertexTessCtl,/**< vkCmdDraw* - vertex and tessellation control stages. */
+	kMVKCommandUseMultiviewInstanceCountAdjust,/**< vkCmdDrawIndirect* - adjust instance count for multiview. */
     kMVKCommandUseCopyQueryPoolResults      /**< vkCmdCopyQueryPoolResults. */
 } MVKCommandUse;
 

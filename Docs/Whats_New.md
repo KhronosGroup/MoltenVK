@@ -18,6 +18,8 @@ MoltenVK 1.0.45
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_KHR_multiview`
 - Improve performance of tessellation control pipeline stage by processing multiple 
   patches per workgroup.
 - `vkCmdBindDescriptorSets` order `pDynamicOffsets` by descriptor binding number 
