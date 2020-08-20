@@ -36,7 +36,7 @@ class MVKFramebuffer;
  * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
 template <size_t N>
-class MVKCmdBeginRenderPass : public MVKCommand, public MVKLoadStoreOverrideMixin {
+class MVKCmdBeginRenderPass : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
