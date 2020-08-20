@@ -480,9 +480,10 @@ if [ "$XC_USE_BCKGND" != "" ]; then
 	wait
 fi
 
-# Update latest symlink and clean MoltenVK for rebuild
+# Build XCFrameworks, update latest symlink, and clean MoltenVK for rebuild
 PROJECT_DIR="."
 CONFIGURATION=${XC_CONFIG}
+. "./Scripts/create_ext_lib_xcframeworks.sh"
 . "./Scripts/package_ext_libs_finish.sh"
 
 echo ========== Finished at `date +"%r"` ==========
