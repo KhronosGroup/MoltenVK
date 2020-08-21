@@ -1039,6 +1039,11 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
     uint32_t caCnt = subpass->getColorAttachmentCount();
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
+        if (!subpass->isColorAttachmentUsed(caIdx)) {
+            // If the subpass attachment isn't actually used, don't try to clear it.
+            _rpsKey.disableAttachment(caIdx);
+            continue;
+        }
         VkFormat vkAttFmt = subpass->getColorAttachmentFormat(caIdx);
 		_rpsKey.attachmentMTLPixelFormats[caIdx] = pixFmts->getMTLPixelFormat(vkAttFmt);
 		MTLClearColor mtlCC = pixFmts->getMTLClearColor(getClearValue(caIdx), vkAttFmt);
@@ -1054,6 +1059,15 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 	bool isClearingDepth = _isClearingDepth && pixFmts->isDepthFormat(mtlAttFmt);
 	bool isClearingStencil = _isClearingStencil && pixFmts->isStencilFormat(mtlAttFmt);
+    if (!isClearingDepth && !isClearingStencil) {
+        // If the subpass attachment isn't actually used, don't try to clear it.
+        _rpsKey.disableAttachment(kMVKClearAttachmentDepthStencilIndex);
+    }
+
+	if (!_rpsKey.isAnyAttachmentEnabled()) {
+		// Nothing to do.
+		return;
+	}
 
     // Render the clear colors to the attachments
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
