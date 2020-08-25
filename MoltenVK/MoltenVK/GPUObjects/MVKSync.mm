@@ -78,7 +78,7 @@ MVKSemaphoreImpl::~MVKSemaphoreImpl() {
 
 
 #pragma mark -
-#pragma mark MVKSemaphoreMTLEvent
+#pragma mark MVKSemaphoreMTLFence
 
 // Could use any encoder. Assume BLIT is fastest and lightest.
 // Nil mtlCmdBuff will do nothing.
