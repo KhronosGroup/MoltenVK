@@ -265,7 +265,7 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1160;
+				LastUpgradeCheck = 1200;
 			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "Hologram" */;
 			compatibilityVersion = "Xcode 8.0";
@@ -426,6 +426,11 @@
 				COPY_PHASE_STRIP = NO;
 				ENABLE_BITCODE = NO;
 				ENABLE_TESTABILITY = YES;
+				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
@@ -457,6 +462,11 @@
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = NO;
 				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_C_LANGUAGE_STANDARD = c99;
 				GCC_PRECOMPILE_PREFIX_HEADER = YES;
 				GCC_PREPROCESSOR_DEFINITIONS = GLM_FORCE_RADIANS;

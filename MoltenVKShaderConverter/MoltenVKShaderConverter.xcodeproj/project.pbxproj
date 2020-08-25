@@ -3,7 +3,7 @@
 	archiveVersion = 1;
 	classes = {
 	};
-	objectVersion = 48;
+	objectVersion = 52;
 	objects = {
 
 /* Begin PBXBuildFile section */
@@ -15,8 +15,6 @@
 		2FEA0ACC2490305800EEF3AD /* GLSLConversion.mm in Sources */ = {isa = PBXBuildFile; fileRef = A90941A11C581F840094110D /* GLSLConversion.mm */; };
 		2FEA0ACD2490305800EEF3AD /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
 		2FEA0ACE2490305800EEF3AD /* GLSLToSPIRVConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A90940A31C5808BB0094110D /* GLSLToSPIRVConverter.cpp */; };
-		2FEA0CFC249037E300EEF3AD /* libglslang.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FEA0CFB249037DA00EEF3AD /* libglslang.a */; };
-		2FEA0CFE2490380B00EEF3AD /* libSPIRVTools.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FEA0CF9249037DA00EEF3AD /* libSPIRVTools.a */; };
 		2FEA0D012490381A00EEF3AD /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
 		2FEA0D022490381A00EEF3AD /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
 		2FEA0D032490381A00EEF3AD /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
@@ -27,8 +25,6 @@
 		2FEA0D092490381A00EEF3AD /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
 		2FEA0D0A2490381A00EEF3AD /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
 		2FEA0D0B2490381A00EEF3AD /* SPIRVConversion.mm in Sources */ = {isa = PBXBuildFile; fileRef = A928C9181D0488DC00071B88 /* SPIRVConversion.mm */; };
-		2FEA0D15249038E000EEF3AD /* libSPIRVCross.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FEA0CFA249037DA00EEF3AD /* libSPIRVCross.a */; };
-		2FEA0D16249038E600EEF3AD /* libSPIRVTools.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 2FEA0CF9249037DA00EEF3AD /* libSPIRVTools.a */; };
 		450A4F61220CB180007203D7 /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
 		450A4F62220CB180007203D7 /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
 		A909408A1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
@@ -52,22 +48,29 @@
 		A95096BB2003D00300F10950 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		A95096BC2003D00300F10950 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		A95096BF2003D32400F10950 /* OSSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95096BD2003D32400F10950 /* OSSupport.mm */; };
-		A972AD2B21CEE6A90013AB25 /* libglslang.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD2A21CEE6A90013AB25 /* libglslang.a */; };
-		A972AD3121CEE7040013AB25 /* libSPIRVCross.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD2F21CEE7040013AB25 /* libSPIRVCross.a */; };
-		A972AD3221CEE7040013AB25 /* libSPIRVTools.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD3021CEE7040013AB25 /* libSPIRVTools.a */; };
-		A972AD3621CEE7330013AB25 /* libSPIRVTools.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD3421CEE7330013AB25 /* libSPIRVTools.a */; };
-		A972AD3721CEE7330013AB25 /* libSPIRVCross.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD3521CEE7330013AB25 /* libSPIRVCross.a */; };
-		A972AD3921CEE7480013AB25 /* libglslang.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD3821CEE7480013AB25 /* libglslang.a */; };
 		A97CC7401C7527F3004A5C7E /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A97CC73D1C7527F3004A5C7E /* main.cpp */; };
 		A97CC7411C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A97CC73E1C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp */; };
 		A98149661FB6A98A005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
 		A98149671FB6A98A005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
 		A98149681FB6A98A005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
 		A98149691FB6A98A005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
+		A98386F924EEE91A00199A05 /* SPIRVCross.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98386F824EEE91A00199A05 /* SPIRVCross.xcframework */; };
+		A98386FA24EEE91A00199A05 /* SPIRVCross.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98386F824EEE91A00199A05 /* SPIRVCross.xcframework */; };
+		A98386FB24EEE91A00199A05 /* SPIRVCross.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98386F824EEE91A00199A05 /* SPIRVCross.xcframework */; };
+		A98386FC24EEE91A00199A05 /* SPIRVCross.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98386F824EEE91A00199A05 /* SPIRVCross.xcframework */; };
+		A98386FE24EEE93700199A05 /* glslang.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98386FD24EEE93700199A05 /* glslang.xcframework */; };
+		A98386FF24EEE93700199A05 /* glslang.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98386FD24EEE93700199A05 /* glslang.xcframework */; };
+		A983870024EEE93700199A05 /* glslang.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98386FD24EEE93700199A05 /* glslang.xcframework */; };
+		A983870124EEE93700199A05 /* glslang.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A98386FD24EEE93700199A05 /* glslang.xcframework */; };
+		A983870324EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A983870224EEE94800199A05 /* SPIRVTools.xcframework */; };
+		A983870424EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A983870224EEE94800199A05 /* SPIRVTools.xcframework */; };
+		A983870524EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A983870224EEE94800199A05 /* SPIRVTools.xcframework */; };
+		A983870624EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A983870224EEE94800199A05 /* SPIRVTools.xcframework */; };
+		A983870724EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A983870224EEE94800199A05 /* SPIRVTools.xcframework */; };
+		A983870824EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A983870224EEE94800199A05 /* SPIRVTools.xcframework */; };
+		A983870924EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A983870224EEE94800199A05 /* SPIRVTools.xcframework */; };
 		A9A14E332244388700C080F3 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9A14E322244388700C080F3 /* Metal.framework */; };
 		A9B51BDD225E98BB00AC74D2 /* MVKOSExtensions.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9B51BDB225E98BB00AC74D2 /* MVKOSExtensions.mm */; };
-		A9C70F5A221B2F6500FBA31A /* libSPIRVTools.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD3021CEE7040013AB25 /* libSPIRVTools.a */; };
-		A9C70F5B221B2F8100FBA31A /* libSPIRVTools.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A972AD3421CEE7330013AB25 /* libSPIRVTools.a */; };
 		A9C70F5F221B321700FBA31A /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
 		A9C70F60221B321700FBA31A /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
 		A9C70F61221B321700FBA31A /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
@@ -102,9 +105,6 @@
 
 /* Begin PBXFileReference section */
 		2FEA0AD72490305800EEF3AD /* libMoltenVKGLSLToSPIRVConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKGLSLToSPIRVConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		2FEA0CF9249037DA00EEF3AD /* libSPIRVTools.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVTools.a; path = ../Release/tvOS/libSPIRVTools.a; sourceTree = "<group>"; };
-		2FEA0CFA249037DA00EEF3AD /* libSPIRVCross.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVCross.a; path = ../Release/tvOS/libSPIRVCross.a; sourceTree = "<group>"; };
-		2FEA0CFB249037DA00EEF3AD /* libglslang.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libglslang.a; path = ../Release/tvOS/libglslang.a; sourceTree = "<group>"; };
 		2FEA0D142490381A00EEF3AD /* libMoltenVKSPIRVToMSLConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKSPIRVToMSLConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		450A4F5E220CB180007203D7 /* SPIRVReflection.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVReflection.h; sourceTree = "<group>"; };
 		A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVToMSLConverter.cpp; sourceTree = "<group>"; };
@@ -124,16 +124,13 @@
 		A964BD5F1C57EFBD00D930D8 /* MoltenVKShaderConverter */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MoltenVKShaderConverter; sourceTree = BUILT_PRODUCTS_DIR; };
 		A964BD601C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKGLSLToSPIRVConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A964BD611C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKGLSLToSPIRVConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		A972AD2A21CEE6A90013AB25 /* libglslang.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libglslang.a; path = iOS/libglslang.a; sourceTree = "<group>"; };
-		A972AD2F21CEE7040013AB25 /* libSPIRVCross.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVCross.a; path = iOS/libSPIRVCross.a; sourceTree = "<group>"; };
-		A972AD3021CEE7040013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVTools.a; path = iOS/libSPIRVTools.a; sourceTree = "<group>"; };
-		A972AD3421CEE7330013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVTools.a; path = macOS/libSPIRVTools.a; sourceTree = "<group>"; };
-		A972AD3521CEE7330013AB25 /* libSPIRVCross.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libSPIRVCross.a; path = macOS/libSPIRVCross.a; sourceTree = "<group>"; };
-		A972AD3821CEE7480013AB25 /* libglslang.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libglslang.a; path = macOS/libglslang.a; sourceTree = "<group>"; };
 		A97CC73D1C7527F3004A5C7E /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		A97CC73E1C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MoltenVKShaderConverterTool.cpp; sourceTree = "<group>"; };
 		A97CC73F1C7527F3004A5C7E /* MoltenVKShaderConverterTool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MoltenVKShaderConverterTool.h; sourceTree = "<group>"; };
 		A98149651FB6A98A005F00B4 /* MVKStrings.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKStrings.h; sourceTree = "<group>"; };
+		A98386F824EEE91A00199A05 /* SPIRVCross.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = SPIRVCross.xcframework; path = SPIRVCross.xcframework; sourceTree = "<group>"; };
+		A98386FD24EEE93700199A05 /* glslang.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = glslang.xcframework; path = glslang.xcframework; sourceTree = "<group>"; };
+		A983870224EEE94800199A05 /* SPIRVTools.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = SPIRVTools.xcframework; path = SPIRVTools.xcframework; sourceTree = "<group>"; };
 		A9A14E322244388700C080F3 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		A9B51BDB225E98BB00AC74D2 /* MVKOSExtensions.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKOSExtensions.mm; sourceTree = "<group>"; };
 		A9B51BDC225E98BB00AC74D2 /* MVKOSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKOSExtensions.h; sourceTree = "<group>"; };
@@ -147,8 +144,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2FEA0CFE2490380B00EEF3AD /* libSPIRVTools.a in Frameworks */,
-				2FEA0CFC249037E300EEF3AD /* libglslang.a in Frameworks */,
+				A983870524EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */,
+				A983870024EEE93700199A05 /* glslang.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -156,8 +153,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				2FEA0D16249038E600EEF3AD /* libSPIRVTools.a in Frameworks */,
-				2FEA0D15249038E000EEF3AD /* libSPIRVCross.a in Frameworks */,
+				A983870824EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */,
+				A98386FB24EEE91A00199A05 /* SPIRVCross.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -165,9 +162,12 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A98386FE24EEE93700199A05 /* glslang.xcframework in Frameworks */,
 				A9A14E332244388700C080F3 /* Metal.framework in Frameworks */,
 				A925B71A1C78DEB2006E7ECD /* libMoltenVKGLSLToSPIRVConverter.a in Frameworks */,
 				A925B71B1C78DEB2006E7ECD /* libMoltenVKSPIRVToMSLConverter.a in Frameworks */,
+				A983870324EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */,
+				A98386F924EEE91A00199A05 /* SPIRVCross.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -175,8 +175,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A972AD2B21CEE6A90013AB25 /* libglslang.a in Frameworks */,
-				A9C70F5A221B2F6500FBA31A /* libSPIRVTools.a in Frameworks */,
+				A983870424EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */,
+				A98386FF24EEE93700199A05 /* glslang.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -184,8 +184,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A972AD3921CEE7480013AB25 /* libglslang.a in Frameworks */,
-				A9C70F5B221B2F8100FBA31A /* libSPIRVTools.a in Frameworks */,
+				A983870624EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */,
+				A983870124EEE93700199A05 /* glslang.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -193,8 +193,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A972AD3221CEE7040013AB25 /* libSPIRVTools.a in Frameworks */,
-				A972AD3121CEE7040013AB25 /* libSPIRVCross.a in Frameworks */,
+				A983870724EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */,
+				A98386FA24EEE91A00199A05 /* SPIRVCross.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -202,8 +202,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A972AD3621CEE7330013AB25 /* libSPIRVTools.a in Frameworks */,
-				A972AD3721CEE7330013AB25 /* libSPIRVCross.a in Frameworks */,
+				A983870924EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */,
+				A98386FC24EEE91A00199A05 /* SPIRVCross.xcframework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -240,9 +240,11 @@
 			children = (
 				A93903C71C57E9ED00FE90DC /* libMoltenVKSPIRVToMSLConverter.a */,
 				A93903BF1C57E9D700FE90DC /* libMoltenVKSPIRVToMSLConverter.a */,
+				2FEA0D142490381A00EEF3AD /* libMoltenVKSPIRVToMSLConverter.a */,
 				A964BD5F1C57EFBD00D930D8 /* MoltenVKShaderConverter */,
 				A964BD601C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */,
 				A964BD611C57EFBD00D930D8 /* libMoltenVKGLSLToSPIRVConverter.a */,
+				2FEA0AD72490305800EEF3AD /* libMoltenVKGLSLToSPIRVConverter.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -250,16 +252,10 @@
 		A972AD2921CEE6A80013AB25 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				A98386F824EEE91A00199A05 /* SPIRVCross.xcframework */,
+				A98386FD24EEE93700199A05 /* glslang.xcframework */,
+				A983870224EEE94800199A05 /* SPIRVTools.xcframework */,
 				A9A14E322244388700C080F3 /* Metal.framework */,
-				2FEA0CF9249037DA00EEF3AD /* libSPIRVTools.a */,
-				2FEA0CFA249037DA00EEF3AD /* libSPIRVCross.a */,
-				2FEA0CFB249037DA00EEF3AD /* libglslang.a */,
-				A972AD2A21CEE6A90013AB25 /* libglslang.a */,
-				A972AD3821CEE7480013AB25 /* libglslang.a */,
-				A972AD2F21CEE7040013AB25 /* libSPIRVCross.a */,
-				A972AD3521CEE7330013AB25 /* libSPIRVCross.a */,
-				A972AD3021CEE7040013AB25 /* libSPIRVTools.a */,
-				A972AD3421CEE7330013AB25 /* libSPIRVTools.a */,
 			);
 			name = Frameworks;
 			path = ../External/build/Latest;
@@ -299,8 +295,6 @@
 				A97CC73C1C7527F3004A5C7E /* MoltenVKShaderConverterTool */,
 				A9F042A81FB4D060009FCCB8 /* Common */,
 				A964B28D1C57EBC400D930D8 /* Products */,
-				2FEA0AD72490305800EEF3AD /* libMoltenVKGLSLToSPIRVConverter.a */,
-				2FEA0D142490381A00EEF3AD /* libMoltenVKSPIRVToMSLConverter.a */,
 				A972AD2921CEE6A80013AB25 /* Frameworks */,
 			);
 			sourceTree = "<group>";
@@ -528,7 +522,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1160;
+				LastUpgradeCheck = 1200;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9092A8C1A81717B00051823 = {
@@ -1185,6 +1179,11 @@
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -1241,6 +1240,11 @@
 				COPY_PHASE_STRIP = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;

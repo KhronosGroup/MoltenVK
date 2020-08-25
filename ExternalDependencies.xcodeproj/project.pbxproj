@@ -11,8 +11,6 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = 2FEA0AE52490320500EEF3AD /* Build configuration list for PBXAggregateTarget "ExternalDependencies-tvOS" */;
 			buildPhases = (
-				A9A5F2C1249D09820016D8B1 /* Create Fat Libraries */,
-				2FEA0AE42490320500EEF3AD /* Package External Libraries */,
 			);
 			dependencies = (
 				2FEA0CF12490325400EEF3AD /* PBXTargetDependency */,
@@ -26,7 +24,6 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7E721CEC72F0013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-macOS" */;
 			buildPhases = (
-				A9679AB021D26C7000856BF7 /* Package Libraries */,
 			);
 			dependencies = (
 				A972A7E921CEC76A0013AB25 /* PBXTargetDependency */,
@@ -40,8 +37,6 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7ED21CEC8030013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies-iOS" */;
 			buildPhases = (
-				A932E9C6249A7B9B00D64150 /* Create Fat Libraries */,
-				A9679AAF21D26C1400856BF7 /* Package Libraries */,
 			);
 			dependencies = (
 				A972A7F121CEC8140013AB25 /* PBXTargetDependency */,
@@ -55,6 +50,7 @@
 			isa = PBXAggregateTarget;
 			buildConfigurationList = A972A7F521CEC81B0013AB25 /* Build configuration list for PBXAggregateTarget "ExternalDependencies" */;
 			buildPhases = (
+				A9194DF624E8990C00FB127B /* Create XCFramework */,
 				A9FC5F8B249DB48D003CB086 /* Package Finish */,
 			);
 			dependencies = (
@@ -1728,6 +1724,9 @@
 		A913F24424CF87AE006CB02F /* ShaderLang.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShaderLang.h; sourceTree = "<group>"; };
 		A913F25724CF87AE006CB02F /* CodeGen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CodeGen.cpp; sourceTree = "<group>"; };
 		A913F25824CF87AE006CB02F /* Link.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Link.cpp; sourceTree = "<group>"; };
+		A9194DE624E77A2E00FB127B /* copy_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_to_staging.sh; sourceTree = "<group>"; };
+		A9194DF424E8940600FB127B /* copy_ext_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_ext_lib_to_staging.sh; sourceTree = "<group>"; };
+		A9194DF524E8979100FB127B /* create_ext_lib_xcframeworks.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_ext_lib_xcframeworks.sh; sourceTree = "<group>"; };
 		A932E9C5249A743B00D64150 /* create_fat_lib_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_lib_func.sh; sourceTree = "<group>"; };
 		A932E9DF249BC44D00D64150 /* create_fat_ext_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_ext_libs.sh; sourceTree = "<group>"; };
 		A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */ = {isa = PBXFileReference; lastKnownFileType = text; path = packagePregenSpirvToolsHeaders; sourceTree = "<group>"; };
@@ -1760,7 +1759,6 @@
 		A95D911923A7F1E500CBCC60 /* Logger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Logger.h; sourceTree = "<group>"; };
 		A95D911A23A7F1E500CBCC60 /* doc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = doc.cpp; sourceTree = "<group>"; };
 		A95D911B23A7F1E500CBCC60 /* disassemble.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = disassemble.cpp; sourceTree = "<group>"; };
-		A9679AAE21D269D900856BF7 /* package_ext_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs.sh; sourceTree = "<group>"; };
 		A972A80F21CECBBF0013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A972A82321CECBE90013AB25 /* libSPIRVTools.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libSPIRVTools.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A972ABDC21CED7BC0013AB25 /* libglslang.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libglslang.a; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -2179,6 +2177,7 @@
 		A9765DEE2485758500FDD115 /* validation_state.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validation_state.cpp; sourceTree = "<group>"; };
 		A9765DEF2485758500FDD115 /* validate_primitives.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_primitives.cpp; sourceTree = "<group>"; };
 		A9765DF02485758500FDD115 /* decoration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = decoration.h; sourceTree = "<group>"; };
+		A991DB2124E6016E00AEEC36 /* create_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_xcframework.sh; sourceTree = "<group>"; };
 		A9C2104521D14FD7006BA2D3 /* fetchDependencies */ = {isa = PBXFileReference; lastKnownFileType = text; path = fetchDependencies; sourceTree = "<group>"; };
 		A9C2104721D15843006BA2D3 /* ExternalRevisions */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ExternalRevisions; sourceTree = "<group>"; };
 		A9FC5F7F249DA96D003CB086 /* package_ext_libs_finish.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_ext_libs_finish.sh; sourceTree = "<group>"; };
@@ -2381,10 +2380,13 @@
 		A9679AAB21D2699800856BF7 /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
+				A9194DF424E8940600FB127B /* copy_ext_lib_to_staging.sh */,
+				A9194DE624E77A2E00FB127B /* copy_to_staging.sh */,
+				A9194DF524E8979100FB127B /* create_ext_lib_xcframeworks.sh */,
 				A932E9DF249BC44D00D64150 /* create_fat_ext_libs.sh */,
 				A932E9C5249A743B00D64150 /* create_fat_lib_func.sh */,
+				A991DB2124E6016E00AEEC36 /* create_xcframework.sh */,
 				A9FC5F7F249DA96D003CB086 /* package_ext_libs_finish.sh */,
-				A9679AAE21D269D900856BF7 /* package_ext_libs.sh */,
 				A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */,
 			);
 			path = Scripts;
@@ -3725,6 +3727,7 @@
 			buildPhases = (
 				2FEA0AE92490321700EEF3AD /* Headers */,
 				2FEA0B1C2490321700EEF3AD /* Sources */,
+				A9194DF124E8855F00FB127B /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -3741,6 +3744,7 @@
 			buildPhases = (
 				2FEA0B4C2490322100EEF3AD /* Headers */,
 				2FEA0C0A2490322100EEF3AD /* Sources */,
+				A9194DEE24E8852B00FB127B /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -3757,6 +3761,7 @@
 			buildPhases = (
 				2FEA0CDA2490322B00EEF3AD /* Headers */,
 				2FEA0CE32490322B00EEF3AD /* Sources */,
+				A9194DEC24E884FC00FB127B /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -3773,6 +3778,7 @@
 			buildPhases = (
 				A976290021CC608E00B52A68 /* Headers */,
 				A976290121CC609100B52A68 /* Sources */,
+				A9194DE724E8431600FB127B /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -3789,6 +3795,7 @@
 			buildPhases = (
 				A97628FF21CC608900B52A68 /* Headers */,
 				A97628FE21CC608400B52A68 /* Sources */,
+				A9194DEB24E85ABC00FB127B /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -3805,6 +3812,7 @@
 			buildPhases = (
 				A972A7FD21CECBBF0013AB25 /* Headers */,
 				A972A80521CECBBF0013AB25 /* Sources */,
+				A9194DED24E8851900FB127B /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -3821,6 +3829,7 @@
 			buildPhases = (
 				A972A81121CECBE90013AB25 /* Headers */,
 				A972A81921CECBE90013AB25 /* Sources */,
+				A9194DEF24E8853B00FB127B /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -3837,6 +3846,7 @@
 			buildPhases = (
 				A972ABCA21CED7BC0013AB25 /* Headers */,
 				A972ABD221CED7BC0013AB25 /* Sources */,
+				A9194DF024E8854D00FB127B /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -3853,6 +3863,7 @@
 			buildPhases = (
 				A972ABDE21CED7CB0013AB25 /* Headers */,
 				A972ABE621CED7CB0013AB25 /* Sources */,
+				A9194DF224E8856E00FB127B /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -3869,7 +3880,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1160;
+				LastUpgradeCheck = 1200;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					2FEA0ADD2490320500EEF3AD = {
@@ -3918,7 +3929,7 @@
 /* End PBXProject section */
 
 /* Begin PBXShellScriptBuildPhase section */
-		2FEA0AE42490320500EEF3AD /* Package External Libraries */ = {
+		A9194DE724E8431600FB127B /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -3927,16 +3938,16 @@
 			);
 			inputPaths = (
 			);
-			name = "Package External Libraries";
+			name = "Copy to Staging";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"tvOS\"\nexport MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
 		};
-		A932E9C6249A7B9B00D64150 /* Create Fat Libraries */ = {
+		A9194DEB24E85ABC00FB127B /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -3945,16 +3956,16 @@
 			);
 			inputPaths = (
 			);
-			name = "Create Fat Libraries";
+			name = "Copy to Staging";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_OS_PROD_EXTN=\"iphoneos\"\nexport MVK_SIM_PROD_EXTN=\"iphonesimulator\"\n\n. \"${SRCROOT}/Scripts/create_fat_ext_libs.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
 		};
-		A9679AAF21D26C1400856BF7 /* Package Libraries */ = {
+		A9194DEC24E884FC00FB127B /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -3963,16 +3974,16 @@
 			);
 			inputPaths = (
 			);
-			name = "Package Libraries";
+			name = "Copy to Staging";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
 		};
-		A9679AB021D26C7000856BF7 /* Package Libraries */ = {
+		A9194DED24E8851900FB127B /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -3981,16 +3992,16 @@
 			);
 			inputPaths = (
 			);
-			name = "Package Libraries";
+			name = "Copy to Staging";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"macOS\"\nexport MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}\"\n\n. \"${SRCROOT}/Scripts/package_ext_libs.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
 		};
-		A9A5F2C1249D09820016D8B1 /* Create Fat Libraries */ = {
+		A9194DEE24E8852B00FB127B /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -3999,14 +4010,104 @@
 			);
 			inputPaths = (
 			);
-			name = "Create Fat Libraries";
+			name = "Copy to Staging";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"tvOS\"\nexport MVK_OS_PROD_EXTN=\"appletvos\"\nexport MVK_SIM_PROD_EXTN=\"appletvsimulator\"\n\n. \"${SRCROOT}/Scripts/create_fat_ext_libs.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
+		};
+		A9194DEF24E8853B00FB127B /* Copy to Staging */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy to Staging";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
+		};
+		A9194DF024E8854D00FB127B /* Copy to Staging */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy to Staging";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
+		};
+		A9194DF124E8855F00FB127B /* Copy to Staging */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy to Staging";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n\n";
+		};
+		A9194DF224E8856E00FB127B /* Copy to Staging */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy to Staging";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/copy_ext_lib_to_staging.sh\"\n";
+		};
+		A9194DF624E8990C00FB127B /* Create XCFramework */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Create XCFramework";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/Scripts/create_ext_lib_xcframeworks.sh\"\n";
 		};
 		A9FC5F8B249DB48D003CB086 /* Package Finish */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -5307,6 +5408,11 @@
 				COPY_PHASE_STRIP = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -5356,6 +5462,11 @@
 				COPY_PHASE_STRIP = YES;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;

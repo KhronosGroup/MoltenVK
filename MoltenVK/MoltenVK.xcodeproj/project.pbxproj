@@ -1104,7 +1104,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1160;
+				LastUpgradeCheck = 1200;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9B8EE091A98D796009C5A02 = {
@@ -1667,6 +1667,11 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
+				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -1730,6 +1735,11 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
+				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
+				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
