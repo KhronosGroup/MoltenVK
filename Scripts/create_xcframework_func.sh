@@ -9,7 +9,7 @@
 #
 function create_xcframework() {
 	prod_name=${1}
-	xcfwk_path="${MVK_XCFWK_DEST_DIR}/${CONFIGURATION}/${prod_name}.xcframework"
+	xcfwk_path="${MVK_XCFWK_DEST_DIR}/${prod_name}.xcframework"
 	hdr_path="${MVK_XCFWK_STAGING_DIR}/Headers/${prod_name}"
 
 	xcfwk_cmd="xcodebuild -create-xcframework -output \"${xcfwk_path}\""

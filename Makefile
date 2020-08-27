@@ -4,15 +4,15 @@ XC_SCHEME := MoltenVK Package
 # Specify individually (not as dependencies) so the sub-targets don't run in parallel
 .PHONY: all
 all:
-	@$(MAKE) macos
 	@$(MAKE) iosfat
 	@$(MAKE) tvosfat
+	@$(MAKE) macos
 
 .PHONY: all-debug
 all-debug:
-	@$(MAKE) macos-debug
 	@$(MAKE) iosfat-debug
 	@$(MAKE) tvosfat-debug
+	@$(MAKE) macos-debug
 
 .PHONY: macos
 macos:

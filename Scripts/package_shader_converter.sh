@@ -2,23 +2,21 @@
 
 set -e
 
+. "${PROJECT_DIR}/Scripts/create_xcframework_func.sh"
+
 export MVK_PROD_BASE_NAME="MoltenVKShaderConverter"
-export MVK_PKG_BASE_PATH="${PROJECT_DIR}/Package/${CONFIGURATION}/${MVK_PROD_BASE_NAME}"
-export MVK_PKG_INCLUDE_PATH="${MVK_PKG_BASE_PATH}/include"
+export MVK_XCFWK_STAGING_DIR="${BUILD_DIR}/XCFrameworkStaging"
+export MVK_XCFWK_DEST_DIR="${PROJECT_DIR}/Package/${CONFIGURATION}/${MVK_PROD_BASE_NAME}"
 
-# Remove and replace header include folder
-rm -rf "${MVK_PKG_INCLUDE_PATH}"
-mkdir -p "${MVK_PKG_INCLUDE_PATH}"
-cp -pRL "${PROJECT_DIR}/${MVK_PROD_BASE_NAME}/include/" "${MVK_PKG_INCLUDE_PATH}"
+# Assemble the headers for the shader frameworks
+hdr_dir="${MVK_XCFWK_STAGING_DIR}/Headers"
+rm -rf "${hdr_dir}"
+cp -pRL "${PROJECT_DIR}/${MVK_PROD_BASE_NAME}/include/" "${hdr_dir}"
 
-#-----------------------------------
-# MoltenVKSPIRVToMSLConverter
-export MVK_PROD_NAME="MoltenVKSPIRVToMSLConverter"
+# Also copy headers to an include directory in the package.
+# This will not be needed once the XCFramework can be created with a Headers directory.
+mkdir -p "${MVK_XCFWK_DEST_DIR}"
+cp -pRL "${PROJECT_DIR}/${MVK_PROD_BASE_NAME}/include/" "${MVK_XCFWK_DEST_DIR}/include"
 
-. "${SRCROOT}/Scripts/package_shader_converter_lib.sh"
-
-#-----------------------------------
-# MoltenVKGLSLToSPIRVConverter
-export MVK_PROD_NAME="MoltenVKGLSLToSPIRVConverter"
-
-. "${SRCROOT}/Scripts/package_shader_converter_lib.sh"
+create_xcframework "MoltenVKSPIRVToMSLConverter"
+create_xcframework "MoltenVKGLSLToSPIRVConverter"
