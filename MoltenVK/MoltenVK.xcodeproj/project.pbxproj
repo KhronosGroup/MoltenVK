@@ -1043,6 +1043,7 @@
 				2FEA0AB524902F9F00EEF3AD /* Create Dynamic Library */,
 				A9FC5F6D249D39F3003CB086 /* Create Fat Libraries */,
 				2FEA0AB624902F9F00EEF3AD /* Create Framework */,
+				A9CBBFF124F89F79006D41EF /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -1065,6 +1066,7 @@
 				A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */,
 				A9EE084F249BD4AE00E523A2 /* Create Fat Libraries */,
 				A92EF79721854B3300C8B91B /* Create Framework */,
+				A9CBBFEF24F89F5F006D41EF /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -1086,6 +1088,7 @@
 				A9CBEDCE1B6299D800E45FDC /* Sources */,
 				A93F47C91D7E389E002AF700 /* Create Dynamic Library */,
 				A92EF78D21852B2400C8B91B /* Create Framework */,
+				A9CBBFF224F89F87006D41EF /* Copy to Staging */,
 			);
 			buildRules = (
 			);
@@ -1344,6 +1347,60 @@
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
 			shellScript = "\"${SRCROOT}/../Scripts/gen_moltenvk_rev_hdr.sh\"\n";
+		};
+		A9CBBFEF24F89F5F006D41EF /* Copy to Staging */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy to Staging";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_lib_to_staging.sh\"\n";
+		};
+		A9CBBFF124F89F79006D41EF /* Copy to Staging */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy to Staging";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_lib_to_staging.sh\"\n";
+		};
+		A9CBBFF224F89F87006D41EF /* Copy to Staging */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Copy to Staging";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_lib_to_staging.sh\"\n\n";
 		};
 		A9EE084F249BD4AE00E523A2 /* Create Fat Libraries */ = {
 			isa = PBXShellScriptBuildPhase;

@@ -10,8 +10,11 @@ export MVK_XCFWK_DEST_DIR="${PROJECT_DIR}/Package/${CONFIGURATION}/${MVK_PROD_BA
 
 # Assemble the headers for the shader frameworks
 hdr_dir="${MVK_XCFWK_STAGING_DIR}/Headers"
-rm -rf "${hdr_dir}"
-cp -pRL "${PROJECT_DIR}/${MVK_PROD_BASE_NAME}/include/" "${hdr_dir}"
+mkdir -p "${hdr_dir}"
+rm -rf "${hdr_dir}/MoltenVKSPIRVToMSLConverter"
+cp -pRL "${PROJECT_DIR}/${MVK_PROD_BASE_NAME}/include/MoltenVKSPIRVToMSLConverter" "${hdr_dir}"
+rm -rf "${hdr_dir}/MoltenVKGLSLToSPIRVConverter"
+cp -pRL "${PROJECT_DIR}/${MVK_PROD_BASE_NAME}/include/MoltenVKGLSLToSPIRVConverter" "${hdr_dir}"
 
 # Also copy headers to an include directory in the package.
 # This will not be needed once the XCFramework can be created with a Headers directory.

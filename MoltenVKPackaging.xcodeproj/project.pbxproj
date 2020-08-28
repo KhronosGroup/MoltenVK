@@ -219,7 +219,7 @@
 		A92EF7C721856EA200C8B91B /* package_shader_converter_tool.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_shader_converter_tool.sh; sourceTree = "<group>"; };
 		A92EF7C921856EA200C8B91B /* package_docs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_docs.sh; sourceTree = "<group>"; };
 		A92EF7CA21856EA200C8B91B /* package_update_latest.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_update_latest.sh; sourceTree = "<group>"; };
-		A92EF7CB21856EA300C8B91B /* package_shader_converter.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_shader_converter.sh; sourceTree = "<group>"; };
+		A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_shader_converter_xcframework.sh; sourceTree = "<group>"; };
 		A92EF7DE2186451700C8B91B /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; name = Makefile; path = ../Makefile; sourceTree = "<group>"; };
 		A93ED4DE24F59CDB00FEB018 /* copy_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_to_staging.sh; sourceTree = "<group>"; };
 		A93ED4E324F59CDB00FEB018 /* copy_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_lib_to_staging.sh; sourceTree = "<group>"; };
@@ -233,6 +233,7 @@
 		A9B1008924F84EC800EADC6E /* package_one_os.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_one_os.sh; sourceTree = "<group>"; };
 		A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_macos.sh; sourceTree = "<group>"; };
 		A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_ios.sh; sourceTree = "<group>"; };
+		A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_moltenvk_xcframework.sh; sourceTree = "<group>"; };
 		A9DA8340218A198C002AA662 /* .travis.yml */ = {isa = PBXFileReference; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; };
 		A9DA8341218A198C002AA662 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		A9EE084A249BD49200E523A2 /* create_fat_lib_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_lib_func.sh; sourceTree = "<group>"; };
@@ -298,10 +299,11 @@
 				A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */,
 				A9FC5F60249D2ED3003CB086 /* package_all.sh */,
 				A92EF7C921856EA200C8B91B /* package_docs.sh */,
+				A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */,
 				A92EF7C621856EA200C8B91B /* package_moltenvk.sh */,
 				A9B1008924F84EC800EADC6E /* package_one_os.sh */,
 				A92EF7C721856EA200C8B91B /* package_shader_converter_tool.sh */,
-				A92EF7CB21856EA300C8B91B /* package_shader_converter.sh */,
+				A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */,
 				A92EF7CA21856EA200C8B91B /* package_update_latest.sh */,
 				A92EF7DE2186451700C8B91B /* Makefile */,
 			);
