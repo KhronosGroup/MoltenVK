@@ -982,10 +982,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
 		_metalFeatures.fences = true;
+		_metalFeatures.deferredStoreActions = true;
     }
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
+        _metalFeatures.renderWithoutAttachments = true;
 	}
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v4)) {
@@ -1033,10 +1035,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.shaderSpecialization = true;
         _metalFeatures.stencilViews = true;
 		_metalFeatures.fences = true;
+		_metalFeatures.deferredStoreActions = true;
     }
 
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v4)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
+        _metalFeatures.renderWithoutAttachments = true;
     }
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily1_v5)) {
@@ -1072,10 +1076,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.indirectTessellationDrawing = true;
 	}
 
-    if ( mvkOSVersionIsAtLeast(11.0) ) {
-        _metalFeatures.renderWithoutAttachments = true;
-    }
-
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = useMTLHeaps;
@@ -1105,6 +1105,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.stencilViews = true;
         _metalFeatures.samplerClampToBorder = true;
         _metalFeatures.combinedStoreResolveAction = true;
+		_metalFeatures.deferredStoreActions = true;
         _metalFeatures.maxMTLBufferSize = (1 * GIBI);
     }
 
