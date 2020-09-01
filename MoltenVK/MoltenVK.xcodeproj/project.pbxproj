@@ -1040,10 +1040,8 @@
 				A980A25D24C6288D007A8F6F /* Generate Version Header */,
 				2FEA0A4024902F9F00EEF3AD /* Headers */,
 				2FEA0A8224902F9F00EEF3AD /* Sources */,
-				2FEA0AB524902F9F00EEF3AD /* Create Dynamic Library */,
-				A9FC5F6D249D39F3003CB086 /* Create Fat Libraries */,
-				2FEA0AB624902F9F00EEF3AD /* Create Framework */,
 				A9CBBFF124F89F79006D41EF /* Copy to Staging */,
+				2FEA0AB524902F9F00EEF3AD /* Create Dynamic Library */,
 			);
 			buildRules = (
 			);
@@ -1063,10 +1061,8 @@
 				A980A25B24C6283D007A8F6F /* Generate Version Header */,
 				A9B8EE071A98D796009C5A02 /* Headers */,
 				A9B8EE051A98D796009C5A02 /* Sources */,
-				A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */,
-				A9EE084F249BD4AE00E523A2 /* Create Fat Libraries */,
-				A92EF79721854B3300C8B91B /* Create Framework */,
 				A9CBBFEF24F89F5F006D41EF /* Copy to Staging */,
+				A9731FAD1EDDAE39006B7298 /* Create Dynamic Library */,
 			);
 			buildRules = (
 			);
@@ -1086,9 +1082,8 @@
 				A980A25E24C62895007A8F6F /* Generate Version Header */,
 				A9CBED871B6299D800E45FDC /* Headers */,
 				A9CBEDCE1B6299D800E45FDC /* Sources */,
-				A93F47C91D7E389E002AF700 /* Create Dynamic Library */,
-				A92EF78D21852B2400C8B91B /* Create Framework */,
 				A9CBBFF224F89F87006D41EF /* Copy to Staging */,
+				A93F47C91D7E389E002AF700 /* Create Dynamic Library */,
 			);
 			buildRules = (
 			);
@@ -1212,60 +1207,6 @@
 			shellPath = /bin/sh;
 			shellScript = ". \"${SRCROOT}/../Scripts/create_dylib_tvos.sh\"\n";
 		};
-		2FEA0AB624902F9F00EEF3AD /* Create Framework */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Create Framework";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_tvos.sh\"\n";
-		};
-		A92EF78D21852B2400C8B91B /* Create Framework */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Create Framework";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_macos.sh\"\n";
-		};
-		A92EF79721854B3300C8B91B /* Create Framework */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Create Framework";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/create_framework_ios.sh\"\n";
-		};
 		A93F47C91D7E389E002AF700 /* Create Dynamic Library */ = {
 			isa = PBXShellScriptBuildPhase;
 			buildActionMask = 2147483647;
@@ -1364,7 +1305,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_lib_to_staging.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
 		};
 		A9CBBFF124F89F79006D41EF /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1382,7 +1323,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_lib_to_staging.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n";
 		};
 		A9CBBFF224F89F87006D41EF /* Copy to Staging */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1400,43 +1341,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/copy_lib_to_staging.sh\"\n\n";
-		};
-		A9EE084F249BD4AE00E523A2 /* Create Fat Libraries */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Create Fat Libraries";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_ios.sh\"\n";
-		};
-		A9FC5F6D249D39F3003CB086 /* Create Fat Libraries */ = {
-			isa = PBXShellScriptBuildPhase;
-			buildActionMask = 2147483647;
-			files = (
-			);
-			inputFileListPaths = (
-			);
-			inputPaths = (
-			);
-			name = "Create Fat Libraries";
-			outputFileListPaths = (
-			);
-			outputPaths = (
-			);
-			runOnlyForDeploymentPostprocessing = 0;
-			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/../Scripts/create_fat_libs_tvos.sh\"\n";
+			shellScript = ". \"${SRCROOT}/../Scripts/copy_to_staging.sh\"\n\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

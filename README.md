@@ -80,11 +80,10 @@ The **MoltenVK** runtime package contains two products:
 
 - **MoltenVKShaderConverter** converts *SPIR-V* shader code to *Metal Shading Language (MSL)*
   shader code, and converts *GLSL* shader source code to *SPIR-V* shader code and/or
-  *Metal Shading Language (MSL)* shader code. The *SPIR-V* portion of the converter is also 
-  embedded in the **MoltenVK** runtime to automatically convert *SPIR-V* shaders to their *MSL* 
-  equivalents. In addition, both the *SPIR-V* and *GLSL* converters are packaged into a 
-  stand-alone command-line `MoltenVKShaderConverter` *macOS* tool for converting shaders 
-  at development time from the command line.
+  *Metal Shading Language (MSL)* shader code. The converter is embedded in the **MoltenVK** 
+  runtime to automatically convert *SPIR-V* shaders to their *MSL* equivalents. In addition, 
+  both the *SPIR-V* and *GLSL* converters are packaged into a stand-alone command-line 
+  `MoltenVKShaderConverter` *macOS* tool for converting shaders at development time from the command line.
 
 
 
@@ -117,14 +116,23 @@ on which **MoltenVK** relies:
 When running the `fetchDependencies` script, you must specify one or more platforms 
 for which to build the external libraries. The platform choices include: 
 
-	--all --macos --ios --iosfat --tvos --tvosfat
+	--all 
+	--macos 
+	--ios 
+	--iossim 
+	--tvos 
+	--tvossim
 
-You can specify multiple of these selections. The `--iosfat` and `--tvosfat` selection builds one 
-binary for each external library, with each binary including code for both *iOS* and *iOS Simulator* 
-platforms, or  *tvOS* and *tvOS Simulator* platforms, respectively. The `--all` selection is the same 
-as selecting `--macos --iosfat --tvosfat` and results in three binaries for each external library: 
-a *macOS* binary, a *fat iOS* binary, and a *fat tvOS* binary. The more selections you include,
-the longer the build time.
+You can specify multiple of these selections. The result is a single `XCFramework` 
+for each external dependency library, with each `XCFramework` containing binaries for 
+each of the requested platforms. 
+
+The `--all` selection is the same as entering all of the other platform choices,
+and will result in a single `XCFramework` for each external dependency library, 
+with each `XCFramework` containing binaries for all supported platforms and simulators.
+
+Running `fetchDependencies` repeatedly with different platforms will accumulate 
+targets in the `XCFramework`.
 
 For more information about the external open-source libraries used by **MoltenVK**,
 see the [`ExternalRevisions/README.md`](ExternalRevisions/README.md) document.
@@ -196,29 +204,28 @@ from the command line. The following `make` targets are provided:
 	make all
 	make macos
 	make ios
-	make iosfat
+	make iossim
 	make tvos
-	make tvosfat
+	make tvossim
 	
 	make all-debug
 	make macos-debug
 	make ios-debug
-	make iosfat-debug
+	make iossim-debug
 	make tvos-debug
-	make tvosfat-debug
+	make tvossim-debug
 	
 	make clean
 	make install
 
+- Running `make` repeatedly with different targets will accumulate binaries for these different targets.
+- The `all` target executes all platform targets.
 - The `all` target is the default target. Running `make` with no arguments is the same as running `make all`.
-- The `*fat*` targets build fat binaries containing both platform and simulator code.
 - The `*-debug` targets build the binaries using the **_Debug_** configuration.
-- The `all` target executes the `macos`, `iosfat`, and `tvosfat` targets.
-- The `all-debug` target executes the `macos-debug`, `iosfat-debug`, and `tvosfat-debug` targets.
-- The `install` target will copy the most recently built *macOS* `MoltenVK.framework` into 
-  the `/Library/Frameworks` folder of your computer. Since `/Library/Frameworks` is protected, 
+- The `install` target will copy the most recently built `MoltenVK.xcframework` into the 
+  `/Library/Frameworks` folder of your computer. Since `/Library/Frameworks` is protected, 
   you will generally need to run it as `sudo make install` and enter your password.
-  The `install` target just installs the   built framework, it does not first build the framework.
+  The `install` target just installs the built framework, it does not first build the framework.
   You will first need to at least run `make macos` first.
 
 The `make` targets all require that *Xcode* is installed on your system. 

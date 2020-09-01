@@ -221,28 +221,19 @@
 		A92EF7CA21856EA200C8B91B /* package_update_latest.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_update_latest.sh; sourceTree = "<group>"; };
 		A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_shader_converter_xcframework.sh; sourceTree = "<group>"; };
 		A92EF7DE2186451700C8B91B /* Makefile */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.make; name = Makefile; path = ../Makefile; sourceTree = "<group>"; };
-		A93ED4DE24F59CDB00FEB018 /* copy_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_to_staging.sh; sourceTree = "<group>"; };
-		A93ED4E324F59CDB00FEB018 /* copy_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_lib_to_staging.sh; sourceTree = "<group>"; };
-		A941E2B1221AEBD000890C56 /* create_framework_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_framework_ios.sh; sourceTree = "<group>"; };
-		A941E2B2221AEBD000890C56 /* create_framework_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_framework_macos.sh; sourceTree = "<group>"; };
+		A93ED4DE24F59CDB00FEB018 /* copy_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_lib_to_staging.sh; sourceTree = "<group>"; };
+		A93ED4E324F59CDB00FEB018 /* copy_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_to_staging.sh; sourceTree = "<group>"; };
 		A975D55C213F25D700D4834F /* create_dylib.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib.sh; sourceTree = "<group>"; };
 		A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = gen_moltenvk_rev_hdr.sh; sourceTree = "<group>"; };
 		A98149E51FB78829005F00B4 /* MoltenVK_Runtime_UserGuide.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; name = MoltenVK_Runtime_UserGuide.md; path = Docs/MoltenVK_Runtime_UserGuide.md; sourceTree = "<group>"; };
-		A99A760321852584000A8E2A /* create_framework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_framework.sh; sourceTree = "<group>"; };
 		A9B1007A24F837AF00EADC6E /* create_xcframework_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_xcframework_func.sh; sourceTree = "<group>"; };
-		A9B1008924F84EC800EADC6E /* package_one_os.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_one_os.sh; sourceTree = "<group>"; };
 		A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_macos.sh; sourceTree = "<group>"; };
 		A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_ios.sh; sourceTree = "<group>"; };
 		A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_moltenvk_xcframework.sh; sourceTree = "<group>"; };
 		A9DA8340218A198C002AA662 /* .travis.yml */ = {isa = PBXFileReference; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; };
 		A9DA8341218A198C002AA662 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
-		A9EE084A249BD49200E523A2 /* create_fat_lib_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_lib_func.sh; sourceTree = "<group>"; };
-		A9EE084E249BD49200E523A2 /* create_fat_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_libs.sh; sourceTree = "<group>"; };
-		A9EE0851249BD71C00E523A2 /* create_fat_libs_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_libs_ios.sh; sourceTree = "<group>"; };
 		A9FC5F60249D2ED3003CB086 /* package_all.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_all.sh; sourceTree = "<group>"; };
 		A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_tvos.sh; sourceTree = "<group>"; };
-		A9FC5F69249D3843003CB086 /* create_framework_tvos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_framework_tvos.sh; sourceTree = "<group>"; };
-		A9FC5F6A249D38DF003CB086 /* create_fat_libs_tvos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_libs_tvos.sh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -281,27 +272,18 @@
 		A975D55B213F25AD00D4834F /* Scripts */ = {
 			isa = PBXGroup;
 			children = (
-				A93ED4E324F59CDB00FEB018 /* copy_lib_to_staging.sh */,
-				A93ED4DE24F59CDB00FEB018 /* copy_to_staging.sh */,
+				A93ED4E324F59CDB00FEB018 /* copy_to_staging.sh */,
+				A93ED4DE24F59CDB00FEB018 /* copy_lib_to_staging.sh */,
 				A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */,
 				A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */,
 				A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */,
 				A975D55C213F25D700D4834F /* create_dylib.sh */,
-				A9EE084A249BD49200E523A2 /* create_fat_lib_func.sh */,
-				A9EE0851249BD71C00E523A2 /* create_fat_libs_ios.sh */,
-				A9FC5F6A249D38DF003CB086 /* create_fat_libs_tvos.sh */,
-				A9EE084E249BD49200E523A2 /* create_fat_libs.sh */,
-				A941E2B1221AEBD000890C56 /* create_framework_ios.sh */,
-				A941E2B2221AEBD000890C56 /* create_framework_macos.sh */,
-				A9FC5F69249D3843003CB086 /* create_framework_tvos.sh */,
-				A99A760321852584000A8E2A /* create_framework.sh */,
 				A9B1007A24F837AF00EADC6E /* create_xcframework_func.sh */,
 				A980A25F24C628F3007A8F6F /* gen_moltenvk_rev_hdr.sh */,
 				A9FC5F60249D2ED3003CB086 /* package_all.sh */,
 				A92EF7C921856EA200C8B91B /* package_docs.sh */,
 				A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */,
 				A92EF7C621856EA200C8B91B /* package_moltenvk.sh */,
-				A9B1008924F84EC800EADC6E /* package_one_os.sh */,
 				A92EF7C721856EA200C8B91B /* package_shader_converter_tool.sh */,
 				A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */,
 				A92EF7CA21856EA200C8B91B /* package_update_latest.sh */,
@@ -463,7 +445,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"tvOS\"\nexport MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_one_os.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/package_all.sh\"\n";
 		};
 		A975D5872140585200D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -477,7 +459,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"iOS\"\nexport MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}-${MVK_OS}\"\n\n. \"${SRCROOT}/Scripts/package_one_os.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/package_all.sh\"\n";
 		};
 		A975D59A2140586700D4834F /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -491,7 +473,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_OS=\"macOS\"\nexport MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}\"\n\n. \"${SRCROOT}/Scripts/package_one_os.sh\"\n. \"${SRCROOT}/Scripts/package_shader_converter_tool.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/package_all.sh\"\n. \"${SRCROOT}/Scripts/package_shader_converter_tool.sh\"\n";
 		};
 		A9AD70122440ED3B00B9E254 /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -505,7 +487,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "export MVK_BUILT_PROD_DIR=\"${BUILT_PRODUCTS_DIR}\"\n. \"${SRCROOT}/Scripts/package_shader_converter_tool.sh\"\n. \"${SRCROOT}/Scripts/package_update_latest.sh\"\n";
+			shellScript = ". \"${SRCROOT}/Scripts/package_shader_converter_tool.sh\"\n. \"${SRCROOT}/Scripts/package_update_latest.sh\"\n";
 		};
 		A9B1008824F84BE400EADC6E /* Package MoltenVK */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -523,7 +505,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = ". \"${SRCROOT}/Scripts/package_all.sh\"\n\n";
+			shellScript = ". \"${SRCROOT}/Scripts/package_all.sh\"\n. \"${SRCROOT}/Scripts/package_shader_converter_tool.sh\"\n\n";
 		};
 /* End PBXShellScriptBuildPhase section */
 

@@ -1724,11 +1724,8 @@
 		A913F24424CF87AE006CB02F /* ShaderLang.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShaderLang.h; sourceTree = "<group>"; };
 		A913F25724CF87AE006CB02F /* CodeGen.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = CodeGen.cpp; sourceTree = "<group>"; };
 		A913F25824CF87AE006CB02F /* Link.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Link.cpp; sourceTree = "<group>"; };
-		A9194DE624E77A2E00FB127B /* copy_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_to_staging.sh; sourceTree = "<group>"; };
 		A9194DF424E8940600FB127B /* copy_ext_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_ext_lib_to_staging.sh; sourceTree = "<group>"; };
 		A9194DF524E8979100FB127B /* create_ext_lib_xcframeworks.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_ext_lib_xcframeworks.sh; sourceTree = "<group>"; };
-		A932E9C5249A743B00D64150 /* create_fat_lib_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_lib_func.sh; sourceTree = "<group>"; };
-		A932E9DF249BC44D00D64150 /* create_fat_ext_libs.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_fat_ext_libs.sh; sourceTree = "<group>"; };
 		A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */ = {isa = PBXFileReference; lastKnownFileType = text; path = packagePregenSpirvToolsHeaders; sourceTree = "<group>"; };
 		A95D90FE23A7F1E500CBCC60 /* CMakeLists.txt */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		A95D90FF23A7F1E500CBCC60 /* InitializeDll.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InitializeDll.h; sourceTree = "<group>"; };
@@ -2177,6 +2174,7 @@
 		A9765DEE2485758500FDD115 /* validation_state.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validation_state.cpp; sourceTree = "<group>"; };
 		A9765DEF2485758500FDD115 /* validate_primitives.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = validate_primitives.cpp; sourceTree = "<group>"; };
 		A9765DF02485758500FDD115 /* decoration.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = decoration.h; sourceTree = "<group>"; };
+		A9772CFF24F9930E002617D0 /* copy_lib_to_staging.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = copy_lib_to_staging.sh; sourceTree = "<group>"; };
 		A991DB2124E6016E00AEEC36 /* create_xcframework_func.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_xcframework_func.sh; sourceTree = "<group>"; };
 		A9C2104521D14FD7006BA2D3 /* fetchDependencies */ = {isa = PBXFileReference; lastKnownFileType = text; path = fetchDependencies; sourceTree = "<group>"; };
 		A9C2104721D15843006BA2D3 /* ExternalRevisions */ = {isa = PBXFileReference; lastKnownFileType = folder; path = ExternalRevisions; sourceTree = "<group>"; };
@@ -2381,10 +2379,8 @@
 			isa = PBXGroup;
 			children = (
 				A9194DF424E8940600FB127B /* copy_ext_lib_to_staging.sh */,
-				A9194DE624E77A2E00FB127B /* copy_to_staging.sh */,
+				A9772CFF24F9930E002617D0 /* copy_lib_to_staging.sh */,
 				A9194DF524E8979100FB127B /* create_ext_lib_xcframeworks.sh */,
-				A932E9DF249BC44D00D64150 /* create_fat_ext_libs.sh */,
-				A932E9C5249A743B00D64150 /* create_fat_lib_func.sh */,
 				A991DB2124E6016E00AEEC36 /* create_xcframework_func.sh */,
 				A9FC5F7F249DA96D003CB086 /* package_ext_libs_finish.sh */,
 				A9415EF624366B0E00566F16 /* packagePregenSpirvToolsHeaders */,
