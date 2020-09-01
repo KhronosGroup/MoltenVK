@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A92806E724FD77C00082B2CF /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = A991E27124FD520900D968D4 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A92806E924FD77EC0082B2CF /* libMoltenVK.dylib in CopyFiles */ = {isa = PBXBuildFile; fileRef = A991E27324FD521600D968D4 /* libMoltenVK.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
+		A991E27224FD520900D968D4 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A991E27124FD520900D968D4 /* libMoltenVK.dylib */; };
+		A991E27424FD521600D968D4 /* libMoltenVK.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = A991E27324FD521600D968D4 /* libMoltenVK.dylib */; };
 		A99789AF1CD3D4E2005E7DAC /* Hologram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A99789831CD3D4E2005E7DAC /* Hologram.cpp */; };
 		A99789B01CD3D4E2005E7DAC /* Hologram.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A99789831CD3D4E2005E7DAC /* Hologram.cpp */; };
 		A99789B71CD3D4E2005E7DAC /* Main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A99789881CD3D4E2005E7DAC /* Main.cpp */; };
@@ -31,11 +35,32 @@
 		A9B67B8F1C3AAEA200373FFD /* main.m in Sources */ = {isa = PBXBuildFile; fileRef = A9B67B871C3AAEA200373FFD /* main.m */; };
 		A9B67B901C3AAEA200373FFD /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B8A1C3AAEA200373FFD /* Main.storyboard */; };
 		A9B67B911C3AAEA200373FFD /* macOS.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */; };
-		A9C2AB99218503A400DDBC03 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB97218503A400DDBC03 /* libMoltenVK.a */; };
-		A9C2AB9E218503BA00DDBC03 /* libMoltenVK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */; };
 		A9D516F81CD575E300097D96 /* HelpersDispatchTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */; };
 		A9D516F91CD575E300097D96 /* HelpersDispatchTable.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A92806E624FD77AA0082B2CF /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				A92806E724FD77C00082B2CF /* libMoltenVK.dylib in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A92806E824FD77D50082B2CF /* CopyFiles */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+				A92806E924FD77EC0082B2CF /* libMoltenVK.dylib in CopyFiles */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		1D6058910D05DD3D006BFB54 /* Hologram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hologram.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -45,6 +70,8 @@
 		A93CC3701CD56B8F00EB8A56 /* generate-dispatch-table */ = {isa = PBXFileReference; explicitFileType = text.script.python; path = "generate-dispatch-table"; sourceTree = "<group>"; };
 		A93CC3711CD56FD600EB8A56 /* CMakeLists.txt */ = {isa = PBXFileReference; lastKnownFileType = text; path = CMakeLists.txt; sourceTree = "<group>"; };
 		A977BCFE1B66BB010067E5BF /* Hologram.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Hologram.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A991E27124FD520900D968D4 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../MoltenVK/dylib/iOS/libMoltenVK.dylib; sourceTree = "<group>"; };
+		A991E27324FD521600D968D4 /* libMoltenVK.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libMoltenVK.dylib; path = ../../../MoltenVK/dylib/macOS/libMoltenVK.dylib; sourceTree = "<group>"; };
 		A997897F1CD3D4E2005E7DAC /* Game.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Game.h; sourceTree = "<group>"; };
 		A99789821CD3D4E2005E7DAC /* Helpers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Helpers.h; sourceTree = "<group>"; };
 		A99789831CD3D4E2005E7DAC /* Hologram.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Hologram.cpp; sourceTree = "<group>"; };
@@ -79,8 +106,6 @@
 		A9B67B881C3AAEA200373FFD /* Prefix.pch */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Prefix.pch; sourceTree = "<group>"; };
 		A9B67B8A1C3AAEA200373FFD /* Main.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; path = Main.storyboard; sourceTree = "<group>"; };
 		A9B67B8B1C3AAEA200373FFD /* macOS.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = macOS.xcassets; sourceTree = "<group>"; };
-		A9C2AB97218503A400DDBC03 /* libMoltenVK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMoltenVK.a; path = ../../../MoltenVK/iOS/static/libMoltenVK.a; sourceTree = "<group>"; };
-		A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; name = libMoltenVK.a; path = ../../../MoltenVK/macOS/static/libMoltenVK.a; sourceTree = "<group>"; };
 		A9D516F61CD575E300097D96 /* HelpersDispatchTable.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = HelpersDispatchTable.cpp; sourceTree = "<group>"; };
 		A9D516F71CD575E300097D96 /* HelpersDispatchTable.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = HelpersDispatchTable.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -90,7 +115,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9C2AB99218503A400DDBC03 /* libMoltenVK.a in Frameworks */,
+				A991E27224FD520900D968D4 /* libMoltenVK.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -98,7 +123,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A9C2AB9E218503BA00DDBC03 /* libMoltenVK.a in Frameworks */,
+				A991E27424FD521600D968D4 /* libMoltenVK.dylib in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -207,8 +232,8 @@
 		A9C2AB96218503A400DDBC03 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				A9C2AB9C218503BA00DDBC03 /* libMoltenVK.a */,
-				A9C2AB97218503A400DDBC03 /* libMoltenVK.a */,
+				A991E27124FD520900D968D4 /* libMoltenVK.dylib */,
+				A991E27324FD521600D968D4 /* libMoltenVK.dylib */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -232,6 +257,7 @@
 				1D60588D0D05DD3D006BFB54 /* Resources */,
 				1D60588E0D05DD3D006BFB54 /* Sources */,
 				1D60588F0D05DD3D006BFB54 /* Frameworks */,
+				A92806E624FD77AA0082B2CF /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -249,6 +275,7 @@
 				A977BCBE1B66BB010067E5BF /* Resources */,
 				A977BCC91B66BB010067E5BF /* Sources */,
 				A977BCF11B66BB010067E5BF /* Frameworks */,
+				A92806E824FD77D50082B2CF /* CopyFiles */,
 			);
 			buildRules = (
 			);
@@ -358,7 +385,8 @@
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS/static\"";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/dylib/iOS\"";
 				MARKETING_VERSION = 1;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -374,7 +402,8 @@
 				GCC_PREFIX_HEADER = "$(SRCROOT)/iOS/Prefix.pch";
 				INFOPLIST_FILE = "$(SRCROOT)/iOS/Info.plist";
 				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/iOS/static\"";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/dylib/iOS\"";
 				MARKETING_VERSION = 1;
 				SDKROOT = iphoneos;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -388,7 +417,8 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS/static\"";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/dylib/macOS\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				OTHER_LDFLAGS = (
 					"$(inherited)",
@@ -405,7 +435,8 @@
 				COMBINE_HIDPI_IMAGES = YES;
 				GCC_PREFIX_HEADER = "$(SRCROOT)/macOS/Prefix.pch";
 				INFOPLIST_FILE = "$(SRCROOT)/macOS/Info.plist";
-				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/macOS/static\"";
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/../Frameworks";
+				LIBRARY_SEARCH_PATHS = "\"$(SRCROOT)/../../../MoltenVK/dylib/macOS\"";
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				OTHER_LDFLAGS = (
 					"$(inherited)",

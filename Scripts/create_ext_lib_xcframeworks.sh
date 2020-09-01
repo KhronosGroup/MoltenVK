@@ -1,10 +1,10 @@
 #!/bin/bash
 
-. "${PROJECT_DIR}/Scripts/create_xcframework.sh"
+. "${PROJECT_DIR}/Scripts/create_xcframework_func.sh"
 
 export MVK_EXT_DIR="${PROJECT_DIR}/External"
 export MVK_XCFWK_STAGING_DIR="${MVK_EXT_DIR}/build/Intermediates/XCFrameworkStaging"
-export MVK_XCFWK_DEST_DIR="${MVK_EXT_DIR}/build"
+export MVK_XCFWK_DEST_DIR="${MVK_EXT_DIR}/build/${CONFIGURATION}"
 
 # Assemble the headers for the external libraries
 abs_ext_dir=`cd "${MVK_EXT_DIR}"; pwd; cd - > /dev/null`
