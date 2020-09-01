@@ -946,6 +946,16 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
+// Returns the total number of vertices needed to clear all layers of all rectangles.
+template <size_t N>
+uint32_t MVKCmdClearAttachments<N>::getVertexCount() {
+	uint32_t vtxCnt = 0;
+	for (auto& rect : _clearRects) {
+		vtxCnt += 6 * rect.layerCount;
+	}
+	return vtxCnt;
+}
+
 // Populates the vertices for all clear rectangles within an attachment of the specified size.
 template <size_t N>
 void MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices, float attWidth, float attHeight) {
@@ -1022,7 +1032,7 @@ uint32_t MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices,
 template <size_t N>
 void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
-	uint32_t vtxCnt = (uint32_t)_clearRects.size() * 6;
+	uint32_t vtxCnt = getVertexCount();
 	simd::float4 vertices[vtxCnt];
 	simd::float4 clearColors[kMVKClearAttachmentCount];
 
