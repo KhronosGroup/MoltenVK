@@ -120,7 +120,11 @@ typedef struct MVKRPSKeyClearAtt {
 
     void enableAttachment(uint32_t attIdx) { mvkEnableFlags(flags, bitFlag << attIdx); }
 
+    void disableAttachment(uint32_t attIdx) { mvkDisableFlags(flags, bitFlag << attIdx); }
+
     bool isAttachmentEnabled(uint32_t attIdx) { return mvkIsAnyFlagEnabled(flags, bitFlag << attIdx); }
+
+	bool isAnyAttachmentEnabled() { return mvkIsAnyFlagEnabled(flags, (bitFlag << kMVKClearAttachmentCount) - 1); }
 
 	void enableLayeredRendering() { mvkEnableFlags(flags, bitFlag << kMVKClearAttachmentLayeredRenderingBitIndex); }
 
