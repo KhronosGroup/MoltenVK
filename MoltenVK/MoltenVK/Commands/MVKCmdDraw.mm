@@ -106,6 +106,11 @@ VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
 
 void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
+    if (_vertexCount == 0 || _instanceCount == 0) {
+        // Nothing to do.
+        return;
+    }
+
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
 	MVKPiplineStages stages;
@@ -290,6 +295,11 @@ VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
+
+    if (_indexCount == 0 || _instanceCount == 0) {
+        // Nothing to do.
+        return;
+    }
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
