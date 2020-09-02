@@ -76,25 +76,3 @@ protected:
 	virtual MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) = 0;
 };
 
-
-#pragma mark -
-#pragma mark MVKLoadStoreOverrideMixin
-
-/**
- * Shared state mixin for draw commands.
- *
- * As a mixin, this class should only be used as a component of multiple inheritance.
- * Any class that inherits from this class should also inherit from MVKBaseObject.
- * This requirement is to avoid the diamond problem of multiple inheritance.
- */
-class MVKLoadStoreOverrideMixin {
-public:
-	void setLoadOverride(bool loadOverride) { _loadOverride = loadOverride; }
-	void setStoreOverride(bool storeOverride) { _storeOverride = storeOverride; }
-
-protected:
-    bool _loadOverride;
-    bool _storeOverride;
-};
-
-

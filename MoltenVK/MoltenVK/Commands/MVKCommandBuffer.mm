@@ -75,6 +75,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_isExecutingNonConcurrently.clear();
 	_commandCount = 0;
 	_initialVisibilityResultMTLBuffer = nil;		// not retained
+	_lastTessellationPipeline = nullptr;
 	setConfigurationResult(VK_NOT_READY);
 
 	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
@@ -196,38 +197,8 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 #pragma mark -
 #pragma mark Tessellation constituent command management
 
-void MVKCommandBuffer::recordBeginRenderPass(MVKLoadStoreOverrideMixin* mvkBeginRenderPass) {
-	_lastBeginRenderPass = mvkBeginRenderPass;
-	_lastTessellationPipeline = nullptr;
-	_lastTessellationDraw = nullptr;
-}
-
-void MVKCommandBuffer::recordEndRenderPass() {
-	// Unset the store override for the last draw call
-	if (_lastTessellationDraw != nullptr)
-	{
-		_lastTessellationDraw->setStoreOverride(false);
-		_lastBeginRenderPass->setStoreOverride(true);
-	}
-	_lastBeginRenderPass = nullptr;
-	_lastTessellationPipeline = nullptr;
-	_lastTessellationDraw = nullptr;
-}
-
 void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
-	if (mvkBindPipeline->isTessellationPipeline())
-		_lastTessellationPipeline = mvkBindPipeline;
-	else
-		_lastTessellationPipeline = nullptr;
-}
-
-void MVKCommandBuffer::recordDraw(MVKLoadStoreOverrideMixin* mvkDraw) {
-	if (_lastTessellationPipeline != nullptr) {
-		// If a multi-pass pipeline is bound and we've already drawn something, need to override load actions
-		mvkDraw->setLoadOverride(true);
-		mvkDraw->setStoreOverride(true);
-		_lastTessellationDraw = mvkDraw;
-	}
+	_lastTessellationPipeline = mvkBindPipeline->isTessellationPipeline() ? mvkBindPipeline : nullptr;
 }
 
 
@@ -237,7 +208,7 @@ void MVKCommandBuffer::recordDraw(MVKLoadStoreOverrideMixin* mvkDraw) {
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 	_renderSubpassIndex = 0;
-	_isUsingLayeredRendering = false;
+	_canUseLayeredRendering = false;
 
 	_mtlCmdBuffer = mtlCmdBuff;		// not retained
 
@@ -265,16 +236,14 @@ void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
 										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
-										MVKArrayRef<VkClearValue> clearValues,
-										bool loadOverride,
-										bool storeOverride) {
+										MVKArrayRef<VkClearValue> clearValues) {
 	_renderPass = renderPass;
 	_framebuffer = framebuffer;
 	_renderArea = renderArea;
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebuffer->getExtent2D()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
-	setSubpass(subpassContents, 0, loadOverride, storeOverride);
+	setSubpass(subpassContents, 0);
 }
 
 void MVKCommandEncoder::beginNextSubpass(VkSubpassContents contents) {
@@ -282,31 +251,34 @@ void MVKCommandEncoder::beginNextSubpass(VkSubpassContents contents) {
 }
 
 // Sets the current render subpass to the subpass with the specified index.
-void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex, bool loadOverride, bool storeOverride) {
+void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex) {
+	encodeStoreActions();
+
 	_subpassContents = subpassContents;
 	_renderSubpassIndex = subpassIndex;
 
-	_isUsingLayeredRendering = ((_framebuffer->getLayerCount() > 1) &&
-								_device->_pMetalFeatures->layeredRendering &&
-								(_device->_pMetalFeatures->multisampleLayeredRendering ||
-								 (getSubpass()->getSampleCount() == VK_SAMPLE_COUNT_1_BIT)));
+	_canUseLayeredRendering = (_device->_pMetalFeatures->layeredRendering &&
+							   (_device->_pMetalFeatures->multisampleLayeredRendering ||
+							    (getSubpass()->getSampleCount() == VK_SAMPLE_COUNT_1_BIT)));
 
-	beginMetalRenderPass(loadOverride, storeOverride);
+	beginMetalRenderPass();
 }
 
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
-void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride, bool storeOverride) {
+void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
 
     endCurrentMetalEncoding();
 
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues.contents(), _isRenderingEntireAttachment, loadOverride, storeOverride);
+    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues.contents(), _isRenderingEntireAttachment, loadOverride);
     mtlRPDesc.visibilityResultBuffer = _occlusionQueryState.getVisibilityResultMTLBuffer();
 
     VkExtent2D fbExtent = _framebuffer->getExtent2D();
     mtlRPDesc.renderTargetWidthMVK = min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width);
     mtlRPDesc.renderTargetHeightMVK = min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height);
-    mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
+    if (_canUseLayeredRendering) {
+        mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
+    }
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
 	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName());
@@ -326,6 +298,10 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride, bool storeOverri
     _depthStencilState.beginMetalRenderPass();
     _stencilReferenceValueState.beginMetalRenderPass();
     _occlusionQueryState.beginMetalRenderPass();
+}
+
+void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {
+	getSubpass()->encodeStoreActions(this, _isRenderingEntireAttachment, storeOverride);
 }
 
 MVKRenderSubpass* MVKCommandEncoder::getSubpass() { return _renderPass->getSubpass(_renderSubpassIndex); }
@@ -429,6 +405,7 @@ void MVKCommandEncoder::finalizeDispatchState() {
 }
 
 void MVKCommandEncoder::endRenderpass() {
+	encodeStoreActions();
 	endMetalRenderEncoding();
 
 	_renderPass = nullptr;

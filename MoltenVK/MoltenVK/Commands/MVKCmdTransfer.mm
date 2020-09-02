@@ -946,6 +946,16 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
+// Returns the total number of vertices needed to clear all layers of all rectangles.
+template <size_t N>
+uint32_t MVKCmdClearAttachments<N>::getVertexCount() {
+	uint32_t vtxCnt = 0;
+	for (auto& rect : _clearRects) {
+		vtxCnt += 6 * rect.layerCount;
+	}
+	return vtxCnt;
+}
+
 // Populates the vertices for all clear rectangles within an attachment of the specified size.
 template <size_t N>
 void MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices, float attWidth, float attHeight) {
@@ -1022,7 +1032,7 @@ uint32_t MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices,
 template <size_t N>
 void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
-	uint32_t vtxCnt = (uint32_t)_clearRects.size() * 6;
+	uint32_t vtxCnt = getVertexCount();
 	simd::float4 vertices[vtxCnt];
 	simd::float4 clearColors[kMVKClearAttachmentCount];
 
@@ -1035,10 +1045,15 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
     // Populate the render pipeline state attachment key with info from the subpass and framebuffer.
 	_rpsKey.mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getSampleCount());
-	if (cmdEncoder->_isUsingLayeredRendering) { _rpsKey.enableLayeredRendering(); }
+	if (cmdEncoder->_canUseLayeredRendering && cmdEncoder->_framebuffer->getLayerCount() > 1) { _rpsKey.enableLayeredRendering(); }
 
     uint32_t caCnt = subpass->getColorAttachmentCount();
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
+        if (!subpass->isColorAttachmentUsed(caIdx)) {
+            // If the subpass attachment isn't actually used, don't try to clear it.
+            _rpsKey.disableAttachment(caIdx);
+            continue;
+        }
         VkFormat vkAttFmt = subpass->getColorAttachmentFormat(caIdx);
 		_rpsKey.attachmentMTLPixelFormats[caIdx] = pixFmts->getMTLPixelFormat(vkAttFmt);
 		MTLClearColor mtlCC = pixFmts->getMTLClearColor(getClearValue(caIdx), vkAttFmt);
@@ -1054,6 +1069,15 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 	bool isClearingDepth = _isClearingDepth && pixFmts->isDepthFormat(mtlAttFmt);
 	bool isClearingStencil = _isClearingStencil && pixFmts->isStencilFormat(mtlAttFmt);
+    if (!isClearingDepth && !isClearingStencil) {
+        // If the subpass attachment isn't actually used, don't try to clear it.
+        _rpsKey.disableAttachment(kMVKClearAttachmentDepthStencilIndex);
+    }
+
+	if (!_rpsKey.isAnyAttachmentEnabled()) {
+		// Nothing to do.
+		return;
+	}
 
     // Render the clear colors to the attachments
 	MVKCommandEncodingPool* cmdEncPool = cmdEncoder->getCommandEncodingPool();
