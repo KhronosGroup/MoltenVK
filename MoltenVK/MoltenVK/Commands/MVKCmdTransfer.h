@@ -254,6 +254,7 @@ public:
     void encode(MVKCommandEncoder* cmdEncoder) override;
 
 protected:
+    uint32_t getVertexCount();
     void populateVertices(simd::float4* vertices, float attWidth, float attHeight);
 	uint32_t populateVertices(simd::float4* vertices, uint32_t startVertex,
 							  VkClearRect& clearRect, float attWidth, float attHeight);

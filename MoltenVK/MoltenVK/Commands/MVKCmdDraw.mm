@@ -92,19 +92,21 @@ VkResult MVKCmdDraw::setContent(MVKCommandBuffer* cmdBuff,
 	_instanceCount = instanceCount;
 	_firstVertex = firstVertex;
 	_firstInstance = firstInstance;
-	_loadOverride = false;
-	_storeOverride = false;
 
     // Validate
     if ((_firstInstance != 0) && !(cmdBuff->getDevice()->_pMetalFeatures->baseVertexInstanceDrawing)) {
         return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDraw(): The current device does not support drawing with a non-zero base instance.");
     }
 
-	cmdBuff->recordDraw(this);
 	return VK_SUCCESS;
 }
 
 void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
+
+    if (_vertexCount == 0 || _instanceCount == 0) {
+        // Nothing to do.
+        return;
+    }
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
@@ -135,6 +137,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
 		switch (stage) {
             case kMVKGraphicsStageVertex: {
+				cmdEncoder->encodeStoreActions(true);
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_vertexCount * _instanceCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
@@ -206,7 +209,7 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 				}
                 // Running this stage prematurely ended the render pass, so we have to start it up again.
                 // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                cmdEncoder->beginMetalRenderPass(_loadOverride, _storeOverride);
+                cmdEncoder->beginMetalRenderPass(true);
                 break;
 			}
             case kMVKGraphicsStageRasterization:
@@ -273,8 +276,6 @@ VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
 	_firstIndex = firstIndex;
 	_vertexOffset = vertexOffset;
 	_firstInstance = firstInstance;
-	_loadOverride = false;
-	_storeOverride = false;
 
     // Validate
 	MVKDevice* mvkDvc = cmdBuff->getDevice();
@@ -285,11 +286,15 @@ VkResult MVKCmdDrawIndexed::setContent(MVKCommandBuffer* cmdBuff,
         return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexed(): The current device does not support drawing with a non-zero base vertex.");
     }
 
-	cmdBuff->recordDraw(this);
 	return VK_SUCCESS;
 }
 
 void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
+
+    if (_indexCount == 0 || _instanceCount == 0) {
+        // Nothing to do.
+        return;
+    }
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
@@ -323,6 +328,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
         switch (stage) {
             case kMVKGraphicsStageVertex: {
+				cmdEncoder->encodeStoreActions(true);
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_indexCount * _instanceCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
@@ -398,7 +404,7 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 				}
                 // Running this stage prematurely ended the render pass, so we have to start it up again.
                 // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                cmdEncoder->beginMetalRenderPass(_loadOverride, _storeOverride);
+                cmdEncoder->beginMetalRenderPass(true);
                 break;
 			}
             case kMVKGraphicsStageRasterization:
@@ -471,8 +477,6 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
 	_mtlIndirectBufferStride = stride;
 	_drawCount = drawCount;
-	_loadOverride = false;
-	_storeOverride = false;
 
     // Validate
 	MVKDevice* mvkDvc = cmdBuff->getDevice();
@@ -483,7 +487,6 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndirect(): The current device does not support indirect tessellated drawing.");
 	}
 
-	cmdBuff->recordDraw(this);
 	return VK_SUCCESS;
 }
 
@@ -510,6 +513,11 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t inControlPointCount = 0, outControlPointCount = 0;
 	VkDeviceSize paramsIncr = 0;
 
+    VkDeviceSize mtlTCIndBuffOfst = 0;
+    VkDeviceSize mtlParmBuffOfst = 0;
+    NSUInteger vtxThreadExecWidth = 0;
+    NSUInteger tcWorkgroupSize = 0;
+
     if (pipeline->isTessellationPipeline()) {
         // We can't read the indirect buffer CPU-side, since it may change between
         // encoding and execution. So we don't know how big to make the buffers.
@@ -526,7 +534,9 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 		paramsIncr = std::max((size_t)cmdEncoder->getDevice()->_pProperties->limits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tcIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize);
+        mtlTCIndBuffOfst = tcIndirectBuff->_offset;
 		tcParamsBuff = cmdEncoder->getTempMTLBuffer(paramsSize);
+        mtlParmBuffOfst = tcParamsBuff->_offset;
         if (pipeline->needsVertexOutputBuffer()) {
             vtxOutBuff = cmdEncoder->getTempMTLBuffer(vertexCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
         }
@@ -537,21 +547,21 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
             tcPatchOutBuff = cmdEncoder->getTempMTLBuffer(patchCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxTessellationControlPerPatchOutputComponents);
         }
         tcLevelBuff = cmdEncoder->getTempMTLBuffer(patchCount * sizeof(MTLQuadTessellationFactorsHalf));
+
+        vtxThreadExecWidth = pipeline->getTessVertexStageState().threadExecutionWidth;
+        NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
+        tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
+        while (tcWorkgroupSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
+            sgSize >>= 1;
+            tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
+        }
     }
 
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
-    VkDeviceSize mtlTCIndBuffOfst = tcIndirectBuff ? tcIndirectBuff->_offset : 0;
-	VkDeviceSize mtlParmBuffOfst = tcParamsBuff ? tcParamsBuff->_offset : 0;
-	NSUInteger vtxThreadExecWidth = pipeline->getTessVertexStageState().threadExecutionWidth;
-	NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
-	NSUInteger tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
-	while (tcWorkgroupSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
-		sgSize >>= 1;
-		tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
-	}
+
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
@@ -561,6 +571,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                 // draw state, or the pipeline will get overridden. This is a good time
                 // to do it, since it will require switching to compute anyway. Do it all
                 // at once to get it over with.
+				cmdEncoder->encodeStoreActions(true);
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 id<MTLComputePipelineState> mtlConvertState = cmdEncoder->getCommandEncodingPool()->getCmdDrawIndirectConvertBuffersMTLComputePipelineState(false);
                 [mtlTessCtlEncoder setComputePipelineState: mtlConvertState];
@@ -614,6 +625,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
             switch (stage) {
                 case kMVKGraphicsStageVertex:
+					cmdEncoder->encodeStoreActions(true);
                     mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
@@ -668,7 +680,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlTCIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Running this stage prematurely ended the render pass, so we have to start it up again.
                     // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                    cmdEncoder->beginMetalRenderPass(_loadOverride, _storeOverride);
+                    cmdEncoder->beginMetalRenderPass(true);
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {
@@ -730,8 +742,6 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 	_mtlIndirectBufferOffset = mvkBuffer->getMTLBufferOffset() + offset;
 	_mtlIndirectBufferStride = stride;
 	_drawCount = drawCount;
-	_loadOverride = false;
-	_storeOverride = false;
 
     // Validate
 	MVKDevice* mvkDvc = cmdBuff->getDevice();
@@ -742,7 +752,6 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 		return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdDrawIndexedIndirect(): The current device does not support indirect tessellated drawing.");
 	}
 
-	cmdBuff->recordDraw(this);
 	return VK_SUCCESS;
 }
 
@@ -765,6 +774,11 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     uint32_t inControlPointCount = 0, outControlPointCount = 0;
 	VkDeviceSize paramsIncr = 0;
 
+    VkDeviceSize mtlTCIndBuffOfst = 0;
+    VkDeviceSize mtlParmBuffOfst = 0;
+    NSUInteger vtxThreadExecWidth = 0;
+    NSUInteger tcWorkgroupSize = 0;
+
     if (pipeline->isTessellationPipeline()) {
         // We can't read the indirect buffer CPU-side, since it may change between
         // encoding and execution. So we don't know how big to make the buffers.
@@ -781,7 +795,9 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 		paramsIncr = std::max((size_t)cmdEncoder->getDevice()->_pProperties->limits.minUniformBufferOffsetAlignment, sizeof(uint32_t) * 2);
 		VkDeviceSize paramsSize = paramsIncr * _drawCount;
         tcIndirectBuff = cmdEncoder->getTempMTLBuffer(indirectSize);
+        mtlTCIndBuffOfst = tcIndirectBuff->_offset;
 		tcParamsBuff = cmdEncoder->getTempMTLBuffer(paramsSize);
+        mtlParmBuffOfst = tcParamsBuff->_offset;
         if (pipeline->needsVertexOutputBuffer()) {
             vtxOutBuff = cmdEncoder->getTempMTLBuffer(vertexCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
         }
@@ -793,27 +809,30 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
         }
         tcLevelBuff = cmdEncoder->getTempMTLBuffer(patchCount * sizeof(MTLQuadTessellationFactorsHalf));
         vtxIndexBuff = cmdEncoder->getTempMTLBuffer(ibb.mtlBuffer.length);
+
+        id<MTLComputePipelineState> vtxState;
+        vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
+        vtxThreadExecWidth = vtxState.threadExecutionWidth;
+
+        NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
+        tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
+        while (tcWorkgroupSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
+            sgSize >>= 1;
+            tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
+        }
     }
 
 	MVKPiplineStages stages;
     pipeline->getStages(stages);
 
     VkDeviceSize mtlIndBuffOfst = _mtlIndirectBufferOffset;
-    VkDeviceSize mtlTCIndBuffOfst = tcIndirectBuff ? tcIndirectBuff->_offset : 0;
-	VkDeviceSize mtlParmBuffOfst = tcParamsBuff ? tcParamsBuff->_offset : 0;
-	id<MTLComputePipelineState> vtxState = ibb.mtlIndexType == MTLIndexTypeUInt16 ? pipeline->getTessVertexStageIndex16State() : pipeline->getTessVertexStageIndex32State();
-	NSUInteger vtxThreadExecWidth = vtxState.threadExecutionWidth;
-	NSUInteger sgSize = pipeline->getTessControlStageState().threadExecutionWidth;
-	NSUInteger tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
-	while (tcWorkgroupSize > cmdEncoder->getDevice()->_pProperties->limits.maxComputeWorkGroupSize[0]) {
-		sgSize >>= 1;
-		tcWorkgroupSize = mvkLeastCommonMultiple(outControlPointCount, sgSize);
-	}
+    
     for (uint32_t drawIdx = 0; drawIdx < _drawCount; drawIdx++) {
         for (uint32_t s : stages) {
             auto stage = MVKGraphicsStage(s);
             id<MTLComputeCommandEncoder> mtlTessCtlEncoder = nil;
             if (stage == kMVKGraphicsStageVertex) {
+				cmdEncoder->encodeStoreActions(true);
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 // We need the indirect buffers now. This must be done before finalizing
                 // draw state, or the pipeline will get overridden. This is a good time
@@ -884,6 +903,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
             switch (stage) {
                 case kMVKGraphicsStageVertex:
+					cmdEncoder->encodeStoreActions(true);
                     mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
@@ -940,7 +960,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlTCIndBuffOfst += sizeof(MTLDispatchThreadgroupsIndirectArguments);
                     // Running this stage prematurely ended the render pass, so we have to start it up again.
                     // TODO: On iOS, maybe we could use a tile shader to avoid this.
-                    cmdEncoder->beginMetalRenderPass(_loadOverride, _storeOverride);
+                    cmdEncoder->beginMetalRenderPass(true);
                     break;
                 case kMVKGraphicsStageRasterization:
                     if (pipeline->isTessellationPipeline()) {

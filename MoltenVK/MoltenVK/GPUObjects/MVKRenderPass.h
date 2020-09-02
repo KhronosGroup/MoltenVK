@@ -25,6 +25,7 @@
 
 class MVKRenderPass;
 class MVKFramebuffer;
+class MVKCommandEncoder;
 
 
 // Parameters to define the sizing of inline collections
@@ -68,8 +69,7 @@ public:
 										 MVKFramebuffer* framebuffer,
 										 const MVKArrayRef<VkClearValue>& clearValues,
 										 bool isRenderingEntireAttachment,
-                                         bool loadOverride = false,
-                                         bool storeOverride = false);
+                                         bool loadOverride = false);
 
 	/**
 	 * Populates the specified vector with the attachments that need to be cleared
@@ -77,6 +77,9 @@ public:
 	 */
 	void populateClearAttachments(MVKClearAttachments& clearAtts,
 								  const MVKArrayRef<VkClearValue>& clearValues);
+
+	/** If a render encoder is active, sets the store actions for all attachments to it. */
+	void encodeStoreActions(MVKCommandEncoder* cmdEncoder, bool isRenderingEntireAttachment, bool storeOverride = false);
 
 	/** Constructs an instance for the specified parent renderpass. */
 	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo);
@@ -125,8 +128,16 @@ public:
                                                    bool isRenderingEntireAttachment,
                                                    bool hasResolveAttachment,
                                                    bool isStencil,
-                                                   bool loadOverride = false,
-                                                   bool storeOverride = false);
+                                                   bool loadOverride = false);
+
+	/** If a render encoder is active, sets the store action for this attachment to it. */
+	void encodeStoreAction(MVKCommandEncoder* cmdEncoder,
+						   MVKRenderSubpass* subpass,
+						   bool isRenderingEntireAttachment,
+						   bool hasResolveAttachment,
+						   uint32_t caIdx,
+					   	   bool isStencil,
+						   bool storeOverride = false);
 
     /** Returns whether this attachment should be cleared in the subpass. */
     bool shouldUseClearAttachment(MVKRenderSubpass* subpass);
@@ -136,6 +147,12 @@ public:
 							const VkAttachmentDescription* pCreateInfo);
 
 protected:
+	MTLStoreAction getMTLStoreAction(MVKRenderSubpass* subpass,
+									 bool isRenderingEntireAttachment,
+									 bool hasResolveAttachment,
+									 bool isStencil,
+									 bool storeOverride);
+
 	VkAttachmentDescription _info;
 	MVKRenderPass* _renderPass;
 	uint32_t _attachmentIndex;

@@ -40,7 +40,6 @@ class MVKQueryPool;
 class MVKPipeline;
 class MVKGraphicsPipeline;
 class MVKComputePipeline;
-class MVKLoadStoreOverrideMixin;
 
 typedef uint64_t MVKMTLCommandBufferID;
 
@@ -99,26 +98,11 @@ public:
 
 #pragma mark Tessellation constituent command management
 
-    /** Preps metadata for recording render pass */
-	void recordBeginRenderPass(MVKLoadStoreOverrideMixin* mvkBeginRenderPass);
-	
-	/** Finishes metadata for recording render pass */
-	void recordEndRenderPass();
-	
-	/** Update the last recorded pipeline if it will end and start a new Metal render pass (ie, in tessellation) */
+	/** Update the last recorded pipeline with tessellation shaders */
 	void recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline);
-	
-	/** Update the last recorded drawcall to determine load/store actions */
-	void recordDraw(MVKLoadStoreOverrideMixin* mvkDraw);
-	
-	/** The most recent recorded begin renderpass */
-	MVKLoadStoreOverrideMixin* _lastBeginRenderPass;
-	
-	/** The most recent recorded multi-pass (ie, tessellation) pipeline */
+
+	/** The most recent recorded tessellation pipeline */
 	MVKCmdBindPipeline* _lastTessellationPipeline;
-	
-	/** The most recent recorded multi-pass (ie, tessellation) draw */
-	MVKLoadStoreOverrideMixin* _lastTessellationDraw;
 
 
 #pragma mark Construction
@@ -269,15 +253,16 @@ public:
 						 MVKRenderPass* renderPass,
 						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
-						 MVKArrayRef<VkClearValue> clearValues,
-						 bool loadOverride = false,
-						 bool storeOverride = false);
+						 MVKArrayRef<VkClearValue> clearValues);
 
 	/** Begins the next render subpass. */
 	void beginNextSubpass(VkSubpassContents renderpassContents);
 
 	/** Begins a Metal render pass for the current render subpass. */
-	void beginMetalRenderPass(bool loadOverride = false, bool storeOverride = false);
+	void beginMetalRenderPass(bool loadOverride = false);
+
+	/** If a render encoder is active, encodes store actions for all attachments to it. */
+	void encodeStoreActions(bool storeOverride = false);
 
 	/** Returns the render subpass that is currently active. */
 	MVKRenderSubpass* getSubpass();
@@ -432,8 +417,8 @@ public:
     /** The size of the threadgroup for the compute shader. */
     MTLSize _mtlThreadgroupSize;
 
-	/** Indicates whether the current render subpass is rendering to an array (layered) framebuffer. */
-	bool _isUsingLayeredRendering;
+	/** Indicates whether the current render subpass is able to render to an array (layered) framebuffer. */
+	bool _canUseLayeredRendering;
 
 
 #pragma mark Construction
@@ -443,7 +428,7 @@ public:
 protected:
     void addActivatedQuery(MVKQueryPool* pQueryPool, uint32_t query);
     void finishQueries();
-	void setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex, bool loadOverride = false, bool storeOverride = false);
+	void setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex);
 	void clearRenderArea();
     const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length);
     NSString* getMTLRenderCommandEncoderName();
