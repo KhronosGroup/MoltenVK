@@ -74,16 +74,17 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
 }
 
 id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
-    if (mtlPixFmt == _mtlPixFmt) { return getMTLTexture(); }
+    // Note: Retrieve the base texture outside of lock to avoid deadlock if it too needs to be lazily created.
+    // Delegate to _image in case the method is overriden. (e.g. if it's a swapchain image)
+    if (mtlPixFmt == _mtlPixFmt) { return _image->getMTLTexture(_planeIndex); }
     id<MTLTexture> mtlTex = _mtlTextureViews[mtlPixFmt];
     if ( !mtlTex ) {
         // Lock and check again in case another thread has created the view texture.
-        // Ensure the base texture is present outside of lock to avoid deadlock if it too needs to be lazily created.
-        getMTLTexture();
+        id<MTLTexture> baseTexture = _image->getMTLTexture(_planeIndex);
         lock_guard<mutex> lock(_image->_lock);
         mtlTex = _mtlTextureViews[mtlPixFmt];
         if ( !mtlTex ) {
-            mtlTex = [_mtlTexture newTextureViewWithPixelFormat: mtlPixFmt];    // retained
+            mtlTex = [baseTexture newTextureViewWithPixelFormat: mtlPixFmt];    // retained
             _mtlTextureViews[mtlPixFmt] = mtlTex;
         }
     }
@@ -95,6 +96,7 @@ void MVKImagePlane::releaseMTLTexture() {
     for (auto elem : _mtlTextureViews) {
         [elem.second release];
     }
+    _mtlTextureViews.clear();
 }
 
 // Returns a Metal texture descriptor constructed from the properties of this image.
