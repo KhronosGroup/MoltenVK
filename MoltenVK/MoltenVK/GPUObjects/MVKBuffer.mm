@@ -84,7 +84,7 @@ VkResult MVKBuffer::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOf
 
 #if MVK_MACOS
 	if (_deviceMemory) {
-		_isHostCoherentTexelBuffer = _deviceMemory->isMemoryHostCoherent() && mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT);
+		_isHostCoherentTexelBuffer = !_device->_pMetalFeatures->sharedLinearTextures && _deviceMemory->isMemoryHostCoherent() && mvkIsAnyFlagEnabled(_usage, VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT | VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT);
 	}
 #endif
 
@@ -272,7 +272,7 @@ id<MTLTexture> MVKBufferView::getMTLTexture() {
         }
         id<MTLBuffer> mtlBuff;
         VkDeviceSize mtlBuffOffset;
-        if (MVK_MACOS && _buffer->isMemoryHostCoherent()) {
+        if ( !_device->_pMetalFeatures->sharedLinearTextures && _buffer->isMemoryHostCoherent() ) {
             mtlBuff = _buffer->getMTLBufferCache();
             mtlBuffOffset = _offset;
         } else {

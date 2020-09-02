@@ -1026,6 +1026,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.texelBuffers = true;
 	_metalFeatures.maxTextureDimension = (8 * KIBI);
     _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
+    _metalFeatures.sharedLinearTextures = true;
 
     if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
@@ -1073,6 +1074,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mtlCopyBufferAlignment = 1;
     _metalFeatures.texelBuffers = true;
 	_metalFeatures.maxTextureDimension = (4 * KIBI);
+    _metalFeatures.sharedLinearTextures = true;
 
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
@@ -1186,6 +1188,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.native3DCompressedTextures = true;
         _metalFeatures.renderWithoutAttachments = true;
+        if ( mvkOSVersionIsAtLeast(mvkMakeOSVersion(10, 15, 5)) ) {
+            _metalFeatures.sharedLinearTextures = true;
+        }
 		if (supportsMTLGPUFamily(Mac2)) {
 			_metalFeatures.nativeTextureSwizzle = true;
 			_metalFeatures.placementHeaps = useMTLHeaps;
