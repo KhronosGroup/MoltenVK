@@ -1246,7 +1246,14 @@ void MVKPixelFormats::modifyMTLFormatCapabilities() {
 	if (_physicalDevice) {
 		modifyMTLFormatCapabilities(_physicalDevice->getMTLDevice());
 	} else {
+#if MVK_IOS_OR_TVOS
 		id<MTLDevice> mtlDevice = MTLCreateSystemDefaultDevice();	// temp retained
+#endif
+#if MVK_MACOS
+		NSArray<id<MTLDevice>>* mtlDevices = MTLCopyAllDevices();	// temp retained
+		id<MTLDevice> mtlDevice = [mtlDevices[0] retain];			// temp retained
+		[mtlDevices release];										// temp release
+#endif
 		modifyMTLFormatCapabilities(mtlDevice);
 		[mtlDevice release];										// release temp instance
 	}

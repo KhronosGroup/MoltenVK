@@ -2590,6 +2590,20 @@ void MVKDevice::destroyImageView(MVKImageView* mvkImgView,
 
 MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreateInfo,
 										 const VkAllocationCallbacks* pAllocator) {
+#if MVK_MACOS
+	// If we have selected a high-power GPU and want to force the window system
+	// to use it, force the window system to use a high-power GPU by calling the
+	// MTLCreateSystemDefaultDevice function, and if that GPU is the same as the
+	// selected GPU, update the MTLDevice instance used by the MVKPhysicalDevice.
+	id<MTLDevice> mtlDevice = _physicalDevice->getMTLDevice();
+	if (_pMVKConfig->switchSystemGPU && !(mtlDevice.isLowPower || mtlDevice.isHeadless) ) {
+		id<MTLDevice> sysMTLDevice = MTLCreateSystemDefaultDevice();
+		if (mvkGetRegistryID(sysMTLDevice) == mvkGetRegistryID(mtlDevice)) {
+			_physicalDevice->replaceMTLDevice(sysMTLDevice);
+		}
+	}
+#endif
+
 	return new MVKSwapchain(this, pCreateInfo);
 }
 
@@ -3186,20 +3200,6 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 #   	define MVK_CONFIG_USE_COMMAND_POOLING    1
 #	endif
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useCommandPooling, MVK_CONFIG_USE_COMMAND_POOLING);
-
-#if MVK_MACOS
-	// If we have selected a high-power GPU and want to force the window system
-	// to use it, force the window system to use a high-power GPU by calling the
-	// MTLCreateSystemDefaultDevice function, and if that GPU is the same as the
-	// selected GPU, update the MTLDevice instance used by the MVKPhysicalDevice.
-	id<MTLDevice> mtlDevice = _physicalDevice->getMTLDevice();
-	if (_pMVKConfig->switchSystemGPU && !(mtlDevice.isLowPower || mtlDevice.isHeadless) ) {
-		id<MTLDevice> sysMTLDevice = MTLCreateSystemDefaultDevice();
-		if (mvkGetRegistryID(sysMTLDevice) == mvkGetRegistryID(mtlDevice)) {
-			_physicalDevice->replaceMTLDevice(sysMTLDevice);
-		}
-	}
-#endif
 }
 
 void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
