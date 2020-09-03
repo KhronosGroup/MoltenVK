@@ -37,13 +37,15 @@ class MVKDebugUtilsMessenger;
 /** Tracks info about entry point function pointer addresses. */
 typedef struct {
 	PFN_vkVoidFunction functionPointer;
+	uint32_t apiVersion;
 	const char* ext1Name;
 	const char* ext2Name;
 	bool isDevice;
 
 	bool isCore() { return !ext1Name && !ext2Name; }
-	bool isEnabled(const MVKExtensionList& extList) {
-		return isCore() || extList.isEnabled(ext1Name) || extList.isEnabled(ext2Name);
+	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList) {
+		return (isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
+			   extList.isEnabled(ext1Name) || extList.isEnabled(ext2Name);
 	}
 } MVKEntryPoint;
 

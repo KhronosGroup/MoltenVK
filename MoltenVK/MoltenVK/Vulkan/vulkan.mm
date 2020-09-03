@@ -158,9 +158,12 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);											\
 	}
 
+// Define an extension call as an alias of a core call
+#define MVK_PUBLIC_CORE_ALIAS(vkf)	MVK_PUBLIC_ALIAS(vkf##KHR, vkf)
+
 
 #pragma mark -
-#pragma mark Vulkan calls
+#pragma mark Vulkan 1.0 calls
 
 MVK_PUBLIC_SYMBOL VkResult vkCreateInstance(
     const VkInstanceCreateInfo*                 pCreateInfo,
@@ -1900,12 +1903,136 @@ MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
 
 
 #pragma mark -
-#pragma mark VK_KHR_bind_memory2 extension
+#pragma mark Vulkan 1.1 calls
 
-MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory2KHR(
+MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDeviceGroups(
+    VkInstance                                  instance,
+    uint32_t*                                   pPhysicalDeviceGroupCount,
+    VkPhysicalDeviceGroupProperties*            pPhysicalDeviceGroupProperties) {
+    MVKTraceVulkanCallStart();
+    MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
+    VkResult rslt = mvkInst->getPhysicalDeviceGroups(pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
+    MVKTraceVulkanCallEnd();
+    return rslt;
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures2(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceFeatures2*                  pFeatures) {
+    
+	MVKTraceVulkanCallStart();
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getFeatures(pFeatures);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties2(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceProperties2*                pProperties) {
+
+	MVKTraceVulkanCallStart();
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getProperties(pProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFormatProperties2(
+    VkPhysicalDevice                            physicalDevice,
+    VkFormat                                    format,
+    VkFormatProperties2*                        pFormatProperties) {
+    
+	MVKTraceVulkanCallStart();
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getFormatProperties(format, pFormatProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties2(
+    VkPhysicalDevice                            physicalDevice,
+    const VkPhysicalDeviceImageFormatInfo2*     pImageFormatInfo,
+    VkImageFormatProperties2*                   pImageFormatProperties) {
+    
+	MVKTraceVulkanCallStart();
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    VkResult rslt = mvkPD->getImageFormatProperties(pImageFormatInfo, pImageFormatProperties);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties2(
+    VkPhysicalDevice                            physicalDevice,
+    uint32_t*                                   pQueueFamilyPropertyCount,
+    VkQueueFamilyProperties2*                   pQueueFamilyProperties) {
+    
+	MVKTraceVulkanCallStart();
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getQueueFamilyProperties(pQueueFamilyPropertyCount, pQueueFamilyProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties2(
+    VkPhysicalDevice                            physicalDevice,
+    VkPhysicalDeviceMemoryProperties2*          pMemoryProperties) {
+
+	MVKTraceVulkanCallStart();
+    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+    mvkPD->getMemoryProperties(pMemoryProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2(
+    VkPhysicalDevice                              physicalDevice,
+    const VkPhysicalDeviceSparseImageFormatInfo2* pFormatInfo,
+    uint32_t*                                     pPropertyCount,
+    VkSparseImageFormatProperties2*               pProperties) {
+
+	MVKTraceVulkanCallStart();
+
+	// Metal does not support sparse images.
+	// Vulkan spec: "If VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT is not supported for the given arguments,
+	// pPropertyCount will be set to zero upon return, and no data will be written to pProperties.".
+
+    *pPropertyCount = 0;
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalFenceProperties(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceExternalFenceInfo*    pExternalFenceInfo,
+	VkExternalFenceProperties*                  pExternalFenceProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getExternalFenceProperties(pExternalFenceInfo, pExternalFenceProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalBufferProperties(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
+	VkExternalBufferProperties*                 pExternalBufferProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getExternalBufferProperties(pExternalBufferInfo, pExternalBufferProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalSemaphoreProperties(
+	VkPhysicalDevice                             physicalDevice,
+	const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
+	VkExternalSemaphoreProperties*               pExternalSemaphoreProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getExternalSemaphoreProperties(pExternalSemaphoreInfo, pExternalSemaphoreProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory2(
 	VkDevice									device,
 	uint32_t									bindInfoCount,
-	const VkBindBufferMemoryInfoKHR*			pBindInfos) {
+	const VkBindBufferMemoryInfo*				pBindInfos) {
 
 	MVKTraceVulkanCallStart();
 	VkResult rslt = VK_SUCCESS;
@@ -1918,10 +2045,10 @@ MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory2KHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory2KHR(
+MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory2(
 	VkDevice									device,
 	uint32_t									bindInfoCount,
-	const VkBindImageMemoryInfoKHR*				pBindInfos) {
+	const VkBindImageMemoryInfo*				pBindInfos) {
 
 	MVKTraceVulkanCallStart();
 	VkResult rslt = VK_SUCCESS;
@@ -1934,29 +2061,76 @@ MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory2KHR(
 	return rslt;
 }
 
+MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements2(
+    VkDevice                                    device,
+    const VkBufferMemoryRequirementsInfo2*      pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements) {
 
-#pragma mark -
-#pragma mark VK_KHR_descriptor_update_template extension
+	MVKTraceVulkanCallStart();
+    MVKBuffer* mvkBuff = (MVKBuffer*)pInfo->buffer;
+    mvkBuff->getMemoryRequirements(pInfo, pMemoryRequirements);
+	MVKTraceVulkanCallEnd();
+}
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorUpdateTemplateKHR(
+MVK_PUBLIC_SYMBOL void vkGetImageMemoryRequirements2(
+    VkDevice                                    device,
+    const VkImageMemoryRequirementsInfo2*       pInfo,
+    VkMemoryRequirements2*                      pMemoryRequirements) {
+
+	MVKTraceVulkanCallStart();
+    auto* mvkImg = (MVKImage*)pInfo->image;
+    mvkImg->getMemoryRequirements(pInfo, pMemoryRequirements);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements2(
+    VkDevice                                        device,
+    const VkImageSparseMemoryRequirementsInfo2*     pInfo,
+    uint32_t*                                       pSparseMemoryRequirementCount,
+    VkSparseImageMemoryRequirements2*               pSparseMemoryRequirements) {
+
+	MVKTraceVulkanCallStart();
+
+	// Metal does not support sparse images.
+	// Vulkan spec: "If the image was not created with VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT then
+	// pSparseMemoryRequirementCount will be set to zero and pSparseMemoryRequirements will not be written to.".
+
+    *pSparseMemoryRequirementCount = 0;
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetDeviceGroupPeerMemoryFeatures(
+    VkDevice                                    device,
+    uint32_t                                    heapIndex,
+    uint32_t                                    localDeviceIndex,
+    uint32_t                                    remoteDeviceIndex,
+    VkPeerMemoryFeatureFlags*                   pPeerMemoryFeatures) {
+
+    MVKTraceVulkanCallStart();
+    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+    mvkDev->getPeerMemoryFeatures(heapIndex, localDeviceIndex, remoteDeviceIndex, pPeerMemoryFeatures);
+    MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorUpdateTemplate(
     VkDevice                                       device,
-    const VkDescriptorUpdateTemplateCreateInfoKHR* pCreateInfo,
+    const VkDescriptorUpdateTemplateCreateInfo*    pCreateInfo,
     const VkAllocationCallbacks*                   pAllocator,
-    VkDescriptorUpdateTemplateKHR*                 pDescriptorUpdateTemplate) {
+    VkDescriptorUpdateTemplate*                    pDescriptorUpdateTemplate) {
 
 	MVKTraceVulkanCallStart();
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
     auto *mvkDUT = mvkDev->createDescriptorUpdateTemplate(pCreateInfo,
                                                           pAllocator);
-    *pDescriptorUpdateTemplate = (VkDescriptorUpdateTemplateKHR)mvkDUT;
+    *pDescriptorUpdateTemplate = (VkDescriptorUpdateTemplate)mvkDUT;
     VkResult rslt = mvkDUT->getConfigurationResult();
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyDescriptorUpdateTemplateKHR(
+MVK_PUBLIC_SYMBOL void vkDestroyDescriptorUpdateTemplate(
     VkDevice                                    device,
-    VkDescriptorUpdateTemplateKHR               descriptorUpdateTemplate,
+    VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
     const VkAllocationCallbacks*                pAllocator) {
 
 	MVKTraceVulkanCallStart();
@@ -1965,10 +2139,10 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorUpdateTemplateKHR(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplateKHR(
+MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplate(
     VkDevice                                    device,
     VkDescriptorSet                             descriptorSet,
-    VkDescriptorUpdateTemplateKHR               descriptorUpdateTemplate,
+    VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
     const void*                                 pData) {
 
 	MVKTraceVulkanCallStart();
@@ -1976,24 +2150,56 @@ MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplateKHR(
 	MVKTraceVulkanCallEnd();
 }
 
-
-#pragma mark -
-#pragma mark VK_KHR_device_group extension
-
-MVK_PUBLIC_SYMBOL void vkGetDeviceGroupPeerMemoryFeaturesKHR(
+MVK_PUBLIC_SYMBOL void vkGetDescriptorSetLayoutSupport(
     VkDevice                                    device,
-    uint32_t                                    heapIndex,
-    uint32_t                                    localDeviceIndex,
-    uint32_t                                    remoteDeviceIndex,
-    VkPeerMemoryFeatureFlagsKHR*                pPeerMemoryFeatures) {
+    const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
+    VkDescriptorSetLayoutSupport*               pSupport) {
 
-    MVKTraceVulkanCallStart();
-    MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-    mvkDev->getPeerMemoryFeatures(heapIndex, localDeviceIndex, remoteDeviceIndex, pPeerMemoryFeatures);
-    MVKTraceVulkanCallEnd();
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDevice = MVKDevice::getMVKDevice(device);
+    mvkDevice->getDescriptorSetLayoutSupport(pCreateInfo, pSupport);
+	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetDeviceMaskKHR(
+MVK_PUBLIC_SYMBOL VkResult vkCreateSamplerYcbcrConversion(
+    VkDevice                                    device,
+    const VkSamplerYcbcrConversionCreateInfo*   pCreateInfo,
+    const VkAllocationCallbacks*                pAllocator,
+    VkSamplerYcbcrConversion*                   pYcbcrConversion) {
+
+    MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	MVKSamplerYcbcrConversion* mvkSampConv = mvkDev->createSamplerYcbcrConversion(pCreateInfo, pAllocator);
+	*pYcbcrConversion = (VkSamplerYcbcrConversion)mvkSampConv;
+	VkResult rslt = mvkSampConv->getConfigurationResult();
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_SYMBOL void vkDestroySamplerYcbcrConversion(
+    VkDevice                                    device,
+    VkSamplerYcbcrConversion                    ycbcrConversion,
+    const VkAllocationCallbacks*                pAllocator) {
+
+    MVKTraceVulkanCallStart();
+	if ( !ycbcrConversion ) { return; }
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	mvkDev->destroySamplerYcbcrConversion((MVKSamplerYcbcrConversion*)ycbcrConversion, pAllocator);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkTrimCommandPool(
+    VkDevice                                    device,
+    VkCommandPool                               commandPool,
+    VkCommandPoolTrimFlags                      flags) {
+
+	MVKTraceVulkanCallStart();
+	MVKCommandPool* mvkCmdPool = (MVKCommandPool*)commandPool;
+    mvkCmdPool->trim();
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdSetDeviceMask(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    deviceMask) {
 
@@ -2003,7 +2209,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetDeviceMaskKHR(
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDispatchBaseKHR(
+MVK_PUBLIC_SYMBOL void vkCmdDispatchBase(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    baseGroupX,
     uint32_t                                    baseGroupY,
@@ -2019,219 +2225,82 @@ MVK_PUBLIC_SYMBOL void vkCmdDispatchBaseKHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_bind_memory2 extension
+
+MVK_PUBLIC_CORE_ALIAS(vkBindBufferMemory2);
+MVK_PUBLIC_CORE_ALIAS(vkBindImageMemory2);
+
+
+#pragma mark -
+#pragma mark VK_KHR_descriptor_update_template extension
+
+MVK_PUBLIC_CORE_ALIAS(vkCreateDescriptorUpdateTemplate);
+MVK_PUBLIC_CORE_ALIAS(vkDestroyDescriptorUpdateTemplate);
+MVK_PUBLIC_CORE_ALIAS(vkUpdateDescriptorSetWithTemplate);
+
+
+#pragma mark -
+#pragma mark VK_KHR_device_group extension
+
+MVK_PUBLIC_CORE_ALIAS(vkGetDeviceGroupPeerMemoryFeatures);
+MVK_PUBLIC_CORE_ALIAS(vkCmdSetDeviceMask);
+MVK_PUBLIC_CORE_ALIAS(vkCmdDispatchBase);
+
+
+#pragma mark -
 #pragma mark VK_KHR_device_group_creation extension
 
-MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDeviceGroupsKHR(
-    VkInstance                                  instance,
-    uint32_t*                                   pPhysicalDeviceGroupCount,
-    VkPhysicalDeviceGroupPropertiesKHR*         pPhysicalDeviceGroupProperties) {
-    MVKTraceVulkanCallStart();
-    MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
-    VkResult rslt = mvkInst->getPhysicalDeviceGroups(pPhysicalDeviceGroupCount, pPhysicalDeviceGroupProperties);
-    MVKTraceVulkanCallEnd();
-    return rslt;
-}
+MVK_PUBLIC_CORE_ALIAS(vkEnumeratePhysicalDeviceGroups);
 
 
 #pragma mark -
 #pragma mark VK_KHR_external_fence_capabilities extension
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalFencePropertiesKHR(
-	VkPhysicalDevice                            physicalDevice,
-	const VkPhysicalDeviceExternalFenceInfo*    pExternalFenceInfo,
-	VkExternalFenceProperties*                  pExternalFenceProperties) {
-
-	MVKTraceVulkanCallStart();
-	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	mvkPD->getExternalFenceProperties(pExternalFenceInfo, pExternalFenceProperties);
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceExternalFenceProperties);
 
 
 #pragma mark -
 #pragma mark VK_KHR_external_memory_capabilities extension
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalBufferPropertiesKHR(
-	VkPhysicalDevice                            physicalDevice,
-	const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
-	VkExternalBufferProperties*                 pExternalBufferProperties) {
-
-	MVKTraceVulkanCallStart();
-	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	mvkPD->getExternalBufferProperties(pExternalBufferInfo, pExternalBufferProperties);
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceExternalBufferProperties);
 
 
 #pragma mark -
 #pragma mark VK_KHR_external_semaphore_capabilities extension
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalSemaphorePropertiesKHR(
-	VkPhysicalDevice                             physicalDevice,
-	const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
-	VkExternalSemaphoreProperties*               pExternalSemaphoreProperties) {
-
-	MVKTraceVulkanCallStart();
-	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	mvkPD->getExternalSemaphoreProperties(pExternalSemaphoreInfo, pExternalSemaphoreProperties);
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceExternalSemaphoreProperties);
 
 
 #pragma mark -
 #pragma mark VK_KHR_get_memory_requirements2 extension
 
-MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements2KHR(
-    VkDevice                                    device,
-    const VkBufferMemoryRequirementsInfo2KHR*   pInfo,
-    VkMemoryRequirements2KHR*                   pMemoryRequirements) {
-
-	MVKTraceVulkanCallStart();
-    MVKBuffer* mvkBuff = (MVKBuffer*)pInfo->buffer;
-    mvkBuff->getMemoryRequirements(pInfo, pMemoryRequirements);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_SYMBOL void vkGetImageMemoryRequirements2KHR(
-    VkDevice                                    device,
-    const VkImageMemoryRequirementsInfo2KHR*    pInfo,
-    VkMemoryRequirements2KHR*                   pMemoryRequirements) {
-
-	MVKTraceVulkanCallStart();
-    auto* mvkImg = (MVKImage*)pInfo->image;
-    mvkImg->getMemoryRequirements(pInfo, pMemoryRequirements);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements2KHR(
-    VkDevice                                        device,
-    const VkImageSparseMemoryRequirementsInfo2KHR*  pInfo,
-    uint32_t*                                       pSparseMemoryRequirementCount,
-    VkSparseImageMemoryRequirements2KHR*            pSparseMemoryRequirements) {
-
-	MVKTraceVulkanCallStart();
-
-	// Metal does not support sparse images.
-	// Vulkan spec: "If the image was not created with VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT then
-	// pSparseMemoryRequirementCount will be set to zero and pSparseMemoryRequirements will not be written to.".
-
-    *pSparseMemoryRequirementCount = 0;
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_CORE_ALIAS(vkGetBufferMemoryRequirements2);
+MVK_PUBLIC_CORE_ALIAS(vkGetImageMemoryRequirements2);
+MVK_PUBLIC_CORE_ALIAS(vkGetImageSparseMemoryRequirements2);
 
 
 #pragma mark -
 #pragma mark VK_KHR_get_physical_device_properties2 extension
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures2KHR(
-    VkPhysicalDevice                            physicalDevice,
-    VkPhysicalDeviceFeatures2KHR*               pFeatures) {
-    
-	MVKTraceVulkanCallStart();
-    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    mvkPD->getFeatures(pFeatures);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties2KHR(
-    VkPhysicalDevice                            physicalDevice,
-    VkPhysicalDeviceProperties2KHR*             pProperties) {
-
-	MVKTraceVulkanCallStart();
-    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    mvkPD->getProperties(pProperties);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFormatProperties2KHR(
-    VkPhysicalDevice                            physicalDevice,
-    VkFormat                                    format,
-    VkFormatProperties2KHR*                     pFormatProperties) {
-    
-	MVKTraceVulkanCallStart();
-    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    mvkPD->getFormatProperties(format, pFormatProperties);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties2KHR(
-    VkPhysicalDevice                            physicalDevice,
-    const VkPhysicalDeviceImageFormatInfo2KHR*  pImageFormatInfo,
-    VkImageFormatProperties2KHR*                pImageFormatProperties) {
-    
-	MVKTraceVulkanCallStart();
-    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    VkResult rslt = mvkPD->getImageFormatProperties(pImageFormatInfo, pImageFormatProperties);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties2KHR(
-    VkPhysicalDevice                            physicalDevice,
-    uint32_t*                                   pQueueFamilyPropertyCount,
-    VkQueueFamilyProperties2KHR*                pQueueFamilyProperties) {
-    
-	MVKTraceVulkanCallStart();
-    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    mvkPD->getQueueFamilyProperties(pQueueFamilyPropertyCount, pQueueFamilyProperties);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties2KHR(
-    VkPhysicalDevice                            physicalDevice,
-    VkPhysicalDeviceMemoryProperties2KHR*       pMemoryProperties) {
-
-	MVKTraceVulkanCallStart();
-    MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-    mvkPD->getMemoryProperties(pMemoryProperties);
-	MVKTraceVulkanCallEnd();
-}
-
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2KHR(
-    VkPhysicalDevice                            physicalDevice,
-    const VkPhysicalDeviceSparseImageFormatInfo2KHR* pFormatInfo,
-    uint32_t*                                   pPropertyCount,
-    VkSparseImageFormatProperties2KHR*          pProperties) {
-
-	MVKTraceVulkanCallStart();
-
-	// Metal does not support sparse images.
-	// Vulkan spec: "If VK_IMAGE_CREATE_SPARSE_RESIDENCY_BIT is not supported for the given arguments,
-	// pPropertyCount will be set to zero upon return, and no data will be written to pProperties.".
-
-    *pPropertyCount = 0;
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceFeatures2);
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceProperties2);
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceFormatProperties2);
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceImageFormatProperties2);
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceQueueFamilyProperties2);
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceMemoryProperties2);
+MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceSparseImageFormatProperties2);
 
 
 #pragma mark -
 #pragma mark VK_KHR_maintenance1 extension
 
-MVK_PUBLIC_SYMBOL void vkTrimCommandPoolKHR(
-    VkDevice                                    device,
-    VkCommandPool                               commandPool,
-    VkCommandPoolTrimFlagsKHR                   flags) {
-
-	MVKTraceVulkanCallStart();
-	MVKCommandPool* mvkCmdPool = (MVKCommandPool*)commandPool;
-    mvkCmdPool->trim();
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_CORE_ALIAS(vkTrimCommandPool);
 
 
 #pragma mark -
 #pragma mark VK_KHR_maintenance3 extension
 
-MVK_PUBLIC_SYMBOL void vkGetDescriptorSetLayoutSupportKHR(
-    VkDevice                                    device,
-    const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
-    VkDescriptorSetLayoutSupportKHR*            pSupport) {
-
-	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDevice = MVKDevice::getMVKDevice(device);
-    mvkDevice->getDescriptorSetLayoutSupport(pCreateInfo, pSupport);
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_CORE_ALIAS(vkGetDescriptorSetLayoutSupport);
 
 
 #pragma mark -
@@ -2266,32 +2335,8 @@ MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
 #pragma mark -
 #pragma mark VK_KHR_sampler_ycbcr_conversion extension
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateSamplerYcbcrConversionKHR(
-    VkDevice                                    device,
-    const VkSamplerYcbcrConversionCreateInfo*   pCreateInfo,
-    const VkAllocationCallbacks*                pAllocator,
-    VkSamplerYcbcrConversion*                   pYcbcrConversion) {
-
-    MVKTraceVulkanCallStart();
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	MVKSamplerYcbcrConversion* mvkSampConv = mvkDev->createSamplerYcbcrConversion(pCreateInfo, pAllocator);
-	*pYcbcrConversion = (VkSamplerYcbcrConversion)mvkSampConv;
-	VkResult rslt = mvkSampConv->getConfigurationResult();
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-MVK_PUBLIC_SYMBOL void vkDestroySamplerYcbcrConversionKHR(
-    VkDevice                                    device,
-    VkSamplerYcbcrConversion                    ycbcrConversion,
-    const VkAllocationCallbacks*                pAllocator) {
-
-    MVKTraceVulkanCallStart();
-	if ( !ycbcrConversion ) { return; }
-	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-	mvkDev->destroySamplerYcbcrConversion((MVKSamplerYcbcrConversion*)ycbcrConversion, pAllocator);
-	MVKTraceVulkanCallEnd();
-}
+MVK_PUBLIC_CORE_ALIAS(vkCreateSamplerYcbcrConversion);
+MVK_PUBLIC_CORE_ALIAS(vkDestroySamplerYcbcrConversion);
 
 
 #pragma mark -
