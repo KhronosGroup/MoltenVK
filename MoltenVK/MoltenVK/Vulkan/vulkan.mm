@@ -2064,6 +2064,21 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalBufferPropertiesKHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_external_semaphore_capabilities extension
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalSemaphorePropertiesKHR(
+	VkPhysicalDevice                             physicalDevice,
+	const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
+	VkExternalSemaphoreProperties*               pExternalSemaphoreProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getExternalSemaphoreProperties(pExternalSemaphoreInfo, pExternalSemaphoreProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_get_memory_requirements2 extension
 
 MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements2KHR(

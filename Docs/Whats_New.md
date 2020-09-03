@@ -23,6 +23,10 @@ Released TBD
 	  including support for GCD and Mach semaphores)
 	- `VK_KHR_external_fence_capabilities` (non-functional groundwork for future
 	  extensions, including support for GCD and Mach semaphores)
+	- `VK_KHR_external_semaphore` (non-functional groundwork for future
+	  `MTLSharedEvent` Vulkan extension)
+	- `VK_KHR_external_semaphore_capabilities` (non-functional groundwork for
+	  future `MTLSharedEvent` Vulkan extension)
 	- `VK_KHR_multiview`
 - Improve performance of tessellation control pipeline stage by processing multiple 
   patches per workgroup.
