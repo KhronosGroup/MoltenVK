@@ -594,6 +594,15 @@ VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkExte
 	}
 }
 
+static const VkExternalFenceProperties _emptyExtFenceProps = {VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES, nullptr, 0, 0, 0};
+
+void MVKPhysicalDevice::getExternalFenceProperties(const VkPhysicalDeviceExternalFenceInfo* pExternalFenceInfo,
+												   VkExternalFenceProperties* pExternalFenceProperties) {
+	void* next = pExternalFenceProperties->pNext;
+	*pExternalFenceProperties = _emptyExtFenceProps;
+	pExternalFenceProperties->pNext = next;
+}
+
 
 #pragma mark Surfaces
 
