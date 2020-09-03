@@ -98,6 +98,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				multiviewFeatures->multiviewTessellationShader = false; // FIXME
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
+				auto* protectedMemFeatures = (VkPhysicalDeviceProtectedMemoryFeatures*)next;
+				protectedMemFeatures->protectedMemory = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
 				auto* samplerYcbcrConvFeatures = (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)next;
 				samplerYcbcrConvFeatures->samplerYcbcrConversion = true;
@@ -194,9 +199,19 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	properties->properties = _properties;
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
-				auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
-				pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
+				auto* physicalDeviceDriverProps = (VkPhysicalDeviceDriverPropertiesKHR*)next;
+				strcpy(physicalDeviceDriverProps->driverName, "MoltenVK");
+				strcpy(physicalDeviceDriverProps->driverInfo, mvkGetMoltenVKVersionString(MVK_VERSION).c_str());
+				physicalDeviceDriverProps->driverID = VK_DRIVER_ID_MOLTENVK;
+				physicalDeviceDriverProps->conformanceVersion.major = 0;
+				physicalDeviceDriverProps->conformanceVersion.minor = 0;
+				physicalDeviceDriverProps->conformanceVersion.subminor = 0;
+				physicalDeviceDriverProps->conformanceVersion.patch = 0;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+				populate((VkPhysicalDeviceIDProperties*)next);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
@@ -215,49 +230,19 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 }
 				break;
             }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+				auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
+				pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
+				auto* protectedMemProps = (VkPhysicalDeviceProtectedMemoryProperties*)next;
+				protectedMemProps->protectedNoFault = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
 				auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
 				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
-				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
-				// This isn't implemented yet, but when it is, I expect that we'll wind up
-				// doing it manually.
-				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
-				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
-				auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)next;
-				// Save the 'next' pointer; we'll unintentionally overwrite it
-				// on the next line. Put it back when we're done.
-				void* savedNext = texelBuffAlignProps->pNext;
-				*texelBuffAlignProps = _texelBuffAlignProperties;
-				texelBuffAlignProps->pNext = savedNext;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
-				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
-				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-				populate((VkPhysicalDeviceIDProperties*)next);
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
-				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
-				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
-				break;
-			}
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
-				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)next;
-				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
-                inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
-                inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
-                inlineUniformBlockProps->maxDescriptorSetInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
-                inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
 				break;
 			}
 #if MVK_MACOS
@@ -282,15 +267,40 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 }
 				break;
 #endif
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
-				auto* physicalDeviceDriverProps = (VkPhysicalDeviceDriverPropertiesKHR*)next;
-				strcpy(physicalDeviceDriverProps->driverName, "MoltenVK");
-				strcpy(physicalDeviceDriverProps->driverInfo, mvkGetMoltenVKVersionString(MVK_VERSION).c_str());
-				physicalDeviceDriverProps->driverID = VK_DRIVER_ID_MOLTENVK;
-				physicalDeviceDriverProps->conformanceVersion.major = 0;
-				physicalDeviceDriverProps->conformanceVersion.minor = 0;
-				physicalDeviceDriverProps->conformanceVersion.subminor = 0;
-				physicalDeviceDriverProps->conformanceVersion.patch = 0;
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
+				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)next;
+				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
+                inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
+                inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
+                inlineUniformBlockProps->maxDescriptorSetInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
+                inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
+				// This isn't implemented yet, but when it is, I expect that we'll wind up
+				// doing it manually.
+				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
+				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+				auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)next;
+				// Save the 'next' pointer; we'll unintentionally overwrite it
+				// on the next line. Put it back when we're done.
+				void* savedNext = texelBuffAlignProps->pNext;
+				*texelBuffAlignProps = _texelBuffAlignProperties;
+				texelBuffAlignProps->pNext = savedNext;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
+				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
+				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
+				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
 				break;
 			}
 			default:
