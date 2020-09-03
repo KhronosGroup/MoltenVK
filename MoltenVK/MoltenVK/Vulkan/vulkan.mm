@@ -281,6 +281,8 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
 		func = (PFN_vkVoidFunction)vkEnumerateInstanceExtensionProperties;
 	} else if (strcmp(pName, "vkEnumerateInstanceLayerProperties") == 0) {
 		func = (PFN_vkVoidFunction)vkEnumerateInstanceLayerProperties;
+	} else if (strcmp(pName, "vkEnumerateInstanceVersion") == 0) {
+		func = (PFN_vkVoidFunction)vkEnumerateInstanceVersion;
 	} else if (instance) {
 		MVKInstance* mvkInst = MVKInstance::getMVKInstance(instance);
 		func = mvkInst->getProcAddr(pName);
@@ -1904,6 +1906,15 @@ MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
 
 #pragma mark -
 #pragma mark Vulkan 1.1 calls
+
+MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceVersion(
+    uint32_t*                                   pApiVersion) {
+
+    MVKTraceVulkanCallStart();
+    *pApiVersion = MVK_VULKAN_API_VERSION;
+    MVKTraceVulkanCallEnd();
+    return VK_SUCCESS;
+}
 
 MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDeviceGroups(
     VkInstance                                  instance,

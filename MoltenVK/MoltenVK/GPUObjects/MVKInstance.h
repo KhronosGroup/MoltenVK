@@ -67,6 +67,9 @@ public:
 	/** Returns a pointer to the Vulkan instance. */
 	MVKInstance* getInstance() override { return this; }
 
+	/** Returns the maximum version of Vulkan the application supports. */
+	inline uint32_t getAPIVersion() { return _appInfo.apiVersion; }
+
 	/** Returns a pointer to the layer manager. */
 	inline MVKLayerManager* getLayerManager() { return MVKLayerManager::globalManager(); }
 
