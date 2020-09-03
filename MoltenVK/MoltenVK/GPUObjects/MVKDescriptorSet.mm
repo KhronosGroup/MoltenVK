@@ -576,8 +576,9 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets) {
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
 		MVKDescriptorSet* mvkDS = (MVKDescriptorSet*)pDescriptorSets[dsIdx];
-		freeDescriptorSet(mvkDS);
-		_allocatedSets.erase(mvkDS);
+		if (_allocatedSets.erase(mvkDS)) {
+			freeDescriptorSet(mvkDS);
+		}
 	}
 	return VK_SUCCESS;
 }
