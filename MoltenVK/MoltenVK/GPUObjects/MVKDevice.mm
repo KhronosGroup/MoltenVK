@@ -98,6 +98,16 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				multiviewFeatures->multiviewTessellationShader = false; // FIXME
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+				auto* samplerYcbcrConvFeatures = (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)next;
+				samplerYcbcrConvFeatures->samplerYcbcrConversion = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
+				auto* shaderDrawParamsFeatures = (VkPhysicalDeviceShaderDrawParametersFeatures*)next;
+				shaderDrawParamsFeatures->shaderDrawParameters = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
 				auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
 				uboLayoutFeatures->uniformBufferStandardLayout = true;
@@ -156,11 +166,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->events = true;
 				portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle || _metalFeatures.nativeTextureSwizzle;
 				portabilityFeatures->samplerMipLodBias = false;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
-				auto* samplerYcbcrConvFeatures = (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)next;
-				samplerYcbcrConvFeatures->samplerYcbcrConversion = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
