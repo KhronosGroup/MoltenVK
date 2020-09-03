@@ -426,6 +426,9 @@ public:
 	/** Returns the queue at the specified index within the specified family. */
 	MVKQueue* getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex);
 
+	/** Returns the queue described by the specified structure. */
+	MVKQueue* getQueue(const VkDeviceQueueInfo2* queueInfo);
+
 	/** Retrieves the queue at the lowest queue and queue family indices used by the app. */
 	MVKQueue* getAnyQueue();
 

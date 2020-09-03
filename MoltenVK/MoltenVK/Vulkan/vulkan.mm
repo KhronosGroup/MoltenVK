@@ -2029,6 +2029,17 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalSemaphoreProperties(
 	MVKTraceVulkanCallEnd();
 }
 
+MVK_PUBLIC_SYMBOL void vkGetDeviceQueue2(
+    VkDevice                                    device,
+    const VkDeviceQueueInfo2*                   pQueueInfo,
+    VkQueue*                                    pQueue) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	*pQueue = mvkDev->getQueue(pQueueInfo)->getVkQueue();
+	MVKTraceVulkanCallEnd();
+}
+
 MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory2(
 	VkDevice									device,
 	uint32_t									bindInfoCount,

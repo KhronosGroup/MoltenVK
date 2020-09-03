@@ -570,6 +570,7 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_ENTRY_POINT(vkCmdEndRenderPass);
 	ADD_DVC_ENTRY_POINT(vkCmdExecuteCommands);
 
+	ADD_DVC_1_1_ENTRY_POINT(vkGetDeviceQueue2);
 	ADD_DVC_1_1_ENTRY_POINT(vkBindBufferMemory2);
 	ADD_DVC_1_1_ENTRY_POINT(vkBindImageMemory2);
 	ADD_DVC_1_1_ENTRY_POINT(vkGetBufferMemoryRequirements2);
