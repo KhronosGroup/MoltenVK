@@ -529,7 +529,7 @@ bool MVKImage::getIsCompressed() { return getPixelFormats()->getFormatType(_vkFo
 
 VkExtent3D MVKImage::getExtent3D(uint8_t planeIndex, uint32_t mipLevel) {
     VkExtent3D extent = _extent;
-    if (_hasChromaSubsampling) {
+    if (_hasChromaSubsampling && planeIndex > 0) {
         extent.width /= _planes[planeIndex]->_blockTexelSize.width;
         extent.height /= _planes[planeIndex]->_blockTexelSize.height;
     }
@@ -881,6 +881,10 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with compressed images. Setting sample count to 1."));
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
+	if (getPixelFormats()->getChromaSubsamplingPlaneCount(pCreateInfo->format) > 0) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling cannot be used with chroma subsampled images. Setting sample count to 1."));
+		validSamples = VK_SAMPLE_COUNT_1_BIT;
+	}
 
 	if (pCreateInfo->arrayLayers > 1) {
 		if ( !_device->_pMetalFeatures->multisampleArrayTextures ) {
@@ -901,6 +905,7 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 
 	bool is2D = (getImageType() == VK_IMAGE_TYPE_2D);
 	bool isCompressed = pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed;
+	bool isChromaSubsampled = pixFmts->getChromaSubsamplingPlaneCount(pCreateInfo->format) > 0;
 
 #if MVK_IOS_OR_TVOS
 	if (isCompressed && !is2D) {
@@ -916,6 +921,16 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 		}
 	}
 #endif
+
+	if (isChromaSubsampled && !is2D) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, chroma subsampled formats may only be used with 2D images."));
+	}
+	if (isChromaSubsampled && mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, chroma subsampled formats may not be used with cube images."));
+	}
+	if (isChromaSubsampled && (pCreateInfo->arrayLayers > 1)) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Chroma-subsampled formats may only have one array layer."));
+	}
 
 	if ((pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
@@ -940,6 +955,10 @@ uint32_t MVKImage::validateMipLevels(const VkImageCreateInfo* pCreateInfo, bool 
 
 	if (validMipLevels == 1) { return validMipLevels; }
 
+	if (getPixelFormats()->getChromaSubsamplingPlaneCount(pCreateInfo->format) == 1) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, GBGR and BGRG images cannot use mipmaps. Setting mip levels to 1."));
+		validMipLevels = 1;
+	}
 	if (getImageType() == VK_IMAGE_TYPE_1D) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, native 1D images cannot use mipmaps. Setting mip levels to 1. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D."));
 		validMipLevels = 1;
@@ -965,6 +984,10 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	}
 	if (getPixelFormats()->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a compressed format."));
+		isLin = false;
+	}
+	if (getPixelFormats()->getChromaSubsamplingPlaneCount(pCreateInfo->format) == 1) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a single-plane chroma subsampled format."));
 		isLin = false;
 	}
 

@@ -190,7 +190,7 @@ MTLPixelFormat MVKPixelFormats::getMTLPixelFormat(VkFormat vkFormat) {
 
 	// If the MTLPixelFormat is not supported but VkFormat is valid,
 	// attempt to substitute a different format and potentially report an error.
-	if ( !mtlPixFmt && vkFormat ) {
+	if ( !mtlPixFmt && vkFormat && vkDesc.chromaSubsamplingPlaneCount <= 1 ) {
 		mtlPixFmt = vkDesc.mtlPixelFormatSubstitute;
 
 		// Report an error if there is no substitute, or the first time a substitution is made.
@@ -273,7 +273,7 @@ uint8_t MVKPixelFormats::getChromaSubsamplingPlanes(VkFormat vkFormat, VkExtent2
             return 0;
         case 1:
             bytesPerBlock[0] *= 4;
-            mtlPixFmt[0] = (bits == 8) ? MTLPixelFormatRGBA8Unorm : MTLPixelFormatRGBA16Unorm;
+            mtlPixFmt[0] = getMTLPixelFormat(vkFormat);
             break;
         case 2:
             blockTexelSize[0] = VkExtent2D{1, 1};
@@ -837,9 +837,9 @@ void MVKPixelFormats::initVkFormatCapabilities() {
     addVkFormatDescChromaSubsampling( G8_B8_R8_3PLANE_422_UNORM, Invalid, 3, 8, 2, 1, 4 );
     addVkFormatDescChromaSubsampling( G8_B8R8_2PLANE_422_UNORM, Invalid, 2, 8, 2, 1, 4 );
     addVkFormatDescChromaSubsampling( G8_B8_R8_3PLANE_444_UNORM, Invalid, 3, 8, 1, 1, 3 );
-    addVkFormatDescChromaSubsampling( R10X6_UNORM_PACK16, Invalid, 0, 10, 1, 1, 2 );
-    addVkFormatDescChromaSubsampling( R10X6G10X6_UNORM_2PACK16, Invalid, 0, 10, 1, 1, 4 );
-    addVkFormatDescChromaSubsampling( R10X6G10X6B10X6A10X6_UNORM_4PACK16, Invalid, 0, 10, 1, 1, 8 );
+    addVkFormatDescChromaSubsampling( R10X6_UNORM_PACK16, R16Unorm, 0, 10, 1, 1, 2 );
+    addVkFormatDescChromaSubsampling( R10X6G10X6_UNORM_2PACK16, RG16Unorm, 0, 10, 1, 1, 4 );
+    addVkFormatDescChromaSubsampling( R10X6G10X6B10X6A10X6_UNORM_4PACK16, RGBA16Unorm, 0, 10, 1, 1, 8 );
     addVkFormatDescChromaSubsampling( G10X6B10X6G10X6R10X6_422_UNORM_4PACK16, Invalid, 1, 10, 2, 1, 8 );
     addVkFormatDescChromaSubsampling( B10X6G10X6R10X6G10X6_422_UNORM_4PACK16, Invalid, 1, 10, 2, 1, 8 );
     addVkFormatDescChromaSubsampling( G10X6_B10X6_R10X6_3PLANE_420_UNORM_3PACK16, Invalid, 3, 10, 2, 2, 12 );
@@ -847,9 +847,9 @@ void MVKPixelFormats::initVkFormatCapabilities() {
     addVkFormatDescChromaSubsampling( G10X6_B10X6_R10X6_3PLANE_422_UNORM_3PACK16, Invalid, 3, 10, 2, 1, 8 );
     addVkFormatDescChromaSubsampling( G10X6_B10X6R10X6_2PLANE_422_UNORM_3PACK16, Invalid, 2, 10, 2, 1, 8 );
     addVkFormatDescChromaSubsampling( G10X6_B10X6_R10X6_3PLANE_444_UNORM_3PACK16, Invalid, 3, 10, 1, 1, 6 );
-    addVkFormatDescChromaSubsampling( R12X4_UNORM_PACK16, Invalid, 0, 12, 1, 1, 2 );
-    addVkFormatDescChromaSubsampling( R12X4G12X4_UNORM_2PACK16, Invalid, 0, 12, 1, 1, 4 );
-    addVkFormatDescChromaSubsampling( R12X4G12X4B12X4A12X4_UNORM_4PACK16, Invalid, 0, 12, 1, 1, 8 );
+    addVkFormatDescChromaSubsampling( R12X4_UNORM_PACK16, R16Unorm, 0, 12, 1, 1, 2 );
+    addVkFormatDescChromaSubsampling( R12X4G12X4_UNORM_2PACK16, RG16Unorm, 0, 12, 1, 1, 4 );
+    addVkFormatDescChromaSubsampling( R12X4G12X4B12X4A12X4_UNORM_4PACK16, RGBA16Unorm, 0, 12, 1, 1, 8 );
     addVkFormatDescChromaSubsampling( G12X4B12X4G12X4R12X4_422_UNORM_4PACK16, Invalid, 1, 12, 2, 1, 8 );
     addVkFormatDescChromaSubsampling( B12X4G12X4R12X4G12X4_422_UNORM_4PACK16, Invalid, 1, 12, 2, 1, 8 );
     addVkFormatDescChromaSubsampling( G12X4_B12X4_R12X4_3PLANE_420_UNORM_3PACK16, Invalid, 3, 12, 2, 2, 12 );
@@ -1620,9 +1620,7 @@ typedef enum : VkFormatFeatureFlags {
 	kMVKVkFormatFeatureFlagsTexDSAtt    = (VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT),
 	kMVKVkFormatFeatureFlagsTexBlend    = (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT),
     kMVKVkFormatFeatureFlagsTexTransfer          = (VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
-                                                    VK_FORMAT_FEATURE_TRANSFER_DST_BIT |
-                                                    VK_FORMAT_FEATURE_BLIT_SRC_BIT |
-                                                    VK_FORMAT_FEATURE_BLIT_DST_BIT),
+                                                    VK_FORMAT_FEATURE_TRANSFER_DST_BIT),
     kMVKVkFormatFeatureFlagsTexChromaSubsampling = (VK_FORMAT_FEATURE_MIDPOINT_CHROMA_SAMPLES_BIT_KHR |
                                                     VK_FORMAT_FEATURE_SAMPLED_IMAGE_YCBCR_CONVERSION_LINEAR_FILTER_BIT_KHR),
     kMVKVkFormatFeatureFlagsTexMultiPlanar       = (VK_FORMAT_FEATURE_COSITED_CHROMA_SAMPLES_BIT_KHR |
@@ -1650,12 +1648,13 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
     vkProps.linearTilingFeatures = kMVKVkFormatFeatureFlagsTexNone;
 
     // Chroma subsampling and multi planar features
-    if (getChromaSubsamplingComponentBits(vkDesc.vkFormat) > 0) {
-        vkProps.optimalTilingFeatures = kMVKVkFormatFeatureFlagsTexTransfer;
-    }
     uint8_t chromaSubsamplingPlaneCount = getChromaSubsamplingPlaneCount(vkDesc.vkFormat);
-    if (chromaSubsamplingPlaneCount > 0) {
-        mtlPixFmtCaps = kMVKMTLFmtCapsRF;
+    uint8_t chromaSubsamplingComponentBits = getChromaSubsamplingComponentBits(vkDesc.vkFormat);
+    if (chromaSubsamplingComponentBits > 0) {
+        if (mtlPixFmtCaps != 0 || chromaSubsamplingPlaneCount > 1) {
+            mtlPixFmtCaps = kMVKMTLFmtCapsRF;
+            vkProps.optimalTilingFeatures = kMVKVkFormatFeatureFlagsTexTransfer;
+        }
         enableFormatFeatures(ChromaSubsampling, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
     }
     if (chromaSubsamplingPlaneCount > 1) {
@@ -1670,8 +1669,15 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Blend, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 
+	if (chromaSubsamplingComponentBits > 0) {
+		// Vulkan forbids blits between chroma-subsampled formats.
+		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT));
+	}
+
 	// Linear tiling is not available to depth/stencil or compressed formats.
-	if ( !(vkDesc.formatType == kMVKFormatDepthStencil || vkDesc.formatType == kMVKFormatCompressed) ) {
+	// GBGR and BGRG formats also do not support linear tiling in Metal.
+	if ( !(vkDesc.formatType == kMVKFormatDepthStencil || vkDesc.formatType == kMVKFormatCompressed ||
+		   (chromaSubsamplingPlaneCount == 1 && vkDesc.blockTexelSize.width > 1)) ) {
 		// Start with optimal tiling features, and modify.
 		vkProps.linearTilingFeatures = vkProps.optimalTilingFeatures;
 
@@ -1686,9 +1692,10 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 #endif
 	}
 
-	// Texel buffers are not available to depth/stencil or compressed formats.
+	// Texel buffers are not available to depth/stencil, compressed, or chroma subsampled formats.
 	vkProps.bufferFeatures = kMVKVkFormatFeatureFlagsTexNone;
-	if ( !(vkDesc.formatType == kMVKFormatDepthStencil || vkDesc.formatType == kMVKFormatCompressed) ) {
+	if ( !(vkDesc.formatType == kMVKFormatDepthStencil || vkDesc.formatType == kMVKFormatCompressed ||
+		   chromaSubsamplingComponentBits > 0) ) {
 		enableFormatFeatures(Read, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Write, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
 		enableFormatFeatures(Atomic, Buf, mtlPixFmtCaps, vkProps.bufferFeatures);
