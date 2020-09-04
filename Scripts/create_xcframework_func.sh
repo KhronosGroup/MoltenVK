@@ -14,11 +14,15 @@ function create_xcframework() {
 
 	xcfwk_cmd="xcodebuild -quiet -create-xcframework -output \"${xcfwk_path}\""
 
+	# For each platform directory in the staging directory, add the library to the
+	# XCFramework if it exists, and for each library, add headers if they exist.
 	for prod_staging_dir in "${MVK_XCFWK_STAGING_DIR}/${CONFIGURATION}"/*; do
 		prod_lib_path="${prod_staging_dir}/lib${prod_name}.a"
 		if [[ -e "${prod_lib_path}" ]]; then
 			xcfwk_cmd+=" -library \"${prod_lib_path}\""
-#			xcfwk_cmd+=" -headers \"${hdr_path}\""		# Headers currently break build during usage due to Xcode 12 bug: https://developer.apple.com/forums/thread/651043?answerId=628400022#628400022
+			if [[ -e "${hdr_path}" ]]; then
+#				xcfwk_cmd+=" -headers \"${hdr_path}\""		# Headers currently break build due to Xcode 12 ProcessXCFramework bug: https://developer.apple.com/forums/thread/651043?answerId=628400022#628400022
+			fi
 		fi
 	done
 
