@@ -427,6 +427,7 @@ protected:
 
 		MVKMTLBufferBinding swizzleBufferBinding;
 		MVKMTLBufferBinding bufferSizeBufferBinding;
+		MVKMTLBufferBinding viewRangeBufferBinding;
 
 		bool areBufferBindingsDirty = false;
 		bool areTextureBindingsDirty = false;
@@ -446,6 +447,7 @@ protected:
 			areSamplerStateBindingsDirty = false;
 			swizzleBufferBinding.isDirty = false;
 			bufferSizeBufferBinding.isDirty = false;
+			viewRangeBufferBinding.isDirty = false;
 
 			needsSwizzle = false;
 		}
@@ -492,6 +494,11 @@ public:
                               bool needTessCtlSizeBuffer,
                               bool needTessEvalSizeBuffer,
                               bool needFragmentSizeBuffer);
+
+    /** Sets the current view range buffer state. */
+    void bindViewRangeBuffer(const MVKShaderImplicitRezBinding& binding,
+                             bool needVertexViewBuffer,
+                             bool needFragmentViewBuffer);
 
     void encodeBindings(MVKShaderStage stage,
                         const char* pStageName,

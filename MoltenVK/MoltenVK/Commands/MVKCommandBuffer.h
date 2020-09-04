@@ -33,6 +33,8 @@ class MVKQueue;
 class MVKQueueCommandBufferSubmission;
 class MVKCommandEncoder;
 class MVKCommandEncodingPool;
+class MVKCmdBeginRenderPassBase;
+class MVKCmdNextSubpass;
 class MVKRenderPass;
 class MVKFramebuffer;
 class MVKRenderSubpass;
@@ -103,6 +105,24 @@ public:
 
 	/** The most recent recorded tessellation pipeline */
 	MVKCmdBindPipeline* _lastTessellationPipeline;
+
+
+#pragma mark Multiview render pass command management
+
+	/** Update the last recorded multiview render pass */
+	void recordBeginRenderPass(MVKCmdBeginRenderPassBase* mvkBeginRenderPass);
+
+	/** Update the last recorded multiview subpass */
+	void recordNextSubpass();
+
+	/** Forget the last recorded multiview render pass */
+	void recordEndRenderPass();
+
+	/** The most recent recorded multiview render subpass */
+	MVKRenderSubpass* _lastMultiviewSubpass;
+
+	/** Returns the currently active multiview render subpass, even for secondary command buffers */
+	MVKRenderSubpass* getLastMultiviewSubpass();
 
 
 #pragma mark Construction
@@ -249,14 +269,18 @@ public:
 	void encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer);
 
 	/** Begins a render pass and establishes initial draw state. */
-	void beginRenderpass(VkSubpassContents subpassContents,
+	void beginRenderpass(MVKCommand* passCmd,
+						 VkSubpassContents subpassContents,
 						 MVKRenderPass* renderPass,
 						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
 						 MVKArrayRef<VkClearValue> clearValues);
 
 	/** Begins the next render subpass. */
-	void beginNextSubpass(VkSubpassContents renderpassContents);
+	void beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents renderpassContents);
+
+	/** Begins the next multiview Metal render pass. */
+	void beginNextMultiviewPass();
 
 	/** Begins a Metal render pass for the current render subpass. */
 	void beginMetalRenderPass(bool loadOverride = false);
@@ -266,6 +290,9 @@ public:
 
 	/** Returns the render subpass that is currently active. */
 	MVKRenderSubpass* getSubpass();
+
+	/** Returns the index of the currently active multiview subpass, or zero if the current render pass is not multiview. */
+	uint32_t getMultiviewPassIndex();
 
     /** Binds a pipeline to a bind point. */
     void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline);
@@ -428,14 +455,16 @@ public:
 protected:
     void addActivatedQuery(MVKQueryPool* pQueryPool, uint32_t query);
     void finishQueries();
-	void setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex);
+	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex);
 	void clearRenderArea();
     const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length);
     NSString* getMTLRenderCommandEncoderName();
 
 	VkSubpassContents _subpassContents;
 	MVKRenderPass* _renderPass;
+	MVKCommand* _lastMultiviewPassCmd;
 	uint32_t _renderSubpassIndex;
+	uint32_t _multiviewPassIndex;
 	VkRect2D _renderArea;
     MVKActivatedQueries* _pActivatedQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;

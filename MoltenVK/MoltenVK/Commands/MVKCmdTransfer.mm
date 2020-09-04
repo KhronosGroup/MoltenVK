@@ -948,27 +948,34 @@ VkResult MVKCmdClearAttachments<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 // Returns the total number of vertices needed to clear all layers of all rectangles.
 template <size_t N>
-uint32_t MVKCmdClearAttachments<N>::getVertexCount() {
+uint32_t MVKCmdClearAttachments<N>::getVertexCount(MVKCommandEncoder* cmdEncoder) {
 	uint32_t vtxCnt = 0;
-	for (auto& rect : _clearRects) {
-		vtxCnt += 6 * rect.layerCount;
+	if (cmdEncoder->getSubpass()->isMultiview()) {
+		// In this case, all the layer counts will be one. We want to use the number of views in the current multiview pass.
+		vtxCnt = (uint32_t)_clearRects.size() * cmdEncoder->getSubpass()->getViewCountInMetalPass(cmdEncoder->getMultiviewPassIndex()) * 6;
+	} else {
+		for (auto& rect : _clearRects) {
+			vtxCnt += 6 * rect.layerCount;
+		}
 	}
 	return vtxCnt;
 }
 
 // Populates the vertices for all clear rectangles within an attachment of the specified size.
 template <size_t N>
-void MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices, float attWidth, float attHeight) {
+void MVKCmdClearAttachments<N>::populateVertices(MVKCommandEncoder* cmdEncoder, simd::float4* vertices,
+												 float attWidth, float attHeight) {
 	uint32_t vtxIdx = 0;
     for (auto& rect : _clearRects) {
-		vtxIdx = populateVertices(vertices, vtxIdx, rect, attWidth, attHeight);
+		vtxIdx = populateVertices(cmdEncoder, vertices, vtxIdx, rect, attWidth, attHeight);
 	}
 }
 
 // Populates the vertices, starting at the vertex, from the specified rectangle within
 // an attachment of the specified size. Returns the next vertex that needs to be populated.
 template <size_t N>
-uint32_t MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices,
+uint32_t MVKCmdClearAttachments<N>::populateVertices(MVKCommandEncoder* cmdEncoder,
+													 simd::float4* vertices,
 													 uint32_t startVertex,
 													 VkClearRect& clearRect,
 													 float attWidth,
@@ -990,8 +997,17 @@ uint32_t MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices,
     simd::float4 vtx;
 
 	uint32_t vtxIdx = startVertex;
-	uint32_t startLayer = clearRect.baseArrayLayer;
-	uint32_t endLayer = startLayer + clearRect.layerCount;
+	uint32_t startLayer, endLayer;
+	if (cmdEncoder->getSubpass()->isMultiview()) {
+		// In a multiview pass, the baseArrayLayer will be 0 and the layerCount will be 1.
+		// Use the view count instead. We already set the base slice properly in the
+		// MTLRenderPassDescriptor, so we don't need to offset the starting layer.
+		startLayer = 0;
+		endLayer = cmdEncoder->getSubpass()->getViewCountInMetalPass(cmdEncoder->getMultiviewPassIndex());
+	} else {
+		startLayer = clearRect.baseArrayLayer;
+		endLayer = startLayer + clearRect.layerCount;
+	}
 	for (uint32_t layer = startLayer; layer < endLayer; layer++) {
 
 		vtx.z = 0.0;
@@ -1032,12 +1048,12 @@ uint32_t MVKCmdClearAttachments<N>::populateVertices(simd::float4* vertices,
 template <size_t N>
 void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
-	uint32_t vtxCnt = getVertexCount();
+	uint32_t vtxCnt = getVertexCount(cmdEncoder);
 	simd::float4 vertices[vtxCnt];
 	simd::float4 clearColors[kMVKClearAttachmentCount];
 
 	VkExtent2D fbExtent = cmdEncoder->_framebuffer->getExtent2D();
-	populateVertices(vertices, fbExtent.width, fbExtent.height);
+	populateVertices(cmdEncoder, vertices, fbExtent.width, fbExtent.height);
 
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
     MVKRenderSubpass* subpass = cmdEncoder->getSubpass();
@@ -1045,7 +1061,10 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
     // Populate the render pipeline state attachment key with info from the subpass and framebuffer.
 	_rpsKey.mtlSampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getSampleCount());
-	if (cmdEncoder->_canUseLayeredRendering && cmdEncoder->_framebuffer->getLayerCount() > 1) { _rpsKey.enableLayeredRendering(); }
+	if (cmdEncoder->_canUseLayeredRendering &&
+		(cmdEncoder->_framebuffer->getLayerCount() > 1 || cmdEncoder->getSubpass()->isMultiview())) {
+		_rpsKey.enableLayeredRendering();
+	}
 
     uint32_t caCnt = subpass->getColorAttachmentCount();
     for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {

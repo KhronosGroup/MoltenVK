@@ -52,7 +52,13 @@ VkResult MVKCmdBeginQuery::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdBeginQuery::encode(MVKCommandEncoder* cmdEncoder) {
-    _queryPool->beginQuery(_query, _flags, cmdEncoder);
+    // In a multiview render pass, multiple queries are produced, one for each view.
+    // Therefore, when encoding, we must offset the query by the number of views already
+    // drawn in all previous Metal passes.
+    uint32_t query = _query;
+    if (cmdEncoder->getMultiviewPassIndex() > 0)
+        query += cmdEncoder->getSubpass()->getViewCountUpToMetalPass(cmdEncoder->getMultiviewPassIndex() - 1);
+    _queryPool->beginQuery(query, _flags, cmdEncoder);
 }
 
 
@@ -60,7 +66,10 @@ void MVKCmdBeginQuery::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdEndQuery
 
 void MVKCmdEndQuery::encode(MVKCommandEncoder* cmdEncoder) {
-    _queryPool->endQuery(_query, cmdEncoder);
+    uint32_t query = _query;
+    if (cmdEncoder->getMultiviewPassIndex() > 0)
+        query += cmdEncoder->getSubpass()->getViewCountUpToMetalPass(cmdEncoder->getMultiviewPassIndex() - 1);
+    _queryPool->endQuery(query, cmdEncoder);
 }
 
 
@@ -80,7 +89,10 @@ VkResult MVKCmdWriteTimestamp::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdWriteTimestamp::encode(MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->markTimestamp(_queryPool, _query);
+    uint32_t query = _query;
+    if (cmdEncoder->getMultiviewPassIndex() > 0)
+        query += cmdEncoder->getSubpass()->getViewCountUpToMetalPass(cmdEncoder->getMultiviewPassIndex() - 1);
+    cmdEncoder->markTimestamp(_queryPool, query);
 }
 
 

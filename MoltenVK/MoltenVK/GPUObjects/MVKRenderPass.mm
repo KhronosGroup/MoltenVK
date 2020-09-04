@@ -21,6 +21,7 @@
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"
 #include "mvk_datatypes.hpp"
+#include <cassert>
 
 using namespace std;
 
@@ -67,7 +68,109 @@ VkSampleCountFlagBits MVKRenderSubpass::getSampleCount() {
 	return VK_SAMPLE_COUNT_1_BIT;
 }
 
+// Extract the first view, number of views, and the portion of the mask to be rendered from
+// the lowest clump of set bits in a view mask.
+static uint32_t getNextViewMaskGroup(uint32_t viewMask, uint32_t* startView, uint32_t* viewCount, uint32_t *groupMask = nullptr) {
+	// First, find the first set bit. This is the start of the next clump of views to be rendered.
+	// n.b. ffs(3) returns a 1-based index. This actually bit me during development of this feature.
+	int pos = ffs(viewMask) - 1;
+	int end = pos;
+	if (groupMask) { *groupMask = 0; }
+	// Now we'll step through the bits one at a time until we find a bit that isn't set.
+	// This is one past the end of the next clump. Clear the bits as we go, so we can use
+	// ffs(3) again on the next clump.
+	// TODO: Find a way to make this faster.
+	while (viewMask & (1 << end)) {
+		if (groupMask) { *groupMask |= viewMask & (1 << end); }
+		viewMask &= ~(1 << (end++));
+	}
+	if (startView) { *startView = pos; }
+	if (viewCount) { *viewCount = end - pos; }
+	return viewMask;
+}
+
+// Get the portion of the view mask that will be rendered in the specified Metal render pass.
+uint32_t MVKRenderSubpass::getViewMaskGroupForMetalPass(uint32_t passIdx) {
+	if (!_viewMask) { return 0; }
+	assert(passIdx < getMultiviewMetalPassCount());
+	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+		return 1 << getFirstViewIndexInMetalPass(passIdx);
+	}
+	uint32_t mask = _viewMask, groupMask = 0;
+	for (uint32_t i = 0; i <= passIdx; ++i) {
+		mask = getNextViewMaskGroup(mask, nullptr, nullptr, &groupMask);
+	}
+	return groupMask;
+}
+
+uint32_t MVKRenderSubpass::getMultiviewMetalPassCount() const {
+	if (!_viewMask) { return 0; }
+	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+		// If we can't use instanced drawing for this, we'll have to unroll the render pass.
+		return __builtin_popcount(_viewMask);
+	}
+	uint32_t mask = _viewMask;
+	uint32_t count;
+	// Step through each clump until there are no more clumps. I'll know this has
+	// happened when the mask becomes 0, since getNextViewMaskGroup() clears each group of bits
+	// as it finds them, and returns the remainder of the mask.
+	for (count = 0; mask != 0; ++count) {
+		mask = getNextViewMaskGroup(mask, nullptr, nullptr);
+	}
+	return count;
+}
+
+uint32_t MVKRenderSubpass::getFirstViewIndexInMetalPass(uint32_t passIdx) const {
+	if (!_viewMask) { return 0; }
+	assert(passIdx < getMultiviewMetalPassCount());
+	uint32_t mask = _viewMask;
+	uint32_t startView = 0, viewCount = 0;
+	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+		for (uint32_t i = 0; mask != 0; ++i) {
+			mask = getNextViewMaskGroup(mask, &startView, &viewCount);
+			while (passIdx-- > 0 && viewCount-- > 0) {
+				startView++;
+			}
+		}
+	} else {
+		for (uint32_t i = 0; i <= passIdx; ++i) {
+			mask = getNextViewMaskGroup(mask, &startView, nullptr);
+		}
+	}
+	return startView;
+}
+
+uint32_t MVKRenderSubpass::getViewCountInMetalPass(uint32_t passIdx) const {
+	if (!_viewMask) { return 0; }
+	assert(passIdx < getMultiviewMetalPassCount());
+	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+		return 1;
+	}
+	uint32_t mask = _viewMask;
+	uint32_t viewCount = 0;
+	for (uint32_t i = 0; i <= passIdx; ++i) {
+		mask = getNextViewMaskGroup(mask, nullptr, &viewCount);
+	}
+	return viewCount;
+}
+
+uint32_t MVKRenderSubpass::getViewCountUpToMetalPass(uint32_t passIdx) const {
+	if (!_viewMask) { return 0; }
+	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+		return passIdx+1;
+	}
+	uint32_t mask = _viewMask;
+	uint32_t totalViewCount = 0;
+	for (uint32_t i = 0; i <= passIdx; ++i) {
+		uint32_t viewCount;
+		mask = getNextViewMaskGroup(mask, nullptr, &viewCount);
+		totalViewCount += viewCount;
+	}
+	return totalViewCount;
+}
+
 void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
+													   uint32_t passIdx,
 													   MVKFramebuffer* framebuffer,
 													   const MVKArrayRef<VkClearValue>& clearValues,
 													   bool isRenderingEntireAttachment,
@@ -89,6 +192,15 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
             bool hasResolveAttachment = (rslvRPAttIdx != VK_ATTACHMENT_UNUSED);
             if (hasResolveAttachment) {
                 framebuffer->getAttachment(rslvRPAttIdx)->populateMTLRenderPassAttachmentDescriptorResolve(mtlColorAttDesc);
+				// In a multiview render pass, we need to override the starting layer to ensure
+				// only the enabled views are loaded.
+				if (isMultiview()) {
+					uint32_t startView = getFirstViewIndexInMetalPass(passIdx);
+					if (mtlColorAttDesc.resolveTexture.textureType == MTLTextureType3D)
+						mtlColorAttDesc.resolveDepthPlane += startView;
+					else
+						mtlColorAttDesc.resolveSlice += startView;
+				}
             }
 
             // Configure the color attachment
@@ -99,6 +211,13 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                        hasResolveAttachment, false,
                                                                        loadOverride)) {
 				mtlColorAttDesc.clearColor = pixFmts->getMTLClearColor(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
+			}
+			if (isMultiview()) {
+				uint32_t startView = getFirstViewIndexInMetalPass(passIdx);
+				if (mtlColorAttDesc.texture.textureType == MTLTextureType3D)
+					mtlColorAttDesc.depthPlane += startView;
+				else
+					mtlColorAttDesc.slice += startView;
 			}
 		}
 	}
@@ -119,6 +238,9 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                       loadOverride)) {
                 mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthValue(clearValues[dsRPAttIdx]);
 			}
+			if (isMultiview()) {
+				mtlDepthAttDesc.slice += getFirstViewIndexInMetalPass(passIdx);
+			}
 		}
 		if (pixFmts->isStencilFormat(mtlDSFormat)) {
 			MTLRenderPassStencilAttachmentDescriptor* mtlStencilAttDesc = mtlRPDesc.stencilAttachment;
@@ -128,6 +250,9 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
                                                                       false, true,
                                                                       loadOverride)) {
 				mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilValue(clearValues[dsRPAttIdx]);
+			}
+			if (isMultiview()) {
+				mtlStencilAttDesc.slice += getFirstViewIndexInMetalPass(passIdx);
 			}
 		}
 	}
@@ -145,7 +270,10 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		// Add a dummy attachment so this passes validation.
 		VkExtent2D fbExtent = framebuffer->getExtent2D();
 		MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
-		if (framebuffer->getLayerCount() > 1) {
+		if (isMultiview()) {
+			mtlTexDesc.textureType = MTLTextureType2DArray;
+			mtlTexDesc.arrayLength = getViewCountInMetalPass(passIdx);
+		} else if (framebuffer->getLayerCount() > 1) {
 			mtlTexDesc.textureType = MTLTextureType2DArray;
 			mtlTexDesc.arrayLength = framebuffer->getLayerCount();
 		}
@@ -222,6 +350,24 @@ void MVKRenderSubpass::populateClearAttachments(MVKClearAttachments& clearAtts,
 	}
 }
 
+void MVKRenderSubpass::populateMultiviewClearRects(MVKSmallVector<VkClearRect, 1>& clearRects,
+												   MVKCommandEncoder* cmdEncoder,
+												   uint32_t caIdx, VkImageAspectFlags aspectMask) {
+	uint32_t attIdx;
+	assert(this == cmdEncoder->getSubpass());
+	if (mvkIsAnyFlagEnabled(aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+		attIdx = _depthStencilAttachment.attachment;
+		if (attIdx != VK_ATTACHMENT_UNUSED) {
+			_renderPass->_attachments[attIdx].populateMultiviewClearRects(clearRects, cmdEncoder);
+		}
+		return;
+	}
+	attIdx = _colorAttachments[caIdx].attachment;
+	if (attIdx != VK_ATTACHMENT_UNUSED) {
+		_renderPass->_attachments[attIdx].populateMultiviewClearRects(clearRects, cmdEncoder);
+	}
+}
+
 // Returns the format capabilities required by this render subpass.
 // It is possible for a subpass to use a single framebuffer attachment for multiple purposes.
 // For example, a subpass may use a color or depth attachment as an input attachment as well.
@@ -253,9 +399,11 @@ MVKMTLFmtCaps MVKRenderSubpass::getRequiredFormatCapabilitiesForAttachmentAt(uin
 }
 
 MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
-								   const VkSubpassDescription* pCreateInfo) {
+								   const VkSubpassDescription* pCreateInfo,
+								   uint32_t viewMask) {
 	_renderPass = renderPass;
 	_subpassIndex = (uint32_t)_renderPass->_subpasses.size();
+	_viewMask = viewMask;
 
 	// Add attachments
 	_inputAttachments.reserve(pCreateInfo->inputAttachmentCount);
@@ -310,7 +458,7 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
     // attachment AND we're in the first subpass.
     if ( loadOverride ) {
         mtlAttDesc.loadAction = MTLLoadActionLoad;
-    } else if ( isRenderingEntireAttachment && (subpass->_subpassIndex == _firstUseSubpassIdx) ) {
+    } else if ( isRenderingEntireAttachment && isFirstUseOfAttachment(subpass) ) {
         VkAttachmentLoadOp loadOp = isStencil ? _info.stencilLoadOp : _info.loadOp;
         mtlAttDesc.loadAction = mvkMTLLoadActionFromVkAttachmentLoadOp(loadOp);
         willClear = (loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
@@ -347,6 +495,35 @@ void MVKRenderPassAttachment::encodeStoreAction(MVKCommandEncoder* cmdEncoder,
     }
 }
 
+void MVKRenderPassAttachment::populateMultiviewClearRects(MVKSmallVector<VkClearRect, 1>& clearRects, MVKCommandEncoder* cmdEncoder) {
+	MVKRenderSubpass* subpass = cmdEncoder->getSubpass();
+	uint32_t clearMask = subpass->getViewMaskGroupForMetalPass(cmdEncoder->getMultiviewPassIndex()) & _firstUseViewMasks[subpass->_subpassIndex];
+
+	if (!clearMask) { return; }
+	VkRect2D renderArea = cmdEncoder->clipToRenderArea({{0, 0}, {kMVKUndefinedLargeUInt32, kMVKUndefinedLargeUInt32}});
+	uint32_t startView, viewCount;
+	do {
+		clearMask = getNextViewMaskGroup(clearMask, &startView, &viewCount);
+		clearRects.push_back({renderArea, startView, viewCount});
+	} while (clearMask);
+}
+
+bool MVKRenderPassAttachment::isFirstUseOfAttachment(MVKRenderSubpass* subpass) {
+	if ( subpass->isMultiview() ) {
+		return _firstUseViewMasks[subpass->_subpassIndex] == subpass->_viewMask;
+	} else {
+		return _firstUseSubpassIdx == subpass->_subpassIndex;
+	}
+}
+
+bool MVKRenderPassAttachment::isLastUseOfAttachment(MVKRenderSubpass* subpass) {
+	if ( subpass->isMultiview() ) {
+		return _lastUseViewMasks[subpass->_subpassIndex] == subpass->_viewMask;
+	} else {
+		return _lastUseSubpassIdx == subpass->_subpassIndex;
+	}
+}
+
 MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subpass,
 														  bool isRenderingEntireAttachment,
 														  bool hasResolveAttachment,
@@ -361,7 +538,7 @@ MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subp
     if ( storeOverride ) {
         return hasResolveAttachment ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
     }
-    if ( isRenderingEntireAttachment && (subpass->_subpassIndex == _lastUseSubpassIdx) ) {
+    if ( isRenderingEntireAttachment && isLastUseOfAttachment(subpass) ) {
         VkAttachmentStoreOp storeOp = isStencil ? _info.stencilStoreOp : _info.storeOp;
         return mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp, hasResolveAttachment);
     }
@@ -371,7 +548,11 @@ MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subp
 bool MVKRenderPassAttachment::shouldUseClearAttachment(MVKRenderSubpass* subpass) {
 
 	// If the subpass is not the first subpass to use this attachment, don't clear this attachment
-	if (subpass->_subpassIndex != _firstUseSubpassIdx) { return false; }
+	if (subpass->isMultiview()) {
+		if (_firstUseViewMasks[subpass->_subpassIndex] == 0) { return false; }
+	} else {
+		if (subpass->_subpassIndex != _firstUseSubpassIdx) { return false; }
+	}
 
 	return (_info.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
 }
@@ -391,6 +572,10 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 	// Determine the indices of the first and last render subpasses to use this attachment.
 	_firstUseSubpassIdx = kMVKUndefinedLargeUInt32;
 	_lastUseSubpassIdx = 0;
+	if ( _renderPass->isMultiview() ) {
+		_firstUseViewMasks.reserve(_renderPass->_subpasses.size());
+		_lastUseViewMasks.reserve(_renderPass->_subpasses.size());
+	}
 	for (auto& subPass : _renderPass->_subpasses) {
 		// If it uses this attachment, the subpass will identify required format capabilities.
 		MVKMTLFmtCaps reqCaps = subPass.getRequiredFormatCapabilitiesForAttachmentAt(_attachmentIndex);
@@ -398,6 +583,13 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 			uint32_t spIdx = subPass._subpassIndex;
 			_firstUseSubpassIdx = min(spIdx, _firstUseSubpassIdx);
 			_lastUseSubpassIdx = max(spIdx, _lastUseSubpassIdx);
+			if ( subPass.isMultiview() ) {
+				uint32_t viewMask = subPass._viewMask;
+				std::for_each(_lastUseViewMasks.begin(), _lastUseViewMasks.end(), [viewMask](uint32_t& mask) { mask &= ~viewMask; });
+				_lastUseViewMasks.push_back(viewMask);
+				std::for_each(_firstUseViewMasks.begin(), _firstUseViewMasks.end(), [&viewMask](uint32_t mask) { viewMask &= ~mask; });
+				_firstUseViewMasks.push_back(viewMask);
+			}
 
 			// Validate that the attachment pixel format supports the capabilities required by the subpass.
 			// Use MTLPixelFormat to look up capabilities to permit Metal format substitution.
@@ -416,13 +608,31 @@ VkExtent2D MVKRenderPass::getRenderAreaGranularity() { return { 1, 1 }; }
 
 MVKRenderSubpass* MVKRenderPass::getSubpass(uint32_t subpassIndex) { return &_subpasses[subpassIndex]; }
 
+bool MVKRenderPass::isMultiview() const { return _subpasses[0].isMultiview(); }
+
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
 							 const VkRenderPassCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+
+	const VkRenderPassMultiviewCreateInfo* pMultiviewCreateInfo = nullptr;
+	for (auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO:
+			pMultiviewCreateInfo = (const VkRenderPassMultiviewCreateInfo*)next;
+			break;
+		default:
+			break;
+		}
+	}
+
+	const uint32_t* viewMasks = nullptr;
+	if (pMultiviewCreateInfo && pMultiviewCreateInfo->subpassCount) {
+		viewMasks = pMultiviewCreateInfo->pViewMasks;
+	}
 
     // Add subpasses and dependencies first
 	_subpasses.reserve(pCreateInfo->subpassCount);
 	for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
-		_subpasses.emplace_back(this, &pCreateInfo->pSubpasses[i]);
+		_subpasses.emplace_back(this, &pCreateInfo->pSubpasses[i], viewMasks ? viewMasks[i] : 0);
 	}
 	_subpassDependencies.reserve(pCreateInfo->dependencyCount);
 	for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {

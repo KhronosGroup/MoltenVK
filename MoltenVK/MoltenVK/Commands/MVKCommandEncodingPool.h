@@ -112,8 +112,11 @@ public:
 	/** Returns a MTLComputePipelineState for decompressing a buffer into a 3D image. */
 	id<MTLComputePipelineState> getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff);
 
+	/** Returns a MTLComputePipelineState for converting an indirect buffer for use in a multiview draw. */
+	id<MTLComputePipelineState> getCmdDrawIndirectMultiviewConvertBuffersMTLComputePipelineState(bool indexed);
+
 	/** Returns a MTLComputePipelineState for converting an indirect buffer for use in a tessellated draw. */
-	id<MTLComputePipelineState> getCmdDrawIndirectConvertBuffersMTLComputePipelineState(bool indexed);
+	id<MTLComputePipelineState> getCmdDrawIndirectTessConvertBuffersMTLComputePipelineState(bool indexed);
 
 	/** Returns a MTLComputePipelineState for copying an index buffer for use in an indirect tessellated draw. */
 	id<MTLComputePipelineState> getCmdDrawIndexedCopyIndexBufferMTLComputePipelineState(MTLIndexType type);
@@ -149,7 +152,8 @@ protected:
     id<MTLComputePipelineState> _mtlCopyBufferBytesComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlFillBufferComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlCopyBufferToImage3DDecompressComputePipelineState[2] = {nil, nil};
-	id<MTLComputePipelineState> _mtlDrawIndirectConvertBuffersComputePipelineState[2] = {nil, nil};
+	id<MTLComputePipelineState> _mtlDrawIndirectMultiviewConvertBuffersComputePipelineState[2] = {nil, nil};
+	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlCopyQueryPoolResultsComputePipelineState = nil;
 };
