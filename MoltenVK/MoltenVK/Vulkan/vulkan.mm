@@ -2034,6 +2034,36 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDeviceGroupsKHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_external_fence_capabilities extension
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalFencePropertiesKHR(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceExternalFenceInfo*    pExternalFenceInfo,
+	VkExternalFenceProperties*                  pExternalFenceProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getExternalFenceProperties(pExternalFenceInfo, pExternalFenceProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
+#pragma mark VK_KHR_external_memory_capabilities extension
+
+MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalBufferPropertiesKHR(
+	VkPhysicalDevice                            physicalDevice,
+	const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
+	VkExternalBufferProperties*                 pExternalBufferProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
+	mvkPD->getExternalBufferProperties(pExternalBufferInfo, pExternalBufferProperties);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_get_memory_requirements2 extension
 
 MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements2KHR(
@@ -2712,21 +2742,6 @@ MVK_PUBLIC_SYMBOL void vkResetQueryPoolEXT(
 	MVKTraceVulkanCallStart();
     auto* mvkQueryPool = (MVKQueryPool*)queryPool;
     mvkQueryPool->resetResults(firstQuery, queryCount, nullptr);
-	MVKTraceVulkanCallEnd();
-}
-
-
-#pragma mark -
-#pragma mark VK_KHR_external_memory_capabilities extension
-
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalBufferPropertiesKHR(
-	VkPhysicalDevice                            physicalDevice,
-	const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
-	VkExternalBufferProperties*                 pExternalBufferProperties) {
-
-	MVKTraceVulkanCallStart();
-	MVKPhysicalDevice* mvkPD = MVKPhysicalDevice::getMVKPhysicalDevice(physicalDevice);
-	mvkPD->getExternalBufferProperties(pExternalBufferInfo, pExternalBufferProperties);
 	MVKTraceVulkanCallEnd();
 }
 

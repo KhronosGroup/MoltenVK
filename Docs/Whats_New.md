@@ -19,6 +19,10 @@ MoltenVK 1.0.45
 Released TBD
 
 - Add support for extensions:
+	- `VK_KHR_external_fence` (non-functional groundwork for future extensions,
+	  including support for GCD and Mach semaphores)
+	- `VK_KHR_external_fence_capabilities` (non-functional groundwork for future
+	  extensions, including support for GCD and Mach semaphores)
 	- `VK_KHR_multiview`
 - Improve performance of tessellation control pipeline stage by processing multiple 
   patches per workgroup.

@@ -137,6 +137,10 @@ public:
 	void getExternalBufferProperties(const VkPhysicalDeviceExternalBufferInfo* pExternalBufferInfo,
 									 VkExternalBufferProperties* pExternalBufferProperties);
 
+	/** Populates the external fence properties supported on this device. */
+	void getExternalFenceProperties(const VkPhysicalDeviceExternalFenceInfo* pExternalFenceInfo,
+									VkExternalFenceProperties* pExternalFenceProperties);
+
 #pragma mark Surfaces
 
 	/**
