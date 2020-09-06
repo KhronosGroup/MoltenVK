@@ -235,6 +235,7 @@ MVKRenderSubpass* MVKCommandBuffer::getLastMultiviewSubpass() {
 #pragma mark MVKCommandEncoder
 
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
+	_renderPass = nullptr;
 	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 	_renderSubpassIndex = 0;
 	_multiviewPassIndex = 0;
@@ -635,7 +636,10 @@ void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) 
 // Marks the specified query as activated
 void MVKCommandEncoder::addActivatedQuery(MVKQueryPool* pQueryPool, uint32_t query) {
     if ( !_pActivatedQueries ) { _pActivatedQueries = new MVKActivatedQueries(); }
-    uint32_t endQuery = query + (getSubpass()->isMultiview() ? getSubpass()->getViewCountInMetalPass(_multiviewPassIndex) : 1);
+    uint32_t endQuery = query + 1;
+    if (_renderPass && getSubpass()->isMultiview()) {
+        endQuery = query + getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
+    }
     while (query < endQuery) {
         (*_pActivatedQueries)[pQueryPool].push_back(query++);
     }
