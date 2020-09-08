@@ -486,13 +486,19 @@ void MVKRenderPassAttachment::encodeStoreAction(MVKCommandEncoder* cmdEncoder,
                                                 bool storeOverride) {
     MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, hasResolveAttachment, isStencil, storeOverride);
     MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
-    if (pixFmts->isDepthFormat(pixFmts->getMTLPixelFormat(_info.format)) && !isStencil) {
-        [cmdEncoder->_mtlRenderEncoder setDepthStoreAction: storeAction];
-    } else if (pixFmts->isStencilFormat(pixFmts->getMTLPixelFormat(_info.format)) && isStencil) {
-        [cmdEncoder->_mtlRenderEncoder setStencilStoreAction: storeAction];
-    } else {
-        [cmdEncoder->_mtlRenderEncoder setColorStoreAction: storeAction atIndex: caIdx];
-    }
+
+	MTLPixelFormat mtlFmt = pixFmts->getMTLPixelFormat(_info.format);
+	bool isDepthFormat = pixFmts->isDepthFormat(mtlFmt);
+	bool isStencilFormat = pixFmts->isStencilFormat(mtlFmt);
+	bool isColorFormat = !(isDepthFormat || isStencilFormat);
+
+	if (isColorFormat) {
+		[cmdEncoder->_mtlRenderEncoder setColorStoreAction: storeAction atIndex: caIdx];
+	} else if (isDepthFormat && !isStencil) {
+		[cmdEncoder->_mtlRenderEncoder setDepthStoreAction: storeAction];
+	} else if (isStencilFormat && isStencil) {
+		[cmdEncoder->_mtlRenderEncoder setStencilStoreAction: storeAction];
+	}
 }
 
 void MVKRenderPassAttachment::populateMultiviewClearRects(MVKSmallVector<VkClearRect, 1>& clearRects, MVKCommandEncoder* cmdEncoder) {
