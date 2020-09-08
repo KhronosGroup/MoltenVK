@@ -117,7 +117,12 @@ public:
 	void encodeStoreActions(MVKCommandEncoder* cmdEncoder, bool isRenderingEntireAttachment, bool storeOverride = false);
 
 	/** Constructs an instance for the specified parent renderpass. */
-	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo, uint32_t viewMask);
+	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo,
+					 const VkRenderPassInputAttachmentAspectCreateInfo* pInputAspects,
+					 uint32_t viewMask);
+
+	/** Constructs an instance for the specified parent renderpass. */
+	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription2* pCreateInfo);
 
 private:
 
@@ -130,11 +135,11 @@ private:
 	MVKRenderPass* _renderPass;
 	uint32_t _subpassIndex;
 	uint32_t _viewMask;
-	MVKSmallVector<VkAttachmentReference, kMVKDefaultAttachmentCount> _inputAttachments;
-	MVKSmallVector<VkAttachmentReference, kMVKDefaultAttachmentCount> _colorAttachments;
-	MVKSmallVector<VkAttachmentReference, kMVKDefaultAttachmentCount> _resolveAttachments;
+	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> _inputAttachments;
+	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> _colorAttachments;
+	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> _resolveAttachments;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _preserveAttachments;
-	VkAttachmentReference _depthStencilAttachment;
+	VkAttachmentReference2 _depthStencilAttachment;
 	id<MTLTexture> _mtlDummyTex = nil;
 };
 
@@ -186,6 +191,10 @@ public:
 	MVKRenderPassAttachment(MVKRenderPass* renderPass,
 							const VkAttachmentDescription* pCreateInfo);
 
+	/** Constructs an instance for the specified parent renderpass. */
+	MVKRenderPassAttachment(MVKRenderPass* renderPass,
+							const VkAttachmentDescription2* pCreateInfo);
+
 protected:
 	bool isFirstUseOfAttachment(MVKRenderSubpass* subpass);
 	bool isLastUseOfAttachment(MVKRenderSubpass* subpass);
@@ -194,8 +203,9 @@ protected:
 									 bool hasResolveAttachment,
 									 bool isStencil,
 									 bool storeOverride);
+	void validateFormat();
 
-	VkAttachmentDescription _info;
+	VkAttachmentDescription2 _info;
 	MVKRenderPass* _renderPass;
 	uint32_t _attachmentIndex;
 	uint32_t _firstUseSubpassIdx;
@@ -231,6 +241,9 @@ public:
 	/** Constructs an instance for the specified device. */
 	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo* pCreateInfo);
 
+	/** Constructs an instance for the specified device. */
+	MVKRenderPass(MVKDevice* device, const VkRenderPassCreateInfo2* pCreateInfo);
+
 protected:
 	friend class MVKRenderSubpass;
 	friend class MVKRenderPassAttachment;
@@ -239,7 +252,7 @@ protected:
 
 	MVKSmallVector<MVKRenderPassAttachment> _attachments;
 	MVKSmallVector<MVKRenderSubpass> _subpasses;
-	MVKSmallVector<VkSubpassDependency> _subpassDependencies;
+	MVKSmallVector<VkSubpassDependency2> _subpassDependencies;
 
 };
 

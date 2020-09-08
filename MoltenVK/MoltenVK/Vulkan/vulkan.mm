@@ -2254,6 +2254,54 @@ MVK_PUBLIC_CORE_ALIAS(vkBindImageMemory2);
 
 
 #pragma mark -
+#pragma mark VK_KHR_create_renderpass2 extension
+
+MVK_PUBLIC_SYMBOL VkResult vkCreateRenderPass2KHR(
+	VkDevice									device,
+	const VkRenderPassCreateInfo2*				pCreateInfo,
+	const VkAllocationCallbacks*				pAllocator,
+	VkRenderPass*								pRenderPass) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	MVKRenderPass* mvkRendPass = mvkDev->createRenderPass(pCreateInfo, pAllocator);
+	*pRenderPass = (VkRenderPass)mvkRendPass;
+	VkResult rslt = mvkRendPass->getConfigurationResult();
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass2KHR(
+	VkCommandBuffer								commandBuffer,
+	const VkRenderPassBeginInfo*				pRenderPassBegin,
+	const VkSubpassBeginInfo*					pSubpassBeginInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmdFrom2Thresholds(BeginRenderPass, pRenderPassBegin->clearValueCount, 1, 2, commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdNextSubpass2KHR(
+	VkCommandBuffer								commandBuffer,
+	const VkSubpassBeginInfo*					pSubpassBeginInfo,
+	const VkSubpassEndInfo*						pSubpassEndInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(NextSubpass, commandBuffer, pSubpassBeginInfo, pSubpassEndInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdEndRenderPass2KHR(
+	VkCommandBuffer								commandBuffer,
+	const VkSubpassEndInfo*						pSubpassEndInfo) {
+
+	MVKTraceVulkanCallStart();
+	MVKAddCmd(EndRenderPass, commandBuffer, pSubpassEndInfo);
+	MVKTraceVulkanCallEnd();
+}
+
+
+#pragma mark -
 #pragma mark VK_KHR_descriptor_update_template extension
 
 MVK_PUBLIC_CORE_ALIAS(vkCreateDescriptorUpdateTemplate);

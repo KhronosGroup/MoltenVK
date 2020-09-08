@@ -259,6 +259,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_16bit_storage`
 - `VK_KHR_8bit_storage`
 - `VK_KHR_bind_memory2`
+- `VK_KHR_create_renderpass2`
 - `VK_KHR_dedicated_allocation`
 - `VK_KHR_descriptor_update_template`
 - `VK_KHR_device_group`
