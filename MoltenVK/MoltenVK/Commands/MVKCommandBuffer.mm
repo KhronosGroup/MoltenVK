@@ -418,6 +418,10 @@ VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D scissor) {
 }
 
 void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
+    if (stage == kMVKGraphicsStageVertex) {
+        // Must happen before switching encoders.
+        encodeStoreActions(true);
+    }
     _graphicsPipelineState.encode(stage);    // Must do first..it sets others
     _graphicsResourcesState.encode(stage);
     _viewportState.encode(stage);
