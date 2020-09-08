@@ -39,9 +39,9 @@ MVKEntryPoint* MVKInstance::getEntryPoint(const char* pName) {
 PFN_vkVoidFunction MVKInstance::getProcAddr(const char* pName) {
 	MVKEntryPoint* pMVKPA = getEntryPoint(pName);
 
-	bool isSupported = (pMVKPA &&									// Command exists and...
-						(pMVKPA->isDevice ||						// ...is a device command or...
-						 pMVKPA->isEnabled(_enabledExtensions)));	// ...is a core or enabled extension command.
+	bool isSupported = (pMVKPA &&														// Command exists and...
+						(pMVKPA->isDevice ||											// ...is a device command or...
+						 pMVKPA->isEnabled(_appInfo.apiVersion, _enabledExtensions)));	// ...is a core or enabled extension command.
 
 	return isSupported ? pMVKPA->functionPointer : nullptr;
 }
@@ -336,8 +336,8 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 
 	initDebugCallbacks(pCreateInfo);	// Do before any creation activities
 
-	_appInfo.apiVersion = MVK_VULKAN_API_VERSION;	// Default
 	mvkSetOrClear(&_appInfo, pCreateInfo->pApplicationInfo);
+	if (_appInfo.apiVersion == 0) { _appInfo.apiVersion = VK_API_VERSION_1_0; }	// Default
 
 	initProcAddrs();		// Init function pointers
 	initConfig();
@@ -403,16 +403,19 @@ void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 	}
 }
 
-#define ADD_ENTRY_POINT(func, ext1, ext2, isDev)	_entryPoints[""#func] = { (PFN_vkVoidFunction)&func,  ext1,  ext2,  isDev }
+#define ADD_ENTRY_POINT(func, api, ext1, ext2, isDev)	_entryPoints[""#func] = { (PFN_vkVoidFunction)&func, api, ext1,  ext2,  isDev }
 
-#define ADD_INST_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, nullptr, nullptr, false)
-#define ADD_DVC_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, nullptr, nullptr, true)
+#define ADD_INST_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, nullptr, false)
+#define ADD_DVC_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, nullptr, true)
 
-#define ADD_INST_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, VK_ ##EXT ##_EXTENSION_NAME, nullptr, false)
-#define ADD_DVC_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, VK_ ##EXT ##_EXTENSION_NAME, nullptr, true)
+#define ADD_INST_1_1_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, nullptr, false)
+#define ADD_DVC_1_1_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, nullptr, true)
 
-#define ADD_INST_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, false)
-#define ADD_DVC_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, true)
+#define ADD_INST_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, 0, VK_ ##EXT ##_EXTENSION_NAME, nullptr, false)
+#define ADD_DVC_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, 0, VK_ ##EXT ##_EXTENSION_NAME, nullptr, true)
+
+#define ADD_INST_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, 0, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, false)
+#define ADD_DVC_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, 0, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, true)
 
 // Initializes the function pointer map.
 void MVKInstance::initProcAddrs() {
@@ -431,6 +434,18 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_ENTRY_POINT(vkEnumerateDeviceExtensionProperties);
 	ADD_INST_ENTRY_POINT(vkEnumerateDeviceLayerProperties);
 	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceSparseImageFormatProperties);
+
+	ADD_INST_1_1_ENTRY_POINT(vkEnumeratePhysicalDeviceGroups);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceFeatures2);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceProperties2);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceFormatProperties2);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceImageFormatProperties2);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceQueueFamilyProperties2);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceMemoryProperties2);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceSparseImageFormatProperties2);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceExternalFenceProperties);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceExternalBufferProperties);
+	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceExternalSemaphoreProperties);
 
 	// Device functions:
 	ADD_DVC_ENTRY_POINT(vkGetDeviceProcAddr);
@@ -554,6 +569,23 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_ENTRY_POINT(vkCmdNextSubpass);
 	ADD_DVC_ENTRY_POINT(vkCmdEndRenderPass);
 	ADD_DVC_ENTRY_POINT(vkCmdExecuteCommands);
+
+	ADD_DVC_1_1_ENTRY_POINT(vkGetDeviceQueue2);
+	ADD_DVC_1_1_ENTRY_POINT(vkBindBufferMemory2);
+	ADD_DVC_1_1_ENTRY_POINT(vkBindImageMemory2);
+	ADD_DVC_1_1_ENTRY_POINT(vkGetBufferMemoryRequirements2);
+	ADD_DVC_1_1_ENTRY_POINT(vkGetImageMemoryRequirements2);
+	ADD_DVC_1_1_ENTRY_POINT(vkGetImageSparseMemoryRequirements2);
+	ADD_DVC_1_1_ENTRY_POINT(vkGetDeviceGroupPeerMemoryFeatures);
+	ADD_DVC_1_1_ENTRY_POINT(vkCreateDescriptorUpdateTemplate);
+	ADD_DVC_1_1_ENTRY_POINT(vkDestroyDescriptorUpdateTemplate);
+	ADD_DVC_1_1_ENTRY_POINT(vkUpdateDescriptorSetWithTemplate);
+	ADD_DVC_1_1_ENTRY_POINT(vkGetDescriptorSetLayoutSupport);
+	ADD_DVC_1_1_ENTRY_POINT(vkCreateSamplerYcbcrConversion);
+	ADD_DVC_1_1_ENTRY_POINT(vkDestroySamplerYcbcrConversion);
+	ADD_DVC_1_1_ENTRY_POINT(vkTrimCommandPool);
+	ADD_DVC_1_1_ENTRY_POINT(vkCmdSetDeviceMask);
+	ADD_DVC_1_1_ENTRY_POINT(vkCmdDispatchBase);
 
 	// Instance extension functions:
 	ADD_INST_EXT_ENTRY_POINT(vkEnumeratePhysicalDeviceGroupsKHR, KHR_DEVICE_GROUP_CREATION);

@@ -18,6 +18,12 @@ MoltenVK 1.0.45
 
 Released TBD
 
+- Add support for Vulkan 1.1, including:
+	- The `vkEnumerateInstanceVersion()` function
+	- The `vkGetDeviceQueue2()` function
+	- Protected memory (non-functional)
+	- A feature struct for `VK_KHR_shader_draw_parameters`
+	- All extensions that were promoted to core in Vulkan 1.1
 - Add support for extensions:
 	- `VK_KHR_external_fence` (non-functional groundwork for future extensions,
 	  including support for GCD and Mach semaphores)
