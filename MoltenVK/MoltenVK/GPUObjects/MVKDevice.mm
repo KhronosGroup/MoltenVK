@@ -603,6 +603,15 @@ void MVKPhysicalDevice::getExternalFenceProperties(const VkPhysicalDeviceExterna
 	pExternalFenceProperties->pNext = next;
 }
 
+static const VkExternalSemaphoreProperties _emptyExtSemProps = {VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES, nullptr, 0, 0, 0};
+
+void MVKPhysicalDevice::getExternalSemaphoreProperties(const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
+													   VkExternalSemaphoreProperties* pExternalSemaphoreProperties) {
+	void* next = pExternalSemaphoreProperties->pNext;
+	*pExternalSemaphoreProperties = _emptyExtSemProps;
+	pExternalSemaphoreProperties->pNext = next;
+}
+
 
 #pragma mark Surfaces
 

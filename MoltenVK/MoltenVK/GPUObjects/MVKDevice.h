@@ -141,6 +141,10 @@ public:
 	void getExternalFenceProperties(const VkPhysicalDeviceExternalFenceInfo* pExternalFenceInfo,
 									VkExternalFenceProperties* pExternalFenceProperties);
 
+	/** Populates the external semaphore properties supported on this device. */
+	void getExternalSemaphoreProperties(const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
+										VkExternalSemaphoreProperties* pExternalSemaphoreProperties);
+
 #pragma mark Surfaces
 
 	/**
