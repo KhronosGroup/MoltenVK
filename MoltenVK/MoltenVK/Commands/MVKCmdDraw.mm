@@ -137,7 +137,6 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
 
 		switch (stage) {
             case kMVKGraphicsStageVertex: {
-				cmdEncoder->encodeStoreActions(true);
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_vertexCount * _instanceCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
@@ -331,7 +330,6 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
 
         switch (stage) {
             case kMVKGraphicsStageVertex: {
-				cmdEncoder->encodeStoreActions(true);
                 mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                 if (pipeline->needsVertexOutputBuffer()) {
                     vtxOutBuff = cmdEncoder->getTempMTLBuffer(_indexCount * _instanceCount * 4 * cmdEncoder->_pDeviceProperties->limits.maxVertexOutputComponents);
@@ -678,7 +676,6 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
             switch (stage) {
                 case kMVKGraphicsStageVertex:
-					cmdEncoder->encodeStoreActions(true);
                     mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
@@ -1005,7 +1002,6 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
             switch (stage) {
                 case kMVKGraphicsStageVertex:
-					cmdEncoder->encodeStoreActions(true);
                     mtlTessCtlEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
                     if (pipeline->needsVertexOutputBuffer()) {
                         [mtlTessCtlEncoder setBuffer: vtxOutBuff->_mtlBuffer
