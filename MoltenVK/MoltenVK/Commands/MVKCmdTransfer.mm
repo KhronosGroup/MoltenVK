@@ -124,11 +124,18 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             // Extent is provided in source texels. If the source is compressed but the
             // destination is not, each destination pixel will consume an entire source block,
             // so we must downscale the destination extent by the size of the source block.
+            // Likewise if the destination is compressed and source is not, each source pixel
+            // will map to a block of pixels in the destination texture, and we need to
+            // adjust destination's extent accordingly.
             VkExtent3D dstExtent = vkIC.extent;
             if (isSrcCompressed && !isDstCompressed) {
                 VkExtent2D srcBlockExtent = pixFmts->getBlockTexelSize(srcMTLPixFmt);
                 dstExtent.width /= srcBlockExtent.width;
                 dstExtent.height /= srcBlockExtent.height;
+            } else if (!isSrcCompressed && isDstCompressed) {
+                VkExtent2D dstBlockExtent = pixFmts->getBlockTexelSize(dstMTLPixFmt);
+                dstExtent.width *= dstBlockExtent.width;
+                dstExtent.height *= dstBlockExtent.height;
             }
             auto& dstCpy = vkDstCopies[copyIdx];
             dstCpy.bufferOffset = tmpBuffSize;
