@@ -97,6 +97,8 @@ public:
      */
     id<MTLBuffer> _initialVisibilityResultMTLBuffer;
 
+	/** Called when a MVKCmdExecuteCommands is added to this command buffer. */
+	void recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers);
 
 #pragma mark Tessellation constituent command management
 

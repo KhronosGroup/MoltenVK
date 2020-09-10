@@ -195,6 +195,19 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 	reset(0);
 }
 
+// If the initial visibility result buffer has not been set, promote the first visibility result buffer
+// found among any of the secondary command buffers, to support the case where a render pass is started in
+// the primary command buffer but the visibility query is started inside one of the secondary command buffers.
+void MVKCommandBuffer::recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers) {
+	if (_initialVisibilityResultMTLBuffer == nil) {
+		for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
+			if (cmdBuff->_initialVisibilityResultMTLBuffer) {
+				_initialVisibilityResultMTLBuffer = cmdBuff->_initialVisibilityResultMTLBuffer;
+				break;
+			}
+		}
+	}
+}
 
 #pragma mark -
 #pragma mark Tessellation constituent command management
