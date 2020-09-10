@@ -143,6 +143,9 @@ private:
 	MVKSmallVector<VkAttachmentReference2, kMVKDefaultAttachmentCount> _resolveAttachments;
 	MVKSmallVector<uint32_t, kMVKDefaultAttachmentCount> _preserveAttachments;
 	VkAttachmentReference2 _depthStencilAttachment;
+	VkAttachmentReference2 _depthStencilResolveAttachment;
+	VkResolveModeFlagBits _depthResolveMode = VK_RESOLVE_MODE_NONE;
+	VkResolveModeFlagBits _stencilResolveMode = VK_RESOLVE_MODE_NONE;
 	id<MTLTexture> _mtlDummyTex = nil;
 	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
 };

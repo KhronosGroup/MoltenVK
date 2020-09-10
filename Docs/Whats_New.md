@@ -27,6 +27,7 @@ Released 2020/09/28
 - Add support for extensions:
 	- `VK_KHR_portability_subset`
 	- `VK_KHR_create_renderpass2`
+	- `VK_KHR_depth_stencil_resolve`
 	- `VK_KHR_external_fence` (non-functional groundwork for future extensions,
 	  including support for GCD and Mach semaphores)
 	- `VK_KHR_external_fence_capabilities` (non-functional groundwork for future

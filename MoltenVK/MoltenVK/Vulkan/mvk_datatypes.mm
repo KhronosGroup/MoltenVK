@@ -509,6 +509,40 @@ MTLStoreAction mvkMTLStoreActionFromVkAttachmentStoreOpInObj(VkAttachmentStoreOp
 	}
 }
 
+#undef mvkMTLMultisampleDepthResolveFilterFromVkResolveModeFlagBits
+MVK_PUBLIC_SYMBOL MTLMultisampleDepthResolveFilter mvkMTLMultisampleDepthResolveFilterFromVkResolveModeFlagBits(VkResolveModeFlagBits vkResolveMode) {
+	return mvkMTLMultisampleDepthResolveFilterFromVkResolveModeFlagBitsInObj(vkResolveMode, nullptr);
+}
+
+MTLMultisampleDepthResolveFilter mvkMTLMultisampleDepthResolveFilterFromVkResolveModeFlagBitsInObj(VkResolveModeFlagBits vkResolveMode, MVKBaseObject* mvkObj) {
+	switch (vkResolveMode) {
+		case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT:	return MTLMultisampleDepthResolveFilterSample0;
+		case VK_RESOLVE_MODE_MIN_BIT:			return MTLMultisampleDepthResolveFilterMin;
+		case VK_RESOLVE_MODE_MAX_BIT:			return MTLMultisampleDepthResolveFilterMax;
+
+		default:
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkResolveModeFlagBits value %d is not supported.", vkResolveMode);
+			return MTLMultisampleDepthResolveFilterSample0;
+	}
+}
+
+#if MVK_MACOS_OR_IOS
+#undef mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBits
+MVK_PUBLIC_SYMBOL MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBits(VkResolveModeFlagBits vkResolveMode) {
+	return mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBitsInObj(vkResolveMode, nullptr);
+}
+
+MTLMultisampleStencilResolveFilter mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBitsInObj(VkResolveModeFlagBits vkResolveMode, MVKBaseObject* mvkObj) {
+	switch (vkResolveMode) {
+		case VK_RESOLVE_MODE_SAMPLE_ZERO_BIT:	return MTLMultisampleStencilResolveFilterSample0;
+
+		default:
+			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkResolveModeFlagBits value %d is not supported.", vkResolveMode);
+			return MTLMultisampleStencilResolveFilterSample0;
+	}
+}
+#endif
+
 MVK_PUBLIC_SYMBOL MTLViewport mvkMTLViewportFromVkViewport(VkViewport vkViewport) {
 	MTLViewport mtlViewport;
 	mtlViewport.originX	= vkViewport.x;
