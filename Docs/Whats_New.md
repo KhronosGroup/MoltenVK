@@ -40,6 +40,8 @@ Released TBD
   within each descriptor set.
 - `vkCmdCopyImage` on macOS flush non-coherent image memory before copy operation.
 - Re-add support for bitcode generation on *iOS* and *tvOS*.
+- Fix Metal validation error when occlusion query and renderpass are in separate 
+  Vulkan command buffers.
 
 
 

@@ -118,6 +118,7 @@ VkResult MVKCmdExecuteCommands<N>::setContent(MVKCommandBuffer* cmdBuff,
 	for (uint32_t cbIdx = 0; cbIdx < commandBuffersCount; cbIdx++) {
 		_secondaryCommandBuffers.push_back(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
 	}
+	cmdBuff->recordExecuteCommands(_secondaryCommandBuffers.contents());
 
 	return VK_SUCCESS;
 }
