@@ -76,7 +76,7 @@ extern "C" {
 #define MVK_PUBLIC_SYMBOL        __attribute__((visibility("default")))
 
 /** Directive to make a public alias of another symbol. */
-#define MVK_PUBLIC_ALIAS(a, t)   asm(".globl _" #a "; _" #a " = _" #t "\n")
+#define MVK_PUBLIC_ALIAS(ALIAS, TARGET)   asm(".globl _" #ALIAS "\n\t_" #ALIAS " = _" #TARGET)
 
 
 #ifdef __cplusplus
