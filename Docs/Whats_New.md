@@ -13,17 +13,36 @@ For best results, use a Markdown reader.*
 
 
 
-MoltenVK 1.0.45
----------------
+MoltenVK 1.1.0
+--------------
 
-Released TBD
+Released 2020/09/28
 
+- Add support for Vulkan 1.1, including:
+	- The `vkEnumerateInstanceVersion()` function
+	- The `vkGetDeviceQueue2()` function
+	- Protected memory (non-functional)
+	- A feature struct for `VK_KHR_shader_draw_parameters`
+	- All extensions that were promoted to core in Vulkan 1.1
+- Add support for extensions:
+	- `VK_KHR_create_renderpass2`
+	- `VK_KHR_external_fence` (non-functional groundwork for future extensions,
+	  including support for GCD and Mach semaphores)
+	- `VK_KHR_external_fence_capabilities` (non-functional groundwork for future
+	  extensions, including support for GCD and Mach semaphores)
+	- `VK_KHR_external_semaphore` (non-functional groundwork for future
+	  `MTLSharedEvent` Vulkan extension)
+	- `VK_KHR_external_semaphore_capabilities` (non-functional groundwork for
+	  future `MTLSharedEvent` Vulkan extension)
+	- `VK_KHR_multiview`
 - Improve performance of tessellation control pipeline stage by processing multiple 
   patches per workgroup.
 - `vkCmdBindDescriptorSets` order `pDynamicOffsets` by descriptor binding number 
   within each descriptor set.
 - `vkCmdCopyImage` on macOS flush non-coherent image memory before copy operation.
 - Re-add support for bitcode generation on *iOS* and *tvOS*.
+- Fix Metal validation error when occlusion query and renderpass are in separate 
+  Vulkan command buffers.
 
 
 

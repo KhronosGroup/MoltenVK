@@ -149,6 +149,10 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 			_tessCtlLevelBufferIndex = _tessCtlPatchOutputBufferIndex + 1;
 		}
 	}
+	// Since we currently can't use multiview with tessellation or geometry shaders,
+	// to conserve the number of buffer bindings, use the same bindings for the
+	// view range buffer as for the indirect paramters buffer.
+	_viewRangeBufferIndex = _indirectParamsIndex;
 }
 
 MVKPipelineLayout::~MVKPipelineLayout() {
@@ -232,7 +236,11 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 
 			if ( !_mtlPipelineState ) { return; }		// Abort if pipeline could not be created.
             // Render pipeline state
-            [mtlCmdEnc setRenderPipelineState: _mtlPipelineState];
+			if (cmdEncoder->getSubpass()->isMultiview() && !isTessellationPipeline() && !_multiviewMTLPipelineStates.empty()) {
+				[mtlCmdEnc setRenderPipelineState: _multiviewMTLPipelineStates[cmdEncoder->getSubpass()->getViewCountInMetalPass(cmdEncoder->getMultiviewPassIndex())]];
+			} else {
+				[mtlCmdEnc setRenderPipelineState: _mtlPipelineState];
+			}
 
             // Depth stencil state
             if (_hasDepthStencilInfo) {
@@ -263,6 +271,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
     }
     cmdEncoder->_graphicsResourcesState.bindSwizzleBuffer(_swizzleBufferIndex, _needsVertexSwizzleBuffer, _needsTessCtlSwizzleBuffer, _needsTessEvalSwizzleBuffer, _needsFragmentSwizzleBuffer);
     cmdEncoder->_graphicsResourcesState.bindBufferSizeBuffer(_bufferSizeBufferIndex, _needsVertexBufferSizeBuffer, _needsTessCtlBufferSizeBuffer, _needsTessEvalBufferSizeBuffer, _needsFragmentBufferSizeBuffer);
+    cmdEncoder->_graphicsResourcesState.bindViewRangeBuffer(_viewRangeBufferIndex, _needsVertexViewRangeBuffer, _needsFragmentViewRangeBuffer);
 }
 
 bool MVKGraphicsPipeline::supportsDynamicState(VkDynamicState state) {
@@ -468,7 +477,35 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 	if (!isTessellationPipeline()) {
 		MTLRenderPipelineDescriptor* plDesc = newMTLRenderPipelineDescriptor(pCreateInfo, reflectData);	// temp retain
 		if (plDesc) {
-			getOrCompilePipeline(plDesc, _mtlPipelineState);
+			MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
+			MVKRenderSubpass* mvkSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
+			if (mvkSubpass->isMultiview()) {
+				// We need to adjust the step rate for per-instance attributes to account for the
+				// extra instances needed to render all views. But, there's a problem: vertex input
+				// descriptions are static pipeline state. If we need multiple passes, and some have
+				// different numbers of views to render than others, then the step rate must be different
+				// for these passes. We'll need to make a pipeline for every pass view count we can see
+				// in the render pass. This really sucks.
+				std::unordered_set<uint32_t> viewCounts;
+				for (uint32_t passIdx = 0; passIdx < mvkSubpass->getMultiviewMetalPassCount(); ++passIdx) {
+					viewCounts.insert(mvkSubpass->getViewCountInMetalPass(passIdx));
+				}
+				auto count = viewCounts.cbegin();
+				adjustVertexInputForMultiview(plDesc.vertexDescriptor, pCreateInfo->pVertexInputState, *count);
+				getOrCompilePipeline(plDesc, _mtlPipelineState);
+				if (viewCounts.size() > 1) {
+					_multiviewMTLPipelineStates[*count] = _mtlPipelineState;
+					uint32_t oldCount = *count++;
+					for (auto last = viewCounts.cend(); count != last; ++count) {
+						if (_multiviewMTLPipelineStates.count(*count)) { continue; }
+						adjustVertexInputForMultiview(plDesc.vertexDescriptor, pCreateInfo->pVertexInputState, *count, oldCount);
+						getOrCompilePipeline(plDesc, _multiviewMTLPipelineStates[*count]);
+						oldCount = *count;
+					}
+				}
+			} else {
+				getOrCompilePipeline(plDesc, _mtlPipelineState);
+			}
 		}
 		[plDesc release];																				// temp release
 	} else {
@@ -816,8 +853,9 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderContext.options.mslOptions.indirect_params_buffer_index = _indirectParamsIndex.stages[kMVKShaderStageVertex];
 	shaderContext.options.mslOptions.shader_output_buffer_index = _outputBufferIndex.stages[kMVKShaderStageVertex];
 	shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageVertex];
-	shaderContext.options.mslOptions.capture_output_to_buffer = isTessellationPipeline();
-	shaderContext.options.mslOptions.disable_rasterization = isTessellationPipeline() || (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
+	shaderContext.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageVertex];
+	shaderContext.options.mslOptions.capture_output_to_buffer = false;
+	shaderContext.options.mslOptions.disable_rasterization = pCreateInfo->pRasterizationState && pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
     addVertexInputToShaderConverterContext(shaderContext, pCreateInfo);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pVertexSS->module)->getMTLFunction(&shaderContext, _pVertexSS->pSpecializationInfo, _pipelineCache);
@@ -832,6 +870,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
 	_needsVertexSwizzleBuffer = funcRslts.needsSwizzleBuffer;
 	_needsVertexBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
+	_needsVertexViewRangeBuffer = funcRslts.needsViewRangeBuffer;
 	_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
 
 	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
@@ -847,6 +886,9 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 		return false;
 	}
 	if (!verifyImplicitBuffer(_needsVertexOutputBuffer, _indirectParamsIndex, kMVKShaderStageVertex, "indirect parameters", vbCnt)) {
+		return false;
+	}
+	if (!verifyImplicitBuffer(_needsVertexViewRangeBuffer, _viewRangeBufferIndex, kMVKShaderStageVertex, "view range", vbCnt)) {
 		return false;
 	}
 	return true;
@@ -1006,6 +1048,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderContext.options.entryPointStage = spv::ExecutionModelFragment;
 		shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageFragment];
 		shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageFragment];
+		shaderContext.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageFragment];
 		shaderContext.options.entryPointName = _pFragmentSS->pName;
 		shaderContext.options.mslOptions.capture_output_to_buffer = false;
 		if (pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
@@ -1024,10 +1067,14 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		auto& funcRslts = func.shaderConversionResults;
 		_needsFragmentSwizzleBuffer = funcRslts.needsSwizzleBuffer;
 		_needsFragmentBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
+		_needsFragmentViewRangeBuffer = funcRslts.needsViewRangeBuffer;
 		if (!verifyImplicitBuffer(_needsFragmentSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageFragment, "swizzle", 0)) {
 			return false;
 		}
 		if (!verifyImplicitBuffer(_needsFragmentBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageFragment, "buffer size", 0)) {
+			return false;
+		}
+		if (!verifyImplicitBuffer(_needsFragmentViewRangeBuffer, _viewRangeBufferIndex, kMVKShaderStageFragment, "view range", 0)) {
 			return false;
 		}
 	}
@@ -1182,6 +1229,24 @@ template bool MVKGraphicsPipeline::addVertexInputToPipeline<MTLStageInputOutputD
 																						   const VkPipelineVertexInputStateCreateInfo* pVI,
 																						   const SPIRVToMSLConversionConfiguration& shaderContext);
 
+// Adjusts step rates for per-instance vertex buffers based on the number of views to be drawn.
+void MVKGraphicsPipeline::adjustVertexInputForMultiview(MTLVertexDescriptor* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, uint32_t viewCount, uint32_t oldViewCount) {
+	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;
+	const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
+	for (uint32_t i = 0; i < vbCnt; ++i, ++pVKVB) {
+		uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
+		if (inputDesc.layouts[vbIdx].stepFunction == MTLVertexStepFunctionPerInstance) {
+			inputDesc.layouts[vbIdx].stepRate = inputDesc.layouts[vbIdx].stepRate / oldViewCount * viewCount;
+			for (auto& xltdBind : _translatedVertexBindings) {
+				if (xltdBind.binding == pVKVB->binding) {
+					uint32_t vbXltdIdx = getMetalBufferIndexForVertexAttributeBinding(xltdBind.translationBinding);
+					inputDesc.layouts[vbXltdIdx].stepRate = inputDesc.layouts[vbXltdIdx].stepRate / oldViewCount * viewCount;
+				}
+			}
+		}
+	}
+}
+
 // Returns a translated binding for the existing binding and translation offset, creating it if needed.
 uint32_t MVKGraphicsPipeline::getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding) {
 	// See if a translated binding already exists (for example if more than one VA needs the same translation).
@@ -1323,6 +1388,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     _outputBufferIndex = layout->getOutputBufferIndex();
     _tessCtlPatchOutputBufferIndex = layout->getTessCtlPatchOutputBufferIndex();
     _tessCtlLevelBufferIndex = layout->getTessCtlLevelBufferIndex();
+	_viewRangeBufferIndex = layout->getViewRangeBufferIndex();
 
     MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
     MVKRenderSubpass* mvkRenderSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
@@ -1345,6 +1411,9 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
     shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderContext.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
+    shaderContext.options.mslOptions.multiview = mvkRendPass->isMultiview();
+    shaderContext.options.mslOptions.multiview_layered_rendering = getDevice()->getPhysicalDevice()->canUseInstancingForMultiview();
+    shaderContext.options.mslOptions.view_index_from_device_index = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT);
 
     shaderContext.options.tessPatchKind = reflectData.patchKind;
     shaderContext.options.numTessControlPoints = reflectData.numControlPoints;
@@ -1481,7 +1550,7 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 									   const VkComputePipelineCreateInfo* pCreateInfo) :
 	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, parent) {
 
-	_allowsDispatchBase = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DISPATCH_BASE);	// sic; drafters forgot the 'BIT' suffix
+	_allowsDispatchBase = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DISPATCH_BASE_BIT);
 
 	MVKMTLFunction func = getMTLFunction(pCreateInfo);
 	_mtlThreadgroupSize = func.threadGroupSize;
@@ -1815,6 +1884,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.swizzle_texture_samples,
 				opt.tess_domain_origin_lower_left,
 				opt.multiview,
+				opt.multiview_layered_rendering,
 				opt.view_index_from_device_index,
 				opt.dispatch_base,
 				opt.texture_1D_as_2D,
@@ -1942,7 +2012,8 @@ namespace mvk {
 				scr.needsPatchOutputBuffer,
 				scr.needsBufferSizeBuffer,
 				scr.needsInputThreadgroupMem,
-				scr.needsDispatchBaseBuffer);
+				scr.needsDispatchBaseBuffer,
+				scr.needsViewRangeBuffer);
 	}
 
 }

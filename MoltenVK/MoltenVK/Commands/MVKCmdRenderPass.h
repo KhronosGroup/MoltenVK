@@ -29,6 +29,31 @@ class MVKFramebuffer;
 
 
 #pragma mark -
+#pragma mark MVKCmdBeginRenderPassBase
+
+/**
+ * Abstract base class of MVKCmdBeginRenderPass.
+ * Contains all pieces that are independent of the templated portions.
+ */
+class MVKCmdBeginRenderPassBase : public MVKCommand {
+
+public:
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkRenderPassBeginInfo* pRenderPassBegin,
+						VkSubpassContents contents);
+
+	inline MVKRenderPass* getRenderPass() { return _renderPass; }
+
+protected:
+
+	MVKRenderPass* _renderPass;
+	MVKFramebuffer* _framebuffer;
+	VkRect2D _renderArea;
+	VkSubpassContents _contents;
+};
+
+
+#pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
 /**
@@ -36,12 +61,15 @@ class MVKFramebuffer;
  * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
 template <size_t N>
-class MVKCmdBeginRenderPass : public MVKCommand {
+class MVKCmdBeginRenderPass : public MVKCmdBeginRenderPassBase {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						const VkRenderPassBeginInfo* pRenderPassBegin,
 						VkSubpassContents contents);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkRenderPassBeginInfo* pRenderPassBegin,
+						const VkSubpassBeginInfo* pSubpassBeginInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -49,10 +77,6 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	MVKSmallVector<VkClearValue, N> _clearValues;
-	MVKRenderPass* _renderPass;
-	MVKFramebuffer* _framebuffer;
-	VkRect2D _renderArea;
-	VkSubpassContents _contents;
 };
 
 // Concrete template class implementations.
@@ -70,6 +94,9 @@ class MVKCmdNextSubpass : public MVKCommand {
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						VkSubpassContents contents);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkSubpassBeginInfo* pSubpassBeginInfo,
+						const VkSubpassEndInfo* pSubpassEndInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -88,6 +115,8 @@ class MVKCmdEndRenderPass : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkSubpassEndInfo* pSubpassEndInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 

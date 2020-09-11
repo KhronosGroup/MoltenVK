@@ -25,6 +25,7 @@
 #include "MVKSmallVector.h"
 #include <MoltenVKSPIRVToMSLConverter/SPIRVReflection.h>
 #include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include <unordered_map>
 #include <unordered_set>
 #include <ostream>
 
@@ -78,6 +79,9 @@ public:
 	/** Returns the current buffer size buffer bindings. */
 	const MVKShaderImplicitRezBinding& getBufferSizeBufferIndex() { return _bufferSizeBufferIndex; }
 
+	/** Returns the current view range buffer binding for multiview draws. */
+	const MVKShaderImplicitRezBinding& getViewRangeBufferIndex() { return _viewRangeBufferIndex; }
+
 	/** Returns the current indirect parameter buffer bindings. */
 	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
 
@@ -113,6 +117,7 @@ protected:
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
+	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
@@ -282,6 +287,7 @@ protected:
     bool addFragmentShaderToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo, SPIRVToMSLConversionConfiguration& shaderContext, SPIRVShaderOutputs& prevOutput);
 	template<class T>
 	bool addVertexInputToPipeline(T* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, const SPIRVToMSLConversionConfiguration& shaderContext);
+	void adjustVertexInputForMultiview(MTLVertexDescriptor* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, uint32_t viewCount, uint32_t oldViewCount = 1);
     void addTessellationToPipeline(MTLRenderPipelineDescriptor* plDesc, const SPIRVTessReflectionData& reflectData, const VkPipelineTessellationStateCreateInfo* pTS);
     void addFragmentOutputToPipeline(MTLRenderPipelineDescriptor* plDesc, const VkGraphicsPipelineCreateInfo* pCreateInfo);
     bool isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo);
@@ -309,6 +315,7 @@ protected:
 	id<MTLComputePipelineState> _mtlTessVertexStageIndex32State = nil;
 	id<MTLComputePipelineState> _mtlTessControlStageState = nil;
 	id<MTLRenderPipelineState> _mtlPipelineState = nil;
+	std::unordered_map<uint32_t, id<MTLRenderPipelineState>> _multiviewMTLPipelineStates;
 	MTLCullMode _mtlCullMode;
 	MTLWinding _mtlFrontWinding;
 	MTLTriangleFillMode _mtlFillMode;
@@ -317,6 +324,7 @@ protected:
 
     float _blendConstants[4] = { 0.0, 0.0, 0.0, 1.0 };
     uint32_t _outputControlPointCount;
+	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
 	uint32_t _tessCtlPatchOutputBufferIndex = 0;
 	uint32_t _tessCtlLevelBufferIndex = 0;
@@ -325,6 +333,7 @@ protected:
 	bool _hasDepthStencilInfo;
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;
+	bool _needsVertexViewRangeBuffer = false;
 	bool _needsVertexOutputBuffer = false;
 	bool _needsTessCtlSwizzleBuffer = false;
 	bool _needsTessCtlBufferSizeBuffer = false;
@@ -335,6 +344,7 @@ protected:
 	bool _needsTessEvalBufferSizeBuffer = false;
 	bool _needsFragmentSwizzleBuffer = false;
 	bool _needsFragmentBufferSizeBuffer = false;
+	bool _needsFragmentViewRangeBuffer = false;
 };
 
 

@@ -292,7 +292,11 @@
 		29B97313FDCFA39411CA2CEA /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
+<<<<<<< HEAD
 				LastUpgradeCheck = 1200;
+=======
+				LastUpgradeCheck = 1170;
+>>>>>>> d1353632775b86abd4a527c9f6114dda2d4405fa
 			};
 			buildConfigurationList = C01FCF4E08A954540054247B /* Build configuration list for PBXProject "Hologram" */;
 			compatibilityVersion = "Xcode 8.0";

@@ -18,6 +18,7 @@
 
 #include "MVKQueryPool.h"
 #include "MVKBuffer.h"
+#include "MVKRenderPass.h"
 #include "MVKCommandBuffer.h"
 #include "MVKCommandEncodingPool.h"
 #include "MVKOSExtensions.h"
@@ -30,8 +31,11 @@ using namespace std;
 #pragma mark MVKQueryPool
 
 void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
+    uint32_t queryCount = cmdEncoder->getSubpass()->getViewCountInMetalPass(cmdEncoder->getMultiviewPassIndex());
     lock_guard<mutex> lock(_availabilityLock);
-    _availability[query] = DeviceAvailable;
+    for (uint32_t i = query; i < query + queryCount; ++i) {
+        _availability[i] = DeviceAvailable;
+    }
     lock_guard<mutex> copyLock(_deferredCopiesLock);
     if (!_deferredCopies.empty()) {
         // Partition by readiness.
@@ -287,7 +291,12 @@ void MVKOcclusionQueryPool::encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder,
 
 void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* cmdBuffer) {
     NSUInteger offset = getVisibilityResultOffset(query);
-    NSUInteger maxOffset = getDevice()->_pMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes;
+    NSUInteger queryCount = 1;
+    if (cmdBuffer->getLastMultiviewSubpass()) {
+        // In multiview passes, one query is used for each view.
+        queryCount = cmdBuffer->getLastMultiviewSubpass()->getViewCount();
+    }
+    NSUInteger maxOffset = getDevice()->_pMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes * queryCount;
     if (offset > maxOffset) {
         cmdBuffer->setConfigurationResult(reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The query offset value %lu is larger than the maximum offset value %lu available on this device.", offset, maxOffset));
     }

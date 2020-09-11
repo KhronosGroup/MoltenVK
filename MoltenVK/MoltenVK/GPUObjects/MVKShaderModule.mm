@@ -239,6 +239,7 @@ void MVKShaderLibraryCache::merge(MVKShaderLibraryCache* other) {
 	for (auto& otherPair : other->_shaderLibraries) {
 		if ( !findShaderLibrary(&otherPair.first) ) {
 			_shaderLibraries.emplace_back(otherPair.first, new MVKShaderLibrary(*otherPair.second));
+			_shaderLibraries.back().second->_owner = _owner;
 		}
 	}
 }
