@@ -13,10 +13,10 @@ For best results, use a Markdown reader.*
 
 
 
-MoltenVK 1.0.45
----------------
+MoltenVK 1.1.0
+--------------
 
-Released TBD
+Released 2020/09/28
 
 - Add support for Vulkan 1.1, including:
 	- The `vkEnumerateInstanceVersion()` function

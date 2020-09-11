@@ -349,18 +349,6 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 												  getDriverLayer()->getSupportedInstanceExtensions()));
 	logVersions();	// Log the MoltenVK and Vulkan versions
 
-	// If we only support Vulkan 1.0, we must report an error if a larger Vulkan version is requested.
-	// If we support Vulkan 1.1 or better, per spec, we never report an error.
-	if ((MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <
-		 MVK_VULKAN_API_VERSION_CONFORM(VK_API_VERSION_1_1)) &&
-		(MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION) <
-		 MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion))) {
-		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER,
-										   "Request for Vulkan version %s is not compatible with supported version %s.",
-										   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
-										   mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str()));
-	}
-
 	// Populate the array of physical GPU devices.
 	// This effort creates a number of autoreleased instances of Metal
 	// and other Obj-C classes, so wrap it all in an autorelease pool.
