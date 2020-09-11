@@ -49,8 +49,8 @@ typedef unsigned long MTLLanguageVersion;
  *   - 401215    (version 4.12.15)
  */
 #define MVK_VERSION_MAJOR   1
-#define MVK_VERSION_MINOR   0
-#define MVK_VERSION_PATCH   45
+#define MVK_VERSION_MINOR   1
+#define MVK_VERSION_PATCH   0
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
