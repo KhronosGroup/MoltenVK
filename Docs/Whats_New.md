@@ -25,6 +25,7 @@ Released TBD
 	- A feature struct for `VK_KHR_shader_draw_parameters`
 	- All extensions that were promoted to core in Vulkan 1.1
 - Add support for extensions:
+	- `VK_KHR_create_renderpass2`
 	- `VK_KHR_external_fence` (non-functional groundwork for future extensions,
 	  including support for GCD and Mach semaphores)
 	- `VK_KHR_external_fence_capabilities` (non-functional groundwork for future

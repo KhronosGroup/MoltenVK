@@ -61,6 +61,13 @@ VkResult MVKCmdBeginRenderPass<N>::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 template <size_t N>
+VkResult MVKCmdBeginRenderPass<N>::setContent(MVKCommandBuffer* cmdBuff,
+											  const VkRenderPassBeginInfo* pRenderPassBegin,
+											  const VkSubpassBeginInfo* pSubpassBeginInfo) {
+	return setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo->contents);
+}
+
+template <size_t N>
 void MVKCmdBeginRenderPass<N>::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdBeginRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
 	cmdEncoder->beginRenderpass(this, _contents, _renderPass, _framebuffer, _renderArea, _clearValues.contents());
@@ -81,6 +88,12 @@ VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
+VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
+									   const VkSubpassBeginInfo* pBeginSubpassInfo,
+									   const VkSubpassEndInfo* pEndSubpassInfo) {
+	return setContent(cmdBuff, pBeginSubpassInfo->contents);
+}
+
 void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
 	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
 		cmdEncoder->beginNextMultiviewPass();
@@ -93,6 +106,11 @@ void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
 #pragma mark MVKCmdEndRenderPass
 
 VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
+	return VK_SUCCESS;
+}
+
+VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff,
+										 const VkSubpassEndInfo* pEndSubpassInfo) {
 	return VK_SUCCESS;
 }
 

@@ -400,10 +400,59 @@ MVKMTLFmtCaps MVKRenderSubpass::getRequiredFormatCapabilitiesForAttachmentAt(uin
 
 MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 								   const VkSubpassDescription* pCreateInfo,
+								   const VkRenderPassInputAttachmentAspectCreateInfo* pInputAspects,
 								   uint32_t viewMask) {
 	_renderPass = renderPass;
 	_subpassIndex = (uint32_t)_renderPass->_subpasses.size();
 	_viewMask = viewMask;
+
+	// Add attachments
+	_inputAttachments.reserve(pCreateInfo->inputAttachmentCount);
+	for (uint32_t i = 0; i < pCreateInfo->inputAttachmentCount; i++) {
+		const VkAttachmentReference& att = pCreateInfo->pInputAttachments[i];
+		_inputAttachments.push_back({VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, att.attachment, att.layout, 0});
+	}
+	if (pInputAspects && pInputAspects->aspectReferenceCount) {
+		for (uint32_t i = 0; i < pInputAspects->aspectReferenceCount; i++) {
+			const VkInputAttachmentAspectReference& aspectRef = pInputAspects->pAspectReferences[i];
+			if (aspectRef.subpass == _subpassIndex) {
+				_inputAttachments[aspectRef.inputAttachmentIndex].aspectMask = aspectRef.aspectMask;
+			}
+		}
+	}
+
+	_colorAttachments.reserve(pCreateInfo->colorAttachmentCount);
+	for (uint32_t i = 0; i < pCreateInfo->colorAttachmentCount; i++) {
+		const VkAttachmentReference& att = pCreateInfo->pColorAttachments[i];
+		_colorAttachments.push_back({VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, att.attachment, att.layout, 0});
+	}
+
+	if (pCreateInfo->pResolveAttachments) {
+		_resolveAttachments.reserve(pCreateInfo->colorAttachmentCount);
+		for (uint32_t i = 0; i < pCreateInfo->colorAttachmentCount; i++) {
+			const VkAttachmentReference& att = pCreateInfo->pResolveAttachments[i];
+			_resolveAttachments.push_back({VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, att.attachment, att.layout, 0});
+		}
+	}
+
+	if (pCreateInfo->pDepthStencilAttachment) {
+		_depthStencilAttachment.attachment = pCreateInfo->pDepthStencilAttachment->attachment;
+		_depthStencilAttachment.layout = pCreateInfo->pDepthStencilAttachment->layout;
+	} else {
+		_depthStencilAttachment.attachment = VK_ATTACHMENT_UNUSED;
+	}
+
+	_preserveAttachments.reserve(pCreateInfo->preserveAttachmentCount);
+	for (uint32_t i = 0; i < pCreateInfo->preserveAttachmentCount; i++) {
+		_preserveAttachments.push_back(pCreateInfo->pPreserveAttachments[i]);
+	}
+}
+
+MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
+								   const VkSubpassDescription2* pCreateInfo) {
+	_renderPass = renderPass;
+	_subpassIndex = (uint32_t)_renderPass->_subpasses.size();
+	_viewMask = pCreateInfo->viewMask;
 
 	// Add attachments
 	_inputAttachments.reserve(pCreateInfo->inputAttachmentCount);
@@ -563,12 +612,7 @@ bool MVKRenderPassAttachment::shouldUseClearAttachment(MVKRenderSubpass* subpass
 	return (_info.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
 }
 
-MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
-												 const VkAttachmentDescription* pCreateInfo) {
-	_info = *pCreateInfo;
-	_renderPass = renderPass;
-	_attachmentIndex = uint32_t(_renderPass->_attachments.size());
-
+void MVKRenderPassAttachment::validateFormat() {
 	// Validate pixel format is supported
 	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
 	if ( !pixFmts->isSupportedOrSubstitutable(_info.format) ) {
@@ -606,6 +650,32 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 	}
 }
 
+MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
+												 const VkAttachmentDescription* pCreateInfo) {
+	_info.flags = pCreateInfo->flags;
+	_info.format = pCreateInfo->format;
+	_info.samples = pCreateInfo->samples;
+	_info.loadOp = pCreateInfo->loadOp;
+	_info.storeOp = pCreateInfo->storeOp;
+	_info.stencilLoadOp = pCreateInfo->stencilLoadOp;
+	_info.stencilStoreOp = pCreateInfo->stencilStoreOp;
+	_info.initialLayout = pCreateInfo->initialLayout;
+	_info.finalLayout = pCreateInfo->finalLayout;
+	_renderPass = renderPass;
+	_attachmentIndex = uint32_t(_renderPass->_attachments.size());
+
+	validateFormat();
+}
+
+MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
+												 const VkAttachmentDescription2* pCreateInfo) {
+	_info = *pCreateInfo;
+	_renderPass = renderPass;
+	_attachmentIndex = uint32_t(_renderPass->_attachments.size());
+
+	validateFormat();
+}
+
 
 #pragma mark -
 #pragma mark MVKRenderPass
@@ -619,9 +689,13 @@ bool MVKRenderPass::isMultiview() const { return _subpasses[0].isMultiview(); }
 MVKRenderPass::MVKRenderPass(MVKDevice* device,
 							 const VkRenderPassCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
+	const VkRenderPassInputAttachmentAspectCreateInfo* pInputAspectCreateInfo = nullptr;
 	const VkRenderPassMultiviewCreateInfo* pMultiviewCreateInfo = nullptr;
 	for (auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_RENDER_PASS_INPUT_ATTACHMENT_ASPECT_CREATE_INFO:
+			pInputAspectCreateInfo = (const VkRenderPassInputAttachmentAspectCreateInfo*)next;
+			break;
 		case VK_STRUCTURE_TYPE_RENDER_PASS_MULTIVIEW_CREATE_INFO:
 			pMultiviewCreateInfo = (const VkRenderPassMultiviewCreateInfo*)next;
 			break;
@@ -631,14 +705,50 @@ MVKRenderPass::MVKRenderPass(MVKDevice* device,
 	}
 
 	const uint32_t* viewMasks = nullptr;
+	const int32_t* viewOffsets = nullptr;
 	if (pMultiviewCreateInfo && pMultiviewCreateInfo->subpassCount) {
 		viewMasks = pMultiviewCreateInfo->pViewMasks;
+	}
+	if (pMultiviewCreateInfo && pMultiviewCreateInfo->dependencyCount) {
+		viewOffsets = pMultiviewCreateInfo->pViewOffsets;
 	}
 
     // Add subpasses and dependencies first
 	_subpasses.reserve(pCreateInfo->subpassCount);
 	for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
-		_subpasses.emplace_back(this, &pCreateInfo->pSubpasses[i], viewMasks ? viewMasks[i] : 0);
+		_subpasses.emplace_back(this, &pCreateInfo->pSubpasses[i], pInputAspectCreateInfo, viewMasks ? viewMasks[i] : 0);
+	}
+	_subpassDependencies.reserve(pCreateInfo->dependencyCount);
+	for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {
+		VkSubpassDependency2 dependency = {
+			.sType = VK_STRUCTURE_TYPE_SUBPASS_DEPENDENCY_2,
+			.pNext = nullptr,
+			.srcSubpass = pCreateInfo->pDependencies[i].srcSubpass,
+			.dstSubpass = pCreateInfo->pDependencies[i].dstSubpass,
+			.srcStageMask = pCreateInfo->pDependencies[i].srcStageMask,
+			.dstStageMask = pCreateInfo->pDependencies[i].dstStageMask,
+			.srcAccessMask = pCreateInfo->pDependencies[i].srcAccessMask,
+			.dstAccessMask = pCreateInfo->pDependencies[i].dstAccessMask,
+			.dependencyFlags = pCreateInfo->pDependencies[i].dependencyFlags,
+			.viewOffset = viewOffsets ? viewOffsets[i] : 0,
+		};
+		_subpassDependencies.push_back(dependency);
+	}
+
+	// Add attachments after subpasses, so each attachment can link to subpasses
+	_attachments.reserve(pCreateInfo->attachmentCount);
+	for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {
+		_attachments.emplace_back(this, &pCreateInfo->pAttachments[i]);
+	}
+}
+
+MVKRenderPass::MVKRenderPass(MVKDevice* device,
+							 const VkRenderPassCreateInfo2* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+
+    // Add subpasses and dependencies first
+	_subpasses.reserve(pCreateInfo->subpassCount);
+	for (uint32_t i = 0; i < pCreateInfo->subpassCount; i++) {
+		_subpasses.emplace_back(this, &pCreateInfo->pSubpasses[i]);
 	}
 	_subpassDependencies.reserve(pCreateInfo->dependencyCount);
 	for (uint32_t i = 0; i < pCreateInfo->dependencyCount; i++) {

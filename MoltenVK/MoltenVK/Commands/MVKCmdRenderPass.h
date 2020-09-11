@@ -67,6 +67,9 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						const VkRenderPassBeginInfo* pRenderPassBegin,
 						VkSubpassContents contents);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkRenderPassBeginInfo* pRenderPassBegin,
+						const VkSubpassBeginInfo* pSubpassBeginInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -91,6 +94,9 @@ class MVKCmdNextSubpass : public MVKCommand {
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						VkSubpassContents contents);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkSubpassBeginInfo* pSubpassBeginInfo,
+						const VkSubpassEndInfo* pSubpassEndInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
@@ -109,6 +115,8 @@ class MVKCmdEndRenderPass : public MVKCommand {
 
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff);
+	VkResult setContent(MVKCommandBuffer* cmdBuff,
+						const VkSubpassEndInfo* pSubpassEndInfo);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
