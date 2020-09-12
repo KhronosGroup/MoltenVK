@@ -26,16 +26,28 @@
 
 
 #pragma mark -
+#pragma mark MVKCmdBeginRenderPassBase
+
+VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
+											   const VkRenderPassBeginInfo* pRenderPassBegin,
+											   VkSubpassContents contents) {
+	_contents = contents;
+	_renderPass = (MVKRenderPass*)pRenderPassBegin->renderPass;
+	_framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
+	_renderArea = pRenderPassBegin->renderArea;
+
+	return VK_SUCCESS;
+}
+
+
+#pragma mark -
 #pragma mark MVKCmdBeginRenderPass
 
 template <size_t N>
 VkResult MVKCmdBeginRenderPass<N>::setContent(MVKCommandBuffer* cmdBuff,
 											  const VkRenderPassBeginInfo* pRenderPassBegin,
 											  VkSubpassContents contents) {
-	_contents = contents;
-	_renderPass = (MVKRenderPass*)pRenderPassBegin->renderPass;
-	_framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
-	_renderArea = pRenderPassBegin->renderArea;
+	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, contents);
 
 	// Add clear values
 	uint32_t cvCnt = pRenderPassBegin->clearValueCount;
@@ -49,9 +61,16 @@ VkResult MVKCmdBeginRenderPass<N>::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 template <size_t N>
+VkResult MVKCmdBeginRenderPass<N>::setContent(MVKCommandBuffer* cmdBuff,
+											  const VkRenderPassBeginInfo* pRenderPassBegin,
+											  const VkSubpassBeginInfo* pSubpassBeginInfo) {
+	return setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo->contents);
+}
+
+template <size_t N>
 void MVKCmdBeginRenderPass<N>::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdBeginRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-	cmdEncoder->beginRenderpass(_contents, _renderPass, _framebuffer, _renderArea, _clearValues.contents());
+	cmdEncoder->beginRenderpass(this, _contents, _renderPass, _framebuffer, _renderArea, _clearValues.contents());
 }
 
 template class MVKCmdBeginRenderPass<1>;
@@ -69,8 +88,17 @@ VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
 	return VK_SUCCESS;
 }
 
+VkResult MVKCmdNextSubpass::setContent(MVKCommandBuffer* cmdBuff,
+									   const VkSubpassBeginInfo* pBeginSubpassInfo,
+									   const VkSubpassEndInfo* pEndSubpassInfo) {
+	return setContent(cmdBuff, pBeginSubpassInfo->contents);
+}
+
 void MVKCmdNextSubpass::encode(MVKCommandEncoder* cmdEncoder) {
-	cmdEncoder->beginNextSubpass(_contents);
+	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
+		cmdEncoder->beginNextMultiviewPass();
+	else
+		cmdEncoder->beginNextSubpass(this, _contents);
 }
 
 
@@ -81,9 +109,17 @@ VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff) {
 	return VK_SUCCESS;
 }
 
+VkResult MVKCmdEndRenderPass::setContent(MVKCommandBuffer* cmdBuff,
+										 const VkSubpassEndInfo* pEndSubpassInfo) {
+	return VK_SUCCESS;
+}
+
 void MVKCmdEndRenderPass::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdEndRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-	cmdEncoder->endRenderpass();
+	if (cmdEncoder->getMultiviewPassIndex() + 1 < cmdEncoder->getSubpass()->getMultiviewMetalPassCount())
+		cmdEncoder->beginNextMultiviewPass();
+	else
+		cmdEncoder->endRenderpass();
 }
 
 
@@ -100,6 +136,7 @@ VkResult MVKCmdExecuteCommands<N>::setContent(MVKCommandBuffer* cmdBuff,
 	for (uint32_t cbIdx = 0; cbIdx < commandBuffersCount; cbIdx++) {
 		_secondaryCommandBuffers.push_back(MVKCommandBuffer::getMVKCommandBuffer(pCommandBuffers[cbIdx]));
 	}
+	cmdBuff->recordExecuteCommands(_secondaryCommandBuffers.contents());
 
 	return VK_SUCCESS;
 }

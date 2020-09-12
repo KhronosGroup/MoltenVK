@@ -20,9 +20,9 @@ function create_xcframework() {
 		prod_lib_path="${prod_staging_dir}/lib${prod_name}.a"
 		if [[ -e "${prod_lib_path}" ]]; then
 			xcfwk_cmd+=" -library \"${prod_lib_path}\""
-			if [[ -e "${hdr_path}" ]]; then
+#			if [[ -e "${hdr_path}" ]]; then
 #				xcfwk_cmd+=" -headers \"${hdr_path}\""		# Headers currently break build due to Xcode 12 ProcessXCFramework bug: https://developer.apple.com/forums/thread/651043?answerId=628400022#628400022
-			fi
+#			fi
 		fi
 	done
 

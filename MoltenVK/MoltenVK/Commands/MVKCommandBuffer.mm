@@ -26,6 +26,7 @@
 #include "MVKLogging.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "MVKCmdDraw.h"
+#include "MVKCmdRenderPass.h"
 
 using namespace std;
 
@@ -76,6 +77,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_commandCount = 0;
 	_initialVisibilityResultMTLBuffer = nil;		// not retained
 	_lastTessellationPipeline = nullptr;
+	_lastMultiviewSubpass = nullptr;
 	setConfigurationResult(VK_NOT_READY);
 
 	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
@@ -193,6 +195,19 @@ MVKCommandBuffer::~MVKCommandBuffer() {
 	reset(0);
 }
 
+// If the initial visibility result buffer has not been set, promote the first visibility result buffer
+// found among any of the secondary command buffers, to support the case where a render pass is started in
+// the primary command buffer but the visibility query is started inside one of the secondary command buffers.
+void MVKCommandBuffer::recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers) {
+	if (_initialVisibilityResultMTLBuffer == nil) {
+		for (MVKCommandBuffer* cmdBuff : secondaryCommandBuffers) {
+			if (cmdBuff->_initialVisibilityResultMTLBuffer) {
+				_initialVisibilityResultMTLBuffer = cmdBuff->_initialVisibilityResultMTLBuffer;
+				break;
+			}
+		}
+	}
+}
 
 #pragma mark -
 #pragma mark Tessellation constituent command management
@@ -203,11 +218,40 @@ void MVKCommandBuffer::recordBindPipeline(MVKCmdBindPipeline* mvkBindPipeline) {
 
 
 #pragma mark -
+#pragma mark Multiview render pass command management
+
+void MVKCommandBuffer::recordBeginRenderPass(MVKCmdBeginRenderPassBase* mvkBeginRenderPass) {
+	MVKRenderPass* mvkRendPass = mvkBeginRenderPass->getRenderPass();
+	_lastMultiviewSubpass = mvkRendPass->isMultiview() ? mvkRendPass->getSubpass(0) : nullptr;
+}
+
+void MVKCommandBuffer::recordNextSubpass() {
+	if (_lastMultiviewSubpass) {
+		_lastMultiviewSubpass = _lastMultiviewSubpass->getRenderPass()->getSubpass(_lastMultiviewSubpass->getSubpassIndex() + 1);
+	}
+}
+
+void MVKCommandBuffer::recordEndRenderPass() {
+	_lastMultiviewSubpass = nullptr;
+}
+
+MVKRenderSubpass* MVKCommandBuffer::getLastMultiviewSubpass() {
+	if (_doesContinueRenderPass) {
+		MVKRenderSubpass* subpass = ((MVKRenderPass*)_secondaryInheritanceInfo.renderPass)->getSubpass(_secondaryInheritanceInfo.subpass);
+		if (subpass->isMultiview()) { return subpass; }
+	}
+	return _lastMultiviewSubpass;
+}
+
+
+#pragma mark -
 #pragma mark MVKCommandEncoder
 
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
+	_renderPass = nullptr;
 	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 	_renderSubpassIndex = 0;
+	_multiviewPassIndex = 0;
 	_canUseLayeredRendering = false;
 
 	_mtlCmdBuffer = mtlCmdBuff;		// not retained
@@ -216,8 +260,15 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 
 	MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
+		uint32_t prevMVPassIdx = _multiviewPassIndex;
 		cmd->encode(this);
-		cmd = cmd->_next;
+		if (_multiviewPassIndex > prevMVPassIdx) {
+			// This means we're in a multiview render pass, and we moved on to the
+			// next view group. Re-encode all commands in the subpass again for this group.
+			cmd = _lastMultiviewPassCmd->_next;
+		} else {
+			cmd = cmd->_next;
+		}
 	}
 
 	endCurrentMetalEncoding();
@@ -232,7 +283,8 @@ void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
 	}
 }
 
-void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
+void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
+										VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
 										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
@@ -243,19 +295,23 @@ void MVKCommandEncoder::beginRenderpass(VkSubpassContents subpassContents,
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebuffer->getExtent2D()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
-	setSubpass(subpassContents, 0);
+	setSubpass(passCmd, subpassContents, 0);
 }
 
-void MVKCommandEncoder::beginNextSubpass(VkSubpassContents contents) {
-	setSubpass(contents, _renderSubpassIndex + 1);
+void MVKCommandEncoder::beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents contents) {
+	setSubpass(subpassCmd, contents, _renderSubpassIndex + 1);
 }
 
 // Sets the current render subpass to the subpass with the specified index.
-void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t subpassIndex) {
+void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
+								   VkSubpassContents subpassContents,
+								   uint32_t subpassIndex) {
 	encodeStoreActions();
 
+	_lastMultiviewPassCmd = subpassCmd;
 	_subpassContents = subpassContents;
 	_renderSubpassIndex = subpassIndex;
+	_multiviewPassIndex = 0;
 
 	_canUseLayeredRendering = (_device->_pMetalFeatures->layeredRendering &&
 							   (_device->_pMetalFeatures->multisampleLayeredRendering ||
@@ -264,20 +320,34 @@ void MVKCommandEncoder::setSubpass(VkSubpassContents subpassContents, uint32_t s
 	beginMetalRenderPass();
 }
 
+void MVKCommandEncoder::beginNextMultiviewPass() {
+	encodeStoreActions();
+	_multiviewPassIndex++;
+	beginMetalRenderPass();
+}
+
+uint32_t MVKCommandEncoder::getMultiviewPassIndex() { return _multiviewPassIndex; }
+
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
 void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
 
     endCurrentMetalEncoding();
 
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _framebuffer, _clearValues.contents(), _isRenderingEntireAttachment, loadOverride);
+    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _multiviewPassIndex, _framebuffer, _clearValues.contents(), _isRenderingEntireAttachment, loadOverride);
     mtlRPDesc.visibilityResultBuffer = _occlusionQueryState.getVisibilityResultMTLBuffer();
 
     VkExtent2D fbExtent = _framebuffer->getExtent2D();
     mtlRPDesc.renderTargetWidthMVK = min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width);
     mtlRPDesc.renderTargetHeightMVK = min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height);
     if (_canUseLayeredRendering) {
-        mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
+        if (getSubpass()->isMultiview()) {
+            // In the case of a multiview pass, the framebuffer layer count will be one.
+            // We need to use the view count for this multiview pass.
+            mtlRPDesc.renderTargetArrayLengthMVK = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
+        } else {
+            mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
+        }
     }
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
@@ -361,6 +431,10 @@ VkRect2D MVKCommandEncoder::clipToRenderArea(VkRect2D scissor) {
 }
 
 void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
+    if (stage == kMVKGraphicsStageVertex) {
+        // Must happen before switching encoders.
+        encodeStoreActions(true);
+    }
     _graphicsPipelineState.encode(stage);    // Must do first..it sets others
     _graphicsResourcesState.encode(stage);
     _viewportState.encode(stage);
@@ -386,16 +460,36 @@ void MVKCommandEncoder::clearRenderArea() {
 
 	if (clearAttCnt == 0) { return; }
 
-	VkClearRect clearRect;
-	clearRect.rect = _renderArea;
-	clearRect.baseArrayLayer = 0;
-	clearRect.layerCount = _framebuffer->getLayerCount();
+	if (!getSubpass()->isMultiview()) {
+		VkClearRect clearRect;
+		clearRect.rect = _renderArea;
+		clearRect.baseArrayLayer = 0;
+		clearRect.layerCount = _framebuffer->getLayerCount();
 
-    // Create and execute a temporary clear attachments command.
-    // To be threadsafe...do NOT acquire and return the command from the pool.
-    MVKCmdClearMultiAttachments<1> cmd;
-    cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
-    cmd.encode(this);
+		// Create and execute a temporary clear attachments command.
+		// To be threadsafe...do NOT acquire and return the command from the pool.
+		MVKCmdClearMultiAttachments<1> cmd;
+		cmd.setContent(_cmdBuffer, clearAttCnt, clearAtts.data(), 1, &clearRect);
+		cmd.encode(this);
+	} else {
+		// For multiview, it is possible that some attachments need different layers cleared.
+		// In that case, we'll have to clear them individually. :/
+		for (auto& clearAtt : clearAtts) {
+			MVKSmallVector<VkClearRect, 1> clearRects;
+			getSubpass()->populateMultiviewClearRects(clearRects, this, clearAtt.colorAttachment, clearAtt.aspectMask);
+			// Create and execute a temporary clear attachments command.
+			// To be threadsafe...do NOT acquire and return the command from the pool.
+			if (clearRects.size() == 1) {
+				MVKCmdClearSingleAttachment<1> cmd;
+				cmd.setContent(_cmdBuffer, 1, &clearAtt, (uint32_t)clearRects.size(), clearRects.data());
+				cmd.encode(this);
+			} else {
+				MVKCmdClearSingleAttachment<4> cmd;
+				cmd.setContent(_cmdBuffer, 1, &clearAtt, (uint32_t)clearRects.size(), clearRects.data());
+				cmd.encode(this);
+			}
+		}
+	}
 }
 
 void MVKCommandEncoder::finalizeDispatchState() {
@@ -559,7 +653,13 @@ void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) 
 // Marks the specified query as activated
 void MVKCommandEncoder::addActivatedQuery(MVKQueryPool* pQueryPool, uint32_t query) {
     if ( !_pActivatedQueries ) { _pActivatedQueries = new MVKActivatedQueries(); }
-    (*_pActivatedQueries)[pQueryPool].push_back(query);
+    uint32_t endQuery = query + 1;
+    if (_renderPass && getSubpass()->isMultiview()) {
+        endQuery = query + getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
+    }
+    while (query < endQuery) {
+        (*_pActivatedQueries)[pQueryPool].push_back(query++);
+    }
 }
 
 // Register a command buffer completion handler that finishes each activated query.
@@ -653,6 +753,7 @@ NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
         case kMVKCommandUseCopyImageToBuffer:   return @"vkCmdCopyImageToBuffer ComputeEncoder";
         case kMVKCommandUseFillBuffer:          return @"vkCmdFillBuffer ComputeEncoder";
         case kMVKCommandUseTessellationVertexTessCtl: return @"vkCmdDraw (vertex and tess control stages) ComputeEncoder";
+        case kMVKCommandUseMultiviewInstanceCountAdjust: return @"vkCmdDraw (multiview instance count adjustment) ComputeEncoder";
         case kMVKCommandUseCopyQueryPoolResults:return @"vkCmdCopyQueryPoolResults ComputeEncoder";
         default:                                return @"Unknown Use ComputeEncoder";
     }

@@ -91,6 +91,28 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				f16Features->shaderInt8 = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_FEATURES: {
+				auto* multiviewFeatures = (VkPhysicalDeviceMultiviewFeatures*)next;
+				multiviewFeatures->multiview = true;
+				multiviewFeatures->multiviewGeometryShader = false;
+				multiviewFeatures->multiviewTessellationShader = false; // FIXME
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_FEATURES: {
+				auto* protectedMemFeatures = (VkPhysicalDeviceProtectedMemoryFeatures*)next;
+				protectedMemFeatures->protectedMemory = false;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
+				auto* samplerYcbcrConvFeatures = (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)next;
+				samplerYcbcrConvFeatures->samplerYcbcrConversion = true;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_DRAW_PARAMETERS_FEATURES: {
+				auto* shaderDrawParamsFeatures = (VkPhysicalDeviceShaderDrawParametersFeatures*)next;
+				shaderDrawParamsFeatures->shaderDrawParameters = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
 				auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
 				uboLayoutFeatures->uniformBufferStandardLayout = true;
@@ -151,11 +173,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->samplerMipLodBias = false;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES: {
-				auto* samplerYcbcrConvFeatures = (VkPhysicalDeviceSamplerYcbcrConversionFeatures*)next;
-				samplerYcbcrConvFeatures->samplerYcbcrConversion = true;
-				break;
-			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
 				auto* shaderIntFuncsFeatures = (VkPhysicalDeviceShaderIntegerFunctions2FeaturesINTEL*)next;
 				shaderIntFuncsFeatures->shaderIntegerFunctions2 = true;
@@ -182,9 +199,19 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	properties->properties = _properties;
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
-				auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
-				pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
+				auto* physicalDeviceDriverProps = (VkPhysicalDeviceDriverPropertiesKHR*)next;
+				strcpy(physicalDeviceDriverProps->driverName, "MoltenVK");
+				strcpy(physicalDeviceDriverProps->driverInfo, mvkGetMoltenVKVersionString(MVK_VERSION).c_str());
+				physicalDeviceDriverProps->driverID = VK_DRIVER_ID_MOLTENVK;
+				physicalDeviceDriverProps->conformanceVersion.major = 0;
+				physicalDeviceDriverProps->conformanceVersion.minor = 0;
+				physicalDeviceDriverProps->conformanceVersion.subminor = 0;
+				physicalDeviceDriverProps->conformanceVersion.patch = 0;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
+				populate((VkPhysicalDeviceIDProperties*)next);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MAINTENANCE_3_PROPERTIES: {
@@ -193,49 +220,29 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				maint3Props->maxMemoryAllocationSize = _metalFeatures.maxMTLBufferSize;
 				break;
 			}
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MULTIVIEW_PROPERTIES: {
+                auto* multiviewProps = (VkPhysicalDeviceMultiviewProperties*)next;
+                multiviewProps->maxMultiviewViewCount = 32;
+                if (canUseInstancingForMultiview()) {
+                    multiviewProps->maxMultiviewInstanceIndex = std::numeric_limits<uint32_t>::max() / 32;
+                } else {
+                    multiviewProps->maxMultiviewInstanceIndex = std::numeric_limits<uint32_t>::max();
+                }
+				break;
+            }
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_POINT_CLIPPING_PROPERTIES: {
+				auto* pointClipProps = (VkPhysicalDevicePointClippingProperties*)next;
+				pointClipProps->pointClippingBehavior = VK_POINT_CLIPPING_BEHAVIOR_ALL_CLIP_PLANES;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROTECTED_MEMORY_PROPERTIES: {
+				auto* protectedMemProps = (VkPhysicalDeviceProtectedMemoryProperties*)next;
+				protectedMemProps->protectedNoFault = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PUSH_DESCRIPTOR_PROPERTIES_KHR: {
 				auto* pushDescProps = (VkPhysicalDevicePushDescriptorPropertiesKHR*)next;
 				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
-				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
-				// This isn't implemented yet, but when it is, I expect that we'll wind up
-				// doing it manually.
-				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
-				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
-				auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)next;
-				// Save the 'next' pointer; we'll unintentionally overwrite it
-				// on the next line. Put it back when we're done.
-				void* savedNext = texelBuffAlignProps->pNext;
-				*texelBuffAlignProps = _texelBuffAlignProperties;
-				texelBuffAlignProps->pNext = savedNext;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
-				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
-				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ID_PROPERTIES: {
-				populate((VkPhysicalDeviceIDProperties*)next);
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
-				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
-				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
-				break;
-			}
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
-				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)next;
-				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
-                inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
-                inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
-                inlineUniformBlockProps->maxDescriptorSetInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
-                inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
 				break;
 			}
 #if MVK_MACOS
@@ -260,15 +267,40 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 }
 				break;
 #endif
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
-				auto* physicalDeviceDriverProps = (VkPhysicalDeviceDriverPropertiesKHR*)next;
-				strcpy(physicalDeviceDriverProps->driverName, "MoltenVK");
-				strcpy(physicalDeviceDriverProps->driverInfo, mvkGetMoltenVKVersionString(MVK_VERSION).c_str());
-				physicalDeviceDriverProps->driverID = VK_DRIVER_ID_MOLTENVK;
-				physicalDeviceDriverProps->conformanceVersion.major = 0;
-				physicalDeviceDriverProps->conformanceVersion.minor = 0;
-				physicalDeviceDriverProps->conformanceVersion.subminor = 0;
-				physicalDeviceDriverProps->conformanceVersion.patch = 0;
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
+				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)next;
+				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
+                inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
+                inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
+                inlineUniformBlockProps->maxDescriptorSetInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
+                inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
+				auto* robustness2Props = (VkPhysicalDeviceRobustness2PropertiesEXT*)next;
+				// This isn't implemented yet, but when it is, I expect that we'll wind up
+				// doing it manually.
+				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
+				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
+				auto* texelBuffAlignProps = (VkPhysicalDeviceTexelBufferAlignmentPropertiesEXT*)next;
+				// Save the 'next' pointer; we'll unintentionally overwrite it
+				// on the next line. Put it back when we're done.
+				void* savedNext = texelBuffAlignProps->pNext;
+				*texelBuffAlignProps = _texelBuffAlignProperties;
+				texelBuffAlignProps->pNext = savedNext;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_PROPERTIES_EXT: {
+				auto* divisorProps = (VkPhysicalDeviceVertexAttributeDivisorPropertiesEXT*)next;
+				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
+				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
+				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
 				break;
 			}
 			default:
@@ -575,6 +607,24 @@ VkExternalMemoryProperties& MVKPhysicalDevice::getExternalImageProperties(VkExte
 		case VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR:		return _mtlTextureExternalMemoryProperties;
 		default: 													return _emptyExtMemProps;
 	}
+}
+
+static const VkExternalFenceProperties _emptyExtFenceProps = {VK_STRUCTURE_TYPE_EXTERNAL_FENCE_PROPERTIES, nullptr, 0, 0, 0};
+
+void MVKPhysicalDevice::getExternalFenceProperties(const VkPhysicalDeviceExternalFenceInfo* pExternalFenceInfo,
+												   VkExternalFenceProperties* pExternalFenceProperties) {
+	void* next = pExternalFenceProperties->pNext;
+	*pExternalFenceProperties = _emptyExtFenceProps;
+	pExternalFenceProperties->pNext = next;
+}
+
+static const VkExternalSemaphoreProperties _emptyExtSemProps = {VK_STRUCTURE_TYPE_EXTERNAL_SEMAPHORE_PROPERTIES, nullptr, 0, 0, 0};
+
+void MVKPhysicalDevice::getExternalSemaphoreProperties(const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
+													   VkExternalSemaphoreProperties* pExternalSemaphoreProperties) {
+	void* next = pExternalSemaphoreProperties->pNext;
+	*pExternalSemaphoreProperties = _emptyExtSemProps;
+	pExternalSemaphoreProperties->pNext = next;
 }
 
 
@@ -2335,16 +2385,21 @@ MVKPhysicalDevice::~MVKPhysicalDevice() {
 // Returns core device commands and enabled extension device commands.
 PFN_vkVoidFunction MVKDevice::getProcAddr(const char* pName) {
 	MVKEntryPoint* pMVKPA = _physicalDevice->_mvkInstance->getEntryPoint(pName);
+	uint32_t apiVersion = _physicalDevice->_mvkInstance->_appInfo.apiVersion;
 
-	bool isSupported = (pMVKPA &&								// Command exists and...
-						pMVKPA->isDevice &&						// ...is a device command and...
-						pMVKPA->isEnabled(_enabledExtensions));	// ...is a core or enabled extension command.
+	bool isSupported = (pMVKPA &&											// Command exists and...
+						pMVKPA->isDevice &&									// ...is a device command and...
+						pMVKPA->isEnabled(apiVersion, _enabledExtensions));	// ...is a core or enabled extension command.
 
 	return isSupported ? pMVKPA->functionPointer : nullptr;
 }
 
 MVKQueue* MVKDevice::getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex) {
 	return _queuesByQueueFamilyIndex[queueFamilyIndex][queueIndex];
+}
+
+MVKQueue* MVKDevice::getQueue(const VkDeviceQueueInfo2* queueInfo) {
+	return _queuesByQueueFamilyIndex[queueInfo->queueFamilyIndex][queueInfo->queueIndex];
 }
 
 MVKQueue* MVKDevice::getAnyQueue() {
@@ -2737,6 +2792,11 @@ void MVKDevice::destroyFramebuffer(MVKFramebuffer* mvkFB,
 }
 
 MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
+										   const VkAllocationCallbacks* pAllocator) {
+	return new MVKRenderPass(this, pCreateInfo);
+}
+
+MVKRenderPass* MVKDevice::createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
 										   const VkAllocationCallbacks* pAllocator) {
 	return new MVKRenderPass(this, pCreateInfo);
 }

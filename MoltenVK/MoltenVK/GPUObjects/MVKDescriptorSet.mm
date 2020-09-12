@@ -17,6 +17,7 @@
  */
 
 #include "MVKDescriptorSet.h"
+#include "MVKInstance.h"
 #include "MVKOSExtensions.h"
 
 
@@ -554,7 +555,8 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 												   const VkDescriptorSetLayout* pSetLayouts,
 												   VkDescriptorSet* pDescriptorSets) {
 	if (_allocatedSets.size() + count > _maxSets) {
-		if (_device->_enabledExtensions.vk_KHR_maintenance1.enabled) {
+		if (_device->_enabledExtensions.vk_KHR_maintenance1.enabled ||
+			_device->getInstance()->getAPIVersion() >= VK_API_VERSION_1_1) {
 			return VK_ERROR_OUT_OF_POOL_MEMORY;		// Failure is an acceptable test...don't log as error.
 		} else {
 			return reportError(VK_ERROR_INITIALIZATION_FAILED, "The maximum number of descriptor sets that can be allocated by this descriptor pool is %d.", _maxSets);
@@ -576,8 +578,9 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets) {
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
 		MVKDescriptorSet* mvkDS = (MVKDescriptorSet*)pDescriptorSets[dsIdx];
-		freeDescriptorSet(mvkDS);
-		_allocatedSets.erase(mvkDS);
+		if (_allocatedSets.erase(mvkDS)) {
+			freeDescriptorSet(mvkDS);
+		}
 	}
 	return VK_SUCCESS;
 }

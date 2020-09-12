@@ -137,6 +137,14 @@ public:
 	void getExternalBufferProperties(const VkPhysicalDeviceExternalBufferInfo* pExternalBufferInfo,
 									 VkExternalBufferProperties* pExternalBufferProperties);
 
+	/** Populates the external fence properties supported on this device. */
+	void getExternalFenceProperties(const VkPhysicalDeviceExternalFenceInfo* pExternalFenceInfo,
+									VkExternalFenceProperties* pExternalFenceProperties);
+
+	/** Populates the external semaphore properties supported on this device. */
+	void getExternalSemaphoreProperties(const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
+										VkExternalSemaphoreProperties* pExternalSemaphoreProperties);
+
 #pragma mark Surfaces
 
 	/**
@@ -297,6 +305,9 @@ public:
 	/** Populates the specified structure with the Metal-specific features of this device. */
 	inline const MVKPhysicalDeviceMetalFeatures* getMetalFeatures() { return &_metalFeatures; }
 
+	/** Returns whether or not vertex instancing can be used to implement multiview. */
+	inline bool canUseInstancingForMultiview() { return _metalFeatures.layeredRendering && _metalFeatures.deferredStoreActions; }
+
 	/** Returns the underlying Metal device. */
 	inline id<MTLDevice> getMTLDevice() { return _mtlDevice; }
     
@@ -414,6 +425,9 @@ public:
 
 	/** Returns the queue at the specified index within the specified family. */
 	MVKQueue* getQueue(uint32_t queueFamilyIndex, uint32_t queueIndex);
+
+	/** Returns the queue described by the specified structure. */
+	MVKQueue* getQueue(const VkDeviceQueueInfo2* queueInfo);
 
 	/** Retrieves the queue at the lowest queue and queue family indices used by the app. */
 	MVKQueue* getAnyQueue();
@@ -548,6 +562,8 @@ public:
 							const VkAllocationCallbacks* pAllocator);
 
 	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo* pCreateInfo,
+									const VkAllocationCallbacks* pAllocator);
+	MVKRenderPass* createRenderPass(const VkRenderPassCreateInfo2* pCreateInfo,
 									const VkAllocationCallbacks* pAllocator);
 	void destroyRenderPass(MVKRenderPass* mvkRP,
 						   const VkAllocationCallbacks* pAllocator);
