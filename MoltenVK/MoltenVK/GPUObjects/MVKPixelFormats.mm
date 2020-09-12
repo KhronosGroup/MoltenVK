@@ -477,6 +477,14 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
 	}
+#if MVK_MACOS
+    // Clearing a linear image may use shader writes.
+    if (mvkIsAnyFlagEnabled(vkImageUsageFlags, VK_IMAGE_USAGE_TRANSFER_DST_BIT) &&
+        mvkIsAnyFlagEnabled(mtlFmtCaps, kMVKMTLFmtCapsWrite) && isLinear) {
+
+		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
+    }
+#endif
 
 	// Render to but only if format supports rendering...
 	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |

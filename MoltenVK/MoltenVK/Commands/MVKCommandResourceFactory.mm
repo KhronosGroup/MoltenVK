@@ -410,6 +410,34 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdFillBufferMTLComput
 	return newMTLComputePipelineState("cmdFillBuffer", owner);
 }
 
+#if MVK_MACOS
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLComputePipelineState(MVKFormatType type,
+					MVKVulkanAPIDeviceObject* owner) {
+	const char* funcName;
+	switch (type) {
+		case kMVKFormatColorHalf:
+		case kMVKFormatColorFloat:
+			funcName = "cmdClearColorImage2DFloat";
+			break;
+		case kMVKFormatColorInt8:
+		case kMVKFormatColorInt16:
+		case kMVKFormatColorInt32:
+			funcName = "cmdClearColorImage2DInt";
+			break;
+		case kMVKFormatColorUInt8:
+		case kMVKFormatColorUInt16:
+		case kMVKFormatColorUInt32:
+			funcName = "cmdClearColorImage2DUInt";
+			break;
+		default:
+			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED,
+							   "Format type %u is not supported for clearing with a compute shader.", type);
+			return nil;
+	}
+	return newMTLComputePipelineState(funcName, owner);
+}
+#endif
+
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf,
 																												  MVKVulkanAPIDeviceObject* owner) {
 	return newMTLComputePipelineState(needTempBuf
