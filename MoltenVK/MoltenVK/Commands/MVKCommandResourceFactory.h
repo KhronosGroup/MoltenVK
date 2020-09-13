@@ -58,6 +58,8 @@ typedef struct MVKRPSKeyBlitImg {
 
 	inline MTLSamplerMinMagFilter getSrcMTLSamplerMinMagFilter() { return (MTLSamplerMinMagFilter)srcFilter; }
 
+	inline MTLTextureType getSrcMTLTextureType() { return (MTLTextureType)srcMTLTextureType; }
+
 	inline bool isSrcArrayType() {
 		return (srcMTLTextureType == MTLTextureType2DArray ||
 #if MVK_MACOS

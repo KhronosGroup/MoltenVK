@@ -428,6 +428,18 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             MVKRPSKeyBlitImg blitKey;
             blitKey.srcMTLPixelFormat = _srcImage->getMTLPixelFormat(srcPlaneIndex);
             blitKey.srcMTLTextureType = _srcImage->getMTLTextureType();
+            if (blitKey.srcMTLTextureType == MTLTextureTypeCube || blitKey.srcMTLTextureType == MTLTextureTypeCubeArray) {
+                // In this case, I'll use a temp 2D array view. That way, I don't have to
+                // deal with mapping the blit coordinates to a cube direction vector.
+                blitKey.srcMTLTextureType = MTLTextureType2DArray;
+                srcMTLTex = [srcMTLTex newTextureViewWithPixelFormat: (MTLPixelFormat)blitKey.srcMTLPixelFormat
+                                                         textureType: MTLTextureType2DArray
+                                                              levels: NSMakeRange(0, srcMTLTex.mipmapLevelCount)
+                                                              slices: NSMakeRange(0, srcMTLTex.arrayLength)];
+                [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) {
+                    [srcMTLTex release];
+                }];
+            }
             blitKey.dstMTLPixelFormat = _dstImage->getMTLPixelFormat(dstPlaneIndex);
             blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(_filter);
             blitKey.dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
@@ -438,12 +450,31 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             mtlColorAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
 
             uint32_t layCnt = mvkIBR.region.srcSubresource.layerCount;
+            if (_dstImage->getMTLTextureType() == MTLTextureType3D) {
+                layCnt = mvkAbsDiff(mvkIBR.region.dstOffsets[1].z, mvkIBR.region.dstOffsets[0].z);
+            }
             for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
                 // Update the render pass descriptor for the texture level and slice, and create a render encoder.
-                mtlColorAttDesc.slice = mvkIBR.region.dstSubresource.baseArrayLayer + layIdx;
+                if (_dstImage->getMTLTextureType() == MTLTextureType3D) {
+                    mtlColorAttDesc.depthPlane = mvkIBR.region.dstOffsets[0].z + (mvkIBR.region.dstOffsets[1].z > mvkIBR.region.dstOffsets[0].z ? layIdx : -(layIdx + 1));
+                } else {
+                    mtlColorAttDesc.slice = mvkIBR.region.dstSubresource.baseArrayLayer + layIdx;
+                }
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPD];
                 setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(commandUse));
 
+                if (blitKey.srcMTLTextureType == MTLTextureType3D) {
+                    // In this case, I need to interpolate along the third dimension manually.
+                    VkExtent3D srcExtent = _srcImage->getExtent3D(srcPlaneIndex, mvkIBR.region.dstSubresource.mipLevel);
+                    VkOffset3D so0 = mvkIBR.region.srcOffsets[0], so1 = mvkIBR.region.srcOffsets[1];
+                    VkOffset3D do0 = mvkIBR.region.dstOffsets[0], do1 = mvkIBR.region.dstOffsets[1];
+                    CGFloat startZ = (CGFloat)so0.z / (CGFloat)srcExtent.depth;
+                    CGFloat endZ = (CGFloat)so1.z / (CGFloat)srcExtent.depth;
+                    CGFloat zIncr = (endZ - startZ) / mvkAbsDiff(do1.z, do0.z);
+                    for (uint32_t i = 0; i < kMVKBlitVertexCount; ++i) {
+                        mvkIBR.vertices[i].texCoord.z = startZ + layIdx * zIncr;
+                    }
+                }
                 [mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
                 [mtlRendEnc setRenderPipelineState: mtlRPS];
                 cmdEncoder->setVertexBytes(mtlRendEnc, mvkIBR.vertices, sizeof(mvkIBR.vertices), vtxBuffIdx);
