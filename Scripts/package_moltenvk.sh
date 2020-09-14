@@ -8,19 +8,21 @@ function copy_dylib() {
 	src_dir="${BUILD_DIR}/${CONFIGURATION}${1}/dynamic"
 	dst_dir="${MVK_PKG_PROD_PATH}/dylib/${2}"
 
-echo Copying dylib from "${src_dir}" to "${dst_dir}"
-
-	if [[ -e "${src_dir}" ]]; then
+	# If dylib file exists, copy it, any debug symbol file, and the Vulkan layer JSON file
+	src_file="${src_dir}/lib${MVK_PROD_NAME}.dylib"
+	if [[ -e "${src_file}" ]]; then
 		rm -rf "${dst_dir}"
 		mkdir -p "${dst_dir}"
 
-		cp -a "${src_dir}/lib${MVK_PROD_NAME}.dylib" "${dst_dir}"
+		cp -a "${src_file}" "${dst_dir}"
 
-		if [[ -e "${src_dir}/lib${MVK_PROD_NAME}.dylib.dSYM" ]]; then
-		   cp -a "${src_dir}/lib${MVK_PROD_NAME}.dylib.dSYM" "${dst_dir}"
+		src_file+=".dSYM"
+		if [[ -e "${src_file}" ]]; then
+		   cp -a "${src_file}" "${dst_dir}"
 		fi
 
 		cp -a "${MVK_PROD_PROJ_PATH}/icd/${MVK_PROD_NAME}_icd.json" "${dst_dir}"
+
 	fi
 }
 
