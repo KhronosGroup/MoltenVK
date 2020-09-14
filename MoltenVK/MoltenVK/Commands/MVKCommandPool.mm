@@ -59,7 +59,10 @@ VkResult MVKCommandPool::allocateCommandBuffers(const VkCommandBufferAllocateInf
 
 		// Command buffers start out in a VK_NOT_READY config result
 		VkResult cbRslt = mvkCmdBuff->getConfigurationResult();
-		if (rslt == VK_SUCCESS && cbRslt != VK_NOT_READY) { rslt = cbRslt; }
+		if (cbRslt != VK_NOT_READY) {
+			if (rslt == VK_SUCCESS) { rslt = cbRslt; }
+			freeCommandBuffers(1, &pCmdBuffer[cbIdx]);
+		}
 	}
 	return rslt;
 }

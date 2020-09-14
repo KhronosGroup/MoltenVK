@@ -174,6 +174,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateInstance(
 	MVKInstance* mvkInst = new MVKInstance(pCreateInfo);
 	*pInstance = mvkInst->getVkInstance();
 	VkResult rslt = mvkInst->getConfigurationResult();
+	if (rslt < 0) { *pInstance = nullptr; mvkInst->destroy(); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -313,6 +314,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDevice(
 	MVKDevice* mvkDev = new MVKDevice(mvkPD, pCreateInfo);
 	*pDevice = mvkDev->getVkDevice();
 	VkResult rslt = mvkDev->getConfigurationResult();
+	if (rslt < 0) { *pDevice = nullptr; mvkDev->destroy(); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -428,6 +430,7 @@ MVK_PUBLIC_SYMBOL VkResult vkAllocateMemory(
 	MVKDeviceMemory* mvkMem = mvkDev->allocateMemory(pAllocateInfo, pAllocator);
 	VkResult rslt = mvkMem->getConfigurationResult();
 	*pMem = (VkDeviceMemory)((rslt == VK_SUCCESS) ? mvkMem : VK_NULL_HANDLE);
+    if (rslt != VK_SUCCESS) { mvkDev->freeMemory(mvkMem, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -618,6 +621,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateFence(
 	MVKFence* mvkFence = mvkDev->createFence(pCreateInfo, pAllocator);
 	*pFence = (VkFence)mvkFence;
 	VkResult rslt = mvkFence->getConfigurationResult();
+	if (rslt < 0) { *pFence = VK_NULL_HANDLE; mvkDev->destroyFence(mvkFence, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -680,6 +684,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSemaphore(
 	MVKSemaphore* mvkSem4 = mvkDev->createSemaphore(pCreateInfo, pAllocator);
 	*pSemaphore = (VkSemaphore)mvkSem4;
 	VkResult rslt = mvkSem4->getConfigurationResult();
+	if (rslt < 0) { *pSemaphore = VK_NULL_HANDLE; mvkDev->destroySemaphore(mvkSem4, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -706,6 +711,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateEvent(
 	MVKEvent* mvkEvent = mvkDev->createEvent(pCreateInfo, pAllocator);
 	*pEvent = (VkEvent)mvkEvent;
 	VkResult rslt = mvkEvent->getConfigurationResult();
+	if (rslt < 0) { *pEvent = VK_NULL_HANDLE; mvkDev->destroyEvent(mvkEvent, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -765,6 +771,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateQueryPool(
 	MVKQueryPool* mvkQP = mvkDev->createQueryPool(pCreateInfo, pAllocator);
 	*pQueryPool = (VkQueryPool)mvkQP;
 	VkResult rslt = mvkQP->getConfigurationResult();
+	if (rslt < 0) { *pQueryPool = VK_NULL_HANDLE; mvkDev->destroyQueryPool(mvkQP, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -808,6 +815,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateBuffer(
 	MVKBuffer* mvkBuff = mvkDev->createBuffer(pCreateInfo, pAllocator);
 	*pBuffer = (VkBuffer)mvkBuff;
 	VkResult rslt = mvkBuff->getConfigurationResult();
+	if (rslt < 0) { *pBuffer = VK_NULL_HANDLE; mvkDev->destroyBuffer(mvkBuff, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -834,6 +842,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateBufferView(
     MVKBufferView* mvkBuffView = mvkDev->createBufferView(pCreateInfo, pAllocator);
     *pView = (VkBufferView)mvkBuffView;
     VkResult rslt = mvkBuffView->getConfigurationResult();
+	if (rslt < 0) { *pView = VK_NULL_HANDLE; mvkDev->destroyBufferView(mvkBuffView, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -860,6 +869,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateImage(
 	MVKImage* mvkImg = mvkDev->createImage(pCreateInfo, pAllocator);
 	*pImage = (VkImage)mvkImg;
 	VkResult rslt = mvkImg->getConfigurationResult();
+	if (rslt < 0) { *pImage = VK_NULL_HANDLE; mvkDev->destroyImage(mvkImg, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -898,6 +908,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateImageView(
 	MVKImageView* mvkImgView = mvkDev->createImageView(pCreateInfo, pAllocator);
 	*pView = (VkImageView)mvkImgView;
 	VkResult rslt = mvkImgView->getConfigurationResult();
+	if (rslt < 0) { *pView = VK_NULL_HANDLE; mvkDev->destroyImageView(mvkImgView, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -924,6 +935,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateShaderModule(
 	MVKShaderModule* mvkShdrMod = mvkDev->createShaderModule(pCreateInfo, pAllocator);
 	*pShaderModule = (VkShaderModule)mvkShdrMod;
 	VkResult rslt = mvkShdrMod->getConfigurationResult();
+	if (rslt < 0) { *pShaderModule = VK_NULL_HANDLE; mvkDev->destroyShaderModule(mvkShdrMod, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -950,6 +962,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreatePipelineCache(
 	MVKPipelineCache* mvkPLC = mvkDev->createPipelineCache(pCreateInfo, pAllocator);
 	*pPipelineCache = (VkPipelineCache)mvkPLC;
 	VkResult rslt = mvkPLC->getConfigurationResult();
+	if (rslt < 0) { *pPipelineCache = VK_NULL_HANDLE; mvkDev->destroyPipelineCache(mvkPLC, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -1043,6 +1056,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreatePipelineLayout(
 	MVKPipelineLayout* mvkPLL = mvkDev->createPipelineLayout(pCreateInfo, pAllocator);
 	*pPipelineLayout = (VkPipelineLayout)mvkPLL;
 	VkResult rslt = mvkPLL->getConfigurationResult();
+	if (rslt < 0) { *pPipelineLayout = VK_NULL_HANDLE; mvkDev->destroyPipelineLayout(mvkPLL, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -1069,6 +1083,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSampler(
 	MVKSampler* mvkSamp = mvkDev->createSampler(pCreateInfo, pAllocator);
 	*pSampler = (VkSampler)mvkSamp;
 	VkResult rslt = mvkSamp->getConfigurationResult();
+	if (rslt < 0) { *pSampler = VK_NULL_HANDLE; mvkDev->destroySampler(mvkSamp, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -1095,6 +1110,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorSetLayout(
 	MVKDescriptorSetLayout* mvkDSL = mvkDev->createDescriptorSetLayout(pCreateInfo, pAllocator);
 	*pSetLayout = (VkDescriptorSetLayout)mvkDSL;
 	VkResult rslt = mvkDSL->getConfigurationResult();
+	if (rslt < 0) { *pSetLayout = VK_NULL_HANDLE; mvkDev->destroyDescriptorSetLayout(mvkDSL, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -1121,6 +1137,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorPool(
 	MVKDescriptorPool* mvkDP = mvkDev->createDescriptorPool(pCreateInfo, pAllocator);
 	*pDescriptorPool = (VkDescriptorPool)mvkDP;
 	VkResult rslt = mvkDP->getConfigurationResult();
+	if (rslt < 0) { *pDescriptorPool = VK_NULL_HANDLE; mvkDev->destroyDescriptorPool(mvkDP, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -1198,6 +1215,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateFramebuffer(
 	MVKFramebuffer* mvkFB = mvkDev->createFramebuffer(pCreateInfo, pAllocator);
 	*pFramebuffer = (VkFramebuffer)mvkFB;
 	VkResult rslt = mvkFB->getConfigurationResult();
+	if (rslt < 0) { *pFramebuffer = VK_NULL_HANDLE; mvkDev->destroyFramebuffer(mvkFB, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -1224,6 +1242,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateRenderPass(
 	MVKRenderPass* mvkRendPass = mvkDev->createRenderPass(pCreateInfo, pAllocator);
 	*pRenderPass = (VkRenderPass)mvkRendPass;
 	VkResult rslt = mvkRendPass->getConfigurationResult();
+	if (rslt < 0) { *pRenderPass = VK_NULL_HANDLE; mvkDev->destroyRenderPass(mvkRendPass, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -1261,6 +1280,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateCommandPool(
 	MVKCommandPool* mvkCmdPool = mvkDev->createCommandPool(pCreateInfo, pAllocator);
 	*pCmdPool = (VkCommandPool)mvkCmdPool;
 	VkResult rslt = mvkCmdPool->getConfigurationResult();
+	if (rslt < 0) { *pCmdPool = VK_NULL_HANDLE; mvkDev->destroyCommandPool(mvkCmdPool, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2146,6 +2166,10 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorUpdateTemplate(
                                                           pAllocator);
     *pDescriptorUpdateTemplate = (VkDescriptorUpdateTemplate)mvkDUT;
     VkResult rslt = mvkDUT->getConfigurationResult();
+    if (rslt < 0) {
+        *pDescriptorUpdateTemplate = VK_NULL_HANDLE;
+        mvkDev->destroyDescriptorUpdateTemplate(mvkDUT, pAllocator);
+    }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2194,6 +2218,10 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSamplerYcbcrConversion(
 	MVKSamplerYcbcrConversion* mvkSampConv = mvkDev->createSamplerYcbcrConversion(pCreateInfo, pAllocator);
 	*pYcbcrConversion = (VkSamplerYcbcrConversion)mvkSampConv;
 	VkResult rslt = mvkSampConv->getConfigurationResult();
+    if (rslt < 0) {
+        *pYcbcrConversion = VK_NULL_HANDLE;
+        mvkDev->destroySamplerYcbcrConversion(mvkSampConv, pAllocator);
+    }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2267,6 +2295,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateRenderPass2KHR(
 	MVKRenderPass* mvkRendPass = mvkDev->createRenderPass(pCreateInfo, pAllocator);
 	*pRenderPass = (VkRenderPass)mvkRendPass;
 	VkResult rslt = mvkRendPass->getConfigurationResult();
+    if (rslt < 0) { *pRenderPass = VK_NULL_HANDLE; mvkDev->destroyRenderPass(mvkRendPass, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2423,6 +2452,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSwapchainKHR(
     MVKSwapchain* mvkSwpChn = mvkDev->createSwapchain(pCreateInfo, pAllocator);
     *pSwapchain = (VkSwapchainKHR)(mvkSwpChn);
     VkResult rslt = mvkSwpChn->getConfigurationResult();
+    if (rslt < 0) { *pSwapchain = VK_NULL_HANDLE; mvkDev->destroySwapchain(mvkSwpChn, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2647,6 +2677,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDebugReportCallbackEXT(
 	MVKDebugReportCallback* mvkDRCB = mvkInst->createDebugReportCallback(pCreateInfo, pAllocator);
 	*pCallback = (VkDebugReportCallbackEXT)mvkDRCB;
 	VkResult rslt = mvkDRCB->getConfigurationResult();
+    if (rslt < 0) { *pCallback = VK_NULL_HANDLE; mvkInst->destroyDebugReportCallback(mvkDRCB, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2814,6 +2845,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDebugUtilsMessengerEXT(
 	MVKDebugUtilsMessenger* mvkDUM = mvkInst->createDebugUtilsMessenger(pCreateInfo, pAllocator);
 	*pMessenger = (VkDebugUtilsMessengerEXT)mvkDUM;
 	VkResult rslt = mvkDUM->getConfigurationResult();
+    if (rslt < 0) { *pMessenger = VK_NULL_HANDLE; mvkInst->destroyDebugUtilsMessenger(mvkDUM, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2890,6 +2922,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateMetalSurfaceEXT(
 	MVKSurface* mvkSrfc = mvkInst->createSurface(pCreateInfo, pAllocator);
 	*pSurface = (VkSurfaceKHR)mvkSrfc;
 	VkResult rslt = mvkSrfc->getConfigurationResult();
+    if (rslt < 0) { *pSurface = VK_NULL_HANDLE; mvkInst->destroySurface(mvkSrfc, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2934,6 +2967,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(
     MVKSurface* mvkSrfc = mvkInst->createSurface(pCreateInfo, pAllocator);
     *pSurface = (VkSurfaceKHR)mvkSrfc;
     VkResult rslt = mvkSrfc->getConfigurationResult();
+    if (rslt < 0) { *pSurface = VK_NULL_HANDLE; mvkInst->destroySurface(mvkSrfc, pAllocator); }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
