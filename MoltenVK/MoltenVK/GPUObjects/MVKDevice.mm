@@ -2980,8 +2980,19 @@ uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t bindin
 VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {
 	VkDeviceSize deviceAlignment = 0;
 	id<MTLDevice> mtlDev = getMTLDevice();
+	MVKPixelFormats* mvkPixFmts = getPixelFormats();
 	if ([mtlDev respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
-		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: getPixelFormats()->getMTLPixelFormat(format)];
+		MTLPixelFormat mtlPixFmt = mvkPixFmts->getMTLPixelFormat(format);
+		if (mvkPixFmts->getChromaSubsamplingPlaneCount(format) >= 2) {
+			// Use plane 1 to get the alignment requirements. In a 2-plane format, this will
+			// typically have stricter alignment requirements due to it being a 2-component format.
+			VkExtent2D blockTexelSize[3];
+			uint32_t bytesPerBlock[3];
+			MTLPixelFormat planePixFmts[3];
+			mvkPixFmts->getChromaSubsamplingPlanes(format, blockTexelSize, bytesPerBlock, planePixFmts);
+			mtlPixFmt = planePixFmts[1];
+		}
+		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: mtlPixFmt];
 	}
 	return deviceAlignment ? deviceAlignment : _pProperties->limits.minTexelBufferOffsetAlignment;
 }
