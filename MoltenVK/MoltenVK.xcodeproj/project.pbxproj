@@ -1629,11 +1629,6 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
-				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
-				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
-				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
-				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
@@ -1662,6 +1657,9 @@
 				);
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = YES;
+				MVK_SKIP_DYLIB = "";
+				"MVK_SKIP_DYLIB[sdk=appletvsimulator*]" = YES;
+				"MVK_SKIP_DYLIB[sdk=iphonesimulator*]" = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKSPIRVToMSLConverter.a ${CONFIGURATION_BUILD_DIR}/libMoltenVKGLSLToSPIRVConverter.a";
 				PRODUCT_NAME = MoltenVK;
@@ -1697,11 +1695,6 @@
 				DEVELOPMENT_TEAM = "";
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				"EXCLUDED_ARCHS[sdk=appletvos*]" = arm64e;
-				"EXCLUDED_ARCHS[sdk=appletvsimulator*]" = arm64;
-				"EXCLUDED_ARCHS[sdk=iphoneos*]" = arm64e;
-				"EXCLUDED_ARCHS[sdk=iphonesimulator*]" = arm64;
-				"EXCLUDED_ARCHS[sdk=macosx*]" = arm64;
 				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
@@ -1728,6 +1721,9 @@
 				);
 				MACH_O_TYPE = staticlib;
 				MTL_ENABLE_DEBUG_INFO = NO;
+				MVK_SKIP_DYLIB = "";
+				"MVK_SKIP_DYLIB[sdk=appletvsimulator*]" = YES;
+				"MVK_SKIP_DYLIB[sdk=iphonesimulator*]" = YES;
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKSPIRVToMSLConverter.a ${CONFIGURATION_BUILD_DIR}/libMoltenVKGLSLToSPIRVConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;

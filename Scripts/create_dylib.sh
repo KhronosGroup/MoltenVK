@@ -1,6 +1,12 @@
 #!/bin/bash
 
-set -e
+# Allow dylib building to be skipped based on bulid setting.
+# For example, skipping the build of a dylib for Simulator builds
+# because Xcode cannot currently handle creating a Simulator dylib
+# containing both x86_64 and arm64 (Apple Silicon) architectures.
+if [ "${MVK_SKIP_DYLIB}" == "YES" ]; then
+	exit 0
+fi
 
 export MVK_BUILT_PROD_DIR="${BUILT_PRODUCTS_DIR}"
 export MVK_DYLIB_NAME="lib${PRODUCT_NAME}.dylib"
