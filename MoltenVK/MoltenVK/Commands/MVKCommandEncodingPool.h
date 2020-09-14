@@ -109,6 +109,11 @@ public:
 	/** Returns a MTLComputePipelineState for filling a buffer. */
 	id<MTLComputePipelineState> getCmdFillBufferMTLComputePipelineState();
 
+#if MVK_MACOS
+	/** Returns a MTLComputePipelineState for clearing an image. Currently only used for 2D linear images on Mac. */
+	id<MTLComputePipelineState> getCmdClearColorImageMTLComputePipelineState(MVKFormatType type);
+#endif
+
 	/** Returns a MTLComputePipelineState for decompressing a buffer into a 3D image. */
 	id<MTLComputePipelineState> getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff);
 
@@ -151,6 +156,9 @@ protected:
     id<MTLDepthStencilState> _cmdClearDefaultDepthStencilState = nil;
     id<MTLComputePipelineState> _mtlCopyBufferBytesComputePipelineState = nil;
 	id<MTLComputePipelineState> _mtlFillBufferComputePipelineState = nil;
+#if MVK_MACOS
+	id<MTLComputePipelineState> _mtlClearColorImageComputePipelineState[3] = {nil, nil, nil};
+#endif
 	id<MTLComputePipelineState> _mtlCopyBufferToImage3DDecompressComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectMultiviewConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};

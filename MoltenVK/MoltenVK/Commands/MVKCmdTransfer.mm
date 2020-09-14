@@ -1166,8 +1166,8 @@ VkResult MVKCmdClearImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
         // Validate
         MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getCapabilities(_image->getMTLPixelFormat(planeIndex));
-        if ((isDS && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsDSAtt)) ||
-            ( !isDS && !mvkAreAllFlagsEnabled(mtlFmtCaps, kMVKMTLFmtCapsColorAtt))) {
+		uint32_t reqCap = isDS ? kMVKMTLFmtCapsDSAtt : (_image->getIsLinear() ? kMVKMTLFmtCapsWrite : kMVKMTLFmtCapsColorAtt);
+        if (!mvkAreAllFlagsEnabled(mtlFmtCaps, reqCap)) {
             return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClear%sImage(): Format %s cannot be cleared on this device.", (isDS ? "DepthStencil" : "Color"), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
         }
         
@@ -1195,6 +1195,31 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	for (auto& srRange : _subresourceRanges) {
         id<MTLTexture> imgMTLTex = _image->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(srRange.aspectMask));
         if ( !imgMTLTex ) { continue; }
+
+#if MVK_MACOS
+        if ( _image->getIsLinear() ) {
+            // These images cannot be rendered. Instead, use a compute shader.
+            // Luckily for us, linear images only have one mip and one array layer under Metal.
+            assert( !isDS );
+            id<MTLComputePipelineState> mtlClearState = cmdEncoder->getCommandEncodingPool()->getCmdClearColorImageMTLComputePipelineState(pixFmts->getFormatType(_image->getVkFormat()));
+            id<MTLComputeCommandEncoder> mtlComputeEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseClearColorImage);
+            [mtlComputeEnc pushDebugGroup: @"vkCmdClearColorImage"];
+            [mtlComputeEnc setComputePipelineState: mtlClearState];
+            [mtlComputeEnc setTexture: imgMTLTex atIndex: 0];
+            cmdEncoder->setComputeBytes(mtlComputeEnc, &_clearValue, sizeof(_clearValue), 0);
+            MTLSize gridSize = mvkMTLSizeFromVkExtent3D(_image->getExtent3D());
+            MTLSize tgSize = MTLSizeMake(mtlClearState.threadExecutionWidth, 1, 1);
+            if (cmdEncoder->getDevice()->_pMetalFeatures->nonUniformThreadgroups) {
+                [mtlComputeEnc dispatchThreads: gridSize threadsPerThreadgroup: tgSize];
+            } else {
+                MTLSize tgCount = MTLSizeMake(gridSize.width / tgSize.width, gridSize.height, gridSize.depth);
+                if (gridSize.width % tgSize.width) { tgCount.width += 1; }
+                [mtlComputeEnc dispatchThreadgroups: tgCount threadsPerThreadgroup: tgSize];
+            }
+            [mtlComputeEnc popDebugGroup];
+            continue;
+        }
+#endif
 
 		MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
 		MTLRenderPassColorAttachmentDescriptor* mtlRPCADesc = nil;
