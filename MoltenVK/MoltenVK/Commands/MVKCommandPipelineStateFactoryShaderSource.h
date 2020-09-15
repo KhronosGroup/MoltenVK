@@ -29,12 +29,12 @@ using namespace metal;                                                          
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
     float2 a_position [[attribute(0)]];                                                                         \n\
-    float2 a_texCoord [[attribute(1)]];                                                                         \n\
+    float3 a_texCoord [[attribute(1)]];                                                                         \n\
 } AttributesPosTex;                                                                                             \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
     float4 v_position [[position]];                                                                             \n\
-    float2 v_texCoord;                                                                                          \n\
+    float3 v_texCoord;                                                                                          \n\
 } VaryingsPosTex;                                                                                               \n\
                                                                                                                 \n\
 typedef size_t VkDeviceSize;                                                                                    \n\

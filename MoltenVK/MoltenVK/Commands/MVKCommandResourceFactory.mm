@@ -57,14 +57,14 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPi
     vaDesc.format = MTLVertexFormatFloat2;
     vaDesc.bufferIndex = vtxBuffIdx;
     vaDesc.offset = vtxStride;
-    vtxStride += sizeof(simd::float2);
+    vtxStride += sizeof(simd::float4);
 
     // Vertex texture coords
     vaDesc = vaDescArray[1];
-    vaDesc.format = MTLVertexFormatFloat2;
+    vaDesc.format = MTLVertexFormatFloat3;
     vaDesc.bufferIndex = vtxBuffIdx;
     vaDesc.offset = vtxStride;
-    vtxStride += sizeof(simd::float2);
+    vtxStride += sizeof(simd::float4);
 
     // Vertex attribute buffer.
     MTLVertexBufferLayoutDescriptorArray* vbDescArray = vtxDesc.layouts;
@@ -158,7 +158,34 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 
 		bool isArrayType = blitKey.isSrcArrayType();
 		bool isLinearFilter = (blitKey.getSrcMTLSamplerMinMagFilter() == MTLSamplerMinMagFilterLinear);
-		NSString* arraySuffix = isArrayType ? @"_array" : @"";
+		NSString* typeSuffix;
+		NSString* coordArg;
+		switch (blitKey.getSrcMTLTextureType()) {
+			case MTLTextureType1D:
+				typeSuffix = @"1d";
+				coordArg = @".x";
+				break;
+			case MTLTextureType1DArray:
+				typeSuffix = @"1d_array";
+				coordArg = @".x";
+				break;
+			case MTLTextureType2D:
+				typeSuffix = @"2d";
+				coordArg = @".xy";
+				break;
+			case MTLTextureType2DArray:
+				typeSuffix = @"2d_array";
+				coordArg = @".xy";
+				break;
+			case MTLTextureType3D:
+				typeSuffix = @"3d";
+				coordArg = @"";
+				break;
+			default:
+				typeSuffix = @"unsupported";
+				coordArg = @"";
+				break;
+		}
 		NSString* sliceArg = isArrayType ? @", subRez.slice" : @"";
 		NSString* srcFilter = isLinearFilter ? @"linear" : @"nearest";
 
@@ -168,7 +195,7 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"typedef struct {"];
 		[msl appendLineMVK: @"    float4 v_position [[position]];"];
-		[msl appendLineMVK: @"    float2 v_texCoord;"];
+		[msl appendLineMVK: @"    float3 v_texCoord;"];
 		[msl appendLineMVK: @"} VaryingsPosTex;"];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"typedef struct {"];
@@ -183,10 +210,10 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		NSString* funcName = @"fragCmdBlitImage";
 		[msl appendFormat: @"fragment %@4 %@(VaryingsPosTex varyings [[stage_in]],", typeStr, funcName];
 		[msl appendLineMVK];
-		[msl appendFormat: @"                         texture2d%@<%@> tex [[texture(0)]],", arraySuffix, typeStr];
+		[msl appendFormat: @"                         texture%@<%@> tex [[texture(0)]],", typeSuffix, typeStr];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"                         constant TexSubrez& subRez [[buffer(0)]]) {"];
-		[msl appendFormat: @"    return tex.sample(ce_sampler, varyings.v_texCoord%@, level(subRez.lod));", sliceArg];
+		[msl appendFormat: @"    return tex.sample(ce_sampler, varyings.v_texCoord%@%@, level(subRez.lod));", coordArg, sliceArg];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"}"];
 
