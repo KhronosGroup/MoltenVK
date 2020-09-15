@@ -139,11 +139,13 @@ public:
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
+	~MVKCmdBindDescriptorSetsStatic() override;
+
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	MVKSmallVector<MVKDescriptorSet*, N> _descriptorSets;
-	MVKPipelineLayout* _pipelineLayout;
+	MVKPipelineLayout* _pipelineLayout = nullptr;
 	VkPipelineBindPoint _pipelineBindPoint;
 	uint32_t _firstSet;
 };
@@ -211,7 +213,6 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	MVKSmallVector<char, N> _pushConstants;
-	MVKPipelineLayout* _pipelineLayout;
 	VkShaderStageFlags _stageFlags;
 	uint32_t _offset;
 };
@@ -245,7 +246,7 @@ protected:
 	void clearDescriptorWrites();
 
 	MVKSmallVector<VkWriteDescriptorSet, 1> _descriptorWrites;
-	MVKPipelineLayout* _pipelineLayout;
+	MVKPipelineLayout* _pipelineLayout = nullptr;
 	VkPipelineBindPoint _pipelineBindPoint;
 	uint32_t _set;
 };
@@ -272,7 +273,7 @@ protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
 	MVKDescriptorUpdateTemplate* _descUpdateTemplate;
-	MVKPipelineLayout* _pipelineLayout;
+	MVKPipelineLayout* _pipelineLayout = nullptr;
 	void* _pData = nullptr;
 	uint32_t _set;
 };
