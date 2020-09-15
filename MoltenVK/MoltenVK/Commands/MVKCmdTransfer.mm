@@ -1256,7 +1256,8 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 	for (auto& srRange : _subresourceRanges) {
-        id<MTLTexture> imgMTLTex = _image->getMTLTexture(MVKImage::getPlaneFromVkImageAspectFlags(srRange.aspectMask));
+		uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(srRange.aspectMask);
+        id<MTLTexture> imgMTLTex = _image->getMTLTexture(planeIndex);
         if ( !imgMTLTex ) { continue; }
 
 #if MVK_MACOS
@@ -1325,7 +1326,8 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
                               : (mipLvlStart + mipLvlCnt));
 
         // Extract the cube or array layers (slices) that are to be updated
-        uint32_t layerStart = srRange.baseArrayLayer;
+		bool is3D = _image->getMTLTextureType() == MTLTextureType3D;
+        uint32_t layerStart = is3D ? 0 : srRange.baseArrayLayer;
         uint32_t layerCnt = srRange.layerCount;
         uint32_t layerEnd = (layerCnt == VK_REMAINING_ARRAY_LAYERS
                              ? _image->getLayerCount()
@@ -1337,10 +1339,22 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPDADesc.level = mipLvl;
 			mtlRPSADesc.level = mipLvl;
 
+			// If a 3D image, we need to get the depth for each level.
+			if (is3D) {
+				layerCnt = _image->getExtent3D(planeIndex, mipLvl).depth;
+				layerEnd = layerStart + layerCnt;
+			}
+
             for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
-                mtlRPCADesc.slice = layer;
-				mtlRPDADesc.slice = layer;
-				mtlRPSADesc.slice = layer;
+                if (is3D) {
+                    mtlRPCADesc.depthPlane = layer;
+                    mtlRPDADesc.depthPlane = layer;
+                    mtlRPSADesc.depthPlane = layer;
+                } else {
+                    mtlRPCADesc.slice = layer;
+                    mtlRPDADesc.slice = layer;
+                    mtlRPSADesc.slice = layer;
+                }
 
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
 				setLabelIfNotNil(mtlRendEnc, mtlRendEncName);
