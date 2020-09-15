@@ -77,11 +77,6 @@ VkResult MVKCmdCopyImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 		_vkImageCopies.push_back(vkIR);
 	}
     
-    // Validate
-    if ((_srcImage->getMTLTextureType() == MTLTextureType3D) != (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
-        return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdCopyImage(): Metal does not support copying to or from slices of a 3D texture.");
-    }
-
 	return VK_SUCCESS;
 }
 
@@ -160,25 +155,62 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             // If copies can be performed using direct texture-texture copying, do so
             uint32_t srcLevel = vkIC.srcSubresource.mipLevel;
             MTLOrigin srcOrigin = mvkMTLOriginFromVkOffset3D(vkIC.srcOffset);
-            MTLSize srcSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(vkIC.extent),
-                                              srcOrigin,
-                                              mvkMTLSizeFromVkExtent3D(_srcImage->getExtent3D(srcPlaneIndex, srcLevel)));
+            MTLSize srcSize;
+            uint32_t layCnt;
+            if ((_srcImage->getMTLTextureType() == MTLTextureType3D) != (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
+                // In the case, the number of layers to copy is in extent.depth. Use that value,
+                // then clamp the depth so we don't try to copy more than Metal will allow.
+                layCnt = vkIC.extent.depth;
+                srcSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(vkIC.extent),
+                                          srcOrigin,
+                                          mvkMTLSizeFromVkExtent3D(_srcImage->getExtent3D(srcPlaneIndex, srcLevel)));
+                srcSize.depth = 1;
+            } else {
+                layCnt = vkIC.srcSubresource.layerCount;
+                srcSize = mvkClampMTLSize(mvkMTLSizeFromVkExtent3D(vkIC.extent),
+                                          srcOrigin,
+                                          mvkMTLSizeFromVkExtent3D(_srcImage->getExtent3D(srcPlaneIndex, srcLevel)));
+            }
             uint32_t dstLevel = vkIC.dstSubresource.mipLevel;
             MTLOrigin dstOrigin = mvkMTLOriginFromVkOffset3D(vkIC.dstOffset);
             uint32_t srcBaseLayer = vkIC.srcSubresource.baseArrayLayer;
             uint32_t dstBaseLayer = vkIC.dstSubresource.baseArrayLayer;
-            uint32_t layCnt = vkIC.srcSubresource.layerCount;
-
+            
             for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
-                [mtlBlitEnc copyFromTexture: srcMTLTex
-                                sourceSlice: srcBaseLayer + layIdx
-                                sourceLevel: srcLevel
-                               sourceOrigin: srcOrigin
-                                 sourceSize: srcSize
-                                  toTexture: dstMTLTex
-                           destinationSlice: dstBaseLayer + layIdx
-                           destinationLevel: dstLevel
-                          destinationOrigin: dstOrigin];
+                // We can copy between a 3D and a 2D image easily. Just copy between
+                // one slice of the 2D image and one plane of the 3D image at a time.
+                if ((_srcImage->getMTLTextureType() == MTLTextureType3D) == (_dstImage->getMTLTextureType() == MTLTextureType3D)) {
+                    [mtlBlitEnc copyFromTexture: srcMTLTex
+                                    sourceSlice: srcBaseLayer + layIdx
+                                    sourceLevel: srcLevel
+                                   sourceOrigin: srcOrigin
+                                     sourceSize: srcSize
+                                      toTexture: dstMTLTex
+                               destinationSlice: dstBaseLayer + layIdx
+                               destinationLevel: dstLevel
+                              destinationOrigin: dstOrigin];
+                } else if (_srcImage->getMTLTextureType() == MTLTextureType3D) {
+                    [mtlBlitEnc copyFromTexture: srcMTLTex
+                                    sourceSlice: srcBaseLayer
+                                    sourceLevel: srcLevel
+                                   sourceOrigin: MTLOriginMake(srcOrigin.x, srcOrigin.y, srcOrigin.z + layIdx)
+                                     sourceSize: srcSize
+                                      toTexture: dstMTLTex
+                               destinationSlice: dstBaseLayer + layIdx
+                               destinationLevel: dstLevel
+                              destinationOrigin: dstOrigin];
+                } else {
+                    assert(_dstImage->getMTLTextureType() == MTLTextureType3D);
+                    [mtlBlitEnc copyFromTexture: srcMTLTex
+                                    sourceSlice: srcBaseLayer + layIdx
+                                    sourceLevel: srcLevel
+                                   sourceOrigin: srcOrigin
+                                     sourceSize: srcSize
+                                      toTexture: dstMTLTex
+                               destinationSlice: dstBaseLayer
+                               destinationLevel: dstLevel
+                              destinationOrigin: MTLOriginMake(dstOrigin.x, dstOrigin.y, dstOrigin.z + layIdx)];
+                }
             }
         }
     }
