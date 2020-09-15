@@ -1693,7 +1693,9 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 	MTLSamplerDescriptor* mtlSampDesc = [MTLSamplerDescriptor new];		// retained
 	mtlSampDesc.sAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeU);
 	mtlSampDesc.tAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeV);
-    mtlSampDesc.rAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeW);
+    if (!pCreateInfo->unnormalizedCoordinates) {
+        mtlSampDesc.rAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeW);
+    }
 	mtlSampDesc.minFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->minFilter);
 	mtlSampDesc.magFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->magFilter);
     mtlSampDesc.mipFilter = (pCreateInfo->unnormalizedCoordinates
