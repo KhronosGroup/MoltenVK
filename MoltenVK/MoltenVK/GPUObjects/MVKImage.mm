@@ -1747,9 +1747,11 @@ MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo
 
 	_requiresConstExprSampler = (pCreateInfo->compareEnable && !_device->_pMetalFeatures->depthSampleCompare) || _ycbcrConversion;
 
-	MTLSamplerDescriptor* mtlSampDesc = newMTLSamplerDescriptor(pCreateInfo);	// temp retain
-    _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: mtlSampDesc];
-	[mtlSampDesc release];														// temp release
+	@autoreleasepool {
+		MTLSamplerDescriptor* mtlSampDesc = newMTLSamplerDescriptor(pCreateInfo);	// temp retain
+		_mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: mtlSampDesc];
+		[mtlSampDesc release];														// temp release
+	}
 
 	initConstExprSampler(pCreateInfo);
 }
