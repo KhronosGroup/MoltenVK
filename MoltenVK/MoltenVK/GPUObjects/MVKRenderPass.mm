@@ -259,10 +259,11 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 
 	_mtlDummyTex = nil;
 	if (caUsedCnt == 0 && dsRPAttIdx == VK_ATTACHMENT_UNUSED) {
+		uint32_t sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
         if (_renderPass->getDevice()->_pMetalFeatures->renderWithoutAttachments) {
             // We support having no attachments.
 #if MVK_MACOS_OR_IOS
-            mtlRPDesc.defaultRasterSampleCount = 1;
+            mtlRPDesc.defaultRasterSampleCount = sampleCount;
 #endif
             return;
         }
@@ -271,11 +272,32 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		VkExtent2D fbExtent = framebuffer->getExtent2D();
 		MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
 		if (isMultiview()) {
+#if MVK_MACOS
+			if (sampleCount > 1 && _renderPass->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+				mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
+				mtlTexDesc.sampleCount = sampleCount;
+			} else {
+				mtlTexDesc.textureType = MTLTextureType2DArray;
+			}
+#else
 			mtlTexDesc.textureType = MTLTextureType2DArray;
+#endif
 			mtlTexDesc.arrayLength = getViewCountInMetalPass(passIdx);
 		} else if (framebuffer->getLayerCount() > 1) {
+#if MVK_MACOS
+			if (sampleCount > 1 && _renderPass->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+				mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
+				mtlTexDesc.sampleCount = sampleCount;
+			} else {
+				mtlTexDesc.textureType = MTLTextureType2DArray;
+			}
+#else
 			mtlTexDesc.textureType = MTLTextureType2DArray;
+#endif
 			mtlTexDesc.arrayLength = framebuffer->getLayerCount();
+		} else if (sampleCount > 1) {
+			mtlTexDesc.textureType = MTLTextureType2DMultisample;
+			mtlTexDesc.sampleCount = sampleCount;
 		}
 #if MVK_IOS
 		if ([_renderPass->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {

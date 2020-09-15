@@ -1265,7 +1265,6 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderClipDistance = true;
     _features.shaderInt16 = true;
     _features.multiDrawIndirect = true;
-    _features.variableMultisampleRate = true;
     _features.inheritedQueries = true;
 
 	_features.shaderSampledImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
@@ -1407,7 +1406,7 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    sparseResidency8Samples;
 //    VkBool32    sparseResidency16Samples;
 //    VkBool32    sparseResidencyAliased;
-//    VkBool32    variableMultisampleRate;                      // done
+//    VkBool32    variableMultisampleRate;
 //    VkBool32    inheritedQueries;                             // done
 //} VkPhysicalDeviceFeatures;
 
