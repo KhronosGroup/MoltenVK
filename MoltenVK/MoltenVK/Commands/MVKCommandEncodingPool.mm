@@ -202,12 +202,14 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     [_mtlFillBufferComputePipelineState release];
     _mtlFillBufferComputePipelineState = nil;
 
+#if MVK_MACOS
     [_mtlClearColorImageComputePipelineState[0] release];
     [_mtlClearColorImageComputePipelineState[1] release];
     [_mtlClearColorImageComputePipelineState[2] release];
     _mtlClearColorImageComputePipelineState[0] = nil;
     _mtlClearColorImageComputePipelineState[1] = nil;
     _mtlClearColorImageComputePipelineState[2] = nil;
+#endif
 
     [_mtlCopyBufferToImage3DDecompressComputePipelineState[0] release];
     [_mtlCopyBufferToImage3DDecompressComputePipelineState[1] release];
