@@ -386,6 +386,11 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_mtlPrimitiveType = MTLPrimitiveTypePoint;
 	if (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)) {
 		_mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
+		// Explicitly fail creation with triangle fan topology.
+		if (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support triangle fans."));
+			return;
+		}
 	}
 
 	// Tessellation
