@@ -604,10 +604,11 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 
 VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) {
     uint8_t planeIndex = 0;
-	for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
+	const auto* pImageInfo = (const VkImageMemoryRequirementsInfo2*)pInfo;
+	for (const auto* next = (const VkBaseInStructure*)pImageInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
-			auto* planeReqs = (VkImagePlaneMemoryRequirementsInfo*)next;
+			const auto* planeReqs = (const VkImagePlaneMemoryRequirementsInfo*)next;
             planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(planeReqs->planeAspect);
 			break;
 		}
@@ -615,7 +616,9 @@ VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements
 			break;
 		}
 	}
-    return getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
+    VkResult rslt = getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
+    if (rslt != VK_SUCCESS) { return rslt; }
+    return _memoryBindings[planeIndex]->getMemoryRequirements(pInfo, pMemoryRequirements);
 }
 
 VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex) {
