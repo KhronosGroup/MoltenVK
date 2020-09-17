@@ -318,6 +318,9 @@ public:
 	/** Returns the Metal format capabilities supported by the specified Metal format. */
 	MVKMTLFmtCaps getCapabilities(MTLPixelFormat mtlFormat, bool isExtended = false);
 
+	/** Returns the Metal view class of the specified Vulkan format. */
+	MVKMTLViewClass getViewClass(VkFormat vkFormat);
+
 	/** Returns the Metal view class of the specified Metal format. */
 	MVKMTLViewClass getViewClass(MTLPixelFormat mtlFormat);
 
