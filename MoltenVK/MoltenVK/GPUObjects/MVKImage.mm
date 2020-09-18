@@ -123,7 +123,7 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.mipmapLevelCount = _image->_mipLevels;
     mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_image->_samples);
     mtlTexDesc.arrayLength = _image->_arrayLayers;
-    mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage, _image->_isLinear, _image->_hasExtendedUsage);
+    mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage, _image->_isLinear, _image->_hasMutableFormat, _image->_hasExtendedUsage);
     mtlTexDesc.storageModeMVK = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
 
@@ -804,6 +804,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	MVKPixelFormats* pixFmts = getPixelFormats();
     _vkFormat = pCreateInfo->format;
 	_usage = pCreateInfo->usage;
+	_hasMutableFormat = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT);
 	_hasExtendedUsage = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
 
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !_device->_pMetalFeatures->native3DCompressedTextures;

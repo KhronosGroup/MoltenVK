@@ -350,6 +350,7 @@ public:
 									   MTLPixelFormat mtlFormat,
 									   MTLTextureUsage minUsage = MTLTextureUsageUnknown,
                                        bool isLinear = false,
+                                       bool isMutableFormat = true,
                                        bool isExtended = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */

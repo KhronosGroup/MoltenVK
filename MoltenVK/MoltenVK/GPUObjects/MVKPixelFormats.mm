@@ -465,6 +465,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 													MTLPixelFormat mtlFormat,
 													MTLTextureUsage minUsage,
                                                     bool isLinear,
+                                                    bool isMutableFormat,
                                                     bool isExtended) {
 	bool isDepthFmt = isDepthFormat(mtlFormat);
 	bool isStencilFmt = isStencilFormat(mtlFormat);
@@ -514,13 +515,22 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	}
 
 	// Create view on, but only on color formats, or combined depth-stencil formats if supported by the GPU...
-	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |	 		// May use temp view if transfer involves format change
-												VK_IMAGE_USAGE_SAMPLED_BIT |
+	if ((mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT)) || 		// May use temp view if transfer involves format change
+		 (isMutableFormat &&
+		  mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_SAMPLED_BIT |
+												  VK_IMAGE_USAGE_STORAGE_BIT |
+												  VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+												  VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)))) &&
+		isColorFormat) {
+
+		mvkEnableFlags(mtlUsage, MTLTextureUsagePixelFormatView);
+	}
+	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | 		// May use temp view if transfer involves format change
+		 										VK_IMAGE_USAGE_SAMPLED_BIT |
 												VK_IMAGE_USAGE_STORAGE_BIT |
 												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-												VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
-		(isColorFormat || (isCombinedDepthStencilFmt && supportsStencilViews))) {
+		isCombinedDepthStencilFmt && supportsStencilViews) {
 
 		mvkEnableFlags(mtlUsage, MTLTextureUsagePixelFormatView);
 	}
