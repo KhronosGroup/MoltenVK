@@ -1139,8 +1139,8 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
         vbCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
         for (uint32_t i = 0; i < vbCnt; i++) {
             const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
-            uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-            if (shaderContext.isVertexBufferUsed(vbIdx)) {
+            if (shaderContext.isVertexBufferUsed(pVKVB->binding)) {
+                uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
                 if ((NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionPerInstance ||
 					(NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionThreadPositionInGridY) {
                     if (pVKVB->divisor == 0)
