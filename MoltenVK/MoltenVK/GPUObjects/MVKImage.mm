@@ -537,14 +537,16 @@ VkExtent3D MVKImage::getExtent3D(uint8_t planeIndex, uint32_t mipLevel) {
 }
 
 VkDeviceSize MVKImage::getBytesPerRow(uint8_t planeIndex, uint32_t mipLevel) {
-    size_t bytesPerRow = getPixelFormats()->getBytesPerRow(_vkFormat, getExtent3D(planeIndex, mipLevel).width);
+    MTLPixelFormat planeMTLPixFmt = getPixelFormats()->getChromaSubsamplingPlaneMTLPixelFormat(_vkFormat, planeIndex);
+    size_t bytesPerRow = getPixelFormats()->getBytesPerRow(planeMTLPixFmt, getExtent3D(planeIndex, mipLevel).width);
     return mvkAlignByteCount(bytesPerRow, _rowByteAlignment);
 }
 
 VkDeviceSize MVKImage::getBytesPerLayer(uint8_t planeIndex, uint32_t mipLevel) {
+    MTLPixelFormat planeMTLPixFmt = getPixelFormats()->getChromaSubsamplingPlaneMTLPixelFormat(_vkFormat, planeIndex);
     VkExtent3D extent = getExtent3D(planeIndex, mipLevel);
     size_t bytesPerRow = getBytesPerRow(planeIndex, mipLevel);
-    return getPixelFormats()->getBytesPerLayer(_vkFormat, bytesPerRow, extent.height);
+    return getPixelFormats()->getBytesPerLayer(planeMTLPixFmt, bytesPerRow, extent.height);
 }
 
 VkResult MVKImage::getSubresourceLayout(const VkImageSubresource* pSubresource,

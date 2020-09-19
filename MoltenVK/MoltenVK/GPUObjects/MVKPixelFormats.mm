@@ -250,6 +250,23 @@ SPIRV_CROSS_NAMESPACE::MSLFormatResolution MVKPixelFormats::getChromaSubsampling
                                        : SPIRV_CROSS_NAMESPACE::MSL_FORMAT_RESOLUTION_420;
 }
 
+MTLPixelFormat MVKPixelFormats::getChromaSubsamplingPlaneMTLPixelFormat(VkFormat vkFormat, uint8_t planeIndex) {
+    uint8_t planes = getChromaSubsamplingPlaneCount(vkFormat);
+    uint8_t bits = getChromaSubsamplingComponentBits(vkFormat);
+    switch(planes) {
+        default:
+        case 1:
+            return getMTLPixelFormat(vkFormat);
+        case 2:
+            if (planeIndex == 1) {
+                return (bits == 8) ? MTLPixelFormatRG8Unorm : MTLPixelFormatRG16Unorm;
+            }
+            /* fallthrough */
+        case 3:
+            return (bits == 8) ? MTLPixelFormatR8Unorm : MTLPixelFormatR16Unorm;
+    }
+}
+
 uint8_t MVKPixelFormats::getChromaSubsamplingPlanes(VkFormat vkFormat, VkExtent2D blockTexelSize[3], uint32_t bytesPerBlock[3], MTLPixelFormat mtlPixFmt[3]) {
     uint8_t planes = getChromaSubsamplingPlaneCount(vkFormat);
     uint8_t bits = getChromaSubsamplingComponentBits(vkFormat);
