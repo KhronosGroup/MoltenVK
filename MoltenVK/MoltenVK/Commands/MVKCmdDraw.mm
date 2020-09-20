@@ -629,6 +629,11 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 					[mtlTessCtlEncoder dispatchThreadgroups: MTLSizeMake(mvkCeilingDivide<NSUInteger>(_drawCount, mtlConvertState.threadExecutionWidth), 1, 1)
 									  threadsPerThreadgroup: MTLSizeMake(mtlConvertState.threadExecutionWidth, 1, 1)];
 				}
+                // Mark pipelines, resources, and vertex push constants as dirty
+                // so I apply them during the next stage.
+                cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
+                cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
+                cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
             } else if (drawIdx == 0 && needsInstanceAdjustment) {
                 // Similarly, for multiview, we need to adjust the instance count now.
                 // Unfortunately, this requires switching to compute.
@@ -954,6 +959,11 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 													 indirectBufferOffset: mtlTempIndBuffOfst
                                                     threadsPerThreadgroup: MTLSizeMake(vtxThreadExecWidth, 1, 1)];
 				mtlIndBuffOfst += sizeof(MTLDrawIndexedPrimitivesIndirectArguments);
+                // Mark pipeline, resources, and vertex push constants as dirty
+                // so I apply them during the next stage.
+                cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
+                cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
+                cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
             } else if (drawIdx == 0 && needsInstanceAdjustment) {
                 // Similarly, for multiview, we need to adjust the instance count now.
                 // Unfortunately, this requires switching to compute. Luckily, we don't also
@@ -1089,11 +1099,11 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 						}
 
 						mtlTempIndBuffOfst += sizeof(MTLDrawPatchIndirectArguments);
-                        // Mark pipeline, resources, and tess control push constants as dirty
+                        // Mark pipeline, resources, and vertex push constants as dirty
                         // so I apply them during the next stage.
                         cmdEncoder->_graphicsPipelineState.beginMetalRenderPass();
                         cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
-                        cmdEncoder->getPushConstants(VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT)->beginMetalRenderPass();
+                        cmdEncoder->getPushConstants(VK_SHADER_STAGE_VERTEX_BIT)->beginMetalRenderPass();
                     } else {
                         [cmdEncoder->_mtlRenderEncoder drawIndexedPrimitives: cmdEncoder->_mtlPrimitiveType
                                                                    indexType: (MTLIndexType)ibb.mtlIndexType

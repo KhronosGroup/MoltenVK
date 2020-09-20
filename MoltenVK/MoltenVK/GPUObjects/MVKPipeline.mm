@@ -194,7 +194,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 
     id<MTLRenderCommandEncoder> mtlCmdEnc = cmdEncoder->_mtlRenderEncoder;
 	id<MTLComputeCommandEncoder> tessCtlEnc;
-    if ( stage != kMVKGraphicsStageTessControl && !mtlCmdEnc ) { return; }   // Pre-renderpass. Come back later.
+    if ( stage == kMVKGraphicsStageRasterization && !mtlCmdEnc ) { return; }   // Pre-renderpass. Come back later.
 
     switch (stage) {
 
