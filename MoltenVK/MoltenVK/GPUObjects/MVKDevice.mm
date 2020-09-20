@@ -298,10 +298,10 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
 				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)next;
 				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
-                inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
-                inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = _properties.limits.maxPerStageDescriptorUniformBuffers;
-                inlineUniformBlockProps->maxDescriptorSetInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
-                inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = _properties.limits.maxDescriptorSetUniformBuffers;
+                inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks = _metalFeatures.dynamicMTLBufferSize ? _metalFeatures.maxPerStageDynamicMTLBufferCount - 1 : 0;    // Less one for push constants
+                inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks = inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks;
+                inlineUniformBlockProps->maxDescriptorSetInlineUniformBlocks = (inlineUniformBlockProps->maxPerStageDescriptorInlineUniformBlocks * 4);
+                inlineUniformBlockProps->maxDescriptorSetUpdateAfterBindInlineUniformBlocks = (inlineUniformBlockProps->maxPerStageDescriptorUpdateAfterBindInlineUniformBlocks * 4);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_PROPERTIES_EXT: {
@@ -990,6 +990,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxPerStageBufferCount = 31;
     _metalFeatures.maxMTLBufferSize = (256 * MEBI);
     _metalFeatures.dynamicMTLBufferSize = 0;
+    _metalFeatures.maxPerStageDynamicMTLBufferCount = 0;
 
     _metalFeatures.maxPerStageSamplerCount = 16;
     _metalFeatures.maxQueryBufferSize = (64 * KIBI);
@@ -1015,6 +1016,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxTextureDimension = (8 * KIBI);
     _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
     _metalFeatures.sharedLinearTextures = true;
+    _metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 
     if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
@@ -1069,6 +1071,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
         _metalFeatures.dynamicMTLBufferSize = (4 * KIBI);
 		_metalFeatures.maxTextureDimension = (8 * KIBI);
+		_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
     }
 
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v3)) {
@@ -1150,6 +1153,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.combinedStoreResolveAction = true;
 		_metalFeatures.deferredStoreActions = true;
         _metalFeatures.maxMTLBufferSize = (1 * GIBI);
+        _metalFeatures.maxPerStageDynamicMTLBufferCount = 14;
     }
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v3)) {
