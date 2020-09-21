@@ -1218,9 +1218,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
 
 	switch (_metalFeatures.mslVersionEnum) {
+#if MVK_IOS_OR_TVOS
 		case MTLLanguageVersion2_3:
 			setMSLVersion(2, 3);
 			break;
+#endif
 		case MTLLanguageVersion2_2:
 			setMSLVersion(2, 2);
 			break;
