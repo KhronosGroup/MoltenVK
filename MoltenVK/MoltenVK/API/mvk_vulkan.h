@@ -35,6 +35,8 @@
 
 #define VK_USE_PLATFORM_METAL_EXT				1
 
+#define VK_ENABLE_BETA_EXTENSIONS				1		// VK_KHR_portability_subset
+
 #ifdef __IPHONE_OS_VERSION_MAX_ALLOWED
 #	define VK_USE_PLATFORM_IOS_MVK				1
 #endif
@@ -44,6 +46,5 @@
 #endif
 
 #include <vulkan/vulkan.h>
-#include <vulkan-portability/vk_extx_portability_subset.h>
 
 #endif

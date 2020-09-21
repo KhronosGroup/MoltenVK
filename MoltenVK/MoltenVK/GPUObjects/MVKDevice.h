@@ -362,7 +362,6 @@ protected:
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
 	uint64_t getMoltenVKGitRevision();
-	bool getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo);
 	void populate(VkPhysicalDeviceIDProperties* pDevIdProps);
 	void logGPUInfo();
 
@@ -678,7 +677,7 @@ public:
 	const VkPhysicalDeviceScalarBlockLayoutFeaturesEXT _enabledScalarLayoutFeatures;
 	const VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT _enabledTexelBuffAlignFeatures;
 	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;
-	const VkPhysicalDevicePortabilitySubsetFeaturesEXTX _enabledPortabilityFeatures;
+	const VkPhysicalDevicePortabilitySubsetFeaturesKHR _enabledPortabilityFeatures;
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
 	const MVKExtensionList _enabledExtensions;

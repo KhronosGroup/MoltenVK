@@ -193,9 +193,13 @@ VkResult MVKCmdBindDescriptorSetsStatic<N>::setContent(MVKCommandBuffer* cmdBuff
 													   uint32_t firstSet,
 													   uint32_t setCount,
 													   const VkDescriptorSet* pDescriptorSets) {
+	if (_pipelineLayout) { _pipelineLayout->release(); }
+
 	_pipelineBindPoint = pipelineBindPoint;
 	_pipelineLayout = (MVKPipelineLayout*)layout;
 	_firstSet = firstSet;
+
+	_pipelineLayout->retain();
 
 	// Add the descriptor sets
 	_descriptorSets.clear();	// Clear for reuse
@@ -210,6 +214,11 @@ VkResult MVKCmdBindDescriptorSetsStatic<N>::setContent(MVKCommandBuffer* cmdBuff
 template <size_t N>
 void MVKCmdBindDescriptorSetsStatic<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	_pipelineLayout->bindDescriptorSets(cmdEncoder, _descriptorSets.contents(), _firstSet, MVKArrayRef<uint32_t>());
+}
+
+template <size_t N>
+MVKCmdBindDescriptorSetsStatic<N>::~MVKCmdBindDescriptorSetsStatic() {
+	if (_pipelineLayout) { _pipelineLayout->release(); }
 }
 
 template class MVKCmdBindDescriptorSetsStatic<1>;
@@ -262,7 +271,6 @@ VkResult MVKCmdPushConstants<N>::setContent(MVKCommandBuffer* cmdBuff,
 											uint32_t offset,
 											uint32_t size,
 											const void* pValues) {
-	_pipelineLayout = (MVKPipelineLayout*)layout;
 	_stageFlags = stageFlags;
 	_offset = offset;
 
@@ -302,9 +310,13 @@ VkResult MVKCmdPushDescriptorSet::setContent(MVKCommandBuffer* cmdBuff,
 											 uint32_t set,
 											 uint32_t descriptorWriteCount,
 											 const VkWriteDescriptorSet* pDescriptorWrites) {
+	if (_pipelineLayout) { _pipelineLayout->release(); }
+
 	_pipelineBindPoint = pipelineBindPoint;
 	_pipelineLayout = (MVKPipelineLayout*)layout;
 	_set = set;
+
+	_pipelineLayout->retain();
 
 	// Add the descriptor writes
 	MVKDevice* mvkDvc = cmdBuff->getDevice();
@@ -360,6 +372,7 @@ void MVKCmdPushDescriptorSet::encode(MVKCommandEncoder* cmdEncoder) {
 
 MVKCmdPushDescriptorSet::~MVKCmdPushDescriptorSet() {
 	clearDescriptorWrites();
+	if (_pipelineLayout) { _pipelineLayout->release(); }
 }
 
 void MVKCmdPushDescriptorSet::clearDescriptorWrites() {
@@ -393,9 +406,14 @@ VkResult MVKCmdPushDescriptorSetWithTemplate::setContent(MVKCommandBuffer* cmdBu
 														 VkPipelineLayout layout,
 														 uint32_t set,
 														 const void* pData) {
+	if (_pipelineLayout) { _pipelineLayout->release(); }
+
 	_descUpdateTemplate = (MVKDescriptorUpdateTemplate*)descUpdateTemplate;
 	_pipelineLayout = (MVKPipelineLayout*)layout;
 	_set = set;
+
+	_pipelineLayout->retain();
+
 	if (_pData) delete[] (char*)_pData;
 	// Work out how big the memory block in pData is.
 	const VkDescriptorUpdateTemplateEntryKHR* pEntry =
@@ -443,6 +461,7 @@ void MVKCmdPushDescriptorSetWithTemplate::encode(MVKCommandEncoder* cmdEncoder) 
 }
 
 MVKCmdPushDescriptorSetWithTemplate::~MVKCmdPushDescriptorSetWithTemplate() {
+	if (_pipelineLayout) { _pipelineLayout->release(); }
 	if (_pData) delete[] (char*)_pData;
 }
 

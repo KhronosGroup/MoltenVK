@@ -102,6 +102,30 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdFillBufferMTLComputePi
 	MVK_ENC_REZ_ACCESS(_mtlFillBufferComputePipelineState, newCmdFillBufferMTLComputePipelineState(_commandPool));
 }
 
+#if MVK_MACOS
+static inline uint32_t getClearStateIndex(MVKFormatType type) {
+	switch (type) {
+		case kMVKFormatColorHalf:
+		case kMVKFormatColorFloat:
+			return 0;
+		case kMVKFormatColorInt8:
+		case kMVKFormatColorInt16:
+		case kMVKFormatColorInt32:
+			return 1;
+		case kMVKFormatColorUInt8:
+		case kMVKFormatColorUInt16:
+		case kMVKFormatColorUInt32:
+			return 2;
+		default:
+			return 0;
+	}
+}
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdClearColorImageMTLComputePipelineState(MVKFormatType type) {
+	MVK_ENC_REZ_ACCESS(_mtlClearColorImageComputePipelineState[getClearStateIndex(type)], newCmdClearColorImageMTLComputePipelineState(type, _commandPool));
+}
+#endif
+
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff) {
 	MVK_ENC_REZ_ACCESS(_mtlCopyBufferToImage3DDecompressComputePipelineState[needsTempBuff ? 1 : 0], newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff, _commandPool));
 }
@@ -177,6 +201,15 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 
     [_mtlFillBufferComputePipelineState release];
     _mtlFillBufferComputePipelineState = nil;
+
+#if MVK_MACOS
+    [_mtlClearColorImageComputePipelineState[0] release];
+    [_mtlClearColorImageComputePipelineState[1] release];
+    [_mtlClearColorImageComputePipelineState[2] release];
+    _mtlClearColorImageComputePipelineState[0] = nil;
+    _mtlClearColorImageComputePipelineState[1] = nil;
+    _mtlClearColorImageComputePipelineState[2] = nil;
+#endif
 
     [_mtlCopyBufferToImage3DDecompressComputePipelineState[0] release];
     [_mtlCopyBufferToImage3DDecompressComputePipelineState[1] release];

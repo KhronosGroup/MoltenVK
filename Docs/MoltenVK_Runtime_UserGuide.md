@@ -286,6 +286,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_maintenance2`
 - `VK_KHR_maintenance3`
 - `VK_KHR_multiview`
+- `VK_KHR_portability_subset`
 - `VK_KHR_push_descriptor`
 - `VK_KHR_relaxed_block_layout`
 - `VK_KHR_sampler_mirror_clamp_to_edge` *(macOS)*
@@ -315,7 +316,6 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_swapchain_colorspace`
 - `VK_EXT_vertex_attribute_divisor`
 - `VK_EXT_texel_buffer_alignment` *(requires Metal 2.0)*
-- `VK_EXTX_portability_subset`
 - `VK_MVK_ios_surface` *(iOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
 - `VK_MVK_macos_surface` *(macOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
 - `VK_MVK_moltenvk`

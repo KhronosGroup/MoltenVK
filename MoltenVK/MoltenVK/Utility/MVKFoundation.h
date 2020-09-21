@@ -54,7 +54,7 @@ typedef uint16_t MVKHalfFloat;
 /** 2D vertex position and texcoord content. */
 typedef struct {
 	simd::float2 position;
-	simd::float2 texCoord;
+	simd::float3 texCoord;
 } MVKVertexPosTex;
 
 
@@ -375,6 +375,12 @@ struct MVKAbs<R, T, false> {
 		return x;
 	}
 };
+
+/** Returns the absolute value of the difference of two numbers. */
+template<typename T, typename U>
+constexpr typename std::common_type<T, U>::type mvkAbsDiff(T x, U y) {
+	return x >= y ? x - y : y - x;
+}
 
 /** Returns the greatest common divisor of two numbers. */
 template<typename T>

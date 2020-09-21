@@ -252,18 +252,6 @@ else
 	update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 fi
 
-# ----------------- Vulkan-Portability -------------------
-
-echo
-echo ========== Vulkan-Portability ==========
-echo
-
-REPO_NAME=Vulkan-Portability
-REPO_URL="https://github.com/KhronosGroup/${REPO_NAME}.git"
-REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
-
-update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
-
 
 # ----------------- SPIRV-Cross -------------------
 

@@ -29,12 +29,12 @@ using namespace metal;                                                          
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
     float2 a_position [[attribute(0)]];                                                                         \n\
-    float2 a_texCoord [[attribute(1)]];                                                                         \n\
+    float3 a_texCoord [[attribute(1)]];                                                                         \n\
 } AttributesPosTex;                                                                                             \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
     float4 v_position [[position]];                                                                             \n\
-    float2 v_texCoord;                                                                                          \n\
+    float3 v_texCoord;                                                                                          \n\
 } VaryingsPosTex;                                                                                               \n\
                                                                                                                 \n\
 typedef size_t VkDeviceSize;                                                                                    \n\
@@ -91,13 +91,31 @@ kernel void cmdCopyBufferBytes(device uint8_t* src [[ buffer(0) ]],             
     for (size_t i = 0; i < info.size; i++) {                                                                    \n\
         dst[i + info.dstOffset] = src[i + info.srcOffset];                                                      \n\
     }                                                                                                           \n\
-};                                                                                                              \n\
+}                                                                                                               \n\
                                                                                                                 \n\
 kernel void cmdFillBuffer(device uint32_t* dst [[ buffer(0) ]],                                                 \n\
                           constant uint32_t& fillValue [[ buffer(1) ]],                                         \n\
                           uint pos [[thread_position_in_grid]]) {                                               \n\
     dst[pos] = fillValue;                                                                                       \n\
-};                                                                                                              \n\
+}                                                                                                               \n\
+                                                                                                                \n\
+kernel void cmdClearColorImage2DFloat(texture2d<float, access::write> dst [[ texture(0) ]],                     \n\
+                                      constant float4& clearValue [[ buffer(0) ]],                              \n\
+                                      uint2 pos [[thread_position_in_grid]]) {                                  \n\
+    dst.write(clearValue, pos);                                                                                 \n\
+}                                                                                                               \n\
+                                                                                                                \n\
+kernel void cmdClearColorImage2DUInt(texture2d<uint, access::write> dst [[ texture(0) ]],                       \n\
+                                     constant uint4& clearValue [[ buffer(0) ]],                                \n\
+                                     uint2 pos [[thread_position_in_grid]]) {                                   \n\
+    dst.write(clearValue, pos);                                                                                 \n\
+}                                                                                                               \n\
+                                                                                                                \n\
+kernel void cmdClearColorImage2DInt(texture2d<int, access::write> dst [[ texture(0) ]],                         \n\
+                                    constant int4& clearValue [[ buffer(0) ]],                                  \n\
+                                    uint2 pos [[thread_position_in_grid]]) {                                    \n\
+    dst.write(clearValue, pos);                                                                                 \n\
+}                                                                                                               \n\
                                                                                                                 \n\
 typedef struct {                                                                                                \n\
     uint32_t srcRowStride;                                                                                      \n\

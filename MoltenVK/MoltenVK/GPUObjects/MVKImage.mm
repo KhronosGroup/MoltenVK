@@ -960,6 +960,10 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a depth/stencil format."));
 		isLin = false;
 	}
+	if (getPixelFormats()->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, format must not be a compressed format."));
+		isLin = false;
+	}
 
 	if (pCreateInfo->mipLevels > 1) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : If tiling is VK_IMAGE_TILING_LINEAR, mipLevels must be 1."));
@@ -1700,7 +1704,9 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 	MTLSamplerDescriptor* mtlSampDesc = [MTLSamplerDescriptor new];		// retained
 	mtlSampDesc.sAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeU);
 	mtlSampDesc.tAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeV);
-    mtlSampDesc.rAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeW);
+    if (!pCreateInfo->unnormalizedCoordinates) {
+        mtlSampDesc.rAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeW);
+    }
 	mtlSampDesc.minFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->minFilter);
 	mtlSampDesc.magFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->magFilter);
     mtlSampDesc.mipFilter = (pCreateInfo->unnormalizedCoordinates
@@ -1754,9 +1760,11 @@ MVKSampler::MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo
 
 	_requiresConstExprSampler = (pCreateInfo->compareEnable && !_device->_pMetalFeatures->depthSampleCompare) || _ycbcrConversion;
 
-	MTLSamplerDescriptor* mtlSampDesc = newMTLSamplerDescriptor(pCreateInfo);	// temp retain
-    _mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: mtlSampDesc];
-	[mtlSampDesc release];														// temp release
+	@autoreleasepool {
+		MTLSamplerDescriptor* mtlSampDesc = newMTLSamplerDescriptor(pCreateInfo);	// temp retain
+		_mtlSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: mtlSampDesc];
+		[mtlSampDesc release];														// temp release
+	}
 
 	initConstExprSampler(pCreateInfo);
 }

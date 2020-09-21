@@ -194,7 +194,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 
     id<MTLRenderCommandEncoder> mtlCmdEnc = cmdEncoder->_mtlRenderEncoder;
 	id<MTLComputeCommandEncoder> tessCtlEnc;
-    if ( stage != kMVKGraphicsStageTessControl && !mtlCmdEnc ) { return; }   // Pre-renderpass. Come back later.
+    if ( stage == kMVKGraphicsStageRasterization && !mtlCmdEnc ) { return; }   // Pre-renderpass. Come back later.
 
     switch (stage) {
 
@@ -386,6 +386,11 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	_mtlPrimitiveType = MTLPrimitiveTypePoint;
 	if (pCreateInfo->pInputAssemblyState && !isRenderingPoints(pCreateInfo)) {
 		_mtlPrimitiveType = mvkMTLPrimitiveTypeFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
+		// Explicitly fail creation with triangle fan topology.
+		if (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_TRIANGLE_FAN) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Metal does not support triangle fans."));
+			return;
+		}
 	}
 
 	// Tessellation
@@ -1134,8 +1139,8 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
         vbCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
         for (uint32_t i = 0; i < vbCnt; i++) {
             const VkVertexInputBindingDivisorDescriptionEXT* pVKVB = &pVertexInputDivisorState->pVertexBindingDivisors[i];
-            uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
-            if (shaderContext.isVertexBufferUsed(vbIdx)) {
+            if (shaderContext.isVertexBufferUsed(pVKVB->binding)) {
+                uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
                 if ((NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionPerInstance ||
 					(NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionThreadPositionInGridY) {
                     if (pVKVB->divisor == 0)
@@ -1353,6 +1358,7 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
     // Multisampling
     if (pCreateInfo->pMultisampleState) {
         plDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(pCreateInfo->pMultisampleState->rasterizationSamples);
+        mvkRenderSubpass->setDefaultSampleCount(pCreateInfo->pMultisampleState->rasterizationSamples);
         plDesc.alphaToCoverageEnabled = pCreateInfo->pMultisampleState->alphaToCoverageEnable;
         plDesc.alphaToOneEnabled = pCreateInfo->pMultisampleState->alphaToOneEnable;
     }
