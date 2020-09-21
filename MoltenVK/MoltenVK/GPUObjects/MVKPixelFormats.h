@@ -77,6 +77,61 @@ typedef enum : uint16_t {
 	kMVKMTLFmtCapsMultiPlanar = kMVKMTLFmtCapsChromaSubsampling,
 } MVKMTLFmtCaps;
 
+inline MVKMTLFmtCaps operator|(MVKMTLFmtCaps leftCaps, MVKMTLFmtCaps rightCaps) {
+	return static_cast<MVKMTLFmtCaps>(static_cast<uint32_t>(leftCaps) | rightCaps);
+}
+
+inline MVKMTLFmtCaps& operator|=(MVKMTLFmtCaps& leftCaps, MVKMTLFmtCaps rightCaps) {
+	return (leftCaps = leftCaps | rightCaps);
+}
+
+
+#pragma mark -
+#pragma mark Metal view classes
+
+enum class MVKMTLViewClass : uint8_t {
+	None,
+	Color8,
+	Color16,
+	Color32,
+	Color64,
+	Color128,
+	PVRTC_RGB_2BPP,
+	PVRTC_RGB_4BPP,
+	PVRTC_RGBA_2BPP,
+	PVRTC_RGBA_4BPP,
+	EAC_R11,
+	EAC_RG11,
+	EAC_RGBA8,
+	ETC2_RGB8,
+	ETC2_RGB8A1,
+	ASTC_4x4,
+	ASTC_5x4,
+	ASTC_5x5,
+	ASTC_6x5,
+	ASTC_6x6,
+	ASTC_8x5,
+	ASTC_8x6,
+	ASTC_8x8,
+	ASTC_10x5,
+	ASTC_10x6,
+	ASTC_10x8,
+	ASTC_10x10,
+	ASTC_12x10,
+	ASTC_12x12,
+	BC1_RGBA,
+	BC2_RGBA,
+	BC3_RGBA,
+	BC4_R,
+	BC5_RG,
+	BC6H_RGB,
+	BC7_RGBA,
+	Depth24_Stencil8,
+	Depth32_Stencil8,
+	BGRA10_XR,
+	BGR10_XR
+};
+
 
 #pragma mark -
 #pragma mark Format descriptors
@@ -114,6 +169,7 @@ typedef struct {
 	};
 	VkFormat vkFormat;
 	MVKMTLFmtCaps mtlFmtCaps;
+	MVKMTLViewClass mtlViewClass;
 	const char* name;
 
 	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mtlFmtCaps != kMVKMTLFmtCapsNone); };
@@ -254,10 +310,13 @@ public:
 	VkFormatProperties& getVkFormatProperties(VkFormat vkFormat);
 
 	/** Returns the Metal format capabilities supported by the specified Vulkan format, without substitution. */
-	MVKMTLFmtCaps getCapabilities(VkFormat vkFormat);
+	MVKMTLFmtCaps getCapabilities(VkFormat vkFormat, bool isExtended = false);
 
 	/** Returns the Metal format capabilities supported by the specified Metal format. */
-	MVKMTLFmtCaps getCapabilities(MTLPixelFormat mtlFormat);
+	MVKMTLFmtCaps getCapabilities(MTLPixelFormat mtlFormat, bool isExtended = false);
+
+	/** Returns the Metal view class of the specified Metal format. */
+	MVKMTLViewClass getViewClass(MTLPixelFormat mtlFormat);
 
 	/** Returns the name of the specified Vulkan format. */
 	const char* getName(VkFormat vkFormat);
@@ -283,12 +342,15 @@ public:
 	/**
 	 * Returns the Metal texture usage from the Vulkan image usage and Metal format, ensuring that at least the
 	 * usages in minUsage are included, even if they wouldn't naturally be included based on the other two parameters.
-     *  isLinear further restricts the allowed usage to those that are valid for linear textures.
+     * isLinear further restricts the allowed usage to those that are valid for linear textures.
+     * isExtended expands the allowed usage to those that are valid for all formats which
+     * can be used in a view created from the specified format.
 	 */
 	MTLTextureUsage getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
 									   MTLPixelFormat mtlFormat,
 									   MTLTextureUsage minUsage = MTLTextureUsageUnknown,
-                                       bool isLinear = false);
+                                       bool isLinear = false,
+                                       bool isExtended = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */
 	void enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func);
