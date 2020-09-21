@@ -1366,6 +1366,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
 
     bool useSwizzle;
 	_imageView->setConfigurationResult(_imageView->validateSwizzledMTLPixelFormat(pCreateInfo,
+																				  _imageView->_usage,
 																				  _imageView,
 																				  _device->_pMetalFeatures->nativeTextureSwizzle,
 																				  _device->_pMVKConfig->fullImageViewSwizzle,
@@ -1506,6 +1507,7 @@ MVKImageView::MVKImageView(MVKDevice* device,
 }
 
 VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo,
+													  VkImageUsageFlags usage,
 													  MVKVulkanAPIObject* apiObject,
 													  bool hasNativeSwizzleSupport,
 													  bool hasShaderSwizzleSupport,
@@ -1520,7 +1522,8 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 	// If we have an identity swizzle, we're all good.
 	if (SWIZZLE_MATCHES(R, G, B, A)) {
 		// Change to stencil-only format if only stencil aspect is requested
-		if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+		if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+			mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
 			if (mtlPixFmt == MTLPixelFormatDepth32Float_Stencil8)
 				mtlPixFmt = MTLPixelFormatX32_Stencil8;
 #if MVK_MACOS
@@ -1577,7 +1580,8 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 
 		case MTLPixelFormatDepth32Float_Stencil8:
 			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+				mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
 				mtlPixFmt = MTLPixelFormatX32_Stencil8;
 				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
 					return VK_SUCCESS;
@@ -1588,7 +1592,8 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 #if MVK_MACOS
 		case MTLPixelFormatDepth24Unorm_Stencil8:
 			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+				mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
 				mtlPixFmt = MTLPixelFormatX24_Stencil8;
 				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
 					return VK_SUCCESS;

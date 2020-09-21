@@ -588,6 +588,7 @@ public:
 	 * This is a static function that can be used to validate image view formats prior to creating one.
 	 */
 	static VkResult validateSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo,
+												   VkImageUsageFlags usage,
 												   MVKVulkanAPIObject* apiObject,
 												   bool hasNativeSwizzleSupport,
 												   bool hasShaderSwizzleSupport,
