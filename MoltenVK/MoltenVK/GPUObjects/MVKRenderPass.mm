@@ -21,6 +21,10 @@
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"
 #include "mvk_datatypes.hpp"
+#include "MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h"
+#if MVK_MACOS_OR_IOS
+#include "MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h"
+#endif
 #include <cassert>
 
 using namespace std;
@@ -224,17 +228,31 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 
 	// Populate the Metal depth and stencil attachments
 	uint32_t dsRPAttIdx = _depthStencilAttachment.attachment;
+	uint32_t dsRslvRPAttIdx = _depthStencilResolveAttachment.attachment;
 	if (dsRPAttIdx != VK_ATTACHMENT_UNUSED) {
 		MVKRenderPassAttachment* dsMVKRPAtt = &_renderPass->_attachments[dsRPAttIdx];
 		MVKImageView* dsImage = framebuffer->getAttachment(dsRPAttIdx);
+		MVKImageView* dsRslvImage = nullptr;
 		MTLPixelFormat mtlDSFormat = dsImage->getMTLPixelFormat(0);
+
+		if (dsRslvRPAttIdx != VK_ATTACHMENT_UNUSED) {
+			dsRslvImage = framebuffer->getAttachment(dsRslvRPAttIdx);
+		}
 
 		if (pixFmts->isDepthFormat(mtlDSFormat)) {
 			MTLRenderPassDepthAttachmentDescriptor* mtlDepthAttDesc = mtlRPDesc.depthAttachment;
+			bool hasResolveAttachment = (dsRslvRPAttIdx != VK_ATTACHMENT_UNUSED && _depthResolveMode != VK_RESOLVE_MODE_NONE);
+			if (hasResolveAttachment) {
+				dsRslvImage->populateMTLRenderPassAttachmentDescriptorResolve(mtlDepthAttDesc);
+				mtlDepthAttDesc.depthResolveFilterMVK = mvkMTLMultisampleDepthResolveFilterFromVkResolveModeFlagBits(_depthResolveMode);
+				if (isMultiview()) {
+					mtlDepthAttDesc.resolveSlice += getFirstViewIndexInMetalPass(passIdx);
+				}
+			}
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
                                                                       isRenderingEntireAttachment,
-                                                                      false, false,
+                                                                      hasResolveAttachment, false,
                                                                       loadOverride)) {
                 mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthValue(clearValues[dsRPAttIdx]);
 			}
@@ -244,10 +262,20 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		}
 		if (pixFmts->isStencilFormat(mtlDSFormat)) {
 			MTLRenderPassStencilAttachmentDescriptor* mtlStencilAttDesc = mtlRPDesc.stencilAttachment;
+			bool hasResolveAttachment = (dsRslvRPAttIdx != VK_ATTACHMENT_UNUSED && _stencilResolveMode != VK_RESOLVE_MODE_NONE);
+			if (hasResolveAttachment) {
+				dsRslvImage->populateMTLRenderPassAttachmentDescriptorResolve(mtlStencilAttDesc);
+#if MVK_MACOS_OR_IOS
+				mtlStencilAttDesc.stencilResolveFilterMVK = mvkMTLMultisampleStencilResolveFilterFromVkResolveModeFlagBits(_stencilResolveMode);
+#endif
+				if (isMultiview()) {
+					mtlStencilAttDesc.resolveSlice += getFirstViewIndexInMetalPass(passIdx);
+				}
+			}
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc);
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
                                                                       isRenderingEntireAttachment,
-                                                                      false, true,
+                                                                      hasResolveAttachment, true,
                                                                       loadOverride)) {
 				mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilValue(clearValues[dsRPAttIdx]);
 			}
@@ -337,8 +365,11 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
     }
     uint32_t dsRPAttIdx = _depthStencilAttachment.attachment;
     if (dsRPAttIdx != VK_ATTACHMENT_UNUSED) {
-        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, false, 0, false, storeOverride);
-        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, false, 0, true, storeOverride);
+        bool hasResolveAttachment = _depthStencilResolveAttachment.attachment != VK_ATTACHMENT_UNUSED;
+        bool hasDepthResolveAttachment = hasResolveAttachment && _depthResolveMode != VK_RESOLVE_MODE_NONE;
+        bool hasStencilResolveAttachment = hasResolveAttachment && _stencilResolveMode != VK_RESOLVE_MODE_NONE;
+        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, hasDepthResolveAttachment, 0, false, storeOverride);
+        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, hasStencilResolveAttachment, 0, true, storeOverride);
     }
 }
 
@@ -416,6 +447,7 @@ MVKMTLFmtCaps MVKRenderSubpass::getRequiredFormatCapabilitiesForAttachmentAt(uin
 		}
 	}
 	if (_depthStencilAttachment.attachment == rpAttIdx) { mvkEnableFlags(caps, kMVKMTLFmtCapsDSAtt); }
+	if (_depthStencilResolveAttachment.attachment == rpAttIdx) { mvkEnableFlags(caps, kMVKMTLFmtCapsResolve); }
 
 	return caps;
 }
@@ -464,6 +496,8 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 		_depthStencilAttachment.attachment = VK_ATTACHMENT_UNUSED;
 	}
 
+	_depthStencilResolveAttachment.attachment = VK_ATTACHMENT_UNUSED;
+
 	_preserveAttachments.reserve(pCreateInfo->preserveAttachmentCount);
 	for (uint32_t i = 0; i < pCreateInfo->preserveAttachmentCount; i++) {
 		_preserveAttachments.push_back(pCreateInfo->pPreserveAttachments[i]);
@@ -472,6 +506,18 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 
 MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 								   const VkSubpassDescription2* pCreateInfo) {
+
+	VkSubpassDescriptionDepthStencilResolve* pDSResolveInfo = nullptr;
+	for (auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_SUBPASS_DESCRIPTION_DEPTH_STENCIL_RESOLVE:
+			pDSResolveInfo = (VkSubpassDescriptionDepthStencilResolve*)next;
+			break;
+		default:
+			break;
+		}
+	}
+
 	_renderPass = renderPass;
 	_subpassIndex = (uint32_t)_renderPass->_subpasses.size();
 	_viewMask = pCreateInfo->viewMask;
@@ -498,6 +544,14 @@ MVKRenderSubpass::MVKRenderSubpass(MVKRenderPass* renderPass,
 		_depthStencilAttachment = *pCreateInfo->pDepthStencilAttachment;
 	} else {
 		_depthStencilAttachment.attachment = VK_ATTACHMENT_UNUSED;
+	}
+
+	if (pDSResolveInfo && pDSResolveInfo->pDepthStencilResolveAttachment) {
+		_depthStencilResolveAttachment = *pDSResolveInfo->pDepthStencilResolveAttachment;
+		_depthResolveMode = pDSResolveInfo->depthResolveMode;
+		_stencilResolveMode = pDSResolveInfo->stencilResolveMode;
+	} else {
+		_depthStencilResolveAttachment.attachment = VK_ATTACHMENT_UNUSED;
 	}
 
 	_preserveAttachments.reserve(pCreateInfo->preserveAttachmentCount);

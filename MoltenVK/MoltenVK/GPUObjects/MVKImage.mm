@@ -123,7 +123,7 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.mipmapLevelCount = _image->_mipLevels;
     mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_image->_samples);
     mtlTexDesc.arrayLength = _image->_arrayLayers;
-    mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage, _image->_isLinear);
+    mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage, _image->_isLinear, _image->_hasExtendedUsage);
     mtlTexDesc.storageModeMVK = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
 
@@ -604,10 +604,11 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
 
 VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements2* pMemoryRequirements) {
     uint8_t planeIndex = 0;
-	for (auto* next = (VkBaseOutStructure*)pMemoryRequirements->pNext; next; next = next->pNext) {
+	const auto* pImageInfo = (const VkImageMemoryRequirementsInfo2*)pInfo;
+	for (const auto* next = (const VkBaseInStructure*)pImageInfo->pNext; next; next = next->pNext) {
 		switch (next->sType) {
 		case VK_STRUCTURE_TYPE_IMAGE_PLANE_MEMORY_REQUIREMENTS_INFO: {
-			auto* planeReqs = (VkImagePlaneMemoryRequirementsInfo*)next;
+			const auto* planeReqs = (const VkImagePlaneMemoryRequirementsInfo*)next;
             planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(planeReqs->planeAspect);
 			break;
 		}
@@ -615,7 +616,9 @@ VkResult MVKImage::getMemoryRequirements(const void* pInfo, VkMemoryRequirements
 			break;
 		}
 	}
-    return getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
+    VkResult rslt = getMemoryRequirements(&pMemoryRequirements->memoryRequirements, planeIndex);
+    if (rslt != VK_SUCCESS) { return rslt; }
+    return _memoryBindings[planeIndex]->getMemoryRequirements(pInfo, pMemoryRequirements);
 }
 
 VkResult MVKImage::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDeviceSize memOffset, uint8_t planeIndex) {
@@ -758,10 +761,12 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
+#if MVK_MACOS
 	// For macOS prior to 10.15.5, textures cannot use Shared storage mode, so change to Managed storage mode.
     if (stgMode == MTLStorageModeShared && !_device->_pMetalFeatures->sharedLinearTextures) {
         stgMode = MTLStorageModeManaged;
     }
+#endif
     return stgMode;
 }
 
@@ -799,6 +804,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	MVKPixelFormats* pixFmts = getPixelFormats();
     _vkFormat = pCreateInfo->format;
 	_usage = pCreateInfo->usage;
+	_hasExtendedUsage = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
 
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !_device->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||

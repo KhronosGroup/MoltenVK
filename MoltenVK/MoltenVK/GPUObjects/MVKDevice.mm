@@ -210,6 +210,23 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 	properties->properties = _properties;
 	for (auto* next = (VkBaseOutStructure*)properties->pNext; next; next = next->pNext) {
 		switch ((uint32_t)next->sType) {
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DEPTH_STENCIL_RESOLVE_PROPERTIES: {
+				auto* depthStencilResolveProps = (VkPhysicalDeviceDepthStencilResolveProperties*)next;
+
+				// We can always support resolve from sample zero. Other modes require additional capabilities.
+				depthStencilResolveProps->supportedDepthResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+				if (_metalFeatures.depthResolve) {
+					depthStencilResolveProps->supportedDepthResolveModes |= VK_RESOLVE_MODE_MIN_BIT | VK_RESOLVE_MODE_MAX_BIT;
+				}
+				// Metal allows you to set the stencil resolve filter to either
+				// Sample0 or DepthResolvedSample--in other words, you can always use sample 0,
+				// but you can also use the sample chosen for depth resolve. This is impossible
+				// to express in Vulkan.
+				depthStencilResolveProps->supportedStencilResolveModes = VK_RESOLVE_MODE_SAMPLE_ZERO_BIT;
+				depthStencilResolveProps->independentResolveNone = true;
+				depthStencilResolveProps->independentResolve = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DRIVER_PROPERTIES: {
 				auto* physicalDeviceDriverProps = (VkPhysicalDeviceDriverPropertiesKHR*)next;
 				strcpy(physicalDeviceDriverProps->driverName, "MoltenVK");
@@ -1027,6 +1044,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.depthSampleCompare = true;
 		_metalFeatures.arrayOfTextures = true;
 		_metalFeatures.arrayOfSamplers = true;
+		_metalFeatures.depthResolve = true;
 	}
 
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
@@ -1079,6 +1097,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
 		_metalFeatures.maxTextureDimension = (16 * KIBI);
 		_metalFeatures.depthSampleCompare = true;
+		_metalFeatures.depthResolve = true;
 	}
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily3_v2)) {
@@ -1097,6 +1116,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.layeredRendering = true;
 		_metalFeatures.stencilFeedback = true;
 		_metalFeatures.indirectTessellationDrawing = true;
+		_metalFeatures.stencilResolve = true;
 	}
 
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
@@ -1153,6 +1173,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if (supportsMTLFeatureSet(macOS_GPUFamily2_v1)) {
 		_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
 		_metalFeatures.stencilFeedback = true;
+		_metalFeatures.depthResolve = true;
+		_metalFeatures.stencilResolve = true;
 	}
 
 	if ( mvkOSVersionIsAtLeast(10.15) ) {
@@ -2239,6 +2261,11 @@ void MVKPhysicalDevice::initExtensions() {
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_supportedExtensions;
 	pWritableExtns->disableAllButEnabledDeviceExtensions();
 
+#if MVK_IOS_OR_TVOS
+	if (!_metalFeatures.depthResolve) {
+		pWritableExtns->vk_KHR_depth_stencil_resolve.enabled = false;
+	}
+#endif
 	if (!_metalFeatures.rasterOrderGroups) {
 		pWritableExtns->vk_EXT_fragment_shader_interlock.enabled = false;
 	}
