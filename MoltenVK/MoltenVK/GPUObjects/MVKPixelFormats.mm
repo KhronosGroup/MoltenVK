@@ -1019,11 +1019,11 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	// Depth and stencil pixel formats
 	addMTLPixelFormatDesc( Depth16Unorm, None, None );
 	addMTLPixelFormatDesc( Depth32Float, DRM, DRFMR );
-	addMTLPixelFormatDesc( Stencil8, DRM, DRM );
+	addMTLPixelFormatDesc( Stencil8, DRM, DRMR );
 	addMTLPixelFormatDesc( Depth24Unorm_Stencil8, None, None );
 	addMTLPixelFormatDesc( Depth32Float_Stencil8, DRM, DRFMR );
-	addMTLPixelFormatDesc( X24_Stencil8, None, DRM );
-	addMTLPixelFormatDesc( X32_Stencil8, DRM, DRM );
+	addMTLPixelFormatDesc( X24_Stencil8, None, DRMR );
+	addMTLPixelFormatDesc( X32_Stencil8, DRM, DRMR );
 
 	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
 }
@@ -1330,6 +1330,7 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, Depth32Float, DRMR );
 	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, Depth32Float_Stencil8, DRMR );
+	addFeatSetMTLPixFmtCaps( tvOS_GPUFamily2_v1, Stencil8, DRMR );
 
 	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily2_v1, BGRA10_XR, All );
 	addFeatSetMTLPixFmtCaps(tvOS_GPUFamily2_v1, BGRA10_XR_sRGB, All );
@@ -1468,6 +1469,7 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 
 	addFeatSetMTLPixFmtCaps( iOS_GPUFamily3_v1, Depth32Float, DRMR );
 	addFeatSetMTLPixFmtCaps( iOS_GPUFamily3_v1, Depth32Float_Stencil8, DRMR );
+	addFeatSetMTLPixFmtCaps( iOS_GPUFamily3_v1, Stencil8, DRMR );
 
 	addFeatSetMTLPixFmtCaps( iOS_GPUFamily3_v2, BGRA10_XR, All );
 	addFeatSetMTLPixFmtCaps( iOS_GPUFamily3_v2, BGRA10_XR_sRGB, All );
