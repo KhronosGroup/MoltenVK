@@ -164,13 +164,24 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
-				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
-				portabilityFeatures->triangleFans = false;
-				portabilityFeatures->separateStencilMaskRef = true;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
+				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesKHR*)next;
+				portabilityFeatures->constantAlphaColorBlendFactors = true;
 				portabilityFeatures->events = true;
-				portabilityFeatures->standardImageViews = _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle || _metalFeatures.nativeTextureSwizzle;
+				portabilityFeatures->imageViewFormatReinterpretation = true;
+				portabilityFeatures->imageViewFormatSwizzle = (_metalFeatures.nativeTextureSwizzle ||
+															   _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle);
+				portabilityFeatures->imageView2DOn3DImage = false;
+				portabilityFeatures->multisampleArrayImage = _metalFeatures.multisampleArrayTextures;
+				portabilityFeatures->mutableComparisonSamplers = _metalFeatures.depthSampleCompare;
+				portabilityFeatures->pointPolygons = false;
 				portabilityFeatures->samplerMipLodBias = false;
+				portabilityFeatures->separateStencilMaskRef = true;
+				portabilityFeatures->shaderSampleRateInterpolationFunctions = false;
+				portabilityFeatures->tessellationIsolines = false;
+				portabilityFeatures->tessellationPointMode = false;
+				portabilityFeatures->triangleFans = false;
+				portabilityFeatures->vertexAttributeAccessBeyondStride = true;	// Costs additional buffers. Should make configuration switch.
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_INTEGER_FUNCTIONS_2_FEATURES_INTEL: {
@@ -298,8 +309,8 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				divisorProps->maxVertexAttribDivisor = kMVKUndefinedLargeUInt32;
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_EXTX: {
-				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesEXTX*)next;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_PROPERTIES_KHR: {
+				auto* portabilityProps = (VkPhysicalDevicePortabilitySubsetPropertiesKHR*)next;
 				portabilityProps->minVertexInputBindingStrideAlignment = (uint32_t)_metalFeatures.vertexStrideAlignment;
 				break;
 			}
@@ -542,50 +553,10 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
 
 	if ( !_pixelFormats.isSupported(pImageFormatInfo->format) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 
-	if ( !getImageViewIsSupported(pImageFormatInfo) ) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
-
 	return getImageFormatProperties(pImageFormatInfo->format, pImageFormatInfo->type,
 									pImageFormatInfo->tiling, pImageFormatInfo->usage,
 									pImageFormatInfo->flags,
 									&pImageFormatProperties->imageFormatProperties);
-}
-
-// If the image format info links portability image view info, test if an image view of that configuration is supported
-bool MVKPhysicalDevice::getImageViewIsSupported(const VkPhysicalDeviceImageFormatInfo2 *pImageFormatInfo) {
-	for (const auto* next = (VkBaseInStructure*)pImageFormatInfo->pNext; next; next = next->pNext) {
-		switch ((uint32_t)next->sType) {
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGE_VIEW_SUPPORT_EXTX: {
-				auto* portImgViewInfo = (VkPhysicalDeviceImageViewSupportEXTX*)next;
-
-				// Create an image view and test whether it could be configured
-				VkImageViewCreateInfo viewInfo = {
-					.sType = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-					.pNext = portImgViewInfo->pNext,
-					.flags = portImgViewInfo->flags,
-					.image = nullptr,
-					.viewType = portImgViewInfo->viewType,
-					.format = portImgViewInfo->format,
-					.components = portImgViewInfo->components,
-					.subresourceRange = {
-						.aspectMask = portImgViewInfo->aspectMask,
-						.baseMipLevel = 0,
-						.levelCount = 1,
-						.baseArrayLayer = 0,
-						.layerCount = 1},
-				};
-                MTLPixelFormat mtlPixFmt = _pixelFormats.getMTLPixelFormat(viewInfo.format);
-				bool useSwizzle;
-				return (MVKImageView::validateSwizzledMTLPixelFormat(&viewInfo, this,
-																	 _metalFeatures.nativeTextureSwizzle,
-																	 _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle,
-																	 mtlPixFmt, useSwizzle) == VK_SUCCESS);
-			}
-			default:
-				break;
-		}
-	}
-
-	return true;
 }
 
 void MVKPhysicalDevice::getExternalBufferProperties(const VkPhysicalDeviceExternalBufferInfo* pExternalBufferInfo,
@@ -3171,8 +3142,8 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledPortabilityFeatures);
 
 	// Fetch the available physical device features.
-	VkPhysicalDevicePortabilitySubsetFeaturesEXTX pdPortabilityFeatures;
-	pdPortabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX;
+	VkPhysicalDevicePortabilitySubsetFeaturesKHR pdPortabilityFeatures;
+	pdPortabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
 	pdPortabilityFeatures.pNext = NULL;
 
 	VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT pdVtxAttrDivFeatures;
@@ -3318,11 +3289,11 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 							   &pdVtxAttrDivFeatures.vertexAttributeInstanceRateDivisor, 2);
 				break;
 			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_EXTX: {
-				auto* requestedFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesEXTX*)next;
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
+				auto* requestedFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesKHR*)next;
 				enableFeatures(&_enabledPortabilityFeatures.triangleFans,
 							   &requestedFeatures->triangleFans,
-							   &pdPortabilityFeatures.triangleFans, 5);
+							   &pdPortabilityFeatures.triangleFans, 15);
 				break;
 			}
 			default:

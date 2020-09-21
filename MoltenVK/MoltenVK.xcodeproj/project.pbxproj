@@ -571,7 +571,6 @@
 		A9E53DFE21064F84002781DD /* MTLRenderPipelineDescriptor+MoltenVK.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = "MTLRenderPipelineDescriptor+MoltenVK.h"; sourceTree = "<group>"; };
 		A9F0429D1FB4CF82009FCCB8 /* MVKCommonEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommonEnvironment.h; sourceTree = "<group>"; };
 		A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKLogging.h; sourceTree = "<group>"; };
-		A9F2559121F96814008C7785 /* vulkan-portability */ = {isa = PBXFileReference; lastKnownFileType = folder; path = "vulkan-portability"; sourceTree = "<group>"; };
 		A9F3D9D924732A4C00745190 /* MVKSmallVectorAllocator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKSmallVectorAllocator.h; sourceTree = "<group>"; };
 		A9F3D9DB24732A4D00745190 /* MVKSmallVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKSmallVector.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -750,7 +749,6 @@
 			isa = PBXGroup;
 			children = (
 				A9AD67C72054DD6C00ED3C08 /* vulkan */,
-				A9F2559121F96814008C7785 /* vulkan-portability */,
 			);
 			path = include;
 			sourceTree = "<group>";
