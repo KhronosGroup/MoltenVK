@@ -761,10 +761,12 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
+#if MVK_MACOS
 	// For macOS prior to 10.15.5, textures cannot use Shared storage mode, so change to Managed storage mode.
     if (stgMode == MTLStorageModeShared && !_device->_pMetalFeatures->sharedLinearTextures) {
         stgMode = MTLStorageModeManaged;
     }
+#endif
     return stgMode;
 }
 
