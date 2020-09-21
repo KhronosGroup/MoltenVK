@@ -395,10 +395,8 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     _usesTexelBuffer = _device->_pMetalFeatures->texelBuffers && _deviceMemory && _deviceMemory->_mtlBuffer; // Texel buffers available
     _usesTexelBuffer = _usesTexelBuffer && (isMemoryHostAccessible() || _device->_pMetalFeatures->placementHeaps) && _image->_isLinear && !_image->getIsCompressed(); // Applicable memory layout
 
-#if MVK_MACOS
-    // macOS cannot use shared memory for texel buffers.
-    _usesTexelBuffer = _usesTexelBuffer && !isMemoryHostCoherent();
-#endif
+    // macOS before 10.15.5 cannot use shared memory for texel buffers.
+    _usesTexelBuffer = _usesTexelBuffer && (_device->_pMetalFeatures->sharedLinearTextures || !isMemoryHostCoherent());
 
     flushToDevice(getDeviceMemoryOffset(), getByteCount());
     return _deviceMemory ? _deviceMemory->addImageMemoryBinding(this) : VK_SUCCESS;
@@ -430,10 +428,9 @@ bool MVKImageMemoryBinding::needsHostReadSync(VkPipelineStageFlags srcStageMask,
                                               VkPipelineStageFlags dstStageMask,
                                               MVKPipelineBarrier& barrier) {
 #if MVK_MACOS
-	//  On macOS, texture memory is never host-coherent, so don't test for it.
     return ((barrier.newLayout == VK_IMAGE_LAYOUT_GENERAL) &&
             mvkIsAnyFlagEnabled(barrier.dstAccessMask, (VK_ACCESS_HOST_READ_BIT | VK_ACCESS_MEMORY_READ_BIT)) &&
-            isMemoryHostAccessible());
+            isMemoryHostAccessible() && (!_device->_pMetalFeatures->sharedLinearTextures || !isMemoryHostCoherent()));
 #endif
 #if MVK_IOS_OR_TVOS
     return false;
@@ -761,10 +758,10 @@ MTLStorageMode MVKImage::getMTLStorageMode() {
 
     if (_ioSurface && stgMode == MTLStorageModePrivate) { stgMode = MTLStorageModeShared; }
 
-#if MVK_MACOS
-	// For macOS, textures cannot use Shared storage mode, so change to Managed storage mode.
-    if (stgMode == MTLStorageModeShared) { stgMode = MTLStorageModeManaged; }
-#endif
+	// For macOS prior to 10.15.5, textures cannot use Shared storage mode, so change to Managed storage mode.
+    if (stgMode == MTLStorageModeShared && !_device->_pMetalFeatures->sharedLinearTextures) {
+        stgMode = MTLStorageModeManaged;
+    }
     return stgMode;
 }
 
