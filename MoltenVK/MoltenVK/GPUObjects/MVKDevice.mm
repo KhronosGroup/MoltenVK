@@ -412,6 +412,8 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 
 	if ( !pImageFormatProperties ) { return VK_SUCCESS; }
 
+	mvkClear(pImageFormatProperties);
+
 	// Metal does not support creating uncompressed views of compressed formats.
 	// Metal does not support split-instance images.
 	if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_BLOCK_TEXEL_VIEW_COMPATIBLE_BIT | VK_IMAGE_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT)) {
@@ -444,10 +446,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		case VK_IMAGE_TYPE_1D:
 			maxExt.height = 1;
 			maxExt.depth = 1;
-			if (mvkTreatTexture1DAs2D()) {
-				maxExt.width = pLimits->maxImageDimension2D;
-				maxLevels = mvkMipmapLevels3D(maxExt);
-			} else {
+			if (!mvkTreatTexture1DAs2D()) {
 				maxExt.width = pLimits->maxImageDimension1D;
 				maxLevels = 1;
 				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
@@ -462,18 +461,27 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				if (mvkFmt == kMVKFormatDepthStencil) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 				if (mvkFmt == kMVKFormatCompressed) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 				if (isChromaSubsampled) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+				break;
 			}
-			break;
 
+			// A 420 1D image doesn't make much sense.
+			if (isChromaSubsampled && _pixelFormats.getBlockTexelSize(format).height > 1) {
+				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+			}
+			// Vulkan doesn't allow 1D multisampled images.
+			sampleCounts = VK_SAMPLE_COUNT_1_BIT;
+			/* fallthrough */
 		case VK_IMAGE_TYPE_2D:
 			if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ) {
 				// Chroma-subsampled cube images aren't supported.
 				if (isChromaSubsampled) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+				// 1D cube images aren't supported.
+				if (type == VK_IMAGE_TYPE_1D) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 				maxExt.width = pLimits->maxImageDimensionCube;
 				maxExt.height = pLimits->maxImageDimensionCube;
 			} else {
 				maxExt.width = pLimits->maxImageDimension2D;
-				maxExt.height = pLimits->maxImageDimension2D;
+				maxExt.height = (type == VK_IMAGE_TYPE_1D ? 1 : pLimits->maxImageDimension2D);
 			}
 			maxExt.depth = 1;
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
