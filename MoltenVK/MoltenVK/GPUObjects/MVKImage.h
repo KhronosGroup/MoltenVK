@@ -367,6 +367,7 @@ protected:
 	bool _is3DCompressed;
 	bool _isAliasable;
 	bool _hasExtendedUsage;
+	bool _hasMutableFormat;
 };
 
 
