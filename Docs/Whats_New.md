@@ -18,6 +18,8 @@ MoltenVK 1.1.0
 
 Released 2020/09/28
 
+>**_Note:_** This release contains changes to library paths and framework linking options.
+
 - Add support for Vulkan 1.1, including:
 	- The `vkEnumerateInstanceVersion()` function
 	- The `vkGetDeviceQueue2()` function
@@ -38,6 +40,12 @@ Released 2020/09/28
 	  future `MTLSharedEvent` Vulkan extension)
 	- `VK_KHR_multiview`
 - Remove support for obsolete `VK_EXTX_portability_subset` extension.
+- Redesign build and linking options that leverage newer framework technology:
+	- Add comprehensive support for multi-platform, multi-architecture `XCFrameworks`.
+	- Build fat single-platform, multi-architecture `dylibs`.
+	- Add support for *Apple Silicon* builds for *macOS* and *Simulators*.
+	- Remove support for distinct legacy frameworks and static libraries.
+	- Remove support for fat libraries and frameworks that span device and simulators.
 - Improve performance of tessellation control pipeline stage by processing multiple 
   patches per workgroup.
 - `vkCmdBindDescriptorSets` order `pDynamicOffsets` by descriptor binding number 

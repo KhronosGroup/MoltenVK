@@ -620,6 +620,7 @@ typedef struct {
 	VkBool32 sharedLinearTextures;				/**< If true, linear textures and texture buffers can be created from buffers in Shared storage. */
 	VkBool32 depthResolve;						/**< If true, resolving depth textures with filters other than Sample0 is supported. */
 	VkBool32 stencilResolve;					/**< If true, resolving stencil textures with filters other than Sample0 is supported. */
+	uint32_t maxPerStageDynamicMTLBufferCount;	/**< The maximum number of inline buffers that can be set on a command buffer. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */
