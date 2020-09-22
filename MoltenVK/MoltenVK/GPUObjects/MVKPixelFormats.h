@@ -256,6 +256,9 @@ public:
 	/** Returns the MSLFormatResolution of the specified chroma-subsampling (YCbCr) VkFormat */
 	SPIRV_CROSS_NAMESPACE::MSLFormatResolution getChromaSubsamplingResolution(VkFormat vkFormat);
 
+	/** Returns the MTLPixelFormat of the specified chroma-subsampling (YCbCr) VkFormat for the specified plane. */
+	MTLPixelFormat getChromaSubsamplingPlaneMTLPixelFormat(VkFormat vkFormat, uint8_t planeIndex);
+
     /** Returns the number of planes, blockTexelSize,  bytesPerBlock and mtlPixFmt of each plane of the specified chroma-subsampling (YCbCr) VkFormat into the given arrays */
     uint8_t getChromaSubsamplingPlanes(VkFormat vkFormat, VkExtent2D blockTexelSize[3], uint32_t bytesPerBlock[3], MTLPixelFormat mtlPixFmt[3]);
 

@@ -419,10 +419,18 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 	}
 
 	MVKFormatType mvkFmt = _pixelFormats.getFormatType(format);
+	bool isChromaSubsampled = _pixelFormats.getChromaSubsamplingPlaneCount(format) > 0;
+	bool isMultiPlanar = _pixelFormats.getChromaSubsamplingPlaneCount(format) > 1;
+	bool isBGRG = isChromaSubsampled && !isMultiPlanar && _pixelFormats.getBlockTexelSize(format).width > 1;
 	bool hasAttachmentUsage = mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
 														  VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
+
+	// Disjoint memory requires a multiplanar format.
+	if (!isMultiPlanar && mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_DISJOINT_BIT)) {
+		return VK_ERROR_FORMAT_NOT_SUPPORTED;
+	}
 
 	VkPhysicalDeviceLimits* pLimits = &_properties.limits;
 	VkExtent3D maxExt = { 1, 1, 1};
@@ -453,11 +461,14 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				// Metal does not allow compressed or depth/stencil formats on native 1D textures
 				if (mvkFmt == kMVKFormatDepthStencil) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 				if (mvkFmt == kMVKFormatCompressed) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
+				if (isChromaSubsampled) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 			}
 			break;
 
 		case VK_IMAGE_TYPE_2D:
 			if (mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ) {
+				// Chroma-subsampled cube images aren't supported.
+				if (isChromaSubsampled) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 				maxExt.width = pLimits->maxImageDimensionCube;
 				maxExt.height = pLimits->maxImageDimensionCube;
 			} else {
@@ -467,15 +478,16 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			maxExt.depth = 1;
 			if (tiling == VK_IMAGE_TILING_LINEAR) {
 				// Linear textures have additional restrictions under Metal:
-				// - They may not be depth/stencil or compressed textures.
-				if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed) {
+				// - They may not be depth/stencil, compressed, or chroma subsampled textures.
+				//   We allow multi-planar formats because those internally use non-subsampled formats.
+				if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed || isBGRG) {
 					return VK_ERROR_FORMAT_NOT_SUPPORTED;
 				}
 #if MVK_MACOS
 				// - On macOS, Linear textures may not be used as framebuffer attachments.
 				if (hasAttachmentUsage) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 #endif
-				// Linear textures may only have one mip level. layer & sample
+				// Linear textures may only have one mip level, layer & sample.
 				maxLevels = 1;
 				maxLayers = 1;
 				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
@@ -483,14 +495,22 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				VkFormatProperties fmtProps;
 				getFormatProperties(format, &fmtProps);
 				// Compressed multisampled textures aren't supported.
+				// Chroma-subsampled multisampled textures aren't supported.
 				// Multisampled cube textures aren't supported.
 				// Non-renderable multisampled textures aren't supported.
-				if (mvkFmt == kMVKFormatCompressed ||
+				if (mvkFmt == kMVKFormatCompressed || isChromaSubsampled ||
 					mvkIsAnyFlagEnabled(flags, VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT) ||
 					!mvkIsAnyFlagEnabled(fmtProps.optimalTilingFeatures, VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT|VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT) ) {
 					sampleCounts = VK_SAMPLE_COUNT_1_BIT;
 				}
-				maxLevels = mvkMipmapLevels3D(maxExt);
+				// BGRG and GBGR images may only have one mip level and one layer.
+				// Other chroma subsampled formats may have multiple mip levels, but still only one layer.
+				if (isChromaSubsampled) {
+					maxLevels = isBGRG ? 1 : mvkMipmapLevels3D(maxExt);
+					maxLayers = 1;
+				} else {
+					maxLevels = mvkMipmapLevels3D(maxExt);
+				}
 			}
 			break;
 
@@ -500,7 +520,8 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
 			}
 			// Metal does not allow compressed or depth/stencil formats on 3D textures
-			if (mvkFmt == kMVKFormatDepthStencil
+			if (mvkFmt == kMVKFormatDepthStencil ||
+				isChromaSubsampled
 #if MVK_IOS_OR_TVOS
 				|| mvkFmt == kMVKFormatCompressed
 #endif
@@ -560,7 +581,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(const VkPhysicalDeviceImage
         switch (nextProps->sType) {
             case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_IMAGE_FORMAT_PROPERTIES: {
                 auto* samplerYcbcrConvProps = (VkSamplerYcbcrConversionImageFormatProperties*)nextProps;
-                samplerYcbcrConvProps->combinedImageSamplerDescriptorCount = _pixelFormats.getChromaSubsamplingPlaneCount(pImageFormatInfo->format);
+                samplerYcbcrConvProps->combinedImageSamplerDescriptorCount = std::max(_pixelFormats.getChromaSubsamplingPlaneCount(pImageFormatInfo->format), (uint8_t)1u);
                 break;
             }
             default:
@@ -1516,7 +1537,6 @@ void MVKPhysicalDevice::initProperties() {
         uint32_t maxStorage = 0, maxUniform = 0;
         bool singleTexelStorage = true, singleTexelUniform = true;
         _pixelFormats.enumerateSupportedFormats({0, 0, VK_FORMAT_FEATURE_UNIFORM_TEXEL_BUFFER_BIT | VK_FORMAT_FEATURE_STORAGE_TEXEL_BUFFER_BIT}, true, [&](VkFormat vk) {
-            if ( _pixelFormats.getChromaSubsamplingComponentBits(vk) > 0 ) { return false; }    // Skip chroma subsampling formats
 			MTLPixelFormat mtlFmt = _pixelFormats.getMTLPixelFormat(vk);
 			if ( !mtlFmt ) { return false; }	// If format is invalid, avoid validation errors on MTLDevice format alignment calls
 
@@ -2960,8 +2980,15 @@ uint32_t MVKDevice::getMetalBufferIndexForVertexAttributeBinding(uint32_t bindin
 VkDeviceSize MVKDevice::getVkFormatTexelBufferAlignment(VkFormat format, MVKBaseObject* mvkObj) {
 	VkDeviceSize deviceAlignment = 0;
 	id<MTLDevice> mtlDev = getMTLDevice();
+	MVKPixelFormats* mvkPixFmts = getPixelFormats();
 	if ([mtlDev respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)]) {
-		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: getPixelFormats()->getMTLPixelFormat(format)];
+		MTLPixelFormat mtlPixFmt = mvkPixFmts->getMTLPixelFormat(format);
+		if (mvkPixFmts->getChromaSubsamplingPlaneCount(format) >= 2) {
+			// Use plane 1 to get the alignment requirements. In a 2-plane format, this will
+			// typically have stricter alignment requirements due to it being a 2-component format.
+			mtlPixFmt = mvkPixFmts->getChromaSubsamplingPlaneMTLPixelFormat(format, 1);
+		}
+		deviceAlignment = [mtlDev minimumLinearTextureAlignmentForPixelFormat: mtlPixFmt];
 	}
 	return deviceAlignment ? deviceAlignment : _pProperties->limits.minTexelBufferOffsetAlignment;
 }
