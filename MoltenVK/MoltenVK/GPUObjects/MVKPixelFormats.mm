@@ -549,8 +549,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | 		// May use temp view if transfer involves format change
 		 										VK_IMAGE_USAGE_SAMPLED_BIT |
 												VK_IMAGE_USAGE_STORAGE_BIT |
-												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-												VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT)) &&
+												VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT)) &&
 		isCombinedDepthStencilFmt && supportsStencilViews) {
 
 		mvkEnableFlags(mtlUsage, MTLTextureUsagePixelFormatView);
