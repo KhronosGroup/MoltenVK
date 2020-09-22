@@ -125,8 +125,8 @@ typedef MVKCmdBlitImage<4> MVKCmdBlitImageMulti;
 
 /** Describes Metal texture resolve parameters. */
 typedef struct {
-    VkImageSubresource srcSubresource;
-    VkImageSubresource dstSubresource;
+    VkImageSubresourceLayers srcSubresource;
+    VkImageSubresourceLayers dstSubresource;
 } MVKMetalResolveSlice;
 
 /**
