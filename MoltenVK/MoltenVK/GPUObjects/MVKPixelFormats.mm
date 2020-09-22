@@ -352,6 +352,10 @@ MVKMTLFmtCaps MVKPixelFormats::getCapabilities(MTLPixelFormat mtlFormat, bool is
     return caps;
 }
 
+MVKMTLViewClass MVKPixelFormats::getViewClass(VkFormat vkFormat) {
+    return getMTLPixelFormatDesc(getVkFormatDesc(vkFormat).mtlPixelFormat).mtlViewClass;
+}
+
 MVKMTLViewClass MVKPixelFormats::getViewClass(MTLPixelFormat mtlFormat) {
     return getMTLPixelFormatDesc(mtlFormat).mtlViewClass;
 }

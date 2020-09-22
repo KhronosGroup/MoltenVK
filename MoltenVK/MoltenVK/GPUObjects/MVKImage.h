@@ -144,8 +144,10 @@ protected:
     MVKImageMemoryBinding(MVKDevice* device, MVKImage* image, uint8_t planeIndex);
 
     MVKImage* _image;
+    id<MTLBuffer> _mtlTexelBuffer = nil;
+    NSUInteger _mtlTexelBufferOffset = 0;
     uint8_t _planeIndex;
-    bool _usesTexelBuffer;
+    bool _ownsTexelBuffer = false;
 };
 
 
@@ -368,6 +370,7 @@ protected:
 	bool _isAliasable;
 	bool _hasExtendedUsage;
 	bool _hasMutableFormat;
+	bool _isLinearForAtomics;
 };
 
 
