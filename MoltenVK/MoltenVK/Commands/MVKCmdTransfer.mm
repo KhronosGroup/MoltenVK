@@ -1151,8 +1151,8 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		VkRect2D renderArea = cmdEncoder->clipToRenderArea({{0, 0}, fbExtent});
 		fbExtent = {renderArea.offset.x + renderArea.extent.width, renderArea.offset.y + renderArea.extent.height};
 	}
-#endif
 	[tempRPDesc release];													// temp release
+#endif
 	populateVertices(cmdEncoder, vertices, fbExtent.width, fbExtent.height);
 
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
