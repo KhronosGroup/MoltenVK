@@ -698,7 +698,7 @@ VkResult MVKImage::setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture) 
 
 	if (_device->_pMetalFeatures->ioSurfaces) {
 		_ioSurface = mtlTexture.iosurface;
-		CFRetain(_ioSurface);
+		if (_ioSurface) { CFRetain(_ioSurface); }
 	}
 
 	return VK_SUCCESS;
