@@ -733,8 +733,7 @@
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../MoltenVK/include\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/include\"",
+					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../VulkanSamples/API-Samples/utils\"",
 				);
 				ONLY_ACTIVE_ARCH = YES;
@@ -762,8 +761,7 @@
 				GCC_WARN_ABOUT_DEPRECATED_FUNCTIONS = NO;
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				HEADER_SEARCH_PATHS = (
-					"\"$(SRCROOT)/../../../MoltenVK/include\"",
-					"\"$(SRCROOT)/../../../MoltenVKShaderConverter/include\"",
+					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../VulkanSamples/API-Samples/utils\"",
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = "com.moltenvk.${PRODUCT_NAME:identifier}";

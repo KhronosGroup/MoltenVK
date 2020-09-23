@@ -39,7 +39,6 @@
 			);
 			dependencies = (
 				A975D58E2140586700D4834F /* PBXTargetDependency */,
-				A975D5982140586700D4834F /* PBXTargetDependency */,
 			);
 			name = "MoltenVK-macOS";
 			productName = Package;
@@ -66,7 +65,6 @@
 				A9B1008124F84BA700EADC6E /* PBXTargetDependency */,
 				A9B1008324F84BA700EADC6E /* PBXTargetDependency */,
 				A9B1008524F84BA700EADC6E /* PBXTargetDependency */,
-				A9B1008724F84BA700EADC6E /* PBXTargetDependency */,
 			);
 			name = MoltenVK;
 			productName = Package;
@@ -122,13 +120,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = A9CBED861B6299D800E45FDC;
 			remoteInfo = "MoltenVK-macOS";
-		};
-		A975D5992140586700D4834F /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = A9092A8C1A81717B00051823;
-			remoteInfo = MoltenVKShaderConverter;
 		};
 		A981498A1FB6B566005F00B4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -192,13 +183,6 @@
 			proxyType = 1;
 			remoteGlobalIDString = 2FEA0A3B24902F9F00EEF3AD;
 			remoteInfo = "MoltenVK-tvOS";
-		};
-		A9B1008624F84BA700EADC6E /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
-			proxyType = 1;
-			remoteGlobalIDString = A9092A8C1A81717B00051823;
-			remoteInfo = MoltenVKShaderConverter;
 		};
 		A9FC5F5C249D2547003CB086 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -525,11 +509,6 @@
 			name = "MoltenVK-macOS";
 			targetProxy = A975D58F2140586700D4834F /* PBXContainerItemProxy */;
 		};
-		A975D5982140586700D4834F /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = MoltenVKShaderConverter;
-			targetProxy = A975D5992140586700D4834F /* PBXContainerItemProxy */;
-		};
 		A9AD70102440ED3B00B9E254 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
 			name = MoltenVKShaderConverter;
@@ -549,11 +528,6 @@
 			isa = PBXTargetDependency;
 			name = "MoltenVK-tvOS";
 			targetProxy = A9B1008424F84BA700EADC6E /* PBXContainerItemProxy */;
-		};
-		A9B1008724F84BA700EADC6E /* PBXTargetDependency */ = {
-			isa = PBXTargetDependency;
-			name = MoltenVKShaderConverter;
-			targetProxy = A9B1008624F84BA700EADC6E /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 

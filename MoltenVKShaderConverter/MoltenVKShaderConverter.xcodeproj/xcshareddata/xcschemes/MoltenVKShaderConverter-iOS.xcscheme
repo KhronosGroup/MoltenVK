@@ -15,8 +15,8 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "A93903B81C57E9D700FE90DC"
-               BuildableName = "libMoltenVKSPIRVToMSLConverter.a"
-               BlueprintName = "MoltenVKSPIRVToMSLConverter-iOS"
+               BuildableName = "libMoltenVKShaderConverter.a"
+               BlueprintName = "MoltenVKShaderConverter-iOS"
                ReferencedContainer = "container:MoltenVKShaderConverter.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
@@ -49,8 +49,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A93903B81C57E9D700FE90DC"
-            BuildableName = "libMoltenVKSPIRVToMSLConverter.a"
-            BlueprintName = "MoltenVKSPIRVToMSLConverter-iOS"
+            BuildableName = "libMoltenVKShaderConverter.a"
+            BlueprintName = "MoltenVKShaderConverter-iOS"
             ReferencedContainer = "container:MoltenVKShaderConverter.xcodeproj">
          </BuildableReference>
       </MacroExpansion>
@@ -65,8 +65,8 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "A93903B81C57E9D700FE90DC"
-            BuildableName = "libMoltenVKSPIRVToMSLConverter.a"
-            BlueprintName = "MoltenVKSPIRVToMSLConverter-iOS"
+            BuildableName = "libMoltenVKShaderConverter.a"
+            BlueprintName = "MoltenVKShaderConverter-iOS"
             ReferencedContainer = "container:MoltenVKShaderConverter.xcodeproj">
          </BuildableReference>
       </MacroExpansion>

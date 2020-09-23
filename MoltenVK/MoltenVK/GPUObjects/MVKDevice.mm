@@ -33,7 +33,7 @@
 #include "MVKCodec.h"
 #include "MVKEnvironment.h"
 #include "MVKLogging.h"
-#include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include "vk_mvk_moltenvk.h"
 
 #import "CAMetalLayer+MoltenVK.h"

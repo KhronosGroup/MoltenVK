@@ -22,7 +22,7 @@
 #include "MVKCommandResourceFactory.h"
 #include "MVKSync.h"
 #include "MVKSmallVector.h"
-#include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include <unordered_map>
 #include <mutex>
 

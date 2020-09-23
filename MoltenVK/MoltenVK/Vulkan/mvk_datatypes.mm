@@ -22,7 +22,7 @@
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKBaseObject.h"
-#include <MoltenVKSPIRVToMSLConverter/SPIRVReflection.h>
+#include <MoltenVKShaderConverter/SPIRVReflection.h>
 #include <unordered_map>
 #include <string>
 #include <limits>
