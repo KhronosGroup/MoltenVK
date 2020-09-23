@@ -1130,6 +1130,15 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	simd::float4 clearColors[kMVKClearAttachmentCount];
 
 	VkExtent2D fbExtent = cmdEncoder->_framebuffer->getExtent2D();
+	// I need to know if the 'renderTargetWidth' and 'renderTargetHeight' properties
+	// actually do something, but [MTLRenderPassDescriptor instancesRespondToSelector: @selector(renderTargetWidth)]
+	// returns NO even on systems that do support it. So we have to check an actual instance.
+	MTLRenderPassDescriptor* tempRPDesc = [MTLRenderPassDescriptor new];	// temp retain
+	if ([tempRPDesc respondsToSelector: @selector(renderTargetWidth)]) {
+		VkRect2D renderArea = cmdEncoder->clipToRenderArea({{0, 0}, fbExtent});
+		fbExtent = {renderArea.offset.x + renderArea.extent.width, renderArea.offset.y + renderArea.extent.height};
+	}
+	[tempRPDesc release];													// temp release
 	populateVertices(cmdEncoder, vertices, fbExtent.width, fbExtent.height);
 
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
