@@ -1059,6 +1059,9 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		if (pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
 			shaderContext.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
 		}
+		if (std::any_of(shaderOutputs.begin(), shaderOutputs.end(), [](const SPIRVShaderOutput& output) { return output.builtin == spv::BuiltInLayer; })) {
+			shaderContext.options.mslOptions.arrayed_subpass_input = true;
+		}
 		addPrevStageOutputToShaderConverterContext(shaderContext, shaderOutputs);
 
 		MVKMTLFunction func = ((MVKShaderModule*)_pFragmentSS->module)->getMTLFunction(&shaderContext, _pFragmentSS->pSpecializationInfo, _pipelineCache);
@@ -1921,7 +1924,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.enable_clip_distance_user_varying,
 				opt.multi_patch_workgroup,
 				opt.vertex_for_tessellation,
-				opt.vertex_index_type);
+				opt.vertex_index_type,
+				opt.arrayed_subpass_input);
 	}
 
 	template<class Archive>
