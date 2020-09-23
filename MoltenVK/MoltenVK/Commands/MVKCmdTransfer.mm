@@ -1130,6 +1130,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	simd::float4 clearColors[kMVKClearAttachmentCount];
 
 	VkExtent2D fbExtent = cmdEncoder->_framebuffer->getExtent2D();
+#if MVK_MACOS_OR_IOS
 	// I need to know if the 'renderTargetWidth' and 'renderTargetHeight' properties
 	// actually do something, but [MTLRenderPassDescriptor instancesRespondToSelector: @selector(renderTargetWidth)]
 	// returns NO even on systems that do support it. So we have to check an actual instance.
@@ -1138,6 +1139,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		VkRect2D renderArea = cmdEncoder->clipToRenderArea({{0, 0}, fbExtent});
 		fbExtent = {renderArea.offset.x + renderArea.extent.width, renderArea.offset.y + renderArea.extent.height};
 	}
+#endif
 	[tempRPDesc release];													// temp release
 	populateVertices(cmdEncoder, vertices, fbExtent.width, fbExtent.height);
 
@@ -1366,9 +1368,9 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlRPDADesc.slice = layerStart;
                     mtlRPSADesc.slice = layerStart;
                 }
-                mtlRPDesc.renderTargetArrayLength = (layerCnt == VK_REMAINING_ARRAY_LAYERS
-                                                     ? (_image->getLayerCount() - layerStart)
-                                                     : layerCnt);
+                mtlRPDesc.renderTargetArrayLengthMVK = (layerCnt == VK_REMAINING_ARRAY_LAYERS
+                                                        ? (_image->getLayerCount() - layerStart)
+                                                        : layerCnt);
 
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
                 setLabelIfNotNil(mtlRendEnc, mtlRendEncName);
