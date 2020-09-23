@@ -52,6 +52,7 @@ Released 2020/09/28
   within each descriptor set.
 - `vkCmdCopyImage` on macOS flush non-coherent image memory before copy operation.
 - Re-add support for bitcode generation on *iOS* and *tvOS*.
+- `fetchDependencies` builds serially by default for better build script integration. 
 - Combine `MoltenVKSPIRVToMSLConverter` and `MoltenVKGLSLToSPIRVConverter` 
   frameworks into a single `MoltenVKShaderConverter` framework.
 - Fix Metal validation error when occlusion query and renderpass are in separate 

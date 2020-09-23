@@ -37,8 +37,11 @@
 #              Build the external libraries in Debug mode, which may be useful when debugging
 #              and tracing calls into those libraries.
 #
+#      --parallel-build
+#              Build the external libraries in parallel using background processes.
+#
 #      --no-parallel-build
-#              Build the external libraries serially instead of in parallel using background processes.
+#              Build the external libraries serially instead of in parallel. This is the default.
 #
 #      --glslang-root path
 #              "path" specifies a directory path to a KhronosGroup/glslang repository.
@@ -79,7 +82,7 @@ BLD_MACOS=""
 BLD_SPECIFIED=""
 XC_CONFIG="Release"
 XC_BUILD_VERBOSITY="-quiet"
-XC_USE_BCKGND="Y"
+XC_USE_BCKGND=""
 V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
 GLSLANG_ROOT=""
@@ -128,6 +131,10 @@ while (( "$#" )); do
          ;;
        --debug)
          XC_CONFIG="Debug"
+         shift 1
+         ;;
+       --parallel-build)
+         XC_USE_BCKGND="Y"
          shift 1
          ;;
        --no-parallel-build)
