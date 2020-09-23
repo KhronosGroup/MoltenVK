@@ -56,6 +56,7 @@ Released 2020/09/28
   frameworks into a single `MoltenVKShaderConverter` framework.
 - Fix Metal validation error when occlusion query and renderpass are in separate 
   Vulkan command buffers.
+- `vkSetMTLTextureMVK()` Fix crash if incoming `MTLTexture` does not have an associated `IOSurface`. 
 
 
 
