@@ -56,9 +56,8 @@ In addition to devices, this demo will also run on the `iOS Simulator` or `tvOS 
 The *macOS* version of this demo includes a sizable window, and represents an example of how to detect,
 within your *Vulkan* code, when a window has been resized, and to modify the *Vulkan* swapchain accordingly.
 
-The `Cube` demo is a simple example of installing **MoltenVK** as a *dynamic library*. In this demo, 
-the **MoltenVK** *dynamic library* is embedded in the application, but it could have been installed 
-as a system library instead.
+The `Cube` demo is a simple example of installing **MoltenVK** as an `XCFramework` 
+that is statically linked to the application.
 
 
 <a name="lunarg-vulkan-samples-hologram"></a>
@@ -82,7 +81,9 @@ The demo allows some customization, by modifying the arguments passed to the dem
 To customize, modify the arguments created in the `DemoViewController viewDidLoad` method
 found in the `iOS/DemoViewController.mm` or `macOS/DemoViewController.mm` file.
 
-The `Hologram` demo is a simple example of installing **MoltenVK** as a *static library*.
+The `Hologram` demo is a simple example of installing **MoltenVK** as a *dynamic library* that is 
+dynamically linked to the application. In this demo, the **MoltenVK** *dynamic library* is copied 
+into and embedded in the application, but it could have been installed as a system library instead.
 
 
 <a name="lunarg-vulkan-samples-api"></a>
@@ -119,7 +120,8 @@ follow the instructions in the comments within that file.
 To see descriptions and screenshots of each of the demos, open 
 [this summary document](LunarG-VulkanSamples/VulkanSamples/samples_index.html#AdditionalVulkan).
 
-The `API-Samples` demo is a simple example of installing **MoltenVK** as a *static framework*.
+The `API-Samples` demo is a simple example of installing **MoltenVK** as an `XCFramework` that 
+is statically linked to the application.
 
 
 

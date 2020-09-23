@@ -4,31 +4,29 @@
 #
 # fetchDependencies - Retrieves the correct versions of all dependencies
 #
-# macOS usage: ./fetchDependencies [--ios] [--iosfat] [--tvos] [--tvosfat] [--macos] [--all] [--none]
+# macOS usage: ./fetchDependencies [--macos] [--ios] [--iossim] [--tvos] [--tvossim] [--all] [--none]
 #                                  [-v] [--debug] [--build-spirv-tools]
 #                                  [--v-headers-root path] [--spirv-cross-root path] [--glslang-root path]
-#
-#      --ios
-#              Build the external libraries for the iOS platform.
-#
-#      --iosfat
-#              Build a single binary for each external library, each containing code
-#              for both iOS and iOS Simulator platforms.
-#
-#      --tvos
-#              Build the external libraries for the tvOS platform.
-#
-#      --tvosfat
-#              Build a single binary for each external library, each containing code
-#              for both tvOS and tvOS Simulator platforms.
 #
 #      --macos
 #              Build the external libraries for the macOS platform.
 #
+#      --ios
+#              Build the external libraries for the iOS platform.
+#
+#      --iossim
+#              Build the external libraries for the iOS Simulator platform.
+#
+#      --tvos
+#              Build the external libraries for the tvOS platform.
+#
+#      --tvossim
+#              Build the external libraries for the tvOS Simulator platform.
+#
 #      --all
-#              Equivalent to specifying [--iosfat --tvosfat --macos]. Results in thee
-#              binaries for each external library: one for the iOS and iOS Simulator platforms,
-#              one for the tvOS and tvOS Simulator platforms, and one for the macOS platform.
+#              Equivalent to specifying [--macos --ios --iossim --tvos --tvossim].
+#              Results in one XCFramework for each external library, each containing
+#              binaries for all supported platforms.
 #
 #      --none
 #              Don't build the external libraries for any platform.
@@ -94,8 +92,7 @@ while (( "$#" )); do
          BLD_SPECIFIED="Y"
          shift 1
          ;;
-       --iosfat)
-         BLD_IOS="Y"
+       --iossim)
          BLD_IOS_SIM="Y"
          BLD_SPECIFIED="Y"
          shift 1
@@ -105,8 +102,7 @@ while (( "$#" )); do
          BLD_SPECIFIED="Y"
          shift 1
          ;;
-       --tvosfat)
-         BLD_TVOS="Y"
+       --tvossim)
          BLD_TVOS_SIM="Y"
          BLD_SPECIFIED="Y"
          shift 1
@@ -363,7 +359,7 @@ cd ..
 if [ "$BLD_SPECIFIED" = "" ]; then
 	echo "ERROR: You did not specify a platform to build."
 	echo "Include one or more of the following platform options:"
-	echo "    --ios --iosfat --tvos --tvosfat --macos --all"
+	echo "    --macos --ios --iossim --tvos --tvossim --all"
 	echo "See the instructions in the fetchDependencies script for more info."
 	exit 1
 fi
@@ -380,7 +376,7 @@ function build_impl() {
 	XC_PLTFM=${2}
 
 	XC_SCHEME="${EXT_DEPS}-${XC_OS}"
-	XC_LCL_DD_PATH="${XC_DD_PATH}/Intermediates/${XC_OS}"
+	XC_LCL_DD_PATH="${XC_DD_PATH}/Intermediates/${XC_PLTFM}"
 	XC_DEST="generic/platform=${XC_PLTFM}"
 
 	echo Building external libraries for ${XC_PLTFM}
@@ -402,29 +398,9 @@ function build_impl() {
 # 2 - platform
 function build() {
 	if [ "$XC_USE_BCKGND" != "" ]; then
-		build_impl ${1} ${2} &
+		build_impl "${1}" "${2}" &
 	else
-		build_impl ${1} ${2}
-	fi
-}
-
-# Build a fat library for the OS containing code for the OS and its Simulator
-# Builds serially to ensure both are built
-# 1 - OS
-function build_fat_impl() {
-	XC_OS=${1}
-
-	build_impl ${XC_OS} ${XC_OS}
-	build_impl ${XC_OS} "${XC_OS} Simulator"
-}
-
-# Select whether or not to run the build in parallel.
-# 1 - OS
-function build_fat() {
-	if [ "$XC_USE_BCKGND" != "" ]; then
-		build_fat_impl ${1} &
-	else
-		build_fat_impl ${1}
+		build_impl "${1}" "${2}"
 	fi
 }
 
@@ -448,19 +424,19 @@ if [ "$BLD_MACOS" != "" ]; then
 fi
 
 if [ "$BLD_IOS" != "" ]; then
-	if [ "$BLD_IOS_SIM" != "" ]; then
-		build_fat "iOS"
-	else
-		build "iOS" "iOS"
-	fi
+	build "iOS" "iOS"
+fi
+
+if [ "$BLD_IOS_SIM" != "" ]; then
+	build "iOS" "iOS Simulator"
 fi
 
 if [ "$BLD_TVOS" != "" ]; then
-	if [ "$BLD_TVOS_SIM" != "" ]; then
-		build_fat "tvOS"
-	else
-		build "tvOS" "tvOS"
-	fi
+	build "tvOS" "tvOS"
+fi
+
+if [ "$BLD_TVOS_SIM" != "" ]; then
+	build "tvOS" "tvOS Simulator"
 fi
 
 # Wait for any background process (if selected) to finish
@@ -468,9 +444,10 @@ if [ "$XC_USE_BCKGND" != "" ]; then
 	wait
 fi
 
-# Update latest symlink and clean MoltenVK for rebuild
+# Build XCFrameworks, update latest symlink, and clean MoltenVK for rebuild
 PROJECT_DIR="."
 CONFIGURATION=${XC_CONFIG}
+. "./Scripts/create_ext_lib_xcframeworks.sh"
 . "./Scripts/package_ext_libs_finish.sh"
 
 echo ========== Finished at `date +"%r"` ==========

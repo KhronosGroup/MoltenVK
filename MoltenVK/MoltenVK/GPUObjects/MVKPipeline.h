@@ -23,8 +23,8 @@
 #include "MVKShaderModule.h"
 #include "MVKSync.h"
 #include "MVKSmallVector.h"
-#include <MoltenVKSPIRVToMSLConverter/SPIRVReflection.h>
-#include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include <MoltenVKShaderConverter/SPIRVReflection.h>
+#include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include <unordered_map>
 #include <unordered_set>
 #include <ostream>

@@ -21,8 +21,8 @@
 #include "MVKDevice.h"
 #include "MVKSync.h"
 #include "MVKSmallVector.h"
-#include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
-#include <MoltenVKGLSLToSPIRVConverter/GLSLToSPIRVConverter.h>
+#include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
+#include <MoltenVKShaderConverter/GLSLToSPIRVConverter.h>
 #include <mutex>
 
 #import <Metal/Metal.h>

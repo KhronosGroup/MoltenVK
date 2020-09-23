@@ -1256,6 +1256,11 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 	}];
 	
 	if (hasPresentTime) {
+#if MVK_OS_SIMULATOR
+		// If MTLDrawable.presentedTime/addPresentedHandler isn't supported, just treat it as if the
+		// present happened when requested
+		_swapchain->recordPresentTime(presentID, desiredPresentTime, desiredPresentTime);
+#else
 		if ([_mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
 			[_mtlDrawable addPresentedHandler: ^(id<MTLDrawable> drawable) {
 				// Record the presentation time
@@ -1268,7 +1273,9 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 			// present happened when requested
 			_swapchain->recordPresentTime(presentID, desiredPresentTime, desiredPresentTime);
 		}
+#endif
 	}
+
 }
 
 // Resets the MTLTexture and CAMetalDrawable underlying this image.

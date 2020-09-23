@@ -14,10 +14,10 @@
             buildForAnalyzing = "YES">
             <BuildableReference
                BuildableIdentifier = "primary"
-               BlueprintIdentifier = "1D6058900D05DD3D006BFB54"
-               BuildableName = "API-Samples.app"
-               BlueprintName = "API-Samples-iOS"
-               ReferencedContainer = "container:API-Samples.xcodeproj">
+               BlueprintIdentifier = "A93903B81C57E9D700FE90DC"
+               BuildableName = "libMoltenVKShaderConverter.a"
+               BlueprintName = "MoltenVKShaderConverter-iOS"
+               ReferencedContainer = "container:MoltenVKShaderConverter.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -32,8 +32,9 @@
    </TestAction>
    <LaunchAction
       buildConfiguration = "Release"
-      selectedDebuggerIdentifier = ""
-      selectedLauncherIdentifier = "Xcode.IDEFoundation.Launcher.PosixSpawn"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      disableMainThreadChecker = "YES"
       launchStyle = "0"
       useCustomWorkingDirectory = "NO"
       ignoresPersistentStateOnLaunch = "NO"
@@ -43,18 +44,16 @@
       enableGPUFrameCaptureMode = "3"
       enableGPUValidationMode = "1"
       allowLocationSimulation = "NO"
-      viewDebuggingEnabled = "No"
       queueDebuggingEnabled = "No">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "1D6058900D05DD3D006BFB54"
-            BuildableName = "API-Samples.app"
-            BlueprintName = "API-Samples-iOS"
-            ReferencedContainer = "container:API-Samples.xcodeproj">
+            BlueprintIdentifier = "A93903B81C57E9D700FE90DC"
+            BuildableName = "libMoltenVKShaderConverter.a"
+            BlueprintName = "MoltenVKShaderConverter-iOS"
+            ReferencedContainer = "container:MoltenVKShaderConverter.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
    </LaunchAction>
    <ProfileAction
       buildConfiguration = "Release"
@@ -62,16 +61,15 @@
       savedToolIdentifier = ""
       useCustomWorkingDirectory = "NO"
       debugDocumentVersioning = "YES">
-      <BuildableProductRunnable
-         runnableDebuggingMode = "0">
+      <MacroExpansion>
          <BuildableReference
             BuildableIdentifier = "primary"
-            BlueprintIdentifier = "1D6058900D05DD3D006BFB54"
-            BuildableName = "API-Samples.app"
-            BlueprintName = "API-Samples-iOS"
-            ReferencedContainer = "container:API-Samples.xcodeproj">
+            BlueprintIdentifier = "A93903B81C57E9D700FE90DC"
+            BuildableName = "libMoltenVKShaderConverter.a"
+            BlueprintName = "MoltenVKShaderConverter-iOS"
+            ReferencedContainer = "container:MoltenVKShaderConverter.xcodeproj">
          </BuildableReference>
-      </BuildableProductRunnable>
+      </MacroExpansion>
    </ProfileAction>
    <AnalyzeAction
       buildConfiguration = "Debug">

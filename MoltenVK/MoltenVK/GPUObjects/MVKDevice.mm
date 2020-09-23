@@ -33,7 +33,7 @@
 #include "MVKCodec.h"
 #include "MVKEnvironment.h"
 #include "MVKLogging.h"
-#include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include "vk_mvk_moltenvk.h"
 
 #import "CAMetalLayer+MoltenVK.h"
@@ -1251,6 +1251,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
 
 	switch (_metalFeatures.mslVersionEnum) {
+#if (defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101600) ||  \
+	(defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000)		// also covers tvOS
+		case MTLLanguageVersion2_3:
+			setMSLVersion(2, 3);
+			break;
+#endif
 		case MTLLanguageVersion2_2:
 			setMSLVersion(2, 2);
 			break;

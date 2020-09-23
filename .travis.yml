@@ -2,7 +2,7 @@ language: objective-c
 
 # macOS and Xcode Version
 os: osx
-osx_image: xcode11.5
+osx_image: xcode12
 
 # Build with verbose logging to avoid Travis timing out.
 script:

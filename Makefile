@@ -5,14 +5,18 @@ XC_SCHEME := MoltenVK Package
 .PHONY: all
 all:
 	@$(MAKE) macos
-	@$(MAKE) iosfat
-	@$(MAKE) tvosfat
+	@$(MAKE) ios
+	@$(MAKE) iossim
+	@$(MAKE) tvos
+	@$(MAKE) tvossim
 
 .PHONY: all-debug
 all-debug:
 	@$(MAKE) macos-debug
-	@$(MAKE) iosfat-debug
-	@$(MAKE) tvosfat-debug
+	@$(MAKE) ios-debug
+	@$(MAKE) iossim-debug
+	@$(MAKE) tvos-debug
+	@$(MAKE) tvossim-debug
 
 .PHONY: macos
 macos:
@@ -30,12 +34,12 @@ ios:
 ios-debug:
 	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -configuration "Debug"
 
-.PHONY: iosfat
-iosfat: ios
+.PHONY: iossim
+iossim:
 	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator"
 
-.PHONY: iosfat-debug
-iosfat-debug: ios-debug
+.PHONY: iossim-debug
+iossim-debug:
 	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator" -configuration "Debug"
 
 .PHONY: tvos
@@ -46,12 +50,12 @@ tvos:
 tvos-debug:
 	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -configuration "Debug"
 
-.PHONY: tvosfat
-tvosfat: tvos
+.PHONY: tvossim
+tvossim:
 	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator"
 
-.PHONY: tvosfat-debug
-tvosfat-debug: tvos-debug
+.PHONY: tvossim-debug
+tvossim-debug:
 	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator" -configuration "Debug"
 
 .PHONY: clean
@@ -63,5 +67,26 @@ clean:
 .PHONY: install
 install:
 	rm -rf /Library/Frameworks/MoltenVK.framework
-	cp -a Package/Latest/MoltenVK/macOS/framework/MoltenVK.framework /Library/Frameworks/
+	rm -rf /Library/Frameworks/MoltenVK.xcframework
+	cp -a Package/Latest/MoltenVK/MoltenVK.xcframework /Library/Frameworks/
 
+# Deprecated target names
+.PHONY: iosfat
+iosfat:
+	@$(MAKE) ios
+	@$(MAKE) iossim
+
+.PHONY: iosfat-debug
+iosfat-debug:
+	@$(MAKE) ios-debug
+	@$(MAKE) iossim-debug
+
+.PHONY: tvosfat
+tvosfat:
+	@$(MAKE) tvos
+	@$(MAKE) tvossim
+
+.PHONY: tvosfat-debug
+tvosfat-debug:
+	@$(MAKE) tvos-debug
+	@$(MAKE) tvossim-debug

@@ -17,7 +17,7 @@
  */
 
 #include "MVKPipeline.h"
-#include <MoltenVKSPIRVToMSLConverter/SPIRVToMSLConverter.h>
+#include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include "MVKRenderPass.h"
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"

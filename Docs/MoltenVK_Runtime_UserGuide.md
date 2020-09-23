@@ -20,8 +20,9 @@ Table of Contents
 - [About This Document](#about_this)
 - [About **MoltenVK**](#about_moltenvk)
 - [Installing **MoltenVK** in Your *Vulkan* Application](#install)
+	- [Install *MoltenVK* as a Universal `XCFramework`](#install_xcfwk)
+	- [Install *MoltenVK* as a Dynamic Library](#install_dylib)
 	- [Build and Runtime Requirements](#requirements)
-	- [Install as Static Framework, Static Library, or Dynamic Library](#install_lib)
 - [Interacting with the **MoltenVK** Runtime](#interaction)
 	- [MoltenVK `VK_MVK_moltenvk` Extension](#moltenvk_extension)
 	- [Configuring MoltenVK](#moltenvk_config)
@@ -76,6 +77,144 @@ standard distribution channels, including *Apple's App Store*.
 Installing **MoltenVK** in Your *Vulkan* Application
 ----------------------------------------------------
 
+Installation of **MoltenVK** in your application is straightforward and easy!
+
+Depending on your build and deployment needs, you can link **MoltenVK** to your application either 
+as a universal `XCFramework` or as a *dynamic library* (`.dylib`). Distributing an app containing 
+a dynamic library via the *iOS App Store* or *tvOS App Store* can require specialized bundling. 
+If you are unsure about which linking and deployment option you need, or on *iOS* or *tvOS*, 
+unless you have specific needs for dynamic libraries, follow the steps for linking **MoltenVK** 
+as an `XCFramework`, as it is the simpler option.
+
+The demo apps, found in the `Demos.xcworkspace`, located in the `Demos` folder, demonstrate both
+of the installation techniques discussed above:
+
+- `XCFramework`: `Cube` and `API-Samples` demos.
+- Dynamic library: `Hologram` demo.
+
+
+<a name="install_xcfwk"></a>
+### Install *MoltenVK* as a Universal `XCFramework`
+
+To link **MoltenVK** to your application as an `XCFramework`, follow these steps:
+
+1. Open your application in *Xcode* and select your application's target in the 
+   *Project Navigator* panel.
+
+2. Open the *Build Settings* tab.
+
+	1. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, 
+           add an entry that points to the `MoltenVK/include` folder.
+
+	2. If using `IOSurfaces` on *iOS*, open the **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET`) 
+	   setting, and ensure it is set to a value of `iOS 11.0` or greater,  or if using `IOSurfaces` on *tvOS*, 
+	   open the **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET`) setting, and ensure it is set to a
+	   value of `tvOS 11.0` or greater.
+
+3. Open the *Build Phases* tab and open the *Link Binary With Libraries* list.
+   
+	1. Drag `MoltenVK/MoltenVK.xcframework` to the *Link Binary With Libraries* list.
+
+	2. If your application does **_not_** use use `C++`, click the **+** button, 
+	   and add `libc++.tbd` by selecting it from the list of system frameworks. 
+	   This is needed because **MoltenVK** uses `C++` system libraries internally.
+      
+	3. If you do **_not_** have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and 
+       **Enable Modules (C and Objective-C)** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the 
+       **+** button, and add the following items by selecting them from the list of system frameworks:
+	   - `libc++.tbd` *(if not already done in Step 2)*
+	   - `Metal.framework`
+	   - `Foundation.framework`.
+	   - `QuartzCore.framework`
+	   - `IOKit.framework` (*macOS*)
+	   - `UIKit.framework` (*iOS* or *tvOS*)
+	   - `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`, 
+	      or *tvOS* if `TVOS_DEPLOYMENT_TARGET` is at least `tvOS 11.0`)
+
+
+
+<a name="install_dylib"></a>
+### Install *MoltenVK* as a Dynamic Library
+
+To link **MoltenVK** to your application as a dynamic library (`.dylib`), follow these steps:
+
+1. Open your application in *Xcode* and select your application's target in the 
+   *Project Navigator* panel.
+
+
+2. Open the *Build Settings* tab.
+
+    1. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, 
+       add an entry that points to the `MoltenVK/include` folder.
+       
+    2. In the **Library Search Paths** (aka `LIBRARY_SEARCH_PATHS`) setting, 
+       add an entry that points to **_one_** of the following folders:
+          - `MoltenVK/dylib/macOS` *(macOS)*
+          - `MoltenVK/dylib/iOS` *(iOS)*
+          - `MoltenVK/dylib/tvOS` *(tvOS)*
+          
+    3. In the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting, 
+       add an entry that matches where the dynamic library will be located in your runtime
+       environment. If the dynamic library is to be embedded within your application, 
+       you would typically set this to  **_one_** of these values:
+
+       - `@executable_path/../Frameworks` *(macOS)*
+       - `@executable_path/Frameworks` *(iOS or tvOS)*
+       
+       The `libMoltenVK.dylib` library is internally configured to be located at 
+       `@rpath/libMoltenVK.dylib`.
+
+	3. If using `IOSurfaces` on *iOS*, open the **iOS Deployment Target** (aka `IPHONEOS_DEPLOYMENT_TARGET`) 
+	   setting, and ensure it is set to a value of `iOS 11.0` or greater,  or if using `IOSurfaces` on *tvOS*, 
+	   open the **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET`) setting, and ensure it is set to a
+	   value of `tvOS 11.0` or greater.
+
+3. Open the *Build Phases* tab and open the *Link Binary With Libraries* list.
+   
+	1. Drag **_one_** of the following files to the *Link Binary With Libraries* list:
+      - `MoltenVK/dylib/macOS/libMoltenVK.dylib` *(macOS)* 
+      - `MoltenVK/dylib/iOS/libMoltenVK.dylib` *(iOS)* 
+      - `MoltenVK/dylib/tvOS/libMoltenVK.dylib` *(tvOS)* 
+
+	2. If your application does **_not_** use use `C++`, click the **+** button, 
+	   and add `libc++.tbd` by selecting it from the list of system frameworks. 
+	   This is needed because **MoltenVK** uses `C++` system libraries internally.
+      
+	3. If you do **_not_** have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and 
+       **Enable Modules (C and Objective-C)** (aka `CLANG_ENABLE_MODULES`) settings enabled, click the 
+       **+** button, and add the following items by selecting them from the list of system frameworks:
+	   - `libc++.tbd` *(if not already done in Step 2)*
+	   - `Metal.framework`
+	   - `Foundation.framework`.
+	   - `QuartzCore.framework`
+	   - `IOKit.framework` (*macOS*)
+	   - `UIKit.framework` (*iOS* or *tvOS*)
+	   - `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`, 
+	      or *tvOS* if `TVOS_DEPLOYMENT_TARGET` is at least `tvOS 11.0`)
+
+4. Arrange to install the `libMoltenVK.dylib` file in your application environment:
+
+   - To copy the `libMoltenVK.dylib` file into your application or component library:
+   
+	   1. On the *Build Phases* tab, add a new *Copy Files* build phase.
+	    
+	   2. Set the *Destination* into which you want to place  the `libMoltenVK.dylib` file.
+	      Typically this will be *Frameworks* (and it should match the **Runpath Search Paths** 
+	      (aka `LD_RUNPATH_SEARCH_PATHS`) build setting you added above).
+	    
+	   3. Drag **_one_** of the following files to the *Copy Files* list in this new build phase:
+	     - `MoltenVK/dylib/macOS/libMoltenVK.dylib` *(macOS)* 
+	     - `MoltenVK/dylib/iOS/libMoltenVK.dylib` *(iOS)* 
+	     - `MoltenVK/dylib/tvOS/libMoltenVK.dylib` *(tvOS)* 
+   
+   - Alternately, you may create your own installation mechanism to install one of the following 
+     files into a standard *macOS*, *iOS*, or  *tvOS* system library folder on the user's device:
+      - `MoltenVK/dylib/macOS/libMoltenVK.dylib` *(macOS)* 
+      - `MoltenVK/dylib/iOS/libMoltenVK.dylib` *(iOS)* 
+      - `MoltenVK/dylib/tvOS/libMoltenVK.dylib` *(tvOS)* 
+     
+
+
 <a name="requirements"></a>
 ### Build and Runtime Requirements
 
@@ -97,145 +236,19 @@ devices that support *Metal*, or on the *Xcode* *iOS Simulator* or *tvOS Simulat
 - Information on *iOS* devices that are compatible with *Metal* can be found in 
   [this article](https://developer.apple.com/library/content/documentation/DeviceInformation/Reference/iOSDeviceCompatibility/HardwareGPUInformation/HardwareGPUInformation.html).
 
-
-
-<a name="install_lib"></a>
-### Install as Static Framework, Static Library, or Dynamic Library
-
-Installation of **MoltenVK** is straightforward and easy!
-
-Depending on your build and deployment needs, you can install **MoltenVK** as a *static framework*,
-*static library*, or *dynamic library*, by following the steps in this section. If you are unsure 
-about which linking and deployment option you need, follow the steps for installing a 
-*static framework*, as it is the simplest to install.
-  
->**_Note:_** Distributing an app containing a dynamic library via the *iOS App Store* or 
- *tvOS App Store* can require specialized bundling. Unless you have specific needs for 
- dynamic libraries, the recommended approach on *iOS* or *tvOS* is to link **MoltenVK** 
- to your app as a static library or framework.
- 
-
-1. Open your application in *Xcode* and select your application's target in the 
-   *Project Navigator* panel.
-
-
-2. Open the *Build Settings* tab.
-
-	- If installing **MoltenVK** as a *static framework* in your application:
-	    1. In the **Framework Search Paths** (aka `FRAMEWORK_SEARCH_PATHS`) 
-	       setting, add an entry that points to **_one_** of the following folders:
-	          - `MoltenVK/macOS/framework` *(macOS)*
-	          - `MoltenVK/iOS/framework` *(iOS)*
-	          - `MoltenVK/tvOS/framework` *(tvOS)*
-
-	- If installing **MoltenVK** as a *static library* in your application:
-	    1. In the **Library Search Paths** (aka `LIBRARY_SEARCH_PATHS`) setting, 
-	       add an entry that points to **_one_** of the following folders:
-	          - `MoltenVK/macOS/static` *(macOS)*
-	          - `MoltenVK/iOS/static` *(iOS)*
-	          - `MoltenVK/tvOS/static` *(tvOS)*
-	          
-        2. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, 
-           add an entry that points to the `MoltenVK/include` folder.
-
-	- If installing **MoltenVK** as a *dynamic library* in your application:
-	    1. In the **Library Search Paths** (aka `LIBRARY_SEARCH_PATHS`) setting, 
-	       add an entry that points to **_one_** of the following folders:
-	          - `MoltenVK/macOS/dynamic` *(macOS)*
-	          - `MoltenVK/iOS/dynamic` *(iOS)*
-	          - `MoltenVK/tvOS/dynamic` *(tvOS)*
-	          
-        2. In the **Header Search Paths** (aka `HEADER_SEARCH_PATHS`) setting, 
-           add an entry that points to the `MoltenVK/include` folder.
-        3. In the **Runpath Search Paths** (aka `LD_RUNPATH_SEARCH_PATHS`) setting, 
-           add an entry that matches where the dynamic library will be located in your runtime
-           environment. If the dynamic library is to be embedded within your application, 
-           you would typically set this value to either:
-
-           - `@executable_path/../Frameworks` *(macOS)*
-           - `@executable_path/Frameworks` *(iOS or tvOS)*
-           
-           The `libMoltenVK.dylib` library is internally configured to be located at 
-           `@rpath/libMoltenVK.dylib`.
-
-3. With the *Build Settings* tab open, if using `IOSurfaces` on *iOS*, open the **iOS Deployment Target** 
-   (aka `IPHONEOS_DEPLOYMENT_TARGET`) setting, and ensure it is set to a value of `iOS 11.0` or greater, 
-   or if using `IOSurfaces` on *tvOS*, open the **tvOS Deployment Target** (aka `TVOS_DEPLOYMENT_TARGET`)
-   setting, and ensure it is set to a value of `tvOS 11.0` or greater.
-
-4. On the *Build Phases* tab, open the *Link Binary With Libraries* list.
+When a *Metal* app is running from *Xcode*, the default ***Scheme*** settings may reduce performance. 
+To improve performance and gain the benefits of *Metal*, perform the following in *Xcode*:
    
-   - For *macOS*, drag **_one_** of the following files to the *Link Binary With Libraries* list:
-      - `MoltenVK/macOS/framework/MoltenVK.framework ` *(static framework)* 
-      - `MoltenVK/macOS/static/libMoltenVK.a` *(static library)* 
-      - `MoltenVK/macOS/dynamic/libMoltenVK.dylib` *(dynamic library)* 
-
-   - For *iOS*, drag **_one_** of the following files to the *Link Binary With Libraries* list:
-      - `MoltenVK/iOS/framework/MoltenVK.framework ` *(static framework)* 
-      - `MoltenVK/iOS/static/libMoltenVK.a` *(static library)* 
-      - `MoltenVK/iOS/dynamic/libMoltenVK.dylib` *(dynamic library)* 
-
-   - For *tvOS*, drag **_one_** of the following files to the *Link Binary With Libraries* list:
-      - `MoltenVK/tvOS/framework/MoltenVK.framework ` *(static framework)* 
-      - `MoltenVK/tvOS/static/libMoltenVK.a` *(static library)* 
-      - `MoltenVK/tvOS/dynamic/libMoltenVK.dylib` *(dynamic library)* 
-
-5. While in the *Link Binary With Libraries* list on the *Build Phases* tab, if you do **_not_** 
-   have the **Link Frameworks Automatically** (aka `CLANG_MODULES_AUTOLINK`) and 
-   **Enable Modules (C and Objective-C)** (aka `CLANG_ENABLE_MODULES`) settings enabled, click
-   the **+** button, and (selecting from the list of system frameworks) add the following items:
-   - `libc++.tbd`
-   - `Metal.framework`
-   - `Foundation.framework`.
-   - `QuartzCore.framework`
-   - `IOKit.framework` (*macOS*)
-   - `UIKit.framework` (*iOS* or *tvOS*)
-   - `IOSurface.framework` (*macOS*, or *iOS* if `IPHONEOS_DEPLOYMENT_TARGET` is at least `iOS 11.0`, 
-      or *tvOS* if `TVOS_DEPLOYMENT_TARGET` is at least `tvOS 11.0`)
-
-6. If installing **MoltenVK** as a *dynamic library* in your application, arrange to install 
-   the `libMoltenVK.dylib` file in your application environment:
-
-   - To copy the `libMoltenVK.dylib` file into your application or component library:
-   
-        1. On the *Build Phases* tab, add a new *Copy Files* build phase.
-        
-        2. Set the *Destination* into which you want to place  the `libMoltenVK.dylib` file.
-           Typically this will be *Frameworks* (and should match the **Runpath Search Paths** 
-           (aka `LD_RUNPATH_SEARCH_PATHS`) build setting you set above).
-        
-        3. Drag **_one_** of the following files to the *Copy Files* list in this new build phase:
-	          - `MoltenVK/macOS/dynamic/libMoltenVK.dylib` *(macOS)*
-	          - `MoltenVK/iOS/dynamic/libMoltenVK.dylib` *(iOS)*
-	          - `MoltenVK/tvOS/dynamic/libMoltenVK.dylib` *(tvOS)*
-   
-   - Alternately, you may create your own installation mechanism to install one of the 
-     `MoltenVK/macOS/dynamic/libMoltenVK.dylib`, `MoltenVK/iOS/dynamic/libMoltenVK.dylib`, 
-     or `MoltenVK/tvOS/dynamic/libMoltenVK.dylib` file into a standard *macOS*, *iOS*, or 
-     *tvOS* system library folder on the user's device.
-
-7. When a *Metal* app is running from *Xcode*, the default ***Scheme*** settings reduce
-   performance. To improve performance and gain the benefits of *Metal*, perform the 
-   following in *Xcode*:
-   
-	1. Open the ***Scheme Editor*** for building your main application. You can do 
-	   this by selecting ***Edit Scheme...*** from the ***Scheme*** drop-down menu, or select 
-	   ***Product -> Scheme -> Edit Scheme...*** from the main menu.
-	2. On the ***Info*** tab, set the ***Build Configuration*** to ***Release***, and disable the 
-	   ***Debug executable*** check-box.
-	3. On the ***Options*** tab, disable both the ***Metal API Validation*** and ***GPU Frame Capture***
-	   options. For optimal performance, you may also consider disabling the other simulation
-	   and debugging options on this tab. For further information, see the 
-	   [Xcode Scheme Settings and Performance](https://developer.apple.com/library/ios/documentation/Miscellaneous/Conceptual/MetalProgrammingGuide/Dev-Technique/Dev-Technique.html#//apple_ref/doc/uid/TP40014221-CH8-SW3) 
-	   section of Apple's *Metal Programming Guide* documentation.
-
-
-The demo apps, found in the `Demos.xcworkspace`, located in the `Demos` folder, demonstrate each
-of the installation techniques discussed above:
-
-- Static Framework: `API-Samples`.
-- Static library: `Hologram`.
-- Dynamic library: `Cube`.
+1. Open the ***Scheme Editor*** for building your main application. You can do 
+   this by selecting ***Edit Scheme...*** from the ***Scheme*** drop-down menu, or select 
+   ***Product -> Scheme -> Edit Scheme...*** from the main menu.
+2. On the ***Info*** tab, set the ***Build Configuration*** to ***Release***, and disable the 
+   ***Debug executable*** check-box.
+3. On the ***Options*** tab, disable both the ***Metal API Validation*** and ***GPU Frame Capture***
+   options. For optimal performance, you may also consider disabling the other simulation
+   and debugging options on this tab. For further information, see the 
+   [Xcode Scheme Settings and Performance](https://developer.apple.com/library/ios/documentation/Miscellaneous/Conceptual/MetalProgrammingGuide/Dev-Technique/Dev-Technique.html#//apple_ref/doc/uid/TP40014221-CH8-SW3) 
+   section of Apple's *Metal Programming Guide* documentation.
 
 
 
