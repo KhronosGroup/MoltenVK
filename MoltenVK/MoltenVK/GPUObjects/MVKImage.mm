@@ -54,13 +54,13 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
         } else if (memoryBinding->_mtlTexelBuffer) {
             _mtlTexture = [memoryBinding->_mtlTexelBuffer
                            newTextureWithDescriptor: mtlTexDesc
-                           offset: memoryBinding->_mtlTexelBufferOffset
+                           offset: memoryBinding->_mtlTexelBufferOffset + _subresources[0].layout.offset
                            bytesPerRow: _subresources[0].layout.rowPitch];
         } else if (memoryBinding->_deviceMemory->getMTLHeap() && !_image->getIsDepthStencil()) {
             // Metal support for depth/stencil from heaps is flaky
             _mtlTexture = [memoryBinding->_deviceMemory->getMTLHeap()
                            newTextureWithDescriptor: mtlTexDesc
-                           offset: memoryBinding->getDeviceMemoryOffset()];
+                           offset: memoryBinding->getDeviceMemoryOffset() + _subresources[0].layout.offset];
             if (_image->_isAliasable) { [_mtlTexture makeAliasable]; }
         } else {
             _mtlTexture = [_image->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];

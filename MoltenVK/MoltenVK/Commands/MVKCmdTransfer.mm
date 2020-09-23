@@ -1130,6 +1130,15 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	simd::float4 clearColors[kMVKClearAttachmentCount];
 
 	VkExtent2D fbExtent = cmdEncoder->_framebuffer->getExtent2D();
+	// I need to know if the 'renderTargetWidth' and 'renderTargetHeight' properties
+	// actually do something, but [MTLRenderPassDescriptor instancesRespondToSelector: @selector(renderTargetWidth)]
+	// returns NO even on systems that do support it. So we have to check an actual instance.
+	MTLRenderPassDescriptor* tempRPDesc = [MTLRenderPassDescriptor new];	// temp retain
+	if ([tempRPDesc respondsToSelector: @selector(renderTargetWidth)]) {
+		VkRect2D renderArea = cmdEncoder->clipToRenderArea({{0, 0}, fbExtent});
+		fbExtent = {renderArea.offset.x + renderArea.extent.width, renderArea.offset.y + renderArea.extent.height};
+	}
+	[tempRPDesc release];													// temp release
 	populateVertices(cmdEncoder, vertices, fbExtent.width, fbExtent.height);
 
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
@@ -1345,20 +1354,41 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 				layerEnd = layerStart + layerCnt;
 			}
 
-            for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
+            // If we can do layered rendering, I can clear all the layers at once.
+            if (cmdEncoder->getDevice()->_pMetalFeatures->layeredRendering &&
+                (_image->getSampleCount() == VK_SAMPLE_COUNT_1_BIT || cmdEncoder->getDevice()->_pMetalFeatures->multisampleLayeredRendering)) {
                 if (is3D) {
-                    mtlRPCADesc.depthPlane = layer;
-                    mtlRPDADesc.depthPlane = layer;
-                    mtlRPSADesc.depthPlane = layer;
+                    mtlRPCADesc.depthPlane = layerStart;
+                    mtlRPDADesc.depthPlane = layerStart;
+                    mtlRPSADesc.depthPlane = layerStart;
                 } else {
-                    mtlRPCADesc.slice = layer;
-                    mtlRPDADesc.slice = layer;
-                    mtlRPSADesc.slice = layer;
+                    mtlRPCADesc.slice = layerStart;
+                    mtlRPDADesc.slice = layerStart;
+                    mtlRPSADesc.slice = layerStart;
                 }
+                mtlRPDesc.renderTargetArrayLength = (layerCnt == VK_REMAINING_ARRAY_LAYERS
+                                                     ? (_image->getLayerCount() - layerStart)
+                                                     : layerCnt);
 
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
-				setLabelIfNotNil(mtlRendEnc, mtlRendEncName);
+                setLabelIfNotNil(mtlRendEnc, mtlRendEncName);
                 [mtlRendEnc endEncoding];
+            } else {
+                for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
+                    if (is3D) {
+                        mtlRPCADesc.depthPlane = layer;
+                        mtlRPDADesc.depthPlane = layer;
+                        mtlRPSADesc.depthPlane = layer;
+                    } else {
+                        mtlRPCADesc.slice = layer;
+                        mtlRPDADesc.slice = layer;
+                        mtlRPSADesc.slice = layer;
+                    }
+
+                    id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
+                    setLabelIfNotNil(mtlRendEnc, mtlRendEncName);
+                    [mtlRendEnc endEncoding];
+                }
             }
         }
     }
