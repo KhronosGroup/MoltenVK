@@ -541,8 +541,13 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	VkImageBlit expansionRegions[vkIRCnt];
 	VkImageCopy copyRegions[vkIRCnt];
 
+	// If we can do layered rendering to a multisample texture, I can resolve all the layers at once.
 	uint32_t layerCnt = 0;
-	for (VkImageResolve& vkIR : _vkImageResolves) { layerCnt += vkIR.dstSubresource.layerCount; }
+	if (cmdEncoder->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+		layerCnt = (uint32_t)_vkImageResolves.size();
+	} else {
+		for (VkImageResolve& vkIR : _vkImageResolves) { layerCnt += vkIR.dstSubresource.layerCount; }
+	}
 	MVKMetalResolveSlice mtlResolveSlices[layerCnt];
 
 	uint32_t expCnt = 0;
@@ -589,16 +594,20 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		// Adds a resolve slice struct for each destination layer in the resolve region.
 		// Note that the source subresource for this is that of the SOURCE image if we're doing a
 		// direct resolve, but that of the DESTINATION if we need a temporary transfer image.
-		uint32_t layCnt = vkIR.dstSubresource.layerCount;
-		for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
-			MVKMetalResolveSlice& rslvSlice = mtlResolveSlices[sliceCnt++];
-			rslvSlice.dstSubresource.aspectMask = vkIR.dstSubresource.aspectMask;
-			rslvSlice.dstSubresource.mipLevel = vkIR.dstSubresource.mipLevel;
-			rslvSlice.dstSubresource.arrayLayer = vkIR.dstSubresource.baseArrayLayer + layIdx;
-			rslvSlice.srcSubresource.aspectMask = needXfrImage ? vkIR.dstSubresource.aspectMask : vkIR.srcSubresource.aspectMask;
-			rslvSlice.srcSubresource.mipLevel = needXfrImage ? vkIR.dstSubresource.mipLevel : vkIR.srcSubresource.mipLevel;
-			rslvSlice.srcSubresource.arrayLayer = needXfrImage ? vkIR.dstSubresource.baseArrayLayer : vkIR.srcSubresource.baseArrayLayer;
-			rslvSlice.srcSubresource.arrayLayer += layIdx;
+		mtlResolveSlices[sliceCnt].dstSubresource = vkIR.dstSubresource;
+		mtlResolveSlices[sliceCnt].srcSubresource = needXfrImage ? vkIR.dstSubresource : vkIR.srcSubresource;
+		if (cmdEncoder->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+			sliceCnt++;
+		} else {
+			uint32_t layCnt = vkIR.dstSubresource.layerCount;
+			mtlResolveSlices[sliceCnt].dstSubresource.layerCount = 1;
+			mtlResolveSlices[sliceCnt].srcSubresource.layerCount = 1;
+			for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
+				MVKMetalResolveSlice& rslvSlice = mtlResolveSlices[sliceCnt++];
+				rslvSlice = mtlResolveSlices[sliceCnt - 2];
+				rslvSlice.dstSubresource.baseArrayLayer++;
+				rslvSlice.srcSubresource.baseArrayLayer++;
+			}
 		}
 	}
 
@@ -649,9 +658,12 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
         mtlColorAttDesc.texture = xfrImage->getMTLTexture(srcPlaneIndex);
         mtlColorAttDesc.resolveTexture = _dstImage->getMTLTexture(dstPlaneIndex);
 		mtlColorAttDesc.level = rslvSlice.srcSubresource.mipLevel;
-		mtlColorAttDesc.slice = rslvSlice.srcSubresource.arrayLayer;
+		mtlColorAttDesc.slice = rslvSlice.srcSubresource.baseArrayLayer;
 		mtlColorAttDesc.resolveLevel = rslvSlice.dstSubresource.mipLevel;
-		mtlColorAttDesc.resolveSlice = rslvSlice.dstSubresource.arrayLayer;
+		mtlColorAttDesc.resolveSlice = rslvSlice.dstSubresource.baseArrayLayer;
+		if (rslvSlice.dstSubresource.layerCount > 1) {
+			mtlRPD.renderTargetArrayLengthMVK = rslvSlice.dstSubresource.layerCount;
+		}
 		id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPD];
 		setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(kMVKCommandUseResolveImage));
 
@@ -1130,6 +1142,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	simd::float4 clearColors[kMVKClearAttachmentCount];
 
 	VkExtent2D fbExtent = cmdEncoder->_framebuffer->getExtent2D();
+#if MVK_MACOS_OR_IOS
 	// I need to know if the 'renderTargetWidth' and 'renderTargetHeight' properties
 	// actually do something, but [MTLRenderPassDescriptor instancesRespondToSelector: @selector(renderTargetWidth)]
 	// returns NO even on systems that do support it. So we have to check an actual instance.
@@ -1138,6 +1151,7 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		VkRect2D renderArea = cmdEncoder->clipToRenderArea({{0, 0}, fbExtent});
 		fbExtent = {renderArea.offset.x + renderArea.extent.width, renderArea.offset.y + renderArea.extent.height};
 	}
+#endif
 	[tempRPDesc release];													// temp release
 	populateVertices(cmdEncoder, vertices, fbExtent.width, fbExtent.height);
 
@@ -1366,9 +1380,9 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
                     mtlRPDADesc.slice = layerStart;
                     mtlRPSADesc.slice = layerStart;
                 }
-                mtlRPDesc.renderTargetArrayLength = (layerCnt == VK_REMAINING_ARRAY_LAYERS
-                                                     ? (_image->getLayerCount() - layerStart)
-                                                     : layerCnt);
+                mtlRPDesc.renderTargetArrayLengthMVK = (layerCnt == VK_REMAINING_ARRAY_LAYERS
+                                                        ? (_image->getLayerCount() - layerStart)
+                                                        : layerCnt);
 
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
                 setLabelIfNotNil(mtlRendEnc, mtlRendEncName);
