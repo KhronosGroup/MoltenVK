@@ -610,6 +610,30 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
     encodeBinding<MVKMTLSamplerStateBinding>(shaderStage.samplerStateBindings, shaderStage.areSamplerStateBindingsDirty, bindSampler);
 }
 
+void MVKGraphicsResourcesCommandEncoderState::offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage,
+                                                                             MVKGraphicsPipeline* pipeline,
+                                                                             uint32_t firstInstance) {
+    auto& shaderStage = _shaderStageResourceBindings[kMVKShaderStageVertex];
+    for (auto& binding : pipeline->getZeroDivisorVertexBindings()) {
+        uint32_t mtlBuffIdx = pipeline->getMetalBufferIndexForVertexAttributeBinding(binding.first);
+        auto iter = std::find_if(shaderStage.bufferBindings.begin(), shaderStage.bufferBindings.end(), [mtlBuffIdx](const MVKMTLBufferBinding& b) { return b.index == mtlBuffIdx; });
+		if (!iter) { continue; }
+        switch (stage) {
+            case kMVKGraphicsStageVertex:
+                [_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl) setBufferOffset: iter->offset + firstInstance * binding.second
+                                                                                                    atIndex: mtlBuffIdx];
+                break;
+            case kMVKGraphicsStageRasterization:
+                [_cmdEncoder->_mtlRenderEncoder setVertexBufferOffset: iter->offset + firstInstance * binding.second
+                                                              atIndex: mtlBuffIdx];
+                break;
+            default:
+                assert(false);      // If we hit this, something went wrong.
+                break;
+        }
+    }
+}
+
 // Mark everything as dirty
 void MVKGraphicsResourcesCommandEncoderState::markDirty() {
     MVKCommandEncoderState::markDirty();
