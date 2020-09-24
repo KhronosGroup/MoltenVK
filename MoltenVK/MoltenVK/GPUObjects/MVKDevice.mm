@@ -3368,9 +3368,9 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
 				auto* requestedFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesKHR*)next;
-				enableFeatures(&_enabledPortabilityFeatures.triangleFans,
-							   &requestedFeatures->triangleFans,
-							   &pdPortabilityFeatures.triangleFans, 15);
+				enableFeatures(&_enabledPortabilityFeatures.constantAlphaColorBlendFactors,
+							   &requestedFeatures->constantAlphaColorBlendFactors,
+							   &pdPortabilityFeatures.constantAlphaColorBlendFactors, 15);
 				break;
 			}
 			default:
