@@ -195,6 +195,9 @@ struct MVKTranslatedVertexBinding {
 	uint32_t translationOffset;
 };
 
+/** Describes a vertex buffer binding whose divisor is zero. */
+typedef std::pair<uint32_t, uint32_t> MVKZeroDivisorVertexBinding;
+
 typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
 
 /** The number of dynamic states possible in Vulkan. */
@@ -259,6 +262,9 @@ public:
 	/** Returns the collection of translated vertex bindings. */
 	MVKArrayRef<MVKTranslatedVertexBinding> getTranslatedVertexBindings() { return _translatedVertexBindings.contents(); }
 
+	/** Returns the collection of instance-rate vertex bindings whose divisor is zero, along with their strides. */
+	MVKArrayRef<MVKZeroDivisorVertexBinding> getZeroDivisorVertexBindings() { return _zeroDivisorVertexBindings.contents(); }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
 						MVKPipelineCache* pipelineCache,
@@ -306,6 +312,7 @@ protected:
 	MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports;
 	MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
+	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
 
 	MTLComputePipelineDescriptor* _mtlTessVertexStageDesc = nil;
 	id<MTLFunction> _mtlTessVertexFunctions[3] = {nil, nil, nil};

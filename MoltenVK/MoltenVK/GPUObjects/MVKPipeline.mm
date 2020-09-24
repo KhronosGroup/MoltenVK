@@ -1135,6 +1135,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
     }
 
     // Vertex buffer divisors (step rates)
+    std::unordered_set<uint32_t> zeroDivisorBindings;
     if (pVertexInputDivisorState) {
         vbCnt = pVertexInputDivisorState->vertexBindingDivisorCount;
         for (uint32_t i = 0; i < vbCnt; i++) {
@@ -1143,8 +1144,10 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
                 uint32_t vbIdx = getMetalBufferIndexForVertexAttributeBinding(pVKVB->binding);
                 if ((NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionPerInstance ||
 					(NSUInteger)inputDesc.layouts[vbIdx].stepFunction == MTLStepFunctionThreadPositionInGridY) {
-                    if (pVKVB->divisor == 0)
+                    if (pVKVB->divisor == 0) {
                         inputDesc.layouts[vbIdx].stepFunction = (decltype(inputDesc.layouts[vbIdx].stepFunction))MTLStepFunctionConstant;
+                        zeroDivisorBindings.insert(pVKVB->binding);
+                    }
                     inputDesc.layouts[vbIdx].stepRate = pVKVB->divisor;
                 }
             }
@@ -1185,6 +1188,9 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 							vaOffset = 0;
 						}
 						vaBinding = getTranslatedVertexBinding(vaBinding, origOffset - vaOffset, maxBinding);
+                        if (zeroDivisorBindings.count(pVKVB->binding)) {
+                            zeroDivisorBindings.insert(vaBinding);
+                        }
 					}
 					break;
 				}
@@ -1223,6 +1229,13 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 			if (xldtVACnt == vbVACnt) { vbDesc.stride = 0; }
 		}
 	}
+
+    // Collect all bindings with zero divisors. We need to remember them so we can offset
+    // the vertex buffers during a draw.
+    for (uint32_t binding : zeroDivisorBindings) {
+        uint32_t stride = (uint32_t)inputDesc.layouts[getMetalBufferIndexForVertexAttributeBinding(binding)].stride;
+        _zeroDivisorVertexBindings.emplace_back(binding, stride);
+    }
 
 	return true;
 }

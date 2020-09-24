@@ -25,6 +25,7 @@
 #include <unordered_map>
 
 class MVKCommandEncoder;
+class MVKGraphicsPipeline;
 class MVKOcclusionQueryPool;
 
 struct MVKShaderImplicitRezBinding;
@@ -507,6 +508,9 @@ public:
                         std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>&)> bindImplicitBuffer,
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
+
+	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
+	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
 #pragma mark Construction
     
