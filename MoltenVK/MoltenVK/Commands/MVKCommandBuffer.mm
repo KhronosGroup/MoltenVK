@@ -338,8 +338,8 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
     mtlRPDesc.visibilityResultBuffer = _occlusionQueryState.getVisibilityResultMTLBuffer();
 
     VkExtent2D fbExtent = _framebuffer->getExtent2D();
-    mtlRPDesc.renderTargetWidthMVK = min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width);
-    mtlRPDesc.renderTargetHeightMVK = min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height);
+    mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
+    mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);
     if (_canUseLayeredRendering) {
         if (getSubpass()->isMultiview()) {
             // In the case of a multiview pass, the framebuffer layer count will be one.
