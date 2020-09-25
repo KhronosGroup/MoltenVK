@@ -470,7 +470,7 @@ void mvkReleaseContainerContents(C& container) {
 
 /** Returns whether the container contains an item equal to the value. */
 template<class C, class T>
-bool contains(const C& container, const T& val) {
+bool contains(C& container, const T& val) {
 	for (const T& cVal : container) { if (cVal == val) { return true; } }
 	return false;
 }

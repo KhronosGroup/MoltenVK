@@ -62,6 +62,13 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
                            newTextureWithDescriptor: mtlTexDesc
                            offset: memoryBinding->getDeviceMemoryOffset() + _subresources[0].layout.offset];
             if (_image->_isAliasable) { [_mtlTexture makeAliasable]; }
+        } else if (_image->_isAliasable && memoryBinding->_deviceMemory->isDedicatedAllocation() &&
+            !contains(memoryBinding->_deviceMemory->_imageMemoryBindings, memoryBinding)) {
+            // This is a dedicated allocation, but it belongs to another aliasable image.
+            // In this case, use the MTLTexture from the memory's dedicated image.
+            // We know the other image must be aliasable, or I couldn't have been bound
+            // to its memory: the memory object wouldn't allow it.
+            _mtlTexture = [memoryBinding->_deviceMemory->_imageMemoryBindings[0]->_image->getMTLTexture(_planeIndex, mtlTexDesc.pixelFormat) retain];
         } else {
             _mtlTexture = [_image->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
         }
@@ -113,6 +120,8 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     }
 #endif
 
+    MVKImageMemoryBinding* memoryBinding = getMemoryBinding();
+
     VkExtent3D extent = _image->getExtent3D(_planeIndex, 0);
     MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];    // retained
     mtlTexDesc.pixelFormat = mtlPixFmt;
@@ -123,7 +132,12 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.mipmapLevelCount = _image->_mipLevels;
     mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_image->_samples);
     mtlTexDesc.arrayLength = _image->_arrayLayers;
-    mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage, _image->_isLinear, _image->_hasMutableFormat, _image->_hasExtendedUsage);
+    if (_image->_isAliasable && memoryBinding->_deviceMemory && memoryBinding->_deviceMemory->isDedicatedAllocation()) {
+        // Unfortunately, in this instance, we must presume the texture can be used for anything.
+        mtlTexDesc.usageMVK = MTLTextureUsageUnknown;
+    } else {
+        mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage, _image->_isLinear, _image->_hasMutableFormat, _image->_hasExtendedUsage);
+    }
     mtlTexDesc.storageModeMVK = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
 
@@ -831,6 +845,7 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 	MVKPixelFormats* pixFmts = getPixelFormats();
     _vkFormat = pCreateInfo->format;
 	_usage = pCreateInfo->usage;
+    _isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
 	_hasMutableFormat = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT);
 	_hasExtendedUsage = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
 
@@ -876,7 +891,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
             [mtlTexDesc release];
             memoryBinding->_byteCount += sizeAndAlign.size;
             memoryBinding->_byteAlignment = std::max(memoryBinding->_byteAlignment, (VkDeviceSize)sizeAndAlign.align);
-            _isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
         } else if (_isLinearForAtomics && _device->_pMetalFeatures->placementHeaps) {
             NSUInteger bufferLength = 0;
             for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
@@ -886,7 +900,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
             MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapBufferSizeAndAlignWithLength: bufferLength options: MTLResourceStorageModePrivate];
             memoryBinding->_byteCount += sizeAndAlign.size;
             memoryBinding->_byteAlignment = std::max(std::max(memoryBinding->_byteAlignment, _rowByteAlignment), (VkDeviceSize)sizeAndAlign.align);
-            _isAliasable = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_IMAGE_CREATE_ALIAS_BIT);
         } else {
             for (uint32_t mipLvl = 0; mipLvl < _mipLevels; mipLvl++) {
                 VkExtent3D mipExtent = getExtent3D(planeIndex, mipLvl);
