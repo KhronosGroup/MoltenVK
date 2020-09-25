@@ -113,6 +113,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderDrawParamsFeatures->shaderDrawParameters = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
+				auto* shaderSGTypesFeatures = (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)next;
+				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = _metalFeatures.subgroupSize != 0;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
 				auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
 				uboLayoutFeatures->uniformBufferStandardLayout = true;
