@@ -31,7 +31,7 @@ using namespace std;
 #pragma mark MVKQueryPool
 
 void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
-    uint32_t queryCount = cmdEncoder->getSubpass()->getViewCountInMetalPass(cmdEncoder->getMultiviewPassIndex());
+    uint32_t queryCount = cmdEncoder->isInRenderPass() ? cmdEncoder->getSubpass()->getViewCountInMetalPass(cmdEncoder->getMultiviewPassIndex()) : 1;
     lock_guard<mutex> lock(_availabilityLock);
     for (uint32_t i = query; i < query + queryCount; ++i) {
         _availability[i] = DeviceAvailable;

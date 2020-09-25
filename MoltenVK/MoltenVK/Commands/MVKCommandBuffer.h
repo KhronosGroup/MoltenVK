@@ -290,6 +290,9 @@ public:
 	/** If a render encoder is active, encodes store actions for all attachments to it. */
 	void encodeStoreActions(bool storeOverride = false);
 
+	/** Returns whether or not we are presently in a render pass. */
+	bool isInRenderPass() { return _renderPass != nullptr; }
+
 	/** Returns the render subpass that is currently active. */
 	MVKRenderSubpass* getSubpass();
 
