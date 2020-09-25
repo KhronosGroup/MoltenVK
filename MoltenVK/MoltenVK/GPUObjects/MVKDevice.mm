@@ -1243,6 +1243,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_MACOS
     if (mvkOSVersionIsAtLeast(10.14)) {
         static const uint32_t kAMDVendorId = 0x1002;
+        initGPUInfoProperties();    // Need to know the vendor ID for this.
         _metalFeatures.subgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
     }
 #endif
