@@ -1446,9 +1446,9 @@ VkResult MVKCmdFillBuffer::setContent(MVKCommandBuffer* cmdBuff,
     _dstOffset = dstOffset;
     _dataValue = data;
 
-	// Round up in case of VK_WHOLE_SIZE on a buffer size which is not aligned to 4 bytes.
+	// Round down in case of VK_WHOLE_SIZE on a buffer size which is not aligned to 4 bytes.
 	VkDeviceSize byteCnt = (size == VK_WHOLE_SIZE) ? (_dstBuffer->getByteCount() - _dstOffset) : size;
-	VkDeviceSize wdCnt = (byteCnt + 3) >> 2;
+	VkDeviceSize wdCnt = byteCnt >> 2;
 	if (mvkFits<uint32_t>(wdCnt)) {
 		_wordCount = (uint32_t)wdCnt;
 	} else {
