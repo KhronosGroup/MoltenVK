@@ -108,6 +108,8 @@ void MVKCmdDraw::encode(MVKCommandEncoder* cmdEncoder) {
         return;
     }
 
+    cmdEncoder->_isIndexedDraw = false;
+
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
 	MVKPiplineStages stages;
@@ -301,6 +303,8 @@ void MVKCmdDrawIndexed::encode(MVKCommandEncoder* cmdEncoder) {
         // Nothing to do.
         return;
     }
+
+    cmdEncoder->_isIndexedDraw = true;
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
 
@@ -509,6 +513,8 @@ VkResult MVKCmdDrawIndirect::setContent(MVKCommandBuffer* cmdBuff,
 static const uint32_t kMVKDrawIndirectVertexCountUpperBound = 131072;
 
 void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
+
+    cmdEncoder->_isIndexedDraw = false;
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
     bool needsInstanceAdjustment = cmdEncoder->getSubpass()->isMultiview() &&
@@ -819,6 +825,8 @@ VkResult MVKCmdDrawIndexedIndirect::setContent(MVKCommandBuffer* cmdBuff,
 }
 
 void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
+
+    cmdEncoder->_isIndexedDraw = true;
 
     MVKIndexMTLBufferBinding& ibb = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
