@@ -452,6 +452,9 @@ public:
 	/** Indicates whether the current render subpass is able to render to an array (layered) framebuffer. */
 	bool _canUseLayeredRendering;
 
+	/** Indicates whether the current draw is an indexed draw. */
+	bool _isIndexedDraw;
+
 
 #pragma mark Construction
 

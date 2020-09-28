@@ -207,7 +207,7 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 
             id<MTLComputePipelineState> plState;
 			const MVKIndexMTLBufferBinding& indexBuff = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
-            if (!indexBuff.mtlBuffer) {
+            if (!cmdEncoder->_isIndexedDraw) {
                 plState = getTessVertexStageState();
             } else if (indexBuff.mtlIndexType == MTLIndexTypeUInt16) {
                 plState = getTessVertexStageIndex16State();
