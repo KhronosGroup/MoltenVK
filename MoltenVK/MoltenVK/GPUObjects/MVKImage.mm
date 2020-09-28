@@ -1115,6 +1115,12 @@ MVKSwapchainImage::MVKSwapchainImage(MVKDevice* device,
 									 uint32_t swapchainIndex) : MVKImage(device, pCreateInfo) {
 	_swapchain = swapchain;
 	_swapchainIndex = swapchainIndex;
+
+	_swapchain->retain();
+}
+
+MVKSwapchainImage::~MVKSwapchainImage() {
+	if (_swapchain) { _swapchain->release(); }
 }
 
 
@@ -1275,11 +1281,13 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 		_swapchain->recordPresentTime(presentID, desiredPresentTime, desiredPresentTime);
 #else
 		if ([_mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
+			retain();	// Ensure this image is not destroyed while awaiting presentation
 			[_mtlDrawable addPresentedHandler: ^(id<MTLDrawable> drawable) {
 				// Record the presentation time
 				CFTimeInterval presentedTimeSeconds = drawable.presentedTime;
 				uint64_t presentedTimeNanoseconds = (uint64_t)(presentedTimeSeconds * 1.0e9);
 				_swapchain->recordPresentTime(presentID, desiredPresentTime, presentedTimeNanoseconds);
+				release();
 			}];
 		} else {
 			// If MTLDrawable.presentedTime/addPresentedHandler isn't supported, just treat it as if the

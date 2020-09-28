@@ -402,6 +402,8 @@ public:
 					  MVKSwapchain* swapchain,
 					  uint32_t swapchainIndex);
 
+	~MVKSwapchainImage() override;
+
 protected:
 	friend class MVKPeerSwapchainImage;
 
