@@ -187,6 +187,9 @@ public:
 	/** Returns whether this image has a linear memory layout. */
 	bool getIsLinear() { return _isLinear; }
 
+	/** Returns whether this image is allowed to alias another image. */
+	bool getIsAliasable() { return _isAliasable; }
+
 	/** 
 	 * Returns the 3D extent of this image at the base mipmap level.
 	 * For 2D or cube images, the Z component will be 1.  

@@ -154,8 +154,9 @@ VkResult MVKDeviceMemory::addImageMemoryBinding(MVKImageMemoryBinding* mvkImg) {
 	lock_guard<mutex> lock(_rezLock);
 
 	// If a dedicated alloc, ensure this image is the one and only image
-	// I am dedicated to.
-	if (_isDedicated && (_imageMemoryBindings.empty() || _imageMemoryBindings[0] != mvkImg) ) {
+	// I am dedicated to. If my image is aliasable, though, allow other aliasable
+	// images to bind to me.
+	if (_isDedicated && (_imageMemoryBindings.empty() || !(contains(_imageMemoryBindings, mvkImg) || (_imageMemoryBindings[0]->_image->getIsAliasable() && mvkImg->_image->getIsAliasable()))) ) {
 		return reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "Could not bind VkImage %p to a VkDeviceMemory dedicated to resource %p. A dedicated allocation may only be used with the resource it was dedicated to.", mvkImg, getDedicatedResource() );
 	}
 
