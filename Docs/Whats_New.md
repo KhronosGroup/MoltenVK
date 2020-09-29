@@ -39,6 +39,7 @@ Released 2020/09/28
 	- `VK_KHR_external_semaphore_capabilities` (non-functional groundwork for
 	  future `MTLSharedEvent` Vulkan extension)
 	- `VK_KHR_multiview`
+	- `VK_KHR_shader_subgroup_extended_types`
 - Remove support for obsolete `VK_EXTX_portability_subset` extension.
 - Redesign build and linking options that leverage newer framework technology:
 	- Add comprehensive support for multi-platform, multi-architecture `XCFrameworks`.
@@ -46,18 +47,83 @@ Released 2020/09/28
 	- Add support for *Apple Silicon* builds for *macOS* and *Simulators*.
 	- Remove support for distinct legacy frameworks and static libraries.
 	- Remove support for fat libraries and frameworks that span device and simulators.
+	- Combine `MoltenVKSPIRVToMSLConverter` and `MoltenVKGLSLToSPIRVConverter` frameworks 
+	  into a single `MoltenVKShaderConverter` framework.
+- Support copying between 3D and 2D images.
+- Support clearing 3D images.
+- Support linear images and buffer views in shared memory on *macOS 10.15.5+*.
+- Support `VK_IMAGE_CREATE_EXTENDED_USAGE_BIT`.
+- Support multiple aliased images for dedicated image memory allocations.
 - Improve performance of tessellation control pipeline stage by processing multiple 
   patches per workgroup.
 - `vkCmdBindDescriptorSets` order `pDynamicOffsets` by descriptor binding number 
   within each descriptor set.
 - `vkCmdCopyImage` on macOS flush non-coherent image memory before copy operation.
+- Process multiple patches per workgroup in a tessellation control shader.
+- Initialize tessellation related variables conditionally in indirect draws.
+- Fix build errors on Simulator not supporting `MTLDrawable` present time options.
+- Fix `dynamicOffsets` ordering based on binding index.
+- Ensure the base texture is created when creating a view texture.
+- Fix features, alignment, and image properties of chroma subsampled formats.
+- Disable `variableMultisampleRate` feature.
+- Permit renderpass to have no attachments.
+- Clear linear images using a compute shader.
+- Reject attempts to create compressed linear images.
+- Always use a texel buffer for atomic linear storage images.
+- Use deferred store actions instead of tracking multi-pass draws.
+- Use `MTLRenderPassDescriptor renderTargetWidth` and `renderTargetHeight` on macOS 10.15 and newer.
+- Use a 2D non-arrayed view for 2D non-arrayed attachments.
+- Use arrayed textures for layered subpass input.
+- Use layered rendering when clearing or resolving images whenever possible,
+  and take `renderArea` into account.
+- Streamline image copying when the entire source is being copied to the entire destination.
+- Don't set `renderTargetArrayLength` on devices that don't support it.
+- Don't attempt to clear unused attachments and fix vertex count for clearing multiple layers.
+- Don't encode commands that draw zero vertices.
+- Ignore `addressModeW`  on samplers with unnormalized coordinates.
+- Flip GPU when swapchain is created, not when device object is created,
+  to optimize this condition if it is not needed.
+- Flush source image of a transfer on *macOS*.
+- Fix offset for texel buffers and heaps for multi-planar images.
+- Fix memory leak when object create fails.
+- Fix several use-after-freed errors.
+- Fix applying divisors to instanced vertex attributes.
+- Fix issue in accessing `MTLTexture` for swapchain image planes.
+- Fix occasional crash on vertex stage indirect draws.
+- Fix reported image format properties for 1D images as 2D.
+- `VK_EXT_vertex_attribute_divisor` fix issues with zero divisors.
 - Re-add support for bitcode generation on *iOS* and *tvOS*.
 - `fetchDependencies` builds serially by default for better build script integration. 
 - Combine `MoltenVKSPIRVToMSLConverter` and `MoltenVKGLSLToSPIRVConverter` 
   frameworks into a single `MoltenVKShaderConverter` framework.
 - Fix Metal validation error when occlusion query and renderpass are in separate 
   Vulkan command buffers.
+- Fix a crash on starting a query outside a render pass.
+- Fix Metal validation error that forbids rendering to an image of zero size.
+- Fix issue where descriptor pool releasing descriptor sets it doesn't own.
+- Fix issue where load/store actions not set in renderpass that includes compute stage.
+- Prevent accidental `setColorStoreAction` for non-color attachments.
+- Fix image copy destination extent of compressed images.
+- Fix image resolve sub-region extent.
+- Fix owner of merged `MVKShaderLibraries`.
+- Fix rounding of buffer sizing when `VK_WHOLE_SIZE` is used.
+- Fix detection of indexed draw calls.
 - `vkSetMTLTextureMVK()` Fix crash if incoming `MTLTexture` does not have an associated `IOSurface`. 
+- Update dependency libraries to match *Vulkan SDK 1.2.154*.
+- Update to latest SPIRV-Cross version:
+	- MSL: Fix handling of matrices and structs in the output control point array.
+	- MSL: Enclose args when convert `distance(a,b)` to `abs(a-b)`.
+	- MSL: Fix multiview view index calculation with a non-zero base instance.
+	- MSL: Don't set the layer for multiview if the device doesn't support it.
+	- MSL: Fix `OpCompositeInsert` and `OpVectorInsertDynamic`.
+	- MSL: Support layered input attachments.
+	- Ensure that we use primary alias type when emitting flattened members.
+	- Only rewrite type aliases for the base type.
+	- Overhaul how we deal with reserved identifiers.
+	- Implement a simple evaluator of specialization constants.
+	- Deal with case where a selection construct conditionally merges/breaks.
+	- Allow `flip_vert_y` in all relevant stages.
+	- Clean up conditional branch codegen.
 
 
 

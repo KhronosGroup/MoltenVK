@@ -16,7 +16,7 @@ TPLT_BLD_DIR="${TPLT_DIR}/build"
 
 # Ensure the SPIRV-Tools library is fully built
 cd ".."
-./fetchDependencies --build-spirv-tools --no-parallel-build --none
+./fetchDependencies --build-spirv-tools --none
 cd -  > /dev/null
 
 echo Updating SPIRV-Tools template build directory

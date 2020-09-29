@@ -92,27 +92,22 @@ while (( "$#" )); do
   case "$1" in
        --ios)
          BLD_IOS="Y"
-         BLD_SPECIFIED="Y"
          shift 1
          ;;
        --iossim)
          BLD_IOS_SIM="Y"
-         BLD_SPECIFIED="Y"
          shift 1
          ;;
        --tvos)
          BLD_TVOS="Y"
-         BLD_SPECIFIED="Y"
          shift 1
          ;;
        --tvossim)
          BLD_TVOS_SIM="Y"
-         BLD_SPECIFIED="Y"
          shift 1
          ;;
        --macos)
          BLD_MACOS="Y"
-         BLD_SPECIFIED="Y"
          shift 1
          ;;
        --all)
@@ -121,12 +116,10 @@ while (( "$#" )); do
          BLD_TVOS="Y"
          BLD_TVOS_SIM="Y"
          BLD_MACOS="Y"
-         BLD_SPECIFIED="Y"
          shift 1
          ;;
        --none)
          BLD_NONE="Y"
-         BLD_SPECIFIED="Y"
          shift 1
          ;;
        --debug)
@@ -362,15 +355,6 @@ cd ..
 
 # -------------- Build MoltenVK external library dependencies -----------------
 
-# if no platform was specified, print usage message and exit
-if [ "$BLD_SPECIFIED" = "" ]; then
-	echo "ERROR: You did not specify a platform to build."
-	echo "Include one or more of the following platform options:"
-	echo "    --macos --ios --iossim --tvos --tvossim --all"
-	echo "See the instructions in the fetchDependencies script for more info."
-	exit 1
-fi
-
 echo
 echo ========== Started building dependency libraries at `date +"%r"` ==========
 echo Please be patient on first build
@@ -379,6 +363,7 @@ echo Please be patient on first build
 # 1 - OS
 # 2 - platform
 function build_impl() {
+    BLD_SPECIFIED="Y"
 	XC_OS=${1}
 	XC_PLTFM=${2}
 
@@ -422,10 +407,6 @@ if [ "$XC_USE_BCKGND" != "" ]; then
 	trap "kill 0" EXIT
 fi
 
-if [ "$BLD_NONE" != "" ]; then
-	echo Not building any platforms
-fi
-
 if [ "$BLD_MACOS" != "" ]; then
 	build "macOS" "macOS"
 fi
@@ -451,11 +432,23 @@ if [ "$XC_USE_BCKGND" != "" ]; then
 	wait
 fi
 
-# Build XCFrameworks, update latest symlink, and clean MoltenVK for rebuild
-PROJECT_DIR="."
-CONFIGURATION=${XC_CONFIG}
-. "./Scripts/create_ext_lib_xcframeworks.sh"
-. "./Scripts/package_ext_libs_finish.sh"
+if [ "$BLD_SPECIFIED" != "" ]; then
+	# Build XCFrameworks, update latest symlink, and clean MoltenVK for rebuild
+	PROJECT_DIR="."
+	CONFIGURATION=${XC_CONFIG}
+	. "./Scripts/create_ext_lib_xcframeworks.sh"
+	. "./Scripts/package_ext_libs_finish.sh"
+else
+	if [ "$BLD_NONE" != "" ]; then
+		echo Not building any platforms
+	else
+		echo "WARNING: You did not specify a platform to build."
+		echo "To build the external libraries, include one or"
+		echo "more of the following platform options:"
+		echo "    --macos --ios --iossim --tvos --tvossim --all"
+		echo "See the instructions in the fetchDependencies script for more info."
+	fi
+fi
 
 echo ========== Finished at `date +"%r"` ==========
 exit 0
