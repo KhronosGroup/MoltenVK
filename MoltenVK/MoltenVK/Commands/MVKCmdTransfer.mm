@@ -158,7 +158,7 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             VkExtent3D srcExtent = _srcImage->getExtent3D(srcPlaneIndex, srcLevel);
             uint32_t dstLevel = vkIC.dstSubresource.mipLevel;
             uint32_t dstBaseLayer = vkIC.dstSubresource.baseArrayLayer;
-            VkExtent3D dstExtent = _dstImage->getExtent3D(srcPlaneIndex, dstLevel);
+            VkExtent3D dstExtent = _dstImage->getExtent3D(dstPlaneIndex, dstLevel);
             // If the extent completely covers both images, I can copy all layers at once.
             // This will obviously not apply to copies between a 3D and 2D image.
             if (mvkVkExtent3DsAreEqual(srcExtent, vkIC.extent) && mvkVkExtent3DsAreEqual(dstExtent, vkIC.extent)) {
