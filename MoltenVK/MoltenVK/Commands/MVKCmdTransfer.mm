@@ -161,7 +161,8 @@ void MVKCmdCopyImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             VkExtent3D dstExtent = _dstImage->getExtent3D(dstPlaneIndex, dstLevel);
             // If the extent completely covers both images, I can copy all layers at once.
             // This will obviously not apply to copies between a 3D and 2D image.
-            if (mvkVkExtent3DsAreEqual(srcExtent, vkIC.extent) && mvkVkExtent3DsAreEqual(dstExtent, vkIC.extent)) {
+            if (mvkVkExtent3DsAreEqual(srcExtent, vkIC.extent) && mvkVkExtent3DsAreEqual(dstExtent, vkIC.extent) &&
+                [mtlBlitEnc respondsToSelector: @selector(copyFromTexture:sourceSlice:sourceLevel:toTexture:destinationSlice:destinationLevel:sliceCount:levelCount:)]) {
                 assert((_srcImage->getMTLTextureType() == MTLTextureType3D) == (_dstImage->getMTLTextureType() == MTLTextureType3D));
                 [mtlBlitEnc copyFromTexture: srcMTLTex
                                 sourceSlice: srcBaseLayer
