@@ -355,6 +355,19 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 
     if ( getIsSurfaceLost() ) { return; }
 
+	VkImageFormatListCreateInfo fmtListInfo;
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: {
+				fmtListInfo = *(VkImageFormatListCreateInfo*)next;
+				fmtListInfo.pNext = VK_NULL_HANDLE;		// Terminate the new chain
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
     VkExtent2D imgExtent = mvkVkExtent2DFromCGSize(_mtlLayerOrigDrawSize);
 
     VkImageCreateInfo imgInfo = {
@@ -373,6 +386,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 
 	if (mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_MUTABLE_FORMAT_BIT_KHR)) {
 		mvkEnableFlags(imgInfo.flags, VK_IMAGE_CREATE_MUTABLE_FORMAT_BIT | VK_IMAGE_CREATE_EXTENDED_USAGE_BIT);
+		imgInfo.pNext = &fmtListInfo;
 	}
 	if (mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_SWAPCHAIN_CREATE_SPLIT_INSTANCE_BIND_REGIONS_BIT_KHR)) {
 		// We don't really support this, but set the flag anyway.
