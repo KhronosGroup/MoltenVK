@@ -1559,46 +1559,42 @@ MVKImageView::MVKImageView(MVKDevice* device,
 	}
 
     // Validate whether the image view configuration can be supported
-    if ( _image ) {
+	if ( !_image->getIsValidViewFormat(pCreateInfo->format) ) {
+		setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateImageView(): The format is not in the list of allowed view formats declared in the VkImageFormatListCreateInfo provided in vkCreateImage()."));
+	}
 
-		if ( !_image->getIsValidViewFormat(pCreateInfo->format) ) {
-			setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateImageView(): The format is not in the list of allowed view formats declared in the VkImageFormatListCreateInfo provided in vkCreateImage()."));
+	VkImageType imgType = _image->getImageType();
+	VkImageViewType viewType = pCreateInfo->viewType;
+
+	// VK_KHR_maintenance1 supports taking 2D image views of 3D slices for sampling.
+	// No dice in Metal. But we are able to fake out a 3D render attachment by making the Metal view
+	// itself a 3D texture (when we create it), and setting the rendering depthPlane appropriately.
+	if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
+		if (!mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments."));
 		}
+	}
 
-        VkImageType imgType = _image->getImageType();
-        VkImageViewType viewType = pCreateInfo->viewType;
-
-        // VK_KHR_maintenance1 supports taking 2D image views of 3D slices for sampling.
-		// No dice in Metal. But we are able to fake out a 3D render attachment by making the Metal view
-		// itself a 3D texture (when we create it), and setting the rendering depthPlane appropriately.
-        if ((viewType == VK_IMAGE_VIEW_TYPE_2D || viewType == VK_IMAGE_VIEW_TYPE_2D_ARRAY) && (imgType == VK_IMAGE_TYPE_3D)) {
-            if (!mvkIsOnlyAnyFlagEnabled(_usage, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT)) {
-                setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView(): 2D views on 3D images can only be used as color attachments."));
-            }
-        }
-
-        // If a 2D array view on a 2D image with layerCount 1, and the only usages are
-        // attachment usages, then force the use of a 2D non-arrayed view. This is important for
-        // input attachments, or they won't match the types declared in the fragment shader.
-        // Transfer usages are OK: the transfer commands don't use image views.
-        // Sampled and storage usages are not: if we try to bind a non-arrayed 2D view
-        // to a 2D image variable, we could wind up with the same problem this is intended to fix.
-        if (mvkIsOnlyAnyFlagEnabled(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-                                             VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-                                             VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
-                                             VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
-                                             VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
-                                             VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))) {
-            if (_mtlTextureType == MTLTextureType2DArray && _image->_mtlTextureType == MTLTextureType2D) {
-                _mtlTextureType = MTLTextureType2D;
+	// If a 2D array view on a 2D image with layerCount 1, and the only usages are
+	// attachment usages, then force the use of a 2D non-arrayed view. This is important for
+	// input attachments, or they won't match the types declared in the fragment shader.
+	// Transfer usages are OK: the transfer commands don't use image views.
+	// Sampled and storage usages are not: if we try to bind a non-arrayed 2D view
+	// to a 2D image variable, we could wind up with the same problem this is intended to fix.
+	if (mvkIsOnlyAnyFlagEnabled(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+										 VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+										 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+										 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+										 VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
+										 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))) {
+		if (_mtlTextureType == MTLTextureType2DArray && _image->_mtlTextureType == MTLTextureType2D) {
+			_mtlTextureType = MTLTextureType2D;
 #if MVK_MACOS
-            } else if (_mtlTextureType == MTLTextureType2DMultisampleArray && _image->_mtlTextureType == MTLTextureType2DMultisample) {
-                _mtlTextureType = MTLTextureType2DMultisample;
+		} else if (_mtlTextureType == MTLTextureType2DMultisampleArray && _image->_mtlTextureType == MTLTextureType2DMultisample) {
+			_mtlTextureType = MTLTextureType2DMultisample;
 #endif
-            }
-        }
-
-    }
+		}
+	}
 
 	// Remember the subresource range, and determine the actual number of mip levels and texture slices
     _subresourceRange = pCreateInfo->subresourceRange;
