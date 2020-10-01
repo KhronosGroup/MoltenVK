@@ -170,6 +170,7 @@ typedef struct {
 	VkFormat vkFormat;
 	MVKMTLFmtCaps mtlFmtCaps;
 	MVKMTLViewClass mtlViewClass;
+	MTLPixelFormat mtlPixelFormatLinear;
 	const char* name;
 
 	inline bool isSupported() const { return (mtlPixelFormat != MTLPixelFormatInvalid) && (mtlFmtCaps != kMVKMTLFmtCapsNone); };
@@ -204,6 +205,17 @@ public:
 
 	/** Returns whether the specified Metal MTLPixelFormat is a PVRTC format. */
 	bool isPVRTCFormat(MTLPixelFormat mtlFormat);
+
+	/**
+	 * Returns whether the VkFormat only differs from the MTLPixelFormat in that one may be the sRGB
+	 * version of the other. Either or both the VkFormat and MTLPixelFormat may be a linear or sRGB format.
+	 * Returns true if any of the following are true:
+	 *   - The MTLPixelFormat is the Metal version of the VkFormat.
+	 *   - The MTLPixelFormat is the Metal sRGB version of the linear VkFormat.
+	 *   - The MTLPixelFormat is the Metal linear version of the sRGB VkFormat.
+	 * Returns false if none of those conditions apply.
+	 */
+	bool compatibleAsLinearOrSRGB(MTLPixelFormat mtlFormat, VkFormat vkFormat);
 
 	/** Returns the format type corresponding to the specified Vulkan VkFormat, */
 	MVKFormatType getFormatType(VkFormat vkFormat);
@@ -346,17 +358,16 @@ public:
 	VkImageUsageFlags getVkImageUsageFlags(MTLTextureUsage mtlUsage, MTLPixelFormat mtlFormat);
 
 	/**
-	 * Returns the Metal texture usage from the Vulkan image usage and Metal format, ensuring that at least the
-	 * usages in minUsage are included, even if they wouldn't naturally be included based on the other two parameters.
+	 * Returns the Metal texture usage from the Vulkan image usage and Metal format.
      * isLinear further restricts the allowed usage to those that are valid for linear textures.
+	 * needsReinterpretation indicates an image view with a format that needs reinterpretation will be applied.
      * isExtended expands the allowed usage to those that are valid for all formats which
      * can be used in a view created from the specified format.
 	 */
 	MTLTextureUsage getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
 									   MTLPixelFormat mtlFormat,
-									   MTLTextureUsage minUsage = MTLTextureUsageUnknown,
                                        bool isLinear = false,
-                                       bool isMutableFormat = true,
+                                       bool needsReinterpretation = true,
                                        bool isExtended = false);
 
 	/** Enumerates all formats that support the given features, calling a specified function for each one. */

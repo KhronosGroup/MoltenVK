@@ -109,18 +109,10 @@ void MVKImagePlane::releaseMTLTexture() {
 // Returns a Metal texture descriptor constructed from the properties of this image.
 // It is the caller's responsibility to release the returned descriptor object.
 MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
-    MTLPixelFormat mtlPixFmt = _mtlPixFmt;
-    MTLTextureUsage minUsage = MTLTextureUsageUnknown;
-#if MVK_MACOS
-    if (_image->_is3DCompressed) {
-        // Metal before 3.0 doesn't support 3D compressed textures, so we'll decompress
-        // the texture ourselves. This, then, is the *uncompressed* format.
-        mtlPixFmt = MTLPixelFormatBGRA8Unorm;
-        minUsage = MTLTextureUsageShaderWrite;
-    }
-#endif
 
-    MVKImageMemoryBinding* memoryBinding = getMemoryBinding();
+	// Metal before 3.0 doesn't support 3D compressed textures, so we'll decompress
+	// the texture ourselves. This, then, is the *uncompressed* format.
+	MTLPixelFormat mtlPixFmt = (MVK_MACOS && _image->_is3DCompressed) ? MTLPixelFormatBGRA8Unorm : _mtlPixFmt;
 
     VkExtent3D extent = _image->getExtent3D(_planeIndex, 0);
     MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];    // retained
@@ -132,12 +124,7 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
     mtlTexDesc.mipmapLevelCount = _image->_mipLevels;
     mtlTexDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_image->_samples);
     mtlTexDesc.arrayLength = _image->_arrayLayers;
-    if (_image->_isAliasable && memoryBinding->_deviceMemory && memoryBinding->_deviceMemory->isDedicatedAllocation()) {
-        // Unfortunately, in this instance, we must presume the texture can be used for anything.
-        mtlTexDesc.usageMVK = MTLTextureUsageUnknown;
-    } else {
-        mtlTexDesc.usageMVK = _image->getPixelFormats()->getMTLTextureUsage(_image->_usage, mtlPixFmt, minUsage, _image->_isLinear, _image->_hasMutableFormat, _image->_hasExtendedUsage);
-    }
+	mtlTexDesc.usageMVK = _image->getMTLTextureUsage(mtlPixFmt);
     mtlTexDesc.storageModeMVK = _image->getMTLStorageMode();
     mtlTexDesc.cpuCacheMode = _image->getMTLCPUCacheMode();
 
@@ -608,6 +595,16 @@ void MVKImage::getTransferDescriptorData(MVKImageDescriptorData& imgData) {
     imgData.usage = _usage;
 }
 
+// Returns whether an MVKImageView can have the specified format.
+// If the list of pre-declared view formats is not empty,
+// and the format is not on that list, the view format is not valid.
+bool MVKImage::getIsValidViewFormat(VkFormat viewFormat) {
+	for (VkFormat viewFmt : _viewFormats) {
+		if (viewFormat == viewFmt) { return true; }
+	}
+	return _viewFormats.empty();
+}
+
 
 #pragma mark Resource memory
 
@@ -815,6 +812,31 @@ MTLCPUCacheMode MVKImage::getMTLCPUCacheMode() {
 	return _memoryBindings[0]->_deviceMemory ? _memoryBindings[0]->_deviceMemory->getMTLCPUCacheMode() : MTLCPUCacheModeDefaultCache;
 }
 
+MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
+
+	// In the special case of a dedicated aliasable image, we must presume the texture can be used for anything.
+	MVKDeviceMemory* dvcMem = _memoryBindings[0]->_deviceMemory;
+	if (_isAliasable && dvcMem && dvcMem->isDedicatedAllocation()) { return MTLTextureUsageUnknown; }
+
+	MVKPixelFormats* pixFmts = getPixelFormats();
+
+	// The image view will need reinterpretation if this image is mutable, unless view formats are provided
+	// and all of the view formats are either identical to, or an sRGB variation of, the incoming format.
+	bool needsReinterpretation = _hasMutableFormat && _viewFormats.empty();
+	for (VkFormat viewFmt : _viewFormats) {
+		needsReinterpretation = needsReinterpretation || !pixFmts->compatibleAsLinearOrSRGB(mtlPixFmt, viewFmt);
+	}
+
+	MTLTextureUsage mtlUsage = pixFmts->getMTLTextureUsage(_usage, mtlPixFmt, _isLinear, needsReinterpretation, _hasExtendedUsage);
+
+	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
+	// decompress the texture ourselves, and we need to be able to write to it.
+	if (MVK_MACOS && _is3DCompressed) {
+		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
+	}
+
+	return mtlUsage;
+}
 
 #pragma mark Construction
 
@@ -852,7 +874,6 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     // If this is a storage image of format R32_UINT or R32_SINT, or MUTABLE_FORMAT is set
     // and R32_UINT is in the set of possible view formats, then we must use a texel buffer,
     // or image atomics won't work.
-    // TODO: Also add handling for VK_KHR_image_format_list here.
     _isLinearForAtomics = _isLinear && mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_STORAGE_BIT) &&
                           ((_vkFormat == VK_FORMAT_R32_UINT || _vkFormat == VK_FORMAT_R32_SINT) ||
                            (_hasMutableFormat && pixFmts->getViewClass(_vkFormat) == MVKMTLViewClass::Color32));
@@ -915,6 +936,13 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 			case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
 				auto* pExtMemInfo = (const VkExternalMemoryImageCreateInfo*)next;
 				initExternalMemory(pExtMemInfo->handleTypes);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: {
+				auto* pFmtListInfo = (const VkImageFormatListCreateInfo*)next;
+				for (uint32_t fmtIdx = 0; fmtIdx < pFmtListInfo->viewFormatCount; fmtIdx++) {
+					_viewFormats.push_back(pFmtListInfo->pViewFormats[fmtIdx]);
+				}
 				break;
 			}
 			default:
@@ -1532,6 +1560,11 @@ MVKImageView::MVKImageView(MVKDevice* device,
 
     // Validate whether the image view configuration can be supported
     if ( _image ) {
+
+		if ( !_image->getIsValidViewFormat(pCreateInfo->format) ) {
+			setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateImageView(): The format is not in the list of allowed view formats declared in the VkImageFormatListCreateInfo provided in vkCreateImage()."));
+		}
+
         VkImageType imgType = _image->getImageType();
         VkImageViewType viewType = pCreateInfo->viewType;
 
