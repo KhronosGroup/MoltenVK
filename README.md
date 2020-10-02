@@ -360,6 +360,11 @@ from behavior defined by the *Vulkan* specification. This most commonly occurs w
 be mapped to functionality available within *Metal*. In that situation, it is important to provide feedback to
 the application developer to that effect, by performing the necessary validation, and reporting an error.
 
+Currently, there is some excess *Vulkan* validation and error reporting code within **MoltenVK**, added before 
+this guideline was introduced. You are encouraged to remove such code if you encounter it while performing other 
+**MoltenVK** development. Do not remove validation and error reporting code that is covering a deviation in 
+behavior from the *Vulkan* specification.
+
 
 ### Memory Management
 
