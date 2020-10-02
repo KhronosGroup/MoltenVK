@@ -13,6 +13,17 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.1.1
+--------------
+
+Released TBD
+
+- Use `VK_KHR_image_format_list` to disable `MTLTextureUsagePixelFormatView` 
+  if only swizzles or `sRGB` conversion will be used for image views, improving 
+  performance on *iOS* by allowing Metal to use lossless texture compression.
+
+
+
 MoltenVK 1.1.0
 --------------
 

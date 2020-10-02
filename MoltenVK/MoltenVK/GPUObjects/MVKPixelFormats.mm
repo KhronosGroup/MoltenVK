@@ -176,6 +176,13 @@ bool MVKPixelFormats::isPVRTCFormat(MTLPixelFormat mtlFormat) {
 	}
 }
 
+bool MVKPixelFormats::compatibleAsLinearOrSRGB(MTLPixelFormat mtlFormat, VkFormat vkFormat) {
+	MTLPixelFormat mtlVkFmt = getMTLPixelFormat(vkFormat);
+	return ((mtlVkFmt == mtlFormat) ||
+			(mtlVkFmt == getMTLPixelFormatDesc(mtlFormat).mtlPixelFormatLinear) ||
+			(mtlFormat == getMTLPixelFormatDesc(mtlVkFmt).mtlPixelFormatLinear));
+}
+
 MVKFormatType MVKPixelFormats::getFormatType(VkFormat vkFormat) {
 	return getVkFormatDesc(vkFormat).formatType;
 }
@@ -484,9 +491,8 @@ VkImageUsageFlags MVKPixelFormats::getVkImageUsageFlags(MTLTextureUsage mtlUsage
 
 MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
 													MTLPixelFormat mtlFormat,
-													MTLTextureUsage minUsage,
                                                     bool isLinear,
-                                                    bool isMutableFormat,
+                                                    bool needsReinterpretation,
                                                     bool isExtended) {
 	bool isDepthFmt = isDepthFormat(mtlFormat);
 	bool isStencilFmt = isStencilFormat(mtlFormat);
@@ -495,7 +501,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 	bool supportsStencilViews = _physicalDevice ? _physicalDevice->getMetalFeatures()->stencilViews : false;
 	MVKMTLFmtCaps mtlFmtCaps = getCapabilities(mtlFormat, isExtended);
 
-	MTLTextureUsage mtlUsage = minUsage;
+	MTLTextureUsage mtlUsage = MTLTextureUsageUnknown;
 
 	// Read from...
 	if (mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
@@ -537,7 +543,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 
 	// Create view on, but only on color formats, or combined depth-stencil formats if supported by the GPU...
 	if ((mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT)) || 		// May use temp view if transfer involves format change
-		 (isMutableFormat &&
+		 (needsReinterpretation &&
 		  mvkIsAnyFlagEnabled(vkImageUsageFlags, (VK_IMAGE_USAGE_SAMPLED_BIT |
 												  VK_IMAGE_USAGE_STORAGE_BIT |
 												  VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
@@ -612,7 +618,7 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
     addVkFormatDescFull(VK_FMT, MTL_FMT, MTL_FMT_ALT, MTL_VTX_FMT, MTL_VTX_FMT_ALT, 0, 0, BLK_W, BLK_H, BLK_BYTE_CNT, MVK_FMT_TYPE)
 
 #define addVkFormatDescChromaSubsampling(VK_FMT, MTL_FMT, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT)  \
-addVkFormatDescFull(VK_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat)
+	addVkFormatDescFull(VK_FMT, MTL_FMT, Invalid, Invalid, Invalid, CSPC, CSCB, BLK_W, BLK_H, BLK_BYTE_CNT, ColorFloat)
 
 void MVKPixelFormats::initVkFormatCapabilities() {
 
@@ -898,11 +904,19 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	// When adding to this list, be sure to ensure _vkFormatCount is large enough for the format count
 }
 
-#define addMTLPixelFormatDesc(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS)  \
+
+#define addMTLPixelFormatDescFull(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS, MTL_FMT_LINEAR)  \
 	MVKAssert(fmtIdx < _mtlPixelFormatCount, "Attempting to describe %d MTLPixelFormats, but only have space for %d. Increase the value of _mtlPixelFormatCount", fmtIdx + 1, _mtlPixelFormatCount);  \
 	_mtlPixelFormatDescriptions[fmtIdx++] = { .mtlPixelFormat = MTLPixelFormat ##MTL_FMT, VK_FORMAT_UNDEFINED,  \
 											  mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
-											  MVKMTLViewClass:: VIEW_CLASS, "MTLPixelFormat" #MTL_FMT }
+											  MVKMTLViewClass:: VIEW_CLASS, MTLPixelFormat ##MTL_FMT_LINEAR, "MTLPixelFormat" #MTL_FMT }
+
+#define addMTLPixelFormatDesc(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS) \
+	addMTLPixelFormatDescFull(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS, MTL_FMT)
+
+#define addMTLPixelFormatDescSRGB(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS, MTL_FMT_LINEAR) \
+	addMTLPixelFormatDescFull(MTL_FMT, VIEW_CLASS, IOS_CAPS, MACOS_CAPS, MTL_FMT_LINEAR)
+
 
 void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 
@@ -913,157 +927,157 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
 
 	// MTLPixelFormatInvalid must come first.
-	addMTLPixelFormatDesc( Invalid, None, None, None );
+	addMTLPixelFormatDesc    ( Invalid, None, None, None );
 
 	// Ordinary 8-bit pixel formats
-	addMTLPixelFormatDesc( A8Unorm, Color8, RF, RF );
-	addMTLPixelFormatDesc( R8Unorm, Color8, All, All );
-	addMTLPixelFormatDesc( R8Unorm_sRGB, Color8, RFCMRB, None );
-	addMTLPixelFormatDesc( R8Snorm, Color8, RFWCMB, All );
-	addMTLPixelFormatDesc( R8Uint, Color8, RWCM, RWCM );
-	addMTLPixelFormatDesc( R8Sint, Color8, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( A8Unorm, Color8, RF, RF );
+	addMTLPixelFormatDesc    ( R8Unorm, Color8, All, All );
+	addMTLPixelFormatDescSRGB( R8Unorm_sRGB, Color8, RFCMRB, None, R8Unorm );
+	addMTLPixelFormatDesc    ( R8Snorm, Color8, RFWCMB, All );
+	addMTLPixelFormatDesc    ( R8Uint, Color8, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( R8Sint, Color8, RWCM, RWCM );
 
 	// Ordinary 16-bit pixel formats
-	addMTLPixelFormatDesc( R16Unorm, Color16, RFWCMB, All );
-	addMTLPixelFormatDesc( R16Snorm, Color16, RFWCMB, All );
-	addMTLPixelFormatDesc( R16Uint, Color16, RWCM, RWCM );
-	addMTLPixelFormatDesc( R16Sint, Color16, RWCM, RWCM );
-	addMTLPixelFormatDesc( R16Float, Color16, All, All );
+	addMTLPixelFormatDesc    ( R16Unorm, Color16, RFWCMB, All );
+	addMTLPixelFormatDesc    ( R16Snorm, Color16, RFWCMB, All );
+	addMTLPixelFormatDesc    ( R16Uint, Color16, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( R16Sint, Color16, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( R16Float, Color16, All, All );
 
-	addMTLPixelFormatDesc( RG8Unorm, Color16, All, All );
-	addMTLPixelFormatDesc( RG8Unorm_sRGB, Color16, RFCMRB, None );
-	addMTLPixelFormatDesc( RG8Snorm, Color16, RFWCMB, All );
-	addMTLPixelFormatDesc( RG8Uint, Color16, RWCM, RWCM );
-	addMTLPixelFormatDesc( RG8Sint, Color16, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( RG8Unorm, Color16, All, All );
+	addMTLPixelFormatDescSRGB( RG8Unorm_sRGB, Color16, RFCMRB, None, RG8Unorm );
+	addMTLPixelFormatDesc    ( RG8Snorm, Color16, RFWCMB, All );
+	addMTLPixelFormatDesc    ( RG8Uint, Color16, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( RG8Sint, Color16, RWCM, RWCM );
 
 	// Packed 16-bit pixel formats
-	addMTLPixelFormatDesc( B5G6R5Unorm, Color16, RFCMRB, None );
-	addMTLPixelFormatDesc( A1BGR5Unorm, Color16, RFCMRB, None );
-	addMTLPixelFormatDesc( ABGR4Unorm, Color16, RFCMRB, None );
-	addMTLPixelFormatDesc( BGR5A1Unorm, Color16, RFCMRB, None );
+	addMTLPixelFormatDesc    ( B5G6R5Unorm, Color16, RFCMRB, None );
+	addMTLPixelFormatDesc    ( A1BGR5Unorm, Color16, RFCMRB, None );
+	addMTLPixelFormatDesc    ( ABGR4Unorm, Color16, RFCMRB, None );
+	addMTLPixelFormatDesc    ( BGR5A1Unorm, Color16, RFCMRB, None );
 
 	// Ordinary 32-bit pixel formats
-	addMTLPixelFormatDesc( R32Uint, Color32, RC, RWCM );
-	addMTLPixelFormatDesc( R32Sint, Color32, RC, RWCM );
-	addMTLPixelFormatDesc( R32Float, Color32, RCMB, All );
+	addMTLPixelFormatDesc    ( R32Uint, Color32, RC, RWCM );
+	addMTLPixelFormatDesc    ( R32Sint, Color32, RC, RWCM );
+	addMTLPixelFormatDesc    ( R32Float, Color32, RCMB, All );
 
-	addMTLPixelFormatDesc( RG16Unorm, Color32, RFWCMB, All );
-	addMTLPixelFormatDesc( RG16Snorm, Color32, RFWCMB, All );
-	addMTLPixelFormatDesc( RG16Uint, Color32, RWCM, RWCM );
-	addMTLPixelFormatDesc( RG16Sint, Color32, RWCM, RWCM );
-	addMTLPixelFormatDesc( RG16Float, Color32, All, All );
+	addMTLPixelFormatDesc    ( RG16Unorm, Color32, RFWCMB, All );
+	addMTLPixelFormatDesc    ( RG16Snorm, Color32, RFWCMB, All );
+	addMTLPixelFormatDesc    ( RG16Uint, Color32, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( RG16Sint, Color32, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( RG16Float, Color32, All, All );
 
-	addMTLPixelFormatDesc( RGBA8Unorm, Color32, All, All );
-	addMTLPixelFormatDesc( RGBA8Unorm_sRGB, Color32, RFCMRB, RFCMRB );
-	addMTLPixelFormatDesc( RGBA8Snorm, Color32, RFWCMB, All );
-	addMTLPixelFormatDesc( RGBA8Uint, Color32, RWCM, RWCM );
-	addMTLPixelFormatDesc( RGBA8Sint, Color32, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( RGBA8Unorm, Color32, All, All );
+	addMTLPixelFormatDescSRGB( RGBA8Unorm_sRGB, Color32, RFCMRB, RFCMRB, RGBA8Unorm );
+	addMTLPixelFormatDesc    ( RGBA8Snorm, Color32, RFWCMB, All );
+	addMTLPixelFormatDesc    ( RGBA8Uint, Color32, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( RGBA8Sint, Color32, RWCM, RWCM );
 
-	addMTLPixelFormatDesc( BGRA8Unorm, Color32, All, All );
-	addMTLPixelFormatDesc( BGRA8Unorm_sRGB, Color32, RFCMRB, RFCMRB );
+	addMTLPixelFormatDesc    ( BGRA8Unorm, Color32, All, All );
+	addMTLPixelFormatDescSRGB( BGRA8Unorm_sRGB, Color32, RFCMRB, RFCMRB, BGRA8Unorm );
 
 	// Packed 32-bit pixel formats
-	addMTLPixelFormatDesc( RGB10A2Unorm, Color32, RFCMRB, All );
-	addMTLPixelFormatDesc( RGB10A2Uint, Color32, RCM, RWCM );
-	addMTLPixelFormatDesc( RG11B10Float, Color32, RFCMRB, All );
-	addMTLPixelFormatDesc( RGB9E5Float, Color32, RFCMRB, RF );
+	addMTLPixelFormatDesc    ( RGB10A2Unorm, Color32, RFCMRB, All );
+	addMTLPixelFormatDesc    ( RGB10A2Uint, Color32, RCM, RWCM );
+	addMTLPixelFormatDesc    ( RG11B10Float, Color32, RFCMRB, All );
+	addMTLPixelFormatDesc    ( RGB9E5Float, Color32, RFCMRB, RF );
 
 	// Ordinary 64-bit pixel formats
-	addMTLPixelFormatDesc( RG32Uint, Color64, RC, RWCM );
-	addMTLPixelFormatDesc( RG32Sint, Color64, RC, RWCM );
-	addMTLPixelFormatDesc( RG32Float, Color64, RCB, All );
+	addMTLPixelFormatDesc    ( RG32Uint, Color64, RC, RWCM );
+	addMTLPixelFormatDesc    ( RG32Sint, Color64, RC, RWCM );
+	addMTLPixelFormatDesc    ( RG32Float, Color64, RCB, All );
 
-	addMTLPixelFormatDesc( RGBA16Unorm, Color64, RFWCMB, All );
-	addMTLPixelFormatDesc( RGBA16Snorm, Color64, RFWCMB, All );
-	addMTLPixelFormatDesc( RGBA16Uint, Color64, RWCM, RWCM );
-	addMTLPixelFormatDesc( RGBA16Sint, Color64, RWCM, RWCM );
-	addMTLPixelFormatDesc( RGBA16Float, Color64, All, All );
+	addMTLPixelFormatDesc    ( RGBA16Unorm, Color64, RFWCMB, All );
+	addMTLPixelFormatDesc    ( RGBA16Snorm, Color64, RFWCMB, All );
+	addMTLPixelFormatDesc    ( RGBA16Uint, Color64, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( RGBA16Sint, Color64, RWCM, RWCM );
+	addMTLPixelFormatDesc    ( RGBA16Float, Color64, All, All );
 
 	// Ordinary 128-bit pixel formats
-	addMTLPixelFormatDesc( RGBA32Uint, Color128, RC, RWCM );
-	addMTLPixelFormatDesc( RGBA32Sint, Color128, RC, RWCM );
-	addMTLPixelFormatDesc( RGBA32Float, Color128, RC, All );
+	addMTLPixelFormatDesc    ( RGBA32Uint, Color128, RC, RWCM );
+	addMTLPixelFormatDesc    ( RGBA32Sint, Color128, RC, RWCM );
+	addMTLPixelFormatDesc    ( RGBA32Float, Color128, RC, All );
 
 	// Compressed pixel formats
-	addMTLPixelFormatDesc( PVRTC_RGBA_2BPP, PVRTC_RGBA_2BPP, RF, None );
-	addMTLPixelFormatDesc( PVRTC_RGBA_4BPP, PVRTC_RGBA_4BPP, RF, None );
-	addMTLPixelFormatDesc( PVRTC_RGBA_2BPP_sRGB, PVRTC_RGBA_2BPP, RF, None );
-	addMTLPixelFormatDesc( PVRTC_RGBA_4BPP_sRGB, PVRTC_RGBA_4BPP, RF, None );
+	addMTLPixelFormatDesc    ( PVRTC_RGBA_2BPP, PVRTC_RGBA_2BPP, RF, None );
+	addMTLPixelFormatDescSRGB( PVRTC_RGBA_2BPP_sRGB, PVRTC_RGBA_2BPP, RF, None, PVRTC_RGBA_2BPP );
+	addMTLPixelFormatDesc    ( PVRTC_RGBA_4BPP, PVRTC_RGBA_4BPP, RF, None );
+	addMTLPixelFormatDescSRGB( PVRTC_RGBA_4BPP_sRGB, PVRTC_RGBA_4BPP, RF, None, PVRTC_RGBA_4BPP );
 
-	addMTLPixelFormatDesc( ETC2_RGB8, ETC2_RGB8, RF, None );
-	addMTLPixelFormatDesc( ETC2_RGB8_sRGB, ETC2_RGB8, RF, None );
-	addMTLPixelFormatDesc( ETC2_RGB8A1, ETC2_RGB8A1, RF, None );
-	addMTLPixelFormatDesc( ETC2_RGB8A1_sRGB, ETC2_RGB8A1, RF, None );
-	addMTLPixelFormatDesc( EAC_RGBA8, EAC_RGBA8, RF, None );
-	addMTLPixelFormatDesc( EAC_RGBA8_sRGB, EAC_RGBA8, RF, None );
-	addMTLPixelFormatDesc( EAC_R11Unorm, EAC_R11, RF, None );
-	addMTLPixelFormatDesc( EAC_R11Snorm, EAC_R11, RF, None );
-	addMTLPixelFormatDesc( EAC_RG11Unorm, EAC_RG11, RF, None );
-	addMTLPixelFormatDesc( EAC_RG11Snorm, EAC_RG11, RF, None );
+	addMTLPixelFormatDesc    ( ETC2_RGB8, ETC2_RGB8, RF, None );
+	addMTLPixelFormatDescSRGB( ETC2_RGB8_sRGB, ETC2_RGB8, RF, None, ETC2_RGB8 );
+	addMTLPixelFormatDesc    ( ETC2_RGB8A1, ETC2_RGB8A1, RF, None );
+	addMTLPixelFormatDescSRGB( ETC2_RGB8A1_sRGB, ETC2_RGB8A1, RF, None, ETC2_RGB8A1 );
+	addMTLPixelFormatDesc    ( EAC_RGBA8, EAC_RGBA8, RF, None );
+	addMTLPixelFormatDescSRGB( EAC_RGBA8_sRGB, EAC_RGBA8, RF, None, EAC_RGBA8 );
+	addMTLPixelFormatDesc    ( EAC_R11Unorm, EAC_R11, RF, None );
+	addMTLPixelFormatDesc    ( EAC_R11Snorm, EAC_R11, RF, None );
+	addMTLPixelFormatDesc    ( EAC_RG11Unorm, EAC_RG11, RF, None );
+	addMTLPixelFormatDesc    ( EAC_RG11Snorm, EAC_RG11, RF, None );
 
-	addMTLPixelFormatDesc( ASTC_4x4_LDR, ASTC_4x4, None, None );
-	addMTLPixelFormatDesc( ASTC_4x4_sRGB, ASTC_4x4, None, None );
-	addMTLPixelFormatDesc( ASTC_5x4_LDR, ASTC_5x4, None, None );
-	addMTLPixelFormatDesc( ASTC_5x4_sRGB, ASTC_5x4, None, None );
-	addMTLPixelFormatDesc( ASTC_5x5_LDR, ASTC_5x5, None, None );
-	addMTLPixelFormatDesc( ASTC_5x5_sRGB, ASTC_5x5, None, None );
-	addMTLPixelFormatDesc( ASTC_6x5_LDR, ASTC_6x5, None, None );
-	addMTLPixelFormatDesc( ASTC_6x5_sRGB, ASTC_6x5, None, None );
-	addMTLPixelFormatDesc( ASTC_6x6_LDR, ASTC_6x6, None, None );
-	addMTLPixelFormatDesc( ASTC_6x6_sRGB, ASTC_6x6, None, None );
-	addMTLPixelFormatDesc( ASTC_8x5_LDR, ASTC_8x5, None, None );
-	addMTLPixelFormatDesc( ASTC_8x5_sRGB, ASTC_8x5, None, None );
-	addMTLPixelFormatDesc( ASTC_8x6_LDR, ASTC_8x6, None, None );
-	addMTLPixelFormatDesc( ASTC_8x6_sRGB, ASTC_8x6, None, None );
-	addMTLPixelFormatDesc( ASTC_8x8_LDR, ASTC_8x8, None, None );
-	addMTLPixelFormatDesc( ASTC_8x8_sRGB, ASTC_8x8, None, None );
-	addMTLPixelFormatDesc( ASTC_10x5_LDR, ASTC_10x5, None, None );
-	addMTLPixelFormatDesc( ASTC_10x5_sRGB, ASTC_10x5, None, None );
-	addMTLPixelFormatDesc( ASTC_10x6_LDR, ASTC_10x6, None, None );
-	addMTLPixelFormatDesc( ASTC_10x6_sRGB, ASTC_10x6, None, None );
-	addMTLPixelFormatDesc( ASTC_10x8_LDR, ASTC_10x8, None, None );
-	addMTLPixelFormatDesc( ASTC_10x8_sRGB, ASTC_10x8, None, None );
-	addMTLPixelFormatDesc( ASTC_10x10_LDR, ASTC_10x10, None, None );
-	addMTLPixelFormatDesc( ASTC_10x10_sRGB, ASTC_10x10, None, None );
-	addMTLPixelFormatDesc( ASTC_12x10_LDR, ASTC_12x10, None, None );
-	addMTLPixelFormatDesc( ASTC_12x10_sRGB, ASTC_12x10, None, None );
-	addMTLPixelFormatDesc( ASTC_12x12_LDR, ASTC_12x12, None, None );
-	addMTLPixelFormatDesc( ASTC_12x12_sRGB, ASTC_12x12, None, None );
+	addMTLPixelFormatDesc    ( ASTC_4x4_LDR, ASTC_4x4, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_4x4_sRGB, ASTC_4x4, None, None, ASTC_4x4_LDR );
+	addMTLPixelFormatDesc    ( ASTC_5x4_LDR, ASTC_5x4, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_5x4_sRGB, ASTC_5x4, None, None, ASTC_5x4_LDR );
+	addMTLPixelFormatDesc    ( ASTC_5x5_LDR, ASTC_5x5, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_5x5_sRGB, ASTC_5x5, None, None, ASTC_5x5_LDR );
+	addMTLPixelFormatDesc    ( ASTC_6x5_LDR, ASTC_6x5, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_6x5_sRGB, ASTC_6x5, None, None, ASTC_6x5_LDR );
+	addMTLPixelFormatDesc    ( ASTC_6x6_LDR, ASTC_6x6, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_6x6_sRGB, ASTC_6x6, None, None, ASTC_6x6_LDR );
+	addMTLPixelFormatDesc    ( ASTC_8x5_LDR, ASTC_8x5, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_8x5_sRGB, ASTC_8x5, None, None, ASTC_8x5_LDR );
+	addMTLPixelFormatDesc    ( ASTC_8x6_LDR, ASTC_8x6, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_8x6_sRGB, ASTC_8x6, None, None, ASTC_8x6_LDR );
+	addMTLPixelFormatDesc    ( ASTC_8x8_LDR, ASTC_8x8, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_8x8_sRGB, ASTC_8x8, None, None, ASTC_8x8_LDR );
+	addMTLPixelFormatDesc    ( ASTC_10x5_LDR, ASTC_10x5, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_10x5_sRGB, ASTC_10x5, None, None, ASTC_10x5_LDR );
+	addMTLPixelFormatDesc    ( ASTC_10x6_LDR, ASTC_10x6, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_10x6_sRGB, ASTC_10x6, None, None, ASTC_10x6_LDR );
+	addMTLPixelFormatDesc    ( ASTC_10x8_LDR, ASTC_10x8, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_10x8_sRGB, ASTC_10x8, None, None, ASTC_10x8_LDR );
+	addMTLPixelFormatDesc    ( ASTC_10x10_LDR, ASTC_10x10, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_10x10_sRGB, ASTC_10x10, None, None, ASTC_10x10_LDR );
+	addMTLPixelFormatDesc    ( ASTC_12x10_LDR, ASTC_12x10, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_12x10_sRGB, ASTC_12x10, None, None, ASTC_12x10_LDR );
+	addMTLPixelFormatDesc    ( ASTC_12x12_LDR, ASTC_12x12, None, None );
+	addMTLPixelFormatDescSRGB( ASTC_12x12_sRGB, ASTC_12x12, None, None, ASTC_12x12_LDR );
 
-	addMTLPixelFormatDesc( BC1_RGBA, BC1_RGBA, None, RF );
-	addMTLPixelFormatDesc( BC1_RGBA_sRGB, BC1_RGBA, None, RF );
-	addMTLPixelFormatDesc( BC2_RGBA, BC2_RGBA, None, RF );
-	addMTLPixelFormatDesc( BC2_RGBA_sRGB, BC2_RGBA, None, RF );
-	addMTLPixelFormatDesc( BC3_RGBA, BC3_RGBA, None, RF );
-	addMTLPixelFormatDesc( BC3_RGBA_sRGB, BC3_RGBA, None, RF );
-	addMTLPixelFormatDesc( BC4_RUnorm, BC4_R, None, RF );
-	addMTLPixelFormatDesc( BC4_RSnorm, BC4_R, None, RF );
-	addMTLPixelFormatDesc( BC5_RGUnorm, BC5_RG, None, RF );
-	addMTLPixelFormatDesc( BC5_RGSnorm, BC5_RG, None, RF );
-	addMTLPixelFormatDesc( BC6H_RGBUfloat, BC6H_RGB, None, RF );
-	addMTLPixelFormatDesc( BC6H_RGBFloat, BC6H_RGB, None, RF );
-	addMTLPixelFormatDesc( BC7_RGBAUnorm, BC7_RGBA, None, RF );
-	addMTLPixelFormatDesc( BC7_RGBAUnorm_sRGB, BC7_RGBA, None, RF );
+	addMTLPixelFormatDesc    ( BC1_RGBA, BC1_RGBA, None, RF );
+	addMTLPixelFormatDescSRGB( BC1_RGBA_sRGB, BC1_RGBA, None, RF, BC1_RGBA );
+	addMTLPixelFormatDesc    ( BC2_RGBA, BC2_RGBA, None, RF );
+	addMTLPixelFormatDescSRGB( BC2_RGBA_sRGB, BC2_RGBA, None, RF, BC2_RGBA );
+	addMTLPixelFormatDesc    ( BC3_RGBA, BC3_RGBA, None, RF );
+	addMTLPixelFormatDescSRGB( BC3_RGBA_sRGB, BC3_RGBA, None, RF, BC3_RGBA );
+	addMTLPixelFormatDesc    ( BC4_RUnorm, BC4_R, None, RF );
+	addMTLPixelFormatDesc    ( BC4_RSnorm, BC4_R, None, RF );
+	addMTLPixelFormatDesc    ( BC5_RGUnorm, BC5_RG, None, RF );
+	addMTLPixelFormatDesc    ( BC5_RGSnorm, BC5_RG, None, RF );
+	addMTLPixelFormatDesc    ( BC6H_RGBUfloat, BC6H_RGB, None, RF );
+	addMTLPixelFormatDesc    ( BC6H_RGBFloat, BC6H_RGB, None, RF );
+	addMTLPixelFormatDesc    ( BC7_RGBAUnorm, BC7_RGBA, None, RF );
+	addMTLPixelFormatDescSRGB( BC7_RGBAUnorm_sRGB, BC7_RGBA, None, RF, BC7_RGBAUnorm );
 
 	// YUV pixel formats
-	addMTLPixelFormatDesc( GBGR422, None, RF, RF );
-	addMTLPixelFormatDesc( BGRG422, None, RF, RF );
+	addMTLPixelFormatDesc    ( GBGR422, None, RF, RF );
+	addMTLPixelFormatDesc    ( BGRG422, None, RF, RF );
 
 	// Extended range and wide color pixel formats
-	addMTLPixelFormatDesc( BGRA10_XR, BGRA10_XR, None, None );
-	addMTLPixelFormatDesc( BGRA10_XR_sRGB, BGRA10_XR, None, None );
-	addMTLPixelFormatDesc( BGR10_XR, BGR10_XR, None, None );
-	addMTLPixelFormatDesc( BGR10_XR_sRGB, BGR10_XR, None, None );
-	addMTLPixelFormatDesc( BGR10A2Unorm, Color32, None, None );
+	addMTLPixelFormatDesc    ( BGRA10_XR, BGRA10_XR, None, None );
+	addMTLPixelFormatDescSRGB( BGRA10_XR_sRGB, BGRA10_XR, None, None, BGRA10_XR );
+	addMTLPixelFormatDesc    ( BGR10_XR, BGR10_XR, None, None );
+	addMTLPixelFormatDescSRGB( BGR10_XR_sRGB, BGR10_XR, None, None, BGR10_XR );
+	addMTLPixelFormatDesc    ( BGR10A2Unorm, Color32, None, None );
 
 	// Depth and stencil pixel formats
-	addMTLPixelFormatDesc( Depth16Unorm, None, None, None );
-	addMTLPixelFormatDesc( Depth32Float, None, DRM, DRFMR );
-	addMTLPixelFormatDesc( Stencil8, None, DRM, DRMR );
-	addMTLPixelFormatDesc( Depth24Unorm_Stencil8, Depth24_Stencil8, None, None );
-	addMTLPixelFormatDesc( Depth32Float_Stencil8, Depth32_Stencil8, DRM, DRFMR );
-	addMTLPixelFormatDesc( X24_Stencil8, Depth24_Stencil8, None, DRMR );
-	addMTLPixelFormatDesc( X32_Stencil8, Depth32_Stencil8, DRM, DRMR );
+	addMTLPixelFormatDesc    ( Depth16Unorm, None, None, None );
+	addMTLPixelFormatDesc    ( Depth32Float, None, DRM, DRFMR );
+	addMTLPixelFormatDesc    ( Stencil8, None, DRM, DRMR );
+	addMTLPixelFormatDesc    ( Depth24Unorm_Stencil8, Depth24_Stencil8, None, None );
+	addMTLPixelFormatDesc    ( Depth32Float_Stencil8, Depth32_Stencil8, DRM, DRFMR );
+	addMTLPixelFormatDesc    ( X24_Stencil8, Depth24_Stencil8, None, DRMR );
+	addMTLPixelFormatDesc    ( X32_Stencil8, Depth32_Stencil8, DRM, DRMR );
 
 	// When adding to this list, be sure to ensure _mtlPixelFormatCount is large enough for the format count
 }
@@ -1072,7 +1086,7 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 	MVKAssert(fmtIdx < _mtlVertexFormatCount, "Attempting to describe %d MTLVertexFormats, but only have space for %d. Increase the value of _mtlVertexFormatCount", fmtIdx + 1, _mtlVertexFormatCount);  \
 	_mtlVertexFormatDescriptions[fmtIdx++] = { .mtlVertexFormat = MTLVertexFormat ##MTL_VTX_FMT, VK_FORMAT_UNDEFINED,  \
                                                mvkSelectPlatformValue<MVKMTLFmtCaps>(kMVKMTLFmtCaps ##MACOS_CAPS, kMVKMTLFmtCaps ##IOS_CAPS),  \
-                                               MVKMTLViewClass::None, "MTLVertexFormat" #MTL_VTX_FMT }
+                                               MVKMTLViewClass::None, MTLPixelFormatInvalid, "MTLVertexFormat" #MTL_VTX_FMT }
 
 void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 

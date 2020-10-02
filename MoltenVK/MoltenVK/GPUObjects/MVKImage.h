@@ -330,6 +330,7 @@ public:
 	/** Returns the Metal CPU cache mode used by this image. */
 	MTLCPUCacheMode getMTLCPUCacheMode();
 
+
 #pragma mark Construction
 
 	MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo);
@@ -351,9 +352,12 @@ protected:
 	bool validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttachment);
 	void initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes);
     void releaseIOSurface();
+	bool getIsValidViewFormat(VkFormat viewFormat);
+	MTLTextureUsage getMTLTextureUsage(MTLPixelFormat mtlPixFmt);
 
     MVKSmallVector<MVKImageMemoryBinding*, 3> _memoryBindings;
     MVKSmallVector<MVKImagePlane*, 3> _planes;
+	MVKSmallVector<VkFormat, 2> _viewFormats;
     VkExtent3D _extent;
     uint32_t _mipLevels;
     uint32_t _arrayLayers;

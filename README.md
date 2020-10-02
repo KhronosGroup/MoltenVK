@@ -349,6 +349,23 @@ encumbrances. In submitting code to this repository, you are agreeing that the c
 Property claims.  
 
 
+### *Vulkan* Validation
+
+Despite running on top of *Metal*, **MoltenVK** operates as a *Vulkan* core layer. As such, as per the 
+error handling guidelines of the [*Vulkan* specification](https://www.khronos.org/registry/vulkan/specs/1.1/html/vkspec.html#fundamentals-errors), **MoltenVK** should not perform *Vulkan* validation. When adding functionality 
+to **MoltenVK**, avoid adding unnecessary validation code.
+
+Validation and error generation **_is_** appropriate within **MoltenVK** in cases where **MoltenVK** deviates 
+from behavior defined by the *Vulkan* specification. This most commonly occurs when required behavior cannot 
+be mapped to functionality available within *Metal*. In that situation, it is important to provide feedback to
+the application developer to that effect, by performing the necessary validation, and reporting an error.
+
+Currently, there is some excess *Vulkan* validation and error reporting code within **MoltenVK**, added before 
+this guideline was introduced. You are encouraged to remove such code if you encounter it while performing other 
+**MoltenVK** development. Do not remove validation and error reporting code that is covering a deviation in 
+behavior from the *Vulkan* specification.
+
+
 ### Memory Management
 
 *Metal*, and other *Objective-C* objects in *Apple's SDK* frameworks, use reference counting for memory management. 
