@@ -1564,11 +1564,6 @@ MVKImageView::MVKImageView(MVKDevice* device,
 		}
 	}
 
-    // Validate whether the image view configuration can be supported
-	if ( !_image->getIsValidViewFormat(pCreateInfo->format) ) {
-		setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateImageView(): The format is not in the list of allowed view formats declared in the VkImageFormatListCreateInfo provided in vkCreateImage()."));
-	}
-
 	VkImageType imgType = _image->getImageType();
 	VkImageViewType viewType = pCreateInfo->viewType;
 
