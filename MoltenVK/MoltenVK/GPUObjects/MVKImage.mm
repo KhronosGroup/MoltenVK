@@ -843,6 +843,26 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_ioSurface = nil;
 
+	const VkExternalMemoryImageCreateInfo* pExtMemInfo = nullptr;
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
+				pExtMemInfo = (const VkExternalMemoryImageCreateInfo*)next;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: {
+				// Must set before calls to getIsValidViewFormat() below.
+				auto* pFmtListInfo = (const VkImageFormatListCreateInfo*)next;
+				for (uint32_t fmtIdx = 0; fmtIdx < pFmtListInfo->viewFormatCount; fmtIdx++) {
+					_viewFormats.push_back(pFmtListInfo->pViewFormats[fmtIdx]);
+				}
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
     // Adjust the info components to be compatible with Metal, then use the modified versions to set other
 	// config info. Vulkan allows unused extent dimensions to be zero, but Metal requires minimum of one.
     uint32_t minDim = 1;
@@ -874,9 +894,11 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     // If this is a storage image of format R32_UINT or R32_SINT, or MUTABLE_FORMAT is set
     // and R32_UINT is in the set of possible view formats, then we must use a texel buffer,
     // or image atomics won't work.
-    _isLinearForAtomics = _isLinear && mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_STORAGE_BIT) &&
-                          ((_vkFormat == VK_FORMAT_R32_UINT || _vkFormat == VK_FORMAT_R32_SINT) ||
-                           (_hasMutableFormat && pixFmts->getViewClass(_vkFormat) == MVKMTLViewClass::Color32));
+	_isLinearForAtomics = (_isLinear && mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_STORAGE_BIT) &&
+						   ((_vkFormat == VK_FORMAT_R32_UINT || _vkFormat == VK_FORMAT_R32_SINT) ||
+							(_hasMutableFormat && pixFmts->getViewClass(_vkFormat) == MVKMTLViewClass::Color32 &&
+							 (getIsValidViewFormat(VK_FORMAT_R32_UINT) || getIsValidViewFormat(VK_FORMAT_R32_SINT)))));
+
 	_is3DCompressed = (getImageType() == VK_IMAGE_TYPE_3D) && (pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed) && !_device->_pMetalFeatures->native3DCompressedTextures;
 	_isDepthStencilAttachment = (mvkAreAllFlagsEnabled(pCreateInfo->usage, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT) ||
 								 mvkAreAllFlagsEnabled(pixFmts->getVkFormatProperties(pCreateInfo->format).optimalTilingFeatures, VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT));
@@ -931,24 +953,8 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     }
     _hasExpectedTexelSize = _hasChromaSubsampling || (pixFmts->getBytesPerBlock(_planes[0]->_mtlPixFmt) == pixFmts->getBytesPerBlock(_vkFormat));
 
-	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
-		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_EXTERNAL_MEMORY_IMAGE_CREATE_INFO: {
-				auto* pExtMemInfo = (const VkExternalMemoryImageCreateInfo*)next;
-				initExternalMemory(pExtMemInfo->handleTypes);
-				break;
-			}
-			case VK_STRUCTURE_TYPE_IMAGE_FORMAT_LIST_CREATE_INFO: {
-				auto* pFmtListInfo = (const VkImageFormatListCreateInfo*)next;
-				for (uint32_t fmtIdx = 0; fmtIdx < pFmtListInfo->viewFormatCount; fmtIdx++) {
-					_viewFormats.push_back(pFmtListInfo->pViewFormats[fmtIdx]);
-				}
-				break;
-			}
-			default:
-				break;
-		}
-	}
+	if (pExtMemInfo) { initExternalMemory(pExtMemInfo->handleTypes); }
+
 }
 
 VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreateInfo, bool isAttachment) {
