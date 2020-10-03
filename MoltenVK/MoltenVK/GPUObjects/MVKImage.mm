@@ -100,6 +100,8 @@ id<MTLTexture> MVKImagePlane::getMTLTexture(MTLPixelFormat mtlPixFmt) {
 
 void MVKImagePlane::releaseMTLTexture() {
     [_mtlTexture release];
+    _mtlTexture = nil;
+
     for (auto elem : _mtlTextureViews) {
         [elem.second release];
     }
