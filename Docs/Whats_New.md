@@ -21,6 +21,8 @@ Released TBD
 - Use `VK_KHR_image_format_list` to disable `MTLTextureUsagePixelFormatView` 
   if only swizzles or `sRGB` conversion will be used for image views, improving 
   performance on *iOS* by allowing Metal to use lossless texture compression.
+- Move *Metal* drawable presentation from `MTLCommandBuffer` to `MTLDrawable`
+  to improve performance and reduce blocking.
 
 
 

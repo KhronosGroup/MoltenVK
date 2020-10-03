@@ -113,7 +113,7 @@ protected:
     void willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff);
     void markFrameInterval();
-	void recordPresentTime(uint32_t presentID, uint64_t desiredPresentTime, uint64_t actualPresentTime);
+	void recordPresentTime(MVKPresentTimingInfo presentTimingInfo, uint64_t actualPresentTime = 0);
 
 	CAMetalLayer* _mtlLayer;
     MVKWatermark* _licenseWatermark;

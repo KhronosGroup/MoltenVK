@@ -353,7 +353,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	for (auto& ws : _waitSemaphores) { ws->encodeWait(mtlCmdBuff); }
 	for (int i = 0; i < _presentInfo.size(); i++ ) {
 		MVKPresentableSwapchainImage *img = _presentInfo[i].presentableImage;
-		img->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i].hasPresentTime, _presentInfo[i].presentID, _presentInfo[i].desiredPresentTime);
+		img->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]);
 	}
 	for (auto& ws : _waitSemaphores) { ws->encodeWait(nil); }
 	[mtlCmdBuff commit];
@@ -401,7 +401,7 @@ MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* que
 	_presentInfo.reserve(scCnt);
 	for (uint32_t scIdx = 0; scIdx < scCnt; scIdx++) {
 		MVKSwapchain* mvkSC = (MVKSwapchain*)pPresentInfo->pSwapchains[scIdx];
-		PresentInfo presentInfo = {};
+		MVKPresentTimingInfo presentInfo = {};
 		presentInfo.presentableImage = mvkSC->getPresentableImage(pPresentInfo->pImageIndices[scIdx]);
 		if ( pPresentTimesGOOGLE ) {
 			presentInfo.hasPresentTime = true;
