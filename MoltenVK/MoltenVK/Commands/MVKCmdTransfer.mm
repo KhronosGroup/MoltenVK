@@ -278,23 +278,15 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 	_filter = filter;
 
-	bool isDepthStencil = _dstImage->getIsDepthStencil();
 	bool isDestUnwritableLinear = MVK_MACOS && _dstImage->getIsLinear();
 
 	_vkImageBlits.clear();		// Clear for reuse
 	for (uint32_t rIdx = 0; rIdx < regionCount; rIdx++) {
 		auto& vkIB = pRegions[rIdx];
 
-		// Validate - depth stencil formats and macOS linear images cannot be a scaling or inversion destination
-		if (isDepthStencil || isDestUnwritableLinear) {
-			if ( !(canCopyFormats(vkIB) && canCopy(vkIB)) ) {
-				if (isDepthStencil) {
-					return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting depth/stencil images is not supported.");
-				}
-				if (isDestUnwritableLinear) {
-					return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting to a linear destination image is not supported.");
-				}
-			}
+		// Validate - macOS linear images cannot be a scaling or inversion destination
+		if (isDestUnwritableLinear && !(canCopyFormats(vkIB) && canCopy(vkIB)) ) {
+			return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdBlitImage(): Scaling or inverting to a linear destination image is not supported.");
 		}
 
 		_vkImageBlits.push_back(vkIB);
@@ -438,9 +430,31 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 
             MTLRenderPassDescriptor* mtlRPD = [MTLRenderPassDescriptor renderPassDescriptor];
             MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPD.colorAttachments[0];
-            mtlColorAttDesc.loadAction = MTLLoadActionLoad;
-            mtlColorAttDesc.storeAction = MTLStoreActionStore;
-            mtlColorAttDesc.texture = dstMTLTex;
+            MTLRenderPassDepthAttachmentDescriptor* mtlDepthAttDesc = mtlRPD.depthAttachment;
+            MTLRenderPassStencilAttachmentDescriptor* mtlStencilAttDesc = mtlRPD.stencilAttachment;
+            if (mvkIsAnyFlagEnabled(mvkIBR.region.dstSubresource.aspectMask, (VK_IMAGE_ASPECT_DEPTH_BIT))) {
+                mtlDepthAttDesc.loadAction = MTLLoadActionLoad;
+                mtlDepthAttDesc.storeAction = MTLStoreActionStore;
+                mtlDepthAttDesc.texture = dstMTLTex;
+            } else {
+                mtlDepthAttDesc.loadAction = MTLLoadActionDontCare;
+                mtlDepthAttDesc.storeAction = MTLStoreActionDontCare;
+                mtlDepthAttDesc.texture = nil;
+            }
+            if (mvkIsAnyFlagEnabled(mvkIBR.region.dstSubresource.aspectMask, (VK_IMAGE_ASPECT_STENCIL_BIT))) {
+                mtlStencilAttDesc.loadAction = MTLLoadActionLoad;
+                mtlStencilAttDesc.storeAction = MTLStoreActionStore;
+                mtlStencilAttDesc.texture = dstMTLTex;
+            } else {
+                mtlStencilAttDesc.loadAction = MTLLoadActionDontCare;
+                mtlStencilAttDesc.storeAction = MTLStoreActionDontCare;
+                mtlStencilAttDesc.texture = nil;
+            }
+            if (!mvkIsAnyFlagEnabled(mvkIBR.region.dstSubresource.aspectMask, (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT))) {
+                mtlColorAttDesc.loadAction = MTLLoadActionLoad;
+                mtlColorAttDesc.storeAction = MTLStoreActionStore;
+                mtlColorAttDesc.texture = dstMTLTex;
+            }
 
             MVKRPSKeyBlitImg blitKey;
             blitKey.srcMTLPixelFormat = _srcImage->getMTLPixelFormat(srcPlaneIndex);
@@ -449,7 +463,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                 // In this case, I'll use a temp 2D array view. That way, I don't have to
                 // deal with mapping the blit coordinates to a cube direction vector.
                 blitKey.srcMTLTextureType = MTLTextureType2DArray;
-                srcMTLTex = [srcMTLTex newTextureViewWithPixelFormat: (MTLPixelFormat)blitKey.srcMTLPixelFormat
+                srcMTLTex = [srcMTLTex newTextureViewWithPixelFormat: blitKey.getSrcMTLPixelFormat()
                                                          textureType: MTLTextureType2DArray
                                                               levels: NSMakeRange(0, srcMTLTex.mipmapLevelCount)
                                                               slices: NSMakeRange(0, srcMTLTex.arrayLength)];
@@ -459,13 +473,19 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             }
             blitKey.dstMTLPixelFormat = _dstImage->getMTLPixelFormat(dstPlaneIndex);
             blitKey.srcFilter = mvkMTLSamplerMinMagFilterFromVkFilter(_filter);
+            blitKey.srcAspect = mvkIBR.region.srcSubresource.aspectMask & (VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT);
             blitKey.dstSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_dstImage->getSampleCount());
             id<MTLRenderPipelineState> mtlRPS = cmdEncoder->getCommandEncodingPool()->getCmdBlitImageMTLRenderPipelineState(blitKey);
-
+            bool isBlittingDepth = mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT));
+            bool isBlittingStencil = mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_STENCIL_BIT));
+            id<MTLDepthStencilState> mtlDSS = cmdEncoder->getCommandEncodingPool()->getMTLDepthStencilState(isBlittingDepth, isBlittingStencil);
+            
             uint32_t vtxBuffIdx = cmdEncoder->getDevice()->getMetalBufferIndexForVertexAttributeBinding(kMVKVertexContentBufferIndex);
             
             mtlColorAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
-
+            mtlDepthAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
+            mtlStencilAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
+            
             uint32_t layCnt = mvkIBR.region.srcSubresource.layerCount;
             if (_dstImage->getMTLTextureType() == MTLTextureType3D) {
                 layCnt = mvkAbsDiff(mvkIBR.region.dstOffsets[1].z, mvkIBR.region.dstOffsets[0].z);
@@ -473,9 +493,14 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
                 // Update the render pass descriptor for the texture level and slice, and create a render encoder.
                 if (_dstImage->getMTLTextureType() == MTLTextureType3D) {
-                    mtlColorAttDesc.depthPlane = mvkIBR.region.dstOffsets[0].z + (mvkIBR.region.dstOffsets[1].z > mvkIBR.region.dstOffsets[0].z ? layIdx : -(layIdx + 1));
+                    uint32_t depthPlane = mvkIBR.region.dstOffsets[0].z + (mvkIBR.region.dstOffsets[1].z > mvkIBR.region.dstOffsets[0].z ? layIdx : -(layIdx + 1));
+                    mtlColorAttDesc.depthPlane = depthPlane;
+                    mtlDepthAttDesc.depthPlane = depthPlane;
+                    mtlStencilAttDesc.depthPlane = depthPlane;
                 } else {
                     mtlColorAttDesc.slice = mvkIBR.region.dstSubresource.baseArrayLayer + layIdx;
+                    mtlDepthAttDesc.slice = mvkIBR.region.dstSubresource.baseArrayLayer + layIdx;
+                    mtlStencilAttDesc.slice = mvkIBR.region.dstSubresource.baseArrayLayer + layIdx;
                 }
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPD];
                 setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(commandUse));
@@ -494,8 +519,34 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                 }
                 [mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
                 [mtlRendEnc setRenderPipelineState: mtlRPS];
+                [mtlRendEnc setDepthStencilState: mtlDSS];
                 cmdEncoder->setVertexBytes(mtlRendEnc, mvkIBR.vertices, sizeof(mvkIBR.vertices), vtxBuffIdx);
-                [mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
+                if (!mvkIsOnlyAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_STENCIL_BIT))) {
+                    [mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
+                }
+                if (isBlittingStencil) {
+                    // For stencil blits of packed depth/stencil images, I need to use a stencil view. 
+                    MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
+                    if (pixFmts->isDepthFormat(blitKey.getSrcMTLPixelFormat()) &&
+                        pixFmts->isStencilFormat(blitKey.getSrcMTLPixelFormat())) {
+                        MTLPixelFormat stencilFmt = blitKey.getSrcMTLPixelFormat();
+                        if (stencilFmt == MTLPixelFormatDepth32Float_Stencil8) {
+
+                            stencilFmt = MTLPixelFormatX32_Stencil8;
+#if MVK_MACOS
+                        } else if (stencilFmt == MTLPixelFormatDepth24Unorm_Stencil8) {
+                            stencilFmt = MTLPixelFormatX24_Stencil8;
+#endif
+                        }
+                        id<MTLTexture> stencilMTLTex = [srcMTLTex newTextureViewWithPixelFormat: stencilFmt];
+                        [cmdEncoder->_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) {
+                            [stencilMTLTex release];
+                        }];
+                        [mtlRendEnc setFragmentTexture: stencilMTLTex atIndex: 1];
+                    } else {
+                        [mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 1];
+                    }
+                }
 
                 struct {
                     uint slice;

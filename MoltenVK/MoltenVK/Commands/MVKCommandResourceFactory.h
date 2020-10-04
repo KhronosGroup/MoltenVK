@@ -38,15 +38,17 @@ class MVKQueryPool;
  */
 typedef struct MVKRPSKeyBlitImg {
 	uint16_t srcMTLPixelFormat = 0;			/**< as MTLPixelFormat */
-	uint16_t srcMTLTextureType = 0;			/**< as MTLTextureType */
 	uint16_t dstMTLPixelFormat = 0;			/**< as MTLPixelFormat */
+	uint8_t srcMTLTextureType = 0;			/**< as MTLTextureType */
+	uint8_t srcAspect = 0;					/**< as VkImageAspectFlags */
 	uint8_t srcFilter = 0;					/**< as MTLSamplerMinMagFilter */
 	uint8_t dstSampleCount = 0;
 
 	bool operator==(const MVKRPSKeyBlitImg& rhs) const {
 		if (srcMTLPixelFormat != rhs.srcMTLPixelFormat) { return false; }
-		if (srcMTLTextureType != rhs.srcMTLTextureType) { return false; }
 		if (dstMTLPixelFormat != rhs.dstMTLPixelFormat) { return false; }
+		if (srcMTLTextureType != rhs.srcMTLTextureType) { return false; }
+		if (srcAspect != rhs.srcAspect) { return false; }
 		if (srcFilter != rhs.srcFilter) { return false; }
 		if (dstSampleCount != rhs.dstSampleCount) { return false; }
 		return true;
@@ -72,10 +74,13 @@ typedef struct MVKRPSKeyBlitImg {
 		std::size_t hash = srcMTLPixelFormat;
 
 		hash <<= 16;
+		hash |= dstMTLPixelFormat;
+
+		hash <<= 8;
 		hash |= srcMTLTextureType;
 
-		hash <<= 16;
-		hash |= dstMTLPixelFormat;
+		hash <<= 8;
+		hash |= srcAspect;
 
 		hash <<= 8;
 		hash |= srcFilter;

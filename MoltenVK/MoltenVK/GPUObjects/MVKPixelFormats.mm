@@ -1668,7 +1668,8 @@ typedef enum : VkFormatFeatureFlags {
 	kMVKVkFormatFeatureFlagsTexAtomic   = (VK_FORMAT_FEATURE_STORAGE_IMAGE_ATOMIC_BIT),
 	kMVKVkFormatFeatureFlagsTexColorAtt = (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BIT |
 										   VK_FORMAT_FEATURE_BLIT_DST_BIT),
-	kMVKVkFormatFeatureFlagsTexDSAtt    = (VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT),
+	kMVKVkFormatFeatureFlagsTexDSAtt    = (VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT |
+										   VK_FORMAT_FEATURE_BLIT_DST_BIT),
 	kMVKVkFormatFeatureFlagsTexBlend    = (VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT),
     kMVKVkFormatFeatureFlagsTexTransfer          = (VK_FORMAT_FEATURE_TRANSFER_SRC_BIT |
                                                     VK_FORMAT_FEATURE_TRANSFER_DST_BIT),
@@ -1720,8 +1721,21 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Blend, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 
-	if (chromaSubsamplingComponentBits > 0) {
+	if ( chromaSubsamplingComponentBits > 0 ||
+		// XXX We really want to use the device's Metal features instead of duplicating the
+		// logic from MVKPhysicalDevice, but those may not have been initialized yet.
+#if MVK_MACOS
+		 (isStencilFormat(vkDesc.mtlPixelFormat) && (!_physicalDevice || ![_physicalDevice->getMTLDevice() supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1]))
+#endif
+#if MVK_IOS
+		 (isStencilFormat(vkDesc.mtlPixelFormat) && (!_physicalDevice || ![_physicalDevice->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1]))
+#endif
+#if MVK_TVOS
+		isStencilFormat(vkDesc.mtlPixelFormat)
+#endif
+		) {
 		// Vulkan forbids blits between chroma-subsampled formats.
+		// If we can't write the stencil reference from the shader, we can't blit stencil.
 		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT));
 	}
 
