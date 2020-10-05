@@ -429,6 +429,14 @@ typedef struct MVKSwapchainImageAvailability {
 	bool operator< (const MVKSwapchainImageAvailability& rhs) const;
 } MVKSwapchainImageAvailability;
 
+/** VK_GOOGLE_display_timing extension info */
+typedef struct  {
+	MVKPresentableSwapchainImage* presentableImage;
+	bool hasPresentTime;      		// Keep track of whether presentation included VK_GOOGLE_display_timing
+	uint32_t presentID;           	// VK_GOOGLE_display_timing presentID
+	uint64_t desiredPresentTime;  	// VK_GOOGLE_display_timing desired presentation time in nanoseconds
+} MVKPresentTimingInfo;
+
 /** Tracks a semaphore and fence for later signaling. */
 typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
 
@@ -440,15 +448,9 @@ public:
 
 #pragma mark Metal
 
-	/**
-	 * Presents the contained drawable to the OS, releases the Metal drawable and its
-	 * texture back to the Metal layer's pool, and makes the image memory available for new use.
-	 *
-	 * If mtlCmdBuff is not nil, the contained drawable is scheduled for presentation using
-	 * the presentDrawable: method of the command buffer. If mtlCmdBuff is nil, the contained
-	 * drawable is presented immediately using the present method of the drawable.
-	 */
-	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, bool hasPresentTime, uint32_t presentID, uint64_t desiredPresentTime);
+	/** Presents the contained drawable to the OS. */
+	void presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
+								MVKPresentTimingInfo presentTimingInfo);
 
 
 #pragma mark Construction
@@ -465,6 +467,7 @@ protected:
 	friend MVKSwapchain;
 
 	id<CAMetalDrawable> getCAMetalDrawable() override;
+	void presentCAMetalDrawable(MVKPresentTimingInfo presentTimingInfo);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
 	void makeAvailable();

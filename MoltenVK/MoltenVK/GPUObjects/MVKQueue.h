@@ -255,13 +255,6 @@ public:
 protected:
 	id<MTLCommandBuffer> getMTLCommandBuffer();
 
-	typedef struct  {
-		MVKPresentableSwapchainImage* presentableImage;
-		bool hasPresentTime;          // Keep track of whether present included VK_GOOGLE_display_timing
-		uint32_t presentID;           // VK_GOOGLE_display_timing presentID
-		uint64_t desiredPresentTime;  // VK_GOOGLE_display_timing desired presentation time in nanoseconds
-	} PresentInfo;
-
-	MVKSmallVector<PresentInfo, 4> _presentInfo;
+	MVKSmallVector<MVKPresentTimingInfo, 4> _presentInfo;
 };
 

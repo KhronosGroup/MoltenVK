@@ -434,7 +434,7 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	return VK_SUCCESS;
 }
 
-void MVKSwapchain::recordPresentTime(uint32_t presentID, uint64_t desiredPresentTime, uint64_t actualPresentTime) {
+void MVKSwapchain::recordPresentTime(MVKPresentTimingInfo presentTimingInfo, uint64_t actualPresentTime) {
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (_presentHistoryCount < kMaxPresentationHistory) {
 		_presentHistoryCount++;
@@ -442,8 +442,12 @@ void MVKSwapchain::recordPresentTime(uint32_t presentID, uint64_t desiredPresent
 	} else {
 		_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 	}
-	_presentTimingHistory[_presentHistoryIndex].presentID = presentID;
-	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = desiredPresentTime;
+
+	// If actual time not supplied, use desired time instead
+	if (actualPresentTime == 0) { actualPresentTime = presentTimingInfo.desiredPresentTime; }
+
+	_presentTimingHistory[_presentHistoryIndex].presentID = presentTimingInfo.presentID;
+	_presentTimingHistory[_presentHistoryIndex].desiredPresentTime = presentTimingInfo.desiredPresentTime;
 	_presentTimingHistory[_presentHistoryIndex].actualPresentTime = actualPresentTime;
 	// These details are not available in Metal
 	_presentTimingHistory[_presentHistoryIndex].earliestPresentTime = actualPresentTime;

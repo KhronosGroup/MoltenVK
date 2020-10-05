@@ -1287,52 +1287,53 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 }
 
 // Present the drawable and make myself available only once the command buffer has completed.
-void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff, bool hasPresentTime, uint32_t presentID, uint64_t desiredPresentTime) {
+void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
+														  MVKPresentTimingInfo presentTimingInfo) {
+
 	_swapchain->willPresentSurface(getMTLTexture(0), mtlCmdBuff);
 
-	NSString* scName = _swapchain->getDebugName();
-	if (scName) { mvkPushDebugGroup(mtlCmdBuff, scName); }
-	if (!hasPresentTime) {
-		[mtlCmdBuff presentDrawable: getCAMetalDrawable()];
-	}
-	else {
-		// Convert from nsecs to seconds
-		CFTimeInterval presentTimeSeconds = ( double ) desiredPresentTime * 1.0e-9;
-		[mtlCmdBuff presentDrawable: getCAMetalDrawable() atTime:(CFTimeInterval)presentTimeSeconds];
-	}
-	if (scName) { mvkPopDebugGroup(mtlCmdBuff); }
+	[mtlCmdBuff addScheduledHandler: ^(id<MTLCommandBuffer> mcb) {
+		presentCAMetalDrawable(presentTimingInfo);
+	}];
 
-	signalPresentationSemaphore(mtlCmdBuff);
-
-	retain();	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
+	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
+	retain();
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
 		makeAvailable();
 		release();
 	}];
-	
-	if (hasPresentTime) {
+
+	signalPresentationSemaphore(mtlCmdBuff);
+}
+
+// If MTLDrawable.presentedTime/addPresentedHandler isn't supported.
+// Treat it as if the present happened when requested.
+void MVKPresentableSwapchainImage::presentCAMetalDrawable(MVKPresentTimingInfo presentTimingInfo) {
+
+	id<CAMetalDrawable> mtlDrwbl = getCAMetalDrawable();
+
+	if (presentTimingInfo.hasPresentTime) {
+
+		// Convert from nsecs to seconds for Metal
+		[mtlDrwbl presentAtTime: (double)presentTimingInfo.desiredPresentTime * 1.0e-9];
+
 #if MVK_OS_SIMULATOR
-		// If MTLDrawable.presentedTime/addPresentedHandler isn't supported, just treat it as if the
-		// present happened when requested
-		_swapchain->recordPresentTime(presentID, desiredPresentTime, desiredPresentTime);
+		_swapchain->recordPresentTime(presentTimingInfo);
 #else
-		if ([_mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
-			retain();	// Ensure this image is not destroyed while awaiting presentation
-			[_mtlDrawable addPresentedHandler: ^(id<MTLDrawable> drawable) {
-				// Record the presentation time
-				CFTimeInterval presentedTimeSeconds = drawable.presentedTime;
-				uint64_t presentedTimeNanoseconds = (uint64_t)(presentedTimeSeconds * 1.0e9);
-				_swapchain->recordPresentTime(presentID, desiredPresentTime, presentedTimeNanoseconds);
+		if ([mtlDrwbl respondsToSelector: @selector(addPresentedHandler:)]) {
+			// Ensure this image is not destroyed while awaiting presentation
+			retain();
+			[mtlDrwbl addPresentedHandler: ^(id<MTLDrawable> drawable) {
+				_swapchain->recordPresentTime(presentTimingInfo, drawable.presentedTime * 1.0e9);
 				release();
 			}];
 		} else {
-			// If MTLDrawable.presentedTime/addPresentedHandler isn't supported, just treat it as if the
-			// present happened when requested
-			_swapchain->recordPresentTime(presentID, desiredPresentTime, desiredPresentTime);
+			_swapchain->recordPresentTime(presentTimingInfo);
 		}
 #endif
+	} else {
+		[mtlDrwbl present];
 	}
-
 }
 
 // Resets the MTLTexture and CAMetalDrawable underlying this image.
