@@ -1292,8 +1292,10 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 
 	_swapchain->willPresentSurface(getMTLTexture(0), mtlCmdBuff);
 
+	// Get current drawable now. Don't retrieve in handler, because a new drawable might be acquired by then.
+	id<CAMetalDrawable> mtlDrwbl = getCAMetalDrawable();
 	[mtlCmdBuff addScheduledHandler: ^(id<MTLCommandBuffer> mcb) {
-		presentCAMetalDrawable(presentTimingInfo);
+		presentCAMetalDrawable(mtlDrwbl, presentTimingInfo);
 	}];
 
 	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
@@ -1306,24 +1308,21 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 	signalPresentationSemaphore(mtlCmdBuff);
 }
 
-// If MTLDrawable.presentedTime/addPresentedHandler isn't supported.
-// Treat it as if the present happened when requested.
-void MVKPresentableSwapchainImage::presentCAMetalDrawable(MVKPresentTimingInfo presentTimingInfo) {
-
-	id<CAMetalDrawable> mtlDrwbl = getCAMetalDrawable();
+void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<CAMetalDrawable> mtlDrawable,
+														  MVKPresentTimingInfo presentTimingInfo) {
 
 	if (presentTimingInfo.hasPresentTime) {
 
-		// Convert from nsecs to seconds for Metal
-		[mtlDrwbl presentAtTime: (double)presentTimingInfo.desiredPresentTime * 1.0e-9];
-
+		// Attach present handler before presenting to avoid race condition.
+		// If MTLDrawable.presentedTime/addPresentedHandler isn't supported,
+		// treat it as if the present happened when requested.
 #if MVK_OS_SIMULATOR
 		_swapchain->recordPresentTime(presentTimingInfo);
 #else
-		if ([mtlDrwbl respondsToSelector: @selector(addPresentedHandler:)]) {
+		if ([mtlDrawable respondsToSelector: @selector(addPresentedHandler:)]) {
 			// Ensure this image is not destroyed while awaiting presentation
 			retain();
-			[mtlDrwbl addPresentedHandler: ^(id<MTLDrawable> drawable) {
+			[mtlDrawable addPresentedHandler: ^(id<MTLDrawable> drawable) {
 				_swapchain->recordPresentTime(presentTimingInfo, drawable.presentedTime * 1.0e9);
 				release();
 			}];
@@ -1331,8 +1330,10 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(MVKPresentTimingInfo p
 			_swapchain->recordPresentTime(presentTimingInfo);
 		}
 #endif
+		// Convert from nsecs to seconds for Metal
+		[mtlDrawable presentAtTime: (double)presentTimingInfo.desiredPresentTime * 1.0e-9];
 	} else {
-		[mtlDrwbl present];
+		[mtlDrawable present];
 	}
 }
 
