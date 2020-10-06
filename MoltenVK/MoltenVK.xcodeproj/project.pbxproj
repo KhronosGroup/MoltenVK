@@ -1499,7 +1499,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Debug;
 		};
@@ -1507,14 +1506,12 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Release;
 		};
 		A9B8EE1E1A98D796009C5A02 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
 			};
 			name = Debug;
@@ -1522,7 +1519,6 @@
 		A9B8EE1F1A98D796009C5A02 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				SDKROOT = iphoneos;
 			};
 			name = Release;
@@ -1530,7 +1526,6 @@
 		A9CBEDFF1B6299D800E45FDC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -1538,7 +1533,6 @@
 		A9CBEE001B6299D800E45FDC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -1597,7 +1591,9 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				MACH_O_TYPE = staticlib;
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = YES;
 				MVK_SKIP_DYLIB = "";
 				"MVK_SKIP_DYLIB[sdk=appletvsimulator*]" = YES;
@@ -1606,6 +1602,7 @@
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
+				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Debug;
 		};
@@ -1661,7 +1658,9 @@
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
+				IPHONEOS_DEPLOYMENT_TARGET = 9.0;
 				MACH_O_TYPE = staticlib;
+				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MVK_SKIP_DYLIB = "";
 				"MVK_SKIP_DYLIB[sdk=appletvsimulator*]" = YES;
@@ -1669,6 +1668,7 @@
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;
+				TVOS_DEPLOYMENT_TARGET = 9.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

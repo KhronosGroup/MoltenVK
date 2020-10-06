@@ -518,33 +518,20 @@
 		2FEA0D122490381A00EEF3AD /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
-				);
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Debug;
 		};
 		2FEA0D132490381A00EEF3AD /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
-				);
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				SDKROOT = appletvos;
-				TVOS_DEPLOYMENT_TARGET = 11.0;
 			};
 			name = Release;
 		};
 		A9092A911A81717C00051823 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GENERATE_MASTER_OBJECT_FILE = NO;
 				MACH_O_TYPE = mh_execute;
 				OTHER_LDFLAGS = (
 					"-ObjC",
@@ -557,7 +544,6 @@
 		A9092A921A81717C00051823 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GENERATE_MASTER_OBJECT_FILE = NO;
 				MACH_O_TYPE = mh_execute;
 				OTHER_LDFLAGS = (
 					"-ObjC",
@@ -570,11 +556,6 @@
 		A93903BD1C57E9D700FE90DC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
-				);
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				SDKROOT = iphoneos;
 			};
 			name = Debug;
@@ -582,11 +563,6 @@
 		A93903BE1C57E9D700FE90DC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
-				);
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				SDKROOT = iphoneos;
 			};
 			name = Release;
@@ -594,11 +570,6 @@
 		A93903C51C57E9ED00FE90DC /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
-				);
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				SDKROOT = macosx;
 			};
 			name = Debug;
@@ -606,11 +577,6 @@
 		A93903C61C57E9ED00FE90DC /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"$(inherited)",
-					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
-				);
-				GCC_WARN_ABOUT_MISSING_PROTOTYPES = NO;
 				SDKROOT = macosx;
 			};
 			name = Release;
@@ -643,7 +609,10 @@
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = "DEBUG=1";
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross",
+					"DEBUG=1",
+				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
@@ -666,6 +635,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
+				TVOS_DEPLOYMENT_TARGET = 9.0;
 			};
 			name = Debug;
 		};
@@ -698,6 +668,7 @@
 				GCC_INLINES_ARE_PRIVATE_EXTERN = YES;
 				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = fast;
+				GCC_PREPROCESSOR_DEFINITIONS = "SPIRV_CROSS_NAMESPACE_OVERRIDE=MVK_spirv_cross";
 				GCC_SYMBOLS_PRIVATE_EXTERN = YES;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
 				GCC_WARN_ABOUT_MISSING_PROTOTYPES = YES;
@@ -719,6 +690,7 @@
 				MACOSX_DEPLOYMENT_TARGET = 10.11;
 				PRODUCT_NAME = MoltenVKShaderConverter;
 				SKIP_INSTALL = YES;
+				TVOS_DEPLOYMENT_TARGET = 9.0;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;
