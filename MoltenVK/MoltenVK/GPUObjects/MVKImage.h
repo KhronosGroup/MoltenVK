@@ -467,7 +467,7 @@ protected:
 	friend MVKSwapchain;
 
 	id<CAMetalDrawable> getCAMetalDrawable() override;
-	void presentCAMetalDrawable(MVKPresentTimingInfo presentTimingInfo);
+	void presentCAMetalDrawable(id<CAMetalDrawable> mtlDrawable, MVKPresentTimingInfo presentTimingInfo);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
 	void makeAvailable();
