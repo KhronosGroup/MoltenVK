@@ -707,9 +707,9 @@
 			isa = PBXGroup;
 			children = (
 				A981497C1FB6B566005F00B4 /* MoltenVKShaderConverter */,
-				A98149821FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */,
-				2FEA0D1C249040CA00EEF3AD /* libMoltenVKSPIRVToMSLConverter.a */,
-				A98149841FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */,
+				A98149821FB6B566005F00B4 /* libMoltenVKShaderConverter.a */,
+				2FEA0D1C249040CA00EEF3AD /* libMoltenVKShaderConverter.a */,
+				A98149841FB6B566005F00B4 /* libMoltenVKShaderConverter.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -1075,7 +1075,7 @@
 		A9F55D25198BE6A7004EC31B /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1170;
+				LastUpgradeCheck = 1200;
 				ORGANIZATIONNAME = "The Brenwill Workshop Ltd.";
 				TargetAttributes = {
 					A9B8EE091A98D796009C5A02 = {
@@ -1114,7 +1114,7 @@
 /* End PBXProject section */
 
 /* Begin PBXReferenceProxy section */
-		2FEA0D1C249040CA00EEF3AD /* libMoltenVKSPIRVToMSLConverter.a */ = {
+		2FEA0D1C249040CA00EEF3AD /* libMoltenVKShaderConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libMoltenVKShaderConverter.a;
@@ -1128,14 +1128,14 @@
 			remoteRef = A981497B1FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A98149821FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */ = {
+		A98149821FB6B566005F00B4 /* libMoltenVKShaderConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libMoltenVKShaderConverter.a;
 			remoteRef = A98149811FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A98149841FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */ = {
+		A98149841FB6B566005F00B4 /* libMoltenVKShaderConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libMoltenVKShaderConverter.a;
