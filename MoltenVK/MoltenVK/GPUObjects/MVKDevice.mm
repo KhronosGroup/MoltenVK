@@ -1000,13 +1000,25 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	_supportedExtensions(this, true),
 	_pixelFormats(this) {				// Set after _mtlDevice
 
-	initMetalFeatures();        		// Call first.
-	initFeatures();             		// Call second.
-	initProperties();           		// Call third.
+	initProperties();           		// Call first.
+	initMetalFeatures();        		// Call second.
+	initFeatures();             		// Call third.
+	initLimits();						// Call fourth.
 	initExtensions();
 	initMemoryProperties();
 	initExternalMemoryProperties();
 	logGPUInfo();
+}
+
+// Initializes the physical device properties (except limits).
+void MVKPhysicalDevice::initProperties() {
+	mvkClear(&_properties);	// Start with everything cleared
+
+	_properties.apiVersion = MVK_VULKAN_API_VERSION;
+	_properties.driverVersion = MVK_VERSION;
+
+	initGPUInfoProperties();
+	initPipelineCacheUUID();
 }
 
 // Initializes the Metal-specific physical device features of this instance.
@@ -1248,7 +1260,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_MACOS
     if (mvkOSVersionIsAtLeast(10.14)) {
         static const uint32_t kAMDVendorId = 0x1002;
-        initGPUInfoProperties();    // Need to know the vendor ID for this.
         _metalFeatures.subgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
     }
 #endif
@@ -1453,17 +1464,9 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    inheritedQueries;                             // done
 //} VkPhysicalDeviceFeatures;
 
-/** Initializes the physical device properties of this instance. */
-void MVKPhysicalDevice::initProperties() {
-	mvkClear(&_properties);	// Start with everything cleared
+// Initializes the physical device property limits.
+void MVKPhysicalDevice::initLimits() {
 
-	_properties.apiVersion = MVK_VULKAN_API_VERSION;
-	_properties.driverVersion = MVK_VERSION;
-
-	initGPUInfoProperties();
-	initPipelineCacheUUID();
-
-	// Limits
 #if MVK_TVOS
     _properties.limits.maxColorAttachments = kMVKCachedColorAttachmentCount;
 #endif
