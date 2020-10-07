@@ -349,6 +349,7 @@ protected:
     void initMetalFeatures();
 	void initFeatures();
 	void initProperties();
+	void initLimits();
 	void initGPUInfoProperties();
 	void initMemoryProperties();
 	void setMemoryHeap(uint32_t heapIndex, VkDeviceSize heapSize, VkMemoryHeapFlags heapFlags);
