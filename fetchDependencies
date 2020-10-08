@@ -33,6 +33,18 @@
 #
 #      Multiple platform options may be specified. At least one platform option must be specified.
 #
+#      --asan
+#              Build the external libraries against Address Sanitizer, which may be useful when debugging
+#              and tracing calls into those libraries.
+#
+#      --tsan
+#              Build the external libraries against Thread Sanitizer, which may be useful when debugging
+#              and tracing calls into those libraries.
+#
+#      --ubsan
+#              Build the external libraries against Undefined Behavior Sanitizer, which may be useful when debugging
+#              and tracing calls into those libraries.
+#
 #      --debug
 #              Build the external libraries in Debug mode, which may be useful when debugging
 #              and tracing calls into those libraries.
@@ -83,6 +95,9 @@ BLD_SPECIFIED=""
 XC_CONFIG="Release"
 XC_BUILD_VERBOSITY="-quiet"
 XC_USE_BCKGND=""
+XC_USE_ASAN="NO"
+XC_USE_TSAN="NO"
+XC_USE_UBSAN="NO"
 V_HEADERS_ROOT=""
 SPIRV_CROSS_ROOT=""
 GLSLANG_ROOT=""
@@ -124,6 +139,18 @@ while (( "$#" )); do
          ;;
        --debug)
          XC_CONFIG="Debug"
+         shift 1
+         ;;
+       --asan)
+         XC_USE_ASAN="YES"
+         shift 1
+         ;;
+       --tsan)
+         XC_USE_TSAN="YES"
+         shift 1
+         ;;
+       --ubsan)
+         XC_USE_UBSAN="YES"
          shift 1
          ;;
        --parallel-build)
@@ -373,13 +400,16 @@ function build_impl() {
 
 	echo Building external libraries for ${XC_PLTFM}
 
-	xcodebuild 										\
-		-project "${XC_PROJ}"						\
-		-scheme "${XC_SCHEME}"						\
-		-destination "${XC_DEST}"					\
-		-configuration "${XC_CONFIG}"				\
-		-derivedDataPath "${XC_LCL_DD_PATH}"		\
-		${XC_BUILD_VERBOSITY}						\
+	xcodebuild 													\
+		-project "${XC_PROJ}"									\
+		-scheme "${XC_SCHEME}"									\
+		-destination "${XC_DEST}"								\
+		-configuration "${XC_CONFIG}"							\
+		-enableAddressSanitizer "${XC_USE_ASAN}"				\
+		-enableThreadSanitizer "${XC_USE_TSAN}"					\
+		-enableUndefinedBehaviorSanitizer "${XC_USE_UBSAN}"		\
+		-derivedDataPath "${XC_LCL_DD_PATH}"					\
+		${XC_BUILD_VERBOSITY}									\
 		build
 
 	echo Completed building external libraries for ${XC_PLTFM}
