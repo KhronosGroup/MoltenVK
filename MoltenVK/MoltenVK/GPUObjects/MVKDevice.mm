@@ -169,6 +169,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
+				auto* privateDataFeatures = (VkPhysicalDevicePrivateDataFeaturesEXT*)next;
+				privateDataFeatures->privateData = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
 				auto* portabilityFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesKHR*)next;
 				portabilityFeatures->constantAlphaColorBlendFactors = true;
@@ -2886,6 +2891,47 @@ void MVKDevice::freeMemory(MVKDeviceMemory* mvkDevMem,
 	if (mvkDevMem) { mvkDevMem->destroy(); }
 }
 
+// Look for an available pre-reserved private data slot and return it's address if found.
+// Otherwise create a new instance and return it.
+VkResult MVKDevice::createPrivateDataSlot(const VkPrivateDataSlotCreateInfoEXT* pCreateInfo,
+										  const VkAllocationCallbacks* pAllocator,
+										  VkPrivateDataSlotEXT* pPrivateDataSlot) {
+	MVKPrivateDataSlot* mvkPDS = nullptr;
+
+	size_t slotCnt = _privateDataSlots.size();
+	for (size_t slotIdx = 0; slotIdx < slotCnt; slotIdx++) {
+		if ( _privateDataSlotsAvailability[slotIdx] ) {
+			_privateDataSlotsAvailability[slotIdx] = false;
+			mvkPDS = _privateDataSlots[slotIdx];
+			break;
+		}
+	}
+
+	if ( !mvkPDS ) { mvkPDS = new MVKPrivateDataSlot(this); }
+
+	*pPrivateDataSlot = (VkPrivateDataSlotEXT)mvkPDS;
+	return VK_SUCCESS;
+}
+
+// If the private data slot is one of the pre-reserved slots, clear it and mark it as available.
+// Otherwise destroy it.
+void MVKDevice::destroyPrivateDataSlot(VkPrivateDataSlotEXT privateDataSlot,
+									   const VkAllocationCallbacks* pAllocator) {
+
+	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
+
+	size_t slotCnt = _privateDataSlots.size();
+	for (size_t slotIdx = 0; slotIdx < slotCnt; slotIdx++) {
+		if (mvkPDS == _privateDataSlots[slotIdx]) {
+			mvkPDS->clearData();
+			_privateDataSlotsAvailability[slotIdx] = true;
+			return;
+		}
+	}
+
+	mvkPDS->destroy();
+}
+
 
 #pragma mark Operations
 
@@ -3077,6 +3123,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledScalarLayoutFeatures(),
 	_enabledTexelBuffAlignFeatures(),
 	_enabledVtxAttrDivFeatures(),
+	_enabledPrivateDataFeatures(),
 	_enabledPortabilityFeatures(),
 	_enabledExtensions(this)
 {
@@ -3085,6 +3132,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	initPhysicalDevice(physicalDevice, pCreateInfo);
 	enableFeatures(pCreateInfo);
 	enableExtensions(pCreateInfo);
+	initQueues(pCreateInfo);
+	reservePrivateData(pCreateInfo);
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;
@@ -3092,8 +3141,6 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	initMTLCompileOptions();	// Before command resource factory
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
-
-	initQueues(pCreateInfo);
 
 	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
 		MTLCaptureManager *captureMgr = [MTLCaptureManager sharedCaptureManager];
@@ -3225,6 +3272,7 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledScalarLayoutFeatures);
 	mvkClear(&_enabledTexelBuffAlignFeatures);
 	mvkClear(&_enabledVtxAttrDivFeatures);
+	mvkClear(&_enabledPrivateDataFeatures);
 	mvkClear(&_enabledPortabilityFeatures);
 
 	// Fetch the available physical device features.
@@ -3232,9 +3280,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	pdPortabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
 	pdPortabilityFeatures.pNext = NULL;
 
+	VkPhysicalDevicePrivateDataFeaturesEXT pdPrivateDataFeatures;
+	pdPrivateDataFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT;
+	pdPrivateDataFeatures.pNext = &pdPortabilityFeatures;
+
 	VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT pdVtxAttrDivFeatures;
 	pdVtxAttrDivFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
-	pdVtxAttrDivFeatures.pNext = &pdPortabilityFeatures;
+	pdVtxAttrDivFeatures.pNext = &pdPrivateDataFeatures;
 
 	VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT pdTexelBuffAlignFeatures;
 	pdTexelBuffAlignFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT;
@@ -3375,6 +3427,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 							   &pdVtxAttrDivFeatures.vertexAttributeInstanceRateDivisor, 2);
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDevicePrivateDataFeaturesEXT*)next;
+				enableFeatures(&_enabledPrivateDataFeatures.privateData,
+							   &requestedFeatures->privateData,
+							   &pdPrivateDataFeatures.privateData, 1);
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
 				auto* requestedFeatures = (VkPhysicalDevicePortabilitySubsetFeaturesKHR*)next;
 				enableFeatures(&_enabledPortabilityFeatures.constantAlphaColorBlendFactors,
@@ -3428,6 +3487,28 @@ void MVKDevice::initQueues(const VkDeviceCreateInfo* pCreateInfo) {
 	}
 }
 
+void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
+	size_t slotCnt = 0;
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_DEVICE_PRIVATE_DATA_CREATE_INFO_EXT: {
+				auto* pPDCreateInfo = (const VkDevicePrivateDataCreateInfoEXT*)next;
+				slotCnt += pPDCreateInfo->privateDataSlotRequestCount;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	_privateDataSlots.reserve(slotCnt);
+	_privateDataSlotsAvailability.reserve(slotCnt);
+	for (uint32_t slotIdx = 0; slotIdx < slotCnt; slotIdx++) {
+		_privateDataSlots.push_back(new MVKPrivateDataSlot(this));
+		_privateDataSlotsAvailability.push_back(true);
+	}
+}
+
 void MVKDevice::initMTLCompileOptions() {
 	_mtlCompileOptions = [MTLCompileOptions new];	// retained
 	_mtlCompileOptions.languageVersion = _pMetalFeatures->mslVersionEnum;
@@ -3445,6 +3526,8 @@ MVKDevice::~MVKDevice() {
 	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
 		[[MTLCaptureManager sharedCaptureManager] stopCapture];
 	}
+
+	mvkDestroyContainerContents(_privateDataSlots);
 }
 
 
