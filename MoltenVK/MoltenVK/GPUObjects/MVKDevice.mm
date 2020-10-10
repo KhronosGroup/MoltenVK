@@ -1236,7 +1236,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.native3DCompressedTextures = true;
         _metalFeatures.renderWithoutAttachments = true;
-        if ( mvkOSVersionIsAtLeast(mvkMakeOSVersion(10, 15, 5)) ) {
+        if ( mvkOSVersionIsAtLeast(mvkMakeOSVersion(10, 15, 6)) ) {
             _metalFeatures.sharedLinearTextures = true;
         }
 		if (supportsMTLGPUFamily(Mac2)) {
