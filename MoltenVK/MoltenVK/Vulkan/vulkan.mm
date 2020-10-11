@@ -2928,34 +2928,6 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateMetalSurfaceEXT(
 }
 
 #pragma mark -
-#pragma mark VK_GOOGLE_display_timing extension
-
-MVK_PUBLIC_SYMBOL VkResult vkGetRefreshCycleDurationGOOGLE(
-	VkDevice                                    device,
-	VkSwapchainKHR                              swapchain,
-	VkRefreshCycleDurationGOOGLE*               pDisplayTimingProperties) {
-
-	MVKTraceVulkanCallStart();
-	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
-	VkResult rslt = mvkSwapchain->getRefreshCycleDuration(pDisplayTimingProperties);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-MVK_PUBLIC_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
-	VkDevice                                    device,
-	VkSwapchainKHR                              swapchain,
-	uint32_t*                                   pPresentationTimingCount,
-	VkPastPresentationTimingGOOGLE*             pPresentationTimings) {
-
-	MVKTraceVulkanCallStart();
-	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
-	VkResult rslt = mvkSwapchain->getPastPresentationTiming(pPresentationTimingCount, pPresentationTimings);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
-#pragma mark -
 #pragma mark VK_EXT_private_data extension
 
 MVK_PUBLIC_SYMBOL VkResult vkCreatePrivateDataSlotEXT(
@@ -3007,6 +2979,34 @@ MVK_PUBLIC_SYMBOL void vkGetPrivateDataEXT(
 	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
 	*pData = mvkPDS->getData(objectType, objectHandle);
 	MVKTraceVulkanCallEnd();
+}
+
+#pragma mark -
+#pragma mark VK_GOOGLE_display_timing extension
+
+MVK_PUBLIC_SYMBOL VkResult vkGetRefreshCycleDurationGOOGLE(
+	VkDevice                                    device,
+	VkSwapchainKHR                              swapchain,
+	VkRefreshCycleDurationGOOGLE*               pDisplayTimingProperties) {
+
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
+	VkResult rslt = mvkSwapchain->getRefreshCycleDuration(pDisplayTimingProperties);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
+	VkDevice                                    device,
+	VkSwapchainKHR                              swapchain,
+	uint32_t*                                   pPresentationTimingCount,
+	VkPastPresentationTimingGOOGLE*             pPresentationTimings) {
+
+	MVKTraceVulkanCallStart();
+	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
+	VkResult rslt = mvkSwapchain->getPastPresentationTiming(pPresentationTimingCount, pPresentationTimings);
+	MVKTraceVulkanCallEnd();
+	return rslt;
 }
 
 #pragma mark -

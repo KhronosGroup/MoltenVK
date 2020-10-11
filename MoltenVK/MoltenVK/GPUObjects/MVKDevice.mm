@@ -146,6 +146,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				imageRobustnessFeatures->robustImageAccess = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
+				auto* privateDataFeatures = (VkPhysicalDevicePrivateDataFeaturesEXT*)next;
+				privateDataFeatures->privateData = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ROBUSTNESS_2_FEATURES_EXT: {
 				auto* robustness2Features = (VkPhysicalDeviceRobustness2FeaturesEXT*)next;
 				robustness2Features->robustBufferAccess2 = false;
@@ -167,11 +172,6 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
 				divisorFeatures->vertexAttributeInstanceRateDivisor = true;
 				divisorFeatures->vertexAttributeInstanceRateZeroDivisor = true;
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
-				auto* privateDataFeatures = (VkPhysicalDevicePrivateDataFeaturesEXT*)next;
-				privateDataFeatures->privateData = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {
@@ -3269,10 +3269,10 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledInterlockFeatures);
 	mvkClear(&_enabledHostQryResetFeatures);
 	mvkClear(&_enabledSamplerYcbcrConversionFeatures);
+	mvkClear(&_enabledPrivateDataFeatures);
 	mvkClear(&_enabledScalarLayoutFeatures);
 	mvkClear(&_enabledTexelBuffAlignFeatures);
 	mvkClear(&_enabledVtxAttrDivFeatures);
-	mvkClear(&_enabledPrivateDataFeatures);
 	mvkClear(&_enabledPortabilityFeatures);
 
 	// Fetch the available physical device features.
@@ -3280,13 +3280,9 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	pdPortabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
 	pdPortabilityFeatures.pNext = NULL;
 
-	VkPhysicalDevicePrivateDataFeaturesEXT pdPrivateDataFeatures;
-	pdPrivateDataFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT;
-	pdPrivateDataFeatures.pNext = &pdPortabilityFeatures;
-
 	VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT pdVtxAttrDivFeatures;
 	pdVtxAttrDivFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
-	pdVtxAttrDivFeatures.pNext = &pdPrivateDataFeatures;
+	pdVtxAttrDivFeatures.pNext = &pdPortabilityFeatures;
 
 	VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT pdTexelBuffAlignFeatures;
 	pdTexelBuffAlignFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT;
@@ -3296,9 +3292,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	pdScalarLayoutFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT;
 	pdScalarLayoutFeatures.pNext = &pdTexelBuffAlignFeatures;
 
+	VkPhysicalDevicePrivateDataFeaturesEXT pdPrivateDataFeatures;
+	pdPrivateDataFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT;
+	pdPrivateDataFeatures.pNext = &pdScalarLayoutFeatures;
+
 	VkPhysicalDeviceSamplerYcbcrConversionFeatures pdSamplerYcbcrConversionFeatures;
 	pdSamplerYcbcrConversionFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SAMPLER_YCBCR_CONVERSION_FEATURES;
-	pdSamplerYcbcrConversionFeatures.pNext = &pdScalarLayoutFeatures;
+	pdSamplerYcbcrConversionFeatures.pNext = &pdPrivateDataFeatures;
 
 	VkPhysicalDeviceHostQueryResetFeaturesEXT pdHostQryResetFeatures;
 	pdHostQryResetFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT;
@@ -3406,6 +3406,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 							   &pdSamplerYcbcrConversionFeatures.samplerYcbcrConversion, 1);
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDevicePrivateDataFeaturesEXT*)next;
+				enableFeatures(&_enabledPrivateDataFeatures.privateData,
+							   &requestedFeatures->privateData,
+							   &pdPrivateDataFeatures.privateData, 1);
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SCALAR_BLOCK_LAYOUT_FEATURES_EXT: {
 				auto* requestedFeatures = (VkPhysicalDeviceScalarBlockLayoutFeaturesEXT*)next;
 				enableFeatures(&_enabledScalarLayoutFeatures.scalarBlockLayout,
@@ -3425,13 +3432,6 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledVtxAttrDivFeatures.vertexAttributeInstanceRateDivisor,
 							   &requestedFeatures->vertexAttributeInstanceRateDivisor,
 							   &pdVtxAttrDivFeatures.vertexAttributeInstanceRateDivisor, 2);
-				break;
-			}
-			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PRIVATE_DATA_FEATURES_EXT: {
-				auto* requestedFeatures = (VkPhysicalDevicePrivateDataFeaturesEXT*)next;
-				enableFeatures(&_enabledPrivateDataFeatures.privateData,
-							   &requestedFeatures->privateData,
-							   &pdPrivateDataFeatures.privateData, 1);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR: {

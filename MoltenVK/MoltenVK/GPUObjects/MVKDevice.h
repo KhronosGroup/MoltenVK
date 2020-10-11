@@ -683,10 +683,10 @@ public:
 	const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT _enabledInterlockFeatures;
 	const VkPhysicalDeviceHostQueryResetFeaturesEXT _enabledHostQryResetFeatures;
 	const VkPhysicalDeviceSamplerYcbcrConversionFeatures _enabledSamplerYcbcrConversionFeatures;
+	const VkPhysicalDevicePrivateDataFeaturesEXT _enabledPrivateDataFeatures;
 	const VkPhysicalDeviceScalarBlockLayoutFeaturesEXT _enabledScalarLayoutFeatures;
 	const VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT _enabledTexelBuffAlignFeatures;
 	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;
-	const VkPhysicalDevicePrivateDataFeaturesEXT _enabledPrivateDataFeatures;
 	const VkPhysicalDevicePortabilitySubsetFeaturesKHR _enabledPortabilityFeatures;
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
