@@ -149,7 +149,6 @@ protected:
 	std::string _name;
 	MVKMTLCommandBufferID _nextMTLCmdBuffID;
 	MVKGPUCaptureScope* _submissionCaptureScope;
-	MVKGPUCaptureScope* _presentationCaptureScope;
 };
 
 

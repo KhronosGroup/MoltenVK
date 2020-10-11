@@ -49,12 +49,11 @@ public:
 	void makeDefault();
 
 	/**
-	 * Constructs an instance for the specified queue and purpose.
+	 * Constructs an instance for the specified queue.
 	 *
-	 * The purpose is combined with the name of the queue to create a unique identification name
-	 * for this instance, which will be displayed in Xcode when selecting a capture scope to use.
+	 * If the queue has a debug name, it will be displayed in Xcode when selecting a capture scope to use.
 	 */
-	MVKGPUCaptureScope(MVKQueue* mvkQueue, const char* purpose);
+	MVKGPUCaptureScope(MVKQueue* mvkQueue);
 
 	~MVKGPUCaptureScope() override;
 
