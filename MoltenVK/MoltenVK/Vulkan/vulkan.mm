@@ -2928,12 +2928,67 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateMetalSurfaceEXT(
 }
 
 #pragma mark -
+#pragma mark VK_EXT_private_data extension
+
+MVK_PUBLIC_SYMBOL VkResult vkCreatePrivateDataSlotEXT(
+	VkDevice                                    device,
+	const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
+	const VkAllocationCallbacks*                pAllocator,
+	VkPrivateDataSlotEXT*                       pPrivateDataSlot) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	VkResult rslt = mvkDev->createPrivateDataSlot(pCreateInfo, pAllocator, pPrivateDataSlot);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+MVK_PUBLIC_SYMBOL void vkDestroyPrivateDataSlotEXT(
+	VkDevice                                    device,
+	VkPrivateDataSlotEXT                        privateDataSlot,
+	const VkAllocationCallbacks*                pAllocator) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	mvkDev->destroyPrivateDataSlot(privateDataSlot, pAllocator);
+	MVKTraceVulkanCallEnd();
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkSetPrivateDataEXT(
+	VkDevice                                    device,
+	VkObjectType                                objectType,
+	uint64_t                                    objectHandle,
+	VkPrivateDataSlotEXT                        privateDataSlot,
+	uint64_t                                    data) {
+
+	MVKTraceVulkanCallStart();
+	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
+	mvkPDS->setData(objectType, objectHandle, data);
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+MVK_PUBLIC_SYMBOL void vkGetPrivateDataEXT(
+	VkDevice                                    device,
+	VkObjectType                                objectType,
+	uint64_t                                    objectHandle,
+	VkPrivateDataSlotEXT                        privateDataSlot,
+	uint64_t*                                   pData) {
+
+	MVKTraceVulkanCallStart();
+	MVKPrivateDataSlot* mvkPDS = (MVKPrivateDataSlot*)privateDataSlot;
+	*pData = mvkPDS->getData(objectType, objectHandle);
+	MVKTraceVulkanCallEnd();
+}
+
+#pragma mark -
 #pragma mark VK_GOOGLE_display_timing extension
 
 MVK_PUBLIC_SYMBOL VkResult vkGetRefreshCycleDurationGOOGLE(
 	VkDevice                                    device,
 	VkSwapchainKHR                              swapchain,
 	VkRefreshCycleDurationGOOGLE*               pDisplayTimingProperties) {
+
 	MVKTraceVulkanCallStart();
 	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
 	VkResult rslt = mvkSwapchain->getRefreshCycleDuration(pDisplayTimingProperties);
@@ -2946,6 +3001,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
 	VkSwapchainKHR                              swapchain,
 	uint32_t*                                   pPresentationTimingCount,
 	VkPastPresentationTimingGOOGLE*             pPresentationTimings) {
+
 	MVKTraceVulkanCallStart();
 	MVKSwapchain* mvkSwapchain = (MVKSwapchain*)swapchain;
 	VkResult rslt = mvkSwapchain->getPastPresentationTiming(pPresentationTimingCount, pPresentationTimings);

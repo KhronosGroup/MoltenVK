@@ -66,6 +66,7 @@ class MVKRenderPass;
 class MVKCommandPool;
 class MVKCommandEncoder;
 class MVKCommandResourceFactory;
+class MVKPrivateDataSlot;
 
 
 /** The buffer index to use for vertex content. */
@@ -578,6 +579,13 @@ public:
 	void freeMemory(MVKDeviceMemory* mvkDevMem,
 					const VkAllocationCallbacks* pAllocator);
 
+	VkResult createPrivateDataSlot(const VkPrivateDataSlotCreateInfoEXT* pCreateInfo,
+								   const VkAllocationCallbacks* pAllocator,
+								   VkPrivateDataSlotEXT* pPrivateDataSlot);
+
+	void destroyPrivateDataSlot(VkPrivateDataSlotEXT privateDataSlot,
+								const VkAllocationCallbacks* pAllocator);
+
 
 #pragma mark Operations
 
@@ -675,6 +683,7 @@ public:
 	const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT _enabledInterlockFeatures;
 	const VkPhysicalDeviceHostQueryResetFeaturesEXT _enabledHostQryResetFeatures;
 	const VkPhysicalDeviceSamplerYcbcrConversionFeatures _enabledSamplerYcbcrConversionFeatures;
+	const VkPhysicalDevicePrivateDataFeaturesEXT _enabledPrivateDataFeatures;
 	const VkPhysicalDeviceScalarBlockLayoutFeaturesEXT _enabledScalarLayoutFeatures;
 	const VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT _enabledTexelBuffAlignFeatures;
 	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;
@@ -724,6 +733,7 @@ protected:
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
+	void reservePrivateData(const VkDeviceCreateInfo* pCreateInfo);
 	void initMTLCompileOptions();
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
@@ -737,6 +747,8 @@ protected:
 	MTLCompileOptions* _mtlCompileOptions;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*, 256> _resources;
+	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
+	MVKSmallVector<bool> _privateDataSlotsAvailability;
 	std::mutex _rezLock;
     std::mutex _perfLock;
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;
@@ -816,6 +828,35 @@ public:
 
 protected:
 	MVKBaseObject* getBaseObject() override { return this; };
+};
+
+
+#pragma mark -
+#pragma mark MVKPrivateDataSlot
+
+/** Private data slot. */
+class MVKPrivateDataSlot : public MVKVulkanAPIDeviceObject {
+
+public:
+
+	/** Returns the Vulkan type of this object. */
+	VkObjectType getVkObjectType() override { return VK_OBJECT_TYPE_PRIVATE_DATA_SLOT_EXT; }
+
+	/** Returns the debug report object type of this object. */
+	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT; }
+
+	void setData(VkObjectType objectType, uint64_t objectHandle, uint64_t data) { _privateData[objectHandle] = data; }
+
+	uint64_t getData(VkObjectType objectType, uint64_t objectHandle) { return _privateData[objectHandle]; }
+
+	void clearData() { _privateData.clear(); }
+
+	MVKPrivateDataSlot(MVKDevice* device) : MVKVulkanAPIDeviceObject(device) {}
+
+protected:
+	void propagateDebugName() override {}
+
+	std::unordered_map<uint64_t, uint64_t> _privateData;
 };
 
 
