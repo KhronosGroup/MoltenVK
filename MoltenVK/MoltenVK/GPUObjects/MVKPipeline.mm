@@ -688,6 +688,33 @@ static VkFormat mvkFormatFromOutput(const SPIRVShaderOutput& output) {
 	return VK_FORMAT_UNDEFINED;
 }
 
+// Returns a format of the same base type with vector length adjusted to fit size.
+static MTLVertexFormat mvkAdjustFormatVectorToSize(MTLVertexFormat format, uint32_t size) {
+#define MVK_ADJUST_FORMAT_CASE(size_1, type, suffix) \
+	case MTLVertexFormat##type##4##suffix: if (size >= 4 * (size_1)) { return MTLVertexFormat##type##4##suffix; } \
+	case MTLVertexFormat##type##3##suffix: if (size >= 3 * (size_1)) { return MTLVertexFormat##type##3##suffix; } \
+	case MTLVertexFormat##type##2##suffix: if (size >= 2 * (size_1)) { return MTLVertexFormat##type##2##suffix; } \
+	case MTLVertexFormat##type##suffix:    if (size >= 1 * (size_1)) { return MTLVertexFormat##type##suffix; } \
+	return MTLVertexFormatInvalid;
+
+	switch (format) {
+		MVK_ADJUST_FORMAT_CASE(1, UChar, )
+		MVK_ADJUST_FORMAT_CASE(1, Char, )
+		MVK_ADJUST_FORMAT_CASE(1, UChar, Normalized)
+		MVK_ADJUST_FORMAT_CASE(1, Char, Normalized)
+		MVK_ADJUST_FORMAT_CASE(2, UShort, )
+		MVK_ADJUST_FORMAT_CASE(2, Short, )
+		MVK_ADJUST_FORMAT_CASE(2, UShort, Normalized)
+		MVK_ADJUST_FORMAT_CASE(2, Short, Normalized)
+		MVK_ADJUST_FORMAT_CASE(2, Half, )
+		MVK_ADJUST_FORMAT_CASE(4, Float, )
+		MVK_ADJUST_FORMAT_CASE(4, UInt, )
+		MVK_ADJUST_FORMAT_CASE(4, Int, )
+		default: return format;
+	}
+#undef MVK_ADJUST_FORMAT_CASE
+}
+
 // Returns a retained MTLComputePipelineDescriptor for the tess. control stage of a tessellated draw constructed from this instance, or nil if an error occurs.
 // It is the responsibility of the caller to release the returned descriptor.
 MTLComputePipelineDescriptor* MVKGraphicsPipeline::newMTLTessControlStageDescriptor(const VkGraphicsPipelineCreateInfo* pCreateInfo,
@@ -1177,9 +1204,10 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 			// If this is the case, fetch a translated artificial buffer binding, using the same MTLBuffer,
 			// but that is translated so that the reduced VA offset fits into the binding stride.
 			const VkVertexInputBindingDescription* pVKVB = pVI->pVertexBindingDescriptions;
+			uint32_t attrSize = 0;
 			for (uint32_t j = 0; j < vbCnt; j++, pVKVB++) {
 				if (pVKVB->binding == pVKVA->binding) {
-					uint32_t attrSize = getPixelFormats()->getBytesPerBlock(pVKVA->format);
+					attrSize = getPixelFormats()->getBytesPerBlock(pVKVA->format);
 					if (pVKVB->stride == 0) {
 						// The step is set to constant, but we need to change stride to be non-zero for metal.
 						// Look for the maximum offset + size to set as the stride.
@@ -1187,7 +1215,7 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 						auto vbDesc = inputDesc.layouts[vbIdx];
 						uint32_t strideLowBound = vaOffset + attrSize;
 						if (vbDesc.stride < strideLowBound) vbDesc.stride = strideLowBound;
-					} else if (vaOffset + attrSize > pVKVB->stride) {
+					} else if (vaOffset && vaOffset + attrSize > pVKVB->stride) {
 						// Move vertex attribute offset into the stride. This vertex attribute may be
 						// combined with other vertex attributes into the same translated buffer binding.
 						// But if the reduced offset combined with the vertex attribute size still won't
@@ -1208,7 +1236,16 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 			}
 
 			auto vaDesc = inputDesc.attributes[pVKVA->location];
-			vaDesc.format = (decltype(vaDesc.format))getPixelFormats()->getMTLVertexFormat(pVKVA->format);
+			auto mtlFormat = (decltype(vaDesc.format))getPixelFormats()->getMTLVertexFormat(pVKVA->format);
+			if (pVKVB->stride && attrSize > pVKVB->stride) {
+				/* Metal does not support overlapping loads. Truncate format vector length to prevent an assertion
+				 * and hope it's not used by the shader. */
+				MTLVertexFormat newFormat = mvkAdjustFormatVectorToSize((MTLVertexFormat)mtlFormat, pVKVB->stride);
+				reportError(VK_SUCCESS, "Found attribute with size (%u) larger than it's binding's stride (%u). Changing descriptor format from %s to %s.",
+					attrSize, pVKVB->stride, getPixelFormats()->getName((MTLVertexFormat)mtlFormat), getPixelFormats()->getName(newFormat));
+				mtlFormat = (decltype(vaDesc.format))newFormat;
+			}
+			vaDesc.format = mtlFormat;
 			vaDesc.bufferIndex = (decltype(vaDesc.bufferIndex))getMetalBufferIndexForVertexAttributeBinding(vaBinding);
 			vaDesc.offset = vaOffset;
 		}
