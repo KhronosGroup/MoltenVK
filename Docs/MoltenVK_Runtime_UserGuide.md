@@ -580,13 +580,24 @@ Known **MoltenVK** Limitations
 
 This section documents the known limitations in this version of **MoltenVK**.
 
+- On *macOS* versions prior to *macOS 10.15.6*, native host-coherent image device memory is not available.
+  Because of this, changes made to `VkImage VK_MEMORY_PROPERTY_HOST_COHERENT_BIT` device memory by the CPU 
+  or GPU will not be available to the GPU or CPU, respectively, until the memory is flushed  or unmapped by 
+  the application. Applications using `vkMapMemory()` with `VkImage VK_MEMORY_PROPERTY_HOST_COHERENT_BIT` 
+  device memory on *macOS* versions prior to *macOS 10.15.6* must call either `vkUnmapMemory()`, or
+  `vkFlushMappedMemoryRanges()` / `vkInvalidateMappedMemoryRanges()` to ensure memory changes are coherent 
+  between the CPU and GPU.  This limitation does **_not_** apply to `VKImage` device memory on *macOS* 
+  starting with *macOS 10.15.6*, does not apply to `VKImage` device memory on any version of *iOS* or *tvOS*, 
+  and does **_not_** apply to `VKBuffer` device memory on any platform.
+
+- Image content in `PVRTC` compressed formats must be loaded directly into a `VkImage` using 
+  host-visible memory mapping. Loading via a staging buffer will result in malformed image content. 
+
+- Pipeline statistics query pool using `VK_QUERY_TYPE_PIPELINE_STATISTICS` is not supported.
+
+- Application-controlled memory allocations using `VkAllocationCallbacks` are ignored.
+
 - Since **MoltenVK** is an implementation of *Vulkan* functionality, it does not load 
   *Vulkan Layers* on its own. In order to use *Vulkan Layers*, such as the validation layers, 
   use the *Vulkan Loader and Layers* from the [LunarG Vulkan SDK](https://vulkan.lunarg.com).
 
-- Application-controlled memory allocations using `VkAllocationCallbacks` are ignored.
-
-- Pipeline statistics query pool using `VK_QUERY_TYPE_PIPELINE_STATISTICS` is not supported.
-
-- Image content in `PVRTC` compressed formats must be loaded directly into a `VkImage` using 
-  host-visible memory mapping. Loading via a staging buffer will result in malformed image content. 
