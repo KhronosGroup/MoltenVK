@@ -192,20 +192,18 @@ void MVKQueue::initMTLCommandQueue() {
 void MVKQueue::initGPUCaptureScopes() {
 	const MVKConfiguration* pMVKConfig = getInstance()->getMoltenVKConfiguration();
 
-	_submissionCaptureScope = new MVKGPUCaptureScope(this, "CommandBuffer-Submission");
+	_submissionCaptureScope = new MVKGPUCaptureScope(this);
 
-	_presentationCaptureScope = new MVKGPUCaptureScope(this, "Surface-Presentation");
 	if (_queueFamily->getIndex() == pMVKConfig->defaultGPUCaptureScopeQueueFamilyIndex &&
 		_index == pMVKConfig->defaultGPUCaptureScopeQueueIndex) {
-		_presentationCaptureScope->makeDefault();
+		_submissionCaptureScope->makeDefault();
 	}
-	_presentationCaptureScope->beginScope();	// Allow Xcode to capture the first frame if desired.
+	_submissionCaptureScope->beginScope();	// Allow Xcode to capture the first frame if desired.
 }
 
 MVKQueue::~MVKQueue() {
 	destroyExecQueue();
 	_submissionCaptureScope->destroy();
-	_presentationCaptureScope->destroy();
 }
 
 // Destroys the execution dispatch queue.
@@ -359,7 +357,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	[mtlCmdBuff commit];
 
 	// Let Xcode know the current frame is done, then start a new frame
-	auto cs = _queue->_presentationCaptureScope;
+	auto cs = _queue->_submissionCaptureScope;
 	cs->endScope();
 	cs->beginScope();
 
