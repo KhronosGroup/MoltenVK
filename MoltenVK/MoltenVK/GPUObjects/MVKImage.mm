@@ -1823,7 +1823,7 @@ static MSLSamplerYCbCrRange getSpvSamplerYcbcrRangeFromVkSamplerYcbcrRange(VkSam
 
 MVKSamplerYcbcrConversion::MVKSamplerYcbcrConversion(MVKDevice* device, const VkSamplerYcbcrConversionCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	MVKPixelFormats* pixFmts = getPixelFormats();
-	_planes = pixFmts->getChromaSubsamplingPlaneCount(pCreateInfo->format);
+	_planes = std::max(pixFmts->getChromaSubsamplingPlaneCount(pCreateInfo->format), (uint8_t)1u);
 	_bpc = pixFmts->getChromaSubsamplingComponentBits(pCreateInfo->format);
 	_resolution = pixFmts->getChromaSubsamplingResolution(pCreateInfo->format);
 	_chroma_filter = getSpvMinMagFilterFromVkFilter(pCreateInfo->chromaFilter);
