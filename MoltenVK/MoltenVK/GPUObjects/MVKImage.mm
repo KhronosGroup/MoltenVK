@@ -143,9 +143,23 @@ void MVKImagePlane::initSubresources(const VkImageCreateInfo* pCreateInfo) {
 
     VkDeviceSize offset = 0;
     if (_planeIndex > 0 && _image->_memoryBindings.size() == 1) {
-        auto subresources = &_image->_planes[_planeIndex-1]->_subresources;
-        VkSubresourceLayout& lastLayout = (*subresources)[subresources->size()-1].layout;
-        offset = lastLayout.offset+lastLayout.size;
+        if (!_image->_isLinear && _image->getDevice()->_pMetalFeatures->placementHeaps) {
+            // For textures allocated directly on the heap, we need to obey the size and alignment
+            // requirements reported by the device.
+            MTLTextureDescriptor* mtlTexDesc = _image->_planes[_planeIndex-1]->newMTLTextureDescriptor();    // temp retain
+            MTLSizeAndAlign sizeAndAlign = [_image->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
+            [mtlTexDesc release];                                                                            // temp release
+            VkSubresourceLayout& firstLayout = _image->_planes[_planeIndex-1]->_subresources[0].layout;
+            offset = firstLayout.offset + sizeAndAlign.size;
+            mtlTexDesc = newMTLTextureDescriptor();                                                          // temp retain
+            sizeAndAlign = [_image->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
+            [mtlTexDesc release];                                                                            // temp release
+            offset = mvkAlignByteRef(offset, sizeAndAlign.align);
+        } else {
+            auto subresources = &_image->_planes[_planeIndex-1]->_subresources;
+            VkSubresourceLayout& lastLayout = (*subresources)[subresources->size()-1].layout;
+            offset = lastLayout.offset+lastLayout.size;
+        }
     }
 
     for (uint32_t mipLvl = 0; mipLvl < _image->_mipLevels; mipLvl++) {
@@ -934,7 +948,9 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
             MTLTextureDescriptor* mtlTexDesc = _planes[planeIndex]->newMTLTextureDescriptor();    // temp retain
             MTLSizeAndAlign sizeAndAlign = [_device->getMTLDevice() heapTextureSizeAndAlignWithDescriptor: mtlTexDesc];
             [mtlTexDesc release];
-            memoryBinding->_byteCount += sizeAndAlign.size;
+            // Textures allocated on heaps must be aligned to the alignment reported here,
+            // so make sure there's enough space to hold all the planes after alignment.
+            memoryBinding->_byteCount = mvkAlignByteRef(memoryBinding->_byteCount, sizeAndAlign.align) + sizeAndAlign.size;
             memoryBinding->_byteAlignment = std::max(memoryBinding->_byteAlignment, (VkDeviceSize)sizeAndAlign.align);
         } else if (_isLinearForAtomics && _device->_pMetalFeatures->placementHeaps) {
             NSUInteger bufferLength = 0;
