@@ -120,12 +120,12 @@ typedef unsigned long MTLLanguageVersion;
  * 4.  Setting the MVK_ALLOW_METAL_FENCES or MVK_ALLOW_METAL_EVENTS runtime environment variable
  *     or MoltenVK compile-time build setting to 1 will cause MoltenVK to use MTLFence or MTLEvent,
  *     respectively, if it is available on the device, for VkSemaphore synchronization behaviour.
- *     If both variables are set, MVK_ALLOW_METAL_FENCES takes priority over MVK_ALLOW_METAL_EVENTS.
+ *     If both variables are set, MVK_ALLOW_METAL_EVENTS takes priority over MVK_ALLOW_METAL_FENCES.
  *     If both are disabled, or if MTLFence or MTLEvent is not available on the device, MoltenVK
  *     will use CPU synchronization to control VkSemaphore synchronization behaviour.
- *     By default, MVK_ALLOW_METAL_FENCES is enabled and MVK_ALLOW_METAL_EVENTS is disabled,
- *     meaning MoltenVK will use MTLFences, if they are available, to control VkSemaphore
- *     synchronization behaviour, by default.
+ *     By default, both MVK_ALLOW_METAL_FENCES and MVK_ALLOW_METAL_EVENTS are enabled, meaning 
+ *     MoltenVK will preferentially use MTLEvents if they are available, followed by MTLFences
+ *     if they are available, to control VkSemaphore synchronization behaviour, by default.
  *
  * 5.  The MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE runtime environment variable or MoltenVK compile-time
  *     build setting controls whether Metal should run an automatic GPU capture without the user
