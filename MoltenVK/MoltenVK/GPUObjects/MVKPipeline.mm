@@ -860,7 +860,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageVertex];
 	shaderContext.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageVertex];
 	shaderContext.options.mslOptions.capture_output_to_buffer = false;
-	shaderContext.options.mslOptions.disable_rasterization = pCreateInfo->pRasterizationState && pCreateInfo->pRasterizationState->rasterizerDiscardEnable;
+	shaderContext.options.mslOptions.disable_rasterization = isRasterizationDisabled(pCreateInfo);
     addVertexInputToShaderConverterContext(shaderContext, pCreateInfo);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pVertexSS->module)->getMTLFunction(&shaderContext, _pVertexSS->pSpecializationInfo, _pipelineCache);
@@ -877,6 +877,10 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	_needsVertexBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
 	_needsVertexViewRangeBuffer = funcRslts.needsViewRangeBuffer;
 	_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
+
+	if (funcRslts.isRasterizationDisabled) {
+		_pFragmentSS = nullptr;
+	}
 
 	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
 	if (!verifyImplicitBuffer(_needsVertexSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageVertex, "swizzle", vbCnt)) {
@@ -1019,7 +1023,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	shaderContext.options.mslOptions.swizzle_buffer_index = _swizzleBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderContext.options.mslOptions.capture_output_to_buffer = false;
-	shaderContext.options.mslOptions.disable_rasterization = (pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->rasterizerDiscardEnable));
+	shaderContext.options.mslOptions.disable_rasterization = isRasterizationDisabled(pCreateInfo);
 	addPrevStageOutputToShaderConverterContext(shaderContext, tcOutputs);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pTessEvalSS->module)->getMTLFunction(&shaderContext, _pTessEvalSS->pSpecializationInfo, _pipelineCache);
@@ -1035,6 +1039,10 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	plDesc.rasterizationEnabled = !funcRslts.isRasterizationDisabled;
 	_needsTessEvalSwizzleBuffer = funcRslts.needsSwizzleBuffer;
 	_needsTessEvalBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
+
+	if (funcRslts.isRasterizationDisabled) {
+		_pFragmentSS = nullptr;
+	}
 
 	if (!verifyImplicitBuffer(_needsTessEvalSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTessEval, "swizzle", kMVKTessEvalNumReservedBuffers)) {
 		return false;
@@ -1540,6 +1548,14 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConverterContext(SPIRVToMSLC
 bool MVKGraphicsPipeline::isRenderingPoints(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
 	return ((pCreateInfo->pInputAssemblyState && (pCreateInfo->pInputAssemblyState->topology == VK_PRIMITIVE_TOPOLOGY_POINT_LIST)) ||
 			(pCreateInfo->pRasterizationState && (pCreateInfo->pRasterizationState->polygonMode == VK_POLYGON_MODE_POINT)));
+}
+
+// We disable rasterization if either rasterizerDiscard is enabled or the cull mode dictates it.
+bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo) {
+	return (pCreateInfo->pRasterizationState &&
+			(pCreateInfo->pRasterizationState->rasterizerDiscardEnable ||
+			 ((pCreateInfo->pRasterizationState->cullMode == VK_CULL_MODE_FRONT_AND_BACK) && pCreateInfo->pInputAssemblyState &&
+			  (mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology) == MTLPrimitiveTopologyClassTriangle))));
 }
 
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
