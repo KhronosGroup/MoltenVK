@@ -1643,7 +1643,11 @@ void MVKPhysicalDevice::initLimits() {
     }
 
 #if MVK_TVOS
-    _properties.limits.maxFragmentInputComponents = 60;
+    if (mvkOSVersionIsAtLeast(13.0) && supportsMTLGPUFamily(Apple4)) {
+        _properties.limits.maxFragmentInputComponents = 124;
+    } else {
+        _properties.limits.maxFragmentInputComponents = 60;
+    }
 
     if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
         _properties.limits.optimalBufferCopyOffsetAlignment = 16;
@@ -1655,7 +1659,11 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.maxTessellationPatchSize = 32;
 #endif
 #if MVK_IOS
-    _properties.limits.maxFragmentInputComponents = 60;
+    if (mvkOSVersionIsAtLeast(13.0) && supportsMTLGPUFamily(Apple4)) {
+        _properties.limits.maxFragmentInputComponents = 124;
+    } else {
+        _properties.limits.maxFragmentInputComponents = 60;
+    }
 
     if (supportsMTLFeatureSet(iOS_GPUFamily3_v1)) {
         _properties.limits.optimalBufferCopyOffsetAlignment = 16;
@@ -1675,7 +1683,7 @@ void MVKPhysicalDevice::initLimits() {
     }
 #endif
 #if MVK_MACOS
-    _properties.limits.maxFragmentInputComponents = 128;
+    _properties.limits.maxFragmentInputComponents = 124;
     _properties.limits.optimalBufferCopyOffsetAlignment = 256;
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v2)) {
@@ -1693,7 +1701,7 @@ void MVKPhysicalDevice::initLimits() {
         _properties.limits.maxTessellationControlPerVertexInputComponents = _properties.limits.maxVertexOutputComponents;
         _properties.limits.maxTessellationControlPerVertexOutputComponents = _properties.limits.maxTessellationControlPerVertexInputComponents;
         // Reserve a few for the tessellation levels.
-        _properties.limits.maxTessellationControlPerPatchOutputComponents = _properties.limits.maxFragmentInputComponents - 8;
+        _properties.limits.maxTessellationControlPerPatchOutputComponents = std::max(_properties.limits.maxFragmentInputComponents - 8, 120u);
         _properties.limits.maxTessellationControlTotalOutputComponents = _properties.limits.maxTessellationPatchSize * _properties.limits.maxTessellationControlPerVertexOutputComponents + _properties.limits.maxTessellationControlPerPatchOutputComponents;
         _properties.limits.maxTessellationEvaluationInputComponents = _properties.limits.maxTessellationControlPerVertexInputComponents;
         _properties.limits.maxTessellationEvaluationOutputComponents = _properties.limits.maxTessellationEvaluationInputComponents;
