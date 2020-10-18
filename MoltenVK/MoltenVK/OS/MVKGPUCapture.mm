@@ -61,6 +61,14 @@ MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue) : _queue(mvkQueue) {
 	if (mvkOSVersionIsAtLeast(kMinOSVersionMTLCaptureScope)) {
 		_mtlCaptureScope = [[MTLCaptureManager sharedCaptureManager] newCaptureScopeWithCommandQueue: _mtlQueue];	// retained
 		_mtlCaptureScope.label = @(_queue->getName().c_str());
+		// Due to a retain bug in Metal when the capture layer is installed, capture scopes
+		// can have too many references on them. Release the excess references so the scope--
+		// and the command queue--aren't leaked. This is a horrible kludge that depends on
+		// Apple not taking internal references to capture scopes, but without it, we could
+		// get hung up waiting for a new queue, because the old queues are still outstanding.
+		while (_mtlCaptureScope.retainCount > 1) {
+			[_mtlCaptureScope release];
+		}
 	}
 }
 
