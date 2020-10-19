@@ -402,7 +402,7 @@ VkResult MVKImageMemoryBinding::bindDeviceMemory(MVKDeviceMemory* mvkMem, VkDevi
     // macOS before 10.15.5 cannot use shared memory for texel buffers.
     usesTexelBuffer = usesTexelBuffer && (_device->_pMetalFeatures->sharedLinearTextures || !isMemoryHostCoherent());
 
-    if (_image->_isLinearForAtomics) {
+    if (_image->_isLinearForAtomics || (usesTexelBuffer && _device->_pMetalFeatures->placementHeaps)) {
         if (usesTexelBuffer && _deviceMemory->ensureMTLBuffer()) {
             _mtlTexelBuffer = _deviceMemory->_mtlBuffer;
             _mtlTexelBufferOffset = getDeviceMemoryOffset();
