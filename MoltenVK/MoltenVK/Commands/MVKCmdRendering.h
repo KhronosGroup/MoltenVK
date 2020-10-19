@@ -376,6 +376,41 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKCmdSetDepthBounds
+
+/** Vulkan command to set depth bounds. */
+class MVKCmdSetDepthBounds : public MVKCommand {
+
+public:
+    VkResult setContent(MVKCommandBuffer* cmdBuff,
+                        float minDepthBounds,
+                        float maxDepthBounds);
+
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+
+    float _minDepthBounds;
+    float _maxDepthBounds;
+};
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthBoundsTestEnable
+
+/** Vulkan command to enable depth bounds testing. */
+class MVKCmdSetDepthBoundsTestEnable : public MVKSingleValueCommand<VkBool32> {
+
+public:
+    void encode(MVKCommandEncoder* cmdEncoder) override;
+
+protected:
+    MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+};
+
+
+#pragma mark -
 #pragma mark MVKCmdSetStencilTestEnable
 
 class MVKCmdSetStencilTestEnable : public MVKSingleValueCommand<VkBool32> {

@@ -239,6 +239,11 @@ struct MVKDepthBias {
 	float depthBiasClamp;
 };
 
+struct MVKDepthBounds {
+	float minDepthBound;
+	float maxDepthBound;
+};
+
 struct MVKStencilReference {
 	uint32_t frontFaceValue;
 	uint32_t backFaceValue;
@@ -272,6 +277,8 @@ public:
 	void setDepthBiasEnable(VkBool32 depthBiasEnable);
 	void setDepthClipEnable(bool depthClip, bool isDynamic);
 
+	void setDepthBounds(float minDepthBounds, float maxDepthBounds, bool isDynamic);
+	void setDepthBoundsTestEnable(VkBool32 depthBoundsTestEnable, bool isDynamic);
 	void setStencilReferenceValues(const VkPipelineDepthStencilStateCreateInfo& vkDepthStencilInfo);
 	void setStencilReferenceValues(VkStencilFaceFlags faceMask, uint32_t stencilReference);
 
@@ -318,6 +325,7 @@ protected:
 	MVKMTLScissors _mtlScissors[StateScope::Count] = {};
 	MVKColor32 _mtlBlendConstants[StateScope::Count] = {};
 	MVKDepthBias _mtlDepthBias[StateScope::Count] = {};
+	MVKDepthBounds _mtlDepthBounds[StateScope::Count] = {};
 	MVKStencilReference _mtlStencilReference[StateScope::Count] = {};
 	MTLCullMode _mtlCullMode[StateScope::Count] = { MTLCullModeNone, MTLCullModeNone };
 	MTLWinding _mtlFrontFace[StateScope::Count] = { MTLWindingClockwise, MTLWindingClockwise };
@@ -332,6 +340,7 @@ protected:
 	bool _mtlDepthBiasEnable[StateScope::Count] = {};
 	bool _mtlPrimitiveRestartEnable[StateScope::Count] = {};
 	bool _mtlRasterizerDiscardEnable[StateScope::Count] = {};
+	bool _mtlDepthBoundsTestEnable[StateScope::Count] = {};
 	bool _cullBothFaces[StateScope::Count] = {};
 	bool _isPolygonModePoint[StateScope::Count] = {};
 };

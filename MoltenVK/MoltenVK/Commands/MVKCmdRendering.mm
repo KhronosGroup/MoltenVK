@@ -328,6 +328,30 @@ void MVKCmdSetDepthCompareOp::encode(MVKCommandEncoder* cmdEncoder) {
 
 
 #pragma mark -
+#pragma mark MVKCmdSetDepthBounds
+
+VkResult MVKCmdSetDepthBounds::setContent(MVKCommandBuffer* cmdBuff,
+										  float minDepthBounds,
+										  float maxDepthBounds) {
+    _minDepthBounds = minDepthBounds;
+    _maxDepthBounds = maxDepthBounds;
+	return VK_SUCCESS;
+}
+
+void MVKCmdSetDepthBounds::encode(MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->_renderingState.setDepthBounds(_minDepthBounds, _maxDepthBounds, true);
+}
+
+
+#pragma mark -
+#pragma mark MVKCmdSetDepthBoundsTestEnable
+
+void MVKCmdSetDepthBoundsTestEnable::encode(MVKCommandEncoder* cmdEncoder) {
+    cmdEncoder->_renderingState.setDepthBoundsTestEnable(_value, true);
+}
+
+
+#pragma mark -
 #pragma mark MVKCmdSetStencilTestEnable
 
 void MVKCmdSetStencilTestEnable::encode(MVKCommandEncoder* cmdEncoder) {

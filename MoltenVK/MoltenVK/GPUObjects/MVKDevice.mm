@@ -2443,6 +2443,13 @@ void MVKPhysicalDevice::initFeatures() {
 
     _features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
 
+#if MVK_USE_METAL_PRIVATE_API
+    if (getMVKConfig().useMetalPrivateAPI && _properties.vendorID == kAMDVendorId) {
+        // Only AMD drivers have the method we need for now.
+        _features.depthBounds = true;
+    }
+#endif
+
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v2)) {
         _features.tessellationShader = true;
         _features.dualSrcBlend = true;

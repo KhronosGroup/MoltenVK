@@ -1498,6 +1498,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBounds(
 	float                                       maxDepthBounds) {
 
 	MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthBounds, commandBuffer, minDepthBounds, maxDepthBounds);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2653,6 +2654,7 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBoundsTestEnable(
     VkBool32                                    depthBoundsTestEnable) {
     
     MVKTraceVulkanCallStart();
+	MVKAddCmd(SetDepthBoundsTestEnable, commandBuffer, depthBoundsTestEnable);
     MVKTraceVulkanCallEnd();
 }
 

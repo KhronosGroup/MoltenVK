@@ -307,6 +307,9 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 			cmdEncoder->_renderingState.setPrimitiveTopology(_vkPrimitiveTopology, false);
 			cmdEncoder->_renderingState.setPrimitiveRestartEnable(_primitiveRestartEnable, false);
 			cmdEncoder->_renderingState.setBlendConstants(_blendConstants, false);
+			if (_device->_enabledFeatures.depthBounds) {
+				cmdEncoder->_renderingState.setDepthBounds(_depthStencilInfo.minDepthBounds, _depthStencilInfo.maxDepthBounds, false);
+			}
 			cmdEncoder->_renderingState.setStencilReferenceValues(_depthStencilInfo);
             cmdEncoder->_renderingState.setViewports(_viewports.contents(), 0, false);
             cmdEncoder->_renderingState.setScissors(_scissors.contents(), 0, false);
