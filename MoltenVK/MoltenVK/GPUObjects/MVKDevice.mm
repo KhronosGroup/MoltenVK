@@ -1726,8 +1726,10 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.lineWidthRange[1] = 1;
     _properties.limits.lineWidthGranularity = 1;
 
+    static const uint32_t kIntelVendorId = 0x8086;
+    static const uint32_t kNVVendorId = 0x10de;
     _properties.limits.standardSampleLocations = VK_TRUE;
-    _properties.limits.strictLines = VK_FALSE;
+    _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;
 
 	VkExtent3D wgSize = mvkVkExtent3DFromMTLSize(_mtlDevice.maxThreadsPerThreadgroup);
 	_properties.limits.maxComputeWorkGroupSize[0] = wgSize.width;
