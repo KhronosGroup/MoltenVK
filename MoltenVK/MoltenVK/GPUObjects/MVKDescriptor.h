@@ -86,17 +86,12 @@ public:
 	/** Returns the immutable sampler at the index, or nullptr if immutable samplers are not used. */
 	MVKSampler* getImmutableSampler(uint32_t index);
 
-	/**
-	 * Encodes the descriptors in the descriptor set that are specified by this layout,
-	 * starting with the descriptor at the index, on the the command encoder.
-	 * Returns the number of descriptors that were encoded.
-	 */
-	uint32_t bind(MVKCommandEncoder* cmdEncoder,
-				  MVKDescriptorSet* descSet,
-				  uint32_t descStartIndex,
-				  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-				  MVKArrayRef<uint32_t> dynamicOffsets,
-				  uint32_t baseDynamicOffsetIndex);
+	/** Encodes the descriptors in the descriptor set that are specified by this layout, */
+	void bind(MVKCommandEncoder* cmdEncoder,
+			  MVKDescriptorSet* descSet,
+			  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+			  MVKArrayRef<uint32_t> dynamicOffsets,
+			  uint32_t baseDynamicOffsetIndex);
 
     /** Encodes this binding layout and the specified descriptor on the specified command encoder immediately. */
     void push(MVKCommandEncoder* cmdEncoder,

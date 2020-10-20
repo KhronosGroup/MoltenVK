@@ -37,19 +37,16 @@ uint32_t MVKDescriptorSetLayout::getDescriptorIndex(uint32_t binding, uint32_t e
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
-                                               MVKDescriptorSet* descSet,
-                                               MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                                               MVKArrayRef<uint32_t> dynamicOffsets,
-                                               uint32_t baseDynamicOffsetIndex) {
-    if (_isPushDescriptorLayout) return;
+											   MVKDescriptorSet* descSet,
+											   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+											   MVKArrayRef<uint32_t> dynamicOffsets,
+											   uint32_t baseDynamicOffsetIndex) {
+	if (_isPushDescriptorLayout) return;
 
 	clearConfigurationResult();
-    size_t bindCnt = _bindings.size();
-    for (uint32_t descIdx = 0, bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
-		descIdx += _bindings[bindIdx].bind(cmdEncoder, descSet, descIdx,
-										   dslMTLRezIdxOffsets, dynamicOffsets,
-										   baseDynamicOffsetIndex);
-    }
+	for (auto& dslBind : _bindings) {
+		dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, baseDynamicOffsetIndex);
+	}
 }
 
 static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorImageInfo* pImageInfo,
@@ -228,6 +225,10 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 
 VkDescriptorType MVKDescriptorSet::getDescriptorType(uint32_t binding) {
 	return _layout->getBinding(binding)->getDescriptorType();
+}
+
+MVKDescriptor* MVKDescriptorSet::getDescriptor(uint32_t binding, uint32_t elementIndex) {
+	return _descriptors[_layout->getDescriptorIndex(binding, elementIndex)];
 }
 
 template<typename DescriptorAction>

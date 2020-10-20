@@ -79,23 +79,21 @@ MVKSampler* MVKDescriptorSetLayoutBinding::getImmutableSampler(uint32_t index) {
 }
 
 // A null cmdEncoder can be passed to perform a validation pass
-uint32_t MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
-											 MVKDescriptorSet* descSet,
-											 uint32_t descStartIndex,
-											 MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-											 MVKArrayRef<uint32_t> dynamicOffsets,
-											 uint32_t baseDynamicOffsetIndex) {
+void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
+										 MVKDescriptorSet* descSet,
+										 MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+										 MVKArrayRef<uint32_t> dynamicOffsets,
+										 uint32_t baseDynamicOffsetIndex) {
 
 	// Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
 
     uint32_t descCnt = getDescriptorCount();
     for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-        MVKDescriptor* mvkDesc = descSet->getDescriptor(descStartIndex + descIdx);
-        mvkDesc->bind(cmdEncoder, _info.descriptorType, descIdx, _applyToStage, mtlIdxs, dynamicOffsets,
-					  baseDynamicOffsetIndex + _dynamicOffsetIndex + descIdx);
+		MVKDescriptor* mvkDesc = descSet->getDescriptor(getBinding(), descIdx);
+        mvkDesc->bind(cmdEncoder, _info.descriptorType, descIdx, _applyToStage, mtlIdxs,
+					  dynamicOffsets, baseDynamicOffsetIndex + _dynamicOffsetIndex + descIdx);
     }
-    return descCnt;
 }
 
 template<typename T>

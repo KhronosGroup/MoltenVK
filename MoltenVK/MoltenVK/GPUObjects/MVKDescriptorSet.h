@@ -137,7 +137,7 @@ protected:
 	friend class MVKDescriptorPool;
 
 	void propagateDebugName() override {}
-	inline MVKDescriptor* getDescriptor(uint32_t index) { return _descriptors[index]; }
+	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex);
 
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;
