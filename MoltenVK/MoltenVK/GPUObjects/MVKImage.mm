@@ -1564,7 +1564,9 @@ MVKImageView::MVKImageView(MVKDevice* device,
 						   const VkImageViewCreateInfo* pCreateInfo,
 						   const MVKConfiguration* pAltMVKConfig) : MVKVulkanAPIDeviceObject(device) {
 	_image = (MVKImage*)pCreateInfo->image;
+	// Transfer commands don't use image views.
 	_usage = _image->_usage;
+	mvkDisableFlags(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT));
     _mtlTextureType = mvkMTLTextureTypeFromVkImageViewType(pCreateInfo->viewType,
 														   _image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT);
 
@@ -1572,7 +1574,9 @@ MVKImageView::MVKImageView(MVKDevice* device,
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_IMAGE_VIEW_USAGE_CREATE_INFO: {
 				auto* pViewUsageInfo = (VkImageViewUsageCreateInfo*)next;
-				if (!(pViewUsageInfo->usage & ~_usage)) { _usage = pViewUsageInfo->usage; }
+				VkImageUsageFlags newUsage = pViewUsageInfo->usage;
+				mvkDisableFlags(newUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT));
+				if (mvkAreAllFlagsEnabled(_usage, newUsage)) { _usage = newUsage; }
 				break;
 			}
             /* case VK_STRUCTURE_TYPE_SAMPLER_YCBCR_CONVERSION_INFO_KHR: {
@@ -1599,12 +1603,9 @@ MVKImageView::MVKImageView(MVKDevice* device,
 	// If a 2D array view on a 2D image with layerCount 1, and the only usages are
 	// attachment usages, then force the use of a 2D non-arrayed view. This is important for
 	// input attachments, or they won't match the types declared in the fragment shader.
-	// Transfer usages are OK: the transfer commands don't use image views.
 	// Sampled and storage usages are not: if we try to bind a non-arrayed 2D view
 	// to a 2D image variable, we could wind up with the same problem this is intended to fix.
-	if (mvkIsOnlyAnyFlagEnabled(_usage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
-										 VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-										 VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+	if (mvkIsOnlyAnyFlagEnabled(_usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
 										 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
 										 VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT |
 										 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))) {
