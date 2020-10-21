@@ -24,17 +24,6 @@
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
-// Look through the layout bindings looking for the binding number, accumulating the number
-// of descriptors in each layout binding as we go, then add the element index.
-uint32_t MVKDescriptorSetLayout::getDescriptorIndex(uint32_t binding, uint32_t elementIndex) {
-	uint32_t descIdx = 0;
-	for (auto& dslBind : _bindings) {
-		if (dslBind.getBinding() == binding) { break; }
-		descIdx += dslBind.getDescriptorCount();
-	}
-	return descIdx + elementIndex;
-}
-
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 											   MVKDescriptorSet* descSet,
@@ -194,12 +183,14 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 	std::vector<SortInfo> dynamicBindings;
 
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
-        _bindings.emplace_back(_device, this, &pCreateInfo->pBindings[i]);
+		auto* pBind = &pCreateInfo->pBindings[i];
+        _bindings.emplace_back(_device, this, pBind);
+		_bindingToIndex[pBind->binding] = i;
+		_bindingToDescriptorIndex[pBind->binding] = _descriptorCount;
 		_descriptorCount += _bindings.back().getDescriptorCount();
-        _bindingToIndex[pCreateInfo->pBindings[i].binding] = i;
-		if (pCreateInfo->pBindings[i].descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
-			pCreateInfo->pBindings[i].descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
-			dynamicBindings.push_back(SortInfo{ &pCreateInfo->pBindings[i], i });
+		if (pBind->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
+			pBind->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
+			dynamicBindings.push_back(SortInfo{ pBind, i });
 		}
 	}
 
