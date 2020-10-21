@@ -1537,7 +1537,7 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttach
     mtlAttDesc.level = plane->_useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.texture.textureType == MTLTextureType3D) {
         mtlAttDesc.slice = 0;
-        mtlAttDesc.depthPlane = plane->_useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
+        mtlAttDesc.depthPlane = _subresourceRange.baseArrayLayer;
     } else {
         mtlAttDesc.slice = plane->_useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
         mtlAttDesc.depthPlane = 0;
