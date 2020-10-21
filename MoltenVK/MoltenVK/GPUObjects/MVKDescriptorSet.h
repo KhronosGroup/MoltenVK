@@ -85,7 +85,7 @@ protected:
 
 	void propagateDebugName() override {}
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
-	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex) { return _bindingToDescriptorIndex[binding] + elementIndex; }
+	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return _bindingToDescriptorIndex[binding] + elementIndex; }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
@@ -138,7 +138,7 @@ protected:
 	friend class MVKDescriptorPool;
 
 	void propagateDebugName() override {}
-	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex);
+	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
 
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;

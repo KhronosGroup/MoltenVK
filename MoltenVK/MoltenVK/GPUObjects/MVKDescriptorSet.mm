@@ -172,42 +172,35 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
     _isPushDescriptorLayout = (pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) != 0;
 
-	// Create the descriptor layout bindings
 	_descriptorCount = 0;
     _bindings.reserve(pCreateInfo->bindingCount);
-	struct SortInfo
-	{
-		const VkDescriptorSetLayoutBinding* binding;
-		uint32_t index;
-	};
-	std::vector<SortInfo> dynamicBindings;
-
+	MVKSmallVector<MVKDescriptorSetLayoutBinding*, 32> dynamicBindings;
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
 		auto* pBind = &pCreateInfo->pBindings[i];
         _bindings.emplace_back(_device, this, pBind);
 		_bindingToIndex[pBind->binding] = i;
 		_bindingToDescriptorIndex[pBind->binding] = _descriptorCount;
-		_descriptorCount += _bindings.back().getDescriptorCount();
+
+		MVKDescriptorSetLayoutBinding* mvkBind = &_bindings.back();
+		_descriptorCount += mvkBind->getDescriptorCount();
 		if (pBind->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
 			pBind->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
-			dynamicBindings.push_back(SortInfo{ pBind, i });
+			dynamicBindings.push_back(mvkBind);
 		}
 	}
 
-	// Dynamic offsets are ordered by binding index when given to vkCmdBindDescriptorSets
-	// not by the order they are provided in the layout.
-	// So we want to sort by binding, and then count how many dynamic offsets the binding
-	// has so we can assign each binding it's first dynamic offset index
+	// Dynamic offsets in vkCmdBindDescriptorSets() are ordered by binding number, not by the
+	// order they are provided in the layout. To prepare for this, sort the dynamic bindings by
+	// binding number and assign to each the index it will use into the array of dynamic offsets.
 	std::sort(dynamicBindings.begin(), dynamicBindings.end(),
-				[](const SortInfo &info1, const SortInfo &info2) {
-					return info1.binding->binding < info2.binding->binding; });
+				[](MVKDescriptorSetLayoutBinding* mvkBind1, MVKDescriptorSetLayoutBinding* mvkBind2) {
+					return mvkBind1->getBinding() < mvkBind2->getBinding(); });
 
-	uint32_t curOffsetIndex = 0;
-	for (auto &i : dynamicBindings) {
-		_bindings[i.index].setDynamicOffsetIndex(curOffsetIndex);
-		curOffsetIndex += i.binding->descriptorCount;
+	_dynamicDescriptorCount = 0;
+	for (auto mvkBind : dynamicBindings) {
+		mvkBind->setDynamicOffsetIndex(_dynamicDescriptorCount);
+		_dynamicDescriptorCount += mvkBind->getDescriptorCount();
 	}
-	_dynamicDescriptorCount = curOffsetIndex;
 }
 
 
@@ -230,12 +223,10 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 	VkDescriptorType descType = getDescriptorType(pDescriptorAction->dstBinding);
 	uint32_t descCnt = pDescriptorAction->descriptorCount;
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-        uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, 0);
-        // For inline buffers we are using the index argument as dst offset not as src descIdx
-        _descriptors[dstStartIdx]->write(this, descType, pDescriptorAction->dstArrayElement, stride, pData);
+        // For inline buffers dstArrayElement is a byte offset
+		getDescriptor(pDescriptorAction->dstBinding)->write(this, descType, pDescriptorAction->dstArrayElement, stride, pData);
     } else {
-        uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding,
-        pDescriptorAction->dstArrayElement);
+        uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
         for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
             _descriptors[dstStartIdx + descIdx]->write(this, descType, descIdx, stride, pData);
         }
@@ -260,12 +251,10 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 	uint32_t descCnt = pDescriptorCopy->descriptorCount;
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
         pInlineUniformBlock->dataSize = pDescriptorCopy->descriptorCount;
-        uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, 0);
-        // For inline buffers we are using the index argument as src offset not as dst descIdx
-        _descriptors[srcStartIdx]->read(this, descType, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+		// For inline buffers dstArrayElement is a byte offset
+		getDescriptor(pDescriptorCopy->srcBinding)->read(this, descType, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
     } else {
-        uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding,
-                                                           pDescriptorCopy->srcArrayElement);
+        uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, pDescriptorCopy->srcArrayElement);
         for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
             _descriptors[srcStartIdx + descIdx]->read(this, descType, descIdx, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
         }
