@@ -25,6 +25,7 @@ Released TBD
   performance on *iOS* by allowing Metal to use lossless texture compression.
 - Move *Metal* drawable presentation from `MTLCommandBuffer` to `MTLDrawable`
   to improve performance and reduce blocking.
+- Allow binding descriptor set using layout different than it was created with.
 - Clarify documentation on mapping limitations for host-coherent image memory on *macOS*.
 
 

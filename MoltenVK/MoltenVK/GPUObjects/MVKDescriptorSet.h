@@ -85,11 +85,12 @@ protected:
 
 	void propagateDebugName() override {}
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
-	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex);
+	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return _bindingToDescriptorIndex[binding] + elementIndex; }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
+	std::unordered_map<uint32_t, uint32_t> _bindingToDescriptorIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint32_t _descriptorCount;
 	uint32_t _dynamicDescriptorCount;
@@ -137,7 +138,7 @@ protected:
 	friend class MVKDescriptorPool;
 
 	void propagateDebugName() override {}
-	inline MVKDescriptor* getDescriptor(uint32_t index) { return _descriptors[index]; }
+	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
 
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;
