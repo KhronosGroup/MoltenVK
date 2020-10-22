@@ -86,13 +86,6 @@
 			remoteGlobalIDString = 2FEA0A3B24902F9F00EEF3AD;
 			remoteInfo = "MoltenVK-tvOS";
 		};
-		2FEA0ADB2490308E00EEF3AD /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = 2FEA0AD72490305800EEF3AD;
-			remoteInfo = "MoltenVKGLSLToSPIRVConverter-tvOS";
-		};
 		A92DB3F41CE0F72500FBC835 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = A92DB3EE1CE0F72500FBC835 /* MoltenVK.xcodeproj */;
@@ -127,20 +120,6 @@
 			proxyType = 2;
 			remoteGlobalIDString = A964BD5F1C57EFBD00D930D8;
 			remoteInfo = MoltenVKShaderConverter;
-		};
-		A981498C1FB6B566005F00B4 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = A964BD611C57EFBD00D930D8;
-			remoteInfo = "MoltenVKGLSLToSPIRVConverter-iOS";
-		};
-		A981498E1FB6B566005F00B4 /* PBXContainerItemProxy */ = {
-			isa = PBXContainerItemProxy;
-			containerPortal = A92DB40E1CE0F89600FBC835 /* MoltenVKShaderConverter.xcodeproj */;
-			proxyType = 2;
-			remoteGlobalIDString = A964BD601C57EFBD00D930D8;
-			remoteInfo = "MoltenVKGLSLToSPIRVConverter-macOS";
 		};
 		A98149901FB6B566005F00B4 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -280,9 +259,6 @@
 			isa = PBXGroup;
 			children = (
 				A981498B1FB6B566005F00B4 /* MoltenVKShaderConverter */,
-				A981498D1FB6B566005F00B4 /* libMoltenVKGLSLToSPIRVConverter.a */,
-				2FEA0ADC2490308E00EEF3AD /* libMoltenVKGLSLToSPIRVConverter.a */,
-				A981498F1FB6B566005F00B4 /* libMoltenVKGLSLToSPIRVConverter.a */,
 				A98149911FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */,
 				A9FC5F5D249D2547003CB086 /* libMoltenVKSPIRVToMSLConverter.a */,
 				A98149931FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */,
@@ -305,7 +281,7 @@
 		A90B2B1D1A9B6170008EE819 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1170;
+				LastUpgradeCheck = 1220;
 				TargetAttributes = {
 					A9FEADBC1F3517480010240E = {
 						DevelopmentTeam = VU3TCKU48B;
@@ -351,13 +327,6 @@
 			remoteRef = 2FEA0ABD2490302F00EEF3AD /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		2FEA0ADC2490308E00EEF3AD /* libMoltenVKGLSLToSPIRVConverter.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libMoltenVKGLSLToSPIRVConverter.a;
-			remoteRef = 2FEA0ADB2490308E00EEF3AD /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
 		A92DB3F51CE0F72500FBC835 /* libMoltenVK.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
@@ -379,38 +348,24 @@
 			remoteRef = A981498A1FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A981498D1FB6B566005F00B4 /* libMoltenVKGLSLToSPIRVConverter.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libMoltenVKGLSLToSPIRVConverter.a;
-			remoteRef = A981498C1FB6B566005F00B4 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
-		A981498F1FB6B566005F00B4 /* libMoltenVKGLSLToSPIRVConverter.a */ = {
-			isa = PBXReferenceProxy;
-			fileType = archive.ar;
-			path = libMoltenVKGLSLToSPIRVConverter.a;
-			remoteRef = A981498E1FB6B566005F00B4 /* PBXContainerItemProxy */;
-			sourceTree = BUILT_PRODUCTS_DIR;
-		};
 		A98149911FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
-			path = libMoltenVKSPIRVToMSLConverter.a;
+			path = libMoltenVKShaderConverter.a;
 			remoteRef = A98149901FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 		A98149931FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
-			path = libMoltenVKSPIRVToMSLConverter.a;
+			path = libMoltenVKShaderConverter.a;
 			remoteRef = A98149921FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
 		A9FC5F5D249D2547003CB086 /* libMoltenVKSPIRVToMSLConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
-			path = libMoltenVKSPIRVToMSLConverter.a;
+			path = libMoltenVKShaderConverter.a;
 			remoteRef = A9FC5F5C249D2547003CB086 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
