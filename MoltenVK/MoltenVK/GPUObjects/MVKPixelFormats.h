@@ -342,6 +342,9 @@ public:
 	/** Returns the name of the specified Metal pixel format. */
 	const char* getName(MTLPixelFormat mtlFormat);
 
+	/** Returns the name of the specified Metal vertex format. */
+	const char* getName(MTLVertexFormat mtlFormat);
+
 	/**
 	 * Returns the MTLClearColor value corresponding to the color value in the VkClearValue,
 	 * extracting the color value that is VkFormat for the VkFormat.
