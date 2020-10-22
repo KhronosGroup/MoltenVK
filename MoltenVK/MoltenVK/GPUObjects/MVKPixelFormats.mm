@@ -375,6 +375,10 @@ const char* MVKPixelFormats::getName(MTLPixelFormat mtlFormat) {
     return getMTLPixelFormatDesc(mtlFormat).name;
 }
 
+const char* MVKPixelFormats::getName(MTLVertexFormat mtlFormat) {
+    return getMTLVertexFormatDesc(mtlFormat).name;
+}
+
 void MVKPixelFormats::enumerateSupportedFormats(VkFormatProperties properties, bool any, std::function<bool(VkFormat)> func) {
 	static const auto areFeaturesSupported = [any](uint32_t a, uint32_t b) {
 		if (b == 0) return true;
