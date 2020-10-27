@@ -1263,13 +1263,13 @@ void MVKPresentableSwapchainImage::signalPresentationSemaphore(id<MTLCommandBuff
 
 	if ( !_availabilitySignalers.empty() ) {
 		MVKSemaphore* mvkSem = _availabilitySignalers.front().first;
-		if (mvkSem) { mvkSem->encodeSignal(mtlCmdBuff); }
+		if (mvkSem) { mvkSem->encodeSignal(mtlCmdBuff, 0); }
 	}
 }
 
 // Signal either or both of the semaphore and fence in the specified tracker pair.
 void MVKPresentableSwapchainImage::signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff) {
-	if (signaler.first) { signaler.first->encodeSignal(mtlCmdBuff); }
+	if (signaler.first) { signaler.first->encodeSignal(mtlCmdBuff, 0); }
 	if (signaler.second) { signaler.second->signal(); }
 }
 

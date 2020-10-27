@@ -178,7 +178,7 @@ protected:
 	friend class MVKQueue;
 
 	MVKQueue* _queue;
-	MVKSmallVector<MVKSemaphore*> _waitSemaphores;
+	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _waitSemaphores;
 	bool _trackPerformance;
 };
 
@@ -203,7 +203,7 @@ protected:
 	void finish();
 	virtual void submitCommandBuffers() {}
 
-	MVKSmallVector<MVKSemaphore*> _signalSemaphores;
+	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _signalSemaphores;
 	MVKFence* _fence;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
 };
