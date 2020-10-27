@@ -510,11 +510,11 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                     VkExtent3D srcExtent = _srcImage->getExtent3D(srcPlaneIndex, mvkIBR.region.dstSubresource.mipLevel);
                     VkOffset3D so0 = mvkIBR.region.srcOffsets[0], so1 = mvkIBR.region.srcOffsets[1];
                     VkOffset3D do0 = mvkIBR.region.dstOffsets[0], do1 = mvkIBR.region.dstOffsets[1];
-                    CGFloat startZ = (CGFloat)so0.z / (CGFloat)srcExtent.depth;
-                    CGFloat endZ = (CGFloat)so1.z / (CGFloat)srcExtent.depth;
-                    CGFloat zIncr = (endZ - startZ) / mvkAbsDiff(do1.z, do0.z);
+                    float startZ = (float)so0.z / (float)srcExtent.depth;
+                    float endZ = (float)so1.z / (float)srcExtent.depth;
+                    float z = startZ + (endZ - startZ) * (layIdx + 0.5) / mvkAbsDiff(do1.z, do0.z);
                     for (uint32_t i = 0; i < kMVKBlitVertexCount; ++i) {
-                        mvkIBR.vertices[i].texCoord.z = startZ + layIdx * zIncr;
+                        mvkIBR.vertices[i].texCoord.z = z;
                     }
                 }
                 [mtlRendEnc pushDebugGroup: @"vkCmdBlitImage"];
