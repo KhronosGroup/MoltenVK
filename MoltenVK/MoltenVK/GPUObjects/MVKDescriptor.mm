@@ -359,8 +359,15 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 															 MVKDescriptorSetLayout* layout,
-                                                             const VkDescriptorSetLayoutBinding* pBinding) : MVKBaseDeviceObject(device), _layout(layout),
-																 _dynamicOffsetIndex(0) {
+															 const VkDescriptorSetLayoutBinding* pBinding,
+															 VkDescriptorBindingFlagsEXT bindingFlags) :
+	MVKBaseDeviceObject(device),
+	_layout(layout),
+	_info(*pBinding),
+	_flags(bindingFlags),
+	_dynamicOffsetIndex(0) {
+
+	_info.pImmutableSamplers = nullptr;     // Remove dangling pointer
 
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
         // Determine if this binding is used by this shader stage
@@ -383,13 +390,14 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
             }
         }
 
-    _info = *pBinding;
-    _info.pImmutableSamplers = nullptr;     // Remove dangling pointer
 }
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding) :
-	MVKBaseDeviceObject(binding._device), _layout(binding._layout),
-	_info(binding._info), _immutableSamplers(binding._immutableSamplers),
+	MVKBaseDeviceObject(binding._device),
+	_layout(binding._layout),
+	_info(binding._info),
+	_flags(binding._flags),
+	_immutableSamplers(binding._immutableSamplers),
 	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets),
 	_dynamicOffsetIndex(0) {
 

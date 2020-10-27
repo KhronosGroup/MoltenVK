@@ -680,6 +680,7 @@ public:
 	const VkPhysicalDeviceFloat16Int8FeaturesKHR _enabledF16I8Features;
 	const VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR _enabledUBOLayoutFeatures;
 	const VkPhysicalDeviceVariablePointerFeatures _enabledVarPtrFeatures;
+	const VkPhysicalDeviceDescriptorIndexingFeaturesEXT _enabledDescriptorIndexingFeatures;
 	const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT _enabledInterlockFeatures;
 	const VkPhysicalDeviceHostQueryResetFeaturesEXT _enabledHostQryResetFeatures;
 	const VkPhysicalDeviceSamplerYcbcrConversionFeatures _enabledSamplerYcbcrConversionFeatures;
@@ -741,6 +742,9 @@ protected:
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
 	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
 	void updateActivityPerformance(MVKPerformanceTracker& activity, uint64_t startTime, uint64_t endTime);
+	void getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+														   VkDescriptorSetLayoutSupport* pSupport,
+														   VkDescriptorSetVariableDescriptorCountLayoutSupportEXT* pVarDescSetCountSupport);
 
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;

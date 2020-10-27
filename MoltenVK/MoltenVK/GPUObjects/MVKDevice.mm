@@ -129,6 +129,30 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				varPtrFeatures->variablePointers = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: {
+				auto* pDescIdxFeatures = (VkPhysicalDeviceDescriptorIndexingFeaturesEXT*)next;
+				pDescIdxFeatures->shaderInputAttachmentArrayDynamicIndexing = false;
+				pDescIdxFeatures->shaderUniformTexelBufferArrayDynamicIndexing = false;
+				pDescIdxFeatures->shaderStorageTexelBufferArrayDynamicIndexing = false;
+				pDescIdxFeatures->shaderUniformBufferArrayNonUniformIndexing = false;
+				pDescIdxFeatures->shaderSampledImageArrayNonUniformIndexing = false;
+				pDescIdxFeatures->shaderStorageBufferArrayNonUniformIndexing = false;
+				pDescIdxFeatures->shaderStorageImageArrayNonUniformIndexing = false;
+				pDescIdxFeatures->shaderInputAttachmentArrayNonUniformIndexing = false;
+				pDescIdxFeatures->shaderUniformTexelBufferArrayNonUniformIndexing = false;
+				pDescIdxFeatures->shaderStorageTexelBufferArrayNonUniformIndexing = false;
+				pDescIdxFeatures->descriptorBindingUniformBufferUpdateAfterBind = false;
+				pDescIdxFeatures->descriptorBindingSampledImageUpdateAfterBind = false;
+				pDescIdxFeatures->descriptorBindingStorageImageUpdateAfterBind = false;
+				pDescIdxFeatures->descriptorBindingStorageBufferUpdateAfterBind = false;
+				pDescIdxFeatures->descriptorBindingUniformTexelBufferUpdateAfterBind = false;
+				pDescIdxFeatures->descriptorBindingStorageTexelBufferUpdateAfterBind = false;
+				pDescIdxFeatures->descriptorBindingUpdateUnusedWhilePending = false;
+				pDescIdxFeatures->descriptorBindingPartiallyBound = false;
+				pDescIdxFeatures->descriptorBindingVariableDescriptorCount = false;
+				pDescIdxFeatures->runtimeDescriptorArray = false;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
 				auto* interlockFeatures = (VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT*)next;
 				interlockFeatures->fragmentShaderSampleInterlock = _metalFeatures.rasterOrderGroups;
@@ -305,6 +329,33 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 }
 				break;
 #endif
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
+				auto* pDescIdxProps = (VkPhysicalDeviceDescriptorIndexingPropertiesEXT*)next;
+				pDescIdxProps->maxUpdateAfterBindDescriptorsInAllPools = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->shaderUniformBufferArrayNonUniformIndexingNative = false;
+				pDescIdxProps->shaderSampledImageArrayNonUniformIndexingNative = false;
+				pDescIdxProps->shaderStorageBufferArrayNonUniformIndexingNative = false;
+				pDescIdxProps->shaderStorageImageArrayNonUniformIndexingNative = false;
+				pDescIdxProps->shaderInputAttachmentArrayNonUniformIndexingNative = false;
+				pDescIdxProps->robustBufferAccessUpdateAfterBind = false;
+				pDescIdxProps->quadDivergentImplicitLod = false;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindInputAttachments = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxPerStageUpdateAfterBindResources = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSampledImages = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageImages = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindInputAttachments = kMVKUndefinedLargeUInt32;
+				break;
+			}
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
 				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)next;
 				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
@@ -2490,6 +2541,120 @@ void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateI
 		descriptorCount += pCreateInfo->pBindings[i].descriptorCount;
 	}
 	pSupport->supported = (descriptorCount < ((_physicalDevice->_metalFeatures.maxPerStageBufferCount + _physicalDevice->_metalFeatures.maxPerStageTextureCount + _physicalDevice->_metalFeatures.maxPerStageSamplerCount) * 2));
+
+	// Check whether the layout has a variable-count descriptor, and if so, whether we can support it.
+	for (auto* next = (VkBaseOutStructure*)pSupport->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_LAYOUT_SUPPORT_EXT: {
+				auto* pVarDescSetCountSupport = (VkDescriptorSetVariableDescriptorCountLayoutSupportEXT*)next;
+				getDescriptorVariableDescriptorCountLayoutSupport(pCreateInfo, pSupport, pVarDescSetCountSupport);
+				break;
+			}
+			default:
+				break;
+		}
+	}
+}
+
+// Check whether the layout has a variable-count descriptor, and if so, whether we can support it.
+void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+																  VkDescriptorSetLayoutSupport* pSupport,
+																  VkDescriptorSetVariableDescriptorCountLayoutSupportEXT* pVarDescSetCountSupport) {
+	// Assume we don't need this, then set appropriately if we do.
+	pVarDescSetCountSupport->maxVariableDescriptorCount = 0;
+
+	// Look for a variable length descriptor and remember its index.
+	int32_t varBindingIdx = -1;
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT: {
+				auto* pDescSetLayoutBindingFlags = (VkDescriptorSetLayoutBindingFlagsCreateInfoEXT*)next;
+				for (uint32_t bindIdx = 0; bindIdx < pDescSetLayoutBindingFlags->bindingCount; bindIdx++) {
+					if (mvkIsAnyFlagEnabled(pDescSetLayoutBindingFlags->pBindingFlags[bindIdx], VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)) {
+						varBindingIdx = bindIdx;
+						break;
+					}
+				}
+				break;
+			}
+			default:
+				break;
+		}
+	}
+
+	// If no variable length descriptor is found, we can skip the rest.
+	if (varBindingIdx < 0) { return; }
+
+	// Device does not support variable descriptor counts but it has been requested.
+	if ( !_enabledDescriptorIndexingFeatures.descriptorBindingVariableDescriptorCount ) {
+		pSupport->supported = false;
+		return;
+	}
+
+	uint32_t mtlBuffCnt = 0;
+	uint32_t mtlTexCnt = 0;
+	uint32_t mtlSampCnt = 0;
+	uint32_t requestedCount = 0;
+	uint32_t maxVarDescCount = 0;
+
+	// Determine the number of descriptors available for use by the variable descriptor by
+	// accumulating the number of resources accumulated by other descriptors and subtracting
+	// that from the device's per-stage max counts. This is not perfect because it does not
+	// take into consideration other descriptor sets in the pipeline layout, but we can't
+	// anticipate that here. The variable descriptor must have the highest binding number,
+	// but it may not be the last descriptor in the array. The handling here accommodates that.
+	for (uint32_t bindIdx = 0; bindIdx < pCreateInfo->bindingCount; bindIdx++) {
+		auto* pBind = &pCreateInfo->pBindings[bindIdx];
+		if (bindIdx == varBindingIdx) {
+			requestedCount = std::max(pBind->descriptorCount, 1u);
+		} else {
+			switch (pBind->descriptorType) {
+				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+					mtlBuffCnt += pBind->descriptorCount;
+					maxVarDescCount = _pMetalFeatures->maxPerStageBufferCount - mtlBuffCnt;
+					break;
+				case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+					maxVarDescCount = (uint32_t)min<VkDeviceSize>(_pMetalFeatures->maxMTLBufferSize, numeric_limits<uint32_t>::max());
+					break;
+				case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+				case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+				case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+					mtlTexCnt += pBind->descriptorCount;
+					maxVarDescCount = _pMetalFeatures->maxPerStageTextureCount - mtlTexCnt;
+					break;
+				case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+				case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+					mtlTexCnt += pBind->descriptorCount;
+					mtlBuffCnt += pBind->descriptorCount;
+					maxVarDescCount = min(_pMetalFeatures->maxPerStageTextureCount - mtlTexCnt,
+										  _pMetalFeatures->maxPerStageBufferCount - mtlBuffCnt);
+					break;
+				case VK_DESCRIPTOR_TYPE_SAMPLER:
+					mtlSampCnt += pBind->descriptorCount;
+					maxVarDescCount = _pMetalFeatures->maxPerStageSamplerCount - mtlSampCnt;
+					break;
+				case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+					mtlTexCnt += pBind->descriptorCount;
+					mtlSampCnt += pBind->descriptorCount;
+					maxVarDescCount = min(_pMetalFeatures->maxPerStageTextureCount - mtlTexCnt,
+										  _pMetalFeatures->maxPerStageSamplerCount - mtlSampCnt);
+					break;
+				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:		// excluded by Vulkan
+				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:		// excluded by Vulkan
+				default:
+					break;
+			}
+		}
+	}
+
+	// If there is enough room for the requested size, indicate the amount available,
+	// otherwise indicate that the requested size cannot be supported.
+	if (requestedCount < maxVarDescCount) {
+		pVarDescSetCountSupport->maxVariableDescriptorCount = maxVarDescCount;
+	} else {
+		pSupport->supported = false;
+	}
 }
 
 VkResult MVKDevice::getDeviceGroupPresentCapabilities(VkDeviceGroupPresentCapabilitiesKHR* pDeviceGroupPresentCapabilities) {
@@ -3125,6 +3290,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledF16I8Features(),
 	_enabledUBOLayoutFeatures(),
 	_enabledVarPtrFeatures(),
+	_enabledDescriptorIndexingFeatures(),
 	_enabledInterlockFeatures(),
 	_enabledHostQryResetFeatures(),
 	_enabledSamplerYcbcrConversionFeatures(),
@@ -3241,7 +3407,6 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 
-
 	// Indicates whether semaphores should use a MTLFence if available.
 	// Set by the MVK_ALLOW_METAL_FENCES environment variable if MTLFences are available.
 	// This should be a temporary fix after some repair to semaphore handling.
@@ -3274,6 +3439,7 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledF16I8Features);
 	mvkClear(&_enabledUBOLayoutFeatures);
 	mvkClear(&_enabledVarPtrFeatures);
+	mvkClear(&_enabledDescriptorIndexingFeatures);
 	mvkClear(&_enabledInterlockFeatures);
 	mvkClear(&_enabledHostQryResetFeatures);
 	mvkClear(&_enabledSamplerYcbcrConversionFeatures);
@@ -3316,9 +3482,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	pdInterlockFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT;
 	pdInterlockFeatures.pNext = &pdHostQryResetFeatures;
 
+	VkPhysicalDeviceDescriptorIndexingFeaturesEXT pdDescIdxFeatures;
+	pdDescIdxFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT;
+	pdDescIdxFeatures.pNext = &pdInterlockFeatures;
+
 	VkPhysicalDeviceVariablePointerFeatures pdVarPtrFeatures;
 	pdVarPtrFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VARIABLE_POINTER_FEATURES;
-	pdVarPtrFeatures.pNext = &pdInterlockFeatures;
+	pdVarPtrFeatures.pNext = &pdDescIdxFeatures;
 
 	VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR pdUBOLayoutFeatures;
 	pdUBOLayoutFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR;
@@ -3391,6 +3561,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledVarPtrFeatures.variablePointersStorageBuffer,
 							   &requestedFeatures->variablePointersStorageBuffer,
 							   &pdVarPtrFeatures.variablePointersStorageBuffer, 2);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: {
+				auto* requestedFeatures = (VkPhysicalDeviceDescriptorIndexingFeaturesEXT*)next;
+				enableFeatures(&_enabledDescriptorIndexingFeatures.shaderInputAttachmentArrayDynamicIndexing,
+							   &requestedFeatures->shaderInputAttachmentArrayDynamicIndexing,
+							   &pdDescIdxFeatures.shaderInputAttachmentArrayDynamicIndexing, 20);
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {

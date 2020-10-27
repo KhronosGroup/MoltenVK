@@ -110,7 +110,8 @@ public:
 
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
-								  const VkDescriptorSetLayoutBinding* pBinding);
+								  const VkDescriptorSetLayoutBinding* pBinding,
+								  VkDescriptorBindingFlagsEXT bindingFlags);
 
 	MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding);
 
@@ -125,6 +126,7 @@ protected:
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
+	VkDescriptorBindingFlagsEXT _flags;
 	MVKSmallVector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	bool _applyToStage[kMVKShaderStageMax];

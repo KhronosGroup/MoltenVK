@@ -87,6 +87,7 @@ protected:
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
 	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return _bindingToDescriptorIndex[binding] + elementIndex; }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
+	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
@@ -129,7 +130,9 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
-	MVKDescriptorSet(MVKDescriptorSetLayout* layout, MVKDescriptorPool* pool);
+	MVKDescriptorSet(MVKDescriptorSetLayout* layout,
+					 uint32_t variableDescriptorCount,
+					 MVKDescriptorPool* pool);
 
 	~MVKDescriptorSet() override;
 
@@ -143,6 +146,7 @@ protected:
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;
 	MVKSmallVector<MVKDescriptor*> _descriptors;
+	uint32_t _variableDescriptorCount;
 };
 
 
@@ -225,9 +229,8 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT; }
 
-	/** Allocates the specified number of descriptor sets. */
-	VkResult allocateDescriptorSets(uint32_t count,
-									const VkDescriptorSetLayout* pSetLayouts,
+	/** Allocates descriptor sets. */
+	VkResult allocateDescriptorSets(const VkDescriptorSetAllocateInfo* pAllocateInfo,
 									VkDescriptorSet* pDescriptorSets);
 
 	/** Free's up the specified descriptor set. */
@@ -244,7 +247,8 @@ protected:
 	friend class MVKDescriptorSet;
 
 	void propagateDebugName() override {}
-	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, VkDescriptorSet* pVKDS);
+	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, uint32_t variableDescriptorCount, VkDescriptorSet* pVKDS);
+	const uint32_t* getVariableDecriptorCounts(const VkDescriptorSetAllocateInfo* pAllocateInfo);
 	void freeDescriptorSet(MVKDescriptorSet* mvkDS);
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
