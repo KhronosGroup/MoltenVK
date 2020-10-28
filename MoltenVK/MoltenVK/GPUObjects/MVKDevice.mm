@@ -118,6 +118,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = _metalFeatures.subgroupSize != 0;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+				auto* timelineSem4Features = (VkPhysicalDeviceTimelineSemaphoreFeatures*)next;
+				timelineSem4Features->timelineSemaphore = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
 				auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
 				uboLayoutFeatures->uniformBufferStandardLayout = true;
@@ -305,6 +310,11 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 }
 				break;
 #endif
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
+                auto* timelineSem4Props = (VkPhysicalDeviceTimelineSemaphoreProperties*)next;
+                timelineSem4Props->maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
+                break;
+            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
 				auto* inlineUniformBlockProps = (VkPhysicalDeviceInlineUniformBlockPropertiesEXT*)next;
 				inlineUniformBlockProps->maxInlineUniformBlockSize = _metalFeatures.dynamicMTLBufferSize;
@@ -2668,12 +2678,30 @@ void MVKDevice::destroyFence(MVKFence* mvkFence,
 
 MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInfo,
 										 const VkAllocationCallbacks* pAllocator) {
-	if (_useMTLFenceForSemaphores) {
-		return new MVKSemaphoreMTLFence(this, pCreateInfo);
-	} else if (_useMTLEventForSemaphores) {
-		return new MVKSemaphoreMTLEvent(this, pCreateInfo);
+	const VkSemaphoreTypeCreateInfo* pTypeCreateInfo = nullptr;
+	for (auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO:
+				pTypeCreateInfo = (VkSemaphoreTypeCreateInfo*)next;
+				break;
+			default:
+				break;
+		}
+	}
+	if (pTypeCreateInfo && pTypeCreateInfo->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE) {
+		if (_pMetalFeatures->events) {
+			return new MVKTimelineSemaphoreMTLEvent(this, pCreateInfo, pTypeCreateInfo);
+		} else {
+			return new MVKTimelineSemaphoreEmulated(this, pCreateInfo, pTypeCreateInfo);
+		}
 	} else {
-		return new MVKSemaphoreEmulated(this, pCreateInfo);
+		if (_useMTLFenceForSemaphores) {
+			return new MVKSemaphoreMTLFence(this, pCreateInfo);
+		} else if (_useMTLEventForSemaphores) {
+			return new MVKSemaphoreMTLEvent(this, pCreateInfo);
+		} else {
+			return new MVKSemaphoreEmulated(this, pCreateInfo);
+		}
 	}
 }
 

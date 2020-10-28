@@ -120,6 +120,9 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SEMAPHORE_EXT; }
 
+	/** Returns the type of this semaphore. */
+	virtual VkSemaphoreType getSemaphoreType() { return VK_SEMAPHORE_TYPE_BINARY; }
+
 	/**
 	 * Wait for this semaphore to be signaled.
 	 *
@@ -132,8 +135,11 @@ public:
 	 * code path, once with a mtlCmdBuff to support encoding a wait on the command buffer if the
 	 * subclass supports command encoding, and once without a mtlCmdBuff, at the point in the
 	 * code path where the code should block if the subclass does not support command encoding.
+	 *
+	 * 'value' only applies if this semaphore is a timeline semaphore. It is the value to wait for the
+	 * semaphore to have.
 	 */
-	virtual void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) = 0;
+	virtual void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) = 0;
 
 	/**
 	 * Signals this semaphore.
@@ -147,8 +153,11 @@ public:
 	 * code path, once with a mtlCmdBuff to support encoding a wait on the command buffer if the
 	 * subclass supports command encoding, and once without a mtlCmdBuff, at the point in the
 	 * code path where the code should block if the subclass does not support command encoding.
+	 *
+	 * 'value' only applies if this semaphore is a timeline semaphore. It is the value to assign the semaphore
+	 * upon completion.
 	 */
-	virtual void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) = 0;
+	virtual void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) = 0;
 
 	/** Returns whether this semaphore uses command encoding. */
 	virtual bool isUsingCommandEncoding() = 0;
@@ -171,8 +180,8 @@ protected:
 class MVKSemaphoreMTLFence : public MVKSemaphore {
 
 public:
-	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
-	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) override;
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	bool isUsingCommandEncoding() override { return true; }
 
 	MVKSemaphoreMTLFence(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
@@ -191,8 +200,8 @@ protected:
 class MVKSemaphoreMTLEvent : public MVKSemaphore {
 
 public:
-	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
-	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) override;
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	bool isUsingCommandEncoding() override { return true; }
 
 	MVKSemaphoreMTLEvent(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
@@ -212,14 +221,99 @@ protected:
 class MVKSemaphoreEmulated : public MVKSemaphore {
 
 public:
-	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
-	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff) override;
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	bool isUsingCommandEncoding() override { return false; }
 
 	MVKSemaphoreEmulated(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
 
 protected:
 	MVKSemaphoreImpl _blocker;
+};
+
+
+#pragma mark -
+#pragma mark MVKTimelineSemaphore
+
+/** Abstract class that represents a Vulkan timeline semaphore. */
+class MVKTimelineSemaphore : public MVKSemaphore {
+
+public:
+
+	VkSemaphoreType getSemaphoreType() override { return VK_SEMAPHORE_TYPE_TIMELINE; }
+
+	/** Returns the current value of the semaphore counter. */
+	virtual uint64_t getCounterValue() = 0;
+
+	/** Signals this semaphore on the host. */
+	virtual void signal(const VkSemaphoreSignalInfo* pSignalInfo) = 0;
+
+	/** Registers a wait for this semaphore on the host. Returns true if the semaphore is already signaled. */
+	virtual bool registerWait(MVKFenceSitter* sitter, const VkSemaphoreWaitInfo* pWaitInfo, uint32_t index) = 0;
+
+	/** Stops waiting for this semaphore. */
+	virtual void unregisterWait(MVKFenceSitter* sitter) = 0;
+
+#pragma mark Construction
+
+    MVKTimelineSemaphore(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkSemaphoreTypeCreateInfo* pTypeCreateInfo)
+        : MVKSemaphore(device, pCreateInfo) {}
+
+};
+
+
+#pragma mark -
+#pragma mark MVKTimelineSemaphoreMTLEvent
+
+/** An MVKTimelineSemaphore that uses MTLSharedEvent to provide synchronization. */
+class MVKTimelineSemaphoreMTLEvent : public MVKTimelineSemaphore {
+
+public:
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
+	bool isUsingCommandEncoding() override { return true; }
+
+	uint64_t getCounterValue() override { return _mtlEvent.signaledValue; }
+	void signal(const VkSemaphoreSignalInfo* pSignalInfo) override;
+	bool registerWait(MVKFenceSitter* sitter, const VkSemaphoreWaitInfo* pWaitInfo, uint32_t index) override;
+	void unregisterWait(MVKFenceSitter* sitter) override;
+
+	MVKTimelineSemaphoreMTLEvent(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkSemaphoreTypeCreateInfo* pTypeCreateInfo);
+
+	~MVKTimelineSemaphoreMTLEvent() override;
+
+protected:
+	id<MTLSharedEvent> _mtlEvent;
+	std::mutex _lock;
+	std::unordered_set<MVKFenceSitter*> _sitters;
+};
+
+
+#pragma mark -
+#pragma mark MVKTimelineSemaphoreEmulated
+
+/** An MVKTimelineSemaphore that uses CPU synchronization to provide synchronization functionality. */
+class MVKTimelineSemaphoreEmulated : public MVKTimelineSemaphore {
+
+public:
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
+	bool isUsingCommandEncoding() override { return false; }
+
+	uint64_t getCounterValue() override { return _value; }
+	void signal(const VkSemaphoreSignalInfo* pSignalInfo) override;
+	bool registerWait(MVKFenceSitter* sitter, const VkSemaphoreWaitInfo* pWaitInfo, uint32_t index) override;
+	void unregisterWait(MVKFenceSitter* sitter) override;
+
+	MVKTimelineSemaphoreEmulated(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo, const VkSemaphoreTypeCreateInfo* pTypeCreateInfo);
+
+protected:
+	void signalImpl(uint64_t value);
+
+	std::atomic<uint64_t> _value;
+	std::mutex _lock;
+	std::condition_variable _blocker;
+	std::unordered_map<uint64_t, std::unordered_set<MVKFenceSitter*>> _sitters;
 };
 
 
@@ -240,11 +334,10 @@ public:
 	/**
 	 * If this fence has not been signaled yet, adds the specified fence sitter to the
 	 * internal list of fence sitters that will be notified when this fence is signaled,
-	 * and then calls addUnsignaledFence() on the fence sitter so it is aware that it
-	 * will be signaled.
+	 * and then calls await() on the fence sitter so it is aware that it will be signaled.
 	 *
 	 * Does nothing if this fence has already been signaled, and does not call 
-	 * addUnsignaledFence() on the fence sitter.
+	 * await() on the fence sitter.
 	 *
 	 * Each fence sitter should only listen once for each fence. Adding the same fence sitter
 	 * more than once in between each fence reset and signal results in undefined behaviour.
@@ -282,7 +375,7 @@ protected:
 #pragma mark -
 #pragma mark MVKFenceSitter
 
-/** An object that responds to signals from MVKFences. */
+/** An object that responds to signals from MVKFences and MVKTimelineSemaphores. */
 class MVKFenceSitter : public MVKBaseObject {
 
 public:
@@ -309,11 +402,16 @@ public:
 
 private:
 	friend class MVKFence;
+	friend class MVKTimelineSemaphoreMTLEvent;
+	friend class MVKTimelineSemaphoreEmulated;
 
-	void awaitFence(MVKFence* fence) { _blocker.reserve(); }
-	void fenceSignaled(MVKFence* fence) { _blocker.release(); }
+	MTLSharedEventListener* getMTLSharedEventListener();
+
+	void await() { _blocker.reserve(); }
+	void signaled() { _blocker.release(); }
 
 	MVKSemaphoreImpl _blocker;
+	MTLSharedEventListener* _listener = nil;
 };
 
 
@@ -410,6 +508,15 @@ VkResult mvkWaitForFences(MVKDevice* device,
 						  const VkFence* pFences,
 						  VkBool32 waitAll,
 						  uint64_t timeout = UINT64_MAX);
+
+/** 
+ * Blocks the current thread until any or all of the specified 
+ * semaphores have been signaled at the specified values, or the
+ * specified timeout occurs.
+ */
+VkResult mvkWaitSemaphores(MVKDevice* device,
+						   const VkSemaphoreWaitInfo* pWaitInfo,
+						   uint64_t timeout = UINT64_MAX);
 
 
 #pragma mark -

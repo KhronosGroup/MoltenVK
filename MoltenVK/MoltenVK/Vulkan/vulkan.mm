@@ -2664,6 +2664,45 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
 
 
 #pragma mark -
+#pragma mark VK_KHR_timeline_semaphore
+
+MVK_PUBLIC_SYMBOL VkResult vkGetSemaphoreCounterValueKHR(
+	VkDevice									device,
+	VkSemaphore									semaphore,
+	uint64_t*									pValue) {
+
+	MVKTraceVulkanCallStart();
+	auto* mvkSem4 = (MVKTimelineSemaphore*)semaphore;
+	*pValue = mvkSem4->getCounterValue();
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkSignalSemaphoreKHR(
+	VkDevice									device,
+	const VkSemaphoreSignalInfoKHR*				pSignalInfo) {
+
+	MVKTraceVulkanCallStart();
+	auto* mvkSem4 = (MVKTimelineSemaphore*)pSignalInfo->semaphore;
+	mvkSem4->signal(pSignalInfo);
+	MVKTraceVulkanCallEnd();
+	return VK_SUCCESS;
+}
+
+MVK_PUBLIC_SYMBOL VkResult vkWaitSemaphoresKHR(
+	VkDevice									device,
+	const VkSemaphoreWaitInfoKHR*				pWaitInfo,
+	uint64_t									timeout) {
+
+	MVKTraceVulkanCallStart();
+	MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
+	VkResult rslt = mvkWaitSemaphores(mvkDev, pWaitInfo, timeout);
+	MVKTraceVulkanCallEnd();
+	return rslt;
+}
+
+
+#pragma mark -
 #pragma mark VK_EXT_debug_report extension
 
 MVK_PUBLIC_SYMBOL VkResult vkCreateDebugReportCallbackEXT(
