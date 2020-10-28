@@ -131,26 +131,26 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_FEATURES_EXT: {
 				auto* pDescIdxFeatures = (VkPhysicalDeviceDescriptorIndexingFeaturesEXT*)next;
-				pDescIdxFeatures->shaderInputAttachmentArrayDynamicIndexing = false;
-				pDescIdxFeatures->shaderUniformTexelBufferArrayDynamicIndexing = false;
-				pDescIdxFeatures->shaderStorageTexelBufferArrayDynamicIndexing = false;
+				pDescIdxFeatures->shaderInputAttachmentArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
+				pDescIdxFeatures->shaderUniformTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
+				pDescIdxFeatures->shaderStorageTexelBufferArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
 				pDescIdxFeatures->shaderUniformBufferArrayNonUniformIndexing = false;
-				pDescIdxFeatures->shaderSampledImageArrayNonUniformIndexing = false;
+				pDescIdxFeatures->shaderSampledImageArrayNonUniformIndexing = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
 				pDescIdxFeatures->shaderStorageBufferArrayNonUniformIndexing = false;
-				pDescIdxFeatures->shaderStorageImageArrayNonUniformIndexing = false;
-				pDescIdxFeatures->shaderInputAttachmentArrayNonUniformIndexing = false;
-				pDescIdxFeatures->shaderUniformTexelBufferArrayNonUniformIndexing = false;
-				pDescIdxFeatures->shaderStorageTexelBufferArrayNonUniformIndexing = false;
+				pDescIdxFeatures->shaderStorageImageArrayNonUniformIndexing = _metalFeatures.arrayOfTextures;
+				pDescIdxFeatures->shaderInputAttachmentArrayNonUniformIndexing = _metalFeatures.arrayOfTextures;
+				pDescIdxFeatures->shaderUniformTexelBufferArrayNonUniformIndexing = _metalFeatures.arrayOfTextures;
+				pDescIdxFeatures->shaderStorageTexelBufferArrayNonUniformIndexing = _metalFeatures.arrayOfTextures;
 				pDescIdxFeatures->descriptorBindingUniformBufferUpdateAfterBind = false;
 				pDescIdxFeatures->descriptorBindingSampledImageUpdateAfterBind = false;
 				pDescIdxFeatures->descriptorBindingStorageImageUpdateAfterBind = false;
 				pDescIdxFeatures->descriptorBindingStorageBufferUpdateAfterBind = false;
 				pDescIdxFeatures->descriptorBindingUniformTexelBufferUpdateAfterBind = false;
 				pDescIdxFeatures->descriptorBindingStorageTexelBufferUpdateAfterBind = false;
-				pDescIdxFeatures->descriptorBindingUpdateUnusedWhilePending = false;
+				pDescIdxFeatures->descriptorBindingUpdateUnusedWhilePending = true;
 				pDescIdxFeatures->descriptorBindingPartiallyBound = false;
-				pDescIdxFeatures->descriptorBindingVariableDescriptorCount = false;
-				pDescIdxFeatures->runtimeDescriptorArray = false;
+				pDescIdxFeatures->descriptorBindingVariableDescriptorCount = true;
+				pDescIdxFeatures->runtimeDescriptorArray = true;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADER_INTERLOCK_FEATURES_EXT: {
@@ -331,29 +331,29 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 #endif
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
 				auto* pDescIdxProps = (VkPhysicalDeviceDescriptorIndexingPropertiesEXT*)next;
-				pDescIdxProps->maxUpdateAfterBindDescriptorsInAllPools = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxUpdateAfterBindDescriptorsInAllPools = 0;					//kMVKUndefinedLargeUInt32; when UAB supported
 				pDescIdxProps->shaderUniformBufferArrayNonUniformIndexingNative = false;
-				pDescIdxProps->shaderSampledImageArrayNonUniformIndexingNative = false;
+				pDescIdxProps->shaderSampledImageArrayNonUniformIndexingNative = _metalFeatures.arrayOfTextures && _metalFeatures.arrayOfSamplers;
 				pDescIdxProps->shaderStorageBufferArrayNonUniformIndexingNative = false;
-				pDescIdxProps->shaderStorageImageArrayNonUniformIndexingNative = false;
-				pDescIdxProps->shaderInputAttachmentArrayNonUniformIndexingNative = false;
-				pDescIdxProps->robustBufferAccessUpdateAfterBind = false;
+				pDescIdxProps->shaderStorageImageArrayNonUniformIndexingNative = _metalFeatures.arrayOfTextures;
+				pDescIdxProps->shaderInputAttachmentArrayNonUniformIndexingNative = _metalFeatures.arrayOfTextures;
+				pDescIdxProps->robustBufferAccessUpdateAfterBind = false;					//_features.robustBufferAccess; when UAB supported
 				pDescIdxProps->quadDivergentImplicitLod = false;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindInputAttachments = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxPerStageUpdateAfterBindResources = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindSampledImages = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageImages = kMVKUndefinedLargeUInt32;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindInputAttachments = kMVKUndefinedLargeUInt32;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers = 0;			//_properties.limits.maxPerStageDescriptorSamplers; when UAB supported
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers = 0;		//_properties.limits.maxPerStageDescriptorUniformBuffers; when UAB supported
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers = 0;		//_properties.limits.maxPerStageDescriptorStorageBuffers; when UAB supported
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages = 0;		//_properties.limits.maxPerStageDescriptorSampledImages; when UAB supported
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages = 0;		//_properties.limits.maxPerStageDescriptorStorageImages; when UAB supported
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindInputAttachments = 0;	//_properties.limits.maxPerStageDescriptorInputAttachments; when UAB supported
+				pDescIdxProps->maxPerStageUpdateAfterBindResources = 0;						//_properties.limits.maxPerStageResources; when UAB supported
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers = 0;					//_properties.limits.maxDescriptorSetSamplers; when UAB supported
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers = 0;			//_properties.limits.maxDescriptorSetUniformBuffers; when UAB supported
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic = 0;	//_properties.limits.maxDescriptorSetUniformBuffersDynamic; when UAB supported
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers = 0;			//_properties.limits.maxDescriptorSetStorageBuffers; when UAB supported
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic = 0;	//_properties.limits.maxDescriptorSetStorageBuffersDynamic; when UAB supported
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSampledImages = 0;			//_properties.limits.maxDescriptorSetSampledImages; when UAB supported
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageImages = 0;			//_properties.limits.maxDescriptorSetStorageImages; when UAB supported
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindInputAttachments = 0;			//_properties.limits.maxDescriptorSetInputAttachments; when UAB supported
 				break;
 			}
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_INLINE_UNIFORM_BLOCK_PROPERTIES_EXT: {
@@ -1109,9 +1109,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	_metalFeatures.vertexStrideAlignment = 4;
 
+	_metalFeatures.maxPerStageStorageTextureCount = 8;
+
 #if MVK_TVOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
-    _metalFeatures.maxPerStageTextureCount = 31;
     _metalFeatures.mtlBufferAlignment = 64;
 	_metalFeatures.mtlCopyBufferAlignment = 1;
     _metalFeatures.texelBuffers = true;
@@ -1158,6 +1159,13 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.nativeTextureSwizzle = true;
 		}
 	}
+
+	if (supportsMTLGPUFamily(Apple4)) {
+		_metalFeatures.maxPerStageTextureCount = 96;
+	} else {
+		_metalFeatures.maxPerStageTextureCount = 31;
+	}
+
 #endif
 
 #if MVK_IOS
@@ -1230,6 +1238,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		if (supportsMTLGPUFamily(Apple4)) {
 			_metalFeatures.nativeTextureSwizzle = true;
 		}
+	}
+
+	if (supportsMTLGPUFamily(Apple4)) {
+		_metalFeatures.maxPerStageTextureCount = 96;
+	} else {
+		_metalFeatures.maxPerStageTextureCount = 31;
 	}
 
 #endif
@@ -1580,7 +1594,7 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxPerStageDescriptorUniformBuffers = _metalFeatures.maxPerStageBufferCount;
 	_properties.limits.maxPerStageDescriptorStorageBuffers = _metalFeatures.maxPerStageBufferCount;
 	_properties.limits.maxPerStageDescriptorSampledImages = _metalFeatures.maxPerStageTextureCount;
-	_properties.limits.maxPerStageDescriptorStorageImages = _metalFeatures.maxPerStageTextureCount;
+	_properties.limits.maxPerStageDescriptorStorageImages = _metalFeatures.maxPerStageStorageTextureCount;
 	_properties.limits.maxPerStageDescriptorInputAttachments = _metalFeatures.maxPerStageTextureCount;
 
     _properties.limits.maxPerStageResources = (_metalFeatures.maxPerStageBufferCount + _metalFeatures.maxPerStageTextureCount);
@@ -2611,6 +2625,8 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 			switch (pBind->descriptorType) {
 				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 					mtlBuffCnt += pBind->descriptorCount;
 					maxVarDescCount = _pMetalFeatures->maxPerStageBufferCount - mtlBuffCnt;
 					break;
@@ -2640,8 +2656,6 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 					maxVarDescCount = min(_pMetalFeatures->maxPerStageTextureCount - mtlTexCnt,
 										  _pMetalFeatures->maxPerStageSamplerCount - mtlSampCnt);
 					break;
-				case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:		// excluded by Vulkan
-				case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:		// excluded by Vulkan
 				default:
 					break;
 			}
