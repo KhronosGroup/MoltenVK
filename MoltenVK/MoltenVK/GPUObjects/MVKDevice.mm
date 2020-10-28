@@ -1447,6 +1447,17 @@ void MVKPhysicalDevice::initFeatures() {
     if ( mvkOSVersionIsAtLeast(10.15) ) {
         _features.shaderResourceMinLod = true;
     }
+
+    if ( supportsMTLGPUFamily(Apple5) ) {
+        _features.textureCompressionETC2 = true;
+        _features.textureCompressionASTC_LDR = true;
+    }
+
+#if MVK_MACOS_APPLE_SILICON
+	if ([_mtlDevice respondsToSelector: @selector(supportsBCTextureCompression)]) {
+		_features.textureCompressionBC = _mtlDevice.supportsBCTextureCompression;
+	}
+#endif
 #endif
 }
 
@@ -2423,6 +2434,11 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_metalFeatures.stencilFeedback) {
 		pWritableExtns->vk_EXT_shader_stencil_export.enabled = false;
 	}
+#if MVK_MACOS
+	if (!supportsMTLGPUFamily(Apple5)) {
+		pWritableExtns->vk_IMG_format_pvrtc.enabled = false;
+	}
+#endif
 }
 
 void MVKPhysicalDevice::logGPUInfo() {

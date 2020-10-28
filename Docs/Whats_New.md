@@ -20,6 +20,7 @@ Released TBD
 
 - Add support for extensions:
 	- `VK_EXT_private_data`
+	- `VK_IMG_format_pvrtc` (macOS)
 - Use `VK_KHR_image_format_list` to disable `MTLTextureUsagePixelFormatView` 
   if only swizzles or `sRGB` conversion will be used for image views, improving 
   performance on *iOS* by allowing Metal to use lossless texture compression.
