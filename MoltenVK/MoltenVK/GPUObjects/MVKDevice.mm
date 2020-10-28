@@ -1347,6 +1347,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.mtlCopyBufferAlignment = 1;
 			_metalFeatures.mtlBufferAlignment = 16;
 			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
+			_metalFeatures.postDepthCoverage = true;
 		}
 	}
 #endif
