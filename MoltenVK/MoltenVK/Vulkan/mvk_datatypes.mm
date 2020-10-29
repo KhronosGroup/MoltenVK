@@ -736,7 +736,7 @@ MVK_PUBLIC_SYMBOL MTLStorageMode mvkMTLStorageModeFromVkMemoryPropertyFlags(VkMe
 
 	// If not visible to the host: Private
 	if ( !mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT) ) {
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
 		// iOS: If lazily allocated, Memoryless
 		if (mvkAreAllFlagsEnabled(vkFlags, VK_MEMORY_PROPERTY_LAZILY_ALLOCATED_BIT)) {
 			return MTLStorageModeMemoryless;

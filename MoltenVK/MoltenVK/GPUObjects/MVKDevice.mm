@@ -2310,6 +2310,13 @@ void MVKPhysicalDevice::initMemoryProperties() {
 
 	// Memoryless storage
 	uint32_t memlessBit = 0;
+#if MVK_MACOS_APPLE_SILICON
+	if (supportsMTLGPUFamily(Apple5)) {
+		memlessBit = 1 << typeIdx;
+		setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
+		typeIdx++;
+	}
+#endif
 #if MVK_IOS
 	if (supportsMTLFeatureSet(iOS_GPUFamily1_v3)) {
 		memlessBit = 1 << typeIdx;
@@ -2617,7 +2624,7 @@ uint32_t MVKDevice::getVulkanMemoryTypeIndex(MTLStorageMode mtlStorageMode) {
             vkMemFlags = MVK_VK_MEMORY_TYPE_METAL_MANAGED;
             break;
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
         case MTLStorageModeMemoryless:
             vkMemFlags = MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS;
             break;
