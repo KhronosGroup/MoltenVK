@@ -72,6 +72,17 @@ extern "C" {
 #	define MVK_OS_SIMULATOR			TARGET_OS_SIMULATOR
 #endif
 
+/** Building for macOS with support for Apple Silicon. */
+#ifndef MVK_MACOS_APPLE_SILICON
+#	define MVK_MACOS_APPLE_SILICON	(__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600)
+#endif
+
+/** Building with Xcode 12. */
+#ifndef MVK_XCODE_12
+#	define MVK_XCODE_12 			(MVK_MACOS_APPLE_SILICON || \
+									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 140000))	// Also covers tvOS
+#endif
+
 /** Directive to identify public symbols. */
 #define MVK_PUBLIC_SYMBOL        __attribute__((visibility("default")))
 
