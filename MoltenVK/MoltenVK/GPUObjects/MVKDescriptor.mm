@@ -74,26 +74,48 @@ MVKShaderResourceBinding& MVKShaderResourceBinding::operator+= (const MVKShaderR
 
 MVKVulkanAPIObject* MVKDescriptorSetLayoutBinding::getVulkanAPIObject() { return _layout; };
 
+uint32_t MVKDescriptorSetLayoutBinding::getDescriptorCount(MVKDescriptorSet* descSet) {
+
+	if (_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+		return 1;
+	}
+
+	if (descSet && mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)) {
+		return descSet->_variableDescriptorCount;
+	}
+
+	return _info.descriptorCount;
+}
+
 MVKSampler* MVKDescriptorSetLayoutBinding::getImmutableSampler(uint32_t index) {
 	return (index < _immutableSamplers.size()) ? _immutableSamplers[index] : nullptr;
 }
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
-										 MVKDescriptorSet* descSet,
-										 MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-										 MVKArrayRef<uint32_t> dynamicOffsets,
-										 uint32_t baseDynamicOffsetIndex) {
+uint32_t MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
+											 MVKDescriptorSet* descSet,
+											 MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+											 MVKArrayRef<uint32_t> dynamicOffsets,
+											 uint32_t descSetDynamicOffsetIndex) {
 
 	// Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
 
-    uint32_t descCnt = getDescriptorCount();
+	VkDescriptorType descType = getDescriptorType();
+    uint32_t descCnt = getDescriptorCount(descSet);
     for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
 		MVKDescriptor* mvkDesc = descSet->getDescriptor(getBinding(), descIdx);
-        mvkDesc->bind(cmdEncoder, _info.descriptorType, descIdx, _applyToStage, mtlIdxs,
-					  dynamicOffsets, baseDynamicOffsetIndex + _dynamicOffsetIndex + descIdx);
+        mvkDesc->bind(cmdEncoder, descType, descIdx, _applyToStage, mtlIdxs,
+					  dynamicOffsets, descSetDynamicOffsetIndex + _dynamicOffsetIndex + descIdx);
     }
+
+	switch (descType) {
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			return descCnt;
+		default:
+			return 0;
+	}
 }
 
 template<typename T>

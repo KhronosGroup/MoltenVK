@@ -24,18 +24,23 @@
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
+// Dynamnic offsets passed in are in order of binding number, not binding index.
+// Each binding offsets relative to the index for the descriptor set itself.
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
-											   MVKDescriptorSet* descSet,
-											   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-											   MVKArrayRef<uint32_t> dynamicOffsets,
-											   uint32_t baseDynamicOffsetIndex) {
-	if (_isPushDescriptorLayout) return;
-
+uint32_t MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
+												   MVKDescriptorSet* descSet,
+												   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+												   MVKArrayRef<uint32_t> dynamicOffsets,
+												   uint32_t dynamicOffsetIndex) {
 	clearConfigurationResult();
-	for (auto& dslBind : _bindings) {
-		dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, baseDynamicOffsetIndex);
+	uint32_t dynOffsetsConsumed = 0;
+	if ( !_isPushDescriptorLayout ) {
+		for (auto& dslBind : _bindings) {
+			dynOffsetsConsumed += dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets,
+											   dynamicOffsets, dynamicOffsetIndex);
+		}
 	}
+	return dynOffsetsConsumed;
 }
 
 static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorImageInfo* pImageInfo,
@@ -182,7 +187,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 		_bindingToDescriptorIndex[pBind->binding] = _descriptorCount;
 
 		MVKDescriptorSetLayoutBinding* mvkBind = &_bindings.back();
-		_descriptorCount += mvkBind->getDescriptorCount();
+		_descriptorCount += mvkBind->getDescriptorCount(nullptr);
 		if (pBind->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
 			pBind->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
 			dynamicBindings.push_back(mvkBind);
@@ -196,10 +201,12 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 				[](MVKDescriptorSetLayoutBinding* mvkBind1, MVKDescriptorSetLayoutBinding* mvkBind2) {
 					return mvkBind1->getBinding() < mvkBind2->getBinding(); });
 
-	_dynamicDescriptorCount = 0;
+	// Only the last dynamic binding (highest binding number) can have a variable descriptor count.
+	// The other bindings will each have an accurate descriptor count while setting the dynamic offsets.
+	uint32_t dynDescCnt = 0;
 	for (auto mvkBind : dynamicBindings) {
-		mvkBind->setDynamicOffsetIndex(_dynamicDescriptorCount);
-		_dynamicDescriptorCount += mvkBind->getDescriptorCount();
+		mvkBind->setDynamicOffsetIndex(dynDescCnt);
+		dynDescCnt += mvkBind->getDescriptorCount(nullptr);
 	}
 }
 
@@ -289,23 +296,15 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout,
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		MVKDescriptorSetLayoutBinding* mvkDSLBind = &layout->_bindings[bindIdx];
-        MVKDescriptor* mvkDesc = nullptr;
-        if (mvkDSLBind->getDescriptorType() == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-            setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
-            if ( !wasConfigurationSuccessful() ) { break; }
+		uint32_t descCnt = mvkDSLBind->getDescriptorCount(this);
+		for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
+			MVKDescriptor* mvkDesc = nullptr;
+			setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
+			if ( !wasConfigurationSuccessful() ) { break; }
 
-            mvkDesc->setLayout(mvkDSLBind, 0);
-            _descriptors.push_back(mvkDesc);
-        } else {
-            uint32_t descCnt = mvkDSLBind->getDescriptorCount();
-            for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-                setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
-                if ( !wasConfigurationSuccessful() ) { break; }
-
-                mvkDesc->setLayout(mvkDSLBind, descIdx);
-                _descriptors.push_back(mvkDesc);
-            }
-        }
+			mvkDesc->setLayout(mvkDSLBind, descIdx);
+			_descriptors.push_back(mvkDesc);
+		}
 		if ( !wasConfigurationSuccessful() ) { break; }
 	}
 }
