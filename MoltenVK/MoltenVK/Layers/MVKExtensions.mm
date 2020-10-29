@@ -60,7 +60,7 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) { return mvkOSVersionIsAtLeast(10.13); }
 	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) { return mvkOSVersionIsAtLeast(10.14); }
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS
 	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
 	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
 	if (pProperties == &kVkExtProps_KHR_SHADER_SUBGROUP_EXTENDED_TYPES) { return false; }
