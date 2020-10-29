@@ -319,6 +319,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_swapchain_colorspace`
 - `VK_EXT_vertex_attribute_divisor`
 - `VK_EXT_texel_buffer_alignment` *(requires Metal 2.0)*
+- `VK_EXT_texture_compression_astc_hdr` *(iOS and macOS, requires family 6 (A13) or better Apple GPU)*
 - `VK_MVK_ios_surface` *(iOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
 - `VK_MVK_macos_surface` *(macOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
 - `VK_MVK_moltenvk`
