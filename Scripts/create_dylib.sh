@@ -29,6 +29,13 @@ if test x"${ENABLE_THREAD_SANITIZER}" = xYES; then
 elif test x"${ENABLE_ADDRESS_SANITIZER}" = xYES; then
 	MVK_SAN="-fsanitize=address"
 fi
+if test x"${ENABLE_UNDEFINED_BEHAVIOR_SANITIZER}" = xYES; then
+	if test x"$MVK_SAN" = x; then
+		MVK_SAN="-fsanitize=undefined"
+	else
+		MVK_SAN="$MVK_SAN,undefined"
+	fi
+fi
 
 # Suppress visibility warning spam when linking in Release or Debug mode
 # and external libraries built in the other mode.
