@@ -70,6 +70,11 @@ public:
 	/** Returns the binding number of this layout. */
 	inline uint32_t getBinding() { return _info.binding; }
 
+	/** Returns whether this binding has a variable descriptor count. */
+	inline bool hasVariableDescriptorCount() {
+		return mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT);
+	}
+
 	/**
 	 * Returns the number of descriptors in this layout.
 	 *

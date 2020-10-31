@@ -80,7 +80,7 @@ uint32_t MVKDescriptorSetLayoutBinding::getDescriptorCount(MVKDescriptorSet* des
 		return 1;
 	}
 
-	if (descSet && mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT)) {
+	if (descSet && hasVariableDescriptorCount()) {
 		return descSet->_variableDescriptorCount;
 	}
 
@@ -374,6 +374,7 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
                                               models[i],
                                               dslIndex,
                                               _info.binding,
+											  getDescriptorCount(nullptr),
 											  mvkSamp);
         }
     }

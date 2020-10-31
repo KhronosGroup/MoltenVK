@@ -101,6 +101,7 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfi
 										  models[i],
 										  kPushConstDescSet,
 										  kPushConstBinding,
+										  1,
 										  nullptr);
 	}
 }
@@ -1996,6 +1997,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 		archive(rb.stage,
 				rb.desc_set,
 				rb.binding,
+				rb.size,
 				rb.msl_buffer,
 				rb.msl_texture,
 				rb.msl_sampler);

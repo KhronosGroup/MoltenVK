@@ -817,6 +817,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 									   spv::ExecutionModel stage,
 									   uint32_t descriptorSetIndex,
 									   uint32_t bindingIndex,
+									   uint32_t count,
 									   MVKSampler* immutableSampler) {
 	mvk::MSLResourceBinding rb;
 
@@ -824,6 +825,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 	rbb.stage = stage;
 	rbb.desc_set = descriptorSetIndex;
 	rbb.binding = bindingIndex;
+	rbb.size = count;
 	rbb.msl_buffer = ssRB.bufferIndex;
 	rbb.msl_texture = ssRB.textureIndex;
 	rbb.msl_sampler = ssRB.samplerIndex;

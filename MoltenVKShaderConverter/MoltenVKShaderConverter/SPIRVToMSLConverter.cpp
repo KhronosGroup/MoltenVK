@@ -101,6 +101,7 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 	if (resourceBinding.stage != other.resourceBinding.stage) { return false; }
 	if (resourceBinding.desc_set != other.resourceBinding.desc_set) { return false; }
 	if (resourceBinding.binding != other.resourceBinding.binding) { return false; }
+	if (resourceBinding.size != other.resourceBinding.size) { return false; }
 	if (resourceBinding.msl_buffer != other.resourceBinding.msl_buffer) { return false; }
 	if (resourceBinding.msl_texture != other.resourceBinding.msl_texture) { return false; }
 	if (resourceBinding.msl_sampler != other.resourceBinding.msl_sampler) { return false; }
