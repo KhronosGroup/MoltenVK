@@ -221,7 +221,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->pointPolygons = false;
 				portabilityFeatures->samplerMipLodBias = false;
 				portabilityFeatures->separateStencilMaskRef = true;
-				portabilityFeatures->shaderSampleRateInterpolationFunctions = false;
+				portabilityFeatures->shaderSampleRateInterpolationFunctions = _metalFeatures.pullModelInterpolation;
 				portabilityFeatures->tessellationIsolines = false;
 				portabilityFeatures->tessellationPointMode = false;
 				portabilityFeatures->triangleFans = false;
@@ -1378,6 +1378,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice respondsToSelector: @selector(areRasterOrderGroupsSupported)] ) {
         _metalFeatures.rasterOrderGroups = _mtlDevice.rasterOrderGroupsSupported;
     }
+
+	if ( [_mtlDevice respondsToSelector: @selector(supportsPullModelInterpolation)] ) {
+		_metalFeatures.pullModelInterpolation = _mtlDevice.supportsPullModelInterpolation;
+	}
 
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
         _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
