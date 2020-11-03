@@ -825,7 +825,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 	rbb.stage = stage;
 	rbb.desc_set = descriptorSetIndex;
 	rbb.binding = bindingIndex;
-	rbb.size = count;
+	rbb.count = count;
 	rbb.msl_buffer = ssRB.bufferIndex;
 	rbb.msl_texture = ssRB.textureIndex;
 	rbb.msl_sampler = ssRB.samplerIndex;

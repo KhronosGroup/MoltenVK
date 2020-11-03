@@ -1970,7 +1970,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.enable_base_index_zero,
 				opt.pad_fragment_output_components,
 				opt.ios_support_base_vertex_instance,
-				opt.ios_use_framebuffer_fetch_subpasses,
+				opt.use_framebuffer_fetch_subpasses,
 				opt.invariant_float_math,
 				opt.emulate_cube_array,
 				opt.enable_decoration_binding,
@@ -1980,8 +1980,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.enable_clip_distance_user_varying,
 				opt.multi_patch_workgroup,
 				opt.vertex_for_tessellation,
-				opt.vertex_index_type,
-				opt.arrayed_subpass_input);
+				opt.arrayed_subpass_input,
+				opt.vertex_index_type);
 	}
 
 	template<class Archive>
@@ -1997,7 +1997,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 		archive(rb.stage,
 				rb.desc_set,
 				rb.binding,
-				rb.size,
+				rb.count,
 				rb.msl_buffer,
 				rb.msl_texture,
 				rb.msl_sampler);

@@ -271,11 +271,16 @@ typedef struct {
 	 * command buffer. Depending on the number of command buffers that you use, you may also need to
 	 * change the value of the maxActiveMetalCommandBuffersPerQueue setting.
 	 *
-	 * In addition, if this feature is enabled, be aware that if you have recorded commands to a
-	 * Vulkan command buffer, and then choose to reset that command buffer instead of submitting it,
-	 * the corresponding prefilled Metal command buffer will still be submitted. This is because Metal
-	 * command buffers do not support the concept of being reset after being filled. Depending on when
-	 * and how often you do this, it may cause unexpected visual artifacts and unnecessary GPU load.
+	 * If this feature is enabled, be aware that if you have recorded commands to a Vulkan command buffer,
+	 * and then choose to reset that command buffer instead of submitting it, the corresponding prefilled
+	 * Metal command buffer will still be submitted. This is because Metal command buffers do not support
+	 * the concept of being reset after being filled. Depending on when and how often you do this,
+	 * it may cause unexpected visual artifacts and unnecessary GPU load.
+	 *
+	 * This feature is incompatible with updating descriptors after binding. If any of the
+	 * *UpdateAfterBind feature flags of VkPhysicalDeviceDescriptorIndexingFeaturesEXT or
+	 * VkPhysicalDeviceInlineUniformBlockFeaturesEXT have been enabled, the value of this
+	 * setting will be ignored and treated as if it is false.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
