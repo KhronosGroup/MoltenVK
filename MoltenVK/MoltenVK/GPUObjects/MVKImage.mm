@@ -647,7 +647,7 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
     }
 #endif
-#if MVK_IOS_OR_TVOS
+#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
     // Only transient attachments may use memoryless storage
     if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
@@ -1263,13 +1263,13 @@ void MVKPresentableSwapchainImage::signalPresentationSemaphore(id<MTLCommandBuff
 
 	if ( !_availabilitySignalers.empty() ) {
 		MVKSemaphore* mvkSem = _availabilitySignalers.front().first;
-		if (mvkSem) { mvkSem->encodeSignal(mtlCmdBuff); }
+		if (mvkSem) { mvkSem->encodeSignal(mtlCmdBuff, 0); }
 	}
 }
 
 // Signal either or both of the semaphore and fence in the specified tracker pair.
 void MVKPresentableSwapchainImage::signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff) {
-	if (signaler.first) { signaler.first->encodeSignal(mtlCmdBuff); }
+	if (signaler.first) { signaler.first->encodeSignal(mtlCmdBuff, 0); }
 	if (signaler.second) { signaler.second->signal(); }
 }
 

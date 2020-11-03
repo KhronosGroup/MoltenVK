@@ -118,6 +118,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = _metalFeatures.subgroupSize != 0;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
+				auto* timelineSem4Features = (VkPhysicalDeviceTimelineSemaphoreFeatures*)next;
+				timelineSem4Features->timelineSemaphore = true;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_UNIFORM_BUFFER_STANDARD_LAYOUT_FEATURES_KHR: {
 				auto* uboLayoutFeatures = (VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR*)next;
 				uboLayoutFeatures->uniformBufferStandardLayout = true;
@@ -329,6 +334,11 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 }
 				break;
 #endif
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
+                auto* timelineSem4Props = (VkPhysicalDeviceTimelineSemaphoreProperties*)next;
+                timelineSem4Props->maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
+                break;
+            }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
 				auto* pDescIdxProps = (VkPhysicalDeviceDescriptorIndexingPropertiesEXT*)next;
 				pDescIdxProps->maxUpdateAfterBindDescriptorsInAllPools				= kMVKUndefinedLargeUInt32;
@@ -768,6 +778,14 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 #if MVK_MACOS
 	addSurfFmt(MTLPixelFormatRGB10A2Unorm);
 	addSurfFmt(MTLPixelFormatBGR10A2Unorm);
+#if MVK_MACOS_APPLE_SILICON
+	if (supportsMTLGPUFamily(Apple5)) {
+		addSurfFmt(MTLPixelFormatBGRA10_XR);
+		addSurfFmt(MTLPixelFormatBGRA10_XR_sRGB);
+		addSurfFmt(MTLPixelFormatBGR10_XR);
+		addSurfFmt(MTLPixelFormatBGR10_XR_sRGB);
+	}
+#endif
 #endif
 #if MVK_IOS_OR_TVOS
 	addSurfFmt(MTLPixelFormatBGRA10_XR);
@@ -1166,6 +1184,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.maxPerStageTextureCount = 31;
 	}
 
+#if MVK_XCODE_12
+	if ( mvkOSVersionIsAtLeast(14.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
+	}
+#endif
+
 #endif
 
 #if MVK_IOS
@@ -1245,6 +1269,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.maxPerStageTextureCount = 31;
 	}
 
+#if MVK_XCODE_12
+	if ( mvkOSVersionIsAtLeast(14.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
+	}
+#endif
+
 #endif
 
 #if MVK_MACOS
@@ -1309,6 +1339,18 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		}
 	}
 
+#if MVK_MACOS_APPLE_SILICON
+	if ( mvkOSVersionIsAtLeast(10.16) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
+		if (supportsMTLGPUFamily(Apple5)) {
+			// This is an Apple GPU--treat it accordingly.
+			_metalFeatures.mtlCopyBufferAlignment = 1;
+			_metalFeatures.mtlBufferAlignment = 16;
+			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
+		}
+	}
+#endif
+
 #endif
 
     // Note the selector name, which is different from the property name.
@@ -1337,8 +1379,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
 
 	switch (_metalFeatures.mslVersionEnum) {
-#if (defined(__MAC_OS_X_VERSION_MAX_ALLOWED) && __MAC_OS_X_VERSION_MAX_ALLOWED >= 101600) ||  \
-	(defined(__IPHONE_OS_VERSION_MAX_ALLOWED) && __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000)		// also covers tvOS
+#if MVK_XCODE_12
 		case MTLLanguageVersion2_3:
 			setMSLVersion(2, 3);
 			break;
@@ -1613,6 +1654,9 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxTexelBufferElements = _properties.limits.maxImageDimension2D * (4 * KIBI);
 #if MVK_MACOS
 	_properties.limits.maxUniformBufferRange = (64 * KIBI);
+	if (supportsMTLGPUFamily(Apple5)) {
+		_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
+	}
 #endif
 #if MVK_IOS_OR_TVOS
 	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
@@ -1699,6 +1743,9 @@ void MVKPhysicalDevice::initLimits() {
 #endif
 #if MVK_MACOS
         _properties.limits.minTexelBufferOffsetAlignment = 256;
+		if (supportsMTLGPUFamily(Apple5)) {
+			_properties.limits.minTexelBufferOffsetAlignment = 16;
+		}
 #endif
         _texelBuffAlignProperties.storageTexelBufferOffsetAlignmentBytes = _properties.limits.minTexelBufferOffsetAlignment;
         _texelBuffAlignProperties.storageTexelBufferOffsetSingleTexelAlignment = VK_FALSE;
@@ -1749,6 +1796,9 @@ void MVKPhysicalDevice::initLimits() {
 #if MVK_MACOS
     _properties.limits.maxFragmentInputComponents = 124;
     _properties.limits.optimalBufferCopyOffsetAlignment = 256;
+	if (supportsMTLGPUFamily(Apple5)) {
+		_properties.limits.optimalBufferCopyOffsetAlignment = 16;
+	}
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v2)) {
         _properties.limits.maxTessellationGenerationLevel = 64;
@@ -1790,8 +1840,10 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.lineWidthRange[1] = 1;
     _properties.limits.lineWidthGranularity = 1;
 
+    static const uint32_t kIntelVendorId = 0x8086;
+    static const uint32_t kNVVendorId = 0x10de;
     _properties.limits.standardSampleLocations = VK_TRUE;
-    _properties.limits.strictLines = VK_FALSE;
+    _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;
 
 	VkExtent3D wgSize = mvkVkExtent3DFromMTLSize(_mtlDevice.maxThreadsPerThreadgroup);
 	_properties.limits.maxComputeWorkGroupSize[0] = wgSize.width;
@@ -1903,6 +1955,22 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	_properties.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 
+	if (supportsMTLGPUFamily(Apple5)) {
+		// This is an Apple GPU. It won't have a 'device-id' property, so fill it in
+		// like on iOS/tvOS.
+		_properties.vendorID = 0x106b;	// Apple's PCI ID
+#if MVK_MACOS_APPLE_SILICON
+		if (supportsMTLGPUFamily(Apple6)) {
+			_properties.deviceID = 0xa130;
+		} else {
+			_properties.deviceID = 0xa120;
+		}
+#else
+		_properties.deviceID = 0xa120;
+#endif
+		return;
+	}
+
 	// If the device has an associated registry ID, we can use that to get the associated IOKit node.
 	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
 	io_registry_entry_t entry;
@@ -1953,7 +2021,14 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 void MVKPhysicalDevice::initGPUInfoProperties() {
 	NSUInteger coreCnt = NSProcessInfo.processInfo.processorCount;
 	uint32_t devID = 0xa070;
-	if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
+#if MVK_XCODE_12
+	if (supportsMTLGPUFamily(Apple7)) {
+		devID = 0xa140;
+	} else
+#endif
+	if (supportsMTLGPUFamily(Apple6)) {
+		devID = 0xa130;
+	} else if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
 		devID = 0xa120;
 	} else if (supportsMTLFeatureSet(iOS_GPUFamily4_v1)) {
 		devID = 0xa110;
@@ -2138,9 +2213,11 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	uint32_t mtlVer = 0;
 #if MVK_IOS_OR_TVOS
 	if (mvkOSVersionIsAtLeast(13.0)) { mtlVer = 0x30000; }
+	if (mvkOSVersionIsAtLeast(14.0)) { mtlVer = 0x40000; }
 #endif
 #if MVK_MACOS
 	if (mvkOSVersionIsAtLeast(10.15)) { mtlVer = 0x30000; }
+	if (mvkOSVersionIsAtLeast(10.16)) { mtlVer = 0x40000; }
 #endif
 
 	MTLGPUFamily mtlFam = MTLGPUFamily(0);
@@ -2152,6 +2229,12 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	if (supportsMTLGPUFamily(Apple3)) { mtlFam = MTLGPUFamilyApple3; }
 	if (supportsMTLGPUFamily(Apple4)) { mtlFam = MTLGPUFamilyApple4; }
 	if (supportsMTLGPUFamily(Apple5)) { mtlFam = MTLGPUFamilyApple5; }
+#if MVK_IOS || MVK_MACOS_APPLE_SILICON
+	if (supportsMTLGPUFamily(Apple6)) { mtlFam = MTLGPUFamilyApple6; }
+#if !MVK_MACOS
+	if (supportsMTLGPUFamily(Apple7)) { mtlFam = MTLGPUFamilyApple7; }
+#endif
+#endif
 
 	// Not explicitly guaranteed to be unique...but close enough without spilling over
 	uint32_t mtlFS = (mtlVer << 8) + (uint32_t)mtlFam;
@@ -2290,6 +2373,13 @@ void MVKPhysicalDevice::initMemoryProperties() {
 
 	// Memoryless storage
 	uint32_t memlessBit = 0;
+#if MVK_MACOS_APPLE_SILICON
+	if (supportsMTLGPUFamily(Apple5)) {
+		memlessBit = 1 << typeIdx;
+		setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
+		typeIdx++;
+	}
+#endif
 #if MVK_IOS
 	if (supportsMTLFeatureSet(iOS_GPUFamily1_v3)) {
 		memlessBit = 1 << typeIdx;
@@ -2427,6 +2517,12 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
+#if MVK_IOS || MVK_MACOS_APPLE_SILICON
+#if !MVK_MACOS
+	if (supportsMTLGPUFamily(Apple7)) { logMsg += "\n\t\tGPU Family Apple 7"; }
+#endif
+	if (supportsMTLGPUFamily(Apple6)) { logMsg += "\n\t\tGPU Family Apple 6"; }
+#endif
 	if (supportsMTLGPUFamily(Apple5)) { logMsg += "\n\t\tGPU Family Apple 5"; }
 	if (supportsMTLGPUFamily(Apple4)) { logMsg += "\n\t\tGPU Family Apple 4"; }
 	if (supportsMTLGPUFamily(Apple3)) { logMsg += "\n\t\tGPU Family Apple 3"; }
@@ -2705,7 +2801,7 @@ uint32_t MVKDevice::getVulkanMemoryTypeIndex(MTLStorageMode mtlStorageMode) {
             vkMemFlags = MVK_VK_MEMORY_TYPE_METAL_MANAGED;
             break;
 #endif
-#if MVK_IOS
+#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
         case MTLStorageModeMemoryless:
             vkMemFlags = MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS;
             break;
@@ -2844,12 +2940,30 @@ void MVKDevice::destroyFence(MVKFence* mvkFence,
 
 MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInfo,
 										 const VkAllocationCallbacks* pAllocator) {
-	if (_useMTLFenceForSemaphores) {
-		return new MVKSemaphoreMTLFence(this, pCreateInfo);
-	} else if (_useMTLEventForSemaphores) {
-		return new MVKSemaphoreMTLEvent(this, pCreateInfo);
+	const VkSemaphoreTypeCreateInfo* pTypeCreateInfo = nullptr;
+	for (auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_SEMAPHORE_TYPE_CREATE_INFO:
+				pTypeCreateInfo = (VkSemaphoreTypeCreateInfo*)next;
+				break;
+			default:
+				break;
+		}
+	}
+	if (pTypeCreateInfo && pTypeCreateInfo->semaphoreType == VK_SEMAPHORE_TYPE_TIMELINE) {
+		if (_pMetalFeatures->events) {
+			return new MVKTimelineSemaphoreMTLEvent(this, pCreateInfo, pTypeCreateInfo);
+		} else {
+			return new MVKTimelineSemaphoreEmulated(this, pCreateInfo, pTypeCreateInfo);
+		}
 	} else {
-		return new MVKSemaphoreEmulated(this, pCreateInfo);
+		if (_useMTLFenceForSemaphores) {
+			return new MVKSemaphoreMTLFence(this, pCreateInfo);
+		} else if (_useMTLEventForSemaphores) {
+			return new MVKSemaphoreMTLEvent(this, pCreateInfo);
+		} else {
+			return new MVKSemaphoreEmulated(this, pCreateInfo);
+		}
 	}
 }
 

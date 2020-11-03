@@ -226,7 +226,7 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
-		_waitSemaphores.push_back((MVKSemaphore*)pWaitSemaphores[i]);
+		_waitSemaphores.push_back(make_pair((MVKSemaphore*)pWaitSemaphores[i], (uint64_t)0));
 	}
 }
 
@@ -241,13 +241,13 @@ void MVKQueueCommandBufferSubmission::execute() {
 	_queue->_submissionCaptureScope->beginScope();
 
 	// If using encoded semaphore waiting, do so now.
-	for (auto* ws : _waitSemaphores) { ws->encodeWait(getActiveMTLCommandBuffer()); }
+	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(getActiveMTLCommandBuffer(), ws.second); }
 
 	// Submit each command buffer.
 	submitCommandBuffers();
 
 	// If using encoded semaphore signaling, do so now.
-	for (auto* ss : _signalSemaphores) { ss->encodeSignal(getActiveMTLCommandBuffer()); }
+	for (auto& ss : _signalSemaphores) { ss.first->encodeSignal(getActiveMTLCommandBuffer(), ss.second); }
 
 	// Commit the last MTLCommandBuffer.
 	// Nothing after this because callback might destroy this instance before this function ends.
@@ -278,7 +278,7 @@ void MVKQueueCommandBufferSubmission::setActiveMTLCommandBuffer(id<MTLCommandBuf
 void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCompletion) {
 
 	// If using inline semaphore waiting, do so now.
-	for (auto& ws : _waitSemaphores) { ws->encodeWait(nil); }
+	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, ws.second); }
 
 	MVKDevice* mkvDev = _queue->_device;
 	uint64_t startTime = mkvDev->getPerformanceTimestamp();
@@ -308,7 +308,7 @@ void MVKQueueCommandBufferSubmission::finish() {
 	_queue->_submissionCaptureScope->endScope();
 
 	// If using inline semaphore signaling, do so now.
-	for (auto& ss : _signalSemaphores) { ss->encodeSignal(nil); }
+	for (auto& ss : _signalSemaphores) { ss.first->encodeSignal(nil, ss.second); }
 
 	// If a fence exists, signal it.
 	if (_fence) { _fence->signal(); }
@@ -325,10 +325,29 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
 
     // pSubmit can be null if just tracking the fence alone
     if (pSubmit) {
+        VkTimelineSemaphoreSubmitInfo* pTimelineSubmit = nullptr;
+        for (const auto* next = (const VkBaseInStructure*)pSubmit->pNext; next; next = next->pNext) {
+            switch (next->sType) {
+                case VK_STRUCTURE_TYPE_TIMELINE_SEMAPHORE_SUBMIT_INFO:
+                    pTimelineSubmit = (VkTimelineSemaphoreSubmitInfo*)next;
+                    break;
+                default:
+                    break;
+            }
+        }
+        if (pTimelineSubmit) {
+            // Presentation doesn't support timeline semaphores, so handle wait values here.
+            uint32_t wsCnt = pTimelineSubmit->waitSemaphoreValueCount;
+            for (uint32_t i = 0; i < wsCnt; i++) {
+                _waitSemaphores[i].second = pTimelineSubmit->pWaitSemaphoreValues[i];
+            }
+        }
         uint32_t ssCnt = pSubmit->signalSemaphoreCount;
         _signalSemaphores.reserve(ssCnt);
         for (uint32_t i = 0; i < ssCnt; i++) {
-            _signalSemaphores.push_back((MVKSemaphore*)pSubmit->pSignalSemaphores[i]);
+			auto ss = make_pair((MVKSemaphore*)pSubmit->pSignalSemaphores[i], (uint64_t)0);
+            if (pTimelineSubmit) { ss.second = pTimelineSubmit->pSignalSemaphoreValues[i]; }
+            _signalSemaphores.push_back(ss);
         }
     }
 
@@ -348,12 +367,12 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	// If the semaphores are not encodable, wait on them inline after presenting.
 	// The semaphores know what to do.
 	id<MTLCommandBuffer> mtlCmdBuff = getMTLCommandBuffer();
-	for (auto& ws : _waitSemaphores) { ws->encodeWait(mtlCmdBuff); }
+	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(mtlCmdBuff, 0); }
 	for (int i = 0; i < _presentInfo.size(); i++ ) {
 		MVKPresentableSwapchainImage *img = _presentInfo[i].presentableImage;
 		img->presentCAMetalDrawable(mtlCmdBuff, _presentInfo[i]);
 	}
-	for (auto& ws : _waitSemaphores) { ws->encodeWait(nil); }
+	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, 0); }
 	[mtlCmdBuff commit];
 
 	// Let Xcode know the current frame is done, then start a new frame
