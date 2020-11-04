@@ -24,7 +24,7 @@
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
-// Dynamnic offsets passed in are in order of binding number, not binding index.
+// Dynamic offsets passed in are in order of binding number, not binding index.
 // Each binding offsets relative to the index for the descriptor set itself.
 // A null cmdEncoder can be passed to perform a validation pass
 uint32_t MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
