@@ -273,8 +273,7 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 	VkDescriptorType descType = getDescriptorType(pDescriptorCopy->srcBinding);
 	uint32_t descCnt = pDescriptorCopy->descriptorCount;
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-        pInlineUniformBlock->dataSize = pDescriptorCopy->descriptorCount;
-		// For inline buffers dstArrayElement is a byte offset
+		// For inline buffers srcArrayElement is a byte offset
 		getDescriptor(pDescriptorCopy->srcBinding)->read(this, descType, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
     } else {
         uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, pDescriptorCopy->srcArrayElement);
@@ -780,15 +779,20 @@ void mvkUpdateDescriptorSets(uint32_t writeCount,
 		VkDescriptorImageInfo imgInfos[descCnt];
 		VkDescriptorBufferInfo buffInfos[descCnt];
 		VkBufferView texelBuffInfos[descCnt];
-		VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlocks[descCnt];
+
+		// For inline block create a temp buffer of descCnt bytes to hold data during copy.
+		uint8_t dstBuffer[descCnt];
+		VkWriteDescriptorSetInlineUniformBlockEXT inlineUniformBlock;
+		inlineUniformBlock.pData = dstBuffer;
+		inlineUniformBlock.dataSize = descCnt;
 
 		MVKDescriptorSet* srcSet = (MVKDescriptorSet*)pDescCopy->srcSet;
-		srcSet->read(pDescCopy, imgInfos, buffInfos, texelBuffInfos, inlineUniformBlocks);
+		srcSet->read(pDescCopy, imgInfos, buffInfos, texelBuffInfos, &inlineUniformBlock);
 
 		MVKDescriptorSet* dstSet = (MVKDescriptorSet*)pDescCopy->dstSet;
 		VkDescriptorType descType = dstSet->getDescriptorType(pDescCopy->dstBinding);
 		size_t stride;
-		const void* pData = getWriteParameters(descType, imgInfos, buffInfos, texelBuffInfos, inlineUniformBlocks, stride);
+		const void* pData = getWriteParameters(descType, imgInfos, buffInfos, texelBuffInfos, &inlineUniformBlock, stride);
 		dstSet->write(pDescCopy, stride, pData);
 	}
 }
