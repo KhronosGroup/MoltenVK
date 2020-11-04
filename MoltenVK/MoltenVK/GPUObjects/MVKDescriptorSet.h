@@ -43,15 +43,12 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT; }
 
-	/**
-	 * Encodes this descriptor set layout and the specified descriptor set on the specified command encoder.
-	 * Returns the number of dynamic offsets consumed.
-	 */
-	uint32_t bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
-							   MVKDescriptorSet* descSet,
-							   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-							   MVKArrayRef<uint32_t> dynamicOffsets,
-							   uint32_t dynamicOffsetIndex);
+	/** Encodes this descriptor set layout and the specified descriptor set on the specified command encoder. */
+	void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
+						   MVKDescriptorSet* descSet,
+						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+						   MVKArrayRef<uint32_t> dynamicOffsets,
+						   uint32_t& dynamicOffsetIndex);
 
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,

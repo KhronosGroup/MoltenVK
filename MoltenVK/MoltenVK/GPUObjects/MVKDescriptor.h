@@ -88,25 +88,15 @@ public:
 	/** Returns the descriptor type of this layout. */
 	inline VkDescriptorType getDescriptorType() { return _info.descriptorType; }
 
-	/** If this descriptor is a dynamic buffer type, this returns the index within the dynamicOffsets array where the
-		first descriptor in this binding is located. It will start at 0 for this set, so this number should be incremented
-		by the number of dynamic offsets in previous sets given in vkCmdBindDescriptorSets */
-	inline uint32_t getDynamicOffsetIndex() { return _dynamicOffsetIndex; }
-
-	void setDynamicOffsetIndex(uint32_t i) { _dynamicOffsetIndex = i; }
-
 	/** Returns the immutable sampler at the index, or nullptr if immutable samplers are not used. */
 	MVKSampler* getImmutableSampler(uint32_t index);
 
-	/**
-	 * Encodes the descriptors in the descriptor set that are specified by this layout,
-	 * Returns the number of dynamic offsets consumed.
-	 */
-	uint32_t bind(MVKCommandEncoder* cmdEncoder,
-				  MVKDescriptorSet* descSet,
-				  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-				  MVKArrayRef<uint32_t> dynamicOffsets,
-				  uint32_t descSetDynamicOffsetIndex);
+	/** Encodes the descriptors in the descriptor set that are specified by this layout, */
+	void bind(MVKCommandEncoder* cmdEncoder,
+			  MVKDescriptorSet* descSet,
+			  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+			  MVKArrayRef<uint32_t> dynamicOffsets,
+			  uint32_t& dynamicOffsetIndex);
 
     /** Encodes this binding layout and the specified descriptor on the specified command encoder immediately. */
     void push(MVKCommandEncoder* cmdEncoder,
@@ -145,7 +135,6 @@ protected:
 	MVKSmallVector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	bool _applyToStage[kMVKShaderStageMax];
-	uint32_t _dynamicOffsetIndex;
 };
 
 
@@ -169,7 +158,7 @@ public:
 					  bool stages[],
 					  MVKShaderResourceBinding& mtlIndexes,
 					  MVKArrayRef<uint32_t> dynamicOffsets,
-					  uint32_t dynamicOffsetIndex) = 0;
+					  uint32_t& dynamicOffsetIndex) = 0;
 
 	/**
 	 * Updates the internal binding from the specified content. The format of the content depends
@@ -225,7 +214,7 @@ public:
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
 			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t dynamicOffsetIndex) override;
+			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
 			   VkDescriptorType descriptorType,
@@ -303,7 +292,7 @@ public:
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
 			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t dynamicOffsetIndex) override;
+			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
 			   VkDescriptorType descriptorType,
@@ -344,7 +333,7 @@ public:
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
 			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t dynamicOffsetIndex) override;
+			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
 			   VkDescriptorType descriptorType,
@@ -416,7 +405,7 @@ protected:
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
 			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t dynamicOffsetIndex);
+			  uint32_t& dynamicOffsetIndex);
 
 	void write(MVKDescriptorSet* mvkDescSet,
 			   VkDescriptorType descriptorType,
@@ -458,7 +447,7 @@ public:
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
 			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t dynamicOffsetIndex) override;
+			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
 			   VkDescriptorType descriptorType,
@@ -498,7 +487,7 @@ public:
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
 			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t dynamicOffsetIndex) override;
+			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
 			   VkDescriptorType descriptorType,
@@ -536,7 +525,7 @@ public:
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
 			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t dynamicOffsetIndex) override;
+			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
 			   VkDescriptorType descriptorType,

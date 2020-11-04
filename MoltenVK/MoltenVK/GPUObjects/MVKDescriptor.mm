@@ -92,11 +92,11 @@ MVKSampler* MVKDescriptorSetLayoutBinding::getImmutableSampler(uint32_t index) {
 }
 
 // A null cmdEncoder can be passed to perform a validation pass
-uint32_t MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
-											 MVKDescriptorSet* descSet,
-											 MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-											 MVKArrayRef<uint32_t> dynamicOffsets,
-											 uint32_t descSetDynamicOffsetIndex) {
+void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
+										 MVKDescriptorSet* descSet,
+										 MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+										 MVKArrayRef<uint32_t> dynamicOffsets,
+										 uint32_t& dynamicOffsetIndex) {
 
 	// Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
@@ -105,17 +105,8 @@ uint32_t MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
     uint32_t descCnt = getDescriptorCount(descSet);
     for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
 		MVKDescriptor* mvkDesc = descSet->getDescriptor(getBinding(), descIdx);
-        mvkDesc->bind(cmdEncoder, descType, descIdx, _applyToStage, mtlIdxs,
-					  dynamicOffsets, descSetDynamicOffsetIndex + _dynamicOffsetIndex + descIdx);
+        mvkDesc->bind(cmdEncoder, descType, descIdx, _applyToStage, mtlIdxs, dynamicOffsets, dynamicOffsetIndex);
     }
-
-	switch (descType) {
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			return descCnt;
-		default:
-			return 0;
-	}
 }
 
 template<typename T>
@@ -387,8 +378,7 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 	MVKBaseDeviceObject(device),
 	_layout(layout),
 	_info(*pBinding),
-	_flags(bindingFlags),
-	_dynamicOffsetIndex(0) {
+	_flags(bindingFlags) {
 
 	_info.pImmutableSamplers = nullptr;     // Remove dangling pointer
 
@@ -421,8 +411,7 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptor
 	_info(binding._info),
 	_flags(binding._flags),
 	_immutableSamplers(binding._immutableSamplers),
-	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets),
-	_dynamicOffsetIndex(0) {
+	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets) {
 
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
         _applyToStage[i] = binding._applyToStage[i];
@@ -526,7 +515,7 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 							   bool stages[],
 							   MVKShaderResourceBinding& mtlIndexes,
 							   MVKArrayRef<uint32_t> dynamicOffsets,
-							   uint32_t dynamicOffsetIndex) {
+							   uint32_t& dynamicOffsetIndex) {
 	MVKMTLBufferBinding bb;
 	NSUInteger bufferDynamicOffset = 0;
 
@@ -535,7 +524,7 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 			if (dynamicOffsets.size > dynamicOffsetIndex) {
-				bufferDynamicOffset = dynamicOffsets[dynamicOffsetIndex];
+				bufferDynamicOffset = dynamicOffsets[dynamicOffsetIndex++];
 			}
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER: {
@@ -635,7 +624,7 @@ void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 										   bool stages[],
 										   MVKShaderResourceBinding& mtlIndexes,
 										   MVKArrayRef<uint32_t> dynamicOffsets,
-										   uint32_t dynamicOffsetIndex) {
+										   uint32_t& dynamicOffsetIndex) {
 	MVKMTLBufferBinding bb;
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT: {
@@ -722,7 +711,7 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 							  bool stages[],
 							  MVKShaderResourceBinding& mtlIndexes,
 							  MVKArrayRef<uint32_t> dynamicOffsets,
-							  uint32_t dynamicOffsetIndex) {
+							  uint32_t& dynamicOffsetIndex) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
@@ -841,7 +830,7 @@ void MVKSamplerDescriptorMixin::bind(MVKCommandEncoder* cmdEncoder,
 									 bool stages[],
 									 MVKShaderResourceBinding& mtlIndexes,
 									 MVKArrayRef<uint32_t> dynamicOffsets,
-									 uint32_t dynamicOffsetIndex) {
+									 uint32_t& dynamicOffsetIndex) {
 	MVKMTLSamplerStateBinding sb;
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -959,7 +948,7 @@ void MVKSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 								bool stages[],
 								MVKShaderResourceBinding& mtlIndexes,
 								MVKArrayRef<uint32_t> dynamicOffsets,
-								uint32_t dynamicOffsetIndex) {
+								uint32_t& dynamicOffsetIndex) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLER: {
 			MVKSamplerDescriptorMixin::bind(cmdEncoder, descriptorType, descriptorIndex, stages,
@@ -1028,7 +1017,7 @@ void MVKCombinedImageSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 											 bool stages[],
 											 MVKShaderResourceBinding& mtlIndexes,
 											 MVKArrayRef<uint32_t> dynamicOffsets,
-											 uint32_t dynamicOffsetIndex) {
+											 uint32_t& dynamicOffsetIndex) {
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
 			MVKImageDescriptor::bind(cmdEncoder, descriptorType, descriptorIndex, stages,
@@ -1102,7 +1091,7 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 									bool stages[],
 									MVKShaderResourceBinding& mtlIndexes,
 									MVKArrayRef<uint32_t> dynamicOffsets,
-									uint32_t dynamicOffsetIndex) {
+									uint32_t& dynamicOffsetIndex) {
 	MVKMTLTextureBinding tb;
 	MVKMTLBufferBinding bb;
 	switch (descriptorType) {

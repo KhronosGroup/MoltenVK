@@ -48,9 +48,8 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 		MVKDescriptorSet* descSet = descriptorSets[dsIdx];
 		uint32_t dslIdx = firstSet + dsIdx;
 		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[dslIdx];
-		dynamicOffsetIndex += dsl->bindDescriptorSet(cmdEncoder, descSet,
-													 _dslMTLResourceIndexOffsets[dslIdx],
-													 dynamicOffsets, dynamicOffsetIndex);
+		dsl->bindDescriptorSet(cmdEncoder, descSet, _dslMTLResourceIndexOffsets[dslIdx],
+							   dynamicOffsets, dynamicOffsetIndex);
 		setConfigurationResult(dsl->getConfigurationResult());
 	}
 }
