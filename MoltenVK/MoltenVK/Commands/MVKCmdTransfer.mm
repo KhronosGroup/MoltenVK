@@ -278,7 +278,7 @@ VkResult MVKCmdBlitImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
 	_filter = filter;
 
-	bool isDestUnwritableLinear = MVK_MACOS && _dstImage->getIsLinear();
+	bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getDevice()->_pMetalFeatures->renderLinearTextures && _dstImage->getIsLinear();
 
 	_vkImageBlits.clear();		// Clear for reuse
 	for (uint32_t rIdx = 0; rIdx < regionCount; rIdx++) {
@@ -1346,7 +1346,8 @@ VkResult MVKCmdClearImage<N>::setContent(MVKCommandBuffer* cmdBuff,
 
         // Validate
         MVKMTLFmtCaps mtlFmtCaps = cmdBuff->getPixelFormats()->getCapabilities(_image->getMTLPixelFormat(planeIndex));
-		uint32_t reqCap = isDS ? kMVKMTLFmtCapsDSAtt : (_image->getIsLinear() ? kMVKMTLFmtCapsWrite : kMVKMTLFmtCapsColorAtt);
+		bool isDestUnwritableLinear = MVK_MACOS && !cmdBuff->getDevice()->_pMetalFeatures->renderLinearTextures && _dstImage->getIsLinear();
+		uint32_t reqCap = isDS ? kMVKMTLFmtCapsDSAtt : (isDestUnwritableLinear ? kMVKMTLFmtCapsWrite : kMVKMTLFmtCapsColorAtt);
         if (!mvkAreAllFlagsEnabled(mtlFmtCaps, reqCap)) {
             return cmdBuff->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdClear%sImage(): Format %s cannot be cleared on this device.", (isDS ? "DepthStencil" : "Color"), cmdBuff->getPixelFormats()->getName(_image->getVkFormat()));
         }
@@ -1378,7 +1379,7 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
         if ( !imgMTLTex ) { continue; }
 
 #if MVK_MACOS
-        if ( _image->getIsLinear() ) {
+        if ( _image->getIsLinear() && !cmdEncoder->getDevice()->_pMetalFeatures->renderLinearTextures ) {
             // These images cannot be rendered. Instead, use a compute shader.
             // Luckily for us, linear images only have one mip and one array layer under Metal.
             assert( !isDS );
