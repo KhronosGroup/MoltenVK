@@ -33,14 +33,18 @@ using namespace std;
 
 id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPipelineState(MVKRPSKeyBlitImg& blitKey,
 																							MVKVulkanAPIDeviceObject* owner) {
-	id<MTLFunction> vtxFunc = newFunctionNamed("vtxCmdBlitImage");				// temp retain
-	id<MTLFunction> fragFunc = newBlitFragFunction(blitKey);					// temp retain
-    MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// temp retain
+	bool isLayeredBlit = blitKey.dstSampleCount > 1 ? _device->_pMetalFeatures->multisampleLayeredRendering : _device->_pMetalFeatures->layeredRendering;
+	id<MTLFunction> vtxFunc = newFunctionNamed(isLayeredBlit ? "vtxCmdBlitImageLayered" : "vtxCmdBlitImage");	// temp retain
+	id<MTLFunction> fragFunc = newBlitFragFunction(blitKey);													// temp retain
+    MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];									// temp retain
     plDesc.label = @"CmdBlitImage";
 
 	plDesc.vertexFunction = vtxFunc;
 	plDesc.fragmentFunction = fragFunc;
 	plDesc.sampleCount = blitKey.dstSampleCount;
+	if (isLayeredBlit) {
+		plDesc.inputPrimitiveTopology = MTLPrimitiveTopologyClassTriangle;
+	}
 
 	if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT))) {
 		plDesc.depthAttachmentPixelFormat = blitKey.getDstMTLPixelFormat();
@@ -162,6 +166,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 
 id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg& blitKey) {
 	@autoreleasepool {
+		bool isLayeredBlit = blitKey.dstSampleCount > 1 ? _device->_pMetalFeatures->multisampleLayeredRendering : _device->_pMetalFeatures->layeredRendering;
 		NSString* typeStr = getMTLFormatTypeString(blitKey.getSrcMTLPixelFormat());
 
 		bool isArrayType = blitKey.isSrcArrayType();
@@ -198,7 +203,7 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 				coordArg = @"";
 				break;
 		}
-		NSString* sliceArg = isArrayType ? @", subRez.slice" : @"";
+		NSString* sliceArg = isArrayType ? (isLayeredBlit ? @", subRez.slice + varyings.v_layer" : @", subRez.slice") : @"";
 		NSString* srcFilter = isLinearFilter ? @"linear" : @"nearest";
 
 		NSMutableString* msl = [NSMutableString stringWithCapacity: (2 * KIBI) ];
@@ -208,6 +213,9 @@ id<MTLFunction> MVKCommandResourceFactory::newBlitFragFunction(MVKRPSKeyBlitImg&
 		[msl appendLineMVK: @"typedef struct {"];
 		[msl appendLineMVK: @"    float4 v_position [[position]];"];
 		[msl appendLineMVK: @"    float3 v_texCoord;"];
+		if (isLayeredBlit && isArrayType) {
+			[msl appendLineMVK: @"    uint v_layer [[render_target_array_index]];"];
+		}
 		[msl appendLineMVK: @"} VaryingsPosTex;"];
 		[msl appendLineMVK];
 		[msl appendLineMVK: @"typedef struct {"];

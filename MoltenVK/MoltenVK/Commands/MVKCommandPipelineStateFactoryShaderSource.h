@@ -37,6 +37,12 @@ typedef struct {                                                                
     float3 v_texCoord;                                                                                          \n\
 } VaryingsPosTex;                                                                                               \n\
                                                                                                                 \n\
+typedef struct {                                                                                                \n\
+    float4 v_position [[position]];                                                                             \n\
+    float3 v_texCoord;                                                                                          \n\
+    uint v_layer [[render_target_array_index]];                                                                 \n\
+} VaryingsPosTexLayer;                                                                                          \n\
+                                                                                                                \n\
 typedef size_t VkDeviceSize;                                                                                    \n\
                                                                                                                 \n\
 typedef enum : uint32_t {                                                                                       \n\
@@ -76,6 +82,16 @@ vertex VaryingsPosTex vtxCmdBlitImage(AttributesPosTex attributes [[stage_in]]) 
     VaryingsPosTex varyings;                                                                                    \n\
     varyings.v_position = float4(attributes.a_position, 0.0, 1.0);                                              \n\
     varyings.v_texCoord = attributes.a_texCoord;                                                                \n\
+    return varyings;                                                                                            \n\
+}                                                                                                               \n\
+																			                			        \n\
+vertex VaryingsPosTexLayer vtxCmdBlitImageLayered(AttributesPosTex attributes [[stage_in]],                     \n\
+                                                  uint instanceID [[instance_id]],                              \n\
+                                                  constant float &zIncr [[buffer(0)]]) {                        \n\
+    VaryingsPosTexLayer varyings;                                                                               \n\
+    varyings.v_position = float4(attributes.a_position, 0.0, 1.0);                                              \n\
+    varyings.v_texCoord = float3(attributes.a_texCoord.xy, attributes.a_texCoord.z + (instanceID + 0.5) * zIncr);\n\
+    varyings.v_layer = instanceID;                                                                              \n\
     return varyings;                                                                                            \n\
 }                                                                                                               \n\
 																			                			        \n\
