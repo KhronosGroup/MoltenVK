@@ -326,7 +326,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_AMD_negative_viewport_height`
 - `VK_AMD_shader_image_load_store_lod` *(iOS and tvOS)*
 - `VK_AMD_shader_trinary_minmax` *(requires Metal 2.1)*
-- `VK_IMG_format_pvrtc` *(iOS and tvOS)*
+- `VK_IMG_format_pvrtc` *(requires Apple GPU)*
 - `VK_INTEL_shader_integer_functions2`
 - `VK_NV_glsl_shader`
 
