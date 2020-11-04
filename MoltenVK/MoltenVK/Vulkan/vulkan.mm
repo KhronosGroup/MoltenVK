@@ -1172,9 +1172,7 @@ MVK_PUBLIC_SYMBOL VkResult vkAllocateDescriptorSets(
 
 	MVKTraceVulkanCallStart();
 	MVKDescriptorPool* mvkDP = (MVKDescriptorPool*)pAllocateInfo->descriptorPool;
-	VkResult rslt = mvkDP->allocateDescriptorSets(pAllocateInfo->descriptorSetCount,
-												  pAllocateInfo->pSetLayouts,
-												  pDescriptorSets);
+	VkResult rslt = mvkDP->allocateDescriptorSets(pAllocateInfo, pDescriptorSets);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }

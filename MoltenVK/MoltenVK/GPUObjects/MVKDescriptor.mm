@@ -74,26 +74,48 @@ MVKShaderResourceBinding& MVKShaderResourceBinding::operator+= (const MVKShaderR
 
 MVKVulkanAPIObject* MVKDescriptorSetLayoutBinding::getVulkanAPIObject() { return _layout; };
 
+uint32_t MVKDescriptorSetLayoutBinding::getDescriptorCount(MVKDescriptorSet* descSet) {
+
+	if (_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+		return 1;
+	}
+
+	if (descSet && hasVariableDescriptorCount()) {
+		return descSet->_variableDescriptorCount;
+	}
+
+	return _info.descriptorCount;
+}
+
 MVKSampler* MVKDescriptorSetLayoutBinding::getImmutableSampler(uint32_t index) {
 	return (index < _immutableSamplers.size()) ? _immutableSamplers[index] : nullptr;
 }
 
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
-										 MVKDescriptorSet* descSet,
-										 MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-										 MVKArrayRef<uint32_t> dynamicOffsets,
-										 uint32_t baseDynamicOffsetIndex) {
+uint32_t MVKDescriptorSetLayoutBinding::bind(MVKCommandEncoder* cmdEncoder,
+											 MVKDescriptorSet* descSet,
+											 MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+											 MVKArrayRef<uint32_t> dynamicOffsets,
+											 uint32_t descSetDynamicOffsetIndex) {
 
 	// Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
 
-    uint32_t descCnt = getDescriptorCount();
+	VkDescriptorType descType = getDescriptorType();
+    uint32_t descCnt = getDescriptorCount(descSet);
     for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
 		MVKDescriptor* mvkDesc = descSet->getDescriptor(getBinding(), descIdx);
-        mvkDesc->bind(cmdEncoder, _info.descriptorType, descIdx, _applyToStage, mtlIdxs,
-					  dynamicOffsets, baseDynamicOffsetIndex + _dynamicOffsetIndex + descIdx);
+        mvkDesc->bind(cmdEncoder, descType, descIdx, _applyToStage, mtlIdxs,
+					  dynamicOffsets, descSetDynamicOffsetIndex + _dynamicOffsetIndex + descIdx);
     }
+
+	switch (descType) {
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			return descCnt;
+		default:
+			return 0;
+	}
 }
 
 template<typename T>
@@ -352,6 +374,7 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
                                               models[i],
                                               dslIndex,
                                               _info.binding,
+											  getDescriptorCount(nullptr),
 											  mvkSamp);
         }
     }
@@ -359,8 +382,15 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 															 MVKDescriptorSetLayout* layout,
-                                                             const VkDescriptorSetLayoutBinding* pBinding) : MVKBaseDeviceObject(device), _layout(layout),
-																 _dynamicOffsetIndex(0) {
+															 const VkDescriptorSetLayoutBinding* pBinding,
+															 VkDescriptorBindingFlagsEXT bindingFlags) :
+	MVKBaseDeviceObject(device),
+	_layout(layout),
+	_info(*pBinding),
+	_flags(bindingFlags),
+	_dynamicOffsetIndex(0) {
+
+	_info.pImmutableSamplers = nullptr;     // Remove dangling pointer
 
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
         // Determine if this binding is used by this shader stage
@@ -383,13 +413,14 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
             }
         }
 
-    _info = *pBinding;
-    _info.pImmutableSamplers = nullptr;     // Remove dangling pointer
 }
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding) :
-	MVKBaseDeviceObject(binding._device), _layout(binding._layout),
-	_info(binding._info), _immutableSamplers(binding._immutableSamplers),
+	MVKBaseDeviceObject(binding._device),
+	_layout(binding._layout),
+	_info(binding._info),
+	_flags(binding._flags),
+	_immutableSamplers(binding._immutableSamplers),
 	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets),
 	_dynamicOffsetIndex(0) {
 

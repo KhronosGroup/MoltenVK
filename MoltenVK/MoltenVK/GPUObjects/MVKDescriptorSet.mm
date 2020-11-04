@@ -24,18 +24,23 @@
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
+// Dynamic offsets passed in are in order of binding number, not binding index.
+// Each binding offsets relative to the index for the descriptor set itself.
 // A null cmdEncoder can be passed to perform a validation pass
-void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
-											   MVKDescriptorSet* descSet,
-											   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-											   MVKArrayRef<uint32_t> dynamicOffsets,
-											   uint32_t baseDynamicOffsetIndex) {
-	if (_isPushDescriptorLayout) return;
-
+uint32_t MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
+												   MVKDescriptorSet* descSet,
+												   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+												   MVKArrayRef<uint32_t> dynamicOffsets,
+												   uint32_t dynamicOffsetIndex) {
 	clearConfigurationResult();
-	for (auto& dslBind : _bindings) {
-		dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, baseDynamicOffsetIndex);
+	uint32_t dynOffsetsConsumed = 0;
+	if ( !_isPushDescriptorLayout ) {
+		for (auto& dslBind : _bindings) {
+			dynOffsetsConsumed += dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets,
+											   dynamicOffsets, dynamicOffsetIndex);
+		}
 	}
+	return dynOffsetsConsumed;
 }
 
 static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorImageInfo* pImageInfo,
@@ -170,19 +175,19 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConve
 
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+	const auto* pBindingFlags = getBindingFlags(pCreateInfo);
     _isPushDescriptorLayout = (pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) != 0;
-
 	_descriptorCount = 0;
     _bindings.reserve(pCreateInfo->bindingCount);
 	MVKSmallVector<MVKDescriptorSetLayoutBinding*, 32> dynamicBindings;
     for (uint32_t i = 0; i < pCreateInfo->bindingCount; i++) {
 		auto* pBind = &pCreateInfo->pBindings[i];
-        _bindings.emplace_back(_device, this, pBind);
+        _bindings.emplace_back(_device, this, pBind, (pBindingFlags ? pBindingFlags[i] : 0));
 		_bindingToIndex[pBind->binding] = i;
 		_bindingToDescriptorIndex[pBind->binding] = _descriptorCount;
 
 		MVKDescriptorSetLayoutBinding* mvkBind = &_bindings.back();
-		_descriptorCount += mvkBind->getDescriptorCount();
+		_descriptorCount += mvkBind->getDescriptorCount(nullptr);
 		if (pBind->descriptorType == VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC ||
 			pBind->descriptorType == VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC) {
 			dynamicBindings.push_back(mvkBind);
@@ -196,11 +201,29 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 				[](MVKDescriptorSetLayoutBinding* mvkBind1, MVKDescriptorSetLayoutBinding* mvkBind2) {
 					return mvkBind1->getBinding() < mvkBind2->getBinding(); });
 
-	_dynamicDescriptorCount = 0;
+	// Only the last dynamic binding (highest binding number) can have a variable descriptor count.
+	// The other bindings will each have an accurate descriptor count while setting the dynamic offsets.
+	uint32_t dynDescCnt = 0;
 	for (auto mvkBind : dynamicBindings) {
-		mvkBind->setDynamicOffsetIndex(_dynamicDescriptorCount);
-		_dynamicDescriptorCount += mvkBind->getDescriptorCount();
+		mvkBind->setDynamicOffsetIndex(dynDescCnt);
+		dynDescCnt += mvkBind->getDescriptorCount(nullptr);
 	}
+}
+
+// Find and return an array of binding flags from the pNext chain of pCreateInfo,
+// or return nullptr if the chain does not include binding flags.
+const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo) {
+	for (const auto* next = (VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_BINDING_FLAGS_CREATE_INFO_EXT: {
+				auto* pDescSetLayoutBindingFlags = (VkDescriptorSetLayoutBindingFlagsCreateInfoEXT*)next;
+				return pDescSetLayoutBindingFlags->bindingCount ? pDescSetLayoutBindingFlags->pBindingFlags : nullptr;
+			}
+			default:
+				break;
+		}
+	}
+	return nullptr;
 }
 
 
@@ -261,31 +284,27 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
     }
 }
 
-// If the descriptor pool fails to allocate a descriptor, record a configuration error
-MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout, MVKDescriptorPool* pool) :
-	MVKVulkanAPIDeviceObject(pool->_device), _layout(layout), _pool(pool) {
+MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout,
+								   uint32_t variableDescriptorCount,
+								   MVKDescriptorPool* pool) :
+	MVKVulkanAPIDeviceObject(pool->_device),
+	_layout(layout),
+	_variableDescriptorCount(variableDescriptorCount),
+	_pool(pool) {
 
 	_descriptors.reserve(layout->getDescriptorCount());
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		MVKDescriptorSetLayoutBinding* mvkDSLBind = &layout->_bindings[bindIdx];
-        MVKDescriptor* mvkDesc = nullptr;
-        if (mvkDSLBind->getDescriptorType() == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-            setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
-            if ( !wasConfigurationSuccessful() ) { break; }
+		uint32_t descCnt = mvkDSLBind->getDescriptorCount(this);
+		for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
+			MVKDescriptor* mvkDesc = nullptr;
+			setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
+			if ( !wasConfigurationSuccessful() ) { break; }
 
-            mvkDesc->setLayout(mvkDSLBind, 0);
-            _descriptors.push_back(mvkDesc);
-        } else {
-            uint32_t descCnt = mvkDSLBind->getDescriptorCount();
-            for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-                setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
-                if ( !wasConfigurationSuccessful() ) { break; }
-
-                mvkDesc->setLayout(mvkDSLBind, descIdx);
-                _descriptors.push_back(mvkDesc);
-            }
-        }
+			mvkDesc->setLayout(mvkDSLBind, descIdx);
+			_descriptors.push_back(mvkDesc);
+		}
 		if ( !wasConfigurationSuccessful() ) { break; }
 	}
 }
@@ -532,10 +551,9 @@ MVKPreallocatedDescriptors::MVKPreallocatedDescriptors(const VkDescriptorPoolCre
 #pragma mark -
 #pragma mark MVKDescriptorPool
 
-VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
-												   const VkDescriptorSetLayout* pSetLayouts,
+VkResult MVKDescriptorPool::allocateDescriptorSets(const VkDescriptorSetAllocateInfo* pAllocateInfo,
 												   VkDescriptorSet* pDescriptorSets) {
-	if (_allocatedSets.size() + count > _maxSets) {
+	if (_allocatedSets.size() + pAllocateInfo->descriptorSetCount > _maxSets) {
 		if (_device->_enabledExtensions.vk_KHR_maintenance1.enabled ||
 			_device->getInstance()->getAPIVersion() >= VK_API_VERSION_1_1) {
 			return VK_ERROR_OUT_OF_POOL_MEMORY;		// Failure is an acceptable test...don't log as error.
@@ -545,14 +563,31 @@ VkResult MVKDescriptorPool::allocateDescriptorSets(uint32_t count,
 	}
 
 	VkResult rslt = VK_SUCCESS;
-	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
-		MVKDescriptorSetLayout* mvkDSL = (MVKDescriptorSetLayout*)pSetLayouts[dsIdx];
+	const auto* pVarDescCounts = getVariableDecriptorCounts(pAllocateInfo);
+	for (uint32_t dsIdx = 0; dsIdx < pAllocateInfo->descriptorSetCount; dsIdx++) {
+		MVKDescriptorSetLayout* mvkDSL = (MVKDescriptorSetLayout*)pAllocateInfo->pSetLayouts[dsIdx];
 		if ( !mvkDSL->isPushDescriptorLayout() ) {
-			rslt = allocateDescriptorSet(mvkDSL, &pDescriptorSets[dsIdx]);
+			rslt = allocateDescriptorSet(mvkDSL, (pVarDescCounts ? pVarDescCounts[dsIdx] : 0), &pDescriptorSets[dsIdx]);
 			if (rslt) { break; }
 		}
 	}
 	return rslt;
+}
+
+// Find and return an array of variable descriptor counts from the pNext chain of pCreateInfo,
+// or return nullptr if the chain does not include variable descriptor counts.
+const uint32_t* MVKDescriptorPool::getVariableDecriptorCounts(const VkDescriptorSetAllocateInfo* pAllocateInfo) {
+	for (const auto* next = (VkBaseInStructure*)pAllocateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_DESCRIPTOR_SET_VARIABLE_DESCRIPTOR_COUNT_ALLOCATE_INFO_EXT: {
+				auto* pVarDescSetVarCounts = (VkDescriptorSetVariableDescriptorCountAllocateInfoEXT*)next;
+				return pVarDescSetVarCounts->descriptorSetCount ? pVarDescSetVarCounts->pDescriptorCounts : nullptr;
+			}
+			default:
+				break;
+		}
+	}
+	return nullptr;
 }
 
 // Ensure descriptor set was actually allocated, then return to pool
@@ -575,8 +610,9 @@ VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
 }
 
 VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL,
+												  uint32_t variableDescriptorCount,
 												  VkDescriptorSet* pVKDS) {
-	MVKDescriptorSet* mvkDS = new MVKDescriptorSet(mvkDSL, this);
+	MVKDescriptorSet* mvkDS = new MVKDescriptorSet(mvkDSL, variableDescriptorCount, this);
 	VkResult rslt = mvkDS->getConfigurationResult();
 
 	if (mvkDS->wasConfigurationSuccessful()) {
@@ -781,6 +817,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 									   spv::ExecutionModel stage,
 									   uint32_t descriptorSetIndex,
 									   uint32_t bindingIndex,
+									   uint32_t count,
 									   MVKSampler* immutableSampler) {
 	mvk::MSLResourceBinding rb;
 
@@ -788,6 +825,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 	rbb.stage = stage;
 	rbb.desc_set = descriptorSetIndex;
 	rbb.binding = bindingIndex;
+	rbb.count = count;
 	rbb.msl_buffer = ssRB.bufferIndex;
 	rbb.msl_texture = ssRB.textureIndex;
 	rbb.msl_sampler = ssRB.samplerIndex;

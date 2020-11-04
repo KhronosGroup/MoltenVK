@@ -19,6 +19,7 @@ MoltenVK 1.1.1
 Released TBD
 
 - Add support for extensions:
+	- `VK_EXT_descriptor_indexing` (initial release limited to Metal Tier 1: 96/128 textures, 16 samplers)
 	- `VK_EXT_private_data`
 	- `VK_IMG_format_pvrtc` (macOS)
 - Use `VK_KHR_image_format_list` to disable `MTLTextureUsagePixelFormatView` 
@@ -27,7 +28,10 @@ Released TBD
 - Move *Metal* drawable presentation from `MTLCommandBuffer` to `MTLDrawable`
   to improve performance and reduce blocking.
 - Allow binding descriptor set using layout different than it was created with.
+- Report `VkPhysicalDeviceLimits::maxPerStageDescriptorStorageImages` as Metal limit of `8`.
+- Increase per-stage texture count to `96` for A11 SoC's and above.
 - Clarify documentation on mapping limitations for host-coherent image memory on *macOS*.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `29`.
 
 
 

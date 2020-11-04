@@ -55,7 +55,7 @@ typedef unsigned long MTLLanguageVersion;
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            28
+#define VK_MVK_MOLTENVK_SPEC_VERSION            29
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -271,11 +271,16 @@ typedef struct {
 	 * command buffer. Depending on the number of command buffers that you use, you may also need to
 	 * change the value of the maxActiveMetalCommandBuffersPerQueue setting.
 	 *
-	 * In addition, if this feature is enabled, be aware that if you have recorded commands to a
-	 * Vulkan command buffer, and then choose to reset that command buffer instead of submitting it,
-	 * the corresponding prefilled Metal command buffer will still be submitted. This is because Metal
-	 * command buffers do not support the concept of being reset after being filled. Depending on when
-	 * and how often you do this, it may cause unexpected visual artifacts and unnecessary GPU load.
+	 * If this feature is enabled, be aware that if you have recorded commands to a Vulkan command buffer,
+	 * and then choose to reset that command buffer instead of submitting it, the corresponding prefilled
+	 * Metal command buffer will still be submitted. This is because Metal command buffers do not support
+	 * the concept of being reset after being filled. Depending on when and how often you do this,
+	 * it may cause unexpected visual artifacts and unnecessary GPU load.
+	 *
+	 * This feature is incompatible with updating descriptors after binding. If any of the
+	 * *UpdateAfterBind feature flags of VkPhysicalDeviceDescriptorIndexingFeaturesEXT or
+	 * VkPhysicalDeviceInlineUniformBlockFeaturesEXT have been enabled, the value of this
+	 * setting will be ignored and treated as if it is false.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -621,6 +626,7 @@ typedef struct {
 	VkBool32 depthResolve;						/**< If true, resolving depth textures with filters other than Sample0 is supported. */
 	VkBool32 stencilResolve;					/**< If true, resolving stencil textures with filters other than Sample0 is supported. */
 	uint32_t maxPerStageDynamicMTLBufferCount;	/**< The maximum number of inline buffers that can be set on a command buffer. */
+	uint32_t maxPerStageStorageTextureCount;    /**< The total number of per-stage Metal textures with read-write access available for writing to from a shader. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

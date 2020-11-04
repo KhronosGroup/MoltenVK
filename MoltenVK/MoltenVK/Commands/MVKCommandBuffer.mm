@@ -161,7 +161,7 @@ void MVKCommandBuffer::prefill() {
 }
 
 bool MVKCommandBuffer::canPrefill() {
-	bool wantPrefill = _device->_pMVKConfig->prefillMetalCommandBuffers;
+	bool wantPrefill = _device->shouldPrefillMTLCommandBuffers();
 	return wantPrefill && !(_isSecondary || _supportsConcurrentExecution);
 }
 

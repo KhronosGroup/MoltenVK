@@ -667,6 +667,14 @@ public:
     /** Returns the memory type index corresponding to the specified Metal memory storage mode. */
     uint32_t getVulkanMemoryTypeIndex(MTLStorageMode mtlStorageMode);
 
+	/**
+	 * Returns whether MTLCommandBuffers can be prefilled.
+	 *
+	 * This depends both on whether the app config has requested prefilling, and whether doing so will
+	 * interfere with other requested features, such as updating resource descriptors after bindings.
+	 */
+	bool shouldPrefillMTLCommandBuffers();
+
 
 #pragma mark Properties directly accessible
 
@@ -680,6 +688,8 @@ public:
 	const VkPhysicalDeviceFloat16Int8FeaturesKHR _enabledF16I8Features;
 	const VkPhysicalDeviceUniformBufferStandardLayoutFeaturesKHR _enabledUBOLayoutFeatures;
 	const VkPhysicalDeviceVariablePointerFeatures _enabledVarPtrFeatures;
+	const VkPhysicalDeviceDescriptorIndexingFeaturesEXT _enabledDescriptorIndexingFeatures;
+	const VkPhysicalDeviceInlineUniformBlockFeaturesEXT _enabledInlineUniformBlockFeatures;
 	const VkPhysicalDeviceFragmentShaderInterlockFeaturesEXT _enabledInterlockFeatures;
 	const VkPhysicalDeviceHostQueryResetFeaturesEXT _enabledHostQryResetFeatures;
 	const VkPhysicalDeviceSamplerYcbcrConversionFeatures _enabledSamplerYcbcrConversionFeatures;
@@ -741,6 +751,9 @@ protected:
     const char* getActivityPerformanceDescription(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats);
 	void logActivityPerformance(MVKPerformanceTracker& activity, MVKPerformanceStatistics& perfStats, bool isInline = false);
 	void updateActivityPerformance(MVKPerformanceTracker& activity, uint64_t startTime, uint64_t endTime);
+	void getDescriptorVariableDescriptorCountLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
+														   VkDescriptorSetLayoutSupport* pSupport,
+														   VkDescriptorSetVariableDescriptorCountLayoutSupportEXT* pVarDescSetCountSupport);
 
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;

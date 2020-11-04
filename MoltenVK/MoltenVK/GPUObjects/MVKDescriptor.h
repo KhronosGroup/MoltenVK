@@ -70,8 +70,20 @@ public:
 	/** Returns the binding number of this layout. */
 	inline uint32_t getBinding() { return _info.binding; }
 
-	/** Returns the number of descriptors in this layout. */
-    inline uint32_t getDescriptorCount() { return (_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) ? 1 : _info.descriptorCount; }
+	/** Returns whether this binding has a variable descriptor count. */
+	inline bool hasVariableDescriptorCount() {
+		return mvkIsAnyFlagEnabled(_flags, VK_DESCRIPTOR_BINDING_VARIABLE_DESCRIPTOR_COUNT_BIT_EXT);
+	}
+
+	/**
+	 * Returns the number of descriptors in this layout.
+	 *
+	 * If this is an inline block data descriptor, always returns 1. If this descriptor
+	 * has a variable descriptor count, and descSet is not null, the variable descriptor
+	 * count provided to that descriptor set is returned. Otherwise returns the value
+	 * defined in VkDescriptorSetLayoutBinding::descriptorCount.
+	 */
+	uint32_t getDescriptorCount(MVKDescriptorSet* descSet);
 
 	/** Returns the descriptor type of this layout. */
 	inline VkDescriptorType getDescriptorType() { return _info.descriptorType; }
@@ -86,12 +98,15 @@ public:
 	/** Returns the immutable sampler at the index, or nullptr if immutable samplers are not used. */
 	MVKSampler* getImmutableSampler(uint32_t index);
 
-	/** Encodes the descriptors in the descriptor set that are specified by this layout, */
-	void bind(MVKCommandEncoder* cmdEncoder,
-			  MVKDescriptorSet* descSet,
-			  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-			  MVKArrayRef<uint32_t> dynamicOffsets,
-			  uint32_t baseDynamicOffsetIndex);
+	/**
+	 * Encodes the descriptors in the descriptor set that are specified by this layout,
+	 * Returns the number of dynamic offsets consumed.
+	 */
+	uint32_t bind(MVKCommandEncoder* cmdEncoder,
+				  MVKDescriptorSet* descSet,
+				  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+				  MVKArrayRef<uint32_t> dynamicOffsets,
+				  uint32_t descSetDynamicOffsetIndex);
 
     /** Encodes this binding layout and the specified descriptor on the specified command encoder immediately. */
     void push(MVKCommandEncoder* cmdEncoder,
@@ -110,7 +125,8 @@ public:
 
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
-								  const VkDescriptorSetLayoutBinding* pBinding);
+								  const VkDescriptorSetLayoutBinding* pBinding,
+								  VkDescriptorBindingFlagsEXT bindingFlags);
 
 	MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding);
 
@@ -125,6 +141,7 @@ protected:
 
 	MVKDescriptorSetLayout* _layout;
 	VkDescriptorSetLayoutBinding _info;
+	VkDescriptorBindingFlagsEXT _flags;
 	MVKSmallVector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	bool _applyToStage[kMVKShaderStageMax];

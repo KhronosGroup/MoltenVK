@@ -43,15 +43,15 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_LAYOUT_EXT; }
 
-	inline uint32_t getDynamicDescriptorCount() { return _dynamicDescriptorCount; }
-
-	/** Encodes this descriptor set layout and the specified descriptor set on the specified command encoder. */
-    void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
-                           MVKDescriptorSet* descSet,
-                           MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                           MVKArrayRef<uint32_t> dynamicOffsets,
-                           uint32_t baseDynamicOffsetIndex);
-
+	/**
+	 * Encodes this descriptor set layout and the specified descriptor set on the specified command encoder.
+	 * Returns the number of dynamic offsets consumed.
+	 */
+	uint32_t bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
+							   MVKDescriptorSet* descSet,
+							   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+							   MVKArrayRef<uint32_t> dynamicOffsets,
+							   uint32_t dynamicOffsetIndex);
 
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
@@ -87,13 +87,13 @@ protected:
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
 	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return _bindingToDescriptorIndex[binding] + elementIndex; }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
+	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	std::unordered_map<uint32_t, uint32_t> _bindingToDescriptorIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
 	uint32_t _descriptorCount;
-	uint32_t _dynamicDescriptorCount;
 	bool _isPushDescriptorLayout;
 };
 
@@ -129,7 +129,9 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
-	MVKDescriptorSet(MVKDescriptorSetLayout* layout, MVKDescriptorPool* pool);
+	MVKDescriptorSet(MVKDescriptorSetLayout* layout,
+					 uint32_t variableDescriptorCount,
+					 MVKDescriptorPool* pool);
 
 	~MVKDescriptorSet() override;
 
@@ -143,6 +145,7 @@ protected:
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;
 	MVKSmallVector<MVKDescriptor*> _descriptors;
+	uint32_t _variableDescriptorCount;
 };
 
 
@@ -225,9 +228,8 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_POOL_EXT; }
 
-	/** Allocates the specified number of descriptor sets. */
-	VkResult allocateDescriptorSets(uint32_t count,
-									const VkDescriptorSetLayout* pSetLayouts,
+	/** Allocates descriptor sets. */
+	VkResult allocateDescriptorSets(const VkDescriptorSetAllocateInfo* pAllocateInfo,
 									VkDescriptorSet* pDescriptorSets);
 
 	/** Free's up the specified descriptor set. */
@@ -244,7 +246,8 @@ protected:
 	friend class MVKDescriptorSet;
 
 	void propagateDebugName() override {}
-	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, VkDescriptorSet* pVKDS);
+	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, uint32_t variableDescriptorCount, VkDescriptorSet* pVKDS);
+	const uint32_t* getVariableDecriptorCounts(const VkDescriptorSetAllocateInfo* pAllocateInfo);
 	void freeDescriptorSet(MVKDescriptorSet* mvkDS);
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
@@ -314,4 +317,5 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 									   spv::ExecutionModel stage,
 									   uint32_t descriptorSetIndex,
 									   uint32_t bindingIndex,
+									   uint32_t count,
 									   MVKSampler* immutableSampler);

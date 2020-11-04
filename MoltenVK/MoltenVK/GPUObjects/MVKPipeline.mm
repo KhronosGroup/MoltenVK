@@ -42,16 +42,15 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
                                            uint32_t firstSet,
                                            MVKArrayRef<uint32_t> dynamicOffsets) {
 	clearConfigurationResult();
-	uint32_t baseDynamicOffsetIndex = 0;
+	uint32_t dynamicOffsetIndex = 0;
 	size_t dsCnt = descriptorSets.size;
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 		MVKDescriptorSet* descSet = descriptorSets[dsIdx];
 		uint32_t dslIdx = firstSet + dsIdx;
 		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[dslIdx];
-		dsl->bindDescriptorSet(cmdEncoder, descSet,
-							   _dslMTLResourceIndexOffsets[dslIdx],
-							   dynamicOffsets, baseDynamicOffsetIndex);
-		baseDynamicOffsetIndex += dsl->getDynamicDescriptorCount();
+		dynamicOffsetIndex += dsl->bindDescriptorSet(cmdEncoder, descSet,
+													 _dslMTLResourceIndexOffsets[dslIdx],
+													 dynamicOffsets, dynamicOffsetIndex);
 		setConfigurationResult(dsl->getConfigurationResult());
 	}
 }
@@ -102,6 +101,7 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfi
 										  models[i],
 										  kPushConstDescSet,
 										  kPushConstBinding,
+										  1,
 										  nullptr);
 	}
 }
@@ -1970,7 +1970,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.enable_base_index_zero,
 				opt.pad_fragment_output_components,
 				opt.ios_support_base_vertex_instance,
-				opt.ios_use_framebuffer_fetch_subpasses,
+				opt.use_framebuffer_fetch_subpasses,
 				opt.invariant_float_math,
 				opt.emulate_cube_array,
 				opt.enable_decoration_binding,
@@ -1980,8 +1980,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.enable_clip_distance_user_varying,
 				opt.multi_patch_workgroup,
 				opt.vertex_for_tessellation,
-				opt.vertex_index_type,
-				opt.arrayed_subpass_input);
+				opt.arrayed_subpass_input,
+				opt.vertex_index_type);
 	}
 
 	template<class Archive>
@@ -1997,6 +1997,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 		archive(rb.stage,
 				rb.desc_set,
 				rb.binding,
+				rb.count,
 				rb.msl_buffer,
 				rb.msl_texture,
 				rb.msl_sampler);
