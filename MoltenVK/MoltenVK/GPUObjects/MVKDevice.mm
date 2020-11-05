@@ -197,6 +197,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES_EXT: {
+				auto* astcHDRFeatures = (VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT*)next;
+				astcHDRFeatures->textureCompressionASTC_HDR = _metalFeatures.astcHDRTextures;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
 				auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
 				divisorFeatures->vertexAttributeInstanceRateDivisor = true;
@@ -1261,6 +1266,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		if (supportsMTLGPUFamily(Apple4)) {
 			_metalFeatures.nativeTextureSwizzle = true;
 		}
+		if (supportsMTLGPUFamily(Apple6) ) {
+			_metalFeatures.astcHDRTextures = true;
+		}
 	}
 
 	if (supportsMTLGPUFamily(Apple4)) {
@@ -1348,6 +1356,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.mtlBufferAlignment = 16;
 			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 			_metalFeatures.postDepthCoverage = true;
+		}
+		if (supportsMTLGPUFamily(Apple6)) {
+			_metalFeatures.astcHDRTextures = true;
 		}
 	}
 #endif
@@ -2497,6 +2508,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.stencilFeedback) {
 		pWritableExtns->vk_EXT_shader_stencil_export.enabled = false;
+	}
+	if (!_metalFeatures.astcHDRTextures) {
+		pWritableExtns->vk_EXT_texture_compression_astc_hdr.enabled = false;
 	}
 #if MVK_MACOS
 	if (!supportsMTLGPUFamily(Apple5)) {
