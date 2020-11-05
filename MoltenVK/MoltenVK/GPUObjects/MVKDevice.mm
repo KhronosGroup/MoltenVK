@@ -1280,6 +1280,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_XCODE_12
 	if ( mvkOSVersionIsAtLeast(14.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
+		if ( supportsMTLGPUFamily(Apple7) ) {
+			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
+		}
 	}
 #endif
 
@@ -1336,6 +1339,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersionIsAtLeast(10.15) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
+		_metalFeatures.maxQueryBufferSize = (256 * KIBI);
 		_metalFeatures.native3DCompressedTextures = true;
         _metalFeatures.renderWithoutAttachments = true;
         if ( mvkOSVersionIsAtLeast(mvkMakeOSVersion(10, 15, 6)) ) {
@@ -1354,12 +1358,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			// This is an Apple GPU--treat it accordingly.
 			_metalFeatures.mtlCopyBufferAlignment = 1;
 			_metalFeatures.mtlBufferAlignment = 16;
+			_metalFeatures.maxQueryBufferSize = (64 * KIBI);
 			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 			_metalFeatures.postDepthCoverage = true;
 		}
 		if (supportsMTLGPUFamily(Apple6)) {
 			_metalFeatures.astcHDRTextures = true;
 		}
+		// TODO: When Apple7 is added, set max query buffer size back to 256 kiB.
 	}
 #endif
 
