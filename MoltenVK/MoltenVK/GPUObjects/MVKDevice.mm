@@ -1347,6 +1347,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.mtlCopyBufferAlignment = 1;
 			_metalFeatures.mtlBufferAlignment = 16;
 			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
+			_metalFeatures.postDepthCoverage = true;
 		}
 	}
 #endif
@@ -2499,6 +2500,7 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 #if MVK_MACOS
 	if (!supportsMTLGPUFamily(Apple5)) {
+		pWritableExtns->vk_AMD_shader_image_load_store_lod.enabled = false;
 		pWritableExtns->vk_IMG_format_pvrtc.enabled = false;
 	}
 #endif
