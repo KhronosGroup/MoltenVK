@@ -128,6 +128,23 @@ using namespace std;
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
 #endif
 
+#if MVK_TVOS
+#       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_5x4_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_5x5_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_6x5_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_6x6_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x5_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x6_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x8_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x5_HDR          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x6_HDR          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x8_HDR          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x10_HDR         MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_12x10_HDR         MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
+#endif
+
 
 #pragma mark -
 #pragma mark MVKPixelFormats
@@ -2015,7 +2032,9 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Blend, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 
+#if MVK_MACOS_OR_IOS
 	id<MTLDevice> mtlDev = _physicalDevice ? _physicalDevice->getMTLDevice() : nil;
+#endif
 	if ( chromaSubsamplingComponentBits > 0 ||
 		// XXX We really want to use the device's Metal features instead of duplicating the
 		// logic from MVKPhysicalDevice, but those may not have been initialized yet.
@@ -2046,7 +2065,7 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 
 #if MVK_MACOS
 		// On IMR GPUs, linear textures cannot be used as attachments, so disable those features.
-		if (![mtlDev respondsToSelector: @selector(supportsGPUFamily:)] || ![mtlDev supportsGPUFamily: MTLGPUFamilyApple5]) {
+		if (![mtlDev respondsToSelector: @selector(supportsFamily:)] || ![mtlDev supportsFamily: MTLGPUFamilyApple5]) {
 			mvkDisableFlags(vkProps.linearTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
 														   kMVKVkFormatFeatureFlagsTexDSAtt |
 														   kMVKVkFormatFeatureFlagsTexBlend));
