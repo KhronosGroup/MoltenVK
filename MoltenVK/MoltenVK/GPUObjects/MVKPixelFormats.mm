@@ -2032,7 +2032,9 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Blend, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 
+#if MVK_MACOS_OR_IOS
 	id<MTLDevice> mtlDev = _physicalDevice ? _physicalDevice->getMTLDevice() : nil;
+#endif
 	if ( chromaSubsamplingComponentBits > 0 ||
 		// XXX We really want to use the device's Metal features instead of duplicating the
 		// logic from MVKPhysicalDevice, but those may not have been initialized yet.
@@ -2063,7 +2065,7 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 
 #if MVK_MACOS
 		// On IMR GPUs, linear textures cannot be used as attachments, so disable those features.
-		if (![mtlDev respondsToSelector: @selector(supportsGPUFamily:)] || ![mtlDev supportsGPUFamily: MTLGPUFamilyApple5]) {
+		if (![mtlDev respondsToSelector: @selector(supportsFamily:)] || ![mtlDev supportsFamily: MTLGPUFamilyApple5]) {
 			mvkDisableFlags(vkProps.linearTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
 														   kMVKVkFormatFeatureFlagsTexDSAtt |
 														   kMVKVkFormatFeatureFlagsTexBlend));
