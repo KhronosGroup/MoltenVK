@@ -128,6 +128,23 @@ using namespace std;
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
 #endif
 
+#if MVK_TVOS
+#       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_5x4_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_5x5_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_6x5_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_6x6_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x5_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x6_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x8_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x5_HDR          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x6_HDR          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x8_HDR          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x10_HDR         MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_12x10_HDR         MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
+#endif
+
 
 #pragma mark -
 #pragma mark MVKPixelFormats

@@ -43,7 +43,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPi
 	plDesc.fragmentFunction = fragFunc;
 	plDesc.sampleCount = blitKey.dstSampleCount;
 	if (isLayeredBlit) {
-		plDesc.inputPrimitiveTopology = MTLPrimitiveTopologyClassTriangle;
+		plDesc.inputPrimitiveTopologyMVK = MTLPrimitiveTopologyClassTriangle;
 	}
 
 	if (mvkIsAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_DEPTH_BIT))) {
