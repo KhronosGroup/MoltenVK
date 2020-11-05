@@ -153,7 +153,6 @@ public:
 
 	/** Encodes this descriptor (based on its layout binding index) on the the command encoder. */
 	virtual void bind(MVKCommandEncoder* cmdEncoder,
-					  VkDescriptorType descriptorType,
 					  uint32_t descriptorIndex,
 					  bool stages[],
 					  MVKShaderResourceBinding& mtlIndexes,
@@ -166,7 +165,6 @@ public:
 	 * MVKInlineUniformBlockDescriptor uses the index as byte offset to write to.
 	 */
 	virtual void write(MVKDescriptorSet* mvkDescSet,
-					   VkDescriptorType descriptorType,
 					   uint32_t index,
 					   size_t stride,
 					   const void* pData) = 0;
@@ -183,7 +181,6 @@ public:
 	 * MVKInlineUniformBlockDescriptor uses the index as byte offset to read from.
 	 */
 	virtual void read(MVKDescriptorSet* mvkDescSet,
-					  VkDescriptorType descriptorType,
 					  uint32_t index,
 					  VkDescriptorImageInfo* pImageInfo,
 					  VkDescriptorBufferInfo* pBufferInfo,
@@ -209,7 +206,6 @@ class MVKBufferDescriptor : public MVKDescriptor {
 
 public:
 	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
@@ -217,13 +213,11 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
-			   VkDescriptorType descriptorType,
 			   uint32_t srcIndex,
 			   size_t stride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSet* mvkDescSet,
-			  VkDescriptorType descriptorType,
 			  uint32_t dstIndex,
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
@@ -287,7 +281,6 @@ public:
 	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT; }
 
 	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
@@ -295,13 +288,11 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
-			   VkDescriptorType descriptorType,
 			   uint32_t dstOffset, // For inline buffers we are using this parameter as dst offset not as src descIdx
 			   size_t stride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSet* mvkDescSet,
-			  VkDescriptorType descriptorType,
 			  uint32_t srcOffset, // For inline buffers we are using this parameter as src offset not as dst descIdx
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
@@ -328,7 +319,6 @@ class MVKImageDescriptor : public MVKDescriptor {
 
 public:
 	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
@@ -336,13 +326,11 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
-			   VkDescriptorType descriptorType,
 			   uint32_t srcIndex,
 			   size_t stride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSet* mvkDescSet,
-			  VkDescriptorType descriptorType,
 			  uint32_t dstIndex,
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
@@ -400,7 +388,6 @@ class MVKSamplerDescriptorMixin {
 
 protected:
 	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
@@ -408,13 +395,11 @@ protected:
 			  uint32_t& dynamicOffsetIndex);
 
 	void write(MVKDescriptorSet* mvkDescSet,
-			   VkDescriptorType descriptorType,
 			   uint32_t srcIndex,
 			   size_t stride,
 			   const void* pData);
 
 	void read(MVKDescriptorSet* mvkDescSet,
-			  VkDescriptorType descriptorType,
 			  uint32_t dstIndex,
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
@@ -442,7 +427,6 @@ public:
 	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_SAMPLER; }
 
 	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
@@ -450,13 +434,11 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
-			   VkDescriptorType descriptorType,
 			   uint32_t srcIndex,
 			   size_t stride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSet* mvkDescSet,
-			  VkDescriptorType descriptorType,
 			  uint32_t dstIndex,
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
@@ -482,7 +464,6 @@ public:
 	VkDescriptorType getDescriptorType() override { return VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER; }
 
 	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
@@ -490,13 +471,11 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
-			   VkDescriptorType descriptorType,
 			   uint32_t srcIndex,
 			   size_t stride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSet* mvkDescSet,
-			  VkDescriptorType descriptorType,
 			  uint32_t dstIndex,
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,
@@ -520,7 +499,6 @@ class MVKTexelBufferDescriptor : public MVKDescriptor {
 
 public:
 	void bind(MVKCommandEncoder* cmdEncoder,
-			  VkDescriptorType descriptorType,
 			  uint32_t descriptorIndex,
 			  bool stages[],
 			  MVKShaderResourceBinding& mtlIndexes,
@@ -528,13 +506,11 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSet* mvkDescSet,
-			   VkDescriptorType descriptorType,
 			   uint32_t srcIndex,
 			   size_t stride,
 			   const void* pData) override;
 
 	void read(MVKDescriptorSet* mvkDescSet,
-			  VkDescriptorType descriptorType,
 			  uint32_t dstIndex,
 			  VkDescriptorImageInfo* pImageInfo,
 			  VkDescriptorBufferInfo* pBufferInfo,

@@ -236,14 +236,20 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 							 const void* pData) {
 
 	VkDescriptorType descType = getDescriptorType(pDescriptorAction->dstBinding);
-	uint32_t descCnt = pDescriptorAction->descriptorCount;
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
-        // For inline buffers dstArrayElement is a byte offset
-		getDescriptor(pDescriptorAction->dstBinding)->write(this, descType, pDescriptorAction->dstArrayElement, stride, pData);
+		// For inline buffers dstArrayElement is a byte offset
+		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorAction->dstBinding);
+		if (mvkDesc->getDescriptorType() == descType) {
+			mvkDesc->write(this, pDescriptorAction->dstArrayElement, stride, pData);
+		}
     } else {
         uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
+		uint32_t descCnt = pDescriptorAction->descriptorCount;
         for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-            _descriptors[dstStartIdx + descIdx]->write(this, descType, descIdx, stride, pData);
+			MVKDescriptor* mvkDesc = _descriptors[dstStartIdx + descIdx];
+			if (mvkDesc->getDescriptorType() == descType) {
+				mvkDesc->write(this, descIdx, stride, pData);
+			}
         }
     }
 }
@@ -266,11 +272,17 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 	uint32_t descCnt = pDescriptorCopy->descriptorCount;
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		// For inline buffers srcArrayElement is a byte offset
-		getDescriptor(pDescriptorCopy->srcBinding)->read(this, descType, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorCopy->srcBinding);
+		if (mvkDesc->getDescriptorType() == descType) {
+			mvkDesc->read(this, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+		}
     } else {
         uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, pDescriptorCopy->srcArrayElement);
         for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-            _descriptors[srcStartIdx + descIdx]->read(this, descType, descIdx, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+			MVKDescriptor* mvkDesc = _descriptors[srcStartIdx + descIdx];
+			if (mvkDesc->getDescriptorType() == descType) {
+				mvkDesc->read(this, descIdx, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+			}
         }
     }
 }
