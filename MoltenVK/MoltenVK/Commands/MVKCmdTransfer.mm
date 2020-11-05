@@ -485,18 +485,34 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
             mtlColorAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
             mtlDepthAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
             mtlStencilAttDesc.level = mvkIBR.region.dstSubresource.mipLevel;
+
+            bool isLayeredBlit = blitKey.dstSampleCount > 1 ? cmdEncoder->getDevice()->_pMetalFeatures->multisampleLayeredRendering : cmdEncoder->getDevice()->_pMetalFeatures->layeredRendering;
             
             uint32_t layCnt = mvkIBR.region.srcSubresource.layerCount;
             if (_dstImage->getMTLTextureType() == MTLTextureType3D) {
                 layCnt = mvkAbsDiff(mvkIBR.region.dstOffsets[1].z, mvkIBR.region.dstOffsets[0].z);
             }
+            if (isLayeredBlit) {
+                // In this case, I can blit all layers at once with a layered draw.
+                mtlRPD.renderTargetArrayLengthMVK = layCnt;
+                layCnt = 1;     // Only need to run the loop once.
+            }
             for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
                 // Update the render pass descriptor for the texture level and slice, and create a render encoder.
                 if (_dstImage->getMTLTextureType() == MTLTextureType3D) {
-                    uint32_t depthPlane = mvkIBR.region.dstOffsets[0].z + (mvkIBR.region.dstOffsets[1].z > mvkIBR.region.dstOffsets[0].z ? layIdx : -(layIdx + 1));
-                    mtlColorAttDesc.depthPlane = depthPlane;
-                    mtlDepthAttDesc.depthPlane = depthPlane;
-                    mtlStencilAttDesc.depthPlane = depthPlane;
+                    if (isLayeredBlit) {
+                        // For layered blits, the layers are always in ascending order. I'll reverse the order
+                        // of the 'r' coordinates if the destination is mirrored.
+                        uint32_t depthPlane = std::min(mvkIBR.region.dstOffsets[0].z, mvkIBR.region.dstOffsets[1].z);
+                        mtlColorAttDesc.depthPlane = depthPlane;
+                        mtlDepthAttDesc.depthPlane = depthPlane;
+                        mtlStencilAttDesc.depthPlane = depthPlane;
+                    } else {
+                        uint32_t depthPlane = mvkIBR.region.dstOffsets[0].z + (mvkIBR.region.dstOffsets[1].z > mvkIBR.region.dstOffsets[0].z ? layIdx : -(layIdx + 1));
+                        mtlColorAttDesc.depthPlane = depthPlane;
+                        mtlDepthAttDesc.depthPlane = depthPlane;
+                        mtlStencilAttDesc.depthPlane = depthPlane;
+                    }
                 } else {
                     mtlColorAttDesc.slice = mvkIBR.region.dstSubresource.baseArrayLayer + layIdx;
                     mtlDepthAttDesc.slice = mvkIBR.region.dstSubresource.baseArrayLayer + layIdx;
@@ -505,6 +521,7 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPD];
                 setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(commandUse));
 
+                float zIncr;
                 if (blitKey.srcMTLTextureType == MTLTextureType3D) {
                     // In this case, I need to interpolate along the third dimension manually.
                     VkExtent3D srcExtent = _srcImage->getExtent3D(srcPlaneIndex, mvkIBR.region.dstSubresource.mipLevel);
@@ -512,7 +529,12 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                     VkOffset3D do0 = mvkIBR.region.dstOffsets[0], do1 = mvkIBR.region.dstOffsets[1];
                     float startZ = (float)so0.z / (float)srcExtent.depth;
                     float endZ = (float)so1.z / (float)srcExtent.depth;
-                    float z = startZ + (endZ - startZ) * (layIdx + 0.5) / mvkAbsDiff(do1.z, do0.z);
+                    if (isLayeredBlit && do0.z > do1.z) {
+                        // Swap start and end points so interpolation moves in the right direction.
+                        std::swap(startZ, endZ);
+                    }
+                    zIncr = (endZ - startZ) / mvkAbsDiff(do1.z, do0.z);
+                    float z = startZ + (isLayeredBlit ? 0.0 : (layIdx + 0.5)) * zIncr;
                     for (uint32_t i = 0; i < kMVKBlitVertexCount; ++i) {
                         mvkIBR.vertices[i].texCoord.z = z;
                     }
@@ -521,6 +543,9 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                 [mtlRendEnc setRenderPipelineState: mtlRPS];
                 [mtlRendEnc setDepthStencilState: mtlDSS];
                 cmdEncoder->setVertexBytes(mtlRendEnc, mvkIBR.vertices, sizeof(mvkIBR.vertices), vtxBuffIdx);
+                if (isLayeredBlit) {
+                    cmdEncoder->setVertexBytes(mtlRendEnc, &zIncr, sizeof(zIncr), 0);
+                }
                 if (!mvkIsOnlyAnyFlagEnabled(blitKey.srcAspect, (VK_IMAGE_ASPECT_STENCIL_BIT))) {
                     [mtlRendEnc setFragmentTexture: srcMTLTex atIndex: 0];
                 }
@@ -556,7 +581,8 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                 texSubRez.lod = mvkIBR.region.srcSubresource.mipLevel;
                 cmdEncoder->setFragmentBytes(mtlRendEnc, &texSubRez, sizeof(texSubRez), 0);
 
-                [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount];
+                NSUInteger instanceCount = isLayeredBlit ? mtlRPD.renderTargetArrayLengthMVK : 1;
+                [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount instanceCount: instanceCount];
                 [mtlRendEnc popDebugGroup];
                 [mtlRendEnc endEncoding];
             }
