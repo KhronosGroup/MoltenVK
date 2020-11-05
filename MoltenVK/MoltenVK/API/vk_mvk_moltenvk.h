@@ -628,6 +628,7 @@ typedef struct {
 	uint32_t maxPerStageDynamicMTLBufferCount;	/**< The maximum number of inline buffers that can be set on a command buffer. */
 	uint32_t maxPerStageStorageTextureCount;    /**< The total number of per-stage Metal textures with read-write access available for writing to from a shader. */
 	VkBool32 astcHDRTextures;					/**< If true, ASTC HDR pixel formats are supported. */
+	VkBool32 renderLinearTextures;				/**< If true, linear textures are renderable. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */
