@@ -311,7 +311,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_inline_uniform_block`
 - `VK_EXT_memory_budget` *(requires Metal 2.0)*
 - `VK_EXT_metal_surface`
-- `VK_EXT_post_depth_coverage` *(iOS, requires GPU family 4)*
+- `VK_EXT_post_depth_coverage` *(iOS and macOS, requires family 4 (A11) or better Apple GPU)*
 - `VK_EXT_private_data `
 - `VK_EXT_robustness2`
 - `VK_EXT_scalar_block_layout`
@@ -320,12 +320,13 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_swapchain_colorspace`
 - `VK_EXT_vertex_attribute_divisor`
 - `VK_EXT_texel_buffer_alignment` *(requires Metal 2.0)*
+- `VK_EXT_texture_compression_astc_hdr` *(iOS and macOS, requires family 6 (A13) or better Apple GPU)*
 - `VK_MVK_ios_surface` *(iOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
 - `VK_MVK_macos_surface` *(macOS) (Obsolete. Use `VK_EXT_metal_surface` instead.)*
 - `VK_MVK_moltenvk`
 - `VK_AMD_gpu_shader_half_float`
 - `VK_AMD_negative_viewport_height`
-- `VK_AMD_shader_image_load_store_lod` *(iOS and tvOS)*
+- `VK_AMD_shader_image_load_store_lod` *(requires Apple GPU)*
 - `VK_AMD_shader_trinary_minmax` *(requires Metal 2.1)*
 - `VK_IMG_format_pvrtc` *(requires Apple GPU)*
 - `VK_INTEL_shader_integer_functions2`

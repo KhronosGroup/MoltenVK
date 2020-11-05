@@ -46,32 +46,46 @@ using namespace std;
 #       define MTLPixelFormatEAC_RG11Unorm          MTLPixelFormatInvalid
 #       define MTLPixelFormatEAC_RG11Snorm          MTLPixelFormatInvalid
 
+#       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_4x4_LDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_4x4_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_5x4_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_5x4_LDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_5x4_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_5x5_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_5x5_LDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_5x5_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_6x5_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_6x5_LDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_6x5_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_6x6_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_6x6_LDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_6x6_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x5_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_8x5_LDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_8x5_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x6_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_8x6_LDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_8x6_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x8_HDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_8x8_LDR           MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_8x8_sRGB          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x5_HDR          MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_10x5_LDR          MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_10x5_sRGB         MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x6_HDR          MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_10x6_LDR          MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_10x6_sRGB         MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x8_HDR          MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_10x8_LDR          MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_10x8_sRGB         MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x10_HDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_10x10_LDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_10x10_sRGB        MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_12x10_HDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x10_LDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x10_sRGB        MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x12_LDR         MTLPixelFormatInvalid
 #       define MTLPixelFormatASTC_12x12_sRGB        MTLPixelFormatInvalid
 
@@ -112,6 +126,23 @@ using namespace std;
 #   define MTLPixelFormatBC7_RGBAUnorm_sRGB         MTLPixelFormatInvalid
 
 #   define MTLPixelFormatDepth16Unorm_Stencil8      MTLPixelFormatDepth32Float_Stencil8
+#endif
+
+#if MVK_TVOS
+#       define MTLPixelFormatASTC_4x4_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_5x4_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_5x5_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_6x5_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_6x6_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x5_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x6_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_8x8_HDR           MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x5_HDR          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x6_HDR          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x8_HDR          MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_10x10_HDR         MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_12x10_HDR         MTLPixelFormatInvalid
+#       define MTLPixelFormatASTC_12x12_HDR         MTLPixelFormatInvalid
 #endif
 
 
@@ -928,32 +959,46 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 	addVkFormatDesc( EAC_R11G11_SNORM_BLOCK, EAC_RG11Snorm, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
 
 	addVkFormatDesc( ASTC_4x4_UNORM_BLOCK, ASTC_4x4_LDR, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
+	addVkFormatDesc( ASTC_4x4_SFLOAT_BLOCK_EXT, ASTC_4x4_HDR, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
 	addVkFormatDesc( ASTC_4x4_SRGB_BLOCK, ASTC_4x4_sRGB, Invalid, Invalid, Invalid, 4, 4, 16, Compressed );
 	addVkFormatDesc( ASTC_5x4_UNORM_BLOCK, ASTC_5x4_LDR, Invalid, Invalid, Invalid, 5, 4, 16, Compressed );
+	addVkFormatDesc( ASTC_5x4_SFLOAT_BLOCK_EXT, ASTC_5x4_HDR, Invalid, Invalid, Invalid, 5, 4, 16, Compressed );
 	addVkFormatDesc( ASTC_5x4_SRGB_BLOCK, ASTC_5x4_sRGB, Invalid, Invalid, Invalid, 5, 4, 16, Compressed );
 	addVkFormatDesc( ASTC_5x5_UNORM_BLOCK, ASTC_5x5_LDR, Invalid, Invalid, Invalid, 5, 5, 16, Compressed );
+	addVkFormatDesc( ASTC_5x5_SFLOAT_BLOCK_EXT, ASTC_5x5_HDR, Invalid, Invalid, Invalid, 5, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_5x5_SRGB_BLOCK, ASTC_5x5_sRGB, Invalid, Invalid, Invalid, 5, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_6x5_UNORM_BLOCK, ASTC_6x5_LDR, Invalid, Invalid, Invalid, 6, 5, 16, Compressed );
+	addVkFormatDesc( ASTC_6x5_SFLOAT_BLOCK_EXT, ASTC_6x5_HDR, Invalid, Invalid, Invalid, 6, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_6x5_SRGB_BLOCK, ASTC_6x5_sRGB, Invalid, Invalid, Invalid, 6, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_6x6_UNORM_BLOCK, ASTC_6x6_LDR, Invalid, Invalid, Invalid, 6, 6, 16, Compressed );
+	addVkFormatDesc( ASTC_6x6_SFLOAT_BLOCK_EXT, ASTC_6x6_HDR, Invalid, Invalid, Invalid, 6, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_6x6_SRGB_BLOCK, ASTC_6x6_sRGB, Invalid, Invalid, Invalid, 6, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_8x5_UNORM_BLOCK, ASTC_8x5_LDR, Invalid, Invalid, Invalid, 8, 5, 16, Compressed );
+	addVkFormatDesc( ASTC_8x5_SFLOAT_BLOCK_EXT, ASTC_8x5_HDR, Invalid, Invalid, Invalid, 8, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_8x5_SRGB_BLOCK, ASTC_8x5_sRGB, Invalid, Invalid, Invalid, 8, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_8x6_UNORM_BLOCK, ASTC_8x6_LDR, Invalid, Invalid, Invalid, 8, 6, 16, Compressed );
+	addVkFormatDesc( ASTC_8x6_SFLOAT_BLOCK_EXT, ASTC_8x6_HDR, Invalid, Invalid, Invalid, 8, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_8x6_SRGB_BLOCK, ASTC_8x6_sRGB, Invalid, Invalid, Invalid, 8, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_8x8_UNORM_BLOCK, ASTC_8x8_LDR, Invalid, Invalid, Invalid, 8, 8, 16, Compressed );
+	addVkFormatDesc( ASTC_8x8_SFLOAT_BLOCK_EXT, ASTC_8x8_HDR, Invalid, Invalid, Invalid, 8, 8, 16, Compressed );
 	addVkFormatDesc( ASTC_8x8_SRGB_BLOCK, ASTC_8x8_sRGB, Invalid, Invalid, Invalid, 8, 8, 16, Compressed );
 	addVkFormatDesc( ASTC_10x5_UNORM_BLOCK, ASTC_10x5_LDR, Invalid, Invalid, Invalid, 10, 5, 16, Compressed );
+	addVkFormatDesc( ASTC_10x5_SFLOAT_BLOCK_EXT, ASTC_10x5_HDR, Invalid, Invalid, Invalid, 10, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_10x5_SRGB_BLOCK, ASTC_10x5_sRGB, Invalid, Invalid, Invalid, 10, 5, 16, Compressed );
 	addVkFormatDesc( ASTC_10x6_UNORM_BLOCK, ASTC_10x6_LDR, Invalid, Invalid, Invalid, 10, 6, 16, Compressed );
+	addVkFormatDesc( ASTC_10x6_SFLOAT_BLOCK_EXT, ASTC_10x6_HDR, Invalid, Invalid, Invalid, 10, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_10x6_SRGB_BLOCK, ASTC_10x6_sRGB, Invalid, Invalid, Invalid, 10, 6, 16, Compressed );
 	addVkFormatDesc( ASTC_10x8_UNORM_BLOCK, ASTC_10x8_LDR, Invalid, Invalid, Invalid, 10, 8, 16, Compressed );
+	addVkFormatDesc( ASTC_10x8_SFLOAT_BLOCK_EXT, ASTC_10x8_HDR, Invalid, Invalid, Invalid, 10, 8, 16, Compressed );
 	addVkFormatDesc( ASTC_10x8_SRGB_BLOCK, ASTC_10x8_sRGB, Invalid, Invalid, Invalid, 10, 8, 16, Compressed );
 	addVkFormatDesc( ASTC_10x10_UNORM_BLOCK, ASTC_10x10_LDR, Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_10x10_SFLOAT_BLOCK_EXT, ASTC_10x10_HDR, Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
 	addVkFormatDesc( ASTC_10x10_SRGB_BLOCK, ASTC_10x10_sRGB, Invalid, Invalid, Invalid, 10, 10, 16, Compressed );
 	addVkFormatDesc( ASTC_12x10_UNORM_BLOCK, ASTC_12x10_LDR, Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
+	addVkFormatDesc( ASTC_12x10_SFLOAT_BLOCK_EXT, ASTC_12x10_HDR, Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
 	addVkFormatDesc( ASTC_12x10_SRGB_BLOCK, ASTC_12x10_sRGB, Invalid, Invalid, Invalid, 12, 10, 16, Compressed );
 	addVkFormatDesc( ASTC_12x12_UNORM_BLOCK, ASTC_12x12_LDR, Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
+	addVkFormatDesc( ASTC_12x12_SFLOAT_BLOCK_EXT, ASTC_12x12_HDR, Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
 	addVkFormatDesc( ASTC_12x12_SRGB_BLOCK, ASTC_12x12_sRGB, Invalid, Invalid, Invalid, 12, 12, 16, Compressed );
 
 	// Extension VK_IMG_format_pvrtc
@@ -1118,32 +1163,46 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 
 	addMTLPixelFormatDesc    ( ASTC_4x4_LDR, ASTC_4x4, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_4x4_sRGB, ASTC_4x4, None, None, ASTC_4x4_LDR );
+	addMTLPixelFormatDesc    ( ASTC_4x4_HDR, ASTC_4x4, None, None );
 	addMTLPixelFormatDesc    ( ASTC_5x4_LDR, ASTC_5x4, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_5x4_sRGB, ASTC_5x4, None, None, ASTC_5x4_LDR );
+	addMTLPixelFormatDesc    ( ASTC_5x4_HDR, ASTC_5x4, None, None );
 	addMTLPixelFormatDesc    ( ASTC_5x5_LDR, ASTC_5x5, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_5x5_sRGB, ASTC_5x5, None, None, ASTC_5x5_LDR );
+	addMTLPixelFormatDesc    ( ASTC_5x5_HDR, ASTC_5x5, None, None );
 	addMTLPixelFormatDesc    ( ASTC_6x5_LDR, ASTC_6x5, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_6x5_sRGB, ASTC_6x5, None, None, ASTC_6x5_LDR );
+	addMTLPixelFormatDesc    ( ASTC_6x5_HDR, ASTC_6x5, None, None );
 	addMTLPixelFormatDesc    ( ASTC_6x6_LDR, ASTC_6x6, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_6x6_sRGB, ASTC_6x6, None, None, ASTC_6x6_LDR );
+	addMTLPixelFormatDesc    ( ASTC_6x6_HDR, ASTC_6x6, None, None );
 	addMTLPixelFormatDesc    ( ASTC_8x5_LDR, ASTC_8x5, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_8x5_sRGB, ASTC_8x5, None, None, ASTC_8x5_LDR );
+	addMTLPixelFormatDesc    ( ASTC_8x5_HDR, ASTC_8x5, None, None );
 	addMTLPixelFormatDesc    ( ASTC_8x6_LDR, ASTC_8x6, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_8x6_sRGB, ASTC_8x6, None, None, ASTC_8x6_LDR );
+	addMTLPixelFormatDesc    ( ASTC_8x6_HDR, ASTC_8x6, None, None );
 	addMTLPixelFormatDesc    ( ASTC_8x8_LDR, ASTC_8x8, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_8x8_sRGB, ASTC_8x8, None, None, ASTC_8x8_LDR );
+	addMTLPixelFormatDesc    ( ASTC_8x8_HDR, ASTC_8x8, None, None );
 	addMTLPixelFormatDesc    ( ASTC_10x5_LDR, ASTC_10x5, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_10x5_sRGB, ASTC_10x5, None, None, ASTC_10x5_LDR );
+	addMTLPixelFormatDesc    ( ASTC_10x5_HDR, ASTC_10x5, None, None );
 	addMTLPixelFormatDesc    ( ASTC_10x6_LDR, ASTC_10x6, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_10x6_sRGB, ASTC_10x6, None, None, ASTC_10x6_LDR );
+	addMTLPixelFormatDesc    ( ASTC_10x6_HDR, ASTC_10x6, None, None );
 	addMTLPixelFormatDesc    ( ASTC_10x8_LDR, ASTC_10x8, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_10x8_sRGB, ASTC_10x8, None, None, ASTC_10x8_LDR );
+	addMTLPixelFormatDesc    ( ASTC_10x8_HDR, ASTC_10x8, None, None );
 	addMTLPixelFormatDesc    ( ASTC_10x10_LDR, ASTC_10x10, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_10x10_sRGB, ASTC_10x10, None, None, ASTC_10x10_LDR );
+	addMTLPixelFormatDesc    ( ASTC_10x10_HDR, ASTC_10x10, None, None );
 	addMTLPixelFormatDesc    ( ASTC_12x10_LDR, ASTC_12x10, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_12x10_sRGB, ASTC_12x10, None, None, ASTC_12x10_LDR );
+	addMTLPixelFormatDesc    ( ASTC_12x10_HDR, ASTC_12x10, None, None );
 	addMTLPixelFormatDesc    ( ASTC_12x12_LDR, ASTC_12x12, None, None );
 	addMTLPixelFormatDescSRGB( ASTC_12x12_sRGB, ASTC_12x12, None, None, ASTC_12x12_LDR );
+	addMTLPixelFormatDesc    ( ASTC_12x12_HDR, ASTC_12x12, None, None );
 
 	addMTLPixelFormatDesc    ( BC1_RGBA, BC1_RGBA, None, RF );
 	addMTLPixelFormatDescSRGB( BC1_RGBA_sRGB, BC1_RGBA, None, RF, BC1_RGBA );
@@ -1491,32 +1550,46 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_4x4_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_4x4_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_4x4_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_5x4_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_5x4_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_5x4_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_5x5_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_5x5_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_5x5_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_6x5_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_6x5_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_6x5_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_6x6_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_6x6_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_6x6_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x5_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x5_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_8x5_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x6_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x6_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_8x6_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x8_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_8x8_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_8x8_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x5_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x5_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_10x5_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x6_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x6_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_10x6_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x8_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x8_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_10x8_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x10_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_10x10_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_10x10_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_12x10_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_12x10_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_12x10_HDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_12x12_LDR, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, ASTC_12x12_sRGB, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 10.16, ASTC_12x12_HDR, RF );
 
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, BGRA10_XR, All );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, BGRA10_XR_sRGB, All );
@@ -1759,6 +1832,21 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 
 	addFeatSetMTLPixFmtCaps( iOS_GPUFamily1_v4, BGR10A2Unorm, All );
 
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_4x4_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_5x4_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_5x5_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_6x5_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_6x6_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_8x5_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_8x6_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_8x8_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_10x5_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_10x6_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_10x8_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_10x10_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_12x10_HDR, RF );
+	addGPUOSMTLPixFmtCaps( Apple6, 13.0, ASTC_12x12_HDR, RF );
+
 	addGPUOSMTLPixFmtCaps( Apple1, 13.0, Depth16Unorm, DRFM );
 	addGPUOSMTLPixFmtCaps( Apple3, 13.0, Depth16Unorm, DRFMR );
 
@@ -1944,7 +2032,9 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Blend, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 
+#if MVK_MACOS_OR_IOS
 	id<MTLDevice> mtlDev = _physicalDevice ? _physicalDevice->getMTLDevice() : nil;
+#endif
 	if ( chromaSubsamplingComponentBits > 0 ||
 		// XXX We really want to use the device's Metal features instead of duplicating the
 		// logic from MVKPhysicalDevice, but those may not have been initialized yet.
@@ -1975,7 +2065,7 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 
 #if MVK_MACOS
 		// On IMR GPUs, linear textures cannot be used as attachments, so disable those features.
-		if (![mtlDev respondsToSelector: @selector(supportsGPUFamily:)] || ![mtlDev supportsGPUFamily: MTLGPUFamilyApple5]) {
+		if (![mtlDev respondsToSelector: @selector(supportsFamily:)] || ![mtlDev supportsFamily: MTLGPUFamilyApple5]) {
 			mvkDisableFlags(vkProps.linearTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
 														   kMVKVkFormatFeatureFlagsTexDSAtt |
 														   kMVKVkFormatFeatureFlagsTexBlend));

@@ -197,6 +197,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXTURE_COMPRESSION_ASTC_HDR_FEATURES_EXT: {
+				auto* astcHDRFeatures = (VkPhysicalDeviceTextureCompressionASTCHDRFeaturesEXT*)next;
+				astcHDRFeatures->textureCompressionASTC_HDR = _metalFeatures.astcHDRTextures;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT: {
 				auto* divisorFeatures = (VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT*)next;
 				divisorFeatures->vertexAttributeInstanceRateDivisor = true;
@@ -1261,6 +1266,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		if (supportsMTLGPUFamily(Apple4)) {
 			_metalFeatures.nativeTextureSwizzle = true;
 		}
+		if (supportsMTLGPUFamily(Apple6) ) {
+			_metalFeatures.astcHDRTextures = true;
+		}
 	}
 
 	if (supportsMTLGPUFamily(Apple4)) {
@@ -1272,6 +1280,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_XCODE_12
 	if ( mvkOSVersionIsAtLeast(14.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
+		if ( supportsMTLGPUFamily(Apple7) ) {
+			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
+		}
 	}
 #endif
 
@@ -1328,6 +1339,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersionIsAtLeast(10.15) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
+		_metalFeatures.maxQueryBufferSize = (256 * KIBI);
 		_metalFeatures.native3DCompressedTextures = true;
         _metalFeatures.renderWithoutAttachments = true;
         if ( mvkOSVersionIsAtLeast(mvkMakeOSVersion(10, 15, 6)) ) {
@@ -1346,8 +1358,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			// This is an Apple GPU--treat it accordingly.
 			_metalFeatures.mtlCopyBufferAlignment = 1;
 			_metalFeatures.mtlBufferAlignment = 16;
+			_metalFeatures.maxQueryBufferSize = (64 * KIBI);
 			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
+			_metalFeatures.postDepthCoverage = true;
 		}
+		if (supportsMTLGPUFamily(Apple6)) {
+			_metalFeatures.astcHDRTextures = true;
+		}
+		// TODO: When Apple7 is added, set max query buffer size back to 256 kiB.
 	}
 #endif
 
@@ -2497,8 +2515,12 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_metalFeatures.stencilFeedback) {
 		pWritableExtns->vk_EXT_shader_stencil_export.enabled = false;
 	}
+	if (!_metalFeatures.astcHDRTextures) {
+		pWritableExtns->vk_EXT_texture_compression_astc_hdr.enabled = false;
+	}
 #if MVK_MACOS
 	if (!supportsMTLGPUFamily(Apple5)) {
+		pWritableExtns->vk_AMD_shader_image_load_store_lod.enabled = false;
 		pWritableExtns->vk_IMG_format_pvrtc.enabled = false;
 	}
 #endif

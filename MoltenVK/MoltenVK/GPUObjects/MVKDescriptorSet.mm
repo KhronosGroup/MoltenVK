@@ -30,7 +30,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 											   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 											   MVKArrayRef<uint32_t> dynamicOffsets,
 											   uint32_t& dynamicOffsetIndex) {
-	clearConfigurationResult();
+	if (!cmdEncoder) { clearConfigurationResult(); }
 	if ( !_isPushDescriptorLayout ) {
 		for (auto& dslBind : _bindings) {
 			dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
@@ -86,7 +86,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
     if (!_isPushDescriptorLayout) return;
 
-	clearConfigurationResult();
+	if (!cmdEncoder) { clearConfigurationResult(); }
     for (const VkWriteDescriptorSet& descWrite : descriptorWrites) {
         uint32_t dstBinding = descWrite.dstBinding;
         uint32_t dstArrayElement = descWrite.dstArrayElement;
@@ -137,7 +137,7 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
         descUpdateTemplate->getType() != VK_DESCRIPTOR_UPDATE_TEMPLATE_TYPE_PUSH_DESCRIPTORS_KHR)
         return;
 
-	clearConfigurationResult();
+	if (!cmdEncoder) { clearConfigurationResult(); }
     for (uint32_t i = 0; i < descUpdateTemplate->getNumberOfEntries(); i++) {
         const VkDescriptorUpdateTemplateEntryKHR* pEntry = descUpdateTemplate->getEntry(i);
         uint32_t dstBinding = pEntry->dstBinding;

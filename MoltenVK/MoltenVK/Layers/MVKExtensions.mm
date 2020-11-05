@@ -48,15 +48,16 @@ static VkExtensionProperties kVkExtProps_ ##EXT = mvkMakeExtProps(VK_ ##EXT ##_E
 static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #if MVK_MACOS
 	if (pProperties == &kVkExtProps_MVK_IOS_SURFACE) { return false; }
-	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return false; }
-	if (pProperties == &kVkExtProps_AMD_SHADER_IMAGE_LOAD_STORE_LOD) { return false; }
 
 	if (pProperties == &kVkExtProps_KHR_SHADER_SUBGROUP_EXTENDED_TYPES) { return mvkOSVersionIsAtLeast(10.14); }
 	if (pProperties == &kVkExtProps_EXT_HDR_METADATA) { return mvkOSVersionIsAtLeast(10.15); }
 	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) { return mvkOSVersionIsAtLeast(10.13); }
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) { return mvkOSVersionIsAtLeast(10.13); }
+	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return mvkOSVersionIsAtLeast(10.16); }
 	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) { return mvkOSVersionIsAtLeast(10.14); }
 	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) { return mvkOSVersionIsAtLeast(10.13); }
+	if (pProperties == &kVkExtProps_EXT_TEXTURE_COMPRESSION_ASTC_HDR) { return mvkOSVersionIsAtLeast(10.16); }
+	if (pProperties == &kVkExtProps_AMD_SHADER_IMAGE_LOAD_STORE_LOD) { return mvkOSVersionIsAtLeast(10.16); }
 	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) { return mvkOSVersionIsAtLeast(10.14); }
 	if (pProperties == &kVkExtProps_IMG_FORMAT_PVRTC) { return mvkOSVersionIsAtLeast(10.16); }
 #endif
@@ -72,6 +73,7 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) { return mvkOSVersionIsAtLeast(12.0); }
 	if (pProperties == &kVkExtProps_EXT_SWAPCHAIN_COLOR_SPACE) { return mvkOSVersionIsAtLeast(9.0); }
 	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) { return mvkOSVersionIsAtLeast(11.0); }
+	if (pProperties == &kVkExtProps_EXT_TEXTURE_COMPRESSION_ASTC_HDR) { return mvkOSVersionIsAtLeast(13.0); }
 	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) { return mvkOSVersionIsAtLeast(12.0); }
 #endif
 
