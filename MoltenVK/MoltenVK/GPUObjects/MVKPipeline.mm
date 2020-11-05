@@ -41,7 +41,7 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
                                            MVKArrayRef<MVKDescriptorSet*> descriptorSets,
                                            uint32_t firstSet,
                                            MVKArrayRef<uint32_t> dynamicOffsets) {
-	clearConfigurationResult();
+	if (!cmdEncoder) { clearConfigurationResult(); }
 	uint32_t dynamicOffsetIndex = 0;
 	size_t dsCnt = descriptorSets.size;
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
@@ -51,7 +51,9 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 		dynamicOffsetIndex += dsl->bindDescriptorSet(cmdEncoder, descSet,
 													 _dslMTLResourceIndexOffsets[dslIdx],
 													 dynamicOffsets, dynamicOffsetIndex);
-		setConfigurationResult(dsl->getConfigurationResult());
+		if (!cmdEncoder && dsl->getConfigurationResult() != VK_SUCCESS) {
+			setConfigurationResult(dsl->getConfigurationResult());
+		}
 	}
 }
 
@@ -59,10 +61,10 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                           MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
                                           uint32_t set) {
-	clearConfigurationResult();
+	if (!cmdEncoder) { clearConfigurationResult(); }
 	MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[set];
 	dsl->pushDescriptorSet(cmdEncoder, descriptorWrites, _dslMTLResourceIndexOffsets[set]);
-	setConfigurationResult(dsl->getConfigurationResult());
+	if (!cmdEncoder) { setConfigurationResult(dsl->getConfigurationResult()); }
 }
 
 // A null cmdEncoder can be passed to perform a validation pass
@@ -70,10 +72,10 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
                                           MVKDescriptorUpdateTemplate* descUpdateTemplate,
                                           uint32_t set,
                                           const void* pData) {
-	clearConfigurationResult();
+	if (!cmdEncoder) { clearConfigurationResult(); }
 	MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[set];
 	dsl->pushDescriptorSet(cmdEncoder, descUpdateTemplate, pData, _dslMTLResourceIndexOffsets[set]);
-	setConfigurationResult(dsl->getConfigurationResult());
+	if (!cmdEncoder) { setConfigurationResult(dsl->getConfigurationResult()); }
 }
 
 void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context) {
