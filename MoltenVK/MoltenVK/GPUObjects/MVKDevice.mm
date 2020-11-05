@@ -3423,6 +3423,21 @@ uint32_t MVKDevice::expandVisibilityResultMTLBuffer(uint32_t queryCount) {
     return _globalVisibilityQueryCount - queryCount;     // Might be lower than requested if an overflow occurred
 }
 
+id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {
+	if ( !_defaultMTLSamplerState ) {
+
+		// Lock and check again in case another thread has created the sampler.
+		lock_guard<mutex> lock(_rezLock);
+		if ( !_defaultMTLSamplerState ) {
+			@autoreleasepool {
+				MTLSamplerDescriptor* mtlSampDesc = [[MTLSamplerDescriptor new] autorelease];
+				_defaultMTLSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: mtlSampDesc];	// retained
+			}
+		}
+	}
+	return _defaultMTLSamplerState;
+}
+
 // Can't use prefilled Metal command buffers if any of the resource descriptors can be updated after binding.
 bool MVKDevice::shouldPrefillMTLCommandBuffers() {
 	return (_pMVKConfig->prefillMetalCommandBuffers &&
@@ -3467,6 +3482,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
     _globalVisibilityResultMTLBuffer = nil;
     _globalVisibilityQueryCount = 0;
+
+	_defaultMTLSamplerState = nil;
 
 	initMTLCompileOptions();	// Before command resource factory
 
@@ -3875,6 +3892,7 @@ MVKDevice::~MVKDevice() {
 
 	[_mtlCompileOptions release];
     [_globalVisibilityResultMTLBuffer release];
+	[_defaultMTLSamplerState release];
 
 	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
 		[[MTLCaptureManager sharedCaptureManager] stopCapture];

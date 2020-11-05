@@ -19,12 +19,15 @@ MoltenVK 1.1.1
 Released TBD
 
 - Add support for extensions:
+	- `VK_KHR_timeline_semaphore`
 	- `VK_EXT_descriptor_indexing` (initial release limited to Metal Tier 1: 96/128 textures, 16 samplers)
 	- `VK_EXT_private_data`
 	- `VK_IMG_format_pvrtc` (macOS)
 - Use `VK_KHR_image_format_list` to disable `MTLTextureUsagePixelFormatView` 
   if only swizzles or `sRGB` conversion will be used for image views, improving 
   performance on *iOS* by allowing Metal to use lossless texture compression.
+- Fix crash in `vkUpdateDescriptorSets()` when copying inline block descriptors.
+- Fix Metal validation error when unused elements in an array of sampler are not populated by descriptors.
 - Move *Metal* drawable presentation from `MTLCommandBuffer` to `MTLDrawable`
   to improve performance and reduce blocking.
 - Allow binding descriptor set using layout different than it was created with.

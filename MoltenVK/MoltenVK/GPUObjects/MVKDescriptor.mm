@@ -835,9 +835,11 @@ void MVKSamplerDescriptorMixin::bind(MVKCommandEncoder* cmdEncoder,
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER: {
-			if (_mvkSampler) {
-				sb.mtlSamplerState = _mvkSampler->getMTLSamplerState();
-			}
+			// Metal validation requires each sampler in an array of samplers to be populated,
+			// even if not used, so populate a default if one hasn't been set.
+			sb.mtlSamplerState = (_mvkSampler
+								  ? _mvkSampler->getMTLSamplerState()
+								  : cmdEncoder->getDevice()->getDefaultMTLSamplerState());
 			for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
 				if (stages[i]) {
 					sb.index = mtlIndexes.stages[i].samplerIndex + descriptorIndex;
