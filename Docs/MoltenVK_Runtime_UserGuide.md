@@ -298,12 +298,13 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_surface`
 - `VK_KHR_swapchain`
 - `VK_KHR_swapchain_mutable_format`
+- `VK_KHR_timeline_semaphore`
 - `VK_KHR_uniform_buffer_standard_layout`
 - `VK_KHR_variable_pointers`
 - `VK_EXT_debug_marker`
 - `VK_EXT_debug_report`
 - `VK_EXT_debug_utils`
-- `VK_EXT_descriptor_indexing`
+- `VK_EXT_descriptor_indexing` *(initial release limited to Metal Tier 1: 96/128 textures, 16 samplers)*
 - `VK_EXT_fragment_shader_interlock` *(requires Metal 2.0 and Raster Order Groups)*
 - `VK_EXT_host_query_reset`
 - `VK_EXT_image_robustness`

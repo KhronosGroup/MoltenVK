@@ -667,6 +667,9 @@ public:
     /** Returns the memory type index corresponding to the specified Metal memory storage mode. */
     uint32_t getVulkanMemoryTypeIndex(MTLStorageMode mtlStorageMode);
 
+	/** Returns a default MTLSamplerState to populate empty array element descriptors. */
+	id<MTLSamplerState> getDefaultMTLSamplerState();
+
 	/**
 	 * Returns whether MTLCommandBuffers can be prefilled.
 	 *
@@ -765,6 +768,7 @@ protected:
 	std::mutex _rezLock;
     std::mutex _perfLock;
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;
+	id<MTLSamplerState> _defaultMTLSamplerState;
     uint32_t _globalVisibilityQueryCount;
     std::mutex _vizLock;
 	bool _useMTLFenceForSemaphores;
