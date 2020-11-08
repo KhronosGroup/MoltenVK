@@ -135,10 +135,14 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 
 	// Set implicit buffer indices
 	// FIXME: Many of these are optional. We shouldn't set the ones that aren't
-	// present--or at least, we should move the ones that are down to avoid
-	// running over the limit of available buffers. But we can't know that
-	// until we compile the shaders.
+	// present--or at least, we should move the ones that are down to avoid running over
+	// the limit of available buffers. But we can't know that until we compile the shaders.
+	// When using Metal argument buffers, indicate no discrete buffers will be consumed
+	// by descriptors, but one discrete arg buffer will be consumed by each descriptor set.
+	bool useArgBuffs = getDevice()->_pMetalFeatures->argumentBuffers;
+	uint32_t dslCnt = (uint32_t)_descriptorSetLayouts.size();
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+		if (useArgBuffs) { _pushConstantsMTLResourceIndexes.stages[i].bufferIndex = dslCnt; }
 		_swizzleBufferIndex.stages[i] = _pushConstantsMTLResourceIndexes.stages[i].bufferIndex + 1;
 		_bufferSizeBufferIndex.stages[i] = _swizzleBufferIndex.stages[i] + 1;
 		_indirectParamsIndex.stages[i] = _bufferSizeBufferIndex.stages[i] + 1;
@@ -1446,6 +1450,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     shaderContext.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
     shaderContext.options.mslOptions.r32ui_linear_texture_alignment = (uint32_t)_device->getVkFormatTexelBufferAlignment(VK_FORMAT_R32_UINT, this);
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
+	shaderContext.options.mslOptions.argument_buffers = getDevice()->_pMetalFeatures->argumentBuffers;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -1678,6 +1683,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
 	shaderContext.options.mslOptions.texture_1D_as_2D = mvkTreatTexture1DAs2D();
+	shaderContext.options.mslOptions.argument_buffers = getDevice()->_pMetalFeatures->argumentBuffers;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);

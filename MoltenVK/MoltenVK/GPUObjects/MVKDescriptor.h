@@ -30,6 +30,7 @@ class MVKCommandEncoder;
 
 /** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
 typedef struct MVKShaderStageResourceBinding {
+	uint16_t resourceIndex = 0;
 	uint16_t bufferIndex = 0;
 	uint16_t textureIndex = 0;
 	uint16_t samplerIndex = 0;
@@ -54,6 +55,18 @@ typedef struct MVKShaderResourceBinding {
 	MVKShaderResourceBinding& operator+= (const MVKShaderResourceBinding& rhs);
 
 } MVKShaderResourceBinding;
+
+/**
+ * If the shader stage binding has a binding defined for the specified stage, populates
+ * the context at the descriptor set binding from the shader stage resource binding.
+ */
+void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+									   MVKShaderStageResourceBinding& ssRB,
+									   spv::ExecutionModel stage,
+									   uint32_t descriptorSetIndex,
+									   uint32_t bindingIndex,
+									   uint32_t count,
+									   MVKSampler* immutableSampler);
 
 
 #pragma mark -

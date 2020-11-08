@@ -25,6 +25,7 @@
 
 MVKShaderStageResourceBinding MVKShaderStageResourceBinding::operator+ (const MVKShaderStageResourceBinding& rhs) {
 	MVKShaderStageResourceBinding rslt;
+	rslt.resourceIndex = this->resourceIndex + rhs.resourceIndex;
 	rslt.bufferIndex = this->bufferIndex + rhs.bufferIndex;
 	rslt.textureIndex = this->textureIndex + rhs.textureIndex;
 	rslt.samplerIndex = this->samplerIndex + rhs.samplerIndex;
@@ -32,10 +33,34 @@ MVKShaderStageResourceBinding MVKShaderStageResourceBinding::operator+ (const MV
 }
 
 MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::operator+= (const MVKShaderStageResourceBinding& rhs) {
+	this->resourceIndex += rhs.resourceIndex;
 	this->bufferIndex += rhs.bufferIndex;
 	this->textureIndex += rhs.textureIndex;
 	this->samplerIndex += rhs.samplerIndex;
 	return *this;
+}
+
+void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+									   MVKShaderStageResourceBinding& ssRB,
+									   spv::ExecutionModel stage,
+									   uint32_t descriptorSetIndex,
+									   uint32_t bindingIndex,
+									   uint32_t count,
+									   MVKSampler* immutableSampler) {
+	mvk::MSLResourceBinding rb;
+
+	auto& rbb = rb.resourceBinding;
+	rbb.stage = stage;
+	rbb.desc_set = descriptorSetIndex;
+	rbb.binding = bindingIndex;
+	rbb.count = count;
+	rbb.msl_buffer = ssRB.bufferIndex;
+	rbb.msl_texture = ssRB.textureIndex;
+	rbb.msl_sampler = ssRB.samplerIndex;
+
+	if (immutableSampler) { immutableSampler->getConstexprSampler(rb); }
+
+	context.resourceBindings.push_back(rb);
 }
 
 
@@ -434,10 +459,22 @@ MVKDescriptorSetLayoutBinding::~MVKDescriptorSetLayoutBinding() {
 void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
 																  MVKShaderStageResourceBinding* pDescSetCounts,
 																  const VkDescriptorSetLayoutBinding* pBinding) {
+	bool useArgBuffs = getDevice()->_pMetalFeatures->argumentBuffers;
+	uint32_t descCnt = pBinding->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT ? 1 : pBinding->descriptorCount;
+
+	// Sets an index offset and updates both that index and the general resource index.
+	// Can be used multiply for combined multi-resource descriptor types.
+#	define setResourceIndexOffset(rezIdx) \
+	do { \
+		pBindingIndexes->rezIdx = useArgBuffs ?  pDescSetCounts->resourceIndex : pDescSetCounts->rezIdx; \
+		pDescSetCounts->rezIdx += descCnt; \
+		pBindingIndexes->resourceIndex = pDescSetCounts->resourceIndex; \
+		pDescSetCounts->resourceIndex += descCnt; \
+	} while(false)
+
     switch (pBinding->descriptorType) {
         case VK_DESCRIPTOR_TYPE_SAMPLER:
-            pBindingIndexes->samplerIndex = pDescSetCounts->samplerIndex;
-            pDescSetCounts->samplerIndex += pBinding->descriptorCount;
+			setResourceIndexOffset(samplerIndex);
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfSamplers) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
@@ -445,10 +482,8 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
             break;
 
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            pBindingIndexes->textureIndex = pDescSetCounts->textureIndex;
-            pDescSetCounts->textureIndex += pBinding->descriptorCount;
-            pBindingIndexes->samplerIndex = pDescSetCounts->samplerIndex;
-            pDescSetCounts->samplerIndex += pBinding->descriptorCount;
+			setResourceIndexOffset(textureIndex);
+			setResourceIndexOffset(samplerIndex);
 
 			if (pBinding->descriptorCount > 1) {
 				if ( !_device->_pMetalFeatures->arrayOfTextures ) {
@@ -474,14 +509,12 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
 
         case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
         case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
-            pDescSetCounts->bufferIndex += pBinding->descriptorCount;
+			setResourceIndexOffset(bufferIndex);
             // fallthrough
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            pBindingIndexes->textureIndex = pDescSetCounts->textureIndex;
-            pDescSetCounts->textureIndex += pBinding->descriptorCount;
+			setResourceIndexOffset(textureIndex);
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
@@ -492,13 +525,8 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
-            pDescSetCounts->bufferIndex += pBinding->descriptorCount;
-            break;
-
-        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-            pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
-            pDescSetCounts->bufferIndex += 1;
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+			setResourceIndexOffset(bufferIndex);
             break;
 
         default:
