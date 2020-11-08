@@ -629,6 +629,7 @@ typedef struct {
 	uint32_t maxPerStageStorageTextureCount;    /**< The total number of per-stage Metal textures with read-write access available for writing to from a shader. */
 	VkBool32 astcHDRTextures;					/**< If true, ASTC HDR pixel formats are supported. */
 	VkBool32 renderLinearTextures;				/**< If true, linear textures are renderable. */
+	VkBool32 pullModelInterpolation;			/**< If true, explicit interpolation functions are supported. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */
