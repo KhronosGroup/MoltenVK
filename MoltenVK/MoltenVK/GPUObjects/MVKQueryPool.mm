@@ -71,6 +71,8 @@ VkResult MVKQueryPool::getResults(uint32_t firstQuery,
 								  void* pData,
 								  VkDeviceSize stride,
 								  VkQueryResultFlags flags) {
+	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
+
 	unique_lock<mutex> lock(_availabilityLock);
 
 	uint32_t endQuery = firstQuery + queryCount;
@@ -99,6 +101,8 @@ bool MVKQueryPool::areQueriesDeviceAvailable(uint32_t firstQuery, uint32_t endQu
 
 // Returns whether all the queries between the start (inclusive) and end (exclusive) queries are available.
 bool MVKQueryPool::areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuery) {
+    // If we lost the device, stop waiting immediately.
+    if (_device->getConfigurationResult() != VK_SUCCESS) { return true; }
     for (uint32_t query = firstQuery; query < endQuery; query++) {
         if ( _availability[query] < Available ) { return false; }
     }
@@ -106,6 +110,8 @@ bool MVKQueryPool::areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuer
 }
 
 VkResult MVKQueryPool::getResult(uint32_t query, void* pQryData, VkQueryResultFlags flags) {
+
+	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
 	bool isAvailable = _availability[query] == Available;
 	bool shouldOutput = (isAvailable || mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_PARTIAL_BIT));
