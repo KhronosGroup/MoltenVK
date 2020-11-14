@@ -1300,6 +1300,10 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     [mtlRendEnc setDepthStencilState: cmdEncPool->getMTLDepthStencilState(isClearingDepth, isClearingStencil)];
     [mtlRendEnc setStencilReferenceValue: _mtlStencilValue];
     [mtlRendEnc setCullMode:MTLCullModeNone];
+    [mtlRendEnc setTriangleFillMode:MTLTriangleFillModeFill];
+    [mtlRendEnc setDepthBias:0 slopeScale:0 clamp:0];
+    cmdEncoder->_viewportState.reset();
+    cmdEncoder->_scissorState.reset();
 
     cmdEncoder->setVertexBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
     cmdEncoder->setFragmentBytes(mtlRendEnc, clearColors, sizeof(clearColors), 0);
@@ -1311,6 +1315,9 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->_graphicsPipelineState.markDirty();
 	cmdEncoder->_depthStencilState.markDirty();
 	cmdEncoder->_stencilReferenceValueState.markDirty();
+    cmdEncoder->_depthBiasState.markDirty();
+    cmdEncoder->_viewportState.markDirty();
+    cmdEncoder->_scissorState.markDirty();
 	cmdEncoder->_graphicsResourcesState.beginMetalRenderPass();
 }
 
