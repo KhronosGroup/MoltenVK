@@ -63,10 +63,10 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #endif
 #if MVK_IOS_OR_TVOS
 	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
-	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return false; }
 	if (pProperties == &kVkExtProps_KHR_SHADER_SUBGROUP_EXTENDED_TYPES) { return false; }
 	if (pProperties == &kVkExtProps_EXT_HDR_METADATA) { return false; }
 
+	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return mvkOSVersionIsAtLeast(14.0); }
 	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) { return mvkOSVersionIsAtLeast(11.0); }
 	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) { return mvkOSVersionIsAtLeast(11.0); }
 	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return mvkOSVersionIsAtLeast(11.0); }

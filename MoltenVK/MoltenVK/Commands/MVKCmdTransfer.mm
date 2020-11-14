@@ -1065,7 +1065,7 @@ bool MVKCmdBufferImageCopy<N>::isArrayTexture() {
 	MTLTextureType mtlTexType = _image->getMTLTextureType();
 	return (mtlTexType == MTLTextureType3D ||
 			mtlTexType == MTLTextureType2DArray ||
-#if MVK_MACOS
+#if MVK_MACOS_OR_IOS
 			mtlTexType == MTLTextureType2DMultisampleArray ||
 #endif
 			mtlTexType == MTLTextureType1DArray);

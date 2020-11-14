@@ -1611,7 +1611,7 @@ MVKImageView::MVKImageView(MVKDevice* device,
 										 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))) {
 		if (_mtlTextureType == MTLTextureType2DArray && _image->_mtlTextureType == MTLTextureType2D) {
 			_mtlTextureType = MTLTextureType2D;
-#if MVK_MACOS
+#if MVK_MACOS_OR_IOS
 		} else if (_mtlTextureType == MTLTextureType2DMultisampleArray && _image->_mtlTextureType == MTLTextureType2DMultisample) {
 			_mtlTextureType = MTLTextureType2DMultisample;
 #endif
@@ -1897,7 +1897,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 		mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 	}
 
-#if MVK_MACOS
+#if MVK_MACOS_OR_IOS
 	mtlSampDesc.borderColorMVK = mvkMTLSamplerBorderColorFromVkBorderColor(pCreateInfo->borderColor);
 	if (_device->getPhysicalDevice()->getMetalFeatures()->samplerClampToBorder) {
 		if (pCreateInfo->addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER) {
