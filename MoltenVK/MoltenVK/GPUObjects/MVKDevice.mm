@@ -1368,7 +1368,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		if (supportsMTLGPUFamily(Apple6)) {
 			_metalFeatures.astcHDRTextures = true;
 		}
-		// TODO: When Apple7 is added, set max query buffer size back to 256 kiB.
+		if (supportsMTLGPUFamily(Apple7)) {
+			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
+		}
 	}
 #endif
 
@@ -1996,7 +1998,9 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 		// like on iOS/tvOS.
 		_properties.vendorID = 0x106b;	// Apple's PCI ID
 #if MVK_MACOS_APPLE_SILICON
-		if (supportsMTLGPUFamily(Apple6)) {
+		if (supportsMTLGPUFamily(Apple7)) {
+			_properties.deviceID = 0xa140;
+		} else if (supportsMTLGPUFamily(Apple6)) {
 			_properties.deviceID = 0xa130;
 		} else {
 			_properties.deviceID = 0xa120;
@@ -2267,9 +2271,7 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	if (supportsMTLGPUFamily(Apple5)) { mtlFam = MTLGPUFamilyApple5; }
 #if MVK_IOS || MVK_MACOS_APPLE_SILICON
 	if (supportsMTLGPUFamily(Apple6)) { mtlFam = MTLGPUFamilyApple6; }
-#if !MVK_MACOS
 	if (supportsMTLGPUFamily(Apple7)) { mtlFam = MTLGPUFamilyApple7; }
-#endif
 #endif
 
 	// Not explicitly guaranteed to be unique...but close enough without spilling over
@@ -2563,9 +2565,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\t\tMetal Shading Language %s";
 
 #if MVK_IOS || MVK_MACOS_APPLE_SILICON
-#if !MVK_MACOS
 	if (supportsMTLGPUFamily(Apple7)) { logMsg += "\n\t\tGPU Family Apple 7"; }
-#endif
 	if (supportsMTLGPUFamily(Apple6)) { logMsg += "\n\t\tGPU Family Apple 6"; }
 #endif
 	if (supportsMTLGPUFamily(Apple5)) { logMsg += "\n\t\tGPU Family Apple 5"; }
