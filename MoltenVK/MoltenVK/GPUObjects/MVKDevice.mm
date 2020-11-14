@@ -607,7 +607,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (mvkFmt == kMVKFormatDepthStencil ||
 				isChromaSubsampled
 #if MVK_IOS_OR_TVOS
-				|| mvkFmt == kMVKFormatCompressed
+				|| (mvkFmt == kMVKFormatCompressed && !_metalFeatures.native3DCompressedTextures)
 #endif
 				) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
@@ -616,6 +616,24 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			// If this is a compressed format and there's no codec, it isn't supported.
 			if ((mvkFmt == kMVKFormatCompressed) && !mvkCanDecodeFormat(format) && !_metalFeatures.native3DCompressedTextures) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+			}
+#endif
+#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+			// ETC2 and EAC formats aren't supported for 3D textures.
+			switch (format) {
+				case VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+				case VK_FORMAT_EAC_R11_UNORM_BLOCK:
+				case VK_FORMAT_EAC_R11_SNORM_BLOCK:
+				case VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
+				case VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
+					return VK_ERROR_FORMAT_NOT_SUPPORTED;
+				default:
+					break;
 			}
 #endif
 			maxExt.width = pLimits->maxImageDimension3D;
@@ -1179,6 +1197,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = useMTLHeaps;
+		if (supportsMTLGPUFamily(Apple3)) {
+			_metalFeatures.native3DCompressedTextures = true;
+		}
 		if (supportsMTLGPUFamily(Apple4)) {
 			_metalFeatures.nativeTextureSwizzle = true;
 		}
@@ -1265,6 +1286,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = useMTLHeaps;
+		if (supportsMTLGPUFamily(Apple3)) {
+			_metalFeatures.native3DCompressedTextures = true;
+		}
 		if (supportsMTLGPUFamily(Apple4)) {
 			_metalFeatures.nativeTextureSwizzle = true;
 		}
