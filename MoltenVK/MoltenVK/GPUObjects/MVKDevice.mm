@@ -1541,6 +1541,10 @@ void MVKPhysicalDevice::initFeatures() {
 	if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
 		_features.multiViewport = true;
 	}
+
+	if (supportsMTLGPUFamily(Apple6)) {
+        _features.shaderResourceMinLod = true;
+	}
 #endif
 
 #if MVK_MACOS
