@@ -332,7 +332,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			// Nothing - the default is not to do color matching.
 			break;
 	}
-	_mtlLayerOrigDrawSize = _mtlLayer.updatedDrawableSizeMVK;
+	_mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(pCreateInfo->imageExtent);
 
 	// TODO: set additional CAMetalLayer properties before extracting drawables:
 	//	- presentsWithTransaction
@@ -370,7 +370,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		}
 	}
 
-    VkExtent2D imgExtent = mvkVkExtent2DFromCGSize(_mtlLayerOrigDrawSize);
+    VkExtent2D imgExtent = pCreateInfo->imageExtent;
 
     VkImageCreateInfo imgInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
