@@ -94,7 +94,7 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfi
 		spv::ExecutionModelFragment,
 		spv::ExecutionModelGLCompute
 	};
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 		mvkPopulateShaderConverterContext(context,
 										  _pushConstantsMTLResourceIndexes.stages[i],
 										  models[i],
@@ -141,7 +141,7 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 	// by descriptors, but one discrete arg buffer will be consumed by each descriptor set.
 	bool useArgBuffs = getDevice()->_pMetalFeatures->argumentBuffers;
 	uint32_t dslCnt = (uint32_t)_descriptorSetLayouts.size();
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 		if (useArgBuffs) { _pushConstantsMTLResourceIndexes.stages[i].bufferIndex = dslCnt; }
 		_swizzleBufferIndex.stages[i] = _pushConstantsMTLResourceIndexes.stages[i].bufferIndex + 1;
 		_bufferSizeBufferIndex.stages[i] = _swizzleBufferIndex.stages[i] + 1;
@@ -168,7 +168,7 @@ MVKPipelineLayout::~MVKPipelineLayout() {
 
 void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 	if (cmdEncoder) {
-		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
 		}
 	}

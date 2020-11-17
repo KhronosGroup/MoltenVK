@@ -638,7 +638,7 @@ MVKShaderStage mvkShaderStageFromVkShaderStageFlagBitsInObj(VkShaderStageFlagBit
 		case VK_SHADER_STAGE_COMPUTE_BIT:					return kMVKShaderStageCompute;
 		default:
 			MVKBaseObject::reportError(mvkObj, VK_ERROR_FORMAT_NOT_SUPPORTED, "VkShaderStage %x is not supported.", vkStage);
-			return kMVKShaderStageMax;
+			return kMVKShaderStageCount;
 	}
 }
 
@@ -650,8 +650,8 @@ MVK_PUBLIC_SYMBOL VkShaderStageFlagBits mvkVkShaderStageFlagBitsFromMVKShaderSta
 		/* FIXME: kMVKShaderStageGeometry */
 		case kMVKShaderStageFragment:	return VK_SHADER_STAGE_FRAGMENT_BIT;
 		case kMVKShaderStageCompute:	return VK_SHADER_STAGE_COMPUTE_BIT;
-		case kMVKShaderStageMax:
-			assert(!"This function should never be called with kMVKShaderStageMax!");
+		case kMVKShaderStageCount:
+			assert(!"This function should never be called with kMVKShaderStageCount!");
 			return VK_SHADER_STAGE_ALL;
 	}
 }
