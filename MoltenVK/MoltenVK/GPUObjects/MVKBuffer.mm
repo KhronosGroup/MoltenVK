@@ -336,7 +336,7 @@ MVKBufferView::MVKBufferView(MVKDevice* device, const VkBufferViewCreateInfo* pC
 		// We can just use a simple 1D texel array.
 		_textureSize.width = uint32_t(blockCount * fmtBlockSize.width);
 		_textureSize.height = 1;
-		_mtlBytesPerRow = byteCount;
+		_mtlBytesPerRow = mvkAlignByteCount(byteCount, _device->getVkFormatTexelBufferAlignment(pCreateInfo->format, this));
 	}
 
     if ( !_device->_pMetalFeatures->texelBuffers ) {
