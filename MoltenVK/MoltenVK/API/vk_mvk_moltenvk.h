@@ -631,6 +631,9 @@ typedef struct {
 	VkBool32 renderLinearTextures;				/**< If true, linear textures are renderable. */
 	VkBool32 pullModelInterpolation;			/**< If true, explicit interpolation functions are supported. */
 	VkBool32 samplerMirrorClampToEdge;			/**< If true, the mirrored clamp to edge address mode is supported in samplers. */
+	VkBool32 quadPermute;						/**< If true, quadgroup permutation functions (vote, ballot, shuffle) are supported in shaders. */
+	VkBool32 simdPermute;						/**< If true, SIMD-group permutation functions (vote, ballot, shuffle) are supported in shaders. */
+	VkBool32 simdReduction;						/**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

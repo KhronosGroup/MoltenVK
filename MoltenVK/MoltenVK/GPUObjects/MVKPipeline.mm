@@ -1481,6 +1481,14 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     shaderContext.options.mslOptions.multiview = mvkRendPass->isMultiview();
     shaderContext.options.mslOptions.multiview_layered_rendering = getDevice()->getPhysicalDevice()->canUseInstancingForMultiview();
     shaderContext.options.mslOptions.view_index_from_device_index = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT);
+    shaderContext.options.mslOptions.fixed_subgroup_size = _device->_pMetalFeatures->subgroupSize;
+#if MVK_MACOS
+    shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->simdPermute;
+#endif
+#if MVK_IOS_OR_TVOS
+    shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->quadPermute;
+    shaderContext.options.mslOptions.ios_use_simdgroup_functions = !!_device->_pMetalFeatures->simdPermute;
+#endif
 
     shaderContext.options.tessPatchKind = reflectData.patchKind;
     shaderContext.options.numTessControlPoints = reflectData.numControlPoints;
@@ -1679,6 +1687,14 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
 	shaderContext.options.mslOptions.texture_1D_as_2D = mvkTreatTexture1DAs2D();
+    shaderContext.options.mslOptions.fixed_subgroup_size = _device->_pMetalFeatures->subgroupSize;
+#if MVK_MACOS
+    shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->simdPermute;
+#endif
+#if MVK_IOS_OR_TVOS
+    shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->quadPermute;
+    shaderContext.options.mslOptions.ios_use_simdgroup_functions = !!_device->_pMetalFeatures->simdPermute;
+#endif
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -1954,6 +1970,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.device_index,
 				opt.enable_frag_output_mask,
 				opt.additional_fixed_sample_mask,
+				opt.fixed_subgroup_size,
 				opt.enable_point_size_builtin,
 				opt.enable_frag_depth_builtin,
 				opt.enable_frag_stencil_ref_builtin,
@@ -1981,6 +1998,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.multi_patch_workgroup,
 				opt.vertex_for_tessellation,
 				opt.arrayed_subpass_input,
+				opt.ios_use_simdgroup_functions,
+				opt.emulate_subgroups,
 				opt.vertex_index_type);
 	}
 

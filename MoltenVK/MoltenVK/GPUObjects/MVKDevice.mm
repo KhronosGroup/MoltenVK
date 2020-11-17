@@ -115,7 +115,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
 				auto* shaderSGTypesFeatures = (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)next;
-				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = _metalFeatures.subgroupSize != 0;
+				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
@@ -317,28 +317,32 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
 				break;
 			}
-#if MVK_MACOS
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES:
-                if (mvkOSVersionIsAtLeast(10.14)) {
-                    auto* subgroupProps = (VkPhysicalDeviceSubgroupProperties*)next;
-                    subgroupProps->subgroupSize = _metalFeatures.subgroupSize;
-                    subgroupProps->supportedStages =
-                        VK_SHADER_STAGE_COMPUTE_BIT |
-                        VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                        VK_SHADER_STAGE_FRAGMENT_BIT;
-                    subgroupProps->supportedOperations =
-                        VK_SUBGROUP_FEATURE_BASIC_BIT |
-                        VK_SUBGROUP_FEATURE_VOTE_BIT |
-                        VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
+                auto* subgroupProps = (VkPhysicalDeviceSubgroupProperties*)next;
+                subgroupProps->subgroupSize = _metalFeatures.subgroupSize;
+                subgroupProps->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
+                if (_features.tessellationShader) {
+                    subgroupProps->supportedStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+                }
+                if (mvkOSVersionIsAtLeast(10.15, 13.0)) {
+                    subgroupProps->supportedStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+                }
+                subgroupProps->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
+                if (_metalFeatures.simdPermute || _metalFeatures.quadPermute) {
+                    subgroupProps->supportedOperations |= VK_SUBGROUP_FEATURE_VOTE_BIT |
                         VK_SUBGROUP_FEATURE_BALLOT_BIT |
                         VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
-                        VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
-                        // VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
-                        VK_SUBGROUP_FEATURE_QUAD_BIT;
-                    subgroupProps->quadOperationsInAllStages = true;
+                        VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
                 }
+                if (_metalFeatures.simdReduction) {
+                    subgroupProps->supportedOperations |= VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
+                }
+                if (_metalFeatures.quadPermute) {
+                    subgroupProps->supportedOperations |= VK_SUBGROUP_FEATURE_QUAD_BIT;
+                }
+                subgroupProps->quadOperationsInAllStages = _metalFeatures.quadPermute;
 				break;
-#endif
+            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
                 auto* timelineSem4Props = (VkPhysicalDeviceTimelineSemaphoreProperties*)next;
                 timelineSem4Props->maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
@@ -1202,6 +1206,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		}
 		if (supportsMTLGPUFamily(Apple4)) {
 			_metalFeatures.nativeTextureSwizzle = true;
+			_metalFeatures.quadPermute = true;
 		}
 	}
 
@@ -1291,9 +1296,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		}
 		if (supportsMTLGPUFamily(Apple4)) {
 			_metalFeatures.nativeTextureSwizzle = true;
+			_metalFeatures.quadPermute = true;
 		}
 		if (supportsMTLGPUFamily(Apple6) ) {
 			_metalFeatures.astcHDRTextures = true;
+			_metalFeatures.simdPermute = true;
 		}
 	}
 
@@ -1312,6 +1319,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
 			_metalFeatures.samplerClampToBorder = true;
 			_metalFeatures.samplerMirrorClampToEdge = true;
+			_metalFeatures.simdReduction = true;
 		}
 	}
 #endif
@@ -1359,6 +1367,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.events = true;
         _metalFeatures.memoryBarriers = true;
         _metalFeatures.textureBuffers = true;
+		_metalFeatures.quadPermute = true;
+		_metalFeatures.simdPermute = true;
     }
 
 	if (supportsMTLFeatureSet(macOS_GPUFamily2_v1)) {
@@ -1366,6 +1376,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilFeedback = true;
 		_metalFeatures.depthResolve = true;
 		_metalFeatures.stencilResolve = true;
+		_metalFeatures.simdReduction = true;
 	}
 
 	if ( mvkOSVersionIsAtLeast(10.15) ) {
@@ -1424,10 +1435,18 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
     }
 
+    _metalFeatures.subgroupSize = 1;
 #if MVK_MACOS
-    if (mvkOSVersionIsAtLeast(10.14)) {
+    if (_metalFeatures.simdPermute) {
         static const uint32_t kAMDVendorId = 0x1002;
         _metalFeatures.subgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
+    }
+#endif
+#if MVK_IOS
+    if (_metalFeatures.simdPermute) {
+        _metalFeatures.subgroupSize = 32;
+    } else if (_metalFeatures.quadPermute) {
+        _metalFeatures.subgroupSize = 4;
     }
 #endif
 
