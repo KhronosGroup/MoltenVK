@@ -1306,8 +1306,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_XCODE_12
 	if ( mvkOSVersionIsAtLeast(14.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
+        _metalFeatures.multisampleArrayTextures = true;
 		if ( supportsMTLGPUFamily(Apple7) ) {
 			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
+			_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
+			_metalFeatures.samplerClampToBorder = true;
+			_metalFeatures.samplerMirrorClampToEdge = true;
 		}
 	}
 #endif
@@ -1323,6 +1327,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.layeredRendering = true;
 	_metalFeatures.maxTextureDimension = (16 * KIBI);
 	_metalFeatures.depthSampleCompare = true;
+	_metalFeatures.samplerMirrorClampToEdge = true;
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
@@ -2539,6 +2544,9 @@ void MVKPhysicalDevice::initExtensions() {
 		pWritableExtns->vk_KHR_depth_stencil_resolve.enabled = false;
 	}
 #endif
+	if (!_metalFeatures.samplerMirrorClampToEdge) {
+		pWritableExtns->vk_KHR_sampler_mirror_clamp_to_edge.enabled = false;
+	}
 	if (!_metalFeatures.rasterOrderGroups) {
 		pWritableExtns->vk_EXT_fragment_shader_interlock.enabled = false;
 	}

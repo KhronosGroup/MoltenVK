@@ -630,6 +630,7 @@ typedef struct {
 	VkBool32 astcHDRTextures;					/**< If true, ASTC HDR pixel formats are supported. */
 	VkBool32 renderLinearTextures;				/**< If true, linear textures are renderable. */
 	VkBool32 pullModelInterpolation;			/**< If true, explicit interpolation functions are supported. */
+	VkBool32 samplerMirrorClampToEdge;			/**< If true, the mirrored clamp to edge address mode is supported in samplers. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

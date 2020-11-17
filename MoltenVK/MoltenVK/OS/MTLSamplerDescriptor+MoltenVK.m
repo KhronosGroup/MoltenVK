@@ -32,14 +32,14 @@
 }
 
 -(NSUInteger) borderColorMVK {
-#if MVK_MACOS
+#if MVK_MACOS_OR_IOS
 	if ( [self respondsToSelector: @selector(borderColor)] ) { return self.borderColor; }
 #endif
 	return /*MTLSamplerBorderColorTransparentBlack*/ 0;
 }
 
 -(void) setBorderColorMVK: (NSUInteger) color {
-#if MVK_MACOS
+#if MVK_MACOS_OR_IOS
 	if ( [self respondsToSelector: @selector(setBorderColor:)] ) { self.borderColor = (MTLSamplerBorderColor) color; }
 #endif
 }
