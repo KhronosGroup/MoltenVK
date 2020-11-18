@@ -111,7 +111,7 @@ public:
 protected:
 	void propagateDebugName() override {}
 
-	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
+	MVKSmallVector<MVKDescriptorSetLayout*, 8> _descriptorSetLayouts;
 	MVKSmallVector<MVKShaderResourceBinding, 1> _dslMTLResourceIndexOffsets;
 	MVKSmallVector<VkPushConstantRange> _pushConstants;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;

@@ -302,6 +302,18 @@ public:
     /** Binds a pipeline to a bind point. */
     void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline);
 
+	/** Indicate to either the graphic or compute encoder that a resource is being used within an argument buffer. */
+	void useArgumentBufferResource(const MVKMTLArgumentBufferResourceUsage& resourceUsage, bool isComputeStage);
+
+	/** Bind a buffer to either the graphic or compute encoder, based on the stage. */
+	void bindBuffer(const MVKMTLBufferBinding& binding, MVKShaderStage stage);
+
+	/** Bind a texture to either the graphic or compute encoder, based on the stage. */
+	void bindTexture(const MVKMTLTextureBinding& binding, MVKShaderStage stage);
+
+	/** Bind a sampler to either the graphic or compute encoder, based on the stage. */
+	void bindSamplerState(const MVKMTLSamplerStateBinding& binding, MVKShaderStage stage);
+
 	/** Encodes an operation to signal an event to a status. */
 	void signalEvent(MVKEvent* mvkEvent, bool status);
 

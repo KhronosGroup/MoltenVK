@@ -352,7 +352,9 @@ class MVKResourcesCommandEncoderState : public MVKCommandEncoderState {
 
 public:
 
-    /** Constructs this instance for the specified command encoder. */
+	/** Indicates that a resource is being used within an argument buffer. */
+	void useArgumentBufferResource(const MVKMTLArgumentBufferResourceUsage& resourceUsage);
+
     MVKResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
@@ -454,6 +456,11 @@ protected:
 		}
 	};
 
+	void resetImpl() override;
+	void markDirty() override;
+
+	MVKSmallVector<MVKMTLArgumentBufferResourceUsage, 8> argumentBufferResourceUsage;
+	bool areArgumentBufferResourceUsageDirty = false;
 };
 
 
@@ -521,6 +528,7 @@ protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
     void markDirty() override;
+	void encodeArgumentBufferResources();
 
     ResourceBindings<8> _shaderStageResourceBindings[4];
 };
@@ -559,6 +567,7 @@ public:
 protected:
     void encodeImpl(uint32_t) override;
     void resetImpl() override;
+	void encodeArgumentBufferResources();
 
 	ResourceBindings<4> _resourceBindings;
 };

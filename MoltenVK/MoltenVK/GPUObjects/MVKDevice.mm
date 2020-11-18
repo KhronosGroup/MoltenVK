@@ -345,6 +345,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
+				bool isTier2 = _metalFeatures.argumentBuffers && _mtlDevice.argumentBuffersSupport == MTLArgumentBuffersTier2;
 				auto* pDescIdxProps = (VkPhysicalDeviceDescriptorIndexingPropertiesEXT*)next;
 				pDescIdxProps->maxUpdateAfterBindDescriptorsInAllPools				= kMVKUndefinedLargeUInt32;
 				pDescIdxProps->shaderUniformBufferArrayNonUniformIndexingNative		= false;
@@ -354,20 +355,20 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				pDescIdxProps->shaderInputAttachmentArrayNonUniformIndexingNative	= _metalFeatures.arrayOfTextures;
 				pDescIdxProps->robustBufferAccessUpdateAfterBind					= _features.robustBufferAccess;
 				pDescIdxProps->quadDivergentImplicitLod								= false;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers			= _properties.limits.maxPerStageDescriptorSamplers;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers	= _properties.limits.maxPerStageDescriptorUniformBuffers;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers	= _properties.limits.maxPerStageDescriptorStorageBuffers;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages	= _properties.limits.maxPerStageDescriptorSampledImages;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages	= _properties.limits.maxPerStageDescriptorStorageImages;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers			= isTier2 ? 2048 : _properties.limits.maxPerStageDescriptorSamplers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorUniformBuffers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageBuffers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorSampledImages;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageImages;
 				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindInputAttachments	= _properties.limits.maxPerStageDescriptorInputAttachments;
-				pDescIdxProps->maxPerStageUpdateAfterBindResources					= _properties.limits.maxPerStageResources;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers				= _properties.limits.maxDescriptorSetSamplers;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers		= _properties.limits.maxDescriptorSetUniformBuffers;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic	= _properties.limits.maxDescriptorSetUniformBuffersDynamic;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers		= _properties.limits.maxDescriptorSetStorageBuffers;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic	= _properties.limits.maxDescriptorSetStorageBuffersDynamic;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindSampledImages			= _properties.limits.maxDescriptorSetSampledImages;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageImages			= _properties.limits.maxDescriptorSetStorageImages;
+				pDescIdxProps->maxPerStageUpdateAfterBindResources					= isTier2 ? 500000 : _properties.limits.maxPerStageResources;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers				= isTier2 ? 2048 : _properties.limits.maxDescriptorSetSamplers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers		= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic	= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffersDynamic;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers		= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageBuffers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic	= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageBuffersDynamic;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSampledImages			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetSampledImages;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageImages			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageImages;
 				pDescIdxProps->maxDescriptorSetUpdateAfterBindInputAttachments		= _properties.limits.maxDescriptorSetInputAttachments;
 				break;
 			}
@@ -1156,7 +1157,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
         _metalFeatures.renderWithoutAttachments = true;
-//		_metalFeatures.argumentBuffers = true;
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.argumentBuffers, MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS);
 	}
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v4)) {
@@ -1226,7 +1227,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v4)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
         _metalFeatures.renderWithoutAttachments = true;
-//		_metalFeatures.argumentBuffers = true;
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.argumentBuffers, MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS);
     }
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily1_v5)) {
@@ -1324,7 +1325,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.presentModeImmediate = true;
 		_metalFeatures.fences = true;
 		_metalFeatures.nonUniformThreadgroups = true;
-//		_metalFeatures.argumentBuffers = true;
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_metalFeatures.argumentBuffers, MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS);
     }
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v4)) {

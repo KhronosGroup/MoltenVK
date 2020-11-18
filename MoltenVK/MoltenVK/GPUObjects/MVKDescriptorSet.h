@@ -23,6 +23,7 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
+#include <mutex>
 
 class MVKDescriptorPool;
 class MVKPipelineLayout;
@@ -31,6 +32,13 @@ class MVKCommandEncoder;
 
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
+
+/** Tracks a MTLArgumentEncoder and its offset into a Metal argument buffer. */
+typedef struct MVKMTLArgumentEncoder {
+	id<MTLArgumentEncoder> mtlArgumentEncoder = nil;
+	NSUInteger argumentBufferOffset = 0;
+	~MVKMTLArgumentEncoder() { [mtlArgumentEncoder release]; }
+} MVKMTLArgumentEncoder;
 
 /** Represents a Vulkan descriptor set layout. */
 class MVKDescriptorSetLayout : public MVKVulkanAPIDeviceObject {
@@ -46,6 +54,7 @@ public:
 	/** Encodes this descriptor set layout and the specified descriptor set on the specified command encoder. */
 	void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 						   MVKDescriptorSet* descSet,
+						   uint32_t descSetLayoutIndex,
 						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 						   MVKArrayRef<uint32_t> dynamicOffsets,
 						   uint32_t& dynamicOffsetIndex);
@@ -69,27 +78,30 @@ public:
                                         uint32_t dslIndex);
 
 	/** Returns true if this layout is for push descriptors only. */
-	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
+	inline bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 protected:
-
-	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKPipelineLayout;
-	friend class MVKDescriptorSet;
 	friend class MVKDescriptorPool;
+	friend class MVKDescriptorSetLayoutBinding;
+	friend class MVKDescriptorSet;
 
 	void propagateDebugName() override {}
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
-	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return _bindingToDescriptorIndex[binding] + elementIndex; }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
+	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
+	void bindMetalArgumentBuffer(id<MTLBuffer> argBuffer);
+	void initMTLArgumentEncoders();
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
-	std::unordered_map<uint32_t, uint32_t> _bindingToDescriptorIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
+	MVKMTLArgumentEncoder _argumentEncoder[kMVKShaderStageCount];
+	NSUInteger _argumentBufferSize;
+	std::mutex _argEncodingLock;
 	uint32_t _descriptorCount;
 	bool _isPushDescriptorLayout;
 };
@@ -133,14 +145,16 @@ public:
 	~MVKDescriptorSet() override;
 
 protected:
-	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKDescriptorPool;
+	friend class MVKDescriptorSetLayout;
+	friend class MVKDescriptorSetLayoutBinding;
 
 	void propagateDebugName() override {}
 	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
 
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;
+	id<MTLBuffer> _mtlArgumentBuffer;
 	MVKSmallVector<MVKDescriptor*> _descriptors;
 	uint32_t _variableDescriptorCount;
 };

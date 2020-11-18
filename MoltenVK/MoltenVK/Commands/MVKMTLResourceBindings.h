@@ -53,6 +53,14 @@ typedef struct {
     bool isInline = false;
 } MVKMTLBufferBinding;
 
+/** Describes a MTLResource binding used in a Metal argument buffer. */
+typedef struct {
+	id<MTLResource> mtlResource = nil;
+	MTLResourceUsage mtlUsage = 0;
+	MTLRenderStages mtlStages = 0;
+	bool isDirty = true;
+} MVKMTLArgumentBufferResourceUsage;
+
 /** Describes a MTLBuffer resource binding as used for an index buffer. */
 typedef struct {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases

@@ -200,6 +200,11 @@
 #   define MVK_CONFIG_TEXTURE_1D_AS_2D    1
 #endif
 
+/** Support Metal argument buffers. Enabled by default. */
+#ifndef MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
+#   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    1
+#endif
+
 /**
  * IOSurfaces are supported on macOS, and on iOS starting with iOS 11.
  *

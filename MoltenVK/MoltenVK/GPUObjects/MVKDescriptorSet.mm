@@ -17,8 +17,11 @@
  */
 
 #include "MVKDescriptorSet.h"
+#include "MVKCommandBuffer.h"
 #include "MVKInstance.h"
 #include "MVKOSExtensions.h"
+
+using namespace std;
 
 
 #pragma mark -
@@ -27,14 +30,38 @@
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 											   MVKDescriptorSet* descSet,
+											   uint32_t descSetLayoutIndex,
 											   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 											   MVKArrayRef<uint32_t> dynamicOffsets,
 											   uint32_t& dynamicOffsetIndex) {
 	if (!cmdEncoder) { clearConfigurationResult(); }
-	if ( !_isPushDescriptorLayout ) {
-		for (auto& dslBind : _bindings) {
-			dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
+	if (_isPushDescriptorLayout ) { return; }
+
+	lock_guard<mutex> lock(_argEncodingLock);
+	bindMetalArgumentBuffer(descSet->_mtlArgumentBuffer);
+
+	for (auto& dslBind : _bindings) {
+		dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
+	}
+
+	bindMetalArgumentBuffer(nil);
+
+	// If we're using Metal argument buffer, bind it to the command encoder
+	if (descSet->_mtlArgumentBuffer) {
+		MVKMTLBufferBinding bb;
+		bb.mtlBuffer = descSet->_mtlArgumentBuffer;
+		bb.index = descSetLayoutIndex;
+		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+			bb.offset = _argumentEncoder[stage].argumentBufferOffset;
+			if (cmdEncoder) { cmdEncoder->bindBuffer(bb, MVKShaderStage(stage)); }
 		}
+	}
+}
+
+void MVKDescriptorSetLayout::bindMetalArgumentBuffer(id<MTLBuffer> argBuffer) {
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+		auto& argEnc = _argumentEncoder[stage];
+		[argEnc.mtlArgumentEncoder setArgumentBuffer: argBuffer offset: argEnc.argumentBufferOffset];
 	}
 }
 
@@ -186,7 +213,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		sortedBindings.push_back( { &pCreateInfo->pBindings[bindIdx], pBindingFlags ? pBindingFlags[bindIdx] : 0 } );
 	}
-	std::sort(sortedBindings.begin(), sortedBindings.end(), [](BindInfo bindInfo1, BindInfo bindInfo2) {
+	sort(sortedBindings.begin(), sortedBindings.end(), [](BindInfo bindInfo1, BindInfo bindInfo2) {
 		return bindInfo1.pBinding->binding < bindInfo2.pBinding->binding;
 	});
 
@@ -195,11 +222,12 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
     _bindings.reserve(bindCnt);
     for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		BindInfo& bindInfo = sortedBindings[bindIdx];
-        _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags);
+        _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags, _descriptorCount);
 		_bindingToIndex[bindInfo.pBinding->binding] = bindIdx;
-		_bindingToDescriptorIndex[bindInfo.pBinding->binding] = _descriptorCount;
-		_descriptorCount += _bindings.back().getDescriptorCount(nullptr);
+		_descriptorCount += _bindings.back().getDescriptorCount();
 	}
+
+	initMTLArgumentEncoders();
 }
 
 // Find and return an array of binding flags from the pNext chain of pCreateInfo,
@@ -216,6 +244,32 @@ const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const Vk
 		}
 	}
 	return nullptr;
+}
+
+void MVKDescriptorSetLayout::initMTLArgumentEncoders() {
+	_argumentBufferSize = 0;
+
+	auto* mvkDvc = getDevice();
+	if ( !mvkDvc->_pMetalFeatures->argumentBuffers ) { return; }
+
+	@autoreleasepool {
+		id<MTLDevice> mtlDvc = mvkDvc->getMTLDevice();
+		NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
+		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+			[args removeAllObjects];
+			uint32_t argIdx = 0;
+			for (auto& dslBind : _bindings) {
+				dslBind.addMTLArgumentDescriptors(stage, args, argIdx);
+			}
+			if (args.count) {
+				auto& argEnc = _argumentEncoder[stage];
+				argEnc.mtlArgumentEncoder = [mtlDvc newArgumentEncoderWithArguments: args];		// retained
+				argEnc.argumentBufferOffset = _argumentBufferSize;
+				_argumentBufferSize += mvkAlignByteCount(argEnc.mtlArgumentEncoder.encodedLength,
+														 mvkDvc->_pMetalFeatures->mtlBufferAlignment);
+			}
+		}
+	}
 }
 
 
@@ -235,12 +289,16 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 							 size_t stride,
 							 const void* pData) {
 
-	VkDescriptorType descType = getDescriptorType(pDescriptorAction->dstBinding);
+	lock_guard<mutex> lock(_layout->_argEncodingLock);
+	_layout->bindMetalArgumentBuffer(_mtlArgumentBuffer);
+
+	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorAction->dstBinding);
+	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		// For inline buffers dstArrayElement is a byte offset
 		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorAction->dstBinding);
 		if (mvkDesc->getDescriptorType() == descType) {
-			mvkDesc->write(this, pDescriptorAction->dstArrayElement, stride, pData);
+			mvkDesc->write(mvkDSLBind, pDescriptorAction->dstArrayElement, stride, pData);
 		}
     } else {
         uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
@@ -248,10 +306,12 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
         for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
 			MVKDescriptor* mvkDesc = _descriptors[dstStartIdx + descIdx];
 			if (mvkDesc->getDescriptorType() == descType) {
-				mvkDesc->write(this, descIdx, stride, pData);
+				mvkDesc->write(mvkDSLBind, descIdx, stride, pData);
 			}
         }
     }
+
+	_layout->bindMetalArgumentBuffer(nil);
 }
 
 // Create concrete implementations of the three variations of the write() function.
@@ -274,14 +334,14 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 		// For inline buffers srcArrayElement is a byte offset
 		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorCopy->srcBinding);
 		if (mvkDesc->getDescriptorType() == descType) {
-			mvkDesc->read(this, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+			mvkDesc->read(pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 		}
     } else {
         uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, pDescriptorCopy->srcArrayElement);
         for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
 			MVKDescriptor* mvkDesc = _descriptors[srcStartIdx + descIdx];
 			if (mvkDesc->getDescriptorType() == descType) {
-				mvkDesc->read(this, descIdx, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+				mvkDesc->read(descIdx, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 			}
         }
     }
@@ -294,6 +354,13 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout,
 	_layout(layout),
 	_variableDescriptorCount(variableDescriptorCount),
 	_pool(pool) {
+
+	_mtlArgumentBuffer = nil;
+	if (_device->_pMetalFeatures->argumentBuffers) {
+		_mtlArgumentBuffer = [getMTLDevice() newBufferWithLength: _layout->_argumentBufferSize
+														 options: MTLResourceStorageModeShared];	// retained
+		_mtlArgumentBuffer.label = @"Argument buffer";
+	}
 
 	_descriptors.reserve(layout->getDescriptorCount());
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
@@ -314,6 +381,7 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout,
 
 MVKDescriptorSet::~MVKDescriptorSet() {
 	for (auto mvkDesc : _descriptors) { _pool->freeDescriptor(mvkDesc); }
+	[_mtlArgumentBuffer release];
 }
 
 

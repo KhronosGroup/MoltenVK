@@ -190,6 +190,16 @@ typedef unsigned long MTLLanguageVersion;
  *     MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT environment variable or MoltenVK
  *     compile-time build setting. This setting is disabled by default, and activity
  *     performance will be logged only when frame activity is logged.
+ *
+ * 11. The MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS runtime environment variable or MoltenVK
+ *     compile-time build setting controls whether MoltenVK should use Metal argument
+ *     buffers for resources defined in descriptor sets. Using Metal argument buffers
+ *     dramatically increases the number of buffers, textures and samplers that can be
+ *     bound to a pipeline shader, and in most cases improves performance.
+ *     If this setting is enabled, MoltenVK will use Metal argument buffers to bind
+ *     resources to the shaders. If this setting is disabled, MoltenVK will bind
+ *     resources to shaders discretely. This setting is enabled by default, and MoltenVK
+ *     will use Metal argument buffers.
  */
 typedef struct {
 

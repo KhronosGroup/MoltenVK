@@ -405,6 +405,38 @@ void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKP
     }
 }
 
+void MVKCommandEncoder::useArgumentBufferResource(const MVKMTLArgumentBufferResourceUsage& resourceUsage, bool isComputeStage) {
+	if (isComputeStage) {
+		_computeResourcesState.useArgumentBufferResource(resourceUsage);
+	} else {
+		_graphicsResourcesState.useArgumentBufferResource(resourceUsage);
+	}
+}
+
+void MVKCommandEncoder::bindBuffer(const MVKMTLBufferBinding& binding, MVKShaderStage stage) {
+	if (stage == kMVKShaderStageCompute) {
+		_computeResourcesState.bindBuffer(binding);
+	} else {
+		_graphicsResourcesState.bindBuffer(stage, binding);
+	}
+}
+
+void MVKCommandEncoder::bindTexture(const MVKMTLTextureBinding& binding, MVKShaderStage stage) {
+	if (stage == kMVKShaderStageCompute) {
+		_computeResourcesState.bindTexture(binding);
+	} else {
+		_graphicsResourcesState.bindTexture(stage, binding);
+	}
+}
+
+void MVKCommandEncoder::bindSamplerState(const MVKMTLSamplerStateBinding& binding, MVKShaderStage stage) {
+	if (stage == kMVKShaderStageCompute) {
+		_computeResourcesState.bindSamplerState(binding);
+	} else {
+		_graphicsResourcesState.bindSamplerState(stage, binding);
+	}
+}
+
 void MVKCommandEncoder::signalEvent(MVKEvent* mvkEvent, bool status) {
 	endCurrentMetalEncoding();
 	mvkEvent->encodeSignal(_mtlCmdBuffer, status);
