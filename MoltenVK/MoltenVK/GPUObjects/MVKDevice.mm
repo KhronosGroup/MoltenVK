@@ -1087,7 +1087,8 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initExtensions();
 	initMemoryProperties();
 	initExternalMemoryProperties();
-	logGPUInfo();
+	initPipelineCacheUUID();			// Call penultimate
+	logGPUInfo();						// Call last
 }
 
 // Initializes the physical device properties (except limits).
@@ -1098,7 +1099,6 @@ void MVKPhysicalDevice::initProperties() {
 	_properties.driverVersion = MVK_VERSION;
 
 	initGPUInfoProperties();
-	initPipelineCacheUUID();
 }
 
 // Initializes the Metal-specific physical device features of this instance.
@@ -2226,20 +2226,22 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	size_t uuidComponentOffset = 0;
 
-	// First 4 bytes contains MoltenVK version
-	uint32_t mvkVersion = MVK_VERSION;
-	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mvkVersion);
-	uuidComponentOffset += sizeof(mvkVersion);
+	// First 8 bytes contain the first part of the MoltenVK Git revision
+	uint64_t mvkRev = getMoltenVKGitRevision();
+	*(uint64_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostLongLongToBig(mvkRev);
+	uuidComponentOffset += sizeof(mvkRev);
 
 	// Next 4 bytes contains highest Metal feature set supported by this device
 	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
 	uuidComponentOffset += sizeof(mtlFeatSet);
 
-	// Last 8 bytes contain the first part of the MoltenVK Git revision
-	uint64_t mvkRev = getMoltenVKGitRevision();
-	*(uint64_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostLongLongToBig(mvkRev);
-	uuidComponentOffset += sizeof(mvkRev);
+	// Last 4 bytes contains flags based on enabled Metal features that
+	// might affect the contents of the pipeline cache (mostly MSL content).
+	uint32_t mtlFeatures = 0;
+	mtlFeatures |= ((bool)_metalFeatures.argumentBuffers) << 0;
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatures);
+	uuidComponentOffset += sizeof(mtlFeatures);
 }
 
 uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
