@@ -372,7 +372,7 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	}
 
 	// Track dynamic state in _dynamicStateEnabled array
-	mvkClear(_dynamicStateEnabled, kMVKVkDynamicStateCount);	// start with all dynamic state disabled
+	mvkClear(&_dynamicStateEnabled);	// start with all dynamic state disabled
 	const VkPipelineDynamicStateCreateInfo* pDS = pCreateInfo->pDynamicState;
 	if (pDS) {
 		for (uint32_t i = 0; i < pDS->dynamicStateCount; i++) {

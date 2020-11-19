@@ -417,54 +417,51 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 // Populates the device ID properties structure
 void MVKPhysicalDevice::populate(VkPhysicalDeviceIDProperties* pDevIdProps) {
 
-	uint8_t* uuid;
 	size_t uuidComponentOffset;
 
 	//  ---- Device ID ----------------------------------------------
-	uuid = pDevIdProps->deviceUUID;
 	uuidComponentOffset = 0;
-	mvkClear(uuid, VK_UUID_SIZE);
+	mvkClear(&pDevIdProps->deviceUUID);
 
 	// First 4 bytes contains GPU vendor ID
 	uint32_t vendorID = _properties.vendorID;
-	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(vendorID);
+	*(uint32_t*)&pDevIdProps->deviceUUID[uuidComponentOffset] = NSSwapHostIntToBig(vendorID);
 	uuidComponentOffset += sizeof(vendorID);
 
 	// Next 4 bytes contains GPU device ID
 	uint32_t deviceID = _properties.deviceID;
-	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(deviceID);
+	*(uint32_t*)&pDevIdProps->deviceUUID[uuidComponentOffset] = NSSwapHostIntToBig(deviceID);
 	uuidComponentOffset += sizeof(deviceID);
 
 	// Last 8 bytes contain the GPU registry ID
 	uint64_t regID = mvkGetRegistryID(_mtlDevice);
-	*(uint64_t*)&uuid[uuidComponentOffset] = NSSwapHostLongLongToBig(regID);
+	*(uint64_t*)&pDevIdProps->deviceUUID[uuidComponentOffset] = NSSwapHostLongLongToBig(regID);
 	uuidComponentOffset += sizeof(regID);
 
 
 	// ---- Driver ID ----------------------------------------------
-	uuid = pDevIdProps->driverUUID;
 	uuidComponentOffset = 0;
-	mvkClear(uuid, VK_UUID_SIZE);
+	mvkClear(&pDevIdProps->driverUUID);
 
 	// First 4 bytes contains MoltenVK prefix
 	const char* mvkPfx = "MVK";
 	size_t mvkPfxLen = strlen(mvkPfx);
-	mvkCopy(&uuid[uuidComponentOffset], (uint8_t*)mvkPfx, mvkPfxLen);
+	mvkCopy(&pDevIdProps->driverUUID[uuidComponentOffset], (uint8_t*)mvkPfx, mvkPfxLen);
 	uuidComponentOffset += mvkPfxLen + 1;
 
 	// Next 4 bytes contains MoltenVK version
 	uint32_t mvkVersion = MVK_VERSION;
-	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(mvkVersion);
+	*(uint32_t*)&pDevIdProps->driverUUID[uuidComponentOffset] = NSSwapHostIntToBig(mvkVersion);
 	uuidComponentOffset += sizeof(mvkVersion);
 
 	// Next 4 bytes contains highest Metal feature set supported by this device
 	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
-	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
+	*(uint32_t*)&pDevIdProps->driverUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
 	uuidComponentOffset += sizeof(mtlFeatSet);
 
 
 	// ---- LUID ignored for Metal devices ------------------------
-	mvkClear(pDevIdProps->deviceLUID, VK_LUID_SIZE);
+	mvkClear(&pDevIdProps->deviceLUID);
 	pDevIdProps->deviceNodeMask = 0;
 	pDevIdProps->deviceLUIDValid = VK_FALSE;
 }
@@ -1054,8 +1051,8 @@ VkResult MVKPhysicalDevice::getMemoryProperties(VkPhysicalDeviceMemoryProperties
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_MEMORY_BUDGET_PROPERTIES_EXT: {
 				auto* budgetProps = (VkPhysicalDeviceMemoryBudgetPropertiesEXT*)next;
-				mvkClear(budgetProps->heapBudget, VK_MAX_MEMORY_HEAPS);
-				mvkClear(budgetProps->heapUsage, VK_MAX_MEMORY_HEAPS);
+				mvkClear(&budgetProps->heapBudget);
+				mvkClear(&budgetProps->heapUsage);
 				budgetProps->heapBudget[0] = (VkDeviceSize)getRecommendedMaxWorkingSetSize();
 				budgetProps->heapUsage[0] = (VkDeviceSize)getCurrentAllocatedSize();
 				if (!getHasUnifiedMemory()) {
@@ -2222,7 +2219,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	// Clear the UUID
-	mvkClear(&_properties.pipelineCacheUUID, VK_UUID_SIZE);
+	mvkClear(&_properties.pipelineCacheUUID);
 
 	size_t uuidComponentOffset = 0;
 
@@ -2814,7 +2811,7 @@ void MVKDevice::getDescriptorVariableDescriptorCountLayoutSupport(const VkDescri
 }
 
 VkResult MVKDevice::getDeviceGroupPresentCapabilities(VkDeviceGroupPresentCapabilitiesKHR* pDeviceGroupPresentCapabilities) {
-	mvkClear(pDeviceGroupPresentCapabilities->presentMask, VK_MAX_DEVICE_GROUP_SIZE);
+	mvkClear(&pDeviceGroupPresentCapabilities->presentMask);
 	pDeviceGroupPresentCapabilities->presentMask[0] = 0x1;
 
 	pDeviceGroupPresentCapabilities->modes = VK_DEVICE_GROUP_PRESENT_MODE_LOCAL_BIT_KHR;

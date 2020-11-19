@@ -754,7 +754,7 @@ MVKPixelFormats::MVKPixelFormats(MVKPhysicalDevice* physicalDevice) : _physicalD
 
 void MVKPixelFormats::initVkFormatCapabilities() {
 
-	mvkClear(_vkFormatDescriptions, _vkFormatCount);
+	mvkClear(&_vkFormatDescriptions);
 
 	uint32_t fmtIdx = 0;
 
@@ -1066,7 +1066,7 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 
-	mvkClear(_mtlPixelFormatDescriptions, _mtlPixelFormatCount);
+	mvkClear(&_mtlPixelFormatDescriptions);
 
 	uint32_t fmtIdx = 0;
 
@@ -1250,7 +1250,7 @@ void MVKPixelFormats::initMTLPixelFormatCapabilities() {
 
 void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 
-	mvkClear(_mtlVertexFormatDescriptions, _mtlVertexFormatCount);
+	mvkClear(&_mtlVertexFormatDescriptions);
 
 	uint32_t fmtIdx = 0;
 
@@ -1331,8 +1331,8 @@ void MVKPixelFormats::initMTLVertexFormatCapabilities() {
 void MVKPixelFormats::buildMTLFormatMaps() {
 
 	// Set all MTLPixelFormats and MTLVertexFormats to undefined/invalid
-	mvkClear(_mtlFormatDescIndicesByMTLPixelFormatsCore, _mtlPixelFormatCoreCount);
-	mvkClear(_mtlFormatDescIndicesByMTLVertexFormats, _mtlVertexFormatCount);
+	mvkClear(&_mtlFormatDescIndicesByMTLPixelFormatsCore);
+	mvkClear(&_mtlFormatDescIndicesByMTLVertexFormats);
 
 	// Build lookup table for MTLPixelFormat specs.
 	// For most Metal format values, which are small and consecutive, use a simple lookup array.
@@ -1922,7 +1922,7 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 void MVKPixelFormats::buildVkFormatMaps() {
 
 	// Set the VkFormats to undefined/invalid
-	mvkClear(_vkFormatDescIndicesByVkFormatsCore, _vkFormatCoreCount);
+	mvkClear(&_vkFormatDescIndicesByVkFormatsCore);
 
 	// Iterate through the VkFormat descriptions, populate the lookup maps and back pointers,
 	// and validate the Metal formats for the platform and OS.
