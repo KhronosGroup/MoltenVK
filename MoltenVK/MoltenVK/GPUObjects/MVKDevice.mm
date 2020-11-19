@@ -1409,11 +1409,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice respondsToSelector: @selector(areRasterOrderGroupsSupported)] ) {
         _metalFeatures.rasterOrderGroups = _mtlDevice.rasterOrderGroupsSupported;
     }
-
+#if MVK_XCODE_12
 	if ( [_mtlDevice respondsToSelector: @selector(supportsPullModelInterpolation)] ) {
 		_metalFeatures.pullModelInterpolation = _mtlDevice.supportsPullModelInterpolation;
 	}
-
+#endif
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
         _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
     }
