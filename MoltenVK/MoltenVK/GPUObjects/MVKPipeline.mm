@@ -1090,8 +1090,11 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderContext.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageFragment];
 		shaderContext.options.entryPointName = _pFragmentSS->pName;
 		shaderContext.options.mslOptions.capture_output_to_buffer = false;
-		if (pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
-			shaderContext.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
+		if (pCreateInfo->pMultisampleState) {
+			if (pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
+				shaderContext.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
+			}
+			shaderContext.options.mslOptions.force_sample_rate_shading = pCreateInfo->pMultisampleState->sampleShadingEnable && pCreateInfo->pMultisampleState->minSampleShading != 0.0f;
 		}
 		if (std::any_of(shaderOutputs.begin(), shaderOutputs.end(), [](const SPIRVShaderOutput& output) { return output.builtin == spv::BuiltInLayer; })) {
 			shaderContext.options.mslOptions.arrayed_subpass_input = true;
@@ -2000,7 +2003,8 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.arrayed_subpass_input,
 				opt.ios_use_simdgroup_functions,
 				opt.emulate_subgroups,
-				opt.vertex_index_type);
+				opt.vertex_index_type,
+				opt.force_sample_rate_shading);
 	}
 
 	template<class Archive>
