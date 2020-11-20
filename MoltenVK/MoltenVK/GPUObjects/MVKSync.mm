@@ -96,6 +96,14 @@ void MVKSemaphoreMTLFence::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_
 	[mtlCmdEnc endEncoding];
 }
 
+uint64_t MVKSemaphoreMTLFence::deferSignal() {
+	return 0;
+}
+
+void MVKSemaphoreMTLFence::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	encodeSignal(mtlCmdBuff, 0);
+}
+
 MVKSemaphoreMTLFence::MVKSemaphoreMTLFence(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) :
 	MVKSemaphore(device, pCreateInfo),
 	_mtlFence([device->getMTLDevice() newFence]) {}		//retained
@@ -108,14 +116,20 @@ MVKSemaphoreMTLFence::~MVKSemaphoreMTLFence() {
 #pragma mark -
 #pragma mark MVKSemaphoreMTLEvent
 
-// Nil mtlCmdBuff will do nothing.
 void MVKSemaphoreMTLEvent::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	[mtlCmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue++];
+	if (mtlCmdBuff) { [mtlCmdBuff encodeWaitForEvent: _mtlEvent value: _mtlEventValue++]; }
 }
 
-// Nil mtlCmdBuff will do nothing.
 void MVKSemaphoreMTLEvent::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	[mtlCmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventValue];
+	if (mtlCmdBuff) { [mtlCmdBuff encodeSignalEvent: _mtlEvent value: _mtlEventValue]; }
+}
+
+uint64_t MVKSemaphoreMTLEvent::deferSignal() {
+	return _mtlEventValue;
+}
+
+void MVKSemaphoreMTLEvent::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) {
+	if (mtlCmdBuff) { [mtlCmdBuff encodeSignalEvent: _mtlEvent value: deferToken]; }
 }
 
 MVKSemaphoreMTLEvent::MVKSemaphoreMTLEvent(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) :
@@ -137,6 +151,14 @@ void MVKSemaphoreEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t)
 
 void MVKSemaphoreEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
 	if ( !mtlCmdBuff ) { _blocker.release(); }
+}
+
+uint64_t MVKSemaphoreEmulated::deferSignal() {
+	return 0;
+}
+
+void MVKSemaphoreEmulated::encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
+	encodeSignal(mtlCmdBuff, 0);
 }
 
 MVKSemaphoreEmulated::MVKSemaphoreEmulated(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo) :
@@ -219,7 +241,7 @@ void MVKTimelineSemaphoreEmulated::signalImpl(uint64_t value) {
 		_value = value;
 		_blocker.notify_all();
 		for (auto& sittersForValue : _sitters) {
-			if (sittersForValue.first < value) { continue; }
+			if (sittersForValue.first > value) { continue; }
 			for (auto* sitter : sittersForValue.second) {
 				sitter->signaled();
 			}

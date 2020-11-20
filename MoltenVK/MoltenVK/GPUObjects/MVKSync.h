@@ -159,6 +159,27 @@ public:
 	 */
 	virtual void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) = 0;
 
+	/**
+	 * Begin a deferred signal operation.
+	 *
+	 * A deferred signal acts like a normal signal operation, except that the signal op itself
+	 * is not actually executed. A token is returned, which must be passed to encodeDeferredSignal()
+	 * to complete the signal operation.
+	 *
+	 * This is intended to be used by MVKSwapchain, in order to properly implement semaphores
+	 * for image availability, particularly with MTLEvent-based semaphores, to ensure the correct
+	 * value is used in signal/wait operations.
+	 */
+	virtual uint64_t deferSignal() = 0;
+
+	/**
+	 * Complete a deferred signal operation.
+	 *
+	 * This is the other half of the deferSignal() method. The token that was returned
+	 * from deferSignal() must be passed here.
+	 */
+	virtual void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) = 0;
+
 	/** Returns whether this semaphore uses command encoding. */
 	virtual bool isUsingCommandEncoding() = 0;
 
@@ -182,6 +203,8 @@ class MVKSemaphoreMTLFence : public MVKSemaphore {
 public:
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
+	uint64_t deferSignal() override;
+	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	bool isUsingCommandEncoding() override { return true; }
 
 	MVKSemaphoreMTLFence(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
@@ -200,8 +223,10 @@ protected:
 class MVKSemaphoreMTLEvent : public MVKSemaphore {
 
 public:
-	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
-	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
+	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
+	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) override;
+	uint64_t deferSignal() override;
+	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) override;
 	bool isUsingCommandEncoding() override { return true; }
 
 	MVKSemaphoreMTLEvent(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
@@ -223,6 +248,8 @@ class MVKSemaphoreEmulated : public MVKSemaphore {
 public:
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
+	uint64_t deferSignal() override;
+	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) override;
 	bool isUsingCommandEncoding() override { return false; }
 
 	MVKSemaphoreEmulated(MVKDevice* device, const VkSemaphoreCreateInfo* pCreateInfo);
@@ -241,6 +268,13 @@ class MVKTimelineSemaphore : public MVKSemaphore {
 public:
 
 	VkSemaphoreType getSemaphoreType() override { return VK_SEMAPHORE_TYPE_TIMELINE; }
+	uint64_t deferSignal() override { return 0; }
+	// Timeline semaphores cannot yet be used for signaling swapchain availability, because
+	// no interaction is yet defined. When it is, though, it's likely that a value must
+	// be supplied, just like when using them with command buffers.
+	void encodeDeferredSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t deferToken) override {
+		return encodeSignal(mtlCmdBuff, deferToken);
+	}
 
 	/** Returns the current value of the semaphore counter. */
 	virtual uint64_t getCounterValue() = 0;
