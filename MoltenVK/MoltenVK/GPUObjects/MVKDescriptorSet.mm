@@ -356,7 +356,7 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout,
 	_pool(pool) {
 
 	_mtlArgumentBuffer = nil;
-	if (_device->_pMetalFeatures->argumentBuffers) {
+	if (_device->_pMetalFeatures->argumentBuffers && _layout->_argumentBufferSize) {
 		_mtlArgumentBuffer = [getMTLDevice() newBufferWithLength: _layout->_argumentBufferSize
 														 options: MTLResourceStorageModeShared];	// retained
 		_mtlArgumentBuffer.label = @"Argument buffer";

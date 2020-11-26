@@ -426,6 +426,8 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLA
 void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(id<MTLBuffer> mtlBuffer,
 															   NSUInteger offset,
 															   uint32_t elementIndex) {
+	if ( !mtlBuffer ) { return; }
+
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		if (_applyToStage[stage]) {
 			uint32_t argIdx = getMTLArgumentBufferIndex(stage, elementIndex);
@@ -438,6 +440,8 @@ void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(id<MTLTexture> mt
 															   uint32_t planeCount,
 															   uint32_t planeIndex,
 															   uint32_t elementIndex) {
+	if ( !mtlTexture ) { return; }
+
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		if (_applyToStage[stage]) {
 			uint32_t argIdx = getMTLArgumentBufferIndex(stage, elementIndex * planeCount + planeIndex);
@@ -463,11 +467,13 @@ void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(uint8_t* pSrcData
 															   NSUInteger dstOffset,
 															   NSUInteger dataLen,
 															   uint32_t elementIndex) {
+	if ( !pSrcData ) { return; }
+
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		if (_applyToStage[stage]) {
 			uint32_t argIdx = getMTLArgumentBufferIndex(stage, elementIndex);
 			uint8_t* pDstData = (uint8_t*)[_layout->_argumentEncoder[stage].mtlArgumentEncoder constantDataAtIndex: argIdx];
-			if (pSrcData && pDstData) { memcpy(pDstData + dstOffset, pSrcData, dataLen); }
+			if (pDstData) { memcpy(pDstData + dstOffset, pSrcData, dataLen); }
 		}
 	}
 }
