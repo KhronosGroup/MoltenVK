@@ -1663,6 +1663,64 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 		return VK_SUCCESS;
 	}
 
+	if (mvkIsAnyFlagEnabled(usage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) {
+		// Vulkan forbids using image views with non-identity swizzles as storage images or attachments.
+		// Let's catch some cases which are essentially identity, but would still result in Metal restricting
+		// the resulting texture's usage.
+
+		switch (mtlPixFmt) {
+			case MTLPixelFormatR8Unorm:
+#ifndef MTLPixelFormatR8Unorm_sRGB
+			case MTLPixelFormatR8Unorm_sRGB:
+#endif
+			case MTLPixelFormatR8Snorm:
+			case MTLPixelFormatR8Uint:
+			case MTLPixelFormatR8Sint:
+			case MTLPixelFormatR16Unorm:
+			case MTLPixelFormatR16Snorm:
+			case MTLPixelFormatR16Uint:
+			case MTLPixelFormatR16Sint:
+			case MTLPixelFormatR16Float:
+			case MTLPixelFormatR32Uint:
+			case MTLPixelFormatR32Sint:
+			case MTLPixelFormatR32Float:
+				if (SWIZZLE_MATCHES(R, ZERO, ZERO, ONE)) {
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatRG8Unorm:
+#ifndef MTLPixelFormatRG8Unorm_sRGB
+			case MTLPixelFormatRG8Unorm_sRGB:
+#endif
+			case MTLPixelFormatRG8Snorm:
+			case MTLPixelFormatRG8Uint:
+			case MTLPixelFormatRG8Sint:
+			case MTLPixelFormatRG16Unorm:
+			case MTLPixelFormatRG16Snorm:
+			case MTLPixelFormatRG16Uint:
+			case MTLPixelFormatRG16Sint:
+			case MTLPixelFormatRG16Float:
+			case MTLPixelFormatRG32Uint:
+			case MTLPixelFormatRG32Sint:
+			case MTLPixelFormatRG32Float:
+				if (SWIZZLE_MATCHES(R, G, ZERO, ONE)) {
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatRG11B10Float:
+			case MTLPixelFormatRGB9E5Float:
+				if (SWIZZLE_MATCHES(R, G, B, ONE)) {
+					return VK_SUCCESS;
+				}
+				break;
+
+			default:
+				break;
+		}
+	}
+
 	switch (mtlPixFmt) {
 		case MTLPixelFormatR8Unorm:
 			if (SWIZZLE_MATCHES(ZERO, ANY, ANY, R)) {
