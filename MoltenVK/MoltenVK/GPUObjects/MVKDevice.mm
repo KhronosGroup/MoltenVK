@@ -1201,11 +1201,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = useMTLHeaps;
+		_metalFeatures.nativeTextureSwizzle = true;
 		if (supportsMTLGPUFamily(Apple3)) {
 			_metalFeatures.native3DCompressedTextures = true;
 		}
 		if (supportsMTLGPUFamily(Apple4)) {
-			_metalFeatures.nativeTextureSwizzle = true;
 			_metalFeatures.quadPermute = true;
 		}
 	}
@@ -1291,11 +1291,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = useMTLHeaps;
+		_metalFeatures.nativeTextureSwizzle = true;
 		if (supportsMTLGPUFamily(Apple3)) {
 			_metalFeatures.native3DCompressedTextures = true;
 		}
 		if (supportsMTLGPUFamily(Apple4)) {
-			_metalFeatures.nativeTextureSwizzle = true;
 			_metalFeatures.quadPermute = true;
 		}
 		if (supportsMTLGPUFamily(Apple6) ) {
