@@ -46,37 +46,35 @@ static VkExtensionProperties kVkExtProps_ ##EXT = mvkMakeExtProps(VK_ ##EXT ##_E
 
 // Returns whether the specified properties are valid for this platform
 static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
+#define MVK_DISABLED_EXTENSION(EXT) \
+	if (pProperties == &kVkExtProps_##EXT) { return false; }
+#define MVK_EXTENSION_MIN_OS(EXT, MAC, IOS) \
+	if (pProperties == &kVkExtProps_##EXT) { return mvkOSVersionIsAtLeast(MAC, IOS); }
 #if MVK_MACOS
-	if (pProperties == &kVkExtProps_MVK_IOS_SURFACE) { return false; }
+	MVK_DISABLED_EXTENSION(MVK_IOS_SURFACE)
 
-	if (pProperties == &kVkExtProps_KHR_SHADER_SUBGROUP_EXTENDED_TYPES) { return mvkOSVersionIsAtLeast(10.14); }
-	if (pProperties == &kVkExtProps_EXT_HDR_METADATA) { return mvkOSVersionIsAtLeast(10.15); }
-	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) { return mvkOSVersionIsAtLeast(10.13); }
-	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) { return mvkOSVersionIsAtLeast(10.13); }
-	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return mvkOSVersionIsAtLeast(10.16); }
-	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) { return mvkOSVersionIsAtLeast(10.14); }
-	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) { return mvkOSVersionIsAtLeast(10.13); }
-	if (pProperties == &kVkExtProps_EXT_TEXTURE_COMPRESSION_ASTC_HDR) { return mvkOSVersionIsAtLeast(10.16); }
-	if (pProperties == &kVkExtProps_AMD_SHADER_IMAGE_LOAD_STORE_LOD) { return mvkOSVersionIsAtLeast(10.16); }
-	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) { return mvkOSVersionIsAtLeast(10.14); }
-	if (pProperties == &kVkExtProps_IMG_FORMAT_PVRTC) { return mvkOSVersionIsAtLeast(10.16); }
+	MVK_EXTENSION_MIN_OS(EXT_HDR_METADATA,                   10.15, 99999.0)
+	MVK_EXTENSION_MIN_OS(AMD_SHADER_IMAGE_LOAD_STORE_LOD,    10.16, 8.0)
+	MVK_EXTENSION_MIN_OS(IMG_FORMAT_PVRTC,                   10.16, 8.0)
 #endif
 #if MVK_IOS_OR_TVOS
-	if (pProperties == &kVkExtProps_MVK_MACOS_SURFACE) { return false; }
-	if (pProperties == &kVkExtProps_KHR_SHADER_SUBGROUP_EXTENDED_TYPES) { return false; }
-	if (pProperties == &kVkExtProps_EXT_HDR_METADATA) { return false; }
+	MVK_DISABLED_EXTENSION(MVK_MACOS_SURFACE)
+	MVK_DISABLED_EXTENSION(EXT_HDR_METADATA)
 
-	if (pProperties == &kVkExtProps_KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE) { return mvkOSVersionIsAtLeast(14.0); }
-	if (pProperties == &kVkExtProps_EXT_FRAGMENT_SHADER_INTERLOCK) { return mvkOSVersionIsAtLeast(11.0); }
-	if (pProperties == &kVkExtProps_EXT_MEMORY_BUDGET) { return mvkOSVersionIsAtLeast(11.0); }
-	if (pProperties == &kVkExtProps_EXT_POST_DEPTH_COVERAGE) { return mvkOSVersionIsAtLeast(11.0); }
-	if (pProperties == &kVkExtProps_EXT_SHADER_STENCIL_EXPORT) { return mvkOSVersionIsAtLeast(12.0); }
-	if (pProperties == &kVkExtProps_EXT_SWAPCHAIN_COLOR_SPACE) { return mvkOSVersionIsAtLeast(9.0); }
-	if (pProperties == &kVkExtProps_EXT_TEXEL_BUFFER_ALIGNMENT) { return mvkOSVersionIsAtLeast(11.0); }
-	if (pProperties == &kVkExtProps_EXT_TEXTURE_COMPRESSION_ASTC_HDR) { return mvkOSVersionIsAtLeast(13.0); }
-	if (pProperties == &kVkExtProps_AMD_SHADER_TRINARY_MINMAX) { return mvkOSVersionIsAtLeast(12.0); }
+	MVK_EXTENSION_MIN_OS(KHR_SAMPLER_MIRROR_CLAMP_TO_EDGE,   10.11, 14.0)
+	MVK_EXTENSION_MIN_OS(EXT_SWAPCHAIN_COLOR_SPACE,          10.11, 9.0)
 #endif
+	MVK_EXTENSION_MIN_OS(KHR_SHADER_SUBGROUP_EXTENDED_TYPES, 10.14, 13.0)
+	MVK_EXTENSION_MIN_OS(EXT_FRAGMENT_SHADER_INTERLOCK,      10.13, 11.0)
+	MVK_EXTENSION_MIN_OS(EXT_MEMORY_BUDGET,                  10.13, 11.0)
+	MVK_EXTENSION_MIN_OS(EXT_POST_DEPTH_COVERAGE,            10.16, 11.0)
+	MVK_EXTENSION_MIN_OS(EXT_SHADER_STENCIL_EXPORT,          10.14, 12.0)
+	MVK_EXTENSION_MIN_OS(EXT_TEXEL_BUFFER_ALIGNMENT,         10.13, 11.0)
+	MVK_EXTENSION_MIN_OS(EXT_TEXTURE_COMPRESSION_ASTC_HDR,   10.16, 13.0)
+	MVK_EXTENSION_MIN_OS(AMD_SHADER_TRINARY_MINMAX,          10.14, 12.0)
 
+#undef MVK_DISABLED_EXTENSION
+#undef MVK_EXTENSION_MIN_OS
 	return true;
 }
 
