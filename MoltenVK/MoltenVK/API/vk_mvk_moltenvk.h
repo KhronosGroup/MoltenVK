@@ -137,8 +137,16 @@ typedef unsigned long MTLLanguageVersion;
  *     Xcode user interface.
  *       0: No automatic GPU capture.
  *       1: Capture all GPU commands issued during the lifetime of the VkDevice.
+ *       2: Capture all GPU commands issued during the rendering of the first frame.
  *     If none of these is set, no automatic GPU capture will occur.
-
+ *
+ *     If MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE is set to 2, to enable capturing the first frame,
+ *     the command queue from which the frame is captured is determined by the values of
+ *     defaultGPUCaptureScopeQueueFamilyIndex and defaultGPUCaptureScopeQueueIndex from MVKConfiguration,
+ *     or the corresponding MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX and
+ *     MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX runtime environment variable or
+ *     MoltenVK compile-time build settings.
+ *
  *     If MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE is also set, it is a filename (with a file
  *     extension of .gputrace) where the automatic GPU capture should be saved. In this case,
  *     the Xcode scheme need not have Metal GPU capture enabled, and in fact the app need not

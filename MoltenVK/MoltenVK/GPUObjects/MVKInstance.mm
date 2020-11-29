@@ -280,6 +280,49 @@ VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeveri
 	}
 }
 
+void MVKInstance::startAutoGPUCapture(int32_t autoGPUCaptureScope, id mtlCaptureObject) {
+
+	if (_isCurrentlyAutoGPUCapturing || (_autoGPUCaptureScope != autoGPUCaptureScope)) { return; }
+
+	_isCurrentlyAutoGPUCapturing = true;
+
+	@autoreleasepool {
+		MTLCaptureManager *captureMgr = [MTLCaptureManager sharedCaptureManager];
+
+		MTLCaptureDescriptor *captureDesc = [[MTLCaptureDescriptor new] autorelease];
+		captureDesc.captureObject = mtlCaptureObject;
+		captureDesc.destination = MTLCaptureDestinationDeveloperTools;
+
+		if ( !_autoGPUCaptureOutputFile.empty() ) {
+			if ([captureMgr respondsToSelector: @selector(supportsDestination:)] &&
+				[captureMgr supportsDestination: MTLCaptureDestinationGPUTraceDocument] ) {
+
+				NSString* filePath = [[NSString stringWithUTF8String: _autoGPUCaptureOutputFile.c_str()] stringByExpandingTildeInPath];
+				MVKLogInfo("Capturing GPU trace to file %s.", filePath.UTF8String);
+
+				captureDesc.destination = MTLCaptureDestinationGPUTraceDocument;
+				captureDesc.outputURL = [NSURL fileURLWithPath: filePath];
+
+			} else {
+				reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Capturing GPU traces to a file requires macOS 10.15 or iOS 13.0. Falling back to Xcode GPU capture.");
+			}
+		} else {
+			MVKLogInfo("Capturing GPU trace to Xcode.");
+		}
+
+		NSError *err = nil;
+		if ( ![captureMgr startCaptureWithDescriptor: captureDesc error: &err] ) {
+			reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to automatically start GPU capture session (Error code %li): %s", (long)err.code, err.localizedDescription.UTF8String);
+		}
+	}
+}
+
+void MVKInstance::stopAutoGPUCapture(int32_t autoGPUCaptureScope) {
+	if (_isCurrentlyAutoGPUCapturing && _autoGPUCaptureScope == autoGPUCaptureScope) {
+		[[MTLCaptureManager sharedCaptureManager] stopCapture];
+		_isCurrentlyAutoGPUCapturing = false;
+	}
+}
 
 #pragma mark Object Creation
 
@@ -363,6 +406,8 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	if (_physicalDevices.empty()) {
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
 	}
+
+	_isCurrentlyAutoGPUCapturing = false;
 
 	MVKLogInfo("Created VkInstance with the following %d Vulkan extensions enabled:%s",
 			   _enabledExtensions.getEnabledCount(),

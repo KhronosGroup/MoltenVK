@@ -158,6 +158,34 @@ public:
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app. */
 	const MVKExtensionList _enabledExtensions;
 
+	/**
+	 * Checks if automatic GPU capture is enabled for the specified auto capture
+	 * scope, and if so, starts capturing from the specified Metal capture object.
+	 * The capture will be made to either Xcode, or to a file if the
+	 * MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE environment has specified.
+	 *
+	 * The autoGPUCaptureScope parameter must be one of:
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME
+	 *
+	 * The mtlCaptureObject must be one of:
+	 *   - MTLDevice for scope MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
+	 *   - MTLCommandQueue for scope MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME.
+	 */
+	void startAutoGPUCapture(int32_t autoGPUCaptureScope, id mtlCaptureObject);
+
+	/**
+	 * Checks if automatic GPU capture is enabled for the specified
+	 * auto capture scope, and if so, stops capturing.
+	 *
+	 * The autoGPUCaptureScope parameter must be one of:
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME
+	 */
+	void stopAutoGPUCapture(int32_t autoGPUCaptureScope);
+
 
 #pragma mark Object Creation
 
@@ -205,6 +233,7 @@ protected:
 	bool _useCreationCallbacks;
 	const char* _debugReportCallbackLayerPrefix;
 	int32_t _autoGPUCaptureScope;
+	bool _isCurrentlyAutoGPUCapturing;
 	std::string _autoGPUCaptureOutputFile;
 };
 

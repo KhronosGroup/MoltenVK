@@ -208,7 +208,6 @@ protected:
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
 };
 
-
 /**
  * Submits the commands in a set of command buffers to the queue.
  * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
@@ -253,6 +252,7 @@ public:
 
 protected:
 	id<MTLCommandBuffer> getMTLCommandBuffer();
+	void stopAutoGPUCapture();
 
 	MVKSmallVector<MVKPresentTimingInfo, 4> _presentInfo;
 };
