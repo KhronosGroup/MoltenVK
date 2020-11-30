@@ -2582,6 +2582,9 @@ void MVKPhysicalDevice::initExtensions() {
 	if (!_metalFeatures.astcHDRTextures) {
 		pWritableExtns->vk_EXT_texture_compression_astc_hdr.enabled = false;
 	}
+	if (!_metalFeatures.simdPermute && !_metalFeatures.quadPermute) {
+		pWritableExtns->vk_KHR_shader_subgroup_extended_types.enabled = false;
+	}
 #if MVK_MACOS
 	if (!supportsMTLGPUFamily(Apple5)) {
 		pWritableExtns->vk_AMD_shader_image_load_store_lod.enabled = false;
