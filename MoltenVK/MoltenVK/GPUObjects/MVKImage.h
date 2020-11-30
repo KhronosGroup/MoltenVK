@@ -438,7 +438,11 @@ typedef struct  {
 } MVKPresentTimingInfo;
 
 /** Tracks a semaphore and fence for later signaling. */
-typedef std::pair<MVKSemaphore*, MVKFence*> MVKSwapchainSignaler;
+struct MVKSwapchainSignaler {
+	MVKFence* fence;
+	MVKSemaphore* semaphore;
+	uint64_t semaphoreSignalToken;
+};
 
 
 /** Represents a Vulkan swapchain image that can be submitted to the presentation engine. */
@@ -470,15 +474,16 @@ protected:
 	void presentCAMetalDrawable(id<CAMetalDrawable> mtlDrawable, MVKPresentTimingInfo presentTimingInfo);
 	void releaseMetalDrawable();
 	MVKSwapchainImageAvailability getAvailability();
-	void makeAvailable();
+	void makeAvailable(const MVKSwapchainSignaler& signaler);
 	void acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence);
-	void signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
-	void signalPresentationSemaphore(id<MTLCommandBuffer> mtlCmdBuff);
-	static void markAsTracked(MVKSwapchainSignaler& signaler);
-	static void unmarkAsTracked(MVKSwapchainSignaler& signaler);
+	void signal(const MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
+	void signalPresentationSemaphore(const MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff);
+	static void markAsTracked(const MVKSwapchainSignaler& signaler);
+	static void unmarkAsTracked(const MVKSwapchainSignaler& signaler);
 	void renderWatermark(id<MTLCommandBuffer> mtlCmdBuff);
 
 	id<CAMetalDrawable> _mtlDrawable;
+	id<MTLCommandBuffer> _presentingMTLCmdBuff;
 	MVKSwapchainImageAvailability _availability;
 	MVKSmallVector<MVKSwapchainSignaler, 1> _availabilitySignalers;
 	MVKSwapchainSignaler _preSignaler;
