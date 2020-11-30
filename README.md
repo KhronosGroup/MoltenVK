@@ -120,6 +120,7 @@ for which to build the external libraries. The platform choices include:
 	--macos 
 	--ios 
 	--iossim 
+	--maccat 
 	--tvos 
 	--tvossim
 
@@ -205,6 +206,7 @@ from the command line. The following `make` targets are provided:
 	make macos
 	make ios
 	make iossim
+	make maccat
 	make tvos
 	make tvossim
 	
@@ -212,6 +214,7 @@ from the command line. The following `make` targets are provided:
 	make macos-debug
 	make ios-debug
 	make iossim-debug
+	make maccat-debug
 	make tvos-debug
 	make tvossim-debug
 	
