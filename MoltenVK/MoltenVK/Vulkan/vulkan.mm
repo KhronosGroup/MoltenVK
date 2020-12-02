@@ -653,8 +653,11 @@ MVK_PUBLIC_SYMBOL VkResult vkGetFenceStatus(
     VkFence                                     fence) {
 	
 	MVKTraceVulkanCallStart();
-	MVKFence* mvkFence = (MVKFence*)fence;
-	VkResult rslt = mvkFence->getIsSignaled() ? VK_SUCCESS : VK_NOT_READY;
+	VkResult rslt = MVKDevice::getMVKDevice(device)->getConfigurationResult();
+	if (rslt == VK_SUCCESS) {
+		MVKFence* mvkFence = (MVKFence*)fence;
+		rslt = mvkFence->getIsSignaled() ? VK_SUCCESS : VK_NOT_READY;
+	}
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -732,8 +735,11 @@ MVK_PUBLIC_SYMBOL VkResult vkGetEventStatus(
     VkEvent                                     event) {
 	
 	MVKTraceVulkanCallStart();
-	MVKEvent* mvkEvent = (MVKEvent*)event;
-	VkResult rslt = mvkEvent->isSet() ? VK_EVENT_SET : VK_EVENT_RESET;
+	VkResult rslt = MVKDevice::getMVKDevice(device)->getConfigurationResult();
+	if (rslt == VK_SUCCESS) {
+		MVKEvent* mvkEvent = (MVKEvent*)event;
+		rslt = mvkEvent->isSet() ? VK_EVENT_SET : VK_EVENT_RESET;
+	}
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2447,10 +2453,13 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSwapchainKHR(
 
 	MVKTraceVulkanCallStart();
     MVKDevice* mvkDev = MVKDevice::getMVKDevice(device);
-    MVKSwapchain* mvkSwpChn = mvkDev->createSwapchain(pCreateInfo, pAllocator);
-    *pSwapchain = (VkSwapchainKHR)(mvkSwpChn);
-    VkResult rslt = mvkSwpChn->getConfigurationResult();
-    if (rslt < 0) { *pSwapchain = VK_NULL_HANDLE; mvkDev->destroySwapchain(mvkSwpChn, pAllocator); }
+    VkResult rslt = mvkDev->getConfigurationResult();
+    if (rslt == VK_SUCCESS) {
+        MVKSwapchain* mvkSwpChn = mvkDev->createSwapchain(pCreateInfo, pAllocator);
+        *pSwapchain = (VkSwapchainKHR)(mvkSwpChn);
+        rslt = mvkSwpChn->getConfigurationResult();
+        if (rslt < 0) { *pSwapchain = VK_NULL_HANDLE; mvkDev->destroySwapchain(mvkSwpChn, pAllocator); }
+    }
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -2670,10 +2679,13 @@ MVK_PUBLIC_SYMBOL VkResult vkGetSemaphoreCounterValueKHR(
 	uint64_t*									pValue) {
 
 	MVKTraceVulkanCallStart();
-	auto* mvkSem4 = (MVKTimelineSemaphore*)semaphore;
-	*pValue = mvkSem4->getCounterValue();
+	VkResult rslt = MVKDevice::getMVKDevice(device)->getConfigurationResult();
+	if (rslt == VK_SUCCESS) {
+		auto* mvkSem4 = (MVKTimelineSemaphore*)semaphore;
+		*pValue = mvkSem4->getCounterValue();
+	}
 	MVKTraceVulkanCallEnd();
-	return VK_SUCCESS;
+	return rslt;
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkSignalSemaphoreKHR(

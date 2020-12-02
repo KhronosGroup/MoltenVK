@@ -146,7 +146,11 @@ MVKSemaphoreMTLEvent::~MVKSemaphoreMTLEvent() {
 #pragma mark MVKSemaphoreEmulated
 
 void MVKSemaphoreEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
-	if ( !mtlCmdBuff ) { _blocker.wait(UINT64_MAX, true); }
+	if ( !mtlCmdBuff ) {
+		_device->addSemaphore(&_blocker);
+		_blocker.wait(UINT64_MAX, true);
+		_device->removeSemaphore(&_blocker);
+	}
 }
 
 void MVKSemaphoreEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t) {
@@ -190,6 +194,7 @@ bool MVKTimelineSemaphoreMTLEvent::registerWait(MVKFenceSitter* sitter, const Vk
 	auto addRslt = _sitters.insert(sitter);
 	if (addRslt.second) {
 		retain();
+		_device->addSemaphore(&sitter->_blocker);
 		[_mtlEvent notifyListener: sitter->getMTLSharedEventListener()
 						  atValue: pWaitInfo->pValues[index]
 							block: ^(id<MTLSharedEvent>, uint64_t) {
@@ -203,6 +208,7 @@ bool MVKTimelineSemaphoreMTLEvent::registerWait(MVKFenceSitter* sitter, const Vk
 
 void MVKTimelineSemaphoreMTLEvent::unregisterWait(MVKFenceSitter* sitter) {
 	lock_guard<mutex> lock(_lock);
+	_device->removeSemaphore(&sitter->_blocker);
 	_sitters.erase(sitter);
 }
 
@@ -219,11 +225,15 @@ MVKTimelineSemaphoreMTLEvent::~MVKTimelineSemaphoreMTLEvent() {
 
 
 #pragma mark -
-#pragma mark MVKSemaphoreEmulated
+#pragma mark MVKTimelineSemaphoreEmulated
 
 void MVKTimelineSemaphoreEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) {
 	unique_lock<mutex> lock(_lock);
-	if ( !mtlCmdBuff ) { _blocker.wait(lock, [=]() { return _value >= value; }); }
+	if ( !mtlCmdBuff ) {
+		_device->addTimelineSemaphore(this, value);
+		_blocker.wait(lock, [=]() { return _value >= value; });
+		_device->removeTimelineSemaphore(this, value);
+	}
 }
 
 void MVKTimelineSemaphoreEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, uint64_t value) {
@@ -255,13 +265,17 @@ bool MVKTimelineSemaphoreEmulated::registerWait(MVKFenceSitter* sitter, const Vk
 	uint64_t value = pWaitInfo->pValues[index];
 	if (!_sitters.count(value)) { _sitters.emplace(make_pair(value, unordered_set<MVKFenceSitter*>())); }
 	auto addRslt = _sitters[value].insert(sitter);
-	if (addRslt.second) { sitter->await(); }
+	if (addRslt.second) {
+		_device->addSemaphore(&sitter->_blocker);
+		sitter->await();
+	}
 	return false;
 }
 
 void MVKTimelineSemaphoreEmulated::unregisterWait(MVKFenceSitter* sitter) {
 	MVKSmallVector<uint64_t> emptySets;
 	for (auto& sittersForValue : _sitters) {
+		_device->removeSemaphore(&sitter->_blocker);
 		sittersForValue.second.erase(sitter);
 		// Can't destroy while iterating...
 		if (sittersForValue.second.empty()) {
@@ -288,12 +302,16 @@ void MVKFence::addSitter(MVKFenceSitter* fenceSitter) {
 
 	// Ensure each fence only added once to each fence sitter
 	auto addRslt = _fenceSitters.insert(fenceSitter);	// pair with second element true if was added
-	if (addRslt.second) { fenceSitter->await(); }
+	if (addRslt.second) {
+		_device->addSemaphore(&fenceSitter->_blocker);
+		fenceSitter->await();
+	}
 }
 
 void MVKFence::removeSitter(MVKFenceSitter* fenceSitter) {
 	lock_guard<mutex> lock(_lock);
 
+	_device->removeSemaphore(&fenceSitter->_blocker);
 	_fenceSitters.erase(fenceSitter);
 }
 
@@ -397,7 +415,11 @@ void MVKEventEmulated::encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status
 }
 
 void MVKEventEmulated::encodeWait(id<MTLCommandBuffer> mtlCmdBuff) {
-	if ( !_inlineSignalStatus ) { _blocker.wait(); }
+	if ( !_inlineSignalStatus ) {
+		_device->addSemaphore(&_blocker);
+		_blocker.wait();
+		_device->removeSemaphore(&_blocker);
+	}
 }
 
 MVKEventEmulated::MVKEventEmulated(MVKDevice* device, const VkEventCreateInfo* pCreateInfo) :
@@ -421,6 +443,10 @@ VkResult mvkWaitForFences(MVKDevice* device,
 						  VkBool32 waitAll,
 						  uint64_t timeout) {
 
+	if (device->getConfigurationResult() != VK_SUCCESS) {
+		return device->getConfigurationResult();
+	}
+
 	VkResult rslt = VK_SUCCESS;
 	MVKFenceSitter fenceSitter(waitAll);
 
@@ -428,7 +454,12 @@ VkResult mvkWaitForFences(MVKDevice* device,
 		((MVKFence*)pFences[i])->addSitter(&fenceSitter);
 	}
 
-	if ( !fenceSitter.wait(timeout) ) { rslt = VK_TIMEOUT; }
+	bool finished = fenceSitter.wait(timeout);
+	if (device->getConfigurationResult() != VK_SUCCESS) {
+		rslt = device->getConfigurationResult();
+	} else if ( !finished ) {
+		rslt = VK_TIMEOUT;
+	}
 
 	for (uint32_t i = 0; i < fenceCount; i++) {
 		((MVKFence*)pFences[i])->removeSitter(&fenceSitter);
@@ -441,6 +472,10 @@ VkResult mvkWaitForFences(MVKDevice* device,
 VkResult mvkWaitSemaphores(MVKDevice* device,
 						   const VkSemaphoreWaitInfo* pWaitInfo,
 						   uint64_t timeout) {
+
+	if (device->getConfigurationResult() != VK_SUCCESS) {
+		return device->getConfigurationResult();
+	}
 
 	VkResult rslt = VK_SUCCESS;
 	bool waitAny = mvkIsAnyFlagEnabled(pWaitInfo->flags, VK_SEMAPHORE_WAIT_ANY_BIT);
@@ -455,7 +490,12 @@ VkResult mvkWaitSemaphores(MVKDevice* device,
 		}
 	}
 
-	if ( !alreadySignaled && !fenceSitter.wait(timeout) ) { rslt = VK_TIMEOUT; }
+	bool finished = alreadySignaled || fenceSitter.wait(timeout);
+	if (device->getConfigurationResult() != VK_SUCCESS) {
+		rslt = device->getConfigurationResult();
+	} else if ( !finished ) {
+		rslt = VK_TIMEOUT;
+	}
 
 	for (uint32_t i = 0; i < pWaitInfo->semaphoreCount; i++) {
 		((MVKTimelineSemaphore*)pWaitInfo->pSemaphores[i])->unregisterWait(&fenceSitter);

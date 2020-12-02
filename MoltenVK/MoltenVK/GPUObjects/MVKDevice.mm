@@ -28,6 +28,7 @@
 #include "MVKPipeline.h"
 #include "MVKFramebuffer.h"
 #include "MVKRenderPass.h"
+#include "MVKSync.h"
 #include "MVKCommandPool.h"
 #include "MVKFoundation.h"
 #include "MVKCodec.h"
@@ -2778,12 +2779,29 @@ MVKQueue* MVKDevice::getAnyQueue() {
 }
 
 VkResult MVKDevice::waitIdle() {
+	VkResult rslt = VK_SUCCESS;
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		for (MVKQueue* q : queues) {
-			q->waitIdle();
+			if ((rslt = q->waitIdle()) != VK_SUCCESS) { return rslt; }
 		}
 	}
 	return VK_SUCCESS;
+}
+
+VkResult MVKDevice::markLost() {
+	lock_guard<mutex> lock(_sem4Lock);
+	setConfigurationResult(VK_ERROR_DEVICE_LOST);
+	for (auto* sem4 : _awaitingSemaphores) {
+		sem4->release();
+	}
+	for (auto& sem4AndValue : _awaitingTimelineSem4s) {
+		VkSemaphoreSignalInfo signalInfo;
+		signalInfo.value = sem4AndValue.second;
+		sem4AndValue.first->signal(&signalInfo);
+	}
+	_awaitingSemaphores.clear();
+	_awaitingTimelineSem4s.clear();
+	return VK_ERROR_DEVICE_LOST;
 }
 
 void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
@@ -3396,6 +3414,30 @@ MVKResource* MVKDevice::removeResource(MVKResource* rez) {
 	return rez;
 }
 
+// Adds the specified host semaphore to be woken upon device loss.
+void MVKDevice::addSemaphore(MVKSemaphoreImpl* sem4) {
+	lock_guard<mutex> lock(_sem4Lock);
+	_awaitingSemaphores.push_back(sem4);
+}
+
+// Removes the specified host semaphore.
+void MVKDevice::removeSemaphore(MVKSemaphoreImpl* sem4) {
+	lock_guard<mutex> lock(_sem4Lock);
+	mvkRemoveFirstOccurance(_awaitingSemaphores, sem4);
+}
+
+// Adds the specified timeline semaphore to be woken at the specified value upon device loss.
+void MVKDevice::addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value) {
+	lock_guard<mutex> lock(_sem4Lock);
+	_awaitingTimelineSem4s.emplace_back(sem4, value);
+}
+
+// Removes the specified timeline semaphore.
+void MVKDevice::removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value) {
+	lock_guard<mutex> lock(_sem4Lock);
+	mvkRemoveFirstOccurance(_awaitingTimelineSem4s, make_pair(sem4, value));
+}
+
 void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
 								   MVKPipelineBarrier& barrier,
@@ -3603,6 +3645,11 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledPortabilityFeatures(),
 	_enabledExtensions(this)
 {
+	// If the physical device is lost, bail.
+	if (physicalDevice->getConfigurationResult() != VK_SUCCESS) {
+		setConfigurationResult(physicalDevice->getConfigurationResult());
+		return;
+	}
 
 	initPerformanceTracking();
 	initPhysicalDevice(physicalDevice, pCreateInfo);

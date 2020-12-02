@@ -82,6 +82,7 @@ public:
 
 	/** Returns the status of the surface. Surface loss takes precedence over out-of-date errors. */
 	inline VkResult getSurfaceStatus() {
+		if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 		if (getIsSurfaceLost()) { return VK_ERROR_SURFACE_LOST_KHR; }
 		if (getHasSurfaceSizeChanged()) { return VK_ERROR_OUT_OF_DATE_KHR; }
 		return VK_SUCCESS;
