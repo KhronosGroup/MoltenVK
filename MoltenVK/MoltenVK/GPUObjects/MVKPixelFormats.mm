@@ -2043,25 +2043,25 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Blend, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 
-#if MVK_MACOS_OR_IOS
+	// We would really want to use the device's Metal features instead of duplicating
+	// the logic from MVKPhysicalDevice, but those may not have been initialized yet.
 	id<MTLDevice> mtlDev = _physicalDevice ? _physicalDevice->getMTLDevice() : nil;
+#if MVK_MACOS && !MVK_MACCAT
+	bool supportsStencilFeedback = [mtlDev supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
 #endif
-	if ( chromaSubsamplingComponentBits > 0 ||
-		// XXX We really want to use the device's Metal features instead of duplicating the
-		// logic from MVKPhysicalDevice, but those may not have been initialized yet.
-#if MVK_MACOS
-		(isStencilFormat(vkDesc.mtlPixelFormat) && (!_physicalDevice || !([mtlDev supportsFamily: MTLGPUFamilyMac2] ||
-																		  [mtlDev supportsFamily: MTLGPUFamilyMacCatalyst2])))
+#if MVK_MACCAT
+	bool supportsStencilFeedback = [mtlDev supportsFamily: MTLGPUFamilyMacCatalyst2];
 #endif
 #if MVK_IOS
-		 (isStencilFormat(vkDesc.mtlPixelFormat) && (!_physicalDevice || ![mtlDev supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1]))
+	bool supportsStencilFeedback = [mtlDev supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1];
 #endif
 #if MVK_TVOS
-		isStencilFormat(vkDesc.mtlPixelFormat)
+	bool supportsStencilFeedback = (mtlDev && !mtlDev);		// Really just false...but silence warning on unused mtlDev otherwise
 #endif
-		) {
-		// Vulkan forbids blits between chroma-subsampled formats.
-		// If we can't write the stencil reference from the shader, we can't blit stencil.
+
+	// Vulkan forbids blits between chroma-subsampled formats.
+	// If we can't write the stencil reference from the shader, we can't blit stencil.
+	if (chromaSubsamplingComponentBits > 0 || (isStencilFormat(vkDesc.mtlPixelFormat) && !supportsStencilFeedback)) {
 		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT));
 	}
 

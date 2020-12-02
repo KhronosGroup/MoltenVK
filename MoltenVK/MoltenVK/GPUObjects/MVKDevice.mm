@@ -330,7 +330,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 if (_features.tessellationShader) {
                     subgroupProps->supportedStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
                 }
-                if (mvkOSVersionIsAtLeast(13.0, 10.15, 14.0)) {
+                if (mvkOSVersionIsAtLeast(10.15, 13.0)) {
                     subgroupProps->supportedStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
                 }
                 subgroupProps->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
