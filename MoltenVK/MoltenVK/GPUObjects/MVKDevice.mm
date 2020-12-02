@@ -50,7 +50,13 @@ using namespace std;
 #	define MVKViewClass		NSView
 #endif
 
+// Mac Catalyst does not support feature sets, so we redefine them to GPU families in MVKDevice.h.
+#if MVK_MACCAT
+#define supportsMTLFeatureSet(MFS)	[_mtlDevice supportsFamily: MTLFeatureSet_ ##MFS]
+#else
 #define supportsMTLFeatureSet(MFS)	[_mtlDevice supportsFeatureSet: MTLFeatureSet_ ##MFS]
+#endif
+
 #define supportsMTLGPUFamily(GPUF)	([_mtlDevice respondsToSelector: @selector(supportsFamily:)] && [_mtlDevice supportsFamily: MTLGPUFamily ##GPUF])
 
 
@@ -324,7 +330,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 if (_features.tessellationShader) {
                     subgroupProps->supportedStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
                 }
-                if (mvkOSVersionIsAtLeast(10.15, 13.0)) {
+                if (mvkOSVersionIsAtLeast(13.0, 10.15, 14.0)) {
                     subgroupProps->supportedStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
                 }
                 subgroupProps->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
@@ -2684,8 +2690,16 @@ void MVKPhysicalDevice::logGPUInfo() {
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v2)) { logMsg += "\n\t\tmacOS GPU Family 1 v2"; }
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v1)) { logMsg += "\n\t\tmacOS GPU Family 1 v1"; }
 
+#if !MVK_MACCAT
 	if (supportsMTLFeatureSet(macOS_ReadWriteTextureTier2)) { logMsg += "\n\t\tmacOS Read-Write Texture Tier 2"; }
+#endif
+#endif
 
+#if MVK_MACCAT
+	if ([_mtlDevice respondsToSelector: @selector(readWriteTextureSupport)] &&
+		_mtlDevice.readWriteTextureSupport == MTLReadWriteTextureTier2) {
+		logMsg += "\n\t\tmacOS Read-Write Texture Tier 2";
+	}
 #endif
 
 	NSUUID* nsUUID = [[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID];		// temp retain

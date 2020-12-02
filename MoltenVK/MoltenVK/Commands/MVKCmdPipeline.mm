@@ -107,7 +107,9 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 														 beforeStages: dstStages];
 		}
 	} else {
+#if !MVK_MACCAT
 		if (coversTextures()) { [cmdEncoder->_mtlRenderEncoder textureBarrier]; }
+#endif
 	}
 #endif
 

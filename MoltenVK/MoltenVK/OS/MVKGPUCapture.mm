@@ -36,7 +36,9 @@ void MVKGPUCaptureScope::beginScope() {
 	if (_mtlCaptureScope) {
 		[_mtlCaptureScope beginScope];
 	} else if (_isDefault && _isFirstBoundary) {
+#if !MVK_MACCAT
 		[_mtlQueue insertDebugCaptureBoundary];
+#endif
 	}
 	_isFirstBoundary  = false;
 }
@@ -45,7 +47,9 @@ void MVKGPUCaptureScope::endScope() {
 	if (_mtlCaptureScope) {
 		[_mtlCaptureScope endScope];
 	} else if (_isDefault) {
+#if !MVK_MACCAT
 		[_mtlQueue insertDebugCaptureBoundary];
+#endif
 	}
 }
 

@@ -58,7 +58,8 @@ About **MoltenVK**
 graphics and compute functionality, that is built on Apple's [*Metal*](https://developer.apple.com/metal) 
 graphics and compute framework on *macOS*, *iOS*, and *tvOS*. **MoltenVK** allows you to use *Vulkan* 
 graphics and compute functionality to develop modern, cross-platform, high-performance graphical games 
-and applications, and to run them across many platforms, including *macOS*, *iOS*, and *tvOS*.
+and applications, and to run them across many platforms, including *macOS*, *iOS*, *tvOS*, *Simulators*,
+and *Mac Catalyst* on *macOS 11.0+*.
 
 *Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than 
 *Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
@@ -84,7 +85,7 @@ as a universal `XCFramework` or as a *dynamic library* (`.dylib`). Distributing 
 a dynamic library via the *iOS App Store* or *tvOS App Store* can require specialized bundling. 
 If you are unsure about which linking and deployment option you need, or on *iOS* or *tvOS*, 
 unless you have specific needs for dynamic libraries, follow the steps for linking **MoltenVK** 
-as an `XCFramework`, as it is the simpler option.
+as an `XCFramework`, as it is the simpler option, and encompasses the largest set of supported platforms.
 
 The demo apps, found in the `Demos.xcworkspace`, located in the `Demos` folder, demonstrate both
 of the installation techniques discussed above:

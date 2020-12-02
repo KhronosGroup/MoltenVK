@@ -327,15 +327,11 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			mtlTexDesc.textureType = MTLTextureType2DMultisample;
 			mtlTexDesc.sampleCount = sampleCount;
 		}
-#if MVK_IOS
-		if ([_renderPass->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
+		if (mvkOSVersionIsAtLeast(10.0, 11.0, 14.0)) {
 			mtlTexDesc.storageMode = MTLStorageModeMemoryless;
 		} else {
 			mtlTexDesc.storageMode = MTLStorageModePrivate;
 		}
-#else
-		mtlTexDesc.storageMode = MTLStorageModePrivate;
-#endif
 		mtlTexDesc.usage = MTLTextureUsageRenderTarget;
 		_mtlDummyTex = [_renderPass->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];  // not retained
 		[_mtlDummyTex setPurgeableState: MTLPurgeableStateVolatile];

@@ -56,8 +56,9 @@ In addition to devices, this demo will also run on the `iOS Simulator` or `tvOS 
 The *macOS* version of this demo includes a sizable window, and represents an example of how to detect,
 within your *Vulkan* code, when a window has been resized, and to modify the *Vulkan* swapchain accordingly.
 
-The `Cube` demo is a simple example of installing **MoltenVK** as an `XCFramework` 
-that is statically linked to the application.
+The `Cube` demo is a simple example of installing **MoltenVK** as an `XCFramework` that is 
+statically linked to the application. It supports all platforms, including _Mac Catalyst_, _iOS
+Simulator_ and _tvOS Simulator_, and all architectures including _Apple Silicon_.
 
 
 <a name="lunarg-vulkan-samples-hologram"></a>
@@ -121,7 +122,8 @@ To see descriptions and screenshots of each of the demos, open
 [this summary document](LunarG-VulkanSamples/VulkanSamples/samples_index.html#AdditionalVulkan).
 
 The `API-Samples` demo is a simple example of installing **MoltenVK** as an `XCFramework` that 
-is statically linked to the application.
+is statically linked to the application. It supports all platforms, including _Mac Catalyst_, _iOS
+Simulator_ and _tvOS Simulator_, and all architectures including _Apple Silicon_.
 
 
 

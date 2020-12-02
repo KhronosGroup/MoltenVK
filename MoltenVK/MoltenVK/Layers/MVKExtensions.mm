@@ -49,7 +49,7 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #define MVK_DISABLED_EXTENSION(EXT) \
 	if (pProperties == &kVkExtProps_##EXT) { return false; }
 #define MVK_EXTENSION_MIN_OS(EXT, MAC, IOS) \
-	if (pProperties == &kVkExtProps_##EXT) { return mvkOSVersionIsAtLeast(MAC, IOS); }
+	if (pProperties == &kVkExtProps_##EXT) { return mvkOSVersionIsAtLeast(IOS, MAC, 14.0); }
 #if MVK_MACOS
 	MVK_DISABLED_EXTENSION(MVK_IOS_SURFACE)
 

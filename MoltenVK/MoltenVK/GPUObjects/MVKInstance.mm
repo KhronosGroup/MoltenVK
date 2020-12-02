@@ -364,6 +364,12 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
 	}
 
+	if (MVK_MACCAT && !mvkOSVersionIsAtLeast(11.0)) {
+		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "To support Mac Catalyst, MoltenVK requires macOS 11.0 or above."));
+	}
+	MVKLogInfo("Running Mac Catalyst %.4f.", mvkOSVersion());
+
+
 	MVKLogInfo("Created VkInstance with the following %d Vulkan extensions enabled:%s",
 			   _enabledExtensions.getEnabledCount(),
 			   _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());

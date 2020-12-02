@@ -114,7 +114,8 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
 
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll decompress
 	// the texture ourselves. This, then, is the *uncompressed* format.
-	MTLPixelFormat mtlPixFmt = (MVK_MACOS && _image->_is3DCompressed) ? MTLPixelFormatBGRA8Unorm : _mtlPixFmt;
+	bool shouldSubFmt = MVK_MACOS && _image->_is3DCompressed;
+	MTLPixelFormat mtlPixFmt = shouldSubFmt ? MTLPixelFormatBGRA8Unorm : _mtlPixFmt;
 
     VkExtent3D extent = _image->getExtent3D(_planeIndex, 0);
     MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];    // retained
@@ -847,7 +848,8 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
 	// decompress the texture ourselves, and we need to be able to write to it.
-	if (MVK_MACOS && _is3DCompressed) {
+	bool makeWritable = MVK_MACOS && _is3DCompressed;
+	if (makeWritable) {
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
 	}
 
@@ -1014,7 +1016,6 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	MVKPixelFormats* pixFmts = getPixelFormats();
 
 	bool is2D = (getImageType() == VK_IMAGE_TYPE_2D);
-	bool isCompressed = pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed;
 	bool isChromaSubsampled = pixFmts->getChromaSubsamplingPlaneCount(pCreateInfo->format) > 0;
 
 	if (isChromaSubsampled && !is2D) {
