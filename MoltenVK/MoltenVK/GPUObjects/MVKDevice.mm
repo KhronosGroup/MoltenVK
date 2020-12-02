@@ -53,6 +53,14 @@ using namespace std;
 #define supportsMTLFeatureSet(MFS)	[_mtlDevice supportsFeatureSet: MTLFeatureSet_ ##MFS]
 #define supportsMTLGPUFamily(GPUF)	([_mtlDevice respondsToSelector: @selector(supportsFamily:)] && [_mtlDevice supportsFamily: MTLGPUFamily ##GPUF])
 
+static const uint32_t kAMDVendorId = 0x1002;
+static const uint32_t kAppleVendorId = 0x106b;
+static const uint32_t kIntelVendorId = 0x8086;
+static const uint32_t kNVVendorId = 0x10de;
+
+static const uint32_t kAMDRadeonRX5700XTDeviceId = 0x731f;
+static const uint32_t kAMDRadeonRX5500XTDeviceId = 0x7340;
+
 
 #pragma mark -
 #pragma mark MVKPhysicalDevice
@@ -192,6 +200,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				scalarLayoutFeatures->scalarBlockLayout = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT: {
+				auto* subgroupSizeFeatures = (VkPhysicalDeviceSubgroupSizeControlFeaturesEXT*)next;
+				subgroupSizeFeatures->subgroupSizeControl = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+				subgroupSizeFeatures->computeFullSubgroups = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
 				auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
 				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
@@ -319,7 +333,7 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 			}
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
                 auto* subgroupProps = (VkPhysicalDeviceSubgroupProperties*)next;
-                subgroupProps->subgroupSize = _metalFeatures.subgroupSize;
+                subgroupProps->subgroupSize = _metalFeatures.maxSubgroupSize;
                 subgroupProps->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
                 if (_features.tessellationShader) {
                     subgroupProps->supportedStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
@@ -390,6 +404,14 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				// doing it manually.
 				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
 				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT: {
+				auto* subgroupSizeProps = (VkPhysicalDeviceSubgroupSizeControlPropertiesEXT*)next;
+				subgroupSizeProps->minSubgroupSize = _metalFeatures.minSubgroupSize;
+				subgroupSizeProps->maxSubgroupSize = _metalFeatures.maxSubgroupSize;
+				subgroupSizeProps->maxComputeWorkgroupSubgroups = _properties.limits.maxComputeWorkGroupInvocations / _metalFeatures.minSubgroupSize;
+				subgroupSizeProps->requiredSubgroupSizeStages = 0;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
@@ -1435,18 +1457,43 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
     }
 
-    _metalFeatures.subgroupSize = 1;
+    _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize = 1;
 #if MVK_MACOS
     if (_metalFeatures.simdPermute) {
-        static const uint32_t kAMDVendorId = 0x1002;
-        _metalFeatures.subgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
+        // Based on data from Sascha Willems' Vulkan Hardware Database.
+        // This would be a lot easier and less painful if MTLDevice had properties for this...
+        _metalFeatures.maxSubgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
+        switch (_properties.vendorID) {
+            case kIntelVendorId:
+                _metalFeatures.minSubgroupSize = 8;
+                break;
+            case kAMDVendorId:
+                switch (_properties.deviceID) {
+                    case kAMDRadeonRX5700XTDeviceId:
+                    case kAMDRadeonRX5500XTDeviceId:
+                        _metalFeatures.minSubgroupSize = 32;
+                        break;
+                    default:
+                        _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize;
+                        break;
+                }
+                break;
+            case kAppleVendorId:
+                // XXX Minimum thread execution width for Apple GPUs is unknown, but assumed to be 4. May be greater.
+                _metalFeatures.minSubgroupSize = 4;
+                break;
+            default:
+                _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize;
+                break;
+        }
     }
 #endif
 #if MVK_IOS
     if (_metalFeatures.simdPermute) {
-        _metalFeatures.subgroupSize = 32;
+        _metalFeatures.minSubgroupSize = 4;
+        _metalFeatures.maxSubgroupSize = 32;
     } else if (_metalFeatures.quadPermute) {
-        _metalFeatures.subgroupSize = 4;
+        _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize = 4;
     }
 #endif
 
@@ -1930,8 +1977,6 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.lineWidthRange[1] = 1;
     _properties.limits.lineWidthGranularity = 1;
 
-    static const uint32_t kIntelVendorId = 0x8086;
-    static const uint32_t kNVVendorId = 0x10de;
     _properties.limits.standardSampleLocations = VK_TRUE;
     _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;
 
@@ -2038,7 +2083,6 @@ static uint32_t mvkGetEntryProperty(io_registry_entry_t entry, CFStringRef prope
 
 void MVKPhysicalDevice::initGPUInfoProperties() {
 
-	static const uint32_t kIntelVendorId = 0x8086;
 	bool isFound = false;
 
 	bool isIntegrated = _mtlDevice.isLowPower;
@@ -2048,7 +2092,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	if (supportsMTLGPUFamily(Apple5)) {
 		// This is an Apple GPU. It won't have a 'device-id' property, so fill it in
 		// like on iOS/tvOS.
-		_properties.vendorID = 0x106b;	// Apple's PCI ID
+		_properties.vendorID = kAppleVendorId;
 #if MVK_MACOS_APPLE_SILICON
 		if (supportsMTLGPUFamily(Apple7)) {
 			_properties.deviceID = 0xa140;
@@ -2130,7 +2174,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 		devID = coreCnt > 2 ? 0xa081 : 0xa080;
 	}
 
-	_properties.vendorID = 0x0000106b;	// Apple's PCI ID
+	_properties.vendorID = kAppleVendorId;
 	_properties.deviceID = devID;
 	_properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
@@ -2147,7 +2191,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 		devID = 0xa101;
 	}
 
-  _properties.vendorID = 0x0000106b;  // Apple's PCI ID
+  _properties.vendorID = kAppleVendorId;
   _properties.deviceID = devID;
   _properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
   strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);

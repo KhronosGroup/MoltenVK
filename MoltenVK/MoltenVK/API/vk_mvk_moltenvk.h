@@ -616,7 +616,7 @@ typedef struct {
 	VkBool32 placementHeaps;					/**< If true, MTLHeap objects support placement of resources. */
 	VkDeviceSize pushConstantSizeAlignment;		/**< The alignment used internally when allocating memory for push constants. Must be PoT. */
 	uint32_t maxTextureLayers;					/**< The maximum number of layers in an array texture. */
-    uint32_t subgroupSize;			            /**< The number of threads in a SIMD-group. */
+    uint32_t maxSubgroupSize;			        /**< The maximum number of threads in a SIMD-group. */
 	VkDeviceSize vertexStrideAlignment;         /**< The alignment used for the stride of vertex attribute bindings. */
 	VkBool32 indirectTessellationDrawing;		/**< If true, tessellation draw calls support parameters held in a GPU buffer. */
 	VkBool32 nonUniformThreadgroups;			/**< If true, the device supports arbitrary-sized grids in compute workloads. */
@@ -634,6 +634,7 @@ typedef struct {
 	VkBool32 quadPermute;						/**< If true, quadgroup permutation functions (vote, ballot, shuffle) are supported in shaders. */
 	VkBool32 simdPermute;						/**< If true, SIMD-group permutation functions (vote, ballot, shuffle) are supported in shaders. */
 	VkBool32 simdReduction;						/**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
+    uint32_t minSubgroupSize;			        /**< The minimum number of threads in a SIMD-group. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */
