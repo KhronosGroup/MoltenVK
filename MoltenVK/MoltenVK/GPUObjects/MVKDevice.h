@@ -927,3 +927,13 @@ protected:
 
 /** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
+
+/** Redefinitions because Mac Catalyst doesn't support feature sets. */
+#if MVK_MACCAT
+#define MTLFeatureSet_macOS_GPUFamily1_v1		MTLGPUFamilyMacCatalyst1
+#define MTLFeatureSet_macOS_GPUFamily1_v2		MTLGPUFamilyMacCatalyst1
+#define MTLFeatureSet_macOS_GPUFamily1_v3		MTLGPUFamilyMacCatalyst1
+#define MTLFeatureSet_macOS_GPUFamily1_v4		MTLGPUFamilyMacCatalyst1
+
+#define MTLFeatureSet_macOS_GPUFamily2_v1		MTLGPUFamilyMacCatalyst2
+#endif

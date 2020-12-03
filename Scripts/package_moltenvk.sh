@@ -30,6 +30,9 @@ export MVK_PROD_NAME="MoltenVK"
 export MVK_PROD_PROJ_PATH="${PROJECT_DIR}/${MVK_PROD_NAME}"
 export MVK_PKG_PROD_PATH="${PROJECT_DIR}/Package/${CONFIGURATION}/${MVK_PROD_NAME}"
 
+# Make sure directory is there in case no dylibs are created for this platform
+mkdir -p "${MVK_PKG_PROD_PATH}"
+
 copy_dylib "" "macOS"
 copy_dylib "-iphoneos" "iOS"
 copy_dylib "-iphonesimulator" "iOS-simulator"

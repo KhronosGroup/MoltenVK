@@ -7,6 +7,7 @@ all:
 	@$(MAKE) macos
 	@$(MAKE) ios
 	@$(MAKE) iossim
+	@$(MAKE) maccat
 	@$(MAKE) tvos
 	@$(MAKE) tvossim
 
@@ -15,6 +16,7 @@ all-debug:
 	@$(MAKE) macos-debug
 	@$(MAKE) ios-debug
 	@$(MAKE) iossim-debug
+	@$(MAKE) maccat-debug
 	@$(MAKE) tvos-debug
 	@$(MAKE) tvossim-debug
 
@@ -41,6 +43,14 @@ iossim:
 .PHONY: iossim-debug
 iossim-debug:
 	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator" -configuration "Debug"
+
+.PHONY: maccat
+maccat:
+	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst"
+
+.PHONY: maccat-debug
+maccat-debug:
+	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" -configuration "Debug"
 
 .PHONY: tvos
 tvos:

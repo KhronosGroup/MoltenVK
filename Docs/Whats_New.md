@@ -16,7 +16,7 @@ For best results, use a Markdown reader.*
 MoltenVK 1.1.1
 --------------
 
-Released TBD
+Released 2010/12/07
 
 - Add support for extensions:
 	- `VK_KHR_sampler_mirror_clamp_to_edge` (iOS)
@@ -28,6 +28,7 @@ Released TBD
 	- `VK_EXT_texture_compression_astc_hdr`
 	- `VK_AMD_shader_image_load_store` (macOS)
 	- `VK_IMG_format_pvrtc` (macOS)
+- Support the *Mac Catalyst* platform for *iOS* apps on *macOS 11.0+*, under both `x86_64` and `arm64` architectures.
 - Use `VK_KHR_image_format_list` to disable `MTLTextureUsagePixelFormatView` 
   if only swizzles or `sRGB` conversion will be used for image views, improving 
   performance on *iOS* by allowing Metal to use lossless texture compression.

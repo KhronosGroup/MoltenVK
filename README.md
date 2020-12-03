@@ -62,7 +62,8 @@ Introduction to MoltenVK
 graphics and compute functionality, that is built on Apple's [*Metal*](https://developer.apple.com/metal) 
 graphics and compute framework on *macOS*, *iOS*, and *tvOS*. **MoltenVK** allows you to use *Vulkan* 
 graphics and compute functionality to develop modern, cross-platform, high-performance graphical 
-games and applications, and to run them across many platforms, including *macOS*, *iOS*, and *tvOS*.
+games and applications, and to run them across many platforms, including *macOS*, *iOS*, *tvOS*,
+*Simulators*, and *Mac Catalyst* on *macOS 11.0+*, and all *Apple* architectures, including *Apple Silicon*.
 
 *Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than 
 *Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
@@ -120,6 +121,7 @@ for which to build the external libraries. The platform choices include:
 	--macos 
 	--ios 
 	--iossim 
+	--maccat 
 	--tvos 
 	--tvossim
 
@@ -205,6 +207,7 @@ from the command line. The following `make` targets are provided:
 	make macos
 	make ios
 	make iossim
+	make maccat
 	make tvos
 	make tvossim
 	
@@ -212,6 +215,7 @@ from the command line. The following `make` targets are provided:
 	make macos-debug
 	make ios-debug
 	make iossim-debug
+	make maccat-debug
 	make tvos-debug
 	make tvossim-debug
 	

@@ -17,6 +17,9 @@
 #      --iossim
 #              Build the external libraries for the iOS Simulator platform.
 #
+#      --maccat
+#              Build the external libraries for the Mac Catalyst platform.
+#
 #      --tvos
 #              Build the external libraries for the tvOS platform.
 #
@@ -24,7 +27,7 @@
 #              Build the external libraries for the tvOS Simulator platform.
 #
 #      --all
-#              Equivalent to specifying [--macos --ios --iossim --tvos --tvossim].
+#              Equivalent to specifying [--macos --ios --iossim --maccat --tvos --tvossim].
 #              Results in one XCFramework for each external library, each containing
 #              binaries for all supported platforms.
 #
@@ -88,6 +91,7 @@ set -e
 BLD_NONE=""
 BLD_IOS=""
 BLD_IOS_SIM=""
+BLD_MAC_CAT=""
 BLD_TVOS=""
 BLD_TVOS_SIM=""
 BLD_MACOS=""
@@ -113,6 +117,10 @@ while (( "$#" )); do
          BLD_IOS_SIM="Y"
          shift 1
          ;;
+       --maccat)
+         BLD_MAC_CAT="Y"
+         shift 1
+         ;;
        --tvos)
          BLD_TVOS="Y"
          shift 1
@@ -128,6 +136,7 @@ while (( "$#" )); do
        --all)
          BLD_IOS="Y"
          BLD_IOS_SIM="Y"
+         BLD_MAC_CAT="Y"
          BLD_TVOS="Y"
          BLD_TVOS_SIM="Y"
          BLD_MACOS="Y"
@@ -388,22 +397,27 @@ echo Please be patient on first build
 
 # Build an Xcode scheme for an OS and platform
 # 1 - OS
-# 2 - platform
+# 2 - Platform
+# 3 - Destination (Optional. Defaults to same as platform)
 function build_impl() {
     BLD_SPECIFIED="Y"
 	XC_OS=${1}
 	XC_PLTFM=${2}
+	if [ "${3}" != "" ]; then
+		XC_DEST=${3};
+	else
+		XC_DEST=${XC_PLTFM};
+	fi
 
 	XC_SCHEME="${EXT_DEPS}-${XC_OS}"
 	XC_LCL_DD_PATH="${XC_DD_PATH}/Intermediates/${XC_PLTFM}"
-	XC_DEST="generic/platform=${XC_PLTFM}"
 
-	echo Building external libraries for ${XC_PLTFM}
+	echo Building external libraries for platform ${XC_PLTFM} and destination ${XC_DEST}
 
 	xcodebuild 													\
 		-project "${XC_PROJ}"									\
 		-scheme "${XC_SCHEME}"									\
-		-destination "${XC_DEST}"								\
+		-destination "generic/platform=${XC_DEST}"				\
 		-configuration "${XC_CONFIG}"							\
 		-enableAddressSanitizer "${XC_USE_ASAN}"				\
 		-enableThreadSanitizer "${XC_USE_TSAN}"					\
@@ -420,9 +434,9 @@ function build_impl() {
 # 2 - platform
 function build() {
 	if [ "$XC_USE_BCKGND" != "" ]; then
-		build_impl "${1}" "${2}" &
+		build_impl "${1}" "${2}" "${3}" &
 	else
-		build_impl "${1}" "${2}"
+		build_impl "${1}" "${2}" "${3}"
 	fi
 }
 
@@ -447,6 +461,10 @@ fi
 
 if [ "$BLD_IOS_SIM" != "" ]; then
 	build "iOS" "iOS Simulator"
+fi
+
+if [ "$BLD_MAC_CAT" != "" ]; then
+	build "iOS" "Mac Catalyst" "macOS,variant=Mac Catalyst"
 fi
 
 if [ "$BLD_TVOS" != "" ]; then
