@@ -801,8 +801,8 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(MVKSurface* surface,
 	pSurfaceCapabilities->maxImageCount = _metalFeatures.maxSwapchainImageCount;
 
 	pSurfaceCapabilities->currentExtent = surfExtnt;
-	pSurfaceCapabilities->minImageExtent = surfExtnt;
-	pSurfaceCapabilities->maxImageExtent = surfExtnt;
+	pSurfaceCapabilities->minImageExtent = { 1, 1 };
+	pSurfaceCapabilities->maxImageExtent = { _properties.limits.maxImageDimension2D, _properties.limits.maxImageDimension2D };
     pSurfaceCapabilities->maxImageArrayLayers = 1;
 	pSurfaceCapabilities->supportedTransforms = (VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR);
 	pSurfaceCapabilities->currentTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
