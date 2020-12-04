@@ -34,6 +34,7 @@ typedef struct {
     uint32_t swizzle = 0;
 	uint16_t index = 0;
     bool isDirty = true;
+    bool isFixed = false;
 } MVKMTLTextureBinding;
 
 /** Describes a MTLSamplerState resource binding. */
@@ -41,6 +42,7 @@ typedef struct {
     union { id<MTLSamplerState> mtlSamplerState = nil; id<MTLSamplerState> mtlResource; }; // aliases
     uint16_t index = 0;
     bool isDirty = true;
+    bool isFixed = false;
 } MVKMTLSamplerStateBinding;
 
 /** Describes a MTLBuffer resource binding. */
@@ -51,6 +53,7 @@ typedef struct {
 	uint16_t index = 0;
     bool isDirty = true;
     bool isInline = false;
+    bool isFixed = false;
 } MVKMTLBufferBinding;
 
 /** Describes a MTLBuffer resource binding as used for an index buffer. */

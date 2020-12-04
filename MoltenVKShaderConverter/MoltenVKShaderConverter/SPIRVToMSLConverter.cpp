@@ -106,7 +106,10 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 	if (resourceBinding.msl_texture != other.resourceBinding.msl_texture) { return false; }
 	if (resourceBinding.msl_sampler != other.resourceBinding.msl_sampler) { return false; }
 
-	if (requiresConstExprSampler != other.requiresConstExprSampler) { return false; }
+    if (mslBufferIndex != other.mslBufferIndex) { return false; }
+    if (mslTextureIndex != other.mslTextureIndex) { return false; }
+    if (mslSamplerIndex != other.mslSamplerIndex) { return false; }
+    if (requiresConstExprSampler != other.requiresConstExprSampler) { return false; }
 
 	// If requiresConstExprSampler is false, constExprSampler can be ignored
 	if (requiresConstExprSampler) {
@@ -269,8 +272,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 		// Add resource bindings and hardcoded constexpr samplers
 		for (auto& rb : context.resourceBindings) {
-			auto& rbb = rb.resourceBinding;
-			pMSLCompiler->add_msl_resource_binding(rbb);
+			auto rbb = rb.resourceBinding;
+            rbb.msl_sampler = (uint32_t)-1;
+            rbb.msl_texture = (uint32_t)-1;
+            rbb.msl_buffer = (uint32_t)-1;
+
+            pMSLCompiler->add_msl_resource_binding(rbb);
 
 			if (rb.requiresConstExprSampler) {
 				pMSLCompiler->remap_constexpr_sampler_by_binding(rbb.desc_set, rbb.binding, rb.constExprSampler);
@@ -309,10 +316,17 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		ctxSI.isUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderInput.location);
 	}
 	for (auto& ctxRB : context.resourceBindings) {
-		ctxRB.isUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
-																		  ctxRB.resourceBinding.desc_set,
-																		  ctxRB.resourceBinding.binding);
-	}
+        auto rbb = ctxRB.resourceBinding;
+        if ((ctxRB.isUsedByShader = pMSLCompiler->get_msl_resource_binding(rbb))) {
+            ctxRB.mslBufferIndex = rbb.msl_buffer;
+            ctxRB.mslTextureIndex = rbb.msl_texture;
+            ctxRB.mslSamplerIndex = rbb.msl_sampler;
+        } else {
+            ctxRB.mslBufferIndex = (uint32_t)-1;
+            ctxRB.mslTextureIndex = (uint32_t)-1;
+            ctxRB.mslSamplerIndex = (uint32_t)-1;
+        }
+    }
 
 	delete pMSLCompiler;
 
