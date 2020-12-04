@@ -1669,7 +1669,7 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 
 		switch (mtlPixFmt) {
 			case MTLPixelFormatR8Unorm:
-#ifndef MTLPixelFormatR8Unorm_sRGB
+#if MVK_MACOS_APPLE_SILICON || MVK_IOS_OR_TVOS
 			case MTLPixelFormatR8Unorm_sRGB:
 #endif
 			case MTLPixelFormatR8Snorm:
@@ -1689,7 +1689,7 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 				break;
 
 			case MTLPixelFormatRG8Unorm:
-#ifndef MTLPixelFormatRG8Unorm_sRGB
+#if MVK_MACOS_APPLE_SILICON || MVK_IOS_OR_TVOS
 			case MTLPixelFormatRG8Unorm_sRGB:
 #endif
 			case MTLPixelFormatRG8Snorm:
