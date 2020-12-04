@@ -424,6 +424,12 @@ static inline bool getMVKPreallocateDescriptors() {
 template<class DescriptorClass>
 VkResult MVKDescriptorTypePreallocation<DescriptorClass>::allocateDescriptor(MVKDescriptor** pMVKDesc) {
 
+	// If we don't preallocate, create and return an instance on the fly.
+	if ( !getMVKPreallocateDescriptors() ) {
+		*pMVKDesc = new DescriptorClass();
+		return VK_SUCCESS;
+	}
+
 	uint32_t descCnt = (uint32_t)_descriptors.size();
 
 	// Preallocated descriptors that CANNOT be freed.
@@ -472,6 +478,12 @@ bool MVKDescriptorTypePreallocation<DescriptorClass>::findDescriptor(uint32_t en
 template<typename DescriptorClass>
 void MVKDescriptorTypePreallocation<DescriptorClass>::freeDescriptor(MVKDescriptor* mvkDesc) {
 
+	// If we don't preallocate, create and return an instance on the fly.
+	if ( !getMVKPreallocateDescriptors() ) {
+		mvkDesc->destroy();
+		return;
+	}
+
 	mvkDesc->reset();
 
 	if (_supportAvailability) {
@@ -494,143 +506,23 @@ void MVKDescriptorTypePreallocation<DescriptorClass>::reset() {
 template<typename DescriptorClass>
 MVKDescriptorTypePreallocation<DescriptorClass>::MVKDescriptorTypePreallocation(const VkDescriptorPoolCreateInfo* pCreateInfo,
 																				VkDescriptorType descriptorType) {
-	// There may be more than  one poolSizeCount instance for the desired VkDescriptorType.
-	// Accumulate the descriptor count for the desired VkDescriptorType, and size the collections accordingly.
-	uint32_t descriptorCount = 0;
-	uint32_t poolCnt = pCreateInfo->poolSizeCount;
-	for (uint32_t poolIdx = 0; poolIdx < poolCnt; poolIdx++) {
-		auto& poolSize = pCreateInfo->pPoolSizes[poolIdx];
-		if (poolSize.type == descriptorType) { descriptorCount += poolSize.descriptorCount; }
-	}
-	_descriptors.resize(descriptorCount);
-
 	// Determine whether we need to track the availability of previously freed descriptors.
 	_supportAvailability = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
-	if (_supportAvailability) { _availability.resize(descriptorCount, true); }
 	_nextAvailableIndex = 0;
-}
 
+	if (getMVKPreallocateDescriptors()) {
+		// There may be more than  one poolSizeCount instance for the desired VkDescriptorType.
+		// Accumulate the descriptor count for the desired VkDescriptorType, and size the collections accordingly.
+		uint32_t descriptorCount = 0;
+		uint32_t poolCnt = pCreateInfo->poolSizeCount;
+		for (uint32_t poolIdx = 0; poolIdx < poolCnt; poolIdx++) {
+			auto& poolSize = pCreateInfo->pPoolSizes[poolIdx];
+			if (poolSize.type == descriptorType) { descriptorCount += poolSize.descriptorCount; }
+		}
 
-#pragma mark -
-#pragma mark MVKPreallocatedDescriptors
-
-// Allocate a descriptor of the specified type
-VkResult MVKPreallocatedDescriptors::allocateDescriptor(VkDescriptorType descriptorType,
-														MVKDescriptor** pMVKDesc) {
-	switch (descriptorType) {
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-			return _uniformBufferDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			return _storageBufferDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-			return _uniformBufferDynamicDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			return _storageBufferDynamicDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			return _inlineUniformBlockDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-			return _sampledImageDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			return _storageImageDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			return _inputAttachmentDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			return _samplerDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			return _combinedImageSamplerDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			return _uniformTexelBufferDescriptors.allocateDescriptor(pMVKDesc);
-
-		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			return _storageTexelBufferDescriptors.allocateDescriptor(pMVKDesc);
-
-		default:
-			return reportError(VK_ERROR_INITIALIZATION_FAILED, "Unrecognized VkDescriptorType %d.", descriptorType);
+		_descriptors.resize(descriptorCount);
+		if (_supportAvailability) { _availability.resize(descriptorCount, true); }
 	}
-}
-
-void MVKPreallocatedDescriptors::freeDescriptor(MVKDescriptor* mvkDesc) {
-	VkDescriptorType descriptorType = mvkDesc->getDescriptorType();
-	switch (descriptorType) {
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-			return _uniformBufferDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			return _storageBufferDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-			return _uniformBufferDynamicDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			return _storageBufferDynamicDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			return _inlineUniformBlockDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-			return _sampledImageDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			return _storageImageDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			return _inputAttachmentDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			return _samplerDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			return _combinedImageSamplerDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			return _uniformTexelBufferDescriptors.freeDescriptor(mvkDesc);
-
-		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			return _storageTexelBufferDescriptors.freeDescriptor(mvkDesc);
-
-		default:
-			reportError(VK_ERROR_INITIALIZATION_FAILED, "Unrecognized VkDescriptorType %d.", descriptorType);
-	}
-}
-
-void MVKPreallocatedDescriptors::reset() {
-	_uniformBufferDescriptors.reset();
-	_storageBufferDescriptors.reset();
-	_uniformBufferDynamicDescriptors.reset();
-	_storageBufferDynamicDescriptors.reset();
-	_inlineUniformBlockDescriptors.reset();
-	_sampledImageDescriptors.reset();
-	_storageImageDescriptors.reset();
-	_inputAttachmentDescriptors.reset();
-	_samplerDescriptors.reset();
-	_combinedImageSamplerDescriptors.reset();
-	_uniformTexelBufferDescriptors.reset();
-	_storageTexelBufferDescriptors.reset();
-}
-
-MVKPreallocatedDescriptors::MVKPreallocatedDescriptors(const VkDescriptorPoolCreateInfo* pCreateInfo) :
-	_uniformBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
-	_storageBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
-	_uniformBufferDynamicDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC),
-	_storageBufferDynamicDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC),
-	_inlineUniformBlockDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT),
-	_sampledImageDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
-	_storageImageDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
-	_inputAttachmentDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
-	_samplerDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLER),
-	_combinedImageSamplerDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
-	_uniformTexelBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER),
-	_storageTexelBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
 }
 
 
@@ -679,7 +571,20 @@ VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescripto
 VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
 	for (auto& mvkDS : _descriptorSets) { freeDescriptorSet(&mvkDS); }
 	_descriptorSets.clear();
-	if (_preallocatedDescriptors) { _preallocatedDescriptors->reset(); }
+
+	_uniformBufferDescriptors.reset();
+	_storageBufferDescriptors.reset();
+	_uniformBufferDynamicDescriptors.reset();
+	_storageBufferDynamicDescriptors.reset();
+	_inlineUniformBlockDescriptors.reset();
+	_sampledImageDescriptors.reset();
+	_storageImageDescriptors.reset();
+	_inputAttachmentDescriptors.reset();
+	_samplerDescriptors.reset();
+	_combinedImageSamplerDescriptors.reset();
+	_uniformTexelBufferDescriptors.reset();
+	_storageTexelBufferDescriptors.reset();
+
 	return VK_SUCCESS;
 }
 
@@ -708,7 +613,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 				_device->getInstance()->getAPIVersion() >= VK_API_VERSION_1_1) {
 				return VK_ERROR_OUT_OF_POOL_MEMORY;		// Failure is an acceptable test...don't log as error.
 			} else {
-				return reportError(VK_ERROR_INITIALIZATION_FAILED, "The maximum number of descriptor sets that can be allocated by this descriptor pool is %d.", _descriptorSets.capacity());
+				return reportError(VK_ERROR_INITIALIZATION_FAILED, "The maximum number of descriptor sets that can be allocated by this descriptor pool is %lu.", _descriptorSets.capacity());
 			}
 		}
 	}
@@ -729,88 +634,114 @@ void MVKDescriptorPool::freeDescriptorSet(MVKDescriptorSet* mvkDS) {
 // Allocate a descriptor of the specified type
 VkResult MVKDescriptorPool::allocateDescriptor(VkDescriptorType descriptorType,
 											   MVKDescriptor** pMVKDesc) {
-
-	// If descriptors are preallocated allocate from the preallocated pools
-	if (_preallocatedDescriptors) {
-		return _preallocatedDescriptors->allocateDescriptor(descriptorType, pMVKDesc);
-	}
-
-	// Otherwise instantiate one of the appropriate type now
 	switch (descriptorType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-			*pMVKDesc = new MVKUniformBufferDescriptor();
-			break;
+			return _uniformBufferDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-			*pMVKDesc = new MVKStorageBufferDescriptor();
-			break;
+			return _storageBufferDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-			*pMVKDesc = new MVKUniformBufferDynamicDescriptor();
-			break;
+			return _uniformBufferDynamicDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			*pMVKDesc = new MVKStorageBufferDynamicDescriptor();
-			break;
+			return _storageBufferDynamicDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			*pMVKDesc = new MVKInlineUniformBlockDescriptor();
-			break;
+			return _inlineUniformBlockDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-			*pMVKDesc = new MVKSampledImageDescriptor();
-			break;
+			return _sampledImageDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			*pMVKDesc = new MVKStorageImageDescriptor();
-			break;
+			return _storageImageDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			*pMVKDesc = new MVKInputAttachmentDescriptor();
-			break;
+			return _inputAttachmentDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			*pMVKDesc = new MVKSamplerDescriptor();
-			break;
+			return _samplerDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			*pMVKDesc = new MVKCombinedImageSamplerDescriptor();
-			break;
+			return _combinedImageSamplerDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			*pMVKDesc = new MVKUniformTexelBufferDescriptor();
-			break;
+			return _uniformTexelBufferDescriptors.allocateDescriptor(pMVKDesc);
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			*pMVKDesc = new MVKStorageTexelBufferDescriptor();
-			break;
+			return _storageTexelBufferDescriptors.allocateDescriptor(pMVKDesc);
 
 		default:
 			return reportError(VK_ERROR_INITIALIZATION_FAILED, "Unrecognized VkDescriptorType %d.", descriptorType);
 	}
-	return VK_SUCCESS;
 }
 
-// Free a descriptor, either through the preallocated pool, or directly destroy it
 void MVKDescriptorPool::freeDescriptor(MVKDescriptor* mvkDesc) {
-	if (_preallocatedDescriptors) {
-		_preallocatedDescriptors->freeDescriptor(mvkDesc);
-	} else {
-		mvkDesc->destroy();
+	VkDescriptorType descriptorType = mvkDesc->getDescriptorType();
+	switch (descriptorType) {
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+			return _uniformBufferDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+			return _storageBufferDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+			return _uniformBufferDynamicDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			return _storageBufferDynamicDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+			return _inlineUniformBlockDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+			return _sampledImageDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			return _storageImageDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			return _inputAttachmentDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+			return _samplerDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			return _combinedImageSamplerDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			return _uniformTexelBufferDescriptors.freeDescriptor(mvkDesc);
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			return _storageTexelBufferDescriptors.freeDescriptor(mvkDesc);
+
+		default:
+			reportError(VK_ERROR_INITIALIZATION_FAILED, "Unrecognized VkDescriptorType %d.", descriptorType);
 	}
 }
 
-MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device,
-									 const VkDescriptorPoolCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
+MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo) :
+	MVKVulkanAPIDeviceObject(device),
+	_uniformBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER),
+	_storageBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER),
+	_uniformBufferDynamicDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC),
+	_storageBufferDynamicDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC),
+	_inlineUniformBlockDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT),
+	_sampledImageDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE),
+	_storageImageDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_IMAGE),
+	_inputAttachmentDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT),
+	_samplerDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLER),
+	_combinedImageSamplerDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
+	_uniformTexelBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER),
+	_storageTexelBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+
 	_supportAvailability = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
 	_descriptorSets.reserve(pCreateInfo->maxSets);		// Must reserve all at once to avoid reallocation as it grows
-	_preallocatedDescriptors = getMVKPreallocateDescriptors() ? new MVKPreallocatedDescriptors(pCreateInfo) : nullptr;
 }
 
 // Destroy all allocated descriptor sets and preallocated descriptors
 MVKDescriptorPool::~MVKDescriptorPool() {
 	reset(0);
-	if (_preallocatedDescriptors) { _preallocatedDescriptors->destroy(); }
 }
 
 
