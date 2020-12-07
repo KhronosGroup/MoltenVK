@@ -37,6 +37,7 @@ Released TBD
 - Report `VkPhysicalDeviceLimits::maxPerStageDescriptorStorageImages` as Metal limit of `8`.
 - Increase per-stage texture count to `96` for A11 SoC's and above.
 - Add ability to automatically capture first GPU frame by setting `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE` to `2`.
+- Add `MVKBitArray` and remove `MVKVector`.
 - Clarify documentation on mapping limitations for host-coherent image memory on *macOS*.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `29`.
 
