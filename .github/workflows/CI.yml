@@ -41,14 +41,22 @@ jobs:
         # See: https://github.com/actions/virtual-environments/tree/main/images/macos
         run: sudo xcode-select -switch /Applications/Xcode_12.2.app/Contents/Developer
 
+      - name: Create Build Logs Dir
+        run: |
+          mkdir -p "${HOME}/build_logs"
+
       - name: Fetch Dependencies
         run: |
           ./fetchDependencies -v --no-parallel-build --${{ matrix.platform }}
 
       - name: Build MoltenVK
         run: |
-          xcodebuild build -project MoltenVKPackaging.xcodeproj -scheme "${{ matrix.scheme }}"
-      
+          set -o pipefail && xcodebuild build -project MoltenVKPackaging.xcodeproj -scheme "${{ matrix.scheme }}" | tee "${HOME}/build_logs/xcodebuild.log" | xcpretty -c
+
+      - name: Output Build Logs on Failure
+        if: failure()
+        run: cat "${HOME}/build_logs/xcodebuild.log"
+
       - name: Build Demos
         if: success() && !(matrix.demos-scheme == '')
         run: |
