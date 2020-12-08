@@ -64,22 +64,52 @@ public:
 
 	/**
 	 * Returns the index of the first bit that is set, at or after the specified index,
-	 * or, if no bits are set, returns the size() of this bit array.
+	 * and optionally clears that bit. If no bits are set, returns the size() of this bit array.
 	 */
-	size_t getIndexOfFirstSetBit(size_t startIndex = 0) {
+	size_t getIndexOfFirstSetBit(size_t startIndex, bool shouldClear) {
 		size_t startSecIdx = getIndexOfSection(startIndex);
 		size_t bitIdx = startSecIdx << SectionMaskSize;
 		size_t secCnt = getSectionCount();
 		for (size_t secIdx = startSecIdx; secIdx < secCnt; secIdx++) {
 			size_t lclBitIdx = getIndexOfFirstSetBitInSection(_pSections[secIdx], getBitIndexInSection(startIndex));
 			bitIdx += lclBitIdx;
-			if (lclBitIdx < SectionSize) { return bitIdx; }
+			if (lclBitIdx < SectionSize) {
+				if (shouldClear) { clearBit(bitIdx); }
+				return bitIdx;
+			}
 		}
 		return std::min(bitIdx, _bitCount);
 	}
 
+	/**
+	 * Returns the index of the first bit that is set, at or after the specified index.
+	 * If no bits are set, returns the size() of this bit array.
+	 */
+	inline size_t getIndexOfFirstSetBit(size_t startIndex) {
+		return getIndexOfFirstSetBit(startIndex, false);
+	}
+
+	/**
+	 * Returns the index of the first bit that is set and optionally clears that bit.
+	 * If no bits are set, returns the size() of this bit array.
+	 */
+	inline size_t getIndexOfFirstSetBit(bool shouldClear) {
+		return getIndexOfFirstSetBit(0, shouldClear);
+	}
+
+	/**
+	 * Returns the index of the first bit that is set.
+	 * If no bits are set, returns the size() of this bit array.
+	 */
+	inline size_t getIndexOfFirstSetBit() {
+		return getIndexOfFirstSetBit(0, false);
+	}
+
 	/** Returns the number of bits in this array. */
 	inline size_t size() { return _bitCount; }
+
+	/** Returns whether this array is empty. */
+	inline bool empty() { return !_bitCount; }
 
 	/** Constructs an instance for the specified number of bits, and sets the initial value of all the bits. */
 	MVKBitArray(size_t size, bool val = false) {
@@ -122,9 +152,9 @@ protected:
 		return (uint64_t)1U << ((SectionSize - 1) - getBitIndexInSection(bitIndex));
 	}
 
-	// Returns the local index of the first set bit in the section. Clears all bits ahead
-	// of the start bit so they will be ignored, then counts the number of zeros ahead of
-	// the set bit. If there are no set bits, returns the number of bits in a section.
+	// Returns the local index of the first set bit in the section, starting from the highest order bit.
+	// Clears all bits ahead of the start bit so they will be ignored, then counts the number of zeros
+	// ahead of the set bit. If there are no set bits, returns the number of bits in a section.
 	static size_t getIndexOfFirstSetBitInSection(uint64_t section, size_t lclStartBitIndex) {
 		uint64_t lclStartMask = ~(uint64_t)0;
 		lclStartMask >>= lclStartBitIndex;

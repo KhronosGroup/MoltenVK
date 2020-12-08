@@ -20,6 +20,7 @@
 
 #include "MVKDescriptor.h"
 #include "MVKSmallVector.h"
+#include "MVKBitArray.h"
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -153,7 +154,6 @@ protected:
 					  uint32_t variableDescriptorCount,
 					  MVKDescriptorPool* pool);
 	void free(MVKDescriptorPool* pool);
-	inline bool isFree() { return !_layout; }
 
 	MVKDescriptorSetLayout* _layout;
 	id<MTLBuffer> _mtlArgumentBuffer;
@@ -231,7 +231,7 @@ protected:
 	void freeDescriptor(MVKDescriptor* mvkDesc);
 
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
-	bool _supportAvailability;
+	MVKBitArray _descriptorSetAvailablility;
 
 	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;
