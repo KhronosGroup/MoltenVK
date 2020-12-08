@@ -61,3 +61,13 @@ jobs:
         if: success() && !(matrix.demos-scheme == '')
         run: |
           xcodebuild build -workspace Demos/Demos.xcworkspace -scheme "${{ matrix.demos-scheme }}"
+
+      - name: Tar Artifacts
+        # See: https://github.com/actions/upload-artifact#maintaining-file-permissions-and-case-sensitive-files
+        run: tar -cvf "${{ matrix.platform }}.tar" Package/Release/
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v2
+        with:
+          name: ${{ matrix.platform }}
+          path: "${{ matrix.platform }}.tar"
