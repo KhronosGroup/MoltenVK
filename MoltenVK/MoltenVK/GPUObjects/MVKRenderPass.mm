@@ -300,7 +300,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		VkExtent2D fbExtent = framebuffer->getExtent2D();
 		MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
 		if (isMultiview()) {
-#if MVK_MACOS
+#if MVK_MACOS_OR_IOS
 			if (sampleCount > 1 && _renderPass->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
 				mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
 				mtlTexDesc.sampleCount = sampleCount;

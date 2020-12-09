@@ -44,12 +44,17 @@ extern "C" {
 
 /** Building for macOS. */
 #ifndef MVK_MACOS
-#	define MVK_MACOS				TARGET_OS_OSX
+#	define MVK_MACOS				(TARGET_OS_OSX || TARGET_OS_MACCATALYST)
 #endif
 
 /** Building for iOS. */
 #ifndef MVK_IOS
-#	define MVK_IOS					TARGET_OS_IOS
+#	define MVK_IOS					(TARGET_OS_IOS && !TARGET_OS_MACCATALYST)
+#endif
+
+/** Building for iOS on Mac Catalyst. */
+#ifndef MVK_MACCAT
+#	define MVK_MACCAT				TARGET_OS_MACCATALYST
 #endif
 
 /** Building for tvOS. */

@@ -292,7 +292,7 @@ VkExtent3D mvkMipmapBaseSizeFromLevelSize3D(VkExtent3D levelSize, uint32_t level
  */
 MTLSamplerAddressMode mvkMTLSamplerAddressModeFromVkSamplerAddressMode(VkSamplerAddressMode vkMode);
 
-#ifdef __MAC_OS_X_VERSION_MAX_ALLOWED
+#if MVK_MACOS_OR_IOS 
 /**
  * Returns the Metal MTLSamplerBorderColor corresponding to the specified Vulkan VkBorderColor,
  * or returns MTLSamplerBorderColorTransparentBlack if no corresponding MTLSamplerBorderColor exists.
@@ -424,6 +424,14 @@ static inline VkExtent2D mvkVkExtent2DFromCGSize(CGSize cgSize) {
 	vkExt.width = cgSize.width;
 	vkExt.height = cgSize.height;
 	return vkExt;
+}
+
+/** Returns a CGSize that corresponds to the specified VkExtent2D. */
+static inline CGSize mvkCGSizeFromVkExtent2D(VkExtent2D vkExtent) {
+	CGSize cgSize;
+	cgSize.width = vkExtent.width;
+	cgSize.height = vkExtent.height;
+	return cgSize;
 }
 
 /** Returns a Metal MTLOrigin constructed from a VkOffset3D. */

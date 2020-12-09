@@ -50,7 +50,9 @@ class MVKSwapchain;
 class MVKDeviceMemory;
 class MVKFence;
 class MVKSemaphore;
+class MVKTimelineSemaphore;
 class MVKEvent;
+class MVKSemaphoreImpl;
 class MVKQueryPool;
 class MVKShaderModule;
 class MVKPipelineCache;
@@ -435,6 +437,9 @@ public:
 
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
+	
+	/** Mark this device as lost. Releases all waits for this device. */
+	VkResult markLost();
 
 	/** Returns whether or not the given descriptor set layout is supported. */
 	void getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
@@ -740,9 +745,19 @@ public:
     }
 
 protected:
+	friend class MVKSemaphoreEmulated;
+	friend class MVKTimelineSemaphoreMTLEvent;
+	friend class MVKTimelineSemaphoreEmulated;
+	friend class MVKFence;
+	friend class MVKEventEmulated;
+
 	void propagateDebugName() override  {}
 	MVKResource* addResource(MVKResource* rez);
 	MVKResource* removeResource(MVKResource* rez);
+	void addSemaphore(MVKSemaphoreImpl* sem4);
+	void removeSemaphore(MVKSemaphoreImpl* sem4);
+	void addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
+	void removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value);
     void initPerformanceTracking();
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
@@ -765,7 +780,10 @@ protected:
 	MVKSmallVector<MVKResource*, 256> _resources;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;
 	MVKSmallVector<bool> _privateDataSlotsAvailability;
+	MVKSmallVector<MVKSemaphoreImpl*> _awaitingSemaphores;
+	MVKSmallVector<std::pair<MVKTimelineSemaphore*, uint64_t>> _awaitingTimelineSem4s;
 	std::mutex _rezLock;
+	std::mutex _sem4Lock;
     std::mutex _perfLock;
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;
 	id<MTLSamplerState> _defaultMTLSamplerState;
@@ -909,3 +927,13 @@ protected:
 
 /** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
+
+/** Redefinitions because Mac Catalyst doesn't support feature sets. */
+#if MVK_MACCAT
+#define MTLFeatureSet_macOS_GPUFamily1_v1		MTLGPUFamilyMacCatalyst1
+#define MTLFeatureSet_macOS_GPUFamily1_v2		MTLGPUFamilyMacCatalyst1
+#define MTLFeatureSet_macOS_GPUFamily1_v3		MTLGPUFamilyMacCatalyst1
+#define MTLFeatureSet_macOS_GPUFamily1_v4		MTLGPUFamilyMacCatalyst1
+
+#define MTLFeatureSet_macOS_GPUFamily2_v1		MTLGPUFamilyMacCatalyst2
+#endif

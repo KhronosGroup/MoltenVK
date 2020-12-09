@@ -76,6 +76,8 @@ static inline void execute(MVKQueueSubmission* qSubmit) { @autoreleasepool { qSu
 // Relying on the dispatch queue to find time to drain the autoreleasepool can
 // result in significant memory creep under heavy workloads.
 VkResult MVKQueue::submit(MVKQueueSubmission* qSubmit) {
+	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
+
 	if ( !qSubmit ) { return VK_SUCCESS; }     // Ignore nils
 
 	VkResult rslt = qSubmit->getConfigurationResult();     // Extract result before submission to avoid race condition with early destruction
@@ -129,6 +131,8 @@ VkResult MVKQueue::submit(const VkPresentInfoKHR* pPresentInfo) {
 
 // Create an empty submit struct and fence, submit to queue and wait on fence.
 VkResult MVKQueue::waitIdle() {
+
+	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
 	VkFenceCreateInfo vkFenceInfo = {
 		.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
@@ -294,8 +298,27 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 		}];
 	}
 
-	// Use temp var because callback may destroy this instance before this function ends.
+	// Use temp vars because callback may destroy this instance before this function ends.
+	MVKDevice* device = _queue->getDevice();
 	id<MTLCommandBuffer> mtlCmdBuff = _activeMTLCommandBuffer;
+	// If command buffer execution fails, log it, and mark the device lost.
+	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
+		if (mtlCB.status == MTLCommandBufferStatusError) {
+			device->reportError(device->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
+			// Some errors indicate we lost the physical device as well.
+			switch (mtlCB.error.code) {
+				case MTLCommandBufferErrorBlacklisted:
+				// XXX This may also be used for command buffers executed in the background without the right entitlement.
+				case MTLCommandBufferErrorNotPermitted:
+#if MVK_MACOS && !MVK_MACCAT
+				case MTLCommandBufferErrorDeviceRemoved:
+#endif
+					device->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
+					break;
+			}
+		}
+	}];
+
 	_activeMTLCommandBuffer = nil;
 	[mtlCmdBuff commit];
 	[mtlCmdBuff release];		// retained

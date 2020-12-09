@@ -82,6 +82,7 @@ VkResult MVKSwapchain::acquireNextImageKHR(uint64_t timeout,
 										   uint32_t deviceMask,
 										   uint32_t* pImageIndex) {
 
+	if ( _device->getConfigurationResult() != VK_SUCCESS ) { return _device->getConfigurationResult(); }
 	if ( getIsSurfaceLost() ) { return VK_ERROR_SURFACE_LOST_KHR; }
 
 	// Find the image that has the shortest wait by finding the smallest availability measure.
@@ -331,7 +332,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			// Nothing - the default is not to do color matching.
 			break;
 	}
-	_mtlLayerOrigDrawSize = _mtlLayer.updatedDrawableSizeMVK;
+	_mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(pCreateInfo->imageExtent);
 
 	// TODO: set additional CAMetalLayer properties before extracting drawables:
 	//	- presentsWithTransaction
@@ -353,6 +354,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 // The CAMetalLayer should already be initialized when this is called.
 void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo, uint32_t imgCnt) {
 
+    if ( _device->getConfigurationResult() != VK_SUCCESS ) { return; }
     if ( getIsSurfaceLost() ) { return; }
 
 	VkImageFormatListCreateInfo fmtListInfo;
@@ -368,7 +370,7 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 		}
 	}
 
-    VkExtent2D imgExtent = mvkVkExtent2DFromCGSize(_mtlLayerOrigDrawSize);
+    VkExtent2D imgExtent = pCreateInfo->imageExtent;
 
     VkImageCreateInfo imgInfo = {
         .sType = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
@@ -401,6 +403,8 @@ void MVKSwapchain::initSurfaceImages(const VkSwapchainCreateInfoKHR* pCreateInfo
 }
 
 VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRefreshCycleDuration) {
+	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
+
 	NSInteger framesPerSecond = 60;
 #if MVK_IOS_OR_TVOS
 	UIScreen* screen = [UIScreen mainScreen];
@@ -417,6 +421,8 @@ VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRe
 }
 
 VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresentationTimingGOOGLE *pPresentationTimings) {
+	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
+
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (pCount && pPresentationTimings == nullptr) {
 		*pCount = _presentHistoryCount;

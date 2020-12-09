@@ -1434,8 +1434,22 @@ void MVKPixelFormats::modifyMTLFormatCapabilities() {
 }
 
 
+// Mac Catalyst does not support feature sets, so we redefine them to GPU families in MVKDevice.h.
+#if MVK_MACCAT
+#define addFeatSetMTLPixFmtCaps(FEAT_SET, MTL_FMT, CAPS)  \
+	addMTLPixelFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, 10.16, MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
+
+#define addFeatSetMTLVtxFmtCaps(FEAT_SET, MTL_FMT, CAPS)  \
+	addMTLVertexFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, 10.16, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
+
+#else
 #define addFeatSetMTLPixFmtCaps(FEAT_SET, MTL_FMT, CAPS)  \
 	addMTLPixelFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
+
+#define addFeatSetMTLVtxFmtCaps(FEAT_SET, MTL_FMT, CAPS)  \
+	addMTLVertexFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
+
+#endif
 
 #define addGPUOSMTLPixFmtCaps(GPU_FAM, OS_VER, MTL_FMT, CAPS)  \
 	addMTLPixelFormatCapabilities(mtlDevice, MTLGPUFamily ##GPU_FAM, OS_VER, MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
@@ -1445,9 +1459,6 @@ void MVKPixelFormats::modifyMTLFormatCapabilities() {
 
 #define disableMTLPixFmtCaps(MTL_FMT, CAPS)  \
 	disableMTLPixelFormatCapabilities(MTLPixelFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
-
-#define addFeatSetMTLVtxFmtCaps(FEAT_SET, MTL_FMT, CAPS)  \
-	addMTLVertexFormatCapabilities(mtlDevice, MTLFeatureSet_ ##FEAT_SET, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
 
 #define addGPUOSMTLVtxFmtCaps(GPU_FAM, OS_VER, MTL_FMT, CAPS)  \
 	addMTLVertexFormatCapabilities(mtlDevice, MTLGPUFamily ##GPU_FAM, OS_VER, MTLVertexFormat ##MTL_FMT, kMVKMTLFmtCaps ##CAPS)
@@ -2032,24 +2043,25 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 	enableFormatFeatures(DSAtt, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 	enableFormatFeatures(Blend, Tex, mtlPixFmtCaps, vkProps.optimalTilingFeatures);
 
-#if MVK_MACOS_OR_IOS
+	// We would really want to use the device's Metal features instead of duplicating
+	// the logic from MVKPhysicalDevice, but those may not have been initialized yet.
 	id<MTLDevice> mtlDev = _physicalDevice ? _physicalDevice->getMTLDevice() : nil;
+#if MVK_MACOS && !MVK_MACCAT
+	bool supportsStencilFeedback = [mtlDev supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1];
 #endif
-	if ( chromaSubsamplingComponentBits > 0 ||
-		// XXX We really want to use the device's Metal features instead of duplicating the
-		// logic from MVKPhysicalDevice, but those may not have been initialized yet.
-#if MVK_MACOS
-		 (isStencilFormat(vkDesc.mtlPixelFormat) && (!_physicalDevice || ![mtlDev supportsFeatureSet: MTLFeatureSet_macOS_GPUFamily2_v1]))
+#if MVK_MACCAT
+	bool supportsStencilFeedback = [mtlDev supportsFamily: MTLGPUFamilyMacCatalyst2];
 #endif
 #if MVK_IOS
-		 (isStencilFormat(vkDesc.mtlPixelFormat) && (!_physicalDevice || ![mtlDev supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1]))
+	bool supportsStencilFeedback = [mtlDev supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily5_v1];
 #endif
 #if MVK_TVOS
-		isStencilFormat(vkDesc.mtlPixelFormat)
+	bool supportsStencilFeedback = (mtlDev && !mtlDev);		// Really just false...but silence warning on unused mtlDev otherwise
 #endif
-		) {
-		// Vulkan forbids blits between chroma-subsampled formats.
-		// If we can't write the stencil reference from the shader, we can't blit stencil.
+
+	// Vulkan forbids blits between chroma-subsampled formats.
+	// If we can't write the stencil reference from the shader, we can't blit stencil.
+	if (chromaSubsamplingComponentBits > 0 || (isStencilFormat(vkDesc.mtlPixelFormat) && !supportsStencilFeedback)) {
 		mvkDisableFlags(vkProps.optimalTilingFeatures, (VK_FORMAT_FEATURE_BLIT_SRC_BIT | VK_FORMAT_FEATURE_BLIT_DST_BIT));
 	}
 

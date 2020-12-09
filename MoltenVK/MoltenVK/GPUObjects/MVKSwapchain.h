@@ -77,13 +77,14 @@ public:
 
 	/** Returns whether the surface size has changed since the last time this function was called. */
 	inline bool getHasSurfaceSizeChanged() {
-		return !CGSizeEqualToSize(_mtlLayer.naturalDrawableSizeMVK, _mtlLayerOrigDrawSize);
+		return !CGSizeEqualToSize(_mtlLayer.naturalDrawableSizeMVK, _mtlLayer.drawableSize);
 	}
 
 	/** Returns the status of the surface. Surface loss takes precedence over out-of-date errors. */
 	inline VkResult getSurfaceStatus() {
+		if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 		if (getIsSurfaceLost()) { return VK_ERROR_SURFACE_LOST_KHR; }
-		if (getHasSurfaceSizeChanged()) { return VK_ERROR_OUT_OF_DATE_KHR; }
+		if (getHasSurfaceSizeChanged()) { return VK_SUBOPTIMAL_KHR; }
 		return VK_SUCCESS;
 	}
 
@@ -119,7 +120,6 @@ protected:
     MVKWatermark* _licenseWatermark;
 	MVKSmallVector<MVKPresentableSwapchainImage*, kMVKMaxSwapchainImageCount> _presentableImages;
 	std::atomic<uint64_t> _currentAcquisitionID;
-    CGSize _mtlLayerOrigDrawSize;
     uint64_t _lastFrameTime;
     uint32_t _currentPerfLogFrameCount;
     std::atomic<bool> _surfaceLost;

@@ -341,12 +341,29 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
     mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
     mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);
     if (_canUseLayeredRendering) {
+        uint32_t renderTargetArrayLength;
+        bool found3D = false, found2D = false;
+        for (uint32_t i = 0; i < 8; i++) {
+            id<MTLTexture> mtlTex = mtlRPDesc.colorAttachments[i].texture;
+            if (mtlTex == nil) { continue; }
+            switch (mtlTex.textureType) {
+                case MTLTextureType3D:
+                    found3D = true;
+                default:
+                    found2D = true;
+            }
+        }
+
         if (getSubpass()->isMultiview()) {
             // In the case of a multiview pass, the framebuffer layer count will be one.
             // We need to use the view count for this multiview pass.
-            mtlRPDesc.renderTargetArrayLengthMVK = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
+            renderTargetArrayLength = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
         } else {
-            mtlRPDesc.renderTargetArrayLengthMVK = _framebuffer->getLayerCount();
+            renderTargetArrayLength = _framebuffer->getLayerCount();
+        }
+        // Metal does not allow layered render passes where some RTs are 3D and others are 2D.
+        if (!(found3D && found2D) || renderTargetArrayLength > 1) {
+            mtlRPDesc.renderTargetArrayLengthMVK = renderTargetArrayLength;
         }
     }
 

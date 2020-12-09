@@ -58,7 +58,8 @@ About **MoltenVK**
 graphics and compute functionality, that is built on Apple's [*Metal*](https://developer.apple.com/metal) 
 graphics and compute framework on *macOS*, *iOS*, and *tvOS*. **MoltenVK** allows you to use *Vulkan* 
 graphics and compute functionality to develop modern, cross-platform, high-performance graphical games 
-and applications, and to run them across many platforms, including *macOS*, *iOS*, and *tvOS*.
+and applications, and to run them across many platforms, including *macOS*, *iOS*, *tvOS*, *Simulators*,
+and *Mac Catalyst* on *macOS 11.0+*.
 
 *Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than 
 *Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
@@ -84,7 +85,7 @@ as a universal `XCFramework` or as a *dynamic library* (`.dylib`). Distributing 
 a dynamic library via the *iOS App Store* or *tvOS App Store* can require specialized bundling. 
 If you are unsure about which linking and deployment option you need, or on *iOS* or *tvOS*, 
 unless you have specific needs for dynamic libraries, follow the steps for linking **MoltenVK** 
-as an `XCFramework`, as it is the simpler option.
+as an `XCFramework`, as it is the simpler option, and encompasses the largest set of supported platforms.
 
 The demo apps, found in the `Demos.xcworkspace`, located in the `Demos` folder, demonstrate both
 of the installation techniques discussed above:
@@ -290,10 +291,11 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_portability_subset`
 - `VK_KHR_push_descriptor`
 - `VK_KHR_relaxed_block_layout`
-- `VK_KHR_sampler_mirror_clamp_to_edge` *(macOS)*
+- `VK_KHR_sampler_mirror_clamp_to_edge` *(requires a Mac GPU or Apple family 7 GPU)*
 - `VK_KHR_sampler_ycbcr_conversion`
 - `VK_KHR_shader_draw_parameters`
 - `VK_KHR_shader_float16_int8`
+- `VK_KHR_shader_subgroup_extended_types` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
 - `VK_KHR_storage_buffer_storage_class`
 - `VK_KHR_surface`
 - `VK_KHR_swapchain`
@@ -317,6 +319,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_EXT_scalar_block_layout`
 - `VK_EXT_shader_stencil_export` *(requires Mac GPU family 2 or iOS GPU family 5)*
 - `VK_EXT_shader_viewport_index_layer`
+- `VK_EXT_subgroup_size_control` *(requires Metal 2.1 on Mac or Metal 2.2 and Apple family 4 on iOS)*
 - `VK_EXT_swapchain_colorspace`
 - `VK_EXT_vertex_attribute_divisor`
 - `VK_EXT_texel_buffer_alignment` *(requires Metal 2.0)*

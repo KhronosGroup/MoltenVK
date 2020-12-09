@@ -28,6 +28,7 @@
 #include "MVKPipeline.h"
 #include "MVKFramebuffer.h"
 #include "MVKRenderPass.h"
+#include "MVKSync.h"
 #include "MVKCommandPool.h"
 #include "MVKFoundation.h"
 #include "MVKCodec.h"
@@ -50,8 +51,29 @@ using namespace std;
 #	define MVKViewClass		NSView
 #endif
 
+// Mac Catalyst does not support feature sets, so we redefine them to GPU families in MVKDevice.h.
+#if MVK_MACCAT
+#define supportsMTLFeatureSet(MFS)	[_mtlDevice supportsFamily: MTLFeatureSet_ ##MFS]
+#else
 #define supportsMTLFeatureSet(MFS)	[_mtlDevice supportsFeatureSet: MTLFeatureSet_ ##MFS]
+#endif
+
 #define supportsMTLGPUFamily(GPUF)	([_mtlDevice respondsToSelector: @selector(supportsFamily:)] && [_mtlDevice supportsFamily: MTLGPUFamily ##GPUF])
+
+// Suppress unused variable warnings to allow us to define these all in one place,
+// but use them in platform-conditional code blocks.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+
+static const uint32_t kAMDVendorId = 0x1002;
+static const uint32_t kAppleVendorId = 0x106b;
+static const uint32_t kIntelVendorId = 0x8086;
+static const uint32_t kNVVendorId = 0x10de;
+
+static const uint32_t kAMDRadeonRX5700XTDeviceId = 0x731f;
+static const uint32_t kAMDRadeonRX5500XTDeviceId = 0x7340;
+
+#pragma clang diagnostic pop
 
 
 #pragma mark -
@@ -115,7 +137,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_SUBGROUP_EXTENDED_TYPES_FEATURES: {
 				auto* shaderSGTypesFeatures = (VkPhysicalDeviceShaderSubgroupExtendedTypesFeatures*)next;
-				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = _metalFeatures.subgroupSize != 0;
+				shaderSGTypesFeatures->shaderSubgroupExtendedTypes = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_FEATURES: {
@@ -192,6 +214,12 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				scalarLayoutFeatures->scalarBlockLayout = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_FEATURES_EXT: {
+				auto* subgroupSizeFeatures = (VkPhysicalDeviceSubgroupSizeControlFeaturesEXT*)next;
+				subgroupSizeFeatures->subgroupSizeControl = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+				subgroupSizeFeatures->computeFullSubgroups = _metalFeatures.simdPermute || _metalFeatures.quadPermute;
+				break;
+			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_FEATURES_EXT: {
 				auto* texelBuffAlignFeatures = (VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT*)next;
 				texelBuffAlignFeatures->texelBufferAlignment = _metalFeatures.texelBuffers && [_mtlDevice respondsToSelector: @selector(minimumLinearTextureAlignmentForPixelFormat:)];
@@ -221,7 +249,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->pointPolygons = false;
 				portabilityFeatures->samplerMipLodBias = false;
 				portabilityFeatures->separateStencilMaskRef = true;
-				portabilityFeatures->shaderSampleRateInterpolationFunctions = false;
+				portabilityFeatures->shaderSampleRateInterpolationFunctions = _metalFeatures.pullModelInterpolation;
 				portabilityFeatures->tessellationIsolines = false;
 				portabilityFeatures->tessellationPointMode = false;
 				portabilityFeatures->triangleFans = false;
@@ -317,28 +345,32 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				pushDescProps->maxPushDescriptors = _properties.limits.maxPerStageResources;
 				break;
 			}
-#if MVK_MACOS
-            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES:
-                if (mvkOSVersionIsAtLeast(10.14)) {
-                    auto* subgroupProps = (VkPhysicalDeviceSubgroupProperties*)next;
-                    subgroupProps->subgroupSize = _metalFeatures.subgroupSize;
-                    subgroupProps->supportedStages =
-                        VK_SHADER_STAGE_COMPUTE_BIT |
-                        VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT |
-                        VK_SHADER_STAGE_FRAGMENT_BIT;
-                    subgroupProps->supportedOperations =
-                        VK_SUBGROUP_FEATURE_BASIC_BIT |
-                        VK_SUBGROUP_FEATURE_VOTE_BIT |
-                        VK_SUBGROUP_FEATURE_ARITHMETIC_BIT |
+            case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_PROPERTIES: {
+                auto* subgroupProps = (VkPhysicalDeviceSubgroupProperties*)next;
+                subgroupProps->subgroupSize = _metalFeatures.maxSubgroupSize;
+                subgroupProps->supportedStages = VK_SHADER_STAGE_COMPUTE_BIT;
+                if (_features.tessellationShader) {
+                    subgroupProps->supportedStages |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
+                }
+                if (mvkOSVersionIsAtLeast(10.15, 13.0)) {
+                    subgroupProps->supportedStages |= VK_SHADER_STAGE_FRAGMENT_BIT;
+                }
+                subgroupProps->supportedOperations = VK_SUBGROUP_FEATURE_BASIC_BIT;
+                if (_metalFeatures.simdPermute || _metalFeatures.quadPermute) {
+                    subgroupProps->supportedOperations |= VK_SUBGROUP_FEATURE_VOTE_BIT |
                         VK_SUBGROUP_FEATURE_BALLOT_BIT |
                         VK_SUBGROUP_FEATURE_SHUFFLE_BIT |
-                        VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT |
-                        // VK_SUBGROUP_FEATURE_CLUSTERED_BIT |
-                        VK_SUBGROUP_FEATURE_QUAD_BIT;
-                    subgroupProps->quadOperationsInAllStages = true;
+                        VK_SUBGROUP_FEATURE_SHUFFLE_RELATIVE_BIT;
                 }
+                if (_metalFeatures.simdReduction) {
+                    subgroupProps->supportedOperations |= VK_SUBGROUP_FEATURE_ARITHMETIC_BIT;
+                }
+                if (_metalFeatures.quadPermute) {
+                    subgroupProps->supportedOperations |= VK_SUBGROUP_FEATURE_QUAD_BIT;
+                }
+                subgroupProps->quadOperationsInAllStages = _metalFeatures.quadPermute;
 				break;
-#endif
+            }
             case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TIMELINE_SEMAPHORE_PROPERTIES: {
                 auto* timelineSem4Props = (VkPhysicalDeviceTimelineSemaphoreProperties*)next;
                 timelineSem4Props->maxTimelineSemaphoreValueDifference = std::numeric_limits<uint64_t>::max();
@@ -387,6 +419,14 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				// doing it manually.
 				robustness2Props->robustStorageBufferAccessSizeAlignment = 1;
 				robustness2Props->robustUniformBufferAccessSizeAlignment = 1;
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SUBGROUP_SIZE_CONTROL_PROPERTIES_EXT: {
+				auto* subgroupSizeProps = (VkPhysicalDeviceSubgroupSizeControlPropertiesEXT*)next;
+				subgroupSizeProps->minSubgroupSize = _metalFeatures.minSubgroupSize;
+				subgroupSizeProps->maxSubgroupSize = _metalFeatures.maxSubgroupSize;
+				subgroupSizeProps->maxComputeWorkgroupSubgroups = _properties.limits.maxComputeWorkGroupInvocations / _metalFeatures.minSubgroupSize;
+				subgroupSizeProps->requiredSubgroupSizeStages = 0;
 				break;
 			}
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TEXEL_BUFFER_ALIGNMENT_PROPERTIES_EXT: {
@@ -605,7 +645,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			if (mvkFmt == kMVKFormatDepthStencil ||
 				isChromaSubsampled
 #if MVK_IOS_OR_TVOS
-				|| mvkFmt == kMVKFormatCompressed
+				|| (mvkFmt == kMVKFormatCompressed && !_metalFeatures.native3DCompressedTextures)
 #endif
 				) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
@@ -614,6 +654,24 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 			// If this is a compressed format and there's no codec, it isn't supported.
 			if ((mvkFmt == kMVKFormatCompressed) && !mvkCanDecodeFormat(format) && !_metalFeatures.native3DCompressedTextures) {
 				return VK_ERROR_FORMAT_NOT_SUPPORTED;
+			}
+#endif
+#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+			// ETC2 and EAC formats aren't supported for 3D textures.
+			switch (format) {
+				case VK_FORMAT_ETC2_R8G8B8_UNORM_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8_SRGB_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8A1_UNORM_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8A1_SRGB_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8A8_UNORM_BLOCK:
+				case VK_FORMAT_ETC2_R8G8B8A8_SRGB_BLOCK:
+				case VK_FORMAT_EAC_R11_UNORM_BLOCK:
+				case VK_FORMAT_EAC_R11_SNORM_BLOCK:
+				case VK_FORMAT_EAC_R11G11_UNORM_BLOCK:
+				case VK_FORMAT_EAC_R11G11_SNORM_BLOCK:
+					return VK_ERROR_FORMAT_NOT_SUPPORTED;
+				default:
+					break;
 			}
 #endif
 			maxExt.width = pLimits->maxImageDimension3D;
@@ -748,8 +806,8 @@ VkResult MVKPhysicalDevice::getSurfaceCapabilities(MVKSurface* surface,
 	pSurfaceCapabilities->maxImageCount = _metalFeatures.maxSwapchainImageCount;
 
 	pSurfaceCapabilities->currentExtent = surfExtnt;
-	pSurfaceCapabilities->minImageExtent = surfExtnt;
-	pSurfaceCapabilities->maxImageExtent = surfExtnt;
+	pSurfaceCapabilities->minImageExtent = { 1, 1 };
+	pSurfaceCapabilities->maxImageExtent = { _properties.limits.maxImageDimension2D, _properties.limits.maxImageDimension2D };
     pSurfaceCapabilities->maxImageArrayLayers = 1;
 	pSurfaceCapabilities->supportedTransforms = (VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR);
 	pSurfaceCapabilities->currentTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
@@ -1178,8 +1236,12 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = useMTLHeaps;
+		_metalFeatures.nativeTextureSwizzle = true;
+		if (supportsMTLGPUFamily(Apple3)) {
+			_metalFeatures.native3DCompressedTextures = true;
+		}
 		if (supportsMTLGPUFamily(Apple4)) {
-			_metalFeatures.nativeTextureSwizzle = true;
+			_metalFeatures.quadPermute = true;
 		}
 	}
 
@@ -1265,11 +1327,16 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.placementHeaps = useMTLHeaps;
+		_metalFeatures.nativeTextureSwizzle = true;
+		if (supportsMTLGPUFamily(Apple3)) {
+			_metalFeatures.native3DCompressedTextures = true;
+		}
 		if (supportsMTLGPUFamily(Apple4)) {
-			_metalFeatures.nativeTextureSwizzle = true;
+			_metalFeatures.quadPermute = true;
 		}
 		if (supportsMTLGPUFamily(Apple6) ) {
 			_metalFeatures.astcHDRTextures = true;
+			_metalFeatures.simdPermute = true;
 		}
 	}
 
@@ -1282,8 +1349,13 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_XCODE_12
 	if ( mvkOSVersionIsAtLeast(14.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
+        _metalFeatures.multisampleArrayTextures = true;
 		if ( supportsMTLGPUFamily(Apple7) ) {
 			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
+			_metalFeatures.multisampleLayeredRendering = _metalFeatures.layeredRendering;
+			_metalFeatures.samplerClampToBorder = true;
+			_metalFeatures.samplerMirrorClampToEdge = true;
+			_metalFeatures.simdReduction = true;
 		}
 	}
 #endif
@@ -1299,6 +1371,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.layeredRendering = true;
 	_metalFeatures.maxTextureDimension = (16 * KIBI);
 	_metalFeatures.depthSampleCompare = true;
+	_metalFeatures.samplerMirrorClampToEdge = true;
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
@@ -1331,6 +1404,8 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.events = true;
         _metalFeatures.memoryBarriers = true;
         _metalFeatures.textureBuffers = true;
+		_metalFeatures.quadPermute = true;
+		_metalFeatures.simdPermute = true;
     }
 
 	if (supportsMTLFeatureSet(macOS_GPUFamily2_v1)) {
@@ -1338,6 +1413,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilFeedback = true;
 		_metalFeatures.depthResolve = true;
 		_metalFeatures.stencilResolve = true;
+		_metalFeatures.simdReduction = true;
 	}
 
 	if ( mvkOSVersionIsAtLeast(10.15) ) {
@@ -1369,7 +1445,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		if (supportsMTLGPUFamily(Apple6)) {
 			_metalFeatures.astcHDRTextures = true;
 		}
-		// TODO: When Apple7 is added, set max query buffer size back to 256 kiB.
+		if (supportsMTLGPUFamily(Apple7)) {
+			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
+		}
 	}
 #endif
 
@@ -1379,7 +1457,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if ( [_mtlDevice respondsToSelector: @selector(areRasterOrderGroupsSupported)] ) {
         _metalFeatures.rasterOrderGroups = _mtlDevice.rasterOrderGroupsSupported;
     }
-
+#if MVK_XCODE_12
+	if ( [_mtlDevice respondsToSelector: @selector(supportsPullModelInterpolation)] ) {
+		_metalFeatures.pullModelInterpolation = _mtlDevice.supportsPullModelInterpolation;
+	}
+#endif
     if ( [_mtlDevice respondsToSelector: @selector(maxBufferLength)] ) {
         _metalFeatures.maxMTLBufferSize = _mtlDevice.maxBufferLength;
     }
@@ -1390,10 +1472,43 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
     }
 
+    _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize = 1;
 #if MVK_MACOS
-    if (mvkOSVersionIsAtLeast(10.14)) {
-        static const uint32_t kAMDVendorId = 0x1002;
-        _metalFeatures.subgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
+    if (_metalFeatures.simdPermute) {
+        // Based on data from Sascha Willems' Vulkan Hardware Database.
+        // This would be a lot easier and less painful if MTLDevice had properties for this...
+        _metalFeatures.maxSubgroupSize = (_properties.vendorID == kAMDVendorId) ? 64 : 32;
+        switch (_properties.vendorID) {
+            case kIntelVendorId:
+                _metalFeatures.minSubgroupSize = 8;
+                break;
+            case kAMDVendorId:
+                switch (_properties.deviceID) {
+                    case kAMDRadeonRX5700XTDeviceId:
+                    case kAMDRadeonRX5500XTDeviceId:
+                        _metalFeatures.minSubgroupSize = 32;
+                        break;
+                    default:
+                        _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize;
+                        break;
+                }
+                break;
+            case kAppleVendorId:
+                // XXX Minimum thread execution width for Apple GPUs is unknown, but assumed to be 4. May be greater.
+                _metalFeatures.minSubgroupSize = 4;
+                break;
+            default:
+                _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize;
+                break;
+        }
+    }
+#endif
+#if MVK_IOS
+    if (_metalFeatures.simdPermute) {
+        _metalFeatures.minSubgroupSize = 4;
+        _metalFeatures.maxSubgroupSize = 32;
+    } else if (_metalFeatures.quadPermute) {
+        _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize = 4;
     }
 #endif
 
@@ -1506,6 +1621,10 @@ void MVKPhysicalDevice::initFeatures() {
   
 	if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
 		_features.multiViewport = true;
+	}
+
+	if (supportsMTLGPUFamily(Apple6)) {
+        _features.shaderResourceMinLod = true;
 	}
 #endif
 
@@ -1873,8 +1992,6 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.lineWidthRange[1] = 1;
     _properties.limits.lineWidthGranularity = 1;
 
-    static const uint32_t kIntelVendorId = 0x8086;
-    static const uint32_t kNVVendorId = 0x10de;
     _properties.limits.standardSampleLocations = VK_TRUE;
     _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;
 
@@ -1981,7 +2098,6 @@ static uint32_t mvkGetEntryProperty(io_registry_entry_t entry, CFStringRef prope
 
 void MVKPhysicalDevice::initGPUInfoProperties() {
 
-	static const uint32_t kIntelVendorId = 0x8086;
 	bool isFound = false;
 
 	bool isIntegrated = _mtlDevice.isLowPower;
@@ -1991,9 +2107,11 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	if (supportsMTLGPUFamily(Apple5)) {
 		// This is an Apple GPU. It won't have a 'device-id' property, so fill it in
 		// like on iOS/tvOS.
-		_properties.vendorID = 0x106b;	// Apple's PCI ID
+		_properties.vendorID = kAppleVendorId;
 #if MVK_MACOS_APPLE_SILICON
-		if (supportsMTLGPUFamily(Apple6)) {
+		if (supportsMTLGPUFamily(Apple7)) {
+			_properties.deviceID = 0xa140;
+		} else if (supportsMTLGPUFamily(Apple6)) {
 			_properties.deviceID = 0xa130;
 		} else {
 			_properties.deviceID = 0xa120;
@@ -2071,7 +2189,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 		devID = coreCnt > 2 ? 0xa081 : 0xa080;
 	}
 
-	_properties.vendorID = 0x0000106b;	// Apple's PCI ID
+	_properties.vendorID = kAppleVendorId;
 	_properties.deviceID = devID;
 	_properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
@@ -2088,7 +2206,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 		devID = 0xa101;
 	}
 
-  _properties.vendorID = 0x0000106b;  // Apple's PCI ID
+  _properties.vendorID = kAppleVendorId;
   _properties.deviceID = devID;
   _properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
   strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
@@ -2266,9 +2384,7 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	if (supportsMTLGPUFamily(Apple5)) { mtlFam = MTLGPUFamilyApple5; }
 #if MVK_IOS || MVK_MACOS_APPLE_SILICON
 	if (supportsMTLGPUFamily(Apple6)) { mtlFam = MTLGPUFamilyApple6; }
-#if !MVK_MACOS
 	if (supportsMTLGPUFamily(Apple7)) { mtlFam = MTLGPUFamilyApple7; }
-#endif
 #endif
 
 	// Not explicitly guaranteed to be unique...but close enough without spilling over
@@ -2512,6 +2628,9 @@ void MVKPhysicalDevice::initExtensions() {
 		pWritableExtns->vk_KHR_depth_stencil_resolve.enabled = false;
 	}
 #endif
+	if (!_metalFeatures.samplerMirrorClampToEdge) {
+		pWritableExtns->vk_KHR_sampler_mirror_clamp_to_edge.enabled = false;
+	}
 	if (!_metalFeatures.rasterOrderGroups) {
 		pWritableExtns->vk_EXT_fragment_shader_interlock.enabled = false;
 	}
@@ -2523,6 +2642,9 @@ void MVKPhysicalDevice::initExtensions() {
 	}
 	if (!_metalFeatures.astcHDRTextures) {
 		pWritableExtns->vk_EXT_texture_compression_astc_hdr.enabled = false;
+	}
+	if (!_metalFeatures.simdPermute && !_metalFeatures.quadPermute) {
+		pWritableExtns->vk_KHR_shader_subgroup_extended_types.enabled = false;
 	}
 #if MVK_MACOS
 	if (!supportsMTLGPUFamily(Apple5)) {
@@ -2562,9 +2684,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\t\tMetal Shading Language %s";
 
 #if MVK_IOS || MVK_MACOS_APPLE_SILICON
-#if !MVK_MACOS
 	if (supportsMTLGPUFamily(Apple7)) { logMsg += "\n\t\tGPU Family Apple 7"; }
-#endif
 	if (supportsMTLGPUFamily(Apple6)) { logMsg += "\n\t\tGPU Family Apple 6"; }
 #endif
 	if (supportsMTLGPUFamily(Apple5)) { logMsg += "\n\t\tGPU Family Apple 5"; }
@@ -2625,8 +2745,16 @@ void MVKPhysicalDevice::logGPUInfo() {
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v2)) { logMsg += "\n\t\tmacOS GPU Family 1 v2"; }
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v1)) { logMsg += "\n\t\tmacOS GPU Family 1 v1"; }
 
+#if !MVK_MACCAT
 	if (supportsMTLFeatureSet(macOS_ReadWriteTextureTier2)) { logMsg += "\n\t\tmacOS Read-Write Texture Tier 2"; }
+#endif
+#endif
 
+#if MVK_MACCAT
+	if ([_mtlDevice respondsToSelector: @selector(readWriteTextureSupport)] &&
+		_mtlDevice.readWriteTextureSupport == MTLReadWriteTextureTier2) {
+		logMsg += "\n\t\tmacOS Read-Write Texture Tier 2";
+	}
 #endif
 
 	NSUUID* nsUUID = [[NSUUID alloc] initWithUUIDBytes: _properties.pipelineCacheUUID];		// temp retain
@@ -2675,12 +2803,29 @@ MVKQueue* MVKDevice::getAnyQueue() {
 }
 
 VkResult MVKDevice::waitIdle() {
+	VkResult rslt = VK_SUCCESS;
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		for (MVKQueue* q : queues) {
-			q->waitIdle();
+			if ((rslt = q->waitIdle()) != VK_SUCCESS) { return rslt; }
 		}
 	}
 	return VK_SUCCESS;
+}
+
+VkResult MVKDevice::markLost() {
+	lock_guard<mutex> lock(_sem4Lock);
+	setConfigurationResult(VK_ERROR_DEVICE_LOST);
+	for (auto* sem4 : _awaitingSemaphores) {
+		sem4->release();
+	}
+	for (auto& sem4AndValue : _awaitingTimelineSem4s) {
+		VkSemaphoreSignalInfo signalInfo;
+		signalInfo.value = sem4AndValue.second;
+		sem4AndValue.first->signal(&signalInfo);
+	}
+	_awaitingSemaphores.clear();
+	_awaitingTimelineSem4s.clear();
+	return VK_ERROR_DEVICE_LOST;
 }
 
 void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
@@ -3001,10 +3146,10 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 			return new MVKTimelineSemaphoreEmulated(this, pCreateInfo, pTypeCreateInfo);
 		}
 	} else {
-		if (_useMTLFenceForSemaphores) {
-			return new MVKSemaphoreMTLFence(this, pCreateInfo);
-		} else if (_useMTLEventForSemaphores) {
+		if (_useMTLEventForSemaphores) {
 			return new MVKSemaphoreMTLEvent(this, pCreateInfo);
+		} else if (_useMTLFenceForSemaphores) {
+			return new MVKSemaphoreMTLFence(this, pCreateInfo);
 		} else {
 			return new MVKSemaphoreEmulated(this, pCreateInfo);
 		}
@@ -3293,6 +3438,30 @@ MVKResource* MVKDevice::removeResource(MVKResource* rez) {
 	return rez;
 }
 
+// Adds the specified host semaphore to be woken upon device loss.
+void MVKDevice::addSemaphore(MVKSemaphoreImpl* sem4) {
+	lock_guard<mutex> lock(_sem4Lock);
+	_awaitingSemaphores.push_back(sem4);
+}
+
+// Removes the specified host semaphore.
+void MVKDevice::removeSemaphore(MVKSemaphoreImpl* sem4) {
+	lock_guard<mutex> lock(_sem4Lock);
+	mvkRemoveFirstOccurance(_awaitingSemaphores, sem4);
+}
+
+// Adds the specified timeline semaphore to be woken at the specified value upon device loss.
+void MVKDevice::addTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value) {
+	lock_guard<mutex> lock(_sem4Lock);
+	_awaitingTimelineSem4s.emplace_back(sem4, value);
+}
+
+// Removes the specified timeline semaphore.
+void MVKDevice::removeTimelineSemaphore(MVKTimelineSemaphore* sem4, uint64_t value) {
+	lock_guard<mutex> lock(_sem4Lock);
+	mvkRemoveFirstOccurance(_awaitingTimelineSem4s, make_pair(sem4, value));
+}
+
 void MVKDevice::applyMemoryBarrier(VkPipelineStageFlags srcStageMask,
 								   VkPipelineStageFlags dstStageMask,
 								   MVKPipelineBarrier& barrier,
@@ -3500,6 +3669,11 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledPortabilityFeatures(),
 	_enabledExtensions(this)
 {
+	// If the physical device is lost, bail.
+	if (physicalDevice->getConfigurationResult() != VK_SUCCESS) {
+		setConfigurationResult(physicalDevice->getConfigurationResult());
+		return;
+	}
 
 	initPerformanceTracking();
 	initPhysicalDevice(physicalDevice, pCreateInfo);
@@ -3595,7 +3769,7 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	if (_pMetalFeatures->events) {
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventForSemaphores, MVK_ALLOW_METAL_EVENTS);
 	}
-	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
+	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLEventForSemaphores ? "MTLEvent" : (_useMTLFenceForSemaphores ? "MTLFence" : "emulation"));
 
 #	ifndef MVK_CONFIG_USE_COMMAND_POOLING
 #   	define MVK_CONFIG_USE_COMMAND_POOLING    1

@@ -114,7 +114,8 @@ MTLTextureDescriptor* MVKImagePlane::newMTLTextureDescriptor() {
 
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll decompress
 	// the texture ourselves. This, then, is the *uncompressed* format.
-	MTLPixelFormat mtlPixFmt = (MVK_MACOS && _image->_is3DCompressed) ? MTLPixelFormatBGRA8Unorm : _mtlPixFmt;
+	bool shouldSubFmt = MVK_MACOS && _image->_is3DCompressed;
+	MTLPixelFormat mtlPixFmt = shouldSubFmt ? MTLPixelFormatBGRA8Unorm : _mtlPixFmt;
 
     VkExtent3D extent = _image->getExtent3D(_planeIndex, 0);
     MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor new];    // retained
@@ -847,7 +848,8 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
 	// decompress the texture ourselves, and we need to be able to write to it.
-	if (MVK_MACOS && _is3DCompressed) {
+	bool makeWritable = MVK_MACOS && _is3DCompressed;
+	if (makeWritable) {
 		mvkEnableFlags(mtlUsage, MTLTextureUsageShaderWrite);
 	}
 
@@ -1014,23 +1016,7 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	MVKPixelFormats* pixFmts = getPixelFormats();
 
 	bool is2D = (getImageType() == VK_IMAGE_TYPE_2D);
-	bool isCompressed = pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatCompressed;
 	bool isChromaSubsampled = pixFmts->getChromaSubsamplingPlaneCount(pCreateInfo->format) > 0;
-
-#if MVK_IOS_OR_TVOS
-	if (isCompressed && !is2D) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D images."));
-	}
-#endif
-#if MVK_MACOS
-	if (isCompressed && !is2D) {
-		if (getImageType() != VK_IMAGE_TYPE_3D) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, compressed formats may only be used with 2D or 3D images."));
-		} else if (!_device->_pMetalFeatures->native3DCompressedTextures && !mvkCanDecodeFormat(pCreateInfo->format)) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, the %s compressed format may only be used with 2D images.", getPixelFormats()->getName(pCreateInfo->format)));
-		}
-	}
-#endif
 
 	if (isChromaSubsampled && !is2D) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, chroma subsampled formats may only be used with 2D images."));
@@ -1194,29 +1180,11 @@ MVKSwapchainImageAvailability MVKPresentableSwapchainImage::getAvailability() {
 // Makes an image available for acquisition by the app.
 // If any semaphores are waiting to be signaled when this image becomes available, the
 // earliest semaphore is signaled, and this image remains unavailable for other uses.
-void MVKPresentableSwapchainImage::makeAvailable() {
+void MVKPresentableSwapchainImage::makeAvailable(const MVKSwapchainSignaler& signaler) {
 	lock_guard<mutex> lock(_availabilityLock);
 
 	// Mark when this event happened, relative to that of other images
 	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
-
-	// Mark this image as available if no semaphores or fences are waiting to be signaled.
-	_availability.isAvailable = _availabilitySignalers.empty();
-
-	MVKSwapchainSignaler signaler;
-	if (_availability.isAvailable) {
-		// If this image is available, signal the semaphore and fence that were associated
-		// with the last time this image was acquired while available. This is a workaround for
-		// when an app uses a single semaphore or fence for more than one swapchain image.
-		// Because the semaphore or fence will be signaled by more than one image, it will
-		// get out of sync, and the final use of the image would not be signaled as a result.
-		signaler = _preSignaler;
-	} else {
-		// If this image is not yet available, extract and signal the first semaphore and fence.
-		auto sigIter = _availabilitySignalers.begin();
-		signaler = *sigIter;
-		_availabilitySignalers.erase(sigIter);
-	}
 
 	// Signal the semaphore and fence, and let them know they are no longer being tracked.
 	signal(signaler, nil);
@@ -1232,15 +1200,15 @@ void MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* s
 	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
 	releaseMetalDrawable();
 
-	auto signaler = make_pair(semaphore, fence);
+	auto signaler = MVKSwapchainSignaler{fence, semaphore, semaphore ? semaphore->deferSignal() : 0};
 	if (_availability.isAvailable) {
 		_availability.isAvailable = false;
 
-		// If signalling through a MTLEvent, use an ephemeral MTLCommandBuffer.
+		// If signalling through a MTLEvent, and there's no command buffer presenting me, use an ephemeral MTLCommandBuffer.
 		// Another option would be to use MTLSharedEvent in MVKSemaphore, but that might
 		// impose unacceptable performance costs to handle this particular case.
 		@autoreleasepool {
-			MVKSemaphore* mvkSem = signaler.first;
+			MVKSemaphore* mvkSem = signaler.semaphore;
 			id<MTLCommandBuffer> mtlCmdBuff = (mvkSem && mvkSem->isUsingCommandEncoding()
 											   ? [_device->getAnyQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences]
 											   : nil);
@@ -1258,31 +1226,27 @@ void MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* s
 }
 
 // If present, signal the semaphore for the first waiter for the given image.
-void MVKPresentableSwapchainImage::signalPresentationSemaphore(id<MTLCommandBuffer> mtlCmdBuff) {
-	lock_guard<mutex> lock(_availabilityLock);
-
-	if ( !_availabilitySignalers.empty() ) {
-		MVKSemaphore* mvkSem = _availabilitySignalers.front().first;
-		if (mvkSem) { mvkSem->encodeSignal(mtlCmdBuff, 0); }
-	}
+void MVKPresentableSwapchainImage::signalPresentationSemaphore(const MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff) {
+	MVKSemaphore* mvkSem = signaler.semaphore;
+	if (mvkSem) { mvkSem->encodeDeferredSignal(mtlCmdBuff, signaler.semaphoreSignalToken); }
 }
 
 // Signal either or both of the semaphore and fence in the specified tracker pair.
-void MVKPresentableSwapchainImage::signal(MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff) {
-	if (signaler.first) { signaler.first->encodeSignal(mtlCmdBuff, 0); }
-	if (signaler.second) { signaler.second->signal(); }
+void MVKPresentableSwapchainImage::signal(const MVKSwapchainSignaler& signaler, id<MTLCommandBuffer> mtlCmdBuff) {
+	if (signaler.semaphore) { signaler.semaphore->encodeDeferredSignal(mtlCmdBuff, signaler.semaphoreSignalToken); }
+	if (signaler.fence) { signaler.fence->signal(); }
 }
 
 // Tell the semaphore and fence that they are being tracked for future signaling.
-void MVKPresentableSwapchainImage::markAsTracked(MVKSwapchainSignaler& signaler) {
-	if (signaler.first) { signaler.first->retain(); }
-	if (signaler.second) { signaler.second->retain(); }
+void MVKPresentableSwapchainImage::markAsTracked(const MVKSwapchainSignaler& signaler) {
+	if (signaler.semaphore) { signaler.semaphore->retain(); }
+	if (signaler.fence) { signaler.fence->retain(); }
 }
 
 // Tell the semaphore and fence that they are no longer being tracked for future signaling.
-void MVKPresentableSwapchainImage::unmarkAsTracked(MVKSwapchainSignaler& signaler) {
-	if (signaler.first) { signaler.first->release(); }
-	if (signaler.second) { signaler.second->release(); }
+void MVKPresentableSwapchainImage::unmarkAsTracked(const MVKSwapchainSignaler& signaler) {
+	if (signaler.semaphore) { signaler.semaphore->release(); }
+	if (signaler.fence) { signaler.fence->release(); }
 }
 
 
@@ -1306,6 +1270,8 @@ id<CAMetalDrawable> MVKPresentableSwapchainImage::getCAMetalDrawable() {
 void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> mtlCmdBuff,
 														  MVKPresentTimingInfo presentTimingInfo) {
 
+	lock_guard<mutex> lock(_availabilityLock);
+
 	_swapchain->willPresentSurface(getMTLTexture(0), mtlCmdBuff);
 
 	// Get current drawable now. Don't retrieve in handler, because a new drawable might be acquired by then.
@@ -1314,14 +1280,32 @@ void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<MTLCommandBuffer> m
 		presentCAMetalDrawable(mtlDrwbl, presentTimingInfo);
 	}];
 
+	MVKSwapchainSignaler signaler;
+	// Mark this image as available if no semaphores or fences are waiting to be signaled.
+	_availability.isAvailable = _availabilitySignalers.empty();
+	if (_availability.isAvailable) {
+		// If this image is available, signal the semaphore and fence that were associated
+		// with the last time this image was acquired while available. This is a workaround for
+		// when an app uses a single semaphore or fence for more than one swapchain image.
+		// Because the semaphore or fence will be signaled by more than one image, it will
+		// get out of sync, and the final use of the image would not be signaled as a result.
+		signaler = _preSignaler;
+		// Save the command buffer in case this image is acquired before presentation is finished.
+	} else {
+		// If this image is not yet available, extract and signal the first semaphore and fence.
+		auto sigIter = _availabilitySignalers.begin();
+		signaler = *sigIter;
+		_availabilitySignalers.erase(sigIter);
+	}
+
 	// Ensure this image is not destroyed while awaiting MTLCommandBuffer completion
 	retain();
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-		makeAvailable();
+		makeAvailable(signaler);
 		release();
 	}];
 
-	signalPresentationSemaphore(mtlCmdBuff);
+	signalPresentationSemaphore(signaler, mtlCmdBuff);
 }
 
 void MVKPresentableSwapchainImage::presentCAMetalDrawable(id<CAMetalDrawable> mtlDrawable,
@@ -1375,7 +1359,7 @@ MVKPresentableSwapchainImage::MVKPresentableSwapchainImage(MVKDevice* device,
 
 	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
 	_availability.isAvailable = true;
-	_preSignaler = make_pair(nullptr, nullptr);
+	_preSignaler = MVKSwapchainSignaler{nullptr, nullptr, 0};
 }
 
 MVKPresentableSwapchainImage::~MVKPresentableSwapchainImage() {
@@ -1611,7 +1595,7 @@ MVKImageView::MVKImageView(MVKDevice* device,
 										 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT))) {
 		if (_mtlTextureType == MTLTextureType2DArray && _image->_mtlTextureType == MTLTextureType2D) {
 			_mtlTextureType = MTLTextureType2D;
-#if MVK_MACOS
+#if MVK_MACOS_OR_IOS
 		} else if (_mtlTextureType == MTLTextureType2DMultisampleArray && _image->_mtlTextureType == MTLTextureType2DMultisample) {
 			_mtlTextureType = MTLTextureType2DMultisample;
 #endif
@@ -1676,6 +1660,64 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 		}
 
 		return VK_SUCCESS;
+	}
+
+	if (mvkIsAnyFlagEnabled(usage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) {
+		// Vulkan forbids using image views with non-identity swizzles as storage images or attachments.
+		// Let's catch some cases which are essentially identity, but would still result in Metal restricting
+		// the resulting texture's usage.
+
+		switch (mtlPixFmt) {
+			case MTLPixelFormatR8Unorm:
+#if MVK_MACOS_APPLE_SILICON || MVK_IOS_OR_TVOS
+			case MTLPixelFormatR8Unorm_sRGB:
+#endif
+			case MTLPixelFormatR8Snorm:
+			case MTLPixelFormatR8Uint:
+			case MTLPixelFormatR8Sint:
+			case MTLPixelFormatR16Unorm:
+			case MTLPixelFormatR16Snorm:
+			case MTLPixelFormatR16Uint:
+			case MTLPixelFormatR16Sint:
+			case MTLPixelFormatR16Float:
+			case MTLPixelFormatR32Uint:
+			case MTLPixelFormatR32Sint:
+			case MTLPixelFormatR32Float:
+				if (SWIZZLE_MATCHES(R, ZERO, ZERO, ONE)) {
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatRG8Unorm:
+#if MVK_MACOS_APPLE_SILICON || MVK_IOS_OR_TVOS
+			case MTLPixelFormatRG8Unorm_sRGB:
+#endif
+			case MTLPixelFormatRG8Snorm:
+			case MTLPixelFormatRG8Uint:
+			case MTLPixelFormatRG8Sint:
+			case MTLPixelFormatRG16Unorm:
+			case MTLPixelFormatRG16Snorm:
+			case MTLPixelFormatRG16Uint:
+			case MTLPixelFormatRG16Sint:
+			case MTLPixelFormatRG16Float:
+			case MTLPixelFormatRG32Uint:
+			case MTLPixelFormatRG32Sint:
+			case MTLPixelFormatRG32Float:
+				if (SWIZZLE_MATCHES(R, G, ZERO, ONE)) {
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatRG11B10Float:
+			case MTLPixelFormatRGB9E5Float:
+				if (SWIZZLE_MATCHES(R, G, B, ONE)) {
+					return VK_SUCCESS;
+				}
+				break;
+
+			default:
+				break;
+		}
 	}
 
 	switch (mtlPixFmt) {
@@ -1898,7 +1940,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 		mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 	}
 
-#if MVK_MACOS
+#if MVK_MACOS_OR_IOS
 	mtlSampDesc.borderColorMVK = mvkMTLSamplerBorderColorFromVkBorderColor(pCreateInfo->borderColor);
 	if (_device->getPhysicalDevice()->getMetalFeatures()->samplerClampToBorder) {
 		if (pCreateInfo->addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER) {

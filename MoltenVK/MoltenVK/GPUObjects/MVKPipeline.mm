@@ -1005,6 +1005,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	shaderContext.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageTessCtl];
 	shaderContext.options.mslOptions.capture_output_to_buffer = true;
 	shaderContext.options.mslOptions.multi_patch_workgroup = true;
+	shaderContext.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(_pTessCtlSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
 	addPrevStageOutputToShaderConverterContext(shaderContext, vtxOutputs);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pTessCtlSS->module)->getMTLFunction(&shaderContext, _pTessCtlSS->pSpecializationInfo, _pipelineCache);
@@ -1095,8 +1096,12 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderContext.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageFragment];
 		shaderContext.options.entryPointName = _pFragmentSS->pName;
 		shaderContext.options.mslOptions.capture_output_to_buffer = false;
-		if (pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
-			shaderContext.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
+		shaderContext.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(_pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
+		if (pCreateInfo->pMultisampleState) {
+			if (pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
+				shaderContext.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
+			}
+			shaderContext.options.mslOptions.force_sample_rate_shading = pCreateInfo->pMultisampleState->sampleShadingEnable && pCreateInfo->pMultisampleState->minSampleShading != 0.0f;
 		}
 		if (std::any_of(shaderOutputs.begin(), shaderOutputs.end(), [](const SPIRVShaderOutput& output) { return output.builtin == spv::BuiltInLayer; })) {
 			shaderContext.options.mslOptions.arrayed_subpass_input = true;
@@ -1487,6 +1492,13 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     shaderContext.options.mslOptions.multiview = mvkRendPass->isMultiview();
     shaderContext.options.mslOptions.multiview_layered_rendering = getDevice()->getPhysicalDevice()->canUseInstancingForMultiview();
     shaderContext.options.mslOptions.view_index_from_device_index = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT);
+#if MVK_MACOS
+    shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->simdPermute;
+#endif
+#if MVK_IOS_OR_TVOS
+    shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->quadPermute;
+    shaderContext.options.mslOptions.ios_use_simdgroup_functions = !!_device->_pMetalFeatures->simdPermute;
+#endif
 
     shaderContext.options.tessPatchKind = reflectData.patchKind;
     shaderContext.options.numTessControlPoints = reflectData.numControlPoints;
@@ -1641,6 +1653,8 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 	if (mtlFunc) {
 		MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];	// temp retain
 		plDesc.computeFunction = mtlFunc;
+		plDesc.maxTotalThreadsPerThreadgroup = _mtlThreadgroupSize.width * _mtlThreadgroupSize.height * _mtlThreadgroupSize.depth;
+		plDesc.threadGroupSizeIsMultipleOfThreadExecutionWidth = mvkIsAnyFlagEnabled(pCreateInfo->stage.flags, VK_PIPELINE_SHADER_STAGE_CREATE_REQUIRE_FULL_SUBGROUPS_BIT_EXT);
 
 		// Metal does not allow the name of the pipeline to be changed after it has been created,
 		// and we need to create the Metal pipeline immediately to provide error feedback to app.
@@ -1684,6 +1698,14 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
 	shaderContext.options.mslOptions.texture_1D_as_2D = mvkTreatTexture1DAs2D();
+    shaderContext.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
+#if MVK_MACOS
+    shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->simdPermute;
+#endif
+#if MVK_IOS_OR_TVOS
+    shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->quadPermute;
+    shaderContext.options.mslOptions.ios_use_simdgroup_functions = !!_device->_pMetalFeatures->simdPermute;
+#endif
 	shaderContext.options.mslOptions.argument_buffers = getDevice()->_pMetalFeatures->argumentBuffers;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
@@ -1960,6 +1982,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.device_index,
 				opt.enable_frag_output_mask,
 				opt.additional_fixed_sample_mask,
+				opt.fixed_subgroup_size,
 				opt.enable_point_size_builtin,
 				opt.enable_frag_depth_builtin,
 				opt.enable_frag_stencil_ref_builtin,
@@ -1987,7 +2010,10 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.multi_patch_workgroup,
 				opt.vertex_for_tessellation,
 				opt.arrayed_subpass_input,
-				opt.vertex_index_type);
+				opt.ios_use_simdgroup_functions,
+				opt.emulate_subgroups,
+				opt.vertex_index_type,
+				opt.force_sample_rate_shading);
 	}
 
 	template<class Archive>
