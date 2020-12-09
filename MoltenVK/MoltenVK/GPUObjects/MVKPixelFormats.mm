@@ -665,7 +665,7 @@ MTLTextureUsage MVKPixelFormats::getMTLTextureUsage(VkImageUsageFlags vkImageUsa
 		mvkIsAnyFlagEnabled(mtlFmtCaps, (kMVKMTLFmtCapsColorAtt | kMVKMTLFmtCapsDSAtt))) {
 
 #if MVK_MACOS
-        if(!isLinear) {
+        if(!isLinear || (_physicalDevice && _physicalDevice->getMetalFeatures()->renderLinearTextures)) {
             mvkEnableFlags(mtlUsage, MTLTextureUsageRenderTarget);
         }
 #else
