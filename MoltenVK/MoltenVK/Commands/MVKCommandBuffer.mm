@@ -411,10 +411,19 @@ void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKP
     switch (pipelineBindPoint) {
         case VK_PIPELINE_BIND_POINT_GRAPHICS:
             _graphicsPipelineState.setPipeline(pipeline);
+            // New pipeline likely has different MSL index mappings
+            // Need to mark resources dirty
+            _graphicsResourcesState.markDirty();
+            _vertexPushConstants.markDirty();
+            _tessCtlPushConstants.markDirty();
+            _tessEvalPushConstants.markDirty();
+            _fragmentPushConstants.markDirty();
             break;
 
         case VK_PIPELINE_BIND_POINT_COMPUTE:
             _computePipelineState.setPipeline(pipeline);
+            _computeResourcesState.markDirty();
+            _computePushConstants.markDirty();
             break;
 
         default:
@@ -458,9 +467,13 @@ void MVKCommandEncoder::finalizeDrawState(MVKGraphicsStage stage) {
     _scissorState.encode(stage);
     _depthBiasState.encode(stage);
     _blendColorState.encode(stage);
+    _vertexPushConstants._pipeline = _graphicsPipelineState.getPipeline();
     _vertexPushConstants.encode(stage);
+    _tessCtlPushConstants._pipeline = _graphicsPipelineState.getPipeline();
     _tessCtlPushConstants.encode(stage);
+    _tessEvalPushConstants._pipeline = _graphicsPipelineState.getPipeline();
     _tessEvalPushConstants.encode(stage);
+    _fragmentPushConstants._pipeline = _graphicsPipelineState.getPipeline();
     _fragmentPushConstants.encode(stage);
     _depthStencilState.encode(stage);
     _stencilReferenceValueState.encode(stage);
@@ -512,6 +525,7 @@ void MVKCommandEncoder::clearRenderArea() {
 void MVKCommandEncoder::finalizeDispatchState() {
     _computePipelineState.encode();    // Must do first..it sets others
     _computeResourcesState.encode();
+    _computePushConstants._pipeline = _computePipelineState.getPipeline();
     _computePushConstants.encode();
 }
 

@@ -205,6 +205,8 @@ public:
                                         VkShaderStageFlagBits shaderStage)
         : MVKCommandEncoderState(cmdEncoder), _shaderStage(shaderStage) {}
 
+    MVKPipeline *_pipeline;
+
 protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
@@ -520,6 +522,7 @@ public:
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
+    void markDirty() override;
 #pragma mark Construction
     
     /** Constructs this instance for the specified command encoder. */
@@ -528,7 +531,6 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
-    void markDirty() override;
 
     ResourceBindings<8> _shaderStageResourceBindings[4];
 };

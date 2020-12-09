@@ -165,12 +165,7 @@ MVKPipelineLayout::~MVKPipelineLayout() {
 void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 	if (cmdEncoder) {
 		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-            uint16_t index = _pushConstantsMTLResourceIndexes.stages[i].bufferIndex;
-            if (!_bufferMSLIndices[i].empty()) {
-                index = _bufferMSLIndices[i][index];
-            }
-            if (index != (uint16_t)-1)
-                cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(index);
+            cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
 		}
 	}
 }
@@ -1159,12 +1154,21 @@ void MVKPipeline::populateMSLIndices(MVKShaderStage stage, const SPIRVToMSLConve
     for (auto &rb: shaderContext.resourceBindings) {
         if (rb.mslSamplerIndex != (uint32_t)-1) {
             samplerMSLIndices[rb.resourceBinding.msl_sampler] = rb.mslSamplerIndex;
+            for (int i = 0; i < rb.resourceBinding.count; ++i) {
+                samplerMSLIndices[rb.resourceBinding.msl_sampler + i] = rb.mslSamplerIndex + i;
+            }
         }
         if (rb.mslTextureIndex != (uint32_t)-1) {
             textureMSLIndices[rb.resourceBinding.msl_texture] = rb.mslTextureIndex;
+            for (int i = 0; i < rb.resourceBinding.count; ++i) {
+                textureMSLIndices[rb.resourceBinding.msl_texture + i] = rb.mslTextureIndex + i;
+            }
         }
         if (rb.mslBufferIndex != (uint32_t)-1) {
             bufferMSLIndices[rb.resourceBinding.msl_buffer] = rb.mslBufferIndex;
+            for (int i = 0; i < rb.resourceBinding.count; ++i) {
+                bufferMSLIndices[rb.resourceBinding.msl_buffer + i] = rb.mslBufferIndex + i;
+            }
         }
     }
 }
