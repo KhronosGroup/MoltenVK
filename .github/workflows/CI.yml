@@ -66,13 +66,20 @@ jobs:
         run: |
           ./fetchDependencies -v --no-parallel-build --${{ matrix.platform }}
 
+      - name: Output Dependency Build Logs on Failure
+        if: failure()
+        run: cat "dependenciesbuild.log"
+
       - name: Build MoltenVK
         run: |
           make ${{ matrix.platform }}
 
-      - name: Output Build Logs on Failure
+      - name: Output MoltenVK Build Logs on Failure
         if: failure()
-        run: cat "xcodebuild.log"
+        run: |
+          if [ -f "xcodebuild.log" ]; then
+            cat "xcodebuild.log"
+          fi
 
       - name: Tar Artifacts
         # See: https://github.com/actions/upload-artifact#maintaining-file-permissions-and-case-sensitive-files
