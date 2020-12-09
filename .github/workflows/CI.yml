@@ -18,21 +18,13 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: "MoltenVK (macOS)"
-            platform: "macos"
-            demos-scheme: "Cube-macOS"
-          - name: "MoltenVK (macCatalyst)"
-            platform: "maccat"
-            demos-scheme: ""
-          - name: "MoltenVK (iOS)"
-            platform: "ios"
-            demos-scheme: ""
-          - name: "MoltenVK (tvOS)"
-            platform: "tvos"
-            demos-scheme: ""
+          - platform: "macos"
+          - platform: "maccat"
+          - platform: "ios"
+          - platform: "tvos"
       fail-fast: false
 
-    name: '${{ matrix.name }}'
+    name: 'MoltenVK (${{ matrix.platform }})'
     
     # See: https://docs.github.com/en/free-pro-team@latest/actions/reference/specifications-for-github-hosted-runners#supported-runners-and-hardware-resources
     runs-on: macos-latest
@@ -81,11 +73,6 @@ jobs:
       - name: Output Build Logs on Failure
         if: failure()
         run: cat "xcodebuild.log"
-
-      - name: Build Demos
-        if: success() && !(matrix.demos-scheme == '')
-        run: |
-          xcodebuild build -workspace Demos/Demos.xcworkspace -scheme "${{ matrix.demos-scheme }}"
 
       - name: Tar Artifacts
         # See: https://github.com/actions/upload-artifact#maintaining-file-permissions-and-case-sensitive-files
