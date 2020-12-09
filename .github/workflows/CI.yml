@@ -8,6 +8,10 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
+env:
+  # See: https://github.com/actions/virtual-environments/tree/main/images/macos
+  XCODE_DEV_PATH: /Applications/Xcode_12.2.app/Contents/Developer
+
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   build:
@@ -16,15 +20,15 @@ jobs:
         include:
           - name: "MoltenVK (macOS)"
             platform: "macos"
-            scheme: "MoltenVK Package (macOS only)"
             demos-scheme: "Cube-macOS"
+          - name: "MoltenVK (macCatalyst)"
+            platform: "maccat"
+            demos-scheme: ""
           - name: "MoltenVK (iOS)"
             platform: "ios"
-            scheme: "MoltenVK Package (iOS only)"
             demos-scheme: ""
           - name: "MoltenVK (tvOS)"
             platform: "tvos"
-            scheme: "MoltenVK Package (tvOS only)"
             demos-scheme: ""
       fail-fast: false
 
@@ -38,14 +42,11 @@ jobs:
       - uses: actions/checkout@v2
 
       - name: Select Xcode version
-        # See: https://github.com/actions/virtual-environments/tree/main/images/macos
-        run: sudo xcode-select -switch /Applications/Xcode_12.2.app/Contents/Developer
+        run: sudo xcode-select -switch "${XCODE_DEV_PATH}"
 
       - name: Prep
         id: prep
         run: |
-          echo "Create Build Logs Dir"
-          mkdir -p "${HOME}/build_logs"
           echo "Get Xcode version info"
           XCODE_VERSION="$(xcodebuild -version)"
           echo "${XCODE_VERSION}"
@@ -58,7 +59,9 @@ jobs:
         if: success() && !(github.event_name == 'push' && contains(github.ref, 'refs/tags/')) # never cache dependencies for pushed tags
         uses: actions/cache@v2
         with:
-          path: External/build/
+          path: |
+            External/build
+            !External/build/Intermediates
           key: ${{ runner.os }}-${{ steps.prep.outputs.XCODE_VERSION }}-${{ matrix.platform }}-${{ hashFiles('fetchDependencies','ExternalRevisions/**','ExternalDependencies.xcodeproj/**','Scripts/**') }}
 
       - name: Fetch Dependencies (Use Built Cache)
@@ -73,11 +76,11 @@ jobs:
 
       - name: Build MoltenVK
         run: |
-          set -o pipefail && xcodebuild build -project MoltenVKPackaging.xcodeproj -scheme "${{ matrix.scheme }}" | tee "${HOME}/build_logs/xcodebuild.log" | xcpretty -c
+          make ${{ matrix.platform }}
 
       - name: Output Build Logs on Failure
         if: failure()
-        run: cat "${HOME}/build_logs/xcodebuild.log"
+        run: cat "xcodebuild.log"
 
       - name: Build Demos
         if: success() && !(matrix.demos-scheme == '')
