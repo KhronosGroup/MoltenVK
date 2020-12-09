@@ -300,15 +300,15 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	MVKDevice* device = _queue->getDevice();
 	id<MTLCommandBuffer> mtlCmdBuff = _activeMTLCommandBuffer;
 	// If command buffer execution fails, log it, and mark the device lost.
-	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-		if (mtlCmdBuff.status == MTLCommandBufferStatusError) {
-			device->reportError(device->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCmdBuff, mtlCmdBuff.label ? mtlCmdBuff.label.UTF8String : "", mtlCmdBuff.error.code, mtlCmdBuff.error.localizedDescription.UTF8String);
+	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
+		if (mtlCB.status == MTLCommandBufferStatusError) {
+			device->reportError(device->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
 			// Some errors indicate we lost the physical device as well.
-			switch (mtlCmdBuff.error.code) {
+			switch (mtlCB.error.code) {
 				case MTLCommandBufferErrorBlacklisted:
 				// XXX This may also be used for command buffers executed in the background without the right entitlement.
 				case MTLCommandBufferErrorNotPermitted:
-#if MVK_MACOS
+#if MVK_MACOS && !MVK_MACCAT
 				case MTLCommandBufferErrorDeviceRemoved:
 #endif
 					device->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);

@@ -60,6 +60,11 @@ using namespace std;
 
 #define supportsMTLGPUFamily(GPUF)	([_mtlDevice respondsToSelector: @selector(supportsFamily:)] && [_mtlDevice supportsFamily: MTLGPUFamily ##GPUF])
 
+// Suppress unused variable warnings to allow us to define these all in one place,
+// but use them in platform-conditional code blocks.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wunused-variable"
+
 static const uint32_t kAMDVendorId = 0x1002;
 static const uint32_t kAppleVendorId = 0x106b;
 static const uint32_t kIntelVendorId = 0x8086;
@@ -67,6 +72,8 @@ static const uint32_t kNVVendorId = 0x10de;
 
 static const uint32_t kAMDRadeonRX5700XTDeviceId = 0x731f;
 static const uint32_t kAMDRadeonRX5500XTDeviceId = 0x7340;
+
+#pragma clang diagnostic pop
 
 
 #pragma mark -
@@ -3681,6 +3688,10 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
+// This code will be refactored in an upcoming release, but for now,
+// suppress deprecation warnings for startCaptureWithDevice: on MacCatalyst.
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Wdeprecated-declarations"
 	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
 		MTLCaptureManager *captureMgr = [MTLCaptureManager sharedCaptureManager];
 		if (!getInstance()->_autoGPUCaptureOutputFile.empty()) {
@@ -3710,6 +3721,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 			[captureMgr startCaptureWithDevice: getMTLDevice()];
 		}
 	}
+#pragma clang diagnostic pop
 
 	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
 			   _pProperties->deviceName,
