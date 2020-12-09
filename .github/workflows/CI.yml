@@ -59,12 +59,12 @@ jobs:
       - name: Fetch Dependencies (Use Built Cache)
         if: steps.cache-dependencies.outputs.cache-hit == 'true'
         run: |
-          ./fetchDependencies -v --no-parallel-build --none
+          ./fetchDependencies -v --none
 
       - name: Fetch Dependencies
         if: steps.cache-dependencies.outputs.cache-hit != 'true'
         run: |
-          ./fetchDependencies -v --no-parallel-build --${{ matrix.platform }}
+          ./fetchDependencies -v --${{ matrix.platform }}
 
       - name: Output Dependency Build Logs on Failure
         if: failure()
