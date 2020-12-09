@@ -338,7 +338,7 @@ void MVKImagePlane::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 			if (pImgRez) { pImgRez->layoutState = barrier.newLayout; }
 			if (needsSync) {
 #if MVK_MACOS
-				[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeTexture: _mtlTexture slice: layer level: mipLvl];
+				[cmdEncoder->getMTLBlitEncoder(cmdUse) synchronizeTexture: getMTLTexture() slice: layer level: mipLvl];
 #endif
 			}
 			// Check if image content should be pulled into host-mapped device memory after
