@@ -1387,7 +1387,15 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 
             MTLRenderPipelineColorAttachmentDescriptor* colorDesc = plDesc.colorAttachments[caIdx];
             colorDesc.pixelFormat = getPixelFormats()->getMTLPixelFormat(mvkRenderSubpass->getColorAttachmentFormat(caIdx));
-            colorDesc.writeMask = mvkMTLColorWriteMaskFromVkChannelFlags(pCA->colorWriteMask);
+            if (colorDesc.pixelFormat == MTLPixelFormatRGB9E5Float) {
+                // Metal doesn't allow disabling individual channels for a RGB9E5 render target.
+                // Either all must be disabled or none must be disabled.
+                // TODO: Use framebuffer fetch to support this anyway. I don't understand why Apple doesn't
+                // support it, given that the only GPUs that support this in Metal also support framebuffer fetch.
+                colorDesc.writeMask = pCA->colorWriteMask ? MTLColorWriteMaskAll : MTLColorWriteMaskNone;
+            } else {
+                colorDesc.writeMask = mvkMTLColorWriteMaskFromVkChannelFlags(pCA->colorWriteMask);
+            }
             // Don't set the blend state if we're not using this attachment.
             // The pixel format will be MTLPixelFormatInvalid in that case, and
             // Metal asserts if we turn on blending with that pixel format.
