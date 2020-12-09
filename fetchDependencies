@@ -493,7 +493,7 @@ else
 		echo "WARNING: You did not specify a platform to build."
 		echo "To build the external libraries, include one or"
 		echo "more of the following platform options:"
-		echo "    --macos --ios --iossim --tvos --tvossim --all"
+		echo "    --macos --ios --iossim --maccat --tvos --tvossim --all"
 		echo "See the instructions in the fetchDependencies script for more info."
 	fi
 fi
