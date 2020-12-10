@@ -34,17 +34,23 @@ public:
 
 	/** Returns the value of the bit. */
 	inline bool getBit(size_t bitIndex) {
-		return mvkIsAnyFlagEnabled(getSection(bitIndex), getSectionSetMask(bitIndex));
+		return mvkIsAnyFlagEnabled(_pSections[getIndexOfSection(bitIndex)], getSectionSetMask(bitIndex));
 	}
 
 	/** Sets the value of the bit to 1. */
 	inline void setBit(size_t bitIndex) {
-		mvkEnableFlags(getSection(bitIndex), getSectionSetMask(bitIndex));
+		size_t secIdx = getIndexOfSection(bitIndex);
+		mvkEnableFlags(_pSections[secIdx], getSectionSetMask(bitIndex));
+
+		if (secIdx < _minUnclearedSectionIndex) { _minUnclearedSectionIndex = secIdx; }
 	}
 
 	/** Sets the value of the bit to 0. */
 	inline void clearBit(size_t bitIndex) {
-		mvkDisableFlags(getSection(bitIndex), getSectionSetMask(bitIndex));
+		size_t secIdx = getIndexOfSection(bitIndex);
+		mvkDisableFlags(_pSections[secIdx], getSectionSetMask(bitIndex));
+
+		if (secIdx == _minUnclearedSectionIndex && !_pSections[secIdx]) { _minUnclearedSectionIndex++; }
 	}
 
 	/** Sets the value of the bit to the value. */
@@ -67,13 +73,14 @@ public:
 	 * and optionally clears that bit. If no bits are set, returns the size() of this bit array.
 	 */
 	size_t getIndexOfFirstSetBit(size_t startIndex, bool shouldClear) {
-		size_t startSecIdx = getIndexOfSection(startIndex);
+		size_t startSecIdx = std::max(getIndexOfSection(startIndex), _minUnclearedSectionIndex);
 		size_t bitIdx = startSecIdx << SectionMaskSize;
 		size_t secCnt = getSectionCount();
 		for (size_t secIdx = startSecIdx; secIdx < secCnt; secIdx++) {
 			size_t lclBitIdx = getIndexOfFirstSetBitInSection(_pSections[secIdx], getBitIndexInSection(startIndex));
 			bitIdx += lclBitIdx;
 			if (lclBitIdx < SectionSize) {
+				if (startSecIdx == _minUnclearedSectionIndex && !_pSections[startSecIdx]) { _minUnclearedSectionIndex = secIdx; }
 				if (shouldClear) { clearBit(bitIdx); }
 				return bitIdx;
 			}
@@ -131,11 +138,6 @@ protected:
 		return _bitCount ? getIndexOfSection(_bitCount - 1) + 1 : 0;
 	}
 
-	// Returns a reference to the section that contains the specified bit.
-	inline uint64_t& getSection(size_t bitIndex) {
-		return _pSections[getIndexOfSection(bitIndex)];
-	}
-
 	// Returns the index of the section that contains the specified bit.
 	static inline size_t getIndexOfSection(size_t bitIndex) {
 		return bitIndex >> SectionMaskSize;
@@ -168,8 +170,10 @@ protected:
 		for (size_t secIdx = 0; secIdx < secCnt; secIdx++) {
 			_pSections[secIdx] = sectionValue;
 		}
+		_minUnclearedSectionIndex = sectionValue ? 0 : secCnt;
 	}
 
 	uint64_t* _pSections;
 	size_t _bitCount;
+	size_t _minUnclearedSectionIndex;	// Tracks where to start looking for bits that are set
 };
