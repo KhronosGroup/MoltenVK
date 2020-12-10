@@ -93,6 +93,7 @@ protected:
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
+	inline NSUInteger getArgumentBufferSize() { return _argumentBufferSize; }
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 	void bindMetalArgumentBuffer(id<MTLBuffer> argBuffer);
 	void initMTLArgumentEncoders();
@@ -141,8 +142,6 @@ public:
 
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 
-	~MVKDescriptorSet() override;
-
 protected:
 	friend class MVKDescriptorPool;
 	friend class MVKDescriptorSetLayout;
@@ -152,12 +151,15 @@ protected:
 	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
 	VkResult allocate(MVKDescriptorSetLayout* layout,
 					  uint32_t variableDescriptorCount,
-					  MVKDescriptorPool* pool);
-	void free(MVKDescriptorPool* pool);
+					  NSUInteger mtlArgumentBufferOffset);
+	void free(bool isPoolReset);
+	id<MTLBuffer> getMetalArgumentBuffer();
+	inline NSUInteger getMetalArgumentBufferOffset() { return _mtlArgumentBufferOffset; }
 
-	MVKDescriptorSetLayout* _layout;
-	id<MTLBuffer> _mtlArgumentBuffer;
 	MVKSmallVector<MVKDescriptor*> _descriptors;
+	MVKDescriptorSetLayout* _layout;
+	MVKDescriptorPool* _pool;
+	NSUInteger _mtlArgumentBufferOffset;
 	uint32_t _variableDescriptorCount;
 };
 
@@ -226,12 +228,15 @@ protected:
 	void propagateDebugName() override {}
 	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, uint32_t variableDescriptorCount, VkDescriptorSet* pVKDS);
 	const uint32_t* getVariableDecriptorCounts(const VkDescriptorSetAllocateInfo* pAllocateInfo);
-	void freeDescriptorSet(MVKDescriptorSet* mvkDS);
+	void freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolReset);
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
+	NSUInteger getDescriptorByteCountForMetalArgumentBuffer(VkDescriptorType descriptorType);
 
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
 	MVKBitArray _descriptorSetAvailablility;
+	id<MTLBuffer> _mtlArgumentBuffer;
+	NSUInteger _nextMTLArgumentBufferOffset;
 
 	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;
