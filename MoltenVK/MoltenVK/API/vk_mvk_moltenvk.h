@@ -649,6 +649,7 @@ typedef struct {
 	VkBool32 simdReduction;						/**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
     uint32_t minSubgroupSize;			        /**< The minimum number of threads in a SIMD-group. */
     VkBool32 textureBarriers;                   /**< If true, texture barriers are supported within Metal render passes. */
+    VkBool32 tileBasedDeferredRendering;        /**< If true, this device uses tile-based deferred rendering. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

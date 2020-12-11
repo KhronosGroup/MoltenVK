@@ -767,7 +767,17 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 #pragma mark -
 #pragma mark MVKRenderPass
 
-VkExtent2D MVKRenderPass::getRenderAreaGranularity() { return { 1, 1 }; }
+VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
+#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+    if (_device->_pMetalFeatures->tileBasedDeferredRendering) {
+        // This is the tile area.
+        // FIXME: We really ought to use MTLRenderCommandEncoder.tile{Width,Height}, but that requires
+        // creating a command buffer.
+        return { 32, 32 };
+    }
+#endif
+    return { 1, 1 };
+}
 
 MVKRenderSubpass* MVKRenderPass::getSubpass(uint32_t subpassIndex) { return &_subpasses[subpassIndex]; }
 
