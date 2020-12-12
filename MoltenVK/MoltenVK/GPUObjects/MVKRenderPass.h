@@ -175,6 +175,7 @@ public:
     bool populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc,
                                                    MVKRenderSubpass* subpass,
                                                    bool isRenderingEntireAttachment,
+												   bool isMemorylessAttachment,
                                                    bool hasResolveAttachment,
                                                    bool isStencil,
                                                    bool loadOverride = false);
@@ -183,6 +184,7 @@ public:
 	void encodeStoreAction(MVKCommandEncoder* cmdEncoder,
 						   MVKRenderSubpass* subpass,
 						   bool isRenderingEntireAttachment,
+						   bool isMemorylessAttachment,
 						   bool hasResolveAttachment,
 						   uint32_t caIdx,
 					   	   bool isStencil,
@@ -207,6 +209,7 @@ protected:
 	bool isLastUseOfAttachment(MVKRenderSubpass* subpass);
 	MTLStoreAction getMTLStoreAction(MVKRenderSubpass* subpass,
 									 bool isRenderingEntireAttachment,
+									 bool isMemorylessAttachment,
 									 bool hasResolveAttachment,
 									 bool isStencil,
 									 bool storeOverride);

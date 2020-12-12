@@ -210,8 +210,10 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
             // Configure the color attachment
             MVKRenderPassAttachment* clrMVKRPAtt = &_renderPass->_attachments[clrRPAttIdx];
 			framebuffer->getAttachment(clrRPAttIdx)->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc);
+			bool isMemorylessAttachment = framebuffer->getAttachment(clrRPAttIdx)->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 			if (clrMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc, this,
                                                                        isRenderingEntireAttachment,
+																	   isMemorylessAttachment,
                                                                        hasResolveAttachment, false,
                                                                        loadOverride)) {
 				mtlColorAttDesc.clearColor = pixFmts->getMTLClearColor(clearValues[clrRPAttIdx], clrMVKRPAtt->getFormat());
@@ -250,8 +252,10 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 				}
 			}
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc);
+			bool isMemorylessAttachment = dsImage->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
                                                                       isRenderingEntireAttachment,
+																	  isMemorylessAttachment,
                                                                       hasResolveAttachment, false,
                                                                       loadOverride)) {
                 mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthValue(clearValues[dsRPAttIdx]);
@@ -273,8 +277,10 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 				}
 			}
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc);
+			bool isMemorylessAttachment = dsImage->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
                                                                       isRenderingEntireAttachment,
+																	  isMemorylessAttachment,
                                                                       hasResolveAttachment, true,
                                                                       loadOverride)) {
 				mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilValue(clearValues[dsRPAttIdx]);
@@ -360,7 +366,8 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
         uint32_t clrRPAttIdx = _colorAttachments[caIdx].attachment;
         if (clrRPAttIdx != VK_ATTACHMENT_UNUSED) {
             bool hasResolveAttachment = _resolveAttachments.empty() ? false : _resolveAttachments[caIdx].attachment != VK_ATTACHMENT_UNUSED;
-            _renderPass->_attachments[clrRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, hasResolveAttachment, caIdx, false, storeOverride);
+			bool isMemorylessAttachment = cmdEncoder->_framebuffer->getAttachment(clrRPAttIdx)->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
+            _renderPass->_attachments[clrRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, caIdx, false, storeOverride);
         }
     }
     uint32_t dsRPAttIdx = _depthStencilAttachment.attachment;
@@ -368,8 +375,9 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
         bool hasResolveAttachment = _depthStencilResolveAttachment.attachment != VK_ATTACHMENT_UNUSED;
         bool hasDepthResolveAttachment = hasResolveAttachment && _depthResolveMode != VK_RESOLVE_MODE_NONE;
         bool hasStencilResolveAttachment = hasResolveAttachment && _stencilResolveMode != VK_RESOLVE_MODE_NONE;
-        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, hasDepthResolveAttachment, 0, false, storeOverride);
-        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, hasStencilResolveAttachment, 0, true, storeOverride);
+		bool isMemorylessAttachment = cmdEncoder->_framebuffer->getAttachment(dsRPAttIdx)->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
+        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, isMemorylessAttachment, hasDepthResolveAttachment, 0, false, storeOverride);
+        _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, isMemorylessAttachment, hasStencilResolveAttachment, 0, true, storeOverride);
     }
 }
 
@@ -573,6 +581,7 @@ VkSampleCountFlagBits MVKRenderPassAttachment::getSampleCount() { return _info.s
 bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc,
                                                                         MVKRenderSubpass* subpass,
                                                                         bool isRenderingEntireAttachment,
+																		bool isMemorylessAttachment,
                                                                         bool hasResolveAttachment,
                                                                         bool isStencil,
                                                                         bool loadOverride) {
@@ -581,9 +590,9 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
 
     // Only allow clearing of entire attachment if we're actually rendering to the entire
     // attachment AND we're in the first subpass.
-    if ( loadOverride ) {
+    if ( loadOverride && !isMemorylessAttachment ) {
         mtlAttDesc.loadAction = MTLLoadActionLoad;
-    } else if ( isRenderingEntireAttachment && isFirstUseOfAttachment(subpass) ) {
+    } else if ( isMemorylessAttachment || (isRenderingEntireAttachment && isFirstUseOfAttachment(subpass)) ) {
         VkAttachmentLoadOp loadOp = isStencil ? _info.stencilLoadOp : _info.loadOp;
         mtlAttDesc.loadAction = mvkMTLLoadActionFromVkAttachmentLoadOp(loadOp);
         willClear = (loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
@@ -597,7 +606,7 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
     if ( _renderPass->getDevice()->_pMetalFeatures->deferredStoreActions ) {
         mtlAttDesc.storeAction = MTLStoreActionUnknown;
     } else {
-        mtlAttDesc.storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, hasResolveAttachment, isStencil, false);
+        mtlAttDesc.storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, isStencil, false);
     }
     return willClear;
 }
@@ -605,11 +614,12 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
 void MVKRenderPassAttachment::encodeStoreAction(MVKCommandEncoder* cmdEncoder,
                                                 MVKRenderSubpass* subpass,
                                                 bool isRenderingEntireAttachment,
+												bool isMemorylessAttachment,
                                                 bool hasResolveAttachment,
                                                 uint32_t caIdx,
                                                 bool isStencil,
                                                 bool storeOverride) {
-    MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, hasResolveAttachment, isStencil, storeOverride);
+    MTLStoreAction storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, isStencil, storeOverride);
     MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
 
 	MTLPixelFormat mtlFmt = pixFmts->getMTLPixelFormat(_info.format);
@@ -657,6 +667,7 @@ bool MVKRenderPassAttachment::isLastUseOfAttachment(MVKRenderSubpass* subpass) {
 
 MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subpass,
 														  bool isRenderingEntireAttachment,
+														  bool isMemorylessAttachment,
 														  bool hasResolveAttachment,
 														  bool isStencil,
 														  bool storeOverride) {
@@ -666,10 +677,10 @@ MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subp
     if (hasResolveAttachment && !_renderPass->getDevice()->_pMetalFeatures->combinedStoreResolveAction) {
         return MTLStoreActionMultisampleResolve;
     }
-    if ( storeOverride ) {
+    if ( storeOverride && !isMemorylessAttachment ) {
         return hasResolveAttachment ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
     }
-    if ( isRenderingEntireAttachment && isLastUseOfAttachment(subpass) ) {
+    if ( isMemorylessAttachment || (isRenderingEntireAttachment && isLastUseOfAttachment(subpass)) ) {
         VkAttachmentStoreOp storeOp = isStencil ? _info.stencilStoreOp : _info.storeOp;
         return mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp, hasResolveAttachment);
     }
