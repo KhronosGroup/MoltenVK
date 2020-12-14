@@ -4086,6 +4086,7 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 void MVKDevice::initMTLCompileOptions() {
 	_mtlCompileOptions = [MTLCompileOptions new];	// retained
 	_mtlCompileOptions.languageVersion = _pMetalFeatures->mslVersionEnum;
+	_mtlCompileOptions.fastMathEnabled = _pMVKConfig->fastMathEnabled;
 }
 
 MVKDevice::~MVKDevice() {
