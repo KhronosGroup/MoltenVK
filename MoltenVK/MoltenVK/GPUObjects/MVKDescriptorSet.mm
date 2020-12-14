@@ -635,13 +635,13 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 	}
 }
 
-// Descriptor sets are held in contiguous memory, so the index of the returning descriptor set
-// can be calculated by memory address differences, and it can be marked as available.
+// Descriptor sets are held in contiguous memory, so the index of the returning descriptor
+// set can be calculated by pointer differences, and it can be marked as available.
 void MVKDescriptorPool::freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolReset) {
 	if (mvkDS->_pool != this) { reportError(VK_ERROR_INITIALIZATION_FAILED, "A descriptor set is being returned to a descriptor pool that did not allocate it."); }
 
-	size_t dsIdx = (mvkDS - _descriptorSets.data()) / sizeof(*mvkDS);
 	mvkDS->free(isPoolReset);
+	size_t dsIdx = mvkDS - _descriptorSets.data();
 	_descriptorSetAvailablility.setBit(dsIdx);
 }
 
@@ -762,12 +762,12 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
 		}
 		mtlArgBuffSize += pCreateInfo->maxSets * _device->_pMetalFeatures->mtlBufferAlignment;	// Leave room for each desc set to be aligned
 
-		// Each stage uses it's own arg buffer layout. As a result, we need to significantly
-		// overallocate space here, since we don't yet know how the descriptor set layouts
-		// will make use of the descriptors across each pipeline stage. Ideally, the same
-		// MVKMTLArgumentEncoder should be used across all pipeline stages, but that doesn't
-		// seem to be possible with present combination of SPIRV-Cross and Metal behaviour.
-		mtlArgBuffSize *= kMVKShaderStageFragment + 1;
+		// Each shader stage uses it's own arg buffer layout. As a result, we need to significantly
+		// overallocate space here, since we don't yet know how the descriptor set layouts will make
+		// use of the descriptors across each pipeline stage. Ideally, the same MVKMTLArgumentEncoder
+		// should be used across all pipeline stages, but that doesn't seem to be possible with present
+		// combination of SPIRV-Cross and Metal behaviour.
+		mtlArgBuffSize *= kMVKShaderStageCount;
 
 		if (mtlArgBuffSize) {
 			_mtlArgumentBuffer = [getMTLDevice() newBufferWithLength: mtlArgBuffSize options: MTLResourceStorageModeShared];	// retained
