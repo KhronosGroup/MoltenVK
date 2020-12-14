@@ -558,6 +558,19 @@ typedef struct {
 	 */
 	uint32_t defaultGPUCaptureScopeQueueIndex;
 
+	/**
+	 * Corresponds to the fastMathEnabled property of MTLCompileOptions.
+	 * Setting it may cause the Metal Compiler to optimize floating point operations
+	 * in ways that may violate the IEEE 754 standard.
+	 *
+	 * Must be changed before creating a VkDevice, for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_FAST_MATH_ENABLED
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to false.
+	 */
+	VkBool32 fastMathEnabled;
 } MVKConfiguration;
 
 /**
