@@ -459,8 +459,8 @@ protected:
 	void resetImpl() override;
 	void markDirty() override;
 
-	MVKSmallVector<MVKMTLArgumentBufferResourceUsage, 8> argumentBufferResourceUsage;
-	bool areArgumentBufferResourceUsageDirty = false;
+	MVKSmallVector<MVKMTLArgumentBufferResourceUsage, 8> _argumentBufferResourceUsage;
+	bool _areArgumentBufferResourceUsageDirty = false;
 };
 
 

@@ -522,27 +522,27 @@ void MVKResourcesCommandEncoderState::useArgumentBufferResource(const MVKMTLArgu
 
 	MVKMTLArgumentBufferResourceUsage dru = resourceUsage;   // Copy that can be marked dirty
 	MVKCommandEncoderState::markDirty();
-	areArgumentBufferResourceUsageDirty = true;
+	_areArgumentBufferResourceUsageDirty = true;
 	dru.isDirty = true;
 
-	for (auto iter = argumentBufferResourceUsage.begin(), end = argumentBufferResourceUsage.end(); iter != end; ++iter) {
+	for (auto iter = _argumentBufferResourceUsage.begin(), end = _argumentBufferResourceUsage.end(); iter != end; ++iter) {
 		if( iter->mtlResource == dru.mtlResource ) {
 			*iter = dru;
 			return;
 		}
 	}
-	argumentBufferResourceUsage.push_back(dru);
+	_argumentBufferResourceUsage.push_back(dru);
 }
 
 // Mark everything as dirty
 void MVKResourcesCommandEncoderState::markDirty() {
 	MVKCommandEncoderState::markDirty();
-	markDirty(argumentBufferResourceUsage, areArgumentBufferResourceUsageDirty);
+	markDirty(_argumentBufferResourceUsage, _areArgumentBufferResourceUsageDirty);
 }
 
 void MVKResourcesCommandEncoderState::resetImpl() {
-	argumentBufferResourceUsage.clear();
-	areArgumentBufferResourceUsageDirty = false;
+	_argumentBufferResourceUsage.clear();
+	_areArgumentBufferResourceUsageDirty = false;
 }
 
 
@@ -845,14 +845,16 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
 void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResources() {
 
-	encodeBinding<MVKMTLArgumentBufferResourceUsage>(argumentBufferResourceUsage,
-													 areArgumentBufferResourceUsageDirty,
+	encodeBinding<MVKMTLArgumentBufferResourceUsage>(_argumentBufferResourceUsage,
+													 _areArgumentBufferResourceUsageDirty,
 													 [](MVKCommandEncoder* cmdEncoder, MVKMTLArgumentBufferResourceUsage& abru)->void {
-														 auto* mtlEnc = cmdEncoder->_mtlRenderEncoder;
-														 if ([mtlEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
-															 [mtlEnc useResource: abru.mtlResource usage: abru.mtlUsage stages: abru.mtlStages];
-														 } else {
-															 [mtlEnc useResource: abru.mtlResource usage: abru.mtlUsage];
+														 if (abru.mtlStages) {
+															 auto* mtlEnc = cmdEncoder->_mtlRenderEncoder;
+															 if ([mtlEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
+																 [mtlEnc useResource: abru.mtlResource usage: abru.mtlUsage stages: abru.mtlStages];
+															 } else {
+																 [mtlEnc useResource: abru.mtlResource usage: abru.mtlUsage];
+															 }
 														 }
 													 });
 }
@@ -961,8 +963,8 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 }
 void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResources() {
 
-	encodeBinding<MVKMTLArgumentBufferResourceUsage>(argumentBufferResourceUsage,
-													 areArgumentBufferResourceUsageDirty,
+	encodeBinding<MVKMTLArgumentBufferResourceUsage>(_argumentBufferResourceUsage,
+													 _areArgumentBufferResourceUsageDirty,
 													 [](MVKCommandEncoder* cmdEncoder, MVKMTLArgumentBufferResourceUsage& abru)->void {
 														 auto* mtlEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
 														 [mtlEnc useResource: abru.mtlResource usage: abru.mtlUsage];
