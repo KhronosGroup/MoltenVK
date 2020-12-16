@@ -38,31 +38,40 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	if (_isPushDescriptorLayout ) { return; }
 
 	lock_guard<mutex> lock(_argEncodingLock);
-	id<MTLBuffer> mtlArgBuff = descSet->getMetalArgumentBuffer();
-	bindMetalArgumentBuffer(mtlArgBuff);
+	bindMetalArgumentBuffer(descSet);
 
 	for (auto& dslBind : _bindings) {
 		dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
 	}
 
-	bindMetalArgumentBuffer(nil);
+	bindMetalArgumentBuffer(nullptr);
 
-	// If we're using Metal argument buffer, bind it to the command encoder
-	if (mtlArgBuff) {
-		MVKMTLBufferBinding bb;
-		bb.mtlBuffer = mtlArgBuff;
-		bb.index = descSetLayoutIndex;
-		for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
-			bb.offset = _argumentEncoder[stage].argumentBufferOffset;
-			if (cmdEncoder) { cmdEncoder->bindBuffer(bb, MVKShaderStage(stage)); }
+	// If we're using Metal argument buffer, bind it to the command encoder in each stage that will use it.
+	if (cmdEncoder) {
+		id<MTLBuffer> mtlArgBuff = descSet->getMetalArgumentBuffer();
+		NSUInteger descSetOffset = descSet->getMetalArgumentBufferOffset();
+		if (mtlArgBuff) {
+			MVKMTLBufferBinding bb;
+			bb.mtlBuffer = mtlArgBuff;
+			bb.index = descSetLayoutIndex;
+			for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
+				auto& argEnc = _argumentEncoder[stage];
+				if (argEnc.mtlArgumentEncoder) {
+					bb.offset = descSetOffset + argEnc.argumentBufferOffset;
+					cmdEncoder->bindBuffer(bb, MVKShaderStage(stage));
+				}
+			}
 		}
 	}
 }
 
-void MVKDescriptorSetLayout::bindMetalArgumentBuffer(id<MTLBuffer> argBuffer) {
+void MVKDescriptorSetLayout::bindMetalArgumentBuffer(MVKDescriptorSet* descSet) {
+	id<MTLBuffer> mtlArgBuff = descSet ? descSet->getMetalArgumentBuffer() : nil;
+	NSUInteger descSetOffset = descSet ? descSet->getMetalArgumentBufferOffset() : 0;
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		auto& argEnc = _argumentEncoder[stage];
-		[argEnc.mtlArgumentEncoder setArgumentBuffer: argBuffer offset: argEnc.argumentBufferOffset];
+		[argEnc.mtlArgumentEncoder setArgumentBuffer: mtlArgBuff
+											  offset: (descSetOffset + argEnc.argumentBufferOffset)];
 	}
 }
 
@@ -293,7 +302,7 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 							 const void* pData) {
 
 	lock_guard<mutex> lock(_layout->_argEncodingLock);
-	_layout->bindMetalArgumentBuffer(_pool->_mtlArgumentBuffer);
+	_layout->bindMetalArgumentBuffer(this);
 
 	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorAction->dstBinding);
 	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
@@ -314,7 +323,7 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
         }
     }
 
-	_layout->bindMetalArgumentBuffer(nil);
+	_layout->bindMetalArgumentBuffer(nullptr);
 }
 
 // Create concrete implementations of the three variations of the write() function.
@@ -638,6 +647,8 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 // Descriptor sets are held in contiguous memory, so the index of the returning descriptor
 // set can be calculated by pointer differences, and it can be marked as available.
 void MVKDescriptorPool::freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolReset) {
+	if ( !mvkDS ) { return; }	// Vulkan allows NULL refs.
+
 	if (mvkDS->_pool != this) { reportError(VK_ERROR_INITIALIZATION_FAILED, "A descriptor set is being returned to a descriptor pool that did not allocate it."); }
 
 	mvkDS->free(isPoolReset);

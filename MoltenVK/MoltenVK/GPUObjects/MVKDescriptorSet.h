@@ -95,7 +95,7 @@ protected:
 	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	inline NSUInteger getArgumentBufferSize() { return _argumentBufferSize; }
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
-	void bindMetalArgumentBuffer(id<MTLBuffer> argBuffer);
+	void bindMetalArgumentBuffer(MVKDescriptorSet* descSet);
 	void initMTLArgumentEncoders();
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
