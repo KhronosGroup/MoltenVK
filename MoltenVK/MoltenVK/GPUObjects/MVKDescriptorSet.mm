@@ -805,10 +805,10 @@ NSUInteger MVKDescriptorPool::getDescriptorByteCountForMetalArgumentBuffer(VkDes
 			return 1;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
 			return sizeof(id<MTLTexture>);
 
-		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 			return sizeof(id<MTLTexture>) + sizeof(id<MTLBuffer>);

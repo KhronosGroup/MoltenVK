@@ -394,14 +394,13 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(uint32_t stage,
 			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadOnly, argIdx);
 			break;
 
-		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadOnly, argIdx);
-			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadOnly, argIdx);
-			break;
-
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadWrite, argIdx);
 //			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, argIdx);		// Needed for atomic operations
+			break;
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadOnly, argIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
