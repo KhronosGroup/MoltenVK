@@ -466,6 +466,12 @@ protected:
 
 	void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index);
 
+	/**
+	 * Offset to the first sampler index in the argument buffer. Defaults to zero for simple sampler
+	 * descriptors, but combined image/sampler descriptor will override to index samplers after textures.
+	 */
+	virtual uint32_t getSamplerArgBufferIndexOffset(MVKDescriptorSetLayoutBinding* dslBinding) { return 0; }
+
 	void reset();
 
 	~MVKSamplerDescriptorMixin() { reset(); }
@@ -541,6 +547,8 @@ public:
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
 
 	void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) override;
+
+	uint32_t getSamplerArgBufferIndexOffset(MVKDescriptorSetLayoutBinding* dslBinding) override;
 
 	void reset() override;
 

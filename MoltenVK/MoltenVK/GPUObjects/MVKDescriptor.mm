@@ -969,7 +969,8 @@ void MVKSamplerDescriptorMixin::bind(MVKCommandEncoder* cmdEncoder,
 		// Write any immutable sampler to the argument buffer now
 		if ( !_hasDynamicSampler ) {
 			id<MTLSamplerState> mtlSampler = _mvkSampler ? _mvkSampler->getMTLSamplerState() : nil;
-			mvkDSLBind->writeToMetalArgumentBuffer(mtlSampler, descriptorIndex);
+			uint32_t argBuffIdx = getSamplerArgBufferIndexOffset(mvkDSLBind) + descriptorIndex;
+			mvkDSLBind->writeToMetalArgumentBuffer(mtlSampler, argBuffIdx);
 		}
 	} else {
 		MVKMTLSamplerStateBinding sb;
@@ -1000,6 +1001,11 @@ void MVKSamplerDescriptorMixin::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 
 		if (_mvkSampler) { _mvkSampler->retain(); }
 		if (oldSamp) { oldSamp->release(); }
+
+		// Update the Metal argument buffer entry
+		id<MTLSamplerState> mtlSampler = _mvkSampler ? _mvkSampler->getMTLSamplerState() : nil;
+		uint32_t argBuffIdx = getSamplerArgBufferIndexOffset(mvkDSLBind) + srcIndex;
+		mvkDSLBind->writeToMetalArgumentBuffer(mtlSampler, argBuffIdx);
 	}
 }
 
@@ -1050,12 +1056,6 @@ void MVKSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 								 size_t stride,
 								 const void* pData) {
 	MVKSamplerDescriptorMixin::write(mvkDSLBind, srcIndex, stride, pData);
-
-	// Update the Metal argument buffer entry
-	if (_hasDynamicSampler) {
-		id<MTLSamplerState> mtlSampler = _mvkSampler ? _mvkSampler->getMTLSamplerState() : nil;
-		mvkDSLBind->writeToMetalArgumentBuffer(mtlSampler, srcIndex);
-	}
 }
 
 void MVKSamplerDescriptor::read(uint32_t dstIndex,
@@ -1098,13 +1098,6 @@ void MVKCombinedImageSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvk
 											  const void* pData) {
 	MVKImageDescriptor::write(mvkDSLBind, srcIndex, stride, pData);
 	MVKSamplerDescriptorMixin::write(mvkDSLBind, srcIndex, stride, pData);
-
-	// Update the Metal argument buffer sampler entry
-	if (_hasDynamicSampler) {
-		uint8_t planeCount = _mvkImageView ? _mvkImageView->getPlaneCount() : 1;
-		id<MTLSamplerState> mtlSampler = _mvkSampler ? _mvkSampler->getMTLSamplerState() : nil;
-		mvkDSLBind->writeToMetalArgumentBuffer(mtlSampler, mvkDSLBind->getDescriptorCount() * planeCount + srcIndex);
-	}
 }
 
 void MVKCombinedImageSamplerDescriptor::read(uint32_t dstIndex,
@@ -1119,6 +1112,11 @@ void MVKCombinedImageSamplerDescriptor::read(uint32_t dstIndex,
 void MVKCombinedImageSamplerDescriptor::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
 	MVKImageDescriptor::setLayout(dslBinding, index);
 	MVKSamplerDescriptorMixin::setLayout(dslBinding, index);
+}
+
+uint32_t MVKCombinedImageSamplerDescriptor::getSamplerArgBufferIndexOffset(MVKDescriptorSetLayoutBinding* dslBinding) {
+	uint8_t planeCount = _mvkImageView ? _mvkImageView->getPlaneCount() : 1;
+	return dslBinding->getDescriptorCount() * planeCount;
 }
 
 void MVKCombinedImageSamplerDescriptor::reset() {
