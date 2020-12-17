@@ -438,7 +438,7 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLA
 void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(id<MTLBuffer> mtlBuffer,
 															   NSUInteger offset,
 															   uint32_t elementIndex) {
-	if ( !mtlBuffer ) { return; }
+	if ( !usingMetalArgumentBuffer() || !mtlBuffer ) { return; }
 
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		if (_applyToStage[stage]) {
@@ -452,7 +452,7 @@ void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(id<MTLTexture> mt
 															   uint32_t planeCount,
 															   uint32_t planeIndex,
 															   uint32_t elementIndex) {
-	if ( !mtlTexture ) { return; }
+	if ( !usingMetalArgumentBuffer() || !mtlTexture ) { return; }
 
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		if (_applyToStage[stage]) {
@@ -464,6 +464,8 @@ void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(id<MTLTexture> mt
 
 void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(id<MTLSamplerState> mtlSamplerState,
 															   uint32_t elementIndex) {
+	if ( !usingMetalArgumentBuffer() ) { return; }
+
 	// Metal requires sampler, so get default if not provided.
 	if ( !mtlSamplerState ) { mtlSamplerState = getDevice()->getDefaultMTLSamplerState(); }
 
@@ -479,7 +481,7 @@ void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(uint8_t* pSrcData
 															   NSUInteger dstOffset,
 															   NSUInteger dataLen,
 															   uint32_t elementIndex) {
-	if ( !pSrcData ) { return; }
+	if ( !usingMetalArgumentBuffer() || !pSrcData ) { return; }
 
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		if (_applyToStage[stage]) {
