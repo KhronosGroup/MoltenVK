@@ -323,6 +323,12 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
         }
     }
 
+	// For some unexpected reason, GPU capture on Xcode 12 doesn't always correctly expose
+	// the contents of Metal argument buffers. Triggering an extraction of the arg buffer
+	// contents here, after filling it, seems to correct that.
+	// Sigh. A bug report has been filed with Apple.
+	if (getInstance()->isCurrentlyAutoGPUCapturing()) { [_pool->_mtlArgumentBuffer contents]; }
+
 	_layout->bindMetalArgumentBuffer(nullptr);
 }
 

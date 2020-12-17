@@ -186,6 +186,9 @@ public:
 	 */
 	void stopAutoGPUCapture(int32_t autoGPUCaptureScope);
 
+	/** Returns whether this instance is currently automatically capturing a GPU trace. */
+	inline bool isCurrentlyAutoGPUCapturing() { return _isCurrentlyAutoGPUCapturing; }
+
 
 #pragma mark Object Creation
 
