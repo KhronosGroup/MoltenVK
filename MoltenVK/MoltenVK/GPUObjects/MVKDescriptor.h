@@ -37,6 +37,7 @@ typedef struct MVKShaderStageResourceBinding {
 
 	MVKShaderStageResourceBinding operator+ (const MVKShaderStageResourceBinding& rhs);
 	MVKShaderStageResourceBinding& operator+= (const MVKShaderStageResourceBinding& rhs);
+	void addArgumentBuffer(const MVKShaderStageResourceBinding& rhs);
 
 } MVKShaderStageResourceBinding;
 
@@ -53,6 +54,7 @@ typedef struct MVKShaderResourceBinding {
 
 	MVKShaderResourceBinding operator+ (const MVKShaderResourceBinding& rhs);
 	MVKShaderResourceBinding& operator+= (const MVKShaderResourceBinding& rhs);
+	void addArgumentBuffer(const MVKShaderResourceBinding& rhs);
 
 } MVKShaderResourceBinding;
 

@@ -41,27 +41,10 @@ MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::operator+= (const 
 	return *this;
 }
 
-void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
-									   MVKShaderStageResourceBinding& ssRB,
-									   spv::ExecutionModel stage,
-									   uint32_t descriptorSetIndex,
-									   uint32_t bindingIndex,
-									   uint32_t count,
-									   MVKSampler* immutableSampler) {
-	mvk::MSLResourceBinding rb;
-
-	auto& rbb = rb.resourceBinding;
-	rbb.stage = stage;
-	rbb.desc_set = descriptorSetIndex;
-	rbb.binding = bindingIndex;
-	rbb.count = count;
-	rbb.msl_buffer = ssRB.bufferIndex;
-	rbb.msl_texture = ssRB.textureIndex;
-	rbb.msl_sampler = ssRB.samplerIndex;
-
-	if (immutableSampler) { immutableSampler->getConstexprSampler(rb); }
-
-	context.resourceBindings.push_back(rb);
+void MVKShaderStageResourceBinding::addArgumentBuffer(const MVKShaderStageResourceBinding& rhs) {
+	bool isUsed = rhs.resourceIndex > 0;
+	this->bufferIndex += isUsed;
+	this->resourceIndex += isUsed;
 }
 
 
@@ -92,6 +75,35 @@ MVKShaderResourceBinding& MVKShaderResourceBinding::operator+= (const MVKShaderR
 		this->stages[i] += rhs.stages[i];
 	}
 	return *this;
+}
+
+void MVKShaderResourceBinding::addArgumentBuffer(const MVKShaderResourceBinding& rhs) {
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+		this->stages[i].addArgumentBuffer(rhs.stages[i]);
+	}
+}
+
+void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+									   MVKShaderStageResourceBinding& ssRB,
+									   spv::ExecutionModel stage,
+									   uint32_t descriptorSetIndex,
+									   uint32_t bindingIndex,
+									   uint32_t count,
+									   MVKSampler* immutableSampler) {
+	mvk::MSLResourceBinding rb;
+
+	auto& rbb = rb.resourceBinding;
+	rbb.stage = stage;
+	rbb.desc_set = descriptorSetIndex;
+	rbb.binding = bindingIndex;
+	rbb.count = count;
+	rbb.msl_buffer = ssRB.bufferIndex;
+	rbb.msl_texture = ssRB.textureIndex;
+	rbb.msl_sampler = ssRB.samplerIndex;
+
+	if (immutableSampler) { immutableSampler->getConstexprSampler(rb); }
+
+	context.resourceBindings.push_back(rb);
 }
 
 MTLRenderStages mvkMTLRenderStagesFromMVKShaderStages(bool stageEnabled[]) {
