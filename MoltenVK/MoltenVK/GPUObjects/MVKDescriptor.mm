@@ -400,6 +400,10 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(uint32_t stage,
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadWrite, argIdx);
+//			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, argIdx);		// Needed for atomic operations
+			break;
+
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadWrite, argIdx);
 			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, argIdx);
@@ -888,10 +892,12 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 			abru.mtlUsage = getMTLResourceUsage();
 			abru.mtlStages = mvkMTLRenderStagesFromMVKShaderStages(stages);
 			if (cmdEncoder) { cmdEncoder->useArgumentBufferResource(abru, stages[kMVKShaderStageCompute]); }
-			if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-				abru.mtlResource = bb.mtlResource;
-				if (cmdEncoder) { cmdEncoder->useArgumentBufferResource(abru, stages[kMVKShaderStageCompute]); }
-			}
+
+// Needed for atomic operations
+//			if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+//				abru.mtlResource = bb.mtlResource;
+//				if (cmdEncoder) { cmdEncoder->useArgumentBufferResource(abru, stages[kMVKShaderStageCompute]); }
+//			}
 		} else {
 			// If not using Metal argument buffer, bind discretely
 			for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
@@ -927,11 +933,12 @@ void MVKImageDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 		id<MTLTexture> mtlTexture = _mvkImageView ? _mvkImageView->getMTLTexture(planeIndex) : nil;
 		mvkDSLBind->writeToMetalArgumentBuffer(mtlTexture, planeCount, planeIndex, srcIndex);
 
-		if (getDescriptorType() == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
-			id<MTLTexture> baseMTLTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
-			uint32_t buffArgIdx = mvkDSLBind->getDescriptorCount() * planeCount + srcIndex;
-			mvkDSLBind->writeToMetalArgumentBuffer(baseMTLTex.buffer, baseMTLTex.bufferOffset, buffArgIdx);
-		}
+// Needed for atomic operations
+//		if (getDescriptorType() == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
+//			id<MTLTexture> baseMTLTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
+//			uint32_t buffArgIdx = mvkDSLBind->getDescriptorCount() * planeCount + srcIndex;
+//			mvkDSLBind->writeToMetalArgumentBuffer(baseMTLTex.buffer, baseMTLTex.bufferOffset, buffArgIdx);
+//		}
 	}
 }
 
