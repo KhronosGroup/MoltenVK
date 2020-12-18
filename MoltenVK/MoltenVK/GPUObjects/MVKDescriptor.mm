@@ -405,7 +405,7 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(uint32_t stage,
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadWrite, argIdx);
-			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, argIdx);
+//			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, argIdx);		// Needed for atomic operations
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
@@ -1162,10 +1162,12 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 		abru.mtlUsage = getMTLResourceUsage();
 		abru.mtlStages = mvkMTLRenderStagesFromMVKShaderStages(stages);
 		if (cmdEncoder) { cmdEncoder->useArgumentBufferResource(abru, stages[kMVKShaderStageCompute]); }
-		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
-			abru.mtlResource = bb.mtlResource;
-			if (cmdEncoder) { cmdEncoder->useArgumentBufferResource(abru, stages[kMVKShaderStageCompute]); }
-		}
+
+// Needed for atomic operations
+//		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+//			abru.mtlResource = bb.mtlResource;
+//			if (cmdEncoder) { cmdEncoder->useArgumentBufferResource(abru, stages[kMVKShaderStageCompute]); }
+//		}
 	} else {
 		// If not using Metal argument buffer, bind discretely
 		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
@@ -1197,10 +1199,11 @@ void MVKTexelBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 	id<MTLTexture> mtlTexture = _mvkBufferView ? _mvkBufferView->getMTLTexture() : nil;
 	mvkDSLBind->writeToMetalArgumentBuffer(mtlTexture, 1, 0, srcIndex);
 
-	if (getDescriptorType() == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
-		uint32_t buffArgIdx = mvkDSLBind->getDescriptorCount() + srcIndex;
-		mvkDSLBind->writeToMetalArgumentBuffer(mtlTexture.buffer, mtlTexture.bufferOffset, buffArgIdx);
-	}
+// Needed for atomic operations
+//	if (getDescriptorType() == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+//		uint32_t buffArgIdx = mvkDSLBind->getDescriptorCount() + srcIndex;
+//		mvkDSLBind->writeToMetalArgumentBuffer(mtlTexture.buffer, mtlTexture.bufferOffset, buffArgIdx);
+//	}
 }
 
 void MVKTexelBufferDescriptor::read(uint32_t dstIndex,
