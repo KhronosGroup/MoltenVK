@@ -81,6 +81,9 @@ public:
 	/** Returns true if this layout is for push descriptors only. */
 	inline bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
+	/** Returns whether this layout is using an argument buffer. */
+	inline bool isUsingMetalArgumentBuffer() const  { return supportsMetalArgumentBuffers() && !isPushDescriptorLayout(); };
+
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 protected:

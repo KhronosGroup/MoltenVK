@@ -126,8 +126,8 @@ public:
               const void* pData,
               MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
-	/** Returns whether this layout is using an argument buffer. */
-	inline bool usingMetalArgumentBuffer() const  { return _device->_pMetalFeatures->argumentBuffers; };
+	/** Returns whether this binding layout is using an argument buffer. */
+	bool isUsingMetalArgumentBuffer() const;
 
 	/** Writes the buffer content to the Metal argument buffer. */
 	void writeToMetalArgumentBuffer(id<MTLBuffer> mtlBuffer,

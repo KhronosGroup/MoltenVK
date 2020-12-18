@@ -78,6 +78,7 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
 void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context) {
 	context.resourceBindings.clear();
+	context.discreteDescriptorSets.clear();
 
     // Add resource bindings defined in the descriptor set layouts
 	uint32_t dslCnt = (uint32_t)_descriptorSetLayouts.size();
@@ -120,7 +121,6 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfi
 // will be used for push contants and any additional auxilliary buffers.
 MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
                                      const VkPipelineLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
-	bool useArgBuffs = getDevice()->_pMetalFeatures->argumentBuffers;
 	uint32_t dslCnt = pCreateInfo->setLayoutCount;
 	_descriptorSetLayouts.resize(dslCnt);
 	_dslMTLResourceIndexOffsets.resize(dslCnt);
@@ -128,7 +128,7 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 		MVKDescriptorSetLayout* mvkDSL = (MVKDescriptorSetLayout*)pCreateInfo->pSetLayouts[dslIdx];
 		mvkDSL->retain();
 		_descriptorSetLayouts[dslIdx] = mvkDSL;
-		if (useArgBuffs) {
+		if (mvkDSL->isUsingMetalArgumentBuffer()) {
 			_pushConstantsMTLResourceIndexes.addArgumentBuffer(mvkDSL->_mtlResourceCounts);
 		} else {
 			_dslMTLResourceIndexOffsets[dslIdx] = _pushConstantsMTLResourceIndexes;
@@ -1460,7 +1460,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     shaderContext.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
     shaderContext.options.mslOptions.r32ui_linear_texture_alignment = (uint32_t)_device->getVkFormatTexelBufferAlignment(VK_FORMAT_R32_UINT, this);
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
-	shaderContext.options.mslOptions.argument_buffers = getDevice()->_pMetalFeatures->argumentBuffers;
+	shaderContext.options.mslOptions.argument_buffers = supportsMetalArgumentBuffers();
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -1710,7 +1710,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->quadPermute;
     shaderContext.options.mslOptions.ios_use_simdgroup_functions = !!_device->_pMetalFeatures->simdPermute;
 #endif
-	shaderContext.options.mslOptions.argument_buffers = getDevice()->_pMetalFeatures->argumentBuffers;
+	shaderContext.options.mslOptions.argument_buffers = supportsMetalArgumentBuffers();
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -2116,7 +2116,8 @@ namespace mvk {
 	void serialize(Archive & archive, SPIRVToMSLConversionConfiguration& ctx) {
 		archive(ctx.options,
 				ctx.shaderInputs,
-				ctx.resourceBindings);
+				ctx.resourceBindings,
+				ctx.discreteDescriptorSets);
 	}
 
 	template<class Archive>

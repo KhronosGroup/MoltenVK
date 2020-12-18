@@ -129,6 +129,7 @@ namespace mvk {
 		SPIRVToMSLConversionOptions options;
 		std::vector<MSLShaderInput> shaderInputs;
 		std::vector<MSLResourceBinding> resourceBindings;
+		std::vector<uint32_t> discreteDescriptorSets;
 
 		/** Returns whether the pipeline stage being converted supports vertex attributes. */
 		bool stageSupportsVertexAttributes() const;

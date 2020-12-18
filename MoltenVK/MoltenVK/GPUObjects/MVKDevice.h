@@ -819,6 +819,9 @@ public:
 	/** Returns info about the pixel format supported by the physical device. */
 	inline MVKPixelFormats* getPixelFormats() { return _device->getPixelFormats(); }
 
+	/** Returns whether the device supports using Metal argument buffers. */
+	inline bool supportsMetalArgumentBuffers() const  { return _device->_pMetalFeatures->argumentBuffers; };
+
 	/** Constructs an instance for the specified device. */
     MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
 
