@@ -315,18 +315,19 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 		// For inline buffers dstArrayElement is a byte offset
 		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorAction->dstBinding);
 		if (mvkDesc->getDescriptorType() == descType) {
-			mvkDesc->write(mvkDSLBind, pDescriptorAction->dstArrayElement, stride, pData);
+			mvkDesc->write(mvkDSLBind, pDescriptorAction->dstArrayElement, 0, stride, pData);
 		}
     } else {
-        uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
+		uint32_t descStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
 		uint32_t descCnt = pDescriptorAction->descriptorCount;
-        for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-			MVKDescriptor* mvkDesc = _descriptors[dstStartIdx + descIdx];
+		for (uint32_t srcIdx = 0; srcIdx < descCnt; srcIdx++) {
+			MVKDescriptor* mvkDesc = _descriptors[descStartIdx + srcIdx];
 			if (mvkDesc->getDescriptorType() == descType) {
-				mvkDesc->write(mvkDSLBind, descIdx, stride, pData);
+				uint32_t dstIdx = pDescriptorAction->dstArrayElement + srcIdx;
+				mvkDesc->write(mvkDSLBind, srcIdx, dstIdx, stride, pData);
 			}
-        }
-    }
+		}
+	}
 
 	// For some unexpected reason, GPU capture on Xcode 12 doesn't always correctly expose
 	// the contents of Metal argument buffers. Triggering an extraction of the arg buffer

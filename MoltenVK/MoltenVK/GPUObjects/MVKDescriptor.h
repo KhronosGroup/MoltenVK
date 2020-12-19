@@ -147,8 +147,7 @@ public:
 	/** Writes the inline data content to the Metal argument buffer. */
 	void writeToMetalArgumentBuffer(uint8_t* pSrcData,
 									NSUInteger dstOffset,
-									NSUInteger dataLen,
-									uint32_t elementIndex);
+									NSUInteger dataLen);
 
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
@@ -216,11 +215,12 @@ public:
 
 	/**
 	 * Updates the internal binding from the specified content. The format of the content depends
-	 * on the descriptor type, and is extracted from pData at the location given by index * stride.
+	 * on the descriptor type, and is extracted from pData at the location given by srcIndex * stride.
 	 * MVKInlineUniformBlockDescriptor uses the index as byte offset to write to.
 	 */
 	virtual void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
-					   uint32_t index,
+					   uint32_t srcIndex,
+					   uint32_t dstIndex,
 					   size_t stride,
 					   const void* pData) = 0;
 
@@ -273,6 +273,7 @@ public:
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   uint32_t srcIndex,
+			   uint32_t dstIndex,
 			   size_t stride,
 			   const void* pData) override;
 
@@ -348,6 +349,7 @@ public:
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   uint32_t dstOffset, // For inline buffers we are using this parameter as dst offset not as src descIdx
+			   uint32_t dstIndex,
 			   size_t stride,
 			   const void* pData) override;
 
@@ -386,6 +388,7 @@ public:
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   uint32_t srcIndex,
+			   uint32_t dstIndex,
 			   size_t stride,
 			   const void* pData) override;
 
@@ -455,6 +458,7 @@ protected:
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   uint32_t srcIndex,
+			   uint32_t dstIndex,
 			   size_t stride,
 			   const void* pData);
 
@@ -500,6 +504,7 @@ public:
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   uint32_t srcIndex,
+			   uint32_t dstIndex,
 			   size_t stride,
 			   const void* pData) override;
 
@@ -537,6 +542,7 @@ public:
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   uint32_t srcIndex,
+			   uint32_t dstIndex,
 			   size_t stride,
 			   const void* pData) override;
 
@@ -574,6 +580,7 @@ public:
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   uint32_t srcIndex,
+			   uint32_t dstIndex,
 			   size_t stride,
 			   const void* pData) override;
 

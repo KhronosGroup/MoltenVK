@@ -484,13 +484,12 @@ void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(id<MTLSamplerStat
 
 void MVKDescriptorSetLayoutBinding::writeToMetalArgumentBuffer(uint8_t* pSrcData,
 															   NSUInteger dstOffset,
-															   NSUInteger dataLen,
-															   uint32_t elementIndex) {
+															   NSUInteger dataLen) {
 	if ( !isUsingMetalArgumentBuffer() || !pSrcData ) { return; }
 
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		if (_applyToStage[stage]) {
-			uint32_t argIdx = getMTLArgumentBufferIndex(stage, elementIndex);
+			uint32_t argIdx = getMTLArgumentBufferIndex(stage);
 			uint8_t* pDstData = (uint8_t*)[_layout->_argumentEncoder[stage].mtlArgumentEncoder constantDataAtIndex: argIdx];
 			if (pDstData) { memcpy(pDstData + dstOffset, pSrcData, dataLen); }
 		}
@@ -752,6 +751,7 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 
 void MVKBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 								uint32_t srcIndex,
+								uint32_t dstIndex,
 								size_t stride,
 								const void* pData) {
 	auto* oldBuff = _mvkBuffer;
@@ -767,7 +767,7 @@ void MVKBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 	// Update the Metal argument buffer entry
 	id<MTLBuffer> mtlBuffer = _mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil;
 	NSUInteger mtlBuffOffset = _mvkBuffer ? _mvkBuffer->getMTLBufferOffset() + _buffOffset : 0;
-	mvkDSLBind->writeToMetalArgumentBuffer(mtlBuffer, mtlBuffOffset, srcIndex);
+	mvkDSLBind->writeToMetalArgumentBuffer(mtlBuffer, mtlBuffOffset, dstIndex);
 }
 
 void MVKBufferDescriptor::read(uint32_t dstIndex,
@@ -818,6 +818,7 @@ void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 
 void MVKInlineUniformBlockDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
                                             uint32_t dstOffset,
+											uint32_t dstIndex,
                                             size_t stride,
                                             const void* pData) {
 	const auto& pInlineUniformBlock = *(VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
@@ -826,7 +827,7 @@ void MVKInlineUniformBlockDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDS
 		memcpy(_buffer + dstOffset, pInlineUniformBlock.pData, dataLen);
 
 		// Update the Metal argument buffer entry
-		mvkDSLBind->writeToMetalArgumentBuffer((uint8_t*)pInlineUniformBlock.pData, dstOffset, dataLen, 0);
+		mvkDSLBind->writeToMetalArgumentBuffer((uint8_t*)pInlineUniformBlock.pData, dstOffset, dataLen);
 	}
 }
 
@@ -916,6 +917,7 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 
 void MVKImageDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							   uint32_t srcIndex,
+							   uint32_t dstIndex,
 							   size_t stride,
 							   const void* pData) {
 	auto* oldImgView = _mvkImageView;
@@ -931,12 +933,12 @@ void MVKImageDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 	uint8_t planeCount = _mvkImageView ? _mvkImageView->getPlaneCount() : 1;
 	for (uint8_t planeIndex = 0; planeIndex < planeCount; planeIndex++) {
 		id<MTLTexture> mtlTexture = _mvkImageView ? _mvkImageView->getMTLTexture(planeIndex) : nil;
-		mvkDSLBind->writeToMetalArgumentBuffer(mtlTexture, planeCount, planeIndex, srcIndex);
+		mvkDSLBind->writeToMetalArgumentBuffer(mtlTexture, planeCount, planeIndex, dstIndex);
 
 // Needed for atomic operations
 //		if (getDescriptorType() == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
 //			id<MTLTexture> baseMTLTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
-//			uint32_t buffArgIdx = mvkDSLBind->getDescriptorCount() * planeCount + srcIndex;
+//			uint32_t buffArgIdx = mvkDSLBind->getDescriptorCount() * planeCount + dstIndex;
 //			mvkDSLBind->writeToMetalArgumentBuffer(baseMTLTex.buffer, baseMTLTex.bufferOffset, buffArgIdx);
 //		}
 	}
@@ -997,6 +999,7 @@ void MVKSamplerDescriptorMixin::bind(MVKCommandEncoder* cmdEncoder,
 
 void MVKSamplerDescriptorMixin::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									  uint32_t srcIndex,
+									  uint32_t dstIndex,
 									  size_t stride,
 									  const void* pData) {
 	if (_hasDynamicSampler) {
@@ -1013,7 +1016,7 @@ void MVKSamplerDescriptorMixin::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 
 		// Update the Metal argument buffer entry
 		id<MTLSamplerState> mtlSampler = _mvkSampler ? _mvkSampler->getMTLSamplerState() : nil;
-		uint32_t argBuffIdx = getSamplerArgBufferIndexOffset(mvkDSLBind) + srcIndex;
+		uint32_t argBuffIdx = getSamplerArgBufferIndexOffset(mvkDSLBind) + dstIndex;
 		mvkDSLBind->writeToMetalArgumentBuffer(mtlSampler, argBuffIdx);
 	}
 }
@@ -1062,9 +1065,10 @@ void MVKSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 
 void MVKSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 								 uint32_t srcIndex,
+								 uint32_t dstIndex,
 								 size_t stride,
 								 const void* pData) {
-	MVKSamplerDescriptorMixin::write(mvkDSLBind, srcIndex, stride, pData);
+	MVKSamplerDescriptorMixin::write(mvkDSLBind, srcIndex, dstIndex, stride, pData);
 }
 
 void MVKSamplerDescriptor::read(uint32_t dstIndex,
@@ -1103,10 +1107,11 @@ void MVKCombinedImageSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 
 void MVKCombinedImageSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 											  uint32_t srcIndex,
+											  uint32_t dstIndex,
 											  size_t stride,
 											  const void* pData) {
-	MVKImageDescriptor::write(mvkDSLBind, srcIndex, stride, pData);
-	MVKSamplerDescriptorMixin::write(mvkDSLBind, srcIndex, stride, pData);
+	MVKImageDescriptor::write(mvkDSLBind, srcIndex, dstIndex, stride, pData);
+	MVKSamplerDescriptorMixin::write(mvkDSLBind, srcIndex, dstIndex, stride, pData);
 }
 
 void MVKCombinedImageSamplerDescriptor::read(uint32_t dstIndex,
@@ -1186,6 +1191,7 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 
 void MVKTexelBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t srcIndex,
+									 uint32_t dstIndex,
 									 size_t stride,
 									 const void* pData) {
 	auto* oldBuffView = _mvkBufferView;
@@ -1198,11 +1204,11 @@ void MVKTexelBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 
 	// Update the Metal argument buffer entry
 	id<MTLTexture> mtlTexture = _mvkBufferView ? _mvkBufferView->getMTLTexture() : nil;
-	mvkDSLBind->writeToMetalArgumentBuffer(mtlTexture, 1, 0, srcIndex);
+	mvkDSLBind->writeToMetalArgumentBuffer(mtlTexture, 1, 0, dstIndex);
 
 // Needed for atomic operations
 //	if (getDescriptorType() == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
-//		uint32_t buffArgIdx = mvkDSLBind->getDescriptorCount() + srcIndex;
+//		uint32_t buffArgIdx = mvkDSLBind->getDescriptorCount() + dstIndex;
 //		mvkDSLBind->writeToMetalArgumentBuffer(mtlTexture.buffer, mtlTexture.bufferOffset, buffArgIdx);
 //	}
 }
