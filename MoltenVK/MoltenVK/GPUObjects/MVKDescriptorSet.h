@@ -143,6 +143,9 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
+	/** Returns an MTLBuffer region allocation. */
+	const MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
+
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 
 protected:
@@ -234,12 +237,14 @@ protected:
 	void freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolReset);
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
-	NSUInteger getDescriptorByteCountForMetalArgumentBuffer(VkDescriptorType descriptorType);
+	static NSUInteger getDescriptorByteCountForMetalArgumentBuffer(VkDescriptorType descriptorType);
+	static NSUInteger getMaxInlineBlockSize(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
 
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
 	MVKBitArray _descriptorSetAvailablility;
 	id<MTLBuffer> _mtlArgumentBuffer;
 	NSUInteger _nextMTLArgumentBufferOffset;
+	MVKMTLBufferAllocator _inlineBlockMTLBufferAllocator;
 
 	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;

@@ -212,6 +212,19 @@ typedef unsigned long MTLLanguageVersion;
  *     resources to the shaders. If this setting is disabled, MoltenVK will bind
  *     resources to shaders discretely. This setting is enabled by default, and MoltenVK
  *     will use Metal argument buffers.
+ *
+ * 12. The MVK_CONFIG_EMBED_INLINE_BLOCKS_IN_METAL_ARGUMENT_BUFFER runtime environment variable
+ *     or MoltenVK compile-time build setting controls whether MoltenVK should embed the contents
+ *     of inline-block descriptors directly in the Metal argument buffer, instead of writing the
+ *     contents of the descriptor in an intermediary MTLBuffer, which is then inserted into the
+ *     Metal argument buffer. Embedding inline-block descriptor content directly into the Metal
+ *     argument buffer improves efficiency and reduces resources, but currently does not cover
+ *     all types of possible inline content, and may cause errors in some cases. If this setting
+ *     is enabled, MoltenVK will embed inline-block descriptor content directly into the Metal
+ *     argument buffers. If this setting is disabled, MoltenVK will write inline-block content
+ *     to an intermediary MTLBuffer, and then insert that MTLBuffer into the Metal argument buffer.
+ *     This setting is disabled by default, and MoltenVK will use an intermediary MTLBuffer.
+ *     This setting only takes effect if the MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS setting is enabled.
  */
 typedef struct {
 

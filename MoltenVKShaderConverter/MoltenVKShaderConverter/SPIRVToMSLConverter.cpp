@@ -150,6 +150,12 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 	return true;
 }
 
+MVK_PUBLIC_SYMBOL bool mvk::DescriptorBinding::matches(const mvk::DescriptorBinding& other) const {
+	if (descriptorSet != other.descriptorSet) { return false; }
+	if (binding != other.binding) { return false; }
+	return true;
+}
+
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::stageSupportsVertexAttributes() const {
 	return (options.entryPointStage == spv::ExecutionModelVertex ||
 			options.entryPointStage == spv::ExecutionModelTessellationControl ||
@@ -191,6 +197,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
 
 	for (uint32_t dsIdx : discreteDescriptorSets) {
 		if ( !contains(other.discreteDescriptorSets, dsIdx)) { return false; }
+	}
+
+	for (const auto& db : inlineUniformBlocks) {
+		if ( !containsMatching(other.inlineUniformBlocks, db)) { return false; }
 	}
 
     return true;
@@ -292,6 +302,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		// This only has an effect if SPIRVToMSLConversionConfiguration::options::mslOptions::argument_buffers is enabled.
 		for (uint32_t dsIdx : context.discreteDescriptorSets) {
 			pMSLCompiler->add_discrete_descriptor_set(dsIdx);
+		}
+
+		// Add any inline block bindings.
+		// This only has an effect if SPIRVToMSLConversionConfiguration::options::mslOptions::argument_buffers is enabled.
+		for (auto& db : context.inlineUniformBlocks) {
+			pMSLCompiler->add_inline_uniform_block(db.descriptorSet, db.binding);
 		}
 
 		_msl = pMSLCompiler->compile();

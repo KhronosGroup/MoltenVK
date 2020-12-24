@@ -19,6 +19,7 @@
 #pragma once
 
 #include "MVKImage.h"
+#include "MVKMTLBufferAllocation.h"
 #include "MVKSmallVector.h"
 
 class MVKDescriptorSet;
@@ -219,6 +220,7 @@ public:
 	 * MVKInlineUniformBlockDescriptor uses the index as byte offset to write to.
 	 */
 	virtual void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+					   MVKDescriptorSet* descSet,
 					   uint32_t srcIndex,
 					   uint32_t dstIndex,
 					   size_t stride,
@@ -272,6 +274,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+			   MVKDescriptorSet* descSet,
 			   uint32_t srcIndex,
 			   uint32_t dstIndex,
 			   size_t stride,
@@ -348,6 +351,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+			   MVKDescriptorSet* descSet,
 			   uint32_t dstOffset, // For inline buffers we are using this parameter as dst offset not as src descIdx
 			   uint32_t dstIndex,
 			   size_t stride,
@@ -358,16 +362,23 @@ public:
 			  VkDescriptorBufferInfo* pBufferInfo,
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* inlineUniformBlock) override;
-    
-    void setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) override;
 
 	void reset() override;
+
+	/**
+	 * Returns whether inline blocks should be embedded directly into a Metal argument buffer, instead of
+	 * being held in an intermediaary MTLBuffer, with that MTLBuffer inserted into the Metal argument buffer.
+	 */
+	static bool shouldEmbedInlineBlocksInMetalAgumentBuffer();
 
 	~MVKInlineUniformBlockDescriptor() { reset(); }
 
 protected:
-	uint8_t* _buffer = nullptr;
-    uint32_t _length;
+	uint8_t* getData();
+
+	void* _buffer = nullptr;
+    uint32_t _length = 0;
+	bool _isUsingIntermediaryMTLBuffer = false;
 };
 
 
@@ -387,6 +398,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+			   MVKDescriptorSet* descSet,
 			   uint32_t srcIndex,
 			   uint32_t dstIndex,
 			   size_t stride,
@@ -457,6 +469,7 @@ protected:
 			  uint32_t& dynamicOffsetIndex);
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+			   MVKDescriptorSet* descSet,
 			   uint32_t srcIndex,
 			   uint32_t dstIndex,
 			   size_t stride,
@@ -503,6 +516,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+			   MVKDescriptorSet* descSet,
 			   uint32_t srcIndex,
 			   uint32_t dstIndex,
 			   size_t stride,
@@ -541,6 +555,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+			   MVKDescriptorSet* descSet,
 			   uint32_t srcIndex,
 			   uint32_t dstIndex,
 			   size_t stride,
@@ -579,6 +594,7 @@ public:
 			  uint32_t& dynamicOffsetIndex) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+			   MVKDescriptorSet* descSet,
 			   uint32_t srcIndex,
 			   uint32_t dstIndex,
 			   size_t stride,

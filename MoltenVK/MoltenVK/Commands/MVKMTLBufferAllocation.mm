@@ -18,6 +18,7 @@
 
 #include "MVKMTLBufferAllocation.h"
 #include "MVKLogging.h"
+#include <algorithm>
 
 
 #pragma mark -
@@ -80,6 +81,9 @@ MVKMTLBufferAllocationPool::~MVKMTLBufferAllocationPool() {
 const MVKMTLBufferAllocation* MVKMTLBufferAllocator::acquireMTLBufferRegion(NSUInteger length) {
 	MVKAssert(length <= _maxAllocationLength, "This MVKMTLBufferAllocator has been configured to dispense MVKMTLBufferRegions no larger than %lu bytes.", (unsigned long)_maxAllocationLength);
 
+	// Can't allocate a segment smaller than the minimum MTLBuffer alignment.
+	length = std::max<NSUInteger>(length, _device->_pMetalFeatures->mtlBufferAlignment);
+
     // Convert max length to the next power-of-two exponent to use as a lookup
     NSUInteger p2Exp = mvkPowerOfTwoExponent(length);
 	MVKMTLBufferAllocationPool* pRP = _regionPools[p2Exp];
@@ -87,7 +91,7 @@ const MVKMTLBufferAllocation* MVKMTLBufferAllocator::acquireMTLBufferRegion(NSUI
 }
 
 MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe) : MVKBaseDeviceObject(device) {
-    _maxAllocationLength = maxRegionLength;
+	_maxAllocationLength = std::max<NSUInteger>(maxRegionLength, _device->_pMetalFeatures->mtlBufferAlignment);
 	_makeThreadSafe = makeThreadSafe;
 
     // Convert max length to the next power-of-two exponent

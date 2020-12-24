@@ -388,7 +388,11 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(uint32_t stage,
 			break;
 
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			addMTLArgumentDescriptor(args, MTLDataTypeUChar, MTLArgumentAccessReadOnly, argIdx);
+			if (MVKInlineUniformBlockDescriptor::shouldEmbedInlineBlocksInMetalAgumentBuffer()) {
+				addMTLArgumentDescriptor(args, MTLDataTypeUChar, MTLArgumentAccessReadOnly, argIdx);
+			} else {
+				addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadOnly, argIdx);
+			}
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
@@ -429,11 +433,16 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLA
 															 MTLDataType dataType,
 															 MTLArgumentAccess access,
 															 uint32_t& argIdx) {
+
+	NSUInteger mtlArgDescAryLen = ((_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT &&
+									MVKInlineUniformBlockDescriptor::shouldEmbedInlineBlocksInMetalAgumentBuffer())
+								   ? _info.descriptorCount : getDescriptorCount());
+
 	auto* argDesc = [MTLArgumentDescriptor argumentDescriptor];
 	argDesc.dataType = dataType;
 	argDesc.access = access;
 	argDesc.index = argIdx;
-	argDesc.arrayLength = _info.descriptorCount;	// getDescriptorCount() won't work for inline block
+	argDesc.arrayLength = mtlArgDescAryLen;
 	argDesc.textureType = MTLTextureType2D;
 
 	[args addObject: argDesc];
@@ -530,7 +539,18 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
                                               _info.binding,
 											  getDescriptorCount(),
 											  mvkSamp);
-        }
+
+			// If Metal argument buffers are in use, identify any inline uniform block bindings.
+			if (_info.descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT &&
+				isUsingMetalArgumentBuffer() &&
+				MVKInlineUniformBlockDescriptor::shouldEmbedInlineBlocksInMetalAgumentBuffer()) {
+
+				mvk::DescriptorBinding db;
+				db.descriptorSet = dslIndex;
+				db.binding = _info.binding;
+				context.inlineUniformBlocks.push_back(db);
+			}
+		}
     }
 }
 
@@ -750,6 +770,7 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+								MVKDescriptorSet* descSet,
 								uint32_t srcIndex,
 								uint32_t dstIndex,
 								size_t stride,
@@ -802,32 +823,60 @@ void MVKInlineUniformBlockDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 										   MVKArrayRef<uint32_t> dynamicOffsets,
 										   uint32_t& dynamicOffsetIndex) {
 
-	if (mvkDSLBind->isUsingMetalArgumentBuffer()) { return; }
-
-	MVKMTLBufferBinding bb;
-	bb.mtlBytes = _buffer;
-	bb.size = _length;
-	bb.isInline = true;
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
-		if (stages[i]) {
-			bb.index = mtlIndexes.stages[i].bufferIndex;
-			if (cmdEncoder) { cmdEncoder->bindBuffer(bb, MVKShaderStage(i)); }
+	if (mvkDSLBind->isUsingMetalArgumentBuffer()) {
+		if (cmdEncoder && _isUsingIntermediaryMTLBuffer) {
+			MVKMTLArgumentBufferResourceUsage abru;
+			abru.mtlResource = ((MVKMTLBufferAllocation*)_buffer)->_mtlBuffer;
+			abru.mtlUsage = getMTLResourceUsage();
+			abru.mtlStages = mvkMTLRenderStagesFromMVKShaderStages(stages);
+			cmdEncoder->useArgumentBufferResource(abru, stages[kMVKShaderStageCompute]);
+		}
+	} else {
+		// If not using Metal argument buffer, bind discretely
+		MVKMTLBufferBinding bb;
+		bb.mtlBytes = getData();
+		bb.size = _length;
+		bb.isInline = true;
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
+			if (stages[i]) {
+				bb.index = mtlIndexes.stages[i].bufferIndex;
+				if (cmdEncoder) { cmdEncoder->bindBuffer(bb, MVKShaderStage(i)); }
+			}
 		}
 	}
 }
 
 void MVKInlineUniformBlockDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+											MVKDescriptorSet* descSet,
                                             uint32_t dstOffset,
 											uint32_t dstIndex,
                                             size_t stride,
                                             const void* pData) {
-	const auto& pInlineUniformBlock = *(VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
-	if (_buffer && pInlineUniformBlock.pData && dstOffset < _length) {
-		uint32_t dataLen = std::min(pInlineUniformBlock.dataSize, _length - dstOffset);
-		memcpy(_buffer + dstOffset, pInlineUniformBlock.pData, dataLen);
+	// Ensure there is a destination to write to
+	if ( !_buffer ) {
+		_length = mvkDSLBind->_info.descriptorCount;
+		_isUsingIntermediaryMTLBuffer = mvkDSLBind->supportsMetalArgumentBuffers() && !shouldEmbedInlineBlocksInMetalAgumentBuffer();
+		if (_isUsingIntermediaryMTLBuffer) {
+			// Acquire an intermediary buffer and write it to the Metal argument buffer
+			auto* mtlBuffRgn = descSet->acquireMTLBufferRegion(_length);
+			_buffer = (void*)mtlBuffRgn;
+			mvkDSLBind->writeToMetalArgumentBuffer(mtlBuffRgn->_mtlBuffer, mtlBuffRgn->_offset, dstIndex);
+		} else {
+			_buffer = malloc(_length);
+		}
+	}
 
-		// Update the Metal argument buffer entry
-		mvkDSLBind->writeToMetalArgumentBuffer((uint8_t*)pInlineUniformBlock.pData, dstOffset, dataLen);
+	const auto& pInlineUniformBlock = *(VkWriteDescriptorSetInlineUniformBlockEXT*)pData;
+	uint8_t* data = getData();
+	if (data && pInlineUniformBlock.pData && dstOffset < _length) {
+		uint32_t dataLen = std::min(pInlineUniformBlock.dataSize, _length - dstOffset);
+		memcpy(data + dstOffset, pInlineUniformBlock.pData, dataLen);
+
+		// If using intermediary buffer, it only needs to be written to Metal argument buffer once.
+		// If writing content directly to Metal argument buffer, update that content.
+		if ( !_isUsingIntermediaryMTLBuffer ) {
+			mvkDSLBind->writeToMetalArgumentBuffer((uint8_t*)pInlineUniformBlock.pData, dstOffset, dataLen);
+		}
 	}
 }
 
@@ -836,22 +885,42 @@ void MVKInlineUniformBlockDescriptor::read(uint32_t srcOffset,
                                            VkDescriptorBufferInfo* pBufferInfo,
                                            VkBufferView* pTexelBufferView,
                                            VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
-	if (_buffer && pInlineUniformBlock->pData && srcOffset < _length) {
+	uint8_t* data = getData();
+	if (data && pInlineUniformBlock->pData && srcOffset < _length) {
 		uint32_t dataLen = std::min(pInlineUniformBlock->dataSize, _length - srcOffset);
-		memcpy((void*)pInlineUniformBlock->pData, _buffer + srcOffset, dataLen);
+		memcpy((void*)pInlineUniformBlock->pData, data + srcOffset, dataLen);
 	}
 }
 
-void MVKInlineUniformBlockDescriptor::setLayout(MVKDescriptorSetLayoutBinding* dslBinding, uint32_t index) {
-    _length = dslBinding->_info.descriptorCount;
-    _buffer = (uint8_t*)malloc(_length);
-}
-
 void MVKInlineUniformBlockDescriptor::reset() {
-    free(_buffer);
+	if (_isUsingIntermediaryMTLBuffer) {
+		if (_buffer) { ((MVKMTLBufferAllocation*)_buffer)->returnToPool(); }
+	} else {
+		free(_buffer);
+	}
 	_buffer = nullptr;
     _length = 0;
+	_isUsingIntermediaryMTLBuffer = false;
 	MVKDescriptor::reset();
+}
+
+uint8_t* MVKInlineUniformBlockDescriptor::getData() {
+	return (uint8_t*)((_isUsingIntermediaryMTLBuffer && _buffer) ? ((MVKMTLBufferAllocation*)_buffer)->getContents() : _buffer);
+}
+
+// We do this once lazily instead of in a library constructor function to
+// ensure the NSProcessInfo environment is available when called upon.
+bool MVKInlineUniformBlockDescriptor::shouldEmbedInlineBlocksInMetalAgumentBuffer() {
+#	ifndef MVK_CONFIG_EMBED_INLINE_BLOCKS_IN_METAL_ARGUMENT_BUFFER
+#   	define MVK_CONFIG_EMBED_INLINE_BLOCKS_IN_METAL_ARGUMENT_BUFFER    0
+#	endif
+	static bool _shouldEmbedInlineBlocksInMetalAgumentBuffer = MVK_CONFIG_EMBED_INLINE_BLOCKS_IN_METAL_ARGUMENT_BUFFER;
+	static bool _shouldEmbedInlineBlocksInMetalAgumentBufferInitialized = false;
+	if ( !_shouldEmbedInlineBlocksInMetalAgumentBufferInitialized ) {
+		_shouldEmbedInlineBlocksInMetalAgumentBufferInitialized = true;
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_shouldEmbedInlineBlocksInMetalAgumentBuffer, MVK_CONFIG_EMBED_INLINE_BLOCKS_IN_METAL_ARGUMENT_BUFFER);
+	}
+	return _shouldEmbedInlineBlocksInMetalAgumentBuffer;
 }
 
 
@@ -916,6 +985,7 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKImageDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+							   MVKDescriptorSet* descSet,
 							   uint32_t srcIndex,
 							   uint32_t dstIndex,
 							   size_t stride,
@@ -998,6 +1068,7 @@ void MVKSamplerDescriptorMixin::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKSamplerDescriptorMixin::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+									  MVKDescriptorSet* descSet,
 									  uint32_t srcIndex,
 									  uint32_t dstIndex,
 									  size_t stride,
@@ -1064,11 +1135,12 @@ void MVKSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+								 MVKDescriptorSet* descSet,
 								 uint32_t srcIndex,
 								 uint32_t dstIndex,
 								 size_t stride,
 								 const void* pData) {
-	MVKSamplerDescriptorMixin::write(mvkDSLBind, srcIndex, dstIndex, stride, pData);
+	MVKSamplerDescriptorMixin::write(mvkDSLBind, descSet, srcIndex, dstIndex, stride, pData);
 }
 
 void MVKSamplerDescriptor::read(uint32_t dstIndex,
@@ -1106,12 +1178,13 @@ void MVKCombinedImageSamplerDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKCombinedImageSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+											  MVKDescriptorSet* descSet,
 											  uint32_t srcIndex,
 											  uint32_t dstIndex,
 											  size_t stride,
 											  const void* pData) {
-	MVKImageDescriptor::write(mvkDSLBind, srcIndex, dstIndex, stride, pData);
-	MVKSamplerDescriptorMixin::write(mvkDSLBind, srcIndex, dstIndex, stride, pData);
+	MVKImageDescriptor::write(mvkDSLBind, descSet, srcIndex, dstIndex, stride, pData);
+	MVKSamplerDescriptorMixin::write(mvkDSLBind, descSet, srcIndex, dstIndex, stride, pData);
 }
 
 void MVKCombinedImageSamplerDescriptor::read(uint32_t dstIndex,
@@ -1190,6 +1263,7 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKTexelBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
+									 MVKDescriptorSet* descSet,
 									 uint32_t srcIndex,
 									 uint32_t dstIndex,
 									 size_t stride,

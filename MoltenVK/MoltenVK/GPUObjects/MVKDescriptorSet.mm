@@ -315,7 +315,7 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 		// For inline buffers dstArrayElement is a byte offset
 		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorAction->dstBinding);
 		if (mvkDesc->getDescriptorType() == descType) {
-			mvkDesc->write(mvkDSLBind, pDescriptorAction->dstArrayElement, 0, stride, pData);
+			mvkDesc->write(mvkDSLBind, this, pDescriptorAction->dstArrayElement, 0, stride, pData);
 		}
     } else {
 		uint32_t descStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
@@ -324,7 +324,7 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 			MVKDescriptor* mvkDesc = _descriptors[descStartIdx + srcIdx];
 			if (mvkDesc->getDescriptorType() == descType) {
 				uint32_t dstIdx = pDescriptorAction->dstArrayElement + srcIdx;
-				mvkDesc->write(mvkDSLBind, srcIdx, dstIdx, stride, pData);
+				mvkDesc->write(mvkDSLBind, this, srcIdx, dstIdx, stride, pData);
 			}
 		}
 	}
@@ -369,6 +369,10 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 			}
         }
     }
+}
+
+const MVKMTLBufferAllocation* MVKDescriptorSet::acquireMTLBufferRegion(NSUInteger length) {
+	return _pool->_inlineBlockMTLBufferAllocator.acquireMTLBufferRegion(length);
 }
 
 VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
@@ -423,25 +427,24 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorPool* pool) : MVKVulkanAPIDevice
 #   define MVK_CONFIG_PREALLOCATE_DESCRIPTORS    0
 #endif
 
-static bool _mvkPreallocateDescriptors = MVK_CONFIG_PREALLOCATE_DESCRIPTORS;
-static bool _mvkPreallocateDescriptorsInitialized = false;
-
 // Returns whether descriptors should be preallocated in the descriptor pools
 // We do this once lazily instead of in a library constructor function to
 // ensure the NSProcessInfo environment is available when called upon.
-static inline bool getMVKPreallocateDescriptors() {
-	if ( !_mvkPreallocateDescriptorsInitialized ) {
-		_mvkPreallocateDescriptorsInitialized = true;
-		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_mvkPreallocateDescriptors, MVK_CONFIG_PREALLOCATE_DESCRIPTORS);
+static inline bool mvkShouldPreallocateDescriptors() {
+	static bool _mvkShouldPreallocateDescriptors = MVK_CONFIG_PREALLOCATE_DESCRIPTORS;
+	static bool _mvkShouldPreallocateDescriptorsInitialized = false;
+	if ( !_mvkShouldPreallocateDescriptorsInitialized ) {
+		_mvkShouldPreallocateDescriptorsInitialized = true;
+		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_mvkShouldPreallocateDescriptors, MVK_CONFIG_PREALLOCATE_DESCRIPTORS);
 	}
-	return _mvkPreallocateDescriptors;
+	return _mvkShouldPreallocateDescriptors;
 }
 
 template<class DescriptorClass>
 VkResult MVKDescriptorTypePreallocation<DescriptorClass>::allocateDescriptor(MVKDescriptor** pMVKDesc) {
 
 	// If we don't preallocate, create and return an instance on the fly.
-	if ( !getMVKPreallocateDescriptors() ) {
+	if ( !mvkShouldPreallocateDescriptors() ) {
 		*pMVKDesc = new DescriptorClass();
 		return VK_SUCCESS;
 	}
@@ -495,7 +498,7 @@ template<typename DescriptorClass>
 void MVKDescriptorTypePreallocation<DescriptorClass>::freeDescriptor(MVKDescriptor* mvkDesc) {
 
 	// If we don't preallocate, create and return an instance on the fly.
-	if ( !getMVKPreallocateDescriptors() ) {
+	if ( !mvkShouldPreallocateDescriptors() ) {
 		mvkDesc->destroy();
 		return;
 	}
@@ -526,7 +529,7 @@ MVKDescriptorTypePreallocation<DescriptorClass>::MVKDescriptorTypePreallocation(
 	_supportAvailability = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT);
 	_nextAvailableIndex = 0;
 
-	if (getMVKPreallocateDescriptors()) {
+	if (mvkShouldPreallocateDescriptors()) {
 		// There may be more than  one poolSizeCount instance for the desired VkDescriptorType.
 		// Accumulate the descriptor count for the desired VkDescriptorType, and size the collections accordingly.
 		uint32_t descriptorCount = 0;
@@ -772,7 +775,8 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
 	_samplerDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLER),
 	_combinedImageSamplerDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER),
 	_uniformTexelBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER),
-	_storageTexelBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+	_storageTexelBufferDescriptors(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER),
+	_inlineBlockMTLBufferAllocator(device, getMaxInlineBlockSize(device, pCreateInfo), true) {
 
 	_mtlArgumentBuffer = nil;
 	_nextMTLArgumentBufferOffset = 0;
@@ -828,6 +832,21 @@ NSUInteger MVKDescriptorPool::getDescriptorByteCountForMetalArgumentBuffer(VkDes
 		default:
 			return 0;
 	}
+}
+
+NSUInteger MVKDescriptorPool::getMaxInlineBlockSize(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo) {
+	if ( !device->_pMetalFeatures->argumentBuffers || MVKInlineUniformBlockDescriptor::shouldEmbedInlineBlocksInMetalAgumentBuffer()) { return 0; }
+
+	NSUInteger maxInlineBlockSize = 0;
+	uint32_t poolCnt = pCreateInfo->poolSizeCount;
+	for (uint32_t poolIdx = 0; poolIdx < poolCnt; poolIdx++) {
+		auto& poolSize = pCreateInfo->pPoolSizes[poolIdx];
+		if (poolSize.type == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+			NSUInteger iubSize = getDescriptorByteCountForMetalArgumentBuffer(poolSize.type) * poolSize.descriptorCount;
+			maxInlineBlockSize = std::max(iubSize, maxInlineBlockSize);
+		}
+	}
+	return std::min<NSUInteger>(maxInlineBlockSize, device->_pMetalFeatures->maxMTLBufferSize);
 }
 
 // Destroy all allocated descriptor sets and preallocated descriptors

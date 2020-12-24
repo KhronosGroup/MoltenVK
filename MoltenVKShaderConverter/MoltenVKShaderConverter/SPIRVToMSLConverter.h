@@ -120,6 +120,20 @@ namespace mvk {
 	} MSLResourceBinding;
 
 	/**
+	 * Identifies a descriptor set binding.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIPELINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
+	 */
+	typedef struct DescriptorBinding {
+		uint32_t descriptorSet = 0;
+		uint32_t binding = 0;
+
+		bool matches(const DescriptorBinding& other) const;
+
+	} DescriptorBinding;
+
+	/**
 	 * Configuration passed to the SPIRVToMSLConverter.
 	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
@@ -130,6 +144,7 @@ namespace mvk {
 		std::vector<MSLShaderInput> shaderInputs;
 		std::vector<MSLResourceBinding> resourceBindings;
 		std::vector<uint32_t> discreteDescriptorSets;
+		std::vector<DescriptorBinding> inlineUniformBlocks;
 
 		/** Returns whether the pipeline stage being converted supports vertex attributes. */
 		bool stageSupportsVertexAttributes() const;

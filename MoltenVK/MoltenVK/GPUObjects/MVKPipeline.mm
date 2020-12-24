@@ -79,6 +79,7 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context) {
 	context.resourceBindings.clear();
 	context.discreteDescriptorSets.clear();
+	context.inlineUniformBlocks.clear();
 
     // Add resource bindings defined in the descriptor set layouts
 	uint32_t dslCnt = (uint32_t)_descriptorSetLayouts.size();
@@ -2113,11 +2114,18 @@ namespace mvk {
 	}
 
 	template<class Archive>
+	void serialize(Archive & archive, DescriptorBinding& db) {
+		archive(db.descriptorSet,
+				db.binding);
+	}
+
+	template<class Archive>
 	void serialize(Archive & archive, SPIRVToMSLConversionConfiguration& ctx) {
 		archive(ctx.options,
 				ctx.shaderInputs,
 				ctx.resourceBindings,
-				ctx.discreteDescriptorSets);
+				ctx.discreteDescriptorSets,
+				ctx.inlineUniformBlocks);
 	}
 
 	template<class Archive>
