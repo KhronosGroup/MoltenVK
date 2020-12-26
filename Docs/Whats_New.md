@@ -18,8 +18,20 @@ MoltenVK 1.1.2
 
 Released TBD
 
-- Add ability to automatically capture first GPU frame by setting `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE` to `2`.
-- Add `MVKBitArray` and remove `MVKVector`.
+- Add support for using Metal argument buffers for shader resources, by setting 
+  `MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS` environment variable (enabled by default).
+- Preallocate Metal argument buffer (`MTLBuffer`) and descriptor set memory space during 
+  `vkCreateDescriptorPool()`, to improve performance during descriptor set allocations.
+- Add support for embedding inline uniform content directly in Metal argument buffers, by setting 
+  `MVK_CONFIG_EMBED_INLINE_BLOCKS_IN_METAL_ARGUMENT_BUFFER` environment variable (disabled by default).
+- Support fast math on MSL compiler via `MVKConfiguration::fastMathEnabled` configuration 
+  setting and `MVK_CONFIG_FAST_MATH_ENABLED` environment variable (both disabled by default).
+  - Add ability to automatically capture first GPU frame by setting `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE` to `2`.
+  - Add `MVKBitArray` and remove `MVKVector`.
+- Support _GitHub Actions_ for CI builds on pull requests.
+- Remove support for _Travis-CI_.
+- `Makefile` and `fetchDependencies` support `xcpretty` (if available)
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `30`.
 
 
 
