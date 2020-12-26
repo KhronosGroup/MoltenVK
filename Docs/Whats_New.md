@@ -20,8 +20,8 @@ Released TBD
 
 - Add support for using Metal argument buffers for shader resources, by setting 
   `MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS` environment variable (enabled by default).
-- Preallocate Metal argument buffer (`MTLBuffer`) and descriptor set memory space during 
-  `vkCreateDescriptorPool()`, to improve performance during descriptor set allocations.
+- To improve performance during descriptor set allocations, preallocate memory for descriptor sets, descriptors, 
+  and the Metal argument buffer (one `MTLBuffer` per descriptor pool) during `vkCreateDescriptorPool()`.
 - Add support for embedding inline uniform content directly in Metal argument buffers, by setting 
   `MVK_CONFIG_EMBED_INLINE_BLOCKS_IN_METAL_ARGUMENT_BUFFER` environment variable (disabled by default).
 - Support fast math on MSL compiler via `MVKConfiguration::fastMathEnabled` configuration 

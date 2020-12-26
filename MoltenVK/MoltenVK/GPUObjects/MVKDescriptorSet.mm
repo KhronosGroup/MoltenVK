@@ -424,7 +424,7 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorPool* pool) : MVKVulkanAPIDevice
 #pragma mark MVKDescriptorTypePreallocation
 
 #ifndef MVK_CONFIG_PREALLOCATE_DESCRIPTORS
-#   define MVK_CONFIG_PREALLOCATE_DESCRIPTORS    0
+#   define MVK_CONFIG_PREALLOCATE_DESCRIPTORS    1
 #endif
 
 // Returns whether descriptors should be preallocated in the descriptor pools
