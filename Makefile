@@ -1,6 +1,19 @@
 XC_PROJ := MoltenVKPackaging.xcodeproj
 XC_SCHEME := MoltenVK Package
 
+XCODEBUILD := set -o pipefail && $(shell command -v xcodebuild)
+# Used to determine if xcpretty is available
+XCPRETTY_PATH := $(shell command -v xcpretty 2> /dev/null)
+
+OUTPUT_FMT_CMD =
+ifdef XCPRETTY_PATH
+	# Pipe output to xcpretty, while preserving full log as xcodebuild.log
+	OUTPUT_FMT_CMD = | tee "xcodebuild.log" | xcpretty -c
+else
+	# Use xcodebuild -quiet parameter
+	OUTPUT_FMT_CMD = -quiet
+endif
+
 # Specify individually (not as dependencies) so the sub-targets don't run in parallel
 .PHONY: all
 all:
@@ -22,55 +35,55 @@ all-debug:
 
 .PHONY: macos
 macos:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" $(OUTPUT_FMT_CMD)
 
 .PHONY: macos-debug
 macos-debug:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -configuration "Debug"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -configuration "Debug" $(OUTPUT_FMT_CMD)
 
 .PHONY: ios
 ios:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" $(OUTPUT_FMT_CMD)
 
 .PHONY: ios-debug
 ios-debug:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -configuration "Debug"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -configuration "Debug" $(OUTPUT_FMT_CMD)
 
 .PHONY: iossim
 iossim:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator" $(OUTPUT_FMT_CMD)
 
 .PHONY: iossim-debug
 iossim-debug:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator" -configuration "Debug"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator" -configuration "Debug" $(OUTPUT_FMT_CMD)
 
 .PHONY: maccat
 maccat:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" $(OUTPUT_FMT_CMD)
 
 .PHONY: maccat-debug
 maccat-debug:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" -configuration "Debug"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" -configuration "Debug" $(OUTPUT_FMT_CMD)
 
 .PHONY: tvos
 tvos:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" $(OUTPUT_FMT_CMD)
 
 .PHONY: tvos-debug
 tvos-debug:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -configuration "Debug"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -configuration "Debug" $(OUTPUT_FMT_CMD)
 
 .PHONY: tvossim
 tvossim:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator" $(OUTPUT_FMT_CMD)
 
 .PHONY: tvossim-debug
 tvossim-debug:
-	xcodebuild build -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator" -configuration "Debug"
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator" -configuration "Debug" $(OUTPUT_FMT_CMD)
 
 .PHONY: clean
 clean:
-	xcodebuild clean -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME)"
+	$(XCODEBUILD) clean -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME)"
 	rm -rf Package
 
 # Usually requires 'sudo make install'

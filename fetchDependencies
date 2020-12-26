@@ -395,6 +395,14 @@ echo
 echo ========== Started building dependency libraries at `date +"%r"` ==========
 echo Please be patient on first build
 
+function execute_xcodebuild_command () {
+	if [ -n "${XCPRETTY}" ]; then
+		set -o pipefail && xcodebuild "$@" | tee -a "dependenciesbuild.log" | ${XCPRETTY}
+	else
+		xcodebuild "$@"
+	fi
+}
+
 # Build an Xcode scheme for an OS and platform
 # 1 - OS
 # 2 - Platform
@@ -414,7 +422,7 @@ function build_impl() {
 
 	echo Building external libraries for platform ${XC_PLTFM} and destination ${XC_DEST}
 
-	xcodebuild 													\
+	execute_xcodebuild_command 									\
 		-project "${XC_PROJ}"									\
 		-scheme "${XC_SCHEME}"									\
 		-destination "generic/platform=${XC_DEST}"				\
@@ -443,6 +451,19 @@ function build() {
 EXT_DEPS=ExternalDependencies
 XC_PROJ="${EXT_DEPS}.xcodeproj"
 XC_DD_PATH="${EXT_DIR}/build"
+
+# Determine if xcpretty is present
+XCPRETTY_PATH=$(command -v xcpretty 2> /dev/null || true) # ignore failures
+
+# If xcpretty is present, use it to format xcodebuild output
+XCPRETTY=""
+if [ -n "$XCPRETTY_PATH" ]; then
+	XCPRETTY="xcpretty -c"
+fi
+if [ "$XC_USE_BCKGND" != "" ]; then
+	# For now, avoid using xcpretty if parallel background tasks are being used
+	XCPRETTY=""
+fi
 
 # Structure build tasks by platform so they can be built in parallel per platform.
 # Content for each platform must be built in series to avoid
