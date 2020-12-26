@@ -13,6 +13,20 @@ For best results, use a Markdown reader.*
 
 
 
+MoltenVK 1.1.2
+--------------
+
+Released TBD
+
+- Support fast math on MSL compiler via `MVKConfiguration::fastMathEnabled` configuration 
+  setting and `MVK_CONFIG_FAST_MATH_ENABLED` environment variable (both disabled by default).
+- Support _GitHub Actions_ for CI builds on pull requests.
+- Remove support for _Travis-CI_.
+- `Makefile` and `fetchDependencies` support `xcpretty` (if available)
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `30`.
+
+
+
 MoltenVK 1.1.1
 --------------
 
