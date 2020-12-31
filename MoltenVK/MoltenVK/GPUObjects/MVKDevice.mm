@@ -1401,7 +1401,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.mslVersionEnum = MTLLanguageVersion2_1;
         _metalFeatures.multisampleArrayTextures = true;
 		_metalFeatures.events = true;
-        _metalFeatures.memoryBarriers = true;
         _metalFeatures.textureBuffers = true;
 		_metalFeatures.quadPermute = true;
 		_metalFeatures.simdPermute = true;
@@ -1440,15 +1439,25 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 			_metalFeatures.postDepthCoverage = true;
 			_metalFeatures.renderLinearTextures = true;
+			if (supportsMTLGPUFamily(Apple6)) {
+				_metalFeatures.astcHDRTextures = true;
+			}
+			if (supportsMTLGPUFamily(Apple7)) {
+				_metalFeatures.maxQueryBufferSize = (256 * KIBI);
+			}
+		} else {
+			// Apple devices don't like barriers in render passes.
+			_metalFeatures.memoryBarriers = true;
+			_metalFeatures.textureBarriers = true;
 		}
-		if (supportsMTLGPUFamily(Apple6)) {
-			_metalFeatures.astcHDRTextures = true;
-		}
-		if (supportsMTLGPUFamily(Apple7)) {
-			_metalFeatures.maxQueryBufferSize = (256 * KIBI);
-		}
-	}
+	} else
 #endif
+	{
+		if (supportsMTLFeatureSet(macOS_GPUFamily1_v4)) {
+			_metalFeatures.memoryBarriers = true;
+		}
+		_metalFeatures.textureBarriers = true;
+	}
 
 #endif
 
