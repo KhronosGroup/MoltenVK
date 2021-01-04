@@ -1202,6 +1202,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.sharedLinearTextures = true;
     _metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 	_metalFeatures.renderLinearTextures = true;
+	_metalFeatures.tileBasedDeferredRendering = true;
 
     if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
@@ -1268,6 +1269,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxTextureDimension = (4 * KIBI);
     _metalFeatures.sharedLinearTextures = true;
 	_metalFeatures.renderLinearTextures = true;
+	_metalFeatures.tileBasedDeferredRendering = true;
 
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
@@ -1439,6 +1441,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 			_metalFeatures.postDepthCoverage = true;
 			_metalFeatures.renderLinearTextures = true;
+			_metalFeatures.tileBasedDeferredRendering = true;
 			if (supportsMTLGPUFamily(Apple6)) {
 				_metalFeatures.astcHDRTextures = true;
 			}
