@@ -9,8 +9,8 @@ MoltenVK
 
 Copyright (c) 2015-2020 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
-[comment]: # (This document is written in [Markdown](http://en.wikipedia.org/wiki/Markdown) format.)
-[comment]: # (For best results, use a Markdown reader.)
+[comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
+[comment]: # "For best results, use a Markdown reader."
 
 [![Build Status](https://travis-ci.org/KhronosGroup/MoltenVK.svg?branch=master)](https://travis-ci.org/KhronosGroup/MoltenVK)
 
