@@ -457,9 +457,6 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
 				if ( !_device->_pMetalFeatures->arrayOfSamplers ) {
 					_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
 				}
-                if ( pBinding->pImmutableSamplers ) {
-                    _layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Sampler arrays contaning multi planar samplers are not supported."));
-                }
 			}
 
             if ( pBinding->pImmutableSamplers ) {
