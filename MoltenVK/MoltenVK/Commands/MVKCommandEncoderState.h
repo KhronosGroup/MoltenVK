@@ -205,6 +205,8 @@ public:
                                         VkShaderStageFlagBits shaderStage)
         : MVKCommandEncoderState(cmdEncoder), _shaderStage(shaderStage) {}
 
+    MVKPipeline *_pipeline;
+
 protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
@@ -395,13 +397,20 @@ protected:
     // Template function that executes a lambda expression on each dirty element of
     // a vector of bindings, and marks the bindings and the vector as no longer dirty.
 	template<class T, class V>
-	void encodeBinding(V& bindings,
+    void encodeBinding(MVKSmallVector<uint16_t>& mslIndices,
+                       V& bindings,
 					   bool& bindingsDirtyFlag,
 					   std::function<void(MVKCommandEncoder* cmdEncoder, T& b)> mtlOperation) {
 		if (bindingsDirtyFlag) {
 			bindingsDirtyFlag = false;
-			for (auto& b : bindings) {
-				if (b.isDirty) {
+			for (auto b : bindings) {
+                if (!b.isFixed) {
+                    if (b.index >= mslIndices.size()) {
+                        continue;
+                    }
+                    b.index = mslIndices[b.index];
+                }
+				if (b.isDirty && b.index != (uint16_t)-1) {
 					mtlOperation(_cmdEncoder, b);
 					b.isDirty = false;
 				}
@@ -501,7 +510,8 @@ public:
                              bool needVertexViewBuffer,
                              bool needFragmentViewBuffer);
 
-    void encodeBindings(MVKShaderStage stage,
+    void encodeBindings(MVKGraphicsPipeline *pipeline,
+                        MVKShaderStage stage,
                         const char* pStageName,
                         bool fullImageViewSwizzle,
                         std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
@@ -512,6 +522,7 @@ public:
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
+    void markDirty() override;
 #pragma mark Construction
     
     /** Constructs this instance for the specified command encoder. */
@@ -520,7 +531,6 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
     void resetImpl() override;
-    void markDirty() override;
 
     ResourceBindings<8> _shaderStageResourceBindings[4];
 };

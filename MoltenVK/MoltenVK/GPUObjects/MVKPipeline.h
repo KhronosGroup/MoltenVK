@@ -171,6 +171,14 @@ public:
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent);
 
+    
+    /** Resource remapping */
+    MVKSmallVector<uint16_t> _samplerMSLIndices[kMVKShaderStageMax];
+    MVKSmallVector<uint16_t> _textureMSLIndices[kMVKShaderStageMax];
+    MVKSmallVector<uint16_t> _bufferMSLIndices[kMVKShaderStageMax];
+
+    void populateMSLIndices(MVKShaderStage stage, const SPIRVToMSLConversionConfiguration& shaderContext);
+    
 protected:
 	void propagateDebugName() override {}
 

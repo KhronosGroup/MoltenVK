@@ -165,7 +165,7 @@ MVKPipelineLayout::~MVKPipelineLayout() {
 void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 	if (cmdEncoder) {
 		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
+            cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
 		}
 	}
 }
@@ -926,6 +926,9 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	if (!verifyImplicitBuffer(_needsVertexViewRangeBuffer, _viewRangeBufferIndex, kMVKShaderStageVertex, "view range", vbCnt)) {
 		return false;
 	}
+    
+    populateMSLIndices(kMVKShaderStageVertex, shaderContext);
+
 	return true;
 }
 
@@ -982,6 +985,9 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	if (!verifyImplicitBuffer(!shaderContext.shaderInputs.empty(), _indirectParamsIndex, kMVKShaderStageVertex, "index", vbCnt)) {
 		return false;
 	}
+
+    populateMSLIndices(kMVKShaderStageVertex, shaderContext);
+
 	return true;
 }
 
@@ -1038,6 +1044,9 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 		setConfigurationResult(reportError(VK_ERROR_INVALID_SHADER_NV, "Tessellation control shader requires tessellation level output buffer, but there is no free slot to pass it."));
 		return false;
 	}
+
+    populateMSLIndices(kMVKShaderStageTessCtl, shaderContext);
+
 	return true;
 }
 
@@ -1077,6 +1086,9 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	if (!verifyImplicitBuffer(_needsTessEvalBufferSizeBuffer, _bufferSizeBufferIndex, kMVKShaderStageTessEval, "buffer size", kMVKTessEvalNumReservedBuffers)) {
 		return false;
 	}
+
+    populateMSLIndices(kMVKShaderStageTessEval, shaderContext);
+
 	return true;
 }
 
@@ -1124,8 +1136,41 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		if (!verifyImplicitBuffer(_needsFragmentViewRangeBuffer, _viewRangeBufferIndex, kMVKShaderStageFragment, "view range", 0)) {
 			return false;
 		}
+
+        populateMSLIndices(kMVKShaderStageFragment, shaderContext);
 	}
 	return true;
+}
+
+void MVKPipeline::populateMSLIndices(MVKShaderStage stage, const SPIRVToMSLConversionConfiguration& shaderContext) {
+    auto &samplerMSLIndices = _samplerMSLIndices[stage];
+    auto &textureMSLIndices = _textureMSLIndices[stage];
+    auto &bufferMSLIndices = _bufferMSLIndices[stage];
+
+    samplerMSLIndices.resize(shaderContext.resourceBindings.size(), (uint16_t)-1);
+    textureMSLIndices.resize(shaderContext.resourceBindings.size(), (uint16_t)-1);
+    bufferMSLIndices.resize(shaderContext.resourceBindings.size(), (uint16_t)-1);
+
+    for (auto &rb: shaderContext.resourceBindings) {
+        if (rb.mslSamplerIndex != (uint32_t)-1) {
+            samplerMSLIndices[rb.resourceBinding.msl_sampler] = rb.mslSamplerIndex;
+            for (int i = 0; i < rb.resourceBinding.count; ++i) {
+                samplerMSLIndices[rb.resourceBinding.msl_sampler + i] = rb.mslSamplerIndex + i;
+            }
+        }
+        if (rb.mslTextureIndex != (uint32_t)-1) {
+            textureMSLIndices[rb.resourceBinding.msl_texture] = rb.mslTextureIndex;
+            for (int i = 0; i < rb.resourceBinding.count; ++i) {
+                textureMSLIndices[rb.resourceBinding.msl_texture + i] = rb.mslTextureIndex + i;
+            }
+        }
+        if (rb.mslBufferIndex != (uint32_t)-1) {
+            bufferMSLIndices[rb.resourceBinding.msl_buffer] = rb.mslBufferIndex;
+            for (int i = 0; i < rb.resourceBinding.count; ++i) {
+                bufferMSLIndices[rb.resourceBinding.msl_buffer + i] = rb.mslBufferIndex + i;
+            }
+        }
+    }
 }
 
 template<class T>
@@ -1724,6 +1769,8 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
     _needsBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
     _needsDispatchBaseBuffer = funcRslts.needsDispatchBaseBuffer;
 
+    populateMSLIndices(kMVKShaderStageCompute, shaderContext);
+
 	return func;
 }
 
@@ -2106,7 +2153,10 @@ namespace mvk {
 		archive(rb.resourceBinding,
 				rb.constExprSampler,
 				rb.requiresConstExprSampler,
-				rb.isUsedByShader);
+				rb.isUsedByShader,
+                rb.mslBufferIndex,
+                rb.mslTextureIndex,
+                rb.mslSamplerIndex);
 	}
 
 	template<class Archive>

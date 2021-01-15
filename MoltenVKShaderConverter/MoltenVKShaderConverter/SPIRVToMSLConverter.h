@@ -111,6 +111,10 @@ namespace mvk {
 
 		bool isUsedByShader = false;
 
+        uint32_t mslBufferIndex = (uint32_t)-1;
+        uint32_t mslTextureIndex = (uint32_t)-1;
+        uint32_t mslSamplerIndex = (uint32_t)-1;
+
 		/**
 		 * Returns whether the specified resource binding match this one.
 		 * It does if all corresponding elements except isUsedByShader are equal.
