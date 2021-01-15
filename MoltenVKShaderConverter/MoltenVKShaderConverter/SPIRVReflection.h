@@ -188,8 +188,9 @@ namespace mvk {
 			outputs.clear();
 
 			auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
-			parser.get_parsed_ir().for_each_typed_id<SPIRV_CROSS_NAMESPACE::SPIRVariable>([&reflect, &outputs, model, addSat](uint32_t varID, const SPIRV_CROSS_NAMESPACE::SPIRVariable& var) {
-				if (var.storage != spv::StorageClassOutput) { return; }
+			for (auto varID : reflect.get_active_interface_variables()) {
+				spv::StorageClass storage = reflect.get_storage_class(varID);
+				if (storage != spv::StorageClassOutput) { continue; }
 
 				bool isUsed = true;
 				const auto* type = &reflect.get_type(reflect.get_type_from_variable(varID).parent_type);
@@ -197,7 +198,7 @@ namespace mvk {
 				auto biType = spv::BuiltInMax;
 				if (reflect.has_decoration(varID, spv::DecorationBuiltIn)) {
 					biType = (spv::BuiltIn)reflect.get_decoration(varID, spv::DecorationBuiltIn);
-					isUsed = reflect.has_active_builtin(biType, var.storage);
+					isUsed = reflect.has_active_builtin(biType, storage);
 				}
 				uint32_t loc = -1;
 				if (reflect.has_decoration(varID, spv::DecorationLocation)) {
@@ -217,7 +218,7 @@ namespace mvk {
 						patch = patch || reflect.has_member_decoration(type->self, idx, spv::DecorationPatch);
 						if (reflect.has_member_decoration(type->self, idx, spv::DecorationBuiltIn)) {
 							biType = (spv::BuiltIn)reflect.get_member_decoration(type->self, idx, spv::DecorationBuiltIn);
-							isUsed = reflect.has_active_builtin(biType, var.storage);
+							isUsed = reflect.has_active_builtin(biType, storage);
 						}
 						const SPIRV_CROSS_NAMESPACE::SPIRType& memberType = reflect.get_type(type->member_types[idx]);
 						if (memberType.columns > 1) {
@@ -243,7 +244,7 @@ namespace mvk {
 				} else {
 					outputs.push_back({type->basetype, type->vecsize, loc, biType, patch, isUsed});
 				}
-			});
+			}
 			// Sort outputs by ascending location.
 			std::stable_sort(outputs.begin(), outputs.end(), [](const SPIRVShaderOutput& a, const SPIRVShaderOutput& b) {
 				return a.location < b.location;
