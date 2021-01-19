@@ -696,7 +696,7 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			uint32_t layCnt = vkIR.dstSubresource.layerCount;
 			mtlResolveSlices[sliceCnt].dstSubresource.layerCount = 1;
 			mtlResolveSlices[sliceCnt].srcSubresource.layerCount = 1;
-			for (uint32_t layIdx = 0; layIdx < layCnt; layIdx++) {
+			for (uint32_t layIdx = 1; layIdx < layCnt; layIdx++) {
 				MVKMetalResolveSlice& rslvSlice = mtlResolveSlices[sliceCnt++];
 				rslvSlice = mtlResolveSlices[sliceCnt - 2];
 				rslvSlice.dstSubresource.baseArrayLayer++;
