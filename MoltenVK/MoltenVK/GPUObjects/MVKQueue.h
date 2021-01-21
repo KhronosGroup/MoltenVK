@@ -147,7 +147,6 @@ protected:
 	dispatch_queue_t _execQueue;
 	id<MTLCommandQueue> _mtlQueue;
 	std::string _name;
-	MVKMTLCommandBufferID _nextMTLCmdBuffID;
 	MVKGPUCaptureScope* _submissionCaptureScope;
 };
 

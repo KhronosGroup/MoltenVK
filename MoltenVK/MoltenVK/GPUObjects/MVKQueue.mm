@@ -156,7 +156,6 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 	_queueFamily = queueFamily;
 	_index = index;
 	_priority = priority;
-	_nextMTLCmdBuffID = 1;
 
 	initName();
 	initExecQueue();

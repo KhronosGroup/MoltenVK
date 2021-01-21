@@ -60,11 +60,11 @@ void MVKGPUCaptureScope::makeDefault() {
 	}
 }
 
-MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue) : _queue(mvkQueue) {
-	_mtlQueue = [_queue->getMTLCommandQueue() retain];	// retained
+MVKGPUCaptureScope::MVKGPUCaptureScope(MVKQueue* mvkQueue) {
+	_mtlQueue = [mvkQueue->getMTLCommandQueue() retain];	// retained
 	if (mvkOSVersionIsAtLeast(kMinOSVersionMTLCaptureScope)) {
 		_mtlCaptureScope = [[MTLCaptureManager sharedCaptureManager] newCaptureScopeWithCommandQueue: _mtlQueue];	// retained
-		_mtlCaptureScope.label = @(_queue->getName().c_str());
+		_mtlCaptureScope.label = @(mvkQueue->getName().c_str());
 		// Due to a retain bug in Metal when the capture layer is installed, capture scopes
 		// can have too many references on them. Release the excess references so the scope--
 		// and the command queue--aren't leaked. This is a horrible kludge that depends on
