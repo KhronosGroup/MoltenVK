@@ -7,7 +7,7 @@
 MoltenVK
 ========
 
-Copyright (c) 2015-2020 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."

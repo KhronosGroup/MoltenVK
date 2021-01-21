@@ -6,7 +6,7 @@
 
 #MoltenVK Demo Projects
 
-Copyright (c) 2015-2020 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 *This document is written in [Markdown](http://en.wikipedia.org/wiki/Markdown) format.
 For best results, use a Markdown reader.*
