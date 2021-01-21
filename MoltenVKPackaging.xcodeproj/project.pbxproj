@@ -193,7 +193,6 @@
 		A9C70F41221B04C800FBA31A /* create_dylib_macos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_macos.sh; sourceTree = "<group>"; };
 		A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_ios.sh; sourceTree = "<group>"; };
 		A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_moltenvk_xcframework.sh; sourceTree = "<group>"; };
-		A9DA8340218A198C002AA662 /* .travis.yml */ = {isa = PBXFileReference; lastKnownFileType = text; path = .travis.yml; sourceTree = "<group>"; };
 		A9DA8341218A198C002AA662 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
 		A9FC5F60249D2ED3003CB086 /* package_all.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_all.sh; sourceTree = "<group>"; };
 		A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_tvos.sh; sourceTree = "<group>"; };
@@ -259,9 +258,9 @@
 			isa = PBXGroup;
 			children = (
 				A981498B1FB6B566005F00B4 /* MoltenVKShaderConverter */,
-				A98149911FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */,
-				A9FC5F5D249D2547003CB086 /* libMoltenVKSPIRVToMSLConverter.a */,
-				A98149931FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */,
+				A98149911FB6B566005F00B4 /* libMoltenVKShaderConverter.a */,
+				A9FC5F5D249D2547003CB086 /* libMoltenVKShaderConverter.a */,
+				A98149931FB6B566005F00B4 /* libMoltenVKShaderConverter.a */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -270,7 +269,6 @@
 			isa = PBXGroup;
 			children = (
 				A9DA8341218A198C002AA662 /* .gitignore */,
-				A9DA8340218A198C002AA662 /* .travis.yml */,
 			);
 			name = Git;
 			sourceTree = "<group>";
@@ -281,7 +279,7 @@
 		A90B2B1D1A9B6170008EE819 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1220;
+				LastUpgradeCheck = 1230;
 				TargetAttributes = {
 					A9FEADBC1F3517480010240E = {
 						DevelopmentTeam = VU3TCKU48B;
@@ -348,21 +346,21 @@
 			remoteRef = A981498A1FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A98149911FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */ = {
+		A98149911FB6B566005F00B4 /* libMoltenVKShaderConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libMoltenVKShaderConverter.a;
 			remoteRef = A98149901FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A98149931FB6B566005F00B4 /* libMoltenVKSPIRVToMSLConverter.a */ = {
+		A98149931FB6B566005F00B4 /* libMoltenVKShaderConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libMoltenVKShaderConverter.a;
 			remoteRef = A98149921FB6B566005F00B4 /* PBXContainerItemProxy */;
 			sourceTree = BUILT_PRODUCTS_DIR;
 		};
-		A9FC5F5D249D2547003CB086 /* libMoltenVKSPIRVToMSLConverter.a */ = {
+		A9FC5F5D249D2547003CB086 /* libMoltenVKShaderConverter.a */ = {
 			isa = PBXReferenceProxy;
 			fileType = archive.ar;
 			path = libMoltenVKShaderConverter.a;
