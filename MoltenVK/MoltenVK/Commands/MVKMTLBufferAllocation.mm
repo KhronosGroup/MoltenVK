@@ -17,7 +17,6 @@
  */
 
 #include "MVKMTLBufferAllocation.h"
-#include "MVKLogging.h"
 
 
 #pragma mark -

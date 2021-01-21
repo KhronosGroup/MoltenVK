@@ -22,7 +22,6 @@
 #include "MVKFoundation.h"
 #include "MVKSurface.h"
 #include "MVKOSExtensions.h"
-#include "MVKLogging.h"
 
 using namespace std;
 

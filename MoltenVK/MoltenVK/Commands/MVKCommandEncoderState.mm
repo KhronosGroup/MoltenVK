@@ -22,7 +22,6 @@
 #include "MVKRenderPass.h"
 #include "MVKPipeline.h"
 #include "MVKQueryPool.h"
-#include "MVKLogging.h"
 
 using namespace std;
 

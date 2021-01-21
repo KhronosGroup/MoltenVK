@@ -23,7 +23,6 @@
 #include "MVKBuffer.h"
 #include "NSString+MoltenVK.h"
 #include "MTLRenderPipelineDescriptor+MoltenVK.h"
-#include "MVKLogging.h"
 
 using namespace std;
 

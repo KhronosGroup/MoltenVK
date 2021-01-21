@@ -23,7 +23,6 @@
 #include "MVKDeviceMemory.h"
 #include "MVKFoundation.h"
 #include "mvk_datatypes.hpp"
-#include "MVKLogging.h"
 
 using namespace std;
 

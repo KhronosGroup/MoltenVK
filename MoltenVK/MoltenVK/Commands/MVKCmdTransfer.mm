@@ -26,7 +26,6 @@
 #include "MVKRenderPass.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "MVKEnvironment.h"
-#include "MVKLogging.h"
 #include "mvk_datatypes.hpp"
 #include <algorithm>
 

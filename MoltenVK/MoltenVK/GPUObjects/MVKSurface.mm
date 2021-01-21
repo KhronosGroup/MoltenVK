@@ -19,7 +19,6 @@
 #include "MVKSurface.h"
 #include "MVKInstance.h"
 #include "MVKFoundation.h"
-#include "MVKLogging.h"
 #include "MVKOSExtensions.h"
 #import "MVKBlockObserver.h"
 

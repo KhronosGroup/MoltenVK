@@ -19,7 +19,6 @@
 #include "MVKPixelFormats.h"
 #include "MVKDevice.h"
 #include "MVKFoundation.h"
-#include "MVKLogging.h"
 #include <string>
 
 using namespace std;

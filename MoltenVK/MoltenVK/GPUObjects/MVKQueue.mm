@@ -23,7 +23,6 @@
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKGPUCapture.h"
-#include "MVKLogging.h"
 
 using namespace std;
 

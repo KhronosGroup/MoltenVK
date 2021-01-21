@@ -33,7 +33,6 @@
 #include "MVKFoundation.h"
 #include "MVKCodec.h"
 #include "MVKEnvironment.h"
-#include "MVKLogging.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include "vk_mvk_moltenvk.h"
 

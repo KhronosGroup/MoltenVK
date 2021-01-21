@@ -19,7 +19,6 @@
 #include "MVKShaderModule.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
-#include "MVKLogging.h"
 #include "vk_mvk_moltenvk.h"
 #include <string>
 

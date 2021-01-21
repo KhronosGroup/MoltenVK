@@ -41,7 +41,6 @@
 #include "MVKSurface.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
-#include "MVKLogging.h"
 
 #include <pthread.h>
 

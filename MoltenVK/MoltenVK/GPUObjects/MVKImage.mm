@@ -24,7 +24,6 @@
 #include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
-#include "MVKLogging.h"
 #include "MVKCodec.h"
 #import "MTLTextureDescriptor+MoltenVK.h"
 #import "MTLSamplerDescriptor+MoltenVK.h"
