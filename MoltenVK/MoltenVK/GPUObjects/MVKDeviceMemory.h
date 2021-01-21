@@ -52,7 +52,7 @@ public:
 
 	/** Returns whether the memory is accessible from the host. */
     inline bool isMemoryHostAccessible() {
-#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+#if MVK_APPLE_SILICON
         if (_mtlStorageMode == MTLStorageModeMemoryless)
             return false;
 #endif
