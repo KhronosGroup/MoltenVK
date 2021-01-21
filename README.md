@@ -12,7 +12,8 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 [comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
 [comment]: # "For best results, use a Markdown reader."
 
-[![Build Status](https://travis-ci.org/KhronosGroup/MoltenVK.svg?branch=master)](https://travis-ci.org/KhronosGroup/MoltenVK)
+![Build Status](https://github.com/KhronosGroup/MoltenVK/workflows/CI/badge.svg)
+
 
 Table of Contents
 -----------------
@@ -41,7 +42,9 @@ architecture that allows applications to add additional functionality without mo
 application itself. The *Validation Layers* included in the *Vulkan SDK* are an essential debugging
 tool for application developers because they identify inappropriate use of the *Vulkan API*. 
 If you are developing a *Vulkan* application for *macOS*, it is highly recommended that you use the
-[*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home) and the **MoltenVK** library included in it. 
+[*Vulkan SDK*](https://vulkan.lunarg.com/sdk/home) and the **MoltenVK** library included in it.
+Refer to the *Vulkan SDK [Getting Started](https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html)* 
+document for more info.
 
 If you are developing a *Vulkan* application for *iOS* or *tvOS*, or are developing a *Vulkan* 
 application for *macOS* and want to use a different version of the **MoltenVK** runtime library 
