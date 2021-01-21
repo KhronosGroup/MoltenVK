@@ -27,13 +27,11 @@
 		2FEA0A5224902F9F00EEF3AD /* MVKLogging.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F0429E1FB4CF82009FCCB8 /* MVKLogging.h */; };
 		2FEA0A5324902F9F00EEF3AD /* MVKQueue.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7911C7DFB4800632CA3 /* MVKQueue.h */; };
 		2FEA0A5424902F9F00EEF3AD /* MVKFramebuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7871C7DFB4800632CA3 /* MVKFramebuffer.h */; };
-		2FEA0A5524902F9F00EEF3AD /* MVKVectorAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = 83A4AD2921BD75570006C935 /* MVKVectorAllocator.h */; };
 		2FEA0A5624902F9F00EEF3AD /* MVKWatermarkShaderSource.h in Headers */ = {isa = PBXBuildFile; fileRef = A981494B1FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h */; };
 		2FEA0A5724902F9F00EEF3AD /* MTLSamplerDescriptor+MoltenVK.h in Headers */ = {isa = PBXBuildFile; fileRef = A9E53DD32100B197002781DD /* MTLSamplerDescriptor+MoltenVK.h */; };
 		2FEA0A5824902F9F00EEF3AD /* MVKSync.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB79D1C7DFB4800632CA3 /* MVKSync.h */; };
 		2FEA0A5924902F9F00EEF3AD /* MVKDevice.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7831C7DFB4800632CA3 /* MVKDevice.h */; };
 		2FEA0A5A24902F9F00EEF3AD /* MVKSmallVector.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F3D9DB24732A4D00745190 /* MVKSmallVector.h */; };
-		2FEA0A5B24902F9F00EEF3AD /* MVKVector.h in Headers */ = {isa = PBXBuildFile; fileRef = 83A4AD2521BD75570006C935 /* MVKVector.h */; };
 		2FEA0A5C24902F9F00EEF3AD /* MVKCommandPool.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB77A1C7DFB4800632CA3 /* MVKCommandPool.h */; };
 		2FEA0A5D24902F9F00EEF3AD /* MVKShaderModule.h in Headers */ = {isa = PBXBuildFile; fileRef = A94FB7971C7DFB4800632CA3 /* MVKShaderModule.h */; };
 		2FEA0A5E24902F9F00EEF3AD /* MVKVulkanAPIObject.h in Headers */ = {isa = PBXBuildFile; fileRef = A99C91012295FAC500A061DA /* MVKVulkanAPIObject.h */; };
@@ -142,10 +140,6 @@
 		45557A5321C9EFF3008868BD /* MVKCodec.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 45557A4D21C9EFF3008868BD /* MVKCodec.cpp */; };
 		45557A5421C9EFF3008868BD /* MVKCodec.h in Headers */ = {isa = PBXBuildFile; fileRef = 45557A5121C9EFF3008868BD /* MVKCodec.h */; };
 		45557A5521C9EFF3008868BD /* MVKCodec.h in Headers */ = {isa = PBXBuildFile; fileRef = 45557A5121C9EFF3008868BD /* MVKCodec.h */; };
-		83A4AD2A21BD75570006C935 /* MVKVector.h in Headers */ = {isa = PBXBuildFile; fileRef = 83A4AD2521BD75570006C935 /* MVKVector.h */; };
-		83A4AD2B21BD75570006C935 /* MVKVector.h in Headers */ = {isa = PBXBuildFile; fileRef = 83A4AD2521BD75570006C935 /* MVKVector.h */; };
-		83A4AD2C21BD75570006C935 /* MVKVectorAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = 83A4AD2921BD75570006C935 /* MVKVectorAllocator.h */; };
-		83A4AD2D21BD75570006C935 /* MVKVectorAllocator.h in Headers */ = {isa = PBXBuildFile; fileRef = 83A4AD2921BD75570006C935 /* MVKVectorAllocator.h */; };
 		A9096E5E1F81E16300DFBEA6 /* MVKCmdDispatch.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */; };
 		A9096E5F1F81E16300DFBEA6 /* MVKCmdDispatch.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */; };
 		A909F65F213B190700FCD6BE /* MVKExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A909F65A213B190600FCD6BE /* MVKExtensions.h */; };
@@ -428,8 +422,6 @@
 		45557A4D21C9EFF3008868BD /* MVKCodec.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKCodec.cpp; sourceTree = "<group>"; };
 		45557A5121C9EFF3008868BD /* MVKCodec.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCodec.h; sourceTree = "<group>"; };
 		45557A5721CD83C3008868BD /* MVKDXTnCodec.def */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.h; fileEncoding = 4; path = MVKDXTnCodec.def; sourceTree = "<group>"; };
-		83A4AD2521BD75570006C935 /* MVKVector.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKVector.h; sourceTree = "<group>"; };
-		83A4AD2921BD75570006C935 /* MVKVectorAllocator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKVectorAllocator.h; sourceTree = "<group>"; };
 		A9096E5C1F81E16300DFBEA6 /* MVKCmdDispatch.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = MVKCmdDispatch.h; sourceTree = "<group>"; };
 		A9096E5D1F81E16300DFBEA6 /* MVKCmdDispatch.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdDispatch.mm; sourceTree = "<group>"; };
 		A909F65A213B190600FCD6BE /* MVKExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKExtensions.h; sourceTree = "<group>"; };
@@ -693,8 +685,6 @@
 				A98149461FB6A3F7005F00B4 /* MVKObjectPool.h */,
 				A9F3D9DB24732A4D00745190 /* MVKSmallVector.h */,
 				A9F3D9D924732A4C00745190 /* MVKSmallVectorAllocator.h */,
-				83A4AD2521BD75570006C935 /* MVKVector.h */,
-				83A4AD2921BD75570006C935 /* MVKVectorAllocator.h */,
 				A98149491FB6A3F7005F00B4 /* MVKWatermark.h */,
 				A981494A1FB6A3F7005F00B4 /* MVKWatermark.mm */,
 				A981494B1FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h */,
@@ -809,13 +799,11 @@
 				2FEA0A5224902F9F00EEF3AD /* MVKLogging.h in Headers */,
 				2FEA0A5324902F9F00EEF3AD /* MVKQueue.h in Headers */,
 				2FEA0A5424902F9F00EEF3AD /* MVKFramebuffer.h in Headers */,
-				2FEA0A5524902F9F00EEF3AD /* MVKVectorAllocator.h in Headers */,
 				2FEA0A5624902F9F00EEF3AD /* MVKWatermarkShaderSource.h in Headers */,
 				2FEA0A5724902F9F00EEF3AD /* MTLSamplerDescriptor+MoltenVK.h in Headers */,
 				2FEA0A5824902F9F00EEF3AD /* MVKSync.h in Headers */,
 				2FEA0A5924902F9F00EEF3AD /* MVKDevice.h in Headers */,
 				2FEA0A5A24902F9F00EEF3AD /* MVKSmallVector.h in Headers */,
-				2FEA0A5B24902F9F00EEF3AD /* MVKVector.h in Headers */,
 				2FEA0A5C24902F9F00EEF3AD /* MVKCommandPool.h in Headers */,
 				2FEA0A5D24902F9F00EEF3AD /* MVKShaderModule.h in Headers */,
 				2FEA0A5E24902F9F00EEF3AD /* MVKVulkanAPIObject.h in Headers */,
@@ -883,13 +871,11 @@
 				453638322508A4C7000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h in Headers */,
 				A94FB8001C7DFB4800632CA3 /* MVKQueue.h in Headers */,
 				A94FB7EC1C7DFB4800632CA3 /* MVKFramebuffer.h in Headers */,
-				83A4AD2C21BD75570006C935 /* MVKVectorAllocator.h in Headers */,
 				A98149611FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h in Headers */,
 				A9E53DE32100B197002781DD /* MTLSamplerDescriptor+MoltenVK.h in Headers */,
 				A94FB8181C7DFB4800632CA3 /* MVKSync.h in Headers */,
 				A94FB7E41C7DFB4800632CA3 /* MVKDevice.h in Headers */,
 				A9F3D9DE24732A4D00745190 /* MVKSmallVector.h in Headers */,
-				83A4AD2A21BD75570006C935 /* MVKVector.h in Headers */,
 				A94FB7D41C7DFB4800632CA3 /* MVKCommandPool.h in Headers */,
 				A94FB80C1C7DFB4800632CA3 /* MVKShaderModule.h in Headers */,
 				A99C91042295FAC600A061DA /* MVKVulkanAPIObject.h in Headers */,
@@ -957,13 +943,11 @@
 				453638342508A4C7000EFFD3 /* MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h in Headers */,
 				A94FB8011C7DFB4800632CA3 /* MVKQueue.h in Headers */,
 				A94FB7ED1C7DFB4800632CA3 /* MVKFramebuffer.h in Headers */,
-				83A4AD2D21BD75570006C935 /* MVKVectorAllocator.h in Headers */,
 				A98149621FB6A3F7005F00B4 /* MVKWatermarkShaderSource.h in Headers */,
 				A9E53DE42100B197002781DD /* MTLSamplerDescriptor+MoltenVK.h in Headers */,
 				A94FB8191C7DFB4800632CA3 /* MVKSync.h in Headers */,
 				A94FB7E51C7DFB4800632CA3 /* MVKDevice.h in Headers */,
 				A9F3D9DF24732A4D00745190 /* MVKSmallVector.h in Headers */,
-				83A4AD2B21BD75570006C935 /* MVKVector.h in Headers */,
 				A94FB7D51C7DFB4800632CA3 /* MVKCommandPool.h in Headers */,
 				A94FB80D1C7DFB4800632CA3 /* MVKShaderModule.h in Headers */,
 				A99C91052295FAC600A061DA /* MVKVulkanAPIObject.h in Headers */,

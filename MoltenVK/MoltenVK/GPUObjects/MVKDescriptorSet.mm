@@ -254,14 +254,6 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
     }
 }
 
-// Create concrete implementations of the three variations of the write() function.
-template void MVKDescriptorSet::write<VkWriteDescriptorSet>(const VkWriteDescriptorSet* pDescriptorAction,
-															size_t stride, const void *pData);
-template void MVKDescriptorSet::write<VkCopyDescriptorSet>(const VkCopyDescriptorSet* pDescriptorAction,
-														   size_t stride, const void *pData);
-template void MVKDescriptorSet::write<VkDescriptorUpdateTemplateEntryKHR>(const VkDescriptorUpdateTemplateEntryKHR* pDescriptorAction,
-																		  size_t stride, const void *pData);
-
 void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 							VkDescriptorImageInfo* pImageInfo,
 							VkDescriptorBufferInfo* pBufferInfo,
