@@ -449,6 +449,9 @@ public:
 	/** Returns a new MTLComputePipelineState for copying query results to a buffer. */
 	id<MTLComputePipelineState> newCmdCopyQueryPoolResultsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
 
+	/** Returns a new MTLComputePipelineState for accumulating occlusion query results to a buffer. */
+	id<MTLComputePipelineState> newAccumulateOcclusionQueryResultsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner);
+
 
 #pragma mark Construction
 

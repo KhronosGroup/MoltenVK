@@ -143,6 +143,7 @@ protected:
 class MVKTimestampQueryPool : public MVKQueryPool {
 
 public:
+    void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
     void finishQueries(const MVKArrayRef<uint32_t>& queries) override;
 
 
