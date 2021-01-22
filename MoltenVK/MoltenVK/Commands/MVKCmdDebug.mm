@@ -20,8 +20,6 @@
 #include "MVKCommandBuffer.h"
 #include "MVKCommandPool.h"
 
-#include "MVKLogging.h"
-
 #pragma mark -
 #pragma mark MVKCmdDebugMarker
 

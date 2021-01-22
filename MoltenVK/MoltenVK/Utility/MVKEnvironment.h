@@ -20,6 +20,7 @@
 #pragma once
 
 #include "MVKCommonEnvironment.h"
+#include "MVKLogging.h"
 #include "mvk_vulkan.h"
 
 

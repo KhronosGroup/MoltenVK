@@ -37,7 +37,7 @@ class MVKGPUCaptureScope : public MVKBaseObject {
 public:
 
 	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override { return _queue->getVulkanAPIObject(); };
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; }
 
 	/** Marks the beginning boundary of a capture scope. */
 	void beginScope();
@@ -58,7 +58,6 @@ public:
 	~MVKGPUCaptureScope() override;
 
 protected:
-	MVKQueue* _queue;
 	id<MTLCaptureScope> _mtlCaptureScope = nil;
 	id<MTLCommandQueue> _mtlQueue = nil;
 	bool _isFirstBoundary = true;

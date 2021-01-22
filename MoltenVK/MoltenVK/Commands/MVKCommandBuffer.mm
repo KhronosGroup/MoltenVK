@@ -23,7 +23,6 @@
 #include "MVKFramebuffer.h"
 #include "MVKQueryPool.h"
 #include "MVKFoundation.h"
-#include "MVKLogging.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "MVKCmdDraw.h"
 #include "MVKCmdRenderPass.h"

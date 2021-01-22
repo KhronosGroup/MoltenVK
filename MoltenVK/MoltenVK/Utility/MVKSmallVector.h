@@ -43,11 +43,11 @@ using MVKSmallVector = std::vector<T>;
 // If you don't need any inline storage use:
 //  MVKSmallVector<int> v;   // this is essentially the same as using std::vector
 //
-// The per-instance memory overhead of MVKSmallVector (16 bytes) is smaller than MVKVector (40 bytes)
-// and std::vector (24 bytes), but MVKSmallVector lacks the polymorphism of MVKVector (or std::vector),
-// that allows them to be passed around to functions without reference to the pre-allocation size.
-// MVKSmallVector supports the contents() function to derive an MVKArrayRef from its contents,
-// which can be passed around without reference to the pre-allocaton size.
+// The per-instance memory overhead of MVKSmallVector (16 bytes) is smaller than std::vector
+// (24 bytes), but MVKSmallVector lacks the polymorphism of std::vector, that allows it to
+// be passed to functions without reference to the pre-allocation size. MVKSmallVector
+// supports the contents() function to derive an MVKArrayRef from its contents, which can
+// be passed to functions without reference to the MVKSmallVector pre-allocaton size.
 
 #include "MVKSmallVectorAllocator.h"
 #include "MVKFoundation.h"
@@ -138,7 +138,7 @@ public:
   {
   }
 
-  MVKSmallVectorImpl( const size_t n, const Type t )
+  MVKSmallVectorImpl( const size_t n, const Type t = { } )
   {
     if( n > 0 )
     {
@@ -590,7 +590,7 @@ public:
   {
   }
 
-  MVKSmallVectorImpl( const size_t n, const Type *t )
+  MVKSmallVectorImpl( const size_t n, Type *t = nullptr )
   {
     if ( n > 0 )
     {

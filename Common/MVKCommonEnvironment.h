@@ -82,6 +82,11 @@ extern "C" {
 #	define MVK_MACOS_APPLE_SILICON	(__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600)
 #endif
 
+/** Building for Apple Silicon. */
+#ifndef MVK_APPLE_SILICON
+#	define MVK_APPLE_SILICON    	(MVK_IOS || MVK_TVOS || MVK_MACOS_APPLE_SILICON)
+#endif
+
 /** Building with Xcode 12. */
 #ifndef MVK_XCODE_12
 #	define MVK_XCODE_12 			(MVK_MACOS_APPLE_SILICON || \

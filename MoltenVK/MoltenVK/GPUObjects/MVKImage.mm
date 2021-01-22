@@ -24,7 +24,6 @@
 #include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
-#include "MVKLogging.h"
 #include "MVKCodec.h"
 #import "MTLTextureDescriptor+MoltenVK.h"
 #import "MTLSamplerDescriptor+MoltenVK.h"
@@ -648,7 +647,7 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
     }
 #endif
-#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+#if MVK_APPLE_SILICON
     // Only transient attachments may use memoryless storage
     if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
@@ -1669,7 +1668,7 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 
 		switch (mtlPixFmt) {
 			case MTLPixelFormatR8Unorm:
-#if MVK_MACOS_APPLE_SILICON || MVK_IOS_OR_TVOS
+#if MVK_APPLE_SILICON
 			case MTLPixelFormatR8Unorm_sRGB:
 #endif
 			case MTLPixelFormatR8Snorm:
@@ -1689,7 +1688,7 @@ VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInf
 				break;
 
 			case MTLPixelFormatRG8Unorm:
-#if MVK_MACOS_APPLE_SILICON || MVK_IOS_OR_TVOS
+#if MVK_APPLE_SILICON
 			case MTLPixelFormatRG8Unorm_sRGB:
 #endif
 			case MTLPixelFormatRG8Snorm:

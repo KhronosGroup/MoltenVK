@@ -23,7 +23,6 @@
 #include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 #include "MVKFoundation.h"
-#include "MVKLogging.h"
 #include <cstdlib>
 #include <stdlib.h>
 

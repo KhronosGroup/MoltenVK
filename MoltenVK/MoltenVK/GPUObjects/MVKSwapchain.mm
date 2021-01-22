@@ -26,7 +26,6 @@
 #include "MVKWatermarkTextureContent.h"
 #include "MVKWatermarkShaderSource.h"
 #include "mvk_datatypes.hpp"
-#include "MVKLogging.h"
 #import "CAMetalLayer+MoltenVK.h"
 #import "MVKBlockObserver.h"
 

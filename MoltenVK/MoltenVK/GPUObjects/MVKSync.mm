@@ -18,7 +18,6 @@
 
 #include "MVKSync.h"
 #include "MVKFoundation.h"
-#include "MVKLogging.h"
 
 using namespace std;
 

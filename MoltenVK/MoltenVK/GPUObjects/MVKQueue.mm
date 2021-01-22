@@ -23,7 +23,6 @@
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKGPUCapture.h"
-#include "MVKLogging.h"
 
 using namespace std;
 
@@ -157,7 +156,6 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 	_queueFamily = queueFamily;
 	_index = index;
 	_priority = priority;
-	_nextMTLCmdBuffID = 1;
 
 	initName();
 	initExecQueue();

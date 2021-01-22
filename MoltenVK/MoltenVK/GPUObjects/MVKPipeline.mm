@@ -1292,13 +1292,6 @@ bool MVKGraphicsPipeline::addVertexInputToPipeline(T* inputDesc,
 	return true;
 }
 
-template bool MVKGraphicsPipeline::addVertexInputToPipeline<MTLVertexDescriptor>(MTLVertexDescriptor* inputDesc,
-																				 const VkPipelineVertexInputStateCreateInfo* pVI,
-																				 const SPIRVToMSLConversionConfiguration& shaderContext);
-template bool MVKGraphicsPipeline::addVertexInputToPipeline<MTLStageInputOutputDescriptor>(MTLStageInputOutputDescriptor* inputDesc,
-																						   const VkPipelineVertexInputStateCreateInfo* pVI,
-																						   const SPIRVToMSLConversionConfiguration& shaderContext);
-
 // Adjusts step rates for per-instance vertex buffers based on the number of views to be drawn.
 void MVKGraphicsPipeline::adjustVertexInputForMultiview(MTLVertexDescriptor* inputDesc, const VkPipelineVertexInputStateCreateInfo* pVI, uint32_t viewCount, uint32_t oldViewCount) {
 	uint32_t vbCnt = pVI->vertexBindingDescriptionCount;

@@ -23,7 +23,6 @@
 #include "MVKCommandEncodingPool.h"
 #include "MVKOSExtensions.h"
 #include "MVKFoundation.h"
-#include "MVKLogging.h"
 
 using namespace std;
 

@@ -21,7 +21,6 @@
 #include "MVKInstance.h"
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
-#include "MVKLogging.h"
 #include <cxxabi.h>
 
 using namespace std;

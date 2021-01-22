@@ -211,7 +211,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
             MVKRenderPassAttachment* clrMVKRPAtt = &_renderPass->_attachments[clrRPAttIdx];
 			framebuffer->getAttachment(clrRPAttIdx)->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc);
 			bool isMemorylessAttachment = false;
-#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+#if MVK_APPLE_SILICON
 			isMemorylessAttachment = framebuffer->getAttachment(clrRPAttIdx)->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 #endif
 			if (clrMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlColorAttDesc, this,
@@ -256,7 +256,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			}
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc);
 			bool isMemorylessAttachment = false;
-#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+#if MVK_APPLE_SILICON
 			isMemorylessAttachment = dsImage->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 #endif
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
@@ -284,7 +284,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			}
 			dsImage->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc);
 			bool isMemorylessAttachment = false;
-#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+#if MVK_APPLE_SILICON
 			isMemorylessAttachment = dsImage->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 #endif
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
@@ -376,7 +376,7 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
         if (clrRPAttIdx != VK_ATTACHMENT_UNUSED) {
             bool hasResolveAttachment = _resolveAttachments.empty() ? false : _resolveAttachments[caIdx].attachment != VK_ATTACHMENT_UNUSED;
 			bool isMemorylessAttachment = false;
-#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+#if MVK_APPLE_SILICON
 			isMemorylessAttachment = cmdEncoder->_framebuffer->getAttachment(clrRPAttIdx)->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 #endif
             _renderPass->_attachments[clrRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, caIdx, false, storeOverride);
@@ -388,7 +388,7 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
         bool hasDepthResolveAttachment = hasResolveAttachment && _depthResolveMode != VK_RESOLVE_MODE_NONE;
         bool hasStencilResolveAttachment = hasResolveAttachment && _stencilResolveMode != VK_RESOLVE_MODE_NONE;
 		bool isMemorylessAttachment = false;
-#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+#if MVK_APPLE_SILICON
 		isMemorylessAttachment = cmdEncoder->_framebuffer->getAttachment(dsRPAttIdx)->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 #endif
         _renderPass->_attachments[dsRPAttIdx].encodeStoreAction(cmdEncoder, this, isRenderingEntireAttachment, isMemorylessAttachment, hasDepthResolveAttachment, 0, false, storeOverride);
@@ -783,7 +783,7 @@ MVKRenderPassAttachment::MVKRenderPassAttachment(MVKRenderPass* renderPass,
 #pragma mark MVKRenderPass
 
 VkExtent2D MVKRenderPass::getRenderAreaGranularity() {
-#if MVK_IOS_OR_TVOS || MVK_MACOS_APPLE_SILICON
+#if MVK_APPLE_SILICON
     if (_device->_pMetalFeatures->tileBasedDeferredRendering) {
         // This is the tile area.
         // FIXME: We really ought to use MTLRenderCommandEncoder.tile{Width,Height}, but that requires
