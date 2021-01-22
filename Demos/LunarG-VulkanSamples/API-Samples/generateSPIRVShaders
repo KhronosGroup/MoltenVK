@@ -1,6 +1,6 @@
 #!/bin/bash
 #
-# Copyright (c) 2016-2020 The Brenwill Workshop Ltd.
+# Copyright (c) 2016-2021 The Brenwill Workshop Ltd.
 #
 # generateSPIRVShaders - Convert GLSL shader files to SPIRV header files
 #

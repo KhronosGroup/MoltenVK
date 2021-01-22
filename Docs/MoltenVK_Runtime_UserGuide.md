@@ -7,10 +7,10 @@
 MoltenVK Runtime User Guide
 ===========================
 
-Copyright (c) 2015-2020 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
+Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
-*This document is written in [Markdown](http://en.wikipedia.org/wiki/Markdown) format.
-For best results, use a Markdown reader.*
+[comment]: # "This document is written in Markdown (http://en.wikipedia.org/wiki/Markdown) format."
+[comment]: # "For best results, use a Markdown reader."
 
 
 
@@ -605,5 +605,7 @@ This section documents the known limitations in this version of **MoltenVK**.
 
 - Since **MoltenVK** is an implementation of *Vulkan* functionality, it does not load 
   *Vulkan Layers* on its own. In order to use *Vulkan Layers*, such as the validation layers, 
-  use the *Vulkan Loader and Layers* from the [LunarG Vulkan SDK](https://vulkan.lunarg.com).
+  use the *Vulkan Loader and Layers* from the *[Vulkan SDK](https://vulkan.lunarg.com/sdk/home)*. 
+  Refer to the *Vulkan SDK [Getting Started](https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html)* 
+  document for more info.
 
