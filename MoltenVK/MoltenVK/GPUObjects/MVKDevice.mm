@@ -1575,6 +1575,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.shaderStorageBufferArrayDynamicIndexing = true;
     _features.shaderClipDistance = true;
     _features.shaderInt16 = true;
+	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_2);
     _features.multiDrawIndirect = true;
     _features.inheritedQueries = true;
 
@@ -1719,7 +1720,7 @@ void MVKPhysicalDevice::initFeatures() {
 //    VkBool32    shaderClipDistance;                           // done
 //    VkBool32    shaderCullDistance;
 //    VkBool32    shaderFloat64;
-//    VkBool32    shaderInt64;
+//    VkBool32    shaderInt64;                                  // done
 //    VkBool32    shaderInt16;                                  // done
 //    VkBool32    shaderResourceResidency;
 //    VkBool32    shaderResourceMinLod;                         // done

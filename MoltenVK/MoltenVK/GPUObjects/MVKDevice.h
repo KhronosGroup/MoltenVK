@@ -322,6 +322,10 @@ public:
 		}
 	}
 
+	/** Returns whether the MSL version is supported on this device. */
+	inline bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
+
+
 #pragma mark Construction
 
 	/** Constructs an instance wrapping the specified Vulkan instance and Metal device. */

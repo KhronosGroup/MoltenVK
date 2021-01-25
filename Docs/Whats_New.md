@@ -18,6 +18,7 @@ MoltenVK 1.1.2
 
 Released TBD
 
+- Advertise support for `shaderInt64` feature.
 - Support fast math on MSL compiler via `MVKConfiguration::fastMathEnabled` configuration 
   setting and `MVK_CONFIG_FAST_MATH_ENABLED` environment variable (both disabled by default).
 - Support _GitHub Actions_ for CI builds on pull requests.
