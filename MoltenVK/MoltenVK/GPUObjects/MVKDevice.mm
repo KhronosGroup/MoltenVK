@@ -2110,7 +2110,7 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 
 	bool isFound = false;
 
-	bool isIntegrated = _mtlDevice.isLowPower;
+	bool isIntegrated = getHasUnifiedMemory();
 	_properties.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 
