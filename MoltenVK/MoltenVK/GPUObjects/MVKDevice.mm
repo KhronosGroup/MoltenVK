@@ -3154,10 +3154,10 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 			return new MVKTimelineSemaphoreEmulated(this, pCreateInfo, pTypeCreateInfo);
 		}
 	} else {
-		if (_useMTLEventForSemaphores) {
-			return new MVKSemaphoreMTLEvent(this, pCreateInfo);
-		} else if (_useMTLFenceForSemaphores) {
+		if (_useMTLFenceForSemaphores) {
 			return new MVKSemaphoreMTLFence(this, pCreateInfo);
+		} else if (_useMTLEventForSemaphores) {
+			return new MVKSemaphoreMTLEvent(this, pCreateInfo);
 		} else {
 			return new MVKSemaphoreEmulated(this, pCreateInfo);
 		}
@@ -3810,7 +3810,7 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	if (_pMetalFeatures->events) {
 		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventForSemaphores, MVK_ALLOW_METAL_EVENTS);
 	}
-	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLEventForSemaphores ? "MTLEvent" : (_useMTLFenceForSemaphores ? "MTLFence" : "emulation"));
+	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
 
 #	ifndef MVK_CONFIG_USE_COMMAND_POOLING
 #   	define MVK_CONFIG_USE_COMMAND_POOLING    1
