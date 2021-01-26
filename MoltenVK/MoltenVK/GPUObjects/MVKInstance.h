@@ -22,7 +22,6 @@
 #include "MVKLayers.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKSmallVector.h"
-#include "vk_mvk_moltenvk.h"
 #include <unordered_map>
 #include <string>
 #include <mutex>
@@ -149,12 +148,6 @@ public:
 	/** Returns whether debug callbacks are being used. */
 	bool hasDebugCallbacks() { return _hasDebugReportCallbacks || _hasDebugUtilsMessengers; }
 
-	/** Returns the MoltenVK configuration settings. */
-	const MVKConfiguration* getMoltenVKConfiguration() { return &_mvkConfig; }
-
-	/** Returns the MoltenVK configuration settings. */
-	void setMoltenVKConfiguration(MVKConfiguration* mvkConfig) { _mvkConfig = *mvkConfig; }
-
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app. */
 	const MVKExtensionList _enabledExtensions;
 
@@ -186,14 +179,13 @@ protected:
 	void propagateDebugName() override {}
 	void initProcAddrs();
 	void initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo);
+	NSArray<id<MTLDevice>>* getAvailableMTLDevicesArray();
 	VkDebugReportFlagsEXT getVkDebugReportFlagsFromASLLevel(int aslLvl);
 	VkDebugUtilsMessageSeverityFlagBitsEXT getVkDebugUtilsMessageSeverityFlagBitsFromASLLevel(int aslLvl);
 	MVKEntryPoint* getEntryPoint(const char* pName);
-	void initConfig();
     void logVersions();
 	VkResult verifyLayers(uint32_t count, const char* const* names);
 
-	MVKConfiguration _mvkConfig;
 	VkApplicationInfo _appInfo;
 	MVKSmallVector<MVKPhysicalDevice*, 2> _physicalDevices;
 	MVKSmallVector<MVKDebugReportCallback*> _debugReportCallbacks;
@@ -204,8 +196,6 @@ protected:
 	bool _hasDebugUtilsMessengers;
 	bool _useCreationCallbacks;
 	const char* _debugReportCallbackLayerPrefix;
-	int32_t _autoGPUCaptureScope;
-	std::string _autoGPUCaptureOutputFile;
 };
 
 

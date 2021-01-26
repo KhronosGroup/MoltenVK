@@ -79,11 +79,4 @@ MTLWinding mvkMTLWindingFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObjec
 MTLTessellationPartitionMode mvkMTLTessellationPartitionModeFromSpvExecutionModeInObj(uint32_t spvMode, MVKBaseObject* mvkObj);
 #define mvkMTLTessellationPartitionModeFromSpvExecutionMode(spvMode) mvkMTLTessellationPartitionModeFromSpvExecutionModeInObj(spvMode, this)
 
-
-#pragma mark -
-#pragma mark Image properties
-
-/** Returns whether 1D textures should be treated as Metal 2D textures with height 1. */
-bool mvkTreatTexture1DAs2D();
-
 #endif

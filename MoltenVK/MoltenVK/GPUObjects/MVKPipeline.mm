@@ -174,7 +174,7 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 	MVKVulkanAPIDeviceObject(device),
 	_pipelineCache(pipelineCache),
 	_pushConstantsMTLResourceIndexes(layout->getPushConstantBindings()),
-	_fullImageViewSwizzle(device->_pMVKConfig->fullImageViewSwizzle) {}
+	_fullImageViewSwizzle(mvkGetMVKConfiguration()->fullImageViewSwizzle) {}
 
 
 #pragma mark -
@@ -1477,11 +1477,11 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
 		}
 	}
 
-	shaderContext.options.mslOptions.texture_1D_as_2D = mvkTreatTexture1DAs2D();
+	shaderContext.options.mslOptions.texture_1D_as_2D = mvkGetMVKConfiguration()->texture1DAs2D;
     shaderContext.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo) || reflectData.pointMode;
 	shaderContext.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(mtlDSFormat);
 	shaderContext.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(mtlDSFormat);
-    shaderContext.options.shouldFlipVertexY = _device->_pMVKConfig->shaderConversionFlipVertexY;
+    shaderContext.options.shouldFlipVertexY = mvkGetMVKConfiguration()->shaderConversionFlipVertexY;
     shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderContext.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
     shaderContext.options.mslOptions.multiview = mvkRendPass->isMultiview();
@@ -1692,7 +1692,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
-	shaderContext.options.mslOptions.texture_1D_as_2D = mvkTreatTexture1DAs2D();
+	shaderContext.options.mslOptions.texture_1D_as_2D = mvkGetMVKConfiguration()->texture1DAs2D;
     shaderContext.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
 #if MVK_MACOS
     shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->simdPermute;

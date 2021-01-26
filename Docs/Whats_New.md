@@ -21,6 +21,9 @@ Released TBD
 - Advertise support for `shaderInt64` feature.
 - Support fast math on MSL compiler via `MVKConfiguration::fastMathEnabled` configuration 
   setting and `MVK_CONFIG_FAST_MATH_ENABLED` environment variable (both disabled by default).
+- `vkGetMoltenVKConfigurationMVK()` and `vkSetMoltenVKConfigurationMVK()` functions
+  can now be used with a `VkInstance` from another Vulkan layer, or with a `VK_NULL_HANDLE VkInstance`.
+- `MVKConfiguration` extended to cover all MoltenVK environment variables.
 - Support _GitHub Actions_ for CI builds on pull requests.
 - Remove support for _Travis-CI_.
 - `Makefile` and `fetchDependencies` support `xcpretty` (if available)

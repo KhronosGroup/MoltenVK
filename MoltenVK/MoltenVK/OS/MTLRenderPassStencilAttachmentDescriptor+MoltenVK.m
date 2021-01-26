@@ -18,25 +18,21 @@
 
 
 #include "MTLRenderPassStencilAttachmentDescriptor+MoltenVK.h"
-#include "MVKEnvironment.h"
+
 
 @implementation MTLRenderPassStencilAttachmentDescriptor (MoltenVK)
 
 -(MTLMultisampleStencilResolveFilter) stencilResolveFilterMVK {
-
 	if ( [self respondsToSelector: @selector(stencilResolveFilter)] ) {
 		return self.stencilResolveFilter;
 	}
 	return MTLMultisampleStencilResolveFilterSample0;
-
 }
 
 -(void) setStencilResolveFilterMVK: (MTLMultisampleStencilResolveFilter) filter {
-
 	if ( [self respondsToSelector: @selector(setStencilResolveFilter:)] ) {
 		self.stencilResolveFilter = filter;
 	}
-
 }
 
 @end

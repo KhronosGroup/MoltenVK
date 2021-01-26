@@ -18,25 +18,21 @@
 
 
 #include "MTLRenderPassDepthAttachmentDescriptor+MoltenVK.h"
-#include "MVKEnvironment.h"
+
 
 @implementation MTLRenderPassDepthAttachmentDescriptor (MoltenVK)
 
 -(MTLMultisampleDepthResolveFilter) depthResolveFilterMVK {
-
 	if ( [self respondsToSelector: @selector(depthResolveFilter)] ) {
 		return self.depthResolveFilter;
 	}
 	return MTLMultisampleDepthResolveFilterSample0;
-
 }
 
 -(void) setDepthResolveFilterMVK: (MTLMultisampleDepthResolveFilter) filter {
-
 	if ( [self respondsToSelector: @selector(setDepthResolveFilter:)] ) {
 		self.depthResolveFilter = filter;
 	}
-
 }
 
 @end

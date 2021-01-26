@@ -282,19 +282,17 @@ VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeveri
 
 #pragma mark Object Creation
 
-// Returns an autoreleased array containing the MTLDevices available on this system, sorted according to power,
-// with higher power GPU's at the front of the array. This ensures that a lazy app that simply
-// grabs the first GPU will get a high-power one by default. If the MVK_CONFIG_FORCE_LOW_POWER_GPU
-// env var or build setting is set, the returned array will only include low-power devices.
-// If Metal is not supported, returns an empty array.
-static NSArray<id<MTLDevice>>* availableMTLDevicesArray() {
+// Returns an autoreleased array containing the MTLDevices available on this system, sorted according
+// to power, with higher power GPU's at the front of the array. This ensures that a lazy app that simply
+// grabs the first GPU will get a high-power one by default. If MVKConfiguration::forceLowPowerGPU is set,
+// the returned array will only include low-power devices.
+NSArray<id<MTLDevice>>* MVKInstance::getAvailableMTLDevicesArray() {
 	NSMutableArray* mtlDevs = [NSMutableArray array];
 
 #if MVK_MACOS
 	NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
 	if (rawMTLDevs) {
-		bool forceLowPower;
-		MVK_SET_FROM_ENV_OR_BUILD_BOOL(forceLowPower, MVK_CONFIG_FORCE_LOW_POWER_GPU);
+		bool forceLowPower = mvkGetMVKConfiguration()->forceLowPowerGPU;
 
 		// Populate the array of appropriate MTLDevices
 		for (id<MTLDevice> md in rawMTLDevs) {
@@ -339,7 +337,6 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	if (_appInfo.apiVersion == 0) { _appInfo.apiVersion = VK_API_VERSION_1_0; }	// Default
 
 	initProcAddrs();		// Init function pointers
-	initConfig();
 
 	setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
 	MVKExtensionList* pWritableExtns = (MVKExtensionList*)&_enabledExtensions;
@@ -352,7 +349,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	// This effort creates a number of autoreleased instances of Metal
 	// and other Obj-C classes, so wrap it all in an autorelease pool.
 	@autoreleasepool {
-		NSArray<id<MTLDevice>>* mtlDevices = availableMTLDevicesArray();
+		NSArray<id<MTLDevice>>* mtlDevices = getAvailableMTLDevicesArray();
 		_physicalDevices.reserve(mtlDevices.count);
 		for (id<MTLDevice> mtlDev in mtlDevices) {
 			_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
@@ -689,30 +686,6 @@ void MVKInstance::logVersions() {
 			   mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str(),
 			   allExtns.getEnabledCount(),
 			   allExtns.enabledNamesString("\n\t\t", true).c_str());
-}
-
-void MVKInstance::initConfig() {
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.debugMode,                              MVK_DEBUG);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.shaderConversionFlipVertexY,            MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.synchronousQueueSubmits,                MVK_CONFIG_SYNCHRONOUS_QUEUE_SUBMITS);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.prefillMetalCommandBuffers,             MVK_CONFIG_PREFILL_METAL_COMMAND_BUFFERS);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkConfig.maxActiveMetalCommandBuffersPerQueue,   MVK_CONFIG_MAX_ACTIVE_METAL_COMMAND_BUFFERS_PER_QUEUE);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.supportLargeQueryPools,                 MVK_CONFIG_SUPPORT_LARGE_QUERY_POOLS);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.presentWithCommandBuffer,               MVK_CONFIG_PRESENT_WITH_COMMAND_BUFFER);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.swapchainMagFilterUseNearest,           MVK_CONFIG_SWAPCHAIN_MAG_FILTER_USE_NEAREST);
-	MVK_SET_FROM_ENV_OR_BUILD_INT64(_mvkConfig.metalCompileTimeout,                    MVK_CONFIG_METAL_COMPILE_TIMEOUT);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.performanceTracking,                    MVK_CONFIG_PERFORMANCE_TRACKING);
-	MVK_SET_FROM_ENV_OR_BUILD_INT32(_mvkConfig.performanceLoggingFrameCount,           MVK_CONFIG_PERFORMANCE_LOGGING_FRAME_COUNT);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.displayWatermark,                       MVK_CONFIG_DISPLAY_WATERMARK);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.specializedQueueFamilies,               MVK_CONFIG_SPECIALIZED_QUEUE_FAMILIES);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.switchSystemGPU,                        MVK_CONFIG_SWITCH_SYSTEM_GPU);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.fullImageViewSwizzle,                   MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.defaultGPUCaptureScopeQueueFamilyIndex, MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_FAMILY_INDEX);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.defaultGPUCaptureScopeQueueIndex,       MVK_CONFIG_DEFAULT_GPU_CAPTURE_SCOPE_QUEUE_INDEX);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL( _mvkConfig.fastMathEnabled,                        MVK_CONFIG_FAST_MATH_ENABLED);
-
-	MVK_SET_FROM_ENV_OR_BUILD_INT32(_autoGPUCaptureScope, MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE);
-	MVK_SET_FROM_ENV_OR_BUILD_STRING(_autoGPUCaptureOutputFile, MVK_CONFIG_AUTO_GPU_CAPTURE_OUTPUT_FILE);
 }
 
 VkResult MVKInstance::verifyLayers(uint32_t count, const char* const* names) {

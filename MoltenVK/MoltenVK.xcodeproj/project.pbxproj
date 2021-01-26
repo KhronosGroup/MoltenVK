@@ -312,6 +312,9 @@
 		A99C91032295FAC600A061DA /* MVKVulkanAPIObject.mm in Sources */ = {isa = PBXBuildFile; fileRef = A99C91002295FAC500A061DA /* MVKVulkanAPIObject.mm */; };
 		A99C91042295FAC600A061DA /* MVKVulkanAPIObject.h in Headers */ = {isa = PBXBuildFile; fileRef = A99C91012295FAC500A061DA /* MVKVulkanAPIObject.h */; };
 		A99C91052295FAC600A061DA /* MVKVulkanAPIObject.h in Headers */ = {isa = PBXBuildFile; fileRef = A99C91012295FAC500A061DA /* MVKVulkanAPIObject.h */; };
+		A9A5E9C725C0822700E9085E /* MVKEnvironment.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9A5E9C525C0822700E9085E /* MVKEnvironment.cpp */; };
+		A9A5E9C825C0822700E9085E /* MVKEnvironment.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9A5E9C525C0822700E9085E /* MVKEnvironment.cpp */; };
+		A9A5E9C925C0822700E9085E /* MVKEnvironment.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9A5E9C525C0822700E9085E /* MVKEnvironment.cpp */; };
 		A9B51BD7225E986A00AC74D2 /* MVKOSExtensions.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9B51BD2225E986A00AC74D2 /* MVKOSExtensions.mm */; };
 		A9B51BD8225E986A00AC74D2 /* MVKOSExtensions.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9B51BD2225E986A00AC74D2 /* MVKOSExtensions.mm */; };
 		A9B51BD9225E986A00AC74D2 /* MVKOSExtensions.h in Headers */ = {isa = PBXBuildFile; fileRef = A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */; };
@@ -509,6 +512,7 @@
 		A99C90ED229455B300A061DA /* MVKCmdDebug.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKCmdDebug.mm; sourceTree = "<group>"; };
 		A99C91002295FAC500A061DA /* MVKVulkanAPIObject.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKVulkanAPIObject.mm; sourceTree = "<group>"; };
 		A99C91012295FAC500A061DA /* MVKVulkanAPIObject.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKVulkanAPIObject.h; sourceTree = "<group>"; };
+		A9A5E9C525C0822700E9085E /* MVKEnvironment.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MVKEnvironment.cpp; sourceTree = "<group>"; };
 		A9AD67C72054DD6C00ED3C08 /* vulkan */ = {isa = PBXFileReference; lastKnownFileType = folder; path = vulkan; sourceTree = "<group>"; };
 		A9B51BD2225E986A00AC74D2 /* MVKOSExtensions.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKOSExtensions.mm; sourceTree = "<group>"; };
 		A9B51BD6225E986A00AC74D2 /* MVKOSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKOSExtensions.h; sourceTree = "<group>"; };
@@ -679,6 +683,7 @@
 				45557A4D21C9EFF3008868BD /* MVKCodec.cpp */,
 				45557A5121C9EFF3008868BD /* MVKCodec.h */,
 				45557A5721CD83C3008868BD /* MVKDXTnCodec.def */,
+				A9A5E9C525C0822700E9085E /* MVKEnvironment.cpp */,
 				A98149431FB6A3F7005F00B4 /* MVKEnvironment.h */,
 				A98149451FB6A3F7005F00B4 /* MVKFoundation.cpp */,
 				A98149441FB6A3F7005F00B4 /* MVKFoundation.h */,
@@ -1312,6 +1317,7 @@
 				2FEA0A9A24902F9F00EEF3AD /* MVKExtensions.mm in Sources */,
 				2FEA0A9B24902F9F00EEF3AD /* MVKFoundation.cpp in Sources */,
 				2FEA0A9C24902F9F00EEF3AD /* MVKPixelFormats.mm in Sources */,
+				A9A5E9C825C0822700E9085E /* MVKEnvironment.cpp in Sources */,
 				2FEA0A9D24902F9F00EEF3AD /* MVKDevice.mm in Sources */,
 				453638362508A4C7000EFFD3 /* MTLRenderPassDepthAttachmentDescriptor+MoltenVK.m in Sources */,
 				2FEA0A9E24902F9F00EEF3AD /* MTLRenderPassDescriptor+MoltenVK.m in Sources */,
@@ -1367,6 +1373,7 @@
 				A94FB7D21C7DFB4800632CA3 /* MVKCommandBuffer.mm in Sources */,
 				A94FB7C61C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */,
 				A94FB7DE1C7DFB4800632CA3 /* MVKBuffer.mm in Sources */,
+				A9A5E9C725C0822700E9085E /* MVKEnvironment.cpp in Sources */,
 				A94FB82A1C7DFB4800632CA3 /* mvk_datatypes.mm in Sources */,
 				A909F661213B190700FCD6BE /* MVKExtensions.mm in Sources */,
 				A98149551FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */,
@@ -1426,6 +1433,7 @@
 				A94FB7D31C7DFB4800632CA3 /* MVKCommandBuffer.mm in Sources */,
 				A94FB7C71C7DFB4800632CA3 /* MVKCmdRenderPass.mm in Sources */,
 				A94FB7DF1C7DFB4800632CA3 /* MVKBuffer.mm in Sources */,
+				A9A5E9C925C0822700E9085E /* MVKEnvironment.cpp in Sources */,
 				A94FB82B1C7DFB4800632CA3 /* mvk_datatypes.mm in Sources */,
 				A909F662213B190700FCD6BE /* MVKExtensions.mm in Sources */,
 				A98149561FB6A3F7005F00B4 /* MVKFoundation.cpp in Sources */,

@@ -18,7 +18,8 @@
 
 
 #include "MTLSamplerDescriptor+MoltenVK.h"
-#include "MVKEnvironment.h"
+#include "MVKCommonEnvironment.h"
+
 
 @implementation MTLSamplerDescriptor (MoltenVK)
 
