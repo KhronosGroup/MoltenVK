@@ -20,7 +20,6 @@
 #include "MVKFoundation.h"
 #include "MVKOSExtensions.h"
 #include "MVKEnvironment.h"
-#include "vk_mvk_moltenvk.h"
 #include <vulkan/vulkan_ios.h>
 #include <vulkan/vulkan_macos.h>
 

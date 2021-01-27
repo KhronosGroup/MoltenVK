@@ -27,7 +27,6 @@
 #include "MVKPixelFormats.h"
 #include "MVKOSExtensions.h"
 #include "mvk_datatypes.hpp"
-#include "vk_mvk_moltenvk.h"
 #include <string>
 #include <mutex>
 
@@ -615,7 +614,7 @@ public:
 	 * number of nanoseconds between the two calls. The convenience function mvkGetElapsedMilliseconds()
 	 * can be used to perform this calculation.
      */
-    inline uint64_t getPerformanceTimestamp() { return _pMVKConfig->performanceTracking ? mvkGetTimestamp() : 0; }
+    inline uint64_t getPerformanceTimestamp() { return _isPerformanceTracking ? mvkGetTimestamp() : 0; }
 
     /**
      * If performance is being tracked, adds the performance for an activity with a duration
@@ -625,7 +624,7 @@ public:
      */
     inline void addActivityPerformance(MVKPerformanceTracker& activityTracker,
 									   uint64_t startTime, uint64_t endTime = 0) {
-		if (_pMVKConfig->performanceTracking) {
+		if (_isPerformanceTracking) {
 			updateActivityPerformance(activityTracker, startTime, endTime);
 
 			// Log call not locked. Very minor chance that the tracker data will be updated during log call,
@@ -689,9 +688,6 @@ public:
 
 
 #pragma mark Properties directly accessible
-
-	/** Pointer to the MoltenVK configuration settings. */
-	const MVKConfiguration* _pMVKConfig;
 
 	/** Device features available and enabled. */
 	const VkPhysicalDeviceFeatures _enabledFeatures;
@@ -795,8 +791,8 @@ protected:
     std::mutex _vizLock;
 	bool _useMTLFenceForSemaphores;
 	bool _useMTLEventForSemaphores;
-	bool _useCommandPooling;
 	bool _logActivityPerformanceInline;
+	bool _isPerformanceTracking;
 };
 
 

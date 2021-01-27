@@ -19,7 +19,6 @@
 #include "MVKShaderModule.h"
 #include "MVKPipeline.h"
 #include "MVKFoundation.h"
-#include "vk_mvk_moltenvk.h"
 #include <string>
 
 using namespace std;
@@ -274,7 +273,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 }
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pContext) {
-	bool shouldLogCode = _device->_pMVKConfig->debugMode;
+	bool shouldLogCode = mvkGetMVKConfiguration()->debugMode;
 	bool shouldLogEstimatedGLSL = shouldLogCode;
 
 	// If the SPIR-V converter does not have any code, but the GLSL converter does,

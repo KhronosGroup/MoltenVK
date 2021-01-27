@@ -38,7 +38,7 @@ id<MTLCommandQueue> MVKQueueFamily::getMTLCommandQueue(uint32_t queueIndex) {
 	id<MTLCommandQueue> mtlQ = _mtlQueues[queueIndex];
 	if ( !mtlQ ) {
 		@autoreleasepool {		// Catch any autoreleased objects created during MTLCommandQueue creation
-			uint32_t maxCmdBuffs = _physicalDevice->getInstance()->getMoltenVKConfiguration()->maxActiveMetalCommandBuffersPerQueue;
+			uint32_t maxCmdBuffs = mvkGetMVKConfiguration()->maxActiveMetalCommandBuffersPerQueue;
 			mtlQ = [_physicalDevice->getMTLDevice() newCommandQueueWithMaxCommandBufferCount: maxCmdBuffs];		// retained
 			_mtlQueues[queueIndex] = mtlQ;
 		}
@@ -172,7 +172,7 @@ void MVKQueue::initName() {
 
 void MVKQueue::initExecQueue() {
 	_execQueue = nil;
-	if ( !_device->_pMVKConfig->synchronousQueueSubmits ) {
+	if ( !mvkGetMVKConfiguration()->synchronousQueueSubmits ) {
 		// Determine the dispatch queue priority
 		dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
 		int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
@@ -192,12 +192,10 @@ void MVKQueue::initMTLCommandQueue() {
 
 // Initializes Xcode GPU capture scopes
 void MVKQueue::initGPUCaptureScopes() {
-	const MVKConfiguration* pMVKConfig = getInstance()->getMoltenVKConfiguration();
-
 	_submissionCaptureScope = new MVKGPUCaptureScope(this);
 
-	if (_queueFamily->getIndex() == pMVKConfig->defaultGPUCaptureScopeQueueFamilyIndex &&
-		_index == pMVKConfig->defaultGPUCaptureScopeQueueIndex) {
+	if (_queueFamily->getIndex() == mvkGetMVKConfiguration()->defaultGPUCaptureScopeQueueFamilyIndex &&
+		_index == mvkGetMVKConfiguration()->defaultGPUCaptureScopeQueueIndex) {
 		_submissionCaptureScope->makeDefault();
 	}
 	_submissionCaptureScope->beginScope();	// Allow Xcode to capture the first frame if desired.
@@ -224,7 +222,7 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   uint32_t waitSemaphoreCount,
 									   const VkSemaphore* pWaitSemaphores) {
 	_queue = queue;
-	_trackPerformance = _queue->_device->_pMVKConfig->performanceTracking;
+	_trackPerformance = mvkGetMVKConfiguration()->performanceTracking;
 
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {

@@ -34,7 +34,6 @@
 #include "MVKCodec.h"
 #include "MVKEnvironment.h"
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
-#include "vk_mvk_moltenvk.h"
 
 #import "CAMetalLayer+MoltenVK.h"
 
@@ -241,7 +240,7 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				portabilityFeatures->events = true;
 				portabilityFeatures->imageViewFormatReinterpretation = true;
 				portabilityFeatures->imageViewFormatSwizzle = (_metalFeatures.nativeTextureSwizzle ||
-															   _mvkInstance->getMoltenVKConfiguration()->fullImageViewSwizzle);
+															   mvkGetMVKConfiguration()->fullImageViewSwizzle);
 				portabilityFeatures->imageView2DOn3DImage = false;
 				portabilityFeatures->multisampleArrayImage = _metalFeatures.multisampleArrayTextures;
 				portabilityFeatures->mutableComparisonSamplers = _metalFeatures.depthSampleCompare;
@@ -561,7 +560,7 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 		case VK_IMAGE_TYPE_1D:
 			maxExt.height = 1;
 			maxExt.depth = 1;
-			if (!mvkTreatTexture1DAs2D()) {
+			if (!mvkGetMVKConfiguration()->texture1DAs2D) {
 				maxExt.width = pLimits->maxImageDimension1D;
 				maxLevels = 1;
 				sampleCounts = VK_SAMPLE_COUNT_1_BIT;
@@ -1021,7 +1020,7 @@ VkResult MVKPhysicalDevice::getPresentRectangles(MVKSurface* surface,
 MVKArrayRef<MVKQueueFamily*> MVKPhysicalDevice::getQueueFamilies() {
 	if (_queueFamilies.empty()) {
 		VkQueueFamilyProperties qfProps;
-		bool specialize = _mvkInstance->getMoltenVKConfiguration()->specializedQueueFamilies;
+		bool specialize = mvkGetMVKConfiguration()->specializedQueueFamilies;
 		uint32_t qfIdx = 0;
 
 		qfProps.queueCount = kMVKQueueCountPerQueueFamily;
@@ -1160,12 +1159,6 @@ void MVKPhysicalDevice::initProperties() {
 // Initializes the Metal-specific physical device features of this instance.
 void MVKPhysicalDevice::initMetalFeatures() {
 
-#	ifndef MVK_CONFIG_USE_MTLHEAP
-#   	define MVK_CONFIG_USE_MTLHEAP    0
-#	endif
-	bool useMTLHeaps;
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL(useMTLHeaps, MVK_CONFIG_USE_MTLHEAP);
-
 	// Start with all Metal features cleared
 	mvkClear(&_metalFeatures);
 
@@ -1236,7 +1229,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
-		_metalFeatures.placementHeaps = useMTLHeaps;
+		_metalFeatures.placementHeaps = mvkGetMVKConfiguration()->useMTLHeap;
 		_metalFeatures.nativeTextureSwizzle = true;
 		if (supportsMTLGPUFamily(Apple3)) {
 			_metalFeatures.native3DCompressedTextures = true;
@@ -1327,7 +1320,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	if ( mvkOSVersionIsAtLeast(13.0) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
-		_metalFeatures.placementHeaps = useMTLHeaps;
+		_metalFeatures.placementHeaps = mvkGetMVKConfiguration()->useMTLHeap;
 		_metalFeatures.nativeTextureSwizzle = true;
 		if (supportsMTLGPUFamily(Apple3)) {
 			_metalFeatures.native3DCompressedTextures = true;
@@ -1425,7 +1418,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
         }
 		if (supportsMTLGPUFamily(Mac2)) {
 			_metalFeatures.nativeTextureSwizzle = true;
-			_metalFeatures.placementHeaps = useMTLHeaps;
+			_metalFeatures.placementHeaps = mvkGetMVKConfiguration()->useMTLHeap;
 		}
 	}
 
@@ -3091,7 +3084,7 @@ MVKSwapchain* MVKDevice::createSwapchain(const VkSwapchainCreateInfoKHR* pCreate
 	// MTLCreateSystemDefaultDevice function, and if that GPU is the same as the
 	// selected GPU, update the MTLDevice instance used by the MVKPhysicalDevice.
 	id<MTLDevice> mtlDevice = _physicalDevice->getMTLDevice();
-	if (_pMVKConfig->switchSystemGPU && !(mtlDevice.isLowPower || mtlDevice.isHeadless) ) {
+	if (mvkGetMVKConfiguration()->switchSystemGPU && !(mtlDevice.isLowPower || mtlDevice.isHeadless) ) {
 		id<MTLDevice> sysMTLDevice = MTLCreateSystemDefaultDevice();
 		if (mvkGetRegistryID(sysMTLDevice) == mvkGetRegistryID(mtlDevice)) {
 			_physicalDevice->replaceMTLDevice(sysMTLDevice);
@@ -3373,7 +3366,7 @@ void MVKDevice::destroyRenderPass(MVKRenderPass* mvkRP,
 
 MVKCommandPool* MVKDevice::createCommandPool(const VkCommandPoolCreateInfo* pCreateInfo,
 											const VkAllocationCallbacks* pAllocator) {
-	return new MVKCommandPool(this, pCreateInfo, _useCommandPooling);
+	return new MVKCommandPool(this, pCreateInfo, mvkGetMVKConfiguration()->useCommandPooling);
 }
 
 void MVKDevice::destroyCommandPool(MVKCommandPool* mvkCmdPool,
@@ -3648,7 +3641,7 @@ id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {
 
 // Can't use prefilled Metal command buffers if any of the resource descriptors can be updated after binding.
 bool MVKDevice::shouldPrefillMTLCommandBuffers() {
-	return (_pMVKConfig->prefillMetalCommandBuffers &&
+	return (mvkGetMVKConfiguration()->prefillMetalCommandBuffers &&
 			!(_enabledDescriptorIndexingFeatures.descriptorBindingUniformBufferUpdateAfterBind ||
 			  _enabledDescriptorIndexingFeatures.descriptorBindingSampledImageUpdateAfterBind ||
 			  _enabledDescriptorIndexingFeatures.descriptorBindingStorageImageUpdateAfterBind ||
@@ -3706,9 +3699,10 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 // suppress deprecation warnings for startCaptureWithDevice: on MacCatalyst.
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wdeprecated-declarations"
-	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
+	if (mvkGetMVKConfiguration()->autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
 		MTLCaptureManager *captureMgr = [MTLCaptureManager sharedCaptureManager];
-		if (!getInstance()->_autoGPUCaptureOutputFile.empty()) {
+		char* filePath = mvkGetMVKConfiguration()->autoGPUCaptureOutputFilepath;
+		if (strlen(filePath)) {
 			if ( ![captureMgr respondsToSelector: @selector(supportsDestination:)] ||
 				 ![captureMgr supportsDestination: MTLCaptureDestinationGPUTraceDocument] ) {
 				reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Capturing GPU traces to a file requires macOS 10.15 or iOS 13.0. Falling back to Xcode GPU capture.");
@@ -3719,11 +3713,11 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 				MTLCaptureDescriptor *captureDesc = [MTLCaptureDescriptor new];
 				captureDesc.captureObject = getMTLDevice();
 				captureDesc.destination = MTLCaptureDestinationGPUTraceDocument;
-				path = [NSString stringWithUTF8String: getInstance()->_autoGPUCaptureOutputFile.c_str()];
+				path = [NSString stringWithUTF8String: filePath];
 				expandedPath = path.stringByExpandingTildeInPath;
 				captureDesc.outputURL = [NSURL fileURLWithPath: expandedPath];
 				if (![captureMgr startCaptureWithDescriptor: captureDesc error: &err]) {
-					reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to start GPU capture session to %s (Error code %li): %s", getInstance()->_autoGPUCaptureOutputFile.c_str(), (long)err.code, err.localizedDescription.UTF8String);
+					reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to start GPU capture session to %s (Error code %li): %s", filePath, (long)err.code, err.localizedDescription.UTF8String);
 					[err release];
 				}
 				[captureDesc.outputURL release];
@@ -3744,10 +3738,9 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 }
 
 void MVKDevice::initPerformanceTracking() {
-#	ifndef MVK_CONFIG_PERFORMANCE_LOGGING_INLINE
-#   	define MVK_CONFIG_PERFORMANCE_LOGGING_INLINE    0
-#	endif
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL(_logActivityPerformanceInline, MVK_CONFIG_PERFORMANCE_LOGGING_INLINE);
+
+	_isPerformanceTracking = mvkGetMVKConfiguration()->performanceTracking;
+	_logActivityPerformanceInline = mvkGetMVKConfiguration()->logActivityPerformanceInline;
 
 	MVKPerformanceTracker initPerf;
     initPerf.count = 0;
@@ -3793,32 +3786,15 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	else
 		_physicalDevice = physicalDevice;
 
-	_pMVKConfig = _physicalDevice->_mvkInstance->getMoltenVKConfiguration();
 	_pMetalFeatures = _physicalDevice->getMetalFeatures();
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 
-	// Indicates whether semaphores should use a MTLFence if available.
-	// Set by the MVK_ALLOW_METAL_FENCES environment variable if MTLFences are available.
-	// This should be a temporary fix after some repair to semaphore handling.
-	_useMTLFenceForSemaphores = false;
-	if (_pMetalFeatures->fences) {
-		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLFenceForSemaphores, MVK_ALLOW_METAL_FENCES);
-	}
+	// Indicate whether semaphores should use a MTLFence or MTLEvent if they are available.
+	_useMTLFenceForSemaphores = _pMetalFeatures->fences && mvkGetMVKConfiguration()->semaphoreUseMTLFence;
+	_useMTLEventForSemaphores = _pMetalFeatures->events && mvkGetMVKConfiguration()->semaphoreUseMTLEvent;
 
-	// Indicates whether semaphores should use a MTLEvent if available.
-	// Set by the MVK_ALLOW_METAL_EVENTS environment variable if MTLEvents are available.
-	// This should be a temporary fix after some repair to semaphore handling.
-	_useMTLEventForSemaphores = false;
-	if (_pMetalFeatures->events) {
-		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useMTLEventForSemaphores, MVK_ALLOW_METAL_EVENTS);
-	}
 	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
-
-#	ifndef MVK_CONFIG_USE_COMMAND_POOLING
-#   	define MVK_CONFIG_USE_COMMAND_POOLING    1
-#	endif
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL(_useCommandPooling, MVK_CONFIG_USE_COMMAND_POOLING);
 }
 
 void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
@@ -4100,7 +4076,7 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 void MVKDevice::initMTLCompileOptions() {
 	_mtlCompileOptions = [MTLCompileOptions new];	// retained
 	_mtlCompileOptions.languageVersion = _pMetalFeatures->mslVersionEnum;
-	_mtlCompileOptions.fastMathEnabled = _pMVKConfig->fastMathEnabled;
+	_mtlCompileOptions.fastMathEnabled = mvkGetMVKConfiguration()->fastMathEnabled;
 }
 
 MVKDevice::~MVKDevice() {
@@ -4113,7 +4089,7 @@ MVKDevice::~MVKDevice() {
     [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
 
-	if (getInstance()->_autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
+	if (mvkGetMVKConfiguration()->autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
 		[[MTLCaptureManager sharedCaptureManager] stopCapture];
 	}
 

@@ -312,24 +312,6 @@ MVKDescriptorSet::~MVKDescriptorSet() {
 #pragma mark -
 #pragma mark MVKDescriptorTypePreallocation
 
-#ifndef MVK_CONFIG_PREALLOCATE_DESCRIPTORS
-#   define MVK_CONFIG_PREALLOCATE_DESCRIPTORS    0
-#endif
-
-static bool _mvkPreallocateDescriptors = MVK_CONFIG_PREALLOCATE_DESCRIPTORS;
-static bool _mvkPreallocateDescriptorsInitialized = false;
-
-// Returns whether descriptors should be preallocated in the descriptor pools
-// We do this once lazily instead of in a library constructor function to
-// ensure the NSProcessInfo environment is available when called upon.
-static inline bool getMVKPreallocateDescriptors() {
-	if ( !_mvkPreallocateDescriptorsInitialized ) {
-		_mvkPreallocateDescriptorsInitialized = true;
-		MVK_SET_FROM_ENV_OR_BUILD_BOOL(_mvkPreallocateDescriptors, MVK_CONFIG_PREALLOCATE_DESCRIPTORS);
-	}
-	return _mvkPreallocateDescriptors;
-}
-
 template<class DescriptorClass>
 VkResult MVKDescriptorTypePreallocation<DescriptorClass>::allocateDescriptor(MVKDescriptor** pMVKDesc) {
 
@@ -698,7 +680,7 @@ void MVKDescriptorPool::freeDescriptor(MVKDescriptor* mvkDesc) {
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device,
 									 const VkDescriptorPoolCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_maxSets = pCreateInfo->maxSets;
-	_preallocatedDescriptors = getMVKPreallocateDescriptors() ? new MVKPreallocatedDescriptors(pCreateInfo) : nullptr;
+	_preallocatedDescriptors = mvkGetMVKConfiguration()->preallocateDescriptors ? new MVKPreallocatedDescriptors(pCreateInfo) : nullptr;
 }
 
 // Destroy all allocated descriptor sets and preallocated descriptors
