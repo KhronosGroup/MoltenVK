@@ -254,7 +254,7 @@ public:
 	 * If the Metal library compiler does not return within MVKConfiguration::metalCompileTimeout
 	 * nanoseconds, an error will be generated and logged, and nil will be returned.
 	 */
-	id<MTLLibrary> newMTLLibrary(NSString* mslSourceCode);
+	id<MTLLibrary> newMTLLibrary(NSString* mslSourceCode, bool useFastMath);
 
 
 #pragma mark Construction

@@ -173,9 +173,9 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
 #   define MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE    0
 #endif
 
-/** Set the fastMathEnabled Metal Compiler option. Disabled by default. */
+/** Set the fastMathEnabled Metal Compiler option. Enabled by default. */
 #ifndef MVK_CONFIG_FAST_MATH_ENABLED
-#   define MVK_CONFIG_FAST_MATH_ENABLED 0
+#   define MVK_CONFIG_FAST_MATH_ENABLED 1
 #endif
 
 /**

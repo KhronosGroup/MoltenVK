@@ -2074,7 +2074,8 @@ namespace mvk {
 		archive(ep.mtlFunctionName,
 				ep.workgroupSize.width,
 				ep.workgroupSize.height,
-				ep.workgroupSize.depth);
+				ep.workgroupSize.depth,
+				ep.supportsFastMath);
 	}
 
 	template<class Archive>

@@ -192,6 +192,7 @@ namespace mvk {
 			SPIRVWorkgroupSizeDimension height;
 			SPIRVWorkgroupSizeDimension depth;
 		} workgroupSize;
+		bool supportsFastMath = true;
 	} SPIRVEntryPoint;
 
 	/**

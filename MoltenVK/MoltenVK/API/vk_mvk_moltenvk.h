@@ -470,7 +470,7 @@ typedef struct {
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_FAST_MATH_ENABLED
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, the value of this parameter defaults to false.
+	 * If neither is set, the value of this parameter defaults to true.
 	 */
 	VkBool32 fastMathEnabled;
 
