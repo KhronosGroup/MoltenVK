@@ -3639,10 +3639,13 @@ id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {
 	return _defaultMTLSamplerState;
 }
 
-MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool useFastMath) {
+MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool useFastMath, bool preserveInvariance) {
 	MTLCompileOptions* mtlCompOpt = [MTLCompileOptions new];
 	mtlCompOpt.languageVersion = _pMetalFeatures->mslVersionEnum;
 	mtlCompOpt.fastMathEnabled = useFastMath && mvkGetMVKConfiguration()->fastMathEnabled;
+	if ([mtlCompOpt respondsToSelector: @selector(setPreserveInvariance:)]) {
+		[mtlCompOpt setPreserveInvariance: preserveInvariance];
+	}
 	return [mtlCompOpt autorelease];
 }
 

@@ -204,6 +204,7 @@ namespace mvk {
 	typedef struct SPIRVToMSLConversionResults {
 		SPIRVEntryPoint entryPoint;
 		bool isRasterizationDisabled = false;
+		bool isPositionInvariant = false;
 		bool needsSwizzleBuffer = false;
 		bool needsOutputBuffer = false;
 		bool needsPatchOutputBuffer = false;

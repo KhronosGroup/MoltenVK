@@ -136,7 +136,7 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
 	MVKShaderLibraryCompiler* slc = new MVKShaderLibraryCompiler(_owner);
 
 	NSString* nsSrc = [[NSString alloc] initWithUTF8String: mslSourceCode.c_str()];					// temp retained
-	_mtlLibrary = slc->newMTLLibrary(nsSrc, shaderConversionResults.entryPoint.supportsFastMath);	// retained
+	_mtlLibrary = slc->newMTLLibrary(nsSrc, shaderConversionResults);	// retained
 	[nsSrc release];	// release temp string
 
 	slc->destroy();
@@ -415,12 +415,14 @@ MVKShaderModule::~MVKShaderModule() {
 #pragma mark -
 #pragma mark MVKShaderLibraryCompiler
 
-id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode, bool useFastMath) {
+id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
+													   const SPIRVToMSLConversionResults& shaderConversionResults) {
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
 		[_owner->getMTLDevice() newLibraryWithSource: mslSourceCode
-											 options: _owner->getDevice()->getMTLCompileOptions(useFastMath)
+											 options: _owner->getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.supportsFastMath,
+																								shaderConversionResults.isPositionInvariant)
 								   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
 									   bool isLate = compileComplete(mtlLib, error);
 									   if (isLate) { destroy(); }

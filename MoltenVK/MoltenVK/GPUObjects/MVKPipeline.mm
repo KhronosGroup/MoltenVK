@@ -2114,6 +2114,7 @@ namespace mvk {
 	void serialize(Archive & archive, SPIRVToMSLConversionResults& scr) {
 		archive(scr.entryPoint,
 				scr.isRasterizationDisabled,
+				scr.isPositionInvariant,
 				scr.needsSwizzleBuffer,
 				scr.needsOutputBuffer,
 				scr.needsPatchOutputBuffer,

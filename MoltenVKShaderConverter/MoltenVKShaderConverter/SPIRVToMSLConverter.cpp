@@ -298,6 +298,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	// and mark which vertex attributes and resource bindings are used by the shader
 	populateEntryPoint(pMSLCompiler, context.options);
 	_shaderConversionResults.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
+	_shaderConversionResults.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
 	_shaderConversionResults.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();
 	_shaderConversionResults.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
 	_shaderConversionResults.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
@@ -305,8 +306,6 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	_shaderConversionResults.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
 	_shaderConversionResults.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 	_shaderConversionResults.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
-
-
 
 	for (auto& ctxSI : context.shaderInputs) {
 		ctxSI.isUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderInput.location);
