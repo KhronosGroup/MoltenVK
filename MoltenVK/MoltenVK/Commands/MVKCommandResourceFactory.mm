@@ -554,6 +554,10 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyQueryPoolResult
 	return newMTLComputePipelineState("cmdCopyQueryPoolResultsToBuffer", owner);
 }
 
+id<MTLComputePipelineState> MVKCommandResourceFactory::newAccumulateOcclusionQueryResultsMTLComputePipelineState(MVKVulkanAPIDeviceObject* owner) {
+	return newMTLComputePipelineState("accumulateOcclusionQueryResults", owner);
+}
+
 
 #pragma mark Support methods
 
