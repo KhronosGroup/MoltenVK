@@ -87,7 +87,8 @@ typedef enum : uint8_t {
     kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
     kMVKCommandUseTessellationVertexTessCtl,/**< vkCmdDraw* - vertex and tessellation control stages. */
 	kMVKCommandUseMultiviewInstanceCountAdjust,/**< vkCmdDrawIndirect* - adjust instance count for multiview. */
-    kMVKCommandUseCopyQueryPoolResults      /**< vkCmdCopyQueryPoolResults. */
+    kMVKCommandUseCopyQueryPoolResults,     /**< vkCmdCopyQueryPoolResults. */
+    kMVKCommandUseAccumOcclusionQuery       /**< Any command terminating a Metal render pass with active visibility buffer. */
 } MVKCommandUse;
 
 /** Represents a given stage of a graphics pipeline. */

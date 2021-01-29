@@ -129,6 +129,9 @@ public:
 	/** Returns a MTLComputePipelineState for copying query results to a buffer. */
 	id<MTLComputePipelineState> getCmdCopyQueryPoolResultsMTLComputePipelineState();
 
+	/** Returns a MTLComputePipelineState for accumulating occlusion query results over multiple render passes. */
+	id<MTLComputePipelineState> getAccumulateOcclusionQueryResultsMTLComputePipelineState();
+
 	/** Deletes all the internal resources. */
 	void clear();
 
@@ -164,5 +167,6 @@ protected:
 	id<MTLComputePipelineState> _mtlDrawIndirectTessConvertBuffersComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlDrawIndexedCopyIndexBufferComputePipelineState[2] = {nil, nil};
 	id<MTLComputePipelineState> _mtlCopyQueryPoolResultsComputePipelineState = nil;
+	id<MTLComputePipelineState> _mtlAccumOcclusionQueryResultsComputePipelineState = nil;
 };
 

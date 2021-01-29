@@ -376,5 +376,13 @@ kernel void cmdCopyQueryPoolResultsToBuffer(const device VisibilityBuffer* src [
     }                                                                                                           \n\
 }                                                                                                               \n\
                                                                                                                 \n\
+kernel void accumulateOcclusionQueryResults(device VisibilityBuffer& dest [[buffer(0)]],                        \n\
+                                            const device VisibilityBuffer& src [[buffer(1)]]) {                 \n\
+    uint32_t oldDestCount = dest.count;                                                                         \n\
+    dest.count += src.count;                                                                                    \n\
+    dest.countHigh += src.countHigh;                                                                            \n\
+    if (dest.count < max(oldDestCount, src.count)) { dest.countHigh++; }                                        \n\
+}                                                                                                               \n\
+                                                                                                                \n\
 ";
 

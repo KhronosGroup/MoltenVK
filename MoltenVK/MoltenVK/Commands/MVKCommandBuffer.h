@@ -92,10 +92,9 @@ public:
      * Metal requires that a visibility buffer is established when a render pass is created, 
      * but Vulkan permits it to be set during a render pass. When the first occlusion query
      * command is added, it sets this value so that it can be applied when the first renderpass
-     * is begun. The execution of subsequent occlusion query commands may change the visibility
-     * buffer during command execution, and begin a new Metal renderpass.
+     * is begun.
      */
-    id<MTLBuffer> _initialVisibilityResultMTLBuffer;
+    bool _needsVisibilityResultMTLBuffer;
 
 	/** Called when a MVKCmdExecuteCommands is added to this command buffer. */
 	void recordExecuteCommands(const MVKArrayRef<MVKCommandBuffer*> secondaryCommandBuffers);
@@ -387,6 +386,9 @@ public:
     /** Marks a timestamp for the specified query. */
     void markTimestamp(MVKQueryPool* pQueryPool, uint32_t query);
 
+    /** Reset a range of queries. */
+    void resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount);
+
 #pragma mark Dynamic encoding state accessed directly
 
     /** A reference to the Metal features supported by the device. */
@@ -412,6 +414,9 @@ public:
 
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
+
+	/** The buffer used to hold occlusion query results in this render pass. */
+	id<MTLBuffer> _visibilityResultMTLBuffer;
 
     /** Tracks the current graphics pipeline bound to the encoder. */
     MVKPipelineCommandEncoderState _graphicsPipelineState;
@@ -461,7 +466,7 @@ public:
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer);
 
 protected:
-    void addActivatedQuery(MVKQueryPool* pQueryPool, uint32_t query);
+    void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);
     void finishQueries();
 	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex);
 	void clearRenderArea();

@@ -1396,7 +1396,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.multisampleArrayTextures = true;
 		_metalFeatures.events = true;
         _metalFeatures.textureBuffers = true;
-		_metalFeatures.quadPermute = true;
 		_metalFeatures.simdPermute = true;
     }
 
@@ -1405,6 +1404,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilFeedback = true;
 		_metalFeatures.depthResolve = true;
 		_metalFeatures.stencilResolve = true;
+		_metalFeatures.quadPermute = true;
 		_metalFeatures.simdReduction = true;
 	}
 
@@ -1412,13 +1412,13 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_2;
 		_metalFeatures.maxQueryBufferSize = (256 * KIBI);
 		_metalFeatures.native3DCompressedTextures = true;
-        _metalFeatures.renderWithoutAttachments = true;
         if ( mvkOSVersionIsAtLeast(mvkMakeOSVersion(10, 15, 6)) ) {
             _metalFeatures.sharedLinearTextures = true;
         }
 		if (supportsMTLGPUFamily(Mac2)) {
 			_metalFeatures.nativeTextureSwizzle = true;
 			_metalFeatures.placementHeaps = mvkGetMVKConfiguration()->useMTLHeap;
+			_metalFeatures.renderWithoutAttachments = true;
 		}
 	}
 
@@ -1580,7 +1580,11 @@ void MVKPhysicalDevice::initFeatures() {
 #if MVK_TVOS
     _features.textureCompressionETC2 = true;
     _features.textureCompressionASTC_LDR = true;
+#if MVK_XCODE_12
 	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_3) && supportsMTLGPUFamily(Apple3);
+#else
+	_features.shaderInt64 = false;
+#endif
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) {
 		_features.dualSrcBlend = true;
@@ -1597,7 +1601,11 @@ void MVKPhysicalDevice::initFeatures() {
 
 #if MVK_IOS
     _features.textureCompressionETC2 = true;
+#if MVK_XCODE_12
 	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_3) && supportsMTLGPUFamily(Apple3);
+#else
+	_features.shaderInt64 = false;
+#endif
 
     if (supportsMTLFeatureSet(iOS_GPUFamily2_v1)) {
         _features.textureCompressionASTC_LDR = true;
@@ -1640,7 +1648,11 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthClamp = true;
     _features.vertexPipelineStoresAndAtomics = true;
     _features.fragmentStoresAndAtomics = true;
+#if MVK_XCODE_12
 	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_3);
+#else
+	_features.shaderInt64 = false;
+#endif
 
     _features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
 

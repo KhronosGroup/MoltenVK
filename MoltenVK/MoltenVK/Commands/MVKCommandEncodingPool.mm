@@ -146,6 +146,10 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyQueryPoolResultsMT
 	MVK_ENC_REZ_ACCESS(_mtlCopyQueryPoolResultsComputePipelineState, newCmdCopyQueryPoolResultsMTLComputePipelineState(_commandPool));
 }
 
+id<MTLComputePipelineState> MVKCommandEncodingPool::getAccumulateOcclusionQueryResultsMTLComputePipelineState() {
+	MVK_ENC_REZ_ACCESS(_mtlAccumOcclusionQueryResultsComputePipelineState, newAccumulateOcclusionQueryResultsMTLComputePipelineState(_commandPool));
+}
+
 void MVKCommandEncodingPool::clear() {
 	lock_guard<mutex> lock(_lock);
 	destroyMetalResources();
@@ -233,5 +237,8 @@ void MVKCommandEncodingPool::destroyMetalResources() {
 
     [_mtlCopyQueryPoolResultsComputePipelineState release];
     _mtlCopyQueryPoolResultsComputePipelineState = nil;
+
+    [_mtlAccumOcclusionQueryResultsComputePipelineState release];
+    _mtlAccumOcclusionQueryResultsComputePipelineState = nil;
 }
 
