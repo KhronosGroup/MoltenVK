@@ -1580,7 +1580,11 @@ void MVKPhysicalDevice::initFeatures() {
 #if MVK_TVOS
     _features.textureCompressionETC2 = true;
     _features.textureCompressionASTC_LDR = true;
+#if MVK_XCODE_12
 	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_3) && supportsMTLGPUFamily(Apple3);
+#else
+	_features.shaderInt64 = false;
+#endif
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) {
 		_features.dualSrcBlend = true;
@@ -1597,7 +1601,11 @@ void MVKPhysicalDevice::initFeatures() {
 
 #if MVK_IOS
     _features.textureCompressionETC2 = true;
+#if MVK_XCODE_12
 	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_3) && supportsMTLGPUFamily(Apple3);
+#else
+	_features.shaderInt64 = false;
+#endif
 
     if (supportsMTLFeatureSet(iOS_GPUFamily2_v1)) {
         _features.textureCompressionASTC_LDR = true;
@@ -1640,7 +1648,11 @@ void MVKPhysicalDevice::initFeatures() {
     _features.depthClamp = true;
     _features.vertexPipelineStoresAndAtomics = true;
     _features.fragmentStoresAndAtomics = true;
+#if MVK_XCODE_12
 	_features.shaderInt64 = mslVersionIsAtLeast(MTLLanguageVersion2_3);
+#else
+	_features.shaderInt64 = false;
+#endif
 
     _features.shaderStorageImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
 
