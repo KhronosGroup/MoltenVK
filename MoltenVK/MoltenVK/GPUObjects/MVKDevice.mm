@@ -1396,7 +1396,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.multisampleArrayTextures = true;
 		_metalFeatures.events = true;
         _metalFeatures.textureBuffers = true;
-		_metalFeatures.quadPermute = true;
 		_metalFeatures.simdPermute = true;
     }
 
@@ -1405,6 +1404,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.stencilFeedback = true;
 		_metalFeatures.depthResolve = true;
 		_metalFeatures.stencilResolve = true;
+		_metalFeatures.quadPermute = true;
 		_metalFeatures.simdReduction = true;
 	}
 
