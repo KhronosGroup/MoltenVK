@@ -648,8 +648,14 @@ public:
 	/** Returns the underlying Metal device. */
 	inline id<MTLDevice> getMTLDevice() { return _physicalDevice->getMTLDevice(); }
 
-	/** Returns standard compilation options to be used when compiling MSL shaders. */
-	inline MTLCompileOptions* getMTLCompileOptions() { return _mtlCompileOptions; }
+	/**
+	 * Returns an autoreleased options object to be used when compiling MSL shaders.
+	 * The useFastMath parameter is and-combined with MVKConfiguration::fastMathEnabled
+	 * to determine whether to enable fast math optimizations in the compiled shader.
+	 * The preserveInvariance parameter indicates that the shader requires the position
+	 * output invariance across invocations (typically for the position output).
+	 */
+	MTLCompileOptions* getMTLCompileOptions(bool useFastMath = true, bool preserveInvariance = false);
 
 	/** Returns the Metal vertex buffer index to use for the specified vertex attribute binding number.  */
 	uint32_t getMetalBufferIndexForVertexAttributeBinding(uint32_t binding);
@@ -762,7 +768,6 @@ protected:
 	void initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo* pCreateInfo);
 	void initQueues(const VkDeviceCreateInfo* pCreateInfo);
 	void reservePrivateData(const VkDeviceCreateInfo* pCreateInfo);
-	void initMTLCompileOptions();
 	void enableFeatures(const VkDeviceCreateInfo* pCreateInfo);
 	void enableFeatures(const VkBool32* pEnable, const VkBool32* pRequested, const VkBool32* pAvailable, uint32_t count);
 	void enableExtensions(const VkDeviceCreateInfo* pCreateInfo);
@@ -775,7 +780,6 @@ protected:
 
 	MVKPhysicalDevice* _physicalDevice;
     MVKCommandResourceFactory* _commandResourceFactory;
-	MTLCompileOptions* _mtlCompileOptions;
 	MVKSmallVector<MVKSmallVector<MVKQueue*, kMVKQueueCountPerQueueFamily>, kMVKQueueFamilyCount> _queuesByQueueFamilyIndex;
 	MVKSmallVector<MVKResource*, 256> _resources;
 	MVKSmallVector<MVKPrivateDataSlot*> _privateDataSlots;

@@ -3651,6 +3651,18 @@ id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {
 	return _defaultMTLSamplerState;
 }
 
+MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool useFastMath, bool preserveInvariance) {
+	MTLCompileOptions* mtlCompOpt = [MTLCompileOptions new];
+	mtlCompOpt.languageVersion = _pMetalFeatures->mslVersionEnum;
+	mtlCompOpt.fastMathEnabled = useFastMath && mvkGetMVKConfiguration()->fastMathEnabled;
+#if MVK_XCODE_12
+	if ([mtlCompOpt respondsToSelector: @selector(setPreserveInvariance:)]) {
+		[mtlCompOpt setPreserveInvariance: preserveInvariance];
+	}
+#endif
+	return [mtlCompOpt autorelease];
+}
+
 // Can't use prefilled Metal command buffers if any of the resource descriptors can be updated after binding.
 bool MVKDevice::shouldPrefillMTLCommandBuffers() {
 	return (mvkGetMVKConfiguration()->prefillMetalCommandBuffers &&
@@ -3702,8 +3714,6 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     _globalVisibilityQueryCount = 0;
 
 	_defaultMTLSamplerState = nil;
-
-	initMTLCompileOptions();	// Before command resource factory
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
@@ -4085,19 +4095,12 @@ void MVKDevice::reservePrivateData(const VkDeviceCreateInfo* pCreateInfo) {
 	}
 }
 
-void MVKDevice::initMTLCompileOptions() {
-	_mtlCompileOptions = [MTLCompileOptions new];	// retained
-	_mtlCompileOptions.languageVersion = _pMetalFeatures->mslVersionEnum;
-	_mtlCompileOptions.fastMathEnabled = mvkGetMVKConfiguration()->fastMathEnabled;
-}
-
 MVKDevice::~MVKDevice() {
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		mvkDestroyContainerContents(queues);
 	}
 	_commandResourceFactory->destroy();
 
-	[_mtlCompileOptions release];
     [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
 

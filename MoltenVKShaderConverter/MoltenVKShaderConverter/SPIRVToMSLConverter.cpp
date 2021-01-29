@@ -25,6 +25,7 @@
 
 using namespace mvk;
 using namespace std;
+using namespace spv;
 using namespace SPIRV_CROSS_NAMESPACE;
 
 
@@ -144,9 +145,9 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 }
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::stageSupportsVertexAttributes() const {
-	return (options.entryPointStage == spv::ExecutionModelVertex ||
-			options.entryPointStage == spv::ExecutionModelTessellationControl ||
-			options.entryPointStage == spv::ExecutionModelTessellationEvaluation);
+	return (options.entryPointStage == ExecutionModelVertex ||
+			options.entryPointStage == ExecutionModelTessellationControl ||
+			options.entryPointStage == ExecutionModelTessellationEvaluation);
 }
 
 // Check them all in case inactive VA's duplicate locations used by active VA's.
@@ -232,25 +233,25 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 	if (shouldLogSPIRV) { logSPIRV("Converting"); }
 
-	SPIRV_CROSS_NAMESPACE::CompilerMSL* pMSLCompiler = nullptr;
+	CompilerMSL* pMSLCompiler = nullptr;
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 	try {
 #endif
-		pMSLCompiler = new SPIRV_CROSS_NAMESPACE::CompilerMSL(_spirv);
+		pMSLCompiler = new CompilerMSL(_spirv);
 
 		if (context.options.hasEntryPoint()) {
 			pMSLCompiler->set_entry_point(context.options.entryPointName, context.options.entryPointStage);
 		}
 
 		// Set up tessellation parameters if needed.
-		if (context.options.entryPointStage == spv::ExecutionModelTessellationControl ||
-			context.options.entryPointStage == spv::ExecutionModelTessellationEvaluation) {
-			if (context.options.tessPatchKind != spv::ExecutionModeMax) {
+		if (context.options.entryPointStage == ExecutionModelTessellationControl ||
+			context.options.entryPointStage == ExecutionModelTessellationEvaluation) {
+			if (context.options.tessPatchKind != ExecutionModeMax) {
 				pMSLCompiler->set_execution_mode(context.options.tessPatchKind);
 			}
 			if (context.options.numTessControlPoints != 0) {
-				pMSLCompiler->set_execution_mode(spv::ExecutionModeOutputVertices, context.options.numTessControlPoints);
+				pMSLCompiler->set_execution_mode(ExecutionModeOutputVertices, context.options.numTessControlPoints);
 			}
 		}
 
@@ -282,7 +283,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
         if (shouldLogMSL) { logSource(_msl, "MSL", "Converted"); }
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
-	} catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
+	} catch (CompilerError& ex) {
 		string errMsg("MSL conversion error: ");
 		errMsg += ex.what();
 		logError(errMsg.data());
@@ -297,6 +298,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	// and mark which vertex attributes and resource bindings are used by the shader
 	populateEntryPoint(pMSLCompiler, context.options);
 	_shaderConversionResults.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
+	_shaderConversionResults.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
 	_shaderConversionResults.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();
 	_shaderConversionResults.needsOutputBuffer = pMSLCompiler && pMSLCompiler->needs_output_buffer();
 	_shaderConversionResults.needsPatchOutputBuffer = pMSLCompiler && pMSLCompiler->needs_patch_output_buffer();
@@ -318,12 +320,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
     // To check GLSL conversion
     if (shouldLogGLSL) {
-		SPIRV_CROSS_NAMESPACE::CompilerGLSL* pGLSLCompiler = nullptr;
+		CompilerGLSL* pGLSLCompiler = nullptr;
 
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
 		try {
 #endif
-			pGLSLCompiler = new SPIRV_CROSS_NAMESPACE::CompilerGLSL(_spirv);
+			pGLSLCompiler = new CompilerGLSL(_spirv);
 			auto options = pGLSLCompiler->get_common_options();
 			options.vulkan_semantics = true;
 			options.separate_shader_objects = true;
@@ -331,7 +333,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			string glsl = pGLSLCompiler->compile();
             logSource(glsl, "GLSL", "Estimated original");
 #ifndef SPIRV_CROSS_EXCEPTIONS_TO_ASSERTIONS
-        } catch (SPIRV_CROSS_NAMESPACE::CompilerError& ex) {
+        } catch (CompilerError& ex) {
             string errMsg("Original GLSL extraction error: ");
             errMsg += ex.what();
             logMsg(errMsg.data());
@@ -397,7 +399,7 @@ void SPIRVToMSLConverter::writeSPIRVToFile(string spvFilepath) {
 // Validates that the SPIR-V code will disassemble during logging.
 bool SPIRVToMSLConverter::validateSPIRV() {
 	if (_spirv.size() < 5) { return false; }
-	if (_spirv[0] != spv::MagicNumber) { return false; }
+	if (_spirv[0] != MagicNumber) { return false; }
 	if (_spirv[4] != 0) { return false; }
 	return true;
 }
@@ -416,19 +418,19 @@ void SPIRVToMSLConverter::logSource(string& src, const char* srcLang, const char
 
 void SPIRVToMSLConverter::populateWorkgroupDimension(SPIRVWorkgroupSizeDimension& wgDim,
 													 uint32_t size,
-													 SPIRV_CROSS_NAMESPACE::SpecializationConstant& spvSpecConst) {
+													 SpecializationConstant& spvSpecConst) {
 	wgDim.size = max(size, 1u);
 	wgDim.isSpecialized = (uint32_t(spvSpecConst.id) != 0);
 	wgDim.specializationID = spvSpecConst.constant_id;
 }
 
 // Populates the entry point with info extracted from the SPRI-V compiler.
-void SPIRVToMSLConverter::populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pCompiler,
+void SPIRVToMSLConverter::populateEntryPoint(Compiler* pCompiler,
 											 SPIRVToMSLConversionOptions& options) {
 
 	if ( !pCompiler ) { return; }
 
-	SPIRV_CROSS_NAMESPACE::SPIREntryPoint spvEP;
+	SPIREntryPoint spvEP;
 	if (options.hasEntryPoint()) {
 		spvEP = pCompiler->get_entry_point(options.entryPointName, options.entryPointStage);
 	} else {
@@ -441,8 +443,9 @@ void SPIRVToMSLConverter::populateEntryPoint(SPIRV_CROSS_NAMESPACE::Compiler* pC
 
 	auto& ep = _shaderConversionResults.entryPoint;
 	ep.mtlFunctionName = spvEP.name;
+	ep.supportsFastMath = !spvEP.flags.get(ExecutionModeSignedZeroInfNanPreserve);
 
-	SPIRV_CROSS_NAMESPACE::SpecializationConstant widthSC, heightSC, depthSC;
+	SpecializationConstant widthSC, heightSC, depthSC;
 	pCompiler->get_work_group_size_specialization_constants(widthSC, heightSC, depthSC);
 
 	auto& wgSize = ep.workgroupSize;

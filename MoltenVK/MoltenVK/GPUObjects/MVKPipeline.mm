@@ -2074,7 +2074,8 @@ namespace mvk {
 		archive(ep.mtlFunctionName,
 				ep.workgroupSize.width,
 				ep.workgroupSize.height,
-				ep.workgroupSize.depth);
+				ep.workgroupSize.depth,
+				ep.supportsFastMath);
 	}
 
 	template<class Archive>
@@ -2113,6 +2114,7 @@ namespace mvk {
 	void serialize(Archive & archive, SPIRVToMSLConversionResults& scr) {
 		archive(scr.entryPoint,
 				scr.isRasterizationDisabled,
+				scr.isPositionInvariant,
 				scr.needsSwizzleBuffer,
 				scr.needsOutputBuffer,
 				scr.needsPatchOutputBuffer,

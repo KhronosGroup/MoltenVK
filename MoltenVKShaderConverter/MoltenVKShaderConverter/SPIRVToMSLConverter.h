@@ -192,6 +192,7 @@ namespace mvk {
 			SPIRVWorkgroupSizeDimension height;
 			SPIRVWorkgroupSizeDimension depth;
 		} workgroupSize;
+		bool supportsFastMath = true;
 	} SPIRVEntryPoint;
 
 	/**
@@ -203,6 +204,7 @@ namespace mvk {
 	typedef struct SPIRVToMSLConversionResults {
 		SPIRVEntryPoint entryPoint;
 		bool isRasterizationDisabled = false;
+		bool isPositionInvariant = false;
 		bool needsSwizzleBuffer = false;
 		bool needsOutputBuffer = false;
 		bool needsPatchOutputBuffer = false;
