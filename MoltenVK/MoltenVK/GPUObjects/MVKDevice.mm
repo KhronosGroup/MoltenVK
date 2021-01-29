@@ -3655,9 +3655,11 @@ MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool useFastMath, bool preser
 	MTLCompileOptions* mtlCompOpt = [MTLCompileOptions new];
 	mtlCompOpt.languageVersion = _pMetalFeatures->mslVersionEnum;
 	mtlCompOpt.fastMathEnabled = useFastMath && mvkGetMVKConfiguration()->fastMathEnabled;
+#if MVK_XCODE_12
 	if ([mtlCompOpt respondsToSelector: @selector(setPreserveInvariance:)]) {
 		[mtlCompOpt setPreserveInvariance: preserveInvariance];
 	}
+#endif
 	return [mtlCompOpt autorelease];
 }
 
