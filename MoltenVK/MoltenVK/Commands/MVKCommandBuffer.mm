@@ -336,18 +336,9 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
     getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _multiviewPassIndex, _framebuffer, _clearValues.contents(), _isRenderingEntireAttachment, loadOverride);
     if (_occlusionQueryState.getNeedsVisibilityResultMTLBuffer()) {
         if (!_visibilityResultMTLBuffer) {
-            // Unfortunately, the temp buffer mechanism tends to allocate large buffers and return offsets into them.
-            // This won't work with visibility buffers, particularly if the offset is greater than the maximum supported
-            // by the device. So we can't use that.
-            // Use a local variable to make sure it gets copied.
-            id<MTLBuffer> visibilityResultMTLBuffer = [getMTLDevice() newBufferWithLength: _pDeviceMetalFeatures->maxQueryBufferSize options: MTLResourceStorageModePrivate];    // not retained
-            [visibilityResultMTLBuffer setPurgeableState: MTLPurgeableStateVolatile];
-            [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer>) {
-                [visibilityResultMTLBuffer release];
-            }];
-            _visibilityResultMTLBuffer = visibilityResultMTLBuffer;
+            _visibilityResultMTLBuffer = getTempMTLBuffer(_pDeviceMetalFeatures->maxQueryBufferSize, true);
         }
-        mtlRPDesc.visibilityResultBuffer = _visibilityResultMTLBuffer;
+        mtlRPDesc.visibilityResultBuffer = _visibilityResultMTLBuffer->_mtlBuffer;
     }
 
     VkExtent2D fbExtent = _framebuffer->getExtent2D();
@@ -655,8 +646,8 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
     }
 }
 
-const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length) {
-    const MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length);
+const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length, bool isDedicated) {
+    const MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length, isDedicated);
 	MVKMTLBufferAllocationPool* pool = mtlBuffAlloc->getPool();
 
     // Return the MTLBuffer allocation to the pool once the command buffer is done with it

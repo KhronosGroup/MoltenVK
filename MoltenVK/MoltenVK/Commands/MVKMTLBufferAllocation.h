@@ -86,7 +86,7 @@ public:
     MVKMTLBufferAllocation* newObject() override;
 
     /** Configures this instance to dispense MVKMTLBufferAllocation instances of the specified size. */
-    MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength);
+    MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, bool isDedicated);
 
     ~MVKMTLBufferAllocationPool() override;
 
@@ -137,7 +137,7 @@ public:
      * next power-of-two value that is at least as big as the specified maximum size.
 	 * If makeThreadSafe is true, a lock will be applied when an allocation is acquired.
      */
-    MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe = false);
+    MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe = false, bool isDedicated = false);
 
     ~MVKMTLBufferAllocator() override;
 

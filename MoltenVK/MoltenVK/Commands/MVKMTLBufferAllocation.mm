@@ -50,11 +50,11 @@ void MVKMTLBufferAllocationPool::addMTLBuffer() {
 }
 
 
-MVKMTLBufferAllocationPool::MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength)
+MVKMTLBufferAllocationPool::MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, bool isDedicated)
         : MVKObjectPool<MVKMTLBufferAllocation>(true) {
     _device = device;
     _allocationLength = allocationLength;
-    _mtlBufferLength = _allocationLength * calcMTLBufferAllocationCount();
+    _mtlBufferLength = _allocationLength * (isDedicated ? 1 : calcMTLBufferAllocationCount());
     _nextOffset = _mtlBufferLength;     // Force a MTLBuffer to be added on first access
 }
 
@@ -85,7 +85,7 @@ const MVKMTLBufferAllocation* MVKMTLBufferAllocator::acquireMTLBufferRegion(NSUI
 	return _makeThreadSafe ? pRP->acquireObjectSafely() : pRP->acquireObject();
 }
 
-MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe) : MVKBaseDeviceObject(device) {
+MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe, bool isDedicated) : MVKBaseDeviceObject(device) {
     _maxAllocationLength = maxRegionLength;
 	_makeThreadSafe = makeThreadSafe;
 
@@ -96,7 +96,7 @@ MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRe
     _regionPools.reserve(maxP2Exp + 1);
     NSUInteger allocLen = 1;
     for (uint32_t p2Exp = 0; p2Exp <= maxP2Exp; p2Exp++) {
-        _regionPools.push_back(new MVKMTLBufferAllocationPool(device, allocLen));
+        _regionPools.push_back(new MVKMTLBufferAllocationPool(device, allocLen, isDedicated));
         allocLen <<= 1;
     }
 }
