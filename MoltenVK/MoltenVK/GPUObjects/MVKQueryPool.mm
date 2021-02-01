@@ -23,6 +23,7 @@
 #include "MVKCommandEncodingPool.h"
 #include "MVKOSExtensions.h"
 #include "MVKFoundation.h"
+#include <sys/mman.h>
 
 using namespace std;
 
@@ -220,7 +221,11 @@ void MVKTimestampQueryPool::getResult(uint32_t query, void* pQryData, bool shoul
 
 id<MTLBuffer> MVKTimestampQueryPool::getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) {
 	const MVKMTLBufferAllocation* tempBuff = cmdEncoder->getTempMTLBuffer(queryCount * _queryElementCount * sizeof(uint64_t));
-	memcpy(tempBuff->getContents(), &_timestamps[firstQuery], queryCount * _queryElementCount * sizeof(uint64_t));
+	void* pBuffData = tempBuff->getContents();
+	size_t size = queryCount * _queryElementCount * sizeof(uint64_t);
+	mlock(pBuffData, size);
+	memcpy(pBuffData, &_timestamps[firstQuery], size);
+	munlock(pBuffData, size);
 	offset = tempBuff->_offset;
 	return tempBuff->_mtlBuffer;
 }

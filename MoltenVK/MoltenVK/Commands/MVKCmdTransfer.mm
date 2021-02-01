@@ -28,6 +28,7 @@
 #include "MVKEnvironment.h"
 #include "mvk_datatypes.hpp"
 #include <algorithm>
+#include <sys/mman.h>
 
 
 #pragma mark -
@@ -1615,7 +1616,10 @@ void MVKCmdUpdateBuffer::encode(MVKCommandEncoder* cmdEncoder) {
 
     // Copy data to the source MTLBuffer
     MVKMTLBufferAllocation* srcMTLBufferAlloc = (MVKMTLBufferAllocation*)cmdEncoder->getCommandEncodingPool()->acquireMTLBufferAllocation(_dataSize);
-    memcpy(srcMTLBufferAlloc->getContents(), _srcDataCache.data(), _dataSize);
+    void* pBuffData = srcMTLBufferAlloc->getContents();
+    mlock(pBuffData, _dataSize);
+    memcpy(pBuffData, _srcDataCache.data(), _dataSize);
+    munlock(pBuffData, _dataSize);
 
     [mtlBlitEnc copyFromBuffer: srcMTLBufferAlloc->_mtlBuffer
                   sourceOffset: srcMTLBufferAlloc->_offset

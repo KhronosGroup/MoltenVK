@@ -26,6 +26,7 @@
 #include "MTLRenderPassDescriptor+MoltenVK.h"
 #include "MVKCmdDraw.h"
 #include "MVKCmdRenderPass.h"
+#include <sys/mman.h>
 
 using namespace std;
 
@@ -666,7 +667,9 @@ MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {
     const MVKMTLBufferAllocation* mtlBuffAlloc = getTempMTLBuffer(length);
     void* pBuffData = mtlBuffAlloc->getContents();
+    mlock(pBuffData, length);
     memcpy(pBuffData, bytes, length);
+    munlock(pBuffData, length);
 
     return mtlBuffAlloc;
 }
