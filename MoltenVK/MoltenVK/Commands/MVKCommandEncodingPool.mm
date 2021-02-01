@@ -77,7 +77,10 @@ id<MTLDepthStencilState> MVKCommandEncodingPool::getMTLDepthStencilState(bool us
 	MVK_ENC_REZ_ACCESS(_cmdClearDefaultDepthStencilState, newMTLDepthStencilState(useDepth, useStencil));
 }
 
-const MVKMTLBufferAllocation* MVKCommandEncodingPool::acquireMTLBufferAllocation(NSUInteger length) {
+const MVKMTLBufferAllocation* MVKCommandEncodingPool::acquireMTLBufferAllocation(NSUInteger length, bool isDedicated) {
+    if (isDedicated) {
+        return _dedicatedMtlBufferAllocator.acquireMTLBufferRegion(length);
+    }
     return _mtlBufferAllocator.acquireMTLBufferRegion(length);
 }
 
@@ -159,7 +162,8 @@ void MVKCommandEncodingPool::clear() {
 #pragma mark Construction
 
 MVKCommandEncodingPool::MVKCommandEncodingPool(MVKCommandPool* commandPool) : _commandPool(commandPool),
-    _mtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxMTLBufferSize, true) {
+    _mtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxMTLBufferSize, true),
+    _dedicatedMtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxQueryBufferSize, true, true) {
 }
 
 MVKCommandEncodingPool::~MVKCommandEncodingPool() {

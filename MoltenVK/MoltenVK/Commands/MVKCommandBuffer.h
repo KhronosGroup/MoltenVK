@@ -370,7 +370,7 @@ public:
     void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes, NSUInteger length, uint32_t mtlBuffIndex);
 
     /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
-    const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length);
+    const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool dedicated = false);
 
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
@@ -415,8 +415,8 @@ public:
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
 
-	/** The buffer used to hold occlusion query results in this render pass. */
-	id<MTLBuffer> _visibilityResultMTLBuffer;
+	/** The buffer used to hold occlusion query results in a render pass. */
+	const MVKMTLBufferAllocation* _visibilityResultMTLBuffer;
 
     /** Tracks the current graphics pipeline bound to the encoder. */
     MVKPipelineCommandEncoderState _graphicsPipelineState;

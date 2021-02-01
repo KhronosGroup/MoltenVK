@@ -929,7 +929,7 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
         [mtlAccumEncoder setBuffer: pQueryPool->getVisibilityResultMTLBuffer()
                             offset: pQueryPool->getVisibilityResultOffset(query.first.query)
                            atIndex: 0];
-        [mtlAccumEncoder setBuffer: _cmdEncoder->_visibilityResultMTLBuffer
+        [mtlAccumEncoder setBuffer: _cmdEncoder->_visibilityResultMTLBuffer->_mtlBuffer
                             offset: query.second
                            atIndex: 1];
         [mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
