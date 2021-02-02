@@ -1,4 +1,4 @@
-name: CI
+name: CI-legacy
 
 # Controls when the action will run. 
 on:
@@ -11,8 +11,8 @@ on:
 env:
   # For supported Xcode versions, see: https://github.com/actions/virtual-environments/tree/main/images/macos
   # Then open macos-X.X-Readme.md#xcode
-  # Also see runs-on link for macos-latest below for which macOS platform will be run
-  XCODE_DEV_PATH: /Applications/Xcode_12.4.app/Contents/Developer
+  # Also see runs-on link below for which macOS platform will be run
+  XCODE_DEV_PATH: /Applications/Xcode_11.7.app/Contents/Developer
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -21,15 +21,15 @@ jobs:
       matrix:
         include:
           - platform: "macos"
-          - platform: "maccat"
-          - platform: "ios"
-          - platform: "tvos"
+#          - platform: "maccat"
+#          - platform: "ios"
+#          - platform: "tvos"
       fail-fast: false
 
     name: 'MoltenVK (${{ matrix.platform }})'
     
     # See: https://docs.github.com/en/actions/reference/specifications-for-github-hosted-runners#supported-runners-and-hardware-resources
-    runs-on: macos-latest
+    runs-on: macos-10.15
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -83,12 +83,13 @@ jobs:
             cat "xcodebuild.log"
           fi
 
-      - name: Tar Artifacts
-        # See: https://github.com/actions/upload-artifact#maintaining-file-permissions-and-case-sensitive-files
-        run: tar -cvf "${{ matrix.platform }}.tar" Package/Release/
+# Don't package binaries for legacy
+#      - name: Tar Artifacts
+#        # See: https://github.com/actions/upload-artifact#maintaining-file-permissions-and-case-sensitive-files
+#       run: tar -cvf "${{ matrix.platform }}.tar" Package/Release/
 
-      - name: Upload Artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{ matrix.platform }}
-          path: "${{ matrix.platform }}.tar"
+#      - name: Upload Artifacts
+#        uses: actions/upload-artifact@v2
+#        with:
+#          name: ${{ matrix.platform }}
+#          path: "${{ matrix.platform }}.tar"

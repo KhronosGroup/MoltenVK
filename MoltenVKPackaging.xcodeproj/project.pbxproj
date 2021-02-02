@@ -194,6 +194,8 @@
 		A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_ios.sh; sourceTree = "<group>"; };
 		A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_moltenvk_xcframework.sh; sourceTree = "<group>"; };
 		A9DA8341218A198C002AA662 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		A9E4290425C9B23800224E8C /* CI.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; name = CI.yml; path = .github/workflows/CI.yml; sourceTree = "<group>"; };
+		A9E4290825C9B69300224E8C /* CI-legacy.yml */ = {isa = PBXFileReference; lastKnownFileType = text.yaml; name = "CI-legacy.yml"; path = ".github/workflows/CI-legacy.yml"; sourceTree = "<group>"; };
 		A9FC5F60249D2ED3003CB086 /* package_all.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_all.sh; sourceTree = "<group>"; };
 		A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_tvos.sh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -269,6 +271,8 @@
 			isa = PBXGroup;
 			children = (
 				A9DA8341218A198C002AA662 /* .gitignore */,
+				A9E4290425C9B23800224E8C /* CI.yml */,
+				A9E4290825C9B69300224E8C /* CI-legacy.yml */,
 			);
 			name = Git;
 			sourceTree = "<group>";

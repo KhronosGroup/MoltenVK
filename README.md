@@ -46,14 +46,19 @@ If you are developing a *Vulkan* application for *macOS*, it is highly recommend
 Refer to the *Vulkan SDK [Getting Started](https://vulkan.lunarg.com/doc/sdk/latest/mac/getting_started.html)* 
 document for more info.
 
-If you are developing a *Vulkan* application for *iOS* or *tvOS*, or are developing a *Vulkan* 
-application for *macOS* and want to use a different version of the **MoltenVK** runtime library 
-provided in the *macOS Vulkan SDK*, you can use this document to learn how to build a **MoltenVK** 
-runtime library from source code.
+You can also download **MoltenVK** runtime library binaries for *macOS*, *iOS* or *tvOS* from the 
+**MoltenVK** [CI builds](https://github.com/KhronosGroup/MoltenVK/actions?query=workflow%3ACI).
+Select a CI build (typically the latest), and click on the appropriate platform *Artifact* to 
+download a **MoltenVK** binary package for that platform.
 
 To learn how to integrate the **MoltenVK** runtime library into a game or application, 
 see the [`MoltenVK_Runtime_UserGuide.md `](Docs/MoltenVK_Runtime_UserGuide.md) 
 document in the `Docs` directory. 
+
+If you are developing a *Vulkan* application for *iOS* or *tvOS*, or are developing a *Vulkan* 
+application for *macOS* and want to use a different version of the **MoltenVK** runtime library 
+provided in the *macOS Vulkan SDK*, you can use this document to learn how to build a **MoltenVK** 
+runtime library from source code.
 
 
 
