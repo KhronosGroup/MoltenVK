@@ -17,6 +17,13 @@ jobs:
         platform: [ "macos", "maccat", "ios", "tvos" ]
         os: [ "macos-latest" ]
         upload_artifacts: [ true ]
+        # additional specific configurations
+        include:
+          # "Legacy" Xcode 11.7 macOS build
+          - xcode: "11.7"
+            platform: "macos"
+            os: "macos-latest" 
+            upload_artifacts: false
       fail-fast: false
 
     name: 'MoltenVK (Xcode ${{ matrix.xcode }} - ${{ matrix.platform }})'
