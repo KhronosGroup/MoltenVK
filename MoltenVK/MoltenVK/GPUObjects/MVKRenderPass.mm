@@ -97,7 +97,7 @@ static uint32_t getNextViewMaskGroup(uint32_t viewMask, uint32_t* startView, uin
 uint32_t MVKRenderSubpass::getViewMaskGroupForMetalPass(uint32_t passIdx) {
 	if (!_viewMask) { return 0; }
 	assert(passIdx < getMultiviewMetalPassCount());
-	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
 		return 1 << getFirstViewIndexInMetalPass(passIdx);
 	}
 	uint32_t mask = _viewMask, groupMask = 0;
@@ -109,7 +109,7 @@ uint32_t MVKRenderSubpass::getViewMaskGroupForMetalPass(uint32_t passIdx) {
 
 uint32_t MVKRenderSubpass::getMultiviewMetalPassCount() const {
 	if (!_viewMask) { return 0; }
-	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
 		// If we can't use instanced drawing for this, we'll have to unroll the render pass.
 		return __builtin_popcount(_viewMask);
 	}
@@ -129,7 +129,7 @@ uint32_t MVKRenderSubpass::getFirstViewIndexInMetalPass(uint32_t passIdx) const 
 	assert(passIdx < getMultiviewMetalPassCount());
 	uint32_t mask = _viewMask;
 	uint32_t startView = 0, viewCount = 0;
-	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
 		for (uint32_t i = 0; mask != 0; ++i) {
 			mask = getNextViewMaskGroup(mask, &startView, &viewCount);
 			while (passIdx-- > 0 && viewCount-- > 0) {
@@ -147,7 +147,7 @@ uint32_t MVKRenderSubpass::getFirstViewIndexInMetalPass(uint32_t passIdx) const 
 uint32_t MVKRenderSubpass::getViewCountInMetalPass(uint32_t passIdx) const {
 	if (!_viewMask) { return 0; }
 	assert(passIdx < getMultiviewMetalPassCount());
-	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
 		return 1;
 	}
 	uint32_t mask = _viewMask;
@@ -160,7 +160,7 @@ uint32_t MVKRenderSubpass::getViewCountInMetalPass(uint32_t passIdx) const {
 
 uint32_t MVKRenderSubpass::getViewCountUpToMetalPass(uint32_t passIdx) const {
 	if (!_viewMask) { return 0; }
-	if (!_renderPass->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview()) {
+	if (!_renderPass->getPhysicalDevice()->canUseInstancingForMultiview()) {
 		return passIdx+1;
 	}
 	uint32_t mask = _viewMask;

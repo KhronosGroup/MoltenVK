@@ -639,18 +639,18 @@ void MVKImage::applyImageMemoryBarrier(VkPipelineStageFlags srcStageMask,
 
 VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequirements, uint8_t planeIndex) {
     pMemoryRequirements->memoryTypeBits = (_isDepthStencilAttachment)
-                                          ? _device->getPhysicalDevice()->getPrivateMemoryTypes()
-                                          : _device->getPhysicalDevice()->getAllMemoryTypes();
+                                          ? getPhysicalDevice()->getPrivateMemoryTypes()
+                                          : getPhysicalDevice()->getAllMemoryTypes();
 #if MVK_MACOS
     // Metal on macOS does not provide native support for host-coherent memory, but Vulkan requires it for Linear images
     if ( !_isLinear ) {
-        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getHostCoherentMemoryTypes());
+        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getHostCoherentMemoryTypes());
     }
 #endif
 #if MVK_APPLE_SILICON
     // Only transient attachments may use memoryless storage
     if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
-        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, _device->getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
+        mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
     }
 #endif
     return _memoryBindings[planeIndex]->getMemoryRequirements(pMemoryRequirements);
@@ -1113,7 +1113,7 @@ bool MVKImage::validateLinear(const VkImageCreateInfo* pCreateInfo, bool isAttac
 
 void MVKImage::initExternalMemory(VkExternalMemoryHandleTypeFlags handleTypes) {
 	if (mvkIsOnlyAnyFlagEnabled(handleTypes, VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR)) {
-        auto& xmProps = _device->getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
+        auto& xmProps = getPhysicalDevice()->getExternalImageProperties(VK_EXTERNAL_MEMORY_HANDLE_TYPE_MTLTEXTURE_BIT_KHR);
         for(auto& memoryBinding : _memoryBindings) {
             memoryBinding->_externalMemoryHandleTypes = handleTypes;
             memoryBinding->_requiresDedicatedMemoryAllocation = memoryBinding->_requiresDedicatedMemoryAllocation || mvkIsAnyFlagEnabled(xmProps.externalMemoryFeatures, VK_EXTERNAL_MEMORY_FEATURE_DEDICATED_ONLY_BIT);
@@ -1940,7 +1940,7 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 
 #if MVK_MACOS_OR_IOS
 	mtlSampDesc.borderColorMVK = mvkMTLSamplerBorderColorFromVkBorderColor(pCreateInfo->borderColor);
-	if (_device->getPhysicalDevice()->getMetalFeatures()->samplerClampToBorder) {
+	if (getPhysicalDevice()->getMetalFeatures()->samplerClampToBorder) {
 		if (pCreateInfo->addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER) {
 			mtlSampDesc.sAddressMode = MTLSamplerAddressModeClampToBorderColor;
 		}

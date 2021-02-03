@@ -1485,7 +1485,7 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderContext.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
     shaderContext.options.mslOptions.multiview = mvkRendPass->isMultiview();
-    shaderContext.options.mslOptions.multiview_layered_rendering = getDevice()->getPhysicalDevice()->canUseInstancingForMultiview();
+    shaderContext.options.mslOptions.multiview_layered_rendering = getPhysicalDevice()->canUseInstancingForMultiview();
     shaderContext.options.mslOptions.view_index_from_device_index = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_VIEW_INDEX_FROM_DEVICE_INDEX_BIT);
 #if MVK_MACOS
     shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->simdPermute;
