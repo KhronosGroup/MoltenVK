@@ -583,6 +583,7 @@ typedef struct {
 	 * To automatically trigger a GPU capture, set this value as follows:
 	 *   0: No automatic GPU capture.
 	 *   1: Capture all GPU commands issued during the lifetime of the VkDevice.
+	 *   2: Capture all GPU commands issued during the first rendered frame.
 	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.

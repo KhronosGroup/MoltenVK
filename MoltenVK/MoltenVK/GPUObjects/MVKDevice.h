@@ -692,6 +692,36 @@ public:
 	 */
 	bool shouldPrefillMTLCommandBuffers();
 
+	/**
+	 * Checks if automatic GPU capture is supported, and is enabled for the specified auto
+	 * capture scope, and if so, starts capturing from the specified Metal capture object.
+	 * The capture will be made either to Xcode, or to a file if one has been configured.
+	 *
+	 * The autoGPUCaptureScope parameter must be one of:
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME
+	 *
+	 * The mtlCaptureObject must be one of:
+	 *   - MTLDevice for scope MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
+	 *   - MTLCommandQueue for scope MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME.
+	 */
+	void startAutoGPUCapture(int32_t autoGPUCaptureScope, id mtlCaptureObject);
+
+	/**
+	 * Checks if automatic GPU capture is enabled for the specified
+	 * auto capture scope, and if so, stops capturing.
+	 *
+	 * The autoGPUCaptureScope parameter must be one of:
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
+	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME
+	 */
+	void stopAutoGPUCapture(int32_t autoGPUCaptureScope);
+
+	/** Returns whether this instance is currently automatically capturing a GPU trace. */
+	inline bool isCurrentlyAutoGPUCapturing() { return _isCurrentlyAutoGPUCapturing; }
+
 
 #pragma mark Properties directly accessible
 
@@ -797,6 +827,7 @@ protected:
 	bool _useMTLEventForSemaphores;
 	bool _logActivityPerformanceInline;
 	bool _isPerformanceTracking;
+	bool _isCurrentlyAutoGPUCapturing;
 };
 
 

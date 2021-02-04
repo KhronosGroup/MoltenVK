@@ -199,6 +199,8 @@ void MVKQueue::initGPUCaptureScopes() {
 		_submissionCaptureScope->makeDefault();
 	}
 	_submissionCaptureScope->beginScope();	// Allow Xcode to capture the first frame if desired.
+
+	getDevice()->startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME, _mtlQueue);
 }
 
 MVKQueue::~MVKQueue() {
@@ -398,6 +400,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 	auto cs = _queue->_submissionCaptureScope;
 	cs->endScope();
 	cs->beginScope();
+	stopAutoGPUCapture();
 
 	this->destroy();
 }
@@ -407,6 +410,14 @@ id<MTLCommandBuffer> MVKQueuePresentSurfaceSubmission::getMTLCommandBuffer() {
 	setLabelIfNotNil(mtlCmdBuff, @"vkQueuePresentKHR CommandBuffer");
 	[mtlCmdBuff enqueue];
 	return mtlCmdBuff;
+}
+
+void MVKQueuePresentSurfaceSubmission::stopAutoGPUCapture() {
+	const MVKConfiguration* pMVKConfig = mvkGetMVKConfiguration();
+	if (_queue->_queueFamily->getIndex() == pMVKConfig->defaultGPUCaptureScopeQueueFamilyIndex &&
+		_queue->_index == pMVKConfig->defaultGPUCaptureScopeQueueIndex) {
+		_queue->getDevice()->stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME);
+	}
 }
 
 MVKQueuePresentSurfaceSubmission::MVKQueuePresentSurfaceSubmission(MVKQueue* queue,

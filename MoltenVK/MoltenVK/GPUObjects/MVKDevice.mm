@@ -3675,6 +3675,62 @@ bool MVKDevice::shouldPrefillMTLCommandBuffers() {
 			  _enabledInlineUniformBlockFeatures.descriptorBindingInlineUniformBlockUpdateAfterBind));
 }
 
+void MVKDevice::startAutoGPUCapture(int32_t autoGPUCaptureScope, id mtlCaptureObject) {
+
+	if (_isCurrentlyAutoGPUCapturing || (mvkGetMVKConfiguration()->autoGPUCaptureScope != autoGPUCaptureScope)) { return; }
+
+	_isCurrentlyAutoGPUCapturing = true;
+
+	@autoreleasepool {
+		MTLCaptureManager *captureMgr = [MTLCaptureManager sharedCaptureManager];
+
+		// Before macOS 10.15 and iOS 13.0, captureDesc will just be nil
+		MTLCaptureDescriptor *captureDesc = [[MTLCaptureDescriptor new] autorelease];
+		captureDesc.captureObject = mtlCaptureObject;
+		captureDesc.destination = MTLCaptureDestinationDeveloperTools;
+
+		char* filePath = mvkGetMVKConfiguration()->autoGPUCaptureOutputFilepath;
+		if (strlen(filePath)) {
+			if ([captureMgr respondsToSelector: @selector(supportsDestination:)] &&
+				[captureMgr supportsDestination: MTLCaptureDestinationGPUTraceDocument] ) {
+
+				NSString* expandedFilePath = [[NSString stringWithUTF8String: filePath] stringByExpandingTildeInPath];
+				MVKLogInfo("Capturing GPU trace to file %s.", expandedFilePath.UTF8String);
+
+				captureDesc.destination = MTLCaptureDestinationGPUTraceDocument;
+				captureDesc.outputURL = [NSURL fileURLWithPath: expandedFilePath];
+
+			} else {
+				reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Capturing GPU traces to a file requires macOS 10.15 or iOS 13.0 and GPU capturing to be enabled. Falling back to Xcode GPU capture.");
+			}
+		} else {
+			MVKLogInfo("Capturing GPU trace to Xcode.");
+		}
+
+		// Suppress deprecation warnings for startCaptureWithXXX: on MacCatalyst.
+#		pragma clang diagnostic push
+#		pragma clang diagnostic ignored "-Wdeprecated-declarations"
+		if ([captureMgr respondsToSelector: @selector(startCaptureWithDescriptor:error:)] ) {
+			NSError *err = nil;
+			if ( ![captureMgr startCaptureWithDescriptor: captureDesc error: &err] ) {
+				reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to automatically start GPU capture session (Error code %li): %s", (long)err.code, err.localizedDescription.UTF8String);
+			}
+		} else if ([mtlCaptureObject conformsToProtocol:@protocol(MTLCommandQueue)]) {
+			[captureMgr startCaptureWithCommandQueue: mtlCaptureObject];
+		} else if ([mtlCaptureObject conformsToProtocol:@protocol(MTLDevice)]) {
+			[captureMgr startCaptureWithDevice: mtlCaptureObject];
+		}
+#		pragma clang diagnostic pop
+	}
+}
+
+void MVKDevice::stopAutoGPUCapture(int32_t autoGPUCaptureScope) {
+	if (_isCurrentlyAutoGPUCapturing && mvkGetMVKConfiguration()->autoGPUCaptureScope == autoGPUCaptureScope) {
+		[[MTLCaptureManager sharedCaptureManager] stopCapture];
+		_isCurrentlyAutoGPUCapturing = false;
+	}
+}
+
 
 #pragma mark Construction
 
@@ -3695,7 +3751,8 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledVtxAttrDivFeatures(),
 	_enabledPrivateDataFeatures(),
 	_enabledPortabilityFeatures(),
-	_enabledExtensions(this)
+	_enabledExtensions(this),
+	_isCurrentlyAutoGPUCapturing(false)
 {
 	// If the physical device is lost, bail.
 	if (physicalDevice->getConfigurationResult() != VK_SUCCESS) {
@@ -3717,41 +3774,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
-// This code will be refactored in an upcoming release, but for now,
-// suppress deprecation warnings for startCaptureWithDevice: on MacCatalyst.
-#pragma clang diagnostic push
-#pragma clang diagnostic ignored "-Wdeprecated-declarations"
-	if (mvkGetMVKConfiguration()->autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
-		MTLCaptureManager *captureMgr = [MTLCaptureManager sharedCaptureManager];
-		char* filePath = mvkGetMVKConfiguration()->autoGPUCaptureOutputFilepath;
-		if (strlen(filePath)) {
-			if ( ![captureMgr respondsToSelector: @selector(supportsDestination:)] ||
-				 ![captureMgr supportsDestination: MTLCaptureDestinationGPUTraceDocument] ) {
-				reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Capturing GPU traces to a file requires macOS 10.15 or iOS 13.0. Falling back to Xcode GPU capture.");
-				[captureMgr startCaptureWithDevice: getMTLDevice()];
-			} else {
-				NSError *err = nil;
-				NSString *path, *expandedPath;
-				MTLCaptureDescriptor *captureDesc = [MTLCaptureDescriptor new];
-				captureDesc.captureObject = getMTLDevice();
-				captureDesc.destination = MTLCaptureDestinationGPUTraceDocument;
-				path = [NSString stringWithUTF8String: filePath];
-				expandedPath = path.stringByExpandingTildeInPath;
-				captureDesc.outputURL = [NSURL fileURLWithPath: expandedPath];
-				if (![captureMgr startCaptureWithDescriptor: captureDesc error: &err]) {
-					reportError(VK_ERROR_INITIALIZATION_FAILED, "Failed to start GPU capture session to %s (Error code %li): %s", filePath, (long)err.code, err.localizedDescription.UTF8String);
-					[err release];
-				}
-				[captureDesc.outputURL release];
-				[captureDesc release];
-				[expandedPath release];
-				[path release];
-			}
-		} else {
-			[captureMgr startCaptureWithDevice: getMTLDevice()];
-		}
-	}
-#pragma clang diagnostic pop
+	startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE, getMTLDevice());
 
 	MVKLogInfo("Created VkDevice to run on GPU %s with the following %d Vulkan extensions enabled:%s",
 			   _pProperties->deviceName,
@@ -4104,9 +4127,7 @@ MVKDevice::~MVKDevice() {
     [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
 
-	if (mvkGetMVKConfiguration()->autoGPUCaptureScope == MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE) {
-		[[MTLCaptureManager sharedCaptureManager] stopCapture];
-	}
+	stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE);
 
 	mvkDestroyContainerContents(_privateDataSlots);
 }
