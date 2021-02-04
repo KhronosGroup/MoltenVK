@@ -8,26 +8,32 @@ on:
   # Allows you to run this workflow manually from the Actions tab
   workflow_dispatch:
 
-env:
-  # See: https://github.com/actions/virtual-environments/tree/main/images/macos
-  XCODE_DEV_PATH: /Applications/Xcode_12.3.app/Contents/Developer
-
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   build:
     strategy:
       matrix:
+        xcode: [ "12.4" ]
+        platform: [ "macos", "maccat", "ios", "tvos" ]
+        os: [ "macos-latest" ]
+        upload_artifacts: [ true ]
+        # additional specific configurations
         include:
-          - platform: "macos"
-          - platform: "maccat"
-          - platform: "ios"
-          - platform: "tvos"
+          # "Legacy" Xcode 11.7 macOS build
+          - xcode: "11.7"
+            platform: "macos"
+            os: "macos-latest" 
+            upload_artifacts: false
       fail-fast: false
 
-    name: 'MoltenVK (${{ matrix.platform }})'
+    name: 'MoltenVK (Xcode ${{ matrix.xcode }} - ${{ matrix.platform }})'
     
     # See: https://docs.github.com/en/free-pro-team@latest/actions/reference/specifications-for-github-hosted-runners#supported-runners-and-hardware-resources
-    runs-on: macos-latest
+    runs-on: ${{ matrix.os }}
+    
+    env:
+      # See: https://github.com/actions/virtual-environments/tree/main/images/macos
+      XCODE_DEV_PATH: "/Applications/Xcode_${{ matrix.xcode }}.app/Contents/Developer"
 
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
@@ -82,10 +88,12 @@ jobs:
           fi
 
       - name: Tar Artifacts
+        if: success() && matrix.upload_artifacts == true
         # See: https://github.com/actions/upload-artifact#maintaining-file-permissions-and-case-sensitive-files
         run: tar -cvf "${{ matrix.platform }}.tar" Package/Release/
 
       - name: Upload Artifacts
+        if: success() && matrix.upload_artifacts == true
         uses: actions/upload-artifact@v2
         with:
           name: ${{ matrix.platform }}
