@@ -25,6 +25,8 @@ Released TBD
 - `vkGetMoltenVKConfigurationMVK()` and `vkSetMoltenVKConfigurationMVK()` functions
   can now be used with a `VkInstance` from another Vulkan layer, or with a `VK_NULL_HANDLE VkInstance`.
 - `MVKConfiguration` extended to cover all MoltenVK environment variables.
+- Add ability to automatically capture first GPU frame by setting `MVKConfiguration::autoGPUCaptureScope`
+  (or environment variable `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE`) to `2`.
 - Support _GitHub Actions_ for CI builds on pull requests.
 - Remove support for _Travis-CI_.
 - `Makefile` and `fetchDependencies` support `xcpretty` (if available)

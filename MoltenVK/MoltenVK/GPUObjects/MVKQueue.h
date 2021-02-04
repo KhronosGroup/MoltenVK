@@ -252,6 +252,7 @@ public:
 
 protected:
 	id<MTLCommandBuffer> getMTLCommandBuffer();
+	void stopAutoGPUCapture();
 
 	MVKSmallVector<MVKPresentTimingInfo, 4> _presentInfo;
 };
