@@ -518,7 +518,7 @@ void MVKCmdDrawIndirect::encode(MVKCommandEncoder* cmdEncoder) {
 
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
     bool needsInstanceAdjustment = cmdEncoder->getSubpass()->isMultiview() &&
-                                   cmdEncoder->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview();
+                                   cmdEncoder->getPhysicalDevice()->canUseInstancingForMultiview();
     // The indirect calls for dispatchThreadgroups:... and drawPatches:... have different formats.
     // We have to convert from the drawPrimitives:... format to them.
     // While we're at it, we can create the temporary output buffers once and reuse them
@@ -831,7 +831,7 @@ void MVKCmdDrawIndexedIndirect::encode(MVKCommandEncoder* cmdEncoder) {
     MVKIndexMTLBufferBinding& ibb = cmdEncoder->_graphicsResourcesState._mtlIndexBufferBinding;
     auto* pipeline = (MVKGraphicsPipeline*)cmdEncoder->_graphicsPipelineState.getPipeline();
     bool needsInstanceAdjustment = cmdEncoder->getSubpass()->isMultiview() &&
-                                   cmdEncoder->getDevice()->getPhysicalDevice()->canUseInstancingForMultiview();
+                                   cmdEncoder->getPhysicalDevice()->canUseInstancingForMultiview();
     // The indirect calls for dispatchThreadgroups:... and drawPatches:... have different formats.
     // We have to convert from the drawIndexedPrimitives:... format to them.
     // While we're at it, we can create the temporary output buffers once and reuse them

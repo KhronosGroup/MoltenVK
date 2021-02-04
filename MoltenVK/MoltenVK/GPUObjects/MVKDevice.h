@@ -817,6 +817,9 @@ public:
 	/** Returns the device for which this object was created. */
 	inline MVKDevice* getDevice() { return _device; }
 
+	/** Returns the physical device underlying this logical device. */
+	inline MVKPhysicalDevice* getPhysicalDevice() { return _device->getPhysicalDevice(); }
+
 	/** Returns the underlying Metal device. */
 	inline id<MTLDevice> getMTLDevice() { return _device->getMTLDevice(); }
 
