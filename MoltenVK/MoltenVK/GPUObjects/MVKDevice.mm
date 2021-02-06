@@ -1825,13 +1825,13 @@ void MVKPhysicalDevice::initLimits() {
 #if MVK_MACOS
 	_properties.limits.maxUniformBufferRange = (64 * KIBI);
 	if (supportsMTLGPUFamily(Apple5)) {
-		_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
+		_properties.limits.maxUniformBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 	}
 #endif
 #if MVK_IOS_OR_TVOS
-	_properties.limits.maxUniformBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
+	_properties.limits.maxUniformBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 #endif
-	_properties.limits.maxStorageBufferRange = (uint32_t)_metalFeatures.maxMTLBufferSize;
+	_properties.limits.maxStorageBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 	_properties.limits.maxPushConstantsSize = (4 * KIBI);
 
     _properties.limits.minMemoryMapAlignment = _metalFeatures.mtlBufferAlignment;
