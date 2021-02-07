@@ -32,7 +32,7 @@ Released TBD
 - `Makefile` and `fetchDependencies` support `xcpretty` (if available)
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `30`.
 - Update copyright notices to year 2021.
-- Update Xcode build settings check to _Xcode 12.3_.
+- Update Xcode build settings check to _Xcode 12.4_.
 
 
 
