@@ -59,7 +59,7 @@ static void mvkInitConfig() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (_mvkConfig.texture1DAs2D,                          MVK_CONFIG_TEXTURE_1D_AS_2D);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (_mvkConfig.preallocateDescriptors,                 MVK_CONFIG_PREALLOCATE_DESCRIPTORS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (_mvkConfig.useCommandPooling,                      MVK_CONFIG_USE_COMMAND_POOLING);
-	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (_mvkConfig.useMTLHeap,                            MVK_CONFIG_USE_MTLHEAP);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (_mvkConfig.useMTLHeap,                             MVK_CONFIG_USE_MTLHEAP);
 }
 
 // Returns the MoltenVK config, lazily initializing it if necessary.
@@ -77,6 +77,8 @@ const MVKConfiguration* mvkGetMVKConfiguration() {
 // and then repointing the MVKConfiguration member to the contents of the std::string.
 void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig) {
 	_mvkConfig = *pMVKConfig;
-	_autoGPUCaptureOutputFile = _mvkConfig.autoGPUCaptureOutputFilepath;
+	if (_mvkConfig.autoGPUCaptureOutputFilepath) {
+		_autoGPUCaptureOutputFile = _mvkConfig.autoGPUCaptureOutputFilepath;
+	}
 	_mvkConfig.autoGPUCaptureOutputFilepath = (char*)_autoGPUCaptureOutputFile.c_str();
 }
