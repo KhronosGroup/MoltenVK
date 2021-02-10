@@ -943,7 +943,7 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
 
     MVKQuerySpec querySpec;
     querySpec.set(pQueryPool, query);
-    NSUInteger offset = _mtlRenderPassQueries.empty() ? 0 : _mtlVisibilityResultOffset + 8;
+    NSUInteger offset = _mtlRenderPassQueries.empty() ? 0 : _mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes;
     NSUInteger maxOffset = _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes;
     offset = min(offset, maxOffset);
     _mtlRenderPassQueries.push_back(make_pair(querySpec, offset));
@@ -952,16 +952,13 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
     _mtlVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
     _mtlVisibilityResultOffset = offset;
 
-    _needsVisibilityResultMTLBuffer = true;
-
     markDirty();
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
-	reset();
+	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	markDirty();
 }
-
-bool MVKOcclusionQueryCommandEncoderState::getNeedsVisibilityResultMTLBuffer() { return _needsVisibilityResultMTLBuffer; }
 
 void MVKOcclusionQueryCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
@@ -971,14 +968,7 @@ void MVKOcclusionQueryCommandEncoderState::encodeImpl(uint32_t stage) {
 }
 
 void MVKOcclusionQueryCommandEncoderState::resetImpl() {
-    _needsVisibilityResultMTLBuffer = _cmdEncoder->_cmdBuffer->_needsVisibilityResultMTLBuffer;
     _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
     _mtlVisibilityResultOffset = 0;
+    _mtlRenderPassQueries.clear();
 }
-
-MVKOcclusionQueryCommandEncoderState::MVKOcclusionQueryCommandEncoderState(MVKCommandEncoder* cmdEncoder)
-        : MVKCommandEncoderState(cmdEncoder) {
-    resetImpl();
-}
-
-

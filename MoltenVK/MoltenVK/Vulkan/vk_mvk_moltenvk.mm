@@ -61,7 +61,8 @@ MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
 	const MVKConfiguration*                     pConfiguration,
 	size_t*                                     pConfigurationSize) {
 
-	MVKConfiguration mvkConfig = {};	// Ensure initialized in case not fully copied
+	// Start with current config, in case incoming is not fully copied
+	MVKConfiguration mvkConfig = *mvkGetMVKConfiguration();
 	VkResult rslt = mvkCopy(&mvkConfig, pConfiguration, pConfigurationSize);
 	mvkSetMVKConfiguration(&mvkConfig);
 	return rslt;

@@ -585,17 +585,12 @@ public:
     /** Ends an occlusion query. */
     void endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query);
 
-    /** Returns whether an MTLBuffer is needed to hold occlusion query results. */
-    bool getNeedsVisibilityResultMTLBuffer();
-
-    /** Constructs this instance for the specified command encoder. */
-    MVKOcclusionQueryCommandEncoderState(MVKCommandEncoder* cmdEncoder);
+	MVKOcclusionQueryCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
 
 protected:
     void encodeImpl(uint32_t) override;
     void resetImpl() override;
 
-    bool _needsVisibilityResultMTLBuffer = false;
     MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
     NSUInteger _mtlVisibilityResultOffset = 0;
 	MVKSmallVector<std::pair<MVKQuerySpec, NSUInteger>> _mtlRenderPassQueries;
