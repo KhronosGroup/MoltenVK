@@ -346,6 +346,9 @@ MVKShaderModule::MVKShaderModule(MVKDevice* device,
 	size_t codeHash = 0;
 
 	// Retrieve the magic number to determine what type of shader code has been loaded.
+	// NOTE: Shader code should be submitted as SPIR-V. Although some simple direct MSL shaders may work,
+	// direct loading of MSL source code or compiled MSL code is not officially supported at this time.
+	// Future versions of MoltenVK may support direct MSL submission again.
 	uint32_t magicNum = *pCreateInfo->pCode;
 	switch (magicNum) {
 		case kMVKMagicNumberSPIRVCode: {					// SPIR-V code

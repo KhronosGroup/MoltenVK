@@ -1164,6 +1164,10 @@ VKAPI_ATTR void VKAPI_CALL vkGetIOSurfaceMVK(
 #pragma mark Shaders
 
 /**
+ * NOTE: Shader code should be submitted as SPIR-V. Although some simple direct MSL shaders may work,
+ * direct loading of MSL source code or compiled MSL code is not officially supported at this time.
+ * Future versions of MoltenVK may support direct MSL submission again.
+ *
  * Enumerates the magic number values to set in the MVKMSLSPIRVHeader when
  * submitting a SPIR-V stream that contains either Metal Shading Language source
  * code or Metal Shading Language compiled binary code in place of SPIR-V code.
@@ -1175,6 +1179,10 @@ typedef enum {
 } MVKMSLMagicNumber;
 
 /**
+ * NOTE: Shader code should be submitted as SPIR-V. Although some simple direct MSL shaders may work,
+ * direct loading of MSL source code or compiled MSL code is not officially supported at this time.
+ * Future versions of MoltenVK may support direct MSL submission again.
+ *
  * Describes the header at the start of an SPIR-V stream, when it contains either
  * Metal Shading Language source code or Metal Shading Language compiled binary code.
  *
