@@ -1590,7 +1590,6 @@
 				MVK_SKIP_DYLIB = "";
 				"MVK_SKIP_DYLIB[sdk=appletvsimulator*]" = YES;
 				"MVK_SKIP_DYLIB[sdk=iphonesimulator*]" = YES;
-				ONLY_ACTIVE_ARCH = YES;
 				PRELINK_LIBS = "${CONFIGURATION_BUILD_DIR}/libMoltenVKShaderConverter.a";
 				PRODUCT_NAME = MoltenVK;
 				SKIP_INSTALL = YES;

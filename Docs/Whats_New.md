@@ -27,6 +27,7 @@ Released TBD
 - `MVKConfiguration` extended to cover all MoltenVK environment variables.
 - Add ability to automatically capture first GPU frame by setting `MVKConfiguration::autoGPUCaptureScope`
   (or environment variable `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE`) to `2`.
+- Remove `ONLY_ACTIVE_ARCH` from Debug builds. **MoltenVK _Debug_** builds now build for all platform architectures.
 - Support _GitHub Actions_ for CI builds on pull requests.
 - Remove support for _Travis-CI_.
 - `Makefile` and `fetchDependencies` support `xcpretty` (if available)
