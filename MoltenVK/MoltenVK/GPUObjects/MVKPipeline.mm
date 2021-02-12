@@ -241,14 +241,9 @@ void MVKGraphicsPipeline::encode(MVKCommandEncoder* cmdEncoder, uint32_t stage) 
 				[mtlCmdEnc setRenderPipelineState: _mtlPipelineState];
 			}
 
-            // Depth stencil state
-            if (_hasDepthStencilInfo) {
-                cmdEncoder->_depthStencilState.setDepthStencilState(_depthStencilInfo);
-                cmdEncoder->_stencilReferenceValueState.setReferenceValues(_depthStencilInfo);
-            } else {
-                cmdEncoder->_depthStencilState.reset();
-                cmdEncoder->_stencilReferenceValueState.reset();
-            }
+            // Depth stencil state - Cleared _depthStencilInfo values will disable depth testing
+			cmdEncoder->_depthStencilState.setDepthStencilState(_depthStencilInfo);
+			cmdEncoder->_stencilReferenceValueState.setReferenceValues(_depthStencilInfo);
 
             // Rasterization
             cmdEncoder->_blendColorState.setBlendColor(_blendConstants[0], _blendConstants[1],
@@ -418,8 +413,9 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	// Render pipeline state
 	initMTLRenderPipelineState(pCreateInfo, reflectData);
 
-	// Depth stencil content
-	_hasDepthStencilInfo = mvkSetOrClear(&_depthStencilInfo, pCreateInfo->pDepthStencilState);
+	// Depth stencil content - clearing will disable depth and stencil testing
+	mvkSetOrClear(&_depthStencilInfo, pCreateInfo->pDepthStencilState);
+//	_hasDepthStencilInfo = mvkSetOrClear(&_depthStencilInfo, pCreateInfo->pDepthStencilState);
 
 	// Viewports and scissors
 	auto pVPState = pCreateInfo->pViewportState;

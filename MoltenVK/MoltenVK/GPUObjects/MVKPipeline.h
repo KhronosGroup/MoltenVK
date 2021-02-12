@@ -338,7 +338,6 @@ protected:
 	uint32_t _tessCtlLevelBufferIndex = 0;
 
 	bool _dynamicStateEnabled[kMVKVkDynamicStateCount];
-	bool _hasDepthStencilInfo;
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;
 	bool _needsVertexViewRangeBuffer = false;
