@@ -472,7 +472,6 @@
 					"\"$(SRCROOT)/../../../MoltenVK/include\"",
 					"\"$(SRCROOT)/../VulkanSamples/API-Samples/utils\"",
 				);
-				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_BUNDLE_IDENTIFIER = "com.moltenvk.${PRODUCT_NAME:identifier}";
 				PRODUCT_NAME = Hologram;

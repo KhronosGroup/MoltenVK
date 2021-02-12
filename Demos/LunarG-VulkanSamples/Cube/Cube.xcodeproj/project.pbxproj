@@ -481,7 +481,6 @@
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../../../MoltenVK/include\"",
 				);
-				ONLY_ACTIVE_ARCH = YES;
 				OTHER_LDFLAGS = (
 					"-ObjC",
 					"-lstdc++",

@@ -744,7 +744,6 @@
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../VulkanSamples/API-Samples/utils\"",
 				);
-				ONLY_ACTIVE_ARCH = YES;
 				PRODUCT_BUNDLE_IDENTIFIER = "com.moltenvk.${PRODUCT_NAME:identifier}";
 				PRODUCT_NAME = "${PROJECT}";
 			};
