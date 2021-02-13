@@ -83,23 +83,11 @@ public:
         encodeImpl(stage);
     }
 
-    /**
-     * Marks this instance as dirty and calls resetImpl() function to reset this instance
-     * back to initial state. Subclasses must override the resetImpl() function.
-     */
-    void reset() {
-        _isDirty = true;
-        _isModified = false;
-
-        resetImpl();
-    }
-
 	/** Constructs this instance for the specified command encoder. */
     MVKCommandEncoderState(MVKCommandEncoder* cmdEncoder) : _cmdEncoder(cmdEncoder) {}
 
 protected:
     virtual void encodeImpl(uint32_t stage) = 0;
-    virtual void resetImpl() = 0;
 
     MVKCommandEncoder* _cmdEncoder;
 	bool _isDirty = false;
@@ -127,7 +115,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void resetImpl() override;
 
     MVKPipeline* _pipeline = nullptr;
 };
@@ -156,7 +143,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void resetImpl() override;
 
     MVKSmallVector<VkViewport, kMVKCachedViewportScissorCount> _viewports, _dynamicViewports;
 };
@@ -185,7 +171,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void resetImpl() override;
 
     MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors, _dynamicScissors;
 };
@@ -212,7 +197,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void resetImpl() override;
 	bool isTessellating();
 
     MVKSmallVector<char, 128> _pushConstants;
@@ -252,7 +236,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void resetImpl() override;
     void setStencilState(MVKMTLStencilDescriptorData& stencilInfo,
                          const VkStencilOpState& vkStencil,
                          bool enabled);
@@ -283,7 +266,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void resetImpl() override;
 
     uint32_t _frontFaceValue = 0;
     uint32_t _backFaceValue = 0;
@@ -312,7 +294,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void resetImpl() override;
 
     float _depthBiasConstantFactor = 0;
     float _depthBiasClamp = 0;
@@ -340,7 +321,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void resetImpl() override;
 
     float _red = 0;
     float _green = 0;
@@ -440,23 +420,6 @@ protected:
 		bool areSamplerStateBindingsDirty = false;
 
 		bool needsSwizzle = false;
-
-		void reset() {
-			bufferBindings.clear();
-			textureBindings.clear();
-			samplerStateBindings.clear();
-			swizzleConstants.clear();
-			bufferSizes.clear();
-
-			areBufferBindingsDirty = false;
-			areTextureBindingsDirty = false;
-			areSamplerStateBindingsDirty = false;
-			swizzleBufferBinding.isDirty = false;
-			bufferSizeBufferBinding.isDirty = false;
-			viewRangeBufferBinding.isDirty = false;
-
-			needsSwizzle = false;
-		}
 	};
 
 };
@@ -524,7 +487,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t stage) override;
-    void resetImpl() override;
     void markDirty() override;
 
     ResourceBindings<8> _shaderStageResourceBindings[4];
@@ -563,7 +525,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t) override;
-    void resetImpl() override;
 
 	ResourceBindings<4> _resourceBindings;
 };
@@ -589,7 +550,6 @@ public:
 
 protected:
     void encodeImpl(uint32_t) override;
-    void resetImpl() override;
 
     MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
     NSUInteger _mtlVisibilityResultOffset = 0;

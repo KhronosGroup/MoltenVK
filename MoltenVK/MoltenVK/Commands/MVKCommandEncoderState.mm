@@ -49,10 +49,6 @@ void MVKPipelineCommandEncoderState::encodeImpl(uint32_t stage) {
 	}
 }
 
-void MVKPipelineCommandEncoderState::resetImpl() {
-    _pipeline = nullptr;
-}
-
 
 #pragma mark -
 #pragma mark MVKViewportCommandEncoderState
@@ -103,11 +99,6 @@ void MVKViewportCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 }
 
-void MVKViewportCommandEncoderState::resetImpl() {
-    _viewports.clear();
-	_dynamicViewports.clear();
-}
-
 
 #pragma mark -
 #pragma mark MVKScissorCommandEncoderState
@@ -156,11 +147,6 @@ void MVKScissorCommandEncoderState::encodeImpl(uint32_t stage) {
 	} else {
 		[_cmdEncoder->_mtlRenderEncoder setScissorRect: mvkMTLScissorRectFromVkRect2D(_cmdEncoder->clipToRenderArea(usingScissors[0]))];
 	}
-}
-
-void MVKScissorCommandEncoderState::resetImpl() {
-    _scissors.clear();
-	_dynamicScissors.clear();
 }
 
 
@@ -253,10 +239,6 @@ void MVKPushConstantsCommandEncoderState::encodeImpl(uint32_t stage) {
 bool MVKPushConstantsCommandEncoderState::isTessellating() {
 	MVKGraphicsPipeline* gp = (MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline();
 	return gp ? gp->isTessellationPipeline() : false;
-}
-
-void MVKPushConstantsCommandEncoderState::resetImpl() {
-    _pushConstants.clear();
 }
 
 
@@ -363,12 +345,6 @@ void MVKDepthStencilCommandEncoderState::encodeImpl(uint32_t stage) {
 	}
 }
 
-void MVKDepthStencilCommandEncoderState::resetImpl() {
-    _depthStencilData = kMVKMTLDepthStencilDescriptorDataDefault;
-	_hasDepthAttachment = false;
-	_hasStencilAttachment = false;
-}
-
 
 #pragma mark -
 #pragma mark MVKStencilReferenceValueCommandEncoderState
@@ -404,11 +380,6 @@ void MVKStencilReferenceValueCommandEncoderState::encodeImpl(uint32_t stage) {
     if (stage != kMVKGraphicsStageRasterization) { return; }
     [_cmdEncoder->_mtlRenderEncoder setStencilFrontReferenceValue: _frontFaceValue
                                                backReferenceValue: _backFaceValue];
-}
-
-void MVKStencilReferenceValueCommandEncoderState::resetImpl() {
-    _frontFaceValue = 0;
-    _backFaceValue = 0;
 }
 
 
@@ -453,13 +424,6 @@ void MVKDepthBiasCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 }
 
-void MVKDepthBiasCommandEncoderState::resetImpl() {
-    _depthBiasConstantFactor = 0;
-    _depthBiasClamp = 0;
-    _depthBiasSlopeFactor = 0;
-    _isEnabled = false;
-}
-
 
 #pragma mark -
 #pragma mark MVKBlendColorCommandEncoderState
@@ -482,13 +446,6 @@ void MVKBlendColorCommandEncoderState::setBlendColor(float red, float green,
 void MVKBlendColorCommandEncoderState::encodeImpl(uint32_t stage) {
     if (stage != kMVKGraphicsStageRasterization) { return; }
     [_cmdEncoder->_mtlRenderEncoder setBlendColorRed: _red green: _green blue: _blue alpha: _alpha];
-}
-
-void MVKBlendColorCommandEncoderState::resetImpl() {
-    _red = 0;
-    _green = 0;
-    _blue = 0;
-    _alpha = 0;
 }
 
 
@@ -808,12 +765,6 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 }
 
-void MVKGraphicsResourcesCommandEncoderState::resetImpl() {
-	for (uint32_t i = kMVKShaderStageVertex; i <= kMVKShaderStageFragment; i++) {
-		_shaderStageResourceBindings[i].reset();
-	}
-}
-
 
 #pragma mark -
 #pragma mark MVKComputeResourcesCommandEncoderState
@@ -908,10 +859,6 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                              });
 }
 
-void MVKComputeResourcesCommandEncoderState::resetImpl() {
-	_resourceBindings.reset();
-}
-
 
 #pragma mark -
 #pragma mark MVKOcclusionQueryCommandEncoderState
@@ -965,10 +912,4 @@ void MVKOcclusionQueryCommandEncoderState::encodeImpl(uint32_t stage) {
 
 	[_cmdEncoder->_mtlRenderEncoder setVisibilityResultMode: _mtlVisibilityResultMode
 													 offset: _mtlVisibilityResultOffset];
-}
-
-void MVKOcclusionQueryCommandEncoderState::resetImpl() {
-    _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-    _mtlVisibilityResultOffset = 0;
-    _mtlRenderPassQueries.clear();
 }
