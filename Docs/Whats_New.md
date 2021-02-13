@@ -27,6 +27,9 @@ Released TBD
 - `MVKConfiguration` extended to cover all MoltenVK environment variables.
 - Add ability to automatically capture first GPU frame by setting `MVKConfiguration::autoGPUCaptureScope`
   (or environment variable `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE`) to `2`.
+- Remove official support for submitting shaders directly containing MSL source code or compiled MSL code.
+  MSL shaders may still be direclty submitted, and may work, but it is not officially supported at this time. 
+  Future versions of **MoltenVK** may support direct MSL submission again.
 - Remove `ONLY_ACTIVE_ARCH` from Debug builds. **MoltenVK _Debug_** builds now build for all platform architectures.
 - Support _GitHub Actions_ for CI builds on pull requests.
 - Remove support for _Travis-CI_.

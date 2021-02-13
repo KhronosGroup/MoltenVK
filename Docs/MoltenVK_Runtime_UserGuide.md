@@ -27,7 +27,6 @@ Table of Contents
 	- [MoltenVK `VK_MVK_moltenvk` Extension](#moltenvk_extension)
 	- [Configuring MoltenVK](#moltenvk_config)
 - [*Metal Shading Language* Shaders](#shaders)
-	- [MoltenVKShaderConverter Shader Converter Tool](#shader_converter_tool)
 	- [Troubleshooting Shader Conversion](#spv_vs_msl)
 - [Performance Considerations](#performance)
 	- [Shader Loading Time](#shader_load_time)
@@ -63,10 +62,7 @@ and *Mac Catalyst* on *macOS 11.0+*.
 
 *Metal* uses a different shading language, the *Metal Shading Language (MSL)*, than 
 *Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
-to their *MSL* equivalents. This can be performed transparently at run time, using the 
-**Runtime Shader Conversion** feature of **MoltenVK**, or at development time using the 
-[**MoltenVKShaderConverter**](#shader_converter_tool) tool provided with this **MoltenVK** 
-distribution package.
+to their *MSL* equivalents.
 
 To provide *Vulkan* capability to the*macOS*, *iOS*, and *tvOS* platforms, **MoltenVK** uses 
 *Apple's* publicly available API's, including *Metal*. **MoltenVK** does **_not_** use any 
@@ -414,58 +410,9 @@ variables in the `vk_mvk_moltenvk.h` file for more info about configuring and op
 
 *Metal* uses a different shader language than *Vulkan*. *Vulkan* uses the new 
 *SPIR-V Shading Language (SPIR-V)*, whereas *Metal* uses the *Metal Shading Language (MSL)*.
-
-**MoltenVK** provides several options for creating and running *MSL* versions of your 
-existing *SPIR-V* shaders. The following options are presented in order of increasing 
-sophistication and difficulty:
-
-- You can use the automatic **Runtime Shader Conversion** feature of **MoltenVK** to automatically 
-  and transparently convert your *SPIR-V* shaders to *MSL* at runtime, by simply loading your 
-  *SPIR-V* shaders as you always have, using the standard *Vulkan* `vkCreateShaderModule()` 
-  function. **MoltenVK** will automatically convert the *SPIR-V* code to *MSL* at runtime.
-  
-- You can use the standard *Vulkan* `vkCreateShaderModule()` function to provide your own *MSL* 
-  shader code. To do so, set the value of the *magic number* element of the *SPIR-V* stream to one
-  of the values in the `MVKMSLMagicNumber` enumeration found in the `vk_mvk_moltenvk.h` header file. 
-  
-  The *magic number* element of the *SPIR-V* stream is the first element of the stream, 
-  and by setting the value of this element to either `kMVKMagicNumberMSLSourceCode` or
-  `kMVKMagicNumberMSLCompiledCode`, on *SPIR-V* code that you submit to the `vkCreateShaderModule()`
-  function, you are indicating that the remainder of the *SPIR-V* stream contains either
-  *MSL* source code, or *MSL* compiled code, respectively.
-
-- You can use the `MoltenVKShaderConverter` command-line tool found in this **MoltenVK** distribution 
-  package to convert your *SPIR-V* shaders to *MSL* source code, offline at development time,
-  in order to create the appropriate *MSL* code to load at runtime. The [section below](#shaders)
-  discusses how to use this tool in more detail.
-
-You can mix and match these options in your application. For example, a convenient approach is 
-to use **Runtime Shader Conversion** for most *SPIR-V* shaders, and provide pre-converted *MSL*
-shader source code for the odd *SPIR-V* shader that proves problematic for runtime conversion.
-
-
-
-<a name="shader_converter_tool"></a>
-### MoltenVKShaderConverter Shader Converter Tool
-
-The **MoltenVK** distribution package includes the `MoltenVKShaderConverter` command line tool, 
-which allows you to convert your *SPIR-V* shader source code to *MSL* at development time, and 
-then supply the *MSL* code to **MoltenVK** using one of the methods described in the 
-[*Metal Shading Language* Shaders](#shaders) section above.
-
-The `MoltenVKShaderConverter` tool uses the same conversion technology as the **Runtime Shader
-Conversion** feature of **MoltenVK**.
-
-The `MoltenVKShaderConverter` tool has a number of options available from the command line:
-
-- The tool can be used to convert a single *SPIR-V* file to *MSL*, or an entire directory tree 
-  of *SPIR-V* files to *MSL*. 
-
-- The tool can be used to convert a single *OpenGL GLSL* file, or an entire directory tree 
-  of *GLSL* files to either *SPIR-V* or *MSL*. 
-
-To see a complete list of options, run the `MoltenVKShaderConverter` tool from the command 
-line with no arguments.
+**MoltenVK** uses **Runtime Shader Conversion** to automatically convert your *SPIR-V* shaders 
+to their *MSL* equivalents, during loading your *SPIR-V* shaders, using the standard *Vulkan* 
+`vkCreateShaderModule()` function.
 
 
 
@@ -489,13 +436,8 @@ you can address the issue as follows:
   in human-readable form. This allows you to manually verify the conversions, and can help 
   you diagnose issues that might occur during shader conversion.
 
-- For minor issues, you may be able to adjust your *SPIR-V* code so that it behaves the same 
+- For some issues, you may be able to adjust your *SPIR-V* code so that it behaves the same 
   under *Vulkan*, but is easier to automatically convert to *MSL*.
-  
-- For more significant issues, you can use the `MoltenVKShaderConverter` tool to convert the
-  shaders at development time, adjust the *MSL* code manually so that it compiles correctly, 
-  and use the *MSL* shader code instead of the *SPIR-V* code, using the techniques described
-  in the [*Metal Shading Language* Shaders](#shaders) section above.
 
 - You are also encouraged to report issues with shader conversion to the 
   [*SPIRV-Cross*](https://github.com/KhronosGroup/SPIRV-Cross/issues) project. **MoltenVK** and 
@@ -531,15 +473,6 @@ When using pipeline caching, nothing changes about how you load *SPIR-V* shader 
 automatically detects that the *SPIR-V* was previously converted to *MSL*, and stored offline via 
 the *Vulkan* pipeline cache serialization mechanism, and does not invoke the relatively expensive
 step of converting the *SPIR-V* to *MSL* again.
-
-As a second shader loading performance option, *Metal* also supports pre-compiled shaders, which 
-can improve shader loading and set-up performance, allowing you to reduce your scene loading time. 
-See the [*Metal Shading Language* Shaders](#shaders) and 
-[MoltenVKShaderConverter Shader Converter Tool](#shader_converter_tool) sections above for more 
-information about how to use the `MoltenVKShaderConverter` tool to create and load pre-compiled 
-*Metal* shaders into **MoltenVK**. This behaviour is not standard *Vulkan* behaviour, and does not
-improve performance significantly. Your first choice should be to use offline storage of pipeline
-cache contents as described in the previous paragraphs.
 
 
 <a name="swapchains"></a>
