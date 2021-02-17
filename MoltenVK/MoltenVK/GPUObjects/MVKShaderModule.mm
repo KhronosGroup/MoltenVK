@@ -62,7 +62,7 @@ MVKMTLFunction MVKShaderLibrary::getMTLFunction(const VkSpecializationInfo* pSpe
 
 	if ( !_mtlLibrary ) { return MVKMTLFunctionNull; }
 
-	@synchronized (_mtlLibrary) {
+	@synchronized (_owner->getMTLDevice()) {
 		@autoreleasepool {
 			NSString* mtlFuncName = @(_shaderConversionResults.entryPoint.mtlFunctionName.c_str());
 			MVKDevice* mvkDev = _owner->getDevice();
@@ -423,13 +423,16 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		[_owner->getMTLDevice() newLibraryWithSource: mslSourceCode
-											 options: _owner->getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.supportsFastMath,
-																								shaderConversionResults.isPositionInvariant)
-								   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
-									   bool isLate = compileComplete(mtlLib, error);
-									   if (isLate) { destroy(); }
-								   }];
+		auto mtlDev = _owner->getMTLDevice();
+		@synchronized (mtlDev) {
+			[mtlDev newLibraryWithSource: mslSourceCode
+								 options: _owner->getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.supportsFastMath,
+																					shaderConversionResults.isPositionInvariant)
+					   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
+				bool isLate = compileComplete(mtlLib, error);
+				if (isLate) { destroy(); }
+			}];
+		}
 	});
 
 	return [_mtlLibrary retain];
@@ -467,12 +470,14 @@ id<MTLFunction> MVKFunctionSpecializer::newMTLFunction(id<MTLLibrary> mtlLibrary
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		[mtlLibrary newFunctionWithName: funcName
-						 constantValues: constantValues
-					  completionHandler: ^(id<MTLFunction> mtlFunc, NSError* error) {
-						  bool isLate = compileComplete(mtlFunc, error);
-						  if (isLate) { destroy(); }
-					  }];
+		@synchronized (_owner->getMTLDevice()) {
+			[mtlLibrary newFunctionWithName: funcName
+							 constantValues: constantValues
+						  completionHandler: ^(id<MTLFunction> mtlFunc, NSError* error) {
+				bool isLate = compileComplete(mtlFunc, error);
+				if (isLate) { destroy(); }
+			}];
+		}
 	});
 
 	return [_mtlFunction retain];
