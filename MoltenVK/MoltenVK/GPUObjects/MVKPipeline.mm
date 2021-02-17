@@ -1603,15 +1603,17 @@ bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreate
 }
 
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
-	[_mtlTessVertexStageDesc release];
+	@synchronized (getMTLDevice()) {
+		[_mtlTessVertexStageDesc release];
 
-	[_mtlTessVertexStageState release];
-	[_mtlTessVertexStageIndex16State release];
-	[_mtlTessVertexStageIndex32State release];
-	[_mtlTessControlStageState release];
-	[_mtlPipelineState release];
+		[_mtlTessVertexStageState release];
+		[_mtlTessVertexStageIndex16State release];
+		[_mtlTessVertexStageIndex32State release];
+		[_mtlTessControlStageState release];
+		[_mtlPipelineState release];
 
-	for (id<MTLFunction> func : _mtlTessVertexFunctions) { [func release]; }
+		for (id<MTLFunction> func : _mtlTessVertexFunctions) { [func release]; }
+	}
 }
 
 
@@ -1716,7 +1718,9 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 }
 
 MVKComputePipeline::~MVKComputePipeline() {
-    [_mtlPipelineState release];
+	@synchronized (getMTLDevice()) {
+		[_mtlPipelineState release];
+	}
 }
 
 
@@ -2147,11 +2151,14 @@ id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		[_owner->getMTLDevice() newRenderPipelineStateWithDescriptor: mtlRPLDesc
-												   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
-													   bool isLate = compileComplete(ps, error);
-													   if (isLate) { destroy(); }
-												   }];
+		auto mtlDev = _owner->getMTLDevice();
+		@synchronized (mtlDev) {
+			[mtlDev newRenderPipelineStateWithDescriptor: mtlRPLDesc
+									   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
+										   bool isLate = compileComplete(ps, error);
+										   if (isLate) { destroy(); }
+									   }];
+		}
 	});
 
 	return [_mtlRenderPipelineState retain];
@@ -2178,11 +2185,14 @@ id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineSta
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		[_owner->getMTLDevice() newComputePipelineStateWithFunction: mtlFunction
-												  completionHandler: ^(id<MTLComputePipelineState> ps, NSError* error) {
-													  bool isLate = compileComplete(ps, error);
-													  if (isLate) { destroy(); }
-												  }];
+		auto mtlDev = _owner->getMTLDevice();
+		@synchronized (mtlDev) {
+			[mtlDev newComputePipelineStateWithFunction: mtlFunction
+									  completionHandler: ^(id<MTLComputePipelineState> ps, NSError* error) {
+										  bool isLate = compileComplete(ps, error);
+										  if (isLate) { destroy(); }
+									  }];
+		}
 	});
 
 	return [_mtlComputePipelineState retain];
@@ -2192,12 +2202,15 @@ id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineSta
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		[_owner->getMTLDevice() newComputePipelineStateWithDescriptor: plDesc
-															  options: MTLPipelineOptionNone
-													completionHandler: ^(id<MTLComputePipelineState> ps, MTLComputePipelineReflection*, NSError* error) {
-														bool isLate = compileComplete(ps, error);
-														if (isLate) { destroy(); }
-													}];
+		auto mtlDev = _owner->getMTLDevice();
+		@synchronized (mtlDev) {
+			[mtlDev newComputePipelineStateWithDescriptor: plDesc
+												  options: MTLPipelineOptionNone
+										completionHandler: ^(id<MTLComputePipelineState> ps, MTLComputePipelineReflection*, NSError* error) {
+											bool isLate = compileComplete(ps, error);
+											if (isLate) { destroy(); }
+										}];
+		}
 	});
 
 	return [_mtlComputePipelineState retain];
