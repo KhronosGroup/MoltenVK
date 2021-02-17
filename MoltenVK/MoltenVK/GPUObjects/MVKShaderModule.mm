@@ -470,14 +470,12 @@ id<MTLFunction> MVKFunctionSpecializer::newMTLFunction(id<MTLLibrary> mtlLibrary
 	unique_lock<mutex> lock(_completionLock);
 
 	compile(lock, ^{
-		@synchronized (_owner->getMTLDevice()) {
-			[mtlLibrary newFunctionWithName: funcName
-							 constantValues: constantValues
-						  completionHandler: ^(id<MTLFunction> mtlFunc, NSError* error) {
-				bool isLate = compileComplete(mtlFunc, error);
-				if (isLate) { destroy(); }
-			}];
-		}
+		[mtlLibrary newFunctionWithName: funcName
+						 constantValues: constantValues
+					  completionHandler: ^(id<MTLFunction> mtlFunc, NSError* error) {
+			bool isLate = compileComplete(mtlFunc, error);
+			if (isLate) { destroy(); }
+		}];
 	});
 
 	return [_mtlFunction retain];
