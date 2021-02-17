@@ -429,9 +429,9 @@ id<MTLLibrary> MVKShaderLibraryCompiler::newMTLLibrary(NSString* mslSourceCode,
 								 options: _owner->getDevice()->getMTLCompileOptions(shaderConversionResults.entryPoint.supportsFastMath,
 																					shaderConversionResults.isPositionInvariant)
 					   completionHandler: ^(id<MTLLibrary> mtlLib, NSError* error) {
-				bool isLate = compileComplete(mtlLib, error);
-				if (isLate) { destroy(); }
-			}];
+						   bool isLate = compileComplete(mtlLib, error);
+						   if (isLate) { destroy(); }
+					   }];
 		}
 	});
 
@@ -473,9 +473,9 @@ id<MTLFunction> MVKFunctionSpecializer::newMTLFunction(id<MTLLibrary> mtlLibrary
 		[mtlLibrary newFunctionWithName: funcName
 						 constantValues: constantValues
 					  completionHandler: ^(id<MTLFunction> mtlFunc, NSError* error) {
-			bool isLate = compileComplete(mtlFunc, error);
-			if (isLate) { destroy(); }
-		}];
+						  bool isLate = compileComplete(mtlFunc, error);
+						  if (isLate) { destroy(); }
+					  }];
 	});
 
 	return [_mtlFunction retain];

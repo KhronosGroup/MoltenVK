@@ -2155,9 +2155,9 @@ id<MTLRenderPipelineState> MVKRenderPipelineCompiler::newMTLRenderPipelineState(
 		@synchronized (mtlDev) {
 			[mtlDev newRenderPipelineStateWithDescriptor: mtlRPLDesc
 									   completionHandler: ^(id<MTLRenderPipelineState> ps, NSError* error) {
-				bool isLate = compileComplete(ps, error);
-				if (isLate) { destroy(); }
-			}];
+										   bool isLate = compileComplete(ps, error);
+										   if (isLate) { destroy(); }
+									   }];
 		}
 	});
 
@@ -2189,9 +2189,9 @@ id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineSta
 		@synchronized (mtlDev) {
 			[mtlDev newComputePipelineStateWithFunction: mtlFunction
 									  completionHandler: ^(id<MTLComputePipelineState> ps, NSError* error) {
-				bool isLate = compileComplete(ps, error);
-				if (isLate) { destroy(); }
-			}];
+										  bool isLate = compileComplete(ps, error);
+										  if (isLate) { destroy(); }
+									  }];
 		}
 	});
 
@@ -2207,9 +2207,9 @@ id<MTLComputePipelineState> MVKComputePipelineCompiler::newMTLComputePipelineSta
 			[mtlDev newComputePipelineStateWithDescriptor: plDesc
 												  options: MTLPipelineOptionNone
 										completionHandler: ^(id<MTLComputePipelineState> ps, MTLComputePipelineReflection*, NSError* error) {
-				bool isLate = compileComplete(ps, error);
-				if (isLate) { destroy(); }
-			}];
+											bool isLate = compileComplete(ps, error);
+											if (isLate) { destroy(); }
+										}];
 		}
 	});
 
