@@ -16,7 +16,7 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.1.2
 --------------
 
-Released TBD
+Released 2021/02/22
 
 - Advertise support for `shaderInt64` feature.
 - Support fast math on MSL compiler via `MVKConfiguration::fastMathEnabled` configuration 
@@ -25,6 +25,7 @@ Released TBD
 - `vkGetMoltenVKConfigurationMVK()` and `vkSetMoltenVKConfigurationMVK()` functions
   can now be used with a `VkInstance` from another Vulkan layer, or with a `VK_NULL_HANDLE VkInstance`.
 - `MVKConfiguration` extended to cover all MoltenVK environment variables.
+- Report accurate value of 8 for `VkPhysicalDeviceLimits::maxBoundDescriptorSets`.
 - Add ability to automatically capture first GPU frame by setting `MVKConfiguration::autoGPUCaptureScope`
   (or environment variable `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE`) to `2`.
 - Remove official support for submitting shaders directly containing MSL source code or compiled MSL code.

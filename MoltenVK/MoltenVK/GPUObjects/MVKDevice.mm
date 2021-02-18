@@ -2053,7 +2053,7 @@ void MVKPhysicalDevice::initLimits() {
 
     _properties.limits.maxMemoryAllocationCount = kMVKUndefinedLargeUInt32;
     _properties.limits.maxSamplerAllocationCount = kMVKUndefinedLargeUInt32;
-    _properties.limits.maxBoundDescriptorSets = kMVKUndefinedLargeUInt32;
+    _properties.limits.maxBoundDescriptorSets = kMVKMaxDescriptorSetCount;
 
     _properties.limits.maxComputeWorkGroupCount[0] = kMVKUndefinedLargeUInt32;
     _properties.limits.maxComputeWorkGroupCount[1] = kMVKUndefinedLargeUInt32;
