@@ -1546,13 +1546,9 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 	}
 
-	// iOS and tvOS adjustments necessary when running in the simulator on non-Apple GPUs.
-	// Apple1 used as baseline for detecting Apple Silicon on macOS because Apple7 not supported for tvOS.
-	// Must run after setting native iOS and tvOS values above.
-#if MVK_OS_SIMULATOR
-	if ( !supportsMTLGPUFamily(Apple1) ) {
-		_metalFeatures.mtlBufferAlignment = 256;
-	}
+// iOS and tvOS adjustments necessary when running in the simulator on non-Apple GPUs.
+#if MVK_OS_SIMULATOR && !MVK_APPLE_SILICON
+	_metalFeatures.mtlBufferAlignment = 256;
 #endif
 }
 
