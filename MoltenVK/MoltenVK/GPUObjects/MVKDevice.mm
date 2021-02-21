@@ -1428,7 +1428,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		if (supportsMTLGPUFamily(Apple5)) {
 			// This is an Apple GPU--treat it accordingly.
 			_metalFeatures.mtlCopyBufferAlignment = 1;
-			_metalFeatures.mtlBufferAlignment = 16;
+			_metalFeatures.mtlBufferAlignment = 16;     // Min float4 alignment for typical vertex buffers. MTLBuffer may go down to 4 bytes for other data.
 			_metalFeatures.maxQueryBufferSize = (64 * KIBI);
 			_metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 			_metalFeatures.postDepthCoverage = true;
@@ -1545,6 +1545,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			break;
 #endif
 	}
+
+// iOS and tvOS adjustments necessary when running in the simulator on non-Apple GPUs.
+#if MVK_OS_SIMULATOR && !MVK_APPLE_SILICON
+	_metalFeatures.mtlBufferAlignment = 256;
+#endif
 }
 
 // Initializes the physical device features of this instance.
