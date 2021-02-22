@@ -86,7 +86,7 @@ public:
     MVKMTLBufferAllocation* newObject() override;
 
     /** Configures this instance to dispense MVKMTLBufferAllocation instances of the specified size. */
-    MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, bool isDedicated);
+    MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, MTLStorageMode mtlStorageMode, bool isDedicated);
 
     ~MVKMTLBufferAllocationPool() override;
 
@@ -97,6 +97,7 @@ protected:
     NSUInteger _nextOffset;
     NSUInteger _allocationLength;
     NSUInteger _mtlBufferLength;
+    MTLStorageMode _mtlStorageMode;
 	MVKSmallVector<id<MTLBuffer>, 64> _mtlBuffers;
     MVKDevice* _device;
 };
@@ -137,7 +138,7 @@ public:
      * next power-of-two value that is at least as big as the specified maximum size.
 	 * If makeThreadSafe is true, a lock will be applied when an allocation is acquired.
      */
-    MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe = false, bool isDedicated = false);
+    MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe = false, bool isDedicated = false, MTLStorageMode mtlStorageMode = MTLStorageModeShared);
 
     ~MVKMTLBufferAllocator() override;
 

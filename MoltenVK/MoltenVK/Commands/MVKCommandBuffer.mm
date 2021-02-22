@@ -337,7 +337,7 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
     getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _multiviewPassIndex, _framebuffer, _clearValues.contents(), _isRenderingEntireAttachment, loadOverride);
     if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
         if (!_visibilityResultMTLBuffer) {
-            _visibilityResultMTLBuffer = getTempMTLBuffer(_pDeviceMetalFeatures->maxQueryBufferSize, true);
+            _visibilityResultMTLBuffer = getTempMTLBuffer(_pDeviceMetalFeatures->maxQueryBufferSize, true, true);
         }
         mtlRPDesc.visibilityResultBuffer = _visibilityResultMTLBuffer->_mtlBuffer;
     }
@@ -647,8 +647,8 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
     }
 }
 
-const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length, bool isDedicated) {
-    const MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length, isDedicated);
+const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length, bool isPrivate, bool isDedicated) {
+    const MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length, isPrivate, isDedicated);
 	MVKMTLBufferAllocationPool* pool = mtlBuffAlloc->getPool();
 
     // Return the MTLBuffer allocation to the pool once the command buffer is done with it

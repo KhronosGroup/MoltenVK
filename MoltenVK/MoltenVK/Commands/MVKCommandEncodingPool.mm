@@ -77,9 +77,13 @@ id<MTLDepthStencilState> MVKCommandEncodingPool::getMTLDepthStencilState(bool us
 	MVK_ENC_REZ_ACCESS(_cmdClearDefaultDepthStencilState, newMTLDepthStencilState(useDepth, useStencil));
 }
 
-const MVKMTLBufferAllocation* MVKCommandEncodingPool::acquireMTLBufferAllocation(NSUInteger length, bool isDedicated) {
+const MVKMTLBufferAllocation* MVKCommandEncodingPool::acquireMTLBufferAllocation(NSUInteger length, bool isPrivate, bool isDedicated) {
+    MVKAssert(isPrivate || !isDedicated, "Dedicated, host-shared temporary buffers are not supported."); 
     if (isDedicated) {
         return _dedicatedMtlBufferAllocator.acquireMTLBufferRegion(length);
+    }
+    if (isPrivate) {
+        return _privateMtlBufferAllocator.acquireMTLBufferRegion(length);
     }
     return _mtlBufferAllocator.acquireMTLBufferRegion(length);
 }
@@ -163,7 +167,8 @@ void MVKCommandEncodingPool::clear() {
 
 MVKCommandEncodingPool::MVKCommandEncodingPool(MVKCommandPool* commandPool) : _commandPool(commandPool),
     _mtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxMTLBufferSize, true),
-    _dedicatedMtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxQueryBufferSize, true, true) {
+    _privateMtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxMTLBufferSize, true, false, MTLStorageModePrivate),
+    _dedicatedMtlBufferAllocator(commandPool->getDevice(), commandPool->getDevice()->_pMetalFeatures->maxQueryBufferSize, true, true, MTLStorageModePrivate) {
 }
 
 MVKCommandEncodingPool::~MVKCommandEncodingPool() {
