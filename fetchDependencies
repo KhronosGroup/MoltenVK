@@ -32,7 +32,7 @@
 #              binaries for all supported platforms.
 #
 #      --none
-#              Don't build the external libraries for any platform.
+#              Don't build the external libraries for any platform (this is the default).
 #
 #      Multiple platform options may be specified. At least one platform option must be specified.
 #
