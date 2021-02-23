@@ -26,19 +26,67 @@ Released 2021/02/22
   can now be used with a `VkInstance` from another Vulkan layer, or with a `VK_NULL_HANDLE VkInstance`.
 - `MVKConfiguration` extended to cover all MoltenVK environment variables.
 - Report accurate value of 8 for `VkPhysicalDeviceLimits::maxBoundDescriptorSets`.
-- Add ability to automatically capture first GPU frame by setting `MVKConfiguration::autoGPUCaptureScope`
-  (or environment variable `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE`) to `2`.
+- Advertise macOS M1 GPU as `VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU`.
+- For Vulkan semaphores, prefer using `MTLFence` over `MTLEvent`.
+- Support `immmutableSamplers` with sampler arrays.
+- Query pools write to dedicated temporary internal buffer to span multiple render passes 
+  and support larger query counts.
+- Fixes for race conditions in CTS multithread tests, guarding `MTLDevice` on cross-thread syncing.
+- Set Metal buffer alignment to 256 on non-Apple Silicon iOS/tvOS simulators.
+- `MVKMTLBufferAllocation`: Support device-local temp buffers for tessellation, 
+  indirect multiview, or occlusion queries buffer usage.
+- `MVKPixelFormats`: Enable `RenderTarget` usage for linear textures on Apple GPUs.
+- `MVKRenderPass`: Use a non-trivial granularity for TBDR GPUs.
+- Don't use barriers in render passes on Apple GPUs.
+- `MVKGraphicsPipeline`: Fix color write mask with `RGB9E5` RTs.
+- `MVKImagePlane`: When sync'ing, create the texture if it doesn't exist.
+- `MVKRenderPass`: Don't use `Load/Store` actions for memoryless.
+- `MVKRenderPass`: Only use `MTLStorageModeMemoryless` where available.
+- `MVKDeviceMemory`: Don't consider Memoryless host-accessible on *macOS/tvOS*.
+- `MVKCmdResolveImage` fix incorrectly changing first resolve layer's src/dst base layer.
+- `MVKPhysicalDevice`: Require Mac family 2 for render without attachments.
+- `MVKPhysicalDevice`: Disable SIMD-group permutation for Mac family 1.
+- `MVKPhysicalDevice`: Clamp maximum buffer range to 4 GiB - 1.
+- `MVKMTLBufferAllocation`: Mark temp buffers as volatile.
+- `SPIRVReflection`: Multiple entry point support for `getShaderOutputs()`.
+- Remove obsolete `MVKVector`, which was long ago replaced with `MVKSmallVector`.
 - Remove official support for submitting shaders directly containing MSL source code or compiled MSL code.
-  MSL shaders may still be direclty submitted, and may work, but it is not officially supported at this time. 
+  MSL shaders may still be directly submitted, and may work, but it is not officially supported at this time.
   Future versions of **MoltenVK** may support direct MSL submission again.
 - Remove `ONLY_ACTIVE_ARCH` from Debug builds. **MoltenVK _Debug_** builds now build for all platform architectures.
+- Add ability to automatically capture first GPU frame by setting `MVKConfiguration::autoGPUCaptureScope`
+  (or environment variable `MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE`) to `2`.
 - Support _GitHub Actions_ for CI builds on pull requests.
+- Support pre-built binary artifacts from _GitHub Actions_ CI builds.
+- `Makefile` and `fetchDependencies` support `xcpretty`, if available.
 - Remove support for _Travis-CI_.
-- `Makefile` and `fetchDependencies` support `xcpretty` (if available)
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `30`.
 - Update copyright notices to year 2021.
 - Update Xcode build settings check to _Xcode 12.4_.
-
+- Support legacy building on _Xcode 11.7_.
+- Update dependency libraries to match *Vulkan SDK 1.2.170*.
+- Update to latest SPIRV-Cross version:
+	- MSL: Gracefully assign automatic input locations to builtin attributes.
+	- MSL: Refactor out location consumption count computation.
+	- MSL: Always return `[[position]]` when required.
+	- MSL: Fix some edge cases in input attachment handling.
+	- MSL: Fix various bugs with framebuffer fetch on macOS and argument buffers.
+	- MSL: Always use input_attachment_index for framebuffer fetch binding.
+	- MSL: Make sure initialized output builtins are considered active.
+	- MSL: Always enable Outputs in vertex stages.
+	- MSL: Only consider builtin variables and flatten builtin arrays if they are part of IO interface.
+	- MSL: Handle load and store to TessLevel array in TESC.
+	- MSL: Fixup type when using tessellation levels in TESC functions.
+	- MSL: Fix automatic assign of builtin attributes in tessellation.
+	- GLSL/MSL: Handle more complicated tessellation Output initializers.
+	- MSL: Emit correct initializer for tessellation control points.
+	- MSL: Handle initializers for tess levels.
+	- MSL: Fix initializer for tess level outputs.
+	- MSL: Fix broken reserved identifier handling for entry points.
+	- MSL: Handle reserved identifiers for entry point.
+	- Fix pathological complexity explosion for certain shaders.
+	- Improve handling of complex variable initialization.
+	- Expose position invariance.
 
 
 MoltenVK 1.1.1
