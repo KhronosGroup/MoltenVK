@@ -109,7 +109,7 @@ VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 
 #if MVK_MACOS
 		if (pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
-			if ( !pBlitEnc->mtlCmdBuffer) { pBlitEnc->mtlCmdBuffer = [_device->getAnyQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences]; }
+			if ( !pBlitEnc->mtlCmdBuffer) { pBlitEnc->mtlCmdBuffer = _device->getAnyQueue()->getMTLCommandBuffer(); }
 			if ( !pBlitEnc->mtlBlitEncoder) { pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder]; }
 			[pBlitEnc->mtlBlitEncoder synchronizeResource: _mtlBuffer];
 		}
