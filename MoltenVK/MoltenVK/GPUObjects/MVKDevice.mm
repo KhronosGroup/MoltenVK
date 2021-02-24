@@ -1149,7 +1149,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 void MVKPhysicalDevice::initProperties() {
 	mvkClear(&_properties);	// Start with everything cleared
 
-	_properties.apiVersion = MVK_VULKAN_API_VERSION;
+	_properties.apiVersion = mvkGetMVKConfiguration()->apiVersionToAdvertise;
 	_properties.driverVersion = MVK_VERSION;
 
 	initGPUInfoProperties();
@@ -3694,7 +3694,7 @@ void MVKDevice::startAutoGPUCapture(int32_t autoGPUCaptureScope, id mtlCaptureOb
 		captureDesc.captureObject = mtlCaptureObject;
 		captureDesc.destination = MTLCaptureDestinationDeveloperTools;
 
-		char* filePath = mvkGetMVKConfiguration()->autoGPUCaptureOutputFilepath;
+		const char* filePath = mvkGetMVKConfiguration()->autoGPUCaptureOutputFilepath;
 		if (strlen(filePath)) {
 			if ([captureMgr respondsToSelector: @selector(supportsDestination:)] &&
 				[captureMgr supportsDestination: MTLCaptureDestinationGPUTraceDocument] ) {

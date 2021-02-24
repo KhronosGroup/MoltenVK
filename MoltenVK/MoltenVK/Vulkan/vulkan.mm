@@ -1919,7 +1919,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceVersion(
     uint32_t*                                   pApiVersion) {
 
     MVKTraceVulkanCallStart();
-    *pApiVersion = MVK_VULKAN_API_VERSION;
+    *pApiVersion = mvkGetMVKConfiguration()->apiVersionToAdvertise;
     MVKTraceVulkanCallEnd();
     return VK_SUCCESS;
 }

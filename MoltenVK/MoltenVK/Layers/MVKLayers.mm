@@ -45,7 +45,7 @@ MVKLayer::MVKLayer() : _supportedInstanceExtensions(nullptr, true) {
 	strcpy(_layerProperties.layerName, "MoltenVK");
 	mvkClear(_layerProperties.description, VK_MAX_DESCRIPTION_SIZE);
 	strcpy(_layerProperties.description, "MoltenVK driver layer");
-	_layerProperties.specVersion = MVK_VULKAN_API_VERSION;
+	_layerProperties.specVersion = mvkGetMVKConfiguration()->apiVersionToAdvertise;
 	_layerProperties.implementationVersion = MVK_VERSION;
 
 	((MVKExtensionList*)&_supportedInstanceExtensions)->disableAllButEnabledInstanceExtensions();

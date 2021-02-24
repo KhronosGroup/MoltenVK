@@ -99,7 +99,7 @@ MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(
 	len = mvkVer.copy(pMoltenVersionStringBuffer, moltenVersionStringBufferLength - 1);
 	pMoltenVersionStringBuffer[len] = 0;    // terminator
 
-	string vkVer = mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION);
+	string vkVer = mvkGetVulkanVersionString(mvkGetMVKConfiguration()->apiVersionToAdvertise);
 	len = vkVer.copy(pVulkanVersionStringBuffer, vulkanVersionStringBufferLength - 1);
 	pVulkanVersionStringBuffer[len] = 0;    // terminator
 }
