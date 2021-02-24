@@ -35,6 +35,16 @@ class MVKCommandEncoder;
 #pragma mark -
 #pragma mark MVKQueryPool
 
+/**
+ * CPU and GPU timestamps at two points in time.
+ */
+struct TimestampCorrelationMarker {
+	MTLTimestamp cpuStart;
+	MTLTimestamp cpuEnd;
+	MTLTimestamp gpuStart;
+	MTLTimestamp gpuEnd;
+};
+
 /** 
  * Abstract class representing a Vulkan query pool.
  * Subclasses are specialized for specific query types.
@@ -57,7 +67,7 @@ public:
     virtual void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder);
 
     /** Finishes the specified queries and marks them as available. */
-    virtual void finishQueries(const MVKArrayRef<uint32_t>& queries);
+    virtual void finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker);
 
 	/** Resets the results and availability status of the specified queries. */
 	virtual void resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder);
@@ -141,10 +151,19 @@ protected:
 
 /** A Vulkan query pool for timestamp queries. */
 class MVKTimestampQueryPool : public MVKQueryPool {
-
+	struct QuerySampleIndices
+	{
+		QuerySampleIndices()
+			:renderSampleIndex(~0u), computeSampleIndex(~0u), blitSampleIndex(~0u)
+		{ }
+		
+		uint32_t renderSampleIndex;
+		uint32_t computeSampleIndex;
+		uint32_t blitSampleIndex;
+	};
 public:
     void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
-    void finishQueries(const MVKArrayRef<uint32_t>& queries) override;
+    void finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker) override;
 
 
 #pragma mark Construction
@@ -158,6 +177,9 @@ protected:
 	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
 	MVKSmallVector<uint64_t, kMVKDefaultQueryCount> _timestamps;
+	MVKSmallVector<QuerySampleIndices, kMVKDefaultQueryCount> _timestampSampleIndices;
+	id<MTLCounterSampleBuffer> _timestampSampleBuffer;
+	uint32_t _nextSampleBufferIndex;
 };
 
 

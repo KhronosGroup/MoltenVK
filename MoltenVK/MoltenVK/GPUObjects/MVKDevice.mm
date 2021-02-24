@@ -1514,6 +1514,32 @@ void MVKPhysicalDevice::initMetalFeatures() {
         _metalFeatures.minSubgroupSize = _metalFeatures.maxSubgroupSize = 4;
     }
 #endif
+	
+	bool isTimestampCounterSupported = false;
+	NSArray<id<MTLCounterSet>>* counterSets = _mtlDevice.counterSets;
+	for (id<MTLCounterSet> counterSet in counterSets) {
+		NSString* counterSetName = counterSet.name;
+		
+		if ([counterSetName caseInsensitiveCompare:MTLCommonCounterSetTimestamp] == NSOrderedSame) {
+			_mtlTimestampCounterSet = counterSet;
+			break;
+		}
+	}
+	
+	if(_mtlTimestampCounterSet != nil) {
+		NSArray<id<MTLCounter>>* countersInSet = _mtlTimestampCounterSet.counters;
+		for (id<MTLCounter> counter in countersInSet) {
+			if ([counter.name caseInsensitiveCompare:MTLCommonCounterTimestamp] == NSOrderedSame) {
+				isTimestampCounterSupported = true;
+				break;
+			}
+		}
+	}
+	
+	_metalFeatures.timestampCommandSamplingSupported = isTimestampCounterSupported &&
+		[_mtlDevice supportsCounterSampling:MTLCounterSamplingPointAtDrawBoundary] &&
+		[_mtlDevice supportsCounterSampling:MTLCounterSamplingPointAtDispatchBoundary] &&
+		[_mtlDevice supportsCounterSampling:MTLCounterSamplingPointAtBlitBoundary];
 
 #define setMSLVersion(maj, min)	\
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);
@@ -2001,8 +2027,14 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
-	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();
-
+	
+	if(_metalFeatures.timestampCommandSamplingSupported) {
+		_properties.limits.timestampPeriod = 1;
+	}
+	else {
+		_properties.limits.timestampPeriod = mvkGetTimestampPeriod();
+	}
+	
     _properties.limits.pointSizeRange[0] = 1;
     _properties.limits.pointSizeRange[1] = 64;
     _properties.limits.pointSizeGranularity = 1;

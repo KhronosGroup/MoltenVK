@@ -789,6 +789,7 @@ typedef struct {
     uint32_t minSubgroupSize;			        /**< The minimum number of threads in a SIMD-group. */
     VkBool32 textureBarriers;                   /**< If true, texture barriers are supported within Metal render passes. */
     VkBool32 tileBasedDeferredRendering;        /**< If true, this device uses tile-based deferred rendering. */
+	VkBool32 timestampCommandSamplingSupported;	/**< If true, timestamp sampling is supported in-between draw/dispatch/blit commands. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

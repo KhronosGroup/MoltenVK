@@ -389,6 +389,7 @@ protected:
 	uint32_t _lazilyAllocatedMemoryTypes;
 	VkExternalMemoryProperties _mtlBufferExternalMemoryProperties;
 	VkExternalMemoryProperties _mtlTextureExternalMemoryProperties;
+	id<MTLCounterSet> _mtlTimestampCounterSet;
 };
 
 
@@ -722,6 +723,8 @@ public:
 	/** Returns whether this instance is currently automatically capturing a GPU trace. */
 	inline bool isCurrentlyAutoGPUCapturing() { return _isCurrentlyAutoGPUCapturing; }
 
+	/** Returns the counter set that can be used for allocating the timestamp sample buffer. */
+	inline id<MTLCounterSet> getTimestampCounterSet() { return _physicalDevice->_mtlTimestampCounterSet; }
 
 #pragma mark Properties directly accessible
 

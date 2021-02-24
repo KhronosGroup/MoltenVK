@@ -258,6 +258,8 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 
 	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
 
+	[_cmdBuffer->getMTLDevice() sampleTimestamps:&_cmdBuffer->_timestampCorrelationMarker.cpuStart gpuTimestamp:&_cmdBuffer->_timestampCorrelationMarker.gpuStart];
+	
 	MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
 		uint32_t prevMVPassIdx = _multiviewPassIndex;
@@ -717,9 +719,14 @@ void MVKCommandEncoder::finishQueries() {
     if ( !_pActivatedQueries ) { return; }
 
     MVKActivatedQueries* pAQs = _pActivatedQueries;
+	id<MTLDevice> mtlDevice = _cmdBuffer->getMTLDevice();
+	TimestampCorrelationMarker timestampCorrelationMarker = _cmdBuffer->_timestampCorrelationMarker;
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
+		TimestampCorrelationMarker timestampCorrelationMarkerCopy = timestampCorrelationMarker;
+		[mtlDevice sampleTimestamps:&timestampCorrelationMarkerCopy.cpuEnd gpuTimestamp:&timestampCorrelationMarkerCopy.gpuEnd];
+		
         for (auto& qryPair : *pAQs) {
-            qryPair.first->finishQueries(qryPair.second.contents());
+            qryPair.first->finishQueries(qryPair.second.contents(), timestampCorrelationMarkerCopy);
         }
         delete pAQs;
     }];

@@ -172,6 +172,7 @@ protected:
 	bool _isReusable;
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
+	TimestampCorrelationMarker _timestampCorrelationMarker;
 };
 
 
