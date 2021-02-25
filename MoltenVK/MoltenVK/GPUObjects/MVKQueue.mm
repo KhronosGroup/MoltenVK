@@ -358,8 +358,12 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 		}
 #if MVK_XCODE_12
 		if (mvkGetMVKConfiguration()->debugMode) {
-			MVKLogInfo("Shader log messages:");
+			bool isFirstMsg = true;
 			for (id<MTLFunctionLog> log in mtlCB.logs) {
+				if (isFirstMsg) {
+					MVKLogInfo("Shader log messages:");
+					isFirstMsg = false;
+				}
 				MVKLogInfo("%s", log.description.UTF8String);
 			}
 		}
