@@ -247,9 +247,8 @@ protected:
 // + setSamplerState : _computeResourcesState & _graphicsResourcesState
 // + setSamplerStates : (unused) : _computeResourcesState & _graphicsResourcesState
 
-
 /*** Holds a collection of active queries for each query pool. */
-typedef std::unordered_map<MVKQueryPool*, MVKSmallVector<uint32_t, kMVKDefaultQueryCount>> MVKActivatedQueries;
+typedef std::unordered_map<MVKQueryPool*, MVKSmallVector<ActivatedQueryInfo, kMVKDefaultQueryCount>> MVKActivatedQueries;
 
 /** 
  * MVKCommandEncoder uses a visitor design pattern iterate the commands in a MVKCommandBuffer, 
@@ -473,7 +472,7 @@ public:
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer);
 
 protected:
-    void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);
+    void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount, uint32_t sampleIndex = ~0u);
     void finishQueries();
 	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex);
 	void clearRenderArea();

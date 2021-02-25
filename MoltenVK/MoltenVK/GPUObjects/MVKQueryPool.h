@@ -35,6 +35,12 @@ class MVKCommandEncoder;
 #pragma mark -
 #pragma mark MVKQueryPool
 
+struct ActivatedQueryInfo
+{
+	uint32_t queryIndex;
+	uint32_t timestampSampleIndex;
+};
+
 /**
  * CPU and GPU timestamps at two points in time.
  */
@@ -88,7 +94,7 @@ public:
     virtual void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder);
 
     /** Finishes the specified queries and marks them as available. */
-    virtual void finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers);
+    virtual void finishQueries(const MVKArrayRef<ActivatedQueryInfo>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers);
 
 	/** Resets the results and availability status of the specified queries. */
 	virtual void resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder);
@@ -174,7 +180,7 @@ protected:
 class MVKTimestampQueryPool : public MVKQueryPool {
 public:
     void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
-    void finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) override;
+    void finishQueries(const MVKArrayRef<ActivatedQueryInfo>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) override;
 
 
 #pragma mark Construction

@@ -730,7 +730,21 @@ void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) 
         queryCount = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
     }
 	
-    addActivatedQueries(pQueryPool, query, queryCount);
+	uint32_t sampleIndex = ~0u;
+	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = _cmdBuffer->_timestampBuffers;
+	
+	if(timestampBuffers != nullptr) {
+		uint32 timestampCount = timestampBuffers->getTimestampCount();
+		if(timestampCount > 0) {
+			// Last issued sample is the one we care about
+			sampleIndex = timestampCount - 1;
+		} else {
+			// No sample issued yet, use the first one issued after (if any)
+			sampleIndex = 0;
+		}
+	}
+	
+    addActivatedQueries(pQueryPool, query, queryCount, sampleIndex);
 }
 
 void MVKCommandEncoder::resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount) {
@@ -738,11 +752,11 @@ void MVKCommandEncoder::resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQue
 }
 
 // Marks the specified queries as activated
-void MVKCommandEncoder::addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount) {
+void MVKCommandEncoder::addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount, uint32_t sampleIndex) {
     if ( !_pActivatedQueries ) { _pActivatedQueries = new MVKActivatedQueries(); }
     uint32_t endQuery = query + queryCount;
     while (query < endQuery) {
-        (*_pActivatedQueries)[pQueryPool].push_back(query++);
+		(*_pActivatedQueries)[pQueryPool].push_back({query++, sampleIndex});
     }
 }
 

@@ -139,11 +139,11 @@ void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
 }
 
 // Mark queries as available
-void MVKQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) {
+void MVKQueryPool::finishQueries(const MVKArrayRef<ActivatedQueryInfo>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) {
     lock_guard<mutex> lock(_availabilityLock);
-    for (uint32_t qry : queries) {
-        if (_availability[qry] == DeviceAvailable) {
-            _availability[qry] = Available;
+    for (ActivatedQueryInfo qry : queries) {
+        if (_availability[qry.queryIndex] == DeviceAvailable) {
+            _availability[qry.queryIndex] = Available;
         }
     }
     _availabilityBlocker.notify_all();      // Predicate of each wait() call will check whether all required queries are available
@@ -318,29 +318,29 @@ static MTLTimestamp adjustGPUTime(const TimestampCorrelationMarker& timestampCor
 }
 
 // Update timestamp values, then mark queries as available
-void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) {
+void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<ActivatedQueryInfo>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) {
     uint64_t ts = mvkGetTimestamp();
 	
 	if(timestampBuffers != nullptr) {
 		timestampBuffers->resolveTimestamps();
 	}
 		
-    for (uint32_t qry : queries) {
+    for (ActivatedQueryInfo qry : queries) {
 	
 		if(timestampBuffers == nullptr)
 		{
-			_timestamps[qry] = ts;
+			_timestamps[qry.queryIndex] = ts;
 		}
 		else
 		{
-			if(_timestampSampleIndices[qry] != ~0u) {
-				MTLTimestamp timestamp = timestampBuffers->getTimestamp(_timestampSampleIndices[qry]);
+			if(qry.timestampSampleIndex != ~0u) {
+				MTLTimestamp timestamp = timestampBuffers->getTimestamp(qry.timestampSampleIndex);
 				
 				uint64 timeInNanoseconds = adjustGPUTime(timestampCorrelationMarker, timestamp);
-				_timestamps[qry] = timeInNanoseconds;
+				_timestamps[qry.queryIndex] = timeInNanoseconds;
 			}
 			else {
-				_timestamps[qry] = 0;
+				_timestamps[qry.queryIndex] = 0;
 			}
 		}
 	}
