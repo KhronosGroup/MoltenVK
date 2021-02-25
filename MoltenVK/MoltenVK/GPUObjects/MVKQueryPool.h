@@ -52,6 +52,7 @@ public:
 
 	uint32_t allocateTimestamp(id<MTLCounterSampleBuffer>& outSampleBuffer);
 	MTLTimestamp getTimestamp(uint32_t index);
+	uint32_t getTimestampCount() const { return _nextTimestampIndex; }
 	void resolveTimestamps();
 	void reset();
 	
@@ -61,6 +62,7 @@ private:
 	MVKDevice* _device;
 	MVKSmallVector<id<MTLCounterSampleBuffer>, 4> _bufferPool;
 	uint32_t _nextTimestampIndex;
+	bool _isResolved;
 	std::vector<MTLTimestamp> _resolvedTimestamps;
 };
 

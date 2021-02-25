@@ -519,6 +519,8 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
                     mtlStencilAttDesc.slice = mvkIBR.region.dstSubresource.baseArrayLayer + layIdx;
                 }
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPD];
+				cmdEncoder->recordTimestamp(mtlRendEnc);
+				
                 setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(commandUse));
 
                 float zIncr;
@@ -583,6 +585,8 @@ void MVKCmdBlitImage<N>::encode(MVKCommandEncoder* cmdEncoder, MVKCommandUse com
 
                 NSUInteger instanceCount = isLayeredBlit ? mtlRPD.renderTargetArrayLengthMVK : 1;
                 [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangleStrip vertexStart: 0 vertexCount: kMVKBlitVertexCount instanceCount: instanceCount];
+				
+				cmdEncoder->recordTimestamp(mtlRendEnc);
                 [mtlRendEnc popDebugGroup];
                 [mtlRendEnc endEncoding];
             }
@@ -761,9 +765,12 @@ void MVKCmdResolveImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
 			mtlRPD.renderTargetArrayLengthMVK = rslvSlice.dstSubresource.layerCount;
 		}
 		id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPD];
+		cmdEncoder->recordTimestamp(mtlRendEnc);
 		setLabelIfNotNil(mtlRendEnc, mvkMTLRenderCommandEncoderLabel(kMVKCommandUseResolveImage));
 
 		[mtlRendEnc pushDebugGroup: @"vkCmdResolveImage"];
+		
+		cmdEncoder->recordTimestamp(mtlRendEnc);
 		[mtlRendEnc popDebugGroup];
 		[mtlRendEnc endEncoding];
 	}
@@ -1490,7 +1497,9 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
                                                         : layerCnt);
 
                 id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
+				cmdEncoder->recordTimestamp(mtlRendEnc);
                 setLabelIfNotNil(mtlRendEnc, mtlRendEncName);
+				cmdEncoder->recordTimestamp(mtlRendEnc);
                 [mtlRendEnc endEncoding];
             } else {
                 for (uint32_t layer = layerStart; layer < layerEnd; layer++) {
@@ -1505,7 +1514,9 @@ void MVKCmdClearImage<N>::encode(MVKCommandEncoder* cmdEncoder) {
                     }
 
                     id<MTLRenderCommandEncoder> mtlRendEnc = [cmdEncoder->_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];
+					cmdEncoder->recordTimestamp(mtlRendEnc);
                     setLabelIfNotNil(mtlRendEnc, mtlRendEncName);
+					cmdEncoder->recordTimestamp(mtlRendEnc);
                     [mtlRendEnc endEncoding];
                 }
             }

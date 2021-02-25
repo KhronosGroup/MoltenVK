@@ -334,6 +334,9 @@ public:
 
 	/** Ends encoding operations on the current Metal command encoder if it is a rendering encoder. */
 	void endMetalRenderEncoding();
+	
+	/** Records timestamp in the provided encoder. */
+	void recordTimestamp(id<MTLCommandEncoder> commandEncoder);
 
 	/** 
 	 * Returns the current Metal compute encoder for the specified use,

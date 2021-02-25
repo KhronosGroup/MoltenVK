@@ -32,7 +32,7 @@ using namespace std;
 constexpr uint32_t MVKTimestampBuffers::kTimestampCountPerBuffer;
 
 MVKTimestampBuffers::MVKTimestampBuffers(MVKDevice* device)
-	:_device(device), _nextTimestampIndex(0)
+	:_device(device), _nextTimestampIndex(0), _isResolved(false)
 {
 	
 }
@@ -63,16 +63,21 @@ uint32_t MVKTimestampBuffers::allocateTimestamp(id<MTLCounterSampleBuffer>& outS
 	
 	outSampleBuffer = _bufferPool[destinationBufferIndex];
 	
+	_isResolved = false;
 	const uint32_t queryIndex = _nextTimestampIndex++;
 	return queryIndex % kTimestampCountPerBuffer;
 }
 
 void MVKTimestampBuffers::resolveTimestamps()
 {
+	if(_isResolved)
+		return;
+	
 	const uint32 timestampCount = _nextTimestampIndex;
 	_resolvedTimestamps.resize(timestampCount);
 	
 	uint32 offset = 0;
+	uint64_t largestTimestamp = 0;
 	for(auto& entry : _bufferPool)
 	{
 		NSData* counterData = [entry resolveCounterRange:NSMakeRange(0, kTimestampCountPerBuffer)];
@@ -81,11 +86,17 @@ void MVKTimestampBuffers::resolveTimestamps()
 		
 		for(uint32_t i = 0; i < timestampCountInBuffer; i++)
 		{
-			_resolvedTimestamps[offset + i] = timestamps[i].timestamp;
+			// Technically it's possible that newer timestamps complete before older ones, but we evaluate
+			// the timestamps as if the execution is sequential, so make sure they always go up
+			largestTimestamp = std::max(largestTimestamp, timestamps[i].timestamp);
+			
+			_resolvedTimestamps[offset + i] = largestTimestamp;
 		}
 
 		offset += kTimestampCountPerBuffer;
 	}
+	
+	_isResolved = true;
 }
 
 MTLTimestamp MVKTimestampBuffers::getTimestamp(uint32_t index)
@@ -101,6 +112,7 @@ MTLTimestamp MVKTimestampBuffers::getTimestamp(uint32_t index)
 void MVKTimestampBuffers::reset()
 {
 	_nextTimestampIndex = 0;
+	_isResolved = false;
 }
 
 #pragma mark MVKQueryPool
@@ -280,23 +292,12 @@ void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncod
 	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = cmdEncoder->getTimestampBuffers();
 	
 	if(timestampBuffers != nullptr) {
-		id<MTLCommandEncoder> mtlCommandEncoder = cmdEncoder->getMTLEncoder();
-		if(mtlCommandEncoder == nil) {
-			mtlCommandEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
-		}
-		
-		if(mtlCommandEncoder != nil) {
-			if([mtlCommandEncoder respondsToSelector:@selector(sampleCountersInBuffer:atSampleIndex:withBarrier:)]) {
-				id<MTLCounterSampleBuffer> sampleCounterBuffer;
-				sampleIndex = timestampBuffers->allocateTimestamp(sampleCounterBuffer);
-				
-				[mtlCommandEncoder sampleCountersInBuffer:sampleCounterBuffer atSampleIndex:sampleIndex withBarrier:NO];
-			}
+		uint32 timestampCount = timestampBuffers->getTimestampCount();
+		if(timestampCount > 0) {
+			// Last issued sample is the one we care about
+			sampleIndex = timestampCount - 1;
 		}
 	}
-	
-	//MVKLogInfo("Adding timer query for to timestamp buffer %" PRIu64, (uint64_t)timestampBuffers.get());
-	
 	
 	_timestampSampleIndices[query] = sampleIndex;
     MVKQueryPool::endQuery(query, cmdEncoder);

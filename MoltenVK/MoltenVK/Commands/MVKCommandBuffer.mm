@@ -381,6 +381,8 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
     }
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
+	recordTimestamp(_mtlRenderEncoder);
+	
 	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName());
 
     if ( !_isRenderingEntireAttachment ) { clearRenderArea(); }
@@ -541,6 +543,7 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
 //    MVKLogDebugIf(_mtlRenderEncoder, "Render subpass end MTLRenderCommandEncoder.");
     if (_mtlRenderEncoder == nil) { return; }
 
+	recordTimestamp(_mtlRenderEncoder);
     [_mtlRenderEncoder endEncoding];
 	_mtlRenderEncoder = nil;    // not retained
 
@@ -559,6 +562,21 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
     _occlusionQueryState.endMetalRenderPass();
 }
 
+void MVKCommandEncoder::recordTimestamp(id<MTLCommandEncoder> commandEncoder)
+{
+	if(commandEncoder == nil || ![commandEncoder respondsToSelector:@selector(sampleCountersInBuffer:atSampleIndex:withBarrier:)])
+		return;
+	
+	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = _cmdBuffer->_timestampBuffers;
+	if(timestampBuffers == nullptr)
+		return;
+	
+	id<MTLCounterSampleBuffer> sampleCounterBuffer;
+	uint32_t timestampSampleIndex = timestampBuffers->allocateTimestamp(sampleCounterBuffer);
+	
+	[commandEncoder sampleCountersInBuffer:sampleCounterBuffer atSampleIndex:timestampSampleIndex withBarrier:NO];
+}
+
 void MVKCommandEncoder::endCurrentMetalEncoding() {
 	endMetalRenderEncoding();
 
@@ -566,10 +584,12 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	_computeResourcesState.markDirty();
 	_computePushConstants.markDirty();
 
+	recordTimestamp(_mtlComputeEncoder);
 	[_mtlComputeEncoder endEncoding];
 	_mtlComputeEncoder = nil;       // not retained
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
 
+	recordTimestamp(_mtlBlitEncoder);
 	[_mtlBlitEncoder endEncoding];
 	_mtlBlitEncoder = nil;          // not retained
     _mtlBlitEncoderUse = kMVKCommandUseNone;
@@ -579,6 +599,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	if ( !_mtlComputeEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];		// not retained
+		recordTimestamp(_mtlComputeEncoder);
 	}
 	if (_mtlComputeEncoderUse != cmdUse) {
 		_mtlComputeEncoderUse = cmdUse;
@@ -591,6 +612,7 @@ id<MTLBlitCommandEncoder> MVKCommandEncoder::getMTLBlitEncoder(MVKCommandUse cmd
 	if ( !_mtlBlitEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlBlitEncoder = [_mtlCmdBuffer blitCommandEncoder];   // not retained
+		recordTimestamp(_mtlBlitEncoder);
 	}
     if (_mtlBlitEncoderUse != cmdUse) {
         _mtlBlitEncoderUse = cmdUse;
@@ -707,6 +729,7 @@ void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) 
     if (_renderPass && getSubpass()->isMultiview()) {
         queryCount = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
     }
+	
     addActivatedQueries(pQueryPool, query, queryCount);
 }
 
@@ -728,18 +751,13 @@ void MVKCommandEncoder::addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t q
 void MVKCommandEncoder::finishQueries() {
     if ( !_pActivatedQueries ) { return; }
 
-	//MVKLogInfo("Queuing finish queries for command buffer %" PRIu64 " with timestamp buffers %" PRIu64, (uint64_t)_cmdBuffer, (uint64_t)_cmdBuffer->_timestampBuffers.get());
-	
     MVKActivatedQueries* pAQs = _pActivatedQueries;
 	id<MTLDevice> mtlDevice = _cmdBuffer->getMTLDevice();
 	TimestampCorrelationMarker timestampCorrelationMarker = _cmdBuffer->_timestampCorrelationMarker;
 	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = _cmdBuffer->_timestampBuffers;
-	//uint64_t commandBufferAddress = (uint64)_cmdBuffer;
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
 		TimestampCorrelationMarker timestampCorrelationMarkerCopy = timestampCorrelationMarker;
 		[mtlDevice sampleTimestamps:&timestampCorrelationMarkerCopy.cpuEnd gpuTimestamp:&timestampCorrelationMarkerCopy.gpuEnd];
-		
-		//MVKLogInfo("Finish queries for command buffer %" PRIu64 " with timestamp buffers %" PRIu64, (uint64_t)commandBufferAddress, (uint64_t)timestampBuffers.get());
 		
         for (auto& qryPair : *pAQs) {
             qryPair.first->finishQueries(qryPair.second.contents(), timestampCorrelationMarkerCopy, timestampBuffers);
