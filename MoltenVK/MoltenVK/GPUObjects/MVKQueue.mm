@@ -244,8 +244,6 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   uint32_t waitSemaphoreCount,
 									   const VkSemaphore* pWaitSemaphores) {
 	_queue = queue;
-	_trackPerformance = mvkGetMVKConfiguration()->performanceTracking;
-
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
 		_waitSemaphores.push_back(make_pair((MVKSemaphore*)pWaitSemaphores[i], (uint64_t)0));
@@ -315,25 +313,19 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	// If using inline semaphore waiting, do so now.
 	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, ws.second); }
 
-	MVKDevice* mkvDev = _queue->_device;
+	// If we need to signal completion, use getActiveMTLCommandBuffer() to ensure at least
+	// one MTLCommandBuffer is used, otherwise if this instance has no content, it will not
+	// finish(), signal the fence and semaphores ,and be destroyed.
+	// Use temp var for MTLCommandBuffer commit and release because completion callback
+	// may destroy this instance before this function ends.
+	id<MTLCommandBuffer> mtlCmdBuff = signalCompletion ? getActiveMTLCommandBuffer() : _activeMTLCommandBuffer;
+	_activeMTLCommandBuffer = nil;
+
+	MVKDevice* mkvDev = _queue->getDevice();
 	uint64_t startTime = mkvDev->getPerformanceTimestamp();
-
-	// Use getActiveMTLCommandBuffer() to ensure at least one MTLCommandBuffer is used,
-	// otherwise if this instance has no content, it will not finish() and be destroyed.
-	if (signalCompletion || _trackPerformance) {
-		[getActiveMTLCommandBuffer() addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-			mkvDev->addActivityPerformance(mkvDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
-			if (signalCompletion) { this->finish(); }
-		}];
-	}
-
-	// Use temp vars because callback may destroy this instance before this function ends.
-	MVKDevice* device = _queue->getDevice();
-	id<MTLCommandBuffer> mtlCmdBuff = _activeMTLCommandBuffer;
-	// If command buffer execution fails, log it, and mark the device lost.
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
 		if (mtlCB.status == MTLCommandBufferStatusError) {
-			device->reportError(device->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
+			getVulkanAPIObject()->reportError(mkvDev->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
 			// Some errors indicate we lost the physical device as well.
 			switch (mtlCB.error.code) {
 				case MTLCommandBufferErrorBlacklisted:
@@ -342,7 +334,7 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 #if MVK_MACOS && !MVK_MACCAT
 				case MTLCommandBufferErrorDeviceRemoved:
 #endif
-					device->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
+					mkvDev->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
 					break;
 			}
 #if MVK_XCODE_12
@@ -372,9 +364,12 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 			}
 		}
 #endif
+
+		// Ensure finish() is the last thing the completetion callback does.
+		mkvDev->addActivityPerformance(mkvDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
+		if (signalCompletion) { this->finish(); }
 	}];
 
-	_activeMTLCommandBuffer = nil;
 	[mtlCmdBuff commit];
 	[mtlCmdBuff release];		// retained
 }
