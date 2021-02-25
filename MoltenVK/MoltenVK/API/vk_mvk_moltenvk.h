@@ -50,12 +50,12 @@ typedef unsigned long MTLLanguageVersion;
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   1
-#define MVK_VERSION_PATCH   2
+#define MVK_VERSION_PATCH   3
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            30
+#define VK_MVK_MOLTENVK_SPEC_VERSION            31
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /**
@@ -613,7 +613,7 @@ typedef struct {
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, automatic GPU capture will be handled by the Xcode user interface.
 	 */
-	char* autoGPUCaptureOutputFilepath;
+	const char* autoGPUCaptureOutputFilepath;
 
 	/**
 	 * Controls whether MoltenVK should use a Metal 2D texture with a height of 1 for a
@@ -709,6 +709,44 @@ typedef struct {
 	 * performance will be logged only when frame activity is logged.
 	 */
 	VkBool32 logActivityPerformanceInline;
+
+	/**
+	 * Controls the Vulkan API version that MoltenVK should advertise in vkEnumerateInstanceVersion().
+	 * When reading this value, it will be one of the VK_API_VERSION_1_* values, including the latest
+	 * VK_HEADER_VERSION component. When setting this value, it should be set to one of:
+	 *
+	 *   VK_API_VERSION_1_1  (equivalent decimal number 4198400)
+	 *   VK_API_VERSION_1_0  (equivalent decimal number 4194304)
+	 *
+	 * MoltenVK will automatically add the VK_HEADER_VERSION component.
+	 *
+	 * The value of this parameter must be changed before creating a VkInstance,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_API_VERSION_TO_ADVERTISE
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to the highest API version
+	 * currently supported by MoltenVK, including the latest VK_HEADER_VERSION component.
+	 */
+	uint32_t apiVersionToAdvertise;
+
+	/**
+	 * Controls whether MoltenVK should advertise the Vulkan extensions it supports in
+	 * vkEnumerateInstanceExtensionProperties() and vkEnumerateDeviceExtensionProperties().
+	 * If this setting is enabled, all supported extensions will be advertised.
+	 * If this setting is disabled, only VK_KHR_portability_subset will be advertised.
+	 *
+	 * The value of this parameter must be changed before creating a VkInstance,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_ADVERTISE_EXTENSIONS
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this setting is enabled by default, and all supported
+	 * extensions will be advertised.
+	 */
+	VkBool32 advertiseExtensions;
 
 } MVKConfiguration;
 

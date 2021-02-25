@@ -274,6 +274,16 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
 #endif
 
 /** Use MTLHeaps where possible when allocating MTLBuffers and MTLTextures. Disabled by default. */
-#	ifndef MVK_CONFIG_USE_MTLHEAP
-#   	define MVK_CONFIG_USE_MTLHEAP    0
-#	endif
+#ifndef MVK_CONFIG_USE_MTLHEAP
+#  	define MVK_CONFIG_USE_MTLHEAP    0
+#endif
+
+/** The Vulkan API version to advertise. Defaults to MVK_VULKAN_API_VERSION. */
+#ifndef MVK_CONFIG_API_VERSION_TO_ADVERTISE
+#  	define MVK_CONFIG_API_VERSION_TO_ADVERTISE    MVK_VULKAN_API_VERSION
+#endif
+
+/** Advertise supported extensions. Enabled by default. */
+#ifndef MVK_CONFIG_ADVERTISE_EXTENSIONS
+#  	define MVK_CONFIG_ADVERTISE_EXTENSIONS    1
+#endif

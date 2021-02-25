@@ -13,6 +13,19 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.1.3
+--------------
+
+Released TBD
+
+- Add `MVKConfiguration::apiVersionToAdvertise` and `MVK_CONFIG_API_VERSION_TO_ADVERTISE` 
+  env var to configure **MoltenVK** to advertise a particular _Vulkan_ version.
+- Add `MVKConfiguration::advertiseExtensions` and `MVK_CONFIG_ADVERTISE_EXTENSIONS` 
+  env var to configure **MoltenVK** to not advertise support for any _Vulkan_  extensions.
+- Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `31`.
+
+
+
 MoltenVK 1.1.2
 --------------
 
