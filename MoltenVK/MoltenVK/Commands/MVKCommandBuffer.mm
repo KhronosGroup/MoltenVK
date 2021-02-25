@@ -83,7 +83,6 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	
 	if(_device->_pMetalFeatures->timestampCommandSamplingSupported) {
 		_timestampBuffers = std::make_shared<MVKTimestampBuffers>(_device);
-		//MVKLogInfo("Resetting command buffer %" PRIu64 " with timestamp buffers %" PRIu64, (uint64_t)this, (uint64_t)_timestampBuffers.get());
 	}
 
 	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {

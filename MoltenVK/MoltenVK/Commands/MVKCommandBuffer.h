@@ -379,6 +379,7 @@ public:
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
 	
+	/** Returns buffer used for storing timestamp counter sampler. If null timestamp counters are not supported. */
 	const std::shared_ptr<MVKTimestampBuffers> getTimestampBuffers() const;
 
 #pragma mark Queries

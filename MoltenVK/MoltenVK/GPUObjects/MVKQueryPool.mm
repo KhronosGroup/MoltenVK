@@ -29,6 +29,22 @@
 
 using namespace std;
 
+/** Converts a timestamp in GPU time into a timestamp in CPU time in nanoseconds, using the previously recorded timestamp correlation marker. */
+static MTLTimestamp adjustGPUTime(const TimestampCorrelationMarker& timestampCorrelationMarker, MTLTimestamp gpuTime)
+{
+	// Time in [0,1] domain = ( x - a ) / ( b - a )
+	double normalizedGpuTime = (gpuTime - timestampCorrelationMarker.gpuStart) / (double)(timestampCorrelationMarker.gpuEnd - timestampCorrelationMarker.gpuStart);
+	// Take the time in the [0,1] domain and scale it by the CPU
+	// lapse, then add the CPU start time to match the CPU’s timestamp.
+	double adjGpuTimeStamp = timestampCorrelationMarker.cpuStart + (timestampCorrelationMarker.cpuEnd - timestampCorrelationMarker.cpuStart) * normalizedGpuTime;
+	
+	// Convert from CPU counter to nanoseconds
+	mach_timebase_info_data_t time_info;
+	mach_timebase_info(&time_info);
+
+	return adjGpuTimeStamp * time_info.numer / time_info.denom;
+}
+
 constexpr uint32_t MVKTimestampBuffers::kTimestampCountPerBuffer;
 
 MVKTimestampBuffers::MVKTimestampBuffers(MVKDevice* device)
@@ -104,8 +120,8 @@ MTLTimestamp MVKTimestampBuffers::getTimestamp(uint32_t index)
 	if(index < _resolvedTimestamps.size())
 		return _resolvedTimestamps[index];
 	
-	// Purposefully returning 0 here rather than asserting. This is because this method can trigger during query reset, at which point these buffers
-	// won't correlate to actual query data. But as reset happens before the actual query is finalized, these results get overwritten anyway.
+	// Purposefully returning 0 here rather than asserting. This is because if we request a timestamp before starting an encoder we preemptively
+	// return sample index 0 as valid, but if no encoders ever start this index will be invalid.
 	return 0;
 }
 
@@ -287,34 +303,7 @@ void MVKQueryPool::deferCopyResults(uint32_t firstQuery,
 
 void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->markTimestamp(this, query);
-	
-	uint32_t sampleIndex = ~0u;
-	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = cmdEncoder->getTimestampBuffers();
-	
-	if(timestampBuffers != nullptr) {
-		uint32 timestampCount = timestampBuffers->getTimestampCount();
-		if(timestampCount > 0) {
-			// Last issued sample is the one we care about
-			sampleIndex = timestampCount - 1;
-		}
-	}
-	
-	_timestampSampleIndices[query] = sampleIndex;
     MVKQueryPool::endQuery(query, cmdEncoder);
-}
-
-static MTLTimestamp adjustGPUTime(const TimestampCorrelationMarker& timestampCorrelationMarker, MTLTimestamp gpuTime)
-{
-	// Time in [0,1] domain = ( x - a ) / ( b - a )
-	double normalizedGpuTime = (gpuTime - timestampCorrelationMarker.gpuStart) / (double)(timestampCorrelationMarker.gpuEnd - timestampCorrelationMarker.gpuStart);
-	// Take the time in the [0,1] domain and scale it by the CPU
-	// lapse, then add the CPU start time to match the CPU’s timestamp.
-	double adjGpuTimeStamp = timestampCorrelationMarker.cpuStart + (timestampCorrelationMarker.cpuEnd - timestampCorrelationMarker.cpuStart) * normalizedGpuTime;
-	
-	mach_timebase_info_data_t time_info;
-	mach_timebase_info(&time_info);
-
-	return adjGpuTimeStamp * time_info.numer / time_info.denom;
 }
 
 // Update timestamp values, then mark queries as available
@@ -327,19 +316,16 @@ void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<ActivatedQueryInfo>&
 		
     for (ActivatedQueryInfo qry : queries) {
 	
-		if(timestampBuffers == nullptr)
-		{
+		if(timestampBuffers == nullptr) {
 			_timestamps[qry.queryIndex] = ts;
 		}
-		else
-		{
+		else {
 			if(qry.timestampSampleIndex != ~0u) {
 				MTLTimestamp timestamp = timestampBuffers->getTimestamp(qry.timestampSampleIndex);
 				
 				uint64 timeInNanoseconds = adjustGPUTime(timestampCorrelationMarker, timestamp);
 				_timestamps[qry.queryIndex] = timeInNanoseconds;
-			}
-			else {
+			} else {
 				_timestamps[qry.queryIndex] = 0;
 			}
 		}
@@ -377,7 +363,7 @@ void MVKTimestampQueryPool::encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder,
 
 MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device,
 											 const VkQueryPoolCreateInfo* pCreateInfo) :
-	MVKQueryPool(device, pCreateInfo, 1), _timestamps(pCreateInfo->queryCount, 0), _timestampSampleIndices(pCreateInfo->queryCount, ~0u) {
+	MVKQueryPool(device, pCreateInfo, 1), _timestamps(pCreateInfo->queryCount, 0) {
 }
 
 

@@ -35,6 +35,9 @@ class MVKCommandEncoder;
 #pragma mark -
 #pragma mark MVKQueryPool
 
+/**
+ * Index of a GPU query and associated timestamp sample (if the query is a timestamp query).
+ */
 struct ActivatedQueryInfo
 {
 	uint32_t queryIndex;
@@ -51,15 +54,27 @@ struct TimestampCorrelationMarker {
 	MTLTimestamp gpuEnd;
 };
 
+/**
+ * Manages buffers used for resolving timestamp counter samples.
+ */
 class MVKTimestampBuffers
 {
 public:
 	MVKTimestampBuffers(MVKDevice* device);
 
+	/** Allocates space for a new timestamp sample and return the index of the sample in the sample buffer and the sample buffer itself. */
 	uint32_t allocateTimestamp(id<MTLCounterSampleBuffer>& outSampleBuffer);
+	
+	/** Returns the sample value at the specified index. Sample buffers must be resolved via a call to resolveTimestamps() first. */
 	MTLTimestamp getTimestamp(uint32_t index);
+	
+	/** Returns the number of timestamp samples  in the buffers. */
 	uint32_t getTimestampCount() const { return _nextTimestampIndex; }
+	
+	/** Resolves the timestamp samples and copies them into a CPU readable buffer. */
 	void resolveTimestamps();
+	
+	/** Resets the timestamp count to zero. */
 	void reset();
 	
 private:
@@ -194,7 +209,6 @@ protected:
 	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
 	MVKSmallVector<uint64_t, kMVKDefaultQueryCount> _timestamps;
-	MVKSmallVector<uint32_t, kMVKDefaultQueryCount> _timestampSampleIndices;
 };
 
 
