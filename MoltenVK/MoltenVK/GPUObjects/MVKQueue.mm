@@ -145,6 +145,26 @@ VkResult MVKQueue::waitIdle() {
 	return mvkWaitForFences(_device, 1, &fence, false);
 }
 
+id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(bool retainRefs) {
+#if MVK_XCODE_12
+	if ([_mtlQueue respondsToSelector: @selector(commandBufferWithDescriptor:)]) {
+		MTLCommandBufferDescriptor* mtlCmdBuffDesc = [MTLCommandBufferDescriptor new];	// temp retain
+		mtlCmdBuffDesc.retainedReferences = retainRefs;
+		if (mvkGetMVKConfiguration()->debugMode) {
+			mtlCmdBuffDesc.errorOptions |= MTLCommandBufferErrorOptionEncoderExecutionStatus;
+		}
+		id<MTLCommandBuffer> cmdBuff = [_mtlQueue commandBufferWithDescriptor: mtlCmdBuffDesc];
+		[mtlCmdBuffDesc release];														// temp release
+		return cmdBuff;
+	} else
+#endif
+	if (retainRefs) {
+		return [_mtlQueue commandBuffer];
+	} else {
+		return [_mtlQueue commandBufferWithUnretainedReferences];
+	}
+}
+
 
 #pragma mark Construction
 
@@ -259,7 +279,7 @@ void MVKQueueCommandBufferSubmission::execute() {
 // Returns the active MTLCommandBuffer, lazily retrieving it from the queue if needed.
 id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer() {
 	if ( !_activeMTLCommandBuffer ) {
-		setActiveMTLCommandBuffer([_queue->_mtlQueue commandBufferWithUnretainedReferences]);
+		setActiveMTLCommandBuffer(_queue->getMTLCommandBuffer());
 	}
 	return _activeMTLCommandBuffer;
 }
@@ -272,6 +292,19 @@ void MVKQueueCommandBufferSubmission::setActiveMTLCommandBuffer(id<MTLCommandBuf
 	_activeMTLCommandBuffer = [mtlCmdBuff retain];		// retained to handle prefilled
 	[_activeMTLCommandBuffer enqueue];
 }
+
+#if MVK_XCODE_12
+static const char* mvkStringFromErrorState(MTLCommandEncoderErrorState errState) {
+	switch (errState) {
+		case MTLCommandEncoderErrorStateUnknown: return "unknown";
+		case MTLCommandEncoderErrorStateAffected: return "affected";
+		case MTLCommandEncoderErrorStateCompleted: return "completed";
+		case MTLCommandEncoderErrorStateFaulted: return "faulted";
+		case MTLCommandEncoderErrorStatePending: return "pending";
+	}
+	return "unknown";
+}
+#endif
 
 // Commits and releases the currently active MTLCommandBuffer, optionally signalling
 // when the MTLCommandBuffer is done. The first time this is called, it will wait on
@@ -312,7 +345,33 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 					device->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
 					break;
 			}
+#if MVK_XCODE_12
+			if (mvkGetMVKConfiguration()->debugMode) {
+				if (&MTLCommandBufferEncoderInfoErrorKey != nullptr) {
+					if (NSArray<id<MTLCommandBufferEncoderInfo>>* mtlEncInfo = mtlCB.error.userInfo[MTLCommandBufferEncoderInfoErrorKey]) {
+						MVKLogInfo("Encoders for %p \"%s\":", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "");
+						for (id<MTLCommandBufferEncoderInfo> enc in mtlEncInfo) {
+							MVKLogInfo(" - %s: %s", enc.label.UTF8String, mvkStringFromErrorState(enc.errorState));
+							if (enc.debugSignposts.count > 0) {
+								MVKLogInfo("   Debug signposts:");
+								for (NSString* signpost in enc.debugSignposts) {
+									MVKLogInfo("    - %s", signpost.UTF8String);
+								}
+							}
+						}
+					}
+				}
+			}
+#endif
 		}
+#if MVK_XCODE_12
+		if (mvkGetMVKConfiguration()->debugMode) {
+			MVKLogInfo("Shader log messages:");
+			for (id<MTLFunctionLog> log in mtlCB.logs) {
+				MVKLogInfo("%s", log.description.UTF8String);
+			}
+		}
+#endif
 	}];
 
 	_activeMTLCommandBuffer = nil;
@@ -406,7 +465,7 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 }
 
 id<MTLCommandBuffer> MVKQueuePresentSurfaceSubmission::getMTLCommandBuffer() {
-	id<MTLCommandBuffer> mtlCmdBuff = [_queue->getMTLCommandQueue() commandBufferWithUnretainedReferences];
+	id<MTLCommandBuffer> mtlCmdBuff = _queue->getMTLCommandBuffer();
 	setLabelIfNotNil(mtlCmdBuff, @"vkQueuePresentKHR CommandBuffer");
 	[mtlCmdBuff enqueue];
 	return mtlCmdBuff;
