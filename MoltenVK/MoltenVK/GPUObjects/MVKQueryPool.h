@@ -45,6 +45,25 @@ struct TimestampCorrelationMarker {
 	MTLTimestamp gpuEnd;
 };
 
+class MVKTimestampBuffers
+{
+public:
+	MVKTimestampBuffers(MVKDevice* device);
+
+	uint32_t allocateTimestamp(id<MTLCounterSampleBuffer>& outSampleBuffer);
+	MTLTimestamp getTimestamp(uint32_t index);
+	void resolveTimestamps();
+	void reset();
+	
+private:
+	static constexpr uint32_t kTimestampCountPerBuffer = 128;
+	
+	MVKDevice* _device;
+	MVKSmallVector<id<MTLCounterSampleBuffer>, 4> _bufferPool;
+	uint32_t _nextTimestampIndex;
+	std::vector<MTLTimestamp> _resolvedTimestamps;
+};
+
 /** 
  * Abstract class representing a Vulkan query pool.
  * Subclasses are specialized for specific query types.
@@ -67,7 +86,7 @@ public:
     virtual void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder);
 
     /** Finishes the specified queries and marks them as available. */
-    virtual void finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker);
+    virtual void finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers);
 
 	/** Resets the results and availability status of the specified queries. */
 	virtual void resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder);
@@ -151,19 +170,9 @@ protected:
 
 /** A Vulkan query pool for timestamp queries. */
 class MVKTimestampQueryPool : public MVKQueryPool {
-	struct QuerySampleIndices
-	{
-		QuerySampleIndices()
-			:renderSampleIndex(~0u), computeSampleIndex(~0u), blitSampleIndex(~0u)
-		{ }
-		
-		uint32_t renderSampleIndex;
-		uint32_t computeSampleIndex;
-		uint32_t blitSampleIndex;
-	};
 public:
     void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
-    void finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker) override;
+    void finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) override;
 
 
 #pragma mark Construction
@@ -177,9 +186,7 @@ protected:
 	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
 	MVKSmallVector<uint64_t, kMVKDefaultQueryCount> _timestamps;
-	MVKSmallVector<QuerySampleIndices, kMVKDefaultQueryCount> _timestampSampleIndices;
-	id<MTLCounterSampleBuffer> _timestampSampleBuffer;
-	uint32_t _nextSampleBufferIndex;
+	MVKSmallVector<uint32_t, kMVKDefaultQueryCount> _timestampSampleIndices;
 };
 
 

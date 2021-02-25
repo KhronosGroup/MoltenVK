@@ -27,6 +27,7 @@
 #include "MVKCmdDraw.h"
 #include "MVKCmdRenderPass.h"
 #include <sys/mman.h>
+#include <inttypes.h>
 
 using namespace std;
 
@@ -79,6 +80,11 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_lastTessellationPipeline = nullptr;
 	_lastMultiviewSubpass = nullptr;
 	setConfigurationResult(VK_NOT_READY);
+	
+	if(_device->_pMetalFeatures->timestampCommandSamplingSupported) {
+		_timestampBuffers = std::make_shared<MVKTimestampBuffers>(_device);
+		//MVKLogInfo("Resetting command buffer %" PRIu64 " with timestamp buffers %" PRIu64, (uint64_t)this, (uint64_t)_timestampBuffers.get());
+	}
 
 	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
 		// TODO: what are we releasing or returning here?
@@ -665,6 +671,10 @@ MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
 	return _cmdBuffer->getCommandPool()->getCommandEncodingPool();
 }
 
+const std::shared_ptr<MVKTimestampBuffers> MVKCommandEncoder::getTimestampBuffers() const {
+	return _cmdBuffer->_timestampBuffers;
+}
+
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
 const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {
     const MVKMTLBufferAllocation* mtlBuffAlloc = getTempMTLBuffer(length);
@@ -718,15 +728,21 @@ void MVKCommandEncoder::addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t q
 void MVKCommandEncoder::finishQueries() {
     if ( !_pActivatedQueries ) { return; }
 
+	//MVKLogInfo("Queuing finish queries for command buffer %" PRIu64 " with timestamp buffers %" PRIu64, (uint64_t)_cmdBuffer, (uint64_t)_cmdBuffer->_timestampBuffers.get());
+	
     MVKActivatedQueries* pAQs = _pActivatedQueries;
 	id<MTLDevice> mtlDevice = _cmdBuffer->getMTLDevice();
 	TimestampCorrelationMarker timestampCorrelationMarker = _cmdBuffer->_timestampCorrelationMarker;
+	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = _cmdBuffer->_timestampBuffers;
+	//uint64_t commandBufferAddress = (uint64)_cmdBuffer;
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
 		TimestampCorrelationMarker timestampCorrelationMarkerCopy = timestampCorrelationMarker;
 		[mtlDevice sampleTimestamps:&timestampCorrelationMarkerCopy.cpuEnd gpuTimestamp:&timestampCorrelationMarkerCopy.gpuEnd];
 		
+		//MVKLogInfo("Finish queries for command buffer %" PRIu64 " with timestamp buffers %" PRIu64, (uint64_t)commandBufferAddress, (uint64_t)timestampBuffers.get());
+		
         for (auto& qryPair : *pAQs) {
-            qryPair.first->finishQueries(qryPair.second.contents(), timestampCorrelationMarkerCopy);
+            qryPair.first->finishQueries(qryPair.second.contents(), timestampCorrelationMarkerCopy, timestampBuffers);
         }
         delete pAQs;
     }];

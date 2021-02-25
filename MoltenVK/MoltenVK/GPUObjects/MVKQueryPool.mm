@@ -24,9 +24,84 @@
 #include "MVKOSExtensions.h"
 #include "MVKFoundation.h"
 #include <sys/mman.h>
+#include <mach/mach_time.h>
+#include <inttypes.h>
 
 using namespace std;
 
+constexpr uint32_t MVKTimestampBuffers::kTimestampCountPerBuffer;
+
+MVKTimestampBuffers::MVKTimestampBuffers(MVKDevice* device)
+	:_device(device), _nextTimestampIndex(0)
+{
+	
+}
+
+uint32_t MVKTimestampBuffers::allocateTimestamp(id<MTLCounterSampleBuffer>& outSampleBuffer)
+{
+	const uint32_t bufferCount = (uint32_t)_bufferPool.size();
+	const uint32_t destinationBufferIndex = _nextTimestampIndex / kTimestampCountPerBuffer;
+	
+	if(destinationBufferIndex == bufferCount)
+	{
+		__autoreleasing NSError* error = nil;
+		MTLCounterSampleBufferDescriptor* timestampSamplerDesc = [[MTLCounterSampleBufferDescriptor alloc] init];
+		timestampSamplerDesc.counterSet = _device->getTimestampCounterSet();
+		timestampSamplerDesc.storageMode = MTLStorageModeShared;
+		timestampSamplerDesc.sampleCount = kTimestampCountPerBuffer;
+		
+		id<MTLCounterSampleBuffer> newCounterSampleBuffer = [_device->getMTLDevice() newCounterSampleBufferWithDescriptor:timestampSamplerDesc error:&error];
+		
+		if(error != nil) {
+			_device->reportError(VK_ERROR_INITIALIZATION_FAILED,
+					"Failed to initialize timestamp sample buffer (Error code %li):\n%s",
+					(long)error.code, error.localizedDescription.UTF8String);
+		}
+		
+		_bufferPool.push_back(newCounterSampleBuffer);
+	}
+	
+	outSampleBuffer = _bufferPool[destinationBufferIndex];
+	
+	const uint32_t queryIndex = _nextTimestampIndex++;
+	return queryIndex % kTimestampCountPerBuffer;
+}
+
+void MVKTimestampBuffers::resolveTimestamps()
+{
+	const uint32 timestampCount = _nextTimestampIndex;
+	_resolvedTimestamps.resize(timestampCount);
+	
+	uint32 offset = 0;
+	for(auto& entry : _bufferPool)
+	{
+		NSData* counterData = [entry resolveCounterRange:NSMakeRange(0, kTimestampCountPerBuffer)];
+		MTLCounterResultTimestamp* timestamps = (MTLCounterResultTimestamp *)counterData.bytes;
+		uint32_t timestampCountInBuffer = std::min(offset + kTimestampCountPerBuffer, timestampCount) - offset;
+		
+		for(uint32_t i = 0; i < timestampCountInBuffer; i++)
+		{
+			_resolvedTimestamps[offset + i] = timestamps[i].timestamp;
+		}
+
+		offset += kTimestampCountPerBuffer;
+	}
+}
+
+MTLTimestamp MVKTimestampBuffers::getTimestamp(uint32_t index)
+{
+	if(index < _resolvedTimestamps.size())
+		return _resolvedTimestamps[index];
+	
+	// Purposefully returning 0 here rather than asserting. This is because this method can trigger during query reset, at which point these buffers
+	// won't correlate to actual query data. But as reset happens before the actual query is finalized, these results get overwritten anyway.
+	return 0;
+}
+
+void MVKTimestampBuffers::reset()
+{
+	_nextTimestampIndex = 0;
+}
 
 #pragma mark MVKQueryPool
 
@@ -52,7 +127,7 @@ void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
 }
 
 // Mark queries as available
-void MVKQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker) {
+void MVKQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) {
     lock_guard<mutex> lock(_availabilityLock);
     for (uint32_t qry : queries) {
         if (_availability[qry] == DeviceAvailable) {
@@ -201,25 +276,29 @@ void MVKQueryPool::deferCopyResults(uint32_t firstQuery,
 void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
     cmdEncoder->markTimestamp(this, query);
 	
-	QuerySampleIndices sampleIndices;
-	if(_timestampSampleBuffer != nil) {
+	uint32_t sampleIndex = ~0u;
+	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = cmdEncoder->getTimestampBuffers();
+	
+	if(timestampBuffers != nullptr) {
 		id<MTLCommandEncoder> mtlCommandEncoder = cmdEncoder->getMTLEncoder();
-		if(mtlCommandEncoder == nil)
-		{
+		if(mtlCommandEncoder == nil) {
 			mtlCommandEncoder = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
 		}
 		
-		if(mtlCommandEncoder != nil)
-		{
-			if([mtlCommandEncoder respondsToSelector:@selector(sampleCountersInBuffer:atSampleIndex:withBarrier:)])
-			{
-				sampleIndices.renderSampleIndex = _nextSampleBufferIndex;
-				[mtlCommandEncoder sampleCountersInBuffer:_timestampSampleBuffer atSampleIndex:query withBarrier:NO];
+		if(mtlCommandEncoder != nil) {
+			if([mtlCommandEncoder respondsToSelector:@selector(sampleCountersInBuffer:atSampleIndex:withBarrier:)]) {
+				id<MTLCounterSampleBuffer> sampleCounterBuffer;
+				sampleIndex = timestampBuffers->allocateTimestamp(sampleCounterBuffer);
+				
+				[mtlCommandEncoder sampleCountersInBuffer:sampleCounterBuffer atSampleIndex:sampleIndex withBarrier:NO];
 			}
 		}
 	}
 	
-	_timestampSampleIndices[query] = sampleIndices;
+	//MVKLogInfo("Adding timer query for to timestamp buffer %" PRIu64, (uint64_t)timestampBuffers.get());
+	
+	
+	_timestampSampleIndices[query] = sampleIndex;
     MVKQueryPool::endQuery(query, cmdEncoder);
 }
 
@@ -230,30 +309,33 @@ static MTLTimestamp adjustGPUTime(const TimestampCorrelationMarker& timestampCor
 	// Take the time in the [0,1] domain and scale it by the CPU
 	// lapse, then add the CPU start time to match the CPU’s timestamp.
 	double adjGpuTimeStamp = timestampCorrelationMarker.cpuStart + (timestampCorrelationMarker.cpuEnd - timestampCorrelationMarker.cpuStart) * normalizedGpuTime;
-	return adjGpuTimeStamp;
+	
+	mach_timebase_info_data_t time_info;
+	mach_timebase_info(&time_info);
+
+	return adjGpuTimeStamp * time_info.numer / time_info.denom;
 }
 
 // Update timestamp values, then mark queries as available
-void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker) {
+void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) {
     uint64_t ts = mvkGetTimestamp();
 	
-	MTLCounterResultTimestamp* timestampData = nil;
-	if(_timestampSampleBuffer != nil) {
-		NSData* counterData = [_timestampSampleBuffer resolveCounterRange:NSMakeRange(0, _timestampSampleBuffer.sampleCount)];
-		timestampData = (MTLCounterResultTimestamp *)(counterData.bytes);
+	if(timestampBuffers != nullptr) {
+		timestampBuffers->resolveTimestamps();
 	}
-	
+		
     for (uint32_t qry : queries) {
 	
-		if(timestampData == nil)
+		if(timestampBuffers == nullptr)
 		{
 			_timestamps[qry] = ts;
 		}
 		else
 		{
-			// TODO - Handle dispatch and blit samples
-			if(_timestampSampleIndices[qry].renderSampleIndex != ~0u) {
-				uint64 timeInNanoseconds = adjustGPUTime(timestampCorrelationMarker, timestampData[qry].timestamp);
+			if(_timestampSampleIndices[qry] != ~0u) {
+				MTLTimestamp timestamp = timestampBuffers->getTimestamp(_timestampSampleIndices[qry]);
+				
+				uint64 timeInNanoseconds = adjustGPUTime(timestampCorrelationMarker, timestamp);
 				_timestamps[qry] = timeInNanoseconds;
 			}
 			else {
@@ -262,7 +344,7 @@ void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries, 
 		}
 	}
 	
-    MVKQueryPool::finishQueries(queries, timestampCorrelationMarker);
+    MVKQueryPool::finishQueries(queries, timestampCorrelationMarker, timestampBuffers);
 }
 
 void MVKTimestampQueryPool::getResult(uint32_t query, void* pQryData, bool shouldOutput64Bit) {
@@ -294,23 +376,7 @@ void MVKTimestampQueryPool::encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder,
 
 MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device,
 											 const VkQueryPoolCreateInfo* pCreateInfo) :
-	MVKQueryPool(device, pCreateInfo, 1), _timestamps(pCreateInfo->queryCount, 0), _timestampSampleIndices(pCreateInfo->queryCount, QuerySampleIndices()), _nextSampleBufferIndex(0) {
-		
-	if(device->_pMetalFeatures->timestampCommandSamplingSupported) {
-		__autoreleasing NSError* error = nil;
-		MTLCounterSampleBufferDescriptor* timestampSamplerDesc = [[MTLCounterSampleBufferDescriptor alloc] init];
-		timestampSamplerDesc.counterSet = device->getTimestampCounterSet();
-		timestampSamplerDesc.storageMode = MTLStorageModeShared;
-		timestampSamplerDesc.sampleCount = pCreateInfo->queryCount;
-		
-		_timestampSampleBuffer = [device->getMTLDevice() newCounterSampleBufferWithDescriptor:timestampSamplerDesc error:&error];
-		
-		if(error != nil) {
-			reportError(VK_ERROR_INITIALIZATION_FAILED,
-					"Failed to initialize timestamp sample buffer (Error code %li):\n%s",
-					(long)error.code, error.localizedDescription.UTF8String);
-		}
-	}
+	MVKQueryPool(device, pCreateInfo, 1), _timestamps(pCreateInfo->queryCount, 0), _timestampSampleIndices(pCreateInfo->queryCount, ~0u) {
 }
 
 

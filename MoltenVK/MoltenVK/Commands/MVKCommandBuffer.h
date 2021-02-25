@@ -173,6 +173,7 @@ protected:
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
 	TimestampCorrelationMarker _timestampCorrelationMarker;
+	std::shared_ptr<MVKTimestampBuffers> _timestampBuffers;
 };
 
 
@@ -375,6 +376,8 @@ public:
 
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
+	
+	const std::shared_ptr<MVKTimestampBuffers> getTimestampBuffers() const;
 
 #pragma mark Queries
 
