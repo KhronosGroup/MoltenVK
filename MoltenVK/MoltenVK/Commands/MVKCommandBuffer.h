@@ -172,8 +172,8 @@ protected:
 	bool _isReusable;
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
-	TimestampCorrelationMarker _timestampCorrelationMarker;
-	std::shared_ptr<MVKTimestampBuffers> _timestampBuffers;
+	MVKTimestampCorrelationMarker _timestampCorrelationMarker;
+	MVKTimestampBuffers* _timestampBuffers;
 };
 
 
@@ -248,7 +248,7 @@ protected:
 // + setSamplerStates : (unused) : _computeResourcesState & _graphicsResourcesState
 
 /*** Holds a collection of active queries for each query pool. */
-typedef std::unordered_map<MVKQueryPool*, MVKSmallVector<ActivatedQueryInfo, kMVKDefaultQueryCount>> MVKActivatedQueries;
+typedef std::unordered_map<MVKQueryPool*, MVKSmallVector<MVKActivatedQueryInfo, kMVKDefaultQueryCount>> MVKActivatedQueries;
 
 /** 
  * MVKCommandEncoder uses a visitor design pattern iterate the commands in a MVKCommandBuffer, 
@@ -380,7 +380,7 @@ public:
     MVKCommandEncodingPool* getCommandEncodingPool();
 	
 	/** Returns buffer used for storing timestamp counter sampler. If null timestamp counters are not supported. */
-	const std::shared_ptr<MVKTimestampBuffers> getTimestampBuffers() const;
+	MVKTimestampBuffers* getTimestampBuffers() const;
 
 #pragma mark Queries
 

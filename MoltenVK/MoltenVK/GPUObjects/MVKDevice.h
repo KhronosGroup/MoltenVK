@@ -81,7 +81,6 @@ const static uint32_t kMVKMaxSwapchainImageCount = 3;
 const static uint32_t kMVKCachedViewportScissorCount = 16;
 const static uint32_t kMVKCachedColorAttachmentCount = 8;
 
-
 #pragma mark -
 #pragma mark MVKPhysicalDevice
 

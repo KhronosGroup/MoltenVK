@@ -30,7 +30,7 @@
 using namespace std;
 
 /** Converts a timestamp in GPU time into a timestamp in CPU time in nanoseconds, using the previously recorded timestamp correlation marker. */
-static MTLTimestamp adjustGPUTime(const TimestampCorrelationMarker& timestampCorrelationMarker, MTLTimestamp gpuTime)
+static uint64_t adjustGPUTime(const MVKTimestampCorrelationMarker& timestampCorrelationMarker, uint64_t gpuTime)
 {
 	// Time in [0,1] domain = ( x - a ) / ( b - a )
 	double normalizedGpuTime = (gpuTime - timestampCorrelationMarker.gpuStart) / (double)(timestampCorrelationMarker.gpuEnd - timestampCorrelationMarker.gpuStart);
@@ -48,9 +48,7 @@ static MTLTimestamp adjustGPUTime(const TimestampCorrelationMarker& timestampCor
 constexpr uint32_t MVKTimestampBuffers::kTimestampCountPerBuffer;
 
 MVKTimestampBuffers::MVKTimestampBuffers(MVKDevice* device)
-	:_device(device), _nextTimestampIndex(0), _isResolved(false)
-{
-	
+	: MVKDeviceTrackingMixin(device), _nextTimestampIndex(0), _isResolved(false), _refCount(1) {
 }
 
 uint32_t MVKTimestampBuffers::allocateTimestamp(id<MTLCounterSampleBuffer>& outSampleBuffer)
@@ -89,10 +87,10 @@ void MVKTimestampBuffers::resolveTimestamps()
 	if(_isResolved)
 		return;
 	
-	const uint32 timestampCount = _nextTimestampIndex;
+	const uint32_t timestampCount = _nextTimestampIndex;
 	_resolvedTimestamps.resize(timestampCount);
 	
-	uint32 offset = 0;
+	uint32_t offset = 0;
 	uint64_t largestTimestamp = 0;
 	for(auto& entry : _bufferPool)
 	{
@@ -104,7 +102,7 @@ void MVKTimestampBuffers::resolveTimestamps()
 		{
 			// Technically it's possible that newer timestamps complete before older ones, but we evaluate
 			// the timestamps as if the execution is sequential, so make sure they always go up
-			largestTimestamp = std::max(largestTimestamp, timestamps[i].timestamp);
+			largestTimestamp = std::max(largestTimestamp, (uint64_t)timestamps[i].timestamp);
 			
 			_resolvedTimestamps[offset + i] = largestTimestamp;
 		}
@@ -115,7 +113,7 @@ void MVKTimestampBuffers::resolveTimestamps()
 	_isResolved = true;
 }
 
-MTLTimestamp MVKTimestampBuffers::getTimestamp(uint32_t index)
+uint64_t MVKTimestampBuffers::getTimestamp(uint32_t index)
 {
 	if(index < _resolvedTimestamps.size())
 		return _resolvedTimestamps[index];
@@ -123,12 +121,6 @@ MTLTimestamp MVKTimestampBuffers::getTimestamp(uint32_t index)
 	// Purposefully returning 0 here rather than asserting. This is because if we request a timestamp before starting an encoder we preemptively
 	// return sample index 0 as valid, but if no encoders ever start this index will be invalid.
 	return 0;
-}
-
-void MVKTimestampBuffers::reset()
-{
-	_nextTimestampIndex = 0;
-	_isResolved = false;
 }
 
 #pragma mark MVKQueryPool
@@ -155,9 +147,9 @@ void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
 }
 
 // Mark queries as available
-void MVKQueryPool::finishQueries(const MVKArrayRef<ActivatedQueryInfo>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) {
+void MVKQueryPool::finishQueries(const MVKArrayRef<MVKActivatedQueryInfo>& queries, const MVKTimestampCorrelationMarker& timestampCorrelationMarker, MVKTimestampBuffers* timestampBuffers) {
     lock_guard<mutex> lock(_availabilityLock);
-    for (ActivatedQueryInfo qry : queries) {
+    for (MVKActivatedQueryInfo qry : queries) {
         if (_availability[qry.queryIndex] == DeviceAvailable) {
             _availability[qry.queryIndex] = Available;
         }
@@ -307,23 +299,23 @@ void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncod
 }
 
 // Update timestamp values, then mark queries as available
-void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<ActivatedQueryInfo>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) {
+void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<MVKActivatedQueryInfo>& queries, const MVKTimestampCorrelationMarker& timestampCorrelationMarker, MVKTimestampBuffers* timestampBuffers) {
     uint64_t ts = mvkGetTimestamp();
 	
 	if(timestampBuffers != nullptr) {
 		timestampBuffers->resolveTimestamps();
 	}
 		
-    for (ActivatedQueryInfo qry : queries) {
+    for (MVKActivatedQueryInfo qry : queries) {
 	
 		if(timestampBuffers == nullptr) {
 			_timestamps[qry.queryIndex] = ts;
 		}
 		else {
 			if(qry.timestampSampleIndex != ~0u) {
-				MTLTimestamp timestamp = timestampBuffers->getTimestamp(qry.timestampSampleIndex);
+				uint64_t timestamp = timestampBuffers->getTimestamp(qry.timestampSampleIndex);
 				
-				uint64 timeInNanoseconds = adjustGPUTime(timestampCorrelationMarker, timestamp);
+				uint64_t timeInNanoseconds = adjustGPUTime(timestampCorrelationMarker, timestamp);
 				_timestamps[qry.queryIndex] = timeInNanoseconds;
 			} else {
 				_timestamps[qry.queryIndex] = 0;

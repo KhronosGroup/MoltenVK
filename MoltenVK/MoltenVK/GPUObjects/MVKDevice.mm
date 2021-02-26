@@ -1536,10 +1536,14 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		}
 	}
 	
+#if MVK_XCODE_12
 	_metalFeatures.timestampCommandSamplingSupported = isTimestampCounterSupported &&
 		[_mtlDevice supportsCounterSampling:MTLCounterSamplingPointAtDrawBoundary] &&
 		[_mtlDevice supportsCounterSampling:MTLCounterSamplingPointAtDispatchBoundary] &&
 		[_mtlDevice supportsCounterSampling:MTLCounterSamplingPointAtBlitBoundary];
+#else
+	_metalFeatures.timestampCommandSamplingSupported = isTimestampCounterSupported;
+#endif
 
 #define setMSLVersion(maj, min)	\
 	_metalFeatures.mslVersion = SPIRV_CROSS_NAMESPACE::CompilerMSL::Options::make_msl_version(maj, min);

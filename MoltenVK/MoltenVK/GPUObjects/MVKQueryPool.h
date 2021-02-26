@@ -38,7 +38,7 @@ class MVKCommandEncoder;
 /**
  * Index of a GPU query and associated timestamp sample (if the query is a timestamp query).
  */
-struct ActivatedQueryInfo
+struct MVKActivatedQueryInfo
 {
 	uint32_t queryIndex;
 	uint32_t timestampSampleIndex;
@@ -47,26 +47,30 @@ struct ActivatedQueryInfo
 /**
  * CPU and GPU timestamps at two points in time.
  */
-struct TimestampCorrelationMarker {
-	MTLTimestamp cpuStart;
-	MTLTimestamp cpuEnd;
-	MTLTimestamp gpuStart;
-	MTLTimestamp gpuEnd;
+struct MVKTimestampCorrelationMarker {
+	uint64_t cpuStart;
+	uint64_t cpuEnd;
+	uint64_t gpuStart;
+	uint64_t gpuEnd;
 };
 
 /**
  * Manages buffers used for resolving timestamp counter samples.
  */
-class MVKTimestampBuffers
+class MVKTimestampBuffers : public MVKBaseObject, public MVKDeviceTrackingMixin
 {
 public:
 	MVKTimestampBuffers(MVKDevice* device);
+	~MVKTimestampBuffers() = default;
+	
+	/** Returns the Vulkan API opaque object controlling this object. */
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; }
 
 	/** Allocates space for a new timestamp sample and return the index of the sample in the sample buffer and the sample buffer itself. */
 	uint32_t allocateTimestamp(id<MTLCounterSampleBuffer>& outSampleBuffer);
 	
 	/** Returns the sample value at the specified index. Sample buffers must be resolved via a call to resolveTimestamps() first. */
-	MTLTimestamp getTimestamp(uint32_t index);
+	uint64_t getTimestamp(uint32_t index);
 	
 	/** Returns the number of timestamp samples  in the buffers. */
 	uint32_t getTimestampCount() const { return _nextTimestampIndex; }
@@ -74,17 +78,34 @@ public:
 	/** Resolves the timestamp samples and copies them into a CPU readable buffer. */
 	void resolveTimestamps();
 	
-	/** Resets the timestamp count to zero. */
-	void reset();
+	/**
+	 * Called when this instance has been retained as a reference by another object,
+	 * indicating that this instance will not be deleted until that reference is released.
+	 */
+	inline void retain() { _refCount++; }
+
+	/**
+	 * Called when this instance has been released as a reference from another object.
+	 * Once all references have been released, this object is free to be deleted.
+	 * If the destroy() function has already been called on this instance by the time
+	 * this function is called, this instance will be deleted.
+	 */
+	inline void release() { if (--_refCount == 0) { MVKBaseObject::destroy(); } }
+	
+	/** Creates a new instance of the object. */
+	static MVKTimestampBuffers* newObject(MVKDevice* device) { return new MVKTimestampBuffers(device); }
+	
+protected:
+	MVKBaseObject* getBaseObject() override { return this; };
 	
 private:
 	static constexpr uint32_t kTimestampCountPerBuffer = 128;
 	
-	MVKDevice* _device;
 	MVKSmallVector<id<MTLCounterSampleBuffer>, 4> _bufferPool;
 	uint32_t _nextTimestampIndex;
 	bool _isResolved;
-	std::vector<MTLTimestamp> _resolvedTimestamps;
+	std::atomic<uint32_t> _refCount;
+	std::vector<uint64_t> _resolvedTimestamps;
 };
 
 /** 
@@ -109,7 +130,7 @@ public:
     virtual void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder);
 
     /** Finishes the specified queries and marks them as available. */
-    virtual void finishQueries(const MVKArrayRef<ActivatedQueryInfo>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers);
+    virtual void finishQueries(const MVKArrayRef<MVKActivatedQueryInfo>& queries, const MVKTimestampCorrelationMarker& timestampCorrelationMarker, MVKTimestampBuffers* timestampBuffers);
 
 	/** Resets the results and availability status of the specified queries. */
 	virtual void resetResults(uint32_t firstQuery, uint32_t queryCount, MVKCommandEncoder* cmdEncoder);
@@ -195,7 +216,7 @@ protected:
 class MVKTimestampQueryPool : public MVKQueryPool {
 public:
     void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
-    void finishQueries(const MVKArrayRef<ActivatedQueryInfo>& queries, const TimestampCorrelationMarker& timestampCorrelationMarker, const std::shared_ptr<MVKTimestampBuffers>& timestampBuffers) override;
+    void finishQueries(const MVKArrayRef<MVKActivatedQueryInfo>& queries, const MVKTimestampCorrelationMarker& timestampCorrelationMarker, MVKTimestampBuffers* timestampBuffers) override;
 
 
 #pragma mark Construction

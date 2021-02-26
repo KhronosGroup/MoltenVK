@@ -81,8 +81,13 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_lastMultiviewSubpass = nullptr;
 	setConfigurationResult(VK_NOT_READY);
 	
+	if(_timestampBuffers != nullptr) {
+		_timestampBuffers->release();
+		_timestampBuffers = nullptr;
+	}
+	
 	if(_device->_pMetalFeatures->timestampCommandSamplingSupported) {
-		_timestampBuffers = std::make_shared<MVKTimestampBuffers>(_device);
+		_timestampBuffers = MVKTimestampBuffers::newObject(_device);
 	}
 
 	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
@@ -198,6 +203,10 @@ void MVKCommandBuffer::init(const VkCommandBufferAllocateInfo* pAllocateInfo) {
 
 MVKCommandBuffer::~MVKCommandBuffer() {
 	reset(0);
+	
+	if(_timestampBuffers != nullptr) {
+		_timestampBuffers->release();
+	}
 }
 
 // If the initial visibility result buffer has not been set, promote the first visibility result buffer
@@ -566,7 +575,7 @@ void MVKCommandEncoder::recordTimestamp(id<MTLCommandEncoder> commandEncoder)
 	if(commandEncoder == nil || ![commandEncoder respondsToSelector:@selector(sampleCountersInBuffer:atSampleIndex:withBarrier:)])
 		return;
 	
-	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = _cmdBuffer->_timestampBuffers;
+	MVKTimestampBuffers* timestampBuffers = _cmdBuffer->_timestampBuffers;
 	if(timestampBuffers == nullptr)
 		return;
 	
@@ -692,7 +701,7 @@ MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
 	return _cmdBuffer->getCommandPool()->getCommandEncodingPool();
 }
 
-const std::shared_ptr<MVKTimestampBuffers> MVKCommandEncoder::getTimestampBuffers() const {
+MVKTimestampBuffers* MVKCommandEncoder::getTimestampBuffers() const {
 	return _cmdBuffer->_timestampBuffers;
 }
 
@@ -730,7 +739,7 @@ void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) 
     }
 	
 	uint32_t sampleIndex = ~0u;
-	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = _cmdBuffer->_timestampBuffers;
+	MVKTimestampBuffers* timestampBuffers = _cmdBuffer->_timestampBuffers;
 	
 	if(timestampBuffers != nullptr) {
 		uint32 timestampCount = timestampBuffers->getTimestampCount();
@@ -766,16 +775,24 @@ void MVKCommandEncoder::finishQueries() {
 
     MVKActivatedQueries* pAQs = _pActivatedQueries;
 	id<MTLDevice> mtlDevice = _cmdBuffer->getMTLDevice();
-	TimestampCorrelationMarker timestampCorrelationMarker = _cmdBuffer->_timestampCorrelationMarker;
-	std::shared_ptr<MVKTimestampBuffers> timestampBuffers = _cmdBuffer->_timestampBuffers;
+	MVKTimestampCorrelationMarker timestampCorrelationMarker = _cmdBuffer->_timestampCorrelationMarker;
+	MVKTimestampBuffers* timestampBuffers = _cmdBuffer->_timestampBuffers;
+	if(timestampBuffers != nullptr) {
+		timestampBuffers->retain();
+	}
+	
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-		TimestampCorrelationMarker timestampCorrelationMarkerCopy = timestampCorrelationMarker;
+		MVKTimestampCorrelationMarker timestampCorrelationMarkerCopy = timestampCorrelationMarker;
 		[mtlDevice sampleTimestamps:&timestampCorrelationMarkerCopy.cpuEnd gpuTimestamp:&timestampCorrelationMarkerCopy.gpuEnd];
 		
         for (auto& qryPair : *pAQs) {
             qryPair.first->finishQueries(qryPair.second.contents(), timestampCorrelationMarkerCopy, timestampBuffers);
         }
         delete pAQs;
+		
+		if(timestampBuffers != nullptr) {
+			timestampBuffers->release();
+		}
     }];
     _pActivatedQueries = nullptr;
 }
