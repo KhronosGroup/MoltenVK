@@ -31,6 +31,9 @@
 
 using namespace std;
 
+#ifndef MVK_XCODE_12
+typedef NSUInteger MTLTimestamp;
+#endif
 
 #pragma mark -
 #pragma mark MVKCommandBuffer
