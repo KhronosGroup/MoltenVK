@@ -181,7 +181,6 @@ protected:
 
 	MVKQueue* _queue;
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _waitSemaphores;
-	bool _trackPerformance;
 };
 
 
