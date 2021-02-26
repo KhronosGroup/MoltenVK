@@ -31,7 +31,7 @@
 
 using namespace std;
 
-#ifndef MVK_XCODE_12
+#if !MVK_XCODE_12
 typedef NSUInteger MTLTimestamp;
 #endif
 
