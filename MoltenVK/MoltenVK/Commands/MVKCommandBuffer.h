@@ -173,7 +173,7 @@ protected:
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
 	MVKTimestampCorrelationMarker _timestampCorrelationMarker;
-	MVKTimestampBuffers* _timestampBuffers;
+	MVKTimestampBuffers* _timestampBuffers = nullptr;
 };
 
 

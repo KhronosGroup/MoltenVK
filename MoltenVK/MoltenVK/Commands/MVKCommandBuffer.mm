@@ -272,7 +272,10 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 
 	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
 
-	[_cmdBuffer->getMTLDevice() sampleTimestamps:&_cmdBuffer->_timestampCorrelationMarker.cpuStart gpuTimestamp:&_cmdBuffer->_timestampCorrelationMarker.gpuStart];
+	MTLTimestamp cpuStart, gpuStart;
+	[_cmdBuffer->getMTLDevice() sampleTimestamps:&cpuStart gpuTimestamp:&gpuStart];
+	_cmdBuffer->_timestampCorrelationMarker.cpuStart = (uint64_t)cpuStart;
+	_cmdBuffer->_timestampCorrelationMarker.gpuStart = (uint64_t)gpuStart;
 	
 	MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
@@ -742,7 +745,7 @@ void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) 
 	MVKTimestampBuffers* timestampBuffers = _cmdBuffer->_timestampBuffers;
 	
 	if(timestampBuffers != nullptr) {
-		uint32 timestampCount = timestampBuffers->getTimestampCount();
+		uint32_t timestampCount = timestampBuffers->getTimestampCount();
 		if(timestampCount > 0) {
 			// Last issued sample is the one we care about
 			sampleIndex = timestampCount - 1;
@@ -783,8 +786,12 @@ void MVKCommandEncoder::finishQueries() {
 	
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
 		MVKTimestampCorrelationMarker timestampCorrelationMarkerCopy = timestampCorrelationMarker;
-		[mtlDevice sampleTimestamps:&timestampCorrelationMarkerCopy.cpuEnd gpuTimestamp:&timestampCorrelationMarkerCopy.gpuEnd];
 		
+		MTLTimestamp cpuEnd, gpuEnd;
+		[mtlDevice sampleTimestamps:&cpuEnd gpuTimestamp:&gpuEnd];
+		timestampCorrelationMarkerCopy.cpuEnd = (uint64_t)cpuEnd;
+		timestampCorrelationMarkerCopy.gpuEnd = (uint64_t)gpuEnd;
+
         for (auto& qryPair : *pAQs) {
             qryPair.first->finishQueries(qryPair.second.contents(), timestampCorrelationMarkerCopy, timestampBuffers);
         }
