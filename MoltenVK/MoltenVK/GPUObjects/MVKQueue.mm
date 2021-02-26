@@ -321,11 +321,11 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	id<MTLCommandBuffer> mtlCmdBuff = signalCompletion ? getActiveMTLCommandBuffer() : _activeMTLCommandBuffer;
 	_activeMTLCommandBuffer = nil;
 
-	MVKDevice* mkvDev = _queue->getDevice();
-	uint64_t startTime = mkvDev->getPerformanceTimestamp();
+	MVKDevice* mvkDev = _queue->getDevice();
+	uint64_t startTime = mvkDev->getPerformanceTimestamp();
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
 		if (mtlCB.status == MTLCommandBufferStatusError) {
-			getVulkanAPIObject()->reportError(mkvDev->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
+			getVulkanAPIObject()->reportError(mvkDev->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
 			// Some errors indicate we lost the physical device as well.
 			switch (mtlCB.error.code) {
 				case MTLCommandBufferErrorBlacklisted:
@@ -334,7 +334,7 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 #if MVK_MACOS && !MVK_MACCAT
 				case MTLCommandBufferErrorDeviceRemoved:
 #endif
-					mkvDev->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
+					mvkDev->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
 					break;
 			}
 #if MVK_XCODE_12
@@ -370,7 +370,7 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 #endif
 
 		// Ensure finish() is the last thing the completetion callback does.
-		mkvDev->addActivityPerformance(mkvDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
+		mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
 		if (signalCompletion) { this->finish(); }
 	}];
 
