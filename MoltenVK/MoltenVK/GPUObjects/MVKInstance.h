@@ -43,8 +43,9 @@ typedef struct {
 
 	bool isCore() { return !ext1Name && !ext2Name; }
 	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList) {
-		return (isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
-			   extList.isEnabled(ext1Name) || extList.isEnabled(ext2Name);
+		return ((isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
+				(extList.isEnabled(ext1Name) || extList.isEnabled(ext2Name) ||
+				 !mvkGetMVKConfiguration()->advertiseExtensions));
 	}
 } MVKEntryPoint;
 
