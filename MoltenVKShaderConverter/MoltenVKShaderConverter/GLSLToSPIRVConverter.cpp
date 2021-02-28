@@ -21,7 +21,7 @@
 #include "SPIRVToMSLConverter.h"
 #include "SPIRVSupport.h"
 #include "MVKStrings.h"
-#include <glslang/SPIRV/GlslangToSpv.h>
+#include <SPIRV/GlslangToSpv.h>
 #include <sstream>
 
 using namespace std;

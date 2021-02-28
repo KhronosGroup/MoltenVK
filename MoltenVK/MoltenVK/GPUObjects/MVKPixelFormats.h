@@ -22,7 +22,7 @@
 #include "MVKEnvironment.h"
 #include "MVKOSExtensions.h"
 #include "MVKBaseObject.h"
-#include <SPIRV-Cross/spirv_msl.hpp>
+#include <spirv_msl.hpp>
 #include <unordered_map>
 
 #import <Metal/Metal.h>

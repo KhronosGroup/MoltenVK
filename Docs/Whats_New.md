@@ -18,6 +18,7 @@ MoltenVK 1.1.3
 
 Released TBD
 
+- Remove project qualifiers from references to `SPIRV-Cross` and `glslang` header files.
 - Add `MVKConfiguration::apiVersionToAdvertise` and `MVK_CONFIG_API_VERSION_TO_ADVERTISE` 
   env var to configure **MoltenVK** to advertise a particular _Vulkan_ version.
 - Add `MVKConfiguration::advertiseExtensions` and `MVK_CONFIG_ADVERTISE_EXTENSIONS` 

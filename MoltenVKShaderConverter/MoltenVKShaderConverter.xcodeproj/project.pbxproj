@@ -625,7 +625,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)\"",
+					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/glslang\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 				);
@@ -680,7 +680,7 @@
 				GCC_WARN_UNUSED_FUNCTION = YES;
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
-					"\"$(SRCROOT)\"",
+					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/glslang\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 				);
