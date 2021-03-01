@@ -60,6 +60,7 @@ static void mvkInitConfig() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (_mvkConfig.preallocateDescriptors,                 MVK_CONFIG_PREALLOCATE_DESCRIPTORS);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (_mvkConfig.useCommandPooling,                      MVK_CONFIG_USE_COMMAND_POOLING);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (_mvkConfig.useMTLHeap,                             MVK_CONFIG_USE_MTLHEAP);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (_mvkConfig.useMTLSampleCounterTimestamps,          MVK_CONFIG_USE_MTL_SAMPLE_COUNTER_TIMESTAMPS);
 }
 
 // Returns the MoltenVK config, lazily initializing it if necessary.

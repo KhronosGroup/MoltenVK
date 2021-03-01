@@ -709,6 +709,24 @@ typedef struct {
 	 * performance will be logged only when frame activity is logged.
 	 */
 	VkBool32 logActivityPerformanceInline;
+	
+	/**
+	 * Controls whether MoltenVK should use Metal counter sample buffers for
+	 * recording timestamps when requested via vkCmdWriteTimestamp.
+	 * If this setting is enabled, counter sample buffers will be used if supported by the device.
+	 * If this setting is disabled, timestamps will be emulated through CPU time at the point
+	 * they are queued for execution.
+	 *
+	 * The value of this parameter must be changed before creating a VkDevice,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_USE_MTL_SAMPLE_COUNTER_TIMESTAMPS
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this setting is disabled by default, and activity
+	 * performance will be logged only when frame activity is logged.
+	 */
+	VkBool32 useMTLSampleCounterTimestamps;
 
 } MVKConfiguration;
 

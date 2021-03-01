@@ -51,6 +51,16 @@ MVKTimestampBuffers::MVKTimestampBuffers(MVKDevice* device)
 	: MVKDeviceTrackingMixin(device), _nextTimestampIndex(0), _isResolved(false), _refCount(1) {
 }
 
+MVKTimestampBuffers::~MVKTimestampBuffers()
+{
+	for(auto& entry : _bufferPool)
+	{
+		[entry release];
+	}
+	
+	_bufferPool.clear();
+}
+
 uint32_t MVKTimestampBuffers::allocateTimestamp(id<MTLCounterSampleBuffer>& outSampleBuffer)
 {
 	const uint32_t bufferCount = (uint32_t)_bufferPool.size();

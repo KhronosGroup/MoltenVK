@@ -89,7 +89,7 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 		_timestampBuffers = nullptr;
 	}
 	
-	if(_device->_pMetalFeatures->timestampCommandSamplingSupported) {
+	if(_device->_pMetalFeatures->timestampCommandSamplingSupported && mvkGetMVKConfiguration()->useMTLSampleCounterTimestamps) {
 		_timestampBuffers = MVKTimestampBuffers::newObject(_device);
 	}
 
@@ -275,10 +275,12 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 
 	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
 
-	MTLTimestamp cpuStart, gpuStart;
-	[_cmdBuffer->getMTLDevice() sampleTimestamps:&cpuStart gpuTimestamp:&gpuStart];
-	_cmdBuffer->_timestampCorrelationMarker.cpuStart = (uint64_t)cpuStart;
-	_cmdBuffer->_timestampCorrelationMarker.gpuStart = (uint64_t)gpuStart;
+	if(_cmdBuffer->_timestampBuffers != nullptr) {
+		MTLTimestamp cpuStart, gpuStart;
+		[_cmdBuffer->getMTLDevice() sampleTimestamps:&cpuStart gpuTimestamp:&gpuStart];
+		_cmdBuffer->_timestampCorrelationMarker.cpuStart = (uint64_t)cpuStart;
+		_cmdBuffer->_timestampCorrelationMarker.gpuStart = (uint64_t)gpuStart;
+	}
 	
 	MVKCommand* cmd = _cmdBuffer->_head;
 	while (cmd) {
@@ -790,10 +792,12 @@ void MVKCommandEncoder::finishQueries() {
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
 		MVKTimestampCorrelationMarker timestampCorrelationMarkerCopy = timestampCorrelationMarker;
 		
-		MTLTimestamp cpuEnd, gpuEnd;
-		[mtlDevice sampleTimestamps:&cpuEnd gpuTimestamp:&gpuEnd];
-		timestampCorrelationMarkerCopy.cpuEnd = (uint64_t)cpuEnd;
-		timestampCorrelationMarkerCopy.gpuEnd = (uint64_t)gpuEnd;
+		if(timestampBuffers != nullptr) {
+			MTLTimestamp cpuEnd, gpuEnd;
+			[mtlDevice sampleTimestamps:&cpuEnd gpuTimestamp:&gpuEnd];
+			timestampCorrelationMarkerCopy.cpuEnd = (uint64_t)cpuEnd;
+			timestampCorrelationMarkerCopy.gpuEnd = (uint64_t)gpuEnd;
+		}
 
         for (auto& qryPair : *pAQs) {
             qryPair.first->finishQueries(qryPair.second.contents(), timestampCorrelationMarkerCopy, timestampBuffers);

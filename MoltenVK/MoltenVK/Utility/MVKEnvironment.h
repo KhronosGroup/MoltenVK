@@ -277,3 +277,8 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
 #	ifndef MVK_CONFIG_USE_MTLHEAP
 #   	define MVK_CONFIG_USE_MTLHEAP    0
 #	endif
+
+/** Use native Metal sample counters for recording timestamps. Disabled by default. */
+#	ifndef MVK_CONFIG_USE_MTL_SAMPLE_COUNTER_TIMESTAMPS
+#   	define MVK_CONFIG_USE_MTL_SAMPLE_COUNTER_TIMESTAMPS    0
+#	endif

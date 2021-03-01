@@ -2032,7 +2032,7 @@ void MVKPhysicalDevice::initLimits() {
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
 	
-	if(_metalFeatures.timestampCommandSamplingSupported) {
+	if(_metalFeatures.timestampCommandSamplingSupported && mvkGetMVKConfiguration()->useMTLSampleCounterTimestamps) {
 		_properties.limits.timestampPeriod = 1;
 	}
 	else {

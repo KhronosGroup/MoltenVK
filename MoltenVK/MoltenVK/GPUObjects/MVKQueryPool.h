@@ -61,7 +61,7 @@ class MVKTimestampBuffers : public MVKBaseObject, public MVKDeviceTrackingMixin
 {
 public:
 	MVKTimestampBuffers(MVKDevice* device);
-	~MVKTimestampBuffers() = default;
+	~MVKTimestampBuffers();
 	
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; }
