@@ -1580,6 +1580,7 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../MoltenVKShaderConverter\"",
+					"\"$(SRCROOT)/../MoltenVKShaderConverter/SPIRV-Cross\"",
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);
@@ -1646,6 +1647,7 @@
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
 					"\"$(SRCROOT)/../MoltenVKShaderConverter\"",
+					"\"$(SRCROOT)/../MoltenVKShaderConverter/SPIRV-Cross\"",
 					"\"$(SRCROOT)/../External/cereal/include\"",
 					"\"${BUILT_PRODUCTS_DIR}\"",
 				);

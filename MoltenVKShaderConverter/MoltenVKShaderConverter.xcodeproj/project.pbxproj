@@ -626,6 +626,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
+					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/glslang\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 				);
@@ -681,6 +682,7 @@
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
 					"\"$(SRCROOT)\"",
+					"\"$(SRCROOT)/SPIRV-Cross\"",
 					"\"$(SRCROOT)/glslang\"",
 					"\"$(SRCROOT)/glslang/External/spirv-tools/include\"",
 				);

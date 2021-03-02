@@ -18,7 +18,7 @@
 
 #include "SPIRVSupport.h"
 #include "MVKStrings.h"
-#include <SPIRV-Cross/spirv.hpp>
+#include <spirv.hpp>
 #include <ostream>
 
 #import <CoreFoundation/CFByteOrder.h>
