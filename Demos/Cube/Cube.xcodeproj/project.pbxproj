@@ -38,7 +38,7 @@
 		A93DBF4B24A2A4D500079F64 /* Cube.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cube.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A94D4CB424A2A95E009C9139 /* InfoTV.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = InfoTV.plist; sourceTree = "<group>"; };
 		A94D4CB624A2C9A3009C9139 /* MainTV.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = MainTV.storyboard; sourceTree = "<group>"; };
-		A991E27524FD543A00D968D4 /* MoltenVK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MoltenVK.xcframework; path = ../../../MoltenVK/MoltenVK.xcframework; sourceTree = "<group>"; };
+		A991E27524FD543A00D968D4 /* MoltenVK.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = MoltenVK.xcframework; path = ../../MoltenVK/MoltenVK.xcframework; sourceTree = "<group>"; };
 		A9B53B271C3AC0BE00ABC6F6 /* Cube.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cube.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9B53B431C3AC15200ABC6F6 /* Cube.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Cube.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A9B67B6B1C3AAE9800373FFD /* AppDelegate.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
@@ -479,7 +479,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
-					"\"$(SRCROOT)/../../../MoltenVK/include\"",
+					"\"$(SRCROOT)/../../MoltenVK/include\"",
 				);
 				OTHER_LDFLAGS = (
 					"-ObjC",
@@ -506,7 +506,7 @@
 				GCC_WARN_ABOUT_RETURN_TYPE = YES;
 				HEADER_SEARCH_PATHS = (
 					"\"$(SRCROOT)/include\"",
-					"\"$(SRCROOT)/../../../MoltenVK/include\"",
+					"\"$(SRCROOT)/../../MoltenVK/include\"",
 				);
 				OTHER_LDFLAGS = (
 					"-ObjC",

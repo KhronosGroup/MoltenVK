@@ -23,6 +23,8 @@ Released TBD
   env var to configure **MoltenVK** to advertise a particular _Vulkan_ version.
 - Add `MVKConfiguration::advertiseExtensions` and `MVK_CONFIG_ADVERTISE_EXTENSIONS` 
   env var to configure **MoltenVK** to not advertise support for any _Vulkan_  extensions.
+- Remove the `Hologram` and `API-Samples` demo apps, and remove 
+  `LunarG/VulkanSamples` as a dependency library.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `31`.
 
 
