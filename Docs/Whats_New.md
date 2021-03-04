@@ -25,6 +25,7 @@ Released TBD
   env var to configure **MoltenVK** to not advertise support for any _Vulkan_  extensions.
 - Remove the `Hologram` and `API-Samples` demo apps, and remove 
   `LunarG/VulkanSamples` as a dependency library.
+- Add `NDEBUG` macro to all Release builds to remove `assert()` calls.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `31`.
 
 
