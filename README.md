@@ -22,7 +22,7 @@ Table of Contents
 - [Introduction to **MoltenVK**](#intro)
 - [Fetching **MoltenVK** Source Code](#install)
 - [Building **MoltenVK**](#building)
-- [Running the **MoltenVK** Demo Applications](#demos)
+- [Running **MoltenVK** Demo Applications](#demos)
 - [Using **MoltenVK** in Your Application](#using)
 - [**MoltenVK** and *Vulkan* Compliance](#compliance)
 - [Getting Support](#support)
@@ -243,20 +243,18 @@ building from within *Xcode*.
 
 
 <a name="demos"></a>
-Running the **MoltenVK** Demo Applications
-------------------------------------------
+Running **MoltenVK** Demo Applications
+--------------------------------------
 
 Once you have compiled and built the **MoltenVK** runtime distribution package from this **MoltenVK** repository, 
 as described in the [Building **MoltenVK**](#building) section, you can explore how **MoltenVK** provides *Vulkan* 
-support on  *macOS*, *iOS*, and *tvOS* by investigating and running the demo applications that are included in **MoltenVK**.
+support on  *macOS*, *iOS*, and *tvOS* by investigating and running the demo application that is included in **MoltenVK**.
 
-The **MoltenVK** demo apps are located in the `Demos` folder. Each demo app is available as an *Xcode* project.
-To review and run the included demo apps, open the `Demos/Demos.xcworkspace` workspace in *Xcode*.
+The **MoltenVK** _Cube_ demo app is located in the `Demos` folder. The demo app is available as an *Xcode* project.
+To review and run the included demo app, open the `Demos/Demos.xcworkspace` workspace in *Xcode*.
 
-Please read the [`Demos/README.md`](Demos/README.md) document for a description of each demo app, and instructions 
-on running the demo apps. Several of the demo apps allow you to explore a variety of *Vulkan* features by modifying
-*Xcode* build settings. Additional demos can be downloaded and built from external repositories, as described in the
-[`Demos/README.md`](Demos/README.md) document
+Please read the [`Demos/README.md`](Demos/README.md) document for a description and instructions for running the 
+included *Cube* demo app, and for external links to more sophisticated demo applications that can be run on **MoltenVK**.
 
 
 

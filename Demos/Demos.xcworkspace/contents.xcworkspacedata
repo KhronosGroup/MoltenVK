@@ -4,17 +4,7 @@
    <FileRef
       location = "group:README.md">
    </FileRef>
-   <Group
-      location = "container:"
-      name = "LunarG-VulkanSamples">
-      <FileRef
-         location = "group:LunarG-VulkanSamples/Cube/Cube.xcodeproj">
-      </FileRef>
-      <FileRef
-         location = "group:LunarG-VulkanSamples/Hologram/Hologram.xcodeproj">
-      </FileRef>
-      <FileRef
-         location = "group:LunarG-VulkanSamples/API-Samples/API-Samples.xcodeproj">
-      </FileRef>
-   </Group>
+   <FileRef
+      location = "group:Cube/Cube.xcodeproj">
+   </FileRef>
 </Workspace>

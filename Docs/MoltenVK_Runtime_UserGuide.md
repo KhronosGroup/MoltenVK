@@ -83,12 +83,6 @@ If you are unsure about which linking and deployment option you need, or on *iOS
 unless you have specific needs for dynamic libraries, follow the steps for linking **MoltenVK** 
 as an `XCFramework`, as it is the simpler option, and encompasses the largest set of supported platforms.
 
-The demo apps, found in the `Demos.xcworkspace`, located in the `Demos` folder, demonstrate both
-of the installation techniques discussed above:
-
-- `XCFramework`: `Cube` and `API-Samples` demos.
-- Dynamic library: `Hologram` demo.
-
 
 <a name="install_xcfwk"></a>
 ### Install *MoltenVK* as a Universal `XCFramework`

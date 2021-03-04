@@ -365,25 +365,6 @@ REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
 update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
 
 
-# ----------------- VulkanSamples -------------------
-
-echo
-echo ========== VulkanSamples ==========
-echo
-
-REPO_NAME=VulkanSamples
-REPO_URL="https://github.com/LunarG/${REPO_NAME}.git"
-REPO_REV=$(cat "${EXT_REV_DIR}/${REPO_NAME}_repo_revision")
-
-update_repo ${REPO_NAME} ${REPO_URL} ${REPO_REV}
-
-# Generate dispatch files needed for Hologram demo
-cd "${REPO_NAME}/Sample-Programs/Hologram"
-./generate-dispatch-table HelpersDispatchTable.h
-./generate-dispatch-table HelpersDispatchTable.cpp
-cd -  > /dev/null
-
-
 # ----------------- Cleanup -------------------
 
 cd ..
