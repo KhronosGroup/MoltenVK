@@ -49,11 +49,27 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 #define MVK_EXTENSION_MIN_OS(EXT, MAC, IOS) \
 	if (pProperties == &kVkExtProps_##EXT) { return mvkOSVersionIsAtLeast(MAC, IOS); }
 
-	// Extensions that must always be advertised if supported on platform
-	MVK_EXTENSION_MIN_OS(KHR_PORTABILITY_SUBSET,             10.11,  8.0)
+// Don't return false. Allow passthrough since DEP_EXT can be used in more than one invocation.
+#define MVK_EXTENSION_MIN_OS_AND_CONFIG(EXT, DEP_EXT, MAC, IOS) \
+	if ((pProperties == &kVkExtProps_##EXT || pProperties == &kVkExtProps_##DEP_EXT) && \
+		mvkOSVersionIsAtLeast(MAC, IOS) && \
+		mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_##EXT)) { \
+			return true; \
+	}
 
-	// For all other extensions, only advertise if configured to do so
-	if ( !mvkGetMVKConfiguration()->advertiseExtensions ) { return false; }
+	// If the config indicates that not all supported extensions should be advertised,
+	// only advertise those supported extensions that have been specifically configured,
+	// plus any prerequisite extensions.
+	auto advExtns = mvkGetMVKConfiguration()->advertiseExtensions;
+	if ( !mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL) ) {
+		MVK_EXTENSION_MIN_OS_AND_CONFIG(MVK_MOLTENVK, MVK_MOLTENVK,           10.11,  8.0)
+		MVK_EXTENSION_MIN_OS_AND_CONFIG(MVK_IOS_SURFACE, KHR_SURFACE,         MVK_NA, 8.0)
+		MVK_EXTENSION_MIN_OS_AND_CONFIG(MVK_MACOS_SURFACE, KHR_SURFACE,       10.11,  MVK_NA)
+		MVK_EXTENSION_MIN_OS_AND_CONFIG(EXT_METAL_SURFACE, KHR_SURFACE,       10.11,  8.0)
+		MVK_EXTENSION_MIN_OS_AND_CONFIG(KHR_PORTABILITY_SUBSET,
+										KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2, 10.11,  8.0)
+		return false;
+	}
 
 	MVK_EXTENSION_MIN_OS(MVK_IOS_SURFACE,                    MVK_NA, 8.0)
 	MVK_EXTENSION_MIN_OS(MVK_MACOS_SURFACE,                  10.11,  MVK_NA)

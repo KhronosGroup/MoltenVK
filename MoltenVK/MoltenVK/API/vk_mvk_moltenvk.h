@@ -58,6 +58,18 @@ typedef unsigned long MTLLanguageVersion;
 #define VK_MVK_MOLTENVK_SPEC_VERSION            31
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
+/** Identifies extensions to advertise as part of MoltenVK configuration. */
+typedef enum MVKConfigAdvertiseExtensionBits {
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL                       = 0x00000001,
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_MVK_MOLTENVK           = 0x00000002,
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_MVK_IOS_SURFACE        = 0x00000004,
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_MVK_MACOS_SURFACE      = 0x00000008,
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_EXT_METAL_SURFACE      = 0x00000010,
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_KHR_PORTABILITY_SUBSET = 0x00000020,
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_MAX_ENUM = 0x7FFFFFFF
+} MVKConfigAdvertiseExtensionBits;
+typedef VkFlags MVKConfigAdvertiseExtensions;
+
 /**
  * MoltenVK configuration settings.
  *
@@ -732,10 +744,12 @@ typedef struct {
 	uint32_t apiVersionToAdvertise;
 
 	/**
-	 * Controls whether MoltenVK should advertise the Vulkan extensions it supports in
+	 * Controls which extensions MoltenVK should advertise it supports in
 	 * vkEnumerateInstanceExtensionProperties() and vkEnumerateDeviceExtensionProperties().
-	 * If this setting is enabled, all supported extensions will be advertised.
-	 * If this setting is disabled, only VK_KHR_portability_subset will be advertised.
+	 * The value of this parameter is a bitwise OR of values from the MVKConfigAdvertiseExtensionBits
+	 * enumeration. Any prerequisite extentions are also advertised.
+	 * If the flag MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL is included, all supported extensions
+	 * will be advertised. A value of zero means no extensions will be advertised.
 	 *
 	 * The value of this parameter must be changed before creating a VkInstance,
 	 * for the change to take effect.
@@ -743,10 +757,10 @@ typedef struct {
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_ADVERTISE_EXTENSIONS
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is enabled by default, and all supported
-	 * extensions will be advertised.
+	 * If neither is set, the value of this setting defaults to
+	 * MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL, and all supported extensions will be advertised.
 	 */
-	VkBool32 advertiseExtensions;
+	MVKConfigAdvertiseExtensions advertiseExtensions;
 
 } MVKConfiguration;
 

@@ -22,7 +22,7 @@ Released TBD
 - Add `MVKConfiguration::apiVersionToAdvertise` and `MVK_CONFIG_API_VERSION_TO_ADVERTISE` 
   env var to configure **MoltenVK** to advertise a particular _Vulkan_ version.
 - Add `MVKConfiguration::advertiseExtensions` and `MVK_CONFIG_ADVERTISE_EXTENSIONS` 
-  env var to configure **MoltenVK** to not advertise support for any _Vulkan_  extensions.
+  env var to configure **MoltenVK** to force advertising support for no, or minimal, _Vulkan_  extensions.
 - Remove the `Hologram` and `API-Samples` demo apps, and remove 
   `LunarG/VulkanSamples` as a dependency library.
 - Add `NDEBUG` macro to all Release builds to remove `assert()` calls.
