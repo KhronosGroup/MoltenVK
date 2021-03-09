@@ -283,7 +283,7 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
 #  	define MVK_CONFIG_API_VERSION_TO_ADVERTISE    MVK_VULKAN_API_VERSION
 #endif
 
-/** Advertise supported extensions. Enabled by default. */
+/** Advertise supported extensions. Defaults to all. */
 #ifndef MVK_CONFIG_ADVERTISE_EXTENSIONS
-#  	define MVK_CONFIG_ADVERTISE_EXTENSIONS    1
+#  	define MVK_CONFIG_ADVERTISE_EXTENSIONS    MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL
 #endif
