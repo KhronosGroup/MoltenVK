@@ -3680,7 +3680,7 @@ bool MVKDevice::shouldPrefillMTLCommandBuffers() {
 			  _enabledInlineUniformBlockFeatures.descriptorBindingInlineUniformBlockUpdateAfterBind));
 }
 
-void MVKDevice::startAutoGPUCapture(int32_t autoGPUCaptureScope, id mtlCaptureObject) {
+void MVKDevice::startAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureScope, id mtlCaptureObject) {
 
 	if (_isCurrentlyAutoGPUCapturing || (mvkGetMVKConfiguration()->autoGPUCaptureScope != autoGPUCaptureScope)) { return; }
 
@@ -3729,7 +3729,7 @@ void MVKDevice::startAutoGPUCapture(int32_t autoGPUCaptureScope, id mtlCaptureOb
 	}
 }
 
-void MVKDevice::stopAutoGPUCapture(int32_t autoGPUCaptureScope) {
+void MVKDevice::stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureScope) {
 	if (_isCurrentlyAutoGPUCapturing && mvkGetMVKConfiguration()->autoGPUCaptureScope == autoGPUCaptureScope) {
 		[[MTLCaptureManager sharedCaptureManager] stopCapture];
 		_isCurrentlyAutoGPUCapturing = false;

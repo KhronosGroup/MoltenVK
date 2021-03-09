@@ -214,13 +214,15 @@ void MVKQueue::initMTLCommandQueue() {
 void MVKQueue::initGPUCaptureScopes() {
 	_submissionCaptureScope = new MVKGPUCaptureScope(this);
 
-	if (_queueFamily->getIndex() == mvkGetMVKConfiguration()->defaultGPUCaptureScopeQueueFamilyIndex &&
-		_index == mvkGetMVKConfiguration()->defaultGPUCaptureScopeQueueIndex) {
+	const MVKConfiguration* pMVKConfig = mvkGetMVKConfiguration();
+	if (_queueFamily->getIndex() == pMVKConfig->defaultGPUCaptureScopeQueueFamilyIndex &&
+		_index == pMVKConfig->defaultGPUCaptureScopeQueueIndex) {
+
+		getDevice()->startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME, _mtlQueue);
 		_submissionCaptureScope->makeDefault();
+
 	}
 	_submissionCaptureScope->beginScope();	// Allow Xcode to capture the first frame if desired.
-
-	getDevice()->startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME, _mtlQueue);
 }
 
 MVKQueue::~MVKQueue() {
