@@ -60,13 +60,11 @@ typedef unsigned long MTLLanguageVersion;
 
 /** Identifies extensions to advertise as part of MoltenVK configuration. */
 typedef enum MVKConfigAdvertiseExtensionBits {
-	MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL                       = 0x00000001,
-	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_MVK_MOLTENVK           = 0x00000002,
-	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_MVK_IOS_SURFACE        = 0x00000004,
-	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_MVK_MACOS_SURFACE      = 0x00000008,
-	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_EXT_METAL_SURFACE      = 0x00000010,
-	MVK_CONFIG_ADVERTISE_EXTENSIONS_VK_KHR_PORTABILITY_SUBSET = 0x00000020,
-	MVK_CONFIG_ADVERTISE_EXTENSIONS_MAX_ENUM = 0x7FFFFFFF
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL         = 0x00000001,	/**< All supported extensions. */
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_MOLTENVK    = 0x00000002,	/**< This VK_MVK_moltenvk extension. */
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_WSI         = 0x00000004,	/**< WSI extensions supported on the platform. */
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_PORTABILITY = 0x00000008,	/**< Vulkan Portability Subset extensions. */
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_MAX_ENUM    = 0x7FFFFFFF
 } MVKConfigAdvertiseExtensionBits;
 typedef VkFlags MVKConfigAdvertiseExtensions;
 
@@ -747,7 +745,7 @@ typedef struct {
 	 * Controls which extensions MoltenVK should advertise it supports in
 	 * vkEnumerateInstanceExtensionProperties() and vkEnumerateDeviceExtensionProperties().
 	 * The value of this parameter is a bitwise OR of values from the MVKConfigAdvertiseExtensionBits
-	 * enumeration. Any prerequisite extentions are also advertised.
+	 * enumeration. Any prerequisite extensions are also advertised.
 	 * If the flag MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL is included, all supported extensions
 	 * will be advertised. A value of zero means no extensions will be advertised.
 	 *
