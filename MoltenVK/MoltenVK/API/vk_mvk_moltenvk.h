@@ -58,6 +58,15 @@ typedef unsigned long MTLLanguageVersion;
 #define VK_MVK_MOLTENVK_SPEC_VERSION            31
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
+/** Identifies the scope for Metal to run an automatic GPU capture for diagnostic debugging purposes. */
+typedef enum MVKConfigAutoGPUCaptureScopeBits {
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE     = 0,	/**< No automatic GPU capture. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE   = 1,	/**< Automatically capture all GPU activity during the lifetime of a VkDevice. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME    = 2,	/**< Automatically capture all GPU activity during the rendering and presentation of the first frame. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_MAX_ENUM = 0x7FFFFFFF
+} MVKConfigAutoGPUCaptureScopeBits;
+typedef VkFlags MVKConfigAutoGPUCaptureScope;
+
 /** Identifies extensions to advertise as part of MoltenVK configuration. */
 typedef enum MVKConfigAdvertiseExtensionBits {
 	MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL         = 0x00000001,	/**< All supported extensions. */
@@ -390,18 +399,21 @@ typedef struct {
 	VkBool32 switchSystemGPU;
 
 	/**
-	 * If enabled, arbitrary VkImageView component swizzles are supported, as defined
-	 * in VkImageViewCreateInfo::components when creating a VkImageView.
+	 * Older versions of Metal do not natively support per-texture swizzling. When running on
+	 * such a system, and this parameter is enabled, arbitrary VkImageView component swizzles
+	 * are supported, as defined in VkImageViewCreateInfo::components when creating a VkImageView.
 	 *
-	 * If disabled, a very limited set of VkImageView component swizzles are supported
-	 * via format substitutions.
+	 * If disabled, and native Metal per-texture swizzling is not available on the platform,
+	 * a very limited set of VkImageView component swizzles are supported via format substitutions.
 	 *
-	 * Metal does not natively support per-texture swizzling. If this parameter is enabled
-	 * both when a VkImageView is created, and when any pipeline that uses that VkImageView
-	 * is compiled, VkImageView swizzling is automatically performed in the converted Metal
-	 * shader code during all texture sampling and reading operations, regardless of whether
-	 * a swizzle is required for the VkImageView associated with the Metal texture.
-	 * This may result in reduced performance.
+	 * If Metal supports native per-texture swizzling, this parameter is ignored.
+
+	 * When running on an older version of Metal that does not support native per-texture
+	 * swizzling, if this parameter is enabled, both when a VkImageView is created, and
+	 * when any pipeline that uses that VkImageView is compiled, VkImageView swizzling is
+	 * automatically performed in the converted Metal shader code during all texture sampling
+	 * and reading operations, regardless of whether a swizzle is required for the VkImageView
+	 * associated with the Metal texture. This may result in reduced performance.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -420,8 +432,9 @@ typedef struct {
 	 * in a call to vkGetPhysicalDeviceImageFormatProperties2KHR() to query for an VkImageView
 	 * format that will require full swizzling to be enabled, and this feature is not enabled.
 	 *
-	 * If this parameter is disabled, the following limited set of VkImageView swizzles are
-	 * supported by MoltenVK, via automatic format substitution:
+	 * If this parameter is disabled, and native Metal per-texture swizzling is not available
+	 * on the platform, the following limited set of VkImageView swizzles are supported by
+	 * MoltenVK, via automatic format substitution:
 	 *
 	 * Texture format			       Swizzle
 	 * --------------                  -------
@@ -585,15 +598,14 @@ typedef struct {
 	 * Controls whether Metal should run an automatic GPU capture without the user having to
 	 * trigger it manually via the Xcode user interface, and controls the scope under which
 	 * that GPU capture will occur. This is useful when trying to capture a one-shot GPU trace,
-	 * such as when running a Vulkan CTS test case. For the automatic GPU capture to occur,
-	 * the Xcode scheme under which the app is run must have the Metal GPU capture option
-	 * enabled. MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE should not be set to manually trigger a
-	 * GPU capture via the Xcode user interface.
+	 * such as when running a Vulkan CTS test case. For the automatic GPU capture to occur, the
+	 * Xcode scheme under which the app is run must have the Metal GPU capture option enabled.
+	 * This parameter should not be set to manually trigger a GPU capture via the Xcode user interface.
 	 *
-	 * To automatically trigger a GPU capture, set this value as follows:
-	 *   0: No automatic GPU capture.
-	 *   1: Capture all GPU commands issued during the lifetime of the VkDevice.
-	 *   2: Capture all GPU commands issued during the first rendered frame.
+	 * When the value of this parameter is MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME,
+	 * the queue for which the GPU activity is captured is identifed by the values of
+	 * the defaultGPUCaptureScopeQueueFamilyIndex and defaultGPUCaptureScopeQueueIndex
+	 * configuration parameters.
 	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
@@ -603,7 +615,7 @@ typedef struct {
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, no automatic GPU capture will occur.
 	 */
-	uint32_t autoGPUCaptureScope;
+	MVKConfigAutoGPUCaptureScope autoGPUCaptureScope;
 
 	/**
 	 * The path to a file where the automatic GPU capture should be saved, if autoGPUCaptureScope

@@ -222,9 +222,6 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
  * developer having to trigger it manually via the Xcode UI. This is useful when trying
  * to capture a one-shot trace, such as when running a Vulkan CTS test case.
  */
-#define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE		0
-#define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE	1
-#define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME		2
 #ifndef MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE
 #   define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE    	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
 #endif
