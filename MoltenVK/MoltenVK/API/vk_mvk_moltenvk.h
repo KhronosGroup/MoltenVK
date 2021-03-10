@@ -59,32 +59,29 @@ typedef unsigned long MTLLanguageVersion;
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /** Identifies the level of logging MoltenVK should be limited to outputting. */
-typedef enum MVKConfigLogLevelBits {
+typedef enum MVKConfigLogLevel {
 	MVK_CONFIG_LOG_LEVEL_NONE     = 0,	/**< No logging. */
 	MVK_CONFIG_LOG_LEVEL_ERROR    = 1,	/**< Log errors only. */
 	MVK_CONFIG_LOG_LEVEL_INFO     = 2,	/**< Log errors and informational messages. */
 	MVK_CONFIG_LOG_LEVEL_MAX_ENUM = 0x7FFFFFFF
-} MVKConfigLogLevelBits;
-typedef VkFlags MVKConfigLogLevel;
+} MVKConfigLogLevel;
 
 /** Identifies the level of Vulkan call trace logging MoltenVK should perform. */
-typedef enum MVKConfigTraceVulkanCallsBits {
+typedef enum MVKConfigTraceVulkanCalls {
 	MVK_CONFIG_TRACE_VULKAN_CALLS_NONE       = 0,	/**< No Vulkan call logging. */
 	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER      = 1,	/**< Log the name of each Vulkan call when the call is entered. */
 	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT = 2,	/**< Log the name of each Vulkan call when the call is entered and exited. This effectively brackets any other logging activity within the scope of the Vulkan call. */
 	MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION   = 3,	/**< Same as MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT, plus logs the time spent inside the Vulkan function. */
 	MVK_CONFIG_TRACE_VULKAN_CALLS_MAX_ENUM   = 0x7FFFFFFF
-} MVKConfigTraceVulkanCallsBits;
-typedef VkFlags MVKConfigTraceVulkanCalls;
+} MVKConfigTraceVulkanCalls;
 
 /** Identifies the scope for Metal to run an automatic GPU capture for diagnostic debugging purposes. */
-typedef enum MVKConfigAutoGPUCaptureScopeBits {
+typedef enum MVKConfigAutoGPUCaptureScope {
 	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE     = 0,	/**< No automatic GPU capture. */
 	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE   = 1,	/**< Automatically capture all GPU activity during the lifetime of a VkDevice. */
 	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME    = 2,	/**< Automatically capture all GPU activity during the rendering and presentation of the first frame. */
 	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_MAX_ENUM = 0x7FFFFFFF
-} MVKConfigAutoGPUCaptureScopeBits;
-typedef VkFlags MVKConfigAutoGPUCaptureScope;
+} MVKConfigAutoGPUCaptureScope;
 
 /** Identifies extensions to advertise as part of MoltenVK configuration. */
 typedef enum MVKConfigAdvertiseExtensionBits {
