@@ -830,29 +830,27 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 	CAMetalLayer* mtlLayer = surface->getCAMetalLayer();
 	if ( !mtlLayer ) { return surface->getConfigurationResult(); }
 
-#define addSurfFmt(FMT) { if (_pixelFormats.isSupported(FMT)) { mtlFormats.push_back(FMT); } }
+#define addSurfFmt(MTL_FMT) \
+	do { \
+		if (_pixelFormats.isSupported(MTLPixelFormat ##MTL_FMT)) { \
+			VkFormat vkFmt = _pixelFormats.getVkFormat(MTLPixelFormat ##MTL_FMT); \
+			if (vkFmt) { vkFormats.push_back(vkFmt); } \
+		} \
+	} while(false)
 
-	MVKSmallVector<MTLPixelFormat, 16> mtlFormats;
-	addSurfFmt(MTLPixelFormatBGRA8Unorm);
-	addSurfFmt(MTLPixelFormatBGRA8Unorm_sRGB);
-	addSurfFmt(MTLPixelFormatRGBA16Float);
+	MVKSmallVector<VkFormat, 16> vkFormats;
+	addSurfFmt(BGRA8Unorm);
+	addSurfFmt(BGRA8Unorm_sRGB);
+	addSurfFmt(RGBA16Float);
 #if MVK_MACOS
-	addSurfFmt(MTLPixelFormatRGB10A2Unorm);
-	addSurfFmt(MTLPixelFormatBGR10A2Unorm);
-#if MVK_MACOS_APPLE_SILICON
-	if (supportsMTLGPUFamily(Apple5)) {
-		addSurfFmt(MTLPixelFormatBGRA10_XR);
-		addSurfFmt(MTLPixelFormatBGRA10_XR_sRGB);
-		addSurfFmt(MTLPixelFormatBGR10_XR);
-		addSurfFmt(MTLPixelFormatBGR10_XR_sRGB);
-	}
+	addSurfFmt(RGB10A2Unorm);
+	addSurfFmt(BGR10A2Unorm);
 #endif
-#endif
-#if MVK_IOS_OR_TVOS
-	addSurfFmt(MTLPixelFormatBGRA10_XR);
-	addSurfFmt(MTLPixelFormatBGRA10_XR_sRGB);
-	addSurfFmt(MTLPixelFormatBGR10_XR);
-	addSurfFmt(MTLPixelFormatBGR10_XR_sRGB);
+#if MVK_APPLE_SILICON
+	addSurfFmt(BGRA10_XR);
+	addSurfFmt(BGRA10_XR_sRGB);
+	addSurfFmt(BGR10_XR);
+	addSurfFmt(BGR10_XR_sRGB);
 #endif
 
 	MVKSmallVector<VkColorSpaceKHR, 16> colorSpaces;
@@ -906,23 +904,23 @@ VkResult MVKPhysicalDevice::getSurfaceFormats(MVKSurface* surface,
 #endif
 	}
 
-	size_t mtlFmtsCnt = mtlFormats.size();
-	size_t vkFmtsCnt = mtlFmtsCnt * colorSpaces.size();
+	size_t vkFmtsCnt = vkFormats.size();
+	size_t vkColSpcFmtsCnt = vkFmtsCnt * colorSpaces.size();
 
 	// If properties aren't actually being requested yet, simply update the returned count
 	if ( !pSurfaceFormats ) {
-		*pCount = (uint32_t)vkFmtsCnt;
+		*pCount = (uint32_t)vkColSpcFmtsCnt;
 		return VK_SUCCESS;
 	}
 
 	// Determine how many results we'll return, and return that number
-	VkResult result = (*pCount >= vkFmtsCnt) ? VK_SUCCESS : VK_INCOMPLETE;
-	*pCount = min(*pCount, (uint32_t)vkFmtsCnt);
+	VkResult result = (*pCount >= vkColSpcFmtsCnt) ? VK_SUCCESS : VK_INCOMPLETE;
+	*pCount = min(*pCount, (uint32_t)vkColSpcFmtsCnt);
 
 	// Now populate the supplied array
 	for (uint csIdx = 0, idx = 0; idx < *pCount && csIdx < colorSpaces.size(); csIdx++) {
-		for (uint fmtIdx = 0; idx < *pCount && fmtIdx < mtlFmtsCnt; fmtIdx++, idx++) {
-			pSurfaceFormats[idx].format = _pixelFormats.getVkFormat(mtlFormats[fmtIdx]);
+		for (uint fmtIdx = 0; idx < *pCount && fmtIdx < vkFmtsCnt; fmtIdx++, idx++) {
+			pSurfaceFormats[idx].format = vkFormats[fmtIdx];
 			pSurfaceFormats[idx].colorSpace = colorSpaces[csIdx];
 		}
 	}
