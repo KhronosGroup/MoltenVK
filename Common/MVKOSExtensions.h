@@ -132,12 +132,13 @@ bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
 		cfgVal = wasFound ? ev : EV;							\
 	} while(false)
 
+// Pointer cast permits cfgVal to be an enum var
 #define MVK_SET_FROM_ENV_OR_BUILD_INT32(cfgVal, EV)				\
 	do {														\
 		bool wasFound = false;									\
 		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);			\
 		int64_t val = wasFound ? ev : EV;						\
-		cfgVal = (int32_t)std::min(std::max(val, (int64_t)INT32_MIN), (int64_t)INT32_MAX);	\
+		*(int32_t*)&cfgVal = (int32_t)std::min(std::max(val, (int64_t)INT32_MIN), (int64_t)INT32_MAX);	\
 	} while(false)
 
 #define MVK_SET_FROM_ENV_OR_BUILD_STRING(cfgVal, EV, strObj)	\

@@ -58,14 +58,30 @@ typedef unsigned long MTLLanguageVersion;
 #define VK_MVK_MOLTENVK_SPEC_VERSION            31
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
+/** Identifies the level of logging MoltenVK should be limited to outputting. */
+typedef enum MVKConfigLogLevel {
+	MVK_CONFIG_LOG_LEVEL_NONE     = 0,	/**< No logging. */
+	MVK_CONFIG_LOG_LEVEL_ERROR    = 1,	/**< Log errors only. */
+	MVK_CONFIG_LOG_LEVEL_INFO     = 2,	/**< Log errors and informational messages. */
+	MVK_CONFIG_LOG_LEVEL_MAX_ENUM = 0x7FFFFFFF
+} MVKConfigLogLevel;
+
+/** Identifies the level of Vulkan call trace logging MoltenVK should perform. */
+typedef enum MVKConfigTraceVulkanCalls {
+	MVK_CONFIG_TRACE_VULKAN_CALLS_NONE       = 0,	/**< No Vulkan call logging. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER      = 1,	/**< Log the name of each Vulkan call when the call is entered. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT = 2,	/**< Log the name of each Vulkan call when the call is entered and exited. This effectively brackets any other logging activity within the scope of the Vulkan call. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION   = 3,	/**< Same as MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT, plus logs the time spent inside the Vulkan function. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_MAX_ENUM   = 0x7FFFFFFF
+} MVKConfigTraceVulkanCalls;
+
 /** Identifies the scope for Metal to run an automatic GPU capture for diagnostic debugging purposes. */
-typedef enum MVKConfigAutoGPUCaptureScopeBits {
+typedef enum MVKConfigAutoGPUCaptureScope {
 	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE     = 0,	/**< No automatic GPU capture. */
 	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE   = 1,	/**< Automatically capture all GPU activity during the lifetime of a VkDevice. */
 	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME    = 2,	/**< Automatically capture all GPU activity during the rendering and presentation of the first frame. */
 	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_MAX_ENUM = 0x7FFFFFFF
-} MVKConfigAutoGPUCaptureScopeBits;
-typedef VkFlags MVKConfigAutoGPUCaptureScope;
+} MVKConfigAutoGPUCaptureScope;
 
 /** Identifies extensions to advertise as part of MoltenVK configuration. */
 typedef enum MVKConfigAdvertiseExtensionBits {
@@ -498,10 +514,7 @@ typedef struct {
 	VkBool32 fastMathEnabled;
 
 	/**
-	 * Controls the level of logging performned by MoltenVK using the following numeric values:
-	 *   0: No logging.
-	 *   1: Log errors only.
-	 *   2: Log errors and informational messages.
+	 * Controls the level of logging performned by MoltenVK.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -511,18 +524,11 @@ typedef struct {
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, errors and informational messages are logged.
 	 */
-	uint32_t logLevel;
+	MVKConfigLogLevel logLevel;
 
 	/**
 	 * Causes MoltenVK to log the name of each Vulkan call made by the application,
 	 * along with the Mach thread ID, global system thread ID, and thread name.
-	 * The logging format options can be controlled as follows:
-	 *   0: No Vulkan call logging.
-	 *   1: Log the name of each Vulkan call when the call is entered.
-	 *   2: Log the name of each Vulkan call when the call is entered and exited. This
-	 *      effectively brackets any other logging activity within the scope of the Vulkan call.
-	 *   3: Same as option 2, plus logs the time spent inside the Vulkan function.
-	 * If none of these is set, no Vulkan call logging will occur.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -532,7 +538,7 @@ typedef struct {
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, no Vulkan call logging will occur.
 	 */
-	uint32_t traceVulkanCalls;
+	MVKConfigTraceVulkanCalls traceVulkanCalls;
 
 	/**
 	 * Force MoltenVK to use a low-power GPU, if one is availble on the device.

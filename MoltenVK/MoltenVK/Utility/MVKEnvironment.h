@@ -178,26 +178,14 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
 #   define MVK_CONFIG_FAST_MATH_ENABLED 1
 #endif
 
-/**
- * Set the logging level:
- *   0 = None
- *   1 = Errors only
- *   2 = All
- */
+/** Set the logging level: */
 #ifndef MVK_CONFIG_LOG_LEVEL
-#   define MVK_CONFIG_LOG_LEVEL    2
+#   define MVK_CONFIG_LOG_LEVEL    MVK_CONFIG_LOG_LEVEL_INFO
 #endif
 
-/**
- * Set the Vulkan call logging level:
- *   0: No Vulkan call logging.
- *   1: Log the name of each Vulkan call when the call is entered.
- *   2: Log the name of each Vulkan call when the call is entered and exited. This effectively
- *      brackets any other logging activity within the scope of the Vulkan call.
- *   3: Same as option 2, plus logs the time spent inside the Vulkan function.
- */
+/** Set the Vulkan call logging level. */
 #ifndef MVK_CONFIG_TRACE_VULKAN_CALLS
-#   define MVK_CONFIG_TRACE_VULKAN_CALLS    0
+#   define MVK_CONFIG_TRACE_VULKAN_CALLS    MVK_CONFIG_TRACE_VULKAN_CALLS_NONE
 #endif
 
 /**
