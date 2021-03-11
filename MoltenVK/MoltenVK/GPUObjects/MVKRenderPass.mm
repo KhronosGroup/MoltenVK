@@ -600,20 +600,20 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
                                                                         bool hasResolveAttachment,
                                                                         bool isStencil,
                                                                         bool loadOverride) {
-
-    bool willClear = false;		// Assume the attachment won't be cleared
-
-    // Only allow clearing of entire attachment if we're actually rendering to the entire
-    // attachment AND we're in the first subpass.
-    if ( loadOverride && !isMemorylessAttachment ) {
-        mtlAttDesc.loadAction = MTLLoadActionLoad;
-    } else if ( isMemorylessAttachment || (isRenderingEntireAttachment && isFirstUseOfAttachment(subpass)) ) {
-        VkAttachmentLoadOp loadOp = isStencil ? _info.stencilLoadOp : _info.loadOp;
-        mtlAttDesc.loadAction = mvkMTLLoadActionFromVkAttachmentLoadOp(loadOp);
-        willClear = (loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
+    // Only allow clearing of entire attachment if we're actually
+	// rendering to the entire attachment AND we're in the first subpass.
+	MTLLoadAction mtlLA;
+	if (loadOverride || !isRenderingEntireAttachment || !isFirstUseOfAttachment(subpass)) {
+		mtlLA = MTLLoadActionLoad;
     } else {
-        mtlAttDesc.loadAction = MTLLoadActionLoad;
+        VkAttachmentLoadOp loadOp = isStencil ? _info.stencilLoadOp : _info.loadOp;
+		mtlLA = mvkMTLLoadActionFromVkAttachmentLoadOp(loadOp);
     }
+
+	// Memoryless can be cleared, but can't be loaded, so force load to don't care.
+	if (isMemorylessAttachment && mtlLA == MTLLoadActionLoad) { mtlLA = MTLLoadActionDontCare; }
+
+	mtlAttDesc.loadAction = mtlLA;
 
     // If the device supports late-specified store actions, we'll use those, and then set them later.
     // That way, if we wind up doing a tessellated draw, we can set the store action to store then,
@@ -623,7 +623,7 @@ bool MVKRenderPassAttachment::populateMTLRenderPassAttachmentDescriptor(MTLRende
     } else {
         mtlAttDesc.storeAction = getMTLStoreAction(subpass, isRenderingEntireAttachment, isMemorylessAttachment, hasResolveAttachment, isStencil, false);
     }
-    return willClear;
+    return (mtlLA == MTLLoadActionClear);
 }
 
 void MVKRenderPassAttachment::encodeStoreAction(MVKCommandEncoder* cmdEncoder,
@@ -687,19 +687,21 @@ MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subp
 														  bool isStencil,
 														  bool storeOverride) {
     // If a resolve attachment exists, this attachment must resolve once complete.
-    // Otherwise only allow the attachment to be discarded if we're actually rendering
-    // to the entire attachment and we're in the last subpass.
     if (hasResolveAttachment && !_renderPass->getDevice()->_pMetalFeatures->combinedStoreResolveAction) {
         return MTLStoreActionMultisampleResolve;
     }
-    if ( storeOverride && !isMemorylessAttachment ) {
-        return hasResolveAttachment ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
-    }
-    if ( isMemorylessAttachment || (isRenderingEntireAttachment && isLastUseOfAttachment(subpass)) ) {
-        VkAttachmentStoreOp storeOp = isStencil ? _info.stencilStoreOp : _info.storeOp;
-        return mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp, hasResolveAttachment);
-    }
-    return hasResolveAttachment ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
+	// Memoryless can't be stored.
+	if (isMemorylessAttachment) {
+		return hasResolveAttachment ? MTLStoreActionMultisampleResolve : MTLStoreActionDontCare;
+	}
+
+	// Only allow the attachment to be discarded if we're actually
+	// rendering to the entire attachment and we're in the last subpass.
+	if (storeOverride || !isRenderingEntireAttachment || !isLastUseOfAttachment(subpass)) {
+		return hasResolveAttachment ? MTLStoreActionStoreAndMultisampleResolve : MTLStoreActionStore;
+	}
+	VkAttachmentStoreOp storeOp = isStencil ? _info.stencilStoreOp : _info.storeOp;
+	return mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp, hasResolveAttachment);
 }
 
 bool MVKRenderPassAttachment::shouldUseClearAttachment(MVKRenderSubpass* subpass) {
