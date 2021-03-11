@@ -19,7 +19,9 @@ MoltenVK 1.1.3
 Released TBD
 
 - Add support for `HDR10` colorspace via `VK_COLOR_SPACE_HDR10_HLG_EXT` and `VK_COLOR_SPACE_HDR10_ST2084_EXT`.
-- Always explicitly set `CAMetalLayer` colorspace property based on _Vulkan_ parameters, and don't rely on _Metal_ default values.
+- Always explicitly set `CAMetalLayer` colorspace property based on _Vulkan_ parameters, 
+  and don't rely on _Metal_ default values.
+- Avoid use of _Metal_ renderpass load and store actions on memoryless attachments.
 - Remove project qualifiers from references to `SPIRV-Cross` header files.
 - Add `MVKConfiguration::apiVersionToAdvertise` and `MVK_CONFIG_API_VERSION_TO_ADVERTISE` 
   env var to configure **MoltenVK** to advertise a particular _Vulkan_ version.
