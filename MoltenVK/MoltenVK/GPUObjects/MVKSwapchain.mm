@@ -283,6 +283,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	switch (pCreateInfo->imageColorSpace) {
 		case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceSRGB;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;
 			break;
 		case VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceDisplayP3;
@@ -306,6 +307,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			break;
 		case VK_COLOR_SPACE_BT709_NONLINEAR_EXT:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_709;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;
 			break;
 		case VK_COLOR_SPACE_BT2020_LINEAR_EXT:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceExtendedLinearITUR_2020;
@@ -323,10 +325,14 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 #endif
 		case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceAdobeRGB1998;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;
 			break;
 		case VK_COLOR_SPACE_PASS_THROUGH_EXT:
+			_mtlLayer.colorspace = nil;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;
+			break;
 		default:
-			// Nothing - the default is not to do color matching.
+			setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateSwapchainKHR(): Metal does not support VkColorSpaceKHR value %d.", pCreateInfo->imageColorSpace));
 			break;
 	}
 	_mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(pCreateInfo->imageExtent);
