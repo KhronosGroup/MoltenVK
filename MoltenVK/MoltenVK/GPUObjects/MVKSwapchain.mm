@@ -311,18 +311,16 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceExtendedLinearITUR_2020;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
-// Awaiting Xcode 12 with macOS 11.0 and iOS/tvOS 14 SDK to build with kCGColorSpaceITUR_2100_PQ
-// and kCGColorSpaceITUR_2100_HLG. The previous values kCGColorSpaceITUR_2020_PQ_EOTF and
-// kCGColorSpaceITUR_2020_HLG now incorrectly break App Store submissions.
-// Coordinate with MVKPhysicalDevice::getSurfaceFormats().
-//		case VK_COLOR_SPACE_HDR10_ST2084_EXT:
-//			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_PQ;
-//			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
-//			break;
-//		case VK_COLOR_SPACE_HDR10_HLG_EXT:
-//			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_HLG;
-//			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
-//			break;
+#if MVK_XCODE_12
+		case VK_COLOR_SPACE_HDR10_ST2084_EXT:
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_PQ;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
+			break;
+		case VK_COLOR_SPACE_HDR10_HLG_EXT:
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_HLG;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
+			break;
+#endif
 		case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceAdobeRGB1998;
 			break;
