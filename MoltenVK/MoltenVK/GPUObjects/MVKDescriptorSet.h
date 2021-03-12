@@ -20,6 +20,7 @@
 
 #include "MVKDescriptor.h"
 #include "MVKSmallVector.h"
+#include "MVKBitArray.h"
 #include <unordered_set>
 #include <unordered_map>
 #include <vector>
@@ -155,59 +156,20 @@ class MVKDescriptorTypePreallocation : public MVKBaseObject {
 
 public:
 
-	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
 
-	MVKDescriptorTypePreallocation(const VkDescriptorPoolCreateInfo* pCreateInfo,
-								   VkDescriptorType descriptorType);
-
-protected:
-	friend class MVKPreallocatedDescriptors;
-
-	VkResult allocateDescriptor(MVKDescriptor** pMVKDesc);
-	bool findDescriptor(uint32_t endIndex, MVKDescriptor** pMVKDesc);
-	void freeDescriptor(MVKDescriptor* mvkDesc);
-	void reset();
-
-	MVKSmallVector<DescriptorClass> _descriptors;
-	MVKSmallVector<bool> _availability;
-	uint32_t _nextAvailableIndex;
-	bool _supportAvailability;
-};
-
-
-#pragma mark -
-#pragma mark MVKPreallocatedDescriptors
-
-/** Support class for MVKDescriptorPool that holds preallocated instances of all concrete descriptor classes. */
-class MVKPreallocatedDescriptors : public MVKBaseObject {
-
-public:
-
-	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
-
-	MVKPreallocatedDescriptors(const VkDescriptorPoolCreateInfo* pCreateInfo);
+	MVKDescriptorTypePreallocation(size_t poolSize);
 
 protected:
 	friend class MVKDescriptorPool;
 
-	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
+	inline bool isPreallocated() { return _availability.size() > 0; }
+	VkResult allocateDescriptor(MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
 	void reset();
 
-	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
-	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;
-	MVKDescriptorTypePreallocation<MVKUniformBufferDynamicDescriptor> _uniformBufferDynamicDescriptors;
-	MVKDescriptorTypePreallocation<MVKStorageBufferDynamicDescriptor> _storageBufferDynamicDescriptors;
-	MVKDescriptorTypePreallocation<MVKInlineUniformBlockDescriptor> _inlineUniformBlockDescriptors;
-	MVKDescriptorTypePreallocation<MVKSampledImageDescriptor> _sampledImageDescriptors;
-	MVKDescriptorTypePreallocation<MVKStorageImageDescriptor> _storageImageDescriptors;
-	MVKDescriptorTypePreallocation<MVKInputAttachmentDescriptor> _inputAttachmentDescriptors;
-	MVKDescriptorTypePreallocation<MVKSamplerDescriptor> _samplerDescriptors;
-	MVKDescriptorTypePreallocation<MVKCombinedImageSamplerDescriptor> _combinedImageSamplerDescriptors;
-	MVKDescriptorTypePreallocation<MVKUniformTexelBufferDescriptor> _uniformTexelBufferDescriptors;
-	MVKDescriptorTypePreallocation<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
+	MVKSmallVector<DescriptorClass> _descriptors;
+	MVKBitArray _availability;
 };
 
 
@@ -251,7 +213,19 @@ protected:
 
 	uint32_t _maxSets;
 	std::unordered_set<MVKDescriptorSet*> _allocatedSets;
-	MVKPreallocatedDescriptors* _preallocatedDescriptors;
+
+	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;
+	MVKDescriptorTypePreallocation<MVKUniformBufferDynamicDescriptor> _uniformBufferDynamicDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageBufferDynamicDescriptor> _storageBufferDynamicDescriptors;
+	MVKDescriptorTypePreallocation<MVKInlineUniformBlockDescriptor> _inlineUniformBlockDescriptors;
+	MVKDescriptorTypePreallocation<MVKSampledImageDescriptor> _sampledImageDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageImageDescriptor> _storageImageDescriptors;
+	MVKDescriptorTypePreallocation<MVKInputAttachmentDescriptor> _inputAttachmentDescriptors;
+	MVKDescriptorTypePreallocation<MVKSamplerDescriptor> _samplerDescriptors;
+	MVKDescriptorTypePreallocation<MVKCombinedImageSamplerDescriptor> _combinedImageSamplerDescriptors;
+	MVKDescriptorTypePreallocation<MVKUniformTexelBufferDescriptor> _uniformTexelBufferDescriptors;
+	MVKDescriptorTypePreallocation<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
 };
 
 
