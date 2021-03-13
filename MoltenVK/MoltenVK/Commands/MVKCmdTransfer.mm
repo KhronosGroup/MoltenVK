@@ -876,7 +876,6 @@ VkResult MVKCmdBufferImageCopy<N>::setContent(MVKCommandBuffer* cmdBuff,
 											  bool toImage) {
     _buffer = (MVKBuffer*)buffer;
     _image = (MVKImage*)image;
-    _imageLayout = imageLayout;
     _toImage = toImage;
 
     // Add buffer regions
