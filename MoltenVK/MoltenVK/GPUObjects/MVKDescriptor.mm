@@ -161,10 +161,6 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                 MVKBuffer* buffer = (MVKBuffer*)bufferInfo.buffer;
                 bb.mtlBuffer = buffer->getMTLBuffer();
                 bb.offset = buffer->getMTLBufferOffset() + bufferInfo.offset;
-                if (bufferInfo.range == VK_WHOLE_SIZE)
-                    bb.size = (uint32_t)(buffer->getByteCount() - bb.offset);
-                else
-                    bb.size = (uint32_t)bufferInfo.range;
 
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
@@ -211,7 +207,6 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                         if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }
                         bb.mtlBuffer = mtlTex.buffer;
                         bb.offset = mtlTex.bufferOffset;
-                        bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
                     }
                     for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                         if (_applyToStage[i]) {
@@ -244,7 +239,6 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
                     id<MTLTexture> mtlTex = tb.mtlTexture;
                     bb.mtlBuffer = mtlTex.buffer;
                     bb.offset = mtlTex.bufferOffset;
-                    bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
                 }
                 for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
                     if (_applyToStage[i]) {
@@ -527,10 +521,6 @@ void MVKBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 	if (_mvkBuffer) {
 		bb.mtlBuffer = _mvkBuffer->getMTLBuffer();
 		bb.offset = _mvkBuffer->getMTLBufferOffset() + _buffOffset + bufferDynamicOffset;
-		if (_buffRange == VK_WHOLE_SIZE)
-			bb.size = (uint32_t)(_mvkBuffer->getByteCount() - bb.offset);
-		else
-			bb.size = (uint32_t)_buffRange;
 	}
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
 		if (stages[i]) {
@@ -554,7 +544,6 @@ void MVKBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 	const auto* pBuffInfo = &get<VkDescriptorBufferInfo>(pData, stride, srcIndex);
 	_mvkBuffer = (MVKBuffer*)pBuffInfo->buffer;
 	_buffOffset = pBuffInfo->offset;
-	_buffRange = pBuffInfo->range;
 
 	if (_mvkBuffer) { _mvkBuffer->retain(); }
 	if (oldBuff) { oldBuff->release(); }
@@ -570,14 +559,12 @@ void MVKBufferDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 	auto& buffInfo = pBufferInfo[dstIndex];
 	buffInfo.buffer = (VkBuffer)_mvkBuffer;
 	buffInfo.offset = _buffOffset;
-	buffInfo.range = _buffRange;
 }
 
 void MVKBufferDescriptor::reset() {
 	if (_mvkBuffer) { _mvkBuffer->release(); }
 	_mvkBuffer = nullptr;
 	_buffOffset = 0;
-	_buffRange = 0;
 	MVKDescriptor::reset();
 }
 
@@ -675,7 +662,6 @@ void MVKImageDescriptor::bind(MVKCommandEncoder* cmdEncoder,
             if (mtlTex.parentTexture) { mtlTex = mtlTex.parentTexture; }
             bb.mtlBuffer = mtlTex.buffer;
             bb.offset = mtlTex.bufferOffset;
-            bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
         }
         for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
             if (stages[i]) {
@@ -707,7 +693,6 @@ void MVKImageDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 
 	const auto* pImgInfo = &get<VkDescriptorImageInfo>(pData, stride, srcIndex);
 	_mvkImageView = (MVKImageView*)pImgInfo->imageView;
-	_imageLayout = pImgInfo->imageLayout;
 
 	if (_mvkImageView) { _mvkImageView->retain(); }
 	if (oldImgView) { oldImgView->release(); }
@@ -722,13 +707,12 @@ void MVKImageDescriptor::read(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 							  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 	auto& imgInfo = pImageInfo[dstIndex];
 	imgInfo.imageView = (VkImageView)_mvkImageView;
-	imgInfo.imageLayout = _imageLayout;
+	imgInfo.imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 }
 
 void MVKImageDescriptor::reset() {
 	if (_mvkImageView) { _mvkImageView->release(); }
 	_mvkImageView = nullptr;
-	_imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 	MVKDescriptor::reset();
 }
 
@@ -899,7 +883,6 @@ void MVKTexelBufferDescriptor::bind(MVKCommandEncoder* cmdEncoder,
 			id<MTLTexture> mtlTex = tb.mtlTexture;
 			bb.mtlBuffer = mtlTex.buffer;
 			bb.offset = mtlTex.bufferOffset;
-			bb.size = (uint32_t)(mtlTex.height * mtlTex.bufferBytesPerRow);
 		}
 	}
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {

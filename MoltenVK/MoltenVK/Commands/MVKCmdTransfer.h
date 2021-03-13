@@ -222,7 +222,6 @@ protected:
 	MVKSmallVector<VkBufferImageCopy, N> _bufferImageCopyRegions;
     MVKBuffer* _buffer;
     MVKImage* _image;
-    VkImageLayout _imageLayout;
     bool _toImage = false;
 };
 

@@ -234,7 +234,6 @@ public:
 protected:
 	MVKBuffer* _mvkBuffer = nullptr;
 	VkDeviceSize _buffOffset = 0;
-	VkDeviceSize _buffRange = 0;
 };
 
 
@@ -349,7 +348,6 @@ public:
 
 protected:
 	MVKImageView* _mvkImageView = nullptr;
-	VkImageLayout _imageLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 };
 
 
