@@ -235,12 +235,13 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 							 size_t stride,
 							 const void* pData) {
 
-	VkDescriptorType descType = getDescriptorType(pDescriptorAction->dstBinding);
+	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorAction->dstBinding);
+	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		// For inline buffers dstArrayElement is a byte offset
 		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorAction->dstBinding);
 		if (mvkDesc->getDescriptorType() == descType) {
-			mvkDesc->write(this, pDescriptorAction->dstArrayElement, stride, pData);
+			mvkDesc->write(mvkDSLBind, this, pDescriptorAction->dstArrayElement, stride, pData);
 		}
     } else {
         uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
@@ -248,7 +249,7 @@ void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
         for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
 			MVKDescriptor* mvkDesc = _descriptors[dstStartIdx + descIdx];
 			if (mvkDesc->getDescriptorType() == descType) {
-				mvkDesc->write(this, descIdx, stride, pData);
+				mvkDesc->write(mvkDSLBind, this, descIdx, stride, pData);
 			}
         }
     }
@@ -260,20 +261,21 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
 							VkBufferView* pTexelBufferView,
 							VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock) {
 
-	VkDescriptorType descType = getDescriptorType(pDescriptorCopy->srcBinding);
+	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorCopy->srcBinding);
+	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
 	uint32_t descCnt = pDescriptorCopy->descriptorCount;
     if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		// For inline buffers srcArrayElement is a byte offset
 		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorCopy->srcBinding);
 		if (mvkDesc->getDescriptorType() == descType) {
-			mvkDesc->read(this, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+			mvkDesc->read(mvkDSLBind, this, pDescriptorCopy->srcArrayElement, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 		}
     } else {
         uint32_t srcStartIdx = _layout->getDescriptorIndex(pDescriptorCopy->srcBinding, pDescriptorCopy->srcArrayElement);
         for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
 			MVKDescriptor* mvkDesc = _descriptors[srcStartIdx + descIdx];
 			if (mvkDesc->getDescriptorType() == descType) {
-				mvkDesc->read(this, descIdx, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
+				mvkDesc->read(mvkDSLBind, this, descIdx, pImageInfo, pBufferInfo, pTexelBufferView, pInlineUniformBlock);
 			}
         }
     }
@@ -296,8 +298,6 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout,
 			MVKDescriptor* mvkDesc = nullptr;
 			setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
 			if ( !wasConfigurationSuccessful() ) { break; }
-
-			mvkDesc->setLayout(mvkDSLBind, descIdx);
 			_descriptors.push_back(mvkDesc);
 		}
 		if ( !wasConfigurationSuccessful() ) { break; }
