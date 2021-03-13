@@ -234,6 +234,7 @@ public:
 protected:
 	MVKBuffer* _mvkBuffer = nullptr;
 	VkDeviceSize _buffOffset = 0;
+	VkDeviceSize _buffRange = 0;
 };
 
 
