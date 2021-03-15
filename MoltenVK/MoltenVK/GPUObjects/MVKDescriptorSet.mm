@@ -281,13 +281,9 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
     }
 }
 
-MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout,
-								   uint32_t variableDescriptorCount,
-								   MVKDescriptorPool* pool) :
-	MVKVulkanAPIDeviceObject(pool->_device),
-	_layout(layout),
-	_variableDescriptorCount(variableDescriptorCount),
-	_pool(pool) {
+VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout, uint32_t variableDescriptorCount) {
+	_layout = layout;
+	_variableDescriptorCount = variableDescriptorCount;
 
 	_descriptors.reserve(layout->getDescriptorCount());
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
@@ -297,15 +293,25 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorSetLayout* layout,
 		for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
 			MVKDescriptor* mvkDesc = nullptr;
 			setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
-			if ( !wasConfigurationSuccessful() ) { break; }
+			if ( !wasConfigurationSuccessful() ) { return getConfigurationResult(); }
 			_descriptors.push_back(mvkDesc);
 		}
-		if ( !wasConfigurationSuccessful() ) { break; }
 	}
+	return getConfigurationResult();
 }
 
-MVKDescriptorSet::~MVKDescriptorSet() {
+void MVKDescriptorSet::free(bool isPoolReset) {
+	_layout = nullptr;
+	_variableDescriptorCount = 0;
+
 	for (auto mvkDesc : _descriptors) { _pool->freeDescriptor(mvkDesc); }
+	_descriptors.clear();
+
+	clearConfigurationResult();
+}
+
+MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorPool* pool) : MVKVulkanAPIDeviceObject(pool->_device), _pool(pool) {
+	free(true);
 }
 
 
@@ -360,15 +366,6 @@ MVKDescriptorTypePreallocation<DescriptorClass>::MVKDescriptorTypePreallocation(
 
 VkResult MVKDescriptorPool::allocateDescriptorSets(const VkDescriptorSetAllocateInfo* pAllocateInfo,
 												   VkDescriptorSet* pDescriptorSets) {
-	if (_allocatedSets.size() + pAllocateInfo->descriptorSetCount > _maxSets) {
-		if (_device->_enabledExtensions.vk_KHR_maintenance1.enabled ||
-			_device->getInstance()->getAPIVersion() >= VK_API_VERSION_1_1) {
-			return VK_ERROR_OUT_OF_POOL_MEMORY;		// Failure is an acceptable test...don't log as error.
-		} else {
-			return reportError(VK_ERROR_INITIALIZATION_FAILED, "The maximum number of descriptor sets that can be allocated by this descriptor pool is %d.", _maxSets);
-		}
-	}
-
 	VkResult rslt = VK_SUCCESS;
 	const auto* pVarDescCounts = getVariableDecriptorCounts(pAllocateInfo);
 	for (uint32_t dsIdx = 0; dsIdx < pAllocateInfo->descriptorSetCount; dsIdx++) {
@@ -397,21 +394,49 @@ const uint32_t* MVKDescriptorPool::getVariableDecriptorCounts(const VkDescriptor
 	return nullptr;
 }
 
-// Ensure descriptor set was actually allocated, then return to pool
+// Retieves the first available descriptor set from the pool, and configures it.
+// If none are available, returns an error.
+VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL,
+												  uint32_t variableDescriptorCount,
+												  VkDescriptorSet* pVKDS) {
+
+	size_t dsIdx = _descriptorSetAvailablility.getIndexOfFirstSetBit(true);
+	if (dsIdx >= _descriptorSets.size()) { return VK_ERROR_OUT_OF_POOL_MEMORY; }
+
+	MVKDescriptorSet* mvkDS = &_descriptorSets[dsIdx];
+	mvkDS->allocate(mvkDSL, variableDescriptorCount);
+	if (mvkDS->wasConfigurationSuccessful()) {
+		*pVKDS = (VkDescriptorSet)mvkDS;
+	} else {
+		freeDescriptorSet(mvkDS, false);
+	}
+	return mvkDS->getConfigurationResult();
+}
+
 VkResult MVKDescriptorPool::freeDescriptorSets(uint32_t count, const VkDescriptorSet* pDescriptorSets) {
 	for (uint32_t dsIdx = 0; dsIdx < count; dsIdx++) {
-		MVKDescriptorSet* mvkDS = (MVKDescriptorSet*)pDescriptorSets[dsIdx];
-		if (_allocatedSets.erase(mvkDS)) {
-			freeDescriptorSet(mvkDS);
-		}
+		freeDescriptorSet((MVKDescriptorSet*)pDescriptorSets[dsIdx], false);
 	}
 	return VK_SUCCESS;
 }
 
-// Destroy all allocated descriptor sets and reset descriptor pools
+// Descriptor sets are held in contiguous memory, so the index of the returning descriptor
+// set can be calculated by pointer differences, and it can be marked as available.
+void MVKDescriptorPool::freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolReset) {
+	if ( !mvkDS ) { return; }	// Vulkan allows NULL refs.
+
+	if (mvkDS->_pool == this) {
+		mvkDS->free(isPoolReset);
+		size_t dsIdx = mvkDS - _descriptorSets.data();
+		_descriptorSetAvailablility.setBit(dsIdx);
+	} else {
+		reportError(VK_ERROR_INITIALIZATION_FAILED, "A descriptor set is being returned to a descriptor pool that did not allocate it.");
+	}
+}
+
+// Free all descriptor sets and reset descriptor pools
 VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
-	for (auto& mvkDS : _allocatedSets) { freeDescriptorSet(mvkDS); }
-	_allocatedSets.clear();
+	for (auto& mvkDS : _descriptorSets) { freeDescriptorSet(&mvkDS, true); }
 
 	_uniformBufferDescriptors.reset();
 	_storageBufferDescriptors.reset();
@@ -428,23 +453,6 @@ VkResult MVKDescriptorPool::reset(VkDescriptorPoolResetFlags flags) {
 
 	return VK_SUCCESS;
 }
-
-VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL,
-												  uint32_t variableDescriptorCount,
-												  VkDescriptorSet* pVKDS) {
-	MVKDescriptorSet* mvkDS = new MVKDescriptorSet(mvkDSL, variableDescriptorCount, this);
-	VkResult rslt = mvkDS->getConfigurationResult();
-
-	if (mvkDS->wasConfigurationSuccessful()) {
-		_allocatedSets.insert(mvkDS);
-		*pVKDS = (VkDescriptorSet)mvkDS;
-	} else {
-		freeDescriptorSet(mvkDS);
-	}
-	return rslt;
-}
-
-void MVKDescriptorPool::freeDescriptorSet(MVKDescriptorSet* mvkDS) { mvkDS->destroy(); }
 
 // Allocate a descriptor of the specified type
 VkResult MVKDescriptorPool::allocateDescriptor(VkDescriptorType descriptorType,
@@ -553,6 +561,8 @@ static size_t getPoolSize(const VkDescriptorPoolCreateInfo* pCreateInfo, VkDescr
 
 MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo) :
 	MVKVulkanAPIDeviceObject(device),
+	_descriptorSets(pCreateInfo->maxSets, MVKDescriptorSet(this)),
+	_descriptorSetAvailablility(pCreateInfo->maxSets, true),
 	_uniformBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER)),
 	_storageBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_BUFFER)),
 	_uniformBufferDynamicDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC)),
@@ -564,8 +574,7 @@ MVKDescriptorPool::MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCr
 	_samplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_SAMPLER)),
 	_combinedImageSamplerDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER)),
 	_uniformTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER)),
-	_storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)),
-	_maxSets(pCreateInfo->maxSets) {}
+	_storageTexelBufferDescriptors(getPoolSize(pCreateInfo, VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER)) {}
 
 MVKDescriptorPool::~MVKDescriptorPool() {
 	reset(0);

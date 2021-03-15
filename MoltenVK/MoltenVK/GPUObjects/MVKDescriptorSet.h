@@ -127,11 +127,7 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
-	MVKDescriptorSet(MVKDescriptorSetLayout* layout,
-					 uint32_t variableDescriptorCount,
-					 MVKDescriptorPool* pool);
-
-	~MVKDescriptorSet() override;
+	MVKDescriptorSet(MVKDescriptorPool* pool);
 
 protected:
 	friend class MVKDescriptorSetLayoutBinding;
@@ -139,6 +135,8 @@ protected:
 
 	void propagateDebugName() override {}
 	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
+	VkResult allocate(MVKDescriptorSetLayout* layout, uint32_t variableDescriptorCount);
+	void free(bool isPoolReset);
 
 	MVKDescriptorSetLayout* _layout;
 	MVKDescriptorPool* _pool;
@@ -205,14 +203,14 @@ protected:
 	friend class MVKDescriptorSet;
 
 	void propagateDebugName() override {}
-	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, uint32_t variableDescriptorCount, VkDescriptorSet* pVKDS);
 	const uint32_t* getVariableDecriptorCounts(const VkDescriptorSetAllocateInfo* pAllocateInfo);
-	void freeDescriptorSet(MVKDescriptorSet* mvkDS);
+	VkResult allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL, uint32_t variableDescriptorCount, VkDescriptorSet* pVKDS);
+	void freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolReset);
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
 
-	uint32_t _maxSets;
-	std::unordered_set<MVKDescriptorSet*> _allocatedSets;
+	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
+	MVKBitArray _descriptorSetAvailablility;
 
 	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;

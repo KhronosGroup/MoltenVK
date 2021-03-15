@@ -23,6 +23,7 @@ Released TBD
   and don't rely on _Metal_ default values.
 - Avoid use of _Metal_ renderpass load and store actions on memoryless attachments.
 - Remove project qualifiers from references to `SPIRV-Cross` header files.
+- `MVKDescriptorPool` pools its descriptor sets.
 - Add `MVKConfiguration::apiVersionToAdvertise` and `MVK_CONFIG_API_VERSION_TO_ADVERTISE` 
   env var to configure **MoltenVK** to advertise a particular _Vulkan_ version.
 - Add `MVKConfiguration::advertiseExtensions` and `MVK_CONFIG_ADVERTISE_EXTENSIONS` 
