@@ -161,9 +161,8 @@ public:
 protected:
 	friend class MVKDescriptorPool;
 
-	inline bool isPreallocated() { return _availability.size() > 0; }
-	VkResult allocateDescriptor(MVKDescriptor** pMVKDesc);
-	void freeDescriptor(MVKDescriptor* mvkDesc);
+	VkResult allocateDescriptor(MVKDescriptor** pMVKDesc, MVKDescriptorPool* pool);
+	void freeDescriptor(MVKDescriptor* mvkDesc, MVKDescriptorPool* pool);
 	void reset();
 
 	MVKSmallVector<DescriptorClass> _descriptors;
@@ -195,12 +194,13 @@ public:
 	/** Destroys all currently allocated descriptor sets. */
 	VkResult reset(VkDescriptorPoolResetFlags flags);
 
-	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo);
+	MVKDescriptorPool(MVKDevice* device, const VkDescriptorPoolCreateInfo* pCreateInfo, bool poolDescriptors);
 
 	~MVKDescriptorPool() override;
 
 protected:
 	friend class MVKDescriptorSet;
+	template<class> friend class MVKDescriptorTypePreallocation;
 
 	void propagateDebugName() override {}
 	const uint32_t* getVariableDecriptorCounts(const VkDescriptorSetAllocateInfo* pAllocateInfo);
@@ -224,6 +224,7 @@ protected:
 	MVKDescriptorTypePreallocation<MVKCombinedImageSamplerDescriptor> _combinedImageSamplerDescriptors;
 	MVKDescriptorTypePreallocation<MVKUniformTexelBufferDescriptor> _uniformTexelBufferDescriptors;
 	MVKDescriptorTypePreallocation<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
+	bool _hasPooledDescriptors;
 };
 
 
