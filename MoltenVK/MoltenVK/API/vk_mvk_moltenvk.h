@@ -660,22 +660,20 @@ typedef struct {
 	VkBool32 texture1DAs2D;
 
 	/**
-	 * Controls whether MoltenVK should preallocate memory in each VkDescriptorPool
-	 * ccording to the values of the VkDescriptorPoolSize parameters. Doing so may improve
-	 * descriptor set allocation performance at a cost of preallocated application memory,
-	 * and possible descreased performance when creating and reseting the VkDescriptorPool.
-	 * If this setting is disabled, the descriptors required for a descriptor set will
-	 * be dynamically allocated in application memory when the descriptor set itself is allocated.
+	 * Controls whether MoltenVK should preallocate memory in each VkDescriptorPool according
+	 * to the values of the VkDescriptorPoolSize parameters. Doing so may improve descriptor set
+	 * allocation performance and memory stability at a cost of preallocated application memory.
+	 * If this setting is disabled, the descriptors required for a descriptor set will be individually
+	 * dynamically allocated in application memory when the descriptor set itself is allocated.
 	 *
-	 * The value of this parameter may be changed at any time during application runtime,
-	 * and the changed value will immediately effect behavior of VkDescriptorPools created
-	 * after the setting is changed.
+	 * The value of this parameter may be changed at any time during application runtime, and the
+	 * changed value will affect the behavior of VkDescriptorPools created after the value is changed.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_PREALLOCATE_DESCRIPTORS
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is disabled by default, and MoltenVK will
-	 * dynamically allocate descriptors when the containing descriptor set is allocated.
+	 * If neither is set, this setting is enabled by default, and MoltenVK will
+	 * allocate a pool of descriptors when a VkDescriptorPool is created.
 	 */
 	VkBool32 preallocateDescriptors;
 

@@ -146,17 +146,17 @@ protected:
 
 
 #pragma mark -
-#pragma mark MVKDescriptorTypePreallocation
+#pragma mark MVKDescriptorTypePool
 
-/** Support class for MVKDescriptorPool that holds preallocated instances of a single concrete descriptor class. */
+/** Support class for MVKDescriptorPool that holds a pool of instances of a single concrete descriptor class. */
 template<class DescriptorClass>
-class MVKDescriptorTypePreallocation : public MVKBaseObject {
+class MVKDescriptorTypePool : public MVKBaseObject {
 
 public:
 
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; };
 
-	MVKDescriptorTypePreallocation(size_t poolSize);
+	MVKDescriptorTypePool(size_t poolSize);
 
 protected:
 	friend class MVKDescriptorPool;
@@ -200,7 +200,7 @@ public:
 
 protected:
 	friend class MVKDescriptorSet;
-	template<class> friend class MVKDescriptorTypePreallocation;
+	template<class> friend class MVKDescriptorTypePool;
 
 	void propagateDebugName() override {}
 	const uint32_t* getVariableDecriptorCounts(const VkDescriptorSetAllocateInfo* pAllocateInfo);
@@ -212,18 +212,18 @@ protected:
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
 	MVKBitArray _descriptorSetAvailablility;
 
-	MVKDescriptorTypePreallocation<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
-	MVKDescriptorTypePreallocation<MVKStorageBufferDescriptor> _storageBufferDescriptors;
-	MVKDescriptorTypePreallocation<MVKUniformBufferDynamicDescriptor> _uniformBufferDynamicDescriptors;
-	MVKDescriptorTypePreallocation<MVKStorageBufferDynamicDescriptor> _storageBufferDynamicDescriptors;
-	MVKDescriptorTypePreallocation<MVKInlineUniformBlockDescriptor> _inlineUniformBlockDescriptors;
-	MVKDescriptorTypePreallocation<MVKSampledImageDescriptor> _sampledImageDescriptors;
-	MVKDescriptorTypePreallocation<MVKStorageImageDescriptor> _storageImageDescriptors;
-	MVKDescriptorTypePreallocation<MVKInputAttachmentDescriptor> _inputAttachmentDescriptors;
-	MVKDescriptorTypePreallocation<MVKSamplerDescriptor> _samplerDescriptors;
-	MVKDescriptorTypePreallocation<MVKCombinedImageSamplerDescriptor> _combinedImageSamplerDescriptors;
-	MVKDescriptorTypePreallocation<MVKUniformTexelBufferDescriptor> _uniformTexelBufferDescriptors;
-	MVKDescriptorTypePreallocation<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
+	MVKDescriptorTypePool<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
+	MVKDescriptorTypePool<MVKStorageBufferDescriptor> _storageBufferDescriptors;
+	MVKDescriptorTypePool<MVKUniformBufferDynamicDescriptor> _uniformBufferDynamicDescriptors;
+	MVKDescriptorTypePool<MVKStorageBufferDynamicDescriptor> _storageBufferDynamicDescriptors;
+	MVKDescriptorTypePool<MVKInlineUniformBlockDescriptor> _inlineUniformBlockDescriptors;
+	MVKDescriptorTypePool<MVKSampledImageDescriptor> _sampledImageDescriptors;
+	MVKDescriptorTypePool<MVKStorageImageDescriptor> _storageImageDescriptors;
+	MVKDescriptorTypePool<MVKInputAttachmentDescriptor> _inputAttachmentDescriptors;
+	MVKDescriptorTypePool<MVKSamplerDescriptor> _samplerDescriptors;
+	MVKDescriptorTypePool<MVKCombinedImageSamplerDescriptor> _combinedImageSamplerDescriptors;
+	MVKDescriptorTypePool<MVKUniformTexelBufferDescriptor> _uniformTexelBufferDescriptors;
+	MVKDescriptorTypePool<MVKStorageTexelBufferDescriptor> _storageTexelBufferDescriptors;
 	bool _hasPooledDescriptors;
 };
 

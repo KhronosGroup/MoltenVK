@@ -319,12 +319,12 @@ MVKDescriptorSet::MVKDescriptorSet(MVKDescriptorPool* pool) : MVKVulkanAPIDevice
 
 
 #pragma mark -
-#pragma mark MVKDescriptorTypePreallocation
+#pragma mark MVKDescriptorTypePool
 
 // If preallocated, find the next availalble descriptor.
 // If not preallocated, create one on the fly.
 template<class DescriptorClass>
-VkResult MVKDescriptorTypePreallocation<DescriptorClass>::allocateDescriptor(MVKDescriptor** pMVKDesc,
+VkResult MVKDescriptorTypePool<DescriptorClass>::allocateDescriptor(MVKDescriptor** pMVKDesc,
 																			 MVKDescriptorPool* pool) {
 	DescriptorClass* mvkDesc;
 	if (pool->_hasPooledDescriptors) {
@@ -344,7 +344,7 @@ VkResult MVKDescriptorTypePreallocation<DescriptorClass>::allocateDescriptor(MVK
 // The descriptor will be reset when it is re-allocated. This streamlines the reset() of this pool.
 // If not preallocated, simply destroy returning descriptor.
 template<typename DescriptorClass>
-void MVKDescriptorTypePreallocation<DescriptorClass>::freeDescriptor(MVKDescriptor* mvkDesc,
+void MVKDescriptorTypePool<DescriptorClass>::freeDescriptor(MVKDescriptor* mvkDesc,
 																	 MVKDescriptorPool* pool) {
 	if (pool->_hasPooledDescriptors) {
 		size_t descIdx = (DescriptorClass*)mvkDesc - _descriptors.data();
@@ -356,12 +356,12 @@ void MVKDescriptorTypePreallocation<DescriptorClass>::freeDescriptor(MVKDescript
 
 // Preallocated descriptors will be reset when they are reused
 template<typename DescriptorClass>
-void MVKDescriptorTypePreallocation<DescriptorClass>::reset() {
+void MVKDescriptorTypePool<DescriptorClass>::reset() {
 	_availability.setAllBits();
 }
 
 template<typename DescriptorClass>
-MVKDescriptorTypePreallocation<DescriptorClass>::MVKDescriptorTypePreallocation(size_t poolSize) :
+MVKDescriptorTypePool<DescriptorClass>::MVKDescriptorTypePool(size_t poolSize) :
 	_descriptors(poolSize),
 	_availability(poolSize, true) {}
 
