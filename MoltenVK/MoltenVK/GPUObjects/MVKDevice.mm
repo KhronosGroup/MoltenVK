@@ -3335,7 +3335,7 @@ void MVKDevice::destroyDescriptorSetLayout(MVKDescriptorSetLayout* mvkDSL,
 
 MVKDescriptorPool* MVKDevice::createDescriptorPool(const VkDescriptorPoolCreateInfo* pCreateInfo,
 												   const VkAllocationCallbacks* pAllocator) {
-	return new MVKDescriptorPool(this, pCreateInfo);
+	return new MVKDescriptorPool(this, pCreateInfo, mvkGetMVKConfiguration()->preallocateDescriptors);
 }
 
 void MVKDevice::destroyDescriptorPool(MVKDescriptorPool* mvkDP,
