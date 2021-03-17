@@ -144,7 +144,7 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageType(VkImageType vk
 																  bool isMultisample) {
 	switch (vkImageType) {
 		case VK_IMAGE_TYPE_3D: return MTLTextureType3D;
-		case VK_IMAGE_TYPE_1D: return (mvkGetMVKConfiguration()->texture1DAs2D
+		case VK_IMAGE_TYPE_1D: return (mvkConfig()->texture1DAs2D
 									   ? mvkMTLTextureTypeFromVkImageType(VK_IMAGE_TYPE_2D, arraySize, isMultisample)
 									   : (arraySize > 1 ? MTLTextureType1DArray : MTLTextureType1D));
 		case VK_IMAGE_TYPE_2D:
@@ -176,8 +176,8 @@ MVK_PUBLIC_SYMBOL MTLTextureType mvkMTLTextureTypeFromVkImageViewType(VkImageVie
 		case VK_IMAGE_VIEW_TYPE_3D:			return MTLTextureType3D;
 		case VK_IMAGE_VIEW_TYPE_CUBE:		return MTLTextureTypeCube;
 		case VK_IMAGE_VIEW_TYPE_CUBE_ARRAY:	return MTLTextureTypeCubeArray;
-		case VK_IMAGE_VIEW_TYPE_1D:			return mvkGetMVKConfiguration()->texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D, isMultisample) : MTLTextureType1D;
-		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:	return mvkGetMVKConfiguration()->texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY, isMultisample) : MTLTextureType1DArray;
+		case VK_IMAGE_VIEW_TYPE_1D:			return mvkConfig()->texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D, isMultisample) : MTLTextureType1D;
+		case VK_IMAGE_VIEW_TYPE_1D_ARRAY:	return mvkConfig()->texture1DAs2D ? mvkMTLTextureTypeFromVkImageViewType(VK_IMAGE_VIEW_TYPE_2D_ARRAY, isMultisample) : MTLTextureType1DArray;
 
 		case VK_IMAGE_VIEW_TYPE_2D_ARRAY:
 #if MVK_MACOS

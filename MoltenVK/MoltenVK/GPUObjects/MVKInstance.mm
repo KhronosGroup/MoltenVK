@@ -292,7 +292,7 @@ NSArray<id<MTLDevice>>* MVKInstance::getAvailableMTLDevicesArray() {
 #if MVK_MACOS
 	NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
 	if (rawMTLDevs) {
-		bool forceLowPower = mvkGetMVKConfiguration()->forceLowPowerGPU;
+		bool forceLowPower = mvkConfig()->forceLowPowerGPU;
 
 		// Populate the array of appropriate MTLDevices
 		for (id<MTLDevice> md in rawMTLDevs) {
@@ -684,7 +684,7 @@ void MVKInstance::logVersions() {
 	MVKExtensionList allExtns(this, true);
 	MVKLogInfo("MoltenVK version %s, supporting Vulkan version %s.\n\tThe following %d Vulkan extensions are supported:%s",
 			   mvkGetMoltenVKVersionString(MVK_VERSION).c_str(),
-			   mvkGetVulkanVersionString(mvkGetMVKConfiguration()->apiVersionToAdvertise).c_str(),
+			   mvkGetVulkanVersionString(mvkConfig()->apiVersionToAdvertise).c_str(),
 			   allExtns.getEnabledCount(),
 			   allExtns.enabledNamesString("\n\t\t", true).c_str());
 }
