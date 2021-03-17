@@ -376,11 +376,13 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 															 MVKDescriptorSetLayout* layout,
 															 const VkDescriptorSetLayoutBinding* pBinding,
-															 VkDescriptorBindingFlagsEXT bindingFlags) :
+															 VkDescriptorBindingFlagsEXT bindingFlags,
+															 uint32_t descriptorIndex) :
 	MVKBaseDeviceObject(device),
 	_layout(layout),
 	_info(*pBinding),
-	_flags(bindingFlags) {
+	_flags(bindingFlags),
+	_descriptorIndex(descriptorIndex) {
 
 	_info.pImmutableSamplers = nullptr;     // Remove dangling pointer
 
@@ -412,6 +414,7 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptor
 	_layout(binding._layout),
 	_info(binding._info),
 	_flags(binding._flags),
+	_descriptorIndex(binding._descriptorIndex),
 	_immutableSamplers(binding._immutableSamplers),
 	_mtlResourceIndexOffsets(binding._mtlResourceIndexOffsets) {
 

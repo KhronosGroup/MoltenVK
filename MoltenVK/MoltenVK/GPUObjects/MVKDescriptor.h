@@ -108,25 +108,29 @@ public:
               const void* pData,
               MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
-	/** Populates the specified shader converter context, at the specified descriptor set binding. */
-	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
-                                        MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                                        uint32_t dslIndex);
+	/** Returns the index of the descriptor within the descriptor set of the element at the index within this descriptor layout. */
+	inline uint32_t getDescriptorIndex(uint32_t elementIndex = 0) { return _descriptorIndex + elementIndex; }
 
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
 								  const VkDescriptorSetLayoutBinding* pBinding,
-								  VkDescriptorBindingFlagsEXT bindingFlags);
+								  VkDescriptorBindingFlagsEXT bindingFlags,
+								  uint32_t descriptorIndex);
 
 	MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding);
 
 	~MVKDescriptorSetLayoutBinding() override;
 
 protected:
+	friend class MVKDescriptorSetLayout;
     friend class MVKInlineUniformBlockDescriptor;
+	
 	void initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
 									   MVKShaderStageResourceBinding* pDescSetCounts,
 									   const VkDescriptorSetLayoutBinding* pBinding);
+	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+										MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+										uint32_t dslIndex);
 	bool validate(MVKSampler* mvkSampler);
 
 	MVKDescriptorSetLayout* _layout;
@@ -134,6 +138,7 @@ protected:
 	VkDescriptorBindingFlagsEXT _flags;
 	MVKSmallVector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
+	uint32_t _descriptorIndex;
 	bool _applyToStage[kMVKShaderStageMax];
 };
 
