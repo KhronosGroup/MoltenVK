@@ -50,7 +50,7 @@
 
 // Optionally log start of function calls to stderr
 static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
-	MVKConfigTraceVulkanCalls traceLvl = mvkGetMVKConfiguration()->traceVulkanCalls;
+	MVKConfigTraceVulkanCalls traceLvl = mvkConfig()->traceVulkanCalls;
 
 	if (traceLvl == MVK_CONFIG_TRACE_VULKAN_CALLS_NONE ||
 		traceLvl > MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION) { return 0; }
@@ -72,7 +72,7 @@ static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
 
 // Optionally log end of function calls and timings to stderr
 static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t startTime) {
-	switch(mvkGetMVKConfiguration()->traceVulkanCalls) {
+	switch(mvkConfig()->traceVulkanCalls) {
 		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION:
 			fprintf(stderr, "[mvk-trace] } %s [%.4f ms]\n", funcName, mvkGetElapsedMilliseconds(startTime));
 			break;
@@ -1908,7 +1908,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceVersion(
     uint32_t*                                   pApiVersion) {
 
     MVKTraceVulkanCallStart();
-    *pApiVersion = mvkGetMVKConfiguration()->apiVersionToAdvertise;
+    *pApiVersion = mvkConfig()->apiVersionToAdvertise;
     MVKTraceVulkanCallEnd();
     return VK_SUCCESS;
 }
