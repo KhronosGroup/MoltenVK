@@ -776,6 +776,25 @@ typedef struct {
 	 */
 	MVKConfigAdvertiseExtensions advertiseExtensions;
 
+	/**
+	 * Controls whether MoltenVK should use Metal argument buffers for resources defined in
+	 * descriptor sets, if Metal argument buffers are supported on the platform. Using Metal
+	 * argument buffers dramatically increases the number of buffers, textures and samplers
+	 * that can be bound to a pipeline shader, and in most cases improves performance. If this
+	 * setting is enabled, MoltenVK will use Metal argument buffers to bind resources to the
+	 * shaders. If this setting is disabled, MoltenVK will bind resources to shaders discretely.
+	 *
+	 * The value of this parameter must be changed before creating a VkInstance,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this setting is enabled by default, and MoltenVK
+	 * will use Metal argument buffers.
+	 */
+	VkBool32 useMetalArgumentBuffers;
+
 } MVKConfiguration;
 
 /**
@@ -855,6 +874,7 @@ typedef struct {
     uint32_t minSubgroupSize;			        /**< The minimum number of threads in a SIMD-group. */
     VkBool32 textureBarriers;                   /**< If true, texture barriers are supported within Metal render passes. */
     VkBool32 tileBasedDeferredRendering;        /**< If true, this device uses tile-based deferred rendering. */
+	VkBool32 argumentBuffers;					/**< If true, argument buffers are supported. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

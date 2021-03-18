@@ -17,7 +17,6 @@
  */
 
 #include "MVKPipeline.h"
-#include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include "MVKRenderPass.h"
 #include "MVKCommandBuffer.h"
 #include "MVKFoundation.h"
@@ -77,6 +76,7 @@ void MVKPipelineLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
 void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfiguration& context) {
 	context.resourceBindings.clear();
+	context.discreteDescriptorSets.clear();
 
     // Add resource bindings defined in the descriptor set layouts
 	uint32_t dslCnt = (uint32_t)_descriptorSetLayouts.size();
@@ -135,9 +135,8 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 
 	// Set implicit buffer indices
 	// FIXME: Many of these are optional. We shouldn't set the ones that aren't
-	// present--or at least, we should move the ones that are down to avoid
-	// running over the limit of available buffers. But we can't know that
-	// until we compile the shaders.
+	// present--or at least, we should move the ones that are down to avoid running over
+	// the limit of available buffers. But we can't know that until we compile the shaders.
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
 		_swizzleBufferIndex.stages[i] = _pushConstantsMTLResourceIndexes.stages[i].bufferIndex + 1;
 		_bufferSizeBufferIndex.stages[i] = _swizzleBufferIndex.stages[i] + 1;
@@ -1447,6 +1446,8 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     shaderContext.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
     shaderContext.options.mslOptions.r32ui_linear_texture_alignment = (uint32_t)_device->getVkFormatTexelBufferAlignment(VK_FORMAT_R32_UINT, this);
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
+	shaderContext.options.mslOptions.argument_buffers = isUsingMetalArgumentBuffers();
+	shaderContext.options.mslOptions.force_active_argument_buffer_resources = isUsingMetalArgumentBuffers();
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -1691,6 +1692,8 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
 	shaderContext.options.mslOptions.texture_1D_as_2D = mvkConfig()->texture1DAs2D;
     shaderContext.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
+	shaderContext.options.mslOptions.argument_buffers = isUsingMetalArgumentBuffers();
+	shaderContext.options.mslOptions.force_active_argument_buffer_resources = isUsingMetalArgumentBuffers();
 #if MVK_MACOS
     shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->simdPermute;
 #endif
@@ -2098,15 +2101,23 @@ namespace mvk {
 	void serialize(Archive & archive, MSLResourceBinding& rb) {
 		archive(rb.resourceBinding,
 				rb.constExprSampler,
+				rb.mtlTextureType,
 				rb.requiresConstExprSampler,
 				rb.isUsedByShader);
+	}
+
+	template<class Archive>
+	void serialize(Archive & archive, DescriptorBinding& db) {
+		archive(db.descriptorSet,
+				db.binding);
 	}
 
 	template<class Archive>
 	void serialize(Archive & archive, SPIRVToMSLConversionConfiguration& ctx) {
 		archive(ctx.options,
 				ctx.shaderInputs,
-				ctx.resourceBindings);
+				ctx.resourceBindings,
+				ctx.discreteDescriptorSets);
 	}
 
 	template<class Archive>

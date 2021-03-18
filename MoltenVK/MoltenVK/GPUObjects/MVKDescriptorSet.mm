@@ -166,6 +166,11 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConve
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		_bindings[bindIdx].populateShaderConverterContext(context, dslMTLRezIdxOffsets, dslIndex);
 	}
+
+	// Mark if Metal argument buffers are in use, but this descriptor set layout is not using them.
+	if (isUsingMetalArgumentBuffers() && !isUsingMetalArgumentBuffer()) {
+		context.discreteDescriptorSets.push_back(dslIndex);
+	}
 }
 
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,

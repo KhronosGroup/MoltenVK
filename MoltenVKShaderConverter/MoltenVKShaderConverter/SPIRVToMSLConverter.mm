@@ -1,5 +1,5 @@
 /*
- * SPIRVToMSLConverter.cpp
+ * SPIRVToMSLConverter.mm
  *
  * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
@@ -31,6 +31,13 @@ using namespace SPIRV_CROSS_NAMESPACE;
 
 #pragma mark -
 #pragma mark SPIRVToMSLConversionConfiguration
+
+// Returns whether the container contains an item equal to the value.
+template<class C, class T>
+bool contains(const C& container, const T& val) {
+	for (const T& cVal : container) { if (cVal == val) { return true; } }
+	return false;
+}
 
 // Returns whether the vector contains the value (using a matches(T&) comparison member function). */
 template<class T>
@@ -106,6 +113,7 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 	if (resourceBinding.msl_buffer != other.resourceBinding.msl_buffer) { return false; }
 	if (resourceBinding.msl_texture != other.resourceBinding.msl_texture) { return false; }
 	if (resourceBinding.msl_sampler != other.resourceBinding.msl_sampler) { return false; }
+	if (mtlTextureType != other.mtlTextureType) { return false; }
 
 	if (requiresConstExprSampler != other.requiresConstExprSampler) { return false; }
 
@@ -144,6 +152,12 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 	return true;
 }
 
+MVK_PUBLIC_SYMBOL bool mvk::DescriptorBinding::matches(const mvk::DescriptorBinding& other) const {
+	if (descriptorSet != other.descriptorSet) { return false; }
+	if (binding != other.binding) { return false; }
+	return true;
+}
+
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::stageSupportsVertexAttributes() const {
 	return (options.entryPointStage == ExecutionModelVertex ||
 			options.entryPointStage == ExecutionModelTessellationControl ||
@@ -166,6 +180,16 @@ MVK_PUBLIC_SYMBOL uint32_t SPIRVToMSLConversionConfiguration::countShaderInputsA
 	return siCnt;
 }
 
+MVK_PUBLIC_SYMBOL MTLTextureType SPIRVToMSLConversionConfiguration::getMTLTextureType(uint32_t descSet, uint32_t binding) const {
+	for (auto& rb : resourceBindings) {
+		auto& rbb = rb.resourceBinding;
+		if (rb.isUsedByShader && rbb.desc_set == descSet && rbb.binding == binding) {
+			return rb.mtlTextureType;
+		}
+	}
+	return MTLTextureType2D;
+}
+
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInputsAndResourcesUsed() {
 	for (auto& si : shaderInputs) { si.isUsedByShader = true; }
 	for (auto& rb : resourceBindings) { rb.isUsedByShader = true; }
@@ -183,6 +207,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
         if (rb.isUsedByShader && !containsMatching(other.resourceBindings, rb)) { return false; }
     }
 
+	for (uint32_t dsIdx : discreteDescriptorSets) {
+		if ( !contains(other.discreteDescriptorSets, dsIdx)) { return false; }
+	}
+
     return true;
 }
 
@@ -199,7 +227,10 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::alignWith(const SPIRVT
     for (auto& rb : resourceBindings) {
         rb.isUsedByShader = false;
         for (auto& srcRB : srcContext.resourceBindings) {
-            if (rb.matches(srcRB)) { rb.isUsedByShader = srcRB.isUsedByShader; }
+			if (rb.matches(srcRB)) {
+				rb.mtlTextureType = srcRB.mtlTextureType;
+				rb.isUsedByShader = srcRB.isUsedByShader;
+			}
         }
     }
 }
@@ -278,6 +309,12 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			}
 		}
 
+		// Add any descriptor sets that are not using Metal argument buffers.
+		// This only has an effect if SPIRVToMSLConversionConfiguration::options::mslOptions::argument_buffers is enabled.
+		for (uint32_t dsIdx : context.discreteDescriptorSets) {
+			pMSLCompiler->add_discrete_descriptor_set(dsIdx);
+		}
+
 		_msl = pMSLCompiler->compile();
 
         if (shouldLogMSL) { logSource(_msl, "MSL", "Converted"); }
@@ -311,6 +348,9 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		ctxSI.isUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderInput.location);
 	}
 	for (auto& ctxRB : context.resourceBindings) {
+		ctxRB.mtlTextureType = getMTLTextureType(pMSLCompiler,
+												 ctxRB.resourceBinding.desc_set,
+												 ctxRB.resourceBinding.binding);
 		ctxRB.isUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
 																		  ctxRB.resourceBinding.desc_set,
 																		  ctxRB.resourceBinding.binding);

@@ -19,11 +19,12 @@
 #ifndef __SPIRVToMSLConverter_h_
 #define __SPIRVToMSLConverter_h_ 1
 
+#include "SPIRVReflection.h"
 #include <spirv.hpp>
 #include <spirv_msl.hpp>
 #include <string>
 #include <vector>
-#include <unordered_map>
+
 
 namespace mvk {
 
@@ -107,6 +108,7 @@ namespace mvk {
 	typedef struct MSLResourceBinding {
 		SPIRV_CROSS_NAMESPACE::MSLResourceBinding resourceBinding;
 		SPIRV_CROSS_NAMESPACE::MSLConstexprSampler constExprSampler;
+		MTLTextureType mtlTextureType = MTLTextureType2D;
 		bool requiresConstExprSampler = false;
 
 		bool isUsedByShader = false;
@@ -120,6 +122,20 @@ namespace mvk {
 	} MSLResourceBinding;
 
 	/**
+	 * Identifies a descriptor set binding.
+	 *
+	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIPELINE CACHE.
+	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
+	 */
+	typedef struct DescriptorBinding {
+		uint32_t descriptorSet = 0;
+		uint32_t binding = 0;
+
+		bool matches(const DescriptorBinding& other) const;
+
+	} DescriptorBinding;
+
+	/**
 	 * Configuration passed to the SPIRVToMSLConverter.
 	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
@@ -129,6 +145,7 @@ namespace mvk {
 		SPIRVToMSLConversionOptions options;
 		std::vector<MSLShaderInput> shaderInputs;
 		std::vector<MSLResourceBinding> resourceBindings;
+		std::vector<uint32_t> discreteDescriptorSets;
 
 		/** Returns whether the pipeline stage being converted supports vertex attributes. */
 		bool stageSupportsVertexAttributes() const;
@@ -141,6 +158,9 @@ namespace mvk {
 
         /** Returns whether the vertex buffer at the specified Vulkan binding is used by the shader. */
 		bool isVertexBufferUsed(uint32_t binding) const { return countShaderInputsAt(binding) > 0; }
+
+		/** Returns the MTLTextureType of the image resource at the descriptor set and binding. */
+		MTLTextureType getMTLTextureType(uint32_t descSet, uint32_t binding) const;
 
 		/** Marks all input variables and resources as being used by the shader. */
 		void markAllInputsAndResourcesUsed();
