@@ -335,6 +335,55 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
     }
 }
 
+// Inits the index into the Metal argument buffer for this binding, and updates resource indexes consumed.
+void MVKDescriptorSetLayoutBinding::initMetalArgumentBufferIndexes(uint32_t& argIdx, NSUInteger& argBuffSize) {
+
+	_metalArgumentBufferIndex = argIdx;
+
+	uint32_t descCnt = getDescriptorCount(nullptr);
+	switch (getDescriptorType()) {
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+			argIdx += descCnt;
+			argBuffSize += sizeof(id<MTLBuffer>) * descCnt;
+			break;
+
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			argIdx += descCnt;
+			argBuffSize += sizeof(id<MTLTexture>) * descCnt;
+			break;
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			argIdx += descCnt;
+			argBuffSize += sizeof(id<MTLTexture>) * descCnt;		// Texture
+			argIdx += descCnt;
+			argBuffSize += sizeof(id<MTLBuffer>) * descCnt;			// Buffer for atomic operations
+			break;
+
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+			argIdx += descCnt;
+			argBuffSize += sizeof(id<MTLSamplerState>) * descCnt;
+			break;
+
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			argIdx += descCnt;										// Texture
+			argBuffSize += sizeof(id<MTLTexture>) * descCnt;
+			argIdx += descCnt;										// Sampler
+			argBuffSize += sizeof(id<MTLSamplerState>) * descCnt;
+			break;
+
+		default:
+			break;
+	}
+}
+
 // If depth compare is required, but unavailable on the device, the sampler can only be used as an immutable sampler
 bool MVKDescriptorSetLayoutBinding::validate(MVKSampler* mvkSampler) {
 	if (mvkSampler->getRequiresConstExprSampler()) {

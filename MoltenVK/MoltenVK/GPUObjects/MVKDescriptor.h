@@ -128,6 +128,7 @@ protected:
 	void initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
 									   MVKShaderStageResourceBinding* pDescSetCounts,
 									   const VkDescriptorSetLayoutBinding* pBinding);
+	void initMetalArgumentBufferIndexes(uint32_t& argIdx, NSUInteger& argBuffSize);
 	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
 										MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 										uint32_t dslIndex);
@@ -139,6 +140,7 @@ protected:
 	MVKSmallVector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	uint32_t _descriptorIndex;
+	uint32_t _metalArgumentBufferIndex;
 	bool _applyToStage[kMVKShaderStageMax];
 };
 

@@ -89,10 +89,12 @@ protected:
 	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
+	void initMetalArgumentBufferIndexes();
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
 	MVKShaderResourceBinding _mtlResourceCounts;
+	NSUInteger _metalArgumentBufferSize;
 	uint32_t _descriptorCount;
 	bool _isPushDescriptorLayout;
 };
@@ -137,12 +139,16 @@ protected:
 
 	void propagateDebugName() override {}
 	MVKDescriptor* getDescriptor(uint32_t binding, uint32_t elementIndex = 0);
-	VkResult allocate(MVKDescriptorSetLayout* layout, uint32_t variableDescriptorCount);
+	VkResult allocate(MVKDescriptorSetLayout* layout,
+					  uint32_t variableDescriptorCount,
+					  NSUInteger mtlArgBufferOffset);
 	void free(bool isPoolReset);
 
 	MVKDescriptorPool* _pool;
 	MVKDescriptorSetLayout* _layout;
 	MVKSmallVector<MVKDescriptor*> _descriptors;
+	MVKBitArray _metalArgumentBufferDirtyDescriptors;
+	NSUInteger _metalArgumentBufferOffset;
 	uint32_t _variableDescriptorCount;
 };
 
@@ -210,9 +216,13 @@ protected:
 	void freeDescriptorSet(MVKDescriptorSet* mvkDS, bool isPoolReset);
 	VkResult allocateDescriptor(VkDescriptorType descriptorType, MVKDescriptor** pMVKDesc);
 	void freeDescriptor(MVKDescriptor* mvkDesc);
+	void initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo* pCreateInfo);
+	NSUInteger getDescriptorByteCountForMetalArgumentBuffer(VkDescriptorType descriptorType);
 
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
 	MVKBitArray _descriptorSetAvailablility;
+	id<MTLBuffer> _metalArgumentBuffer;
+	NSUInteger _nextMetalArgumentBufferOffset;
 
 	MVKDescriptorTypePool<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePool<MVKStorageBufferDescriptor> _storageBufferDescriptors;
