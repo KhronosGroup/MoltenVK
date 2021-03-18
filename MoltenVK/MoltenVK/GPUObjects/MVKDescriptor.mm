@@ -340,7 +340,7 @@ void MVKDescriptorSetLayoutBinding::initMetalArgumentBufferIndexes(uint32_t& arg
 
 	_metalArgumentBufferIndex = argIdx;
 
-	uint32_t descCnt = getDescriptorCount(nullptr);
+	uint32_t descCnt = getDescriptorCount();
 	switch (getDescriptorType()) {
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
@@ -384,13 +384,71 @@ void MVKDescriptorSetLayoutBinding::initMetalArgumentBufferIndexes(uint32_t& arg
 	}
 }
 
-// If depth compare is required, but unavailable on the device, the sampler can only be used as an immutable sampler
-bool MVKDescriptorSetLayoutBinding::validate(MVKSampler* mvkSampler) {
-	if (mvkSampler->getRequiresConstExprSampler()) {
-		mvkSampler->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdPushDescriptorSet/vkCmdPushDescriptorSetWithTemplate(): Tried to push an immutable sampler.");
-		return false;
+// Adds MTLArgumentDescriptors to the array, and updates resource indexes consumed.
+void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args,
+															  mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+															  uint32_t descSetIdx) {
+	switch (getDescriptorType()) {
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx, getDescriptorCount());		// Needed for atomic operations
+			break;
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx, getDescriptorCount());		// Needed for atomic operations
+			break;
+
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+			addMTLArgumentDescriptor(args, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx, getDescriptorCount());
+			break;
+
+		default:
+			break;
 	}
-	return true;
+}
+
+// Adds an MTLArgumentDescriptor if the specified type to the array, and updates resource indexes consumed.
+void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLArgumentDescriptor*>* args,
+															 MTLDataType dataType,
+															 MTLArgumentAccess access,
+															 mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+															 uint32_t descSetIdx,
+															 uint32_t argIdxOffset) {
+	auto* argDesc = [MTLArgumentDescriptor argumentDescriptor];
+	argDesc.dataType = dataType;
+	argDesc.access = access;
+	argDesc.index = _metalArgumentBufferIndex + argIdxOffset;
+	argDesc.arrayLength = getDescriptorCount();
+	argDesc.textureType = shaderConfig.getMTLTextureType(descSetIdx, getBinding());
+
+	[args addObject: argDesc];
 }
 
 void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
@@ -416,10 +474,19 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
                                               models[i],
                                               dslIndex,
                                               _info.binding,
-											  getDescriptorCount(nullptr),
+											  getDescriptorCount(),
 											  mvkSamp);
         }
     }
+}
+
+// If depth compare is required, but unavailable on the device, the sampler can only be used as an immutable sampler
+bool MVKDescriptorSetLayoutBinding::validate(MVKSampler* mvkSampler) {
+	if (mvkSampler->getRequiresConstExprSampler()) {
+		mvkSampler->reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCmdPushDescriptorSet/vkCmdPushDescriptorSetWithTemplate(): Tried to push an immutable sampler.");
+		return false;
+	}
+	return true;
 }
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,

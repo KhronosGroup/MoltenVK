@@ -100,6 +100,9 @@ public:
 	/** Returns the number of buffers in this layout. This is used to calculate the size of the buffer size buffer. */
 	uint32_t getBufferCount() { return _pushConstantsMTLResourceIndexes.getMaxBufferIndex(); }
 
+	/** Returns the number of descriptor sets in this pipeline layout. */
+	uint32_t getDescriptorSetCount() { return (uint32_t)_descriptorSetLayouts.size(); }
+
 	/** Returns the push constant binding info. */
 	const MVKShaderResourceBinding& getPushConstantBindings() { return _pushConstantsMTLResourceIndexes; }
 
@@ -109,6 +112,8 @@ public:
 	~MVKPipelineLayout() override;
 
 protected:
+	friend class MVKPipeline;
+
 	void propagateDebugName() override {}
 
 	MVKSmallVector<MVKDescriptorSetLayout*, 1> _descriptorSetLayouts;
@@ -173,8 +178,13 @@ public:
 
 protected:
 	void propagateDebugName() override {}
+	void addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLConversionConfiguration& shaderConfig);
+	id<MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t descSetIdx) {
+		return descSetIdx < _mtlArgumentEncoders.size() ? _mtlArgumentEncoders[descSetIdx] : nil;
+	}
 
 	MVKPipelineCache* _pipelineCache;
+	MVKSmallVector<id<MTLArgumentEncoder>> _mtlArgumentEncoders;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;

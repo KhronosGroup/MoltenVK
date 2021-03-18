@@ -75,6 +75,9 @@ public:
 	/** Returns whether this layout is using an argument buffer. */
 	inline bool isUsingMetalArgumentBuffer()  { return isUsingMetalArgumentBuffers() && !isPushDescriptorLayout(); };
 
+	/** Returns a new MTLArgumentEncoder for the stage, populated from this layout and info from the shader config.  */
+	id<MTLArgumentEncoder> newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig, uint32_t descSetIdx);
+
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
 protected:

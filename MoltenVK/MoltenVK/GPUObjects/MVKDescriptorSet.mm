@@ -173,6 +173,17 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConve
 	}
 }
 
+id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+																	 uint32_t descSetIdx) {
+	@autoreleasepool {
+		NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
+		for (auto& dslBind : _bindings) {
+			dslBind.addMTLArgumentDescriptors(args, shaderConfig, descSetIdx);
+		}
+		return (args.count) ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil;
+	}
+}
+
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
@@ -202,7 +213,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 		BindInfo& bindInfo = sortedBindings[bindIdx];
         _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags, _descriptorCount);
 		_bindingToIndex[bindInfo.pBinding->binding] = bindIdx;
-		_descriptorCount += _bindings.back().getDescriptorCount(nullptr);
+		_descriptorCount += _bindings.back().getDescriptorCount();
 	}
 
 	initMetalArgumentBufferIndexes();

@@ -83,7 +83,7 @@ public:
 	 * count provided to that descriptor set is returned. Otherwise returns the value
 	 * defined in VkDescriptorSetLayoutBinding::descriptorCount.
 	 */
-	uint32_t getDescriptorCount(MVKDescriptorSet* descSet);
+	uint32_t getDescriptorCount(MVKDescriptorSet* descSet = nullptr);
 
 	/** Returns the descriptor type of this layout. */
 	inline VkDescriptorType getDescriptorType() { return _info.descriptorType; }
@@ -129,6 +129,15 @@ protected:
 									   MVKShaderStageResourceBinding* pDescSetCounts,
 									   const VkDescriptorSetLayoutBinding* pBinding);
 	void initMetalArgumentBufferIndexes(uint32_t& argIdx, NSUInteger& argBuffSize);
+	void addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args,
+								   mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+								   uint32_t descSetIdx);
+	void addMTLArgumentDescriptor(NSMutableArray<MTLArgumentDescriptor*>* args,
+								  MTLDataType dataType,
+								  MTLArgumentAccess access,
+								  mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+								  uint32_t descSetIdx,
+								  uint32_t argIdxOffset = 0);
 	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
 										MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 										uint32_t dslIndex);

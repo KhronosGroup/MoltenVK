@@ -79,7 +79,7 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfi
 	context.discreteDescriptorSets.clear();
 
     // Add resource bindings defined in the descriptor set layouts
-	uint32_t dslCnt = (uint32_t)_descriptorSetLayouts.size();
+	uint32_t dslCnt = getDescriptorSetCount();
 	for (uint32_t dslIdx = 0; dslIdx < dslCnt; dslIdx++) {
 		_descriptorSetLayouts[dslIdx]->populateShaderConverterContext(context,
 																	  _dslMTLResourceIndexOffsets[dslIdx],
@@ -169,11 +169,19 @@ void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 	}
 }
 
+void MVKPipeline::addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLConversionConfiguration& shaderConfig) {
+	uint32_t dsCnt = layout->getDescriptorSetCount();
+	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
+		_mtlArgumentEncoders[dsIdx] = layout->_descriptorSetLayouts[dsIdx]->newMTLArgumentEncoder(shaderConfig, dsIdx);
+	}
+}
+
 MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent) :
 	MVKVulkanAPIDeviceObject(device),
 	_pipelineCache(pipelineCache),
 	_pushConstantsMTLResourceIndexes(layout->getPushConstantBindings()),
-	_fullImageViewSwizzle(mvkConfig()->fullImageViewSwizzle) {}
+	_fullImageViewSwizzle(mvkConfig()->fullImageViewSwizzle),
+	_mtlArgumentEncoders(layout->getDescriptorSetCount()) {}
 
 
 #pragma mark -
@@ -523,6 +531,8 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 		}
 		[tcPLDesc release];		// temp release
 		[rastPLDesc release];	// temp release
+
+		addMTLArgumentEncoders((MVKPipelineLayout*)pCreateInfo->layout, shaderContext);
 	}
 }
 
@@ -555,10 +565,13 @@ MTLRenderPipelineDescriptor* MVKGraphicsPipeline::newMTLRenderPipelineDescriptor
 	// Output
 	addFragmentOutputToPipeline(plDesc, pCreateInfo);
 
+	MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
+	addMTLArgumentEncoders(layout, shaderContext);
+
 	// Metal does not allow the name of the pipeline to be changed after it has been created,
 	// and we need to create the Metal pipeline immediately to provide error feedback to app.
 	// The best we can do at this point is set the pipeline name from the layout.
-	setLabelIfNotNil(plDesc, ((MVKPipelineLayout*)pCreateInfo->layout)->getDebugName());
+	setLabelIfNotNil(plDesc, layout->getDebugName());
 
 	return plDesc;
 }
@@ -1716,6 +1729,8 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	_needsSwizzleBuffer = funcRslts.needsSwizzleBuffer;
     _needsBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
     _needsDispatchBaseBuffer = funcRslts.needsDispatchBaseBuffer;
+
+	addMTLArgumentEncoders(layout, shaderContext);
 
 	return func;
 }
