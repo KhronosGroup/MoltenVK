@@ -2362,20 +2362,23 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 
 	size_t uuidComponentOffset = 0;
 
-	// First 4 bytes contains MoltenVK version
-	uint32_t mvkVersion = MVK_VERSION;
-	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mvkVersion);
-	uuidComponentOffset += sizeof(mvkVersion);
+	// First 4 bytes contains MoltenVK revision.
+	// This is captured either as the MoltenVK Git revision, or if that's not available, as the MoltenVK version.
+	uint32_t mvkRev = getMoltenVKGitRevision();
+	if ( !mvkRev ) { mvkRev = MVK_VERSION; }
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mvkRev);
+	uuidComponentOffset += sizeof(mvkRev);
 
 	// Next 4 bytes contains highest Metal feature set supported by this device
 	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
 	uuidComponentOffset += sizeof(mtlFeatSet);
 
-	// Last 8 bytes contain the first part of the MoltenVK Git revision
-	uint64_t mvkRev = getMoltenVKGitRevision();
-	*(uint64_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostLongLongToBig(mvkRev);
-	uuidComponentOffset += sizeof(mvkRev);
+	// Next 4 bytes contains flags based on enabled Metal features that
+	// might affect the contents of the pipeline cache (mostly MSL content).
+	uint32_t mtlFeatures = 0;
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatures);
+	uuidComponentOffset += sizeof(mtlFeatures);
 }
 
 uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
@@ -2436,14 +2439,14 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 // which is generated in advance, either statically, or more typically in
 // an early build phase script, and contains a line similar to the following:
 // static const char* mvkRevString = "fc0750d67cfe825b887dd2cf25a42e9d9a013eb2";
-uint64_t MVKPhysicalDevice::getMoltenVKGitRevision() {
+uint32_t MVKPhysicalDevice::getMoltenVKGitRevision() {
 
 #include "mvkGitRevDerived.h"
 
-	static const string revStr(mvkRevString, 0, 16);	// We just need the first 16 chars
+	static const string revStr(mvkRevString, 0, 8);		// We just need the first 8 chars
 	static const string lut("0123456789ABCDEF");
 
-	uint64_t revVal = 0;
+	uint32_t revVal = 0;
 	for (char c : revStr) {
 		size_t cVal = lut.find(toupper(c));
 		if (cVal != string::npos) {

@@ -39,30 +39,20 @@ public:
 		return mvkIsAnyFlagEnabled(_pSections[getIndexOfSection(bitIndex)], getSectionSetMask(bitIndex));
 	}
 
-	/** Sets the value of the bit to 1. */
-	inline void setBit(size_t bitIndex) {
+	/** Sets the value of the bit to the val (or to 1 by default). */
+	inline void setBit(size_t bitIndex, bool val = true) {
 		size_t secIdx = getIndexOfSection(bitIndex);
-		mvkEnableFlags(_pSections[secIdx], getSectionSetMask(bitIndex));
-
-		if (secIdx < _minUnclearedSectionIndex) { _minUnclearedSectionIndex = secIdx; }
+		if (val) {
+			mvkEnableFlags(_pSections[secIdx], getSectionSetMask(bitIndex));
+			if (secIdx < _minUnclearedSectionIndex) { _minUnclearedSectionIndex = secIdx; }
+		} else {
+			mvkDisableFlags(_pSections[secIdx], getSectionSetMask(bitIndex));
+			if (secIdx == _minUnclearedSectionIndex && !_pSections[secIdx]) { _minUnclearedSectionIndex++; }
+		}
 	}
 
 	/** Sets the value of the bit to 0. */
-	inline void clearBit(size_t bitIndex) {
-		size_t secIdx = getIndexOfSection(bitIndex);
-		mvkDisableFlags(_pSections[secIdx], getSectionSetMask(bitIndex));
-
-		if (secIdx == _minUnclearedSectionIndex && !_pSections[secIdx]) { _minUnclearedSectionIndex++; }
-	}
-
-	/** Sets the value of the bit to the value. */
-	inline void setBit(size_t bitIndex, bool val) {
-		if (val) {
-			setBit(bitIndex);
-		} else {
-			clearBit(bitIndex);
-		}
-	}
+	inline void clearBit(size_t bitIndex) { setBit(bitIndex, false); }
 
 	/** Sets all bits in the array to 1. */
 	inline void setAllBits() { setAllSections(~0); }
@@ -120,8 +110,10 @@ public:
 	/** Returns whether this array is empty. */
 	inline bool empty() { return !_bitCount; }
 
-	/** Constructs an instance for the specified number of bits, and sets the initial value of all the bits. */
-	MVKBitArray(size_t size, bool val = false) {
+	/** Resize this array to the specified number of bits, and sets the initial value of all the bits. */
+	inline void resize(size_t size = 0, bool val = false) {
+		free(_pSections);
+
 		_bitCount = size;
 		_pSections = _bitCount ? (uint64_t*)malloc(getSectionCount() * SectionByteCount) : nullptr;
 		if (val) {
@@ -129,6 +121,12 @@ public:
 		} else {
 			clearAllBits();
 		}
+	}
+
+	/** Constructs an instance for the specified number of bits, and sets the initial value of all the bits. */
+	MVKBitArray(size_t size = 0, bool val = false) {
+		_pSections = nullptr;
+		resize(size, val);
 	}
 
 	~MVKBitArray() { free(_pSections); }

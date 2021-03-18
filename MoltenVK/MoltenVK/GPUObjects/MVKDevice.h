@@ -369,7 +369,7 @@ protected:
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
-	uint64_t getMoltenVKGitRevision();
+	uint32_t getMoltenVKGitRevision();
 	void populate(VkPhysicalDeviceIDProperties* pDevIdProps);
 	void logGPUInfo();
 

@@ -195,9 +195,8 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
     _bindings.reserve(bindCnt);
     for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		BindInfo& bindInfo = sortedBindings[bindIdx];
-        _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags);
+        _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags, _descriptorCount);
 		_bindingToIndex[bindInfo.pBinding->binding] = bindIdx;
-		_bindingToDescriptorIndex[bindInfo.pBinding->binding] = _descriptorCount;
 		_descriptorCount += _bindings.back().getDescriptorCount(nullptr);
 	}
 }
@@ -234,25 +233,28 @@ template<typename DescriptorAction>
 void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 							 size_t stride,
 							 const void* pData) {
+#define writeDescriptorAt(IDX)                                    \
+	do {                                                          \
+		MVKDescriptor* mvkDesc = _descriptors[descIdx];           \
+		if (mvkDesc->getDescriptorType() == descType) {           \
+			mvkDesc->write(mvkDSLBind, this, IDX, stride, pData); \
+		}                                                         \
+	} while(false)
 
 	MVKDescriptorSetLayoutBinding* mvkDSLBind = _layout->getBinding(pDescriptorAction->dstBinding);
 	VkDescriptorType descType = mvkDSLBind->getDescriptorType();
-    if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
+	if (descType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT) {
 		// For inline buffers dstArrayElement is a byte offset
-		MVKDescriptor* mvkDesc = getDescriptor(pDescriptorAction->dstBinding);
-		if (mvkDesc->getDescriptorType() == descType) {
-			mvkDesc->write(mvkDSLBind, this, pDescriptorAction->dstArrayElement, stride, pData);
+		uint32_t descIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding);
+		writeDescriptorAt(pDescriptorAction->dstArrayElement);
+	} else {
+		uint32_t descStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
+		uint32_t elemCnt = pDescriptorAction->descriptorCount;
+		for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
+			uint32_t descIdx = descStartIdx + elemIdx;
+			writeDescriptorAt(elemIdx);
 		}
-    } else {
-        uint32_t dstStartIdx = _layout->getDescriptorIndex(pDescriptorAction->dstBinding, pDescriptorAction->dstArrayElement);
-		uint32_t descCnt = pDescriptorAction->descriptorCount;
-        for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
-			MVKDescriptor* mvkDesc = _descriptors[dstStartIdx + descIdx];
-			if (mvkDesc->getDescriptorType() == descType) {
-				mvkDesc->write(mvkDSLBind, this, descIdx, stride, pData);
-			}
-        }
-    }
+	}
 }
 
 void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
@@ -285,12 +287,14 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout, uint32_t var
 	_layout = layout;
 	_variableDescriptorCount = variableDescriptorCount;
 
-	_descriptors.reserve(layout->getDescriptorCount());
+	uint32_t descCnt = layout->getDescriptorCount();
+	_descriptors.reserve(descCnt);
+
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		MVKDescriptorSetLayoutBinding* mvkDSLBind = &layout->_bindings[bindIdx];
-		uint32_t descCnt = mvkDSLBind->getDescriptorCount(this);
-		for (uint32_t descIdx = 0; descIdx < descCnt; descIdx++) {
+		uint32_t elemCnt = mvkDSLBind->getDescriptorCount(this);
+		for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 			MVKDescriptor* mvkDesc = nullptr;
 			setConfigurationResult(_pool->allocateDescriptor(mvkDSLBind->getDescriptorType(), &mvkDesc));
 			if ( !wasConfigurationSuccessful() ) { return getConfigurationResult(); }
@@ -309,6 +313,7 @@ void MVKDescriptorSet::free(bool isPoolReset) {
 		for (auto mvkDesc : _descriptors) { _pool->freeDescriptor(mvkDesc); }
 	}
 	_descriptors.clear();
+	_descriptors.shrink_to_fit();
 
 	clearConfigurationResult();
 }
