@@ -72,11 +72,8 @@ public:
 	/** Returns true if this layout is for push descriptors only. */
 	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
-	/** Returns whether this layout is using an argument buffer. */
-	inline bool isUsingMetalArgumentBuffer()  { return isUsingMetalArgumentBuffers() && !isPushDescriptorLayout(); };
-
 	/** Returns a new MTLArgumentEncoder for the stage, populated from this layout and info from the shader config.  */
-	id<MTLArgumentEncoder> newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig, uint32_t descSetIdx);
+	id<MTLArgumentEncoder> newMTLArgumentEncoder(uint32_t stage, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, uint32_t descSetIdx);
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
@@ -92,7 +89,7 @@ protected:
 	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
-	void initMetalArgumentBufferIndexes();
+	inline bool isUsingMetalArgumentBuffer()  { return isUsingMetalArgumentBuffers() && !isPushDescriptorLayout(); };
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;

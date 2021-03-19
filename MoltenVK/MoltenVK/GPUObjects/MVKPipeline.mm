@@ -171,8 +171,9 @@ void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 
 void MVKPipeline::addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLConversionConfiguration& shaderConfig) {
 	uint32_t dsCnt = layout->getDescriptorSetCount();
+	uint32_t stage = kMVKShaderStageVertex;		// Nominal stage. Currently all stages use same encoders.
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
-		_mtlArgumentEncoders[dsIdx] = layout->_descriptorSetLayouts[dsIdx]->newMTLArgumentEncoder(shaderConfig, dsIdx);
+		_mtlArgumentEncoders[dsIdx] = layout->_descriptorSetLayouts[dsIdx]->newMTLArgumentEncoder(stage, shaderConfig, dsIdx);
 	}
 }
 

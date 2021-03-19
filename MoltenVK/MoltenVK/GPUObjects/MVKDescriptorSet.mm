@@ -173,12 +173,13 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConve
 	}
 }
 
-id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(uint32_t stage,
+																	 mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 																	 uint32_t descSetIdx) {
 	@autoreleasepool {
 		NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
 		for (auto& dslBind : _bindings) {
-			dslBind.addMTLArgumentDescriptors(args, shaderConfig, descSetIdx);
+			dslBind.addMTLArgumentDescriptors(args, stage, shaderConfig, descSetIdx);
 		}
 		return (args.count) ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil;
 	}
@@ -206,9 +207,11 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 		return bindInfo1.pBinding->binding < bindInfo2.pBinding->binding;
 	});
 
-	_isPushDescriptorLayout = (pCreateInfo->flags & VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR) != 0;
 	_descriptorCount = 0;
-    _bindings.reserve(bindCnt);
+	_metalArgumentBufferSize = 0;
+	_isPushDescriptorLayout = mvkIsAnyFlagEnabled(pCreateInfo->flags, VK_DESCRIPTOR_SET_LAYOUT_CREATE_PUSH_DESCRIPTOR_BIT_KHR);
+
+	_bindings.reserve(bindCnt);
     for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		BindInfo& bindInfo = sortedBindings[bindIdx];
         _bindings.emplace_back(_device, this, bindInfo.pBinding, bindInfo.bindingFlags, _descriptorCount);
@@ -216,7 +219,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 		_descriptorCount += _bindings.back().getDescriptorCount();
 	}
 
-	initMetalArgumentBufferIndexes();
+	_metalArgumentBufferSize = mvkAlignByteCount(_metalArgumentBufferSize, getDevice()->_pMetalFeatures->mtlBufferAlignment);
 }
 
 // Find and return an array of binding flags from the pNext chain of pCreateInfo,
@@ -233,15 +236,6 @@ const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const Vk
 		}
 	}
 	return nullptr;
-}
-
-void MVKDescriptorSetLayout::initMetalArgumentBufferIndexes() {
-	_metalArgumentBufferSize = 0;
-	uint32_t argIdx = 0;
-	for (auto& dslBind : _bindings) {
-		dslBind.initMetalArgumentBufferIndexes(argIdx, _metalArgumentBufferSize);
-	}
-	_metalArgumentBufferSize = mvkAlignByteCount(_metalArgumentBufferSize, getDevice()->_pMetalFeatures->mtlBufferAlignment);
 }
 
 

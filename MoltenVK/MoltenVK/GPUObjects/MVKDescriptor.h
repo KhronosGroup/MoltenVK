@@ -30,6 +30,7 @@ class MVKCommandEncoder;
 
 /** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
 typedef struct MVKShaderStageResourceBinding {
+	uint16_t resourceIndex = 0;
 	uint16_t bufferIndex = 0;
 	uint16_t textureIndex = 0;
 	uint16_t samplerIndex = 0;
@@ -125,19 +126,19 @@ protected:
 	friend class MVKDescriptorSetLayout;
     friend class MVKInlineUniformBlockDescriptor;
 	
-	void initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
-									   MVKShaderStageResourceBinding* pDescSetCounts,
-									   const VkDescriptorSetLayoutBinding* pBinding);
-	void initMetalArgumentBufferIndexes(uint32_t& argIdx, NSUInteger& argBuffSize);
+	void initMetalResourceIndexOffsets(const VkDescriptorSetLayoutBinding* pBinding, uint32_t stage);
 	void addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args,
+								   uint32_t stage,
 								   mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 								   uint32_t descSetIdx);
 	void addMTLArgumentDescriptor(NSMutableArray<MTLArgumentDescriptor*>* args,
+								  uint32_t stage,
 								  MTLDataType dataType,
 								  MTLArgumentAccess access,
 								  mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 								  uint32_t descSetIdx,
 								  uint32_t argIdxOffset = 0);
+	bool isUsingMetalArgumentBuffer();
 	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
 										MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 										uint32_t dslIndex);
@@ -149,7 +150,6 @@ protected:
 	MVKSmallVector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	uint32_t _descriptorIndex;
-	uint32_t _metalArgumentBufferIndex;
 	bool _applyToStage[kMVKShaderStageMax];
 };
 

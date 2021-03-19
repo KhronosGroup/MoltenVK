@@ -25,6 +25,7 @@
 
 MVKShaderStageResourceBinding MVKShaderStageResourceBinding::operator+ (const MVKShaderStageResourceBinding& rhs) {
 	MVKShaderStageResourceBinding rslt;
+	rslt.resourceIndex = this->resourceIndex + rhs.resourceIndex;
 	rslt.bufferIndex = this->bufferIndex + rhs.bufferIndex;
 	rslt.textureIndex = this->textureIndex + rhs.textureIndex;
 	rslt.samplerIndex = this->samplerIndex + rhs.samplerIndex;
@@ -32,6 +33,7 @@ MVKShaderStageResourceBinding MVKShaderStageResourceBinding::operator+ (const MV
 }
 
 MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::operator+= (const MVKShaderStageResourceBinding& rhs) {
+	this->resourceIndex += rhs.resourceIndex;
 	this->bufferIndex += rhs.bufferIndex;
 	this->textureIndex += rhs.textureIndex;
 	this->samplerIndex += rhs.samplerIndex;
@@ -335,57 +337,11 @@ void MVKDescriptorSetLayoutBinding::push(MVKCommandEncoder* cmdEncoder,
     }
 }
 
-// Inits the index into the Metal argument buffer for this binding, and updates resource indexes consumed.
-void MVKDescriptorSetLayoutBinding::initMetalArgumentBufferIndexes(uint32_t& argIdx, NSUInteger& argBuffSize) {
-
-	_metalArgumentBufferIndex = argIdx;
-
-	uint32_t descCnt = getDescriptorCount();
-	switch (getDescriptorType()) {
-
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			argIdx += descCnt;
-			argBuffSize += sizeof(id<MTLBuffer>) * descCnt;
-			break;
-
-		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
-		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			argIdx += descCnt;
-			argBuffSize += sizeof(id<MTLTexture>) * descCnt;
-			break;
-
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			argIdx += descCnt;
-			argBuffSize += sizeof(id<MTLTexture>) * descCnt;		// Texture
-			argIdx += descCnt;
-			argBuffSize += sizeof(id<MTLBuffer>) * descCnt;			// Buffer for atomic operations
-			break;
-
-		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			argIdx += descCnt;
-			argBuffSize += sizeof(id<MTLSamplerState>) * descCnt;
-			break;
-
-		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			argIdx += descCnt;										// Texture
-			argBuffSize += sizeof(id<MTLTexture>) * descCnt;
-			argIdx += descCnt;										// Sampler
-			argBuffSize += sizeof(id<MTLSamplerState>) * descCnt;
-			break;
-
-		default:
-			break;
-	}
-}
+bool MVKDescriptorSetLayoutBinding::isUsingMetalArgumentBuffer() { return _layout->isUsingMetalArgumentBuffer(); };
 
 // Adds MTLArgumentDescriptors to the array, and updates resource indexes consumed.
 void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args,
+															  uint32_t stage,
 															  mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 															  uint32_t descSetIdx) {
 	switch (getDescriptorType()) {
@@ -393,40 +349,40 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTL
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, stage, MTLDataTypePointer, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, stage, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, stage, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
-			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx, getDescriptorCount());		// Needed for atomic operations
+			addMTLArgumentDescriptor(args, stage, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, stage, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx, getDescriptorCount());		// Needed for atomic operations
 			break;
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, stage, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
-			addMTLArgumentDescriptor(args, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx, getDescriptorCount());		// Needed for atomic operations
+			addMTLArgumentDescriptor(args, stage, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, stage, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx, getDescriptorCount());		// Needed for atomic operations
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			addMTLArgumentDescriptor(args, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, stage, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			addMTLArgumentDescriptor(args, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
-			addMTLArgumentDescriptor(args, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx, getDescriptorCount());
+			addMTLArgumentDescriptor(args, stage, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, stage, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx, getDescriptorCount());
 			break;
 
 		default:
@@ -436,6 +392,7 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTL
 
 // Adds an MTLArgumentDescriptor if the specified type to the array, and updates resource indexes consumed.
 void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLArgumentDescriptor*>* args,
+															 uint32_t stage,
 															 MTLDataType dataType,
 															 MTLArgumentAccess access,
 															 mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
@@ -444,7 +401,7 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLA
 	auto* argDesc = [MTLArgumentDescriptor argumentDescriptor];
 	argDesc.dataType = dataType;
 	argDesc.access = access;
-	argDesc.index = _metalArgumentBufferIndex + argIdxOffset;
+	argDesc.index = _mtlResourceIndexOffsets.stages[stage].resourceIndex + argIdxOffset;
 	argDesc.arrayLength = getDescriptorCount();
 	argDesc.textureType = shaderConfig.getMTLTextureType(descSetIdx, getBinding());
 
@@ -502,27 +459,23 @@ MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 
 	_info.pImmutableSamplers = nullptr;     // Remove dangling pointer
 
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-        // Determine if this binding is used by this shader stage
-        _applyToStage[i] = mvkAreAllFlagsEnabled(pBinding->stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)));
-	    // If this binding is used by the shader, set the Metal resource index
-        if (_applyToStage[i]) {
-            initMetalResourceIndexOffsets(&_mtlResourceIndexOffsets.stages[i],
-                                          &layout->_mtlResourceCounts.stages[i], pBinding);
-        }
-    }
+	// Determine if this binding is used by this shader stage, and initialize resource indexes.
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageMax; stage++) {
+		_applyToStage[stage] = mvkAreAllFlagsEnabled(pBinding->stageFlags, mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(stage)));
+		initMetalResourceIndexOffsets(pBinding, stage);
+	}
 
-    // If immutable samplers are defined, copy them in
-    if ( pBinding->pImmutableSamplers &&
-        (pBinding->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER ||
-         pBinding->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) ) {
-            _immutableSamplers.reserve(pBinding->descriptorCount);
-            for (uint32_t i = 0; i < pBinding->descriptorCount; i++) {
-                _immutableSamplers.push_back((MVKSampler*)pBinding->pImmutableSamplers[i]);
-                _immutableSamplers.back()->retain();
-            }
-        }
+	// If immutable samplers are defined, copy them in
+	if ( pBinding->pImmutableSamplers &&
+		(pBinding->descriptorType == VK_DESCRIPTOR_TYPE_SAMPLER ||
+		 pBinding->descriptorType == VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER) ) {
 
+		_immutableSamplers.reserve(pBinding->descriptorCount);
+		for (uint32_t i = 0; i < pBinding->descriptorCount; i++) {
+			_immutableSamplers.push_back((MVKSampler*)pBinding->pImmutableSamplers[i]);
+			_immutableSamplers.back()->retain();
+		}
+	}
 }
 
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(const MVKDescriptorSetLayoutBinding& binding) :
@@ -550,13 +503,33 @@ MVKDescriptorSetLayoutBinding::~MVKDescriptorSetLayoutBinding() {
 
 // Sets the appropriate Metal resource indexes within this binding from the
 // specified descriptor set binding counts, and updates those counts accordingly.
-void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStageResourceBinding* pBindingIndexes,
-																  MVKShaderStageResourceBinding* pDescSetCounts,
-																  const VkDescriptorSetLayoutBinding* pBinding) {
+void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescriptorSetLayoutBinding* pBinding, uint32_t stage) {
+
+	// Sets an index offset and updates both that index and the general resource index.
+	// Can be used multiply for combined multi-resource descriptor types.
+	// When using Metal argument buffers, we accumulate the resource indexes cummulatively, across all resource types.
+#define setResourceIndexOffset(rezIdx)																	\
+	do {																								\
+		if (_applyToStage[stage] || isUsingMetalArgumentBuffer()) {										\
+			bindIdxs.rezIdx = isUsingMetalArgumentBuffer() ?  dslCnts.resourceIndex : dslCnts.rezIdx;	\
+			dslCnts.rezIdx += descCnt;																	\
+			bindIdxs.resourceIndex = dslCnts.resourceIndex;												\
+			dslCnts.resourceIndex += descCnt;															\
+			_layout->_metalArgumentBufferSize += sizeof(id);											\
+		}																								\
+	} while(false)
+
+	// Only perform validation if this binding is used by the stage
+#	define breakIfUnused() if ( !_applyToStage[stage] ) break
+
+	MVKShaderStageResourceBinding& bindIdxs = _mtlResourceIndexOffsets.stages[stage];
+	MVKShaderStageResourceBinding& dslCnts = _layout->_mtlResourceCounts.stages[stage];
+
+	uint32_t descCnt = pBinding->descriptorType == VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT ? 1 : pBinding->descriptorCount;
     switch (pBinding->descriptorType) {
         case VK_DESCRIPTOR_TYPE_SAMPLER:
-            pBindingIndexes->samplerIndex = pDescSetCounts->samplerIndex;
-            pDescSetCounts->samplerIndex += pBinding->descriptorCount;
+			setResourceIndexOffset(samplerIndex);
+			breakIfUnused();
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfSamplers) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
@@ -564,10 +537,9 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
             break;
 
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-            pBindingIndexes->textureIndex = pDescSetCounts->textureIndex;
-            pDescSetCounts->textureIndex += pBinding->descriptorCount;
-            pBindingIndexes->samplerIndex = pDescSetCounts->samplerIndex;
-            pDescSetCounts->samplerIndex += pBinding->descriptorCount;
+			setResourceIndexOffset(textureIndex);
+			setResourceIndexOffset(samplerIndex);
+			breakIfUnused();
 
 			if (pBinding->descriptorCount > 1) {
 				if ( !_device->_pMetalFeatures->arrayOfTextures ) {
@@ -582,39 +554,40 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(MVKShaderStage
                 for (uint32_t i = 0; i < pBinding->descriptorCount; i++) {
                     uint8_t planeCount = ((MVKSampler*)pBinding->pImmutableSamplers[i])->getPlaneCount();
                     if (planeCount > 1) {
-                        pDescSetCounts->textureIndex += planeCount - 1;
+                        dslCnts.textureIndex += planeCount - 1;
                     }
                 }
             }
             break;
 
-        case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-        case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-            pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
-            pDescSetCounts->bufferIndex += pBinding->descriptorCount;
-            // fallthrough
         case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-            pBindingIndexes->textureIndex = pDescSetCounts->textureIndex;
-            pDescSetCounts->textureIndex += pBinding->descriptorCount;
+			setResourceIndexOffset(textureIndex);
+			breakIfUnused();
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
 			}
             break;
 
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			setResourceIndexOffset(textureIndex);
+			setResourceIndexOffset(bufferIndex);
+			breakIfUnused();
+
+			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
+				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
+			}
+			break;
+
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-            pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
-            pDescSetCounts->bufferIndex += pBinding->descriptorCount;
-            break;
-
-        case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-            pBindingIndexes->bufferIndex = pDescSetCounts->bufferIndex;
-            pDescSetCounts->bufferIndex += 1;
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+			setResourceIndexOffset(bufferIndex);
             break;
 
         default:
