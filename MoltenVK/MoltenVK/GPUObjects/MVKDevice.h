@@ -937,9 +937,6 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device; };
 
-	/** Returns a new instance. */
-	T* newObject() override { return new T(_device); }
-
 	/**
 	 * Configures this instance for the device, and either use pooling, or not, depending
 	 * on the value of isPooling, which defaults to true if not indicated explicitly.
@@ -947,6 +944,8 @@ public:
 	MVKDeviceObjectPool(MVKDevice* device, bool isPooling = true) : MVKObjectPool<T>(isPooling), _device(device) {}
 
 protected:
+	T* newObject() override { return new T(_device); }
+
 	MVKDevice* _device;
 };
 

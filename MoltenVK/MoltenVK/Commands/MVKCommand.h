@@ -38,10 +38,10 @@ public:
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; }
 
-	/** Returns a new command instance. */
-	T* newObject() override { return new T(); }
-
 	MVKCommandTypePool(bool isPooling = true) : MVKObjectPool<T>(isPooling) {}
+
+protected:
+	T* newObject() override { return new T(); }
 
 };
 

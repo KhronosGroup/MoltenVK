@@ -647,15 +647,10 @@ void MVKCommandEncoder::setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder,
     }
 }
 
+// Return the MTLBuffer allocation to the pool once the command buffer is done with it
 const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger length, bool isPrivate, bool isDedicated) {
     const MVKMTLBufferAllocation* mtlBuffAlloc = getCommandEncodingPool()->acquireMTLBufferAllocation(length, isPrivate, isDedicated);
-	MVKMTLBufferAllocationPool* pool = mtlBuffAlloc->getPool();
-
-    // Return the MTLBuffer allocation to the pool once the command buffer is done with it
-    [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) {
-        pool->returnObjectSafely((MVKMTLBufferAllocation*)mtlBuffAlloc);
-    }];
-
+    [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mcb) { mtlBuffAlloc->returnToPool(); }];
     return mtlBuffAlloc;
 }
 
@@ -664,8 +659,8 @@ MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
 }
 
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
-const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length) {
-    const MVKMTLBufferAllocation* mtlBuffAlloc = getTempMTLBuffer(length);
+const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isPrivate, bool isDedicated) {
+	const MVKMTLBufferAllocation* mtlBuffAlloc = getTempMTLBuffer(length, isPrivate, isDedicated);
     void* pBuffData = mtlBuffAlloc->getContents();
     mlock(pBuffData, length);
     memcpy(pBuffData, bytes, length);
