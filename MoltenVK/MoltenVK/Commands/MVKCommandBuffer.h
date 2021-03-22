@@ -373,7 +373,7 @@ public:
     const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
 
 	/** Copy the bytes to a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
-	const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isPrivate = false, bool isDedicated = false);
+	const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isDedicated = false);
 
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();

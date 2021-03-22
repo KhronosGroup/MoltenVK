@@ -51,8 +51,10 @@ void MVKMTLBufferAllocationPool::addMTLBuffer() {
 
 
 MVKMTLBufferAllocationPool::MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, bool makeThreadSafe,
-													   bool isDedicated, MTLStorageMode mtlStorageMode) : MVKObjectPool<MVKMTLBufferAllocation>(true) {
-    _device = device;
+													   bool isDedicated, MTLStorageMode mtlStorageMode) :
+	MVKObjectPool<MVKMTLBufferAllocation>(true),
+	MVKDeviceTrackingMixin(device) {
+
     _allocationLength = allocationLength;
 	_isThreadSafe = makeThreadSafe;
     _mtlBufferLength = _allocationLength * (isDedicated ? 1 : calcMTLBufferAllocationCount());

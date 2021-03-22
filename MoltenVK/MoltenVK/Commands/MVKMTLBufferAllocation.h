@@ -75,7 +75,7 @@ protected:
  * To return a MVKMTLBufferAllocation retrieved from this pool, back to this pool, 
  * call the returnToPool() function on the MVKMTLBufferAllocation instance.
  */
-class MVKMTLBufferAllocationPool : public MVKObjectPool<MVKMTLBufferAllocation> {
+class MVKMTLBufferAllocationPool : public MVKObjectPool<MVKMTLBufferAllocation>, public MVKDeviceTrackingMixin {
 
 public:
 
@@ -91,6 +91,7 @@ public:
 protected:
 	friend class MVKMTLBufferAllocation;
 	
+	MVKBaseObject* getBaseObject() override { return this; };
 	MVKMTLBufferAllocation* newObject() override;
 	void returnAllocation(MVKMTLBufferAllocation* ba) { _isThreadSafe ? returnObjectSafely(ba) : returnObject(ba); }
 	uint32_t calcMTLBufferAllocationCount();
@@ -101,7 +102,6 @@ protected:
     NSUInteger _mtlBufferLength;
     MTLStorageMode _mtlStorageMode;
 	MVKSmallVector<id<MTLBuffer>, 64> _mtlBuffers;
-    MVKDevice* _device;
 	bool _isThreadSafe;
 };
 

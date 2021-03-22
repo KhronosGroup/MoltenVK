@@ -892,6 +892,7 @@ public:
 
 protected:
 	MVKBaseObject* getBaseObject() override { return this; };
+
 };
 
 
@@ -929,10 +930,9 @@ protected:
 
 /** Manages a pool of instances of a particular object type that requires an MVKDevice during construction. */
 template <class T>
-class MVKDeviceObjectPool : public MVKObjectPool<T> {
+class MVKDeviceObjectPool : public MVKObjectPool<T>, public MVKDeviceTrackingMixin {
 
 public:
-
 
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device; };
@@ -941,12 +941,12 @@ public:
 	 * Configures this instance for the device, and either use pooling, or not, depending
 	 * on the value of isPooling, which defaults to true if not indicated explicitly.
 	 */
-	MVKDeviceObjectPool(MVKDevice* device, bool isPooling = true) : MVKObjectPool<T>(isPooling), _device(device) {}
+	MVKDeviceObjectPool(MVKDevice* device, bool isPooling = true) : MVKObjectPool<T>(isPooling), MVKDeviceTrackingMixin(device) {}
 
 protected:
 	T* newObject() override { return new T(_device); }
+	MVKBaseObject* getBaseObject() override { return this; };
 
-	MVKDevice* _device;
 };
 
 
