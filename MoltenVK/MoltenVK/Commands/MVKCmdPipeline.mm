@@ -215,7 +215,12 @@ VkResult MVKCmdBindDescriptorSetsStatic<N>::setContent(MVKCommandBuffer* cmdBuff
 
 template <size_t N>
 void MVKCmdBindDescriptorSetsStatic<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	_pipelineLayout->bindDescriptorSets(cmdEncoder, _descriptorSets.contents(), _firstSet, MVKArrayRef<uint32_t>());
+	encode(cmdEncoder, MVKArrayRef<uint32_t>());
+}
+
+template <size_t N>
+void MVKCmdBindDescriptorSetsStatic<N>::encode(MVKCommandEncoder* cmdEncoder, MVKArrayRef<uint32_t> dynamicOffsets) {
+	_pipelineLayout->bindDescriptorSets(cmdEncoder, _pipelineBindPoint, _descriptorSets.contents(), _firstSet, dynamicOffsets);
 }
 
 template <size_t N>
@@ -256,7 +261,7 @@ VkResult MVKCmdBindDescriptorSetsDynamic<N>::setContent(MVKCommandBuffer* cmdBuf
 
 template <size_t N>
 void MVKCmdBindDescriptorSetsDynamic<N>::encode(MVKCommandEncoder* cmdEncoder) {
-	MVKCmdBindDescriptorSetsStatic<N>::_pipelineLayout->bindDescriptorSets(cmdEncoder, MVKCmdBindDescriptorSetsStatic<N>::_descriptorSets.contents(), MVKCmdBindDescriptorSetsStatic<N>::_firstSet, _dynamicOffsets.contents());
+	MVKCmdBindDescriptorSetsStatic<N>::encode(cmdEncoder, _dynamicOffsets.contents());
 }
 
 template class MVKCmdBindDescriptorSetsDynamic<4>;

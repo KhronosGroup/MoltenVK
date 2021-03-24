@@ -452,6 +452,28 @@ void MVKBlendColorCommandEncoderState::encodeImpl(uint32_t stage) {
 #pragma mark -
 #pragma mark MVKResourcesCommandEncoderState
 
+void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
+														MVKDescriptorSet* descSet,
+														MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+														MVKArrayRef<uint32_t> dynamicOffsets,
+														uint32_t& dynamicOffsetIndex) {
+	_boundDescriptorSets[descSetIndex] = descSet;
+	descSet->bindDynamicOffsets(this, descSetIndex, dynamicOffsets, dynamicOffsetIndex);
+
+	MVKMTLBufferBinding bb;
+	descSet->populateMetalArgumentBufferBinding(bb);
+	bb.index = dslMTLRezIdxOffsets.stages[kMVKShaderStageVertex].bufferIndex;
+	bindMetalArgumentBuffer(bb);
+}
+
+void MVKResourcesCommandEncoderState::encodeToMetalArgumentBuffer(MVKShaderStage stage) {
+	lock_guard<mutex> lock(getPipeline()->_mtlArgumentEncodingLock);
+	for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {
+		auto& mvkDescSet = _boundDescriptorSets[dsIdx];
+		if (mvkDescSet) { mvkDescSet->encodeToMetalArgumentBuffer(this, dsIdx, stage); }
+	}
+}
+
 // If a swizzle is needed for this stage, iterates all the bindings and logs errors for those that need texture swizzling.
 void MVKResourcesCommandEncoderState::assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding>& texBindings) {
 	if (needsSwizzle) {
@@ -532,6 +554,9 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
                                                              std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>&)> bindImplicitBuffer,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler) {
+
+	encodeToMetalArgumentBuffer(stage);
+
     auto& shaderStage = _shaderStageResourceBindings[stage];
     encodeBinding<MVKMTLBufferBinding>(shaderStage.bufferBindings, shaderStage.areBufferBindingsDirty, bindBuffer);
 
@@ -765,6 +790,16 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 }
 
+MVKPipeline* MVKGraphicsResourcesCommandEncoderState::getPipeline() {
+	return _cmdEncoder->_graphicsPipelineState.getPipeline();
+}
+
+void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) {
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+		if (i != kMVKShaderStageCompute) { bindBuffer(MVKShaderStage(i), buffBind); }
+	}
+}
+
 
 #pragma mark -
 #pragma mark MVKComputeResourcesCommandEncoderState
@@ -802,6 +837,8 @@ void MVKComputeResourcesCommandEncoderState::markDirty() {
 }
 
 void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
+
+	encodeToMetalArgumentBuffer(kMVKShaderStageCompute);
 
     MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
 	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
@@ -857,6 +894,14 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                                  [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setSamplerState: b.mtlSamplerState
 																												   atIndex: b.index];
                                              });
+}
+
+MVKPipeline* MVKComputeResourcesCommandEncoderState::getPipeline() {
+	return _cmdEncoder->_computePipelineState.getPipeline();
+}
+
+void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) {
+	bindBuffer(buffBind);
 }
 
 

@@ -273,7 +273,7 @@ void mvkSetConfig(MVKConfiguration* pMVKConfig);
 #  	define MVK_CONFIG_ADVERTISE_EXTENSIONS    MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL
 #endif
 
-/** Support Metal argument buffers. Enabled by default. */
+/** Support Metal argument buffers. Disabled by default. */
 #ifndef MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
-#   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    1
+#   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    0
 #endif

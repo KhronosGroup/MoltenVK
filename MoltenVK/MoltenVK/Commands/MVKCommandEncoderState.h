@@ -21,11 +21,13 @@
 #include "MVKMTLResourceBindings.h"
 #include "MVKCommandResourceFactory.h"
 #include "MVKDevice.h"
+#include "MVKDescriptor.h"
 #include "MVKSmallVector.h"
 #include <unordered_map>
 
 class MVKCommandEncoder;
 class MVKGraphicsPipeline;
+class MVKDescriptorSet;
 class MVKOcclusionQueryPool;
 
 struct MVKShaderImplicitRezBinding;
@@ -332,13 +334,35 @@ protected:
 #pragma mark -
 #pragma mark MVKResourcesCommandEncoderState
 
+typedef uint64_t MVKDescSetDescKey;
+
 /** Abstract resource state class for supporting encoder resources. */
 class MVKResourcesCommandEncoderState : public MVKCommandEncoderState {
 
 public:
 
-    /** Constructs this instance for the specified command encoder. */
-    MVKResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) : MVKCommandEncoderState(cmdEncoder) {}
+	/** Returns the currently bound pipeline for this bind point. */
+	virtual MVKPipeline* getPipeline() = 0;
+
+	/** Binds the specified descriptor set to the specified index. */
+	void bindDescriptorSet(uint32_t descSetIndex,
+						   MVKDescriptorSet* descSet,
+						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+						   MVKArrayRef<uint32_t> dynamicOffsets,
+						   uint32_t& dynamicOffsetIndex);
+
+	/** Returns the dynamic buffer offset for the descriptor in the descriptor set. */
+	inline uint32_t getDynamicBufferOffset(uint32_t descSetIndex, uint32_t descIndex) {
+		return _dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)];
+	}
+
+	/** Sets the dynamic buffer offset for the descriptor in the descriptor set. */
+	inline void bindDynamicBufferOffset(uint32_t descSetIndex, uint32_t descIndex, uint32_t offset) {
+		_dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)] = offset;
+	}
+
+    MVKResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) :
+		MVKCommandEncoderState(cmdEncoder), _boundDescriptorSets{} {}
 
 protected:
 
@@ -402,6 +426,12 @@ protected:
 	}
 
 	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding>& texBindings);
+	void encodeToMetalArgumentBuffer(MVKShaderStage stage);
+	virtual void bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) = 0;
+
+	inline MVKDescSetDescKey getDynamicOffsetKey(uint32_t descSet, uint32_t descIdx) {
+		return ((MVKDescSetDescKey)descSet << 32) + descIdx;
+	}
 
 	template<size_t N>
 	struct ResourceBindings {
@@ -422,6 +452,10 @@ protected:
 		bool needsSwizzle = false;
 	};
 
+	MVKDescriptorSet* _boundDescriptorSets[kMVKMaxDescriptorSetCount];
+
+	std::unordered_map<MVKDescSetDescKey, uint32_t> _dynamicOffsets;
+
 };
 
 
@@ -432,6 +466,9 @@ protected:
 class MVKGraphicsResourcesCommandEncoderState : public MVKResourcesCommandEncoderState {
 
 public:
+
+	/** Returns the currently bound pipeline for this bind point. */
+	MVKPipeline* getPipeline() override;
 
     /** Binds the specified buffer for the specified shader stage. */
     void bindBuffer(MVKShaderStage stage, const MVKMTLBufferBinding& binding);
@@ -488,6 +525,7 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
     void markDirty() override;
+	void bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) override;
 
     ResourceBindings<8> _shaderStageResourceBindings[4];
 };
@@ -500,6 +538,9 @@ protected:
 class MVKComputeResourcesCommandEncoderState : public MVKResourcesCommandEncoderState {
 
 public:
+
+	/** Returns the currently bound pipeline for this bind point. */
+	MVKPipeline* getPipeline() override;
 
     /** Binds the specified buffer. */
     void bindBuffer(const MVKMTLBufferBinding& binding);
@@ -525,6 +566,7 @@ public:
 
 protected:
     void encodeImpl(uint32_t) override;
+	void bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) override;
 
 	ResourceBindings<4> _resourceBindings;
 };

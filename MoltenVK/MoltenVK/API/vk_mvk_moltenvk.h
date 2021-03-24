@@ -790,8 +790,8 @@ typedef struct {
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is enabled by default, and MoltenVK
-	 * will use Metal argument buffers.
+	 * If neither is set, this setting is enabled by default, and MoltenVK will not
+	 * use Metal argument buffers, and will bind resources to shaders discretely.
 	 */
 	VkBool32 useMetalArgumentBuffers;
 

@@ -37,6 +37,7 @@ using namespace SPIRV_CROSS_NAMESPACE;
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
+										   VkPipelineBindPoint pipelineBindPoint,
                                            MVKArrayRef<MVKDescriptorSet*> descriptorSets,
                                            uint32_t firstSet,
                                            MVKArrayRef<uint32_t> dynamicOffsets) {
@@ -47,7 +48,9 @@ void MVKPipelineLayout::bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
 		MVKDescriptorSet* descSet = descriptorSets[dsIdx];
 		uint32_t dslIdx = firstSet + dsIdx;
 		MVKDescriptorSetLayout* dsl = _descriptorSetLayouts[dslIdx];
-		dsl->bindDescriptorSet(cmdEncoder, descSet, _dslMTLResourceIndexOffsets[dslIdx],
+		dsl->bindDescriptorSet(cmdEncoder, pipelineBindPoint,
+							   dslIdx, descSet,
+							   _dslMTLResourceIndexOffsets[dslIdx],
 							   dynamicOffsets, dynamicOffsetIndex);
 		if (!cmdEncoder) { setConfigurationResult(dsl->getConfigurationResult()); }
 	}
@@ -173,7 +176,7 @@ void MVKPipeline::addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLCo
 	uint32_t dsCnt = layout->getDescriptorSetCount();
 	uint32_t stage = kMVKShaderStageVertex;		// Nominal stage. Currently all stages use same encoders.
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
-		_mtlArgumentEncoders[dsIdx] = layout->_descriptorSetLayouts[dsIdx]->newMTLArgumentEncoder(stage, shaderConfig, dsIdx);
+		_mtlArgumentEncoders[dsIdx] = layout->_descriptorSetLayouts[dsIdx]->newMTLArgumentEncoder(stage, shaderConfig, dsIdx);	// retained
 	}
 }
 
@@ -182,7 +185,13 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 	_pipelineCache(pipelineCache),
 	_pushConstantsMTLResourceIndexes(layout->getPushConstantBindings()),
 	_fullImageViewSwizzle(mvkConfig()->fullImageViewSwizzle),
-	_mtlArgumentEncoders(layout->getDescriptorSetCount()) {}
+	_mtlArgumentEncoders{} {}
+
+MVKPipeline::~MVKPipeline() {
+	for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {
+		[_mtlArgumentEncoders[dsIdx] release];
+	}
+}
 
 
 #pragma mark -

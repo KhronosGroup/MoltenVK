@@ -104,6 +104,28 @@ public:
 		return getIndexOfFirstSetBit(0, false);
 	}
 
+	/**
+	 * Enumerates the bits, executing a custom function on each bit that is enabled.
+	 *
+	 * The function to execute is passed a bitIndex parameter which indicates
+	 * the index of the bit for which the function is executing.
+	 *
+	 * The custom function should return true to continue processing further bits, or false
+	 * to stop processing further bits. This function returns false if any of the invocations
+	 * of the custom function halted further invocations, and returns true otherwise.
+	 *
+	 * If shouldClear is true, each enabled bit is cleared before the custom function executes.
+	 */
+	bool enumerateEnabledBits(bool shouldClear, std::function<bool(size_t bitIndex)> func) {
+		for (size_t bitIdx = getIndexOfFirstSetBit(shouldClear);
+			 bitIdx < _bitCount;
+			 getIndexOfFirstSetBit(++bitIdx, shouldClear)) {
+
+			if ( !func(bitIdx) ) { return false; }
+		}
+		return true;
+	}
+
 	/** Returns the number of bits in this array. */
 	inline size_t size() { return _bitCount; }
 

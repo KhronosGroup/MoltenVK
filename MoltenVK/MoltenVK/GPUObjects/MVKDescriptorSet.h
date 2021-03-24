@@ -28,6 +28,7 @@
 class MVKDescriptorPool;
 class MVKPipelineLayout;
 class MVKCommandEncoder;
+class MVKResourcesCommandEncoderState;
 
 
 #pragma mark -
@@ -46,6 +47,8 @@ public:
 
 	/** Encodes this descriptor set layout and the specified descriptor set on the specified command encoder. */
 	void bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
+						   VkPipelineBindPoint pipelineBindPoint,
+						   uint32_t descSetIndex,
 						   MVKDescriptorSet* descSet,
 						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 						   MVKArrayRef<uint32_t> dynamicOffsets,
@@ -88,6 +91,7 @@ protected:
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
 	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
+	MVKDescriptorSetLayoutBinding* getBindingForDescriptorIndex(uint32_t descriptorIndex);
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 	inline bool isUsingMetalArgumentBuffer()  { return isUsingMetalArgumentBuffers() && !isPushDescriptorLayout(); };
 
@@ -131,6 +135,23 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
+	/** Extracts the dynamic offsets from the array, and binds them to the encoder state. */
+	void bindDynamicOffsets(MVKResourcesCommandEncoderState* rezEncState,
+							uint32_t descSetIndex,
+							MVKArrayRef<uint32_t> dynamicOffsets,
+							uint32_t& dynamicOffsetIndex);
+
+	/** Encode any dirty descriptors to the arugment buffer. */
+	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
+									 uint32_t descSetIndex,
+									 MVKShaderStage stage);
+
+	/** Populates the buffer binding with the Metal argument buffer and offset. */
+	void populateMetalArgumentBufferBinding(MVKMTLBufferBinding& buffBind);
+
+	/** Returns an MTLBuffer region allocation. */
+	const MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
+
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 
 protected:
@@ -147,6 +168,7 @@ protected:
 	MVKDescriptorPool* _pool;
 	MVKDescriptorSetLayout* _layout;
 	MVKSmallVector<MVKDescriptor*> _descriptors;
+	MVKBitArray _dynamicBufferDescriptors;
 	MVKBitArray _metalArgumentBufferDirtyDescriptors;
 	NSUInteger _metalArgumentBufferOffset;
 	uint32_t _variableDescriptorCount;
@@ -218,11 +240,13 @@ protected:
 	void freeDescriptor(MVKDescriptor* mvkDesc);
 	void initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo* pCreateInfo);
 	NSUInteger getDescriptorByteCountForMetalArgumentBuffer(VkDescriptorType descriptorType);
+	NSUInteger getMaxInlineBlockSize(const VkDescriptorPoolCreateInfo* pCreateInfo);
 
 	MVKSmallVector<MVKDescriptorSet> _descriptorSets;
 	MVKBitArray _descriptorSetAvailablility;
 	id<MTLBuffer> _metalArgumentBuffer;
 	NSUInteger _nextMetalArgumentBufferOffset;
+	MVKMTLBufferAllocator _inlineBlockMTLBufferAllocator;
 
 	MVKDescriptorTypePool<MVKUniformBufferDescriptor> _uniformBufferDescriptors;
 	MVKDescriptorTypePool<MVKStorageBufferDescriptor> _storageBufferDescriptors;

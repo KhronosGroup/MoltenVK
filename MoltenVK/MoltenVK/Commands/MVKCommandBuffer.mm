@@ -427,6 +427,28 @@ void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKP
     }
 }
 
+void MVKCommandEncoder::bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint,
+										  uint32_t descSetIndex,
+										  MVKDescriptorSet* descSet,
+										  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+										  MVKArrayRef<uint32_t> dynamicOffsets,
+										  uint32_t& dynamicOffsetIndex) {
+	switch (pipelineBindPoint) {
+		case VK_PIPELINE_BIND_POINT_GRAPHICS:
+			_graphicsResourcesState.bindDescriptorSet(descSetIndex, descSet, dslMTLRezIdxOffsets,
+													  dynamicOffsets, dynamicOffsetIndex);
+			break;
+
+		case VK_PIPELINE_BIND_POINT_COMPUTE:
+			_computeResourcesState.bindDescriptorSet(descSetIndex, descSet, dslMTLRezIdxOffsets,
+													 dynamicOffsets, dynamicOffsetIndex);
+			break;
+
+		default:
+			break;
+	}
+}
+
 void MVKCommandEncoder::signalEvent(MVKEvent* mvkEvent, bool status) {
 	endCurrentMetalEncoding();
 	mvkEvent->encodeSignal(_mtlCmdBuffer, status);

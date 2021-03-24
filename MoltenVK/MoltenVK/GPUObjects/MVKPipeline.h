@@ -55,6 +55,7 @@ public:
 
 	/** Binds descriptor sets to a command encoder. */
     void bindDescriptorSets(MVKCommandEncoder* cmdEncoder,
+							VkPipelineBindPoint pipelineBindPoint,
                             MVKArrayRef<MVKDescriptorSet*> descriptorSets,
                             uint32_t firstSet,
                             MVKArrayRef<uint32_t> dynamicOffsets);
@@ -173,18 +174,25 @@ public:
 	/** Returns whether all internal Metal pipeline states are valid. */
 	bool hasValidMTLPipelineStates() { return _hasValidMTLPipelineStates; }
 
+	/** Returns the MTLArgumentEncoder for the descriptor set. */
+	inline id<MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) {
+		return _mtlArgumentEncoders[descSetIndex];
+	}
+
+	/** A mutex lock to protect access to the Metal argument encoders. */
+	std::mutex _mtlArgumentEncodingLock;
+
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent);
+
+	~MVKPipeline() override;
 
 protected:
 	void propagateDebugName() override {}
 	void addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLConversionConfiguration& shaderConfig);
-	id<MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t descSetIdx) {
-		return descSetIdx < _mtlArgumentEncoders.size() ? _mtlArgumentEncoders[descSetIdx] : nil;
-	}
 
 	MVKPipelineCache* _pipelineCache;
-	MVKSmallVector<id<MTLArgumentEncoder>> _mtlArgumentEncoders;
+	id<MTLArgumentEncoder> _mtlArgumentEncoders[kMVKMaxDescriptorSetCount];
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
