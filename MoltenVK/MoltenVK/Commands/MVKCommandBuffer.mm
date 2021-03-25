@@ -84,15 +84,6 @@ VkResult MVKCommandBuffer::reset(VkCommandBufferResetFlags flags) {
 	_lastMultiviewSubpass = nullptr;
 	setConfigurationResult(VK_NOT_READY);
 	
-	if(_timestampBuffers != nullptr) {
-		_timestampBuffers->release();
-		_timestampBuffers = nullptr;
-	}
-	
-	if(_device->_pMetalFeatures->timestampCommandSamplingSupported && mvkGetMVKConfiguration()->useMTLSampleCounterTimestamps) {
-		_timestampBuffers = MVKTimestampBuffers::newObject(_device);
-	}
-
 	if (mvkAreAllFlagsEnabled(flags, VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT)) {
 		// TODO: what are we releasing or returning here?
 	}
@@ -206,10 +197,6 @@ void MVKCommandBuffer::init(const VkCommandBufferAllocateInfo* pAllocateInfo) {
 
 MVKCommandBuffer::~MVKCommandBuffer() {
 	reset(0);
-	
-	if(_timestampBuffers != nullptr) {
-		_timestampBuffers->release();
-	}
 }
 
 // If the initial visibility result buffer has not been set, promote the first visibility result buffer
@@ -274,12 +261,21 @@ void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
 	_mtlCmdBuffer = mtlCmdBuff;		// not retained
 
 	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
+	
+	if(_timestampBuffers != nullptr) {
+		_timestampBuffers->release();
+		_timestampBuffers = nullptr;
+	}
+	
+	if(_device->_pMetalFeatures->timestampCommandSamplingSupported && mvkGetMVKConfiguration()->useMTLSampleCounterTimestamps) {
+		_timestampBuffers = MVKTimestampBuffers::newObject(_device);
+	}
 
-	if(_cmdBuffer->_timestampBuffers != nullptr) {
+	if(_timestampBuffers != nullptr) {
 		MTLTimestamp cpuStart, gpuStart;
 		[_cmdBuffer->getMTLDevice() sampleTimestamps:&cpuStart gpuTimestamp:&gpuStart];
-		_cmdBuffer->_timestampCorrelationMarker.cpuStart = (uint64_t)cpuStart;
-		_cmdBuffer->_timestampCorrelationMarker.gpuStart = (uint64_t)gpuStart;
+		_timestampCorrelationMarker.cpuStart = (uint64_t)cpuStart;
+		_timestampCorrelationMarker.gpuStart = (uint64_t)gpuStart;
 	}
 	
 	MVKCommand* cmd = _cmdBuffer->_head;
@@ -583,14 +579,15 @@ void MVKCommandEncoder::recordTimestamp(id commandEncoder)
 	if(commandEncoder == nil || ![commandEncoder respondsToSelector:@selector(sampleCountersInBuffer:atSampleIndex:withBarrier:)])
 		return;
 	
-	MVKTimestampBuffers* timestampBuffers = _cmdBuffer->_timestampBuffers;
-	if(timestampBuffers == nullptr)
+	if(_timestampBuffers == nullptr)
 		return;
 	
 	id<MTLCounterSampleBuffer> sampleCounterBuffer;
-	uint32_t timestampSampleIndex = timestampBuffers->allocateTimestamp(sampleCounterBuffer);
+	uint32_t timestampSampleIndex = _timestampBuffers->allocateTimestamp(sampleCounterBuffer);
 	
-	[commandEncoder sampleCountersInBuffer:sampleCounterBuffer atSampleIndex:timestampSampleIndex withBarrier:YES];
+	if(sampleCounterBuffer != nil) {
+		[commandEncoder sampleCountersInBuffer:sampleCounterBuffer atSampleIndex:timestampSampleIndex withBarrier:YES];
+	}
 }
 
 void MVKCommandEncoder::endCurrentMetalEncoding() {
@@ -749,10 +746,9 @@ void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) 
 	}
 	
 	uint32_t sampleIndex = ~0u;
-	MVKTimestampBuffers* timestampBuffers = _cmdBuffer->_timestampBuffers;
-	
-	if(timestampBuffers != nullptr) {
-		uint32_t timestampCount = timestampBuffers->getTimestampCount();
+
+	if(_timestampBuffers != nullptr) {
+		uint32_t timestampCount = _timestampBuffers->getTimestampCount();
 		if(timestampCount > 0) {
 			// Last issued sample is the one we care about
 			sampleIndex = timestampCount - 1;
@@ -785,11 +781,11 @@ void MVKCommandEncoder::finishQueries() {
 
     MVKActivatedQueries* pAQs = _pActivatedQueries;
 	id<MTLDevice> mtlDevice = _cmdBuffer->getMTLDevice();
-	MVKTimestampCorrelationMarker timestampCorrelationMarker = _cmdBuffer->_timestampCorrelationMarker;
-	MVKTimestampBuffers* timestampBuffers = _cmdBuffer->_timestampBuffers;
-	if(timestampBuffers != nullptr) {
-		timestampBuffers->retain();
-	}
+	MVKTimestampCorrelationMarker timestampCorrelationMarker = _timestampCorrelationMarker;
+	MVKTimestampBuffers* timestampBuffers = _timestampBuffers;
+	
+	// Ownership passed to the completion handler
+	_timestampBuffers = nullptr;
 	
     [_mtlCmdBuffer addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
 		MVKTimestampCorrelationMarker timestampCorrelationMarkerCopy = timestampCorrelationMarker;

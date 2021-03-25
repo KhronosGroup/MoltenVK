@@ -80,6 +80,9 @@ uint32_t MVKTimestampBuffers::allocateTimestamp(id<MTLCounterSampleBuffer>& outS
 			_device->reportError(VK_ERROR_INITIALIZATION_FAILED,
 					"Failed to initialize timestamp sample buffer (Error code %li):\n%s",
 					(long)error.code, error.localizedDescription.UTF8String);
+			
+			outSampleBuffer = nil;
+			return 0;
 		}
 		
 		_bufferPool.push_back(newCounterSampleBuffer);

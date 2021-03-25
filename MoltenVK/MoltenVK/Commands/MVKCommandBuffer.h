@@ -172,8 +172,6 @@ protected:
 	bool _isReusable;
 	bool _supportsConcurrentExecution;
 	bool _wasExecuted;
-	MVKTimestampCorrelationMarker _timestampCorrelationMarker;
-	MVKTimestampBuffers* _timestampBuffers = nullptr;
 };
 
 
@@ -497,6 +495,8 @@ protected:
     MVKOcclusionQueryCommandEncoderState _occlusionQueryState;
     uint32_t _flushCount = 0;
 	bool _isRenderingEntireAttachment;
+	MVKTimestampCorrelationMarker _timestampCorrelationMarker;
+	MVKTimestampBuffers* _timestampBuffers = nullptr;
 };
 
 
