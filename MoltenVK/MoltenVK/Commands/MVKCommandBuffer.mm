@@ -590,7 +590,7 @@ void MVKCommandEncoder::recordTimestamp(id<MTLCommandEncoder> commandEncoder)
 	id<MTLCounterSampleBuffer> sampleCounterBuffer;
 	uint32_t timestampSampleIndex = timestampBuffers->allocateTimestamp(sampleCounterBuffer);
 	
-	[commandEncoder sampleCountersInBuffer:sampleCounterBuffer atSampleIndex:timestampSampleIndex withBarrier:NO];
+	[commandEncoder sampleCountersInBuffer:sampleCounterBuffer atSampleIndex:timestampSampleIndex withBarrier:YES];
 }
 
 void MVKCommandEncoder::endCurrentMetalEncoding() {
@@ -745,6 +745,12 @@ void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) 
     if (_renderPass && getSubpass()->isMultiview()) {
         queryCount = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
     }
+	
+	id<MTLCommandEncoder> mtlEncoder = getMTLEncoder();
+	if(mtlEncoder != nil)
+	{
+		recordTimestamp(mtlEncoder);
+	}
 	
 	uint32_t sampleIndex = ~0u;
 	MVKTimestampBuffers* timestampBuffers = _cmdBuffer->_timestampBuffers;
