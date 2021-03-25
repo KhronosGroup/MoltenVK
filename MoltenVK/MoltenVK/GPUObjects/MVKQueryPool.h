@@ -64,7 +64,7 @@ public:
 	~MVKTimestampBuffers();
 	
 	/** Returns the Vulkan API opaque object controlling this object. */
-	MVKVulkanAPIObject* getVulkanAPIObject() override { return nullptr; }
+	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device; }
 
 	/** Allocates space for a new timestamp sample and return the index of the sample in the sample buffer and the sample buffer itself. */
 	uint32_t allocateTimestamp(id<MTLCounterSampleBuffer>& outSampleBuffer);

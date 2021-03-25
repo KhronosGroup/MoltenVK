@@ -335,7 +335,7 @@ public:
 	void endMetalRenderEncoding();
 	
 	/** Records timestamp in the provided encoder. */
-	void recordTimestamp(id<MTLCommandEncoder> commandEncoder);
+	void recordTimestamp(id commandEncoder);
 
 	/** 
 	 * Returns the current Metal compute encoder for the specified use,
@@ -378,9 +378,6 @@ public:
 
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
-	
-	/** Returns buffer used for storing timestamp counter sampler. If null timestamp counters are not supported. */
-	MVKTimestampBuffers* getTimestampBuffers() const;
 
 #pragma mark Queries
 

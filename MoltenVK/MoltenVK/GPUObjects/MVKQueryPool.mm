@@ -104,17 +104,34 @@ void MVKTimestampBuffers::resolveTimestamps()
 	uint64_t largestTimestamp = 0;
 	for(auto& entry : _bufferPool)
 	{
-		NSData* counterData = [entry resolveCounterRange:NSMakeRange(0, kTimestampCountPerBuffer)];
-		MTLCounterResultTimestamp* timestamps = (MTLCounterResultTimestamp *)counterData.bytes;
 		uint32_t timestampCountInBuffer = std::min(offset + kTimestampCountPerBuffer, timestampCount) - offset;
+		timestampCountInBuffer = std::min(timestampCountInBuffer, kTimestampCountPerBuffer);
 		
-		for(uint32_t i = 0; i < timestampCountInBuffer; i++)
+		NSData* counterData = [entry resolveCounterRange:NSMakeRange(0, timestampCountInBuffer)];
+		
+		if(counterData.length < (sizeof(MTLCounterResultTimestamp) * timestampCountInBuffer))
 		{
-			// Technically it's possible that newer timestamps complete before older ones, but we evaluate
-			// the timestamps as if the execution is sequential, so make sure they always go up
-			largestTimestamp = std::max(largestTimestamp, (uint64_t)timestamps[i].timestamp);
-			
-			_resolvedTimestamps[offset + i] = largestTimestamp;
+			// Invalid data retrieved from GPU
+			for(uint32_t i = 0; i < timestampCountInBuffer; i++)
+			{
+				_resolvedTimestamps[offset + i] = largestTimestamp;
+			}
+		}
+		else
+		{
+			MTLCounterResultTimestamp* timestamps = (MTLCounterResultTimestamp *)counterData.bytes;
+
+			for(uint32_t i = 0; i < timestampCountInBuffer; i++)
+			{
+				if (timestamps[i].timestamp != MTLCounterErrorValue)
+				{
+					// Technically it's possible that newer timestamps complete before older ones, but we evaluate
+					// the timestamps as if the execution is sequential, so make sure they always go up
+					largestTimestamp = std::max(largestTimestamp, (uint64_t)timestamps[i].timestamp);
+				}
+				
+				_resolvedTimestamps[offset + i] = largestTimestamp;
+			}
 		}
 
 		offset += kTimestampCountPerBuffer;

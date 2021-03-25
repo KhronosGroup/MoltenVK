@@ -578,7 +578,7 @@ void MVKCommandEncoder::endMetalRenderEncoding() {
     _occlusionQueryState.endMetalRenderPass();
 }
 
-void MVKCommandEncoder::recordTimestamp(id<MTLCommandEncoder> commandEncoder)
+void MVKCommandEncoder::recordTimestamp(id commandEncoder)
 {
 	if(commandEncoder == nil || ![commandEncoder respondsToSelector:@selector(sampleCountersInBuffer:atSampleIndex:withBarrier:)])
 		return;
@@ -707,10 +707,6 @@ const MVKMTLBufferAllocation* MVKCommandEncoder::getTempMTLBuffer(NSUInteger len
 
 MVKCommandEncodingPool* MVKCommandEncoder::getCommandEncodingPool() {
 	return _cmdBuffer->getCommandPool()->getCommandEncodingPool();
-}
-
-MVKTimestampBuffers* MVKCommandEncoder::getTimestampBuffers() const {
-	return _cmdBuffer->_timestampBuffers;
 }
 
 // Copies the specified bytes into a temporary allocation within a pooled MTLBuffer, and returns the MTLBuffer allocation.
