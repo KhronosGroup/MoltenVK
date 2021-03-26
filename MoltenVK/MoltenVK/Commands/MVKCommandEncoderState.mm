@@ -35,7 +35,7 @@ MVKVulkanAPIObject* MVKCommandEncoderState::getVulkanAPIObject() { return _cmdEn
 #pragma mark -
 #pragma mark MVKPipelineCommandEncoderState
 
-void MVKPipelineCommandEncoderState::setPipeline(MVKPipeline* pipeline) {
+void MVKPipelineCommandEncoderState::bindPipeline(MVKPipeline* pipeline) {
     _pipeline = pipeline;
     markDirty();
 }
@@ -452,25 +452,92 @@ void MVKBlendColorCommandEncoderState::encodeImpl(uint32_t stage) {
 #pragma mark -
 #pragma mark MVKResourcesCommandEncoderState
 
+// Track the dynamic offsets for later binding, initialize resource usage tracking to match the
+// descriptor set content, and bind the argument buffer MTLBuffer used by the descriptor set as a resource.
 void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 														MVKDescriptorSet* descSet,
 														MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 														MVKArrayRef<uint32_t> dynamicOffsets,
 														uint32_t& dynamicOffsetIndex) {
 	_boundDescriptorSets[descSetIndex] = descSet;
-	descSet->bindDynamicOffsets(this, descSetIndex, dynamicOffsets, dynamicOffsetIndex);
 
-	MVKMTLBufferBinding bb;
-	descSet->populateMetalArgumentBufferBinding(bb);
-	bb.index = dslMTLRezIdxOffsets.stages[kMVKShaderStageVertex].bufferIndex;
-	bindMetalArgumentBuffer(bb);
+	if (descSet->isUsingMetalArgumentBuffers()) {
+		descSet->bindDynamicOffsets(this, descSetIndex, dynamicOffsets, dynamicOffsetIndex);
+
+		auto& usageDirty = _metalUsageDirtyDescriptors[descSetIndex];
+		usageDirty.resize(descSet->getDescriptorCount());
+		usageDirty.setAllBits();
+
+		MVKMTLBufferBinding bb;
+		descSet->populateMetalArgumentBufferBinding(bb);
+		bb.index = dslMTLRezIdxOffsets.stages[kMVKShaderStageVertex].bufferIndex;
+		bindMetalArgumentBuffer(bb);
+
+		MVKCommandEncoderState::markDirty();
+	}
 }
 
+// Encode the dirty descriptors to the Metal argument buffer,
+// and set the Metal encoder usage for each resource.
 void MVKResourcesCommandEncoderState::encodeToMetalArgumentBuffer(MVKShaderStage stage) {
-	lock_guard<mutex> lock(getPipeline()->_mtlArgumentEncodingLock);
-	for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {
-		auto& mvkDescSet = _boundDescriptorSets[dsIdx];
-		if (mvkDescSet) { mvkDescSet->encodeToMetalArgumentBuffer(this, dsIdx, stage); }
+	if ( !_cmdEncoder->isUsingMetalArgumentBuffers() ) { return; }
+
+	MVKPipeline* pipeline = getPipeline();
+	lock_guard<mutex> lock(pipeline->_mtlArgumentEncodingLock);
+
+	uint32_t dsCnt = pipeline->getDescriptorSetCount();
+	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
+		auto* descSet = _boundDescriptorSets[dsIdx];
+		if (descSet) {
+			auto* dsLayout = descSet->getLayout();
+			auto& usedDescriptors = pipeline->getDescriptorUsage(dsIdx);
+			auto& argBuffDirtyDescs = descSet->getMetalArgumentBufferDirtyDescriptors();
+			auto& resourceUsageDirtyDescs = _metalUsageDirtyDescriptors[dsIdx];
+
+			uint32_t elemIdx = 0;
+			uint32_t nextDSLBindDescIdx = 0;
+			MVKDescriptorSetLayoutBinding* mvkDSLBind = nullptr;
+			id<MTLArgumentEncoder> mtlArgEncoder = pipeline->getMTLArgumentEncoder(dsIdx, stage);
+			if (mtlArgEncoder) {
+				[mtlArgEncoder setArgumentBuffer: descSet->getMetalArgumentBuffer()
+										  offset: descSet->getMetalArgumentBufferOffset()];
+
+				// Only update the descriptors that are actually used by the shaders, and only if
+				// the descriptor is dirty relative to the arg buffer or Metal encoder usage setting.
+				usedDescriptors.enumerateEnabledBits(false, [&](size_t descIdx) {
+					bool argBuffDirty = argBuffDirtyDescs.getBit(descIdx, true);
+					bool resourceUsageDirty = resourceUsageDirtyDescs.getBit(descIdx, true);
+					if (argBuffDirty || resourceUsageDirty) {
+						// Get the layout binding associated with this descriptor.
+						// Assume each layout binding will apply to multiple descriptors
+						// and only fetch a new one when necessary, as it is expensive.
+						if (descIdx >= nextDSLBindDescIdx) {
+							mvkDSLBind = dsLayout->getBindingForDescriptorIndex((uint32_t)descIdx);
+							if ( !mvkDSLBind ) { return false; }	// We've run out of layout bindings
+							nextDSLBindDescIdx = mvkDSLBind->getDescriptorIndex(mvkDSLBind->getDescriptorCount(descSet));
+							elemIdx = 0;
+						}
+						auto* mvkDesc = descSet->getDescriptorAt((uint32_t)descIdx);
+						mvkDesc->encodeToMetalArgumentBuffer(this, mtlArgEncoder, dsIdx,
+															 mvkDSLBind, elemIdx++, stage,
+															 argBuffDirty, true);
+					}
+					return true;
+				});
+
+				[mtlArgEncoder setArgumentBuffer: nil offset: 0];
+			}
+		}
+	}
+}
+
+// Mark the resource usage as needing an update for each Metal render encoder.
+void MVKResourcesCommandEncoderState::markDirty() {
+	MVKCommandEncoderState::markDirty();
+	if (_cmdEncoder->isUsingMetalArgumentBuffers()) {
+		for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {
+			_metalUsageDirtyDescriptors[dsIdx].setAllBits();
+		}
 	}
 }
 
@@ -617,7 +684,7 @@ void MVKGraphicsResourcesCommandEncoderState::offsetZeroDivisorVertexBuffers(MVK
 
 // Mark everything as dirty
 void MVKGraphicsResourcesCommandEncoderState::markDirty() {
-    MVKCommandEncoderState::markDirty();
+	MVKResourcesCommandEncoderState::markDirty();
     for (uint32_t i = kMVKShaderStageVertex; i <= kMVKShaderStageFragment; i++) {
         MVKResourcesCommandEncoderState::markDirty(_shaderStageResourceBindings[i].bufferBindings, _shaderStageResourceBindings[i].areBufferBindingsDirty);
         MVKResourcesCommandEncoderState::markDirty(_shaderStageResourceBindings[i].textureBindings, _shaderStageResourceBindings[i].areTextureBindingsDirty);
@@ -800,6 +867,19 @@ void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKMTLBuff
 	}
 }
 
+void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
+																				MTLResourceUsage mtlUsage,
+																				MTLRenderStages mtlStages) {
+	auto* mtlRendEnc = _cmdEncoder->_mtlRenderEncoder;
+	if (mtlRendEnc && mtlStages) {
+		if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
+			[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: mtlStages];
+		} else {
+			[mtlRendEnc useResource: mtlResource usage: mtlUsage];
+		}
+	}
+}
+
 
 #pragma mark -
 #pragma mark MVKComputeResourcesCommandEncoderState
@@ -830,7 +910,7 @@ void MVKComputeResourcesCommandEncoderState::bindBufferSizeBuffer(const MVKShade
 
 // Mark everything as dirty
 void MVKComputeResourcesCommandEncoderState::markDirty() {
-    MVKCommandEncoderState::markDirty();
+    MVKResourcesCommandEncoderState::markDirty();
     MVKResourcesCommandEncoderState::markDirty(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty);
     MVKResourcesCommandEncoderState::markDirty(_resourceBindings.textureBindings, _resourceBindings.areTextureBindingsDirty);
     MVKResourcesCommandEncoderState::markDirty(_resourceBindings.samplerStateBindings, _resourceBindings.areSamplerStateBindingsDirty);
@@ -902,6 +982,13 @@ MVKPipeline* MVKComputeResourcesCommandEncoderState::getPipeline() {
 
 void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) {
 	bindBuffer(buffBind);
+}
+
+void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
+																			   MTLResourceUsage mtlUsage,
+																			   MTLRenderStages mtlStages) {
+	auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
+	[mtlCompEnc useResource: mtlResource usage: mtlUsage];
 }
 
 

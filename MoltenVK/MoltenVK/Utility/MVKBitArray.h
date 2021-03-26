@@ -34,9 +34,11 @@ class MVKBitArray {
 
 public:
 
-	/** Returns the value of the bit. */
-	inline bool getBit(size_t bitIndex) {
-		return mvkIsAnyFlagEnabled(_pSections[getIndexOfSection(bitIndex)], getSectionSetMask(bitIndex));
+	/** Returns the value of the bit, and optionally clears that bit if it was set. */
+	inline bool getBit(size_t bitIndex, bool shouldClear = false) {
+		bool val = mvkIsAnyFlagEnabled(_pSections[getIndexOfSection(bitIndex)], getSectionSetMask(bitIndex));
+		if (shouldClear && val) { clearBit(bitIndex); }
+		return val;
 	}
 
 	/** Sets the value of the bit to the val (or to 1 by default). */
@@ -132,22 +134,47 @@ public:
 	/** Returns whether this array is empty. */
 	inline bool empty() { return !_bitCount; }
 
-	/** Resize this array to the specified number of bits, and sets the initial value of all the bits. */
+	/**
+	 * Resize this array to the specified number of bits. The value of existing
+	 * bits that fit within the new size are retained, and any new bits that
+	 * are added to accommodate the new size are set to the given value.
+	 * Consumed memory is retained unless the size is set to zero.
+	 */
 	inline void resize(size_t size = 0, bool val = false) {
-		free(_pSections);
+		size_t oldBitCnt = _bitCount;
+		size_t oldSecCnt = getSectionCount();
 
 		_bitCount = size;
-		_pSections = _bitCount ? (uint64_t*)malloc(getSectionCount() * SectionByteCount) : nullptr;
-		if (val) {
-			setAllBits();
-		} else {
-			clearAllBits();
+		size_t newSecCnt = getSectionCount();
+
+		if (newSecCnt > oldSecCnt) {
+			uint64_t* pOldSecs = _pSections;
+			size_t oldByteCnt = oldSecCnt * SectionByteCount;
+			size_t newByteCnt = newSecCnt * SectionByteCount;
+
+			// Allocate new memory and fill it with the new initial value
+			_pSections = _bitCount ? (uint64_t*)malloc(newByteCnt) : nullptr;
+			if (_pSections) { memset(_pSections, val ? ~0 : 0, newByteCnt); }
+
+			// Copy the old contents to the new memory, and fill any bits in the old
+			// last section that were beyond the old bit count with the new initial value.
+			if (_pSections && pOldSecs) { memcpy(_pSections, pOldSecs, oldByteCnt); }
+			size_t oldEndBitCnt = oldSecCnt << SectionMaskSize;
+			for (size_t bitIdx = oldBitCnt; bitIdx < oldEndBitCnt; bitIdx++) { setBit(bitIdx, val); }
+
+			// If the entire old array and the new array are cleared, move the indicated to the new end.
+			if (_minUnclearedSectionIndex == oldSecCnt && !val) { _minUnclearedSectionIndex = newSecCnt; }
+
+			free(pOldSecs);
+		} else if (newSecCnt == 0) {
+			free(_pSections);
+			_pSections = nullptr;
+			_minUnclearedSectionIndex = 0;
 		}
 	}
 
 	/** Constructs an instance for the specified number of bits, and sets the initial value of all the bits. */
 	MVKBitArray(size_t size = 0, bool val = false) {
-		_pSections = nullptr;
 		resize(size, val);
 	}
 
@@ -195,7 +222,7 @@ protected:
 		_minUnclearedSectionIndex = sectionValue ? 0 : secCnt;
 	}
 
-	uint64_t* _pSections;
-	size_t _bitCount;
-	size_t _minUnclearedSectionIndex;	// Tracks where to start looking for bits that are set
+	uint64_t* _pSections = nullptr;
+	size_t _bitCount = 0;
+	size_t _minUnclearedSectionIndex = 0;	// Tracks where to start looking for bits that are set
 };

@@ -453,6 +453,29 @@ bool MVKDescriptorSetLayoutBinding::validate(MVKSampler* mvkSampler) {
 	return true;
 }
 
+MTLRenderStages MVKDescriptorSetLayoutBinding::getMTLRenderStages() {
+	MTLRenderStages mtlStages = 0;
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageMax; stage++) {
+		if (_applyToStage[stage]) {
+			switch (stage) {
+				case kMVKShaderStageVertex:
+				case kMVKShaderStageTessCtl:
+				case kMVKShaderStageTessEval:
+					mtlStages |= MTLRenderStageVertex;
+					break;
+
+				case kMVKShaderStageFragment:
+					mtlStages |= MTLRenderStageFragment;
+					break;
+
+				default:
+					break;
+			}
+		}
+	}
+	return mtlStages;
+}
+
 MVKDescriptorSetLayoutBinding::MVKDescriptorSetLayoutBinding(MVKDevice* device,
 															 MVKDescriptorSetLayout* layout,
 															 const VkDescriptorSetLayoutBinding* pBinding,
@@ -607,6 +630,31 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 
 
 #pragma mark -
+#pragma mark MVKDescriptor
+
+MTLResourceUsage MVKDescriptor::getMTLResourceUsage() {
+	MTLResourceUsage mtlUsage = MTLResourceUsageRead;
+	switch (getDescriptorType()) {
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			mtlUsage |= MTLResourceUsageSample;
+			break;
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			mtlUsage |= MTLResourceUsageWrite;
+			break;
+
+		default:
+			break;
+	}
+	return mtlUsage;
+}
+
+
+#pragma mark -
 #pragma mark MVKBufferDescriptor
 
 // A null cmdEncoder can be passed to perform a validation pass
@@ -645,13 +693,22 @@ void MVKBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoder
 													  uint32_t descSetIndex,
 													  MVKDescriptorSetLayoutBinding* mvkDSLBind,
 													  uint32_t elementIndex,
-													  MVKShaderStage stage) {
-	NSUInteger bufferDynamicOffset = (usesDynamicBufferOffsets()
-									  ? rezEncState->getDynamicBufferOffset(descSetIndex, mvkDSLBind->getDescriptorIndex(elementIndex))
-									  : 0);
-	[mtlArgEncoder setBuffer: _mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil
-					  offset: _mvkBuffer ? _mvkBuffer->getMTLBufferOffset() + _buffOffset + bufferDynamicOffset : 0
-					 atIndex: mvkDSLBind->getMetalArgumentBufferIndex(stage, elementIndex)];
+													  MVKShaderStage stage,
+													  bool encodeToArgBuffer,
+													  bool encodeUsage) {
+	if (encodeToArgBuffer) {
+		NSUInteger bufferDynamicOffset = (usesDynamicBufferOffsets()
+										  ? rezEncState->getDynamicBufferOffset(descSetIndex, mvkDSLBind->getDescriptorIndex(elementIndex))
+										  : 0);
+		[mtlArgEncoder setBuffer: _mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil
+						  offset: _mvkBuffer ? _mvkBuffer->getMTLBufferOffset() + _buffOffset + bufferDynamicOffset : 0
+						 atIndex: mvkDSLBind->getMetalArgumentBufferIndex(stage, elementIndex)];
+	}
+	if (encodeUsage) {
+		rezEncState->encodeArgumentBufferResourceUsage(_mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil,
+													   getMTLResourceUsage(),
+													   mvkDSLBind->getMTLRenderStages());
+	}
 }
 
 void MVKBufferDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -727,10 +784,19 @@ void MVKInlineUniformBlockDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCo
 																  uint32_t descSetIndex,
 																  MVKDescriptorSetLayoutBinding* mvkDSLBind,
 																  uint32_t elementIndex,
-																  MVKShaderStage stage) {
-	[mtlArgEncoder setBuffer: _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil
-					  offset: _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_offset : 0
-					 atIndex: mvkDSLBind->getMetalArgumentBufferIndex(stage)];
+																  MVKShaderStage stage,
+																  bool encodeToArgBuffer,
+																  bool encodeUsage) {
+	if (encodeToArgBuffer) {
+		[mtlArgEncoder setBuffer: _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil
+						  offset: _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_offset : 0
+						 atIndex: mvkDSLBind->getMetalArgumentBufferIndex(stage)];
+	}
+	if (encodeUsage) {
+		rezEncState->encodeArgumentBufferResourceUsage(_mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil,
+													   getMTLResourceUsage(),
+													   mvkDSLBind->getMTLRenderStages());
+	}
 }
 
 void MVKInlineUniformBlockDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -829,7 +895,9 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 													 uint32_t descSetIndex,
 													 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 													 uint32_t elementIndex,
-													 MVKShaderStage stage) {
+													 MVKShaderStage stage,
+													 bool encodeToArgBuffer,
+													 bool encodeUsage) {
 	VkDescriptorType descType = getDescriptorType();
 	uint8_t planeCount = (_mvkImageView) ? _mvkImageView->getPlaneCount() : 1;
 	uint32_t buffArgIdxOffset = mvkDSLBind->getDescriptorCount() * planeCount;
@@ -839,13 +907,26 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 
 		id<MTLTexture> mtlTexture = _mvkImageView ? _mvkImageView->getMTLTexture(planeIndex) : nil;
 		uint32_t texArgIdx = mvkDSLBind->getMetalArgumentBufferIndex(stage, planeDescIdx);
-		[mtlArgEncoder setTexture: mtlTexture atIndex: texArgIdx];
-
+		if (encodeToArgBuffer) {
+			[mtlArgEncoder setTexture: mtlTexture atIndex: texArgIdx];
+		}
+		if (encodeUsage) {
+			rezEncState->encodeArgumentBufferResourceUsage(mtlTexture,
+														   getMTLResourceUsage(),
+														   mvkDSLBind->getMTLRenderStages());
+		}
 		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && mtlTexture) {
 			id<MTLTexture> mtlTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
-			[mtlArgEncoder setBuffer: mtlTex.buffer
-							  offset: mtlTex.bufferOffset
-							 atIndex: texArgIdx + buffArgIdxOffset];
+			if (encodeToArgBuffer) {
+				[mtlArgEncoder setBuffer: mtlTex.buffer
+								  offset: mtlTex.bufferOffset
+								 atIndex: texArgIdx + buffArgIdxOffset];
+			}
+			if (encodeUsage) {
+				rezEncState->encodeArgumentBufferResourceUsage(mtlTex.buffer,
+															   getMTLResourceUsage(),
+															   mvkDSLBind->getMTLRenderStages());
+			}
 		}
 	}
 }
@@ -923,15 +1004,17 @@ void MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(MVKResourcesCommandE
 															uint32_t descSetIndex,
 															MVKDescriptorSetLayoutBinding* mvkDSLBind,
 															uint32_t elementIndex,
-															MVKShaderStage stage) {
-
-	MVKSampler* imutSamp = mvkDSLBind->getImmutableSampler(elementIndex);
-	MVKSampler* mvkSamp = imutSamp ? imutSamp : _mvkSampler;
-	id<MTLSamplerState> mtlSamp = (mvkSamp
-								   ? mvkSamp->getMTLSamplerState()
-								   : mvkDSLBind->getDevice()->getDefaultMTLSamplerState());
-	uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndex(stage, getMetalArgumentBufferSamplerIndexOffset(mvkDSLBind) + elementIndex);
-	[mtlArgEncoder setSamplerState: mtlSamp atIndex: argIdx];
+															MVKShaderStage stage,
+															bool encodeToArgBuffer) {
+	if (encodeToArgBuffer) {
+		MVKSampler* imutSamp = mvkDSLBind->getImmutableSampler(elementIndex);
+		MVKSampler* mvkSamp = imutSamp ? imutSamp : _mvkSampler;
+		id<MTLSamplerState> mtlSamp = (mvkSamp
+									   ? mvkSamp->getMTLSamplerState()
+									   : mvkDSLBind->getDevice()->getDefaultMTLSamplerState());
+		uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndex(stage, getMetalArgumentBufferSamplerIndexOffset(mvkDSLBind) + elementIndex);
+		[mtlArgEncoder setSamplerState: mtlSamp atIndex: argIdx];
+	}
 }
 
 void MVKSamplerDescriptorMixin::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -987,8 +1070,10 @@ void MVKSamplerDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncode
 													   uint32_t descSetIndex,
 													   MVKDescriptorSetLayoutBinding* mvkDSLBind,
 													   uint32_t elementIndex,
-													   MVKShaderStage stage) {
-	MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex, mvkDSLBind, elementIndex, stage);
+													   MVKShaderStage stage,
+													   bool encodeToArgBuffer,
+													   bool encodeUsage) {
+	MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex, mvkDSLBind, elementIndex, stage, encodeToArgBuffer);
 }
 
 void MVKSamplerDescriptor::write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -1035,9 +1120,11 @@ void MVKCombinedImageSamplerDescriptor::encodeToMetalArgumentBuffer(MVKResources
 																	uint32_t descSetIndex,
 																	MVKDescriptorSetLayoutBinding* mvkDSLBind,
 																	uint32_t elementIndex,
-																	MVKShaderStage stage) {
-	MVKImageDescriptor::encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex, mvkDSLBind, elementIndex, stage);
-	MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex, mvkDSLBind, elementIndex, stage);
+																	MVKShaderStage stage,
+																	bool encodeToArgBuffer,
+																	bool encodeUsage) {
+	MVKImageDescriptor::encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex, mvkDSLBind, elementIndex, stage, encodeToArgBuffer, encodeUsage);
+	MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex, mvkDSLBind, elementIndex, stage, encodeToArgBuffer);
 }
 
 uint32_t MVKCombinedImageSamplerDescriptor::getMetalArgumentBufferSamplerIndexOffset(MVKDescriptorSetLayoutBinding* dslBinding) {
@@ -1118,16 +1205,32 @@ void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEn
 														   uint32_t descSetIndex,
 														   MVKDescriptorSetLayoutBinding* mvkDSLBind,
 														   uint32_t elementIndex,
-														   MVKShaderStage stage) {
+														   MVKShaderStage stage,
+														   bool encodeToArgBuffer,
+														   bool encodeUsage) {
 	VkDescriptorType descType = getDescriptorType();
 	id<MTLTexture> mtlTexture = _mvkBufferView ? _mvkBufferView->getMTLTexture() : nil;
 	uint32_t texArgIdx = mvkDSLBind->getMetalArgumentBufferIndex(stage, elementIndex);
-	[mtlArgEncoder setTexture: mtlTexture atIndex: texArgIdx];
+	if (encodeToArgBuffer) {
+		[mtlArgEncoder setTexture: mtlTexture atIndex: texArgIdx];
+	}
+	if (encodeUsage) {
+		rezEncState->encodeArgumentBufferResourceUsage(mtlTexture,
+													   getMTLResourceUsage(),
+													   mvkDSLBind->getMTLRenderStages());
+	}
 
 	if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && mtlTexture) {
-		[mtlArgEncoder setBuffer: mtlTexture.buffer
-						  offset: mtlTexture.bufferOffset
-						 atIndex: texArgIdx + mvkDSLBind->getDescriptorCount()];
+		if (encodeToArgBuffer) {
+			[mtlArgEncoder setBuffer: mtlTexture.buffer
+							  offset: mtlTexture.bufferOffset
+							 atIndex: texArgIdx + mvkDSLBind->getDescriptorCount()];
+		}
+		if (encodeUsage) {
+			rezEncState->encodeArgumentBufferResourceUsage(mtlTexture.buffer,
+														   getMTLResourceUsage(),
+														   mvkDSLBind->getMTLRenderStages());
+		}
 	}
 }
 

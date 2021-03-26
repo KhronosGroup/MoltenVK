@@ -72,6 +72,14 @@ public:
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
 
+	/** Populates the descriptor usage as indicated by the shader converter context. */
+	void populateDescriptorUsage(MVKBitArray& usageArray,
+								 mvk::SPIRVToMSLConversionConfiguration& context,
+								 uint32_t dslIndex);
+
+	/** Returns the binding for the descriptor at the index in a descriptor set. */
+	MVKDescriptorSetLayoutBinding* getBindingForDescriptorIndex(uint32_t descriptorIndex);
+
 	/** Returns true if this layout is for push descriptors only. */
 	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
@@ -91,7 +99,6 @@ protected:
 	inline uint32_t getDescriptorCount() { return _descriptorCount; }
 	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
 	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
-	MVKDescriptorSetLayoutBinding* getBindingForDescriptorIndex(uint32_t descriptorIndex);
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 	inline bool isUsingMetalArgumentBuffer()  { return isUsingMetalArgumentBuffers() && !isPushDescriptorLayout(); };
 
@@ -118,6 +125,9 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_DESCRIPTOR_SET_EXT; }
 
+	/** Returns the layout that defines this descriptor set. */
+	MVKDescriptorSetLayout* getLayout() { return _layout; }
+
 	/** Returns the descriptor type for the specified binding number. */
 	VkDescriptorType getDescriptorType(uint32_t binding);
 
@@ -141,16 +151,28 @@ public:
 							MVKArrayRef<uint32_t> dynamicOffsets,
 							uint32_t& dynamicOffsetIndex);
 
-	/** Encode any dirty descriptors to the arugment buffer. */
-	void encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-									 uint32_t descSetIndex,
-									 MVKShaderStage stage);
-
 	/** Populates the buffer binding with the Metal argument buffer and offset. */
 	void populateMetalArgumentBufferBinding(MVKMTLBufferBinding& buffBind);
 
 	/** Returns an MTLBuffer region allocation. */
 	const MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
+	/**
+	 * Returns the Metal argument buffer to which resources are written,
+	 * or return nil if Metal argument buffers are not being used.
+	 */
+	id<MTLBuffer> getMetalArgumentBuffer();
+
+	/** Returns the offset into the Metal argument buffer to which resources are written. */
+	inline NSUInteger getMetalArgumentBufferOffset() { return _metalArgumentBufferOffset; }
+
+	/** Returns an array indicating the descriptors that have changed since the Metal argument buffer was last updated. */
+	MVKBitArray& getMetalArgumentBufferDirtyDescriptors() { return _metalArgumentBufferDirtyDescriptors; }
+
+	/** Returns the descriptor at an index. */
+	MVKDescriptor* getDescriptorAt(uint32_t descIndex) { return _descriptors[descIndex]; }
+
+	/** Returns the number of descriptors in this descriptor set. */
+	uint32_t getDescriptorCount() { return (uint32_t)_descriptors.size(); }
 
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 

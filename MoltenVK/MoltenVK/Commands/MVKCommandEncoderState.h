@@ -23,6 +23,7 @@
 #include "MVKDevice.h"
 #include "MVKDescriptor.h"
 #include "MVKSmallVector.h"
+#include "MVKBitArray.h"
 #include <unordered_map>
 
 class MVKCommandEncoder;
@@ -68,10 +69,16 @@ public:
      */
 	virtual void beginMetalRenderPass() { if (_isModified) { markDirty(); } }
 
-	/**
-	 * Called automatically when a Metal render pass ends.
-	 */
+	/** Called automatically when a Metal render pass ends. */
 	virtual void endMetalRenderPass() { }
+
+	/**
+	 * Called automatically when a Metal compute pass begins. If the contents have been
+	 * modified from the default values, this instance is marked as dirty, so the contents
+	 * will be encoded to Metal, otherwise it is marked as clean, so the contents will NOT
+	 * be encoded. Default state can be left unencoded on a new Metal encoder.
+	 */
+	virtual void beginMetalComputeEncoding() { if (_isModified) { markDirty(); } }
 
     /**
      * If the content of this instance is dirty, marks this instance as no longer dirty
@@ -105,8 +112,8 @@ class MVKPipelineCommandEncoderState : public MVKCommandEncoderState {
 
 public:
 
-    /** Sets the pipeline during pipeline binding. */
-    void setPipeline(MVKPipeline* pipeline);
+	/** Binds the pipeline. */
+    void bindPipeline(MVKPipeline* pipeline);
 
     /** Returns the currently bound pipeline. */
     MVKPipeline* getPipeline();
@@ -352,19 +359,25 @@ public:
 						   uint32_t& dynamicOffsetIndex);
 
 	/** Returns the dynamic buffer offset for the descriptor in the descriptor set. */
-	inline uint32_t getDynamicBufferOffset(uint32_t descSetIndex, uint32_t descIndex) {
+	uint32_t getDynamicBufferOffset(uint32_t descSetIndex, uint32_t descIndex) {
 		return _dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)];
 	}
 
 	/** Sets the dynamic buffer offset for the descriptor in the descriptor set. */
-	inline void bindDynamicBufferOffset(uint32_t descSetIndex, uint32_t descIndex, uint32_t offset) {
+	void bindDynamicBufferOffset(uint32_t descSetIndex, uint32_t descIndex, uint32_t offset) {
 		_dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)] = offset;
 	}
+
+	/** Encodes the Metal resource to the Metal command encoder. */
+	virtual void encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
+										   MTLResourceUsage mtlUsage,
+										   MTLRenderStages mtlStages) = 0;
 
     MVKResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) :
 		MVKCommandEncoderState(cmdEncoder), _boundDescriptorSets{} {}
 
 protected:
+	void markDirty() override;
 
     // Template function that marks both the vector and all binding elements in the vector as dirty.
     template<class T>
@@ -453,6 +466,7 @@ protected:
 	};
 
 	MVKDescriptorSet* _boundDescriptorSets[kMVKMaxDescriptorSetCount];
+	MVKBitArray _metalUsageDirtyDescriptors[kMVKMaxDescriptorSetCount];
 
 	std::unordered_map<MVKDescSetDescKey, uint32_t> _dynamicOffsets;
 
@@ -514,6 +528,10 @@ public:
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 
+	void encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
+										   MTLResourceUsage mtlUsage,
+										   MTLRenderStages mtlStages) override;
+
 	/** Offset all buffers for vertex attribute bindings with zero divisors by the given number of strides. */
 	void offsetZeroDivisorVertexBuffers(MVKGraphicsStage stage, MVKGraphicsPipeline* pipeline, uint32_t firstInstance);
 
@@ -556,6 +574,10 @@ public:
 
     /** Sets the current buffer size buffer state. */
     void bindBufferSizeBuffer(const MVKShaderImplicitRezBinding& binding, bool needSizeBuffer);
+
+	void encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
+										   MTLResourceUsage mtlUsage,
+										   MTLRenderStages mtlStages) override;
 
     void markDirty() override;
 

@@ -38,11 +38,10 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	if (!cmdEncoder) { clearConfigurationResult(); }
 	if (_isPushDescriptorLayout ) { return; }
 
-	if (isUsingMetalArgumentBuffer()) {
-		if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex,
-														descSet, dslMTLRezIdxOffsets,
-														dynamicOffsets, dynamicOffsetIndex); }
-	} else {
+	if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex,
+													descSet, dslMTLRezIdxOffsets,
+													dynamicOffsets, dynamicOffsetIndex); }
+	if ( !isUsingMetalArgumentBuffers() ) {
 		for (auto& dslBind : _bindings) {
 			dslBind.bind(cmdEncoder, descSet, dslMTLRezIdxOffsets, dynamicOffsets, dynamicOffsetIndex);
 		}
@@ -184,6 +183,21 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConve
 	}
 }
 
+void MVKDescriptorSetLayout::populateDescriptorUsage(MVKBitArray& usageArray,
+													 SPIRVToMSLConversionConfiguration& context,
+													 uint32_t dslIndex) {
+	uint32_t bindCnt = (uint32_t)_bindings.size();
+	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
+		auto& dslBind = _bindings[bindIdx];
+		if (context.isResourceUsed(dslIndex, dslBind.getBinding())) {
+			uint32_t elemCnt = dslBind.getDescriptorCount();
+			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
+				usageArray.setBit(dslBind.getDescriptorIndex(elemIdx));
+			}
+		}
+	}
+}
+
 id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(uint32_t stage,
 																	 mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 																	 uint32_t descSetIdx) {
@@ -273,6 +287,8 @@ MVKDescriptor* MVKDescriptorSet::getDescriptor(uint32_t binding, uint32_t elemen
 	return _descriptors[_layout->getDescriptorIndex(binding, elementIndex)];
 }
 
+id<MTLBuffer> MVKDescriptorSet::getMetalArgumentBuffer() { return _pool->_metalArgumentBuffer; }
+
 template<typename DescriptorAction>
 void MVKDescriptorSet::write(const DescriptorAction* pDescriptorAction,
 							 size_t stride,
@@ -339,34 +355,6 @@ void MVKDescriptorSet::bindDynamicOffsets(MVKResourcesCommandEncoderState* rezEn
 		_metalArgumentBufferDirtyDescriptors.setBit(descIdx);
 		return true;
 	});
-}
-
-void MVKDescriptorSet::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderState* rezEncState,
-												   uint32_t descSetIndex,
-												   MVKShaderStage stage) {
-	uint32_t elemIdx = 0;
-	uint32_t nextDSLBindDescIdx = 0;
-	MVKDescriptorSetLayoutBinding* mvkDSLBind = nullptr;
-	id<MTLArgumentEncoder> mtlArgEncoder = rezEncState->getPipeline()->getMTLArgumentEncoder(descSetIndex, stage);
-	if ( !mtlArgEncoder ) { return; }
-
-	[mtlArgEncoder setArgumentBuffer: _pool->_metalArgumentBuffer offset: _metalArgumentBufferOffset];
-
-	_metalArgumentBufferDirtyDescriptors.enumerateEnabledBits(true, [&](size_t descIdx) {
-		// Get the layout binding associated with this descriptor.
-		// Assume each layout binding will apply to multiple descriptors and only fetch a new one when necessary.
-		if (descIdx >= nextDSLBindDescIdx) {
-			mvkDSLBind = _layout->getBindingForDescriptorIndex((uint32_t)descIdx);
-			if ( !mvkDSLBind ) { return false; }	// We've run out of layout bindings
-			nextDSLBindDescIdx = mvkDSLBind->getDescriptorIndex(mvkDSLBind->getDescriptorCount(this));
-			elemIdx = 0;
-		}
-		_descriptors[descIdx]->encodeToMetalArgumentBuffer(rezEncState, mtlArgEncoder, descSetIndex,
-														   mvkDSLBind, elemIdx++, stage);
-		return true;
-	});
-
-	[mtlArgEncoder setArgumentBuffer: nil offset: 0];
 }
 
 void MVKDescriptorSet::populateMetalArgumentBufferBinding(MVKMTLBufferBinding& buffBind) {

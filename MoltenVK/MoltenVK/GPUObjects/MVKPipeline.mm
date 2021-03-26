@@ -172,11 +172,16 @@ void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 	}
 }
 
+// For each descriptor set, mark the descriptors that are used by the shaders,
+// and build Metal argument encoders that match the shader requirements.
 void MVKPipeline::addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLConversionConfiguration& shaderConfig) {
-	uint32_t dsCnt = layout->getDescriptorSetCount();
+	if ( !isUsingMetalArgumentBuffers() ) { return; }
+
 	uint32_t stage = kMVKShaderStageVertex;		// Nominal stage. Currently all stages use same encoders.
-	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
-		_mtlArgumentEncoders[dsIdx] = layout->_descriptorSetLayouts[dsIdx]->newMTLArgumentEncoder(stage, shaderConfig, dsIdx);	// retained
+	for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
+		auto* mvkDSL = layout->_descriptorSetLayouts[dsIdx];
+		mvkDSL->populateDescriptorUsage(_descriptorUsage[dsIdx], shaderConfig, dsIdx);
+		_mtlArgumentEncoders[dsIdx] = mvkDSL->newMTLArgumentEncoder(stage, shaderConfig, dsIdx);	// retained
 	}
 }
 
@@ -185,7 +190,20 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 	_pipelineCache(pipelineCache),
 	_pushConstantsMTLResourceIndexes(layout->getPushConstantBindings()),
 	_fullImageViewSwizzle(mvkConfig()->fullImageViewSwizzle),
-	_mtlArgumentEncoders{} {}
+	_mtlArgumentEncoders{},
+	_descriptorSetCount(layout->getDescriptorSetCount()) {
+		initDescriptorUsage(layout);
+	}
+
+void MVKPipeline::initDescriptorUsage(MVKPipelineLayout* layout) {
+	_descriptorSetCount = layout->getDescriptorSetCount();
+
+	if (isUsingMetalArgumentBuffers() ) {
+		for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
+			_descriptorUsage[dsIdx].resize(layout->getDescriptorCount(dsIdx));
+		}
+	}
+}
 
 MVKPipeline::~MVKPipeline() {
 	for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {

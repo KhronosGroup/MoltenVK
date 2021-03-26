@@ -298,6 +298,9 @@ public:
 	/** Returns the index of the currently active multiview subpass, or zero if the current render pass is not multiview. */
 	uint32_t getMultiviewPassIndex();
 
+	/** Begins a Metal compute encoding. */
+	void beginMetalComputeEncoding();
+
     /** Binds a pipeline to a bind point. */
     void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline);
 

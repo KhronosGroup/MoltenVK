@@ -159,6 +159,9 @@ namespace mvk {
         /** Returns whether the vertex buffer at the specified Vulkan binding is used by the shader. */
 		bool isVertexBufferUsed(uint32_t binding) const { return countShaderInputsAt(binding) > 0; }
 
+		/** Returns whether the resource at the specified descriptor set binding is used by the shader. */
+		bool isResourceUsed(uint32_t descSet, uint32_t binding) const;
+
 		/** Returns the MTLTextureType of the image resource at the descriptor set and binding. */
 		MTLTextureType getMTLTextureType(uint32_t descSet, uint32_t binding) const;
 

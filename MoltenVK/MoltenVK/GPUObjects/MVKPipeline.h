@@ -23,6 +23,7 @@
 #include "MVKShaderModule.h"
 #include "MVKSync.h"
 #include "MVKSmallVector.h"
+#include "MVKBitArray.h"
 #include <MoltenVKShaderConverter/SPIRVReflection.h>
 #include <MoltenVKShaderConverter/SPIRVToMSLConverter.h>
 #include <unordered_map>
@@ -104,6 +105,9 @@ public:
 	/** Returns the number of descriptor sets in this pipeline layout. */
 	uint32_t getDescriptorSetCount() { return (uint32_t)_descriptorSetLayouts.size(); }
 
+	/** Returns the number of descriptors in the descriptor set layout. */
+	uint32_t getDescriptorCount(uint32_t descSetIndex) { return _descriptorSetLayouts[descSetIndex]->getDescriptorCount(); }
+
 	/** Returns the push constant binding info. */
 	const MVKShaderResourceBinding& getPushConstantBindings() { return _pushConstantsMTLResourceIndexes; }
 
@@ -175,9 +179,15 @@ public:
 	bool hasValidMTLPipelineStates() { return _hasValidMTLPipelineStates; }
 
 	/** Returns the MTLArgumentEncoder for the descriptor set. */
-	inline id<MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) {
+	id<MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) {
 		return _mtlArgumentEncoders[descSetIndex];
 	}
+
+	/** Returns the number of descriptor sets in this pipeline layout. */
+	uint32_t getDescriptorSetCount() { return _descriptorSetCount; }
+
+	/** Returns the descriptor usage array for the descriptor set. */
+	MVKBitArray& getDescriptorUsage(uint32_t descSetIndex) { return _descriptorUsage[descSetIndex]; }
 
 	/** A mutex lock to protect access to the Metal argument encoders. */
 	std::mutex _mtlArgumentEncodingLock;
@@ -190,13 +200,16 @@ public:
 protected:
 	void propagateDebugName() override {}
 	void addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLConversionConfiguration& shaderConfig);
+	void initDescriptorUsage(MVKPipelineLayout* layout);
 
 	MVKPipelineCache* _pipelineCache;
+	MVKBitArray _descriptorUsage[kMVKMaxDescriptorSetCount];
 	id<MTLArgumentEncoder> _mtlArgumentEncoders[kMVKMaxDescriptorSetCount];
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
+	uint32_t _descriptorSetCount;
 	bool _fullImageViewSwizzle;
 	bool _hasValidMTLPipelineStates = true;
 

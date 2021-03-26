@@ -120,6 +120,9 @@ public:
 		return _mtlResourceIndexOffsets.stages[stage].resourceIndex + elementIndex;
 	}
 
+	/** Returns a bitwise OR of Metal render stages. */
+	MTLRenderStages getMTLRenderStages();
+
 	MVKDescriptorSetLayoutBinding(MVKDevice* device,
 								  MVKDescriptorSetLayout* layout,
 								  const VkDescriptorSetLayoutBinding* pBinding,
@@ -193,7 +196,9 @@ public:
 											 uint32_t descSetIndex,
 											 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 											 uint32_t elementIndex,
-											 MVKShaderStage stage) = 0;
+											 MVKShaderStage stage,
+											 bool encodeToArgBuffer,
+											 bool encodeUsage) = 0;
 
 	/**
 	 * Updates the internal binding from the specified content. The format of the content depends
@@ -230,6 +235,9 @@ public:
 
 	~MVKDescriptor() { reset(); }
 
+protected:
+	MTLResourceUsage getMTLResourceUsage();
+
 };
 
 
@@ -253,7 +261,9 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
-									 MVKShaderStage stage) override;
+									 MVKShaderStage stage,
+									 bool encodeToArgBuffer,
+									 bool encodeUsage) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
@@ -340,7 +350,9 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
-									 MVKShaderStage stage) override;
+									 MVKShaderStage stage,
+									 bool encodeToArgBuffer,
+									 bool encodeUsage) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
@@ -387,7 +399,9 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
-									 MVKShaderStage stage) override;
+									 MVKShaderStage stage,
+									 bool encodeToArgBuffer,
+									 bool encodeUsage) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
@@ -465,7 +479,8 @@ protected:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
-									 MVKShaderStage stage);
+									 MVKShaderStage stage,
+									 bool encodeToArgBuffer);
 
 	/**
 	 * Offset to the first sampler index in the argument buffer. Defaults to zero for simple sampler
@@ -517,7 +532,9 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
-									 MVKShaderStage stage) override;
+									 MVKShaderStage stage,
+									 bool encodeToArgBuffer,
+									 bool encodeUsage) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
@@ -562,7 +579,9 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
-									 MVKShaderStage stage) override;
+									 MVKShaderStage stage,
+									 bool encodeToArgBuffer,
+									 bool encodeUsage) override;
 
 	uint32_t getMetalArgumentBufferSamplerIndexOffset(MVKDescriptorSetLayoutBinding* dslBinding) override;
 
@@ -607,7 +626,9 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
-									 MVKShaderStage stage) override;
+									 MVKShaderStage stage,
+									 bool encodeToArgBuffer,
+									 bool encodeUsage) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,

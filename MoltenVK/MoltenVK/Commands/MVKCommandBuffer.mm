@@ -415,11 +415,11 @@ NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName() {
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
     switch (pipelineBindPoint) {
         case VK_PIPELINE_BIND_POINT_GRAPHICS:
-            _graphicsPipelineState.setPipeline(pipeline);
+            _graphicsPipelineState.bindPipeline(pipeline);
             break;
 
         case VK_PIPELINE_BIND_POINT_COMPUTE:
-            _computePipelineState.setPipeline(pipeline);
+            _computePipelineState.bindPipeline(pipeline);
             break;
 
         default:
@@ -536,6 +536,12 @@ void MVKCommandEncoder::clearRenderArea() {
 	}
 }
 
+void MVKCommandEncoder::beginMetalComputeEncoding() {
+	_computePipelineState.beginMetalComputeEncoding();
+	_computeResourcesState.beginMetalComputeEncoding();
+	_computePushConstants.beginMetalComputeEncoding();
+}
+
 void MVKCommandEncoder::finalizeDispatchState() {
     _computePipelineState.encode();    // Must do first..it sets others
     _computeResourcesState.encode();
@@ -593,6 +599,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	if ( !_mtlComputeEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];		// not retained
+		beginMetalComputeEncoding();
 	}
 	if (_mtlComputeEncoderUse != cmdUse) {
 		_mtlComputeEncoderUse = cmdUse;
