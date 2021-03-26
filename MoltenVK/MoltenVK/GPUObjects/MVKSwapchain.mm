@@ -464,9 +464,16 @@ void MVKSwapchain::recordPresentTime(MVKPresentTimingInfo presentTimingInfo, uin
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
 }
 
-MVKSwapchain::~MVKSwapchain() {
+// A retention loop exists between the swapchain and its images. The swapchain images
+// retain the swapchain because they can be in flight when the app destroys the swapchain.
+// Release the images now, when the app destroys the swapchain, so they will be destroyed when
+// no longer held by the presentation flow, and will in turn release the swapchain for destruction.
+void MVKSwapchain::destroy() {
 	for (auto& img : _presentableImages) { _device->destroyPresentableSwapchainImage(img, NULL); }
+	MVKVulkanAPIDeviceObject::destroy();
+}
 
+MVKSwapchain::~MVKSwapchain() {
     if (_licenseWatermark) { _licenseWatermark->destroy(); }
     [this->_layerObserver release];
 }
