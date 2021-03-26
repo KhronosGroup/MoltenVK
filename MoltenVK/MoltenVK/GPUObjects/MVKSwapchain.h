@@ -97,6 +97,8 @@ public:
 	/** VK_GOOGLE_display_timing - returns past presentation times */
 	VkResult getPastPresentationTiming(uint32_t *pCount, VkPastPresentationTimingGOOGLE *pPresentationTimings);
 	
+	void destroy() override;
+
 #pragma mark Construction
 	
 	MVKSwapchain(MVKDevice* device, const VkSwapchainCreateInfoKHR* pCreateInfo);

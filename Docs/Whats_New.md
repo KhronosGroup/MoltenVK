@@ -22,6 +22,7 @@ Released TBD
 - Always explicitly set `CAMetalLayer` colorspace property based on _Vulkan_ parameters, 
   and don't rely on _Metal_ default values.
 - Avoid use of _Metal_ renderpass load and store actions on memoryless attachments.
+- Fix memory leak on swapchain destruction.
 - Remove project qualifiers from references to `SPIRV-Cross` header files.
 - `MVKDescriptorPool` pools its descriptor sets.
 - Enable `MVKConfiguration::preallocateDescriptors` and `MVK_CONFIG_PREALLOCATE_DESCRIPTORS` 
