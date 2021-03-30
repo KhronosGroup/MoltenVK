@@ -113,8 +113,6 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 	if (resourceBinding.msl_buffer != other.resourceBinding.msl_buffer) { return false; }
 	if (resourceBinding.msl_texture != other.resourceBinding.msl_texture) { return false; }
 	if (resourceBinding.msl_sampler != other.resourceBinding.msl_sampler) { return false; }
-	if (mtlTextureType != other.mtlTextureType) { return false; }
-
 	if (requiresConstExprSampler != other.requiresConstExprSampler) { return false; }
 
 	// If requiresConstExprSampler is false, constExprSampler can be ignored
@@ -167,7 +165,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::stageSupportsVertexAtt
 // Check them all in case inactive VA's duplicate locations used by active VA's.
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isShaderInputLocationUsed(uint32_t location) const {
     for (auto& si : shaderInputs) {
-        if ((si.shaderInput.location == location) && si.isUsedByShader) { return true; }
+        if ((si.shaderInput.location == location) && si.outIsUsedByShader) { return true; }
     }
     return false;
 }
@@ -175,7 +173,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isShaderInputLocationU
 MVK_PUBLIC_SYMBOL uint32_t SPIRVToMSLConversionConfiguration::countShaderInputsAt(uint32_t binding) const {
 	uint32_t siCnt = 0;
 	for (auto& si : shaderInputs) {
-		if ((si.binding == binding) && si.isUsedByShader) { siCnt++; }
+		if ((si.binding == binding) && si.outIsUsedByShader) { siCnt++; }
 	}
 	return siCnt;
 }
@@ -184,7 +182,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isResourceUsed(uint32_
 	for (auto& rb : resourceBindings) {
 		auto& rbb = rb.resourceBinding;
 		if (rbb.desc_set == descSet && rbb.binding == binding) {
-			return rb.isUsedByShader;
+			return rb.outIsUsedByShader;
 		}
 	}
 	return false;
@@ -193,16 +191,16 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isResourceUsed(uint32_
 MVK_PUBLIC_SYMBOL MTLTextureType SPIRVToMSLConversionConfiguration::getMTLTextureType(uint32_t descSet, uint32_t binding) const {
 	for (auto& rb : resourceBindings) {
 		auto& rbb = rb.resourceBinding;
-		if (rb.isUsedByShader && rbb.desc_set == descSet && rbb.binding == binding) {
-			return rb.mtlTextureType;
+		if (rb.outIsUsedByShader && rbb.desc_set == descSet && rbb.binding == binding) {
+			return rb.outMTLTextureType;
 		}
 	}
 	return MTLTextureType2D;
 }
 
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInputsAndResourcesUsed() {
-	for (auto& si : shaderInputs) { si.isUsedByShader = true; }
-	for (auto& rb : resourceBindings) { rb.isUsedByShader = true; }
+	for (auto& si : shaderInputs) { si.outIsUsedByShader = true; }
+	for (auto& rb : resourceBindings) { rb.outIsUsedByShader = true; }
 }
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToMSLConversionConfiguration& other) const {
@@ -210,11 +208,11 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
     if ( !options.matches(other.options) ) { return false; }
 
 	for (const auto& si : shaderInputs) {
-		if (si.isUsedByShader && !containsMatching(other.shaderInputs, si)) { return false; }
+		if (si.outIsUsedByShader && !containsMatching(other.shaderInputs, si)) { return false; }
 	}
 
     for (const auto& rb : resourceBindings) {
-        if (rb.isUsedByShader && !containsMatching(other.resourceBindings, rb)) { return false; }
+        if (rb.outIsUsedByShader && !containsMatching(other.resourceBindings, rb)) { return false; }
     }
 
 	for (uint32_t dsIdx : discreteDescriptorSets) {
@@ -228,18 +226,19 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::alignWith(const SPIRVToMSLConversionConfiguration& srcContext) {
 
 	for (auto& si : shaderInputs) {
-		si.isUsedByShader = false;
+		si.outIsUsedByShader = false;
 		for (auto& srcSI : srcContext.shaderInputs) {
-			if (si.matches(srcSI)) { si.isUsedByShader = srcSI.isUsedByShader; }
+			if (si.matches(srcSI)) { si.outIsUsedByShader = srcSI.outIsUsedByShader; }
 		}
 	}
 
     for (auto& rb : resourceBindings) {
-        rb.isUsedByShader = false;
+        rb.outIsUsedByShader = false;
+		rb.outMTLTextureType = MTLTextureType2D;
         for (auto& srcRB : srcContext.resourceBindings) {
 			if (rb.matches(srcRB)) {
-				rb.mtlTextureType = srcRB.mtlTextureType;
-				rb.isUsedByShader = srcRB.isUsedByShader;
+				rb.outMTLTextureType = srcRB.outMTLTextureType;
+				rb.outIsUsedByShader = srcRB.outIsUsedByShader;
 			}
         }
     }
@@ -355,15 +354,15 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	_shaderConversionResults.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
 
 	for (auto& ctxSI : context.shaderInputs) {
-		ctxSI.isUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderInput.location);
+		ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderInput.location);
 	}
 	for (auto& ctxRB : context.resourceBindings) {
-		ctxRB.mtlTextureType = getMTLTextureType(pMSLCompiler,
-												 ctxRB.resourceBinding.desc_set,
-												 ctxRB.resourceBinding.binding);
-		ctxRB.isUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
-																		  ctxRB.resourceBinding.desc_set,
-																		  ctxRB.resourceBinding.binding);
+		ctxRB.outMTLTextureType = getMTLTextureType(pMSLCompiler,
+													ctxRB.resourceBinding.desc_set,
+													ctxRB.resourceBinding.binding);
+		ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
+																			 ctxRB.resourceBinding.desc_set,
+																			 ctxRB.resourceBinding.binding);
 	}
 
 	delete pMSLCompiler;

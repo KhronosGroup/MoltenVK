@@ -2137,16 +2137,16 @@ namespace mvk {
 	void serialize(Archive & archive, MSLShaderInput& si) {
 		archive(si.shaderInput,
 				si.binding,
-				si.isUsedByShader);
+				si.outIsUsedByShader);
 	}
 
 	template<class Archive>
 	void serialize(Archive & archive, MSLResourceBinding& rb) {
 		archive(rb.resourceBinding,
 				rb.constExprSampler,
-				rb.mtlTextureType,
+				rb.outMTLTextureType,
 				rb.requiresConstExprSampler,
-				rb.isUsedByShader);
+				rb.outIsUsedByShader);
 	}
 
 	template<class Archive>

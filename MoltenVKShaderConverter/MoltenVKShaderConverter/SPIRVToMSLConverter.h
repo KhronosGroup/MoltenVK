@@ -64,7 +64,7 @@ namespace mvk {
 	/**
 	 * Defines MSL characteristics of a vertex attribute at a particular location.
 	 *
-	 * The isUsedByShader flag is set to true during conversion of SPIR-V to MSL if the shader
+	 * The outIsUsedByShader flag is set to true during conversion of SPIR-V to MSL if the shader
 	 * makes use of this vertex attribute. This allows a pipeline to be optimized, and for two
 	 * shader conversion configurations to be compared only against the attributes that are
 	 * actually used by the shader.
@@ -74,13 +74,12 @@ namespace mvk {
 	 */
 	typedef struct MSLShaderInput {
 		SPIRV_CROSS_NAMESPACE::MSLShaderInput shaderInput;
-
 		uint32_t binding = 0;
-		bool isUsedByShader = false;
+		bool outIsUsedByShader = false;
 
 		/**
 		 * Returns whether the specified vertex attribute match this one.
-		 * It does if all corresponding elements except isUsedByShader are equal.
+		 * It does if all corresponding elements except outIsUsedByShader are equal.
 		 */
 		bool matches(const MSLShaderInput& other) const;
 
@@ -90,17 +89,20 @@ namespace mvk {
 	 * Matches the binding index of a MSL resource for a binding within a descriptor set.
 	 * Taken together, the stage, desc_set and binding combine to form a reference to a resource
 	 * descriptor used in a particular shading stage. Generally, only one of the buffer, texture,
-	 * or sampler elements will be populated. The isUsedByShader flag is set to true during
+	 * or sampler elements will be populated. The outIsUsedByShader flag is set to true during
 	 * compilation of SPIR-V to MSL if the shader makes use of this vertex attribute.
 	 *
 	 * If requiresConstExprSampler is true, the resource is a sampler whose content must be
 	 * hardcoded into the MSL as a constexpr type, instead of passed in as a runtime-bound variable.
 	 * The content of that constexpr sampler is defined in the constExprSampler parameter.
 	 *
-	 * The isUsedByShader flag is set to true during conversion of SPIR-V to MSL if the shader
+	 * The outIsUsedByShader and outMTLTextureType values are set by the shader converter
+	 * based on the content of the SPIR-V (and resulting MSL), and provide feedback to the
+	 * pipeline about shader content. The outIsUsedByShader value is set to true if the shader
 	 * makes use of this resource binding. This allows a pipeline to be optimized, and for two
 	 * shader conversion configurations to be compared only against the resource bindings that
-	 * are actually used by the shader.
+	 * are actually used by the shader. The outMTLTextureType value provides feedback to the
+	 * pipeline regarding the texture type expected by the shader.
 	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
@@ -108,14 +110,13 @@ namespace mvk {
 	typedef struct MSLResourceBinding {
 		SPIRV_CROSS_NAMESPACE::MSLResourceBinding resourceBinding;
 		SPIRV_CROSS_NAMESPACE::MSLConstexprSampler constExprSampler;
-		MTLTextureType mtlTextureType = MTLTextureType2D;
+		MTLTextureType outMTLTextureType = MTLTextureType2D;
 		bool requiresConstExprSampler = false;
-
-		bool isUsedByShader = false;
+		bool outIsUsedByShader = false;
 
 		/**
 		 * Returns whether the specified resource binding match this one.
-		 * It does if all corresponding elements except isUsedByShader are equal.
+		 * It does if all corresponding elements except outMTLTextureType and outIsUsedByShader are equal.
 		 */
 		bool matches(const MSLResourceBinding& other) const;
 
