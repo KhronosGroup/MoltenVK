@@ -30,6 +30,7 @@ using namespace std;
 #pragma mark MVKCommandEncoderState
 
 MVKVulkanAPIObject* MVKCommandEncoderState::getVulkanAPIObject() { return _cmdEncoder->getVulkanAPIObject(); };
+MVKDevice* MVKCommandEncoderState::getDevice() { return _cmdEncoder->getDevice(); }
 
 
 #pragma mark -
@@ -58,7 +59,7 @@ void MVKViewportCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> 
 												  bool isSettingDynamically) {
 
 	size_t vpCnt = viewports.size;
-	uint32_t maxViewports = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
+	uint32_t maxViewports = getDevice()->_pProperties->limits.maxViewports;
 	if ((firstViewport + vpCnt > maxViewports) ||
 		(firstViewport >= maxViewports) ||
 		(isSettingDynamically && vpCnt == 0))
@@ -108,7 +109,7 @@ void MVKScissorCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scis
 												bool isSettingDynamically) {
 
 	size_t sCnt = scissors.size;
-	uint32_t maxScissors = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
+	uint32_t maxScissors = getDevice()->_pProperties->limits.maxViewports;
 	if ((firstScissor + sCnt > maxScissors) ||
 		(firstScissor >= maxScissors) ||
 		(isSettingDynamically && sCnt == 0))
@@ -157,7 +158,7 @@ void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVK
 	// MSL structs can have a larger size than the equivalent C struct due to MSL alignment needs.
 	// Typically any MSL struct that contains a float4 will also have a size that is rounded up to a multiple of a float4 size.
 	// Ensure that we pass along enough content to cover this extra space even if it is never actually accessed by the shader.
-	size_t pcSizeAlign = _cmdEncoder->getDevice()->_pMetalFeatures->pushConstantSizeAlignment;
+	size_t pcSizeAlign = getDevice()->_pMetalFeatures->pushConstantSizeAlignment;
     size_t pcSize = pushConstants.size;
 	size_t pcBuffSize = mvkAlignByteCount(offset + pcSize, pcSizeAlign);
     mvkEnsureSize(_pushConstants, pcBuffSize);
@@ -469,7 +470,8 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 		usageDirty.setAllBits();
 
 		MVKMTLBufferBinding bb;
-		descSet->populateMetalArgumentBufferBinding(bb);
+		bb.mtlBuffer = descSet->getMetalArgumentBuffer();
+		bb.offset = descSet->getMetalArgumentBufferOffset();
 		bb.index = dslMTLRezIdxOffsets.stages[kMVKShaderStageVertex].bufferIndex;
 		bindMetalArgumentBuffer(bb);
 
@@ -478,17 +480,20 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 }
 
 // Encode the dirty descriptors to the Metal argument buffer,
-// and set the Metal encoder usage for each resource.
+// and set the Metal command encoder usage for each resource.
 void MVKResourcesCommandEncoderState::encodeToMetalArgumentBuffer(MVKShaderStage stage) {
 	if ( !_cmdEncoder->isUsingMetalArgumentBuffers() ) { return; }
 
+	// The Metal arg encoder can only write to one arg buffer at a time (it holds the arg buffer),
+	// so we need to lock out other access to it while we are writing to it.
 	MVKPipeline* pipeline = getPipeline();
 	lock_guard<mutex> lock(pipeline->_mtlArgumentEncodingLock);
 
 	uint32_t dsCnt = pipeline->getDescriptorSetCount();
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 		auto* descSet = _boundDescriptorSets[dsIdx];
-		if (descSet) {
+		id<MTLArgumentEncoder> mtlArgEncoder = pipeline->getMTLArgumentEncoder(dsIdx, stage);
+		if (descSet && mtlArgEncoder) {
 			auto* dsLayout = descSet->getLayout();
 			auto& usedDescriptors = pipeline->getDescriptorUsage(dsIdx);
 			auto& argBuffDirtyDescs = descSet->getMetalArgumentBufferDirtyDescriptors();
@@ -497,36 +502,46 @@ void MVKResourcesCommandEncoderState::encodeToMetalArgumentBuffer(MVKShaderStage
 			uint32_t elemIdx = 0;
 			uint32_t nextDSLBindDescIdx = 0;
 			MVKDescriptorSetLayoutBinding* mvkDSLBind = nullptr;
-			id<MTLArgumentEncoder> mtlArgEncoder = pipeline->getMTLArgumentEncoder(dsIdx, stage);
-			if (mtlArgEncoder) {
-				[mtlArgEncoder setArgumentBuffer: descSet->getMetalArgumentBuffer()
-										  offset: descSet->getMetalArgumentBufferOffset()];
+			id<MTLBuffer> mtlArgBuff = nil;
 
-				// Only update the descriptors that are actually used by the shaders, and only if
-				// the descriptor is dirty relative to the arg buffer or Metal encoder usage setting.
-				usedDescriptors.enumerateEnabledBits(false, [&](size_t descIdx) {
-					bool argBuffDirty = argBuffDirtyDescs.getBit(descIdx, true);
-					bool resourceUsageDirty = resourceUsageDirtyDescs.getBit(descIdx, true);
-					if (argBuffDirty || resourceUsageDirty) {
-						// Get the layout binding associated with this descriptor.
-						// Assume each layout binding will apply to multiple descriptors
-						// and only fetch a new one when necessary, as it is expensive.
-						if (descIdx >= nextDSLBindDescIdx) {
-							mvkDSLBind = dsLayout->getBindingForDescriptorIndex((uint32_t)descIdx);
-							if ( !mvkDSLBind ) { return false; }	// We've run out of layout bindings
-							nextDSLBindDescIdx = mvkDSLBind->getDescriptorIndex(mvkDSLBind->getDescriptorCount(descSet));
-							elemIdx = 0;
-						}
-						auto* mvkDesc = descSet->getDescriptorAt((uint32_t)descIdx);
-						mvkDesc->encodeToMetalArgumentBuffer(this, mtlArgEncoder, dsIdx,
-															 mvkDSLBind, elemIdx++, stage,
-															 argBuffDirty, true);
+			// Only update the descriptors that are actually used by the shaders, and only if
+			// the descriptor is dirty relative to the arg buffer or Metal encoder usage setting.
+			usedDescriptors.enumerateEnabledBits(false, [&](size_t descIdx) {
+				bool argBuffDirty = argBuffDirtyDescs.getBit(descIdx, true);
+				bool resourceUsageDirty = resourceUsageDirtyDescs.getBit(descIdx, true);
+				if (argBuffDirty || resourceUsageDirty) {
+					// Get the layout binding associated with this descriptor.
+					// Assume each layout binding will apply to multiple descriptors
+					// and only fetch a new one when necessary, as it is expensive.
+					if (descIdx >= nextDSLBindDescIdx) {
+						mvkDSLBind = dsLayout->getBindingForDescriptorIndex((uint32_t)descIdx);
+						if ( !mvkDSLBind ) { return false; }	// We've run out of layout bindings
+						nextDSLBindDescIdx = mvkDSLBind->getDescriptorIndex(mvkDSLBind->getDescriptorCount(descSet));
+						elemIdx = 0;
 					}
-					return true;
-				});
 
-				[mtlArgEncoder setArgumentBuffer: nil offset: 0];
-			}
+					// Don't attach the arg buffer to the arg encoder unless something actually needs
+					// to be written to it. We often might only be updating command encoder resource usage.
+					if (!mtlArgBuff && argBuffDirty) {
+						mtlArgBuff = descSet->getMetalArgumentBuffer();
+						[mtlArgEncoder setArgumentBuffer: mtlArgBuff offset: descSet->getMetalArgumentBufferOffset()];
+					}
+					auto* mvkDesc = descSet->getDescriptorAt((uint32_t)descIdx);
+					mvkDesc->encodeToMetalArgumentBuffer(this, mtlArgEncoder, dsIdx,
+														 mvkDSLBind, elemIdx++, stage,
+														 argBuffDirty, true);
+				}
+				return true;
+			});
+
+			// If the arg buffer was attached to the arg encoder, detach it now.
+			if (mtlArgBuff) { [mtlArgEncoder setArgumentBuffer: nil offset: 0]; }
+
+			// For some unexpected reason, GPU capture on Xcode 12 doesn't always correctly expose
+			// the contents of Metal argument buffers. Triggering an extraction of the arg buffer
+			// contents here, after filling it, seems to correct that.
+			// Sigh. A bug report has been filed with Apple.
+			if (getDevice()->isCurrentlyAutoGPUCapturing()) { [mtlArgBuff contents]; }
 		}
 	}
 }
@@ -695,7 +710,7 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
     MVKGraphicsPipeline* pipeline = (MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline();
-    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || _cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle;
+    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
 
 	if (stage == kMVKGraphicsStageVertex) {

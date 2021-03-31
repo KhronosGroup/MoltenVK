@@ -177,7 +177,7 @@ void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 void MVKPipeline::addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLConversionConfiguration& shaderConfig) {
 	if ( !isUsingMetalArgumentBuffers() ) { return; }
 
-	uint32_t stage = kMVKShaderStageVertex;		// Nominal stage. Currently all stages use same encoders.
+	MVKShaderStage stage = kMVKShaderStageVertex;		// Nominal stage. Currently all stages use same encoders.
 	for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
 		auto* mvkDSL = layout->_descriptorSetLayouts[dsIdx];
 		mvkDSL->populateDescriptorUsage(_descriptorUsage[dsIdx], shaderConfig, dsIdx);

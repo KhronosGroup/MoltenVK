@@ -32,10 +32,10 @@ class MVKResourcesCommandEncoderState;
 
 /** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
 typedef struct MVKShaderStageResourceBinding {
-	uint16_t resourceIndex = 0;
-	uint16_t bufferIndex = 0;
-	uint16_t textureIndex = 0;
-	uint16_t samplerIndex = 0;
+	uint32_t resourceIndex = 0;
+	uint32_t bufferIndex = 0;
+	uint32_t textureIndex = 0;
+	uint32_t samplerIndex = 0;
 
 	MVKShaderStageResourceBinding operator+ (const MVKShaderStageResourceBinding& rhs);
 	MVKShaderStageResourceBinding& operator+= (const MVKShaderStageResourceBinding& rhs);
@@ -49,6 +49,7 @@ typedef struct MVKShaderStageResourceBinding {
 typedef struct MVKShaderResourceBinding {
 	MVKShaderStageResourceBinding stages[kMVKShaderStageMax];
 
+	uint16_t getMaxResourceIndex();
 	uint16_t getMaxBufferIndex();
 	uint16_t getMaxTextureIndex();
 	uint16_t getMaxSamplerIndex();
@@ -113,12 +114,10 @@ public:
               MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
 	/** Returns the index of the descriptor within the descriptor set of the element at the index within this descriptor layout. */
-	inline uint32_t getDescriptorIndex(uint32_t elementIndex = 0) const { return _descriptorIndex + elementIndex; }
+	uint32_t getDescriptorIndex(uint32_t elementIndex = 0) const { return _descriptorIndex + elementIndex; }
 
-	/** Returns the index into the argument buffer for the element at the index within this descriptor layout. */
-	inline uint32_t getMetalArgumentBufferIndex(MVKShaderStage stage, uint32_t elementIndex = 0) {
-		return _mtlResourceIndexOffsets.stages[stage].resourceIndex + elementIndex;
-	}
+	/** Returns the indexes into the argument buffer. */
+	MVKShaderStageResourceBinding& getMetalArgumentBufferIndexes(MVKShaderStage stage) { return _mtlResourceIndexOffsets.stages[stage]; }
 
 	/** Returns a bitwise OR of Metal render stages. */
 	MTLRenderStages getMTLRenderStages();
@@ -139,16 +138,15 @@ protected:
 	
 	void initMetalResourceIndexOffsets(const VkDescriptorSetLayoutBinding* pBinding, uint32_t stage);
 	void addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args,
-								   uint32_t stage,
+								   MVKShaderStage stage,
 								   mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 								   uint32_t descSetIdx);
 	void addMTLArgumentDescriptor(NSMutableArray<MTLArgumentDescriptor*>* args,
-								  uint32_t stage,
+								  uint32_t argIndex,
 								  MTLDataType dataType,
 								  MTLArgumentAccess access,
 								  mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
-								  uint32_t descSetIdx,
-								  uint32_t argIdxOffset = 0);
+								  uint32_t descSetIdx);
 	bool isUsingMetalArgumentBuffer();
 	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
 										MVKShaderResourceBinding& dslMTLRezIdxOffsets,
@@ -482,12 +480,6 @@ protected:
 									 MVKShaderStage stage,
 									 bool encodeToArgBuffer);
 
-	/**
-	 * Offset to the first sampler index in the argument buffer. Defaults to zero for simple sampler
-	 * descriptors, but combined image/sampler descriptor will override to index samplers after textures.
-	 */
-	virtual uint32_t getMetalArgumentBufferSamplerIndexOffset(MVKDescriptorSetLayoutBinding* dslBinding) { return 0; }
-
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,
 			   uint32_t srcIndex,
@@ -582,8 +574,6 @@ public:
 									 MVKShaderStage stage,
 									 bool encodeToArgBuffer,
 									 bool encodeUsage) override;
-
-	uint32_t getMetalArgumentBufferSamplerIndexOffset(MVKDescriptorSetLayoutBinding* dslBinding) override;
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
 			   MVKDescriptorSet* mvkDescSet,

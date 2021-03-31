@@ -97,6 +97,7 @@ public:
 
 protected:
     virtual void encodeImpl(uint32_t stage) = 0;
+	MVKDevice* getDevice();
 
     MVKCommandEncoder* _cmdEncoder;
 	bool _isDirty = false;

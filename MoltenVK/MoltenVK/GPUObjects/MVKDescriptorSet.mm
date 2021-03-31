@@ -198,7 +198,7 @@ void MVKDescriptorSetLayout::populateDescriptorUsage(MVKBitArray& usageArray,
 	}
 }
 
-id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(uint32_t stage,
+id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(MVKShaderStage stage,
 																	 mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 																	 uint32_t descSetIdx) {
 	if ( !isUsingMetalArgumentBuffer() ) { return nil; }
@@ -254,8 +254,9 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 	}
 
 	if (isUsingMetalArgumentBuffer()) {
+		// Set _metalArgumentBufferSize before adding the argument buffer itself.
+		_metalArgumentBufferSize = mvkAlignByteCount(_mtlResourceCounts.getMaxResourceIndex() * sizeof(id), getDevice()->_pMetalFeatures->mtlBufferAlignment);
 		_mtlResourceCounts.addArgumentBuffer();
-		_metalArgumentBufferSize = mvkAlignByteCount(_metalArgumentBufferSize, getDevice()->_pMetalFeatures->mtlBufferAlignment);
 	}
 }
 
@@ -355,11 +356,6 @@ void MVKDescriptorSet::bindDynamicOffsets(MVKResourcesCommandEncoderState* rezEn
 		_metalArgumentBufferDirtyDescriptors.setBit(descIdx);
 		return true;
 	});
-}
-
-void MVKDescriptorSet::populateMetalArgumentBufferBinding(MVKMTLBufferBinding& buffBind) {
-	buffBind.mtlBuffer = _pool->_metalArgumentBuffer;
-	buffBind.offset = _metalArgumentBufferOffset;
 }
 
 const MVKMTLBufferAllocation* MVKDescriptorSet::acquireMTLBufferRegion(NSUInteger length) {

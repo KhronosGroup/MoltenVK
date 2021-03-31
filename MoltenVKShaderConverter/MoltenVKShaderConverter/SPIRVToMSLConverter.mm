@@ -357,12 +357,14 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 		ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderInput.location);
 	}
 	for (auto& ctxRB : context.resourceBindings) {
-		ctxRB.outMTLTextureType = getMTLTextureType(pMSLCompiler,
-													ctxRB.resourceBinding.desc_set,
-													ctxRB.resourceBinding.binding);
-		ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
-																			 ctxRB.resourceBinding.desc_set,
-																			 ctxRB.resourceBinding.binding);
+		if (ctxRB.resourceBinding.stage == context.options.entryPointStage) {
+			ctxRB.outMTLTextureType = getMTLTextureType(pMSLCompiler,
+														ctxRB.resourceBinding.desc_set,
+														ctxRB.resourceBinding.binding);
+			ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
+																				 ctxRB.resourceBinding.desc_set,
+																				 ctxRB.resourceBinding.binding);
+		}
 	}
 
 	delete pMSLCompiler;

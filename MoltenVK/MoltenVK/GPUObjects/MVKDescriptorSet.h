@@ -84,7 +84,7 @@ public:
 	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
 	/** Returns a new MTLArgumentEncoder for the stage, populated from this layout and info from the shader config.  */
-	id<MTLArgumentEncoder> newMTLArgumentEncoder(uint32_t stage, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, uint32_t descSetIdx);
+	id<MTLArgumentEncoder> newMTLArgumentEncoder(MVKShaderStage stage, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, uint32_t descSetIdx);
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
@@ -150,9 +150,6 @@ public:
 							uint32_t descSetIndex,
 							MVKArrayRef<uint32_t> dynamicOffsets,
 							uint32_t& dynamicOffsetIndex);
-
-	/** Populates the buffer binding with the Metal argument buffer and offset. */
-	void populateMetalArgumentBufferBinding(MVKMTLBufferBinding& buffBind);
 
 	/** Returns an MTLBuffer region allocation. */
 	const MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
