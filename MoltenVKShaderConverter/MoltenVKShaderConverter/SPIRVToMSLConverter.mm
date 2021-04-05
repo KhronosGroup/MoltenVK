@@ -107,6 +107,7 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLShaderInput::matches(const mvk::MSLShaderInput& o
 
 MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding& other) const {
 	if (resourceBinding.stage != other.resourceBinding.stage) { return false; }
+	if (resourceBinding.base_type != other.resourceBinding.base_type) { return false; }
 	if (resourceBinding.desc_set != other.resourceBinding.desc_set) { return false; }
 	if (resourceBinding.binding != other.resourceBinding.binding) { return false; }
 	if (resourceBinding.count != other.resourceBinding.count) { return false; }

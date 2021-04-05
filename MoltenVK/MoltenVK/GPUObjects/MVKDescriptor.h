@@ -60,6 +60,19 @@ typedef struct MVKShaderResourceBinding {
 
 } MVKShaderResourceBinding;
 
+/**
+ * If the shader stage binding has a binding defined for the specified stage, populates
+ * the context at the descriptor set binding from the shader stage resource binding.
+ */
+void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+									   MVKShaderStageResourceBinding& ssRB,
+									   MVKShaderStage stage,
+									   uint32_t descriptorSetIndex,
+									   uint32_t bindingIndex,
+									   uint32_t count,
+									   VkDescriptorType descType,
+									   MVKSampler* immutableSampler);
+
 
 #pragma mark -
 #pragma mark MVKDescriptorSetLayoutBinding

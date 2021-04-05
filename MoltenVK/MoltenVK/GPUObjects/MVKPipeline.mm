@@ -89,21 +89,16 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfi
 																	  dslIdx);
 	}
 
-	// Add any resource bindings used by push-constants
-	static const spv::ExecutionModel models[] = {
-		spv::ExecutionModelVertex,
-		spv::ExecutionModelTessellationControl,
-		spv::ExecutionModelTessellationEvaluation,
-		spv::ExecutionModelFragment,
-		spv::ExecutionModelGLCompute
-	};
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+	// Add any resource bindings used by push-constants.
+	// Use VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT descriptor type as compatible with push constants in Metal.
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageMax; stage++) {
 		mvkPopulateShaderConverterContext(context,
-										  _pushConstantsMTLResourceIndexes.stages[i],
-										  models[i],
+										  _pushConstantsMTLResourceIndexes.stages[stage],
+										  MVKShaderStage(stage),
 										  kPushConstDescSet,
 										  kPushConstBinding,
 										  1,
+										  VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT,
 										  nullptr);
 	}
 }
@@ -1487,8 +1482,11 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
     shaderContext.options.mslOptions.texel_buffer_texture_width = _device->_pMetalFeatures->maxTextureDimension;
     shaderContext.options.mslOptions.r32ui_linear_texture_alignment = (uint32_t)_device->getVkFormatTexelBufferAlignment(VK_FORMAT_R32_UINT, this);
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
-	shaderContext.options.mslOptions.argument_buffers = isUsingMetalArgumentBuffers();
-	shaderContext.options.mslOptions.force_active_argument_buffer_resources = isUsingMetalArgumentBuffers();
+
+	bool useMetalArgBuff = isUsingMetalArgumentBuffers();
+	shaderContext.options.mslOptions.argument_buffers = useMetalArgBuff;
+	shaderContext.options.mslOptions.force_active_argument_buffer_resources = useMetalArgBuff;
+	shaderContext.options.mslOptions.pad_argument_buffer_resources = useMetalArgBuff;
 
     MVKPipelineLayout* layout = (MVKPipelineLayout*)pCreateInfo->layout;
     layout->populateShaderConverterContext(shaderContext);
@@ -1733,8 +1731,12 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
 	shaderContext.options.mslOptions.texture_1D_as_2D = mvkConfig()->texture1DAs2D;
     shaderContext.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
-	shaderContext.options.mslOptions.argument_buffers = isUsingMetalArgumentBuffers();
-	shaderContext.options.mslOptions.force_active_argument_buffer_resources = isUsingMetalArgumentBuffers();
+
+	bool useMetalArgBuff = isUsingMetalArgumentBuffers();
+	shaderContext.options.mslOptions.argument_buffers = useMetalArgBuff;
+	shaderContext.options.mslOptions.force_active_argument_buffer_resources = useMetalArgBuff;
+	shaderContext.options.mslOptions.pad_argument_buffer_resources = useMetalArgBuff;
+
 #if MVK_MACOS
     shaderContext.options.mslOptions.emulate_subgroups = !_device->_pMetalFeatures->simdPermute;
 #endif
@@ -2044,6 +2046,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 				opt.enable_decoration_binding,
 				opt.texture_buffer_native,
 				opt.force_active_argument_buffer_resources,
+				opt.pad_argument_buffer_resources,
 				opt.force_native_arrays,
 				opt.enable_clip_distance_user_varying,
 				opt.multi_patch_workgroup,
@@ -2066,6 +2069,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 	template<class Archive>
 	void serialize(Archive & archive, MSLResourceBinding& rb) {
 		archive(rb.stage,
+				rb.base_type,
 				rb.desc_set,
 				rb.binding,
 				rb.count,

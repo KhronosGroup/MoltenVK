@@ -81,6 +81,71 @@ void MVKShaderResourceBinding::addArgumentBuffer() {
 	}
 }
 
+void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+									   MVKShaderStageResourceBinding& ssRB,
+									   MVKShaderStage stage,
+									   uint32_t descriptorSetIndex,
+									   uint32_t bindingIndex,
+									   uint32_t count,
+									   VkDescriptorType descType,
+									   MVKSampler* immutableSampler) {
+
+	SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::BaseType spvRezType;
+	switch (descType) {
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
+			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Void;
+			break;
+
+		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
+		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
+		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
+			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Image;
+			break;
+
+		case VK_DESCRIPTOR_TYPE_SAMPLER:
+			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Sampler;
+			break;
+
+		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
+			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::SampledImage;
+			break;
+
+		default:
+			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Unknown;
+			break;
+	}
+
+	static const spv::ExecutionModel svpExecModels[] = {
+		spv::ExecutionModelVertex,
+		spv::ExecutionModelTessellationControl,
+		spv::ExecutionModelTessellationEvaluation,
+		spv::ExecutionModelFragment,
+		spv::ExecutionModelGLCompute
+	};
+
+	mvk::MSLResourceBinding rb;
+
+	auto& rbb = rb.resourceBinding;
+	rbb.stage = svpExecModels[stage];
+	rbb.base_type = spvRezType;
+	rbb.desc_set = descriptorSetIndex;
+	rbb.binding = bindingIndex;
+	rbb.count = count;
+	rbb.msl_buffer = ssRB.bufferIndex;
+	rbb.msl_texture = ssRB.textureIndex;
+	rbb.msl_sampler = ssRB.samplerIndex;
+
+	if (immutableSampler) { immutableSampler->getConstexprSampler(rb); }
+
+	context.resourceBindings.push_back(rb);
+}
+
 
 #pragma mark -
 #pragma mark MVKDescriptorSetLayoutBinding
@@ -427,21 +492,15 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
     // Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
 
-    static const spv::ExecutionModel models[] = {
-        spv::ExecutionModelVertex,
-        spv::ExecutionModelTessellationControl,
-        spv::ExecutionModelTessellationEvaluation,
-        spv::ExecutionModelFragment,
-        spv::ExecutionModelGLCompute
-    };
-    for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-        if (_applyToStage[i]) {
+    for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageMax; stage++) {
+        if (_applyToStage[stage]) {
             mvkPopulateShaderConverterContext(context,
-                                              mtlIdxs.stages[i],
-                                              models[i],
+                                              mtlIdxs.stages[stage],
+                                              MVKShaderStage(stage),
                                               dslIndex,
                                               _info.binding,
 											  getDescriptorCount(),
+											  getDescriptorType(),
 											  mvkSamp);
         }
     }
