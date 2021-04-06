@@ -38,8 +38,7 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	if (!cmdEncoder) { clearConfigurationResult(); }
 	if (_isPushDescriptorLayout ) { return; }
 
-	if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex,
-													descSet, dslMTLRezIdxOffsets,
+	if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex, descSet,
 													dynamicOffsets, dynamicOffsetIndex); }
 	if ( !isUsingMetalArgumentBuffers() ) {
 		for (auto& dslBind : _bindings) {
@@ -283,8 +282,6 @@ void MVKDescriptorSetLayout::initForMetalArgumentBufferUse() {
 	id<MTLArgumentEncoder> argEnc = newMTLArgumentEncoder(stage, shaderConfig, 0);	// retained
 	_metalArgumentBufferSize = argEnc.encodedLength;
 	[argEnc release];
-
-	_mtlResourceCounts.addArgumentBuffer();
 }
 
 
@@ -514,8 +511,10 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 												  uint32_t variableDescriptorCount,
 												  VkDescriptorSet* pVKDS) {
 	VkResult rslt = VK_ERROR_OUT_OF_POOL_MEMORY;
-	NSUInteger mtlArgBuffAllocSize = mvkAlignByteCount(mvkDSL->_metalArgumentBufferSize,
-													   getDevice()->_pMetalFeatures->mtlBufferAlignment);
+	NSUInteger mtlArgBuffAllocSize = mvkDSL->_metalArgumentBufferSize;
+	NSUInteger mtlArgBuffAlignedSize = mvkAlignByteCount(mtlArgBuffAllocSize,
+														 getDevice()->_pMetalFeatures->mtlBufferAlignment);
+
 	size_t dsCnt = _descriptorSetAvailablility.size();
 	_descriptorSetAvailablility.enumerateEnabledBits(true, [&](size_t dsIdx) {
 		bool isSpaceAvail = true;		// If not using Metal arg buffers, space will always be available.
@@ -532,7 +531,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 			// on a reset pool), set the offset and update the next available offset value.
 			if ( !mtlArgBuffOffset && (dsIdx || !_nextMetalArgumentBufferOffset)) {
 				mtlArgBuffOffset = _nextMetalArgumentBufferOffset;
-				_nextMetalArgumentBufferOffset += mtlArgBuffAllocSize;
+				_nextMetalArgumentBufferOffset += mtlArgBuffAlignedSize;
 			}
 
 			// Get the offset of the next desc set, if one exists and
@@ -841,7 +840,15 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 				setConfigurationResult(reportError(VK_ERROR_FRAGMENTATION_EXT, "vkCreateDescriptorPool(): The requested descriptor storage of %d MB is larger than the maximum descriptor storage of %d MB per VkDescriptorPool.", (uint32_t)(metalArgBuffSize / MEBI), (uint32_t)(maxMTLBuffSize / MEBI)));
 				metalArgBuffSize = maxMTLBuffSize;
 			}
-			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: MTLResourceStorageModeShared];	// retained
+
+			// The MTLBuffer can have Managed storage if possible because we don't set constant inline data directly in the buffer.
+#if MVK_MACOS
+			MTLResourceOptions rezOpts = MTLResourceStorageModeManaged;
+#endif
+#if MVK_IOS_OR_TVOS
+			MTLResourceOptions rezOpts = MTLResourceStorageModeShared;
+#endif
+			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: rezOpts];	// retained
 			_metalArgumentBuffer.label = @"Argument buffer";
 		}
 	}

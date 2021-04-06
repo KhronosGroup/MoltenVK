@@ -110,6 +110,8 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
     // corresponding DSL, and associating the current accumulated resource index offsets
     // with each DSL as it is added. The final accumulation of resource index offsets
     // becomes the resource index offsets that will be used for push contants.
+	// If we are using Metal argument buffers, don't track resource index offsets per descriptor set,
+	// but do take into consideration the buffer resouce consumed by the Metal argument buffer itself.
 
     // According to the Vulkan spec, VkDescriptorSetLayout is intended to be consumed when passed
 	// to any Vulkan function, and may be safely destroyed by app immediately after. In order for
@@ -121,8 +123,13 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 		MVKDescriptorSetLayout* pDescSetLayout = (MVKDescriptorSetLayout*)pCreateInfo->pSetLayouts[i];
 		pDescSetLayout->retain();
 		_descriptorSetLayouts.push_back(pDescSetLayout);
-		_dslMTLResourceIndexOffsets.push_back(_pushConstantsMTLResourceIndexes);
-		_pushConstantsMTLResourceIndexes += pDescSetLayout->_mtlResourceCounts;
+		if (isUsingMetalArgumentBuffers()) {
+			_dslMTLResourceIndexOffsets.emplace_back();
+			_pushConstantsMTLResourceIndexes.addArgumentBuffer();
+		} else {
+			_dslMTLResourceIndexOffsets.push_back(_pushConstantsMTLResourceIndexes);
+			_pushConstantsMTLResourceIndexes += pDescSetLayout->_mtlResourceCounts;
+		}
 	}
 
 	// Add push constants

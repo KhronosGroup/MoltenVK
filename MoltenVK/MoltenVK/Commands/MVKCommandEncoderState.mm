@@ -457,7 +457,6 @@ void MVKBlendColorCommandEncoderState::encodeImpl(uint32_t stage) {
 // descriptor set content, and bind the argument buffer MTLBuffer used by the descriptor set as a resource.
 void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 														MVKDescriptorSet* descSet,
-														MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 														MVKArrayRef<uint32_t> dynamicOffsets,
 														uint32_t& dynamicOffsetIndex) {
 	_boundDescriptorSets[descSetIndex] = descSet;
@@ -469,19 +468,13 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 		usageDirty.resize(descSet->getDescriptorCount());
 		usageDirty.setAllBits();
 
-		MVKMTLBufferBinding bb;
-		bb.mtlBuffer = descSet->getMetalArgumentBuffer();
-		bb.offset = descSet->getMetalArgumentBufferOffset();
-		bb.index = dslMTLRezIdxOffsets.stages[kMVKShaderStageVertex].bufferIndex;
-		bindMetalArgumentBuffer(bb);
-
 		MVKCommandEncoderState::markDirty();
 	}
 }
 
-// Encode the dirty descriptors to the Metal argument buffer,
-// and set the Metal command encoder usage for each resource.
-void MVKResourcesCommandEncoderState::encodeToMetalArgumentBuffer(MVKShaderStage stage) {
+// Encode the dirty descriptors to the Metal argument buffer, set the Metal command encoder
+// usage for each resource, and bind the Metal argument buffer to the command encoder.
+void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage stage) {
 	if ( !_cmdEncoder->isUsingMetalArgumentBuffers() ) { return; }
 
 	// The Metal arg encoder can only write to one arg buffer at a time (it holds the arg buffer),
@@ -537,11 +530,18 @@ void MVKResourcesCommandEncoderState::encodeToMetalArgumentBuffer(MVKShaderStage
 			// If the arg buffer was attached to the arg encoder, detach it now.
 			if (mtlArgBuff) { [mtlArgEncoder setArgumentBuffer: nil offset: 0]; }
 
+			// Bind the Metal argument buffer itself to the command encoder
+			MVKMTLBufferBinding bb;
+			bb.mtlBuffer = descSet->getMetalArgumentBuffer();
+			bb.offset = descSet->getMetalArgumentBufferOffset();
+			bb.index = dsIdx;
+			bindMetalArgumentBuffer(bb);
+
 			// For some unexpected reason, GPU capture on Xcode 12 doesn't always correctly expose
 			// the contents of Metal argument buffers. Triggering an extraction of the arg buffer
 			// contents here, after filling it, seems to correct that.
 			// Sigh. A bug report has been filed with Apple.
-			if (getDevice()->isCurrentlyAutoGPUCapturing()) { [mtlArgBuff contents]; }
+			if (getDevice()->isCurrentlyAutoGPUCapturing()) { [descSet->getMetalArgumentBuffer() contents]; }
 		}
 	}
 }
@@ -637,7 +637,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
                                                              std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler) {
 
-	encodeToMetalArgumentBuffer(stage);
+	encodeMetalArgumentBuffer(stage);
 
     auto& shaderStage = _shaderStageResourceBindings[stage];
     encodeBinding<MVKMTLBufferBinding>(shaderStage.bufferBindings, shaderStage.areBufferBindingsDirty, bindBuffer);
@@ -933,7 +933,7 @@ void MVKComputeResourcesCommandEncoderState::markDirty() {
 
 void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
-	encodeToMetalArgumentBuffer(kMVKShaderStageCompute);
+	encodeMetalArgumentBuffer(kMVKShaderStageCompute);
 
     MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
 	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;

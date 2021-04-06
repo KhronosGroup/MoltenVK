@@ -355,7 +355,6 @@ public:
 	/** Binds the specified descriptor set to the specified index. */
 	void bindDescriptorSet(uint32_t descSetIndex,
 						   MVKDescriptorSet* descSet,
-						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 						   MVKArrayRef<uint32_t> dynamicOffsets,
 						   uint32_t& dynamicOffsetIndex);
 
@@ -440,7 +439,7 @@ protected:
 	}
 
 	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding>& texBindings);
-	void encodeToMetalArgumentBuffer(MVKShaderStage stage);
+	void encodeMetalArgumentBuffer(MVKShaderStage stage);
 	virtual void bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) = 0;
 
 	inline MVKDescSetDescKey getDynamicOffsetKey(uint32_t descSet, uint32_t descIdx) {
