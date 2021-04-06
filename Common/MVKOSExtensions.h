@@ -118,33 +118,35 @@ int64_t mvkGetEnvVarInt64(std::string varName, bool* pWasFound = nullptr);
  */
 bool mvkGetEnvVarBool(std::string varName, bool* pWasFound = nullptr);
 
-#define MVK_SET_FROM_ENV_OR_BUILD_BOOL(cfgVal, EV)	\
-	do {											\
-		bool wasFound = false;						\
-		bool ev = mvkGetEnvVarBool(#EV, &wasFound);	\
-		cfgVal = wasFound ? ev : EV;				\
+#define MVK_SET_FROM_ENV_OR_BUILD_BOOL(cfgVal, EV)				\
+	do {														\
+		bool wasFound = false;									\
+		bool ev = mvkGetEnvVarBool(#EV, &wasFound);				\
+		cfgVal = wasFound ? ev : EV;							\
 	} while(false)
 
-#define MVK_SET_FROM_ENV_OR_BUILD_INT64(cfgVal, EV)		\
-	do {												\
-		bool wasFound = false;							\
-		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);	\
-		cfgVal = wasFound ? ev : EV;					\
+#define MVK_SET_FROM_ENV_OR_BUILD_INT64(cfgVal, EV)				\
+	do {														\
+		bool wasFound = false;									\
+		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);			\
+		cfgVal = wasFound ? ev : EV;							\
 	} while(false)
 
+// Pointer cast permits cfgVal to be an enum var
 #define MVK_SET_FROM_ENV_OR_BUILD_INT32(cfgVal, EV)				\
 	do {														\
 		bool wasFound = false;									\
 		int64_t ev = mvkGetEnvVarInt64(#EV, &wasFound);			\
 		int64_t val = wasFound ? ev : EV;						\
-		cfgVal = (int32_t)std::min(std::max(val, (int64_t)INT32_MIN), (int64_t)INT32_MAX);	\
+		*(int32_t*)&cfgVal = (int32_t)std::min(std::max(val, (int64_t)INT32_MIN), (int64_t)INT32_MAX);	\
 	} while(false)
 
-#define MVK_SET_FROM_ENV_OR_BUILD_STRING(cfgVal, EV)	\
-	do {												\
-		bool wasFound = false;							\
-		std::string ev = mvkGetEnvVar(#EV, &wasFound);	\
-		cfgVal = wasFound ? std::move(ev) : EV;			\
+#define MVK_SET_FROM_ENV_OR_BUILD_STRING(cfgVal, EV, strObj)	\
+	do {														\
+		bool wasFound = false;									\
+		std::string ev = mvkGetEnvVar(#EV, &wasFound);			\
+		strObj = wasFound ? std::move(ev) : EV;					\
+		cfgVal = strObj.c_str();								\
 	} while(false)
 
 

@@ -48,23 +48,12 @@
 #pragma mark -
 #pragma mark Vulkan call templates
 
-typedef enum {
-	MVKVulkanCallTraceLevelNone = 0,
-	MVKVulkanCallTraceLevelFunctionName = 1,
-	MVKVulkanCallTraceLevelFunctionScope = 2,
-	MVKVulkanCallTraceLevelFunctionTime = 3,
-	MVKVulkanCallTraceLevelFunctionMax
-} MVKVulkanCallTraceLevel;
-
-// Returns Vulkan call trace level from environment variable.
-static inline uint32_t getCallTraceLevel() { return mvkGetMVKConfiguration()->traceVulkanCalls; }
-
 // Optionally log start of function calls to stderr
 static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
-	uint32_t traceLvl = getCallTraceLevel();
+	MVKConfigTraceVulkanCalls traceLvl = mvkConfig()->traceVulkanCalls;
 
-	if (traceLvl == MVKVulkanCallTraceLevelNone ||
-		traceLvl >= MVKVulkanCallTraceLevelFunctionMax) { return 0; }
+	if (traceLvl == MVK_CONFIG_TRACE_VULKAN_CALLS_NONE ||
+		traceLvl > MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION) { return 0; }
 
 	uint64_t gtid, mtid;
 	const uint32_t kThreadNameBuffSize = 256;
@@ -75,19 +64,19 @@ static inline uint64_t MVKTraceVulkanCallStartImpl(const char* funcName) {
 	pthread_getname_np(tid, threadName, kThreadNameBuffSize);
 
 	fprintf(stderr, "[mvk-trace] %s()%s [%llu/%llu/%s]\n",
-			funcName, (traceLvl >= MVKVulkanCallTraceLevelFunctionScope) ? " {" : "",
+			funcName, (traceLvl >= MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT) ? " {" : "",
 			mtid, gtid, threadName);
 
-	return (traceLvl >= MVKVulkanCallTraceLevelFunctionTime) ? mvkGetTimestamp() : 0;
+	return (traceLvl == MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION) ? mvkGetTimestamp() : 0;
 }
 
 // Optionally log end of function calls and timings to stderr
 static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t startTime) {
-	switch(getCallTraceLevel()) {
-		case MVKVulkanCallTraceLevelFunctionTime:
+	switch(mvkConfig()->traceVulkanCalls) {
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION:
 			fprintf(stderr, "[mvk-trace] } %s [%.4f ms]\n", funcName, mvkGetElapsedMilliseconds(startTime));
 			break;
-		case MVKVulkanCallTraceLevelFunctionScope:
+		case MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT:
 			fprintf(stderr, "[mvk-trace] } %s\n", funcName);
 			break;
 		default:
@@ -1919,7 +1908,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceVersion(
     uint32_t*                                   pApiVersion) {
 
     MVKTraceVulkanCallStart();
-    *pApiVersion = MVK_VULKAN_API_VERSION;
+    *pApiVersion = mvkConfig()->apiVersionToAdvertise;
     MVKTraceVulkanCallEnd();
     return VK_SUCCESS;
 }

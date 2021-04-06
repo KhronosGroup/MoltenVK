@@ -123,7 +123,7 @@ void MVKSwapchain::willPresentSurface(id<MTLTexture> mtlTexture, id<MTLCommandBu
 
 // If the product has not been fully licensed, renders the watermark image to the surface.
 void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffer> mtlCmdBuff) {
-    if (mvkGetMVKConfiguration()->displayWatermark) {
+    if (mvkConfig()->displayWatermark) {
         if ( !_licenseWatermark ) {
             _licenseWatermark = new MVKWatermarkRandom(getMTLDevice(),
                                                        __watermarkTextureContent,
@@ -144,7 +144,7 @@ void MVKSwapchain::renderWatermark(id<MTLTexture> mtlTexture, id<MTLCommandBuffe
 
 // Calculates and remembers the time interval between frames.
 void MVKSwapchain::markFrameInterval() {
-	if ( !(mvkGetMVKConfiguration()->performanceTracking || _licenseWatermark) ) { return; }
+	if ( !(mvkConfig()->performanceTracking || _licenseWatermark) ) { return; }
 
 	uint64_t prevFrameTime = _lastFrameTime;
 	_lastFrameTime = mvkGetTimestamp();
@@ -153,7 +153,7 @@ void MVKSwapchain::markFrameInterval() {
 
 	_device->addActivityPerformance(_device->_performanceStatistics.queue.frameInterval, prevFrameTime, _lastFrameTime);
 
-	uint32_t perfLogCntLimit = mvkGetMVKConfiguration()->performanceLoggingFrameCount;
+	uint32_t perfLogCntLimit = mvkConfig()->performanceLoggingFrameCount;
 	if ((perfLogCntLimit > 0) && (++_currentPerfLogFrameCount >= perfLogCntLimit)) {
 		_currentPerfLogFrameCount = 0;
 		MVKLogInfo("Performance statistics reporting every: %d frames, avg FPS: %.2f, elapsed time: %.3f seconds:",
@@ -271,7 +271,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	_mtlLayer.pixelFormat = getPixelFormats()->getMTLPixelFormat(pCreateInfo->imageFormat);
 	_mtlLayer.maximumDrawableCountMVK = imgCnt;
 	_mtlLayer.displaySyncEnabledMVK = (pCreateInfo->presentMode != VK_PRESENT_MODE_IMMEDIATE_KHR);
-	_mtlLayer.magnificationFilter = mvkGetMVKConfiguration()->swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
+	_mtlLayer.magnificationFilter = mvkConfig()->swapchainMagFilterUseNearest ? kCAFilterNearest : kCAFilterLinear;
 	_mtlLayer.framebufferOnly = !mvkIsAnyFlagEnabled(pCreateInfo->imageUsage, (VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
 																			   VK_IMAGE_USAGE_TRANSFER_DST_BIT |
 																			   VK_IMAGE_USAGE_SAMPLED_BIT |
@@ -283,6 +283,7 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 	switch (pCreateInfo->imageColorSpace) {
 		case VK_COLOR_SPACE_SRGB_NONLINEAR_KHR:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceSRGB;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;
 			break;
 		case VK_COLOR_SPACE_DISPLAY_P3_NONLINEAR_EXT:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceDisplayP3;
@@ -306,29 +307,32 @@ void MVKSwapchain::initCAMetalLayer(const VkSwapchainCreateInfoKHR* pCreateInfo,
 			break;
 		case VK_COLOR_SPACE_BT709_NONLINEAR_EXT:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_709;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;
 			break;
 		case VK_COLOR_SPACE_BT2020_LINEAR_EXT:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceExtendedLinearITUR_2020;
 			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
 			break;
-// Awaiting Xcode 12 with macOS 11.0 and iOS/tvOS 14 SDK to build with kCGColorSpaceITUR_2100_PQ
-// and kCGColorSpaceITUR_2100_HLG. The previous values kCGColorSpaceITUR_2020_PQ_EOTF and
-// kCGColorSpaceITUR_2020_HLG now incorrectly break App Store submissions.
-// Coordinate with MVKPhysicalDevice::getSurfaceFormats().
-//		case VK_COLOR_SPACE_HDR10_ST2084_EXT:
-//			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_PQ;
-//			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
-//			break;
-//		case VK_COLOR_SPACE_HDR10_HLG_EXT:
-//			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_HLG;
-//			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
-//			break;
+#if MVK_XCODE_12
+		case VK_COLOR_SPACE_HDR10_ST2084_EXT:
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_PQ;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
+			break;
+		case VK_COLOR_SPACE_HDR10_HLG_EXT:
+			_mtlLayer.colorspaceNameMVK = kCGColorSpaceITUR_2100_HLG;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = YES;
+			break;
+#endif
 		case VK_COLOR_SPACE_ADOBERGB_NONLINEAR_EXT:
 			_mtlLayer.colorspaceNameMVK = kCGColorSpaceAdobeRGB1998;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;
 			break;
 		case VK_COLOR_SPACE_PASS_THROUGH_EXT:
+			_mtlLayer.colorspace = nil;
+			_mtlLayer.wantsExtendedDynamicRangeContentMVK = NO;
+			break;
 		default:
-			// Nothing - the default is not to do color matching.
+			setConfigurationResult(reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "vkCreateSwapchainKHR(): Metal does not support VkColorSpaceKHR value %d.", pCreateInfo->imageColorSpace));
 			break;
 	}
 	_mtlLayer.drawableSize = mvkCGSizeFromVkExtent2D(pCreateInfo->imageExtent);
@@ -460,9 +464,16 @@ void MVKSwapchain::recordPresentTime(MVKPresentTimingInfo presentTimingInfo, uin
 	_presentHistoryIndex = (_presentHistoryIndex + 1) % kMaxPresentationHistory;
 }
 
-MVKSwapchain::~MVKSwapchain() {
+// A retention loop exists between the swapchain and its images. The swapchain images
+// retain the swapchain because they can be in flight when the app destroys the swapchain.
+// Release the images now, when the app destroys the swapchain, so they will be destroyed when
+// no longer held by the presentation flow, and will in turn release the swapchain for destruction.
+void MVKSwapchain::destroy() {
 	for (auto& img : _presentableImages) { _device->destroyPresentableSwapchainImage(img, NULL); }
+	MVKVulkanAPIDeviceObject::destroy();
+}
 
+MVKSwapchain::~MVKSwapchain() {
     if (_licenseWatermark) { _licenseWatermark->destroy(); }
     [this->_layerObserver release];
 }

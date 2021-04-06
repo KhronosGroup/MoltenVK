@@ -292,7 +292,7 @@ NSArray<id<MTLDevice>>* MVKInstance::getAvailableMTLDevicesArray() {
 #if MVK_MACOS
 	NSArray* rawMTLDevs = [MTLCopyAllDevices() autorelease];
 	if (rawMTLDevs) {
-		bool forceLowPower = mvkGetMVKConfiguration()->forceLowPowerGPU;
+		bool forceLowPower = mvkConfig()->forceLowPowerGPU;
 
 		// Populate the array of appropriate MTLDevices
 		for (id<MTLDevice> md in rawMTLDevs) {
@@ -364,7 +364,8 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "To support Mac Catalyst, MoltenVK requires macOS 11.0 or above."));
 	}
 
-	MVKLogInfo("Created VkInstance with the following %d Vulkan extensions enabled:%s",
+	MVKLogInfo("Created VkInstance for Vulkan version %s, as requested by app, with the following %d Vulkan extensions enabled:%s",
+			   mvkGetVulkanVersionString(_appInfo.apiVersion).c_str(),
 			   _enabledExtensions.getEnabledCount(),
 			   _enabledExtensions.enabledNamesString("\n\t\t", true).c_str());
 
@@ -681,9 +682,9 @@ void MVKInstance::initProcAddrs() {
 
 void MVKInstance::logVersions() {
 	MVKExtensionList allExtns(this, true);
-	MVKLogInfo("MoltenVK version %s. Vulkan version %s.\n\tThe following %d Vulkan extensions are supported:%s",
+	MVKLogInfo("MoltenVK version %s, supporting Vulkan version %s.\n\tThe following %d Vulkan extensions are supported:%s",
 			   mvkGetMoltenVKVersionString(MVK_VERSION).c_str(),
-			   mvkGetVulkanVersionString(MVK_VULKAN_API_VERSION).c_str(),
+			   mvkGetVulkanVersionString(mvkConfig()->apiVersionToAdvertise).c_str(),
 			   allExtns.getEnabledCount(),
 			   allExtns.enabledNamesString("\n\t\t", true).c_str());
 }

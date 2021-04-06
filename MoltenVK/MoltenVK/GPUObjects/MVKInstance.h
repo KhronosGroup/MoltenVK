@@ -42,9 +42,15 @@ typedef struct {
 	bool isDevice;
 
 	bool isCore() { return !ext1Name && !ext2Name; }
+
+	// If we're artificially running without all supported extensions, allow the
+	// associated functions to be available anyway, in case the app is surprised
+	// (ie- expects the functions from past experience and has no alternate handling).
 	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList) {
-		return (isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
-			   extList.isEnabled(ext1Name) || extList.isEnabled(ext2Name);
+		return ((isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
+				(extList.isEnabled(ext1Name) || extList.isEnabled(ext2Name) ||
+				 !mvkIsAnyFlagEnabled(mvkConfig()->advertiseExtensions,
+									  MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL)));
 	}
 } MVKEntryPoint;
 

@@ -19,10 +19,10 @@
 #ifndef __SPIRVReflection_h_
 #define __SPIRVReflection_h_ 1
 
-#include <SPIRV-Cross/spirv.hpp>
-#include <SPIRV-Cross/spirv_common.hpp>
-#include <SPIRV-Cross/spirv_parser.hpp>
-#include <SPIRV-Cross/spirv_reflect.hpp>
+#include <spirv.hpp>
+#include <spirv_common.hpp>
+#include <spirv_parser.hpp>
+#include <spirv_reflect.hpp>
 #include <string>
 #include <vector>
 

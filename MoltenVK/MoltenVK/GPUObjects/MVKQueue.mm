@@ -38,7 +38,7 @@ id<MTLCommandQueue> MVKQueueFamily::getMTLCommandQueue(uint32_t queueIndex) {
 	id<MTLCommandQueue> mtlQ = _mtlQueues[queueIndex];
 	if ( !mtlQ ) {
 		@autoreleasepool {		// Catch any autoreleased objects created during MTLCommandQueue creation
-			uint32_t maxCmdBuffs = mvkGetMVKConfiguration()->maxActiveMetalCommandBuffersPerQueue;
+			uint32_t maxCmdBuffs = mvkConfig()->maxActiveMetalCommandBuffersPerQueue;
 			mtlQ = [_physicalDevice->getMTLDevice() newCommandQueueWithMaxCommandBufferCount: maxCmdBuffs];		// retained
 			_mtlQueues[queueIndex] = mtlQ;
 		}
@@ -145,6 +145,26 @@ VkResult MVKQueue::waitIdle() {
 	return mvkWaitForFences(_device, 1, &fence, false);
 }
 
+id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(bool retainRefs) {
+#if MVK_XCODE_12
+	if ([_mtlQueue respondsToSelector: @selector(commandBufferWithDescriptor:)]) {
+		MTLCommandBufferDescriptor* mtlCmdBuffDesc = [MTLCommandBufferDescriptor new];	// temp retain
+		mtlCmdBuffDesc.retainedReferences = retainRefs;
+		if (mvkConfig()->debugMode) {
+			mtlCmdBuffDesc.errorOptions |= MTLCommandBufferErrorOptionEncoderExecutionStatus;
+		}
+		id<MTLCommandBuffer> cmdBuff = [_mtlQueue commandBufferWithDescriptor: mtlCmdBuffDesc];
+		[mtlCmdBuffDesc release];														// temp release
+		return cmdBuff;
+	} else
+#endif
+	if (retainRefs) {
+		return [_mtlQueue commandBuffer];
+	} else {
+		return [_mtlQueue commandBufferWithUnretainedReferences];
+	}
+}
+
 
 #pragma mark Construction
 
@@ -172,7 +192,7 @@ void MVKQueue::initName() {
 
 void MVKQueue::initExecQueue() {
 	_execQueue = nil;
-	if ( !mvkGetMVKConfiguration()->synchronousQueueSubmits ) {
+	if ( !mvkConfig()->synchronousQueueSubmits ) {
 		// Determine the dispatch queue priority
 		dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
 		int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
@@ -194,13 +214,15 @@ void MVKQueue::initMTLCommandQueue() {
 void MVKQueue::initGPUCaptureScopes() {
 	_submissionCaptureScope = new MVKGPUCaptureScope(this);
 
-	if (_queueFamily->getIndex() == mvkGetMVKConfiguration()->defaultGPUCaptureScopeQueueFamilyIndex &&
-		_index == mvkGetMVKConfiguration()->defaultGPUCaptureScopeQueueIndex) {
+	const MVKConfiguration* pMVKConfig = mvkConfig();
+	if (_queueFamily->getIndex() == pMVKConfig->defaultGPUCaptureScopeQueueFamilyIndex &&
+		_index == pMVKConfig->defaultGPUCaptureScopeQueueIndex) {
+
+		getDevice()->startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME, _mtlQueue);
 		_submissionCaptureScope->makeDefault();
+
 	}
 	_submissionCaptureScope->beginScope();	// Allow Xcode to capture the first frame if desired.
-
-	getDevice()->startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME, _mtlQueue);
 }
 
 MVKQueue::~MVKQueue() {
@@ -224,8 +246,6 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   uint32_t waitSemaphoreCount,
 									   const VkSemaphore* pWaitSemaphores) {
 	_queue = queue;
-	_trackPerformance = mvkGetMVKConfiguration()->performanceTracking;
-
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
 		_waitSemaphores.push_back(make_pair((MVKSemaphore*)pWaitSemaphores[i], (uint64_t)0));
@@ -259,7 +279,7 @@ void MVKQueueCommandBufferSubmission::execute() {
 // Returns the active MTLCommandBuffer, lazily retrieving it from the queue if needed.
 id<MTLCommandBuffer> MVKQueueCommandBufferSubmission::getActiveMTLCommandBuffer() {
 	if ( !_activeMTLCommandBuffer ) {
-		setActiveMTLCommandBuffer([_queue->_mtlQueue commandBufferWithUnretainedReferences]);
+		setActiveMTLCommandBuffer(_queue->getMTLCommandBuffer());
 	}
 	return _activeMTLCommandBuffer;
 }
@@ -273,6 +293,19 @@ void MVKQueueCommandBufferSubmission::setActiveMTLCommandBuffer(id<MTLCommandBuf
 	[_activeMTLCommandBuffer enqueue];
 }
 
+#if MVK_XCODE_12
+static const char* mvkStringFromErrorState(MTLCommandEncoderErrorState errState) {
+	switch (errState) {
+		case MTLCommandEncoderErrorStateUnknown: return "unknown";
+		case MTLCommandEncoderErrorStateAffected: return "affected";
+		case MTLCommandEncoderErrorStateCompleted: return "completed";
+		case MTLCommandEncoderErrorStateFaulted: return "faulted";
+		case MTLCommandEncoderErrorStatePending: return "pending";
+	}
+	return "unknown";
+}
+#endif
+
 // Commits and releases the currently active MTLCommandBuffer, optionally signalling
 // when the MTLCommandBuffer is done. The first time this is called, it will wait on
 // any semaphores. We have delayed signalling the semaphores as long as possible to
@@ -282,25 +315,19 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	// If using inline semaphore waiting, do so now.
 	for (auto& ws : _waitSemaphores) { ws.first->encodeWait(nil, ws.second); }
 
-	MVKDevice* mkvDev = _queue->_device;
-	uint64_t startTime = mkvDev->getPerformanceTimestamp();
+	// If we need to signal completion, use getActiveMTLCommandBuffer() to ensure at least
+	// one MTLCommandBuffer is used, otherwise if this instance has no content, it will not
+	// finish(), signal the fence and semaphores ,and be destroyed.
+	// Use temp var for MTLCommandBuffer commit and release because completion callback
+	// may destroy this instance before this function ends.
+	id<MTLCommandBuffer> mtlCmdBuff = signalCompletion ? getActiveMTLCommandBuffer() : _activeMTLCommandBuffer;
+	_activeMTLCommandBuffer = nil;
 
-	// Use getActiveMTLCommandBuffer() to ensure at least one MTLCommandBuffer is used,
-	// otherwise if this instance has no content, it will not finish() and be destroyed.
-	if (signalCompletion || _trackPerformance) {
-		[getActiveMTLCommandBuffer() addCompletedHandler: ^(id<MTLCommandBuffer> mtlCmdBuff) {
-			mkvDev->addActivityPerformance(mkvDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
-			if (signalCompletion) { this->finish(); }
-		}];
-	}
-
-	// Use temp vars because callback may destroy this instance before this function ends.
-	MVKDevice* device = _queue->getDevice();
-	id<MTLCommandBuffer> mtlCmdBuff = _activeMTLCommandBuffer;
-	// If command buffer execution fails, log it, and mark the device lost.
+	MVKDevice* mvkDev = _queue->getDevice();
+	uint64_t startTime = mvkDev->getPerformanceTimestamp();
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
 		if (mtlCB.status == MTLCommandBufferStatusError) {
-			device->reportError(device->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
+			getVulkanAPIObject()->reportError(mvkDev->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
 			// Some errors indicate we lost the physical device as well.
 			switch (mtlCB.error.code) {
 				case MTLCommandBufferErrorBlacklisted:
@@ -309,13 +336,46 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 #if MVK_MACOS && !MVK_MACCAT
 				case MTLCommandBufferErrorDeviceRemoved:
 #endif
-					device->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
+					mvkDev->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
 					break;
 			}
+#if MVK_XCODE_12
+			if (mvkConfig()->debugMode) {
+				if (&MTLCommandBufferEncoderInfoErrorKey != nullptr) {
+					if (NSArray<id<MTLCommandBufferEncoderInfo>>* mtlEncInfo = mtlCB.error.userInfo[MTLCommandBufferEncoderInfoErrorKey]) {
+						MVKLogInfo("Encoders for %p \"%s\":", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "");
+						for (id<MTLCommandBufferEncoderInfo> enc in mtlEncInfo) {
+							MVKLogInfo(" - %s: %s", enc.label.UTF8String, mvkStringFromErrorState(enc.errorState));
+							if (enc.debugSignposts.count > 0) {
+								MVKLogInfo("   Debug signposts:");
+								for (NSString* signpost in enc.debugSignposts) {
+									MVKLogInfo("    - %s", signpost.UTF8String);
+								}
+							}
+						}
+					}
+				}
+			}
+#endif
 		}
+#if MVK_XCODE_12
+		if (mvkConfig()->debugMode) {
+			bool isFirstMsg = true;
+			for (id<MTLFunctionLog> log in mtlCB.logs) {
+				if (isFirstMsg) {
+					MVKLogInfo("Shader log messages:");
+					isFirstMsg = false;
+				}
+				MVKLogInfo("%s", log.description.UTF8String);
+			}
+		}
+#endif
+
+		// Ensure finish() is the last thing the completetion callback does.
+		mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.queue.mtlCommandBufferCompletion, startTime);
+		if (signalCompletion) { this->finish(); }
 	}];
 
-	_activeMTLCommandBuffer = nil;
 	[mtlCmdBuff commit];
 	[mtlCmdBuff release];		// retained
 }
@@ -406,14 +466,14 @@ void MVKQueuePresentSurfaceSubmission::execute() {
 }
 
 id<MTLCommandBuffer> MVKQueuePresentSurfaceSubmission::getMTLCommandBuffer() {
-	id<MTLCommandBuffer> mtlCmdBuff = [_queue->getMTLCommandQueue() commandBufferWithUnretainedReferences];
+	id<MTLCommandBuffer> mtlCmdBuff = _queue->getMTLCommandBuffer();
 	setLabelIfNotNil(mtlCmdBuff, @"vkQueuePresentKHR CommandBuffer");
 	[mtlCmdBuff enqueue];
 	return mtlCmdBuff;
 }
 
 void MVKQueuePresentSurfaceSubmission::stopAutoGPUCapture() {
-	const MVKConfiguration* pMVKConfig = mvkGetMVKConfiguration();
+	const MVKConfiguration* pMVKConfig = mvkConfig();
 	if (_queue->_queueFamily->getIndex() == pMVKConfig->defaultGPUCaptureScopeQueueFamilyIndex &&
 		_queue->_index == pMVKConfig->defaultGPUCaptureScopeQueueIndex) {
 		_queue->getDevice()->stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME);

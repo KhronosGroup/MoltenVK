@@ -80,6 +80,7 @@ const static uint32_t kMVKMinSwapchainImageCount = 2;
 const static uint32_t kMVKMaxSwapchainImageCount = 3;
 const static uint32_t kMVKCachedViewportScissorCount = 16;
 const static uint32_t kMVKCachedColorAttachmentCount = 8;
+const static uint32_t kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 
 #pragma mark -
 #pragma mark MVKPhysicalDevice
@@ -367,7 +368,7 @@ protected:
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
-	uint64_t getMoltenVKGitRevision();
+	uint32_t getMoltenVKGitRevision();
 	void populate(VkPhysicalDeviceIDProperties* pDevIdProps);
 	void logGPUInfo();
 
@@ -697,27 +698,17 @@ public:
 	 * capture scope, and if so, starts capturing from the specified Metal capture object.
 	 * The capture will be made either to Xcode, or to a file if one has been configured.
 	 *
-	 * The autoGPUCaptureScope parameter must be one of:
-	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
-	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
-	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME
-	 *
 	 * The mtlCaptureObject must be one of:
 	 *   - MTLDevice for scope MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
 	 *   - MTLCommandQueue for scope MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME.
 	 */
-	void startAutoGPUCapture(int32_t autoGPUCaptureScope, id mtlCaptureObject);
+	void startAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureScope, id mtlCaptureObject);
 
 	/**
 	 * Checks if automatic GPU capture is enabled for the specified
 	 * auto capture scope, and if so, stops capturing.
-	 *
-	 * The autoGPUCaptureScope parameter must be one of:
-	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
-	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE
-	 *   - MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME
 	 */
-	void stopAutoGPUCapture(int32_t autoGPUCaptureScope);
+	void stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureScope);
 
 	/** Returns whether this instance is currently automatically capturing a GPU trace. */
 	inline bool isCurrentlyAutoGPUCapturing() { return _isCurrentlyAutoGPUCapturing; }
@@ -903,6 +894,7 @@ public:
 
 protected:
 	MVKBaseObject* getBaseObject() override { return this; };
+
 };
 
 
@@ -940,25 +932,23 @@ protected:
 
 /** Manages a pool of instances of a particular object type that requires an MVKDevice during construction. */
 template <class T>
-class MVKDeviceObjectPool : public MVKObjectPool<T> {
+class MVKDeviceObjectPool : public MVKObjectPool<T>, public MVKDeviceTrackingMixin {
 
 public:
 
-
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device; };
-
-	/** Returns a new instance. */
-	T* newObject() override { return new T(_device); }
 
 	/**
 	 * Configures this instance for the device, and either use pooling, or not, depending
 	 * on the value of isPooling, which defaults to true if not indicated explicitly.
 	 */
-	MVKDeviceObjectPool(MVKDevice* device, bool isPooling = true) : MVKObjectPool<T>(isPooling), _device(device) {}
+	MVKDeviceObjectPool(MVKDevice* device, bool isPooling = true) : MVKObjectPool<T>(isPooling), MVKDeviceTrackingMixin(device) {}
 
 protected:
-	MVKDevice* _device;
+	T* newObject() override { return new T(_device); }
+	MVKBaseObject* getBaseObject() override { return this; };
+
 };
 
 

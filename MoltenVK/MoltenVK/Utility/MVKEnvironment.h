@@ -76,10 +76,10 @@
 #pragma mark Global Configuration
 
 /** Global function to access MoltenVK configuration info. */
-const MVKConfiguration* mvkGetMVKConfiguration();
+const MVKConfiguration* mvkConfig();
 
 /** Global function to update MoltenVK configuration info. */
-void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
+void mvkSetConfig(MVKConfiguration* pMVKConfig);
 
 /** Flip the vertex coordinate in shaders. Enabled by default. */
 #ifndef MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
@@ -178,26 +178,14 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
 #   define MVK_CONFIG_FAST_MATH_ENABLED 1
 #endif
 
-/**
- * Set the logging level:
- *   0 = None
- *   1 = Errors only
- *   2 = All
- */
+/** Set the logging level: */
 #ifndef MVK_CONFIG_LOG_LEVEL
-#   define MVK_CONFIG_LOG_LEVEL    2
+#   define MVK_CONFIG_LOG_LEVEL    MVK_CONFIG_LOG_LEVEL_INFO
 #endif
 
-/**
- * Set the Vulkan call logging level:
- *   0: No Vulkan call logging.
- *   1: Log the name of each Vulkan call when the call is entered.
- *   2: Log the name of each Vulkan call when the call is entered and exited. This effectively
- *      brackets any other logging activity within the scope of the Vulkan call.
- *   3: Same as option 2, plus logs the time spent inside the Vulkan function.
- */
+/** Set the Vulkan call logging level. */
 #ifndef MVK_CONFIG_TRACE_VULKAN_CALLS
-#   define MVK_CONFIG_TRACE_VULKAN_CALLS    0
+#   define MVK_CONFIG_TRACE_VULKAN_CALLS    MVK_CONFIG_TRACE_VULKAN_CALLS_NONE
 #endif
 
 /**
@@ -222,9 +210,6 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
  * developer having to trigger it manually via the Xcode UI. This is useful when trying
  * to capture a one-shot trace, such as when running a Vulkan CTS test case.
  */
-#define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE		0
-#define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE	1
-#define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME		2
 #ifndef MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE
 #   define MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE    	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE
 #endif
@@ -263,9 +248,9 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
 #   define MVK_CONFIG_TEXTURE_1D_AS_2D    1
 #endif
 
-/** Preallocate descriptors when creating VkDescriptorPool. Disabled by default. */
+/** Preallocate descriptors when creating VkDescriptorPool. Enabled by default. */
 #ifndef MVK_CONFIG_PREALLOCATE_DESCRIPTORS
-#   define MVK_CONFIG_PREALLOCATE_DESCRIPTORS    0
+#   define MVK_CONFIG_PREALLOCATE_DESCRIPTORS    1
 #endif
 
 /** Use pooling for command resources in a VkCommandPool. Enabled by default. */
@@ -282,3 +267,13 @@ void mvkSetMVKConfiguration(MVKConfiguration* pMVKConfig);
 #	ifndef MVK_CONFIG_USE_MTL_SAMPLE_COUNTER_TIMESTAMPS
 #   	define MVK_CONFIG_USE_MTL_SAMPLE_COUNTER_TIMESTAMPS    0
 #	endif
+
+/** The Vulkan API version to advertise. Defaults to MVK_VULKAN_API_VERSION. */
+#ifndef MVK_CONFIG_API_VERSION_TO_ADVERTISE
+#  	define MVK_CONFIG_API_VERSION_TO_ADVERTISE    MVK_VULKAN_API_VERSION
+#endif
+
+/** Advertise supported extensions. Defaults to all. */
+#ifndef MVK_CONFIG_ADVERTISE_EXTENSIONS
+#  	define MVK_CONFIG_ADVERTISE_EXTENSIONS    MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL
+#endif

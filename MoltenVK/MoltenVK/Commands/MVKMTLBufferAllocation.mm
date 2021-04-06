@@ -24,7 +24,7 @@
 
 MVKVulkanAPIObject* MVKMTLBufferAllocation::getVulkanAPIObject() { return _pool->getVulkanAPIObject(); };
 
-void MVKMTLBufferAllocation::returnToPool() { _pool->returnObjectSafely(this); }
+void MVKMTLBufferAllocation::returnToPool() const { _pool->returnAllocation((MVKMTLBufferAllocation*)this); }
 
 
 #pragma mark -
@@ -44,17 +44,21 @@ MVKMTLBufferAllocation* MVKMTLBufferAllocationPool::newObject() {
 
 // Adds a new MTLBuffer to the buffer pool and resets the next offset to the start of it
 void MVKMTLBufferAllocationPool::addMTLBuffer() {
-    MTLResourceOptions mbOpts = MTLResourceStorageModeShared | MTLResourceCPUCacheModeDefaultCache;
+    MTLResourceOptions mbOpts = (_mtlStorageMode << MTLResourceStorageModeShift) | MTLResourceCPUCacheModeDefaultCache;
     _mtlBuffers.push_back([_device->getMTLDevice() newBufferWithLength: _mtlBufferLength options: mbOpts]);
     _nextOffset = 0;
 }
 
 
-MVKMTLBufferAllocationPool::MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, bool isDedicated)
-        : MVKObjectPool<MVKMTLBufferAllocation>(true) {
-    _device = device;
+MVKMTLBufferAllocationPool::MVKMTLBufferAllocationPool(MVKDevice* device, NSUInteger allocationLength, bool makeThreadSafe,
+													   bool isDedicated, MTLStorageMode mtlStorageMode) :
+	MVKObjectPool<MVKMTLBufferAllocation>(true),
+	MVKDeviceTrackingMixin(device) {
+
     _allocationLength = allocationLength;
+	_isThreadSafe = makeThreadSafe;
     _mtlBufferLength = _allocationLength * (isDedicated ? 1 : calcMTLBufferAllocationCount());
+    _mtlStorageMode = mtlStorageMode;
     _nextOffset = _mtlBufferLength;     // Force a MTLBuffer to be added on first access
 }
 
@@ -79,19 +83,22 @@ MVKMTLBufferAllocationPool::~MVKMTLBufferAllocationPool() {
 const MVKMTLBufferAllocation* MVKMTLBufferAllocator::acquireMTLBufferRegion(NSUInteger length) {
 	MVKAssert(length <= _maxAllocationLength, "This MVKMTLBufferAllocator has been configured to dispense MVKMTLBufferRegions no larger than %lu bytes.", (unsigned long)_maxAllocationLength);
 
+	// Can't allocate a segment smaller than the minimum MTLBuffer alignment.
+	length = std::max<NSUInteger>(length, _device->_pMetalFeatures->mtlBufferAlignment);
+
     // Convert max length to the next power-of-two exponent to use as a lookup
     NSUInteger p2Exp = mvkPowerOfTwoExponent(length);
 	MVKMTLBufferAllocationPool* pRP = _regionPools[p2Exp];
-	const MVKMTLBufferAllocation* region = _makeThreadSafe ? pRP->acquireObjectSafely() : pRP->acquireObject();
+	const MVKMTLBufferAllocation* region = _isThreadSafe ? pRP->acquireObjectSafely() : pRP->acquireObject();
 	if (region) {
 		[region->_mtlBuffer setPurgeableState: MTLPurgeableStateVolatile];
 	}
 	return region;
 }
 
-MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe, bool isDedicated) : MVKBaseDeviceObject(device) {
-    _maxAllocationLength = maxRegionLength;
-	_makeThreadSafe = makeThreadSafe;
+MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRegionLength, bool makeThreadSafe, bool isDedicated, MTLStorageMode mtlStorageMode) : MVKBaseDeviceObject(device) {
+	_maxAllocationLength = std::max<NSUInteger>(maxRegionLength, _device->_pMetalFeatures->mtlBufferAlignment);
+	_isThreadSafe = makeThreadSafe;
 
     // Convert max length to the next power-of-two exponent
     NSUInteger maxP2Exp = mvkPowerOfTwoExponent(_maxAllocationLength);
@@ -100,7 +107,7 @@ MVKMTLBufferAllocator::MVKMTLBufferAllocator(MVKDevice* device, NSUInteger maxRe
     _regionPools.reserve(maxP2Exp + 1);
     NSUInteger allocLen = 1;
     for (uint32_t p2Exp = 0; p2Exp <= maxP2Exp; p2Exp++) {
-        _regionPools.push_back(new MVKMTLBufferAllocationPool(device, allocLen, isDedicated));
+        _regionPools.push_back(new MVKMTLBufferAllocationPool(device, allocLen, makeThreadSafe, isDedicated, mtlStorageMode));
         allocLen <<= 1;
     }
 }

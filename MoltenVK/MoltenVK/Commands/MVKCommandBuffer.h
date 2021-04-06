@@ -372,7 +372,10 @@ public:
     void setComputeBytes(id<MTLComputeCommandEncoder> mtlEncoder, const void* bytes, NSUInteger length, uint32_t mtlBuffIndex);
 
     /** Get a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
-    const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool dedicated = false);
+    const MVKMTLBufferAllocation* getTempMTLBuffer(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
+
+	/** Copy the bytes to a temporary MTLBuffer that will be returned to a pool after the command buffer is finished. */
+	const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length, bool isDedicated = false);
 
     /** Returns the command encoding pool. */
     MVKCommandEncodingPool* getCommandEncodingPool();
@@ -472,7 +475,6 @@ protected:
     void finishQueries();
 	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex);
 	void clearRenderArea();
-    const MVKMTLBufferAllocation* copyToTempMTLBufferAllocation(const void* bytes, NSUInteger length);
     NSString* getMTLRenderCommandEncoderName();
 
 	VkSubpassContents _subpassContents;

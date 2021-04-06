@@ -19,8 +19,8 @@
 #ifndef __SPIRVToMSLConverter_h_
 #define __SPIRVToMSLConverter_h_ 1
 
-#include <SPIRV-Cross/spirv.hpp>
-#include <SPIRV-Cross/spirv_msl.hpp>
+#include <spirv.hpp>
+#include <spirv_msl.hpp>
 #include <string>
 #include <vector>
 #include <unordered_map>

@@ -106,6 +106,9 @@ public:
 	/** Returns the Metal queue underlying this queue. */
 	inline id<MTLCommandQueue> getMTLCommandQueue() { return _mtlQueue; }
 
+	/** Returns a Metal command buffer from the Metal queue. */
+	id<MTLCommandBuffer> getMTLCommandBuffer(bool retainRefs = false);
+
 #pragma mark Construction
 	
 	/** Constructs an instance for the device and queue family. */
@@ -178,7 +181,6 @@ protected:
 
 	MVKQueue* _queue;
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _waitSemaphores;
-	bool _trackPerformance;
 };
 
 

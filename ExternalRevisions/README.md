@@ -205,7 +205,7 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
 
 6. In the `Scripts` folder, run `./packagePregenSpirvToolsHeaders`, which will fetch and build the 
    full `SPIRV-Tools` library and will update `Templates/spirv-tools/build.zip` from the `*.h` and 
-   `*.inc` files in `External/glslang/External/spirv-tools/build`. Test by running `./fetchDependencies` 
+   `*.inc` files in `External/glslang/External/spirv-tools/build`. Test by running `./fetchDependencies --all` 
    and a **MoltenVK** build.
 
 

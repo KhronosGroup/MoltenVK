@@ -273,7 +273,7 @@ MVKMTLFunction MVKShaderModule::getMTLFunction(SPIRVToMSLConversionConfiguration
 }
 
 bool MVKShaderModule::convert(SPIRVToMSLConversionConfiguration* pContext) {
-	bool shouldLogCode = mvkGetMVKConfiguration()->debugMode;
+	bool shouldLogCode = mvkConfig()->debugMode;
 	bool shouldLogEstimatedGLSL = shouldLogCode;
 
 	// If the SPIR-V converter does not have any code, but the GLSL converter does,

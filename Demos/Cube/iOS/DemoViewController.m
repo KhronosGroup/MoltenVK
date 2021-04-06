@@ -62,6 +62,12 @@
 	demo_draw(&demo);
 }
 
+// Allow device rotation to resize the swapchain
+-(void)viewWillTransitionToSize:(CGSize)size withTransitionCoordinator:(id)coordinator {
+	[super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+	demo_resize(&demo);
+}
+
 @end
 
 

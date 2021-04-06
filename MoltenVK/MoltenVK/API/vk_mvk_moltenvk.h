@@ -50,13 +50,48 @@ typedef unsigned long MTLLanguageVersion;
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   1
-#define MVK_VERSION_PATCH   2
+#define MVK_VERSION_PATCH   3
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            30
+#define VK_MVK_MOLTENVK_SPEC_VERSION            31
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
+
+/** Identifies the level of logging MoltenVK should be limited to outputting. */
+typedef enum MVKConfigLogLevel {
+	MVK_CONFIG_LOG_LEVEL_NONE     = 0,	/**< No logging. */
+	MVK_CONFIG_LOG_LEVEL_ERROR    = 1,	/**< Log errors only. */
+	MVK_CONFIG_LOG_LEVEL_INFO     = 2,	/**< Log errors and informational messages. */
+	MVK_CONFIG_LOG_LEVEL_MAX_ENUM = 0x7FFFFFFF
+} MVKConfigLogLevel;
+
+/** Identifies the level of Vulkan call trace logging MoltenVK should perform. */
+typedef enum MVKConfigTraceVulkanCalls {
+	MVK_CONFIG_TRACE_VULKAN_CALLS_NONE       = 0,	/**< No Vulkan call logging. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER      = 1,	/**< Log the name of each Vulkan call when the call is entered. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT = 2,	/**< Log the name of each Vulkan call when the call is entered and exited. This effectively brackets any other logging activity within the scope of the Vulkan call. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_DURATION   = 3,	/**< Same as MVK_CONFIG_TRACE_VULKAN_CALLS_ENTER_EXIT, plus logs the time spent inside the Vulkan function. */
+	MVK_CONFIG_TRACE_VULKAN_CALLS_MAX_ENUM   = 0x7FFFFFFF
+} MVKConfigTraceVulkanCalls;
+
+/** Identifies the scope for Metal to run an automatic GPU capture for diagnostic debugging purposes. */
+typedef enum MVKConfigAutoGPUCaptureScope {
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_NONE     = 0,	/**< No automatic GPU capture. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE   = 1,	/**< Automatically capture all GPU activity during the lifetime of a VkDevice. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME    = 2,	/**< Automatically capture all GPU activity during the rendering and presentation of the first frame. */
+	MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_MAX_ENUM = 0x7FFFFFFF
+} MVKConfigAutoGPUCaptureScope;
+
+/** Identifies extensions to advertise as part of MoltenVK configuration. */
+typedef enum MVKConfigAdvertiseExtensionBits {
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL         = 0x00000001,	/**< All supported extensions. */
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_MOLTENVK    = 0x00000002,	/**< This VK_MVK_moltenvk extension. */
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_WSI         = 0x00000004,	/**< WSI extensions supported on the platform. */
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_PORTABILITY = 0x00000008,	/**< Vulkan Portability Subset extensions. */
+	MVK_CONFIG_ADVERTISE_EXTENSIONS_MAX_ENUM    = 0x7FFFFFFF
+} MVKConfigAdvertiseExtensionBits;
+typedef VkFlags MVKConfigAdvertiseExtensions;
 
 /**
  * MoltenVK configuration settings.
@@ -380,18 +415,21 @@ typedef struct {
 	VkBool32 switchSystemGPU;
 
 	/**
-	 * If enabled, arbitrary VkImageView component swizzles are supported, as defined
-	 * in VkImageViewCreateInfo::components when creating a VkImageView.
+	 * Older versions of Metal do not natively support per-texture swizzling. When running on
+	 * such a system, and this parameter is enabled, arbitrary VkImageView component swizzles
+	 * are supported, as defined in VkImageViewCreateInfo::components when creating a VkImageView.
 	 *
-	 * If disabled, a very limited set of VkImageView component swizzles are supported
-	 * via format substitutions.
+	 * If disabled, and native Metal per-texture swizzling is not available on the platform,
+	 * a very limited set of VkImageView component swizzles are supported via format substitutions.
 	 *
-	 * Metal does not natively support per-texture swizzling. If this parameter is enabled
-	 * both when a VkImageView is created, and when any pipeline that uses that VkImageView
-	 * is compiled, VkImageView swizzling is automatically performed in the converted Metal
-	 * shader code during all texture sampling and reading operations, regardless of whether
-	 * a swizzle is required for the VkImageView associated with the Metal texture.
-	 * This may result in reduced performance.
+	 * If Metal supports native per-texture swizzling, this parameter is ignored.
+
+	 * When running on an older version of Metal that does not support native per-texture
+	 * swizzling, if this parameter is enabled, both when a VkImageView is created, and
+	 * when any pipeline that uses that VkImageView is compiled, VkImageView swizzling is
+	 * automatically performed in the converted Metal shader code during all texture sampling
+	 * and reading operations, regardless of whether a swizzle is required for the VkImageView
+	 * associated with the Metal texture. This may result in reduced performance.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -410,8 +448,9 @@ typedef struct {
 	 * in a call to vkGetPhysicalDeviceImageFormatProperties2KHR() to query for an VkImageView
 	 * format that will require full swizzling to be enabled, and this feature is not enabled.
 	 *
-	 * If this parameter is disabled, the following limited set of VkImageView swizzles are
-	 * supported by MoltenVK, via automatic format substitution:
+	 * If this parameter is disabled, and native Metal per-texture swizzling is not available
+	 * on the platform, the following limited set of VkImageView swizzles are supported by
+	 * MoltenVK, via automatic format substitution:
 	 *
 	 * Texture format			       Swizzle
 	 * --------------                  -------
@@ -475,10 +514,7 @@ typedef struct {
 	VkBool32 fastMathEnabled;
 
 	/**
-	 * Controls the level of logging performned by MoltenVK using the following numeric values:
-	 *   0: No logging.
-	 *   1: Log errors only.
-	 *   2: Log errors and informational messages.
+	 * Controls the level of logging performned by MoltenVK.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -488,18 +524,11 @@ typedef struct {
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, errors and informational messages are logged.
 	 */
-	uint32_t logLevel;
+	MVKConfigLogLevel logLevel;
 
 	/**
 	 * Causes MoltenVK to log the name of each Vulkan call made by the application,
 	 * along with the Mach thread ID, global system thread ID, and thread name.
-	 * The logging format options can be controlled as follows:
-	 *   0: No Vulkan call logging.
-	 *   1: Log the name of each Vulkan call when the call is entered.
-	 *   2: Log the name of each Vulkan call when the call is entered and exited. This
-	 *      effectively brackets any other logging activity within the scope of the Vulkan call.
-	 *   3: Same as option 2, plus logs the time spent inside the Vulkan function.
-	 * If none of these is set, no Vulkan call logging will occur.
 	 *
 	 * The value of this parameter may be changed at any time during application runtime,
 	 * and the changed value will immediately effect subsequent MoltenVK behaviour.
@@ -509,7 +538,7 @@ typedef struct {
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, no Vulkan call logging will occur.
 	 */
-	uint32_t traceVulkanCalls;
+	MVKConfigTraceVulkanCalls traceVulkanCalls;
 
 	/**
 	 * Force MoltenVK to use a low-power GPU, if one is availble on the device.
@@ -575,15 +604,14 @@ typedef struct {
 	 * Controls whether Metal should run an automatic GPU capture without the user having to
 	 * trigger it manually via the Xcode user interface, and controls the scope under which
 	 * that GPU capture will occur. This is useful when trying to capture a one-shot GPU trace,
-	 * such as when running a Vulkan CTS test case. For the automatic GPU capture to occur,
-	 * the Xcode scheme under which the app is run must have the Metal GPU capture option
-	 * enabled. MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE should not be set to manually trigger a
-	 * GPU capture via the Xcode user interface.
+	 * such as when running a Vulkan CTS test case. For the automatic GPU capture to occur, the
+	 * Xcode scheme under which the app is run must have the Metal GPU capture option enabled.
+	 * This parameter should not be set to manually trigger a GPU capture via the Xcode user interface.
 	 *
-	 * To automatically trigger a GPU capture, set this value as follows:
-	 *   0: No automatic GPU capture.
-	 *   1: Capture all GPU commands issued during the lifetime of the VkDevice.
-	 *   2: Capture all GPU commands issued during the first rendered frame.
+	 * When the value of this parameter is MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME,
+	 * the queue for which the GPU activity is captured is identifed by the values of
+	 * the defaultGPUCaptureScopeQueueFamilyIndex and defaultGPUCaptureScopeQueueIndex
+	 * configuration parameters.
 	 *
 	 * The value of this parameter must be changed before creating a VkDevice,
 	 * for the change to take effect.
@@ -593,7 +621,7 @@ typedef struct {
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, no automatic GPU capture will occur.
 	 */
-	uint32_t autoGPUCaptureScope;
+	MVKConfigAutoGPUCaptureScope autoGPUCaptureScope;
 
 	/**
 	 * The path to a file where the automatic GPU capture should be saved, if autoGPUCaptureScope
@@ -613,7 +641,7 @@ typedef struct {
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, automatic GPU capture will be handled by the Xcode user interface.
 	 */
-	char* autoGPUCaptureOutputFilepath;
+	const char* autoGPUCaptureOutputFilepath;
 
 	/**
 	 * Controls whether MoltenVK should use a Metal 2D texture with a height of 1 for a
@@ -632,22 +660,20 @@ typedef struct {
 	VkBool32 texture1DAs2D;
 
 	/**
-	 * Controls whether MoltenVK should preallocate memory in each VkDescriptorPool
-	 * ccording to the values of the VkDescriptorPoolSize parameters. Doing so may improve
-	 * descriptor set allocation performance at a cost of preallocated application memory,
-	 * and possible descreased performance when creating and reseting the VkDescriptorPool.
-	 * If this setting is disabled, the descriptors required for a descriptor set will
-	 * be dynamically allocated in application memory when the descriptor set itself is allocated.
+	 * Controls whether MoltenVK should preallocate memory in each VkDescriptorPool according
+	 * to the values of the VkDescriptorPoolSize parameters. Doing so may improve descriptor set
+	 * allocation performance and memory stability at a cost of preallocated application memory.
+	 * If this setting is disabled, the descriptors required for a descriptor set will be individually
+	 * dynamically allocated in application memory when the descriptor set itself is allocated.
 	 *
-	 * The value of this parameter may be changed at any time during application runtime,
-	 * and the changed value will immediately effect behavior of VkDescriptorPools created
-	 * after the setting is changed.
+	 * The value of this parameter may be changed at any time during application runtime, and the
+	 * changed value will affect the behavior of VkDescriptorPools created after the value is changed.
 	 *
 	 * The initial value or this parameter is set by the
 	 * MVK_CONFIG_PREALLOCATE_DESCRIPTORS
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is disabled by default, and MoltenVK will
-	 * dynamically allocate descriptors when the containing descriptor set is allocated.
+	 * If neither is set, this setting is enabled by default, and MoltenVK will
+	 * allocate a pool of descriptors when a VkDescriptorPool is created.
 	 */
 	VkBool32 preallocateDescriptors;
 
@@ -727,6 +753,46 @@ typedef struct {
 	 * performance will be logged only when frame activity is logged.
 	 */
 	VkBool32 useMTLSampleCounterTimestamps;
+
+	/**
+	 * Controls the Vulkan API version that MoltenVK should advertise in vkEnumerateInstanceVersion().
+	 * When reading this value, it will be one of the VK_API_VERSION_1_* values, including the latest
+	 * VK_HEADER_VERSION component. When setting this value, it should be set to one of:
+	 *
+	 *   VK_API_VERSION_1_1  (equivalent decimal number 4198400)
+	 *   VK_API_VERSION_1_0  (equivalent decimal number 4194304)
+	 *
+	 * MoltenVK will automatically add the VK_HEADER_VERSION component.
+	 *
+	 * The value of this parameter must be changed before creating a VkInstance,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_API_VERSION_TO_ADVERTISE
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this parameter defaults to the highest API version
+	 * currently supported by MoltenVK, including the latest VK_HEADER_VERSION component.
+	 */
+	uint32_t apiVersionToAdvertise;
+
+	/**
+	 * Controls which extensions MoltenVK should advertise it supports in
+	 * vkEnumerateInstanceExtensionProperties() and vkEnumerateDeviceExtensionProperties().
+	 * The value of this parameter is a bitwise OR of values from the MVKConfigAdvertiseExtensionBits
+	 * enumeration. Any prerequisite extensions are also advertised.
+	 * If the flag MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL is included, all supported extensions
+	 * will be advertised. A value of zero means no extensions will be advertised.
+	 *
+	 * The value of this parameter must be changed before creating a VkInstance,
+	 * for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_ADVERTISE_EXTENSIONS
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, the value of this setting defaults to
+	 * MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL, and all supported extensions will be advertised.
+	 */
+	MVKConfigAdvertiseExtensions advertiseExtensions;
 
 } MVKConfiguration;
 

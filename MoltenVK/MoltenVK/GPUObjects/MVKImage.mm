@@ -983,7 +983,7 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 	if (validSamples == VK_SAMPLE_COUNT_1_BIT) { return validSamples; }
 
 	// Don't use getImageType() because it hasn't been set yet.
-	if ( !((pCreateInfo->imageType == VK_IMAGE_TYPE_2D) || ((pCreateInfo->imageType == VK_IMAGE_TYPE_1D) && mvkGetMVKConfiguration()->texture1DAs2D)) ) {
+	if ( !((pCreateInfo->imageType == VK_IMAGE_TYPE_2D) || ((pCreateInfo->imageType == VK_IMAGE_TYPE_1D) && mvkConfig()->texture1DAs2D)) ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, multisampling can only be used with a 2D image type. Setting sample count to 1."));
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
@@ -1209,7 +1209,7 @@ void MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* s
 		@autoreleasepool {
 			MVKSemaphore* mvkSem = signaler.semaphore;
 			id<MTLCommandBuffer> mtlCmdBuff = (mvkSem && mvkSem->isUsingCommandEncoding()
-											   ? [_device->getAnyQueue()->getMTLCommandQueue() commandBufferWithUnretainedReferences]
+											   ? _device->getAnyQueue()->getMTLCommandBuffer()
 											   : nil);
 			signal(signaler, mtlCmdBuff);
 			[mtlCmdBuff commit];
@@ -1476,7 +1476,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
 																				  _imageView->_usage,
 																				  _imageView,
 																				  _device->_pMetalFeatures->nativeTextureSwizzle,
-																				  mvkGetMVKConfiguration()->fullImageViewSwizzle,
+																				  mvkConfig()->fullImageViewSwizzle,
 																				  _mtlPixFmt,
 																				  useSwizzle));
     _packedSwizzle = (useSwizzle) ? mvkPackSwizzle(pCreateInfo->components) : 0;
