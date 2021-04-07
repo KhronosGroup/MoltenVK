@@ -816,15 +816,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 				setConfigurationResult(reportError(VK_ERROR_FRAGMENTATION_EXT, "vkCreateDescriptorPool(): The requested descriptor storage of %d MB is larger than the maximum descriptor storage of %d MB per VkDescriptorPool.", (uint32_t)(metalArgBuffSize / MEBI), (uint32_t)(maxMTLBuffSize / MEBI)));
 				metalArgBuffSize = maxMTLBuffSize;
 			}
-
-			// The MTLBuffer can have Managed storage if possible because we don't set constant inline data directly in the buffer.
-#if MVK_MACOS
-			MTLResourceOptions rezOpts = MTLResourceStorageModeManaged;
-#endif
-#if MVK_IOS_OR_TVOS
-			MTLResourceOptions rezOpts = MTLResourceStorageModeShared;
-#endif
-			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: rezOpts];	// retained
+			_metalArgumentBuffer = [getMTLDevice() newBufferWithLength: metalArgBuffSize options: MTLResourceStorageModeShared];	// retained
 			_metalArgumentBuffer.label = @"Argument buffer";
 		}
 	}
