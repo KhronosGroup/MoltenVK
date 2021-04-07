@@ -488,54 +488,47 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 		id<MTLArgumentEncoder> mtlArgEncoder = pipeline->getMTLArgumentEncoder(dsIdx, stage);
 		if (descSet && mtlArgEncoder) {
 			auto* dsLayout = descSet->getLayout();
-			auto& usedDescriptors = pipeline->getDescriptorUsage(dsIdx);
 			auto& argBuffDirtyDescs = descSet->getMetalArgumentBufferDirtyDescriptors();
 			auto& resourceUsageDirtyDescs = _metalUsageDirtyDescriptors[dsIdx];
-
-			uint32_t elemIdx = 0;
-			uint32_t nextDSLBindDescIdx = 0;
-			MVKDescriptorSetLayoutBinding* mvkDSLBind = nullptr;
 			id<MTLBuffer> mtlArgBuff = nil;
 
-			// Only update the descriptors that are actually used by the shaders, and only if
-			// the descriptor is dirty relative to the arg buffer or Metal encoder usage setting.
-			usedDescriptors.enumerateEnabledBits(false, [&](size_t descIdx) {
-				bool argBuffDirty = argBuffDirtyDescs.getBit(descIdx, true);
-				bool resourceUsageDirty = resourceUsageDirtyDescs.getBit(descIdx, true);
-				if (argBuffDirty || resourceUsageDirty) {
-					// Get the layout binding associated with this descriptor.
-					// Assume each layout binding will apply to multiple descriptors
-					// and only fetch a new one when necessary, as it is expensive.
-					if (descIdx >= nextDSLBindDescIdx) {
-						mvkDSLBind = dsLayout->getBindingForDescriptorIndex((uint32_t)descIdx);
-						if ( !mvkDSLBind ) { return false; }	// We've run out of layout bindings
-						nextDSLBindDescIdx = mvkDSLBind->getDescriptorIndex(mvkDSLBind->getDescriptorCount(descSet));
-						elemIdx = 0;
+			bool shouldBindArgBuffToStage = false;
+			uint32_t dslBindCnt = dsLayout->getBindingCount();
+			for (uint32_t dslBindIdx = 0; dslBindIdx < dslBindCnt; dslBindIdx++) {
+				auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
+				if (dslBind->getApplyToStage(stage)) {
+					shouldBindArgBuffToStage = true;
+					uint32_t elemCnt = dslBind->getDescriptorCount();
+					for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
+						uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);
+						bool argBuffDirty = argBuffDirtyDescs.getBit(descIdx, true);
+						bool resourceUsageDirty = resourceUsageDirtyDescs.getBit(descIdx, true);
+						if (argBuffDirty || resourceUsageDirty) {
+							// Don't attach the arg buffer to the arg encoder unless something actually needs
+							// to be written to it. We often might only be updating command encoder resource usage.
+							if (!mtlArgBuff && argBuffDirty) {
+								mtlArgBuff = descSet->getMetalArgumentBuffer();
+								[mtlArgEncoder setArgumentBuffer: mtlArgBuff offset: descSet->getMetalArgumentBufferOffset()];
+							}
+							auto* mvkDesc = descSet->getDescriptorAt(descIdx);
+							mvkDesc->encodeToMetalArgumentBuffer(this, mtlArgEncoder, dsIdx,
+																 dslBind, elemIdx, argBuffDirty, true);
+						}
 					}
-
-					// Don't attach the arg buffer to the arg encoder unless something actually needs
-					// to be written to it. We often might only be updating command encoder resource usage.
-					if (!mtlArgBuff && argBuffDirty) {
-						mtlArgBuff = descSet->getMetalArgumentBuffer();
-						[mtlArgEncoder setArgumentBuffer: mtlArgBuff offset: descSet->getMetalArgumentBufferOffset()];
-					}
-					auto* mvkDesc = descSet->getDescriptorAt((uint32_t)descIdx);
-					mvkDesc->encodeToMetalArgumentBuffer(this, mtlArgEncoder, dsIdx,
-														 mvkDSLBind, elemIdx++, stage,
-														 argBuffDirty, true);
 				}
-				return true;
-			});
+			}
 
 			// If the arg buffer was attached to the arg encoder, detach it now.
 			if (mtlArgBuff) { [mtlArgEncoder setArgumentBuffer: nil offset: 0]; }
 
-			// Bind the Metal argument buffer itself to the command encoder
-			MVKMTLBufferBinding bb;
-			bb.mtlBuffer = descSet->getMetalArgumentBuffer();
-			bb.offset = descSet->getMetalArgumentBufferOffset();
-			bb.index = dsIdx;
-			bindMetalArgumentBuffer(bb);
+			// If it is needed, bind the Metal argument buffer itself to the command encoder,
+			if (shouldBindArgBuffToStage) {
+				MVKMTLBufferBinding bb;
+				bb.mtlBuffer = descSet->getMetalArgumentBuffer();
+				bb.offset = descSet->getMetalArgumentBufferOffset();
+				bb.index = dsIdx;
+				bindMetalArgumentBuffer(stage, bb);
+			}
 
 			// For some unexpected reason, GPU capture on Xcode 12 doesn't always correctly expose
 			// the contents of Metal argument buffers. Triggering an extraction of the arg buffer
@@ -876,10 +869,8 @@ MVKPipeline* MVKGraphicsResourcesCommandEncoderState::getPipeline() {
 	return _cmdEncoder->_graphicsPipelineState.getPipeline();
 }
 
-void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) {
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-		if (i != kMVKShaderStageCompute) { bindBuffer(MVKShaderStage(i), buffBind); }
-	}
+void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) {
+	bindBuffer(stage, buffBind);
 }
 
 void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
@@ -995,7 +986,7 @@ MVKPipeline* MVKComputeResourcesCommandEncoderState::getPipeline() {
 	return _cmdEncoder->_computePipelineState.getPipeline();
 }
 
-void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) {
+void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) {
 	bindBuffer(buffBind);
 }
 

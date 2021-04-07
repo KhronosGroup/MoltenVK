@@ -186,9 +186,6 @@ public:
 	/** Returns the number of descriptor sets in this pipeline layout. */
 	uint32_t getDescriptorSetCount() { return _descriptorSetCount; }
 
-	/** Returns the descriptor usage array for the descriptor set. */
-	MVKBitArray& getDescriptorUsage(uint32_t descSetIndex) { return _descriptorUsage[descSetIndex]; }
-
 	/** A mutex lock to protect access to the Metal argument encoders. */
 	std::mutex _mtlArgumentEncodingLock;
 
@@ -200,10 +197,8 @@ public:
 protected:
 	void propagateDebugName() override {}
 	void addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLConversionConfiguration& shaderConfig);
-	void initDescriptorUsage(MVKPipelineLayout* layout);
 
 	MVKPipelineCache* _pipelineCache;
-	MVKBitArray _descriptorUsage[kMVKMaxDescriptorSetCount];
 	id<MTLArgumentEncoder> _mtlArgumentEncoders[kMVKMaxDescriptorSetCount];
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;

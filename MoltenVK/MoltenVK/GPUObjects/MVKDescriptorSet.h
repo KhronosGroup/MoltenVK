@@ -72,19 +72,17 @@ public:
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                         uint32_t dslIndex);
 
-	/** Populates the descriptor usage as indicated by the shader converter context. */
-	void populateDescriptorUsage(MVKBitArray& usageArray,
-								 mvk::SPIRVToMSLConversionConfiguration& context,
-								 uint32_t dslIndex);
+	/** Returns the number of bindings. */
+	uint32_t getBindingCount() { return (uint32_t)_bindings.size(); }
 
-	/** Returns the binding for the descriptor at the index in a descriptor set. */
-	MVKDescriptorSetLayoutBinding* getBindingForDescriptorIndex(uint32_t descriptorIndex);
+	/** Returns the binding at the index in a descriptor set layout. */
+	MVKDescriptorSetLayoutBinding* getBindingAt(uint32_t index) { return &_bindings[index]; }
 
 	/** Returns true if this layout is for push descriptors only. */
 	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
-	/** Returns a new MTLArgumentEncoder for the stage, populated from this layout and info from the shader config.  */
-	id<MTLArgumentEncoder> newMTLArgumentEncoder(MVKShaderStage stage, mvk::SPIRVToMSLConversionConfiguration& shaderConfig, uint32_t descSetIdx);
+	/** Returns a new MTLArgumentEncoder, populated from this layout and info from the shader config.  */
+	id<MTLArgumentEncoder> newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig, uint32_t descSetIdx);
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 

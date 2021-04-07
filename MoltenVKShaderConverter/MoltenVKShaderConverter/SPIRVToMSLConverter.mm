@@ -179,16 +179,6 @@ MVK_PUBLIC_SYMBOL uint32_t SPIRVToMSLConversionConfiguration::countShaderInputsA
 	return siCnt;
 }
 
-MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isResourceUsed(uint32_t descSet, uint32_t binding) const {
-	for (auto& rb : resourceBindings) {
-		auto& rbb = rb.resourceBinding;
-		if (rbb.desc_set == descSet && rbb.binding == binding) {
-			return rb.outIsUsedByShader;
-		}
-	}
-	return false;
-}
-
 MVK_PUBLIC_SYMBOL MTLTextureType SPIRVToMSLConversionConfiguration::getMTLTextureType(uint32_t descSet, uint32_t binding) const {
 	for (auto& rb : resourceBindings) {
 		auto& rbb = rb.resourceBinding;

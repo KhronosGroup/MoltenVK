@@ -440,7 +440,7 @@ protected:
 
 	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding>& texBindings);
 	void encodeMetalArgumentBuffer(MVKShaderStage stage);
-	virtual void bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) = 0;
+	virtual void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) = 0;
 
 	inline MVKDescSetDescKey getDynamicOffsetKey(uint32_t descSet, uint32_t descIdx) {
 		return ((MVKDescSetDescKey)descSet << 32) + descIdx;
@@ -543,7 +543,7 @@ public:
 protected:
     void encodeImpl(uint32_t stage) override;
     void markDirty() override;
-	void bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) override;
+	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
     ResourceBindings<8> _shaderStageResourceBindings[4];
 };
@@ -588,7 +588,7 @@ public:
 
 protected:
     void encodeImpl(uint32_t) override;
-	void bindMetalArgumentBuffer(MVKMTLBufferBinding& buffBind) override;
+	void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) override;
 
 	ResourceBindings<4> _resourceBindings;
 };

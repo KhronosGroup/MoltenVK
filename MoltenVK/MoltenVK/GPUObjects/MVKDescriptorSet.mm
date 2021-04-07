@@ -182,40 +182,17 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConve
 	}
 }
 
-void MVKDescriptorSetLayout::populateDescriptorUsage(MVKBitArray& usageArray,
-													 SPIRVToMSLConversionConfiguration& context,
-													 uint32_t dslIndex) {
-	uint32_t bindCnt = (uint32_t)_bindings.size();
-	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
-		auto& dslBind = _bindings[bindIdx];
-		if (context.isResourceUsed(dslIndex, dslBind.getBinding())) {
-			uint32_t elemCnt = dslBind.getDescriptorCount();
-			for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
-				usageArray.setBit(dslBind.getDescriptorIndex(elemIdx));
-			}
-		}
-	}
-}
-
-id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(MVKShaderStage stage,
-																	 mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
+id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 																	 uint32_t descSetIdx) {
 	if ( !isUsingMetalArgumentBuffer() ) { return nil; }
 
 	@autoreleasepool {
 		NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
 		for (auto& dslBind : _bindings) {
-			dslBind.addMTLArgumentDescriptors(args, stage, shaderConfig, descSetIdx);
+			dslBind.addMTLArgumentDescriptors(args, shaderConfig, descSetIdx);
 		}
 		return (args.count) ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil;
 	}
-}
-
-MVKDescriptorSetLayoutBinding* MVKDescriptorSetLayout::getBindingForDescriptorIndex(uint32_t descriptorIndex) {
-	auto iter = std::lower_bound(_bindings.begin(), _bindings.end(), descriptorIndex, [](const MVKDescriptorSetLayoutBinding& dslBind, uint32_t descIdx) {
-		return dslBind.getDescriptorIndex(dslBind.getDescriptorCount()) <= descIdx;
-	});
-	return iter != _bindings.end() ? iter : nullptr;
 }
 
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
@@ -277,9 +254,8 @@ void MVKDescriptorSetLayout::initForMetalArgumentBufferUse() {
 
 	if ( !isUsingMetalArgumentBuffer() ) { return; }
 
-	MVKShaderStage stage = kMVKShaderStageVertex;	// Nominal stage. Currently all stages use same encoders.
 	SPIRVToMSLConversionConfiguration shaderConfig;
-	id<MTLArgumentEncoder> argEnc = newMTLArgumentEncoder(stage, shaderConfig, 0);	// retained
+	id<MTLArgumentEncoder> argEnc = newMTLArgumentEncoder(shaderConfig, 0);	// retained
 	_metalArgumentBufferSize = argEnc.encodedLength;
 	[argEnc release];
 }
