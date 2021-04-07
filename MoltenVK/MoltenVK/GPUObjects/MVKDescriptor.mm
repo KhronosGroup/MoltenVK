@@ -971,14 +971,17 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 		if (encodeUsage) {
 			rezEncState->encodeArgumentBufferResourceUsage(mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 		}
-		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE && mtlTexture) {
+		if (descType == VK_DESCRIPTOR_TYPE_STORAGE_IMAGE) {
 			id<MTLTexture> mtlTex = mtlTexture.parentTexture ? mtlTexture.parentTexture : mtlTexture;
-			if (encodeToArgBuffer) {
-				uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().bufferIndex + planeDescIdx;
-				[mtlArgEncoder setBuffer: mtlTex.buffer offset: mtlTex.bufferOffset atIndex: argIdx];
-			}
-			if (encodeUsage) {
-				rezEncState->encodeArgumentBufferResourceUsage(mtlTex.buffer, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+			id<MTLBuffer> mtlBuff = mtlTex.buffer;
+			if (mtlBuff) {
+				if (encodeToArgBuffer) {
+					uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().bufferIndex + planeDescIdx;
+					[mtlArgEncoder setBuffer: mtlBuff offset: mtlTex.bufferOffset atIndex: argIdx];
+				}
+				if (encodeUsage) {
+					rezEncState->encodeArgumentBufferResourceUsage(mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+				}
 			}
 		}
 	}
@@ -1262,13 +1265,16 @@ void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEn
 		rezEncState->encodeArgumentBufferResourceUsage(mtlTexture, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
 	}
 
-	if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER && mtlTexture) {
-		if (encodeToArgBuffer) {
-			uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().bufferIndex + elementIndex;
-			[mtlArgEncoder setBuffer: mtlTexture.buffer offset: mtlTexture.bufferOffset atIndex: argIdx];
-		}
-		if (encodeUsage) {
-			rezEncState->encodeArgumentBufferResourceUsage(mtlTexture.buffer, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+	if (descType == VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER) {
+		id<MTLBuffer> mtlBuff = mtlTexture.buffer;
+		if (mtlBuff) {
+			if (encodeToArgBuffer) {
+				uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().bufferIndex + elementIndex;
+				[mtlArgEncoder setBuffer: mtlBuff offset: mtlTexture.bufferOffset atIndex: argIdx];
+			}
+			if (encodeUsage) {
+				rezEncState->encodeArgumentBufferResourceUsage(mtlBuff, getMTLResourceUsage(), mvkDSLBind->getMTLRenderStages());
+			}
 		}
 	}
 }

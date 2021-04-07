@@ -498,7 +498,7 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 				auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
 				if (dslBind->getApplyToStage(stage)) {
 					shouldBindArgBuffToStage = true;
-					uint32_t elemCnt = dslBind->getDescriptorCount();
+					uint32_t elemCnt = dslBind->getDescriptorCount(descSet);
 					for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 						uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);
 						bool argBuffDirty = argBuffDirtyDescs.getBit(descIdx, true);
