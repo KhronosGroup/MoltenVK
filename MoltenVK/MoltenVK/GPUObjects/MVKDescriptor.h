@@ -110,6 +110,9 @@ public:
 	/** Returns the descriptor type of this layout. */
 	inline VkDescriptorType getDescriptorType() { return _info.descriptorType; }
 
+	/** Returns whether this binding uses immutable samplers. */
+	bool usesImmutableSamplers() { return !_immutableSamplers.empty(); }
+
 	/** Returns the immutable sampler at the index, or nullptr if immutable samplers are not used. */
 	MVKSampler* getImmutableSampler(uint32_t index);
 

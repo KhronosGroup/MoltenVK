@@ -353,10 +353,12 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 		uint32_t elemCnt = mvkDSLBind->getDescriptorCount(this);
 		for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
 			VkDescriptorType descType = mvkDSLBind->getDescriptorType();
+			uint32_t descIdx = (uint32_t)_descriptors.size();
 			MVKDescriptor* mvkDesc = nullptr;
 			setConfigurationResult(_pool->allocateDescriptor(descType, &mvkDesc));
 			if ( !wasConfigurationSuccessful() ) { return getConfigurationResult(); }
 			if (mvkDesc->usesDynamicBufferOffsets()) { _dynamicOffsetDescriptorCount++; }
+			if (mvkDSLBind->usesImmutableSamplers()) { _metalArgumentBufferDirtyDescriptors.setBit(descIdx); }
 			_descriptors.push_back(mvkDesc);
 		}
 	}
