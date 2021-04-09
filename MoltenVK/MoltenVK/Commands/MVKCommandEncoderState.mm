@@ -453,27 +453,33 @@ void MVKBlendColorCommandEncoderState::encodeImpl(uint32_t stage) {
 #pragma mark -
 #pragma mark MVKResourcesCommandEncoderState
 
-// Track the dynamic offsets for later binding, initialize resource usage tracking to match the
-// descriptor set content, and bind the argument buffer MTLBuffer used by the descriptor set as a resource.
 void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 														MVKDescriptorSet* descSet,
 														MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 														MVKArrayRef<uint32_t> dynamicOffsets,
 														uint32_t& dynamicOffsetIndex) {
+
+	bool dsChanged = (descSet != _boundDescriptorSets[descSetIndex]);
+
 	_boundDescriptorSets[descSetIndex] = descSet;
 
 	if (descSet->isUsingMetalArgumentBuffers()) {
-		auto& usageDirty = _metalUsageDirtyDescriptors[descSetIndex];
-		usageDirty.resize(descSet->getDescriptorCount());
-		usageDirty.setAllBits();
+		// If the descriptor set has changed, track new resource usage.
+		if (dsChanged) {
+			auto& usageDirty = _metalUsageDirtyDescriptors[descSetIndex];
+			usageDirty.resize(descSet->getDescriptorCount());
+			usageDirty.setAllBits();
+		}
 
+		// Update dynamic buffer offsets
 		uint32_t baseDynOfstIdx = dslMTLRezIdxOffsets.getMetalResourceIndexs().dynamicOffsetBufferIndex;
 		uint32_t doCnt = descSet->getDynamicOffsetDescriptorCount();
 		for (uint32_t doIdx = 0; doIdx < doCnt && dynamicOffsetIndex < dynamicOffsets.size; doIdx++) {
 			updateImplicitBuffer(_dynamicOffsets, baseDynOfstIdx + doIdx, dynamicOffsets[dynamicOffsetIndex++]);
 		}
 
-		MVKCommandEncoderState::markDirty();
+		// If something changed, mark dirty
+		if (dsChanged || doCnt > 0) { MVKCommandEncoderState::markDirty(); }
 	}
 }
 
