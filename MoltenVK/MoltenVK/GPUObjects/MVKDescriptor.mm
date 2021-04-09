@@ -25,19 +25,27 @@
 
 MVKShaderStageResourceBinding MVKShaderStageResourceBinding::operator+ (const MVKShaderStageResourceBinding& rhs) {
 	MVKShaderStageResourceBinding rslt;
-	rslt.resourceIndex = this->resourceIndex + rhs.resourceIndex;
 	rslt.bufferIndex = this->bufferIndex + rhs.bufferIndex;
 	rslt.textureIndex = this->textureIndex + rhs.textureIndex;
 	rslt.samplerIndex = this->samplerIndex + rhs.samplerIndex;
+	rslt.resourceIndex = this->resourceIndex + rhs.resourceIndex;
+	rslt.dynamicOffsetBufferIndex = this->dynamicOffsetBufferIndex + rhs.dynamicOffsetBufferIndex;
 	return rslt;
 }
 
 MVKShaderStageResourceBinding& MVKShaderStageResourceBinding::operator+= (const MVKShaderStageResourceBinding& rhs) {
-	this->resourceIndex += rhs.resourceIndex;
 	this->bufferIndex += rhs.bufferIndex;
 	this->textureIndex += rhs.textureIndex;
 	this->samplerIndex += rhs.samplerIndex;
+	this->resourceIndex += rhs.resourceIndex;
+	this->dynamicOffsetBufferIndex += rhs.dynamicOffsetBufferIndex;
 	return *this;
+}
+
+void MVKShaderStageResourceBinding::clearArgumentBufferResources() {
+	bufferIndex = 0;
+	textureIndex = 0;
+	samplerIndex = 0;
 }
 
 
@@ -74,10 +82,16 @@ MVKShaderResourceBinding& MVKShaderResourceBinding::operator+= (const MVKShaderR
 	return *this;
 }
 
-void MVKShaderResourceBinding::addArgumentBuffer() {
+void MVKShaderResourceBinding::clearArgumentBufferResources() {
 	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
-		stages[i].bufferIndex++;
-		stages[i].resourceIndex++;
+		stages[i].clearArgumentBufferResources();
+	}
+}
+
+void MVKShaderResourceBinding::addArgumentBuffers(uint32_t count) {
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+		stages[i].bufferIndex += count;
+		stages[i].resourceIndex += count;
 	}
 }
 
@@ -90,15 +104,34 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 									   VkDescriptorType descType,
 									   MVKSampler* immutableSampler) {
 
+	static const spv::ExecutionModel svpExecModels[] = {
+		spv::ExecutionModelVertex,
+		spv::ExecutionModelTessellationControl,
+		spv::ExecutionModelTessellationEvaluation,
+		spv::ExecutionModelFragment,
+		spv::ExecutionModelGLCompute
+	};
+
 	SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::BaseType spvRezType;
 	switch (descType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
-		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
 			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Void;
 			break;
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
+			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Void;
+
+			mvk::DescriptorBinding db;
+			db.stage = svpExecModels[stage];
+			db.descriptorSet = descriptorSetIndex;
+			db.binding = bindingIndex;
+			db.index = ssRB.dynamicOffsetBufferIndex;
+			context.dynamicBufferDescriptors.push_back(db);
+			break;
+		}
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
@@ -120,14 +153,6 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Unknown;
 			break;
 	}
-
-	static const spv::ExecutionModel svpExecModels[] = {
-		spv::ExecutionModelVertex,
-		spv::ExecutionModelTessellationControl,
-		spv::ExecutionModelTessellationEvaluation,
-		spv::ExecutionModelFragment,
-		spv::ExecutionModelGLCompute
-	};
 
 	mvk::MSLResourceBinding rb;
 
@@ -424,40 +449,40 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptors(NSMutableArray<MTL
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);		// Needed for atomic operations
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);		// Needed for atomic operations
 			break;
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);		// Needed for atomic operations
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().bufferIndex, MTLDataTypePointer, MTLArgumentAccessReadWrite, shaderConfig, descSetIdx);		// Needed for atomic operations
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().samplerIndex, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().samplerIndex, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
-			addMTLArgumentDescriptor(args, getMetalArgumentBufferIndexes().samplerIndex, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().textureIndex, MTLDataTypeTexture, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
+			addMTLArgumentDescriptor(args, getMetalResourceIndexOffsets().samplerIndex, MTLDataTypeSampler, MTLArgumentAccessReadOnly, shaderConfig, descSetIdx);
 			break;
 
 		default:
@@ -677,11 +702,17 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 
         case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
         case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
-        case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
-        case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
 			setResourceIndexOffset(bufferIndex);
             break;
+
+		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
+		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC:
+			setResourceIndexOffset(bufferIndex);
+			bindIdxs.dynamicOffsetBufferIndex = dslCnts.dynamicOffsetBufferIndex;
+			dslCnts.dynamicOffsetBufferIndex += descCnt;
+
+			break;
 
         default:
             break;
@@ -756,12 +787,9 @@ void MVKBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoder
 													  bool encodeToArgBuffer,
 													  bool encodeUsage) {
 	if (encodeToArgBuffer) {
-		NSUInteger bufferDynamicOffset = (usesDynamicBufferOffsets()
-										  ? rezEncState->getDynamicBufferOffset(descSetIndex, mvkDSLBind->getDescriptorIndex(elementIndex))
-										  : 0);
-		uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().bufferIndex + elementIndex;
+		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().bufferIndex + elementIndex;
 		[mtlArgEncoder setBuffer: _mvkBuffer ? _mvkBuffer->getMTLBuffer() : nil
-						  offset: _mvkBuffer ? _mvkBuffer->getMTLBufferOffset() + _buffOffset + bufferDynamicOffset : 0
+						  offset: _mvkBuffer ? _mvkBuffer->getMTLBufferOffset() + _buffOffset : 0
 						 atIndex: argIdx];
 	}
 	if (encodeUsage) {
@@ -847,7 +875,7 @@ void MVKInlineUniformBlockDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCo
 																  bool encodeToArgBuffer,
 																  bool encodeUsage) {
 	if (encodeToArgBuffer) {
-		uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().bufferIndex;
+		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().bufferIndex;
 		[mtlArgEncoder setBuffer: _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_mtlBuffer : nil
 						  offset: _mvkMTLBufferAllocation ? _mvkMTLBufferAllocation->_offset : 0
 						 atIndex: argIdx];
@@ -965,7 +993,7 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 
 		id<MTLTexture> mtlTexture = _mvkImageView ? _mvkImageView->getMTLTexture(planeIndex) : nil;
 		if (encodeToArgBuffer) {
-			uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().textureIndex + planeDescIdx;
+			uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().textureIndex + planeDescIdx;
 			[mtlArgEncoder setTexture: mtlTexture atIndex: argIdx];
 		}
 		if (encodeUsage) {
@@ -976,7 +1004,7 @@ void MVKImageDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEncoderS
 			id<MTLBuffer> mtlBuff = mtlTex.buffer;
 			if (mtlBuff) {
 				if (encodeToArgBuffer) {
-					uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().bufferIndex + planeDescIdx;
+					uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().bufferIndex + planeDescIdx;
 					[mtlArgEncoder setBuffer: mtlBuff offset: mtlTex.bufferOffset atIndex: argIdx];
 				}
 				if (encodeUsage) {
@@ -1067,7 +1095,7 @@ void MVKSamplerDescriptorMixin::encodeToMetalArgumentBuffer(MVKResourcesCommandE
 		id<MTLSamplerState> mtlSamp = (mvkSamp
 									   ? mvkSamp->getMTLSamplerState()
 									   : mvkDSLBind->getDevice()->getDefaultMTLSamplerState());
-		uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().samplerIndex + elementIndex;
+		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().samplerIndex + elementIndex;
 		[mtlArgEncoder setSamplerState: mtlSamp atIndex: argIdx];
 	}
 }
@@ -1258,7 +1286,7 @@ void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEn
 	VkDescriptorType descType = getDescriptorType();
 	id<MTLTexture> mtlTexture = _mvkBufferView ? _mvkBufferView->getMTLTexture() : nil;
 	if (encodeToArgBuffer) {
-		uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().textureIndex + elementIndex;
+		uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().textureIndex + elementIndex;
 		[mtlArgEncoder setTexture: mtlTexture atIndex: argIdx];
 	}
 	if (encodeUsage) {
@@ -1269,7 +1297,7 @@ void MVKTexelBufferDescriptor::encodeToMetalArgumentBuffer(MVKResourcesCommandEn
 		id<MTLBuffer> mtlBuff = mtlTexture.buffer;
 		if (mtlBuff) {
 			if (encodeToArgBuffer) {
-				uint32_t argIdx = mvkDSLBind->getMetalArgumentBufferIndexes().bufferIndex + elementIndex;
+				uint32_t argIdx = mvkDSLBind->getMetalResourceIndexOffsets().bufferIndex + elementIndex;
 				[mtlArgEncoder setBuffer: mtlBuff offset: mtlTexture.bufferOffset atIndex: argIdx];
 			}
 			if (encodeUsage) {

@@ -123,14 +123,17 @@ namespace mvk {
 	} MSLResourceBinding;
 
 	/**
-	 * Identifies a descriptor set binding.
+	 * Identifies a descriptor binding, and the index into a buffer that
+	 * can be used for providing dynamic content like dynamic buffer offsets.
 	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIPELINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
 	 */
 	typedef struct DescriptorBinding {
+		spv::ExecutionModel stage = spv::ExecutionModelMax;
 		uint32_t descriptorSet = 0;
 		uint32_t binding = 0;
+		uint32_t index = 0;
 
 		bool matches(const DescriptorBinding& other) const;
 
@@ -147,6 +150,7 @@ namespace mvk {
 		std::vector<MSLShaderInput> shaderInputs;
 		std::vector<MSLResourceBinding> resourceBindings;
 		std::vector<uint32_t> discreteDescriptorSets;
+		std::vector<DescriptorBinding> dynamicBufferDescriptors;
 
 		/** Returns whether the pipeline stage being converted supports vertex attributes. */
 		bool stageSupportsVertexAttributes() const;
@@ -230,6 +234,7 @@ namespace mvk {
 		bool needsOutputBuffer = false;
 		bool needsPatchOutputBuffer = false;
 		bool needsBufferSizeBuffer = false;
+		bool needsDynamicOffsetBuffer = false;
 		bool needsInputThreadgroupMem = false;
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;

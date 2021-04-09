@@ -308,6 +308,7 @@ public:
 	void bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint,
 						   uint32_t descSetIndex,
 						   MVKDescriptorSet* descSet,
+						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 						   MVKArrayRef<uint32_t> dynamicOffsets,
 						   uint32_t& dynamicOffsetIndex);
 

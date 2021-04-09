@@ -144,12 +144,6 @@ public:
 			  VkBufferView* pTexelBufferView,
 			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
-	/** Extracts the dynamic offsets from the array, and binds them to the encoder state. */
-	void bindDynamicOffsets(MVKResourcesCommandEncoderState* rezEncState,
-							uint32_t descSetIndex,
-							MVKArrayRef<uint32_t> dynamicOffsets,
-							uint32_t& dynamicOffsetIndex);
-
 	/** Returns an MTLBuffer region allocation. */
 	const MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
 	/**
@@ -170,6 +164,9 @@ public:
 	/** Returns the number of descriptors in this descriptor set. */
 	uint32_t getDescriptorCount() { return (uint32_t)_descriptors.size(); }
 
+	/** Returns the number of descriptors in this descriptor set that use dynamic offsets. */
+	uint32_t getDynamicOffsetDescriptorCount() { return _dynamicOffsetDescriptorCount; }
+
 	MVKDescriptorSet(MVKDescriptorPool* pool);
 
 protected:
@@ -186,9 +183,9 @@ protected:
 	MVKDescriptorPool* _pool;
 	MVKDescriptorSetLayout* _layout;
 	MVKSmallVector<MVKDescriptor*> _descriptors;
-	MVKBitArray _dynamicBufferDescriptors;
 	MVKBitArray _metalArgumentBufferDirtyDescriptors;
 	NSUInteger _metalArgumentBufferOffset;
+	uint32_t _dynamicOffsetDescriptorCount;
 	uint32_t _variableDescriptorCount;
 };
 

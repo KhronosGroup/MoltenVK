@@ -81,6 +81,9 @@ public:
 	/** Returns the current buffer size buffer bindings. */
 	const MVKShaderImplicitRezBinding& getBufferSizeBufferIndex() { return _bufferSizeBufferIndex; }
 
+	/** Returns the current dynamic buffer offset buffer bindings. */
+	const MVKShaderImplicitRezBinding& getDynamicOffsetBufferIndex() { return _dynamicOffsetBufferIndex; }
+
 	/** Returns the current view range buffer binding for multiview draws. */
 	const MVKShaderImplicitRezBinding& getViewRangeBufferIndex() { return _viewRangeBufferIndex; }
 
@@ -127,6 +130,7 @@ protected:
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
+	MVKShaderImplicitRezBinding _dynamicOffsetBufferIndex;
 	MVKShaderImplicitRezBinding _viewRangeBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
 	MVKShaderImplicitRezBinding _outputBufferIndex;
@@ -163,12 +167,6 @@ public:
 	/** Binds the push constants to a command encoder. */
 	void bindPushConstants(MVKCommandEncoder* cmdEncoder);
 
-	/** Returns the current swizzle buffer bindings. */
-	const MVKShaderImplicitRezBinding& getSwizzleBufferIndex() { return _swizzleBufferIndex; }
-
-	/** Returns the current buffer size buffer bindings. */
-	const MVKShaderImplicitRezBinding& getBufferSizeBufferIndex() { return _bufferSizeBufferIndex; }
-
 	/** Returns the current indirect parameter buffer bindings. */
 	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
 
@@ -202,6 +200,7 @@ protected:
 	id<MTLArgumentEncoder> _mtlArgumentEncoders[kMVKMaxDescriptorSetCount];
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
+	MVKShaderImplicitRezBinding _dynamicOffsetBufferIndex;
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	uint32_t _descriptorSetCount;
@@ -366,17 +365,21 @@ protected:
 	bool _dynamicStateEnabled[kMVKVkDynamicStateCount];
 	bool _needsVertexSwizzleBuffer = false;
 	bool _needsVertexBufferSizeBuffer = false;
+	bool _needsVertexDynamicOffsetBuffer = false;
 	bool _needsVertexViewRangeBuffer = false;
 	bool _needsVertexOutputBuffer = false;
 	bool _needsTessCtlSwizzleBuffer = false;
 	bool _needsTessCtlBufferSizeBuffer = false;
+	bool _needsTessCtlDynamicOffsetBuffer = false;
 	bool _needsTessCtlOutputBuffer = false;
 	bool _needsTessCtlPatchOutputBuffer = false;
 	bool _needsTessCtlInputBuffer = false;
 	bool _needsTessEvalSwizzleBuffer = false;
 	bool _needsTessEvalBufferSizeBuffer = false;
+	bool _needsTessEvalDynamicOffsetBuffer = false;
 	bool _needsFragmentSwizzleBuffer = false;
 	bool _needsFragmentBufferSizeBuffer = false;
+	bool _needsFragmentDynamicOffsetBuffer = false;
 	bool _needsFragmentViewRangeBuffer = false;
 };
 
@@ -410,6 +413,7 @@ protected:
     MTLSize _mtlThreadgroupSize;
     bool _needsSwizzleBuffer = false;
     bool _needsBufferSizeBuffer = false;
+	bool _needsDynamicOffsetBuffer = false;
     bool _needsDispatchBaseBuffer = false;
     bool _allowsDispatchBase = false;
 };

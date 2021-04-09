@@ -38,7 +38,8 @@ void MVKDescriptorSetLayout::bindDescriptorSet(MVKCommandEncoder* cmdEncoder,
 	if (!cmdEncoder) { clearConfigurationResult(); }
 	if (_isPushDescriptorLayout ) { return; }
 
-	if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex, descSet,
+	if (cmdEncoder) { cmdEncoder->bindDescriptorSet(pipelineBindPoint, descSetIndex,
+													descSet, dslMTLRezIdxOffsets,
 													dynamicOffsets, dynamicOffsetIndex); }
 	if ( !isUsingMetalArgumentBuffers() ) {
 		for (auto& dslBind : _bindings) {
@@ -329,19 +330,6 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
     }
 }
 
-// Extract bind dynamic buffer offset for each dynamic buffer descriptor, and mark the descriptor as dirty.
-void MVKDescriptorSet::bindDynamicOffsets(MVKResourcesCommandEncoderState* rezEncState,
-										  uint32_t descSetIndex,
-										  MVKArrayRef<uint32_t> dynamicOffsets,
-										  uint32_t& dynamicOffsetIndex) {
-	_dynamicBufferDescriptors.enumerateEnabledBits(false, [&](size_t descIdx) {
-		if (dynamicOffsetIndex >= dynamicOffsets.size) { return false; }	// We've run out of dynamic offsets
-		rezEncState->bindDynamicBufferOffset(descSetIndex, (uint32_t)descIdx, dynamicOffsets[dynamicOffsetIndex++]);
-		_metalArgumentBufferDirtyDescriptors.setBit(descIdx);
-		return true;
-	});
-}
-
 const MVKMTLBufferAllocation* MVKDescriptorSet::acquireMTLBufferRegion(NSUInteger length) {
 	return _pool->_inlineBlockMTLBufferAllocator.acquireMTLBufferRegion(length);
 }
@@ -357,7 +345,6 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 
 	uint32_t descCnt = layout->getDescriptorCount();
 	_descriptors.reserve(descCnt);
-	_dynamicBufferDescriptors.resize(descCnt);
 	_metalArgumentBufferDirtyDescriptors.resize(descCnt);
 
 	uint32_t bindCnt = (uint32_t)layout->_bindings.size();
@@ -369,7 +356,7 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 			MVKDescriptor* mvkDesc = nullptr;
 			setConfigurationResult(_pool->allocateDescriptor(descType, &mvkDesc));
 			if ( !wasConfigurationSuccessful() ) { return getConfigurationResult(); }
-			if (mvkDesc->usesDynamicBufferOffsets()) { _dynamicBufferDescriptors.setBit(_descriptors.size()); }
+			if (mvkDesc->usesDynamicBufferOffsets()) { _dynamicOffsetDescriptorCount++; }
 			_descriptors.push_back(mvkDesc);
 		}
 	}
@@ -378,6 +365,7 @@ VkResult MVKDescriptorSet::allocate(MVKDescriptorSetLayout* layout,
 
 void MVKDescriptorSet::free(bool isPoolReset) {
 	_layout = nullptr;
+	_dynamicOffsetDescriptorCount = 0;
 	_variableDescriptorCount = 0;
 
 	// Only reset the Metal arg buffer offset if the entire pool is being reset
@@ -389,7 +377,6 @@ void MVKDescriptorSet::free(bool isPoolReset) {
 	}
 	_descriptors.clear();
 	_descriptors.shrink_to_fit();
-	_dynamicBufferDescriptors.resize(0);
 	_metalArgumentBufferDirtyDescriptors.resize(0);
 
 	clearConfigurationResult();

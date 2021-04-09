@@ -152,8 +152,10 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding
 }
 
 MVK_PUBLIC_SYMBOL bool mvk::DescriptorBinding::matches(const mvk::DescriptorBinding& other) const {
+	if (stage != other.stage) { return false; }
 	if (descriptorSet != other.descriptorSet) { return false; }
 	if (binding != other.binding) { return false; }
+	if (index != other.index) { return false; }
 	return true;
 }
 
@@ -208,6 +210,10 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
 
 	for (uint32_t dsIdx : discreteDescriptorSets) {
 		if ( !contains(other.discreteDescriptorSets, dsIdx)) { return false; }
+	}
+
+	for (const auto& db : dynamicBufferDescriptors) {
+		if ( !containsMatching(other.dynamicBufferDescriptors, db)) { return false; }
 	}
 
     return true;
@@ -315,6 +321,15 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 			pMSLCompiler->add_discrete_descriptor_set(dsIdx);
 		}
 
+		// Add any dynamic buffer bindings.
+		// This only has an applies if SPIRVToMSLConversionConfiguration::options::mslOptions::argument_buffers is enabled.
+		if (context.options.mslOptions.argument_buffers) {
+			for (auto& db : context.dynamicBufferDescriptors) {
+				if (db.stage == context.options.entryPointStage) {
+					pMSLCompiler->add_dynamic_buffer(db.descriptorSet, db.binding, db.index);
+				}
+			}
+		}
 		_msl = pMSLCompiler->compile();
 
         if (shouldLogMSL) { logSource(_msl, "MSL", "Converted"); }
@@ -334,6 +349,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	// Populate the shader conversion results with info from the compilation run,
 	// and mark which vertex attributes and resource bindings are used by the shader
 	populateEntryPoint(pMSLCompiler, context.options);
+
 	_shaderConversionResults.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
 	_shaderConversionResults.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
 	_shaderConversionResults.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();
@@ -343,6 +359,17 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	_shaderConversionResults.needsInputThreadgroupMem = pMSLCompiler && pMSLCompiler->needs_input_threadgroup_mem();
 	_shaderConversionResults.needsDispatchBaseBuffer = pMSLCompiler && pMSLCompiler->needs_dispatch_base_buffer();
 	_shaderConversionResults.needsViewRangeBuffer = pMSLCompiler && pMSLCompiler->needs_view_mask_buffer();
+
+	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
+	// then it needs a buffer to hold these dynamic offsets.
+	_shaderConversionResults.needsDynamicOffsetBuffer = false;
+	if (context.options.mslOptions.argument_buffers) {
+		for (auto& db : context.dynamicBufferDescriptors) {
+			if (db.stage == context.options.entryPointStage) {
+				_shaderConversionResults.needsDynamicOffsetBuffer = true;
+			}
+		}
+	}
 
 	for (auto& ctxSI : context.shaderInputs) {
 		ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderInput.location);

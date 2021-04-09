@@ -457,16 +457,21 @@ void MVKBlendColorCommandEncoderState::encodeImpl(uint32_t stage) {
 // descriptor set content, and bind the argument buffer MTLBuffer used by the descriptor set as a resource.
 void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 														MVKDescriptorSet* descSet,
+														MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 														MVKArrayRef<uint32_t> dynamicOffsets,
 														uint32_t& dynamicOffsetIndex) {
 	_boundDescriptorSets[descSetIndex] = descSet;
 
 	if (descSet->isUsingMetalArgumentBuffers()) {
-		descSet->bindDynamicOffsets(this, descSetIndex, dynamicOffsets, dynamicOffsetIndex);
-
 		auto& usageDirty = _metalUsageDirtyDescriptors[descSetIndex];
 		usageDirty.resize(descSet->getDescriptorCount());
 		usageDirty.setAllBits();
+
+		uint32_t baseDynOfstIdx = dslMTLRezIdxOffsets.getMetalResourceIndexs().dynamicOffsetBufferIndex;
+		uint32_t doCnt = descSet->getDynamicOffsetDescriptorCount();
+		for (uint32_t doIdx = 0; doIdx < doCnt && dynamicOffsetIndex < dynamicOffsets.size; doIdx++) {
+			updateImplicitBuffer(_dynamicOffsets, baseDynOfstIdx + doIdx, dynamicOffsets[dynamicOffsetIndex++]);
+		}
 
 		MVKCommandEncoderState::markDirty();
 	}
@@ -511,8 +516,9 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 								[mtlArgEncoder setArgumentBuffer: mtlArgBuff offset: descSet->getMetalArgumentBufferOffset()];
 							}
 							auto* mvkDesc = descSet->getDescriptorAt(descIdx);
-							mvkDesc->encodeToMetalArgumentBuffer(this, mtlArgEncoder, dsIdx,
-																 dslBind, elemIdx, argBuffDirty, true);
+							mvkDesc->encodeToMetalArgumentBuffer(this, mtlArgEncoder,
+																 dsIdx, dslBind, elemIdx,
+																 argBuffDirty, true);
 						}
 					}
 				}
@@ -610,6 +616,20 @@ void MVKGraphicsResourcesCommandEncoderState::bindBufferSizeBuffer(const MVKShad
     _shaderStageResourceBindings[kMVKShaderStageFragment].bufferSizeBufferBinding.isDirty = needFragmentSizeBuffer;
 }
 
+void MVKGraphicsResourcesCommandEncoderState::bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding,
+																	  bool needVertexDynamicOffsetBuffer,
+																	  bool needTessCtlDynamicOffsetBuffer,
+																	  bool needTessEvalDynamicOffsetBuffer,
+																	  bool needFragmentDynamicOffsetBuffer) {
+	for (uint32_t i = kMVKShaderStageVertex; i <= kMVKShaderStageFragment; i++) {
+		_shaderStageResourceBindings[i].dynamicOffsetBufferBinding.index = binding.stages[i];
+	}
+	_shaderStageResourceBindings[kMVKShaderStageVertex].dynamicOffsetBufferBinding.isDirty = needVertexDynamicOffsetBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageTessCtl].dynamicOffsetBufferBinding.isDirty = needTessCtlDynamicOffsetBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageTessEval].dynamicOffsetBufferBinding.isDirty = needTessEvalDynamicOffsetBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageFragment].dynamicOffsetBufferBinding.isDirty = needFragmentDynamicOffsetBuffer;
+}
+
 void MVKGraphicsResourcesCommandEncoderState::bindViewRangeBuffer(const MVKShaderImplicitRezBinding& binding,
 																  bool needVertexViewBuffer,
 																  bool needFragmentViewBuffer) {
@@ -654,6 +674,10 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
 
         bindImplicitBuffer(_cmdEncoder, shaderStage.bufferSizeBufferBinding, shaderStage.bufferSizes.contents());
     }
+
+	if (shaderStage.dynamicOffsetBufferBinding.isDirty) {
+		bindImplicitBuffer(_cmdEncoder, shaderStage.dynamicOffsetBufferBinding, _dynamicOffsets.contents());
+	}
 
     if (shaderStage.viewRangeBufferBinding.isDirty) {
         MVKSmallVector<uint32_t, 2> viewRange;
@@ -873,6 +897,14 @@ void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderS
 	bindBuffer(stage, buffBind);
 }
 
+//void MVKGraphicsResourcesCommandEncoderState::encodeDynamicBufferOffset(MVKShaderStage stage,
+//																		uint32_t descSetIndex,
+//																		uint32_t descIndex,
+//																		uint32_t dynamicOffsetBufferIndex) {
+//	uint32_t dynamicOffset = _dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)];
+//	updateImplicitBuffer(_shaderStageResourceBindings[stage].dynamicOffsets, dynamicOffsetBufferIndex, dynamicOffset);
+//}
+
 void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
 																				MTLResourceUsage mtlUsage,
 																				MTLRenderStages mtlStages) {
@@ -912,6 +944,12 @@ void MVKComputeResourcesCommandEncoderState::bindBufferSizeBuffer(const MVKShade
 																  bool needBufferSizeBuffer) {
     _resourceBindings.bufferSizeBufferBinding.index = binding.stages[kMVKShaderStageCompute];
     _resourceBindings.bufferSizeBufferBinding.isDirty = needBufferSizeBuffer;
+}
+
+void MVKComputeResourcesCommandEncoderState::bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding,
+																	 bool needDynamicOffsetBuffer) {
+	_resourceBindings.dynamicOffsetBufferBinding.index = binding.stages[kMVKShaderStageCompute];
+	_resourceBindings.dynamicOffsetBufferBinding.isDirty = needDynamicOffsetBuffer;
 }
 
 // Mark everything as dirty
@@ -955,6 +993,14 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
     }
 
+	if (_resourceBindings.dynamicOffsetBufferBinding.isDirty) {
+		_cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
+									 _dynamicOffsets.data(),
+									 _dynamicOffsets.size() * sizeof(uint32_t),
+									 _resourceBindings.dynamicOffsetBufferBinding.index);
+
+	}
+
 	encodeBinding<MVKMTLBufferBinding>(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty,
 									   [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
 		if (b.isInline) {
@@ -989,6 +1035,14 @@ MVKPipeline* MVKComputeResourcesCommandEncoderState::getPipeline() {
 void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) {
 	bindBuffer(buffBind);
 }
+
+//void MVKComputeResourcesCommandEncoderState::encodeDynamicBufferOffset(MVKShaderStage stage,
+//																	   uint32_t descSetIndex,
+//																	   uint32_t descIndex,
+//																	   uint32_t dynamicOffsetBufferIndex) {
+//	uint32_t dynamicOffset = _dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)];
+//	updateImplicitBuffer(_resourceBindings.dynamicOffsets, dynamicOffsetBufferIndex, dynamicOffset);
+//}
 
 void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
 																			   MTLResourceUsage mtlUsage,

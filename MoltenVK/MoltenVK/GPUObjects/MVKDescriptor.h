@@ -32,13 +32,15 @@ class MVKResourcesCommandEncoderState;
 
 /** Indicates the Metal resource indexes used by a single shader stage in a descriptor. */
 typedef struct MVKShaderStageResourceBinding {
-	uint32_t resourceIndex = 0;
 	uint32_t bufferIndex = 0;
 	uint32_t textureIndex = 0;
 	uint32_t samplerIndex = 0;
+	uint32_t resourceIndex = 0;
+	uint32_t dynamicOffsetBufferIndex = 0;
 
 	MVKShaderStageResourceBinding operator+ (const MVKShaderStageResourceBinding& rhs);
 	MVKShaderStageResourceBinding& operator+= (const MVKShaderStageResourceBinding& rhs);
+	void clearArgumentBufferResources();
 
 } MVKShaderStageResourceBinding;
 
@@ -56,7 +58,9 @@ typedef struct MVKShaderResourceBinding {
 
 	MVKShaderResourceBinding operator+ (const MVKShaderResourceBinding& rhs);
 	MVKShaderResourceBinding& operator+= (const MVKShaderResourceBinding& rhs);
-	void addArgumentBuffer();
+	MVKShaderStageResourceBinding& getMetalResourceIndexs(MVKShaderStage stage = kMVKShaderStageVertex) { return stages[stage]; }
+	void clearArgumentBufferResources();
+	void addArgumentBuffers(uint32_t count);
 
 } MVKShaderResourceBinding;
 
@@ -129,8 +133,14 @@ public:
 	/** Returns the index of the descriptor within the descriptor set of the element at the index within this descriptor layout. */
 	uint32_t getDescriptorIndex(uint32_t elementIndex = 0) const { return _descriptorIndex + elementIndex; }
 
-	/** Returns the indexes into the argument buffer. */
-	MVKShaderStageResourceBinding& getMetalArgumentBufferIndexes() { return _mtlResourceIndexOffsets.stages[0]; }
+	/**
+	 * Returns the indexes into the resources, relative to the descriptor set.
+	 * When using Metal argument buffers, all stages have the same values, and
+	 * in that case the value can be withheld and a default stage will be used.
+	 */
+	MVKShaderStageResourceBinding& getMetalResourceIndexOffsets(MVKShaderStage stage = kMVKShaderStageVertex) {
+		return _mtlResourceIndexOffsets.getMetalResourceIndexs(stage);
+	}
 
 	/** Returns a bitwise OR of Metal render stages. */
 	MTLRenderStages getMTLRenderStages();
