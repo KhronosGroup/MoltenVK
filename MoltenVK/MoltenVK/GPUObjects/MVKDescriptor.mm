@@ -500,11 +500,14 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLA
 															 MTLArgumentAccess access,
 															 mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 															 uint32_t descSetIdx) {
+	uint32_t descCnt = getDescriptorCount();
+	if (descCnt == 0) { return; }
+	
 	auto* argDesc = [MTLArgumentDescriptor argumentDescriptor];
 	argDesc.dataType = dataType;
 	argDesc.access = access;
 	argDesc.index = argIndex;
-	argDesc.arrayLength = getDescriptorCount();
+	argDesc.arrayLength = descCnt;
 	argDesc.textureType = shaderConfig.getMTLTextureType(descSetIdx, getBinding());
 
 	[args addObject: argDesc];
@@ -519,14 +522,15 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
     // Establish the resource indices to use, by combining the offsets of the DSL and this DSL binding.
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
 
-    for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageMax; stage++) {
-        if (_applyToStage[stage]) {
+	uint32_t descCnt = getDescriptorCount();
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageMax; stage++) {
+        if (_applyToStage[stage] && descCnt > 0) {
             mvkPopulateShaderConverterContext(context,
                                               mtlIdxs.stages[stage],
                                               MVKShaderStage(stage),
                                               dslIndex,
                                               _info.binding,
-											  getDescriptorCount(),
+											  descCnt,
 											  getDescriptorType(),
 											  mvkSamp);
         }

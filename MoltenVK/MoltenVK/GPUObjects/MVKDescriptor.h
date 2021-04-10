@@ -139,7 +139,7 @@ public:
 	/**
 	 * Returns the indexes into the resources, relative to the descriptor set.
 	 * When using Metal argument buffers, all stages have the same values, and
-	 * in that case the value can be withheld and a default stage will be used.
+	 * in that case the stage can be withheld and a default stage will be used.
 	 */
 	MVKShaderStageResourceBinding& getMetalResourceIndexOffsets(MVKShaderStage stage = kMVKShaderStageVertex) {
 		return _mtlResourceIndexOffsets.getMetalResourceIndexs(stage);

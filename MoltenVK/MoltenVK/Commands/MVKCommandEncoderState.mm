@@ -903,19 +903,11 @@ void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderS
 	bindBuffer(stage, buffBind);
 }
 
-//void MVKGraphicsResourcesCommandEncoderState::encodeDynamicBufferOffset(MVKShaderStage stage,
-//																		uint32_t descSetIndex,
-//																		uint32_t descIndex,
-//																		uint32_t dynamicOffsetBufferIndex) {
-//	uint32_t dynamicOffset = _dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)];
-//	updateImplicitBuffer(_shaderStageResourceBindings[stage].dynamicOffsets, dynamicOffsetBufferIndex, dynamicOffset);
-//}
-
 void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
 																				MTLResourceUsage mtlUsage,
 																				MTLRenderStages mtlStages) {
-	auto* mtlRendEnc = _cmdEncoder->_mtlRenderEncoder;
-	if (mtlRendEnc && mtlStages) {
+	if (mtlResource && mtlStages) {
+		auto* mtlRendEnc = _cmdEncoder->_mtlRenderEncoder;
 		if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
 			[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: mtlStages];
 		} else {
@@ -1042,19 +1034,13 @@ void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderSt
 	bindBuffer(buffBind);
 }
 
-//void MVKComputeResourcesCommandEncoderState::encodeDynamicBufferOffset(MVKShaderStage stage,
-//																	   uint32_t descSetIndex,
-//																	   uint32_t descIndex,
-//																	   uint32_t dynamicOffsetBufferIndex) {
-//	uint32_t dynamicOffset = _dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)];
-//	updateImplicitBuffer(_resourceBindings.dynamicOffsets, dynamicOffsetBufferIndex, dynamicOffset);
-//}
-
 void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
 																			   MTLResourceUsage mtlUsage,
 																			   MTLRenderStages mtlStages) {
-	auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
-	[mtlCompEnc useResource: mtlResource usage: mtlUsage];
+	if (mtlResource) {
+		auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
+		[mtlCompEnc useResource: mtlResource usage: mtlUsage];
+	}
 }
 
 
