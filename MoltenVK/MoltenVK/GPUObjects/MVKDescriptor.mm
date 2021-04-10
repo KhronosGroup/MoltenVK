@@ -104,6 +104,22 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 									   VkDescriptorType descType,
 									   MVKSampler* immutableSampler) {
 
+#define addResourceBinding(spvRezType)												\
+	do {																			\
+		mvk::MSLResourceBinding rb;													\
+		auto& rbb = rb.resourceBinding;												\
+		rbb.stage = svpExecModels[stage];											\
+		rbb.base_type = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::spvRezType;		\
+		rbb.desc_set = descriptorSetIndex;											\
+		rbb.binding = bindingIndex;													\
+		rbb.count = count;															\
+		rbb.msl_buffer = ssRB.bufferIndex;											\
+		rbb.msl_texture = ssRB.textureIndex;										\
+		rbb.msl_sampler = ssRB.samplerIndex;										\
+		if (immutableSampler) { immutableSampler->getConstexprSampler(rb); }		\
+		context.resourceBindings.push_back(rb);										\
+	} while(false)
+
 	static const spv::ExecutionModel svpExecModels[] = {
 		spv::ExecutionModelVertex,
 		spv::ExecutionModelTessellationControl,
@@ -112,17 +128,16 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 		spv::ExecutionModelGLCompute
 	};
 
-	SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::BaseType spvRezType;
 	switch (descType) {
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Void;
+			addResourceBinding(Void);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Void;
+			addResourceBinding(Void);
 
 			mvk::DescriptorBinding db;
 			db.stage = svpExecModels[stage];
@@ -135,40 +150,28 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 
 		case VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE:
 		case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
-		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 		case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
+			addResourceBinding(Image);
+			break;
+
+		case VK_DESCRIPTOR_TYPE_STORAGE_IMAGE:
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
-			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Image;
+			addResourceBinding(Image);
+			addResourceBinding(Void);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_SAMPLER:
-			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Sampler;
+			addResourceBinding(Sampler);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
-			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::SampledImage;
+			addResourceBinding(SampledImage);
 			break;
 
 		default:
-			spvRezType = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::Unknown;
+			addResourceBinding(Unknown);
 			break;
 	}
-
-	mvk::MSLResourceBinding rb;
-
-	auto& rbb = rb.resourceBinding;
-	rbb.stage = svpExecModels[stage];
-	rbb.base_type = spvRezType;
-	rbb.desc_set = descriptorSetIndex;
-	rbb.binding = bindingIndex;
-	rbb.count = count;
-	rbb.msl_buffer = ssRB.bufferIndex;
-	rbb.msl_texture = ssRB.textureIndex;
-	rbb.msl_sampler = ssRB.samplerIndex;
-
-	if (immutableSampler) { immutableSampler->getConstexprSampler(rb); }
-
-	context.resourceBindings.push_back(rb);
 }
 
 
