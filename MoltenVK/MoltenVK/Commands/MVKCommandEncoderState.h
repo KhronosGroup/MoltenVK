@@ -342,8 +342,6 @@ protected:
 #pragma mark -
 #pragma mark MVKResourcesCommandEncoderState
 
-//typedef uint64_t MVKDescSetDescKey;
-
 /** Abstract resource state class for supporting encoder resources. */
 class MVKResourcesCommandEncoderState : public MVKCommandEncoderState {
 
@@ -359,26 +357,11 @@ public:
 						   MVKArrayRef<uint32_t> dynamicOffsets,
 						   uint32_t& dynamicOffsetIndex);
 
-	/** Returns the dynamic buffer offset for the descriptor in the descriptor set. */
-//	uint32_t getDynamicBufferOffset(uint32_t descSetIndex, uint32_t descIndex) {
-//		return _dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)];
-//	}
-
-	/** Sets the dynamic buffer offset for the descriptor in the descriptor set. */
-//	void bindDynamicBufferOffset(uint32_t descSetIndex, uint32_t descIndex, uint32_t offset) {
-//		_dynamicOffsets[getDynamicOffsetKey(descSetIndex, descIndex)] = offset;
-//	}
-
-	/** Encodes the dynamic buffer offset for the descriptor in the descriptor set into an implicit buffer. */
-//	virtual void encodeDynamicBufferOffset(MVKShaderStage stage,
-//										   uint32_t descSetIndex,
-//										   uint32_t descIndex,
-//										   uint32_t dynamicOffsetBufferIndex) = 0;
-
 	/** Encodes the Metal resource to the Metal command encoder. */
-	virtual void encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
-										   MTLResourceUsage mtlUsage,
-										   MTLRenderStages mtlStages) = 0;
+	virtual void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
+												   id<MTLResource> mtlResource,
+												   MTLResourceUsage mtlUsage,
+												   MTLRenderStages mtlStages) = 0;
 
     MVKResourcesCommandEncoderState(MVKCommandEncoder* cmdEncoder) :
 		MVKCommandEncoderState(cmdEncoder), _boundDescriptorSets{} {}
@@ -449,10 +432,6 @@ protected:
 	void encodeMetalArgumentBuffer(MVKShaderStage stage);
 	virtual void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) = 0;
 
-//	inline MVKDescSetDescKey getDynamicOffsetKey(uint32_t descSet, uint32_t descIdx) {
-//		return ((MVKDescSetDescKey)descSet << 32) + descIdx;
-//	}
-
 	template<size_t N>
 	struct ResourceBindings {
 		MVKSmallVector<MVKMTLBufferBinding, N> bufferBindings;
@@ -476,7 +455,6 @@ protected:
 	MVKDescriptorSet* _boundDescriptorSets[kMVKMaxDescriptorSetCount];
 	MVKBitArray _metalUsageDirtyDescriptors[kMVKMaxDescriptorSetCount];
 
-//	std::unordered_map<MVKDescSetDescKey, uint32_t> _dynamicOffsets;
 	MVKSmallVector<uint32_t, 8> _dynamicOffsets;
 
 };
@@ -544,12 +522,8 @@ public:
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 
-//	void encodeDynamicBufferOffset(MVKShaderStage stage,
-//										   uint32_t descSetIndex,
-//										   uint32_t descIndex,
-//										   uint32_t dynamicOffsetBufferIndex) override;
-
-	void encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
+	void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
+										   id<MTLResource> mtlResource,
 										   MTLResourceUsage mtlUsage,
 										   MTLRenderStages mtlStages) override;
 
@@ -599,12 +573,8 @@ public:
 	/** Sets the current dynamic offset buffer state. */
 	void bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding, bool needDynamicOffsetBuffer);
 
-//	void encodeDynamicBufferOffset(MVKShaderStage stage,
-//								   uint32_t descSetIndex,
-//								   uint32_t descIndex,
-//								   uint32_t dynamicOffsetBufferIndex) override;
-
-	void encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
+	void encodeArgumentBufferResourceUsage(MVKShaderStage stage,
+										   id<MTLResource> mtlResource,
 										   MTLResourceUsage mtlUsage,
 										   MTLRenderStages mtlStages) override;
 

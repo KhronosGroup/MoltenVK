@@ -536,10 +536,12 @@ void MVKCommandEncoder::clearRenderArea() {
 	}
 }
 
-void MVKCommandEncoder::beginMetalComputeEncoding() {
-	_computePipelineState.beginMetalComputeEncoding();
-	_computeResourcesState.beginMetalComputeEncoding();
-	_computePushConstants.beginMetalComputeEncoding();
+void MVKCommandEncoder::beginMetalComputeEncoding(MVKCommandUse cmdUse) {
+	if (cmdUse == kMVKCommandUseTessellationVertexTessCtl) {
+		_graphicsResourcesState.beginMetalComputeEncoding();
+	} else {
+		_computeResourcesState.beginMetalComputeEncoding();
+	}
 }
 
 void MVKCommandEncoder::finalizeDispatchState() {
@@ -599,7 +601,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	if ( !_mtlComputeEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];		// not retained
-		beginMetalComputeEncoding();
+		beginMetalComputeEncoding(cmdUse);
 	}
 	if (_mtlComputeEncoderUse != cmdUse) {
 		_mtlComputeEncoderUse = cmdUse;

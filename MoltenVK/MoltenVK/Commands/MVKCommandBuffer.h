@@ -299,7 +299,7 @@ public:
 	uint32_t getMultiviewPassIndex();
 
 	/** Begins a Metal compute encoding. */
-	void beginMetalComputeEncoding();
+	void beginMetalComputeEncoding(MVKCommandUse cmdUse);
 
     /** Binds a pipeline to a bind point. */
     void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline);

@@ -524,7 +524,7 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 							auto* mvkDesc = descSet->getDescriptorAt(descIdx);
 							mvkDesc->encodeToMetalArgumentBuffer(this, mtlArgEncoder,
 																 dsIdx, dslBind, elemIdx,
-																 argBuffDirty, true);
+																 stage, argBuffDirty, true);
 						}
 					}
 				}
@@ -903,15 +903,21 @@ void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderS
 	bindBuffer(stage, buffBind);
 }
 
-void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
+void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
+																				id<MTLResource> mtlResource,
 																				MTLResourceUsage mtlUsage,
 																				MTLRenderStages mtlStages) {
 	if (mtlResource && mtlStages) {
-		auto* mtlRendEnc = _cmdEncoder->_mtlRenderEncoder;
-		if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
-			[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: mtlStages];
+		if (stage == kMVKShaderStageTessCtl) {
+			auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
+			[mtlCompEnc useResource: mtlResource usage: mtlUsage];
 		} else {
-			[mtlRendEnc useResource: mtlResource usage: mtlUsage];
+			auto* mtlRendEnc = _cmdEncoder->_mtlRenderEncoder;
+			if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
+				[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: mtlStages];
+			} else {
+				[mtlRendEnc useResource: mtlResource usage: mtlUsage];
+			}
 		}
 	}
 }
@@ -1034,7 +1040,8 @@ void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderSt
 	bindBuffer(buffBind);
 }
 
-void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(id<MTLResource> mtlResource,
+void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
+																			   id<MTLResource> mtlResource,
 																			   MTLResourceUsage mtlUsage,
 																			   MTLRenderStages mtlStages) {
 	if (mtlResource) {

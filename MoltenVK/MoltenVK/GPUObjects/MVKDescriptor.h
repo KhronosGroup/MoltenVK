@@ -222,6 +222,7 @@ public:
 											 uint32_t descSetIndex,
 											 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 											 uint32_t elementIndex,
+											 MVKShaderStage stage,
 											 bool encodeToArgBuffer,
 											 bool encodeUsage) = 0;
 
@@ -286,6 +287,7 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
+									 MVKShaderStage stage,
 									 bool encodeToArgBuffer,
 									 bool encodeUsage) override;
 
@@ -374,6 +376,7 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
+									 MVKShaderStage stage,
 									 bool encodeToArgBuffer,
 									 bool encodeUsage) override;
 
@@ -422,6 +425,7 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
+									 MVKShaderStage stage,
 									 bool encodeToArgBuffer,
 									 bool encodeUsage) override;
 
@@ -501,6 +505,7 @@ protected:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
+									 MVKShaderStage stage,
 									 bool encodeToArgBuffer);
 
 	void write(MVKDescriptorSetLayoutBinding* mvkDSLBind,
@@ -547,6 +552,7 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
+									 MVKShaderStage stage,
 									 bool encodeToArgBuffer,
 									 bool encodeUsage) override;
 
@@ -593,6 +599,7 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
+									 MVKShaderStage stage,
 									 bool encodeToArgBuffer,
 									 bool encodeUsage) override;
 
@@ -637,6 +644,7 @@ public:
 									 uint32_t descSetIndex,
 									 MVKDescriptorSetLayoutBinding* mvkDSLBind,
 									 uint32_t elementIndex,
+									 MVKShaderStage stage,
 									 bool encodeToArgBuffer,
 									 bool encodeUsage) override;
 
