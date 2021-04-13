@@ -273,7 +273,7 @@ void mvkSetConfig(MVKConfiguration* pMVKConfig);
 #  	define MVK_CONFIG_ADVERTISE_EXTENSIONS    MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL
 #endif
 
-/** Support Metal argument buffers. Disabled by default. */
+/** Resume MVKDevice VK_ERROR_DEVICE_LOST errors that do not cause MVKPhysicalDevice errors. Disabled by default. */
 #ifndef MVK_CONFIG_RESUME_LOST_DEVICE
 #   define MVK_CONFIG_RESUME_LOST_DEVICE    0
 #endif
