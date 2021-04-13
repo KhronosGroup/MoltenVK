@@ -338,6 +338,9 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 #endif
 					mvkDev->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
 					break;
+				default:
+					if (mvkConfig()->resumeLostDevice) { mvkDev->clearConfigurationResult(); }
+					break;
 			}
 #if MVK_XCODE_12
 			if (mvkConfig()->debugMode) {

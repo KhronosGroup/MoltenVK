@@ -777,6 +777,31 @@ typedef struct {
 	MVKConfigAdvertiseExtensions advertiseExtensions;
 
 	/**
+	 * Controls whether MoltenVK should treat a lost VkDevice as resumable, unless the
+	 * corresponding VkPhysicalDevice has also been lost. The VK_ERROR_DEVICE_LOST error has
+	 * a broad definitional range, and can mean anything from a GPU hiccup on the current
+	 * command buffer submission, to a phyically removed GPU. In the case where this error does
+	 * not impact the VkPhysicalDevice, Vulkan requires that the app destroy and re-create a new
+	 * VkDevice. However, not all apps (including CTS) respect that requirement, leading to what
+	 * might be a transient command submission failure causing an unexpected catastophic app failure.
+	 * If this setting is enabled, in the case of a VK_ERROR_DEVICE_LOST error that does not
+	 * impact the VkPhysicalDevice, MoltenVK will remove the error condition on the VkDevice after
+	 * the current queue submission is finished, allowing the VkDevice to continue to be used.
+	 * If this setting is disabled, MoltenVK will maintain the VK_ERROR_DEVICE_LOST error condition
+	 * on the VkDevice, and subsequent use of that VkDevice will be reduced or prohibited.
+	 *
+	 * The value of this parameter should be changed before creating a VkDevice
+	 * that will use it, for the change to take effect.
+	 *
+	 * The initial value or this parameter is set by the
+	 * MVK_CONFIG_RESUME_LOST_DEVICE
+	 * runtime environment variable or MoltenVK compile-time build setting.
+	 * If neither is set, this setting is disabled by default, and MoltenVK will not
+	 * resume a VkDevice that enters the VK_ERROR_DEVICE_LOST error state.
+	 */
+	VkBool32 resumeLostDevice;
+
+	/**
 	 * Controls whether MoltenVK should use Metal argument buffers for resources defined in
 	 * descriptor sets, if Metal argument buffers are supported on the platform. Using Metal
 	 * argument buffers dramatically increases the number of buffers, textures and samplers

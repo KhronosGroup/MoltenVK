@@ -60,6 +60,7 @@ static void mvkInitConfigFromEnvVars() {
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.useMTLHeap,                             MVK_CONFIG_USE_MTLHEAP);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.apiVersionToAdvertise,                  MVK_CONFIG_API_VERSION_TO_ADVERTISE);
 	MVK_SET_FROM_ENV_OR_BUILD_INT32 (evCfg.advertiseExtensions,                    MVK_CONFIG_ADVERTISE_EXTENSIONS);
+	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.resumeLostDevice,                       MVK_CONFIG_RESUME_LOST_DEVICE);
 	MVK_SET_FROM_ENV_OR_BUILD_BOOL  (evCfg.useMetalArgumentBuffers,                MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS);
 
 	mvkSetConfig(&evCfg);
