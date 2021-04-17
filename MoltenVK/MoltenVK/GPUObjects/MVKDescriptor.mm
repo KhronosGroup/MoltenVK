@@ -523,8 +523,9 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
     MVKShaderResourceBinding mtlIdxs = _mtlResourceIndexOffsets + dslMTLRezIdxOffsets;
 
 	uint32_t descCnt = getDescriptorCount();
+	bool isUsingMtlArgBuff = isUsingMetalArgumentBuffer();
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageMax; stage++) {
-        if (_applyToStage[stage] && descCnt > 0) {
+        if ((_applyToStage[stage] || isUsingMtlArgBuff) && descCnt > 0) {
             mvkPopulateShaderConverterContext(context,
                                               mtlIdxs.stages[stage],
                                               MVKShaderStage(stage),
