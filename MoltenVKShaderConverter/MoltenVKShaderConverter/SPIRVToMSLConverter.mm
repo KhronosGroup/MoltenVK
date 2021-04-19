@@ -181,16 +181,6 @@ MVK_PUBLIC_SYMBOL uint32_t SPIRVToMSLConversionConfiguration::countShaderInputsA
 	return siCnt;
 }
 
-MVK_PUBLIC_SYMBOL MTLTextureType SPIRVToMSLConversionConfiguration::getMTLTextureType(uint32_t descSet, uint32_t binding) const {
-	for (auto& rb : resourceBindings) {
-		auto& rbb = rb.resourceBinding;
-		if (rb.outIsUsedByShader && rbb.desc_set == descSet && rbb.binding == binding) {
-			return rb.outMTLTextureType;
-		}
-	}
-	return MTLTextureType2D;
-}
-
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInputsAndResourcesUsed() {
 	for (auto& si : shaderInputs) { si.outIsUsedByShader = true; }
 	for (auto& rb : resourceBindings) { rb.outIsUsedByShader = true; }
@@ -231,10 +221,8 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::alignWith(const SPIRVT
 
     for (auto& rb : resourceBindings) {
         rb.outIsUsedByShader = false;
-		rb.outMTLTextureType = MTLTextureType2D;
         for (auto& srcRB : srcContext.resourceBindings) {
 			if (rb.matches(srcRB)) {
-				rb.outMTLTextureType = srcRB.outMTLTextureType;
 				rb.outIsUsedByShader = srcRB.outIsUsedByShader;
 			}
         }
@@ -376,9 +364,6 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	}
 	for (auto& ctxRB : context.resourceBindings) {
 		if (ctxRB.resourceBinding.stage == context.options.entryPointStage) {
-			ctxRB.outMTLTextureType = getMTLTextureType(pMSLCompiler,
-														ctxRB.resourceBinding.desc_set,
-														ctxRB.resourceBinding.binding);
 			ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
 																				 ctxRB.resourceBinding.desc_set,
 																				 ctxRB.resourceBinding.binding);

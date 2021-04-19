@@ -96,13 +96,10 @@ namespace mvk {
 	 * hardcoded into the MSL as a constexpr type, instead of passed in as a runtime-bound variable.
 	 * The content of that constexpr sampler is defined in the constExprSampler parameter.
 	 *
-	 * The outIsUsedByShader and outMTLTextureType values are set by the shader converter
-	 * based on the content of the SPIR-V (and resulting MSL), and provide feedback to the
-	 * pipeline about shader content. The outIsUsedByShader value is set to true if the shader
-	 * makes use of this resource binding. This allows a pipeline to be optimized, and for two
-	 * shader conversion configurations to be compared only against the resource bindings that
-	 * are actually used by the shader. The outMTLTextureType value provides feedback to the
-	 * pipeline regarding the texture type expected by the shader.
+	 * The outIsUsedByShader value is set by the shader converter based on the content of the SPIR-V
+	 * (and resulting MSL), and is set to true if the shader makes use of this resource binding.
+	 * This allows a pipeline to be optimized, and for two shader conversion configurations to
+	 * be compared only against the resource bindings that are actually used by the shader.
 	 *
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
@@ -110,13 +107,12 @@ namespace mvk {
 	typedef struct MSLResourceBinding {
 		SPIRV_CROSS_NAMESPACE::MSLResourceBinding resourceBinding;
 		SPIRV_CROSS_NAMESPACE::MSLConstexprSampler constExprSampler;
-		MTLTextureType outMTLTextureType = MTLTextureType2D;
 		bool requiresConstExprSampler = false;
 		bool outIsUsedByShader = false;
 
 		/**
 		 * Returns whether the specified resource binding match this one.
-		 * It does if all corresponding elements except outMTLTextureType and outIsUsedByShader are equal.
+		 * It does if all corresponding elements except outIsUsedByShader are equal.
 		 */
 		bool matches(const MSLResourceBinding& other) const;
 
@@ -163,9 +159,6 @@ namespace mvk {
 
         /** Returns whether the vertex buffer at the specified Vulkan binding is used by the shader. */
 		bool isVertexBufferUsed(uint32_t binding) const { return countShaderInputsAt(binding) > 0; }
-
-		/** Returns the MTLTextureType of the image resource at the descriptor set and binding. */
-		MTLTextureType getMTLTextureType(uint32_t descSet, uint32_t binding) const;
 
 		/** Marks all input variables and resources as being used by the shader. */
 		void markAllInputsAndResourcesUsed();

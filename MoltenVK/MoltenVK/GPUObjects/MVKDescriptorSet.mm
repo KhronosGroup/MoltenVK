@@ -183,19 +183,6 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConve
 	}
 }
 
-id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
-																	 uint32_t descSetIdx) {
-	if ( !(isUsingMetalArgumentBuffer() && isUsingDescriptorSetMetalArgumentBuffers()) ) { return nil; }
-
-	@autoreleasepool {
-		NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
-		for (auto& dslBind : _bindings) {
-			dslBind.addMTLArgumentDescriptors(args, shaderConfig, descSetIdx);
-		}
-		return (args.count) ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil;
-	}
-}
-
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
                                                const VkDescriptorSetLayoutCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 
@@ -229,7 +216,7 @@ MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
 		_descriptorCount += _bindings.back().getDescriptorCount();
 	}
 
-	initForMetalArgumentBufferUse();
+	initMTLArgumentEncoder();
 }
 
 // Find and return an array of binding flags from the pNext chain of pCreateInfo,
@@ -248,9 +235,14 @@ const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const Vk
 	return nullptr;
 }
 
-void MVKDescriptorSetLayout::initForMetalArgumentBufferUse() {
-	SPIRVToMSLConversionConfiguration shaderConfig;
-	_mtlArgumentEncoder.init(newMTLArgumentEncoder(shaderConfig, 0));
+void MVKDescriptorSetLayout::initMTLArgumentEncoder() {
+	if (isUsingDescriptorSetMetalArgumentBuffers() && isUsingMetalArgumentBuffer()) {
+		@autoreleasepool {
+			NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
+			for (auto& dslBind : _bindings) { dslBind.addMTLArgumentDescriptors(args); }
+			_mtlArgumentEncoder.init(args.count ? [getMTLDevice() newArgumentEncoderWithArguments: args] : nil);
+		}
+	}
 }
 
 

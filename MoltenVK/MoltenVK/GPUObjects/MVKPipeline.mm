@@ -2202,7 +2202,6 @@ namespace mvk {
 	void serialize(Archive & archive, MSLResourceBinding& rb) {
 		archive(rb.resourceBinding,
 				rb.constExprSampler,
-				rb.outMTLTextureType,
 				rb.requiresConstExprSampler,
 				rb.outIsUsedByShader);
 	}

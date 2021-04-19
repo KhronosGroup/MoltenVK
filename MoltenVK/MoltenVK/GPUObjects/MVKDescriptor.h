@@ -166,15 +166,11 @@ protected:
     friend class MVKInlineUniformBlockDescriptor;
 	
 	void initMetalResourceIndexOffsets(const VkDescriptorSetLayoutBinding* pBinding, uint32_t stage);
-	void addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args,
-								   mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
-								   uint32_t descSetIdx);
+	void addMTLArgumentDescriptors(NSMutableArray<MTLArgumentDescriptor*>* args);
 	void addMTLArgumentDescriptor(NSMutableArray<MTLArgumentDescriptor*>* args,
 								  uint32_t argIndex,
 								  MTLDataType dataType,
-								  MTLArgumentAccess access,
-								  mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
-								  uint32_t descSetIdx);
+								  MTLArgumentAccess access);
 	bool isUsingMetalArgumentBuffer();
 	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
 										MVKShaderResourceBinding& dslMTLRezIdxOffsets,

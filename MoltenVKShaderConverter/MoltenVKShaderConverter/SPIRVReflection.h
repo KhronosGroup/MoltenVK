@@ -26,23 +26,6 @@
 #include <string>
 #include <vector>
 
-#ifdef __OBJC__
-#import <Metal/Metal.h>
-#else
-enum MTLTextureType {
-	MTLTextureType1D,
-	MTLTextureType1DArray,
-	MTLTextureType2D,
-	MTLTextureType2DArray,
-	MTLTextureType2DMultisample,
-	MTLTextureType2DMultisampleArray,
-	MTLTextureType3D,
-	MTLTextureTypeCube,
-	MTLTextureTypeCubeArray,
-	MTLTextureTypeTextureBuffer
-};
-#endif
-
 
 namespace mvk {
 
@@ -295,52 +278,6 @@ namespace mvk {
 				}
 			}
 		}
-	}
-
-	/** Given the compiler, returns the MTLTextureType of the descriptor set binding. */
-	template<typename C>
-	MTLTextureType getMTLTextureType(C* compiler, uint32_t desc_set, uint32_t binding) {
-		for (auto varID : compiler->get_active_interface_variables()) {
-			if (compiler->has_decoration(varID, spv::DecorationDescriptorSet) &&
-				compiler->get_decoration(varID, spv::DecorationDescriptorSet) == desc_set &&
-				compiler->has_decoration(varID, spv::DecorationBinding) &&
-				compiler->get_decoration(varID, spv::DecorationBinding) == binding) {
-
-				auto& mslOpts = compiler->get_msl_options();
-				auto& imgType = compiler->get_type_from_variable(varID).image;
-				bool isArray = imgType.arrayed;
-				switch (imgType.dim) {
-					case spv::DimBuffer:
-						return mslOpts.texture_buffer_native ? MTLTextureTypeTextureBuffer : MTLTextureType2D;
-
-					case spv::Dim1D:
-						return (mslOpts.texture_1D_as_2D
-								? (isArray ? MTLTextureType2DArray : MTLTextureType2D)
-								: (isArray ? MTLTextureType1DArray : MTLTextureType1D));
-
-					case spv::Dim2D:
-					case spv::DimSubpassData:
-#if MVK_MACOS_OR_IOS
-						if (isArray && imgType.ms) { return MTLTextureType2DMultisampleArray; }
-#endif
-						return (isArray
-								? MTLTextureType2DArray
-								: (imgType.ms ? MTLTextureType2DMultisample : MTLTextureType2D));
-
-					case spv::Dim3D:
-						return MTLTextureType3D;
-
-					case spv::DimCube:
-						return (mslOpts.emulate_cube_array
-								? (isArray ? MTLTextureType2DArray : MTLTextureType2D)
-								: (isArray ? MTLTextureTypeCubeArray : MTLTextureTypeCube));
-
-					default:
-						return MTLTextureType2D;
-				}
-			}
-		}
-		return MTLTextureType2D;
 	}
 
 }
