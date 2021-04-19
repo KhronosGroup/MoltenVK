@@ -855,6 +855,12 @@ public:
 	/** Returns whether this device is using Metal argument buffers. */
 	inline bool isUsingMetalArgumentBuffers() { return getPhysicalDevice()->isUsingMetalArgumentBuffers(); };
 
+	/** Returns whether this device is using one Metal argument buffer for each descriptor set, on multiple pipeline and pipeline stages. */
+	inline bool isUsingDescriptorSetMetalArgumentBuffers() { return isUsingMetalArgumentBuffers() && _device->_pMetalFeatures->descriptorSetArgumentBuffers; };
+
+	/** Returns whether this device is using one Metal argument buffer for each descriptor set-pipeline-stage combination. */
+	inline bool isUsingPipelineStageMetalArgumentBuffers() { return isUsingMetalArgumentBuffers() && !_device->_pMetalFeatures->descriptorSetArgumentBuffers; };
+
 	/** Constructs an instance for the specified device. */
     MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }
 

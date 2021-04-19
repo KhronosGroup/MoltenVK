@@ -1552,6 +1552,19 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_OS_SIMULATOR && !MVK_APPLE_SILICON
 	_metalFeatures.mtlBufferAlignment = 256;
 #endif
+
+	// Currently, Metal argument buffer support is in beta stage, and is only supported
+	// on macOS 10.16 (Big Sur) or later, or on older versions of macOS using an Intel GPU.
+	// Metal argument buffers support is not available on iOS. Development to support iOS
+	// and a wider combination of GPU's on older macOS versions is under way.
+#if MVK_MACOS
+	_metalFeatures.descriptorSetArgumentBuffers = (_metalFeatures.argumentBuffers &&
+												   (mvkOSVersionIsAtLeast(10.16) ||
+													_properties.vendorID == kIntelVendorId));
+#endif
+	// Currently, if we don't support descriptor set argument buffers, we can't support argument buffers.
+	_metalFeatures.argumentBuffers = _metalFeatures.descriptorSetArgumentBuffers;
+
 }
 
 // Initializes the physical device features of this instance.

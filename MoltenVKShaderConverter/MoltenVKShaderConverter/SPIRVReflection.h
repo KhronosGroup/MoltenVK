@@ -282,6 +282,21 @@ namespace mvk {
 #endif
 	}
 
+	/** Given the compiler, updates a bit array with the indexes of the descriptor sets in use by the shader. */
+	template<typename C, typename Bm>
+	void getActiveDescriptorSets(C* pCompiler, Bm& activeDescSets) {
+		Bm setBit = 1;
+		activeDescSets = 0;
+		if (pCompiler) {
+			for (auto varID : pCompiler->get_active_interface_variables()) {
+				if (pCompiler->has_decoration(varID, spv::DecorationDescriptorSet)) {
+					uint32_t descSet = pCompiler->get_decoration(varID, spv::DecorationDescriptorSet);
+					activeDescSets |= (setBit << descSet);
+				}
+			}
+		}
+	}
+
 	/** Given the compiler, returns the MTLTextureType of the descriptor set binding. */
 	template<typename C>
 	MTLTextureType getMTLTextureType(C* compiler, uint32_t desc_set, uint32_t binding) {

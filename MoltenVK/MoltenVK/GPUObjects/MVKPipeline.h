@@ -177,9 +177,7 @@ public:
 	bool hasValidMTLPipelineStates() { return _hasValidMTLPipelineStates; }
 
 	/** Returns the MTLArgumentEncoder for the descriptor set. */
-	id<MTLArgumentEncoder> getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) {
-		return _mtlArgumentEncoders[descSetIndex];
-	}
+	virtual MVKMTLArgumentEncoder& getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) = 0;
 
 	/** Returns the number of descriptor sets in this pipeline layout. */
 	uint32_t getDescriptorSetCount() { return _descriptorSetCount; }
@@ -190,14 +188,10 @@ public:
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent);
 
-	~MVKPipeline() override;
-
 protected:
 	void propagateDebugName() override {}
-	void addMTLArgumentEncoders(MVKPipelineLayout* layout, SPIRVToMSLConversionConfiguration& shaderConfig);
 
 	MVKPipelineCache* _pipelineCache;
-	id<MTLArgumentEncoder> _mtlArgumentEncoders[kMVKMaxDescriptorSetCount];
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
 	MVKShaderImplicitRezBinding _bufferSizeBufferIndex;
 	MVKShaderImplicitRezBinding _dynamicOffsetBufferIndex;
@@ -224,6 +218,10 @@ struct MVKTranslatedVertexBinding {
 typedef std::pair<uint32_t, uint32_t> MVKZeroDivisorVertexBinding;
 
 typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
+
+struct MVKStagedMTLArgumentEncoders {
+	MVKMTLArgumentEncoder stages[4];
+};
 
 /** The number of dynamic states possible in Vulkan. */
 static const uint32_t kMVKVkDynamicStateCount = 32;
@@ -290,6 +288,9 @@ public:
 	/** Returns the collection of instance-rate vertex bindings whose divisor is zero, along with their strides. */
 	MVKArrayRef<MVKZeroDivisorVertexBinding> getZeroDivisorVertexBindings() { return _zeroDivisorVertexBindings.contents(); }
 
+	/** Returns the MTLArgumentEncoder for the descriptor set. */
+	MVKMTLArgumentEncoder& getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) override { return _mtlArgumentEncoders[descSetIndex].stages[stage]; }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
 						MVKPipelineCache* pipelineCache,
@@ -325,6 +326,7 @@ protected:
     bool isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name, uint32_t reservedBuffers);
 	uint32_t getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding);
+	void addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc, MVKShaderStage stage);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
@@ -339,6 +341,7 @@ protected:
 	MVKSmallVector<VkRect2D, kMVKCachedViewportScissorCount> _scissors;
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
+	MVKSmallVector<MVKStagedMTLArgumentEncoders> _mtlArgumentEncoders;
 
 	MTLComputePipelineDescriptor* _mtlTessVertexStageDesc = nil;
 	id<MTLFunction> _mtlTessVertexFunctions[3] = {nil, nil, nil};
@@ -398,6 +401,9 @@ public:
 	/** Returns if this pipeline allows non-zero dispatch bases in vkCmdDispatchBase(). */
 	bool allowsDispatchBase() { return _allowsDispatchBase; }
 
+	/** Returns the MTLArgumentEncoder for the descriptor set. */
+	MVKMTLArgumentEncoder& getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) override { return _mtlArgumentEncoders[descSetIndex]; }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKComputePipeline(MVKDevice* device,
 					   MVKPipelineCache* pipelineCache,
@@ -408,8 +414,10 @@ public:
 
 protected:
     MVKMTLFunction getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo);
+	void addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc);
 
     id<MTLComputePipelineState> _mtlPipelineState;
+	MVKSmallVector<MVKMTLArgumentEncoder> _mtlArgumentEncoders;
     MTLSize _mtlThreadgroupSize;
     bool _needsSwizzleBuffer = false;
     bool _needsBufferSizeBuffer = false;

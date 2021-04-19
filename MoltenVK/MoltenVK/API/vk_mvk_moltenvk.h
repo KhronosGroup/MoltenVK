@@ -809,6 +809,11 @@ typedef struct {
 	 * setting is enabled, MoltenVK will use Metal argument buffers to bind resources to the
 	 * shaders. If this setting is disabled, MoltenVK will bind resources to shaders discretely.
 	 *
+	 * NOTE: Currently, Metal argument buffer support is in beta stage, and is only supported
+	 * on macOS 10.16 (Big Sur) or later, or on older versions of macOS using an Intel GPU.
+	 * Metal argument buffers support is not available on iOS. Development to support iOS
+	 * and a wider combination of GPU's on older macOS versions is under way.
+	 *
 	 * The value of this parameter must be changed before creating a VkInstance,
 	 * for the change to take effect.
 	 *
@@ -899,7 +904,8 @@ typedef struct {
     uint32_t minSubgroupSize;			        /**< The minimum number of threads in a SIMD-group. */
     VkBool32 textureBarriers;                   /**< If true, texture barriers are supported within Metal render passes. */
     VkBool32 tileBasedDeferredRendering;        /**< If true, this device uses tile-based deferred rendering. */
-	VkBool32 argumentBuffers;					/**< If true, argument buffers are supported. */
+	VkBool32 argumentBuffers;					/**< If true, Metal argument buffers are supported. */
+	VkBool32 descriptorSetArgumentBuffers;		/**< If true, a Metal argument buffer can be assigned to a descriptor set, and used on any pipeline and pipeline stage. If false, a different Metal argument buffer must be used for each pipeline-stage/descriptor-set combination. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

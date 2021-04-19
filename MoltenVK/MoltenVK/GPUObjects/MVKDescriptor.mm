@@ -109,7 +109,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 		mvk::MSLResourceBinding rb;													\
 		auto& rbb = rb.resourceBinding;												\
 		rbb.stage = svpExecModels[stage];											\
-		rbb.base_type = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::spvRezType;		\
+		rbb.basetype = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::spvRezType;		\
 		rbb.desc_set = descriptorSetIndex;											\
 		rbb.binding = bindingIndex;													\
 		rbb.count = count;															\
@@ -132,12 +132,12 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			addResourceBinding(Void);
+			addResourceBinding(Float);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER_DYNAMIC: {
-			addResourceBinding(Void);
+			addResourceBinding(Float);
 
 			mvk::DescriptorBinding db;
 			db.stage = svpExecModels[stage];

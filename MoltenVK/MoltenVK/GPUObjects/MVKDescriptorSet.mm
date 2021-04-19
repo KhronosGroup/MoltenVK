@@ -185,7 +185,7 @@ void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConve
 
 id<MTLArgumentEncoder> MVKDescriptorSetLayout::newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 																	 uint32_t descSetIdx) {
-	if ( !isUsingMetalArgumentBuffer() ) { return nil; }
+	if ( !(isUsingMetalArgumentBuffer() && isUsingDescriptorSetMetalArgumentBuffers()) ) { return nil; }
 
 	@autoreleasepool {
 		NSMutableArray<MTLArgumentDescriptor*>* args = [NSMutableArray arrayWithCapacity: _bindings.size()];
@@ -248,17 +248,9 @@ const VkDescriptorBindingFlags* MVKDescriptorSetLayout::getBindingFlags(const Vk
 	return nullptr;
 }
 
-// Determine the size of the Metal argument buffer required to hold the contents of this
-// descriptor set, and add a MTLBuffer binding for the Metal argument buffer itself.
 void MVKDescriptorSetLayout::initForMetalArgumentBufferUse() {
-	_metalArgumentBufferSize = 0;
-
-	if ( !isUsingMetalArgumentBuffer() ) { return; }
-
 	SPIRVToMSLConversionConfiguration shaderConfig;
-	id<MTLArgumentEncoder> argEnc = newMTLArgumentEncoder(shaderConfig, 0);	// retained
-	_metalArgumentBufferSize = argEnc.encodedLength;
-	[argEnc release];
+	_mtlArgumentEncoder.init(newMTLArgumentEncoder(shaderConfig, 0));
 }
 
 
@@ -476,7 +468,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 												  uint32_t variableDescriptorCount,
 												  VkDescriptorSet* pVKDS) {
 	VkResult rslt = VK_ERROR_OUT_OF_POOL_MEMORY;
-	NSUInteger mtlArgBuffAllocSize = mvkDSL->_metalArgumentBufferSize;
+	NSUInteger mtlArgBuffAllocSize = mvkDSL->getMTLArgumentEncoder().getMTLArgumentEncoderSize();
 	NSUInteger mtlArgBuffAlignedSize = mvkAlignByteCount(mtlArgBuffAllocSize,
 														 getDevice()->_pMetalFeatures->mtlBufferAlignment);
 
@@ -490,7 +482,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 		// will fit in the slot that might already have been allocated for it in the Metal argument
 		// buffer from a previous allocation that was returned. If this pool has been reset recently,
 		// then the desc sets will not have had a Metal argument buffer allocation assigned yet.
-		if (mvkDSL->isUsingMetalArgumentBuffer()) {
+		if (isUsingDescriptorSetMetalArgumentBuffers() && mvkDSL->isUsingMetalArgumentBuffer()) {
 
 			// If the offset has not been set (and it's not the first desc set except
 			// on a reset pool), set the offset and update the next available offset value.
@@ -724,7 +716,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 	_metalArgumentBuffer = nil;
 	_nextMetalArgumentBufferOffset = 0;
 
-	if ( !isUsingMetalArgumentBuffers() ) { return; }
+	if ( !isUsingDescriptorSetMetalArgumentBuffers() ) { return; }
 
 	@autoreleasepool {
 		NSUInteger mtlBuffCnt = 0;

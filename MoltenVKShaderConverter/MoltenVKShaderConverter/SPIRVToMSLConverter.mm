@@ -107,7 +107,7 @@ MVK_PUBLIC_SYMBOL bool mvk::MSLShaderInput::matches(const mvk::MSLShaderInput& o
 
 MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding& other) const {
 	if (resourceBinding.stage != other.resourceBinding.stage) { return false; }
-	if (resourceBinding.base_type != other.resourceBinding.base_type) { return false; }
+	if (resourceBinding.basetype != other.resourceBinding.basetype) { return false; }
 	if (resourceBinding.desc_set != other.resourceBinding.desc_set) { return false; }
 	if (resourceBinding.binding != other.resourceBinding.binding) { return false; }
 	if (resourceBinding.count != other.resourceBinding.count) { return false; }
@@ -349,7 +349,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	// Populate the shader conversion results with info from the compilation run,
 	// and mark which vertex attributes and resource bindings are used by the shader
 	populateEntryPoint(pMSLCompiler, context.options);
-
+	getActiveDescriptorSets(pMSLCompiler, _shaderConversionResults.activeDescriptorSets);
 	_shaderConversionResults.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
 	_shaderConversionResults.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
 	_shaderConversionResults.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();

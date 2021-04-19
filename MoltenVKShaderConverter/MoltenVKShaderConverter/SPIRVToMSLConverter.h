@@ -228,6 +228,7 @@ namespace mvk {
 	 */
 	typedef struct SPIRVToMSLConversionResults {
 		SPIRVEntryPoint entryPoint;
+		uint32_t activeDescriptorSets = 0;
 		bool isRasterizationDisabled = false;
 		bool isPositionInvariant = false;
 		bool needsSwizzleBuffer = false;
@@ -239,6 +240,9 @@ namespace mvk {
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
 
+		bool isDescriptorSetUsed(uint32_t descSet) {
+			return (activeDescriptorSets & ((uint32_t)1U << descSet)) != 0;
+		}
 		void reset() { *this = SPIRVToMSLConversionResults(); }
 
 	} SPIRVToMSLConversionResults;

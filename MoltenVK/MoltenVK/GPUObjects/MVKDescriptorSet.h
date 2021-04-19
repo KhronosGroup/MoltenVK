@@ -34,6 +34,22 @@ class MVKResourcesCommandEncoderState;
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
+/** Holds and manages the lifecycle of a MTLArgumentEncoder. The encoder can only be set once. */
+struct MVKMTLArgumentEncoder {
+	id<MTLArgumentEncoder> getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
+	NSUInteger getMTLArgumentEncoderSize() { return _mtlArgumentEncoderSize; }
+	void init(id<MTLArgumentEncoder> mtlArgEnc) {
+		if (_mtlArgumentEncoder) { return; }
+		_mtlArgumentEncoder = mtlArgEnc;		// takes ownership
+		_mtlArgumentEncoderSize = mtlArgEnc.encodedLength;
+	}
+	~MVKMTLArgumentEncoder() { [_mtlArgumentEncoder release]; }
+
+private:
+	id<MTLArgumentEncoder> _mtlArgumentEncoder = nil;
+	NSUInteger _mtlArgumentEncoderSize = 0;
+};
+
 /** Represents a Vulkan descriptor set layout. */
 class MVKDescriptorSetLayout : public MVKVulkanAPIDeviceObject {
 
@@ -81,8 +97,11 @@ public:
 	/** Returns true if this layout is for push descriptors only. */
 	bool isPushDescriptorLayout() const { return _isPushDescriptorLayout; }
 
-	/** Returns a new MTLArgumentEncoder, populated from this layout and info from the shader config.  */
-	id<MTLArgumentEncoder> newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig, uint32_t descSetIdx);
+	/** Returns true if this layout is using a Metal argument buffer. */
+	bool isUsingMetalArgumentBuffer()  { return isUsingMetalArgumentBuffers() && !isPushDescriptorLayout(); };
+
+	/** Returns the MTLArgumentEncoder for the descriptor set. */
+	MVKMTLArgumentEncoder& getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
 
 	MVKDescriptorSetLayout(MVKDevice* device, const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
 
@@ -91,20 +110,19 @@ protected:
 	friend class MVKDescriptorSetLayoutBinding;
 	friend class MVKPipelineLayout;
 	friend class MVKDescriptorSet;
-	friend class MVKDescriptorPool;
 
 	void propagateDebugName() override {}
-	inline uint32_t getDescriptorCount() { return _descriptorCount; }
-	inline uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
-	inline MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
+	uint32_t getDescriptorCount() { return _descriptorCount; }
+	uint32_t getDescriptorIndex(uint32_t binding, uint32_t elementIndex = 0) { return getBinding(binding)->getDescriptorIndex(elementIndex); }
+	MVKDescriptorSetLayoutBinding* getBinding(uint32_t binding) { return &_bindings[_bindingToIndex[binding]]; }
 	const VkDescriptorBindingFlags* getBindingFlags(const VkDescriptorSetLayoutCreateInfo* pCreateInfo);
-	inline bool isUsingMetalArgumentBuffer()  { return isUsingMetalArgumentBuffers() && !isPushDescriptorLayout(); };
 	void initForMetalArgumentBufferUse();
+	id<MTLArgumentEncoder> newMTLArgumentEncoder(mvk::SPIRVToMSLConversionConfiguration& shaderConfig, uint32_t descSetIdx);
 
 	MVKSmallVector<MVKDescriptorSetLayoutBinding> _bindings;
 	std::unordered_map<uint32_t, uint32_t> _bindingToIndex;
+	MVKMTLArgumentEncoder _mtlArgumentEncoder;
 	MVKShaderResourceBinding _mtlResourceCounts;
-	NSUInteger _metalArgumentBufferSize;
 	uint32_t _descriptorCount;
 	bool _isPushDescriptorLayout;
 };
@@ -153,7 +171,7 @@ public:
 	id<MTLBuffer> getMetalArgumentBuffer();
 
 	/** Returns the offset into the Metal argument buffer to which resources are written. */
-	inline NSUInteger getMetalArgumentBufferOffset() { return _metalArgumentBufferOffset; }
+	NSUInteger getMetalArgumentBufferOffset() { return _metalArgumentBufferOffset; }
 
 	/** Returns an array indicating the descriptors that have changed since the Metal argument buffer was last updated. */
 	MVKBitArray& getMetalArgumentBufferDirtyDescriptors() { return _metalArgumentBufferDirtyDescriptors; }
