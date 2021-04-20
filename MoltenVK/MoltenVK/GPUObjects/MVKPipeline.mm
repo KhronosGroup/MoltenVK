@@ -182,6 +182,26 @@ void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 	}
 }
 
+// For each descriptor set, populate the descriptor bindings used by the shader for this stage,
+// and if Metal argument encoders must be dedicated to a pipeline stage, create the encoder here.
+template<typename CreateInfo>
+void MVKPipeline::addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
+										 const CreateInfo* pCreateInfo,
+										 SPIRVToMSLConversionConfiguration& context,
+										 MVKShaderStage stage) {
+	if ( !isUsingMetalArgumentBuffers() ) { return; }
+
+	bool needMTLArgEnc = isUsingPipelineStageMetalArgumentBuffers();
+	auto mtlFunc = mvkMTLFunc.getMTLFunction();
+	for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
+		auto* dsLayout = ((MVKPipelineLayout*)pCreateInfo->layout)->getDescriptorSetLayout(dsIdx);
+		bool descSetIsUsed = dsLayout->populateBindingUse(getDescriptorBindingUse(dsIdx, stage), context, stage, dsIdx);
+		if (descSetIsUsed && needMTLArgEnc) {
+			getMTLArgumentEncoder(dsIdx, stage).init([mtlFunc newArgumentEncoderWithBufferIndex: dsIdx]);
+		}
+	}
+}
+
 MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent) :
 	MVKVulkanAPIDeviceObject(device),
 	_pipelineCache(pipelineCache),
@@ -488,6 +508,7 @@ void MVKGraphicsPipeline::initMTLRenderPipelineState(const VkGraphicsPipelineCre
 	_mtlTessVertexStageDesc = nil;
 	for (uint32_t i = 0; i < 3; i++) { _mtlTessVertexFunctions[i] = nil; }
 
+	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
 	if (isUsingPipelineStageMetalArgumentBuffers()) { _mtlArgumentEncoders.resize(_descriptorSetCount); }
 
 	if (!isTessellationPipeline()) {
@@ -918,7 +939,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	_needsVertexViewRangeBuffer = funcRslts.needsViewRangeBuffer;
 	_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
 
-	addMTLArgumentEncoders(func, kMVKShaderStageVertex);
+	addMTLArgumentEncoders(func, pCreateInfo, shaderContext, kMVKShaderStageVertex);
 
 	if (funcRslts.isRasterizationDisabled) {
 		_pFragmentSS = nullptr;
@@ -990,7 +1011,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 		_needsVertexOutputBuffer = funcRslts.needsOutputBuffer;
 	}
 
-	addMTLArgumentEncoders(func, kMVKShaderStageVertex);
+	addMTLArgumentEncoders(func, pCreateInfo, shaderContext, kMVKShaderStageVertex);
 
 	// If we need the swizzle buffer and there's no place to put it, we're in serious trouble.
 	if (!verifyImplicitBuffer(_needsVertexSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageVertex, "swizzle", vbCnt)) {
@@ -1049,7 +1070,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	_needsTessCtlPatchOutputBuffer = funcRslts.needsPatchOutputBuffer;
 	_needsTessCtlInputBuffer = funcRslts.needsInputThreadgroupMem;
 
-	addMTLArgumentEncoders(func, kMVKShaderStageTessCtl);
+	addMTLArgumentEncoders(func, pCreateInfo, shaderContext, kMVKShaderStageTessCtl);
 
 	if (!verifyImplicitBuffer(_needsTessCtlSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageTessCtl, "swizzle", kMVKTessCtlNumReservedBuffers)) {
 		return false;
@@ -1105,7 +1126,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	_needsTessEvalBufferSizeBuffer = funcRslts.needsBufferSizeBuffer;
 	_needsTessEvalDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
 
-	addMTLArgumentEncoders(func, kMVKShaderStageTessEval);
+	addMTLArgumentEncoders(func, pCreateInfo, shaderContext, kMVKShaderStageTessEval);
 
 	if (funcRslts.isRasterizationDisabled) {
 		_pFragmentSS = nullptr;
@@ -1161,7 +1182,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		_needsFragmentDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
 		_needsFragmentViewRangeBuffer = funcRslts.needsViewRangeBuffer;
 
-		addMTLArgumentEncoders(func, kMVKShaderStageFragment);
+		addMTLArgumentEncoders(func, pCreateInfo, shaderContext, kMVKShaderStageFragment);
 
 		if (!verifyImplicitBuffer(_needsFragmentSwizzleBuffer, _swizzleBufferIndex, kMVKShaderStageFragment, "swizzle", 0)) {
 			return false;
@@ -1664,17 +1685,6 @@ bool MVKGraphicsPipeline::isRasterizationDisabled(const VkGraphicsPipelineCreate
 			  (mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology) == MTLPrimitiveTopologyClassTriangle))));
 }
 
-void MVKGraphicsPipeline::addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc, MVKShaderStage stage) {
-	if ( !isUsingPipelineStageMetalArgumentBuffers() ) { return; }
-
-	auto mtlFunc = mvkMTLFunc.getMTLFunction();
-	for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
-		if (mvkMTLFunc.shaderConversionResults.isDescriptorSetUsed(dsIdx)) {
-			_mtlArgumentEncoders[dsIdx].stages[stage].init([mtlFunc newArgumentEncoderWithBufferIndex: dsIdx]);
-		}
-	}
-}
-
 MVKGraphicsPipeline::~MVKGraphicsPipeline() {
 	@synchronized (getMTLDevice()) {
 		[_mtlTessVertexStageDesc release];
@@ -1715,13 +1725,11 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 	_mtlThreadgroupSize = func.threadGroupSize;
 	_mtlPipelineState = nil;
 
+	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
 	if (isUsingPipelineStageMetalArgumentBuffers()) { _mtlArgumentEncoders.resize(_descriptorSetCount); }
 
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
 	if (mtlFunc) {
-
-		addMTLArgumentEncoders(func);
-
 		MTLComputePipelineDescriptor* plDesc = [MTLComputePipelineDescriptor new];	// temp retain
 		plDesc.computeFunction = mtlFunc;
 		plDesc.maxTotalThreadsPerThreadgroup = _mtlThreadgroupSize.width * _mtlThreadgroupSize.height * _mtlThreadgroupSize.depth;
@@ -1805,18 +1813,9 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	_needsDynamicOffsetBuffer = funcRslts.needsDynamicOffsetBuffer;
     _needsDispatchBaseBuffer = funcRslts.needsDispatchBaseBuffer;
 
+	addMTLArgumentEncoders(func, pCreateInfo, shaderContext, kMVKShaderStageCompute);
+
 	return func;
-}
-
-void MVKComputePipeline::addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc) {
-	if ( !isUsingPipelineStageMetalArgumentBuffers() ) { return; }
-
-	auto mtlFunc = mvkMTLFunc.getMTLFunction();
-	for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
-		if (mvkMTLFunc.shaderConversionResults.isDescriptorSetUsed(dsIdx)) {
-			_mtlArgumentEncoders[dsIdx].init([mtlFunc newArgumentEncoderWithBufferIndex: dsIdx]);
-		}
-	}
 }
 
 MVKComputePipeline::~MVKComputePipeline() {
@@ -2225,7 +2224,6 @@ namespace mvk {
 	template<class Archive>
 	void serialize(Archive & archive, SPIRVToMSLConversionResults& scr) {
 		archive(scr.entryPoint,
-				scr.activeDescriptorSets,
 				scr.isRasterizationDisabled,
 				scr.isPositionInvariant,
 				scr.needsSwizzleBuffer,

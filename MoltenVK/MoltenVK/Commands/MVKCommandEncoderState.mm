@@ -498,12 +498,12 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 		auto* descSet = _boundDescriptorSets[dsIdx];
 		if ( !descSet ) { continue; }
 
-		auto* dsLayout = descSet->getLayout();
-
 		id<MTLArgumentEncoder> mtlArgEncoder = nil;
 		id<MTLBuffer> mtlArgBuffer = nil;
 		NSUInteger metalArgBufferOffset = 0;
-		if (_cmdEncoder->isUsingDescriptorSetMetalArgumentBuffers()) {
+
+		auto* dsLayout = descSet->getLayout();
+		if (dsLayout->isUsingDescriptorSetMetalArgumentBuffers()) {
 			mtlArgEncoder = dsLayout->getMTLArgumentEncoder().getMTLArgumentEncoder();
 			mtlArgBuffer = descSet->getMetalArgumentBuffer();
 			metalArgBufferOffset = descSet->getMetalArgumentBufferOffset();
@@ -518,13 +518,14 @@ void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage s
 
 		auto& argBuffDirtyDescs = descSet->getMetalArgumentBufferDirtyDescriptors();
 		auto& resourceUsageDirtyDescs = _metalUsageDirtyDescriptors[dsIdx];
+		auto& shaderBindingUsage = pipeline->getDescriptorBindingUse(dsIdx, stage);
 
 		bool mtlArgEncAttached = false;
 		bool shouldBindArgBuffToStage = false;
 		uint32_t dslBindCnt = dsLayout->getBindingCount();
 		for (uint32_t dslBindIdx = 0; dslBindIdx < dslBindCnt; dslBindIdx++) {
 			auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
-			if (dslBind->getApplyToStage(stage)) {
+			if (dslBind->getApplyToStage(stage) && shaderBindingUsage.getBit(dslBindIdx)) {
 				shouldBindArgBuffToStage = true;
 				uint32_t elemCnt = dslBind->getDescriptorCount(descSet);
 				for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {

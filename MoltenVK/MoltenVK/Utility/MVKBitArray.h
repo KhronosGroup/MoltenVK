@@ -34,8 +34,12 @@ class MVKBitArray {
 
 public:
 
-	/** Returns the value of the bit, and optionally clears that bit if it was set. */
+	/**
+	 * Returns the value of the bit, and optionally clears that bit if it was set.
+	 * Returns false if the bitIndex is beyond the size of this array, returns false.
+	 */
 	inline bool getBit(size_t bitIndex, bool shouldClear = false) {
+		if (bitIndex >= _bitCount) { return false; }
 		bool val = mvkIsAnyFlagEnabled(_pSections[getIndexOfSection(bitIndex)], getSectionSetMask(bitIndex));
 		if (shouldClear && val) { clearBit(bitIndex); }
 		return val;
@@ -174,8 +178,11 @@ public:
 	}
 
 	/** Constructs an instance for the specified number of bits, and sets the initial value of all the bits. */
-	MVKBitArray(size_t size = 0, bool val = false) {
-		resize(size, val);
+	MVKBitArray(size_t size = 0, bool val = false) { resize(size, val); }
+
+	MVKBitArray(const MVKBitArray& other) {
+		resize(other._bitCount);
+		memcpy(_pSections, other._pSections, getSectionCount() * SectionByteCount);
 	}
 
 	~MVKBitArray() { free(_pSections); }

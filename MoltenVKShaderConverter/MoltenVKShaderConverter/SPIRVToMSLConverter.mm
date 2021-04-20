@@ -181,6 +181,16 @@ MVK_PUBLIC_SYMBOL uint32_t SPIRVToMSLConversionConfiguration::countShaderInputsA
 	return siCnt;
 }
 
+MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::isResourceUsed(ExecutionModel stage, uint32_t descSet, uint32_t binding) const {
+	for (auto& rb : resourceBindings) {
+		auto& rbb = rb.resourceBinding;
+		if (rbb.stage == stage && rbb.desc_set == descSet && rbb.binding == binding) {
+			return rb.outIsUsedByShader;
+		}
+	}
+	return false;
+}
+
 MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInputsAndResourcesUsed() {
 	for (auto& si : shaderInputs) { si.outIsUsedByShader = true; }
 	for (auto& rb : resourceBindings) { rb.outIsUsedByShader = true; }
@@ -337,7 +347,6 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	// Populate the shader conversion results with info from the compilation run,
 	// and mark which vertex attributes and resource bindings are used by the shader
 	populateEntryPoint(pMSLCompiler, context.options);
-	getActiveDescriptorSets(pMSLCompiler, _shaderConversionResults.activeDescriptorSets);
 	_shaderConversionResults.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
 	_shaderConversionResults.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
 	_shaderConversionResults.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();

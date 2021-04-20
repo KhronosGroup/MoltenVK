@@ -171,16 +171,41 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
 
 void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
                                                             MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-															uint32_t dslIndex) {
+															uint32_t descSetIndex) {
 	uint32_t bindCnt = (uint32_t)_bindings.size();
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
-		_bindings[bindIdx].populateShaderConverterContext(context, dslMTLRezIdxOffsets, dslIndex);
+		_bindings[bindIdx].populateShaderConverterContext(context, dslMTLRezIdxOffsets, descSetIndex);
 	}
 
 	// Mark if Metal argument buffers are in use, but this descriptor set layout is not using them.
 	if (isUsingMetalArgumentBuffers() && !isUsingMetalArgumentBuffer()) {
-		context.discreteDescriptorSets.push_back(dslIndex);
+		context.discreteDescriptorSets.push_back(descSetIndex);
 	}
+}
+
+bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
+												SPIRVToMSLConversionConfiguration& context,
+												MVKShaderStage stage,
+												uint32_t descSetIndex) {
+	static const spv::ExecutionModel svpExecModels[] = {
+		spv::ExecutionModelVertex,
+		spv::ExecutionModelTessellationControl,
+		spv::ExecutionModelTessellationEvaluation,
+		spv::ExecutionModelFragment,
+		spv::ExecutionModelGLCompute
+	};
+
+	bool descSetIsUsed = false;
+	uint32_t bindCnt = (uint32_t)_bindings.size();
+	bindingUse.resize(bindCnt);
+	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
+		auto& dslBind = _bindings[bindIdx];
+		if (context.isResourceUsed(svpExecModels[stage], descSetIndex, dslBind.getBinding())) {
+			bindingUse.setBit(bindIdx);
+			descSetIsUsed = true;
+		}
+	}
+	return descSetIsUsed;
 }
 
 MVKDescriptorSetLayout::MVKDescriptorSetLayout(MVKDevice* device,
@@ -460,7 +485,7 @@ VkResult MVKDescriptorPool::allocateDescriptorSet(MVKDescriptorSetLayout* mvkDSL
 												  uint32_t variableDescriptorCount,
 												  VkDescriptorSet* pVKDS) {
 	VkResult rslt = VK_ERROR_OUT_OF_POOL_MEMORY;
-	NSUInteger mtlArgBuffAllocSize = mvkDSL->getMTLArgumentEncoder().getMTLArgumentEncoderSize();
+	NSUInteger mtlArgBuffAllocSize = mvkDSL->getMTLArgumentEncoder().mtlArgumentEncoderSize;
 	NSUInteger mtlArgBuffAlignedSize = mvkAlignByteCount(mtlArgBuffAllocSize,
 														 getDevice()->_pMetalFeatures->mtlBufferAlignment);
 

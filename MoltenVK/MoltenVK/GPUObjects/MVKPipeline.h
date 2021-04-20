@@ -109,7 +109,10 @@ public:
 	uint32_t getDescriptorSetCount() { return (uint32_t)_descriptorSetLayouts.size(); }
 
 	/** Returns the number of descriptors in the descriptor set layout. */
-	uint32_t getDescriptorCount(uint32_t descSetIndex) { return _descriptorSetLayouts[descSetIndex]->getDescriptorCount(); }
+	uint32_t getDescriptorCount(uint32_t descSetIndex) { return getDescriptorSetLayout(descSetIndex)->getDescriptorCount(); }
+
+	/** Returns the descriptor set layout. */
+	MVKDescriptorSetLayout* getDescriptorSetLayout(uint32_t descSetIndex) { return _descriptorSetLayouts[descSetIndex]; }
 
 	/** Returns the push constant binding info. */
 	const MVKShaderResourceBinding& getPushConstantBindings() { return _pushConstantsMTLResourceIndexes; }
@@ -179,6 +182,9 @@ public:
 	/** Returns the MTLArgumentEncoder for the descriptor set. */
 	virtual MVKMTLArgumentEncoder& getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) = 0;
 
+	/** Returns the array of descriptor binding use for the descriptor set. */
+	virtual MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) = 0;
+
 	/** Returns the number of descriptor sets in this pipeline layout. */
 	uint32_t getDescriptorSetCount() { return _descriptorSetCount; }
 
@@ -190,6 +196,10 @@ public:
 
 protected:
 	void propagateDebugName() override {}
+	template<typename CreateInfo> void addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
+															  const CreateInfo* pCreateInfo,
+															  SPIRVToMSLConversionConfiguration& context,
+															  MVKShaderStage stage);
 
 	MVKPipelineCache* _pipelineCache;
 	MVKShaderImplicitRezBinding _swizzleBufferIndex;
@@ -220,7 +230,11 @@ typedef std::pair<uint32_t, uint32_t> MVKZeroDivisorVertexBinding;
 typedef MVKSmallVector<MVKGraphicsStage, 4> MVKPiplineStages;
 
 struct MVKStagedMTLArgumentEncoders {
-	MVKMTLArgumentEncoder stages[4];
+	MVKMTLArgumentEncoder stages[4] = {};
+};
+
+struct MVKStagedDescriptorBindingUse {
+	MVKBitArray stages[4] = {};
 };
 
 /** The number of dynamic states possible in Vulkan. */
@@ -291,6 +305,9 @@ public:
 	/** Returns the MTLArgumentEncoder for the descriptor set. */
 	MVKMTLArgumentEncoder& getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) override { return _mtlArgumentEncoders[descSetIndex].stages[stage]; }
 
+	/** Returns the array of descriptor binding use for the descriptor set. */
+	MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) override { return _descriptorBindingUse[descSetIndex].stages[stage]; }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKGraphicsPipeline(MVKDevice* device,
 						MVKPipelineCache* pipelineCache,
@@ -326,7 +343,6 @@ protected:
     bool isRasterizationDisabled(const VkGraphicsPipelineCreateInfo* pCreateInfo);
 	bool verifyImplicitBuffer(bool needsBuffer, MVKShaderImplicitRezBinding& index, MVKShaderStage stage, const char* name, uint32_t reservedBuffers);
 	uint32_t getTranslatedVertexBinding(uint32_t binding, uint32_t translationOffset, uint32_t maxBinding);
-	void addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc, MVKShaderStage stage);
 
 	const VkPipelineShaderStageCreateInfo* _pVertexSS = nullptr;
 	const VkPipelineShaderStageCreateInfo* _pTessCtlSS = nullptr;
@@ -342,6 +358,7 @@ protected:
 	MVKSmallVector<MVKTranslatedVertexBinding> _translatedVertexBindings;
 	MVKSmallVector<MVKZeroDivisorVertexBinding> _zeroDivisorVertexBindings;
 	MVKSmallVector<MVKStagedMTLArgumentEncoders> _mtlArgumentEncoders;
+	MVKSmallVector<MVKStagedDescriptorBindingUse> _descriptorBindingUse;
 
 	MTLComputePipelineDescriptor* _mtlTessVertexStageDesc = nil;
 	id<MTLFunction> _mtlTessVertexFunctions[3] = {nil, nil, nil};
@@ -404,6 +421,9 @@ public:
 	/** Returns the MTLArgumentEncoder for the descriptor set. */
 	MVKMTLArgumentEncoder& getMTLArgumentEncoder(uint32_t descSetIndex, MVKShaderStage stage) override { return _mtlArgumentEncoders[descSetIndex]; }
 
+	/** Returns the array of descriptor binding use for the descriptor set. */
+	MVKBitArray& getDescriptorBindingUse(uint32_t descSetIndex, MVKShaderStage stage) override { return _descriptorBindingUse[descSetIndex]; }
+
 	/** Constructs an instance for the device and parent (which may be NULL). */
 	MVKComputePipeline(MVKDevice* device,
 					   MVKPipelineCache* pipelineCache,
@@ -414,10 +434,10 @@ public:
 
 protected:
     MVKMTLFunction getMTLFunction(const VkComputePipelineCreateInfo* pCreateInfo);
-	void addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc);
 
     id<MTLComputePipelineState> _mtlPipelineState;
 	MVKSmallVector<MVKMTLArgumentEncoder> _mtlArgumentEncoders;
+	MVKSmallVector<MVKBitArray> _descriptorBindingUse;
     MTLSize _mtlThreadgroupSize;
     bool _needsSwizzleBuffer = false;
     bool _needsBufferSizeBuffer = false;

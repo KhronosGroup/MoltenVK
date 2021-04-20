@@ -160,6 +160,9 @@ namespace mvk {
         /** Returns whether the vertex buffer at the specified Vulkan binding is used by the shader. */
 		bool isVertexBufferUsed(uint32_t binding) const { return countShaderInputsAt(binding) > 0; }
 
+		/** Returns whether the resource at the specified descriptor set binding is used by the shader. */
+		bool isResourceUsed(spv::ExecutionModel stage, uint32_t descSet, uint32_t binding) const;
+
 		/** Marks all input variables and resources as being used by the shader. */
 		void markAllInputsAndResourcesUsed();
 
@@ -221,7 +224,6 @@ namespace mvk {
 	 */
 	typedef struct SPIRVToMSLConversionResults {
 		SPIRVEntryPoint entryPoint;
-		uint32_t activeDescriptorSets = 0;
 		bool isRasterizationDisabled = false;
 		bool isPositionInvariant = false;
 		bool needsSwizzleBuffer = false;
@@ -233,9 +235,6 @@ namespace mvk {
 		bool needsDispatchBaseBuffer = false;
 		bool needsViewRangeBuffer = false;
 
-		bool isDescriptorSetUsed(uint32_t descSet) {
-			return (activeDescriptorSets & ((uint32_t)1U << descSet)) != 0;
-		}
 		void reset() { *this = SPIRVToMSLConversionResults(); }
 
 	} SPIRVToMSLConversionResults;

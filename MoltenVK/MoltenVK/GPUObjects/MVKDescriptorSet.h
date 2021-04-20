@@ -36,18 +36,18 @@ class MVKResourcesCommandEncoderState;
 
 /** Holds and manages the lifecycle of a MTLArgumentEncoder. The encoder can only be set once. */
 struct MVKMTLArgumentEncoder {
+	NSUInteger mtlArgumentEncoderSize = 0;
+
 	id<MTLArgumentEncoder> getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
-	NSUInteger getMTLArgumentEncoderSize() { return _mtlArgumentEncoderSize; }
 	void init(id<MTLArgumentEncoder> mtlArgEnc) {
 		if (_mtlArgumentEncoder) { return; }
 		_mtlArgumentEncoder = mtlArgEnc;		// takes ownership
-		_mtlArgumentEncoderSize = mtlArgEnc.encodedLength;
+		mtlArgumentEncoderSize = mtlArgEnc.encodedLength;
 	}
 	~MVKMTLArgumentEncoder() { [_mtlArgumentEncoder release]; }
 
 private:
 	id<MTLArgumentEncoder> _mtlArgumentEncoder = nil;
-	NSUInteger _mtlArgumentEncoderSize = 0;
 };
 
 /** Represents a Vulkan descriptor set layout. */
@@ -86,7 +86,16 @@ public:
 	/** Populates the specified shader converter context, at the specified DSL index. */
 	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
                                         MVKShaderResourceBinding& dslMTLRezIdxOffsets,
-                                        uint32_t dslIndex);
+                                        uint32_t descSetIndex);
+
+	/**
+	 * Populates the bindings in this descriptor set layout used by the shader.
+	 * Returns false if the shader does not use the descriptor set at all.
+	 */
+	bool populateBindingUse(MVKBitArray& bindingUse,
+							mvk::SPIRVToMSLConversionConfiguration& context,
+							MVKShaderStage stage,
+							uint32_t descSetIndex);
 
 	/** Returns the number of bindings. */
 	uint32_t getBindingCount() { return (uint32_t)_bindings.size(); }
