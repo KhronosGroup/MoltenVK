@@ -1,5 +1,5 @@
 /*
- * SPIRVToMSLConverter.mm
+ * SPIRVToMSLConverter.cpp
  *
  * Copyright (c) 2015-2021 The Brenwill Workshop Ltd. (http://www.brenwill.com)
  *
