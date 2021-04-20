@@ -1721,12 +1721,12 @@ MVKComputePipeline::MVKComputePipeline(MVKDevice* device,
 
 	_allowsDispatchBase = mvkAreAllFlagsEnabled(pCreateInfo->flags, VK_PIPELINE_CREATE_DISPATCH_BASE_BIT);
 
+	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
+	if (isUsingPipelineStageMetalArgumentBuffers()) { _mtlArgumentEncoders.resize(_descriptorSetCount); }
+
 	MVKMTLFunction func = getMTLFunction(pCreateInfo);
 	_mtlThreadgroupSize = func.threadGroupSize;
 	_mtlPipelineState = nil;
-
-	if (isUsingMetalArgumentBuffers()) { _descriptorBindingUse.resize(_descriptorSetCount); }
-	if (isUsingPipelineStageMetalArgumentBuffers()) { _mtlArgumentEncoders.resize(_descriptorSetCount); }
 
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
 	if (mtlFunc) {
