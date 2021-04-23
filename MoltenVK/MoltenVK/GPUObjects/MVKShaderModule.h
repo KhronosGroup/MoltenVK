@@ -46,6 +46,7 @@ typedef struct MVKMTLFunction {
 
 	MVKMTLFunction(id<MTLFunction> mtlFunc, const SPIRVToMSLConversionResults scRslts, MTLSize tgSize);
 	MVKMTLFunction(const MVKMTLFunction& other);
+	MVKMTLFunction& operator=(const MVKMTLFunction& other);
 	MVKMTLFunction() {}
 	~MVKMTLFunction();
 
@@ -93,8 +94,9 @@ public:
 					 const void* mslCompiledCodeData,
 					 size_t mslCompiledCodeLength);
 
-	/** Copy constructor. */
 	MVKShaderLibrary(const MVKShaderLibrary& other);
+
+	MVKShaderLibrary& operator=(const MVKShaderLibrary& other);
 
 	~MVKShaderLibrary() override;
 

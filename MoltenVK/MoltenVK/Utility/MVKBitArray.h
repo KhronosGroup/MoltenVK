@@ -144,7 +144,7 @@ public:
 	 * are added to accommodate the new size are set to the given value.
 	 * Consumed memory is retained unless the size is set to zero.
 	 */
-	inline void resize(size_t size = 0, bool val = false) {
+	inline void resize(size_t size, bool val = false) {
 		size_t oldBitCnt = _bitCount;
 		size_t oldSecCnt = getSectionCount();
 
@@ -166,7 +166,7 @@ public:
 			size_t oldEndBitCnt = oldSecCnt << SectionMaskSize;
 			for (size_t bitIdx = oldBitCnt; bitIdx < oldEndBitCnt; bitIdx++) { setBit(bitIdx, val); }
 
-			// If the entire old array and the new array are cleared, move the indicated to the new end.
+			// If the entire old array and the new array are cleared, move the uncleared indicator to the new end.
 			if (_minUnclearedSectionIndex == oldSecCnt && !val) { _minUnclearedSectionIndex = newSecCnt; }
 
 			free(pOldSecs);
@@ -185,7 +185,14 @@ public:
 		memcpy(_pSections, other._pSections, getSectionCount() * SectionByteCount);
 	}
 
-	~MVKBitArray() { free(_pSections); }
+	MVKBitArray& operator=(const MVKBitArray& other) {
+		resize(0);
+		resize(other._bitCount);
+		memcpy(_pSections, other._pSections, getSectionCount() * SectionByteCount);
+		return *this;
+	}
+
+	~MVKBitArray() { resize(0); }
 
 protected:
 
