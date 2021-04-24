@@ -28,7 +28,7 @@
 class MVKBitArray {
 
 	static constexpr size_t SectionMaskSize = 6;	// 64 bits
-	static constexpr size_t SectionBitCount = 1U << SectionMaskSize;
+	static constexpr size_t SectionBitCount = (size_t)1U << SectionMaskSize;
 	static constexpr size_t SectionByteCount = SectionBitCount / 8;
 	static constexpr uint64_t SectionMask = SectionBitCount - 1;
 
@@ -38,33 +38,33 @@ public:
 	 * Returns the value of the bit, and optionally clears that bit if it was set.
 	 * Returns false if the bitIndex is beyond the size of this array, returns false.
 	 */
-	inline bool getBit(size_t bitIndex, bool shouldClear = false) {
+	bool getBit(size_t bitIndex, bool shouldClear = false) {
 		if (bitIndex >= _bitCount) { return false; }
-		bool val = mvkIsAnyFlagEnabled(_pSections[getIndexOfSection(bitIndex)], getSectionSetMask(bitIndex));
+		bool val = mvkIsAnyFlagEnabled(getSection(getIndexOfSection(bitIndex)), getSectionSetMask(bitIndex));
 		if (shouldClear && val) { clearBit(bitIndex); }
 		return val;
 	}
 
 	/** Sets the value of the bit to the val (or to 1 by default). */
-	inline void setBit(size_t bitIndex, bool val = true) {
+	void setBit(size_t bitIndex, bool val = true) {
 		size_t secIdx = getIndexOfSection(bitIndex);
 		if (val) {
-			mvkEnableFlags(_pSections[secIdx], getSectionSetMask(bitIndex));
+			mvkEnableFlags(getSection(secIdx), getSectionSetMask(bitIndex));
 			if (secIdx < _minUnclearedSectionIndex) { _minUnclearedSectionIndex = secIdx; }
 		} else {
-			mvkDisableFlags(_pSections[secIdx], getSectionSetMask(bitIndex));
-			if (secIdx == _minUnclearedSectionIndex && !_pSections[secIdx]) { _minUnclearedSectionIndex++; }
+			mvkDisableFlags(getSection(secIdx), getSectionSetMask(bitIndex));
+			if (secIdx == _minUnclearedSectionIndex && !getSection(secIdx)) { _minUnclearedSectionIndex++; }
 		}
 	}
 
 	/** Sets the value of the bit to 0. */
-	inline void clearBit(size_t bitIndex) { setBit(bitIndex, false); }
+	void clearBit(size_t bitIndex) { setBit(bitIndex, false); }
 
 	/** Sets all bits in the array to 1. */
-	inline void setAllBits() { setAllSections(~0); }
+	void setAllBits() { setAllSections(~0); }
 
 	/** Clears all bits in the array to 0. */
-	inline void clearAllBits() { setAllSections(0); }
+	void clearAllBits() { setAllSections(0); }
 
 	/**
 	 * Returns the index of the first bit that is set, at or after the specified index,
@@ -75,10 +75,10 @@ public:
 		size_t bitIdx = startSecIdx << SectionMaskSize;
 		size_t secCnt = getSectionCount();
 		for (size_t secIdx = startSecIdx; secIdx < secCnt; secIdx++) {
-			size_t lclBitIdx = getIndexOfFirstSetBitInSection(_pSections[secIdx], getBitIndexInSection(startIndex));
+			size_t lclBitIdx = getIndexOfFirstSetBitInSection(getSection(secIdx), getBitIndexInSection(startIndex));
 			bitIdx += lclBitIdx;
 			if (lclBitIdx < SectionBitCount) {
-				if (startSecIdx == _minUnclearedSectionIndex && !_pSections[startSecIdx]) { _minUnclearedSectionIndex = secIdx; }
+				if (startSecIdx == _minUnclearedSectionIndex && !getSection(startSecIdx)) { _minUnclearedSectionIndex = secIdx; }
 				if (shouldClear) { clearBit(bitIdx); }
 				return bitIdx;
 			}
@@ -90,7 +90,7 @@ public:
 	 * Returns the index of the first bit that is set, at or after the specified index.
 	 * If no bits are set, returns the size() of this bit array.
 	 */
-	inline size_t getIndexOfFirstSetBit(size_t startIndex) {
+	size_t getIndexOfFirstSetBit(size_t startIndex) {
 		return getIndexOfFirstSetBit(startIndex, false);
 	}
 
@@ -98,7 +98,7 @@ public:
 	 * Returns the index of the first bit that is set and optionally clears that bit.
 	 * If no bits are set, returns the size() of this bit array.
 	 */
-	inline size_t getIndexOfFirstSetBit(bool shouldClear) {
+	size_t getIndexOfFirstSetBit(bool shouldClear) {
 		return getIndexOfFirstSetBit(0, shouldClear);
 	}
 
@@ -106,7 +106,7 @@ public:
 	 * Returns the index of the first bit that is set.
 	 * If no bits are set, returns the size() of this bit array.
 	 */
-	inline size_t getIndexOfFirstSetBit() {
+	size_t getIndexOfFirstSetBit() {
 		return getIndexOfFirstSetBit(0, false);
 	}
 
@@ -133,47 +133,61 @@ public:
 	}
 
 	/** Returns the number of bits in this array. */
-	inline size_t size() { return _bitCount; }
+	size_t size() const { return _bitCount; }
 
 	/** Returns whether this array is empty. */
-	inline bool empty() { return !_bitCount; }
+	bool empty() const { return !_bitCount; }
 
 	/**
-	 * Resize this array to the specified number of bits. The value of existing
-	 * bits that fit within the new size are retained, and any new bits that
-	 * are added to accommodate the new size are set to the given value.
-	 * Consumed memory is retained unless the size is set to zero.
+	 * Resize this array to the specified number of bits.
+	 *
+	 * The value of existing bits that fit within the new size are retained, and any
+	 * new bits that are added to accommodate the new size are set to the given value.
+	 *
+	 * If the new size is larger than the existing size, new memory may be allocated.
+	 * If the new size is less than the existing size, consumed memory is retained
+	 * unless the size is set to zero.
 	 */
-	inline void resize(size_t size, bool val = false) {
+	void resize(size_t size, bool val = false) {
 		size_t oldBitCnt = _bitCount;
 		size_t oldSecCnt = getSectionCount();
+		size_t oldEndBitCnt = oldSecCnt << SectionMaskSize;
+
+		// Some magic here. If we need only one section, _data is used as that section,
+		// and it will be stomped on if we reallocate, so we cache it here.
+		uint64_t* oldData = _data;
+		uint64_t* pOldData = oldSecCnt > 1 ? oldData : (uint64_t*)&oldData;
 
 		_bitCount = size;
-		size_t newSecCnt = getSectionCount();
 
-		if (newSecCnt > oldSecCnt) {
-			uint64_t* pOldSecs = _pSections;
+		size_t newSecCnt = getSectionCount();
+		if (newSecCnt == 0) {
+			// Clear out the existing data
+			if (oldSecCnt > 1) { free(pOldData); }
+			_data = 0;
+			_minUnclearedSectionIndex = 0;
+		} else if (newSecCnt == oldSecCnt) {
+			// Keep the existing data, but fill any bits in the last section
+			// that were beyond the old bit count with the new initial value.
+			for (size_t bitIdx = oldBitCnt; bitIdx < oldEndBitCnt; bitIdx++) { setBit(bitIdx, val); }
+		} else if (newSecCnt > oldSecCnt) {
 			size_t oldByteCnt = oldSecCnt * SectionByteCount;
 			size_t newByteCnt = newSecCnt * SectionByteCount;
 
-			// Allocate new memory and fill it with the new initial value
-			_pSections = _bitCount ? (uint64_t*)malloc(newByteCnt) : nullptr;
-			if (_pSections) { memset(_pSections, val ? ~0 : 0, newByteCnt); }
+			// If needed, allocate new memory.
+			if (newSecCnt > 1) { _data = (uint64_t*)malloc(newByteCnt); }
 
-			// Copy the old contents to the new memory, and fill any bits in the old
-			// last section that were beyond the old bit count with the new initial value.
-			if (_pSections && pOldSecs) { memcpy(_pSections, pOldSecs, oldByteCnt); }
-			size_t oldEndBitCnt = oldSecCnt << SectionMaskSize;
+			// Fill the new memory with the new initial value, copy the old contents to
+			// the new memory, fill any bits in the old last section that were beyond
+			// the old bit count with the new initial value, and remove the old memory.
+			uint64_t* pNewData = getData();
+			memset(pNewData, val ? ~0 : 0, newByteCnt);
+			memcpy(pNewData, pOldData, oldByteCnt);
 			for (size_t bitIdx = oldBitCnt; bitIdx < oldEndBitCnt; bitIdx++) { setBit(bitIdx, val); }
+			if (oldSecCnt > 1) { free(pOldData); }
 
 			// If the entire old array and the new array are cleared, move the uncleared indicator to the new end.
 			if (_minUnclearedSectionIndex == oldSecCnt && !val) { _minUnclearedSectionIndex = newSecCnt; }
-
-			free(pOldSecs);
-		} else if (newSecCnt == 0) {
-			free(_pSections);
-			_pSections = nullptr;
-			_minUnclearedSectionIndex = 0;
 		}
 	}
 
@@ -182,13 +196,13 @@ public:
 
 	MVKBitArray(const MVKBitArray& other) {
 		resize(other._bitCount);
-		memcpy(_pSections, other._pSections, getSectionCount() * SectionByteCount);
+		memcpy(getData(), other.getData(), getSectionCount() * SectionByteCount);
 	}
 
 	MVKBitArray& operator=(const MVKBitArray& other) {
 		resize(0);
 		resize(other._bitCount);
-		memcpy(_pSections, other._pSections, getSectionCount() * SectionByteCount);
+		memcpy(getData(), other.getData(), getSectionCount() * SectionByteCount);
 		return *this;
 	}
 
@@ -196,24 +210,35 @@ public:
 
 protected:
 
+	// Returns a pointer do the data.
+	// Some magic here. If we need only one section, _data is used as that section.
+	uint64_t* getData() const {
+		return getSectionCount() > 1 ? _data : (uint64_t*)&_data;
+	}
+
+	// Returns a reference to the section.
+	uint64_t& getSection(size_t secIdx) {
+		return getData()[secIdx];
+	}
+
 	// Returns the number of sections.
-	inline size_t getSectionCount() {
+	size_t getSectionCount() const {
 		return _bitCount ? getIndexOfSection(_bitCount - 1) + 1 : 0;
 	}
 
 	// Returns the index of the section that contains the specified bit.
-	static inline size_t getIndexOfSection(size_t bitIndex) {
+	static size_t getIndexOfSection(size_t bitIndex) {
 		return bitIndex >> SectionMaskSize;
 	}
 
 	// Converts the bit index to a local bit index within a section, and returns that local bit index.
-	static inline size_t getBitIndexInSection(size_t bitIndex) {
+	static size_t getBitIndexInSection(size_t bitIndex) {
 		return bitIndex & SectionMask;
 	}
 
 	// Returns a section mask containing a single 1 value in the bit in the section that
 	// corresponds to the specified global bit index, and 0 values in all other bits.
-	static inline uint64_t getSectionSetMask(size_t bitIndex) {
+	static uint64_t getSectionSetMask(size_t bitIndex) {
 		return (uint64_t)1U << ((SectionBitCount - 1) - getBitIndexInSection(bitIndex));
 	}
 
@@ -231,12 +256,12 @@ protected:
 	void setAllSections(uint64_t sectionValue) {
 		size_t secCnt = getSectionCount();
 		for (size_t secIdx = 0; secIdx < secCnt; secIdx++) {
-			_pSections[secIdx] = sectionValue;
+			getSection(secIdx) = sectionValue;
 		}
 		_minUnclearedSectionIndex = sectionValue ? 0 : secCnt;
 	}
 
-	uint64_t* _pSections = nullptr;
+	uint64_t* _data = 0;
 	size_t _bitCount = 0;
 	size_t _minUnclearedSectionIndex = 0;	// Tracks where to start looking for bits that are set
 };
