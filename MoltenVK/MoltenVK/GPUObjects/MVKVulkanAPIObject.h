@@ -145,7 +145,7 @@ public:
     }
 
 protected:
-    MVKDispatchableObjectICDRef _icdRef = { VK_NULL_HANDLE, this };
+    MVKDispatchableObjectICDRef _icdRef = { 0, this };
 
 };
 

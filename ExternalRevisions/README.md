@@ -37,7 +37,6 @@ Fetching and Building External Libraries
 - [*SPIRV-Tools*](https://github.com/KhronosGroup/SPIRV-Tools)
 - [*SPIRV-Headers*](https://github.com/KhronosGroup/SPIRV-Headers)
 - [*Vulkan-Tools*](https://github.com/KhronosGroup/Vulkan-Tools)
-- [*VulkanSamples*](https://github.com/LunarG/VulkanSamples)
 
 These external open-source libraries are maintained in the `External` directory.
 To retrieve and build these libraries from their sources, run the `fetchDependencies`
@@ -75,9 +74,6 @@ determined as follows:
   
 - **_Vulkan-Tools_**: a GitHub repository commit identifier found in the
   `ExternalRevisions/Vulkan-Tools_repo_revision` file.
-  
-- **_VulkanSamples_**: a GitHub repository commit identifier found in the
-  `ExternalRevisions/VulkanSamples_repo_revision` file.
   
 You can update which versions of the *cereal*, *Vulkan-Headers*, *SPIRV-Cross*, 
 *glslang*, *Vulkan-Tools*, or *VulkanSamples* libraries are retrieved by changing 

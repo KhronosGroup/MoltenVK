@@ -16,25 +16,49 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.1.3
 --------------
 
-Released TBD
+Released 2021/04/27
 
+- Add beta support for using Metal argument buffers for shader resources on _macOS_, by setting 
+  `MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS` environment variable (disabled by default). This dramatically
+  expands the number of resources that can be submitted to a pipeline stage, per the Vulkan
+  `VK_EXT_descriptor_indexing` extension. **Currently available on _macOS 10.16 (Big Sur)_ or later, 
+  and on earlier _macOS_ versions on _Intel_ GPU's**.
 - Add support for `HDR10` colorspace via `VK_COLOR_SPACE_HDR10_HLG_EXT` and `VK_COLOR_SPACE_HDR10_ST2084_EXT`.
 - Always explicitly set `CAMetalLayer` colorspace property based on _Vulkan_ parameters, 
   and don't rely on _Metal_ default values.
-- Avoid use of _Metal_ renderpass load and store actions on memoryless attachments.
-- Fix memory leak on swapchain destruction.
-- Remove project qualifiers from references to `SPIRV-Cross` header files.
+- Add `MVKConfiguration::resumeLostDevice` and `MVK_CONFIG_RESUME_LOST_DEVICE` env var,
+  to allow `VkDevice` to resume after non-fatal `VK_ERROR_DEVICE_LOST` error.
 - `MVKDescriptorPool` pools its descriptor sets.
 - Enable `MVKConfiguration::preallocateDescriptors` and `MVK_CONFIG_PREALLOCATE_DESCRIPTORS` 
   environment variable by default to preallocate descriptors when a `VkDescriptorPool` is created.
+- Avoid use of _Metal_ renderpass load and store actions on memoryless attachments.
+- Fix memory leak on swapchain destruction.
+- Fix `MVKPhysicalDevice::getSurfaceFormats()` returning `VK_FORMAT_UNDEFINED`.
+- Fix memory leak where swapchains and images were not destroyed due to a retention loop.
+- Fix advertising single-texel alignment capability for texel buffers.
+- Fix time and space inefficiencies caused by missed shader cache lookup hits in `MVKShaderLibraryCache`.
+- Log enhanced command buffer errors in debug mode.
+- Ensure queue submission message logging occurs before submission object is destroyed.
+- Remove project qualifiers from references to `SPIRV-Cross` header files.
+- Only perform automatic GPU capture on queue identified by `MVKConfiguration::defaultGPUCaptureScopeQueueIndex` 
+  and `defaultGPUCaptureScopeQueueFamilyIndex`.
+- Introduce `MVKConfigLogLevelBits`, `MVKConfigAutoGPUCaptureScopeBits`, and `MVKConfigTraceVulkanCallsBits` 
+  enums to specify config API  values in a Vulkan-friendly manner, while automatically documenting the same values for env vars.
 - Add `MVKConfiguration::apiVersionToAdvertise` and `MVK_CONFIG_API_VERSION_TO_ADVERTISE` 
   env var to configure **MoltenVK** to advertise a particular _Vulkan_ version.
 - Add `MVKConfiguration::advertiseExtensions` and `MVK_CONFIG_ADVERTISE_EXTENSIONS` 
-  env var to configure **MoltenVK** to force advertising support for no, or minimal, _Vulkan_  extensions.
+  env var to configure **MoltenVK** to force advertising support for no, or minimally few, _Vulkan_  extensions.
 - Remove the `Hologram` and `API-Samples` demo apps, and remove 
   `LunarG/VulkanSamples` as a dependency library.
 - Add `NDEBUG` macro to all Release builds to remove `assert()` calls.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `31`.
+- Update dependency libraries to match _Vulkan SDK 1.2.176_.
+- Update to latest SPIRV-Cross version:
+	- MSL: Support long `ulong` types in buffers in 2.3+.
+	- MSL: Support padding Metal argument buffer entries based on argument index.
+	- Add interfaces to aid with LTO-style optimization
+	- Handle edge cases in `OpCopyMemory`.
+
 
 
 
