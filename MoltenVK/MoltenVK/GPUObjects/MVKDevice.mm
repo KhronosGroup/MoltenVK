@@ -1556,7 +1556,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #endif
 
 	// Currently, Metal argument buffer support is in beta stage, and is only supported
-	// on macOS 10.16 (Big Sur) or later, or on older versions of macOS using an Intel GPU.
+	// on macOS 11.0 (Big Sur) or later, or on older versions of macOS using an Intel GPU.
 	// Metal argument buffers support is not available on iOS. Development to support iOS
 	// and a wider combination of GPU's on older macOS versions is under way.
 #if MVK_MACOS
