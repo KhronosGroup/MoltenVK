@@ -21,7 +21,7 @@ Released 2021/04/27
 - Add beta support for using Metal argument buffers for shader resources on _macOS_, by setting 
   `MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS` environment variable (disabled by default). This dramatically
   expands the number of resources that can be submitted to a pipeline stage, per the Vulkan
-  `VK_EXT_descriptor_indexing` extension. **Currently available on _macOS 10.16 (Big Sur)_ or later, 
+  `VK_EXT_descriptor_indexing` extension. **Currently available on _macOS 11.0 (Big Sur)_ or later, 
   and on earlier _macOS_ versions on _Intel_ GPU's**.
 - Add support for `HDR10` colorspace via `VK_COLOR_SPACE_HDR10_HLG_EXT` and `VK_COLOR_SPACE_HDR10_ST2084_EXT`.
 - Always explicitly set `CAMetalLayer` colorspace property based on _Vulkan_ parameters, 
