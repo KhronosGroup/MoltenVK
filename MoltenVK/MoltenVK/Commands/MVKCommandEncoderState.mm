@@ -472,7 +472,7 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 		}
 
 		// Update dynamic buffer offsets
-		uint32_t baseDynOfstIdx = dslMTLRezIdxOffsets.getMetalResourceIndexs().dynamicOffsetBufferIndex;
+		uint32_t baseDynOfstIdx = dslMTLRezIdxOffsets.getMetalResourceIndexes().dynamicOffsetBufferIndex;
 		uint32_t doCnt = descSet->getDynamicOffsetDescriptorCount();
 		for (uint32_t doIdx = 0; doIdx < doCnt && dynamicOffsetIndex < dynamicOffsets.size; doIdx++) {
 			updateImplicitBuffer(_dynamicOffsets, baseDynOfstIdx + doIdx, dynamicOffsets[dynamicOffsetIndex++]);

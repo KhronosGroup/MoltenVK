@@ -108,7 +108,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 	do {																			\
 		mvk::MSLResourceBinding rb;													\
 		auto& rbb = rb.resourceBinding;												\
-		rbb.stage = svpExecModels[stage];											\
+		rbb.stage = spvExecModels[stage];											\
 		rbb.basetype = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::spvRezType;		\
 		rbb.desc_set = descriptorSetIndex;											\
 		rbb.binding = bindingIndex;													\
@@ -120,7 +120,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 		context.resourceBindings.push_back(rb);										\
 	} while(false)
 
-	static const spv::ExecutionModel svpExecModels[] = {
+	static const spv::ExecutionModel spvExecModels[] = {
 		spv::ExecutionModelVertex,
 		spv::ExecutionModelTessellationControl,
 		spv::ExecutionModelTessellationEvaluation,
@@ -132,7 +132,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER:
 		case VK_DESCRIPTOR_TYPE_STORAGE_BUFFER:
 		case VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT:
-			addResourceBinding(Float);
+			addResourceBinding(Void);
 			break;
 
 		case VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER_DYNAMIC:
@@ -140,7 +140,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 			addResourceBinding(Float);
 
 			mvk::DescriptorBinding db;
-			db.stage = svpExecModels[stage];
+			db.stage = spvExecModels[stage];
 			db.descriptorSet = descriptorSetIndex;
 			db.binding = bindingIndex;
 			db.index = ssRB.dynamicOffsetBufferIndex;
@@ -640,9 +640,6 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 		}																					\
 	} while(false)
 
-	// Only perform validation if this binding is used by the stage
-#	define breakIfUnused() if ( !_applyToStage[stage] ) break
-
 	MVKShaderStageResourceBinding& bindIdxs = _mtlResourceIndexOffsets.stages[stage];
 	MVKShaderStageResourceBinding& dslCnts = _layout->_mtlResourceCounts.stages[stage];
 
@@ -650,7 +647,6 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
     switch (pBinding->descriptorType) {
         case VK_DESCRIPTOR_TYPE_SAMPLER:
 			setResourceIndexOffset(samplerIndex);
-			breakIfUnused();
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfSamplers) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of samplers.", _device->getName()));
@@ -660,7 +656,6 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
         case VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER:
 			setResourceIndexOffset(textureIndex);
 			setResourceIndexOffset(samplerIndex);
-			breakIfUnused();
 
 			if (pBinding->descriptorCount > 1) {
 				if ( !_device->_pMetalFeatures->arrayOfTextures ) {
@@ -671,7 +666,7 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 				}
 			}
 
-            if ( pBinding->pImmutableSamplers ) {
+            if (pBinding->pImmutableSamplers && _applyToStage[stage]) {
                 for (uint32_t i = 0; i < pBinding->descriptorCount; i++) {
                     uint8_t planeCount = ((MVKSampler*)pBinding->pImmutableSamplers[i])->getPlaneCount();
                     if (planeCount > 1) {
@@ -685,7 +680,6 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
         case VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT:
         case VK_DESCRIPTOR_TYPE_UNIFORM_TEXEL_BUFFER:
 			setResourceIndexOffset(textureIndex);
-			breakIfUnused();
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));
@@ -696,7 +690,6 @@ void MVKDescriptorSetLayoutBinding::initMetalResourceIndexOffsets(const VkDescri
 		case VK_DESCRIPTOR_TYPE_STORAGE_TEXEL_BUFFER:
 			setResourceIndexOffset(textureIndex);
 			setResourceIndexOffset(bufferIndex);
-			breakIfUnused();
 
 			if (pBinding->descriptorCount > 1 && !_device->_pMetalFeatures->arrayOfTextures) {
 				_layout->setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Device %s does not support arrays of textures.", _device->getName()));

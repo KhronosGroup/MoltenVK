@@ -58,7 +58,7 @@ typedef struct MVKShaderResourceBinding {
 
 	MVKShaderResourceBinding operator+ (const MVKShaderResourceBinding& rhs);
 	MVKShaderResourceBinding& operator+= (const MVKShaderResourceBinding& rhs);
-	MVKShaderStageResourceBinding& getMetalResourceIndexs(MVKShaderStage stage = kMVKShaderStageVertex) { return stages[stage]; }
+	MVKShaderStageResourceBinding& getMetalResourceIndexes(MVKShaderStage stage = kMVKShaderStageVertex) { return stages[stage]; }
 	void clearArgumentBufferResources();
 	void addArgumentBuffers(uint32_t count);
 
@@ -142,7 +142,7 @@ public:
 	 * in that case the stage can be withheld and a default stage will be used.
 	 */
 	MVKShaderStageResourceBinding& getMetalResourceIndexOffsets(MVKShaderStage stage = kMVKShaderStageVertex) {
-		return _mtlResourceIndexOffsets.getMetalResourceIndexs(stage);
+		return _mtlResourceIndexOffsets.getMetalResourceIndexes(stage);
 	}
 
 	/** Returns a bitwise OR of Metal render stages. */

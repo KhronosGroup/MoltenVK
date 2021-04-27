@@ -187,7 +187,7 @@ bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 												SPIRVToMSLConversionConfiguration& context,
 												MVKShaderStage stage,
 												uint32_t descSetIndex) {
-	static const spv::ExecutionModel svpExecModels[] = {
+	static const spv::ExecutionModel spvExecModels[] = {
 		spv::ExecutionModelVertex,
 		spv::ExecutionModelTessellationControl,
 		spv::ExecutionModelTessellationEvaluation,
@@ -200,7 +200,7 @@ bool MVKDescriptorSetLayout::populateBindingUse(MVKBitArray& bindingUse,
 	bindingUse.resize(bindCnt);
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
 		auto& dslBind = _bindings[bindIdx];
-		if (context.isResourceUsed(svpExecModels[stage], descSetIndex, dslBind.getBinding())) {
+		if (context.isResourceUsed(spvExecModels[stage], descSetIndex, dslBind.getBinding())) {
 			bindingUse.setBit(bindIdx);
 			descSetIsUsed = true;
 		}
@@ -797,7 +797,7 @@ void MVKDescriptorPool::initMetalArgumentBuffer(const VkDescriptorPoolCreateInfo
 		// a Metal argument buffer may have a fixed overhead storage, in addition to the storage required
 		// to hold the resources. This overhead per descriptor set is conservatively calculated by measuring
 		// the size of a Metal argument buffer containing one of each type of resource (S1), and the size
-		// of a Metal argument buffer containing one of each type of resource (S2), and then calculating
+		// of a Metal argument buffer containing two of each type of resource (S2), and then calculating
 		// the fixed overhead per argument buffer as (2 * S1 - S2). To this is added the overhead due to
 		// the alignment of each descriptor set Metal argument buffer offset.
 		NSUInteger overheadPerDescSet = (2 * getMetalArgumentBufferResourceStorageSize(1, 1, 1) -

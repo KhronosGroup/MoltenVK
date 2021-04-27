@@ -368,6 +368,7 @@ protected:
 	uint64_t getVRAMSize();
 	uint64_t getRecommendedMaxWorkingSetSize();
 	uint64_t getCurrentAllocatedSize();
+	uint32_t getMaxSamplerCount();
 	void initExternalMemoryProperties();
 	void initExtensions();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();

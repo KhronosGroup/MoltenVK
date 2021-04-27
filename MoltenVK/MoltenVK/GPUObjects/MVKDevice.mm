@@ -375,7 +375,9 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
-				bool isTier2 = isUsingMetalArgumentBuffers() && (_mtlDevice.argumentBuffersSupport == MTLArgumentBuffersTier2);
+				bool isTier2 = isUsingMetalArgumentBuffers() && (_mtlDevice.argumentBuffersSupport >= MTLArgumentBuffersTier2);
+				uint32_t maxSampCnt = getMaxSamplerCount();
+
 				auto* pDescIdxProps = (VkPhysicalDeviceDescriptorIndexingPropertiesEXT*)next;
 				pDescIdxProps->maxUpdateAfterBindDescriptorsInAllPools				= kMVKUndefinedLargeUInt32;
 				pDescIdxProps->shaderUniformBufferArrayNonUniformIndexingNative		= false;
@@ -385,14 +387,14 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				pDescIdxProps->shaderInputAttachmentArrayNonUniformIndexingNative	= _metalFeatures.arrayOfTextures;
 				pDescIdxProps->robustBufferAccessUpdateAfterBind					= _features.robustBufferAccess;
 				pDescIdxProps->quadDivergentImplicitLod								= false;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers			= isTier2 ? 2048 : _properties.limits.maxPerStageDescriptorSamplers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers			= isTier2 ? maxSampCnt : _properties.limits.maxPerStageDescriptorSamplers;
 				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorUniformBuffers;
 				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageBuffers;
 				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorSampledImages;
 				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageImages;
 				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindInputAttachments	= _properties.limits.maxPerStageDescriptorInputAttachments;
 				pDescIdxProps->maxPerStageUpdateAfterBindResources					= isTier2 ? 500000 : _properties.limits.maxPerStageResources;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers				= isTier2 ? 2048 : _properties.limits.maxDescriptorSetSamplers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers				= isTier2 ? maxSampCnt : _properties.limits.maxDescriptorSetSamplers;
 				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers		= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffers;
 				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic	= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffersDynamic;
 				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers		= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageBuffers;
@@ -2072,7 +2074,7 @@ void MVKPhysicalDevice::initLimits() {
     // Features with no specific limits - default to unlimited int values
 
     _properties.limits.maxMemoryAllocationCount = kMVKUndefinedLargeUInt32;
-    _properties.limits.maxSamplerAllocationCount = kMVKUndefinedLargeUInt32;
+	_properties.limits.maxSamplerAllocationCount = getMaxSamplerCount();
     _properties.limits.maxBoundDescriptorSets = kMVKMaxDescriptorSetCount;
 
     _properties.limits.maxComputeWorkGroupCount[0] = kMVKUndefinedLargeUInt32;
@@ -2641,6 +2643,11 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 #if MVK_MACOS
 	return 0;
 #endif
+}
+
+uint32_t MVKPhysicalDevice::getMaxSamplerCount() {
+	return ([_mtlDevice respondsToSelector: @selector(maxArgumentBufferSamplerCount)]
+			? (uint32_t)_mtlDevice.maxArgumentBufferSamplerCount : 1024);
 }
 
 void MVKPhysicalDevice::initExternalMemoryProperties() {
