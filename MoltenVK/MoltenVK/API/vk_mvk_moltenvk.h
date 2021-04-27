@@ -27,10 +27,10 @@ extern "C" {
 #endif	//  __cplusplus
 	
 #include "mvk_vulkan.h"
+#include <IOSurface/IOSurfaceRef.h>
 
 #ifdef __OBJC__
 #import <Metal/Metal.h>
-#import <IOSurface/IOSurfaceRef.h>
 #else
 typedef unsigned long MTLLanguageVersion;
 #endif
@@ -947,14 +947,14 @@ typedef VkResult (VKAPI_PTR *PFN_vkSetMoltenVKConfigurationMVK)(VkInstance ignor
 typedef VkResult (VKAPI_PTR *PFN_vkGetPhysicalDeviceMetalFeaturesMVK)(VkPhysicalDevice physicalDevice, MVKPhysicalDeviceMetalFeatures* pMetalFeatures, size_t* pMetalFeaturesSize);
 typedef VkResult (VKAPI_PTR *PFN_vkGetPerformanceStatisticsMVK)(VkDevice device, MVKPerformanceStatistics* pPerf, size_t* pPerfSize);
 typedef void (VKAPI_PTR *PFN_vkGetVersionStringsMVK)(char* pMoltenVersionStringBuffer, uint32_t moltenVersionStringBufferLength, char* pVulkanVersionStringBuffer, uint32_t vulkanVersionStringBufferLength);
+typedef VkResult (VKAPI_PTR *PFN_vkUseIOSurfaceMVK)(VkImage image, IOSurfaceRef ioSurface);
+typedef void (VKAPI_PTR *PFN_vkGetIOSurfaceMVK)(VkImage image, IOSurfaceRef* pIOSurface);
 
 #ifdef __OBJC__
 typedef void (VKAPI_PTR *PFN_vkGetMTLDeviceMVK)(VkPhysicalDevice physicalDevice, id<MTLDevice>* pMTLDevice);
 typedef VkResult (VKAPI_PTR *PFN_vkSetMTLTextureMVK)(VkImage image, id<MTLTexture> mtlTexture);
 typedef void (VKAPI_PTR *PFN_vkGetMTLTextureMVK)(VkImage image, id<MTLTexture>* pMTLTexture);
 typedef void (VKAPI_PTR *PFN_vkGetMTLBufferMVK)(VkBuffer buffer, id<MTLBuffer>* pMTLBuffer);
-typedef VkResult (VKAPI_PTR *PFN_vkUseIOSurfaceMVK)(VkImage image, IOSurfaceRef ioSurface);
-typedef void (VKAPI_PTR *PFN_vkGetIOSurfaceMVK)(VkImage image, IOSurfaceRef* pIOSurface);
 #endif // __OBJC__
 
 
@@ -1199,6 +1199,8 @@ VKAPI_ATTR void VKAPI_CALL vkGetMTLBufferMVK(
     VkBuffer                                    buffer,
     id<MTLBuffer>*                              pMTLBuffer);
 
+#endif // __OBJC__
+
 /**
  * Indicates that a VkImage should use an IOSurface to underlay the Metal texture.
  *
@@ -1247,8 +1249,6 @@ VKAPI_ATTR VkResult VKAPI_CALL vkUseIOSurfaceMVK(
 VKAPI_ATTR void VKAPI_CALL vkGetIOSurfaceMVK(
     VkImage                                     image,
     IOSurfaceRef*                               pIOSurface);
-
-#endif // __OBJC__
 
 
 #pragma mark -
