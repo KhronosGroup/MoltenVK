@@ -30,12 +30,13 @@ using namespace std;
 #pragma mark MVKCommandEncoderState
 
 MVKVulkanAPIObject* MVKCommandEncoderState::getVulkanAPIObject() { return _cmdEncoder->getVulkanAPIObject(); };
+MVKDevice* MVKCommandEncoderState::getDevice() { return _cmdEncoder->getDevice(); }
 
 
 #pragma mark -
 #pragma mark MVKPipelineCommandEncoderState
 
-void MVKPipelineCommandEncoderState::setPipeline(MVKPipeline* pipeline) {
+void MVKPipelineCommandEncoderState::bindPipeline(MVKPipeline* pipeline) {
     _pipeline = pipeline;
     markDirty();
 }
@@ -58,7 +59,7 @@ void MVKViewportCommandEncoderState::setViewports(const MVKArrayRef<VkViewport> 
 												  bool isSettingDynamically) {
 
 	size_t vpCnt = viewports.size;
-	uint32_t maxViewports = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
+	uint32_t maxViewports = getDevice()->_pProperties->limits.maxViewports;
 	if ((firstViewport + vpCnt > maxViewports) ||
 		(firstViewport >= maxViewports) ||
 		(isSettingDynamically && vpCnt == 0))
@@ -108,7 +109,7 @@ void MVKScissorCommandEncoderState::setScissors(const MVKArrayRef<VkRect2D> scis
 												bool isSettingDynamically) {
 
 	size_t sCnt = scissors.size;
-	uint32_t maxScissors = _cmdEncoder->getDevice()->_pProperties->limits.maxViewports;
+	uint32_t maxScissors = getDevice()->_pProperties->limits.maxViewports;
 	if ((firstScissor + sCnt > maxScissors) ||
 		(firstScissor >= maxScissors) ||
 		(isSettingDynamically && sCnt == 0))
@@ -157,7 +158,7 @@ void MVKPushConstantsCommandEncoderState:: setPushConstants(uint32_t offset, MVK
 	// MSL structs can have a larger size than the equivalent C struct due to MSL alignment needs.
 	// Typically any MSL struct that contains a float4 will also have a size that is rounded up to a multiple of a float4 size.
 	// Ensure that we pass along enough content to cover this extra space even if it is never actually accessed by the shader.
-	size_t pcSizeAlign = _cmdEncoder->getDevice()->_pMetalFeatures->pushConstantSizeAlignment;
+	size_t pcSizeAlign = getDevice()->_pMetalFeatures->pushConstantSizeAlignment;
     size_t pcSize = pushConstants.size;
 	size_t pcBuffSize = mvkAlignByteCount(offset + pcSize, pcSizeAlign);
     mvkEnsureSize(_pushConstants, pcBuffSize);
@@ -452,6 +453,131 @@ void MVKBlendColorCommandEncoderState::encodeImpl(uint32_t stage) {
 #pragma mark -
 #pragma mark MVKResourcesCommandEncoderState
 
+void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
+														MVKDescriptorSet* descSet,
+														MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+														MVKArrayRef<uint32_t> dynamicOffsets,
+														uint32_t& dynamicOffsetIndex) {
+
+	bool dsChanged = (descSet != _boundDescriptorSets[descSetIndex]);
+
+	_boundDescriptorSets[descSetIndex] = descSet;
+
+	if (descSet->isUsingMetalArgumentBuffers()) {
+		// If the descriptor set has changed, track new resource usage.
+		if (dsChanged) {
+			auto& usageDirty = _metalUsageDirtyDescriptors[descSetIndex];
+			usageDirty.resize(descSet->getDescriptorCount());
+			usageDirty.setAllBits();
+		}
+
+		// Update dynamic buffer offsets
+		uint32_t baseDynOfstIdx = dslMTLRezIdxOffsets.getMetalResourceIndexes().dynamicOffsetBufferIndex;
+		uint32_t doCnt = descSet->getDynamicOffsetDescriptorCount();
+		for (uint32_t doIdx = 0; doIdx < doCnt && dynamicOffsetIndex < dynamicOffsets.size; doIdx++) {
+			updateImplicitBuffer(_dynamicOffsets, baseDynOfstIdx + doIdx, dynamicOffsets[dynamicOffsetIndex++]);
+		}
+
+		// If something changed, mark dirty
+		if (dsChanged || doCnt > 0) { MVKCommandEncoderState::markDirty(); }
+	}
+}
+
+// Encode the dirty descriptors to the Metal argument buffer, set the Metal command encoder
+// usage for each resource, and bind the Metal argument buffer to the command encoder.
+void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage stage) {
+	if ( !_cmdEncoder->isUsingMetalArgumentBuffers() ) { return; }
+
+	// The Metal arg encoder can only write to one arg buffer at a time (it holds the arg buffer),
+	// so we need to lock out other access to it while we are writing to it.
+	MVKPipeline* pipeline = getPipeline();
+	lock_guard<mutex> lock(pipeline->_mtlArgumentEncodingLock);
+
+	uint32_t dsCnt = pipeline->getDescriptorSetCount();
+	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
+		auto* descSet = _boundDescriptorSets[dsIdx];
+		if ( !descSet ) { continue; }
+
+		id<MTLArgumentEncoder> mtlArgEncoder = nil;
+		id<MTLBuffer> mtlArgBuffer = nil;
+		NSUInteger metalArgBufferOffset = 0;
+
+		auto* dsLayout = descSet->getLayout();
+		if (dsLayout->isUsingDescriptorSetMetalArgumentBuffers()) {
+			mtlArgEncoder = dsLayout->getMTLArgumentEncoder().getMTLArgumentEncoder();
+			mtlArgBuffer = descSet->getMetalArgumentBuffer();
+			metalArgBufferOffset = descSet->getMetalArgumentBufferOffset();
+		} else {
+			mtlArgEncoder = pipeline->getMTLArgumentEncoder(dsIdx, stage).getMTLArgumentEncoder();
+			// TODO: Source a different arg buffer & offset for each pipeline-stage/desccriptors set
+			// Also need to only encode the descriptors that are referenced in the shader.
+			// MVKMTLArgumentEncoder could include an MVKBitArray to track that and have it checked below.
+		}
+
+		if ( !(mtlArgEncoder && mtlArgBuffer) ) { continue; }
+
+		auto& argBuffDirtyDescs = descSet->getMetalArgumentBufferDirtyDescriptors();
+		auto& resourceUsageDirtyDescs = _metalUsageDirtyDescriptors[dsIdx];
+		auto& shaderBindingUsage = pipeline->getDescriptorBindingUse(dsIdx, stage);
+
+		bool mtlArgEncAttached = false;
+		bool shouldBindArgBuffToStage = false;
+		uint32_t dslBindCnt = dsLayout->getBindingCount();
+		for (uint32_t dslBindIdx = 0; dslBindIdx < dslBindCnt; dslBindIdx++) {
+			auto* dslBind = dsLayout->getBindingAt(dslBindIdx);
+			if (dslBind->getApplyToStage(stage) && shaderBindingUsage.getBit(dslBindIdx)) {
+				shouldBindArgBuffToStage = true;
+				uint32_t elemCnt = dslBind->getDescriptorCount(descSet);
+				for (uint32_t elemIdx = 0; elemIdx < elemCnt; elemIdx++) {
+					uint32_t descIdx = dslBind->getDescriptorIndex(elemIdx);
+					bool argBuffDirty = argBuffDirtyDescs.getBit(descIdx, true);
+					bool resourceUsageDirty = resourceUsageDirtyDescs.getBit(descIdx, true);
+					if (argBuffDirty || resourceUsageDirty) {
+						// Don't attach the arg buffer to the arg encoder unless something actually needs
+						// to be written to it. We often might only be updating command encoder resource usage.
+						if (!mtlArgEncAttached && argBuffDirty) {
+							[mtlArgEncoder setArgumentBuffer: mtlArgBuffer offset: metalArgBufferOffset];
+							mtlArgEncAttached = true;
+						}
+						auto* mvkDesc = descSet->getDescriptorAt(descIdx);
+						mvkDesc->encodeToMetalArgumentBuffer(this, mtlArgEncoder,
+															 dsIdx, dslBind, elemIdx,
+															 stage, argBuffDirty, true);
+					}
+				}
+			}
+		}
+
+		// If the arg buffer was attached to the arg encoder, detach it now.
+		if (mtlArgEncAttached) { [mtlArgEncoder setArgumentBuffer: nil offset: 0]; }
+
+		// If it is needed, bind the Metal argument buffer itself to the command encoder,
+		if (shouldBindArgBuffToStage) {
+			MVKMTLBufferBinding bb;
+			bb.mtlBuffer = descSet->getMetalArgumentBuffer();
+			bb.offset = descSet->getMetalArgumentBufferOffset();
+			bb.index = dsIdx;
+			bindMetalArgumentBuffer(stage, bb);
+		}
+
+		// For some unexpected reason, GPU capture on Xcode 12 doesn't always correctly expose
+		// the contents of Metal argument buffers. Triggering an extraction of the arg buffer
+		// contents here, after filling it, seems to correct that.
+		// Sigh. A bug report has been filed with Apple.
+		if (getDevice()->isCurrentlyAutoGPUCapturing()) { [descSet->getMetalArgumentBuffer() contents]; }
+	}
+}
+
+// Mark the resource usage as needing an update for each Metal render encoder.
+void MVKResourcesCommandEncoderState::markDirty() {
+	MVKCommandEncoderState::markDirty();
+	if (_cmdEncoder->isUsingMetalArgumentBuffers()) {
+		for (uint32_t dsIdx = 0; dsIdx < kMVKMaxDescriptorSetCount; dsIdx++) {
+			_metalUsageDirtyDescriptors[dsIdx].setAllBits();
+		}
+	}
+}
+
 // If a swizzle is needed for this stage, iterates all the bindings and logs errors for those that need texture swizzling.
 void MVKResourcesCommandEncoderState::assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding>& texBindings) {
 	if (needsSwizzle) {
@@ -513,6 +639,20 @@ void MVKGraphicsResourcesCommandEncoderState::bindBufferSizeBuffer(const MVKShad
     _shaderStageResourceBindings[kMVKShaderStageFragment].bufferSizeBufferBinding.isDirty = needFragmentSizeBuffer;
 }
 
+void MVKGraphicsResourcesCommandEncoderState::bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding,
+																	  bool needVertexDynamicOffsetBuffer,
+																	  bool needTessCtlDynamicOffsetBuffer,
+																	  bool needTessEvalDynamicOffsetBuffer,
+																	  bool needFragmentDynamicOffsetBuffer) {
+	for (uint32_t i = kMVKShaderStageVertex; i <= kMVKShaderStageFragment; i++) {
+		_shaderStageResourceBindings[i].dynamicOffsetBufferBinding.index = binding.stages[i];
+	}
+	_shaderStageResourceBindings[kMVKShaderStageVertex].dynamicOffsetBufferBinding.isDirty = needVertexDynamicOffsetBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageTessCtl].dynamicOffsetBufferBinding.isDirty = needTessCtlDynamicOffsetBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageTessEval].dynamicOffsetBufferBinding.isDirty = needTessEvalDynamicOffsetBuffer;
+	_shaderStageResourceBindings[kMVKShaderStageFragment].dynamicOffsetBufferBinding.isDirty = needFragmentDynamicOffsetBuffer;
+}
+
 void MVKGraphicsResourcesCommandEncoderState::bindViewRangeBuffer(const MVKShaderImplicitRezBinding& binding,
 																  bool needVertexViewBuffer,
 																  bool needFragmentViewBuffer) {
@@ -532,6 +672,9 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
                                                              std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>&)> bindImplicitBuffer,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler) {
+
+	encodeMetalArgumentBuffer(stage);
+
     auto& shaderStage = _shaderStageResourceBindings[stage];
     encodeBinding<MVKMTLBufferBinding>(shaderStage.bufferBindings, shaderStage.areBufferBindingsDirty, bindBuffer);
 
@@ -554,6 +697,10 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
 
         bindImplicitBuffer(_cmdEncoder, shaderStage.bufferSizeBufferBinding, shaderStage.bufferSizes.contents());
     }
+
+	if (shaderStage.dynamicOffsetBufferBinding.isDirty) {
+		bindImplicitBuffer(_cmdEncoder, shaderStage.dynamicOffsetBufferBinding, _dynamicOffsets.contents());
+	}
 
     if (shaderStage.viewRangeBufferBinding.isDirty) {
         MVKSmallVector<uint32_t, 2> viewRange;
@@ -592,7 +739,7 @@ void MVKGraphicsResourcesCommandEncoderState::offsetZeroDivisorVertexBuffers(MVK
 
 // Mark everything as dirty
 void MVKGraphicsResourcesCommandEncoderState::markDirty() {
-    MVKCommandEncoderState::markDirty();
+	MVKResourcesCommandEncoderState::markDirty();
     for (uint32_t i = kMVKShaderStageVertex; i <= kMVKShaderStageFragment; i++) {
         MVKResourcesCommandEncoderState::markDirty(_shaderStageResourceBindings[i].bufferBindings, _shaderStageResourceBindings[i].areBufferBindingsDirty);
         MVKResourcesCommandEncoderState::markDirty(_shaderStageResourceBindings[i].textureBindings, _shaderStageResourceBindings[i].areTextureBindingsDirty);
@@ -603,7 +750,7 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
     MVKGraphicsPipeline* pipeline = (MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline();
-    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || _cmdEncoder->getDevice()->_pMetalFeatures->nativeTextureSwizzle;
+    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
 
 	if (stage == kMVKGraphicsStageVertex) {
@@ -765,6 +912,33 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 }
 
+MVKPipeline* MVKGraphicsResourcesCommandEncoderState::getPipeline() {
+	return _cmdEncoder->_graphicsPipelineState.getPipeline();
+}
+
+void MVKGraphicsResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) {
+	bindBuffer(stage, buffBind);
+}
+
+void MVKGraphicsResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
+																				id<MTLResource> mtlResource,
+																				MTLResourceUsage mtlUsage,
+																				MTLRenderStages mtlStages) {
+	if (mtlResource && mtlStages) {
+		if (stage == kMVKShaderStageTessCtl) {
+			auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl);
+			[mtlCompEnc useResource: mtlResource usage: mtlUsage];
+		} else {
+			auto* mtlRendEnc = _cmdEncoder->_mtlRenderEncoder;
+			if ([mtlRendEnc respondsToSelector: @selector(useResource:usage:stages:)]) {
+				[mtlRendEnc useResource: mtlResource usage: mtlUsage stages: mtlStages];
+			} else {
+				[mtlRendEnc useResource: mtlResource usage: mtlUsage];
+			}
+		}
+	}
+}
+
 
 #pragma mark -
 #pragma mark MVKComputeResourcesCommandEncoderState
@@ -793,15 +967,23 @@ void MVKComputeResourcesCommandEncoderState::bindBufferSizeBuffer(const MVKShade
     _resourceBindings.bufferSizeBufferBinding.isDirty = needBufferSizeBuffer;
 }
 
+void MVKComputeResourcesCommandEncoderState::bindDynamicOffsetBuffer(const MVKShaderImplicitRezBinding& binding,
+																	 bool needDynamicOffsetBuffer) {
+	_resourceBindings.dynamicOffsetBufferBinding.index = binding.stages[kMVKShaderStageCompute];
+	_resourceBindings.dynamicOffsetBufferBinding.isDirty = needDynamicOffsetBuffer;
+}
+
 // Mark everything as dirty
 void MVKComputeResourcesCommandEncoderState::markDirty() {
-    MVKCommandEncoderState::markDirty();
+    MVKResourcesCommandEncoderState::markDirty();
     MVKResourcesCommandEncoderState::markDirty(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty);
     MVKResourcesCommandEncoderState::markDirty(_resourceBindings.textureBindings, _resourceBindings.areTextureBindingsDirty);
     MVKResourcesCommandEncoderState::markDirty(_resourceBindings.samplerStateBindings, _resourceBindings.areSamplerStateBindingsDirty);
 }
 
 void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
+
+	encodeMetalArgumentBuffer(kMVKShaderStageCompute);
 
     MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
 	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
@@ -832,6 +1014,14 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
     }
 
+	if (_resourceBindings.dynamicOffsetBufferBinding.isDirty) {
+		_cmdEncoder->setComputeBytes(_cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch),
+									 _dynamicOffsets.data(),
+									 _dynamicOffsets.size() * sizeof(uint32_t),
+									 _resourceBindings.dynamicOffsetBufferBinding.index);
+
+	}
+
 	encodeBinding<MVKMTLBufferBinding>(_resourceBindings.bufferBindings, _resourceBindings.areBufferBindingsDirty,
 									   [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
 		if (b.isInline) {
@@ -857,6 +1047,24 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                                  [cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch) setSamplerState: b.mtlSamplerState
 																												   atIndex: b.index];
                                              });
+}
+
+MVKPipeline* MVKComputeResourcesCommandEncoderState::getPipeline() {
+	return _cmdEncoder->_computePipelineState.getPipeline();
+}
+
+void MVKComputeResourcesCommandEncoderState::bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) {
+	bindBuffer(buffBind);
+}
+
+void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(MVKShaderStage stage,
+																			   id<MTLResource> mtlResource,
+																			   MTLResourceUsage mtlUsage,
+																			   MTLRenderStages mtlStages) {
+	if (mtlResource) {
+		auto* mtlCompEnc = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseDispatch);
+		[mtlCompEnc useResource: mtlResource usage: mtlUsage];
+	}
 }
 
 

@@ -298,8 +298,19 @@ public:
 	/** Returns the index of the currently active multiview subpass, or zero if the current render pass is not multiview. */
 	uint32_t getMultiviewPassIndex();
 
+	/** Begins a Metal compute encoding. */
+	void beginMetalComputeEncoding(MVKCommandUse cmdUse);
+
     /** Binds a pipeline to a bind point. */
     void bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline);
+
+	/** Binds the descriptor set to the index at the bind point. */
+	void bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint,
+						   uint32_t descSetIndex,
+						   MVKDescriptorSet* descSet,
+						   MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+						   MVKArrayRef<uint32_t> dynamicOffsets,
+						   uint32_t& dynamicOffsetIndex);
 
 	/** Encodes an operation to signal an event to a status. */
 	void signalEvent(MVKEvent* mvkEvent, bool status);

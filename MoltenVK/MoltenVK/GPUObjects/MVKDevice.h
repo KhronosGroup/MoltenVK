@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include "MVKEnvironment.h"
 #include "MVKFoundation.h"
 #include "MVKVulkanAPIObject.h"
 #include "MVKMTLResourceBindings.h"
@@ -325,6 +326,9 @@ public:
 	/** Returns whether the MSL version is supported on this device. */
 	inline bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
+	/** Returns whether this device is using Metal argument buffers. */
+	inline bool isUsingMetalArgumentBuffers() const  { return _metalFeatures.argumentBuffers && mvkConfig()->useMetalArgumentBuffers; };
+
 
 #pragma mark Construction
 
@@ -364,6 +368,7 @@ protected:
 	uint64_t getVRAMSize();
 	uint64_t getRecommendedMaxWorkingSetSize();
 	uint64_t getCurrentAllocatedSize();
+	uint32_t getMaxSamplerCount();
 	void initExternalMemoryProperties();
 	void initExtensions();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
@@ -847,6 +852,15 @@ public:
 
 	/** Returns info about the pixel format supported by the physical device. */
 	inline MVKPixelFormats* getPixelFormats() { return _device->getPixelFormats(); }
+
+	/** Returns whether this device is using Metal argument buffers. */
+	inline bool isUsingMetalArgumentBuffers() { return getPhysicalDevice()->isUsingMetalArgumentBuffers(); };
+
+	/** Returns whether this device is using one Metal argument buffer for each descriptor set, on multiple pipeline and pipeline stages. */
+	inline bool isUsingDescriptorSetMetalArgumentBuffers() { return isUsingMetalArgumentBuffers() && _device->_pMetalFeatures->descriptorSetArgumentBuffers; };
+
+	/** Returns whether this device is using one Metal argument buffer for each descriptor set-pipeline-stage combination. */
+	inline bool isUsingPipelineStageMetalArgumentBuffers() { return isUsingMetalArgumentBuffers() && !_device->_pMetalFeatures->descriptorSetArgumentBuffers; };
 
 	/** Constructs an instance for the specified device. */
     MVKDeviceTrackingMixin(MVKDevice* device) : _device(device) { assert(_device); }

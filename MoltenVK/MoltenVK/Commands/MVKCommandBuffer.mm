@@ -415,16 +415,38 @@ NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName() {
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
     switch (pipelineBindPoint) {
         case VK_PIPELINE_BIND_POINT_GRAPHICS:
-            _graphicsPipelineState.setPipeline(pipeline);
+            _graphicsPipelineState.bindPipeline(pipeline);
             break;
 
         case VK_PIPELINE_BIND_POINT_COMPUTE:
-            _computePipelineState.setPipeline(pipeline);
+            _computePipelineState.bindPipeline(pipeline);
             break;
 
         default:
             break;
     }
+}
+
+void MVKCommandEncoder::bindDescriptorSet(VkPipelineBindPoint pipelineBindPoint,
+										  uint32_t descSetIndex,
+										  MVKDescriptorSet* descSet,
+										  MVKShaderResourceBinding& dslMTLRezIdxOffsets,
+										  MVKArrayRef<uint32_t> dynamicOffsets,
+										  uint32_t& dynamicOffsetIndex) {
+	switch (pipelineBindPoint) {
+		case VK_PIPELINE_BIND_POINT_GRAPHICS:
+			_graphicsResourcesState.bindDescriptorSet(descSetIndex, descSet, dslMTLRezIdxOffsets,
+													  dynamicOffsets, dynamicOffsetIndex);
+			break;
+
+		case VK_PIPELINE_BIND_POINT_COMPUTE:
+			_computeResourcesState.bindDescriptorSet(descSetIndex, descSet, dslMTLRezIdxOffsets,
+													 dynamicOffsets, dynamicOffsetIndex);
+			break;
+
+		default:
+			break;
+	}
 }
 
 void MVKCommandEncoder::signalEvent(MVKEvent* mvkEvent, bool status) {
@@ -514,6 +536,14 @@ void MVKCommandEncoder::clearRenderArea() {
 	}
 }
 
+void MVKCommandEncoder::beginMetalComputeEncoding(MVKCommandUse cmdUse) {
+	if (cmdUse == kMVKCommandUseTessellationVertexTessCtl) {
+		_graphicsResourcesState.beginMetalComputeEncoding();
+	} else {
+		_computeResourcesState.beginMetalComputeEncoding();
+	}
+}
+
 void MVKCommandEncoder::finalizeDispatchState() {
     _computePipelineState.encode();    // Must do first..it sets others
     _computeResourcesState.encode();
@@ -571,6 +601,7 @@ id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandU
 	if ( !_mtlComputeEncoder ) {
 		endCurrentMetalEncoding();
 		_mtlComputeEncoder = [_mtlCmdBuffer computeCommandEncoder];		// not retained
+		beginMetalComputeEncoding(cmdUse);
 	}
 	if (_mtlComputeEncoderUse != cmdUse) {
 		_mtlComputeEncoderUse = cmdUse;

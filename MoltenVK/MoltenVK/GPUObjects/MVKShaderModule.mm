@@ -36,6 +36,14 @@ MVKMTLFunction::MVKMTLFunction(const MVKMTLFunction& other) {
 	threadGroupSize = other.threadGroupSize;
 }
 
+MVKMTLFunction& MVKMTLFunction::operator=(const MVKMTLFunction& other) {
+	[_mtlFunction release];
+	_mtlFunction = [other._mtlFunction retain];		// retained
+	shaderConversionResults = other.shaderConversionResults;
+	threadGroupSize = other.threadGroupSize;
+	return *this;
+}
+
 MVKMTLFunction::~MVKMTLFunction() {
 	[_mtlFunction release];
 }
@@ -163,10 +171,20 @@ MVKShaderLibrary::MVKShaderLibrary(MVKVulkanAPIDeviceObject* owner,
     mvkDev->addActivityPerformance(mvkDev->_performanceStatistics.shaderCompilation.mslLoad, startTime);
 }
 
-MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) : _owner(other._owner) {
+MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) {
+	_owner = other._owner;
 	_mtlLibrary = [other._mtlLibrary retain];
 	_shaderConversionResults = other._shaderConversionResults;
 	_msl = other._msl;
+}
+
+MVKShaderLibrary& MVKShaderLibrary::operator=(const MVKShaderLibrary& other) {
+	[_mtlLibrary release];
+	_owner = other._owner;
+	_mtlLibrary = [other._mtlLibrary retain];
+	_shaderConversionResults = other._shaderConversionResults;
+	_msl = other._msl;
+	return *this;
 }
 
 // If err object is nil, the compilation succeeded without any warnings.

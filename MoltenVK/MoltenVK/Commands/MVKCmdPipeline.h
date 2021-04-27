@@ -143,6 +143,7 @@ public:
 
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
+	void encode(MVKCommandEncoder* cmdEncoder, MVKArrayRef<uint32_t> dynamicOffsets);
 
 	MVKSmallVector<MVKDescriptorSet*, N> _descriptorSets;
 	MVKPipelineLayout* _pipelineLayout = nullptr;

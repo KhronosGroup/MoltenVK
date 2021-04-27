@@ -277,3 +277,8 @@ void mvkSetConfig(MVKConfiguration* pMVKConfig);
 #ifndef MVK_CONFIG_RESUME_LOST_DEVICE
 #   define MVK_CONFIG_RESUME_LOST_DEVICE    0
 #endif
+
+/** Support Metal argument buffers. Disabled by default. */
+#ifndef MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS
+#   define MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS    0
+#endif

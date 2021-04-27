@@ -96,7 +96,10 @@ public:
 	MVKVulkanAPIObject() : _refCount(1) {}
 
 	/** Default copy constructor disallowed due to mutex. Copy starts with fresh reference counts. */
-	MVKVulkanAPIObject(const MVKVulkanAPIObject& other) : _refCount(1) {}
+	MVKVulkanAPIObject(const MVKVulkanAPIObject& other);
+
+	/** Default copy assignment disallowed due to mutex. Copy starts with fresh reference counts. */
+	MVKVulkanAPIObject& operator=(const MVKVulkanAPIObject& other);
 
 	~MVKVulkanAPIObject() override;
 

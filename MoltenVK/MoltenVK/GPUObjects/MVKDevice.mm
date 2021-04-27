@@ -375,6 +375,9 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
                 break;
             }
 			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_DESCRIPTOR_INDEXING_PROPERTIES_EXT: {
+				bool isTier2 = isUsingMetalArgumentBuffers() && (_mtlDevice.argumentBuffersSupport >= MTLArgumentBuffersTier2);
+				uint32_t maxSampCnt = getMaxSamplerCount();
+
 				auto* pDescIdxProps = (VkPhysicalDeviceDescriptorIndexingPropertiesEXT*)next;
 				pDescIdxProps->maxUpdateAfterBindDescriptorsInAllPools				= kMVKUndefinedLargeUInt32;
 				pDescIdxProps->shaderUniformBufferArrayNonUniformIndexingNative		= false;
@@ -384,20 +387,20 @@ void MVKPhysicalDevice::getProperties(VkPhysicalDeviceProperties2* properties) {
 				pDescIdxProps->shaderInputAttachmentArrayNonUniformIndexingNative	= _metalFeatures.arrayOfTextures;
 				pDescIdxProps->robustBufferAccessUpdateAfterBind					= _features.robustBufferAccess;
 				pDescIdxProps->quadDivergentImplicitLod								= false;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers			= _properties.limits.maxPerStageDescriptorSamplers;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers	= _properties.limits.maxPerStageDescriptorUniformBuffers;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers	= _properties.limits.maxPerStageDescriptorStorageBuffers;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages	= _properties.limits.maxPerStageDescriptorSampledImages;
-				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages	= _properties.limits.maxPerStageDescriptorStorageImages;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSamplers			= isTier2 ? maxSampCnt : _properties.limits.maxPerStageDescriptorSamplers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindUniformBuffers	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorUniformBuffers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageBuffers	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageBuffers;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindSampledImages	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorSampledImages;
+				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindStorageImages	= isTier2 ? 500000 : _properties.limits.maxPerStageDescriptorStorageImages;
 				pDescIdxProps->maxPerStageDescriptorUpdateAfterBindInputAttachments	= _properties.limits.maxPerStageDescriptorInputAttachments;
-				pDescIdxProps->maxPerStageUpdateAfterBindResources					= _properties.limits.maxPerStageResources;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers				= _properties.limits.maxDescriptorSetSamplers;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers		= _properties.limits.maxDescriptorSetUniformBuffers;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic	= _properties.limits.maxDescriptorSetUniformBuffersDynamic;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers		= _properties.limits.maxDescriptorSetStorageBuffers;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic	= _properties.limits.maxDescriptorSetStorageBuffersDynamic;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindSampledImages			= _properties.limits.maxDescriptorSetSampledImages;
-				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageImages			= _properties.limits.maxDescriptorSetStorageImages;
+				pDescIdxProps->maxPerStageUpdateAfterBindResources					= isTier2 ? 500000 : _properties.limits.maxPerStageResources;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSamplers				= isTier2 ? maxSampCnt : _properties.limits.maxDescriptorSetSamplers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffers		= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindUniformBuffersDynamic	= isTier2 ? 500000 : _properties.limits.maxDescriptorSetUniformBuffersDynamic;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffers		= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageBuffers;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageBuffersDynamic	= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageBuffersDynamic;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindSampledImages			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetSampledImages;
+				pDescIdxProps->maxDescriptorSetUpdateAfterBindStorageImages			= isTier2 ? 500000 : _properties.limits.maxDescriptorSetStorageImages;
 				pDescIdxProps->maxDescriptorSetUpdateAfterBindInputAttachments		= _properties.limits.maxDescriptorSetInputAttachments;
 				break;
 			}
@@ -1205,6 +1208,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v3)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
         _metalFeatures.renderWithoutAttachments = true;
+		_metalFeatures.argumentBuffers = true;
 	}
 
 	if (supportsMTLFeatureSet(tvOS_GPUFamily1_v4)) {
@@ -1279,6 +1283,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v4)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_0;
         _metalFeatures.renderWithoutAttachments = true;
+		_metalFeatures.argumentBuffers = true;
     }
 
 	if (supportsMTLFeatureSet(iOS_GPUFamily1_v5)) {
@@ -1387,6 +1392,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.presentModeImmediate = true;
 		_metalFeatures.fences = true;
 		_metalFeatures.nonUniformThreadgroups = true;
+		_metalFeatures.argumentBuffers = true;
     }
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v4)) {
@@ -1548,6 +1554,19 @@ void MVKPhysicalDevice::initMetalFeatures() {
 #if MVK_OS_SIMULATOR && !MVK_APPLE_SILICON
 	_metalFeatures.mtlBufferAlignment = 256;
 #endif
+
+	// Currently, Metal argument buffer support is in beta stage, and is only supported
+	// on macOS 10.16 (Big Sur) or later, or on older versions of macOS using an Intel GPU.
+	// Metal argument buffers support is not available on iOS. Development to support iOS
+	// and a wider combination of GPU's on older macOS versions is under way.
+#if MVK_MACOS
+	_metalFeatures.descriptorSetArgumentBuffers = (_metalFeatures.argumentBuffers &&
+												   (mvkOSVersionIsAtLeast(10.16) ||
+													_properties.vendorID == kIntelVendorId));
+#endif
+	// Currently, if we don't support descriptor set argument buffers, we can't support argument buffers.
+	_metalFeatures.argumentBuffers = _metalFeatures.descriptorSetArgumentBuffers;
+
 }
 
 // Initializes the physical device features of this instance.
@@ -2055,7 +2074,7 @@ void MVKPhysicalDevice::initLimits() {
     // Features with no specific limits - default to unlimited int values
 
     _properties.limits.maxMemoryAllocationCount = kMVKUndefinedLargeUInt32;
-    _properties.limits.maxSamplerAllocationCount = kMVKUndefinedLargeUInt32;
+	_properties.limits.maxSamplerAllocationCount = getMaxSamplerCount();
     _properties.limits.maxBoundDescriptorSets = kMVKMaxDescriptorSetCount;
 
     _properties.limits.maxComputeWorkGroupCount[0] = kMVKUndefinedLargeUInt32;
@@ -2377,6 +2396,7 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	// Next 4 bytes contains flags based on enabled Metal features that
 	// might affect the contents of the pipeline cache (mostly MSL content).
 	uint32_t mtlFeatures = 0;
+	mtlFeatures |= isUsingMetalArgumentBuffers() << 0;
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatures);
 	uuidComponentOffset += sizeof(mtlFeatures);
 }
@@ -2623,6 +2643,11 @@ uint64_t MVKPhysicalDevice::getCurrentAllocatedSize() {
 #if MVK_MACOS
 	return 0;
 #endif
+}
+
+uint32_t MVKPhysicalDevice::getMaxSamplerCount() {
+	return ([_mtlDevice respondsToSelector: @selector(maxArgumentBufferSamplerCount)]
+			? (uint32_t)_mtlDevice.maxArgumentBufferSamplerCount : 1024);
 }
 
 void MVKPhysicalDevice::initExternalMemoryProperties() {
@@ -3650,6 +3675,7 @@ id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {
 		if ( !_defaultMTLSamplerState ) {
 			@autoreleasepool {
 				MTLSamplerDescriptor* mtlSampDesc = [[MTLSamplerDescriptor new] autorelease];
+				mtlSampDesc.supportArgumentBuffers = _physicalDevice->isUsingMetalArgumentBuffers();
 				_defaultMTLSamplerState = [getMTLDevice() newSamplerStateWithDescriptor: mtlSampDesc];	// retained
 			}
 		}

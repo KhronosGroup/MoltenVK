@@ -61,6 +61,18 @@ MVKVulkanAPIObject* MVKVulkanAPIObject::getMVKVulkanAPIObject(VkObjectType objTy
 	}
 }
 
+MVKVulkanAPIObject::MVKVulkanAPIObject(const MVKVulkanAPIObject& other) {
+	_refCount = 1;
+	_debugName = [other._debugName retain];
+}
+
+MVKVulkanAPIObject& MVKVulkanAPIObject::operator=(const MVKVulkanAPIObject& other) {
+	[_debugName release];
+	_refCount = 1;
+	_debugName = [other._debugName retain];
+	return *this;
+}
+
 MVKVulkanAPIObject::~MVKVulkanAPIObject() {
 	[_debugName release];
 }
