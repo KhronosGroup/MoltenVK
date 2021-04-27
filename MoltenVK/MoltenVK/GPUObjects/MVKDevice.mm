@@ -68,8 +68,10 @@ static const uint32_t kAppleVendorId = 0x106b;
 static const uint32_t kIntelVendorId = 0x8086;
 static const uint32_t kNVVendorId = 0x10de;
 
-static const uint32_t kAMDRadeonRX5700XTDeviceId = 0x731f;
-static const uint32_t kAMDRadeonRX5500XTDeviceId = 0x7340;
+static const uint32_t kAMDRadeonRX5700DeviceId = 0x731f;
+static const uint32_t kAMDRadeonRX5500DeviceId = 0x7340;
+static const uint32_t kAMDRadeonRX6800DeviceId = 0x73bf;
+static const uint32_t kAMDRadeonRX6700DeviceId = 0x73df;
 
 #pragma clang diagnostic pop
 
@@ -1491,8 +1493,10 @@ void MVKPhysicalDevice::initMetalFeatures() {
                 break;
             case kAMDVendorId:
                 switch (_properties.deviceID) {
-                    case kAMDRadeonRX5700XTDeviceId:
-                    case kAMDRadeonRX5500XTDeviceId:
+                    case kAMDRadeonRX5700DeviceId:
+                    case kAMDRadeonRX5500DeviceId:
+                    case kAMDRadeonRX6800DeviceId:
+                    case kAMDRadeonRX6700DeviceId:
                         _metalFeatures.minSubgroupSize = 32;
                         break;
                     default:
