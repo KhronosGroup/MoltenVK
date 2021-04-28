@@ -432,7 +432,6 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 	if (pPresentationTimings == nullptr) {
 		*pCount = _presentHistoryCount;
 	} else {
-		uint32_t index = _presentHistoryHeadIndex;
 		uint32_t countRemaining = std::min(_presentHistoryCount, *pCount);
 		uint32_t outIndex = 0;
 
@@ -440,9 +439,10 @@ VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresent
 		*pCount = countRemaining;
 
 		while (countRemaining > 0) {
-			pPresentationTimings[outIndex] = _presentTimingHistory[index];
+			pPresentationTimings[outIndex] = _presentTimingHistory[_presentHistoryHeadIndex];
 			countRemaining--;
-			index = (index + 1) % kMaxPresentationHistory;
+			_presentHistoryCount--;
+			_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 			outIndex++;
 		}
 	}
@@ -454,7 +454,6 @@ void MVKSwapchain::recordPresentTime(MVKPresentTimingInfo presentTimingInfo, uin
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (_presentHistoryCount < kMaxPresentationHistory) {
 		_presentHistoryCount++;
-		_presentHistoryHeadIndex = 0;
 	} else {
 		_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 	}
