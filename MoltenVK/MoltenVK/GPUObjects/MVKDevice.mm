@@ -4175,5 +4175,7 @@ bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice) {
 #endif
 	return true;
 #endif
+#if MVK_IOS_OR_TVOS
 	return false;
+#endif
 }
