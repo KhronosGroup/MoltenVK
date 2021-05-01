@@ -13,7 +13,7 @@ jobs:
   build:
     strategy:
       matrix:
-        xcode: [ "12.5" ]
+        xcode: [ "12.4" ]
         platform: [ "macos", "maccat", "ios", "tvos" ]
         os: [ "macos-latest" ]
         upload_artifacts: [ true ]
