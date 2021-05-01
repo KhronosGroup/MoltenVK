@@ -426,28 +426,34 @@ VkResult MVKSwapchain::getRefreshCycleDuration(VkRefreshCycleDurationGOOGLE *pRe
 VkResult MVKSwapchain::getPastPresentationTiming(uint32_t *pCount, VkPastPresentationTimingGOOGLE *pPresentationTimings) {
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
+	VkResult res = VK_SUCCESS;
+
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
-	if (pCount && pPresentationTimings == nullptr) {
+	if (pPresentationTimings == nullptr) {
 		*pCount = _presentHistoryCount;
-	} else if (pPresentationTimings) {
-		uint32_t index = _presentHistoryHeadIndex;
+	} else {
 		uint32_t countRemaining = std::min(_presentHistoryCount, *pCount);
 		uint32_t outIndex = 0;
+
+		res = (*pCount >= _presentHistoryCount) ? VK_SUCCESS : VK_INCOMPLETE;
+		*pCount = countRemaining;
+
 		while (countRemaining > 0) {
-			pPresentationTimings[outIndex] = _presentTimingHistory[index];
+			pPresentationTimings[outIndex] = _presentTimingHistory[_presentHistoryHeadIndex];
 			countRemaining--;
-			index = (index + 1) % kMaxPresentationHistory;
+			_presentHistoryCount--;
+			_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 			outIndex++;
 		}
 	}
-	return VK_SUCCESS;
+
+	return res;
 }
 
 void MVKSwapchain::recordPresentTime(MVKPresentTimingInfo presentTimingInfo, uint64_t actualPresentTime) {
 	std::lock_guard<std::mutex> lock(_presentHistoryLock);
 	if (_presentHistoryCount < kMaxPresentationHistory) {
 		_presentHistoryCount++;
-		_presentHistoryHeadIndex = 0;
 	} else {
 		_presentHistoryHeadIndex = (_presentHistoryHeadIndex + 1) % kMaxPresentationHistory;
 	}
