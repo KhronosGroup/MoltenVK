@@ -33,7 +33,7 @@ static const VkExternalMemoryHandleTypeFlagBits VK_EXTERNAL_MEMORY_HANDLE_TYPE_M
 
 #pragma mark MVKDeviceMemory
 
-typedef struct {
+typedef struct MVKMappedMemoryRange {
 	VkDeviceSize offset = 0;
 	VkDeviceSize size = 0;
 } MVKMappedMemoryRange;

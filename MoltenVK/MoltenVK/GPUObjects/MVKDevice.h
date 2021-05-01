@@ -401,7 +401,7 @@ protected:
 #pragma mark -
 #pragma mark MVKDevice
 
-typedef struct {
+typedef struct MVKMTLBlitEncoder {
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = nil;
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
 } MVKMTLBlitEncoder;

@@ -29,22 +29,22 @@ class MVKImage;
 
 
 /** Describes a MTLTexture resource binding. */
-typedef struct {
+typedef struct MVKMTLTextureBinding {
     union { id<MTLTexture> mtlTexture = nil; id<MTLTexture> mtlResource; }; // aliases
     uint32_t swizzle = 0;
 	uint16_t index = 0;
     bool isDirty = true;
 } MVKMTLTextureBinding;
 
-/** Describes a MTLSamplerState resource binding. */
-typedef struct {
+/** Describes a MTLSamplerState resource bindi MVKMTLSamplerStateBindingng. */
+typedef struct MVKMTLSamplerStateBinding {
     union { id<MTLSamplerState> mtlSamplerState = nil; id<MTLSamplerState> mtlResource; }; // aliases
     uint16_t index = 0;
     bool isDirty = true;
 } MVKMTLSamplerStateBinding;
 
-/** Describes a MTLBuffer resource binding. */
-typedef struct {
+/** Describes  MVKMTLBufferBindinga MTLBuffer resource binding. */
+typedef struct MVKMTLBufferBinding {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
     VkDeviceSize offset = 0;
     uint32_t size = 0;
@@ -54,7 +54,7 @@ typedef struct {
 } MVKMTLBufferBinding;
 
 /** Describes a MTLBuffer resource binding as used for an index buffer. */
-typedef struct {
+typedef struct MVKIndexMTLBufferBinding {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; }; // aliases
     VkDeviceSize offset = 0;
     uint8_t mtlIndexType = 0;		// MTLIndexType

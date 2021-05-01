@@ -51,7 +51,7 @@ protected:
 #pragma mark MVKObjectPool
 
 /** Track pool stats. */
-typedef struct {
+typedef struct MVKObjectPoolCounts {
 	uint64_t created = 0;
 	uint64_t alive = 0;
 	uint64_t resident = 0;

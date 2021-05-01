@@ -27,7 +27,7 @@
 
 namespace mvk {
 
-	typedef struct {
+	typedef struct MVKPerformanceTracker {
 		uint32_t count = 0;
 		double averageDuration = 0.0;
 		double minimumDuration = 0.0;
