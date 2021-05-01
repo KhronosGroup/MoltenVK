@@ -4167,10 +4167,12 @@ uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
 }
 
 bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice) {
-#if MVK_MACOS && !MVK_MACCAT
+#if MVK_MACOS
+#if MVK_XCODE_12 && !MVK_MACCAT
 	if ([mtlDevice respondsToSelector: @selector(supportsBCTextureCompression)]) {
 		return mtlDevice.supportsBCTextureCompression;
 	}
+#endif
 	return true;
 #endif
 	return false;

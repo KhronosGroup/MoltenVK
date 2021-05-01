@@ -36,14 +36,14 @@ typedef struct MVKMTLTextureBinding {
     bool isDirty = true;
 } MVKMTLTextureBinding;
 
-/** Describes a MTLSamplerState resource bindi MVKMTLSamplerStateBindingng. */
+/** Describes a MTLSamplerState resource binding. */
 typedef struct MVKMTLSamplerStateBinding {
     union { id<MTLSamplerState> mtlSamplerState = nil; id<MTLSamplerState> mtlResource; }; // aliases
     uint16_t index = 0;
     bool isDirty = true;
 } MVKMTLSamplerStateBinding;
 
-/** Describes  MVKMTLBufferBindinga MTLBuffer resource binding. */
+/** Describes  a MTLBuffer resource binding. */
 typedef struct MVKMTLBufferBinding {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
     VkDeviceSize offset = 0;
