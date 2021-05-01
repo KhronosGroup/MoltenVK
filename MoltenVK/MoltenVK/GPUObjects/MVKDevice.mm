@@ -1594,6 +1594,7 @@ void MVKPhysicalDevice::initFeatures() {
     _features.inheritedQueries = true;
 
 	_features.shaderSampledImageArrayDynamicIndexing = _metalFeatures.arrayOfTextures;
+	_features.textureCompressionBC = mvkSupportsBCTextureCompression(_mtlDevice);
 
     if (_metalFeatures.indirectDrawing && _metalFeatures.baseVertexInstanceDrawing) {
         _features.drawIndirectFirstInstance = true;
@@ -1664,7 +1665,6 @@ void MVKPhysicalDevice::initFeatures() {
 #endif
 
 #if MVK_MACOS
-    _features.textureCompressionBC = true;
     _features.occlusionQueryPrecise = true;
     _features.imageCubeArray = true;
     _features.depthClamp = true;
@@ -1696,12 +1696,6 @@ void MVKPhysicalDevice::initFeatures() {
         _features.textureCompressionETC2 = true;
         _features.textureCompressionASTC_LDR = true;
     }
-
-#if MVK_MACOS_APPLE_SILICON
-	if ([_mtlDevice respondsToSelector: @selector(supportsBCTextureCompression)]) {
-		_features.textureCompressionBC = _mtlDevice.supportsBCTextureCompression;
-	}
-#endif
 #endif
 }
 
@@ -4170,4 +4164,14 @@ MVKDevice::~MVKDevice() {
 
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
 	return [mtlDevice respondsToSelector: @selector(registryID)] ? mtlDevice.registryID : 0;
+}
+
+bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice) {
+#if MVK_MACOS && !MVK_MACCAT
+	if ([mtlDevice respondsToSelector: @selector(supportsBCTextureCompression)]) {
+		return mtlDevice.supportsBCTextureCompression;
+	}
+	return true;
+#endif
+	return false;
 }

@@ -1509,9 +1509,7 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 		disableMTLPixFmtCaps( RGBA32Float, Filter );
 	}
 
-	if ([mtlDevice respondsToSelector: @selector(supportsBCTextureCompression)] &&
-		!mtlDevice.supportsBCTextureCompression) {
-
+	if ( !mvkSupportsBCTextureCompression(mtlDevice) ) {
 		disableAllMTLPixFmtCaps( BC1_RGBA );
 		disableAllMTLPixFmtCaps( BC1_RGBA_sRGB );
 		disableAllMTLPixFmtCaps( BC2_RGBA );
