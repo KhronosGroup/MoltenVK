@@ -192,7 +192,7 @@ namespace mvk {
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
      */
-	typedef struct {
+	typedef struct SPIRVWorkgroupSizeDimension {
 		uint32_t size = 1;
 		uint32_t specializationID = 0;
 		bool isSpecialized = false;
@@ -206,7 +206,7 @@ namespace mvk {
 	 * THIS STRUCT IS STREAMED OUT AS PART OF THE PIEPLINE CACHE.
 	 * CHANGES TO THIS STRUCT SHOULD BE CAPTURED IN THE STREAMING LOGIC OF THE PIPELINE CACHE.
      */
-	typedef struct {
+	typedef struct SPIRVEntryPoint {
 		std::string mtlFunctionName = "main0";
 		struct {
 			SPIRVWorkgroupSizeDimension width;

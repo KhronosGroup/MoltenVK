@@ -34,7 +34,7 @@ class MVKDebugUtilsMessenger;
 
 
 /** Tracks info about entry point function pointer addresses. */
-typedef struct {
+typedef struct MVKEntryPoint {
 	PFN_vkVoidFunction functionPointer;
 	uint32_t apiVersion;
 	const char* ext1Name;

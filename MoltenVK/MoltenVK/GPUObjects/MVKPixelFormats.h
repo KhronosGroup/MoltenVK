@@ -137,7 +137,7 @@ enum class MVKMTLViewClass : uint8_t {
 #pragma mark Format descriptors
 
 /** Describes the properties of a VkFormat, including the corresponding Metal pixel and vertex format. */
-typedef struct {
+typedef struct MVKVkFormatDesc {
 	VkFormat vkFormat;
 	MTLPixelFormat mtlPixelFormat;
 	MTLPixelFormat mtlPixelFormatSubstitute;
@@ -162,7 +162,7 @@ typedef struct {
 } MVKVkFormatDesc;
 
 /** Describes the properties of a MTLPixelFormat or MTLVertexFormat. */
-typedef struct {
+typedef struct MVKMTLFormatDesc {
 	union {
 		MTLPixelFormat mtlPixelFormat;
 		MTLVertexFormat mtlVertexFormat;

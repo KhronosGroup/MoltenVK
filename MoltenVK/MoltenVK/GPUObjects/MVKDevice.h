@@ -401,7 +401,7 @@ protected:
 #pragma mark -
 #pragma mark MVKDevice
 
-typedef struct {
+typedef struct MVKMTLBlitEncoder {
 	id<MTLBlitCommandEncoder> mtlBlitEncoder = nil;
 	id<MTLCommandBuffer> mtlCmdBuffer = nil;
 } MVKMTLBlitEncoder;
@@ -969,6 +969,9 @@ protected:
 
 /** Returns the registry ID of the specified device, or zero if the device does not have a registry ID. */
 uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice);
+
+/** Returns whether the MTLDevice supports BC texture compression. */
+bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice);
 
 /** Redefinitions because Mac Catalyst doesn't support feature sets. */
 #if MVK_MACCAT
