@@ -109,7 +109,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 		mvk::MSLResourceBinding rb;													\
 		auto& rbb = rb.resourceBinding;												\
 		rbb.stage = spvExecModels[stage];											\
-		rbb.basetype = SPIRV_CROSS_NAMESPACE_OVERRIDE::SPIRType::spvRezType;		\
+		rbb.basetype = SPIRV_CROSS_NAMESPACE ::SPIRType::spvRezType;		\
 		rbb.desc_set = descriptorSetIndex;											\
 		rbb.binding = bindingIndex;													\
 		rbb.count = count;															\
