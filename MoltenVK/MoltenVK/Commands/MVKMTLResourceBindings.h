@@ -43,7 +43,7 @@ typedef struct MVKMTLSamplerStateBinding {
     bool isDirty = true;
 } MVKMTLSamplerStateBinding;
 
-/** Describes  a MTLBuffer resource binding. */
+/** Describes a MTLBuffer resource binding. */
 typedef struct MVKMTLBufferBinding {
     union { id<MTLBuffer> mtlBuffer = nil; id<MTLBuffer> mtlResource; const void* mtlBytes; }; // aliases
     VkDeviceSize offset = 0;

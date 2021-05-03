@@ -4166,16 +4166,20 @@ uint64_t mvkGetRegistryID(id<MTLDevice> mtlDevice) {
 	return [mtlDevice respondsToSelector: @selector(registryID)] ? mtlDevice.registryID : 0;
 }
 
+// Since MacCatalyst does not support supportsBCTextureCompression, it is not possible
+// for Apple Silicon to indicate a lack of support for BCn when running MacCatalyst.
+// Therefore, assume for now that this means MacCatalyst does not actually support BCn.
+// Further evidence may change this approach.
 bool mvkSupportsBCTextureCompression(id<MTLDevice> mtlDevice) {
-#if MVK_MACOS
-#if MVK_XCODE_12 && !MVK_MACCAT
+#if MVK_IOS || MVK_TVOS || MVK_MACCAT
+	return false;
+#endif
+#if MVK_MACOS && !MVK_MACCAT
+#if MVK_XCODE_12
 	if ([mtlDevice respondsToSelector: @selector(supportsBCTextureCompression)]) {
 		return mtlDevice.supportsBCTextureCompression;
 	}
 #endif
 	return true;
-#endif
-#if MVK_IOS_OR_TVOS
-	return false;
 #endif
 }
