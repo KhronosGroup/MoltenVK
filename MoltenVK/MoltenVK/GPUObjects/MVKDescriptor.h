@@ -49,7 +49,7 @@ typedef struct MVKShaderStageResourceBinding {
 
 /** Indicates the Metal resource indexes used by each shader stage in a descriptor. */
 typedef struct MVKShaderResourceBinding {
-	MVKShaderStageResourceBinding stages[kMVKShaderStageMax];
+	MVKShaderStageResourceBinding stages[kMVKShaderStageCount];
 
 	uint16_t getMaxResourceIndex();
 	uint16_t getMaxBufferIndex();
@@ -183,7 +183,7 @@ protected:
 	MVKSmallVector<MVKSampler*> _immutableSamplers;
 	MVKShaderResourceBinding _mtlResourceIndexOffsets;
 	uint32_t _descriptorIndex;
-	bool _applyToStage[kMVKShaderStageMax];
+	bool _applyToStage[kMVKShaderStageCount];
 };
 
 

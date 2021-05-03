@@ -327,7 +327,7 @@ public:
 	inline bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
 	/** Returns whether this device is using Metal argument buffers. */
-	inline bool isUsingMetalArgumentBuffers() const  { return _metalFeatures.argumentBuffers && mvkConfig()->useMetalArgumentBuffers; };
+	inline bool isUsingMetalArgumentBuffers() const  { return _metalFeatures.argumentBuffers && mvkConfig().useMetalArgumentBuffers; };
 
 
 #pragma mark Construction

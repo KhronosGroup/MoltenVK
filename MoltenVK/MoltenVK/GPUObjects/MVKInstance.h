@@ -49,7 +49,7 @@ typedef struct MVKEntryPoint {
 	bool isEnabled(uint32_t enabledVersion, const MVKExtensionList& extList) {
 		return ((isCore() && MVK_VULKAN_API_VERSION_CONFORM(enabledVersion) >= apiVersion) ||
 				(extList.isEnabled(ext1Name) || extList.isEnabled(ext2Name) ||
-				 !mvkIsAnyFlagEnabled(mvkConfig()->advertiseExtensions,
+				 !mvkIsAnyFlagEnabled(mvkConfig().advertiseExtensions,
 									  MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL)));
 	}
 } MVKEntryPoint;

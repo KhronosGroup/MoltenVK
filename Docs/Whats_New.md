@@ -13,6 +13,20 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.1.4
+--------------
+
+Released TBD
+
+- Make `vkGetPastPresentationTimingGOOGLE()` queuing behavior compliant with Vulkan spec.
+- Expose `vkGetIOSurfaceMVK()` and `vkUseIOSurfaceMVK()` without requiring _Objective-C_.
+- Support _Xcode 12.5_ build settings, build warnings, and SDK change to availability of
+  `[MTLDevice supportsBCTextureCompression]` on _Mac Catalyst_.
+- Rename `kMVKShaderStageMax` to `kMVKShaderStageCount`.
+- Fix internal reference from `SPIRV_CROSS_NAMESPACE_OVERRIDE` to `SPIRV_CROSS_NAMESPACE`.
+
+
+
 MoltenVK 1.1.3
 --------------
 

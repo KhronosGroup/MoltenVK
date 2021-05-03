@@ -323,7 +323,8 @@ typedef enum {
 	kMVKShaderStageTessEval,
 	kMVKShaderStageFragment,
 	kMVKShaderStageCompute,
-	kMVKShaderStageMax
+	kMVKShaderStageCount,
+	kMVKShaderStageMax = kMVKShaderStageCount	// Pubic API legacy value
 } MVKShaderStage;
 
 /** Returns the Metal MTLColorWriteMask corresponding to the specified Vulkan VkColorComponentFlags. */
