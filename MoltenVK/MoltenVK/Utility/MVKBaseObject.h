@@ -20,6 +20,7 @@
 
 #include "mvk_vulkan.h"
 #include <string>
+#include <atomic>
 
 class MVKVulkanAPIObject;
 
@@ -99,29 +100,94 @@ public:
 
 
 #pragma mark -
-#pragma mark MVKConfigurableObject
+#pragma mark MVKReferenceCountingMixin
 
-/** 
- * Abstract class that represents an object whose configuration can be validated and tracked
- * as a queriable result. This is the base class of opaque Vulkan API objects, and commands.
+/**
+ * This templated mixin adds the ability for an object to track references
+ * to itself and defer destruction while existing references are alive.
+ *
+ * The BaseClass template parameter should derive from MVKBaseObject.
+ * or must otherwise declare a virtual destroy() function.
+ *
+ * To add this mixin to a class, subclass from this mixin template class, and
+ * set the template BaseClass to the nominal parent class of the class this is
+ * being added to. For example, if MySubClass nominally inherits from MyBaseClass,
+ * this mixin can be added to MySubClass by declaring MySubClass as follows:
+ *
+ *   class MySubClass : public MVKReferenceCountingMixin<MyBaseClass>
+ *
+ * As noted, in this example, MyBaseClass should derive from MVKBaseObject,
+ * or must otherwise declare a virtual destroy() function
  */
-class MVKConfigurableObject : public MVKBaseObject {
+template <class BaseClass>
+class MVKReferenceCountingMixin : public BaseClass {
+
+public:
+
+	/**
+	 * Called when this instance has been retained as a reference by another object,
+	 * indicating that this instance will not be deleted until that reference is released.
+	 */
+	void retain() { _refCount++; }
+
+	/**
+	 * Called when this instance has been released as a reference from another object.
+	 * Once all references have been released, this object is free to be deleted.
+	 * If the destroy() function has already been called on this instance by the time
+	 * this function is called, this instance will be deleted.
+	 */
+	void release() { if (--_refCount == 0) { BaseClass::destroy(); } }
+
+	/**
+	 * Marks this instance as destroyed. If all previous references to this instance
+	 * have been released, this instance will be deleted, otherwise deletion of this
+	 * instance will automatically be deferred until all references have been released.
+	 */
+	void destroy() override { release(); }
+
+	MVKReferenceCountingMixin() : _refCount(1) {}
+
+	/** Copy starts with fresh reference counts. */
+	MVKReferenceCountingMixin(const MVKReferenceCountingMixin& other) {
+		_refCount = 1;
+	}
+
+	/** Copy starts with fresh reference counts. */
+	MVKReferenceCountingMixin& operator=(const MVKReferenceCountingMixin& other) {
+		_refCount = 1;
+		return *this;
+	}
+
+protected:
+	std::atomic<uint32_t> _refCount;
+
+};
+
+
+#pragma mark -
+#pragma mark MVKConfigurableMixin
+
+/**
+ * Mixin that can be added to a class whose instances are configured from Vulkan configuration
+ * info, and the result of which can be validated and tracked as a queriable Vulkan VkResult.
+ */
+class MVKConfigurableMixin {
 
 public:
 
 	/** Returns a indication of the success of the configuration of this instance. */
-	inline VkResult getConfigurationResult() { return _configurationResult; }
+	VkResult getConfigurationResult() { return _configurationResult; }
 
 	/** If the existing configuration result is VK_SUCCESS, it is set to the specified value. */
-    inline void setConfigurationResult(VkResult vkResult) {
-        if (_configurationResult == VK_SUCCESS) { _configurationResult = vkResult; }
-    }
+	void setConfigurationResult(VkResult vkResult) {
+		if (_configurationResult == VK_SUCCESS) { _configurationResult = vkResult; }
+	}
 
 	/** Returns whether the configuration was successful. */
-	inline bool wasConfigurationSuccessful() { return _configurationResult == VK_SUCCESS; }
+	bool wasConfigurationSuccessful() { return _configurationResult == VK_SUCCESS; }
 
-    /** Resets the indication of the success of the configuration of this instance back to VK_SUCCESS. */
-    inline void clearConfigurationResult() { _configurationResult = VK_SUCCESS; }
+	/** Resets the indication of the success of the configuration of this instance back to VK_SUCCESS. */
+	void clearConfigurationResult() { _configurationResult = VK_SUCCESS; }
 
 protected:
 	VkResult _configurationResult = VK_SUCCESS;
