@@ -79,7 +79,7 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char*
 	MVKVulkanAPIObject* mvkAPIObj = mvkObj ? mvkObj->getVulkanAPIObject() : nullptr;
 	MVKInstance* mvkInst = mvkAPIObj ? mvkAPIObj->getInstance() : nullptr;
 	bool hasDebugCallbacks = mvkInst && mvkInst->hasDebugCallbacks();
-	bool shouldLog = (aslLvl < (mvkConfig()->logLevel << 2));
+	bool shouldLog = (aslLvl < (mvkConfig().logLevel << 2));
 
 	// Fail fast to avoid further unnecessary processing.
 	if ( !(shouldLog || hasDebugCallbacks) ) { return; }

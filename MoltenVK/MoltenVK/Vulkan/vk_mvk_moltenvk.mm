@@ -53,7 +53,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetMoltenVKConfigurationMVK(
 	MVKConfiguration*                           pConfiguration,
 	size_t*                                     pConfigurationSize) {
 
-	return mvkCopy(pConfiguration, mvkConfig(), pConfigurationSize);
+	return mvkCopy(pConfiguration, &mvkConfig(), pConfigurationSize);
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
@@ -61,10 +61,10 @@ MVK_PUBLIC_SYMBOL VkResult vkSetMoltenVKConfigurationMVK(
 	const MVKConfiguration*                     pConfiguration,
 	size_t*                                     pConfigurationSize) {
 
-	// Start with current config, in case incoming is not fully copied
-	MVKConfiguration mvkCfg = *mvkConfig();
+	// Start with copy of current config, in case incoming is not fully copied
+	MVKConfiguration mvkCfg = mvkConfig();
 	VkResult rslt = mvkCopy(&mvkCfg, pConfiguration, pConfigurationSize);
-	mvkSetConfig(&mvkCfg);
+	mvkSetConfig(mvkCfg);
 	return rslt;
 }
 
@@ -99,7 +99,7 @@ MVK_PUBLIC_SYMBOL void vkGetVersionStringsMVK(
 	len = mvkVer.copy(pMoltenVersionStringBuffer, moltenVersionStringBufferLength - 1);
 	pMoltenVersionStringBuffer[len] = 0;    // terminator
 
-	string vkVer = mvkGetVulkanVersionString(mvkConfig()->apiVersionToAdvertise);
+	string vkVer = mvkGetVulkanVersionString(mvkConfig().apiVersionToAdvertise);
 	len = vkVer.copy(pVulkanVersionStringBuffer, vulkanVersionStringBufferLength - 1);
 	pVulkanVersionStringBuffer[len] = 0;    // terminator
 }

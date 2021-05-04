@@ -92,7 +92,7 @@ void MVKPipelineLayout::populateShaderConverterContext(SPIRVToMSLConversionConfi
 
 	// Add any resource bindings used by push-constants.
 	// Use VK_DESCRIPTOR_TYPE_INLINE_UNIFORM_BLOCK_EXT descriptor type as compatible with push constants in Metal.
-	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageMax; stage++) {
+	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
 		mvkPopulateShaderConverterContext(context,
 										  _pushConstantsMTLResourceIndexes.stages[stage],
 										  MVKShaderStage(stage),
@@ -149,7 +149,7 @@ MVKPipelineLayout::MVKPipelineLayout(MVKDevice* device,
 	// FIXME: Many of these are optional. We shouldn't set the ones that aren't
 	// present--or at least, we should move the ones that are down to avoid running over
 	// the limit of available buffers. But we can't know that until we compile the shaders.
-	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+	for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 		_dynamicOffsetBufferIndex.stages[i] = _pushConstantsMTLResourceIndexes.stages[i].bufferIndex + 1;
 		_bufferSizeBufferIndex.stages[i] = _dynamicOffsetBufferIndex.stages[i] + 1;
 		_swizzleBufferIndex.stages[i] = _bufferSizeBufferIndex.stages[i] + 1;
@@ -176,7 +176,7 @@ MVKPipelineLayout::~MVKPipelineLayout() {
 
 void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 	if (cmdEncoder) {
-		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageMax; i++) {
+		for (uint32_t i = kMVKShaderStageVertex; i < kMVKShaderStageCount; i++) {
 			cmdEncoder->getPushConstants(mvkVkShaderStageFlagBitsFromMVKShaderStage(MVKShaderStage(i)))->setMTLBufferIndex(_pushConstantsMTLResourceIndexes.stages[i].bufferIndex);
 		}
 	}
@@ -206,7 +206,7 @@ MVKPipeline::MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVK
 	MVKVulkanAPIDeviceObject(device),
 	_pipelineCache(pipelineCache),
 	_pushConstantsMTLResourceIndexes(layout->getPushConstantBindings()),
-	_fullImageViewSwizzle(mvkConfig()->fullImageViewSwizzle),
+	_fullImageViewSwizzle(mvkConfig().fullImageViewSwizzle),
 	_descriptorSetCount(layout->getDescriptorSetCount()) {}
 
 
@@ -1555,11 +1555,11 @@ void MVKGraphicsPipeline::initMVKShaderConverterContext(SPIRVToMSLConversionConf
 		}
 	}
 
-	shaderContext.options.mslOptions.texture_1D_as_2D = mvkConfig()->texture1DAs2D;
+	shaderContext.options.mslOptions.texture_1D_as_2D = mvkConfig().texture1DAs2D;
     shaderContext.options.mslOptions.enable_point_size_builtin = isRenderingPoints(pCreateInfo) || reflectData.pointMode;
 	shaderContext.options.mslOptions.enable_frag_depth_builtin = pixFmts->isDepthFormat(mtlDSFormat);
 	shaderContext.options.mslOptions.enable_frag_stencil_ref_builtin = pixFmts->isStencilFormat(mtlDSFormat);
-    shaderContext.options.shouldFlipVertexY = mvkConfig()->shaderConversionFlipVertexY;
+    shaderContext.options.shouldFlipVertexY = mvkConfig().shaderConversionFlipVertexY;
     shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     shaderContext.options.mslOptions.tess_domain_origin_lower_left = pTessDomainOriginState && pTessDomainOriginState->domainOrigin == VK_TESSELLATION_DOMAIN_ORIGIN_LOWER_LEFT;
     shaderContext.options.mslOptions.multiview = mvkRendPass->isMultiview();
@@ -1779,7 +1779,7 @@ MVKMTLFunction MVKComputePipeline::getMTLFunction(const VkComputePipelineCreateI
 	shaderContext.options.mslOptions.swizzle_texture_samples = _fullImageViewSwizzle && !getDevice()->_pMetalFeatures->nativeTextureSwizzle;
 	shaderContext.options.mslOptions.texture_buffer_native = _device->_pMetalFeatures->textureBuffers;
 	shaderContext.options.mslOptions.dispatch_base = _allowsDispatchBase;
-	shaderContext.options.mslOptions.texture_1D_as_2D = mvkConfig()->texture1DAs2D;
+	shaderContext.options.mslOptions.texture_1D_as_2D = mvkConfig().texture1DAs2D;
     shaderContext.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(pSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
 
 	bool useMetalArgBuff = isUsingMetalArgumentBuffers();

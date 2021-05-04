@@ -38,7 +38,7 @@ id<MTLCommandQueue> MVKQueueFamily::getMTLCommandQueue(uint32_t queueIndex) {
 	id<MTLCommandQueue> mtlQ = _mtlQueues[queueIndex];
 	if ( !mtlQ ) {
 		@autoreleasepool {		// Catch any autoreleased objects created during MTLCommandQueue creation
-			uint32_t maxCmdBuffs = mvkConfig()->maxActiveMetalCommandBuffersPerQueue;
+			uint32_t maxCmdBuffs = mvkConfig().maxActiveMetalCommandBuffersPerQueue;
 			mtlQ = [_physicalDevice->getMTLDevice() newCommandQueueWithMaxCommandBufferCount: maxCmdBuffs];		// retained
 			_mtlQueues[queueIndex] = mtlQ;
 		}
@@ -150,7 +150,7 @@ id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(bool retainRefs) {
 	if ([_mtlQueue respondsToSelector: @selector(commandBufferWithDescriptor:)]) {
 		MTLCommandBufferDescriptor* mtlCmdBuffDesc = [MTLCommandBufferDescriptor new];	// temp retain
 		mtlCmdBuffDesc.retainedReferences = retainRefs;
-		if (mvkConfig()->debugMode) {
+		if (mvkConfig().debugMode) {
 			mtlCmdBuffDesc.errorOptions |= MTLCommandBufferErrorOptionEncoderExecutionStatus;
 		}
 		id<MTLCommandBuffer> cmdBuff = [_mtlQueue commandBufferWithDescriptor: mtlCmdBuffDesc];
@@ -192,7 +192,7 @@ void MVKQueue::initName() {
 
 void MVKQueue::initExecQueue() {
 	_execQueue = nil;
-	if ( !mvkConfig()->synchronousQueueSubmits ) {
+	if ( !mvkConfig().synchronousQueueSubmits ) {
 		// Determine the dispatch queue priority
 		dispatch_qos_class_t dqQOS = MVK_DISPATCH_QUEUE_QOS_CLASS;
 		int dqPriority = (1.0 - _priority) * QOS_MIN_RELATIVE_PRIORITY;
@@ -214,9 +214,8 @@ void MVKQueue::initMTLCommandQueue() {
 void MVKQueue::initGPUCaptureScopes() {
 	_submissionCaptureScope = new MVKGPUCaptureScope(this);
 
-	const MVKConfiguration* pMVKConfig = mvkConfig();
-	if (_queueFamily->getIndex() == pMVKConfig->defaultGPUCaptureScopeQueueFamilyIndex &&
-		_index == pMVKConfig->defaultGPUCaptureScopeQueueIndex) {
+	if (_queueFamily->getIndex() == mvkConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
+		_index == mvkConfig().defaultGPUCaptureScopeQueueIndex) {
 
 		getDevice()->startAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME, _mtlQueue);
 		_submissionCaptureScope->makeDefault();
@@ -339,11 +338,11 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 					mvkDev->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
 					break;
 				default:
-					if (mvkConfig()->resumeLostDevice) { mvkDev->clearConfigurationResult(); }
+					if (mvkConfig().resumeLostDevice) { mvkDev->clearConfigurationResult(); }
 					break;
 			}
 #if MVK_XCODE_12
-			if (mvkConfig()->debugMode) {
+			if (mvkConfig().debugMode) {
 				if (&MTLCommandBufferEncoderInfoErrorKey != nullptr) {
 					if (NSArray<id<MTLCommandBufferEncoderInfo>>* mtlEncInfo = mtlCB.error.userInfo[MTLCommandBufferEncoderInfoErrorKey]) {
 						MVKLogInfo("Encoders for %p \"%s\":", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "");
@@ -362,7 +361,7 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 #endif
 		}
 #if MVK_XCODE_12
-		if (mvkConfig()->debugMode) {
+		if (mvkConfig().debugMode) {
 			bool isFirstMsg = true;
 			for (id<MTLFunctionLog> log in mtlCB.logs) {
 				if (isFirstMsg) {
@@ -476,9 +475,8 @@ id<MTLCommandBuffer> MVKQueuePresentSurfaceSubmission::getMTLCommandBuffer() {
 }
 
 void MVKQueuePresentSurfaceSubmission::stopAutoGPUCapture() {
-	const MVKConfiguration* pMVKConfig = mvkConfig();
-	if (_queue->_queueFamily->getIndex() == pMVKConfig->defaultGPUCaptureScopeQueueFamilyIndex &&
-		_queue->_index == pMVKConfig->defaultGPUCaptureScopeQueueIndex) {
+	if (_queue->_queueFamily->getIndex() == mvkConfig().defaultGPUCaptureScopeQueueFamilyIndex &&
+		_queue->_index == mvkConfig().defaultGPUCaptureScopeQueueIndex) {
 		_queue->getDevice()->stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_FRAME);
 	}
 }

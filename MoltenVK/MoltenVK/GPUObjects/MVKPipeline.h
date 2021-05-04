@@ -40,7 +40,7 @@ class MVKPipelineCache;
 #pragma mark MVKPipelineLayout
 
 struct MVKShaderImplicitRezBinding {
-	uint32_t stages[kMVKShaderStageMax];
+	uint32_t stages[kMVKShaderStageCount];
 };
 
 /** Represents a Vulkan pipeline layout. */

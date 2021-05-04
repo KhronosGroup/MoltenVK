@@ -51,7 +51,7 @@ static bool mvkIsSupportedOnPlatform(VkExtensionProperties* pProperties) {
 
 	// If the config indicates that not all supported extensions should be advertised,
 	// only advertise those supported extensions that have been specifically configured.
-	auto advExtns = mvkConfig()->advertiseExtensions;
+	auto advExtns = mvkConfig().advertiseExtensions;
 	if ( !mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_ALL) ) {
 		if (mvkIsAnyFlagEnabled(advExtns, MVK_CONFIG_ADVERTISE_EXTENSIONS_MOLTENVK)) {
 			MVK_EXTENSION_MIN_OS(MVK_MOLTENVK,                         10.11,  8.0)

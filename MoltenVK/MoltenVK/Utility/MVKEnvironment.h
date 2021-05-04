@@ -76,10 +76,10 @@
 #pragma mark Global Configuration
 
 /** Global function to access MoltenVK configuration info. */
-const MVKConfiguration* mvkConfig();
+const MVKConfiguration& mvkConfig();
 
 /** Global function to update MoltenVK configuration info. */
-void mvkSetConfig(MVKConfiguration* pMVKConfig);
+void mvkSetConfig(const MVKConfiguration& mvkConfig);
 
 /** Flip the vertex coordinate in shaders. Enabled by default. */
 #ifndef MVK_CONFIG_SHADER_CONVERSION_FLIP_VERTEX_Y
