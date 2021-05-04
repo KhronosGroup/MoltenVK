@@ -921,7 +921,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.disable_rasterization = isRasterizationDisabled(pCreateInfo);
-    addVertexInputToShaderConverterContext(shaderConfig, pCreateInfo);
+    addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pVertexSS->module)->getMTLFunction(&shaderConfig, _pVertexSS->pSpecializationInfo, _pipelineCache);
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
@@ -985,7 +985,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLComputePipelineDescriptor
 	shaderConfig.options.mslOptions.capture_output_to_buffer = true;
 	shaderConfig.options.mslOptions.vertex_for_tessellation = true;
 	shaderConfig.options.mslOptions.disable_rasterization = true;
-    addVertexInputToShaderConverterContext(shaderConfig, pCreateInfo);
+    addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
 	static const CompilerMSL::Options::IndexType indexTypes[] = {
 		CompilerMSL::Options::IndexType::None,
@@ -1052,7 +1052,7 @@ bool MVKGraphicsPipeline::addTessCtlShaderToPipeline(MTLComputePipelineDescripto
 	shaderConfig.options.mslOptions.capture_output_to_buffer = true;
 	shaderConfig.options.mslOptions.multi_patch_workgroup = true;
 	shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(_pTessCtlSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
-	addPrevStageOutputToShaderConverterContext(shaderConfig, vtxOutputs);
+	addPrevStageOutputToShaderConversionConfig(shaderConfig, vtxOutputs);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pTessCtlSS->module)->getMTLFunction(&shaderConfig, _pTessCtlSS->pSpecializationInfo, _pipelineCache);
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
@@ -1109,7 +1109,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 	shaderConfig.options.mslOptions.disable_rasterization = isRasterizationDisabled(pCreateInfo);
-	addPrevStageOutputToShaderConverterContext(shaderConfig, tcOutputs);
+	addPrevStageOutputToShaderConversionConfig(shaderConfig, tcOutputs);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pTessEvalSS->module)->getMTLFunction(&shaderConfig, _pTessEvalSS->pSpecializationInfo, _pipelineCache);
 	id<MTLFunction> mtlFunc = func.getMTLFunction();
@@ -1166,7 +1166,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		if (std::any_of(shaderOutputs.begin(), shaderOutputs.end(), [](const SPIRVShaderOutput& output) { return output.builtin == spv::BuiltInLayer; })) {
 			shaderConfig.options.mslOptions.arrayed_subpass_input = true;
 		}
-		addPrevStageOutputToShaderConverterContext(shaderConfig, shaderOutputs);
+		addPrevStageOutputToShaderConversionConfig(shaderConfig, shaderOutputs);
 
 		MVKMTLFunction func = ((MVKShaderModule*)_pFragmentSS->module)->getMTLFunction(&shaderConfig, _pFragmentSS->pSpecializationInfo, _pipelineCache);
 		id<MTLFunction> mtlFunc = func.getMTLFunction();
@@ -1578,7 +1578,7 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 }
 
 // Initializes the vertex attributes in a shader converter context.
-void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderConfig,
+void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
                                                                  const VkGraphicsPipelineCreateInfo* pCreateInfo) {
     // Set the shader context vertex attribute information
     shaderConfig.shaderInputs.clear();
@@ -1630,7 +1630,7 @@ void MVKGraphicsPipeline::addVertexInputToShaderConverterContext(SPIRVToMSLConve
 }
 
 // Initializes the shader inputs in a shader converter context from the previous stage output.
-void MVKGraphicsPipeline::addPrevStageOutputToShaderConverterContext(SPIRVToMSLConversionConfiguration& shaderConfig,
+void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
                                                                      SPIRVShaderOutputs& shaderOutputs) {
     // Set the shader context input variable information
     shaderConfig.shaderInputs.clear();
