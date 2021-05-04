@@ -169,17 +169,17 @@ void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
     }
 }
 
-void MVKDescriptorSetLayout::populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+void MVKDescriptorSetLayout::populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
                                                             MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 															uint32_t descSetIndex) {
 	uint32_t bindCnt = (uint32_t)_bindings.size();
 	for (uint32_t bindIdx = 0; bindIdx < bindCnt; bindIdx++) {
-		_bindings[bindIdx].populateShaderConverterContext(context, dslMTLRezIdxOffsets, descSetIndex);
+		_bindings[bindIdx].populateShaderConversionConfig(shaderConfig, dslMTLRezIdxOffsets, descSetIndex);
 	}
 
 	// Mark if Metal argument buffers are in use, but this descriptor set layout is not using them.
 	if (isUsingMetalArgumentBuffers() && !isUsingMetalArgumentBuffer()) {
-		context.discreteDescriptorSets.push_back(descSetIndex);
+		shaderConfig.discreteDescriptorSets.push_back(descSetIndex);
 	}
 }
 

@@ -95,7 +95,7 @@ void MVKShaderResourceBinding::addArgumentBuffers(uint32_t count) {
 	}
 }
 
-void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 									   MVKShaderStageResourceBinding& ssRB,
 									   MVKShaderStage stage,
 									   uint32_t descriptorSetIndex,
@@ -109,7 +109,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 		mvk::MSLResourceBinding rb;													\
 		auto& rbb = rb.resourceBinding;												\
 		rbb.stage = spvExecModels[stage];											\
-		rbb.basetype = SPIRV_CROSS_NAMESPACE::SPIRType::spvRezType;		\
+		rbb.basetype = SPIRV_CROSS_NAMESPACE::SPIRType::spvRezType;					\
 		rbb.desc_set = descriptorSetIndex;											\
 		rbb.binding = bindingIndex;													\
 		rbb.count = count;															\
@@ -117,7 +117,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 		rbb.msl_texture = ssRB.textureIndex;										\
 		rbb.msl_sampler = ssRB.samplerIndex;										\
 		if (immutableSampler) { immutableSampler->getConstexprSampler(rb); }		\
-		context.resourceBindings.push_back(rb);										\
+		shaderConfig.resourceBindings.push_back(rb);								\
 	} while(false)
 
 	static const spv::ExecutionModel spvExecModels[] = {
@@ -144,7 +144,7 @@ void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& c
 			db.descriptorSet = descriptorSetIndex;
 			db.binding = bindingIndex;
 			db.index = ssRB.dynamicOffsetBufferIndex;
-			context.dynamicBufferDescriptors.push_back(db);
+			shaderConfig.dynamicBufferDescriptors.push_back(db);
 			break;
 		}
 
@@ -508,7 +508,7 @@ void MVKDescriptorSetLayoutBinding::addMTLArgumentDescriptor(NSMutableArray<MTLA
 	[args addObject: argDesc];
 }
 
-void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+void MVKDescriptorSetLayoutBinding::populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
                                                                    MVKShaderResourceBinding& dslMTLRezIdxOffsets,
                                                                    uint32_t dslIndex) {
 
@@ -521,7 +521,7 @@ void MVKDescriptorSetLayoutBinding::populateShaderConverterContext(mvk::SPIRVToM
 	bool isUsingMtlArgBuff = isUsingMetalArgumentBuffer();
 	for (uint32_t stage = kMVKShaderStageVertex; stage < kMVKShaderStageCount; stage++) {
         if ((_applyToStage[stage] || isUsingMtlArgBuff) && descCnt > 0) {
-            mvkPopulateShaderConverterContext(context,
+            mvkPopulateShaderConversionConfig(shaderConfig,
                                               mtlIdxs.stages[stage],
                                               MVKShaderStage(stage),
                                               dslIndex,
