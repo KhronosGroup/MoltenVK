@@ -47,18 +47,16 @@ bool containsMatching(const vector<T>& vec, const T& val) {
 }
 
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionOptions::matches(const SPIRVToMSLConversionOptions& other) const {
+	if (memcmp(&mslOptions, &other.mslOptions, sizeof(mslOptions)) != 0) { return false; }
 	if (entryPointStage != other.entryPointStage) { return false; }
 	if (entryPointName != other.entryPointName) { return false; }
 	if (tessPatchKind != other.tessPatchKind) { return false; }
 	if (numTessControlPoints != other.numTessControlPoints) { return false; }
 	if (shouldFlipVertexY != other.shouldFlipVertexY) { return false; }
-
-	if (memcmp(&mslOptions, &other.mslOptions, sizeof(mslOptions)) != 0) { return false; }
-
 	return true;
 }
 
-MVK_PUBLIC_SYMBOL std::string SPIRVToMSLConversionOptions::printMSLVersion(uint32_t mslVersion, bool includePatch) {
+MVK_PUBLIC_SYMBOL string SPIRVToMSLConversionOptions::printMSLVersion(uint32_t mslVersion, bool includePatch) {
 	string verStr;
 
 	uint32_t major = mslVersion / 10000;
@@ -97,58 +95,35 @@ MVK_PUBLIC_SYMBOL SPIRVToMSLConversionOptions::SPIRVToMSLConversionOptions() {
 }
 
 MVK_PUBLIC_SYMBOL bool mvk::MSLShaderInput::matches(const mvk::MSLShaderInput& other) const {
-	if (shaderInput.location != other.shaderInput.location) { return false; }
-	if (shaderInput.format != other.shaderInput.format) { return false; }
-	if (shaderInput.builtin != other.shaderInput.builtin) { return false; }
-	if (shaderInput.vecsize != other.shaderInput.vecsize) { return false; }
+	if (memcmp(&shaderInput, &other.shaderInput, sizeof(shaderInput)) != 0) { return false; }
 	if (binding != other.binding) { return false; }
 	return true;
 }
 
+MVK_PUBLIC_SYMBOL mvk::MSLShaderInput::MSLShaderInput() {
+	// Explicitly set shaderInput to defaults over cleared memory to ensure all instances
+	// have exactly the same memory layout when using memory comparison in matches().
+	memset(&shaderInput, 0, sizeof(shaderInput));
+	shaderInput = SPIRV_CROSS_NAMESPACE::MSLShaderInput();
+}
+
+// If requiresConstExprSampler is false, constExprSampler can be ignored
 MVK_PUBLIC_SYMBOL bool mvk::MSLResourceBinding::matches(const MSLResourceBinding& other) const {
-	if (resourceBinding.stage != other.resourceBinding.stage) { return false; }
-	if (resourceBinding.basetype != other.resourceBinding.basetype) { return false; }
-	if (resourceBinding.desc_set != other.resourceBinding.desc_set) { return false; }
-	if (resourceBinding.binding != other.resourceBinding.binding) { return false; }
-	if (resourceBinding.count != other.resourceBinding.count) { return false; }
-	if (resourceBinding.msl_buffer != other.resourceBinding.msl_buffer) { return false; }
-	if (resourceBinding.msl_texture != other.resourceBinding.msl_texture) { return false; }
-	if (resourceBinding.msl_sampler != other.resourceBinding.msl_sampler) { return false; }
+	if (memcmp(&resourceBinding, &other.resourceBinding, sizeof(resourceBinding)) != 0) { return false; }
 	if (requiresConstExprSampler != other.requiresConstExprSampler) { return false; }
-
-	// If requiresConstExprSampler is false, constExprSampler can be ignored
 	if (requiresConstExprSampler) {
-		if (constExprSampler.coord != other.constExprSampler.coord) { return false; }
-		if (constExprSampler.min_filter != other.constExprSampler.min_filter) { return false; }
-		if (constExprSampler.mag_filter != other.constExprSampler.mag_filter) { return false; }
-		if (constExprSampler.mip_filter != other.constExprSampler.mip_filter) { return false; }
-		if (constExprSampler.s_address != other.constExprSampler.s_address) { return false; }
-		if (constExprSampler.t_address != other.constExprSampler.t_address) { return false; }
-		if (constExprSampler.r_address != other.constExprSampler.r_address) { return false; }
-		if (constExprSampler.compare_func != other.constExprSampler.compare_func) { return false; }
-		if (constExprSampler.border_color != other.constExprSampler.border_color) { return false; }
-		if (constExprSampler.lod_clamp_min != other.constExprSampler.lod_clamp_min) { return false; }
-		if (constExprSampler.lod_clamp_max != other.constExprSampler.lod_clamp_max) { return false; }
-		if (constExprSampler.max_anisotropy != other.constExprSampler.max_anisotropy) { return false; }
-
-		if (constExprSampler.planes != other.constExprSampler.planes) { return false; }
-		if (constExprSampler.resolution != other.constExprSampler.resolution) { return false; }
-		if (constExprSampler.chroma_filter != other.constExprSampler.chroma_filter) { return false; }
-		if (constExprSampler.x_chroma_offset != other.constExprSampler.x_chroma_offset) { return false; }
-		if (constExprSampler.y_chroma_offset != other.constExprSampler.y_chroma_offset) { return false; }
-		for(uint32_t i = 0; i < 4; ++i)
-			if (constExprSampler.swizzle[i] != other.constExprSampler.swizzle[i]) { return false; }
-		if (constExprSampler.ycbcr_model != other.constExprSampler.ycbcr_model) { return false; }
-		if (constExprSampler.ycbcr_range != other.constExprSampler.ycbcr_range) { return false; }
-		if (constExprSampler.bpc != other.constExprSampler.bpc) { return false; }
-
-		if (constExprSampler.compare_enable != other.constExprSampler.compare_enable) { return false; }
-		if (constExprSampler.lod_clamp_enable != other.constExprSampler.lod_clamp_enable) { return false; }
-		if (constExprSampler.anisotropy_enable != other.constExprSampler.anisotropy_enable) { return false; }
-		if (constExprSampler.ycbcr_conversion_enable != other.constExprSampler.ycbcr_conversion_enable) { return false; }
+		if (memcmp(&constExprSampler, &other.constExprSampler, sizeof(constExprSampler)) != 0) { return false; }
 	}
-
 	return true;
+}
+
+MVK_PUBLIC_SYMBOL mvk::MSLResourceBinding::MSLResourceBinding() {
+	// Explicitly set resourceBinding and constExprSampler to defaults over cleared memory to ensure
+	// all instances have exactly the same memory layout when using memory comparison in matches().
+	memset(&resourceBinding, 0, sizeof(resourceBinding));
+	resourceBinding = SPIRV_CROSS_NAMESPACE::MSLResourceBinding();
+	memset(&constExprSampler, 0, sizeof(constExprSampler));
+	constExprSampler = SPIRV_CROSS_NAMESPACE::MSLConstexprSampler();
 }
 
 MVK_PUBLIC_SYMBOL bool mvk::DescriptorBinding::matches(const mvk::DescriptorBinding& other) const {

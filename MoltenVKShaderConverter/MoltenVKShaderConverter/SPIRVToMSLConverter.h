@@ -83,6 +83,8 @@ namespace mvk {
 		 */
 		bool matches(const MSLShaderInput& other) const;
 
+		MSLShaderInput();
+
 	} MSLShaderInput;
 
 	/**
@@ -115,6 +117,8 @@ namespace mvk {
 		 * It does if all corresponding elements except outIsUsedByShader are equal.
 		 */
 		bool matches(const MSLResourceBinding& other) const;
+
+		MSLResourceBinding();
 
 	} MSLResourceBinding;
 
