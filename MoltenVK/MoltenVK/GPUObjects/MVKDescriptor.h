@@ -68,7 +68,7 @@ typedef struct MVKShaderResourceBinding {
  * If the shader stage binding has a binding defined for the specified stage, populates
  * the context at the descriptor set binding from the shader stage resource binding.
  */
-void mvkPopulateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+void mvkPopulateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 									   MVKShaderStageResourceBinding& ssRB,
 									   MVKShaderStage stage,
 									   uint32_t descriptorSetIndex,
@@ -172,7 +172,7 @@ protected:
 								  MTLDataType dataType,
 								  MTLArgumentAccess access);
 	bool isUsingMetalArgumentBuffer();
-	void populateShaderConverterContext(mvk::SPIRVToMSLConversionConfiguration& context,
+	void populateShaderConversionConfig(mvk::SPIRVToMSLConversionConfiguration& shaderConfig,
 										MVKShaderResourceBinding& dslMTLRezIdxOffsets,
 										uint32_t dslIndex);
 	bool validate(MVKSampler* mvkSampler);

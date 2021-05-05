@@ -22,6 +22,8 @@ Released TBD
 - Expose `vkGetIOSurfaceMVK()` and `vkUseIOSurfaceMVK()` without requiring _Objective-C_.
 - Support _Xcode 12.5_ build settings, build warnings, and SDK change to availability of
   `[MTLDevice supportsBCTextureCompression]` on _Mac Catalyst_.
+- Improve cache hits when matching `SPIRVToMSLConversionConfiguration` structs to each other 
+  to find a cached shader, by only considering resources from the current shader stage.
 - Rename `kMVKShaderStageMax` to `kMVKShaderStageCount`.
 - Fix internal reference from `SPIRV_CROSS_NAMESPACE_OVERRIDE` to `SPIRV_CROSS_NAMESPACE`.
 
