@@ -20,8 +20,6 @@
 
 #include "MVKBaseObject.h"
 #include <vulkan/vk_icd.h>
-#include <string>
-#include <atomic>
 
 #import <Foundation/NSString.h>
 
@@ -34,13 +32,11 @@ class MVKInstance;
 /**
  * Abstract class that represents an opaque Vulkan API handle object.
  *
- * API objects can sometimes be destroyed by the client before the GPU is done with them.
- * To support this, an object of this type will automatically be deleted iff it has been
- * destroyed by the client, and all references have been released. An object of this type
- * is therefore allowed to live past its destruction by the client, until it is no longer
- * referenced by other objects.
+ * Vulkan API objects can sometimes be destroyed by the client before the GPU is done with them.
+ * To support this, this class inherits from MVKReferenceCountingMixin to allow an instance to
+ * live past its destruction by the client, until it is no longer referenced by other objects.
  */
-class MVKVulkanAPIObject : public MVKConfigurableObject {
+class MVKVulkanAPIObject : public MVKReferenceCountingMixin<MVKBaseObject>, public MVKConfigurableMixin {
 
 public:
 
@@ -59,29 +55,8 @@ public:
 	/** Returns the Vulkan instance. */
 	virtual MVKInstance* getInstance() = 0;
 
-	/**
-	 * Called when this instance has been retained as a reference by another object,
-	 * indicating that this instance will not be deleted until that reference is released.
-	 */
-	inline void retain() { _refCount++; }
-
-	/**
-	 * Called when this instance has been released as a reference from another object.
-	 * Once all references have been released, this object is free to be deleted.
-	 * If the destroy() function has already been called on this instance by the time
-	 * this function is called, this instance will be deleted.
-	 */
-	inline void release() { if (--_refCount == 0) { MVKConfigurableObject::destroy(); } }
-
-	/**
-	 * Marks this instance as destroyed. If all previous references to this instance
-	 * have been released, this instance will be deleted, otherwise deletion of this
-	 * instance will automatically be deferred until all references have been released.
-	 */
-	void destroy() override { release(); }
-
 	/** Gets the debug object name of this instance. */
-	inline NSString* getDebugName() { return _debugName; }
+	NSString* getDebugName() { return _debugName; }
 
 	/** Sets the debug object name of this instance. */
 	VkResult setDebugName(const char* pObjectName);
@@ -92,21 +67,14 @@ public:
 	/** Returns the MVKVulkanAPIObject instance referenced by the object of the given type. */
 	static MVKVulkanAPIObject* getMVKVulkanAPIObject(VkObjectType objType, uint64_t objectHandle);
 
-	/** Construct an empty instance. Declared here to support copy constructor. */
-	MVKVulkanAPIObject() : _refCount(1) {}
-
-	/** Default copy constructor disallowed due to mutex. Copy starts with fresh reference counts. */
+	MVKVulkanAPIObject() {}
 	MVKVulkanAPIObject(const MVKVulkanAPIObject& other);
-
-	/** Default copy assignment disallowed due to mutex. Copy starts with fresh reference counts. */
 	MVKVulkanAPIObject& operator=(const MVKVulkanAPIObject& other);
-
 	~MVKVulkanAPIObject() override;
 
 protected:
 	virtual void propagateDebugName() = 0;
 
-	std::atomic<uint32_t> _refCount;
 	NSString* _debugName = nil;
 };
 
@@ -143,7 +111,7 @@ public:
 	 *
      * This is the compliment of the getVkHandle() function.
      */
-    static inline MVKDispatchableVulkanAPIObject* getDispatchableObject(void* vkHandle) {
+    static MVKDispatchableVulkanAPIObject* getDispatchableObject(void* vkHandle) {
 		return vkHandle ? ((MVKDispatchableObjectICDRef*)vkHandle)->mvkObject : nullptr;
     }
 

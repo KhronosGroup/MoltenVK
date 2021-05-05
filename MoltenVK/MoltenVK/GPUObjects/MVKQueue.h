@@ -45,10 +45,10 @@ public:
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _physicalDevice->getVulkanAPIObject(); }
 
 	/** Returns the index of this queue family. */
-	inline uint32_t getIndex() { return _queueFamilyIndex; }
+	uint32_t getIndex() { return _queueFamilyIndex; }
 
 	/** Populates the specified properties structure. */
-	inline void getProperties(VkQueueFamilyProperties* queueProperties) {
+	void getProperties(VkQueueFamilyProperties* queueProperties) {
 		if (queueProperties) { *queueProperties = _properties; }
 	}
 
@@ -98,13 +98,13 @@ public:
 	VkResult waitIdle();
 
 	/** Return the name of this queue. */
-	inline const std::string& getName() { return _name; }
+	const std::string& getName() { return _name; }
 
 
 #pragma mark Metal
 
 	/** Returns the Metal queue underlying this queue. */
-	inline id<MTLCommandQueue> getMTLCommandQueue() { return _mtlQueue; }
+	id<MTLCommandQueue> getMTLCommandQueue() { return _mtlQueue; }
 
 	/** Returns a Metal command buffer from the Metal queue. */
 	id<MTLCommandBuffer> getMTLCommandBuffer(bool retainRefs = false);
@@ -120,13 +120,13 @@ public:
      * Returns a reference to this object suitable for use as a Vulkan API handle.
      * This is the compliment of the getMVKQueue() method.
      */
-    inline VkQueue getVkQueue() { return (VkQueue)getVkHandle(); }
+    VkQueue getVkQueue() { return (VkQueue)getVkHandle(); }
 
     /**
      * Retrieves the MVKQueue instance referenced by the VkQueue handle.
      * This is the compliment of the getVkQueue() method.
      */
-    static inline MVKQueue* getMVKQueue(VkQueue vkQueue) {
+    static MVKQueue* getMVKQueue(VkQueue vkQueue) {
         return (MVKQueue*)getDispatchableObject(vkQueue);
     }
 
@@ -158,7 +158,7 @@ protected:
 #pragma mark MVKQueueSubmission
 
 /** This is an abstract class for an operation that can be submitted to an MVKQueue. */
-class MVKQueueSubmission : public MVKConfigurableObject {
+class MVKQueueSubmission : public MVKBaseObject, public MVKConfigurableMixin {
 
 public:
 
