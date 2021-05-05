@@ -361,7 +361,7 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 #endif
 		}
 #if MVK_XCODE_12
-		if (mvkConfig().debugMode) {
+		if (mvkConfig().debugMode && [mtlCB respondsToSelector: @selector(logs)]) {
 			bool isFirstMsg = true;
 			for (id<MTLFunctionLog> log in mtlCB.logs) {
 				if (isFirstMsg) {
