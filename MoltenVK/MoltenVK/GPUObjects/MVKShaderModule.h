@@ -128,13 +128,13 @@ public:
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _owner->getVulkanAPIObject(); };
 
 	/**
-	 * Returns a shader library from the specified shader context sourced from the specified shader module,
+	 * Returns a shader library from the shader conversion configuration sourced from the shader module,
 	 * lazily creating the shader library from source code in the shader module, if needed.
 	 *
 	 * If pWasAdded is not nil, this function will set it to true if a new shader library was created,
 	 * and to false if an existing shader library was found and returned.
 	 */
-	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext,
+	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
 									   MVKShaderModule* shaderModule,
 									   bool* pWasAdded = nullptr);
 
@@ -147,8 +147,8 @@ protected:
 	friend MVKPipelineCache;
 	friend MVKShaderModule;
 
-	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pContext);
-	MVKShaderLibrary* addShaderLibrary(SPIRVToMSLConversionConfiguration* pContext,
+	MVKShaderLibrary* findShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig);
+	MVKShaderLibrary* addShaderLibrary(SPIRVToMSLConversionConfiguration* pShaderConfig,
 									   const std::string& mslSourceCode,
 									   const SPIRVToMSLConversionResults& shaderConversionResults);
 	void merge(MVKShaderLibraryCache* other);
@@ -195,12 +195,12 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_SHADER_MODULE_EXT; }
 
 	/** Returns the Metal shader function, possibly specialized. */
-	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration* pContext,
+	MVKMTLFunction getMTLFunction(SPIRVToMSLConversionConfiguration* pShaderConfig,
 								  const VkSpecializationInfo* pSpecializationInfo,
 								  MVKPipelineCache* pipelineCache);
 
-	/** Convert the SPIR-V to MSL, using the specified shader conversion context. */
-	bool convert(SPIRVToMSLConversionConfiguration* pContext);
+	/** Convert the SPIR-V to MSL, using the specified shader conversion configuration. */
+	bool convert(SPIRVToMSLConversionConfiguration* pShaderConfig);
 
 	/** Returns the original SPIR-V code that was specified when this object was created. */
 	const std::vector<uint32_t>& getSPIRV() { return _spvConverter.getSPIRV(); }
@@ -228,7 +228,7 @@ protected:
 	friend MVKShaderCacheIterator;
 
 	void propagateDebugName() override {}
-	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConversionConfiguration* pContext);
+	MVKGLSLConversionShaderStage getMVKGLSLConversionShaderStage(SPIRVToMSLConversionConfiguration* pShaderConfig);
 
 	MVKShaderLibraryCache _shaderLibraryCache;
 	SPIRVToMSLConverter _spvConverter;

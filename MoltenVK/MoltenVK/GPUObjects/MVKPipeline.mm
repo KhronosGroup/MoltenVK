@@ -187,7 +187,7 @@ void MVKPipeline::bindPushConstants(MVKCommandEncoder* cmdEncoder) {
 template<typename CreateInfo>
 void MVKPipeline::addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
 										 const CreateInfo* pCreateInfo,
-										 SPIRVToMSLConversionConfiguration& context,
+										 SPIRVToMSLConversionConfiguration& shaderConfig,
 										 MVKShaderStage stage) {
 	if ( !isUsingMetalArgumentBuffers() ) { return; }
 
@@ -195,7 +195,7 @@ void MVKPipeline::addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
 	auto mtlFunc = mvkMTLFunc.getMTLFunction();
 	for (uint32_t dsIdx = 0; dsIdx < _descriptorSetCount; dsIdx++) {
 		auto* dsLayout = ((MVKPipelineLayout*)pCreateInfo->layout)->getDescriptorSetLayout(dsIdx);
-		bool descSetIsUsed = dsLayout->populateBindingUse(getDescriptorBindingUse(dsIdx, stage), context, stage, dsIdx);
+		bool descSetIsUsed = dsLayout->populateBindingUse(getDescriptorBindingUse(dsIdx, stage), shaderConfig, stage, dsIdx);
 		if (descSetIsUsed && needMTLArgEnc) {
 			getMTLArgumentEncoder(dsIdx, stage).init([mtlFunc newArgumentEncoderWithBufferIndex: dsIdx]);
 		}
@@ -1577,10 +1577,10 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
     shaderConfig.options.numTessControlPoints = reflectData.numControlPoints;
 }
 
-// Initializes the vertex attributes in a shader converter context.
+// Initializes the vertex attributes in a shader conversion configuration.
 void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
                                                                  const VkGraphicsPipelineCreateInfo* pCreateInfo) {
-    // Set the shader context vertex attribute information
+    // Set the shader conversion config vertex attribute information
     shaderConfig.shaderInputs.clear();
     uint32_t vaCnt = pCreateInfo->pVertexInputState->vertexAttributeDescriptionCount;
     for (uint32_t vaIdx = 0; vaIdx < vaCnt; vaIdx++) {
@@ -1629,10 +1629,10 @@ void MVKGraphicsPipeline::addVertexInputToShaderConversionConfig(SPIRVToMSLConve
     }
 }
 
-// Initializes the shader inputs in a shader converter context from the previous stage output.
+// Initializes the shader inputs in a shader conversion config from the previous stage output.
 void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLConversionConfiguration& shaderConfig,
                                                                      SPIRVShaderOutputs& shaderOutputs) {
-    // Set the shader context input variable information
+    // Set the shader conversion configuration input variable information
     shaderConfig.shaderInputs.clear();
     uint32_t siCnt = (uint32_t)shaderOutputs.size();
     for (uint32_t siIdx = 0; siIdx < siCnt; siIdx++) {
@@ -1828,7 +1828,7 @@ MVKComputePipeline::~MVKComputePipeline() {
 #pragma mark -
 #pragma mark MVKPipelineCache
 
-// Return a shader library from the specified shader context sourced from the specified shader module.
+// Return a shader library from the specified shader conversion configuration sourced from the specified shader module.
 MVKShaderLibrary* MVKPipelineCache::getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext, MVKShaderModule* shaderModule) {
 	lock_guard<mutex> lock(_shaderCacheLock);
 

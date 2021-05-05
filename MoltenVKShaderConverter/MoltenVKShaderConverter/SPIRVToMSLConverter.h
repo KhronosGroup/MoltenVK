@@ -171,15 +171,15 @@ namespace mvk {
 		void markAllInputsAndResourcesUsed();
 
         /**
-         * Returns whether this configuration matches the other context. It does if the
-		 * respective options match and any vertex attributes and resource bindings used
+         * Returns whether this configuration matches the other configuration. It does if
+		 * the respective options match and any vertex attributes and resource bindings used
 		 * by this configuration can be found in the other configuration. Vertex attributes
 		 * and resource bindings that are in the other configuration but are not used by
 		 * the shader that created this configuration, are ignored.
          */
         bool matches(const SPIRVToMSLConversionConfiguration& other) const;
 
-        /** Aligns certain aspects of this configuration with the source context. */
+        /** Aligns certain aspects of this configuration with the source configuration. */
         void alignWith(const SPIRVToMSLConversionConfiguration& srcContext);
 
 	} SPIRVToMSLConversionConfiguration;
@@ -274,7 +274,7 @@ namespace mvk {
          * and optionally, the original GLSL (as converted from the SPIR_V), should be logged 
          * to the result log of this converter. This can be useful during shader debugging.
 		 */
-		bool convert(SPIRVToMSLConversionConfiguration& context,
+		bool convert(SPIRVToMSLConversionConfiguration& shaderConfig,
                      bool shouldLogSPIRV = false,
                      bool shouldLogMSL = false,
                      bool shouldLogGLSL = false);

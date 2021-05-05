@@ -198,7 +198,7 @@ protected:
 	void propagateDebugName() override {}
 	template<typename CreateInfo> void addMTLArgumentEncoders(MVKMTLFunction& mvkMTLFunc,
 															  const CreateInfo* pCreateInfo,
-															  SPIRVToMSLConversionConfiguration& context,
+															  SPIRVToMSLConversionConfiguration& shaderConfig,
 															  MVKShaderStage stage);
 
 	MVKPipelineCache* _pipelineCache;
@@ -468,7 +468,7 @@ public:
 	 */
 	VkResult writeData(size_t* pDataSize, void* pData);
 
-	/** Return a shader library from the specified shader context sourced from the specified shader module. */
+	/** Return a shader library from the shader conversion configuration and sourced from the specified shader module. */
 	MVKShaderLibrary* getShaderLibrary(SPIRVToMSLConversionConfiguration* pContext, MVKShaderModule* shaderModule);
 
 	/** Merges the contents of the specified number of pipeline caches into this cache. */

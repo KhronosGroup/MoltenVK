@@ -171,6 +171,11 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConversionConfiguration::markAllInputsAndResour
 	for (auto& rb : resourceBindings) { rb.outIsUsedByShader = true; }
 }
 
+// A single SPIRVToMSLConversionConfiguration instance is used for all pipeline shader stages,
+// and the resources can be spread across these shader stages. To improve cache hits when using
+// this function to find a cached shader for a particular shader stage, only consider the resources
+// that are used in that shader stage. By contrast, discreteDescriptorSet apply across all stages,
+// and shaderInputs are populated before each stage, so neither needs to be filtered by stage here.
 MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToMSLConversionConfiguration& other) const {
 
     if ( !options.matches(other.options) ) { return false; }
@@ -180,15 +185,18 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConversionConfiguration::matches(const SPIRVToM
 	}
 
     for (const auto& rb : resourceBindings) {
-        if (rb.outIsUsedByShader && !containsMatching(other.resourceBindings, rb)) { return false; }
+        if (rb.resourceBinding.stage == options.entryPointStage &&
+			rb.outIsUsedByShader &&
+			!containsMatching(other.resourceBindings, rb)) { return false; }
     }
+
+	for (const auto& db : dynamicBufferDescriptors) {
+		if (db.stage == options.entryPointStage &&
+			!containsMatching(other.dynamicBufferDescriptors, db)) { return false; }
+	}
 
 	for (uint32_t dsIdx : discreteDescriptorSets) {
 		if ( !contains(other.discreteDescriptorSets, dsIdx)) { return false; }
-	}
-
-	for (const auto& db : dynamicBufferDescriptors) {
-		if ( !containsMatching(other.dynamicBufferDescriptors, db)) { return false; }
 	}
 
     return true;
@@ -226,7 +234,7 @@ MVK_PUBLIC_SYMBOL void SPIRVToMSLConverter::setSPIRV(const uint32_t* spirvCode, 
 	}
 }
 
-MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfiguration& context,
+MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfiguration& shaderConfig,
 													bool shouldLogSPIRV,
 													bool shouldLogMSL,
                                                     bool shouldLogGLSL) {
@@ -250,36 +258,36 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 #endif
 		pMSLCompiler = new CompilerMSL(_spirv);
 
-		if (context.options.hasEntryPoint()) {
-			pMSLCompiler->set_entry_point(context.options.entryPointName, context.options.entryPointStage);
+		if (shaderConfig.options.hasEntryPoint()) {
+			pMSLCompiler->set_entry_point(shaderConfig.options.entryPointName, shaderConfig.options.entryPointStage);
 		}
 
 		// Set up tessellation parameters if needed.
-		if (context.options.entryPointStage == ExecutionModelTessellationControl ||
-			context.options.entryPointStage == ExecutionModelTessellationEvaluation) {
-			if (context.options.tessPatchKind != ExecutionModeMax) {
-				pMSLCompiler->set_execution_mode(context.options.tessPatchKind);
+		if (shaderConfig.options.entryPointStage == ExecutionModelTessellationControl ||
+			shaderConfig.options.entryPointStage == ExecutionModelTessellationEvaluation) {
+			if (shaderConfig.options.tessPatchKind != ExecutionModeMax) {
+				pMSLCompiler->set_execution_mode(shaderConfig.options.tessPatchKind);
 			}
-			if (context.options.numTessControlPoints != 0) {
-				pMSLCompiler->set_execution_mode(ExecutionModeOutputVertices, context.options.numTessControlPoints);
+			if (shaderConfig.options.numTessControlPoints != 0) {
+				pMSLCompiler->set_execution_mode(ExecutionModeOutputVertices, shaderConfig.options.numTessControlPoints);
 			}
 		}
 
 		// Establish the MSL options for the compiler
 		// This needs to be done in two steps...for CompilerMSL and its superclass.
-		pMSLCompiler->set_msl_options(context.options.mslOptions);
+		pMSLCompiler->set_msl_options(shaderConfig.options.mslOptions);
 
 		auto scOpts = pMSLCompiler->get_common_options();
-		scOpts.vertex.flip_vert_y = context.options.shouldFlipVertexY;
+		scOpts.vertex.flip_vert_y = shaderConfig.options.shouldFlipVertexY;
 		pMSLCompiler->set_common_options(scOpts);
 
 		// Add shader inputs
-		for (auto& si : context.shaderInputs) {
+		for (auto& si : shaderConfig.shaderInputs) {
 			pMSLCompiler->add_msl_shader_input(si.shaderInput);
 		}
 
 		// Add resource bindings and hardcoded constexpr samplers
-		for (auto& rb : context.resourceBindings) {
+		for (auto& rb : shaderConfig.resourceBindings) {
 			auto& rbb = rb.resourceBinding;
 			pMSLCompiler->add_msl_resource_binding(rbb);
 
@@ -290,15 +298,15 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 		// Add any descriptor sets that are not using Metal argument buffers.
 		// This only has an effect if SPIRVToMSLConversionConfiguration::options::mslOptions::argument_buffers is enabled.
-		for (uint32_t dsIdx : context.discreteDescriptorSets) {
+		for (uint32_t dsIdx : shaderConfig.discreteDescriptorSets) {
 			pMSLCompiler->add_discrete_descriptor_set(dsIdx);
 		}
 
 		// Add any dynamic buffer bindings.
 		// This only has an applies if SPIRVToMSLConversionConfiguration::options::mslOptions::argument_buffers is enabled.
-		if (context.options.mslOptions.argument_buffers) {
-			for (auto& db : context.dynamicBufferDescriptors) {
-				if (db.stage == context.options.entryPointStage) {
+		if (shaderConfig.options.mslOptions.argument_buffers) {
+			for (auto& db : shaderConfig.dynamicBufferDescriptors) {
+				if (db.stage == shaderConfig.options.entryPointStage) {
 					pMSLCompiler->add_dynamic_buffer(db.descriptorSet, db.binding, db.index);
 				}
 			}
@@ -321,7 +329,7 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 
 	// Populate the shader conversion results with info from the compilation run,
 	// and mark which vertex attributes and resource bindings are used by the shader
-	populateEntryPoint(pMSLCompiler, context.options);
+	populateEntryPoint(pMSLCompiler, shaderConfig.options);
 	_shaderConversionResults.isRasterizationDisabled = pMSLCompiler && pMSLCompiler->get_is_rasterization_disabled();
 	_shaderConversionResults.isPositionInvariant = pMSLCompiler && pMSLCompiler->is_position_invariant();
 	_shaderConversionResults.needsSwizzleBuffer = pMSLCompiler && pMSLCompiler->needs_swizzle_buffer();
@@ -335,19 +343,19 @@ MVK_PUBLIC_SYMBOL bool SPIRVToMSLConverter::convert(SPIRVToMSLConversionConfigur
 	// When using Metal argument buffers, if the shader is provided with dynamic buffer offsets,
 	// then it needs a buffer to hold these dynamic offsets.
 	_shaderConversionResults.needsDynamicOffsetBuffer = false;
-	if (context.options.mslOptions.argument_buffers) {
-		for (auto& db : context.dynamicBufferDescriptors) {
-			if (db.stage == context.options.entryPointStage) {
+	if (shaderConfig.options.mslOptions.argument_buffers) {
+		for (auto& db : shaderConfig.dynamicBufferDescriptors) {
+			if (db.stage == shaderConfig.options.entryPointStage) {
 				_shaderConversionResults.needsDynamicOffsetBuffer = true;
 			}
 		}
 	}
 
-	for (auto& ctxSI : context.shaderInputs) {
+	for (auto& ctxSI : shaderConfig.shaderInputs) {
 		ctxSI.outIsUsedByShader = pMSLCompiler->is_msl_shader_input_used(ctxSI.shaderInput.location);
 	}
-	for (auto& ctxRB : context.resourceBindings) {
-		if (ctxRB.resourceBinding.stage == context.options.entryPointStage) {
+	for (auto& ctxRB : shaderConfig.resourceBindings) {
+		if (ctxRB.resourceBinding.stage == shaderConfig.options.entryPointStage) {
 			ctxRB.outIsUsedByShader = pMSLCompiler->is_msl_resource_binding_used(ctxRB.resourceBinding.stage,
 																				 ctxRB.resourceBinding.desc_set,
 																				 ctxRB.resourceBinding.binding);
