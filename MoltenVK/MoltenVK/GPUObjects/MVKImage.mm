@@ -44,6 +44,7 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
 
         MTLTextureDescriptor* mtlTexDesc = newMTLTextureDescriptor();    // temp retain
         MVKImageMemoryBinding* memoryBinding = getMemoryBinding();
+		MVKDeviceMemory* dvcMem = memoryBinding->_deviceMemory;
 
         if (_image->_ioSurface) {
             _mtlTexture = [_image->getMTLDevice()
@@ -55,19 +56,19 @@ id<MTLTexture> MVKImagePlane::getMTLTexture() {
                            newTextureWithDescriptor: mtlTexDesc
                            offset: memoryBinding->_mtlTexelBufferOffset + _subresources[0].layout.offset
                            bytesPerRow: _subresources[0].layout.rowPitch];
-        } else if (memoryBinding->_deviceMemory->getMTLHeap() && !_image->getIsDepthStencil()) {
+        } else if (dvcMem && dvcMem->getMTLHeap() && !_image->getIsDepthStencil()) {
             // Metal support for depth/stencil from heaps is flaky
-            _mtlTexture = [memoryBinding->_deviceMemory->getMTLHeap()
+            _mtlTexture = [dvcMem->getMTLHeap()
                            newTextureWithDescriptor: mtlTexDesc
                            offset: memoryBinding->getDeviceMemoryOffset() + _subresources[0].layout.offset];
             if (_image->_isAliasable) { [_mtlTexture makeAliasable]; }
-        } else if (_image->_isAliasable && memoryBinding->_deviceMemory->isDedicatedAllocation() &&
-            !contains(memoryBinding->_deviceMemory->_imageMemoryBindings, memoryBinding)) {
+        } else if (_image->_isAliasable && dvcMem && dvcMem->isDedicatedAllocation() &&
+            !contains(dvcMem->_imageMemoryBindings, memoryBinding)) {
             // This is a dedicated allocation, but it belongs to another aliasable image.
             // In this case, use the MTLTexture from the memory's dedicated image.
             // We know the other image must be aliasable, or I couldn't have been bound
             // to its memory: the memory object wouldn't allow it.
-            _mtlTexture = [memoryBinding->_deviceMemory->_imageMemoryBindings[0]->_image->getMTLTexture(_planeIndex, mtlTexDesc.pixelFormat) retain];
+            _mtlTexture = [dvcMem->_imageMemoryBindings[0]->_image->getMTLTexture(_planeIndex, mtlTexDesc.pixelFormat) retain];
         } else {
             _mtlTexture = [_image->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];
         }
