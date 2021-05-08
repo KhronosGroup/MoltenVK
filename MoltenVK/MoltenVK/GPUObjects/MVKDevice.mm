@@ -2024,7 +2024,7 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();
 
     _properties.limits.pointSizeRange[0] = 1;
-    _properties.limits.pointSizeRange[1] = 511;
+    _properties.limits.pointSizeRange[1] = 64;
     _properties.limits.pointSizeGranularity = 1;
     _properties.limits.lineWidthRange[0] = 1;
     _properties.limits.lineWidthRange[1] = 1;
