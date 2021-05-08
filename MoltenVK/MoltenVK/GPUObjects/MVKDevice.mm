@@ -1854,7 +1854,7 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.maxStorageBufferRange = (uint32_t)min(_metalFeatures.maxMTLBufferSize, (VkDeviceSize)std::numeric_limits<uint32_t>::max());
 	_properties.limits.maxPushConstantsSize = (4 * KIBI);
 
-    _properties.limits.minMemoryMapAlignment = _metalFeatures.mtlBufferAlignment;
+    _properties.limits.minMemoryMapAlignment = max(_metalFeatures.mtlBufferAlignment, (VkDeviceSize)64);	// Vulkan spec requires MIN of 64
     _properties.limits.minUniformBufferOffsetAlignment = _metalFeatures.mtlBufferAlignment;
     _properties.limits.minStorageBufferOffsetAlignment = 16;
     _properties.limits.bufferImageGranularity = _metalFeatures.mtlBufferAlignment;
@@ -2028,7 +2028,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.pointSizeGranularity = 1;
     _properties.limits.lineWidthRange[0] = 1;
     _properties.limits.lineWidthRange[1] = 1;
-    _properties.limits.lineWidthGranularity = 1;
+    _properties.limits.lineWidthGranularity = 0;
 
     _properties.limits.standardSampleLocations = VK_TRUE;
     _properties.limits.strictLines = _properties.vendorID == kIntelVendorId || _properties.vendorID == kNVVendorId;
@@ -2062,7 +2062,11 @@ void MVKPhysicalDevice::initLimits() {
 		_properties.limits.maxComputeSharedMemorySize = (32 * KIBI);
 #endif
 	}
-	_properties.limits.maxSamplerLodBias = 0;	// Bias not supported in API, but can be applied in shader directly.
+
+	// Max sum of API and shader values. Bias not supported in API, but can be applied in shader directly.
+	// The lack of API value is covered by VkPhysicalDevicePortabilitySubsetFeaturesKHR::samplerMipLodBias.
+	// Metal does not specify limit for shader value, so choose something reasonable.
+	_properties.limits.maxSamplerLodBias = 4;
 
     _properties.limits.minTexelOffset = -8;
     _properties.limits.maxTexelOffset = 7;
