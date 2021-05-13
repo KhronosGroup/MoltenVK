@@ -695,7 +695,6 @@ public:
     /** Returns the number of planes if this is a ycbcr conversion or 0 otherwise. */
     inline uint8_t getPlaneCount() { return (_ycbcrConversion) ? _ycbcrConversion->getPlaneCount() : 0; }
 
-
 	/**
 	 * If this sampler requires hardcoding in MSL, populates the hardcoded sampler in the resource binding.
 	 * Returns whether this sampler requires hardcoding in MSL, and the constant sampler was populated.
@@ -704,6 +703,9 @@ public:
 
 	/** Returns whether this sampler must be implemented as a hardcoded constant sampler in the shader MSL code. */
 	inline 	bool getRequiresConstExprSampler() { return _requiresConstExprSampler; }
+
+	/** Returns the Metal MTLSamplerAddressMode corresponding to the specified Vulkan VkSamplerAddressMode. */
+	MTLSamplerAddressMode getMTLSamplerAddressMode(VkSamplerAddressMode vkMode);
 
 	MVKSampler(MVKDevice* device, const VkSamplerCreateInfo* pCreateInfo);
 
