@@ -1909,16 +1909,29 @@ bool MVKSampler::getConstexprSampler(mvk::MSLResourceBinding& resourceBinding) {
 	return _requiresConstExprSampler;
 }
 
+// Ensure available Metal features.
+MTLSamplerAddressMode MVKSampler::getMTLSamplerAddressMode(VkSamplerAddressMode vkMode) {
+	if ((vkMode == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER && !_device->_pMetalFeatures->samplerClampToBorder) ||
+		(vkMode == VK_SAMPLER_ADDRESS_MODE_MIRROR_CLAMP_TO_EDGE && !_device->_pMetalFeatures->samplerMirrorClampToEdge)) {
+		return MTLSamplerAddressModeClampToZero;
+	}
+	return mvkMTLSamplerAddressModeFromVkSamplerAddressMode(vkMode);
+}
+
 // Returns an Metal sampler descriptor constructed from the properties of this image.
 // It is the caller's responsibility to release the returned descriptor object.
 MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateInfo* pCreateInfo) {
 
 	MTLSamplerDescriptor* mtlSampDesc = [MTLSamplerDescriptor new];		// retained
-	mtlSampDesc.sAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeU);
-	mtlSampDesc.tAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeV);
+	mtlSampDesc.sAddressMode = getMTLSamplerAddressMode(pCreateInfo->addressModeU);
+	mtlSampDesc.tAddressMode = getMTLSamplerAddressMode(pCreateInfo->addressModeV);
     if (!pCreateInfo->unnormalizedCoordinates) {
-        mtlSampDesc.rAddressMode = mvkMTLSamplerAddressModeFromVkSamplerAddressMode(pCreateInfo->addressModeW);
+        mtlSampDesc.rAddressMode = getMTLSamplerAddressMode(pCreateInfo->addressModeW);
     }
+#if MVK_MACOS_OR_IOS
+	mtlSampDesc.borderColorMVK = mvkMTLSamplerBorderColorFromVkBorderColor(pCreateInfo->borderColor);
+#endif
+
 	mtlSampDesc.minFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->minFilter);
 	mtlSampDesc.magFilter = mvkMTLSamplerMinMagFilterFromVkFilter(pCreateInfo->magFilter);
     mtlSampDesc.mipFilter = (pCreateInfo->unnormalizedCoordinates
@@ -1940,20 +1953,6 @@ MTLSamplerDescriptor* MVKSampler::newMTLSamplerDescriptor(const VkSamplerCreateI
 		mtlSampDesc.compareFunctionMVK = mvkMTLCompareFunctionFromVkCompareOp(pCreateInfo->compareOp);
 	}
 
-#if MVK_MACOS_OR_IOS
-	mtlSampDesc.borderColorMVK = mvkMTLSamplerBorderColorFromVkBorderColor(pCreateInfo->borderColor);
-	if (getPhysicalDevice()->getMetalFeatures()->samplerClampToBorder) {
-		if (pCreateInfo->addressModeU == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER) {
-			mtlSampDesc.sAddressMode = MTLSamplerAddressModeClampToBorderColor;
-		}
-		if (pCreateInfo->addressModeV == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER) {
-			mtlSampDesc.tAddressMode = MTLSamplerAddressModeClampToBorderColor;
-		}
-		if (pCreateInfo->addressModeW == VK_SAMPLER_ADDRESS_MODE_CLAMP_TO_BORDER) {
-			mtlSampDesc.rAddressMode = MTLSamplerAddressModeClampToBorderColor;
-		}
-	}
-#endif
 	return mtlSampDesc;
 }
 
