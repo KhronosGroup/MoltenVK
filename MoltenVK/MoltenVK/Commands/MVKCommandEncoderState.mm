@@ -488,27 +488,28 @@ void MVKResourcesCommandEncoderState::bindDescriptorSet(uint32_t descSetIndex,
 void MVKResourcesCommandEncoderState::encodeMetalArgumentBuffer(MVKShaderStage stage) {
 	if ( !_cmdEncoder->isUsingMetalArgumentBuffers() ) { return; }
 
-	// The Metal arg encoder can only write to one arg buffer at a time (it holds the arg buffer),
-	// so we need to lock out other access to it while we are writing to it.
-	MVKPipeline* pipeline = getPipeline();
-	lock_guard<mutex> lock(pipeline->_mtlArgumentEncodingLock);
+	bool useDescSetArgBuff = _cmdEncoder->isUsingDescriptorSetMetalArgumentBuffers();
 
+	MVKPipeline* pipeline = getPipeline();
 	uint32_t dsCnt = pipeline->getDescriptorSetCount();
 	for (uint32_t dsIdx = 0; dsIdx < dsCnt; dsIdx++) {
 		auto* descSet = _boundDescriptorSets[dsIdx];
 		if ( !descSet ) { continue; }
 
-		id<MTLArgumentEncoder> mtlArgEncoder = nil;
+		auto* dsLayout = descSet->getLayout();
+
+		// The Metal arg encoder can only write to one arg buffer at a time (it holds the arg buffer),
+		// so we need to lock out other access to it while we are writing to it.
+		auto& mvkArgEnc = useDescSetArgBuff ? dsLayout->getMTLArgumentEncoder() : pipeline->getMTLArgumentEncoder(dsIdx, stage);
+		lock_guard<mutex> lock(mvkArgEnc.mtlArgumentEncodingLock);
+
 		id<MTLBuffer> mtlArgBuffer = nil;
 		NSUInteger metalArgBufferOffset = 0;
-
-		auto* dsLayout = descSet->getLayout();
-		if (dsLayout->isUsingDescriptorSetMetalArgumentBuffers()) {
-			mtlArgEncoder = dsLayout->getMTLArgumentEncoder().getMTLArgumentEncoder();
+		id<MTLArgumentEncoder> mtlArgEncoder = mvkArgEnc.getMTLArgumentEncoder();
+		if (useDescSetArgBuff) {
 			mtlArgBuffer = descSet->getMetalArgumentBuffer();
 			metalArgBufferOffset = descSet->getMetalArgumentBufferOffset();
 		} else {
-			mtlArgEncoder = pipeline->getMTLArgumentEncoder(dsIdx, stage).getMTLArgumentEncoder();
 			// TODO: Source a different arg buffer & offset for each pipeline-stage/desccriptors set
 			// Also need to only encode the descriptors that are referenced in the shader.
 			// MVKMTLArgumentEncoder could include an MVKBitArray to track that and have it checked below.
