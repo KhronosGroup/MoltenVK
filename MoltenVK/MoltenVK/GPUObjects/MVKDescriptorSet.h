@@ -34,8 +34,13 @@ class MVKResourcesCommandEncoderState;
 #pragma mark -
 #pragma mark MVKDescriptorSetLayout
 
-/** Holds and manages the lifecycle of a MTLArgumentEncoder. The encoder can only be set once. */
+/**
+ * Holds and manages the lifecycle of a MTLArgumentEncoder. The encoder can
+ * only be set once, and copying this object results in an uninitialized
+ * empty object, since mutex and MTLArgumentEncoder can/should not be copied.
+ */
 struct MVKMTLArgumentEncoder {
+	std::mutex mtlArgumentEncodingLock;
 	NSUInteger mtlArgumentEncoderSize = 0;
 
 	id<MTLArgumentEncoder> getMTLArgumentEncoder() { return _mtlArgumentEncoder; }
@@ -44,6 +49,10 @@ struct MVKMTLArgumentEncoder {
 		_mtlArgumentEncoder = mtlArgEnc;		// takes ownership
 		mtlArgumentEncoderSize = mtlArgEnc.encodedLength;
 	}
+
+	MVKMTLArgumentEncoder(const MVKMTLArgumentEncoder& other) {}
+	MVKMTLArgumentEncoder& operator=(const MVKMTLArgumentEncoder& other) { return *this; }
+	MVKMTLArgumentEncoder() {}
 	~MVKMTLArgumentEncoder() { [_mtlArgumentEncoder release]; }
 
 private:

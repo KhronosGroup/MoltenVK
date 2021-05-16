@@ -188,9 +188,6 @@ public:
 	/** Returns the number of descriptor sets in this pipeline layout. */
 	uint32_t getDescriptorSetCount() { return _descriptorSetCount; }
 
-	/** A mutex lock to protect access to the Metal argument encoders. */
-	std::mutex _mtlArgumentEncodingLock;
-
 	/** Constructs an instance for the device. layout, and parent (which may be NULL). */
 	MVKPipeline(MVKDevice* device, MVKPipelineCache* pipelineCache, MVKPipelineLayout* layout, MVKPipeline* parent);
 
