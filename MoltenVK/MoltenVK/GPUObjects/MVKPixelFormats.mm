@@ -2072,13 +2072,11 @@ void MVKPixelFormats::setFormatProperties(MVKVkFormatDesc& vkDesc) {
 		// Linear tiling can support atomic writing for some formats, even though optimal tiling does not.
 		enableFormatFeatures(Atomic, Tex, mtlPixFmtCaps, vkProps.linearTilingFeatures);
 
-#if MVK_MACOS
-		// On IMR GPUs, linear textures cannot be used as attachments, so disable those features.
-		if (![mtlDev respondsToSelector: @selector(supportsFamily:)] || ![mtlDev supportsFamily: MTLGPUFamilyApple5]) {
-			mvkDisableFlags(vkProps.linearTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
-														   kMVKVkFormatFeatureFlagsTexDSAtt |
-														   kMVKVkFormatFeatureFlagsTexBlend));
-		}
+#if !MVK_APPLE_SILICON
+		// On macOS IMR GPUs, linear textures cannot be used as attachments, so disable those features.
+		mvkDisableFlags(vkProps.linearTilingFeatures, (kMVKVkFormatFeatureFlagsTexColorAtt |
+													   kMVKVkFormatFeatureFlagsTexDSAtt |
+													   kMVKVkFormatFeatureFlagsTexBlend));
 #endif
 	}
 
