@@ -610,8 +610,8 @@ VkResult MVKPhysicalDevice::getImageFormatProperties(VkFormat format,
 				if (mvkFmt == kMVKFormatDepthStencil || mvkFmt == kMVKFormatCompressed || isBGRG) {
 					return VK_ERROR_FORMAT_NOT_SUPPORTED;
 				}
-#if MVK_MACOS
-				// - On macOS, Linear textures may not be used as framebuffer attachments.
+#if !MVK_APPLE_SILICON
+				// - On macOS IMR GPUs, Linear textures may not be used as framebuffer attachments.
 				if (hasAttachmentUsage) { return VK_ERROR_FORMAT_NOT_SUPPORTED; }
 #endif
 				// Linear textures may only have one mip level, layer & sample.
