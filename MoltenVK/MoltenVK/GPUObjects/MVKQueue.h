@@ -195,6 +195,8 @@ public:
 
 	MVKQueueCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence);
 
+	~MVKQueueCommandBufferSubmission() override;
+
 protected:
 	friend MVKCommandBuffer;
 

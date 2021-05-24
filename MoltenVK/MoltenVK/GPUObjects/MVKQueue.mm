@@ -139,10 +139,14 @@ VkResult MVKQueue::waitIdle() {
 		.flags = 0,
 	};
 
-	MVKFence mvkFence(_device, &vkFenceInfo);
-	VkFence fence = (VkFence)&mvkFence;
-	submit(0, nullptr, fence);
-	return mvkWaitForFences(_device, 1, &fence, false);
+	// The MVKFence is retained by the command submission, and may outlive this function while
+	// the command submission finishes, so we can't allocate MVKFence locally on the stack.
+	MVKFence* mvkFence = new MVKFence(_device, &vkFenceInfo);
+	VkFence vkFence = (VkFence)mvkFence;
+	submit(0, nullptr, vkFence);
+	VkResult rslt = mvkWaitForFences(_device, 1, &vkFence, false);
+	mvkFence->destroy();
+	return rslt;
 }
 
 id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(bool retainRefs) {
@@ -399,6 +403,9 @@ void MVKQueueCommandBufferSubmission::finish() {
 	this->destroy();
 }
 
+// On device loss, the fence and signal semaphores may be signalled early, and they might then
+// be destroyed on the waiting thread before this submission is done with them. We therefore
+// retain() each here to ensure they live long enough for this submission to finish using them.
 MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue,
 																 const VkSubmitInfo* pSubmit,
 																 VkFence fence)
@@ -427,18 +434,26 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
         }
         uint32_t ssCnt = pSubmit->signalSemaphoreCount;
         _signalSemaphores.reserve(ssCnt);
-        for (uint32_t i = 0; i < ssCnt; i++) {
-			auto ss = make_pair((MVKSemaphore*)pSubmit->pSignalSemaphores[i], (uint64_t)0);
-            if (pTimelineSubmit) { ss.second = pTimelineSubmit->pSignalSemaphoreValues[i]; }
-            _signalSemaphores.push_back(ss);
-        }
+		for (uint32_t i = 0; i < ssCnt; i++) {
+			auto* sem4 = (MVKSemaphore*)pSubmit->pSignalSemaphores[i];
+			sem4->retain();
+			uint64_t sem4Val = pTimelineSubmit ? pTimelineSubmit->pSignalSemaphoreValues[i] : 0;
+			_signalSemaphores.emplace_back(sem4, sem4Val);
+		}
     }
 
 	_fence = (MVKFence*)fence;
+	if (_fence) { _fence->retain(); }
+
 	_activeMTLCommandBuffer = nil;
 
 //	static std::atomic<uint32_t> _subCount;
 //	MVKLogDebug("Creating submission %p. Submission count %u.", this, ++_subCount);
+}
+
+MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
+	if (_fence) { _fence->release(); }
+	for (auto s : _signalSemaphores) { s.first->release(); }
 }
 
 
