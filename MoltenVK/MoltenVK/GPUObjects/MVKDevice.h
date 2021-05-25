@@ -447,8 +447,8 @@ public:
 	/** Block the current thread until all queues in this device are idle. */
 	VkResult waitIdle();
 	
-	/** Mark this device as lost. Releases all waits for this device. */
-	VkResult markLost();
+	/** Mark this device (and optionally the physical device) as lost. Releases all waits for this device. */
+	VkResult markLost(bool alsoMarkPhysicalDevice = false);
 
 	/** Returns whether or not the given descriptor set layout is supported. */
 	void getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,

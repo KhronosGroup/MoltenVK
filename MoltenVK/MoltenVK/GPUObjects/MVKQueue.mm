@@ -330,19 +330,21 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	uint64_t startTime = mvkDev->getPerformanceTimestamp();
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
 		if (mtlCB.status == MTLCommandBufferStatusError) {
-			getVulkanAPIObject()->reportError(mvkDev->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
-			// Some errors indicate we lost the physical device as well.
+			// If a command buffer error has occurred, report the error. If the error affects
+			// the physical device, always mark both the device and physical device as lost.
+			// If the error is local to this command buffer, optionally mark the device (but not the
+			// physical device) as lost, depending on the value of MVKConfiguration::resumeLostDevice.
+			getVulkanAPIObject()->reportError(VK_ERROR_DEVICE_LOST, "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
 			switch (mtlCB.error.code) {
 				case MTLCommandBufferErrorBlacklisted:
-				// XXX This may also be used for command buffers executed in the background without the right entitlement.
-				case MTLCommandBufferErrorNotPermitted:
+				case MTLCommandBufferErrorNotPermitted:	// May also be used for command buffers executed in the background without the right entitlement.
 #if MVK_MACOS && !MVK_MACCAT
 				case MTLCommandBufferErrorDeviceRemoved:
 #endif
-					mvkDev->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
+					mvkDev->markLost(true);
 					break;
 				default:
-					if (mvkConfig().resumeLostDevice) { mvkDev->clearConfigurationResult(); }
+					if ( !mvkConfig().resumeLostDevice ) { mvkDev->markLost(); }
 					break;
 			}
 #if MVK_XCODE_12
