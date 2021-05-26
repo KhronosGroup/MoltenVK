@@ -27,6 +27,9 @@ Released TBD
 - Rename `kMVKShaderStageMax` to `kMVKShaderStageCount`.
 - Fix crash when requesting `MTLCommandBuffer` logs in runtime debug mode on older OS versions.
 - Fix synchronization issue with locking `MTLArgumentEncoder` for Metal Argument Buffers.
+- Fix race condition on submission fence during device loss.
+- On command buffer submission failure, if `MVKConfiguration::resumeLostDevice` enabled,  do not release 
+  waits on `VkDevice`, and do not return `VK_ERROR_DEVICE_LOST`, unless `VkPhysicalDevice` is also lost.
 - Fix inconsistent handling of linear attachment decisions on Apple Silicon.
 - Protect against crash when retrieving `MTLTexture` when `VkImage` has no `VkDeviceMemory` bound.
 - Adjust some `VkPhysicalDeviceLimits` values for Vulkan and Metal compliance. 

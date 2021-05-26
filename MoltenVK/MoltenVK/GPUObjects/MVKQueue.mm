@@ -139,10 +139,14 @@ VkResult MVKQueue::waitIdle() {
 		.flags = 0,
 	};
 
-	MVKFence mvkFence(_device, &vkFenceInfo);
-	VkFence fence = (VkFence)&mvkFence;
-	submit(0, nullptr, fence);
-	return mvkWaitForFences(_device, 1, &fence, false);
+	// The MVKFence is retained by the command submission, and may outlive this function while
+	// the command submission finishes, so we can't allocate MVKFence locally on the stack.
+	MVKFence* mvkFence = new MVKFence(_device, &vkFenceInfo);
+	VkFence vkFence = (VkFence)mvkFence;
+	submit(0, nullptr, vkFence);
+	VkResult rslt = mvkWaitForFences(_device, 1, &vkFence, false);
+	mvkFence->destroy();
+	return rslt;
 }
 
 id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(bool retainRefs) {
@@ -326,19 +330,21 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	uint64_t startTime = mvkDev->getPerformanceTimestamp();
 	[mtlCmdBuff addCompletedHandler: ^(id<MTLCommandBuffer> mtlCB) {
 		if (mtlCB.status == MTLCommandBufferStatusError) {
-			getVulkanAPIObject()->reportError(mvkDev->markLost(), "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
-			// Some errors indicate we lost the physical device as well.
+			// If a command buffer error has occurred, report the error. If the error affects
+			// the physical device, always mark both the device and physical device as lost.
+			// If the error is local to this command buffer, optionally mark the device (but not the
+			// physical device) as lost, depending on the value of MVKConfiguration::resumeLostDevice.
+			getVulkanAPIObject()->reportError(VK_ERROR_DEVICE_LOST, "Command buffer %p \"%s\" execution failed (code %li): %s", mtlCB, mtlCB.label ? mtlCB.label.UTF8String : "", mtlCB.error.code, mtlCB.error.localizedDescription.UTF8String);
 			switch (mtlCB.error.code) {
 				case MTLCommandBufferErrorBlacklisted:
-				// XXX This may also be used for command buffers executed in the background without the right entitlement.
-				case MTLCommandBufferErrorNotPermitted:
+				case MTLCommandBufferErrorNotPermitted:	// May also be used for command buffers executed in the background without the right entitlement.
 #if MVK_MACOS && !MVK_MACCAT
 				case MTLCommandBufferErrorDeviceRemoved:
 #endif
-					mvkDev->getPhysicalDevice()->setConfigurationResult(VK_ERROR_DEVICE_LOST);
+					mvkDev->markLost(true);
 					break;
 				default:
-					if (mvkConfig().resumeLostDevice) { mvkDev->clearConfigurationResult(); }
+					if ( !mvkConfig().resumeLostDevice ) { mvkDev->markLost(); }
 					break;
 			}
 #if MVK_XCODE_12
@@ -399,6 +405,9 @@ void MVKQueueCommandBufferSubmission::finish() {
 	this->destroy();
 }
 
+// On device loss, the fence and signal semaphores may be signalled early, and they might then
+// be destroyed on the waiting thread before this submission is done with them. We therefore
+// retain() each here to ensure they live long enough for this submission to finish using them.
 MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue,
 																 const VkSubmitInfo* pSubmit,
 																 VkFence fence)
@@ -427,18 +436,26 @@ MVKQueueCommandBufferSubmission::MVKQueueCommandBufferSubmission(MVKQueue* queue
         }
         uint32_t ssCnt = pSubmit->signalSemaphoreCount;
         _signalSemaphores.reserve(ssCnt);
-        for (uint32_t i = 0; i < ssCnt; i++) {
-			auto ss = make_pair((MVKSemaphore*)pSubmit->pSignalSemaphores[i], (uint64_t)0);
-            if (pTimelineSubmit) { ss.second = pTimelineSubmit->pSignalSemaphoreValues[i]; }
-            _signalSemaphores.push_back(ss);
-        }
+		for (uint32_t i = 0; i < ssCnt; i++) {
+			auto* sem4 = (MVKSemaphore*)pSubmit->pSignalSemaphores[i];
+			sem4->retain();
+			uint64_t sem4Val = pTimelineSubmit ? pTimelineSubmit->pSignalSemaphoreValues[i] : 0;
+			_signalSemaphores.emplace_back(sem4, sem4Val);
+		}
     }
 
 	_fence = (MVKFence*)fence;
+	if (_fence) { _fence->retain(); }
+
 	_activeMTLCommandBuffer = nil;
 
 //	static std::atomic<uint32_t> _subCount;
 //	MVKLogDebug("Creating submission %p. Submission count %u.", this, ++_subCount);
+}
+
+MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
+	if (_fence) { _fence->release(); }
+	for (auto s : _signalSemaphores) { s.first->release(); }
 }
 
 

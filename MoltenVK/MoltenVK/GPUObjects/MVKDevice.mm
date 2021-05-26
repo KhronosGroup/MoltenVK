@@ -2861,9 +2861,12 @@ VkResult MVKDevice::waitIdle() {
 	return VK_SUCCESS;
 }
 
-VkResult MVKDevice::markLost() {
+VkResult MVKDevice::markLost(bool alsoMarkPhysicalDevice) {
 	lock_guard<mutex> lock(_sem4Lock);
+
 	setConfigurationResult(VK_ERROR_DEVICE_LOST);
+	if (alsoMarkPhysicalDevice) { _physicalDevice->setConfigurationResult(VK_ERROR_DEVICE_LOST); }
+
 	for (auto* sem4 : _awaitingSemaphores) {
 		sem4->release();
 	}
@@ -2874,7 +2877,8 @@ VkResult MVKDevice::markLost() {
 	}
 	_awaitingSemaphores.clear();
 	_awaitingTimelineSem4s.clear();
-	return VK_ERROR_DEVICE_LOST;
+
+	return getConfigurationResult();
 }
 
 void MVKDevice::getDescriptorSetLayoutSupport(const VkDescriptorSetLayoutCreateInfo* pCreateInfo,
