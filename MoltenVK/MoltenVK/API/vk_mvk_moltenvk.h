@@ -780,7 +780,7 @@ typedef struct {
 	 * Controls whether MoltenVK should treat a lost VkDevice as resumable, unless the
 	 * corresponding VkPhysicalDevice has also been lost. The VK_ERROR_DEVICE_LOST error has
 	 * a broad definitional range, and can mean anything from a GPU hiccup on the current
-	 * command buffer submission, to a phyisically removed GPU. In the case where this error does
+	 * command buffer submission, to a physically removed GPU. In the case where this error does
 	 * not impact the VkPhysicalDevice, Vulkan requires that the app destroy and re-create a new
 	 * VkDevice. However, not all apps (including CTS) respect that requirement, leading to what
 	 * might be a transient command submission failure causing an unexpected catastophic app failure.
