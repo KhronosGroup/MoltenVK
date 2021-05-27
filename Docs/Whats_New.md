@@ -4,7 +4,7 @@
 
 
 
-#What's New in MoltenVK
+# What's New in MoltenVK
 
 Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
@@ -166,7 +166,7 @@ Released 2021/02/22
 MoltenVK 1.1.1
 --------------
 
-Released 2010/12/09
+Released 2020/12/09
 
 - Add support for extensions:
 	- `VK_KHR_sampler_mirror_clamp_to_edge` (iOS)
