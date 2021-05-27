@@ -64,7 +64,7 @@ and *Mac Catalyst* on *macOS 11.0+*.
 *Vulkan*, which uses *SPIR-V*. **MoltenVK** automatically converts your *SPIR-V* shaders 
 to their *MSL* equivalents.
 
-To provide *Vulkan* capability to the*macOS*, *iOS*, and *tvOS* platforms, **MoltenVK** uses 
+To provide *Vulkan* capability to the *macOS*, *iOS*, and *tvOS* platforms, **MoltenVK** uses 
 *Apple's* publicly available API's, including *Metal*. **MoltenVK** does **_not_** use any 
 private or undocumented API calls or features, so your app will be compatible with all 
 standard distribution channels, including *Apple's App Store*.
@@ -449,7 +449,7 @@ This section discusses various options for improving performance when using **Mo
 <a name="shader_load_time"></a>
 ### Shader Loading Time
 
-A number of steps is require to load and compile *SPIR-V* shaders into a form that *Metal* can use. 
+A number of steps is required to load and compile *SPIR-V* shaders into a form that *Metal* can use. 
 Although the overall process is fast, the slowest step involves converting shaders from *SPIR-V* to
 *MSL* source code format.
 
