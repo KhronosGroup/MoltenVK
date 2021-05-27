@@ -792,48 +792,61 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
 #pragma mark -
 #pragma mark Support functions
 
+NSString* mvkMTLCommandBufferLabel(MVKCommandUse cmdUse) {
+	switch (cmdUse) {
+		case kMVKCommandUseEndCommandBuffer:                return @"vkEndCommandBuffer (Prefilled) CommandBuffer";
+		case kMVKCommandUseQueueSubmit:                     return @"vkQueueSubmit CommandBuffer";
+		case kMVKCommandUseQueuePresent:                    return @"vkQueuePresentKHR CommandBuffer";
+		case kMVKCommandUseQueueWaitIdle:                   return @"vkQueueWaitIdle CommandBuffer";
+		case kMVKCommandUseDeviceWaitIdle:                  return @"vkDeviceWaitIdle CommandBuffer";
+		case kMVKCommandUseAcquireNextImage:                return @"vkAcquireNextImageKHR CommandBuffer";
+		case kMVKCommandUseInvalidateMappedMemoryRanges:    return @"vkInvalidateMappedMemoryRanges CommandBuffer";
+		default:                                            return @"Unknown Use CommandBuffer";
+	}
+}
+
 NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse) {
     switch (cmdUse) {
-        case kMVKCommandUseBeginRenderPass:         return @"vkCmdBeginRenderPass RenderEncoder";
-        case kMVKCommandUseNextSubpass:             return @"vkCmdNextSubpass RenderEncoder";
-        case kMVKCommandUseBlitImage:               return @"vkCmdBlitImage RenderEncoder";
-        case kMVKCommandUseResolveImage:            return @"vkCmdResolveImage (resolve stage) RenderEncoder";
-        case kMVKCommandUseResolveExpandImage:      return @"vkCmdResolveImage (expand stage) RenderEncoder";
-        case kMVKCommandUseClearColorImage:         return @"vkCmdClearColorImage RenderEncoder";
-        case kMVKCommandUseClearDepthStencilImage:  return @"vkCmdClearDepthStencilImage RenderEncoder";
-        default:                                    return @"Unknown Use RenderEncoder";
+        case kMVKCommandUseBeginRenderPass:                 return @"vkCmdBeginRenderPass RenderEncoder";
+        case kMVKCommandUseNextSubpass:                     return @"vkCmdNextSubpass RenderEncoder";
+        case kMVKCommandUseBlitImage:                       return @"vkCmdBlitImage RenderEncoder";
+        case kMVKCommandUseResolveImage:                    return @"vkCmdResolveImage (resolve stage) RenderEncoder";
+        case kMVKCommandUseResolveExpandImage:              return @"vkCmdResolveImage (expand stage) RenderEncoder";
+        case kMVKCommandUseClearColorImage:                 return @"vkCmdClearColorImage RenderEncoder";
+        case kMVKCommandUseClearDepthStencilImage:          return @"vkCmdClearDepthStencilImage RenderEncoder";
+        default:                                            return @"Unknown Use RenderEncoder";
     }
 }
 
 NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse) {
     switch (cmdUse) {
-        case kMVKCommandUsePipelineBarrier:     return @"vkCmdPipelineBarrier BlitEncoder";
-        case kMVKCommandUseCopyImage:           return @"vkCmdCopyImage BlitEncoder";
-        case kMVKCommandUseResolveCopyImage:    return @"vkCmdResolveImage (copy stage) RenderEncoder";
-        case kMVKCommandUseCopyBuffer:          return @"vkCmdCopyBuffer BlitEncoder";
-        case kMVKCommandUseCopyBufferToImage:   return @"vkCmdCopyBufferToImage BlitEncoder";
-        case kMVKCommandUseCopyImageToBuffer:   return @"vkCmdCopyImageToBuffer BlitEncoder";
-        case kMVKCommandUseFillBuffer:          return @"vkCmdFillBuffer BlitEncoder";
-        case kMVKCommandUseUpdateBuffer:        return @"vkCmdUpdateBuffer BlitEncoder";
-        case kMVKCommandUseResetQueryPool:      return @"vkCmdResetQueryPool BlitEncoder";
-        case kMVKCommandUseCopyQueryPoolResults:return @"vkCmdCopyQueryPoolResults BlitEncoder";
-        default:                                return @"Unknown Use BlitEncoder";
+        case kMVKCommandUsePipelineBarrier:                 return @"vkCmdPipelineBarrier BlitEncoder";
+        case kMVKCommandUseCopyImage:                       return @"vkCmdCopyImage BlitEncoder";
+        case kMVKCommandUseResolveCopyImage:                return @"vkCmdResolveImage (copy stage) RenderEncoder";
+        case kMVKCommandUseCopyBuffer:                      return @"vkCmdCopyBuffer BlitEncoder";
+        case kMVKCommandUseCopyBufferToImage:               return @"vkCmdCopyBufferToImage BlitEncoder";
+        case kMVKCommandUseCopyImageToBuffer:               return @"vkCmdCopyImageToBuffer BlitEncoder";
+        case kMVKCommandUseFillBuffer:                      return @"vkCmdFillBuffer BlitEncoder";
+        case kMVKCommandUseUpdateBuffer:                    return @"vkCmdUpdateBuffer BlitEncoder";
+        case kMVKCommandUseResetQueryPool:                  return @"vkCmdResetQueryPool BlitEncoder";
+        case kMVKCommandUseCopyQueryPoolResults:            return @"vkCmdCopyQueryPoolResults BlitEncoder";
+        default:                                            return @"Unknown Use BlitEncoder";
     }
 }
 
 NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
     switch (cmdUse) {
-        case kMVKCommandUseDispatch:            return @"vkCmdDispatch ComputeEncoder";
-        case kMVKCommandUseCopyBuffer:          return @"vkCmdCopyBuffer ComputeEncoder";
-        case kMVKCommandUseCopyBufferToImage:   return @"vkCmdCopyBufferToImage ComputeEncoder";
-        case kMVKCommandUseCopyImageToBuffer:   return @"vkCmdCopyImageToBuffer ComputeEncoder";
-        case kMVKCommandUseFillBuffer:          return @"vkCmdFillBuffer ComputeEncoder";
-        case kMVKCommandUseClearColorImage:     return @"vkCmdClearColorImage ComputeEncoder";
-        case kMVKCommandUseTessellationVertexTessCtl: return @"vkCmdDraw (vertex and tess control stages) ComputeEncoder";
-        case kMVKCommandUseMultiviewInstanceCountAdjust: return @"vkCmdDraw (multiview instance count adjustment) ComputeEncoder";
-        case kMVKCommandUseCopyQueryPoolResults:return @"vkCmdCopyQueryPoolResults ComputeEncoder";
-        case kMVKCommandUseAccumOcclusionQuery: return @"Post-render-pass occlusion query accumulation ComputeEncoder";
-        default:                                return @"Unknown Use ComputeEncoder";
+        case kMVKCommandUseDispatch:                        return @"vkCmdDispatch ComputeEncoder";
+        case kMVKCommandUseCopyBuffer:                      return @"vkCmdCopyBuffer ComputeEncoder";
+        case kMVKCommandUseCopyBufferToImage:               return @"vkCmdCopyBufferToImage ComputeEncoder";
+        case kMVKCommandUseCopyImageToBuffer:               return @"vkCmdCopyImageToBuffer ComputeEncoder";
+        case kMVKCommandUseFillBuffer:                      return @"vkCmdFillBuffer ComputeEncoder";
+        case kMVKCommandUseClearColorImage:                 return @"vkCmdClearColorImage ComputeEncoder";
+        case kMVKCommandUseTessellationVertexTessCtl:       return @"vkCmdDraw (vertex and tess control stages) ComputeEncoder";
+        case kMVKCommandUseMultiviewInstanceCountAdjust:    return @"vkCmdDraw (multiview instance count adjustment) ComputeEncoder";
+        case kMVKCommandUseCopyQueryPoolResults:            return @"vkCmdCopyQueryPoolResults ComputeEncoder";
+        case kMVKCommandUseAccumOcclusionQuery:             return @"Post-render-pass occlusion query accumulation ComputeEncoder";
+        default:                                            return @"Unknown Use ComputeEncoder";
     }
 }
 

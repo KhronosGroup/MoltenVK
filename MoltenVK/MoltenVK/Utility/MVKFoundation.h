@@ -63,32 +63,35 @@ typedef struct {
 
 /** Tracks the Vulkan command currently being used. */
 typedef enum : uint8_t {
-    kMVKCommandUseNone,                     /**< No use defined. */
-    kMVKCommandUseQueueSubmit,              /**< vkQueueSubmit. */
-    kMVKCommandUseQueuePresent,             /**< vkQueuePresentKHR. */
-    kMVKCommandUseQueueWaitIdle,            /**< vkQueueWaitIdle. */
-    kMVKCommandUseDeviceWaitIdle,           /**< vkDeviceWaitIdle. */
-    kMVKCommandUseBeginRenderPass,          /**< vkCmdBeginRenderPass. */
-    kMVKCommandUseNextSubpass,              /**< vkCmdNextSubpass. */
-    kMVKCommandUsePipelineBarrier,          /**< vkCmdPipelineBarrier. */
-    kMVKCommandUseBlitImage,                /**< vkCmdBlitImage. */
-    kMVKCommandUseCopyImage,                /**< vkCmdCopyImage. */
-    kMVKCommandUseResolveImage,             /**< vkCmdResolveImage - resolve stage. */
-    kMVKCommandUseResolveExpandImage,       /**< vkCmdResolveImage - expand stage. */
-    kMVKCommandUseResolveCopyImage,         /**< vkCmdResolveImage - copy stage. */
-    kMVKCommandUseCopyBuffer,               /**< vkCmdCopyBuffer. */
-    kMVKCommandUseCopyBufferToImage,        /**< vkCmdCopyBufferToImage. */
-    kMVKCommandUseCopyImageToBuffer,        /**< vkCmdCopyImageToBuffer. */
-    kMVKCommandUseFillBuffer,               /**< vkCmdFillBuffer. */
-    kMVKCommandUseUpdateBuffer,             /**< vkCmdUpdateBuffer. */
-    kMVKCommandUseClearColorImage,          /**< vkCmdClearColorImage. */
-    kMVKCommandUseClearDepthStencilImage,   /**< vkCmdClearDepthStencilImage. */
-    kMVKCommandUseResetQueryPool,           /**< vkCmdResetQueryPool. */
-    kMVKCommandUseDispatch,                 /**< vkCmdDispatch. */
-    kMVKCommandUseTessellationVertexTessCtl,/**< vkCmdDraw* - vertex and tessellation control stages. */
-	kMVKCommandUseMultiviewInstanceCountAdjust,/**< vkCmdDrawIndirect* - adjust instance count for multiview. */
-    kMVKCommandUseCopyQueryPoolResults,     /**< vkCmdCopyQueryPoolResults. */
-    kMVKCommandUseAccumOcclusionQuery       /**< Any command terminating a Metal render pass with active visibility buffer. */
+    kMVKCommandUseNone,                         /**< No use defined. */
+	kMVKCommandUseEndCommandBuffer,             /**< vkEndCommandBuffer (prefilled VkCommandBuffer). */
+    kMVKCommandUseQueueSubmit,                  /**< vkQueueSubmit. */
+	kMVKCommandUseAcquireNextImage,             /**< vkAcquireNextImageKHR. */
+    kMVKCommandUseQueuePresent,                 /**< vkQueuePresentKHR. */
+    kMVKCommandUseQueueWaitIdle,                /**< vkQueueWaitIdle. */
+    kMVKCommandUseDeviceWaitIdle,               /**< vkDeviceWaitIdle. */
+	kMVKCommandUseInvalidateMappedMemoryRanges, /**< vkInvalidateMappedMemoryRanges. */
+    kMVKCommandUseBeginRenderPass,              /**< vkCmdBeginRenderPass. */
+    kMVKCommandUseNextSubpass,                  /**< vkCmdNextSubpass. */
+    kMVKCommandUsePipelineBarrier,              /**< vkCmdPipelineBarrier. */
+    kMVKCommandUseBlitImage,                    /**< vkCmdBlitImage. */
+    kMVKCommandUseCopyImage,                    /**< vkCmdCopyImage. */
+    kMVKCommandUseResolveImage,                 /**< vkCmdResolveImage - resolve stage. */
+    kMVKCommandUseResolveExpandImage,           /**< vkCmdResolveImage - expand stage. */
+    kMVKCommandUseResolveCopyImage,             /**< vkCmdResolveImage - copy stage. */
+    kMVKCommandUseCopyBuffer,                   /**< vkCmdCopyBuffer. */
+    kMVKCommandUseCopyBufferToImage,            /**< vkCmdCopyBufferToImage. */
+    kMVKCommandUseCopyImageToBuffer,            /**< vkCmdCopyImageToBuffer. */
+    kMVKCommandUseFillBuffer,                   /**< vkCmdFillBuffer. */
+    kMVKCommandUseUpdateBuffer,                 /**< vkCmdUpdateBuffer. */
+    kMVKCommandUseClearColorImage,              /**< vkCmdClearColorImage. */
+    kMVKCommandUseClearDepthStencilImage,       /**< vkCmdClearDepthStencilImage. */
+    kMVKCommandUseResetQueryPool,               /**< vkCmdResetQueryPool. */
+    kMVKCommandUseDispatch,                     /**< vkCmdDispatch. */
+    kMVKCommandUseTessellationVertexTessCtl,    /**< vkCmdDraw* - vertex and tessellation control stages. */
+	kMVKCommandUseMultiviewInstanceCountAdjust, /**< vkCmdDrawIndirect* - adjust instance count for multiview. */
+    kMVKCommandUseCopyQueryPoolResults,         /**< vkCmdCopyQueryPoolResults. */
+    kMVKCommandUseAccumOcclusionQuery           /**< Any command terminating a Metal render pass with active visibility buffer. */
 } MVKCommandUse;
 
 /** Represents a given stage of a graphics pipeline. */
