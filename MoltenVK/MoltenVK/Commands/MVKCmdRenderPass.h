@@ -50,6 +50,7 @@ protected:
 	MVKFramebuffer* _framebuffer;
 	VkRect2D _renderArea;
 	VkSubpassContents _contents;
+	MVKSmallVector<MVKImageView*, 8> _imagelessAttachments;
 };
 
 

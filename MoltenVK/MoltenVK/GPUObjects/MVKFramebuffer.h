@@ -45,6 +45,7 @@ public:
 	/** Returns the attachment at the specified index.  */
 	inline MVKImageView* getAttachment(uint32_t index) { return _attachments[index]; }
 
+	inline bool getImageless() { return _imageless; }
 
 #pragma mark Construction
 
@@ -57,5 +58,7 @@ protected:
 	VkExtent2D _extent;
 	uint32_t _layerCount;
 	MVKSmallVector<MVKImageView*, 4> _attachments;
+	bool _imageless;
+	MVKSmallVector<MVKImageView*, 4> _imagelessAttachments;
 };
 

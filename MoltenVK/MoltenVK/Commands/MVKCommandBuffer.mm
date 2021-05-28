@@ -288,13 +288,17 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 										MVKRenderPass* renderPass,
 										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
-										MVKArrayRef<VkClearValue> clearValues) {
+										MVKArrayRef<VkClearValue> clearValues,
+										MVKArrayRef<MVKImageView*> imagelessAttachments) {
 	_renderPass = renderPass;
 	_framebuffer = framebuffer;
 	_renderArea = renderArea;
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebuffer->getExtent2D()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
+	for(auto* v : imagelessAttachments) {
+		_imagelessAttachments.push_back(v);
+	}
 	setSubpass(passCmd, subpassContents, 0);
 }
 
@@ -334,7 +338,7 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
     endCurrentMetalEncoding();
 
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-    getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _multiviewPassIndex, _framebuffer, _clearValues.contents(), _isRenderingEntireAttachment, loadOverride);
+	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _multiviewPassIndex, _framebuffer, _imagelessAttachments.contents(), _clearValues.contents(), _isRenderingEntireAttachment, loadOverride);
     if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
         if (!_visibilityResultMTLBuffer) {
             _visibilityResultMTLBuffer = getTempMTLBuffer(_pDeviceMetalFeatures->maxQueryBufferSize, true, true);
@@ -393,7 +397,10 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
 }
 
 void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {
-	getSubpass()->encodeStoreActions(this, _isRenderingEntireAttachment, storeOverride);
+	getSubpass()->encodeStoreActions(this,
+									 _isRenderingEntireAttachment,
+									 _imagelessAttachments.contents(),
+									 storeOverride);
 }
 
 MVKRenderSubpass* MVKCommandEncoder::getSubpass() { return _renderPass->getSubpass(_renderSubpassIndex); }

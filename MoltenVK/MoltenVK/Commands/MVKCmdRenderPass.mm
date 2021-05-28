@@ -36,6 +36,20 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 	_framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
 	_renderArea = pRenderPassBegin->renderArea;
 
+	for (auto* next = (const VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+		case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
+			const auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
+			for(uint32_t i = 0; i < pAttachmentBegin->attachmentCount; i++) {
+				_imagelessAttachments.push_back((MVKImageView*)pAttachmentBegin->pAttachments[i]);
+			}
+			break;
+		}
+		default:
+ 			break;
+		}
+	}
+
 	return VK_SUCCESS;
 }
 
@@ -70,7 +84,7 @@ VkResult MVKCmdBeginRenderPass<N>::setContent(MVKCommandBuffer* cmdBuff,
 template <size_t N>
 void MVKCmdBeginRenderPass<N>::encode(MVKCommandEncoder* cmdEncoder) {
 //	MVKLogDebug("Encoding vkCmdBeginRenderPass(). Elapsed time: %.6f ms.", mvkGetElapsedMilliseconds());
-	cmdEncoder->beginRenderpass(this, _contents, _renderPass, _framebuffer, _renderArea, _clearValues.contents());
+	cmdEncoder->beginRenderpass(this, _contents, _renderPass, _framebuffer, _renderArea, _clearValues.contents(), _imagelessAttachments.contents());
 }
 
 template class MVKCmdBeginRenderPass<1>;

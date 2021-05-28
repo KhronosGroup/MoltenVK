@@ -273,6 +273,7 @@ In addition to core *Vulkan* functionality, **MoltenVK**  also supports the foll
 - `VK_KHR_get_memory_requirements2`
 - `VK_KHR_get_physical_device_properties2`
 - `VK_KHR_get_surface_capabilities2`
+- `VK_KHR_imageless_framebuffer`
 - `VK_KHR_image_format_list`
 - `VK_KHR_maintenance1`
 - `VK_KHR_maintenance2`

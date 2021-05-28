@@ -738,6 +738,7 @@ public:
 	const VkPhysicalDeviceTexelBufferAlignmentFeaturesEXT _enabledTexelBuffAlignFeatures;
 	const VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT _enabledVtxAttrDivFeatures;
 	const VkPhysicalDevicePortabilitySubsetFeaturesKHR _enabledPortabilityFeatures;
+	const VkPhysicalDeviceImagelessFramebufferFeaturesKHR _enabledImagelessFramebufferFeatures;
 
 	/** The list of Vulkan extensions, indicating whether each has been enabled by the app for this device. */
 	const MVKExtensionList _enabledExtensions;

@@ -275,7 +275,8 @@ public:
 						 MVKRenderPass* renderPass,
 						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
-						 MVKArrayRef<VkClearValue> clearValues);
+						 MVKArrayRef<VkClearValue> clearValues,
+						 MVKArrayRef<MVKImageView*> imageless_attachments);
 
 	/** Begins the next render subpass. */
 	void beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents renderpassContents);
@@ -494,6 +495,7 @@ protected:
 	VkRect2D _renderArea;
     MVKActivatedQueries* _pActivatedQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
+	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _imagelessAttachments;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	MVKCommandUse _mtlComputeEncoderUse;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
