@@ -296,9 +296,7 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebuffer->getExtent2D()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
-	for(auto* v : imagelessAttachments) {
-		_imagelessAttachments.push_back(v);
-	}
+	_imagelessAttachments.assign(imagelessAttachments.begin(), imagelessAttachments.end());
 	setSubpass(passCmd, subpassContents, 0);
 }
 
@@ -843,4 +841,3 @@ NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
         default:                                return @"Unknown Use ComputeEncoder";
     }
 }
-
