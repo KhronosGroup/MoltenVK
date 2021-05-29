@@ -20,7 +20,6 @@
 #include "MVKCommandPool.h"
 #include "MVKQueue.h"
 #include "MVKPipeline.h"
-#include "MVKFramebuffer.h"
 #include "MVKQueryPool.h"
 #include "MVKFoundation.h"
 #include "MTLRenderPassDescriptor+MoltenVK.h"
@@ -286,17 +285,21 @@ void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
 void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 										VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
-										MVKFramebuffer* framebuffer,
+										VkExtent2D framebufferExtent,
+										uint32_t framebufferLayerCount,
 										VkRect2D& renderArea,
 										MVKArrayRef<VkClearValue> clearValues,
-										MVKArrayRef<MVKImageView*> imagelessAttachments) {
+										MVKArrayRef<MVKImageView*> attachments) {
 	_renderPass = renderPass;
-	_framebuffer = framebuffer;
+	_framebufferExtent = framebufferExtent;
+	_framebufferLayerCount = framebufferLayerCount;
 	_renderArea = renderArea;
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
-									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebuffer->getExtent2D()));
+									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebufferExtent));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
-	_imagelessAttachments.assign(imagelessAttachments.begin(), imagelessAttachments.end());
+	for(auto* v : attachments) {
+		_attachments.push_back(v);
+	}
 	setSubpass(passCmd, subpassContents, 0);
 }
 
@@ -336,7 +339,14 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
     endCurrentMetalEncoding();
 
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, _multiviewPassIndex, _framebuffer, _imagelessAttachments.contents(), _clearValues.contents(), _isRenderingEntireAttachment, loadOverride);
+	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, 
+												  _multiviewPassIndex,
+												  _framebufferExtent,
+												  _framebufferLayerCount,
+												  _attachments.contents(),
+												  _clearValues.contents(),
+												  _isRenderingEntireAttachment,
+												  loadOverride);
     if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
         if (!_visibilityResultMTLBuffer) {
             _visibilityResultMTLBuffer = getTempMTLBuffer(_pDeviceMetalFeatures->maxQueryBufferSize, true, true);
@@ -344,7 +354,7 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
         mtlRPDesc.visibilityResultBuffer = _visibilityResultMTLBuffer->_mtlBuffer;
     }
 
-    VkExtent2D fbExtent = _framebuffer->getExtent2D();
+	VkExtent2D fbExtent = _framebufferExtent;
     mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
     mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);
     if (_canUseLayeredRendering) {
@@ -364,9 +374,9 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
         if (getSubpass()->isMultiview()) {
             // In the case of a multiview pass, the framebuffer layer count will be one.
             // We need to use the view count for this multiview pass.
-            renderTargetArrayLength = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
+			renderTargetArrayLength = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
         } else {
-            renderTargetArrayLength = _framebuffer->getLayerCount();
+			renderTargetArrayLength = _framebufferLayerCount;
         }
         // Metal does not allow layered render passes where some RTs are 3D and others are 2D.
         if (!(found3D && found2D) || renderTargetArrayLength > 1) {
@@ -397,7 +407,7 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
 void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {
 	getSubpass()->encodeStoreActions(this,
 									 _isRenderingEntireAttachment,
-									 _imagelessAttachments.contents(),
+									 _attachments.contents(),
 									 storeOverride);
 }
 
@@ -513,7 +523,7 @@ void MVKCommandEncoder::clearRenderArea() {
 		VkClearRect clearRect;
 		clearRect.rect = _renderArea;
 		clearRect.baseArrayLayer = 0;
-		clearRect.layerCount = _framebuffer->getLayerCount();
+		clearRect.layerCount = _framebufferLayerCount;
 
 		// Create and execute a temporary clear attachments command.
 		// To be threadsafe...do NOT acquire and return the command from the pool.
@@ -560,7 +570,7 @@ void MVKCommandEncoder::endRenderpass() {
 	endMetalRenderEncoding();
 
 	_renderPass = nullptr;
-	_framebuffer = nullptr;
+	_attachments.clear();
 	_renderSubpassIndex = 0;
 }
 

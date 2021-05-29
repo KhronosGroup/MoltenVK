@@ -28,11 +28,7 @@ MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
     _extent = { .width = pCreateInfo->width, .height = pCreateInfo->height };
 	_layerCount = pCreateInfo->layers;
 
-	if (pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR) {
-		_imageless = true;
-	}
-	else {
-		_imageless = false;
+	if (!(pCreateInfo->flags & VK_FRAMEBUFFER_CREATE_IMAGELESS_BIT_KHR)) {
 		// Add attachments
 		_attachments.reserve(pCreateInfo->attachmentCount);
 		for (uint32_t i = 0; i < pCreateInfo->attachmentCount; i++) {

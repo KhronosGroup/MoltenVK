@@ -50,7 +50,6 @@ protected:
 	MVKFramebuffer* _framebuffer;
 	VkRect2D _renderArea;
 	VkSubpassContents _contents;
-	MVKSmallVector<MVKImageView*, 8> _imagelessAttachments;
 };
 
 
@@ -61,7 +60,7 @@ protected:
  * Vulkan command to begin a render pass.
  * Template class to balance vector pre-allocations between very common low counts and fewer larger counts.
  */
-template <size_t N>
+template <size_t N_CV, size_t N_A>
 class MVKCmdBeginRenderPass : public MVKCmdBeginRenderPassBase {
 
 public:
@@ -77,13 +76,22 @@ public:
 protected:
 	MVKCommandTypePool<MVKCommand>* getTypePool(MVKCommandPool* cmdPool) override;
 
-	MVKSmallVector<VkClearValue, N> _clearValues;
+	MVKSmallVector<VkClearValue, N_CV> _clearValues;
+    MVKSmallVector<MVKImageView*, N_A> _attachments;
 };
 
 // Concrete template class implementations.
-typedef MVKCmdBeginRenderPass<1> MVKCmdBeginRenderPass1;
-typedef MVKCmdBeginRenderPass<2> MVKCmdBeginRenderPass2;
-typedef MVKCmdBeginRenderPass<9> MVKCmdBeginRenderPassMulti;
+typedef MVKCmdBeginRenderPass<1, 0> MVKCmdBeginRenderPass10;
+typedef MVKCmdBeginRenderPass<2, 0> MVKCmdBeginRenderPass20;
+typedef MVKCmdBeginRenderPass<9, 0> MVKCmdBeginRenderPassMulti0;
+
+typedef MVKCmdBeginRenderPass<1, 1> MVKCmdBeginRenderPass11;
+typedef MVKCmdBeginRenderPass<2, 1> MVKCmdBeginRenderPass21;
+typedef MVKCmdBeginRenderPass<9, 1> MVKCmdBeginRenderPassMulti1;
+
+typedef MVKCmdBeginRenderPass<1, 8> MVKCmdBeginRenderPass1Multi;
+typedef MVKCmdBeginRenderPass<2, 8> MVKCmdBeginRenderPass2Multi;
+typedef MVKCmdBeginRenderPass<9, 8> MVKCmdBeginRenderPassMultiMulti;
 
 
 #pragma mark -

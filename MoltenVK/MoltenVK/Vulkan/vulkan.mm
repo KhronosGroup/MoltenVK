@@ -131,6 +131,29 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 		MVKAddCmd(baseCmdType ##Multi, vkCmdBuff, ##__VA_ARGS__);											\
 	}
 
+// Add one of nine commands, based on comparing a command parameter against four threshold values
+#define MVKAddCmdFrom4Thresholds(baseCmdType, value1, arg1Threshold1, arg1Threshold2,           \
+								 value2, arg2Threshold1, arg2Threshold2, vkCmdBuff, ...)	    \
+	if (value1 <= arg1Threshold1 && value2 <= arg2Threshold1) {									\
+		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold1, vkCmdBuff, ##__VA_ARGS__);	\
+	} else if (value1 <= arg1Threshold2 && value2 <= arg2Threshold1) {								\
+		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold1, vkCmdBuff, ##__VA_ARGS__);    \
+	} else if (value1 > arg1Threshold2 && value2 <= arg2Threshold1) {                           \
+		MVKAddCmd(baseCmdType ##Multi ##arg2Threshold1, vkCmdBuff, ##__VA_ARGS__);	            \
+	} else if (value1 <= arg1Threshold1 && value2 <= arg2Threshold2) {                          \
+		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold2, vkCmdBuff, ##__VA_ARGS__);    \
+	} else if (value1 <= arg1Threshold2 && value2 <= arg2Threshold2) {                          \
+		MVKAddCmd(baseCmdType ##arg1Threshold2 ##arg2Threshold2, vkCmdBuff, ##__VA_ARGS__);	\
+	} else if (value1 > arg1Threshold2 && value2 <= arg2Threshold2) {                           \
+		MVKAddCmd(baseCmdType ##Multi ##arg2Threshold2, vkCmdBuff, ##__VA_ARGS__);	            \
+	} else if (value1 <= arg1Threshold1 && value2 > arg2Threshold2) {                           \
+		MVKAddCmd(baseCmdType ##arg1Threshold1 ##Multi, vkCmdBuff, ##__VA_ARGS__);	            \
+	} else if (value1 <= arg1Threshold2 && value2 > arg2Threshold2) {                           \
+		MVKAddCmd(baseCmdType ##arg1Threshold2 ##Multi, vkCmdBuff, ##__VA_ARGS__);	            \
+	} else {																					\
+		MVKAddCmd(baseCmdType ##Multi ##Multi, vkCmdBuff, ##__VA_ARGS__);						\
+	}
+
 // Define an extension call as an alias of a core call
 #define MVK_PUBLIC_CORE_ALIAS(vkf)	MVK_PUBLIC_ALIAS(vkf##KHR, vkf)
 
@@ -1869,7 +1892,24 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
     VkSubpassContents							contents) {
 	
 	MVKTraceVulkanCallStart();
-	MVKAddCmdFrom2Thresholds(BeginRenderPass, pRenderPassBegin->clearValueCount, 1, 2, commandBuffer,pRenderPassBegin, contents);
+	uint32_t attachmentCount = 0;
+	for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
+		switch(next->sType) {
+			case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
+				auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
+				attachmentCount = pAttachmentBegin->attachmentCount;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+	MVKAddCmdFrom4Thresholds(BeginRenderPass,
+							 pRenderPassBegin->clearValueCount, 1, 2,
+							 attachmentCount, 0, 1,
+							 commandBuffer,
+							 pRenderPassBegin,
+							 contents);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2283,7 +2323,24 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass2KHR(
 	const VkSubpassBeginInfo*					pSubpassBeginInfo) {
 
 	MVKTraceVulkanCallStart();
-	MVKAddCmdFrom2Thresholds(BeginRenderPass, pRenderPassBegin->clearValueCount, 1, 2, commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
+	uint32_t attachmentCount = 0;
+	for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
+		switch(next->sType) {
+			case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
+				auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
+				attachmentCount = pAttachmentBegin->attachmentCount;
+				break;
+			}
+			default:
+				break;
+		}
+	}
+	MVKAddCmdFrom4Thresholds(BeginRenderPass,
+							 pRenderPassBegin->clearValueCount, 1, 2,
+							 attachmentCount, 0, 1,
+							 commandBuffer,
+							 pRenderPassBegin,
+							 pSubpassBeginInfo);
 	MVKTraceVulkanCallEnd();
 }
 

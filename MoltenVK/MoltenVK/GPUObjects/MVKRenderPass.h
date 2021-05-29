@@ -95,8 +95,9 @@ public:
 	 */
 	void populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 										 uint32_t passIdx,
-										 MVKFramebuffer* framebuffer,
-										 const MVKArrayRef<MVKImageView*>& imagelessAttachments,
+										 VkExtent2D framebufferExtent,
+										 uint32_t framebufferLayerCount,
+										 const MVKArrayRef<MVKImageView*>& attachments,
 										 const MVKArrayRef<VkClearValue>& clearValues,
 										 bool isRenderingEntireAttachment,
                                          bool loadOverride = false);
@@ -120,7 +121,7 @@ public:
 	/** If a render encoder is active, sets the store actions for all attachments to it. */
 	void encodeStoreActions(MVKCommandEncoder* cmdEncoder,
 							bool isRenderingEntireAttachment,
-							const MVKArrayRef<MVKImageView*>& imagelessAttachments,
+							const MVKArrayRef<MVKImageView*>& attachments,
 							bool storeOverride = false);
 
 	/** Constructs an instance for the specified parent renderpass. */
