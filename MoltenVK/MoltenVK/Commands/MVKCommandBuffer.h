@@ -276,7 +276,7 @@ public:
 						 MVKFramebuffer* framebuffer,
 						 VkRect2D& renderArea,
 						 MVKArrayRef<VkClearValue> clearValues,
-						 MVKArrayRef<MVKImageView*> imageless_attachments);
+						 MVKArrayRef<MVKImageView*> imagelessAttachments);
 
 	/** Begins the next render subpass. */
 	void beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents renderpassContents);
@@ -522,4 +522,3 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLComputeCommandEncoder label, based on the MVKCommandUse. */
 NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse);
-
