@@ -2855,7 +2855,7 @@ VkResult MVKDevice::waitIdle() {
 	VkResult rslt = VK_SUCCESS;
 	for (auto& queues : _queuesByQueueFamilyIndex) {
 		for (MVKQueue* q : queues) {
-			if ((rslt = q->waitIdle()) != VK_SUCCESS) { return rslt; }
+			if ((rslt = q->waitIdle(kMVKCommandUseDeviceWaitIdle)) != VK_SUCCESS) { return rslt; }
 		}
 	}
 	return VK_SUCCESS;

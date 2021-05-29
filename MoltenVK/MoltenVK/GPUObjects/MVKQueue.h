@@ -89,13 +89,13 @@ public:
 #pragma mark Queue submissions
 
 	/** Submits the specified command buffers to the queue. */
-	VkResult submit(uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence);
+	VkResult submit(uint32_t submitCount, const VkSubmitInfo* pSubmits, VkFence fence, MVKCommandUse cmdUse);
 
 	/** Submits the specified presentation command to the queue. */
 	VkResult submit(const VkPresentInfoKHR* pPresentInfo);
 
 	/** Block the current thread until this queue is idle. */
-	VkResult waitIdle();
+	VkResult waitIdle(MVKCommandUse cmdUse);
 
 	/** Return the name of this queue. */
 	const std::string& getName() { return _name; }
@@ -107,7 +107,7 @@ public:
 	id<MTLCommandQueue> getMTLCommandQueue() { return _mtlQueue; }
 
 	/** Returns a Metal command buffer from the Metal queue. */
-	id<MTLCommandBuffer> getMTLCommandBuffer(bool retainRefs = false);
+	id<MTLCommandBuffer> getMTLCommandBuffer(MVKCommandUse cmdUse, bool retainRefs = false);
 
 #pragma mark Construction
 	
@@ -193,7 +193,7 @@ class MVKQueueCommandBufferSubmission : public MVKQueueSubmission {
 public:
 	void execute() override;
 
-	MVKQueueCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence);
+	MVKQueueCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence, MVKCommandUse cmdUse);
 
 	~MVKQueueCommandBufferSubmission() override;
 
@@ -209,6 +209,7 @@ protected:
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _signalSemaphores;
 	MVKFence* _fence;
 	id<MTLCommandBuffer> _activeMTLCommandBuffer;
+	MVKCommandUse _commandUse;
 };
 
 
@@ -221,7 +222,7 @@ class MVKQueueFullCommandBufferSubmission : public MVKQueueCommandBufferSubmissi
 
 public:
 	MVKQueueFullCommandBufferSubmission(MVKQueue* queue, const VkSubmitInfo* pSubmit, VkFence fence) :
-		MVKQueueCommandBufferSubmission(queue, pSubmit, fence) {
+		MVKQueueCommandBufferSubmission(queue, pSubmit, fence, kMVKCommandUseQueueSubmit) {
 
 			// pSubmit can be null if just tracking the fence alone
 			if (pSubmit) {
@@ -255,7 +256,6 @@ public:
 									 const VkPresentInfoKHR* pPresentInfo);
 
 protected:
-	id<MTLCommandBuffer> getMTLCommandBuffer();
 	void stopAutoGPUCapture();
 
 	MVKSmallVector<MVKPresentTimingInfo, 4> _presentInfo;

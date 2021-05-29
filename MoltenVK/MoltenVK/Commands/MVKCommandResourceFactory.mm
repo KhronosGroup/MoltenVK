@@ -36,7 +36,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdBlitImageMTLRenderPi
 	id<MTLFunction> vtxFunc = newFunctionNamed(isLayeredBlit ? "vtxCmdBlitImageLayered" : "vtxCmdBlitImage");	// temp retain
 	id<MTLFunction> fragFunc = newBlitFragFunction(blitKey);													// temp retain
     MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];									// temp retain
-    plDesc.label = @"CmdBlitImage";
+    plDesc.label = @"vkCmdBlitImage";
 
 	plDesc.vertexFunction = vtxFunc;
 	plDesc.fragmentFunction = fragFunc;
@@ -116,7 +116,7 @@ id<MTLRenderPipelineState> MVKCommandResourceFactory::newCmdClearMTLRenderPipeli
 	id<MTLFunction> vtxFunc = newClearVertFunction(attKey);						// temp retain
 	id<MTLFunction> fragFunc = newClearFragFunction(attKey);					// temp retain
 	MTLRenderPipelineDescriptor* plDesc = [MTLRenderPipelineDescriptor new];	// temp retain
-    plDesc.label = @"CmdClearAttachments";
+    plDesc.label = @"vkCmdClearAttachments";
 	plDesc.vertexFunction = vtxFunc;
     plDesc.fragmentFunction = fragFunc;
 	plDesc.sampleCount = attKey.mtlSampleCount;

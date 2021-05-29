@@ -367,7 +367,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueueSubmit(
 
 	MVKTraceVulkanCallStart();
 	MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
-	VkResult rslt = mvkQ->submit(submitCount, pSubmits, fence);
+	VkResult rslt = mvkQ->submit(submitCount, pSubmits, fence, kMVKCommandUseQueueSubmit);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
@@ -377,7 +377,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueueWaitIdle(
 	
 	MVKTraceVulkanCallStart();
 	MVKQueue* mvkQ = MVKQueue::getMVKQueue(queue);
-	VkResult rslt = mvkQ->waitIdle();
+	VkResult rslt = mvkQ->waitIdle(kMVKCommandUseQueueWaitIdle);
 	MVKTraceVulkanCallEnd();
 	return rslt;
 }
