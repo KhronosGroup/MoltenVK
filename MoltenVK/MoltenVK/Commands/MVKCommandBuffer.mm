@@ -297,9 +297,7 @@ void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
 									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebufferExtent));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
-	for(auto* v : attachments) {
-		_attachments.push_back(v);
-	}
+	_attachments.assign(attachments.begin(), attachments.end());
 	setSubpass(passCmd, subpassContents, 0);
 }
 
@@ -339,7 +337,7 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
     endCurrentMetalEncoding();
 
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
-	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc, 
+	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc,
 												  _multiviewPassIndex,
 												  _framebufferExtent,
 												  _framebufferLayerCount,
