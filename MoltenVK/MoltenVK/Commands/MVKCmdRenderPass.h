@@ -89,9 +89,13 @@ typedef MVKCmdBeginRenderPass<1, 1> MVKCmdBeginRenderPass11;
 typedef MVKCmdBeginRenderPass<2, 1> MVKCmdBeginRenderPass21;
 typedef MVKCmdBeginRenderPass<9, 1> MVKCmdBeginRenderPassMulti1;
 
-typedef MVKCmdBeginRenderPass<1, 8> MVKCmdBeginRenderPass1Multi;
-typedef MVKCmdBeginRenderPass<2, 8> MVKCmdBeginRenderPass2Multi;
-typedef MVKCmdBeginRenderPass<9, 8> MVKCmdBeginRenderPassMultiMulti;
+typedef MVKCmdBeginRenderPass<1, 2> MVKCmdBeginRenderPass12;
+typedef MVKCmdBeginRenderPass<2, 2> MVKCmdBeginRenderPass22;
+typedef MVKCmdBeginRenderPass<9, 2> MVKCmdBeginRenderPassMulti2;
+
+typedef MVKCmdBeginRenderPass<1, 9> MVKCmdBeginRenderPass1Multi;
+typedef MVKCmdBeginRenderPass<2, 9> MVKCmdBeginRenderPass2Multi;
+typedef MVKCmdBeginRenderPass<9, 9> MVKCmdBeginRenderPassMultiMulti;
 
 
 #pragma mark -

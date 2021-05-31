@@ -132,24 +132,31 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 	}
 
 // Add one of nine commands, based on comparing a command parameter against four threshold values
-#define MVKAddCmdFrom4Thresholds(baseCmdType, value1, arg1Threshold1, arg1Threshold2,           \
-								 value2, arg2Threshold1, arg2Threshold2, vkCmdBuff, ...)	    \
+#define MVKAddCmdFrom5Thresholds(baseCmdType, value1, arg1Threshold1, arg1Threshold2,			\
+								 value2, arg2Threshold1, arg2Threshold2, arg2Threshold3,		\
+								 vkCmdBuff, ...)												\
 	if (value1 <= arg1Threshold1 && value2 <= arg2Threshold1) {									\
-		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold1, vkCmdBuff, ##__VA_ARGS__);	\
-	} else if (value1 <= arg1Threshold2 && value2 <= arg2Threshold1) {								\
-		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold1, vkCmdBuff, ##__VA_ARGS__);    \
-	} else if (value1 > arg1Threshold2 && value2 <= arg2Threshold1) {                           \
-		MVKAddCmd(baseCmdType ##Multi ##arg2Threshold1, vkCmdBuff, ##__VA_ARGS__);	            \
-	} else if (value1 <= arg1Threshold1 && value2 <= arg2Threshold2) {                          \
-		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold2, vkCmdBuff, ##__VA_ARGS__);    \
-	} else if (value1 <= arg1Threshold2 && value2 <= arg2Threshold2) {                          \
-		MVKAddCmd(baseCmdType ##arg1Threshold2 ##arg2Threshold2, vkCmdBuff, ##__VA_ARGS__);	\
-	} else if (value1 > arg1Threshold2 && value2 <= arg2Threshold2) {                           \
-		MVKAddCmd(baseCmdType ##Multi ##arg2Threshold2, vkCmdBuff, ##__VA_ARGS__);	            \
-	} else if (value1 <= arg1Threshold1 && value2 > arg2Threshold2) {                           \
-		MVKAddCmd(baseCmdType ##arg1Threshold1 ##Multi, vkCmdBuff, ##__VA_ARGS__);	            \
-	} else if (value1 <= arg1Threshold2 && value2 > arg2Threshold2) {                           \
-		MVKAddCmd(baseCmdType ##arg1Threshold2 ##Multi, vkCmdBuff, ##__VA_ARGS__);	            \
+		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold1, vkCmdBuff, ##__VA_ARGS__);		\
+	} else if (value1 <= arg1Threshold2 && value2 <= arg2Threshold1) {							\
+		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold1, vkCmdBuff, ##__VA_ARGS__);		\
+	} else if (value1 > arg1Threshold2 && value2 <= arg2Threshold1) {							\
+		MVKAddCmd(baseCmdType ##Multi ##arg2Threshold1, vkCmdBuff, ##__VA_ARGS__);				\
+	} else if (value1 <= arg1Threshold1 && value2 <= arg2Threshold2) {							\
+		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold2, vkCmdBuff, ##__VA_ARGS__);		\
+	} else if (value1 <= arg1Threshold2 && value2 <= arg2Threshold2) {							\
+		MVKAddCmd(baseCmdType ##arg1Threshold2 ##arg2Threshold2, vkCmdBuff, ##__VA_ARGS__);		\
+	} else if (value1 > arg1Threshold2 && value2 <= arg2Threshold2) {							\
+		MVKAddCmd(baseCmdType ##Multi ##arg2Threshold2, vkCmdBuff, ##__VA_ARGS__);				\
+	} else if (value1 <= arg1Threshold1 && value2 <= arg2Threshold3) {							\
+		MVKAddCmd(baseCmdType ##arg1Threshold1 ##arg2Threshold3, vkCmdBuff, ##__VA_ARGS__);		\
+	} else if (value1 <= arg1Threshold2 && value2 <= arg2Threshold3) {							\
+		MVKAddCmd(baseCmdType ##arg1Threshold2 ##arg2Threshold3, vkCmdBuff, ##__VA_ARGS__);		\
+	} else if (value1 > arg1Threshold2 && value2 <= arg2Threshold3) {							\
+		MVKAddCmd(baseCmdType ##Multi ##arg2Threshold3, vkCmdBuff, ##__VA_ARGS__);				\
+	} else if (value1 <= arg1Threshold1 && value2 > arg2Threshold3) {							\
+		MVKAddCmd(baseCmdType ##arg1Threshold1 ##Multi, vkCmdBuff, ##__VA_ARGS__);				\
+	} else if (value1 <= arg1Threshold2 && value2 > arg2Threshold3) {							\
+		MVKAddCmd(baseCmdType ##arg1Threshold2 ##Multi, vkCmdBuff, ##__VA_ARGS__);				\
 	} else {																					\
 		MVKAddCmd(baseCmdType ##Multi ##Multi, vkCmdBuff, ##__VA_ARGS__);						\
 	}
@@ -1904,9 +1911,9 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
 				break;
 		}
 	}
-	MVKAddCmdFrom4Thresholds(BeginRenderPass,
+	MVKAddCmdFrom5Thresholds(BeginRenderPass,
 							 pRenderPassBegin->clearValueCount, 1, 2,
-							 attachmentCount, 0, 1,
+							 attachmentCount, 0, 1, 2,
 							 commandBuffer,
 							 pRenderPassBegin,
 							 contents);
@@ -2335,9 +2342,9 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass2KHR(
 				break;
 		}
 	}
-	MVKAddCmdFrom4Thresholds(BeginRenderPass,
+	MVKAddCmdFrom5Thresholds(BeginRenderPass,
 							 pRenderPassBegin->clearValueCount, 1, 2,
-							 attachmentCount, 0, 1,
+							 attachmentCount, 0, 1, 2,
 							 commandBuffer,
 							 pRenderPassBegin,
 							 pSubpassBeginInfo);

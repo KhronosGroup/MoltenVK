@@ -56,21 +56,26 @@
 	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##threshold3)									\
 	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi)
 
-#define MVK_CMD_TYPE_POOLS_FROM_4_THRESHOLDS(cmdType, arg1Threshold1, arg1Threshold2, arg2Threshold1, arg2Threshold2)    \
-    MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold1 ##arg2Threshold1)                                          \
-	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold1 ##arg2Threshold2)                                          \
-	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold1 ##Multi)                                                   \
-	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold2 ##arg2Threshold1)                                          \
-	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold2 ##arg2Threshold2)                                          \
-	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold2 ##Multi)                                                   \
-	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi          ##arg2Threshold1)                                          \
-	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi          ##arg2Threshold2)                                          \
+#define MVK_CMD_TYPE_POOLS_FROM_5_THRESHOLDS(cmdType,											\
+											 arg1Threshold1, arg1Threshold2,					\
+											 arg2Threshold1, arg2Threshold2, arg2Threshold3)	\
+    MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold1 ##arg2Threshold1)					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold1 ##arg2Threshold2)					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold1 ##arg2Threshold3)					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold1 ##Multi)         					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold2 ##arg2Threshold1)					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold2 ##arg2Threshold2)					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold2 ##arg2Threshold3)					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##arg1Threshold2 ##Multi)         					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi          ##arg2Threshold1)					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi          ##arg2Threshold2)					\
+	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi          ##arg2Threshold3)					\
 	MVK_TMPLT_DECL MVK_CMD_TYPE_POOL(cmdType ##Multi          ##Multi)
 
 MVK_CMD_TYPE_POOLS_FROM_2_THRESHOLDS(PipelineBarrier, 1, 4)
 MVK_CMD_TYPE_POOL(BindGraphicsPipeline)
 MVK_CMD_TYPE_POOL(BindComputePipeline)
-MVK_CMD_TYPE_POOLS_FROM_4_THRESHOLDS(BeginRenderPass, 1, 2, 0, 1)
+MVK_CMD_TYPE_POOLS_FROM_5_THRESHOLDS(BeginRenderPass, 1, 2, 0, 1, 2)
 MVK_CMD_TYPE_POOL(NextSubpass)
 MVK_CMD_TYPE_POOL(EndRenderPass)
 MVK_CMD_TYPE_POOLS_FROM_THRESHOLD(ExecuteCommands, 1)

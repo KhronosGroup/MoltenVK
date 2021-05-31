@@ -46,8 +46,8 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N_CV, size_t N_A>
 VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
-											  const VkRenderPassBeginInfo* pRenderPassBegin,
-											  VkSubpassContents contents) {
+													  const VkRenderPassBeginInfo* pRenderPassBegin,
+													  VkSubpassContents contents) {
 	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, contents);
 
 	// Add clear values
@@ -85,8 +85,8 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 
 template <size_t N_CV, size_t N_A>
 VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
-											  const VkRenderPassBeginInfo* pRenderPassBegin,
-											  const VkSubpassBeginInfo* pSubpassBeginInfo) {
+													  const VkRenderPassBeginInfo* pRenderPassBegin,
+													  const VkSubpassBeginInfo* pSubpassBeginInfo) {
 	return setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo->contents);
 }
 
@@ -111,10 +111,13 @@ template class MVKCmdBeginRenderPass<1, 1>;
 template class MVKCmdBeginRenderPass<2, 1>;
 template class MVKCmdBeginRenderPass<9, 1>;
 
-template class MVKCmdBeginRenderPass<1, 8>;
-template class MVKCmdBeginRenderPass<2, 8>;
-template class MVKCmdBeginRenderPass<9, 8>;
+template class MVKCmdBeginRenderPass<1, 2>;
+template class MVKCmdBeginRenderPass<2, 2>;
+template class MVKCmdBeginRenderPass<9, 2>;
 
+template class MVKCmdBeginRenderPass<1, 9>;
+template class MVKCmdBeginRenderPass<2, 9>;
+template class MVKCmdBeginRenderPass<9, 9>;
 
 #pragma mark -
 #pragma mark MVKCmdNextSubpass

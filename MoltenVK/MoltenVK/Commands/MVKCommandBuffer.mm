@@ -568,6 +568,8 @@ void MVKCommandEncoder::endRenderpass() {
 	endMetalRenderEncoding();
 
 	_renderPass = nullptr;
+	_framebufferExtent = {};
+	_framebufferLayerCount = 0;
 	_attachments.clear();
 	_renderSubpassIndex = 0;
 }
