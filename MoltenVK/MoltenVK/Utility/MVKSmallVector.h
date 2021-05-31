@@ -781,6 +781,18 @@ public:
     alc.num_elements_used = new_size;
   }
 
+  template <class InputIterator>
+  void assign( InputIterator first, InputIterator last )
+  {
+    clear();
+
+    while( first != last )
+    {
+      push_back( *first );
+      ++first;
+    }
+  }
+
   void resize( const size_t new_size, const Type *t = nullptr )
   {
     if ( new_size == alc.num_elements_used )

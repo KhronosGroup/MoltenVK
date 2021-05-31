@@ -44,7 +44,8 @@ public:
 
 	/** Returns the attachment at the specified index.  */
 	inline MVKImageView* getAttachment(uint32_t index) { return _attachments[index]; }
-
+	
+	inline size_t getAttachmentCount() {return _attachments.size(); }
 
 #pragma mark Construction
 

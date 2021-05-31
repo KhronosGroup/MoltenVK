@@ -273,9 +273,11 @@ public:
 	void beginRenderpass(MVKCommand* passCmd,
 						 VkSubpassContents subpassContents,
 						 MVKRenderPass* renderPass,
-						 MVKFramebuffer* framebuffer,
+						 VkExtent2D framebufferExtent,
+						 uint32_t framebufferLayerCount,
 						 VkRect2D& renderArea,
-						 MVKArrayRef<VkClearValue> clearValues);
+						 MVKArrayRef<VkClearValue> clearValues,
+						 MVKArrayRef<MVKImageView*> attachments);
 
 	/** Begins the next render subpass. */
 	void beginNextSubpass(MVKCommand* subpassCmd, VkSubpassContents renderpassContents);
@@ -420,9 +422,6 @@ public:
 	/** The command buffer whose commands are being encoded. */
 	MVKCommandBuffer* _cmdBuffer;
 
-	/** The framebuffer to which rendering is currently directed. */
-	MVKFramebuffer* _framebuffer;
-
 	/** The current Metal command buffer. */
 	id<MTLCommandBuffer> _mtlCmdBuffer;
 
@@ -474,6 +473,11 @@ public:
 	/** Indicates whether the current draw is an indexed draw. */
 	bool _isIndexedDraw;
 
+	/** The extent of current framebuffer.*/
+	VkExtent2D _framebufferExtent;
+
+	/** The layer count of current framebuffer.*/
+	uint32_t _framebufferLayerCount;
 
 #pragma mark Construction
 
@@ -494,6 +498,7 @@ protected:
 	VkRect2D _renderArea;
     MVKActivatedQueries* _pActivatedQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
+	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	MVKCommandUse _mtlComputeEncoderUse;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
@@ -523,4 +528,3 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse);
 
 /** Returns a name, suitable for use as a MTLComputeCommandEncoder label, based on the MVKCommandUse. */
 NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse);
-

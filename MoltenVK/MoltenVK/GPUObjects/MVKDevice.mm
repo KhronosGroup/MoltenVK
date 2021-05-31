@@ -267,6 +267,11 @@ void MVKPhysicalDevice::getFeatures(VkPhysicalDeviceFeatures2* features) {
 				inlineUniformBlockFeatures->descriptorBindingInlineUniformBlockUpdateAfterBind = true;
 				break;
 			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
+				auto* imagelessFramebufferFeatures = (VkPhysicalDeviceImagelessFramebufferFeaturesKHR*)next;
+				imagelessFramebufferFeatures->imagelessFramebuffer = true;
+				break;
+			}
 			default:
 				break;
 		}
@@ -3789,6 +3794,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
 	_enabledVtxAttrDivFeatures(),
 	_enabledPrivateDataFeatures(),
 	_enabledPortabilityFeatures(),
+	_enabledImagelessFramebufferFeatures(),
 	_enabledExtensions(this),
 	_isCurrentlyAutoGPUCapturing(false)
 {
@@ -3899,11 +3905,16 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 	mvkClear(&_enabledTexelBuffAlignFeatures);
 	mvkClear(&_enabledVtxAttrDivFeatures);
 	mvkClear(&_enabledPortabilityFeatures);
+	mvkClear(&_enabledImagelessFramebufferFeatures);
 
+	VkPhysicalDeviceImagelessFramebufferFeaturesKHR pdImagelessFramebufferFeatures;
+	pdImagelessFramebufferFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES;
+	pdImagelessFramebufferFeatures.pNext = NULL;
+    
 	// Fetch the available physical device features.
 	VkPhysicalDevicePortabilitySubsetFeaturesKHR pdPortabilityFeatures;
 	pdPortabilityFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PORTABILITY_SUBSET_FEATURES_KHR;
-	pdPortabilityFeatures.pNext = NULL;
+	pdPortabilityFeatures.pNext = &pdImagelessFramebufferFeatures;
 
 	VkPhysicalDeviceVertexAttributeDivisorFeaturesEXT pdVtxAttrDivFeatures;
 	pdVtxAttrDivFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VERTEX_ATTRIBUTE_DIVISOR_FEATURES_EXT;
@@ -4086,6 +4097,13 @@ void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
 				enableFeatures(&_enabledPortabilityFeatures.constantAlphaColorBlendFactors,
 							   &requestedFeatures->constantAlphaColorBlendFactors,
 							   &pdPortabilityFeatures.constantAlphaColorBlendFactors, 15);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_IMAGELESS_FRAMEBUFFER_FEATURES: {
+				auto* requestedFeatures = (VkPhysicalDeviceImagelessFramebufferFeaturesKHR*)next;
+				enableFeatures(&_enabledImagelessFramebufferFeatures.imagelessFramebuffer,
+							   &requestedFeatures->imagelessFramebuffer,
+							   &pdImagelessFramebufferFeatures.imagelessFramebuffer, 1);
 				break;
 			}
 			default:
