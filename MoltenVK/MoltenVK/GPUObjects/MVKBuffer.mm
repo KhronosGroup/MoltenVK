@@ -52,10 +52,8 @@ VkResult MVKBuffer::getMemoryRequirements(VkMemoryRequirements* pMemoryRequireme
 		pMemoryRequirements->alignment = _byteAlignment;
 	}
 	pMemoryRequirements->memoryTypeBits = getPhysicalDevice()->getAllMemoryTypes();
-#if MVK_APPLE_SILICON
 	// Memoryless storage is not allowed for buffers
 	mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
-#endif
 	return VK_SUCCESS;
 }
 

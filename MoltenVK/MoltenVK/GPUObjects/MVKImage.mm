@@ -648,12 +648,14 @@ VkResult MVKImage::getMemoryRequirements(VkMemoryRequirements* pMemoryRequiremen
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getHostCoherentMemoryTypes());
     }
 #endif
-#if MVK_APPLE_SILICON
-    // Only transient attachments may use memoryless storage
-    if (!mvkAreAllFlagsEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ) {
+    // Only transient attachments may use memoryless storage.
+	// Using memoryless as an input attachment requires shader framebuffer fetch, which MoltenVK does not support yet.
+	// TODO: support framebuffer fetch so VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT uses color(m) in shader instead of setFragmentTexture:, which crashes Metal
+    if (!mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT) ||
+		 mvkIsAnyFlagEnabled(_usage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT) ) {
         mvkDisableFlags(pMemoryRequirements->memoryTypeBits, getPhysicalDevice()->getLazilyAllocatedMemoryTypes());
     }
-#endif
+
     return _memoryBindings[planeIndex]->getMemoryRequirements(pMemoryRequirements);
 }
 

@@ -28,6 +28,7 @@ Released TBD
 - Fix crash when requesting `MTLCommandBuffer` logs in runtime debug mode on older OS versions.
 - Fix synchronization issue with locking `MTLArgumentEncoder` for Metal Argument Buffers.
 - Fix race condition on submission fence during device loss.
+- Fix crash using memoryless storage for input attachments on Apple Silicon.
 - On command buffer submission failure, if `MVKConfiguration::resumeLostDevice` enabled,  do not release 
   waits on `VkDevice`, and do not return `VK_ERROR_DEVICE_LOST`, unless `VkPhysicalDevice` is also lost.
 - Fix inconsistent handling of linear attachment decisions on Apple Silicon.
