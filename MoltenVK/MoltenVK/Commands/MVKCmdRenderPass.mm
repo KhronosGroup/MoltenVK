@@ -47,7 +47,9 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 template <size_t N_CV, size_t N_A>
 VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 													  const VkRenderPassBeginInfo* pRenderPassBegin,
-													  const VkSubpassBeginInfo* pSubpassBeginInfo) {
+													  const VkSubpassBeginInfo* pSubpassBeginInfo,
+													  uint32_t attachmentCount,
+													  bool isImageless) {
 	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo);
 
 	// Add clear values
@@ -58,26 +60,26 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 		_clearValues.push_back(pRenderPassBegin->pClearValues[i]);
 	}
 
+	// Add attachments
 	_attachments.clear();	// Clear for reuse
-	bool imageless = false;
-	for (auto* next = (const VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
-		switch (next->sType) {
-		case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
-			const auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
-			for(uint32_t i = 0; i < pAttachmentBegin->attachmentCount; i++) {
-				_attachments.push_back((MVKImageView*)pAttachmentBegin->pAttachments[i]);
+	_attachments.reserve(attachmentCount);
+	if (isImageless) {
+		for (auto* next = (const VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
+			switch (next->sType) {
+				case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
+					const auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
+					for(uint32_t i = 0; i < pAttachmentBegin->attachmentCount; i++) {
+						_attachments.push_back((MVKImageView*)pAttachmentBegin->pAttachments[i]);
+					}
+					break;
+				}
+				default:
+					break;
 			}
-			imageless = true;
-			break;
 		}
-		default:
-			break;
-		}
-	}
-
-	if (!imageless) {
-		for(uint32_t i = 0; i < _framebuffer->getAttachmentCount(); i++) {
-			_attachments.push_back((MVKImageView*)_framebuffer->getAttachment(i));
+	} else {
+		for(uint32_t attIdx = 0; attIdx < attachmentCount; attIdx++) {
+			_attachments.push_back((MVKImageView*)_framebuffer->getAttachment(attIdx));
 		}
 	}
 

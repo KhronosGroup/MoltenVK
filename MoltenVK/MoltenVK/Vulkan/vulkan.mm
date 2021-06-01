@@ -1900,23 +1900,31 @@ static void mvkCmdBeginRenderPass(
 	const VkSubpassBeginInfo*					pSubpassBeginInfo) {
 
 	uint32_t attachmentCount = 0;
+	bool isImageless = false;
 	for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
 		switch(next->sType) {
 			case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
 				auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
 				attachmentCount = pAttachmentBegin->attachmentCount;
+				isImageless = true;
 				break;
 			}
 			default:
 				break;
 		}
 	}
+	if ( !isImageless ) {
+		auto* mvkFB = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
+		attachmentCount = mvkFB ? (uint32_t)mvkFB->getAttachmentCount() : 0;
+	}
 	MVKAddCmdFrom5Thresholds(BeginRenderPass,
 							 pRenderPassBegin->clearValueCount, 1, 2,
 							 attachmentCount, 0, 1, 2,
 							 commandBuffer,
 							 pRenderPassBegin,
-							 pSubpassBeginInfo);
+							 pSubpassBeginInfo,
+							 attachmentCount,
+							 isImageless);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(

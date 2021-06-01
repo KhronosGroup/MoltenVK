@@ -66,7 +66,9 @@ class MVKCmdBeginRenderPass : public MVKCmdBeginRenderPassBase {
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						const VkRenderPassBeginInfo* pRenderPassBegin,
-						const VkSubpassBeginInfo* pSubpassBeginInfo);
+						const VkSubpassBeginInfo* pSubpassBeginInfo,
+						uint32_t attachmentCount,
+						bool isImageless);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
