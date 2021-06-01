@@ -1899,32 +1899,29 @@ static void mvkCmdBeginRenderPass(
 	const VkRenderPassBeginInfo*				pRenderPassBegin,
 	const VkSubpassBeginInfo*					pSubpassBeginInfo) {
 
-	uint32_t attachmentCount = 0;
-	bool isImageless = false;
+	VkRenderPassAttachmentBeginInfo* pAttachmentBegin = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
 		switch(next->sType) {
 			case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
-				auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
-				attachmentCount = pAttachmentBegin->attachmentCount;
-				isImageless = true;
+				pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
 				break;
 			}
 			default:
 				break;
 		}
 	}
-	if ( !isImageless ) {
-		auto* mvkFB = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
-		attachmentCount = mvkFB ? (uint32_t)mvkFB->getAttachmentCount() : 0;
-	}
+	auto attachments = (pAttachmentBegin
+						? MVKArrayRef<MVKImageView*>((MVKImageView**)pAttachmentBegin->pAttachments,
+													 pAttachmentBegin->attachmentCount)
+						: ((MVKFramebuffer*)pRenderPassBegin->framebuffer)->getAttachments());
+	
 	MVKAddCmdFrom5Thresholds(BeginRenderPass,
 							 pRenderPassBegin->clearValueCount, 1, 2,
-							 attachmentCount, 0, 1, 2,
+							 attachments.size, 0, 1, 2,
 							 commandBuffer,
 							 pRenderPassBegin,
 							 pSubpassBeginInfo,
-							 attachmentCount,
-							 isImageless);
+							 attachments);
 }
 
 MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(

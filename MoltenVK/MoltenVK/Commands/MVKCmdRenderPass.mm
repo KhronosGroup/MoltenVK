@@ -48,40 +48,12 @@ template <size_t N_CV, size_t N_A>
 VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 													  const VkRenderPassBeginInfo* pRenderPassBegin,
 													  const VkSubpassBeginInfo* pSubpassBeginInfo,
-													  uint32_t attachmentCount,
-													  bool isImageless) {
+													  MVKArrayRef<MVKImageView*> attachments) {
 	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo);
 
-	// Add clear values
-	uint32_t cvCnt = pRenderPassBegin->clearValueCount;
-	_clearValues.clear();	// Clear for reuse
-	_clearValues.reserve(cvCnt);
-	for (uint32_t i = 0; i < cvCnt; i++) {
-		_clearValues.push_back(pRenderPassBegin->pClearValues[i]);
-	}
-
-	// Add attachments
-	_attachments.clear();	// Clear for reuse
-	_attachments.reserve(attachmentCount);
-	if (isImageless) {
-		for (auto* next = (const VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
-			switch (next->sType) {
-				case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
-					const auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
-					for(uint32_t i = 0; i < pAttachmentBegin->attachmentCount; i++) {
-						_attachments.push_back((MVKImageView*)pAttachmentBegin->pAttachments[i]);
-					}
-					break;
-				}
-				default:
-					break;
-			}
-		}
-	} else {
-		for(uint32_t attIdx = 0; attIdx < attachmentCount; attIdx++) {
-			_attachments.push_back((MVKImageView*)_framebuffer->getAttachment(attIdx));
-		}
-	}
+	_attachments.assign(attachments.begin(), attachments.end());
+	_clearValues.assign(pRenderPassBegin->pClearValues,
+						pRenderPassBegin->pClearValues + pRenderPassBegin->clearValueCount);
 
 	return VK_SUCCESS;
 }

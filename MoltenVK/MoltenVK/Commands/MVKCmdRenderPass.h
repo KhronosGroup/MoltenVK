@@ -67,8 +67,7 @@ public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						const VkRenderPassBeginInfo* pRenderPassBegin,
 						const VkSubpassBeginInfo* pSubpassBeginInfo,
-						uint32_t attachmentCount,
-						bool isImageless);
+						MVKArrayRef<MVKImageView*> attachments);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
