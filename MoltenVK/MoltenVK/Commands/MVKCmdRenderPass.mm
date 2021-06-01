@@ -58,6 +58,7 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 		_clearValues.push_back(pRenderPassBegin->pClearValues[i]);
 	}
 
+	_attachments.clear();	// Clear for reuse
 	bool imageless = false;
 	for (auto* next = (const VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
 		switch (next->sType) {
