@@ -40,7 +40,7 @@ class MVKCmdBeginRenderPassBase : public MVKCommand {
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						const VkRenderPassBeginInfo* pRenderPassBegin,
-						VkSubpassContents contents);
+						const VkSubpassBeginInfo* pSubpassBeginInfo);
 
 	inline MVKRenderPass* getRenderPass() { return _renderPass; }
 
@@ -64,9 +64,6 @@ template <size_t N_CV, size_t N_A>
 class MVKCmdBeginRenderPass : public MVKCmdBeginRenderPassBase {
 
 public:
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						const VkRenderPassBeginInfo* pRenderPassBegin,
-						VkSubpassContents contents);
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						const VkRenderPassBeginInfo* pRenderPassBegin,
 						const VkSubpassBeginInfo* pSubpassBeginInfo);

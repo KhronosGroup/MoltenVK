@@ -31,8 +31,8 @@
 
 VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 											   const VkRenderPassBeginInfo* pRenderPassBegin,
-											   VkSubpassContents contents) {
-	_contents = contents;
+											   const VkSubpassBeginInfo* pSubpassBeginInfo) {
+	_contents = pSubpassBeginInfo->contents;
 	_renderPass = (MVKRenderPass*)pRenderPassBegin->renderPass;
 	_framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
 	_renderArea = pRenderPassBegin->renderArea;
@@ -47,8 +47,8 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 template <size_t N_CV, size_t N_A>
 VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 													  const VkRenderPassBeginInfo* pRenderPassBegin,
-													  VkSubpassContents contents) {
-	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, contents);
+													  const VkSubpassBeginInfo* pSubpassBeginInfo) {
+	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo);
 
 	// Add clear values
 	uint32_t cvCnt = pRenderPassBegin->clearValueCount;
@@ -74,7 +74,7 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 			break;
 		}
 	}
-	
+
 	if (!imageless) {
 		for(uint32_t i = 0; i < _framebuffer->getAttachmentCount(); i++) {
 			_attachments.push_back((MVKImageView*)_framebuffer->getAttachment(i));
@@ -82,13 +82,6 @@ VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 	}
 
 	return VK_SUCCESS;
-}
-
-template <size_t N_CV, size_t N_A>
-VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
-													  const VkRenderPassBeginInfo* pRenderPassBegin,
-													  const VkSubpassBeginInfo* pSubpassBeginInfo) {
-	return setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo->contents);
 }
 
 template <size_t N_CV, size_t N_A>
