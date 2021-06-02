@@ -31,8 +31,8 @@
 
 VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 											   const VkRenderPassBeginInfo* pRenderPassBegin,
-											   VkSubpassContents contents) {
-	_contents = contents;
+											   const VkSubpassBeginInfo* pSubpassBeginInfo) {
+	_contents = pSubpassBeginInfo->contents;
 	_renderPass = (MVKRenderPass*)pRenderPassBegin->renderPass;
 	_framebuffer = (MVKFramebuffer*)pRenderPassBegin->framebuffer;
 	_renderArea = pRenderPassBegin->renderArea;
@@ -47,47 +47,15 @@ VkResult MVKCmdBeginRenderPassBase::setContent(MVKCommandBuffer* cmdBuff,
 template <size_t N_CV, size_t N_A>
 VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
 													  const VkRenderPassBeginInfo* pRenderPassBegin,
-													  VkSubpassContents contents) {
-	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, contents);
+													  const VkSubpassBeginInfo* pSubpassBeginInfo,
+													  MVKArrayRef<MVKImageView*> attachments) {
+	MVKCmdBeginRenderPassBase::setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo);
 
-	// Add clear values
-	uint32_t cvCnt = pRenderPassBegin->clearValueCount;
-	_clearValues.clear();	// Clear for reuse
-	_clearValues.reserve(cvCnt);
-	for (uint32_t i = 0; i < cvCnt; i++) {
-		_clearValues.push_back(pRenderPassBegin->pClearValues[i]);
-	}
-
-	bool imageless = false;
-	for (auto* next = (const VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
-		switch (next->sType) {
-		case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
-			const auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
-			for(uint32_t i = 0; i < pAttachmentBegin->attachmentCount; i++) {
-				_attachments.push_back((MVKImageView*)pAttachmentBegin->pAttachments[i]);
-			}
-			imageless = true;
-			break;
-		}
-		default:
-			break;
-		}
-	}
-	
-	if (!imageless) {
-		for(uint32_t i = 0; i < _framebuffer->getAttachmentCount(); i++) {
-			_attachments.push_back((MVKImageView*)_framebuffer->getAttachment(i));
-		}
-	}
+	_attachments.assign(attachments.begin(), attachments.end());
+	_clearValues.assign(pRenderPassBegin->pClearValues,
+						pRenderPassBegin->pClearValues + pRenderPassBegin->clearValueCount);
 
 	return VK_SUCCESS;
-}
-
-template <size_t N_CV, size_t N_A>
-VkResult MVKCmdBeginRenderPass<N_CV, N_A>::setContent(MVKCommandBuffer* cmdBuff,
-													  const VkRenderPassBeginInfo* pRenderPassBegin,
-													  const VkSubpassBeginInfo* pSubpassBeginInfo) {
-	return setContent(cmdBuff, pRenderPassBegin, pSubpassBeginInfo->contents);
 }
 
 template <size_t N_CV, size_t N_A>

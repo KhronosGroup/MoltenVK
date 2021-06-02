@@ -1893,30 +1893,50 @@ MVK_PUBLIC_SYMBOL void vkCmdPushConstants(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
-    VkCommandBuffer                             commandBuffer,
-    const VkRenderPassBeginInfo*                pRenderPassBegin,
-    VkSubpassContents							contents) {
-	
-	MVKTraceVulkanCallStart();
-	uint32_t attachmentCount = 0;
+// Consolidation function
+static void mvkCmdBeginRenderPass(
+	VkCommandBuffer								commandBuffer,
+	const VkRenderPassBeginInfo*				pRenderPassBegin,
+	const VkSubpassBeginInfo*					pSubpassBeginInfo) {
+
+	VkRenderPassAttachmentBeginInfo* pAttachmentBegin = nullptr;
 	for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
 		switch(next->sType) {
 			case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
-				auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
-				attachmentCount = pAttachmentBegin->attachmentCount;
+				pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
 				break;
 			}
 			default:
 				break;
 		}
 	}
+	auto attachments = (pAttachmentBegin
+						? MVKArrayRef<MVKImageView*>((MVKImageView**)pAttachmentBegin->pAttachments,
+													 pAttachmentBegin->attachmentCount)
+						: ((MVKFramebuffer*)pRenderPassBegin->framebuffer)->getAttachments());
+	
 	MVKAddCmdFrom5Thresholds(BeginRenderPass,
 							 pRenderPassBegin->clearValueCount, 1, 2,
-							 attachmentCount, 0, 1, 2,
+							 attachments.size, 0, 1, 2,
 							 commandBuffer,
 							 pRenderPassBegin,
-							 contents);
+							 pSubpassBeginInfo,
+							 attachments);
+}
+
+MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
+    VkCommandBuffer                             commandBuffer,
+    const VkRenderPassBeginInfo*                pRenderPassBegin,
+    VkSubpassContents							contents) {
+
+	MVKTraceVulkanCallStart();
+
+	VkSubpassBeginInfo spBeginInfo;
+	spBeginInfo.sType = VK_STRUCTURE_TYPE_SUBPASS_BEGIN_INFO;
+	spBeginInfo.pNext = nullptr;
+	spBeginInfo.contents = contents;
+
+	mvkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, &spBeginInfo);
 	MVKTraceVulkanCallEnd();
 }
 
@@ -2330,24 +2350,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass2KHR(
 	const VkSubpassBeginInfo*					pSubpassBeginInfo) {
 
 	MVKTraceVulkanCallStart();
-	uint32_t attachmentCount = 0;
-	for (const auto* next = (VkBaseInStructure*)pRenderPassBegin->pNext; next; next = next->pNext) {
-		switch(next->sType) {
-			case VK_STRUCTURE_TYPE_RENDER_PASS_ATTACHMENT_BEGIN_INFO: {
-				auto* pAttachmentBegin = (VkRenderPassAttachmentBeginInfo*)next;
-				attachmentCount = pAttachmentBegin->attachmentCount;
-				break;
-			}
-			default:
-				break;
-		}
-	}
-	MVKAddCmdFrom5Thresholds(BeginRenderPass,
-							 pRenderPassBegin->clearValueCount, 1, 2,
-							 attachmentCount, 0, 1, 2,
-							 commandBuffer,
-							 pRenderPassBegin,
-							 pSubpassBeginInfo);
+	mvkCmdBeginRenderPass(commandBuffer, pRenderPassBegin, pSubpassBeginInfo);
 	MVKTraceVulkanCallEnd();
 }
 

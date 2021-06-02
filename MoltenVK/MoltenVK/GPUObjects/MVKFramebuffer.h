@@ -37,15 +37,13 @@ public:
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_FRAMEBUFFER_EXT; }
 
 	/** Returns the dimensions of this framebuffer. */
-	inline VkExtent2D getExtent2D() { return _extent; }
+	VkExtent2D getExtent2D() { return _extent; }
 
 	/** Returns the layers covered by this framebuffer. */
-	inline uint32_t getLayerCount() { return _layerCount; }
+	uint32_t getLayerCount() { return _layerCount; }
 
-	/** Returns the attachment at the specified index.  */
-	inline MVKImageView* getAttachment(uint32_t index) { return _attachments[index]; }
-	
-	inline size_t getAttachmentCount() {return _attachments.size(); }
+	/** Returns the attachments.  */
+	MVKArrayRef<MVKImageView*> getAttachments() { return _attachments.contents(); }
 
 #pragma mark Construction
 

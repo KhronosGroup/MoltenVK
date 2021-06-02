@@ -18,6 +18,8 @@ MoltenVK 1.1.4
 
 Released TBD
 
+- Add support for extensions:
+	- `VK_KHR_imageless_framebuffer`
 - Make `vkGetPastPresentationTimingGOOGLE()` queuing behavior compliant with Vulkan spec.
 - Expose `vkGetIOSurfaceMVK()` and `vkUseIOSurfaceMVK()` without requiring _Objective-C_.
 - Support _Xcode 12.5_ build settings, build warnings, and SDK change to availability of

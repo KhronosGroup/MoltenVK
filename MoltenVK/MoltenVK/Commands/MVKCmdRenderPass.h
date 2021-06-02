@@ -40,7 +40,7 @@ class MVKCmdBeginRenderPassBase : public MVKCommand {
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						const VkRenderPassBeginInfo* pRenderPassBegin,
-						VkSubpassContents contents);
+						const VkSubpassBeginInfo* pSubpassBeginInfo);
 
 	inline MVKRenderPass* getRenderPass() { return _renderPass; }
 
@@ -66,10 +66,8 @@ class MVKCmdBeginRenderPass : public MVKCmdBeginRenderPassBase {
 public:
 	VkResult setContent(MVKCommandBuffer* cmdBuff,
 						const VkRenderPassBeginInfo* pRenderPassBegin,
-						VkSubpassContents contents);
-	VkResult setContent(MVKCommandBuffer* cmdBuff,
-						const VkRenderPassBeginInfo* pRenderPassBegin,
-						const VkSubpassBeginInfo* pSubpassBeginInfo);
+						const VkSubpassBeginInfo* pSubpassBeginInfo,
+						MVKArrayRef<MVKImageView*> attachments);
 
 	void encode(MVKCommandEncoder* cmdEncoder) override;
 
