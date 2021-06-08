@@ -339,7 +339,7 @@ void MVKDescriptorSet::read(const VkCopyDescriptorSet* pDescriptorCopy,
     }
 }
 
-const MVKMTLBufferAllocation* MVKDescriptorSet::acquireMTLBufferRegion(NSUInteger length) {
+MVKMTLBufferAllocation* MVKDescriptorSet::acquireMTLBufferRegion(NSUInteger length) {
 	return _pool->_inlineBlockMTLBufferAllocator.acquireMTLBufferRegion(length);
 }
 

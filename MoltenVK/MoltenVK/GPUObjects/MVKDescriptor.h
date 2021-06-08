@@ -397,7 +397,7 @@ public:
 protected:
 	inline uint8_t* getData() { return _mvkMTLBufferAllocation ? (uint8_t*)_mvkMTLBufferAllocation->getContents() : nullptr; }
 
-	const MVKMTLBufferAllocation* _mvkMTLBufferAllocation = nullptr;
+	MVKMTLBufferAllocation* _mvkMTLBufferAllocation = nullptr;
 };
 
 
