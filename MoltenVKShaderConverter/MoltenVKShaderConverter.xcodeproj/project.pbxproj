@@ -9,13 +9,11 @@
 /* Begin PBXBuildFile section */
 		2FEA0D012490381A00EEF3AD /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
 		2FEA0D022490381A00EEF3AD /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
-		2FEA0D032490381A00EEF3AD /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
 		2FEA0D042490381A00EEF3AD /* SPIRVConversion.h in Headers */ = {isa = PBXBuildFile; fileRef = A928C9171D0488DC00071B88 /* SPIRVConversion.h */; };
 		2FEA0D052490381A00EEF3AD /* SPIRVToMSLConverter.h in Headers */ = {isa = PBXBuildFile; fileRef = A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */; };
 		2FEA0D062490381A00EEF3AD /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
 		2FEA0D082490381A00EEF3AD /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		2FEA0D092490381A00EEF3AD /* SPIRVToMSLConverter.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */; };
-		2FEA0D0A2490381A00EEF3AD /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
 		2FEA0D0B2490381A00EEF3AD /* SPIRVConversion.mm in Sources */ = {isa = PBXBuildFile; fileRef = A928C9181D0488DC00071B88 /* SPIRVConversion.mm */; };
 		450A4F61220CB180007203D7 /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
 		450A4F62220CB180007203D7 /* SPIRVReflection.h in Headers */ = {isa = PBXBuildFile; fileRef = 450A4F5E220CB180007203D7 /* SPIRVReflection.h */; };
@@ -46,6 +44,13 @@
 		A95096BB2003D00300F10950 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		A95096BC2003D00300F10950 /* FileSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A925B70A1C7754B2006E7ECD /* FileSupport.mm */; };
 		A95096BF2003D32400F10950 /* OSSupport.mm in Sources */ = {isa = PBXBuildFile; fileRef = A95096BD2003D32400F10950 /* OSSupport.mm */; };
+		A9546B252672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9546B232672A3B8004BA3E6 /* SPIRVSupport.cpp */; };
+		A9546B262672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9546B232672A3B8004BA3E6 /* SPIRVSupport.cpp */; };
+		A9546B272672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9546B232672A3B8004BA3E6 /* SPIRVSupport.cpp */; };
+		A9546B282672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9546B232672A3B8004BA3E6 /* SPIRVSupport.cpp */; };
+		A9546B292672A3B8004BA3E6 /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9546B242672A3B8004BA3E6 /* SPIRVSupport.h */; };
+		A9546B2A2672A3B8004BA3E6 /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9546B242672A3B8004BA3E6 /* SPIRVSupport.h */; };
+		A9546B2B2672A3B8004BA3E6 /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9546B242672A3B8004BA3E6 /* SPIRVSupport.h */; };
 		A97CC7401C7527F3004A5C7E /* main.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A97CC73D1C7527F3004A5C7E /* main.cpp */; };
 		A97CC7411C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A97CC73E1C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp */; };
 		A98149681FB6A98A005F00B4 /* MVKStrings.h in Headers */ = {isa = PBXBuildFile; fileRef = A98149651FB6A98A005F00B4 /* MVKStrings.h */; };
@@ -58,11 +63,6 @@
 		A983870924EEE94800199A05 /* SPIRVTools.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A983870224EEE94800199A05 /* SPIRVTools.xcframework */; };
 		A9A14E332244388700C080F3 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A9A14E322244388700C080F3 /* Metal.framework */; };
 		A9B51BDD225E98BB00AC74D2 /* MVKOSExtensions.mm in Sources */ = {isa = PBXBuildFile; fileRef = A9B51BDB225E98BB00AC74D2 /* MVKOSExtensions.mm */; };
-		A9C70F61221B321700FBA31A /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
-		A9C70F62221B321700FBA31A /* SPIRVSupport.h in Headers */ = {isa = PBXBuildFile; fileRef = A9C70F5D221B321600FBA31A /* SPIRVSupport.h */; };
-		A9C70F63221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
-		A9C70F66221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
-		A9C70F67221B321700FBA31A /* SPIRVSupport.cpp in Sources */ = {isa = PBXBuildFile; fileRef = A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */; };
 		A9F042B21FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
 		A9F042B31FB4D060009FCCB8 /* MVKCommonEnvironment.h in Headers */ = {isa = PBXBuildFile; fileRef = A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */; };
 /* End PBXBuildFile section */
@@ -94,6 +94,8 @@
 		A93903C71C57E9ED00FE90DC /* libMoltenVKShaderConverter.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libMoltenVKShaderConverter.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		A95096BD2003D32400F10950 /* OSSupport.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = OSSupport.mm; sourceTree = "<group>"; };
 		A95096BE2003D32400F10950 /* OSSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = OSSupport.h; sourceTree = "<group>"; };
+		A9546B232672A3B8004BA3E6 /* SPIRVSupport.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SPIRVSupport.cpp; sourceTree = "<group>"; };
+		A9546B242672A3B8004BA3E6 /* SPIRVSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SPIRVSupport.h; sourceTree = "<group>"; };
 		A964BD5F1C57EFBD00D930D8 /* MoltenVKShaderConverter */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = MoltenVKShaderConverter; sourceTree = BUILT_PRODUCTS_DIR; };
 		A97CC73D1C7527F3004A5C7E /* main.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = main.cpp; sourceTree = "<group>"; };
 		A97CC73E1C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = MoltenVKShaderConverterTool.cpp; sourceTree = "<group>"; };
@@ -105,8 +107,6 @@
 		A9A14E322244388700C080F3 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
 		A9B51BDB225E98BB00AC74D2 /* MVKOSExtensions.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = MVKOSExtensions.mm; sourceTree = "<group>"; };
 		A9B51BDC225E98BB00AC74D2 /* MVKOSExtensions.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKOSExtensions.h; sourceTree = "<group>"; };
-		A9C70F5D221B321600FBA31A /* SPIRVSupport.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SPIRVSupport.h; path = Common/SPIRVSupport.h; sourceTree = SOURCE_ROOT; };
-		A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = SPIRVSupport.cpp; path = Common/SPIRVSupport.cpp; sourceTree = SOURCE_ROOT; };
 		A9F042AA1FB4D060009FCCB8 /* MVKCommonEnvironment.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MVKCommonEnvironment.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -165,6 +165,8 @@
 				A928C9171D0488DC00071B88 /* SPIRVConversion.h */,
 				A928C9181D0488DC00071B88 /* SPIRVConversion.mm */,
 				450A4F5E220CB180007203D7 /* SPIRVReflection.h */,
+				A9546B232672A3B8004BA3E6 /* SPIRVSupport.cpp */,
+				A9546B242672A3B8004BA3E6 /* SPIRVSupport.h */,
 				A9093F5A1C58013E0094110D /* SPIRVToMSLConverter.cpp */,
 				A9093F5B1C58013E0094110D /* SPIRVToMSLConverter.h */,
 			);
@@ -213,8 +215,6 @@
 				A9B51BDC225E98BB00AC74D2 /* MVKOSExtensions.h */,
 				A9B51BDB225E98BB00AC74D2 /* MVKOSExtensions.mm */,
 				A98149651FB6A98A005F00B4 /* MVKStrings.h */,
-				A9C70F5E221B321700FBA31A /* SPIRVSupport.cpp */,
-				A9C70F5D221B321600FBA31A /* SPIRVSupport.h */,
 			);
 			name = Common;
 			path = ../Common;
@@ -241,7 +241,7 @@
 				2FEA0D012490381A00EEF3AD /* SPIRVReflection.h in Headers */,
 				A920A8A7251B75B70076851C /* GLSLConversion.h in Headers */,
 				2FEA0D022490381A00EEF3AD /* MVKStrings.h in Headers */,
-				2FEA0D032490381A00EEF3AD /* SPIRVSupport.h in Headers */,
+				A9546B2A2672A3B8004BA3E6 /* SPIRVSupport.h in Headers */,
 				2FEA0D042490381A00EEF3AD /* SPIRVConversion.h in Headers */,
 				A920A8AD251B75B80076851C /* GLSLToSPIRVConverter.h in Headers */,
 				2FEA0D052490381A00EEF3AD /* SPIRVToMSLConverter.h in Headers */,
@@ -256,7 +256,7 @@
 				450A4F61220CB180007203D7 /* SPIRVReflection.h in Headers */,
 				A920A8A6251B75B70076851C /* GLSLConversion.h in Headers */,
 				A98149681FB6A98A005F00B4 /* MVKStrings.h in Headers */,
-				A9C70F61221B321700FBA31A /* SPIRVSupport.h in Headers */,
+				A9546B292672A3B8004BA3E6 /* SPIRVSupport.h in Headers */,
 				A928C9191D0488DC00071B88 /* SPIRVConversion.h in Headers */,
 				A920A8AC251B75B70076851C /* GLSLToSPIRVConverter.h in Headers */,
 				A909408C1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */,
@@ -271,7 +271,7 @@
 				450A4F62220CB180007203D7 /* SPIRVReflection.h in Headers */,
 				A920A8A8251B75B70076851C /* GLSLConversion.h in Headers */,
 				A98149691FB6A98A005F00B4 /* MVKStrings.h in Headers */,
-				A9C70F62221B321700FBA31A /* SPIRVSupport.h in Headers */,
+				A9546B2B2672A3B8004BA3E6 /* SPIRVSupport.h in Headers */,
 				A928C91A1D0488DC00071B88 /* SPIRVConversion.h in Headers */,
 				A920A8AE251B75B80076851C /* GLSLToSPIRVConverter.h in Headers */,
 				A909408D1C58013E0094110D /* SPIRVToMSLConverter.h in Headers */,
@@ -461,8 +461,8 @@
 				A920A8AA251B75B70076851C /* GLSLConversion.mm in Sources */,
 				A920A8A4251B75B70076851C /* GLSLToSPIRVConverter.cpp in Sources */,
 				2FEA0D092490381A00EEF3AD /* SPIRVToMSLConverter.cpp in Sources */,
-				2FEA0D0A2490381A00EEF3AD /* SPIRVSupport.cpp in Sources */,
 				2FEA0D0B2490381A00EEF3AD /* SPIRVConversion.mm in Sources */,
+				A9546B272672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -471,9 +471,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				A97CC7411C7527F3004A5C7E /* MoltenVKShaderConverterTool.cpp in Sources */,
-				A9C70F63221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A95096BF2003D32400F10950 /* OSSupport.mm in Sources */,
 				A9B51BDD225E98BB00AC74D2 /* MVKOSExtensions.mm in Sources */,
+				A9546B252672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */,
 				A97CC7401C7527F3004A5C7E /* main.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
@@ -486,8 +486,8 @@
 				A920A8A9251B75B70076851C /* GLSLConversion.mm in Sources */,
 				A920A8A3251B75B70076851C /* GLSLToSPIRVConverter.cpp in Sources */,
 				A909408A1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
-				A9C70F66221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A928C91B1D0488DC00071B88 /* SPIRVConversion.mm in Sources */,
+				A9546B262672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -499,8 +499,8 @@
 				A920A8AB251B75B70076851C /* GLSLConversion.mm in Sources */,
 				A920A8A5251B75B70076851C /* GLSLToSPIRVConverter.cpp in Sources */,
 				A909408B1C58013E0094110D /* SPIRVToMSLConverter.cpp in Sources */,
-				A9C70F67221B321700FBA31A /* SPIRVSupport.cpp in Sources */,
 				A928C91C1D0488DC00071B88 /* SPIRVConversion.mm in Sources */,
+				A9546B282672A3B8004BA3E6 /* SPIRVSupport.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
