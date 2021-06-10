@@ -55,8 +55,11 @@ VkResult MVKDeviceMemory::map(VkDeviceSize offset, VkDeviceSize size, VkMemoryMa
 
 	*ppData = (void*)((uintptr_t)_pMemory + offset);
 
-	// Coherent memory does not require flushing by app, so we must flush now, to handle any texture updates.
-	pullFromDevice(offset, size, isMemoryHostCoherent());
+	// Coherent memory does not require flushing by app, so we must flush now
+	// to support Metal textures that actually reside in non-coherent memory.
+	if (mvkIsAnyFlagEnabled(_vkMemProps, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+		pullFromDevice(offset, size);
+	}
 
 	return VK_SUCCESS;
 }
@@ -68,54 +71,57 @@ void MVKDeviceMemory::unmap() {
 		return;
 	}
 
-	// Coherent memory does not require flushing by app, so we must flush now.
-	flushToDevice(_mappedRange.offset, _mappedRange.size, isMemoryHostCoherent());
+	// Coherent memory does not require flushing by app, so we must flush now
+	// to support Metal textures that actually reside in non-coherent memory.
+	if (mvkIsAnyFlagEnabled(_vkMemProps, VK_MEMORY_PROPERTY_HOST_COHERENT_BIT)) {
+		flushToDevice(_mappedRange.offset, _mappedRange.size);
+	}
 
 	_mappedRange.offset = 0;
 	_mappedRange.size = 0;
 }
 
-VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size, bool evenIfCoherent) {
-	// Coherent memory is flushed on unmap(), so it is only flushed if forced
+VkResult MVKDeviceMemory::flushToDevice(VkDeviceSize offset, VkDeviceSize size) {
 	VkDeviceSize memSize = adjustMemorySize(size, offset);
-	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) ) {
+	if (memSize == 0 || !isMemoryHostAccessible()) { return VK_SUCCESS; }
 
 #if MVK_MACOS
-		if (_mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
-			[_mtlBuffer didModifyRange: NSMakeRange(offset, memSize)];
-		}
+	if (_mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
+		[_mtlBuffer didModifyRange: NSMakeRange(offset, memSize)];
+	}
 #endif
 
-		// If we have an MTLHeap object, there's no need to sync memory manually between images and the buffer.
-		if (!_mtlHeap) {
-			lock_guard<mutex> lock(_rezLock);
-			for (auto& img : _imageMemoryBindings) { img->flushToDevice(offset, memSize); }
-			for (auto& buf : _buffers) { buf->flushToDevice(offset, memSize); }
-		}
+	// If we have an MTLHeap object, there's no need to sync memory manually between resources and the buffer.
+	if ( !_mtlHeap ) {
+		lock_guard<mutex> lock(_rezLock);
+		for (auto& img : _imageMemoryBindings) { img->flushToDevice(offset, memSize); }
+		for (auto& buf : _buffers) { buf->flushToDevice(offset, memSize); }
 	}
+
 	return VK_SUCCESS;
 }
 
 VkResult MVKDeviceMemory::pullFromDevice(VkDeviceSize offset,
 										 VkDeviceSize size,
-										 bool evenIfCoherent,
 										 MVKMTLBlitEncoder* pBlitEnc) {
-	// Coherent memory is flushed on unmap(), so it is only flushed if forced
     VkDeviceSize memSize = adjustMemorySize(size, offset);
-	if (memSize > 0 && isMemoryHostAccessible() && (evenIfCoherent || !isMemoryHostCoherent()) && !_mtlHeap) {
+	if (memSize == 0 || !isMemoryHostAccessible()) { return VK_SUCCESS; }
+
+#if MVK_MACOS
+	if (pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
+		if ( !pBlitEnc->mtlCmdBuffer) { pBlitEnc->mtlCmdBuffer = _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseInvalidateMappedMemoryRanges); }
+		if ( !pBlitEnc->mtlBlitEncoder) { pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder]; }
+		[pBlitEnc->mtlBlitEncoder synchronizeResource: _mtlBuffer];
+	}
+#endif
+
+	// If we have an MTLHeap object, there's no need to sync memory manually between resources and the buffer.
+	if ( !_mtlHeap ) {
 		lock_guard<mutex> lock(_rezLock);
         for (auto& img : _imageMemoryBindings) { img->pullFromDevice(offset, memSize); }
         for (auto& buf : _buffers) { buf->pullFromDevice(offset, memSize); }
-
-#if MVK_MACOS
-		if (pBlitEnc && _mtlBuffer && _mtlStorageMode == MTLStorageModeManaged) {
-			if ( !pBlitEnc->mtlCmdBuffer) { pBlitEnc->mtlCmdBuffer = _device->getAnyQueue()->getMTLCommandBuffer(kMVKCommandUseInvalidateMappedMemoryRanges); }
-			if ( !pBlitEnc->mtlBlitEncoder) { pBlitEnc->mtlBlitEncoder = [pBlitEnc->mtlCmdBuffer blitCommandEncoder]; }
-			[pBlitEnc->mtlBlitEncoder synchronizeResource: _mtlBuffer];
-		}
-#endif
-
 	}
+
 	return VK_SUCCESS;
 }
 
@@ -271,9 +277,9 @@ MVKDeviceMemory::MVKDeviceMemory(MVKDevice* device,
 								 const VkMemoryAllocateInfo* pAllocateInfo,
 								 const VkAllocationCallbacks* pAllocator) : MVKVulkanAPIDeviceObject(device) {
 	// Set Metal memory parameters
-	VkMemoryPropertyFlags vkMemProps = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
-	_mtlStorageMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(vkMemProps);
-	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(vkMemProps);
+	_vkMemProps = _device->_pMemoryProperties->memoryTypes[pAllocateInfo->memoryTypeIndex].propertyFlags;
+	_mtlStorageMode = mvkMTLStorageModeFromVkMemoryPropertyFlags(_vkMemProps);
+	_mtlCPUCacheMode = mvkMTLCPUCacheModeFromVkMemoryPropertyFlags(_vkMemProps);
 
 	_allocationSize = pAllocateInfo->allocationSize;
 

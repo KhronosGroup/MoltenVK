@@ -3616,7 +3616,7 @@ VkResult MVKDevice::invalidateMappedMemoryRanges(uint32_t memRangeCount, const V
 		for (uint32_t i = 0; i < memRangeCount; i++) {
 			const VkMappedMemoryRange* pMem = &pMemRanges[i];
 			MVKDeviceMemory* mvkMem = (MVKDeviceMemory*)pMem->memory;
-			VkResult r = mvkMem->pullFromDevice(pMem->offset, pMem->size, false, &mvkBlitEnc);
+			VkResult r = mvkMem->pullFromDevice(pMem->offset, pMem->size, &mvkBlitEnc);
 			if (rslt == VK_SUCCESS) { rslt = r; }
 		}
 		if (mvkBlitEnc.mtlBlitEncoder) { [mvkBlitEnc.mtlBlitEncoder endEncoding]; }

@@ -93,17 +93,11 @@ public:
 	/** Returns whether this device memory is currently mapped to host memory. */
 	bool isMapped() { return _mappedRange.size > 0; }
 
-	/**
-	 * If this memory is host-visible, the specified memory range is flushed to the device.
-	 * Normally, flushing will only occur if the device memory is non-coherent, but flushing
-	 * to coherent memory can be forced by setting evenIfCoherent to true.
-	 */
-	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size, bool evenIfCoherent = false);
+	/** If this memory is host-visible, the specified memory range is flushed to the device. */
+	VkResult flushToDevice(VkDeviceSize offset, VkDeviceSize size);
 
 	/**
 	 * If this memory is host-visible, pulls the specified memory range from the device.
-	 * Normally, pulling will only occur if the device memory is non-coherent, but pulling
-	 * to coherent memory can be forced by setting evenIfCoherent to true.
 	 *
 	 * If pBlitEnc is not null, it points to a holder for a MTLBlitCommandEncoder and its
 	 * associated MTLCommandBuffer. If this instance has a MTLBuffer using managed memory,
@@ -114,7 +108,6 @@ public:
 	 */
 	VkResult pullFromDevice(VkDeviceSize offset,
 							VkDeviceSize size,
-							bool evenIfCoherent = false,
 							MVKMTLBlitEncoder* pBlitEnc = nullptr);
 
 
@@ -172,8 +165,10 @@ protected:
 	id<MTLHeap> _mtlHeap = nil;
 	void* _pMemory = nullptr;
 	void* _pHostMemory = nullptr;
-	bool _isDedicated = false;
+	VkMemoryPropertyFlags _vkMemProps;
 	MTLStorageMode _mtlStorageMode;
 	MTLCPUCacheMode _mtlCPUCacheMode;
+	bool _isDedicated = false;
+
 };
 
