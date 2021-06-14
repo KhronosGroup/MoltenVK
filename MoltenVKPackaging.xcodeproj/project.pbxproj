@@ -504,12 +504,14 @@
 		A90B2B211A9B6170008EE819 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DISABLE_MANUAL_TARGET_ORDER_BUILD_WARNING = YES;
 			};
 			name = Debug;
 		};
 		A90B2B221A9B6170008EE819 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DISABLE_MANUAL_TARGET_ORDER_BUILD_WARNING = YES;
 			};
 			name = Release;
 		};
