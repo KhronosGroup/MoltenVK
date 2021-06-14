@@ -35,19 +35,19 @@ all-debug:
 
 .PHONY: macos
 macos:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -destination "generic/platform=macOS" $(OUTPUT_FMT_CMD)
 
 .PHONY: macos-debug
 macos-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -configuration "Debug" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -destination "generic/platform=macOS" -configuration "Debug" $(OUTPUT_FMT_CMD)
 
 .PHONY: ios
 ios:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS" $(OUTPUT_FMT_CMD)
 
 .PHONY: ios-debug
 ios-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -configuration "Debug" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS" -configuration "Debug" $(OUTPUT_FMT_CMD)
 
 .PHONY: iossim
 iossim:
@@ -67,11 +67,11 @@ maccat-debug:
 
 .PHONY: tvos
 tvos:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS" $(OUTPUT_FMT_CMD)
 
 .PHONY: tvos-debug
 tvos-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -configuration "Debug" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS" -configuration "Debug" $(OUTPUT_FMT_CMD)
 
 .PHONY: tvossim
 tvossim:
@@ -83,7 +83,7 @@ tvossim-debug:
 
 .PHONY: clean
 clean:
-	$(XCODEBUILD) clean -quiet -project "$(XC_PROJ)" -scheme "$(XC_SCHEME)"
+	$(XCODEBUILD) clean -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -destination "generic/platform=macOS" $(OUTPUT_FMT_CMD)
 	rm -rf Package
 
 # Usually requires 'sudo make install'
