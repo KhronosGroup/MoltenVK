@@ -22,6 +22,8 @@ Released TBD
 	- `VK_KHR_imageless_framebuffer`
 - Make `vkGetPastPresentationTimingGOOGLE()` queuing behavior compliant with Vulkan spec.
 - Expose `vkGetIOSurfaceMVK()` and `vkUseIOSurfaceMVK()` without requiring _Objective-C_.
+- Default MoltenVK build using `C++17` and compiler optimization setting `-O2`.
+- API fix to remove `#include "SPIRVReflection.h"` from `SPIRVToMSLConverter.h` header.
 - Support _Xcode 12.5_ build settings, build warnings, and SDK change to availability of
   `[MTLDevice supportsBCTextureCompression]` on _Mac Catalyst_.
 - Improve cache hits when matching `SPIRVToMSLConversionConfiguration` structs to each other 
@@ -37,6 +39,7 @@ Released TBD
 - Protect against crash when retrieving `MTLTexture` when `VkImage` has no `VkDeviceMemory` bound.
 - Adjust some `VkPhysicalDeviceLimits` values for Vulkan and Metal compliance. 
 - Fix internal reference from `SPIRV_CROSS_NAMESPACE_OVERRIDE` to `SPIRV_CROSS_NAMESPACE`.
+- Support _Xcode 13_ SDK APIs and build settings.
 
 
 

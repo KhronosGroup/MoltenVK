@@ -87,7 +87,11 @@ extern "C" {
 #	define MVK_MACOS_APPLE_SILICON	(MVK_MACOS && MVK_APPLE_SILICON)
 #endif
 
-/** Building with Xcode 12. */
+/** Building with Xcode versions. */
+#ifndef MVK_XCODE_13
+#	define MVK_XCODE_13 			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 120000) || \
+									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 150000))	// Also covers tvOS
+#endif
 #ifndef MVK_XCODE_12
 #	define MVK_XCODE_12 			((__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600) || \
 									 (__IPHONE_OS_VERSION_MAX_ALLOWED >= 140000))	// Also covers tvOS

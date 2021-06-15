@@ -281,7 +281,7 @@
 		A90B2B1D1A9B6170008EE819 /* Project object */ = {
 			isa = PBXProject;
 			attributes = {
-				LastUpgradeCheck = 1250;
+				LastUpgradeCheck = 1300;
 				TargetAttributes = {
 					A9FEADBC1F3517480010240E = {
 						DevelopmentTeam = VU3TCKU48B;
@@ -504,12 +504,14 @@
 		A90B2B211A9B6170008EE819 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DISABLE_MANUAL_TARGET_ORDER_BUILD_WARNING = YES;
 			};
 			name = Debug;
 		};
 		A90B2B221A9B6170008EE819 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				DISABLE_MANUAL_TARGET_ORDER_BUILD_WARNING = YES;
 			};
 			name = Release;
 		};

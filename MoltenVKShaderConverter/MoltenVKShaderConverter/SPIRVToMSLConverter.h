@@ -19,7 +19,6 @@
 #ifndef __SPIRVToMSLConverter_h_
 #define __SPIRVToMSLConverter_h_ 1
 
-#include "SPIRVReflection.h"
 #include <spirv.hpp>
 #include <spirv_msl.hpp>
 #include <string>
