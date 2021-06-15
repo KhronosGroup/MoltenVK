@@ -1612,11 +1612,9 @@ void MVKCmdUpdateBuffer::encode(MVKCommandEncoder* cmdEncoder) {
     NSUInteger dstMTLBuffOffset = _dstBuffer->getMTLBufferOffset() + _dstOffset;
 
     // Copy data to the source MTLBuffer
-    MVKMTLBufferAllocation* srcMTLBufferAlloc = (MVKMTLBufferAllocation*)cmdEncoder->getCommandEncodingPool()->acquireMTLBufferAllocation(_dataSize);
+    MVKMTLBufferAllocation* srcMTLBufferAlloc = cmdEncoder->getCommandEncodingPool()->acquireMTLBufferAllocation(_dataSize);
     void* pBuffData = srcMTLBufferAlloc->getContents();
-    mlock(pBuffData, _dataSize);
     memcpy(pBuffData, _srcDataCache.data(), _dataSize);
-    munlock(pBuffData, _dataSize);
 
     [mtlBlitEnc copyFromBuffer: srcMTLBufferAlloc->_mtlBuffer
                   sourceOffset: srcMTLBufferAlloc->_offset

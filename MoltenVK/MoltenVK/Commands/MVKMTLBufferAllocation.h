@@ -51,17 +51,20 @@ public:
     MVKMTLBufferAllocationPool* getPool() const { return _pool; }
 
 	/** Returns this object back to the pool that created it. */
-    void returnToPool() const;
+    void returnToPool();
 
 	/** Constructs this instance with the specified pool as its origin. */
     MVKMTLBufferAllocation(MVKMTLBufferAllocationPool* pool,
                            id<MTLBuffer> mtlBuffer,
                            NSUInteger offset,
-                           NSUInteger length) : _pool(pool), _mtlBuffer(mtlBuffer), _offset(offset), _length(length) {}
+                           NSUInteger length,
+                           uint64_t poolIndex) : _pool(pool), _mtlBuffer(mtlBuffer), _offset(offset), _length(length), _poolIndex(poolIndex) {}
 
 protected:
-	MVKMTLBufferAllocationPool* _pool;
+    friend class MVKMTLBufferAllocationPool;
 
+    MVKMTLBufferAllocationPool* _pool;
+    uint64_t _poolIndex;
 };
 
 
@@ -78,6 +81,11 @@ protected:
 class MVKMTLBufferAllocationPool : public MVKObjectPool<MVKMTLBufferAllocation>, public MVKDeviceTrackingMixin {
 
 public:
+    /** Returns a new allocation. */
+    MVKMTLBufferAllocation* acquireAllocation();
+
+    /** Returns a new allocation (without mutual exclusion). */
+    MVKMTLBufferAllocation* acquireAllocationUnlocked();
 
 	/** Returns the Vulkan API opaque object controlling this object. */
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _device->getVulkanAPIObject(); };
@@ -93,7 +101,8 @@ protected:
 	
 	MVKBaseObject* getBaseObject() override { return this; };
 	MVKMTLBufferAllocation* newObject() override;
-	void returnAllocation(MVKMTLBufferAllocation* ba) { _isThreadSafe ? returnObjectSafely(ba) : returnObject(ba); }
+    void returnAllocationUnlocked(MVKMTLBufferAllocation* ba);
+    void returnAllocation(MVKMTLBufferAllocation* ba);
 	uint32_t calcMTLBufferAllocationCount();
     void addMTLBuffer();
 
@@ -101,8 +110,9 @@ protected:
     NSUInteger _allocationLength;
     NSUInteger _mtlBufferLength;
     MTLStorageMode _mtlStorageMode;
-	MVKSmallVector<id<MTLBuffer>, 64> _mtlBuffers;
-	bool _isThreadSafe;
+    struct MTLBufferTracker { id<MTLBuffer> mtlBuffer; uint64_t allocationCount; };
+    MVKSmallVector<MTLBufferTracker, 64> _mtlBuffers;
+    bool _isThreadSafe;
 };
 
 
@@ -132,7 +142,7 @@ public:
      * To return the MVKMTLBufferAllocation back to the pool, call 
      * the returnToPool() function on the returned instance.
      */
-    const MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
+    MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
 
     /**
      * Configures this instance to dispense MVKMTLBufferAllocation up to the specified

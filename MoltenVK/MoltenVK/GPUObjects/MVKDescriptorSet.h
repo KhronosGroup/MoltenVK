@@ -180,7 +180,7 @@ public:
 			  VkWriteDescriptorSetInlineUniformBlockEXT* pInlineUniformBlock);
 
 	/** Returns an MTLBuffer region allocation. */
-	const MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
+    MVKMTLBufferAllocation* acquireMTLBufferRegion(NSUInteger length);
 	/**
 	 * Returns the Metal argument buffer to which resources are written,
 	 * or return nil if Metal argument buffers are not being used.

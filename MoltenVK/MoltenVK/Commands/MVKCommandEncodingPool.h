@@ -66,7 +66,7 @@ public:
      * To return the returned allocation back to the pool to be reused,
      * call the returnToPool() function on the returned allocation.
      */
-    const MVKMTLBufferAllocation* acquireMTLBufferAllocation(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
+    MVKMTLBufferAllocation* acquireMTLBufferAllocation(NSUInteger length, bool isPrivate = false, bool isDedicated = false);
 
 	/**
 	 * Returns a MTLRenderPipelineState dedicated to rendering to several attachments

@@ -77,7 +77,7 @@ id<MTLDepthStencilState> MVKCommandEncodingPool::getMTLDepthStencilState(bool us
 	MVK_ENC_REZ_ACCESS(_cmdClearDefaultDepthStencilState, newMTLDepthStencilState(useDepth, useStencil));
 }
 
-const MVKMTLBufferAllocation* MVKCommandEncodingPool::acquireMTLBufferAllocation(NSUInteger length, bool isPrivate, bool isDedicated) {
+MVKMTLBufferAllocation* MVKCommandEncodingPool::acquireMTLBufferAllocation(NSUInteger length, bool isPrivate, bool isDedicated) {
     MVKAssert(isPrivate || !isDedicated, "Dedicated, host-shared temporary buffers are not supported."); 
     if (isDedicated) {
         return _dedicatedMtlBufferAllocator.acquireMTLBufferRegion(length);
