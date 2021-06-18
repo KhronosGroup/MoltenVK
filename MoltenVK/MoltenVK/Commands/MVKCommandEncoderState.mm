@@ -1099,20 +1099,18 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
 
     MVKQuerySpec querySpec;
     querySpec.set(pQueryPool, query);
-    NSUInteger offset = _mtlRenderPassQueries.empty() ? 0 : _mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes;
-    NSUInteger maxOffset = _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes;
-    offset = min(offset, maxOffset);
-    _mtlRenderPassQueries.push_back(make_pair(querySpec, offset));
+    _mtlRenderPassQueries.push_back(make_pair(querySpec, _mtlVisibilityResultOffset));
 
     bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
     _mtlVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
-    _mtlVisibilityResultOffset = offset;
 
     markDirty();
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
 	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
+	_mtlVisibilityResultOffset = min<NSUInteger>(_mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes,
+												 _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes);
 	markDirty();
 }
 
