@@ -1080,14 +1080,13 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
 	id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
     id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
     [mtlAccumEncoder setComputePipelineState: mtlAccumState];
-    for (auto& query : _mtlRenderPassQueries) {
+    for (auto& qryLoc : _mtlRenderPassQueries) {
         // Accumulate the current results to the query pool's buffer.
-        auto* pQueryPool = (MVKOcclusionQueryPool*)query.first.queryPool;
-        [mtlAccumEncoder setBuffer: pQueryPool->getVisibilityResultMTLBuffer()
-                            offset: pQueryPool->getVisibilityResultOffset(query.first.query)
+        [mtlAccumEncoder setBuffer: qryLoc.queryPool->getVisibilityResultMTLBuffer()
+                            offset: qryLoc.queryPool->getVisibilityResultOffset(qryLoc.query)
                            atIndex: 0];
         [mtlAccumEncoder setBuffer: vizResultBuffer->_mtlBuffer
-                            offset: vizResultBuffer->_offset + query.second
+                            offset: vizResultBuffer->_offset + qryLoc.visibilityBufferOffset
                            atIndex: 1];
         [mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
                         threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
@@ -1097,14 +1096,9 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
 }
 
 void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
-
-    MVKQuerySpec querySpec;
-    querySpec.set(pQueryPool, query);
-    _mtlRenderPassQueries.push_back(make_pair(querySpec, _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset));
-
     bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
     _mtlVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
-
+	_mtlRenderPassQueries.emplace_back(pQueryPool, query, _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset);
     markDirty();
 }
 
