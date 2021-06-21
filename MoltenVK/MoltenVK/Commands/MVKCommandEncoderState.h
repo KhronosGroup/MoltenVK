@@ -614,9 +614,8 @@ public:
 protected:
     void encodeImpl(uint32_t) override;
 
-    MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-    NSUInteger _mtlVisibilityResultOffset = 0;
 	MVKSmallVector<std::pair<MVKQuerySpec, NSUInteger>> _mtlRenderPassQueries;
+    MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
 };
 
 

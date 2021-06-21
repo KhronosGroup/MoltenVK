@@ -33,6 +33,8 @@ Released TBD
 - Fix synchronization issue with locking `MTLArgumentEncoder` for Metal Argument Buffers.
 - Fix race condition on submission fence during device loss.
 - Fix crash using memoryless storage for input attachments on Apple Silicon.
+- Fix issue where M1 GPU does not support reusing Metal visibility buffer offsets
+  across separate render encoders within a single Metal command buffer (Vulkan submit).
 - On command buffer submission failure, if `MVKConfiguration::resumeLostDevice` enabled,  do not release 
   waits on `VkDevice`, and do not return `VK_ERROR_DEVICE_LOST`, unless `VkPhysicalDevice` is also lost.
 - Fix inconsistent handling of linear attachment decisions on Apple Silicon.

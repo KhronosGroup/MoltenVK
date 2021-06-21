@@ -463,6 +463,13 @@ MVKQueueCommandBufferSubmission::~MVKQueueCommandBufferSubmission() {
 }
 
 
+template <size_t N>
+void MVKQueueFullCommandBufferSubmission<N>::submitCommandBuffers() {
+	MVKCommandEncodingContext encodingContext;
+	for (auto& cb : _cmdBuffers) { cb->submit(this, &encodingContext); }
+}
+
+
 #pragma mark -
 #pragma mark MVKQueuePresentSurfaceSubmission
 

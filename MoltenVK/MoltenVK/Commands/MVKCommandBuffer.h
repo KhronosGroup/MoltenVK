@@ -47,6 +47,22 @@ typedef uint64_t MVKMTLCommandBufferID;
 
 
 #pragma mark -
+#pragma mark MVKCommandEncodingContext
+
+/** Context for tracking information across multiple encodings. */
+typedef struct MVKCommandEncodingContext {
+	NSUInteger mtlVisibilityResultOffset = 0;
+
+	void incrementMTLVisibilityResultOffset(MVKCommandEncoder* cmdEncoder);
+	const MVKMTLBufferAllocation* getVisibilityResultBuffer(MVKCommandEncoder* cmdEncoder);
+
+private:
+	const MVKMTLBufferAllocation* _visibilityResultBuffer = nullptr;
+
+} MVKCommandEncodingContext;
+
+
+#pragma mark -
 #pragma mark MVKCommandBuffer
 
 /** Represents a Vulkan command pool. */
@@ -83,7 +99,7 @@ public:
 	inline MVKCommandPool* getCommandPool() { return _commandPool; }
 
 	/** Submit the commands in this buffer as part of the queue submission. */
-	void submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit);
+	void submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit, MVKCommandEncodingContext* pEncodingContext);
 
     /** Returns whether this command buffer can be submitted to a queue more than once. */
     inline bool getIsReusable() { return _isReusable; }
@@ -264,7 +280,7 @@ public:
 	MVKVulkanAPIObject* getVulkanAPIObject() override { return _cmdBuffer->getVulkanAPIObject(); };
 
 	/** Encode commands from the command buffer onto the Metal command buffer. */
-	void encode(id<MTLCommandBuffer> mtlCmdBuff);
+	void encode(id<MTLCommandBuffer> mtlCmdBuff, MVKCommandEncodingContext* pEncodingContext);
 
 	/** Encode commands from the specified secondary command buffer onto the Metal command buffer. */
 	void encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer);
@@ -407,6 +423,9 @@ public:
 
 #pragma mark Dynamic encoding state accessed directly
 
+	/** Context for tracking information across multiple encodings. */
+	MVKCommandEncodingContext* _pEncodingContext;
+
     /** A reference to the Metal features supported by the device. */
     const MVKPhysicalDeviceMetalFeatures* _pDeviceMetalFeatures;
 
@@ -427,9 +446,6 @@ public:
 
 	/** The current Metal render encoder. */
 	id<MTLRenderCommandEncoder> _mtlRenderEncoder;
-
-	/** The buffer used to hold occlusion query results in a render pass. */
-	const MVKMTLBufferAllocation* _visibilityResultMTLBuffer;
 
     /** Tracks the current graphics pipeline bound to the encoder. */
     MVKPipelineCommandEncoderState _graphicsPipelineState;

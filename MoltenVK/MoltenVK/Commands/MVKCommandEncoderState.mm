@@ -1076,7 +1076,8 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
 
     if (_mtlRenderPassQueries.empty()) { return; }  // Nothing to do.
 
-    id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
+	const MVKMTLBufferAllocation* vizResultBuffer = _cmdEncoder->_pEncodingContext->getVisibilityResultBuffer(_cmdEncoder);
+	id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
     id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
     [mtlAccumEncoder setComputePipelineState: mtlAccumState];
     for (auto& query : _mtlRenderPassQueries) {
@@ -1085,8 +1086,8 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
         [mtlAccumEncoder setBuffer: pQueryPool->getVisibilityResultMTLBuffer()
                             offset: pQueryPool->getVisibilityResultOffset(query.first.query)
                            atIndex: 0];
-        [mtlAccumEncoder setBuffer: _cmdEncoder->_visibilityResultMTLBuffer->_mtlBuffer
-                            offset: query.second
+        [mtlAccumEncoder setBuffer: vizResultBuffer->_mtlBuffer
+                            offset: vizResultBuffer->_offset + query.second
                            atIndex: 1];
         [mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
                         threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
@@ -1099,7 +1100,7 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
 
     MVKQuerySpec querySpec;
     querySpec.set(pQueryPool, query);
-    _mtlRenderPassQueries.push_back(make_pair(querySpec, _mtlVisibilityResultOffset));
+    _mtlRenderPassQueries.push_back(make_pair(querySpec, _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset));
 
     bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
     _mtlVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
@@ -1109,8 +1110,7 @@ void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQuery
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
 	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-	_mtlVisibilityResultOffset = min<NSUInteger>(_mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes,
-												 _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize - kMVKQuerySlotSizeInBytes);
+	_cmdEncoder->_pEncodingContext->incrementMTLVisibilityResultOffset(_cmdEncoder);
 	markDirty();
 }
 
@@ -1118,5 +1118,5 @@ void MVKOcclusionQueryCommandEncoderState::encodeImpl(uint32_t stage) {
 	if (stage != kMVKGraphicsStageRasterization) { return; }
 
 	[_cmdEncoder->_mtlRenderEncoder setVisibilityResultMode: _mtlVisibilityResultMode
-													 offset: _mtlVisibilityResultOffset];
+													 offset: _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset];
 }

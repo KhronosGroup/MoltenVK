@@ -237,7 +237,7 @@ public:
 		}
 
 protected:
-	void submitCommandBuffers() override { for (auto& cb : _cmdBuffers) { cb->submit(this); } }
+	void submitCommandBuffers() override;
 
 	MVKSmallVector<MVKCommandBuffer*, N> _cmdBuffers;
 };
