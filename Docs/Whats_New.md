@@ -36,6 +36,7 @@ Released TBD
 - On command buffer submission failure, if `MVKConfiguration::resumeLostDevice` enabled,  do not release 
   waits on `VkDevice`, and do not return `VK_ERROR_DEVICE_LOST`, unless `VkPhysicalDevice` is also lost.
 - Fix inconsistent handling of linear attachment decisions on Apple Silicon.
+- Fix small memory leak during swapchain creation.
 - Protect against crash when retrieving `MTLTexture` when `VkImage` has no `VkDeviceMemory` bound.
 - Adjust some `VkPhysicalDeviceLimits` values for Vulkan and Metal compliance. 
 - Fix internal reference from `SPIRV_CROSS_NAMESPACE_OVERRIDE` to `SPIRV_CROSS_NAMESPACE`.

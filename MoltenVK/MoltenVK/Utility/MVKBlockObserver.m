@@ -47,6 +47,7 @@
 
 - (void)dealloc {
 	[self stopObserving];
+	[_block release];
 	[super dealloc];
 }
 
