@@ -195,6 +195,7 @@
 		A9C70F45221B04C800FBA31A /* create_dylib_ios.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_ios.sh; sourceTree = "<group>"; };
 		A9CBBFF924F8A1EB006D41EF /* package_moltenvk_xcframework.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_moltenvk_xcframework.sh; sourceTree = "<group>"; };
 		A9DA8341218A198C002AA662 /* .gitignore */ = {isa = PBXFileReference; lastKnownFileType = text; path = .gitignore; sourceTree = "<group>"; };
+		A9DDBF8C26827F02005DD991 /* runcts */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = runcts; sourceTree = "<group>"; };
 		A9FC5F60249D2ED3003CB086 /* package_all.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = package_all.sh; sourceTree = "<group>"; };
 		A9FC5F64249D3778003CB086 /* create_dylib_tvos.sh */ = {isa = PBXFileReference; lastKnownFileType = text.script.sh; path = create_dylib_tvos.sh; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -250,6 +251,7 @@
 				A92EF7C721856EA200C8B91B /* package_shader_converter_tool.sh */,
 				A92EF7CB21856EA300C8B91B /* package_shader_converter_xcframework.sh */,
 				A92EF7CA21856EA200C8B91B /* package_update_latest.sh */,
+				A9DDBF8C26827F02005DD991 /* runcts */,
 				A92EF7DE2186451700C8B91B /* Makefile */,
 			);
 			path = Scripts;

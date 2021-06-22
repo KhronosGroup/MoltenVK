@@ -1,0 +1,124 @@
+#!/bin/bash
+
+# Copyright (c) 2016-2021 The Brenwill Workshop Ltd.
+#
+# runcts - This script simplifies running Vulkan CTS tests on MoltenVK.
+#
+# CTS will save temporary output files to the directory this script is located in. It is 
+# recommended that you copy this file to a location where your testing files will be kept.
+# By default, this should be a directory beside the VK-GL-CTS directory. See the description 
+# of the --cts option below for information about locations.
+#
+# Executing a large case list file of CTS tests can take a long time. It is recommended
+# that you run this using caffeinate, as follows:
+#     caffeinate -is ./runcts [-o path] [--cts path] [-p] [--portability] case_list_file
+#
+#
+# macOS usage: ./runcts [-o path] [--cts path] [-p] [--portability] case_list_file
+#
+#     case_list_file
+#         The path to the file that contains a list of the CTS test cases to run.
+#
+#     -o path
+#         The path to the file to write the test results. If this option is not provided, 
+#         the results will be written to an output text file with the same name as the 
+#         case_list_file, with "-results.txt" appended. CTS will also output several
+#         working temporary files into the directory holding this script.
+#
+#     --cts path
+#         The path to the directory containing the built CTS executable.
+#         If this parameter is not provided, it defaults to:
+#         "../../VK-GL-CTS/build/external/vulkancts/modules/vulkan/Debug".
+#            
+#      -p
+#         Same as the --portability option.
+#
+#      --portability
+#         Indicates that this testing is for testing conformance with the 
+#         Vulkan Portability initiative. MoltenVK will advertise support for
+#         only Vulkan 1.0, and only the following extensions:
+#             VK_KHR_get_physical_device_properties2
+#             VK_KHR_portability_subset
+#             VK_MVK_moltenvk
+#
+
+cts_vk_dir="../../VK-GL-CTS/build/external/vulkancts/modules/vulkan/Debug"
+caselist_file=""
+results_file=""
+is_portability=""
+
+while (( "$#" )); do
+  case "$1" in
+       -o)
+         results_file="${2}"
+         shift 2
+         ;;
+       --cts)
+         cts_vk_dir="${2}"
+         shift 2
+         ;;
+       -p)
+         is_portability="Y"
+         shift 1
+         ;;
+       --portability)
+         is_portability="Y"
+         shift 1
+         ;;
+       -*|--*=)
+         echo "Error: Unsupported option $1. See usage instructions in body of this script." >&2
+         exit 1
+         ;;
+       *)
+         caselist_file="${1}"
+         shift 1
+         ;;
+  esac
+done
+
+if [ "${caselist_file}" == "" ]; then 
+	echo "Error: No caselist file specified. See usage instructions in body of this script." >&2
+	exit 1
+fi
+
+if [ "${results_file}" == "" ]; then
+	results_file="${caselist_file}-results.txt"
+fi
+
+
+# -------------- MoltenVK configuration --------------------
+
+if [ "${is_portability}" != "" ]; then
+	export MVK_CONFIG_API_VERSION_TO_ADVERTISE=4194304
+	export MVK_CONFIG_ADVERTISE_EXTENSIONS=0xA
+fi
+
+export METAL_DEVICE_WRAPPER_TYPE=1
+export METAL_ERROR_MODE=3
+export METAL_DEBUG_ERROR_MODE=3
+
+# ----- MoltenVK config settings ------
+export MVK_CONFIG_LOG_LEVEL=0
+export MVK_DEBUG=0
+
+# Additional MoltenVK configuration can be set here by 
+# editing below, or can be set before calling this script.
+export MVK_CONFIG_RESUME_LOST_DEVICE=1
+export MVK_CONFIG_FAST_MATH_ENABLED=0
+export MVK_CONFIG_USE_METAL_ARGUMENT_BUFFERS=0
+export MVK_CONFIG_FORCE_LOW_POWER_GPU=0
+
+
+# -------------- Operation --------------------
+
+echo Testing started at `date +%r`
+start_time=${SECONDS}
+
+"${cts_vk_dir}/deqp-vk"                    \
+--deqp-archive-dir="${cts_vk_dir}/.."      \
+--deqp-log-images=disable                  \
+--deqp-log-shader-sources=disable          \
+--deqp-caselist-file="${caselist_file}"    \
+&> "${results_file}"
+
+echo Testing complete in $(($SECONDS - $start_time)) seconds
