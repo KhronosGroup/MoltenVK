@@ -40,6 +40,7 @@ Released TBD
 - Protect against crash when retrieving `MTLTexture` when `VkImage` has no `VkDeviceMemory` bound.
 - Adjust some `VkPhysicalDeviceLimits` values for Vulkan and Metal compliance. 
 - Fix internal reference from `SPIRV_CROSS_NAMESPACE_OVERRIDE` to `SPIRV_CROSS_NAMESPACE`.
+- Add `Scripts/runcts` script as a convenience for running Vulkan CTS tests.
 - Support _Xcode 13_ SDK APIs and build settings.
 
 

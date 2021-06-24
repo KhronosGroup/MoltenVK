@@ -10,6 +10,10 @@ External/Vulkan-Portability
 External/Vulkan-Tools
 External/VulkanSamples
 
+# Vulkan CTS testing artifacts
+Scripts/TestResults.qpa
+Scripts/shadercache.bin
+
 # Mac OS X Finder
 .DS_Store
 
