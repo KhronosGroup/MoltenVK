@@ -57,11 +57,7 @@ while (( "$#" )); do
          cts_vk_dir="${2}"
          shift 2
          ;;
-       -p)
-         is_portability="Y"
-         shift 1
-         ;;
-       --portability)
+       -p | --portability)
          is_portability="Y"
          shift 1
          ;;
@@ -88,6 +84,11 @@ fi
 
 # -------------- MoltenVK configuration --------------------
 
+# As documented above, the portability option restricts to Vulkan 1.0 and a very limited set of extensions.
+# The values used here are documented in vk_mvk_moltenvk.h.
+# - MVK_CONFIG_API_VERSION_TO_ADVERTISE = VK_API_VERSION_1_0 (4194304)
+# - MVK_CONFIG_ADVERTISE_EXTENSIONS selects support for a very limited set of extensions,
+#   using a bit-or of values in MVKConfigAdvertiseExtensions,
 if [ "${is_portability}" != "" ]; then
 	export MVK_CONFIG_API_VERSION_TO_ADVERTISE=4194304
 	export MVK_CONFIG_ADVERTISE_EXTENSIONS=0xA
