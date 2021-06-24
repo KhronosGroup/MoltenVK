@@ -425,7 +425,10 @@ void MVKRenderSubpass::populateClearAttachments(MVKClearAttachments& clearAtts,
 		MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
 		MTLPixelFormat mtlDSFmt = _renderPass->getPixelFormats()->getMTLPixelFormat(getDepthStencilFormat());
 		if (pixFmts->isDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
-		if (pixFmts->isStencilFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT; }
+		if (pixFmts->isStencilFormat(mtlDSFmt) &&
+			_renderPass->_attachments[attIdx].getAttachmentStencilLoadOp() == VK_ATTACHMENT_LOAD_OP_CLEAR) {
+			cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+		}
 		if (cAtt.aspectMask) { clearAtts.push_back(cAtt); }
 	}
 }
@@ -718,6 +721,10 @@ bool MVKRenderPassAttachment::shouldUseClearAttachment(MVKRenderSubpass* subpass
 	}
 
 	return (_info.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
+}
+
+VkAttachmentLoadOp MVKRenderPassAttachment::getAttachmentStencilLoadOp() const {
+	return _info.stencilLoadOp;
 }
 
 void MVKRenderPassAttachment::validateFormat() {

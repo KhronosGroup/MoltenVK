@@ -201,6 +201,9 @@ public:
     /** Returns whether this attachment should be cleared in the subpass. */
     bool shouldUseClearAttachment(MVKRenderSubpass* subpass);
 
+    /** Returns stencil attachment load op */
+	VkAttachmentLoadOp getAttachmentStencilLoadOp() const;
+
 	/** Constructs an instance for the specified parent renderpass. */
 	MVKRenderPassAttachment(MVKRenderPass* renderPass,
 							const VkAttachmentDescription* pCreateInfo);
