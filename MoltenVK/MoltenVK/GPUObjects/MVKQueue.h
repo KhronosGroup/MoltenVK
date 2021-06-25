@@ -176,6 +176,8 @@ public:
 					   uint32_t waitSemaphoreCount,
 					   const VkSemaphore* pWaitSemaphores);
 
+	~MVKQueueSubmission() override;
+
 protected:
 	friend class MVKQueue;
 
