@@ -1073,10 +1073,9 @@ void MVKComputeResourcesCommandEncoderState::encodeArgumentBufferResourceUsage(M
 #pragma mark MVKOcclusionQueryCommandEncoderState
 
 void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
+	const MVKMTLBufferAllocation* vizBuff = _cmdEncoder->_pEncodingContext->visibilityResultBuffer;
+    if ( !vizBuff || _mtlRenderPassQueries.empty() ) { return; }  // Nothing to do.
 
-    if (_mtlRenderPassQueries.empty()) { return; }  // Nothing to do.
-
-	const MVKMTLBufferAllocation* vizResultBuffer = _cmdEncoder->_pEncodingContext->getVisibilityResultBuffer(_cmdEncoder);
 	id<MTLComputePipelineState> mtlAccumState = _cmdEncoder->getCommandEncodingPool()->getAccumulateOcclusionQueryResultsMTLComputePipelineState();
     id<MTLComputeCommandEncoder> mtlAccumEncoder = _cmdEncoder->getMTLComputeEncoder(kMVKCommandUseAccumOcclusionQuery);
     [mtlAccumEncoder setComputePipelineState: mtlAccumState];
@@ -1085,8 +1084,8 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
         [mtlAccumEncoder setBuffer: qryLoc.queryPool->getVisibilityResultMTLBuffer()
                             offset: qryLoc.queryPool->getVisibilityResultOffset(qryLoc.query)
                            atIndex: 0];
-        [mtlAccumEncoder setBuffer: vizResultBuffer->_mtlBuffer
-                            offset: vizResultBuffer->_offset + qryLoc.visibilityBufferOffset
+        [mtlAccumEncoder setBuffer: vizBuff->_mtlBuffer
+                            offset: vizBuff->_offset + qryLoc.visibilityBufferOffset
                            atIndex: 1];
         [mtlAccumEncoder dispatchThreadgroups: MTLSizeMake(1, 1, 1)
                         threadsPerThreadgroup: MTLSizeMake(1, 1, 1)];
@@ -1095,16 +1094,28 @@ void MVKOcclusionQueryCommandEncoderState::endMetalRenderPass() {
     _mtlRenderPassQueries.clear();
 }
 
+// The Metal visibility buffer has a finite size, and on some Metal platforms (looking at you M1),
+// query offsets cannnot be reused with the same MTLCommandBuffer. If enough occlusion queries are
+// begun within a single MTLCommandBuffer, it may exhaust the visibility buffer. If that occurs,
+// report an error and disable further visibility tracking for the remainder of the MTLCommandBuffer.
+// In most cases, a MTLCommandBuffer corresponds to a Vulkan command submit (VkSubmitInfo),
+// and so the error text is framed in terms of the Vulkan submit.
 void MVKOcclusionQueryCommandEncoderState::beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
-    bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
-    _mtlVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
-	_mtlRenderPassQueries.emplace_back(pQueryPool, query, _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset);
+	if (_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes <= _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize) {
+		bool shouldCount = _cmdEncoder->_pDeviceFeatures->occlusionQueryPrecise && mvkAreAllFlagsEnabled(flags, VK_QUERY_CONTROL_PRECISE_BIT);
+		_mtlVisibilityResultMode = shouldCount ? MTLVisibilityResultModeCounting : MTLVisibilityResultModeBoolean;
+		_mtlRenderPassQueries.emplace_back(pQueryPool, query, _cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset);
+	} else {
+		reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCmdBeginQuery(): The maximum number of queries in a single Vulkan command submission is %llu.", _cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize / kMVKQuerySlotSizeInBytes);
+		_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
+		_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset -= kMVKQuerySlotSizeInBytes;
+	}
     markDirty();
 }
 
 void MVKOcclusionQueryCommandEncoderState::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query) {
 	_mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-	_cmdEncoder->_pEncodingContext->incrementMTLVisibilityResultOffset(_cmdEncoder);
+	_cmdEncoder->_pEncodingContext->mtlVisibilityResultOffset += kMVKQuerySlotSizeInBytes;
 	markDirty();
 }
 

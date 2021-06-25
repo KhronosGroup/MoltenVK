@@ -350,7 +350,10 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
 												  _isRenderingEntireAttachment,
 												  loadOverride);
 	if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
-		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->getVisibilityResultBuffer(this)->_mtlBuffer;
+		if ( !_pEncodingContext->visibilityResultBuffer ) {
+			_pEncodingContext->visibilityResultBuffer = getTempMTLBuffer(_pDeviceMetalFeatures->maxQueryBufferSize, true, true);
+		}
+		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer->_mtlBuffer;
 	}
 
 	VkExtent2D fbExtent = _framebufferExtent;
@@ -800,32 +803,6 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
             _mtlBlitEncoder = nil;
             _mtlBlitEncoderUse = kMVKCommandUseNone;
 			_pEncodingContext = nullptr;
-}
-
-
-#pragma mark -
-#pragma mark MVKCommandEncodingContext
-
-// Increment to the next query slot offset. If we reach the size of the visibility buffer,
-// reset to retrieve and start filling another visibility buffer. This approach may still
-// cause Metal validation errors if the platform does not permit offsets to be reused
-// witin a MTLCommandBuffer, even when a different visibility buffer is used.
-// We don't test against the size of the visibility buffer itself, because this call may
-// arrive before the visibiltiy buffer in the case of a query that ends before the renderpass.
-void MVKCommandEncodingContext::incrementMTLVisibilityResultOffset(MVKCommandEncoder* cmdEncoder) {
-	mtlVisibilityResultOffset += kMVKQuerySlotSizeInBytes;
-
-	if (mtlVisibilityResultOffset + kMVKQuerySlotSizeInBytes > cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize) {
-		_visibilityResultBuffer = nullptr;
-		mtlVisibilityResultOffset = 0;
-	}
-}
-
-const MVKMTLBufferAllocation* MVKCommandEncodingContext::getVisibilityResultBuffer(MVKCommandEncoder* cmdEncoder) {
-	if ( !_visibilityResultBuffer ) {
-		_visibilityResultBuffer = cmdEncoder->getTempMTLBuffer(cmdEncoder->_pDeviceMetalFeatures->maxQueryBufferSize, true, true);
-	}
-	return _visibilityResultBuffer;
 }
 
 

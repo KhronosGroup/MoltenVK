@@ -52,13 +52,7 @@ typedef uint64_t MVKMTLCommandBufferID;
 /** Context for tracking information across multiple encodings. */
 typedef struct MVKCommandEncodingContext {
 	NSUInteger mtlVisibilityResultOffset = 0;
-
-	void incrementMTLVisibilityResultOffset(MVKCommandEncoder* cmdEncoder);
-	const MVKMTLBufferAllocation* getVisibilityResultBuffer(MVKCommandEncoder* cmdEncoder);
-
-private:
-	const MVKMTLBufferAllocation* _visibilityResultBuffer = nullptr;
-
+	const MVKMTLBufferAllocation* visibilityResultBuffer = nullptr;
 } MVKCommandEncodingContext;
 
 
