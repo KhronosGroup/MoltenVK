@@ -16,22 +16,26 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.1.4
 --------------
 
-Released TBD
+Released 2021/06/28
 
 - Add support for extensions:
 	- `VK_KHR_imageless_framebuffer`
+- Advertise Vulkan extension functions only from enabled extensions.
 - Make `vkGetPastPresentationTimingGOOGLE()` queuing behavior compliant with Vulkan spec.
 - Expose `vkGetIOSurfaceMVK()` and `vkUseIOSurfaceMVK()` without requiring _Objective-C_.
 - Default MoltenVK build using `C++17` and compiler optimization setting `-O2`.
 - API fix to remove `#include "SPIRVReflection.h"` from `SPIRVToMSLConverter.h` header.
 - Support _Xcode 12.5_ build settings, build warnings, and SDK change to availability of
   `[MTLDevice supportsBCTextureCompression]` on _Mac Catalyst_.
+- Add support for new AMD devices supporting 32 lanes.
+- Improve handling of sampler border color and mirror edge clamp.
 - Improve cache hits when matching `SPIRVToMSLConversionConfiguration` structs to each other 
   to find a cached shader, by only considering resources from the current shader stage.
 - Rename `kMVKShaderStageMax` to `kMVKShaderStageCount`.
 - Fix crash when requesting `MTLCommandBuffer` logs in runtime debug mode on older OS versions.
 - Fix synchronization issue with locking `MTLArgumentEncoder` for Metal Argument Buffers.
 - Fix race condition on submission fence during device loss.
+- Fix crash due to incorrect number of attachments when clearing.
 - Fix crash using memoryless storage for input attachments on Apple Silicon.
 - Fix issue where M1 GPU does not support reusing Metal visibility buffer offsets
   across separate render encoders within a single Metal command buffer (Vulkan submit).
@@ -39,11 +43,21 @@ Released TBD
   waits on `VkDevice`, and do not return `VK_ERROR_DEVICE_LOST`, unless `VkPhysicalDevice` is also lost.
 - Fix inconsistent handling of linear attachment decisions on Apple Silicon.
 - Fix small memory leak during swapchain creation.
+- Fix stencil clear incorrectly using using the depth `loadOp`,  when stencil is smaller than render area.
+- Reorganize coherent texture flushing on memory map and unmap`.
+- Fix issues where data in temporary internal buffers are discarded while in use.
 - Protect against crash when retrieving `MTLTexture` when `VkImage` has no `VkDeviceMemory` bound.
 - Adjust some `VkPhysicalDeviceLimits` values for Vulkan and Metal compliance. 
 - Fix internal reference from `SPIRV_CROSS_NAMESPACE_OVERRIDE` to `SPIRV_CROSS_NAMESPACE`.
+- Add label strings to `MTLCommandBuffers`, based on use type, for GPU Capture debugging.
 - Add `Scripts/runcts` script as a convenience for running Vulkan CTS tests.
 - Support _Xcode 13_ SDK APIs and build settings.
+- Update dependency libraries to match _Vulkan SDK 1.2.182_.
+- Update to latest SPIRV-Cross version:
+	- MSL: Handle array of IO variable with Component decoration.
+	- MSL: Handle array with component when we cannot rely on `user()` attrib.
+	- MSL: Improve handling of split tessellation access chains.
+	- MSL: Always enable support for base vertex/index on _iOS_.
 
 
 
