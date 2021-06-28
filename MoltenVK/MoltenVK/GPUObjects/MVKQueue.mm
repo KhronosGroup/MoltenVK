@@ -251,10 +251,16 @@ MVKQueueSubmission::MVKQueueSubmission(MVKQueue* queue,
 									   uint32_t waitSemaphoreCount,
 									   const VkSemaphore* pWaitSemaphores) {
 	_queue = queue;
+	_queue->retain();	// Retain here and release in destructor. See note for MVKQueueCommandBufferSubmission::finish().
+
 	_waitSemaphores.reserve(waitSemaphoreCount);
 	for (uint32_t i = 0; i < waitSemaphoreCount; i++) {
 		_waitSemaphores.push_back(make_pair((MVKSemaphore*)pWaitSemaphores[i], (uint64_t)0));
 	}
+}
+
+MVKQueueSubmission::~MVKQueueSubmission() {
+	_queue->release();
 }
 
 
@@ -390,6 +396,11 @@ void MVKQueueCommandBufferSubmission::commitActiveMTLCommandBuffer(bool signalCo
 	[mtlCmdBuff release];		// retained
 }
 
+// Be sure to retain() any API objects referenced in this function, and release() them in the
+// destructor (or superclass destructor). It is possible for rare race conditions to result
+// in the app destroying API objects before this function completes execution. For example,
+// this may occur if a GPU semaphore here triggers another submission that triggers a fence,
+// and the app immediately destroys objects. Rare, but it has been encountered.
 void MVKQueueCommandBufferSubmission::finish() {
 
 //	MVKLogDebug("Finishing submission %p. Submission count %u.", this, _subCount--);
