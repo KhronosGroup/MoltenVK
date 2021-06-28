@@ -105,7 +105,8 @@ void MVKCommandBuffer::addCommand(MVKCommand* command) {
     _commandCount++;
 }
 
-void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
+void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit,
+							  MVKCommandEncodingContext* pEncodingContext) {
 	if ( !canExecute() ) { return; }
 
 	if (_prefilledMTLCmdBuffer) {
@@ -113,7 +114,7 @@ void MVKCommandBuffer::submit(MVKQueueCommandBufferSubmission* cmdBuffSubmit) {
 		clearPrefilledMTLCommandBuffer();
 	} else {
 		MVKCommandEncoder encoder(this);
-		encoder.encode(cmdBuffSubmit->getActiveMTLCommandBuffer());
+		encoder.encode(cmdBuffSubmit->getActiveMTLCommandBuffer(), pEncodingContext);
 	}
 
 	if ( !_supportsConcurrentExecution ) { _isExecutingNonConcurrently.clear(); }
@@ -150,8 +151,9 @@ void MVKCommandBuffer::prefill() {
 		uint32_t qIdx = 0;
 		_prefilledMTLCmdBuffer = _commandPool->newMTLCommandBuffer(qIdx);	// retain
 
+		MVKCommandEncodingContext encodingContext;
 		MVKCommandEncoder encoder(this);
-		encoder.encode(_prefilledMTLCmdBuffer);
+		encoder.encode(_prefilledMTLCmdBuffer, &encodingContext);
 
 		// Once encoded onto Metal, if this command buffer is not reusable, we don't need the
 		// MVKCommand instances anymore, so release them in order to reduce memory pressure.
@@ -246,13 +248,15 @@ MVKRenderSubpass* MVKCommandBuffer::getLastMultiviewSubpass() {
 #pragma mark -
 #pragma mark MVKCommandEncoder
 
-void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff) {
+void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
+							   MVKCommandEncodingContext* pEncodingContext) {
 	_renderPass = nullptr;
 	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 	_renderSubpassIndex = 0;
 	_multiviewPassIndex = 0;
 	_canUseLayeredRendering = false;
 
+	_pEncodingContext = pEncodingContext;
 	_mtlCmdBuffer = mtlCmdBuff;		// not retained
 
 	setLabelIfNotNil(_mtlCmdBuffer, _cmdBuffer->_debugName);
@@ -345,12 +349,12 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
 												  _clearValues.contents(),
 												  _isRenderingEntireAttachment,
 												  loadOverride);
-    if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
-        if (!_visibilityResultMTLBuffer) {
-            _visibilityResultMTLBuffer = getTempMTLBuffer(_pDeviceMetalFeatures->maxQueryBufferSize, true, true);
-        }
-        mtlRPDesc.visibilityResultBuffer = _visibilityResultMTLBuffer->_mtlBuffer;
-    }
+	if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
+		if ( !_pEncodingContext->visibilityResultBuffer ) {
+			_pEncodingContext->visibilityResultBuffer = getTempMTLBuffer(_pDeviceMetalFeatures->maxQueryBufferSize, true, true);
+		}
+		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer->_mtlBuffer;
+	}
 
 	VkExtent2D fbExtent = _framebufferExtent;
     mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
@@ -770,7 +774,6 @@ void MVKCommandEncoder::finishQueries() {
 
 MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDeviceObject(cmdBuffer->getDevice()),
         _cmdBuffer(cmdBuffer),
-        _visibilityResultMTLBuffer(nil),
         _graphicsPipelineState(this),
         _computePipelineState(this),
         _viewportState(this),
@@ -799,6 +802,7 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
 			_mtlComputeEncoderUse = kMVKCommandUseNone;
             _mtlBlitEncoder = nil;
             _mtlBlitEncoderUse = kMVKCommandUseNone;
+			_pEncodingContext = nullptr;
 }
 
 

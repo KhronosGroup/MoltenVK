@@ -614,9 +614,18 @@ public:
 protected:
     void encodeImpl(uint32_t) override;
 
+	typedef struct OcclusionQueryLocation {
+		MVKOcclusionQueryPool* queryPool = nullptr;
+		uint32_t query = 0;
+		NSUInteger visibilityBufferOffset = 0;
+
+		OcclusionQueryLocation(MVKOcclusionQueryPool* qPool, uint32_t qIdx, NSUInteger vbOfst)
+		: queryPool(qPool), query(qIdx), visibilityBufferOffset(vbOfst) {}
+
+	} OcclusionQueryLocation;
+
+	MVKSmallVector<OcclusionQueryLocation> _mtlRenderPassQueries;
     MTLVisibilityResultMode _mtlVisibilityResultMode = MTLVisibilityResultModeDisabled;
-    NSUInteger _mtlVisibilityResultOffset = 0;
-	MVKSmallVector<std::pair<MVKQuerySpec, NSUInteger>> _mtlRenderPassQueries;
 };
 
 
