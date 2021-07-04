@@ -50,12 +50,12 @@ typedef unsigned long MTLLanguageVersion;
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   1
-#define MVK_VERSION_PATCH   4
+#define MVK_VERSION_PATCH   5
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)
 
-#define VK_MVK_MOLTENVK_SPEC_VERSION            31
+#define VK_MVK_MOLTENVK_SPEC_VERSION            32
 #define VK_MVK_MOLTENVK_EXTENSION_NAME          "VK_MVK_moltenvk"
 
 /** Identifies the level of logging MoltenVK should be limited to outputting. */
@@ -827,6 +827,14 @@ typedef struct {
 
 } MVKConfiguration;
 
+/** Identifies the type of rounding Metal uses for float to integer conversions in particular calculatons. */
+typedef enum MVKFloatRounding {
+	MVK_FLOAT_ROUNDING_NEAREST     = 0,	 /**< Metal rounds to nearest. */
+	MVK_FLOAT_ROUNDING_UP          = 1,	 /**< Metal rounds towards positive infinity. */
+	MVK_FLOAT_ROUNDING_DOWN        = 2,	 /**< Metal rounds towards negative infinity. */
+	MVK_FLOAT_ROUNDING_UP_MAX_ENUM = 0x7FFFFFFF
+} MVKFloatRounding;
+
 /**
  * Features provided by the current implementation of Metal on the current device. You can
  * retrieve a copy of this structure using the vkGetPhysicalDeviceMetalFeaturesMVK() function.
@@ -906,6 +914,7 @@ typedef struct {
     VkBool32 tileBasedDeferredRendering;        /**< If true, this device uses tile-based deferred rendering. */
 	VkBool32 argumentBuffers;					/**< If true, Metal argument buffers are supported. */
 	VkBool32 descriptorSetArgumentBuffers;		/**< If true, a Metal argument buffer can be assigned to a descriptor set, and used on any pipeline and pipeline stage. If false, a different Metal argument buffer must be used for each pipeline-stage/descriptor-set combination. */
+	MVKFloatRounding clearColorFloatRounding;	/**< Identifies the type of rounding Metal uses for MTLClearColor float to integer conversions. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */
