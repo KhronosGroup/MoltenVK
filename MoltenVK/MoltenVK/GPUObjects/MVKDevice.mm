@@ -1192,6 +1192,19 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	_metalFeatures.maxPerStageStorageTextureCount = 8;
 
+	// GPU-specific features
+	switch (_properties.vendorID) {
+		case kAMDVendorId:
+			_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_DOWN;
+			break;
+		case kAppleVendorId:
+		case kIntelVendorId:
+		case kNVVendorId:
+		default:
+			_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_NEAREST;
+			break;
+	}
+
 #if MVK_TVOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
     _metalFeatures.mtlBufferAlignment = 64;
@@ -1203,7 +1216,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.maxPerStageDynamicMTLBufferCount = _metalFeatures.maxPerStageBufferCount;
 	_metalFeatures.renderLinearTextures = true;
 	_metalFeatures.tileBasedDeferredRendering = true;
-	_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_NEAREST;
 
     if (supportsMTLFeatureSet(tvOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
@@ -1272,7 +1284,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
     _metalFeatures.sharedLinearTextures = true;
 	_metalFeatures.renderLinearTextures = true;
 	_metalFeatures.tileBasedDeferredRendering = true;
-	_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_NEAREST;
 
     if (supportsMTLFeatureSet(iOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
@@ -1378,7 +1389,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	_metalFeatures.maxTextureDimension = (16 * KIBI);
 	_metalFeatures.depthSampleCompare = true;
 	_metalFeatures.samplerMirrorClampToEdge = true;
-	_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_DOWN;
 
     if (supportsMTLFeatureSet(macOS_GPUFamily1_v2)) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion1_2;
@@ -1437,8 +1447,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	}
 
 #if MVK_MACOS_APPLE_SILICON
-	_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_NEAREST;
-
 	if ( mvkOSVersionIsAtLeast(10.16) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
 		if (supportsMTLGPUFamily(Apple5)) {
