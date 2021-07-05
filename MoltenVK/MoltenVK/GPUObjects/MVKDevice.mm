@@ -1192,6 +1192,19 @@ void MVKPhysicalDevice::initMetalFeatures() {
 
 	_metalFeatures.maxPerStageStorageTextureCount = 8;
 
+	// GPU-specific features
+	switch (_properties.vendorID) {
+		case kAMDVendorId:
+			_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_DOWN;
+			break;
+		case kAppleVendorId:
+		case kIntelVendorId:
+		case kNVVendorId:
+		default:
+			_metalFeatures.clearColorFloatRounding = MVK_FLOAT_ROUNDING_NEAREST;
+			break;
+	}
+
 #if MVK_TVOS
 	_metalFeatures.mslVersionEnum = MTLLanguageVersion1_1;
     _metalFeatures.mtlBufferAlignment = 64;

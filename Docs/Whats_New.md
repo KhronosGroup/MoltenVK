@@ -13,6 +13,15 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.1.5
+--------------
+
+Released TBD
+
+- Fix incorrect translation of clear color values on Apple Silicon.
+
+
+
 MoltenVK 1.1.4
 --------------
 

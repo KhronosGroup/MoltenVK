@@ -467,100 +467,108 @@ MTLClearColor MVKPixelFormats::getMTLClearColor(VkClearValue vkClearValue, VkFor
 			mtlClr.green	= vkClearValue.color.float32[1];
 			mtlClr.blue		= vkClearValue.color.float32[2];
 			mtlClr.alpha	= vkClearValue.color.float32[3];
-			// For normalized formats, increment the clear value by half the minimum delta
-			// (i.e. 1/(2*(2**component_size - 1))), to force Metal to round up. This should
-			// fix some problems with clear values being off by one.
-#define OFFSET_UNORM(COLOR, DENOM) if (mtlClr.COLOR > 0.0 && mtlClr.COLOR < 1.0) { mtlClr.COLOR += 1.0/DENOM; }
-#define OFFSET_SNORM(COLOR, DENOM) if (mtlClr.COLOR > -1.0 && mtlClr.COLOR < 1.0) { mtlClr.COLOR += 1.0/DENOM; }
-			switch (vkFormat) {
-				case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
-					OFFSET_UNORM(red, 30.0)
-					OFFSET_UNORM(green, 30.0)
-					OFFSET_UNORM(blue, 30.0)
-					OFFSET_UNORM(alpha, 30.0);
-					break;
-				case VK_FORMAT_R5G6B5_UNORM_PACK16:
-					OFFSET_UNORM(red, 62.0)
-					OFFSET_UNORM(green, 126.0)
-					OFFSET_UNORM(blue, 62.0)
-					break;
-				case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
-				case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
-					OFFSET_UNORM(red, 62.0)
-					OFFSET_UNORM(green, 62.0)
-					OFFSET_UNORM(blue, 62.0)
-					break;
-				case VK_FORMAT_R8_UNORM:
-				case VK_FORMAT_R8_SRGB:
-					OFFSET_UNORM(red, 510.0)
-					break;
-				case VK_FORMAT_R8_SNORM:
-					OFFSET_SNORM(red, 254.0)
-					break;
-				case VK_FORMAT_R8G8_UNORM:
-				case VK_FORMAT_R8G8_SRGB:
-					OFFSET_UNORM(red, 510.0)
-					OFFSET_UNORM(green, 510.0)
-					break;
-				case VK_FORMAT_R8G8_SNORM:
-					OFFSET_SNORM(red, 254.0)
-					OFFSET_SNORM(green, 254.0)
-					break;
-				case VK_FORMAT_R8G8B8A8_UNORM:
-				case VK_FORMAT_R8G8B8A8_SRGB:
-				case VK_FORMAT_B8G8R8A8_UNORM:
-				case VK_FORMAT_B8G8R8A8_SRGB:
-				case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
-				case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
-					OFFSET_UNORM(red, 510.0)
-					OFFSET_UNORM(green, 510.0)
-					OFFSET_UNORM(blue, 510.0)
-					OFFSET_UNORM(alpha, 510.0)
-					break;
-				case VK_FORMAT_R8G8B8A8_SNORM:
-					OFFSET_SNORM(red, 254.0)
-					OFFSET_SNORM(green, 254.0)
-					OFFSET_SNORM(blue, 254.0)
-					OFFSET_SNORM(alpha, 254.0)
-					break;
-				case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
-				case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
-					OFFSET_UNORM(red, 2046.0)
-					OFFSET_UNORM(green, 2046.0)
-					OFFSET_UNORM(blue, 2046.0)
-					OFFSET_UNORM(alpha, 6.0)
-					break;
-				case VK_FORMAT_R16_UNORM:
-					OFFSET_UNORM(red, 131070.0)
-					break;
-				case VK_FORMAT_R16_SNORM:
-					OFFSET_SNORM(red, 65534.0)
-					break;
-				case VK_FORMAT_R16G16_UNORM:
-					OFFSET_UNORM(red, 131070.0)
-					OFFSET_UNORM(green, 131070.0)
-					break;
-				case VK_FORMAT_R16G16_SNORM:
-					OFFSET_SNORM(red, 65534.0)
-					OFFSET_SNORM(green, 65534.0)
-					break;
-				case VK_FORMAT_R16G16B16A16_UNORM:
-					OFFSET_UNORM(red, 131070.0)
-					OFFSET_UNORM(green, 131070.0)
-					OFFSET_UNORM(blue, 131070.0)
-					OFFSET_UNORM(alpha, 131070.0)
-					break;
-				case VK_FORMAT_R16G16B16A16_SNORM:
-					OFFSET_SNORM(red, 65534.0)
-					OFFSET_SNORM(green, 65534.0)
-					OFFSET_SNORM(blue, 65534.0)
-					OFFSET_SNORM(alpha, 65534.0)
-					break;
-				default:
-					break;
-			}
+
+			if (_physicalDevice && _physicalDevice->getMetalFeatures()->clearColorFloatRounding == MVK_FLOAT_ROUNDING_DOWN) {
+				// For normalized formats, increment the clear value by half the ULP
+				// (i.e. 1/(2*(2**component_size - 1))), to force Metal to round up.
+				// This should fix some problems with clear values being off by one ULP on some platforms.
+#define OFFSET_NORM(MIN_VAL, COLOR, BIT_WIDTH)  \
+	if (mtlClr.COLOR > (MIN_VAL) && mtlClr.COLOR < 1.0) {  \
+		mtlClr.COLOR += 1.0 / (2.0 * ((1U << (BIT_WIDTH)) - 1));  \
+	}
+#define OFFSET_UNORM(COLOR, BIT_WIDTH)    OFFSET_NORM(0.0, COLOR, BIT_WIDTH)
+#define OFFSET_SNORM(COLOR, BIT_WIDTH)    OFFSET_NORM(-1.0, COLOR, BIT_WIDTH - 1)
+				switch (vkFormat) {
+					case VK_FORMAT_R4G4B4A4_UNORM_PACK16:
+						OFFSET_UNORM(red, 4)
+						OFFSET_UNORM(green, 4)
+						OFFSET_UNORM(blue, 4)
+						OFFSET_UNORM(alpha, 4)
+						break;
+					case VK_FORMAT_R5G6B5_UNORM_PACK16:
+						OFFSET_UNORM(red, 5)
+						OFFSET_UNORM(green, 6)
+						OFFSET_UNORM(blue, 5)
+						break;
+					case VK_FORMAT_R5G5B5A1_UNORM_PACK16:
+					case VK_FORMAT_A1R5G5B5_UNORM_PACK16:
+						OFFSET_UNORM(red, 5)
+						OFFSET_UNORM(green, 5)
+						OFFSET_UNORM(blue, 5)
+						break;
+					case VK_FORMAT_R8_UNORM:
+					case VK_FORMAT_R8_SRGB:
+						OFFSET_UNORM(red, 8)
+						break;
+					case VK_FORMAT_R8_SNORM:
+						OFFSET_SNORM(red, 8)
+						break;
+					case VK_FORMAT_R8G8_UNORM:
+					case VK_FORMAT_R8G8_SRGB:
+						OFFSET_UNORM(red, 8)
+						OFFSET_UNORM(green, 8)
+						break;
+					case VK_FORMAT_R8G8_SNORM:
+						OFFSET_SNORM(red, 8)
+						OFFSET_SNORM(green, 8)
+						break;
+					case VK_FORMAT_R8G8B8A8_UNORM:
+					case VK_FORMAT_R8G8B8A8_SRGB:
+					case VK_FORMAT_B8G8R8A8_UNORM:
+					case VK_FORMAT_B8G8R8A8_SRGB:
+					case VK_FORMAT_A8B8G8R8_UNORM_PACK32:
+					case VK_FORMAT_A8B8G8R8_SRGB_PACK32:
+						OFFSET_UNORM(red, 8)
+						OFFSET_UNORM(green, 8)
+						OFFSET_UNORM(blue, 8)
+						OFFSET_UNORM(alpha, 8)
+						break;
+					case VK_FORMAT_R8G8B8A8_SNORM:
+						OFFSET_SNORM(red, 8)
+						OFFSET_SNORM(green, 8)
+						OFFSET_SNORM(blue, 8)
+						OFFSET_SNORM(alpha, 8)
+						break;
+					case VK_FORMAT_A2R10G10B10_UNORM_PACK32:
+					case VK_FORMAT_A2B10G10R10_UNORM_PACK32:
+						OFFSET_UNORM(red, 10)
+						OFFSET_UNORM(green, 10)
+						OFFSET_UNORM(blue, 10)
+						OFFSET_UNORM(alpha, 2)
+						break;
+					case VK_FORMAT_R16_UNORM:
+						OFFSET_UNORM(red, 16)
+						break;
+					case VK_FORMAT_R16_SNORM:
+						OFFSET_SNORM(red, 16)
+						break;
+					case VK_FORMAT_R16G16_UNORM:
+						OFFSET_UNORM(red, 16)
+						OFFSET_UNORM(green, 16)
+						break;
+					case VK_FORMAT_R16G16_SNORM:
+						OFFSET_SNORM(red, 16)
+						OFFSET_SNORM(green, 16)
+						break;
+					case VK_FORMAT_R16G16B16A16_UNORM:
+						OFFSET_UNORM(red, 16)
+						OFFSET_UNORM(green, 16)
+						OFFSET_UNORM(blue, 16)
+						OFFSET_UNORM(alpha, 16)
+						break;
+					case VK_FORMAT_R16G16B16A16_SNORM:
+						OFFSET_SNORM(red, 16)
+						OFFSET_SNORM(green, 16)
+						OFFSET_SNORM(blue, 16)
+						OFFSET_SNORM(alpha, 16)
+						break;
+					default:
+						break;
+				}
 #undef OFFSET_UNORM
 #undef OFFSET_SNORM
+#undef OFFSET_NORM
+			}
 			break;
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:
