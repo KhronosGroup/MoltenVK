@@ -19,6 +19,7 @@ MoltenVK 1.1.5
 Released TBD
 
 - Fix incorrect translation of clear color values on Apple Silicon.
+- Fix swizzle of depth and stencil values into RGBA (`float4`) variable in shaders.
 
 
 

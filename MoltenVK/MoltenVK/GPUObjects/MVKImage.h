@@ -531,6 +531,9 @@ public:
 
     void releaseMTLTexture();
 
+	/** Returns the packed component swizzle of this image view. */
+	uint32_t getPackedSwizzle() { return _useSwizzle ? mvkPackSwizzle(_componentSwizzle) : 0; }
+
     ~MVKImageViewPlane();
 
 protected:
@@ -541,10 +544,10 @@ protected:
 
     friend MVKImageView;
     MVKImageView* _imageView;
-    uint8_t _planeIndex;
+	id<MTLTexture> _mtlTexture;
+	VkComponentMapping _componentSwizzle;
     MTLPixelFormat _mtlPixFmt;
-    uint32_t _packedSwizzle;
-    id<MTLTexture> _mtlTexture;
+	uint8_t _planeIndex;
     bool _useMTLTextureView;
 	bool _useSwizzle;
 };
@@ -570,16 +573,16 @@ public:
 	id<MTLTexture> getMTLTexture(uint8_t planeIndex) { return _planes[planeIndex]->getMTLTexture(); }
 
 	/** Returns the Metal pixel format of this image view. */
-	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _planes[planeIndex]->_mtlPixFmt; }
+	MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _planes[planeIndex]->_mtlPixFmt; }
     
     /** Returns the packed component swizzle of this image view. */
-    inline uint32_t getPackedSwizzle() { return _planes[0]->_packedSwizzle; }
+    uint32_t getPackedSwizzle() { return _planes[0]->getPackedSwizzle(); }
     
     /** Returns the number of planes of this image view. */
-    inline uint8_t getPlaneCount() { return _planes.size(); }
+    uint8_t getPlaneCount() { return _planes.size(); }
 
 	/** Returns the Metal texture type of this image view. */
-	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
+	MTLTextureType getMTLTextureType() { return _mtlTextureType; }
 
 	/**
 	 * Populates the texture of the specified render pass descriptor
