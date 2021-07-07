@@ -1462,6 +1462,13 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
     }
 }
 
+// If a swizzle is being applied, returns the unswizzled parent texture.
+// This is relevant for depth/stencil attachments that are also sampled and might have forced swizzles.
+id<MTLTexture> MVKImageViewPlane::getUnswizzledMTLTexture() {
+	id<MTLTexture> mtlTex = getMTLTexture();
+	return _useSwizzle && mtlTex.parentTexture ? mtlTex.parentTexture : mtlTex;
+}
+
 
 #pragma mark Construction
 
@@ -1487,7 +1494,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
              ((_imageView->_mtlTextureType == MTLTextureType2D || _imageView->_mtlTextureType == MTLTextureType2DArray) && is3D)) &&
             _imageView->_subresourceRange.levelCount == _imageView->_image->_mipLevels &&
             (is3D || _imageView->_subresourceRange.layerCount == _imageView->_image->_arrayLayers) &&
-            (!_device->_pMetalFeatures->nativeTextureSwizzle || !_useSwizzle)) {
+            !_useSwizzle) {
             _useMTLTextureView = false;
         }
     } else {
@@ -1697,7 +1704,7 @@ void MVKImageView::propagateDebugName() {
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     MVKImageViewPlane* plane = _planes[0];
-    mtlAttDesc.texture = plane->getMTLTexture();           // Use image view, necessary if image view format differs from image format
+    mtlAttDesc.texture = plane->getUnswizzledMTLTexture();
     mtlAttDesc.level = plane->_useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.texture.textureType == MTLTextureType3D) {
         mtlAttDesc.slice = 0;
@@ -1710,7 +1717,7 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttach
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     MVKImageViewPlane* plane = _planes[0];
-    mtlAttDesc.resolveTexture = plane->getMTLTexture();    // Use image view, necessary if image view format differs from image format
+    mtlAttDesc.resolveTexture = plane->getUnswizzledMTLTexture();
     mtlAttDesc.resolveLevel = plane->_useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.resolveTexture.textureType == MTLTextureType3D) {
         mtlAttDesc.resolveSlice = 0;
