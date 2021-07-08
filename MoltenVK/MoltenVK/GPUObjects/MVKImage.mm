@@ -1448,18 +1448,25 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
         sliceRange = NSMakeRange(0, 1);
     }
     id<MTLTexture> mtlTex = _imageView->_image->getMTLTexture(_planeIndex);
-    if (_device->_pMetalFeatures->nativeTextureSwizzle && _packedSwizzle) {
+    if (_device->_pMetalFeatures->nativeTextureSwizzle && _useSwizzle) {
         return [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
                                          textureType: mtlTextureType
                                               levels: NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount)
                                               slices: sliceRange
-                                             swizzle: mvkMTLTextureSwizzleChannelsFromVkComponentMapping(mvkUnpackSwizzle(_packedSwizzle))];    // retained
+                                             swizzle: mvkMTLTextureSwizzleChannelsFromVkComponentMapping(_componentSwizzle)];    // retained
     } else {
         return [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
                                          textureType: mtlTextureType
                                               levels: NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount)
                                               slices: sliceRange];    // retained
     }
+}
+
+// If a swizzle is being applied, returns the unswizzled parent texture.
+// This is relevant for depth/stencil attachments that are also sampled and might have forced swizzles.
+id<MTLTexture> MVKImageViewPlane::getUnswizzledMTLTexture() {
+	id<MTLTexture> mtlTex = getMTLTexture();
+	return _useSwizzle && mtlTex.parentTexture ? mtlTex.parentTexture : mtlTex;
 }
 
 
@@ -1474,15 +1481,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
     _mtlPixFmt = mtlPixFmt;
     _mtlTexture = nil;
 
-    bool useSwizzle;
-	_imageView->setConfigurationResult(_imageView->validateSwizzledMTLPixelFormat(pCreateInfo,
-																				  _imageView->_usage,
-																				  _imageView,
-																				  _device->_pMetalFeatures->nativeTextureSwizzle,
-																				  mvkConfig().fullImageViewSwizzle,
-																				  _mtlPixFmt,
-																				  useSwizzle));
-    _packedSwizzle = (useSwizzle) ? mvkPackSwizzle(pCreateInfo->components) : 0;
+	getVulkanAPIObject()->setConfigurationResult(initSwizzledMTLPixelFormat(pCreateInfo));
 
     // Determine whether this image view should use a Metal texture view,
     // and set the _useMTLTextureView variable appropriately.
@@ -1495,12 +1494,198 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
              ((_imageView->_mtlTextureType == MTLTextureType2D || _imageView->_mtlTextureType == MTLTextureType2DArray) && is3D)) &&
             _imageView->_subresourceRange.levelCount == _imageView->_image->_mipLevels &&
             (is3D || _imageView->_subresourceRange.layerCount == _imageView->_image->_arrayLayers) &&
-            (!_device->_pMetalFeatures->nativeTextureSwizzle || !_packedSwizzle)) {
+            !_useSwizzle) {
             _useMTLTextureView = false;
         }
     } else {
         _useMTLTextureView = false;
     }
+}
+
+VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo) {
+
+	_useSwizzle = false;
+	_componentSwizzle = pCreateInfo->components;
+
+	VkImageAspectFlags aspectMask = pCreateInfo->subresourceRange.aspectMask;
+	bool supportsSwizzling = _device->_pMetalFeatures->nativeTextureSwizzle || mvkConfig().fullImageViewSwizzle;
+
+#define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(_componentSwizzle, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )
+#define VK_COMPONENT_SWIZZLE_ANY       VK_COMPONENT_SWIZZLE_MAX_ENUM
+
+	// If we have an identity swizzle, we're all good.
+	if (SWIZZLE_MATCHES(R, G, B, A)) {
+
+		// Identity swizzles of depth/stencil formats can require special handling.
+		if (mvkIsAnyFlagEnabled(_imageView->_usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
+
+			// If only stencil aspect is requested, possibly change to stencil-only format.
+			if (aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT) {
+				if (_mtlPixFmt == MTLPixelFormatDepth32Float_Stencil8) {
+					_mtlPixFmt = MTLPixelFormatX32_Stencil8;
+				}
+#if MVK_MACOS
+				else if (_mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8) {
+					_mtlPixFmt = MTLPixelFormatX24_Stencil8;
+				}
+#endif
+			}
+
+			// When reading or sampling into a vec4 color, Vulkan expects the depth or stencil value in only the red component.
+			// Metal can be inconsistent, but on most platforms populates all components with the depth or stencil value.
+			// If swizzling is available, we can compensate for this by forcing the appropriate swizzle.
+			if (supportsSwizzling && mvkIsAnyFlagEnabled(aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
+					_componentSwizzle = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ONE };
+					_useSwizzle = true;
+			}
+		}
+
+		return VK_SUCCESS;
+	}
+
+	if (mvkIsAnyFlagEnabled(_imageView->_usage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) {
+		// Vulkan forbids using image views with non-identity swizzles as storage images or attachments.
+		// Let's catch some cases which are essentially identity, but would still result in Metal restricting
+		// the resulting texture's usage.
+
+		switch (_mtlPixFmt) {
+			case MTLPixelFormatR8Unorm:
+#if MVK_APPLE_SILICON
+			case MTLPixelFormatR8Unorm_sRGB:
+#endif
+			case MTLPixelFormatR8Snorm:
+			case MTLPixelFormatR8Uint:
+			case MTLPixelFormatR8Sint:
+			case MTLPixelFormatR16Unorm:
+			case MTLPixelFormatR16Snorm:
+			case MTLPixelFormatR16Uint:
+			case MTLPixelFormatR16Sint:
+			case MTLPixelFormatR16Float:
+			case MTLPixelFormatR32Uint:
+			case MTLPixelFormatR32Sint:
+			case MTLPixelFormatR32Float:
+				if (SWIZZLE_MATCHES(R, ZERO, ZERO, ONE)) {
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatRG8Unorm:
+#if MVK_APPLE_SILICON
+			case MTLPixelFormatRG8Unorm_sRGB:
+#endif
+			case MTLPixelFormatRG8Snorm:
+			case MTLPixelFormatRG8Uint:
+			case MTLPixelFormatRG8Sint:
+			case MTLPixelFormatRG16Unorm:
+			case MTLPixelFormatRG16Snorm:
+			case MTLPixelFormatRG16Uint:
+			case MTLPixelFormatRG16Sint:
+			case MTLPixelFormatRG16Float:
+			case MTLPixelFormatRG32Uint:
+			case MTLPixelFormatRG32Sint:
+			case MTLPixelFormatRG32Float:
+				if (SWIZZLE_MATCHES(R, G, ZERO, ONE)) {
+					return VK_SUCCESS;
+				}
+				break;
+
+			case MTLPixelFormatRG11B10Float:
+			case MTLPixelFormatRGB9E5Float:
+				if (SWIZZLE_MATCHES(R, G, B, ONE)) {
+					return VK_SUCCESS;
+				}
+				break;
+
+			default:
+				break;
+		}
+	}
+
+	switch (_mtlPixFmt) {
+		case MTLPixelFormatR8Unorm:
+			if (SWIZZLE_MATCHES(ZERO, ANY, ANY, R)) {
+				_mtlPixFmt = MTLPixelFormatA8Unorm;
+				return VK_SUCCESS;
+			}
+			break;
+
+		case MTLPixelFormatA8Unorm:
+			if (SWIZZLE_MATCHES(A, ANY, ANY, ZERO)) {
+				_mtlPixFmt = MTLPixelFormatR8Unorm;
+				return VK_SUCCESS;
+			}
+			break;
+
+		case MTLPixelFormatRGBA8Unorm:
+			if (SWIZZLE_MATCHES(B, G, R, A)) {
+				_mtlPixFmt = MTLPixelFormatBGRA8Unorm;
+				return VK_SUCCESS;
+			}
+			break;
+
+		case MTLPixelFormatRGBA8Unorm_sRGB:
+			if (SWIZZLE_MATCHES(B, G, R, A)) {
+				_mtlPixFmt = MTLPixelFormatBGRA8Unorm_sRGB;
+				return VK_SUCCESS;
+			}
+			break;
+
+		case MTLPixelFormatBGRA8Unorm:
+			if (SWIZZLE_MATCHES(B, G, R, A)) {
+				_mtlPixFmt = MTLPixelFormatRGBA8Unorm;
+				return VK_SUCCESS;
+			}
+			break;
+
+		case MTLPixelFormatBGRA8Unorm_sRGB:
+			if (SWIZZLE_MATCHES(B, G, R, A)) {
+				_mtlPixFmt = MTLPixelFormatRGBA8Unorm_sRGB;
+				return VK_SUCCESS;
+			}
+			break;
+
+		case MTLPixelFormatDepth32Float_Stencil8:
+			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
+			if (aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+				mvkIsAnyFlagEnabled(_imageView->_usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
+				_mtlPixFmt = MTLPixelFormatX32_Stencil8;
+				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+					return VK_SUCCESS;
+				}
+			}
+			break;
+
+#if MVK_MACOS
+		case MTLPixelFormatDepth24Unorm_Stencil8:
+			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
+			if (aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
+				mvkIsAnyFlagEnabled(_imageView->_usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
+				_mtlPixFmt = MTLPixelFormatX24_Stencil8;
+				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
+					return VK_SUCCESS;
+				}
+			}
+			break;
+#endif
+
+		default:
+			break;
+	}
+
+	// No format transformation swizzles were found, so we'll need to use either native or shader swizzling, if it is supported.
+	if ( !supportsSwizzling ) {
+		return getVulkanAPIObject()->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
+												 "The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
+												 " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
+												 " be enabled via the MVKConfiguration::fullImageViewSwizzle config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable.",
+												 pCreateInfo->image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX",
+												 mvkVkComponentSwizzleName(_componentSwizzle.r), mvkVkComponentSwizzleName(_componentSwizzle.g),
+												 mvkVkComponentSwizzleName(_componentSwizzle.b), mvkVkComponentSwizzleName(_componentSwizzle.a));
+	}
+
+	_useSwizzle = true;
+
+	return VK_SUCCESS;
 }
 
 MVKImageViewPlane::~MVKImageViewPlane() {
@@ -1519,7 +1704,7 @@ void MVKImageView::propagateDebugName() {
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     MVKImageViewPlane* plane = _planes[0];
-    mtlAttDesc.texture = plane->getMTLTexture();           // Use image view, necessary if image view format differs from image format
+    mtlAttDesc.texture = plane->getUnswizzledMTLTexture();
     mtlAttDesc.level = plane->_useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.texture.textureType == MTLTextureType3D) {
         mtlAttDesc.slice = 0;
@@ -1532,7 +1717,7 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttach
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     MVKImageViewPlane* plane = _planes[0];
-    mtlAttDesc.resolveTexture = plane->getMTLTexture();    // Use image view, necessary if image view format differs from image format
+    mtlAttDesc.resolveTexture = plane->getUnswizzledMTLTexture();
     mtlAttDesc.resolveLevel = plane->_useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.resolveTexture.textureType == MTLTextureType3D) {
         mtlAttDesc.resolveSlice = 0;
@@ -1633,180 +1818,6 @@ MVKImageView::MVKImageView(MVKDevice* device,
     for (uint8_t planeIndex = beginPlaneIndex; planeIndex < endPlaneIndex; planeIndex++) {
         _planes.push_back(new MVKImageViewPlane(this, planeIndex, mtlPixFmtOfPlane[planeIndex], pCreateInfo));
     }
-}
-
-VkResult MVKImageView::validateSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo,
-													  VkImageUsageFlags usage,
-													  MVKVulkanAPIObject* apiObject,
-													  bool hasNativeSwizzleSupport,
-													  bool hasShaderSwizzleSupport,
-													  MTLPixelFormat& mtlPixFmt,
-													  bool& useSwizzle) {
-	useSwizzle = false;
-	VkComponentMapping components = pCreateInfo->components;
-
-	#define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(components, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )
-	#define VK_COMPONENT_SWIZZLE_ANY       VK_COMPONENT_SWIZZLE_MAX_ENUM
-
-	// If we have an identity swizzle, we're all good.
-	if (SWIZZLE_MATCHES(R, G, B, A)) {
-		// Change to stencil-only format if only stencil aspect is requested
-		if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
-			mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-			if (mtlPixFmt == MTLPixelFormatDepth32Float_Stencil8)
-				mtlPixFmt = MTLPixelFormatX32_Stencil8;
-#if MVK_MACOS
-			else if (mtlPixFmt == MTLPixelFormatDepth24Unorm_Stencil8)
-				mtlPixFmt = MTLPixelFormatX24_Stencil8;
-#endif
-		}
-
-		return VK_SUCCESS;
-	}
-
-	if (mvkIsAnyFlagEnabled(usage, VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT)) {
-		// Vulkan forbids using image views with non-identity swizzles as storage images or attachments.
-		// Let's catch some cases which are essentially identity, but would still result in Metal restricting
-		// the resulting texture's usage.
-
-		switch (mtlPixFmt) {
-			case MTLPixelFormatR8Unorm:
-#if MVK_APPLE_SILICON
-			case MTLPixelFormatR8Unorm_sRGB:
-#endif
-			case MTLPixelFormatR8Snorm:
-			case MTLPixelFormatR8Uint:
-			case MTLPixelFormatR8Sint:
-			case MTLPixelFormatR16Unorm:
-			case MTLPixelFormatR16Snorm:
-			case MTLPixelFormatR16Uint:
-			case MTLPixelFormatR16Sint:
-			case MTLPixelFormatR16Float:
-			case MTLPixelFormatR32Uint:
-			case MTLPixelFormatR32Sint:
-			case MTLPixelFormatR32Float:
-				if (SWIZZLE_MATCHES(R, ZERO, ZERO, ONE)) {
-					return VK_SUCCESS;
-				}
-				break;
-
-			case MTLPixelFormatRG8Unorm:
-#if MVK_APPLE_SILICON
-			case MTLPixelFormatRG8Unorm_sRGB:
-#endif
-			case MTLPixelFormatRG8Snorm:
-			case MTLPixelFormatRG8Uint:
-			case MTLPixelFormatRG8Sint:
-			case MTLPixelFormatRG16Unorm:
-			case MTLPixelFormatRG16Snorm:
-			case MTLPixelFormatRG16Uint:
-			case MTLPixelFormatRG16Sint:
-			case MTLPixelFormatRG16Float:
-			case MTLPixelFormatRG32Uint:
-			case MTLPixelFormatRG32Sint:
-			case MTLPixelFormatRG32Float:
-				if (SWIZZLE_MATCHES(R, G, ZERO, ONE)) {
-					return VK_SUCCESS;
-				}
-				break;
-
-			case MTLPixelFormatRG11B10Float:
-			case MTLPixelFormatRGB9E5Float:
-				if (SWIZZLE_MATCHES(R, G, B, ONE)) {
-					return VK_SUCCESS;
-				}
-				break;
-
-			default:
-				break;
-		}
-	}
-
-	switch (mtlPixFmt) {
-		case MTLPixelFormatR8Unorm:
-			if (SWIZZLE_MATCHES(ZERO, ANY, ANY, R)) {
-				mtlPixFmt = MTLPixelFormatA8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatA8Unorm:
-			if (SWIZZLE_MATCHES(A, ANY, ANY, ZERO)) {
-				mtlPixFmt = MTLPixelFormatR8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatRGBA8Unorm:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				mtlPixFmt = MTLPixelFormatBGRA8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatRGBA8Unorm_sRGB:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				mtlPixFmt = MTLPixelFormatBGRA8Unorm_sRGB;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatBGRA8Unorm:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				mtlPixFmt = MTLPixelFormatRGBA8Unorm;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatBGRA8Unorm_sRGB:
-			if (SWIZZLE_MATCHES(B, G, R, A)) {
-				mtlPixFmt = MTLPixelFormatRGBA8Unorm_sRGB;
-				return VK_SUCCESS;
-			}
-			break;
-
-		case MTLPixelFormatDepth32Float_Stencil8:
-			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
-				mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-				mtlPixFmt = MTLPixelFormatX32_Stencil8;
-				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
-					return VK_SUCCESS;
-				}
-			}
-			break;
-
-#if MVK_MACOS
-		case MTLPixelFormatDepth24Unorm_Stencil8:
-			// If aspect mask looking only for stencil then change to stencil-only format even if shader swizzling is needed
-			if (pCreateInfo->subresourceRange.aspectMask == VK_IMAGE_ASPECT_STENCIL_BIT &&
-				mvkIsAnyFlagEnabled(usage, (VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT))) {
-				mtlPixFmt = MTLPixelFormatX24_Stencil8;
-				if (SWIZZLE_MATCHES(R, ANY, ANY, ANY)) {
-					return VK_SUCCESS;
-				}
-			}
-			break;
-#endif
-
-		default:
-			break;
-	}
-
-	// No format transformation swizzles were found, so we'll need to use either native or shader swizzling.
-	useSwizzle = true;
-	if (hasNativeSwizzleSupport || hasShaderSwizzleSupport ) {
-		return VK_SUCCESS;
-	}
-
-	// Oh, oh. Neither native or shader swizzling is supported.
-	return apiObject->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
-								  "The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
-								  " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
-								  " be enabled via the MVKConfiguration::fullImageViewSwizzle config parameter or MVK_CONFIG_FULL_IMAGE_VIEW_SWIZZLE environment variable.",
-								  pCreateInfo->image ? "vkCreateImageView(VkImageViewCreateInfo" : "vkGetPhysicalDeviceImageFormatProperties2KHR(VkPhysicalDeviceImageViewSupportEXTX",
-								  mvkVkComponentSwizzleName(components.r), mvkVkComponentSwizzleName(components.g),
-								  mvkVkComponentSwizzleName(components.b), mvkVkComponentSwizzleName(components.a));
 }
 
 MVKImageView::~MVKImageView() {
