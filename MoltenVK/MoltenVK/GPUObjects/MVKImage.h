@@ -532,7 +532,7 @@ public:
     void releaseMTLTexture();
 
 	/** Returns the packed component swizzle of this image view. */
-	uint32_t getPackedSwizzle() { return _useSwizzle ? mvkPackSwizzle(_componentSwizzle) : 0; }
+	uint32_t getPackedSwizzle() { return _useShaderSwizzle ? mvkPackSwizzle(_componentSwizzle) : 0; }
 
     ~MVKImageViewPlane();
 
@@ -541,6 +541,7 @@ protected:
     id<MTLTexture> newMTLTexture();
 	id<MTLTexture> getUnswizzledMTLTexture();
 	VkResult initSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo);
+	bool enableSwizzling();
     MVKImageViewPlane(MVKImageView* imageView, uint8_t planeIndex, MTLPixelFormat mtlPixFmt, const VkImageViewCreateInfo* pCreateInfo);
 
     friend MVKImageView;
@@ -550,7 +551,8 @@ protected:
     MTLPixelFormat _mtlPixFmt;
 	uint8_t _planeIndex;
     bool _useMTLTextureView;
-	bool _useSwizzle;
+	bool _useNativeSwizzle;
+	bool _useShaderSwizzle;
 };
 
 

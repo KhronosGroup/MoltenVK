@@ -581,7 +581,7 @@ void MVKResourcesCommandEncoderState::markDirty() {
 
 // If a swizzle is needed for this stage, iterates all the bindings and logs errors for those that need texture swizzling.
 void MVKResourcesCommandEncoderState::assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding>& texBindings) {
-	if (needsSwizzle) {
+	if (needsSwizzle && !mvkConfig().fullImageViewSwizzle) {
 		for (auto& tb : texBindings) {
 			VkComponentMapping vkcm = mvkUnpackSwizzle(tb.swizzle);
 			if (!mvkVkComponentMappingsMatch(vkcm, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A})) {
@@ -668,7 +668,6 @@ void MVKGraphicsResourcesCommandEncoderState::bindViewRangeBuffer(const MVKShade
 
 void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stage,
                                                              const char* pStageName,
-                                                             bool fullImageViewSwizzle,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>&)> bindImplicitBuffer,
                                                              std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
@@ -687,7 +686,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeBindings(MVKShaderStage stag
         bindImplicitBuffer(_cmdEncoder, shaderStage.swizzleBufferBinding, shaderStage.swizzleConstants.contents());
 
     } else {
-        assertMissingSwizzles(shaderStage.needsSwizzle && !fullImageViewSwizzle, pStageName, shaderStage.textureBindings.contents());
+        assertMissingSwizzles(shaderStage.needsSwizzle, pStageName, shaderStage.textureBindings.contents());
     }
 
     if (shaderStage.bufferSizeBufferBinding.isDirty) {
@@ -751,11 +750,10 @@ void MVKGraphicsResourcesCommandEncoderState::markDirty() {
 void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
 
     MVKGraphicsPipeline* pipeline = (MVKGraphicsPipeline*)_cmdEncoder->_graphicsPipelineState.getPipeline();
-    bool fullImageViewSwizzle = pipeline->fullImageViewSwizzle() || getDevice()->_pMetalFeatures->nativeTextureSwizzle;
     bool forTessellation = pipeline->isTessellationPipeline();
 
 	if (stage == kMVKGraphicsStageVertex) {
-        encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
+        encodeBindings(kMVKShaderStageVertex, "vertex",
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                            if (b.isInline)
                                cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
@@ -783,7 +781,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
                        });
 
 	} else if (!forTessellation && stage == kMVKGraphicsStageRasterization) {
-        encodeBindings(kMVKShaderStageVertex, "vertex", fullImageViewSwizzle,
+        encodeBindings(kMVKShaderStageVertex, "vertex",
                        [pipeline](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
 					       if (b.isInline) {
                                cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
@@ -824,7 +822,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 
     if (stage == kMVKGraphicsStageTessControl) {
-        encodeBindings(kMVKShaderStageTessCtl, "tessellation control", fullImageViewSwizzle,
+        encodeBindings(kMVKShaderStageTessCtl, "tessellation control",
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                            if (b.isInline)
                                cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseTessellationVertexTessCtl),
@@ -854,7 +852,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 
     if (forTessellation && stage == kMVKGraphicsStageRasterization) {
-        encodeBindings(kMVKShaderStageTessEval, "tessellation evaluation", fullImageViewSwizzle,
+        encodeBindings(kMVKShaderStageTessEval, "tessellation evaluation",
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                            if (b.isInline)
                                cmdEncoder->setVertexBytes(cmdEncoder->_mtlRenderEncoder,
@@ -884,7 +882,7 @@ void MVKGraphicsResourcesCommandEncoderState::encodeImpl(uint32_t stage) {
     }
 
     if (stage == kMVKGraphicsStageRasterization) {
-        encodeBindings(kMVKShaderStageFragment, "fragment", fullImageViewSwizzle,
+        encodeBindings(kMVKShaderStageFragment, "fragment",
                        [](MVKCommandEncoder* cmdEncoder, MVKMTLBufferBinding& b)->void {
                            if (b.isInline)
                                cmdEncoder->setFragmentBytes(cmdEncoder->_mtlRenderEncoder,
@@ -986,9 +984,6 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
 
 	encodeMetalArgumentBuffer(kMVKShaderStageCompute);
 
-    MVKPipeline* pipeline = _cmdEncoder->_computePipelineState.getPipeline();
-	bool fullImageViewSwizzle = pipeline ? pipeline->fullImageViewSwizzle() : false;
-
     if (_resourceBindings.swizzleBufferBinding.isDirty) {
 		for (auto& b : _resourceBindings.textureBindings) {
 			if (b.isDirty) { updateImplicitBuffer(_resourceBindings.swizzleConstants, b.index, b.swizzle); }
@@ -1000,7 +995,7 @@ void MVKComputeResourcesCommandEncoderState::encodeImpl(uint32_t) {
                                      _resourceBindings.swizzleBufferBinding.index);
 
 	} else {
-		assertMissingSwizzles(_resourceBindings.needsSwizzle && !fullImageViewSwizzle, "compute", _resourceBindings.textureBindings.contents());
+		assertMissingSwizzles(_resourceBindings.needsSwizzle, "compute", _resourceBindings.textureBindings.contents());
     }
 
     if (_resourceBindings.bufferSizeBufferBinding.isDirty) {

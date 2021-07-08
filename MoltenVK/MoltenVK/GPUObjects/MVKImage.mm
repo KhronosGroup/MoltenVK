@@ -1448,7 +1448,7 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
         sliceRange = NSMakeRange(0, 1);
     }
     id<MTLTexture> mtlTex = _imageView->_image->getMTLTexture(_planeIndex);
-    if (_device->_pMetalFeatures->nativeTextureSwizzle && _useSwizzle) {
+    if (_useNativeSwizzle) {
         return [mtlTex newTextureViewWithPixelFormat: _mtlPixFmt
                                          textureType: mtlTextureType
                                               levels: NSMakeRange(_imageView->_subresourceRange.baseMipLevel, _imageView->_subresourceRange.levelCount)
@@ -1466,7 +1466,7 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
 // This is relevant for depth/stencil attachments that are also sampled and might have forced swizzles.
 id<MTLTexture> MVKImageViewPlane::getUnswizzledMTLTexture() {
 	id<MTLTexture> mtlTex = getMTLTexture();
-	return _useSwizzle && mtlTex.parentTexture ? mtlTex.parentTexture : mtlTex;
+	return _useNativeSwizzle && mtlTex.parentTexture ? mtlTex.parentTexture : mtlTex;
 }
 
 
@@ -1494,7 +1494,7 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
              ((_imageView->_mtlTextureType == MTLTextureType2D || _imageView->_mtlTextureType == MTLTextureType2DArray) && is3D)) &&
             _imageView->_subresourceRange.levelCount == _imageView->_image->_mipLevels &&
             (is3D || _imageView->_subresourceRange.layerCount == _imageView->_image->_arrayLayers) &&
-            !_useSwizzle) {
+            !_useNativeSwizzle) {
             _useMTLTextureView = false;
         }
     } else {
@@ -1504,11 +1504,10 @@ MVKImageViewPlane::MVKImageViewPlane(MVKImageView* imageView,
 
 VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo) {
 
-	_useSwizzle = false;
+	_useNativeSwizzle = false;
+	_useShaderSwizzle = false;
 	_componentSwizzle = pCreateInfo->components;
-
 	VkImageAspectFlags aspectMask = pCreateInfo->subresourceRange.aspectMask;
-	bool supportsSwizzling = _device->_pMetalFeatures->nativeTextureSwizzle || mvkConfig().fullImageViewSwizzle;
 
 #define SWIZZLE_MATCHES(R, G, B, A)    mvkVkComponentMappingsMatch(_componentSwizzle, {VK_COMPONENT_SWIZZLE_ ##R, VK_COMPONENT_SWIZZLE_ ##G, VK_COMPONENT_SWIZZLE_ ##B, VK_COMPONENT_SWIZZLE_ ##A} )
 #define VK_COMPONENT_SWIZZLE_ANY       VK_COMPONENT_SWIZZLE_MAX_ENUM
@@ -1534,9 +1533,8 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			// When reading or sampling into a vec4 color, Vulkan expects the depth or stencil value in only the red component.
 			// Metal can be inconsistent, but on most platforms populates all components with the depth or stencil value.
 			// If swizzling is available, we can compensate for this by forcing the appropriate swizzle.
-			if (supportsSwizzling && mvkIsAnyFlagEnabled(aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT)) {
-					_componentSwizzle = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ONE };
-					_useSwizzle = true;
+			if (mvkIsAnyFlagEnabled(aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT) && enableSwizzling()) {
+				_componentSwizzle = { VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ZERO, VK_COMPONENT_SWIZZLE_ONE };
 			}
 		}
 
@@ -1672,8 +1670,8 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 			break;
 	}
 
-	// No format transformation swizzles were found, so we'll need to use either native or shader swizzling, if it is supported.
-	if ( !supportsSwizzling ) {
+	// No format transformation swizzles were found, so we'll need to use either native or shader swizzling, if supported.
+	if ( !enableSwizzling() ) {
 		return getVulkanAPIObject()->reportError(VK_ERROR_FEATURE_NOT_PRESENT,
 												 "The value of %s::components) (%s, %s, %s, %s), when applied to a VkImageView, requires full component swizzling to be enabled both at the"
 												 " time when the VkImageView is created and at the time any pipeline that uses that VkImageView is compiled. Full component swizzling can"
@@ -1683,9 +1681,14 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 												 mvkVkComponentSwizzleName(_componentSwizzle.b), mvkVkComponentSwizzleName(_componentSwizzle.a));
 	}
 
-	_useSwizzle = true;
-
 	return VK_SUCCESS;
+}
+
+// Enable either native or shader swizzling, depending on what is available, preferring native, and return whether successful.
+bool MVKImageViewPlane::enableSwizzling() {
+	_useNativeSwizzle = _device->_pMetalFeatures->nativeTextureSwizzle;
+	_useShaderSwizzle = !_useNativeSwizzle && mvkConfig().fullImageViewSwizzle;
+	return _useNativeSwizzle || _useShaderSwizzle;
 }
 
 MVKImageViewPlane::~MVKImageViewPlane() {

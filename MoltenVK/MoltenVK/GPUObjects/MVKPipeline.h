@@ -173,9 +173,6 @@ public:
 	/** Returns the current indirect parameter buffer bindings. */
 	const MVKShaderImplicitRezBinding& getIndirectParamsIndex() { return _indirectParamsIndex; }
 
-	/** Returns whether or not full image view swizzling is enabled for this pipeline. */
-	bool fullImageViewSwizzle() const { return _fullImageViewSwizzle; }
-
 	/** Returns whether all internal Metal pipeline states are valid. */
 	bool hasValidMTLPipelineStates() { return _hasValidMTLPipelineStates; }
 
@@ -205,7 +202,6 @@ protected:
 	MVKShaderImplicitRezBinding _indirectParamsIndex;
 	MVKShaderResourceBinding _pushConstantsMTLResourceIndexes;
 	uint32_t _descriptorSetCount;
-	bool _fullImageViewSwizzle;
 	bool _hasValidMTLPipelineStates = true;
 
 };
