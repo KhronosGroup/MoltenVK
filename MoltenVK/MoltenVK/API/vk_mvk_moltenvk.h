@@ -423,7 +423,7 @@ typedef struct {
 	 * a very limited set of VkImageView component swizzles are supported via format substitutions.
 	 *
 	 * If Metal supports native per-texture swizzling, this parameter is ignored.
-
+	 *
 	 * When running on an older version of Metal that does not support native per-texture
 	 * swizzling, if this parameter is enabled, both when a VkImageView is created, and
 	 * when any pipeline that uses that VkImageView is compiled, VkImageView swizzling is
