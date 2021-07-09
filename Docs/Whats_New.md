@@ -20,6 +20,8 @@ Released TBD
 
 - Fix incorrect translation of clear color values on Apple Silicon.
 - Fix swizzle of depth and stencil values into RGBA (`float4`) variable in shaders.
+- Disable `VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT` for 
+  `VK_FORMAT_E5B9G9R9_UFLOAT_PACK32` on macOS Apple Silicon.
 
 
 

@@ -1546,7 +1546,10 @@ void MVKPixelFormats::modifyMTLFormatCapabilities(id<MTLDevice> mtlDevice) {
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, RGBA8Unorm_sRGB, All );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, BGRA8Unorm_sRGB, All );
 
+	// Blending is actually supported for this format, but format channels cannot be individually write-enabled during blending.
+	// Disabling blending is the least-intrusive way to handle this in a Vulkan-friendly way.
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, RGB9E5Float, All );
+	disableMTLPixFmtCaps ( RGB9E5Float, Blend);
 
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, PVRTC_RGBA_2BPP, RF );
 	addGPUOSMTLPixFmtCaps( Apple5, 10.16, PVRTC_RGBA_2BPP_sRGB, RF );
