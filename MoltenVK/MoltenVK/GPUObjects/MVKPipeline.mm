@@ -1546,7 +1546,12 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	MVKPixelFormats* pixFmts = getPixelFormats();
     MTLPixelFormat mtlDSFormat = pixFmts->getMTLPixelFormat(mvkRenderSubpass->getDepthStencilFormat());
 
-	shaderConfig.options.mslOptions.enable_frag_output_mask = 0;
+	// Disable any unused color attachments, because Metal validation can complain if the
+	// fragment shader outputs a color value without a corresponding color attachment.
+	// However, if alpha-to-coverage is enabled, we must enable the fragment shader first color output,
+	// even without a color attachment present or in use, so that coverage can be calculated.
+	bool hasA2C = pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->alphaToCoverageEnable;
+	shaderConfig.options.mslOptions.enable_frag_output_mask = hasA2C ? 1 : 0;
 	if (pCreateInfo->pColorBlendState) {
 		for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
 			if (mvkRenderSubpass->isColorAttachmentUsed(caIdx)) {
