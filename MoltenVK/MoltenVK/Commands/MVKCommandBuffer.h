@@ -410,7 +410,7 @@ public:
     void endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query);
 
     /** Marks a timestamp for the specified query. */
-    void markTimestamp(MVKQueryPool* pQueryPool, uint32_t query);
+    void markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_t query);
 
     /** Reset a range of queries. */
     void resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount);
@@ -499,6 +499,13 @@ protected:
 	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex);
 	void clearRenderArea();
     NSString* getMTLRenderCommandEncoderName();
+	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
+	void encodeTimestampStageCounterSamples();
+
+	typedef struct GPUCounterQuery {
+		MVKGPUCounterQueryPool* queryPool = nullptr;
+		uint32_t query = 0;
+	} GPUCounterQuery;
 
 	VkSubpassContents _subpassContents;
 	MVKRenderPass* _renderPass;
@@ -507,6 +514,7 @@ protected:
 	uint32_t _multiviewPassIndex;
 	VkRect2D _renderArea;
     MVKActivatedQueries* _pActivatedQueries;
+	MVKSmallVector<GPUCounterQuery, 16> _timestampStageCounterQueries;
 	MVKSmallVector<VkClearValue, kMVKDefaultAttachmentCount> _clearValues;
 	MVKSmallVector<MVKImageView*, kMVKDefaultAttachmentCount> _attachments;
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;

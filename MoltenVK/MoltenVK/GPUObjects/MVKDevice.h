@@ -324,10 +324,10 @@ public:
 	}
 
 	/** Returns whether the MSL version is supported on this device. */
-	inline bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
+	bool mslVersionIsAtLeast(MTLLanguageVersion minVer) { return _metalFeatures.mslVersionEnum >= minVer; }
 
 	/** Returns whether this device is using Metal argument buffers. */
-	inline bool isUsingMetalArgumentBuffers() const  { return _metalFeatures.argumentBuffers && mvkConfig().useMetalArgumentBuffers; };
+	bool isUsingMetalArgumentBuffers() const  { return _metalFeatures.argumentBuffers && mvkConfig().useMetalArgumentBuffers; };
 
 
 #pragma mark Construction
@@ -371,6 +371,7 @@ protected:
 	uint32_t getMaxSamplerCount();
 	void initExternalMemoryProperties();
 	void initExtensions();
+	void initCounterSets();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
 	uint32_t getHighestMTLFeatureSet();
@@ -388,6 +389,7 @@ protected:
 	VkPhysicalDeviceMemoryProperties _memoryProperties;
 	MVKSmallVector<MVKQueueFamily*, kMVKQueueFamilyCount> _queueFamilies;
 	MVKPixelFormats _pixelFormats;
+	id<MTLCounterSet> _timestampMTLCounterSet;
 	uint32_t _allMemoryTypes;
 	uint32_t _hostVisibleMemoryTypes;
 	uint32_t _hostCoherentMemoryTypes;
@@ -684,11 +686,20 @@ public:
      */
     uint32_t expandVisibilityResultMTLBuffer(uint32_t queryCount);
 
+	/** Returns the GPU sample counter used for timestamps. */
+	id<MTLCounterSet> getTimestampMTLCounterSet() { return _physicalDevice->_timestampMTLCounterSet; }
+
     /** Returns the memory type index corresponding to the specified Metal memory storage mode. */
     uint32_t getVulkanMemoryTypeIndex(MTLStorageMode mtlStorageMode);
 
 	/** Returns a default MTLSamplerState to populate empty array element descriptors. */
 	id<MTLSamplerState> getDefaultMTLSamplerState();
+
+	/**
+	 * Returns a MTLBuffer of length one that can be used as a dummy to
+	 * create a no-op BLIT encoder based on filling this single-byte buffer.
+	 */
+	id<MTLBuffer> getDummyBlitMTLBuffer();
 
 	/**
 	 * Returns whether MTLCommandBuffers can be prefilled.
@@ -818,6 +829,7 @@ protected:
     std::mutex _perfLock;
     id<MTLBuffer> _globalVisibilityResultMTLBuffer;
 	id<MTLSamplerState> _defaultMTLSamplerState;
+	id<MTLBuffer> _dummyBlitMTLBuffer;
     uint32_t _globalVisibilityQueryCount;
     std::mutex _vizLock;
 	bool _useMTLFenceForSemaphores;

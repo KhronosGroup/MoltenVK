@@ -1150,6 +1150,7 @@ MVKPhysicalDevice::MVKPhysicalDevice(MVKInstance* mvkInstance, id<MTLDevice> mtl
 	initExtensions();
 	initMemoryProperties();
 	initExternalMemoryProperties();
+	initCounterSets();
 	logGPUInfo();
 }
 
@@ -1594,6 +1595,16 @@ void MVKPhysicalDevice::initMetalFeatures() {
 	// Currently, if we don't support descriptor set argument buffers, we can't support argument buffers.
 	_metalFeatures.argumentBuffers = _metalFeatures.descriptorSetArgumentBuffers;
 
+#define checkSupportsMTLCounterSamplingPoint(mtlSP, mvkSP)  \
+	if ([_mtlDevice respondsToSelector: @selector(supportsCounterSampling:)] &&  \
+		[_mtlDevice supportsCounterSampling: MTLCounterSamplingPointAt ##mtlSP ##Boundary]) {  \
+		_metalFeatures.counterSamplingPoints |= MVK_COUNTER_SAMPLING_AT_ ##mvkSP;  \
+	}
+
+	checkSupportsMTLCounterSamplingPoint(Draw, DRAW);
+	checkSupportsMTLCounterSamplingPoint(Dispatch, DISPATCH);
+	checkSupportsMTLCounterSamplingPoint(Blit, BLIT);
+	checkSupportsMTLCounterSamplingPoint(Stage, PIPELINE_STAGE);
 }
 
 // Initializes the physical device features of this instance.
@@ -2726,6 +2737,28 @@ void MVKPhysicalDevice::initExtensions() {
 #endif
 }
 
+void MVKPhysicalDevice::initCounterSets() {
+	_timestampMTLCounterSet = nil;
+	@autoreleasepool {
+		if (_metalFeatures.counterSamplingPoints) {
+			NSArray<id<MTLCounterSet>>* counterSets = _mtlDevice.counterSets;
+			for (id<MTLCounterSet> cs in counterSets){
+				NSString* csName = cs.name;
+				if ( [csName caseInsensitiveCompare: MTLCommonCounterSetTimestamp] == NSOrderedSame) {
+					NSArray<id<MTLCounter>>* countersInSet = cs.counters;
+					for(id<MTLCounter> ctr in countersInSet) {
+						if ( [ctr.name caseInsensitiveCompare: MTLCommonCounterTimestamp] == NSOrderedSame) {
+							_timestampMTLCounterSet = [cs retain];		// retained
+							break;
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+}
+
 void MVKPhysicalDevice::logGPUInfo() {
 	string devTypeStr;
 	switch (_properties.deviceType) {
@@ -2838,6 +2871,7 @@ void MVKPhysicalDevice::logGPUInfo() {
 
 MVKPhysicalDevice::~MVKPhysicalDevice() {
 	mvkDestroyContainerContents(_queueFamilies);
+	[_timestampMTLCounterSet release];
 	[_mtlDevice release];
 }
 
@@ -3712,6 +3746,20 @@ id<MTLSamplerState> MVKDevice::getDefaultMTLSamplerState() {
 	return _defaultMTLSamplerState;
 }
 
+id<MTLBuffer> MVKDevice::getDummyBlitMTLBuffer() {
+	if ( !_dummyBlitMTLBuffer ) {
+
+		// Lock and check again in case another thread has created the buffer.
+		lock_guard<mutex> lock(_rezLock);
+		if ( !_dummyBlitMTLBuffer ) {
+			@autoreleasepool {
+				_dummyBlitMTLBuffer = [getMTLDevice() newBufferWithLength: 1 options: MTLResourceStorageModePrivate];
+			}
+		}
+	}
+	return _dummyBlitMTLBuffer;
+}
+
 MTLCompileOptions* MVKDevice::getMTLCompileOptions(bool useFastMath, bool preserveInvariance) {
 	MTLCompileOptions* mtlCompOpt = [MTLCompileOptions new];
 	mtlCompOpt.languageVersion = _pMetalFeatures->mslVersionEnum;
@@ -3833,6 +3881,7 @@ MVKDevice::MVKDevice(MVKPhysicalDevice* physicalDevice, const VkDeviceCreateInfo
     _globalVisibilityQueryCount = 0;
 
 	_defaultMTLSamplerState = nil;
+	_dummyBlitMTLBuffer = nil;
 
 	_commandResourceFactory = new MVKCommandResourceFactory(this);
 
@@ -4200,6 +4249,7 @@ MVKDevice::~MVKDevice() {
 
     [_globalVisibilityResultMTLBuffer release];
 	[_defaultMTLSamplerState release];
+	[_dummyBlitMTLBuffer release];
 
 	stopAutoGPUCapture(MVK_CONFIG_AUTO_GPU_CAPTURE_SCOPE_DEVICE);
 
