@@ -771,6 +771,7 @@ void MVKCommandEncoder::markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_
 	}
 }
 
+#if MVK_XCODE_12
 // Metal stage GPU counters need to be configured in a Metal render, compute, or BLIT encoder, meaning that the
 // Metal encoder needs to know about any Vulkan timestamp commands that will be executed during the execution
 // of a renderpass, or set of Vulkan dispatch or BLIT commands. In addition, there are a very small number of
@@ -808,6 +809,9 @@ void MVKCommandEncoder::encodeTimestampStageCounterSamples() {
 	}
 	_timestampStageCounterQueries.clear();
 }
+#else
+void MVKCommandEncoder::encodeTimestampStageCounterSamples() {}
+#endif
 
 void MVKCommandEncoder::resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount) {
     addActivatedQueries(pQueryPool, firstQuery, queryCount);

@@ -1601,10 +1601,21 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.counterSamplingPoints |= MVK_COUNTER_SAMPLING_AT_ ##mvkSP;  \
 	}
 
+#if MVK_XCODE_12
 	checkSupportsMTLCounterSamplingPoint(Draw, DRAW);
 	checkSupportsMTLCounterSamplingPoint(Dispatch, DISPATCH);
 	checkSupportsMTLCounterSamplingPoint(Blit, BLIT);
 	checkSupportsMTLCounterSamplingPoint(Stage, PIPELINE_STAGE);
+#endif
+
+#if !MVK_APPLE_SILICON
+	// On macOS, if we couldn't query supported sample points (on macOS 11),
+	// but the platform can support immediate-mode sample points, indicate that here.
+	if (!_metalFeatures.counterSamplingPoints && mvkOSVersionIsAtLeast(10.15)) {  \
+		_metalFeatures.counterSamplingPoints = MVK_COUNTER_SAMPLING_AT_DRAW | MVK_COUNTER_SAMPLING_AT_DISPATCH | MVK_COUNTER_SAMPLING_AT_BLIT;  \
+	}
+#endif
+
 }
 
 // Initializes the physical device features of this instance.
