@@ -365,6 +365,13 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 										 const VkGraphicsPipelineCreateInfo* pCreateInfo) :
 	MVKPipeline(device, pipelineCache, (MVKPipelineLayout*)pCreateInfo->layout, parent) {
 
+	// Determine rasterization early, as various other structs are validated and interpreted in this context.
+	MVKRenderPass* mvkRendPass = (MVKRenderPass*)pCreateInfo->renderPass;
+	MVKRenderSubpass* mvkRenderSubpass = mvkRendPass->getSubpass(pCreateInfo->subpass);
+	_isRasterizing = !isRasterizationDisabled(pCreateInfo);
+	_isRasterizingColor = _isRasterizing && mvkRenderSubpass->hasColorAttachments();
+	_isRasterizingDepthStencil = _isRasterizing && mvkRenderSubpass->hasDepthStencilAttachment();
+
 	// Get the tessellation shaders, if present. Do this now, because we need to extract
 	// reflection data from them that informs everything else.
 	for (uint32_t i = 0; i < pCreateInfo->stageCount; i++) {
@@ -405,8 +412,8 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
-	// Blending
-	if (pCreateInfo->pColorBlendState) {
+	// Blending - must ignore allowed bad pColorBlendState pointer if rasterization disabled or no color attachments
+	if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
 		memcpy(&_blendConstants, &pCreateInfo->pColorBlendState->blendConstants, sizeof(_blendConstants));
 	}
 
@@ -421,9 +428,9 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 		}
 	}
 
-	// Tessellation
+	// Tessellation - must ignore allowed bad pTessellationState pointer if not tess pipeline
 	_outputControlPointCount = reflectData.numControlPoints;
-	mvkSetOrClear(&_tessInfo, pCreateInfo->pTessellationState);
+	mvkSetOrClear(&_tessInfo, (_pTessCtlSS && _pTessEvalSS) ? pCreateInfo->pTessellationState : nullptr);
 
 	// Rasterization
 	_mtlCullMode = MTLCullModeNone;
@@ -448,10 +455,11 @@ MVKGraphicsPipeline::MVKGraphicsPipeline(MVKDevice* device,
 	initMTLRenderPipelineState(pCreateInfo, reflectData);
 
 	// Depth stencil content - clearing will disable depth and stencil testing
-	mvkSetOrClear(&_depthStencilInfo, pCreateInfo->pDepthStencilState);
+	// Must ignore allowed bad pDepthStencilState pointer if rasterization disabled or no depth attachment
+	mvkSetOrClear(&_depthStencilInfo, _isRasterizingDepthStencil ? pCreateInfo->pDepthStencilState : nullptr);
 
-	// Viewports and scissors
-	auto pVPState = pCreateInfo->pViewportState;
+	// Viewports and scissors - must ignore allowed bad pViewportState pointer if rasterization is disabled
+	auto pVPState = _isRasterizing ? pCreateInfo->pViewportState : nullptr;
 	if (pVPState) {
 		uint32_t vpCnt = pVPState->viewportCount;
 		_viewports.reserve(vpCnt);
@@ -920,7 +928,7 @@ bool MVKGraphicsPipeline::addVertexShaderToPipeline(MTLRenderPipelineDescriptor*
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.view_mask_buffer_index = _viewRangeBufferIndex.stages[kMVKShaderStageVertex];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
-	shaderConfig.options.mslOptions.disable_rasterization = isRasterizationDisabled(pCreateInfo);
+	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
     addVertexInputToShaderConversionConfig(shaderConfig, pCreateInfo);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pVertexSS->module)->getMTLFunction(&shaderConfig, _pVertexSS->pSpecializationInfo, _pipelineCache);
@@ -1108,7 +1116,7 @@ bool MVKGraphicsPipeline::addTessEvalShaderToPipeline(MTLRenderPipelineDescripto
 	shaderConfig.options.mslOptions.buffer_size_buffer_index = _bufferSizeBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderConfig.options.mslOptions.dynamic_offsets_buffer_index = _dynamicOffsetBufferIndex.stages[kMVKShaderStageTessEval];
 	shaderConfig.options.mslOptions.capture_output_to_buffer = false;
-	shaderConfig.options.mslOptions.disable_rasterization = isRasterizationDisabled(pCreateInfo);
+	shaderConfig.options.mslOptions.disable_rasterization = !_isRasterizing;
 	addPrevStageOutputToShaderConversionConfig(shaderConfig, tcOutputs);
 
 	MVKMTLFunction func = ((MVKShaderModule*)_pTessEvalSS->module)->getMTLFunction(&shaderConfig, _pTessEvalSS->pSpecializationInfo, _pipelineCache);
@@ -1157,7 +1165,7 @@ bool MVKGraphicsPipeline::addFragmentShaderToPipeline(MTLRenderPipelineDescripto
 		shaderConfig.options.entryPointName = _pFragmentSS->pName;
 		shaderConfig.options.mslOptions.capture_output_to_buffer = false;
 		shaderConfig.options.mslOptions.fixed_subgroup_size = mvkIsAnyFlagEnabled(_pFragmentSS->flags, VK_PIPELINE_SHADER_STAGE_CREATE_ALLOW_VARYING_SUBGROUP_SIZE_BIT_EXT) ? 0 : _device->_pMetalFeatures->maxSubgroupSize;
-		if (pCreateInfo->pMultisampleState) {
+		if (_isRasterizing && pCreateInfo->pMultisampleState) {		// Must ignore allowed bad pMultisampleState pointer if rasterization disabled
 			if (pCreateInfo->pMultisampleState->pSampleMask && pCreateInfo->pMultisampleState->pSampleMask[0] != 0xffffffff) {
 				shaderConfig.options.mslOptions.additional_fixed_sample_mask = pCreateInfo->pMultisampleState->pSampleMask[0];
 			}
@@ -1444,9 +1452,9 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 												: mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
 	}
 
-    // Color attachments
+    // Color attachments - must ignore bad pColorBlendState pointer if rasterization is disable or subpass has not color attachments
     uint32_t caCnt = 0;
-    if (pCreateInfo->pColorBlendState) {
+    if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
         for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
             const VkPipelineColorBlendAttachmentState* pCA = &pCreateInfo->pColorBlendState->pAttachments[caIdx];
 
@@ -1493,8 +1501,8 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
         colorDesc.writeMask = MTLColorWriteMaskNone;
     }
 
-    // Multisampling
-    if (pCreateInfo->pMultisampleState) {
+    // Multisampling - must ignore allowed bad pMultisampleState pointer if rasterization disabled
+    if (_isRasterizing && pCreateInfo->pMultisampleState) {
         plDesc.sampleCount = mvkSampleCountFromVkSampleCountFlagBits(pCreateInfo->pMultisampleState->rasterizationSamples);
         mvkRenderSubpass->setDefaultSampleCount(pCreateInfo->pMultisampleState->rasterizationSamples);
         plDesc.alphaToCoverageEnabled = pCreateInfo->pMultisampleState->alphaToCoverageEnable;
@@ -1507,8 +1515,9 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 													 const VkGraphicsPipelineCreateInfo* pCreateInfo,
 													 const SPIRVTessReflectionData& reflectData) {
 
+	// Tessellation - must ignore allowed bad pTessellationState pointer if not tess pipeline
     VkPipelineTessellationDomainOriginStateCreateInfo* pTessDomainOriginState = nullptr;
-    if (pCreateInfo->pTessellationState) {
+    if (isTessellationPipeline() && pCreateInfo->pTessellationState) {
 		for (const auto* next = (VkBaseInStructure*)pCreateInfo->pTessellationState->pNext; next; next = next->pNext) {
             switch (next->sType) {
             case VK_STRUCTURE_TYPE_PIPELINE_TESSELLATION_DOMAIN_ORIGIN_STATE_CREATE_INFO:
@@ -1550,9 +1559,10 @@ void MVKGraphicsPipeline::initShaderConversionConfig(SPIRVToMSLConversionConfigu
 	// fragment shader outputs a color value without a corresponding color attachment.
 	// However, if alpha-to-coverage is enabled, we must enable the fragment shader first color output,
 	// even without a color attachment present or in use, so that coverage can be calculated.
-	bool hasA2C = pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->alphaToCoverageEnable;
+	// Must ignore allowed bad pMultisampleState pointer if rasterization disabled
+	bool hasA2C = _isRasterizing && pCreateInfo->pMultisampleState && pCreateInfo->pMultisampleState->alphaToCoverageEnable;
 	shaderConfig.options.mslOptions.enable_frag_output_mask = hasA2C ? 1 : 0;
-	if (pCreateInfo->pColorBlendState) {
+	if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
 		for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
 			if (mvkRenderSubpass->isColorAttachmentUsed(caIdx)) {
 				mvkEnableFlags(shaderConfig.options.mslOptions.enable_frag_output_mask, 1 << caIdx);

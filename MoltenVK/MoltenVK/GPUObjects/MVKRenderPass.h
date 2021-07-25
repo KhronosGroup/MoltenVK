@@ -47,13 +47,19 @@ public:
 	MVKVulkanAPIObject* getVulkanAPIObject() override;
 
 	/** Returns the parent render pass of this subpass. */
-	inline MVKRenderPass* getRenderPass() { return _renderPass; }
+	MVKRenderPass* getRenderPass() { return _renderPass; }
 
 	/** Returns the index of this subpass in its parent render pass. */
-	inline uint32_t getSubpassIndex() { return _subpassIndex; }
+	uint32_t getSubpassIndex() { return _subpassIndex; }
+
+	/** Returns whether this subpass has any color attachments. */
+	bool hasColorAttachments();
+
+	/** Returns whether this subpass has a depth/stencil attachment. */
+	bool hasDepthStencilAttachment();
 
 	/** Returns the number of color attachments, which may be zero for depth-only rendering. */
-	inline uint32_t getColorAttachmentCount() { return uint32_t(_colorAttachments.size()); }
+	uint32_t getColorAttachmentCount() { return uint32_t(_colorAttachments.size()); }
 
 	/** Returns the format of the color attachment at the specified index. */
 	VkFormat getColorAttachmentFormat(uint32_t colorAttIdx);
@@ -74,7 +80,7 @@ public:
 	bool isMultiview() const { return _viewMask != 0; }
 
 	/** Returns the total number of views to be rendered. */
-	inline uint32_t getViewCount() const { return __builtin_popcount(_viewMask); }
+	uint32_t getViewCount() const { return __builtin_popcount(_viewMask); }
 
 	/** Returns the number of Metal render passes needed to render all views. */
 	uint32_t getMultiviewMetalPassCount() const;
