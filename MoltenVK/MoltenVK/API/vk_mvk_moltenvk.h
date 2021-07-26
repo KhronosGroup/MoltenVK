@@ -835,6 +835,16 @@ typedef enum MVKFloatRounding {
 	MVK_FLOAT_ROUNDING_UP_MAX_ENUM = 0x7FFFFFFF
 } MVKFloatRounding;
 
+/** Identifies the pipeline points where GPU counter sampling can occur. Maps to MTLCounterSamplingPoint. */
+typedef enum MVKCounterSamplingBits {
+	MVK_COUNTER_SAMPLING_AT_DRAW           = 0x00000001,
+	MVK_COUNTER_SAMPLING_AT_DISPATCH       = 0x00000002,
+	MVK_COUNTER_SAMPLING_AT_BLIT           = 0x00000004,
+	MVK_COUNTER_SAMPLING_AT_PIPELINE_STAGE = 0x00000008,
+	MVK_COUNTER_SAMPLING_MAX_ENUM          = 0X7FFFFFFF
+} MVKCounterSamplingBits;
+typedef VkFlags MVKCounterSamplingFlags;
+
 /**
  * Features provided by the current implementation of Metal on the current device. You can
  * retrieve a copy of this structure using the vkGetPhysicalDeviceMetalFeaturesMVK() function.
@@ -850,71 +860,72 @@ typedef enum MVKFloatRounding {
  * SHOULD NOT BE CHANGED.
  */
 typedef struct {
-    uint32_t mslVersion;                        /**< The version of the Metal Shading Language available on this device. The format of the integer is MMmmpp, with two decimal digts each for Major, minor, and patch version values (eg. MSL 1.2 would appear as 010200). */
-	VkBool32 indirectDrawing;                   /**< If true, draw calls support parameters held in a GPU buffer. */
-	VkBool32 baseVertexInstanceDrawing;         /**< If true, draw calls support specifiying the base vertex and instance. */
-    uint32_t dynamicMTLBufferSize;              /**< If greater than zero, dynamic MTLBuffers for setting vertex, fragment, and compute bytes are supported, and their content must be below this value. */
-    VkBool32 shaderSpecialization;              /**< If true, shader specialization (aka Metal function constants) is supported. */
-    VkBool32 ioSurfaces;                        /**< If true, VkImages can be underlaid by IOSurfaces via the vkUseIOSurfaceMVK() function, to support inter-process image transfers. */
-    VkBool32 texelBuffers;                      /**< If true, texel buffers are supported, allowing the contents of a buffer to be interpreted as an image via a VkBufferView. */
-	VkBool32 layeredRendering;                  /**< If true, layered rendering to multiple cube or texture array layers is supported. */
-	VkBool32 presentModeImmediate;              /**< If true, immediate surface present mode (VK_PRESENT_MODE_IMMEDIATE_KHR), allowing a swapchain image to be presented immediately, without waiting for the vertical sync period of the display, is supported. */
-	VkBool32 stencilViews;                      /**< If true, stencil aspect views are supported through the MTLPixelFormatX24_Stencil8 and MTLPixelFormatX32_Stencil8 formats. */
-	VkBool32 multisampleArrayTextures;          /**< If true, MTLTextureType2DMultisampleArray is supported. */
-	VkBool32 samplerClampToBorder;              /**< If true, the border color set when creating a sampler will be respected. */
-	uint32_t maxTextureDimension; 	     	  	/**< The maximum size of each texture dimension (width, height, or depth). */
-	uint32_t maxPerStageBufferCount;            /**< The total number of per-stage Metal buffers available for shader uniform content and attributes. */
-    uint32_t maxPerStageTextureCount;           /**< The total number of per-stage Metal textures available for shader uniform content. */
-    uint32_t maxPerStageSamplerCount;           /**< The total number of per-stage Metal samplers available for shader uniform content. */
-    VkDeviceSize maxMTLBufferSize;              /**< The max size of a MTLBuffer (in bytes). */
-    VkDeviceSize mtlBufferAlignment;            /**< The alignment used when allocating memory for MTLBuffers. Must be PoT. */
-    VkDeviceSize maxQueryBufferSize;            /**< The maximum size of an occlusion query buffer (in bytes). */
-	VkDeviceSize mtlCopyBufferAlignment;        /**< The alignment required during buffer copy operations (in bytes). */
-    VkSampleCountFlags supportedSampleCounts;   /**< A bitmask identifying the sample counts supported by the device. */
-	uint32_t minSwapchainImageCount;	 	  	/**< The minimum number of swapchain images that can be supported by a surface. */
-	uint32_t maxSwapchainImageCount;	 	  	/**< The maximum number of swapchain images that can be supported by a surface. */
-	VkBool32 combinedStoreResolveAction;		/**< If true, the device supports VK_ATTACHMENT_STORE_OP_STORE with a simultaneous resolve attachment. */
-	VkBool32 arrayOfTextures;			 	  	/**< If true, arrays of textures is supported. */
-	VkBool32 arrayOfSamplers;			 	  	/**< If true, arrays of texture samplers is supported. */
-	MTLLanguageVersion mslVersionEnum;			/**< The version of the Metal Shading Language available on this device, as a Metal enumeration. */
-	VkBool32 depthSampleCompare;				/**< If true, depth texture samplers support the comparison of the pixel value against a reference value. */
-	VkBool32 events;							/**< If true, Metal synchronization events (MTLEvent) are supported. */
-	VkBool32 memoryBarriers;					/**< If true, full memory barriers within Metal render passes are supported. */
-	VkBool32 multisampleLayeredRendering;       /**< If true, layered rendering to multiple multi-sampled cube or texture array layers is supported. */
-	VkBool32 stencilFeedback;					/**< If true, fragment shaders that write to [[stencil]] outputs are supported. */
-	VkBool32 textureBuffers;					/**< If true, textures of type MTLTextureTypeBuffer are supported. */
-	VkBool32 postDepthCoverage;					/**< If true, coverage masks in fragment shaders post-depth-test are supported. */
-	VkBool32 fences;							/**< If true, Metal synchronization fences (MTLFence) are supported. */
-	VkBool32 rasterOrderGroups;					/**< If true, Raster order groups in fragment shaders are supported. */
-	VkBool32 native3DCompressedTextures;		/**< If true, 3D compressed images are supported natively, without manual decompression. */
-	VkBool32 nativeTextureSwizzle;				/**< If true, component swizzle is supported natively, without manual swizzling in shaders. */
-	VkBool32 placementHeaps;					/**< If true, MTLHeap objects support placement of resources. */
-	VkDeviceSize pushConstantSizeAlignment;		/**< The alignment used internally when allocating memory for push constants. Must be PoT. */
-	uint32_t maxTextureLayers;					/**< The maximum number of layers in an array texture. */
-    uint32_t maxSubgroupSize;			        /**< The maximum number of threads in a SIMD-group. */
-	VkDeviceSize vertexStrideAlignment;         /**< The alignment used for the stride of vertex attribute bindings. */
-	VkBool32 indirectTessellationDrawing;		/**< If true, tessellation draw calls support parameters held in a GPU buffer. */
-	VkBool32 nonUniformThreadgroups;			/**< If true, the device supports arbitrary-sized grids in compute workloads. */
-	VkBool32 renderWithoutAttachments;          /**< If true, we don't have to create a dummy attachment for a render pass if there isn't one. */
-	VkBool32 deferredStoreActions;				/**< If true, render pass store actions can be specified after the render encoder is created. */
-	VkBool32 sharedLinearTextures;				/**< If true, linear textures and texture buffers can be created from buffers in Shared storage. */
-	VkBool32 depthResolve;						/**< If true, resolving depth textures with filters other than Sample0 is supported. */
-	VkBool32 stencilResolve;					/**< If true, resolving stencil textures with filters other than Sample0 is supported. */
-	uint32_t maxPerStageDynamicMTLBufferCount;	/**< The maximum number of inline buffers that can be set on a command buffer. */
-	uint32_t maxPerStageStorageTextureCount;    /**< The total number of per-stage Metal textures with read-write access available for writing to from a shader. */
-	VkBool32 astcHDRTextures;					/**< If true, ASTC HDR pixel formats are supported. */
-	VkBool32 renderLinearTextures;				/**< If true, linear textures are renderable. */
-	VkBool32 pullModelInterpolation;			/**< If true, explicit interpolation functions are supported. */
-	VkBool32 samplerMirrorClampToEdge;			/**< If true, the mirrored clamp to edge address mode is supported in samplers. */
-	VkBool32 quadPermute;						/**< If true, quadgroup permutation functions (vote, ballot, shuffle) are supported in shaders. */
-	VkBool32 simdPermute;						/**< If true, SIMD-group permutation functions (vote, ballot, shuffle) are supported in shaders. */
-	VkBool32 simdReduction;						/**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
-    uint32_t minSubgroupSize;			        /**< The minimum number of threads in a SIMD-group. */
-    VkBool32 textureBarriers;                   /**< If true, texture barriers are supported within Metal render passes. */
-    VkBool32 tileBasedDeferredRendering;        /**< If true, this device uses tile-based deferred rendering. */
-	VkBool32 argumentBuffers;					/**< If true, Metal argument buffers are supported. */
-	VkBool32 descriptorSetArgumentBuffers;		/**< If true, a Metal argument buffer can be assigned to a descriptor set, and used on any pipeline and pipeline stage. If false, a different Metal argument buffer must be used for each pipeline-stage/descriptor-set combination. */
-	MVKFloatRounding clearColorFloatRounding;	/**< Identifies the type of rounding Metal uses for MTLClearColor float to integer conversions. */
+    uint32_t mslVersion;                        	/**< The version of the Metal Shading Language available on this device. The format of the integer is MMmmpp, with two decimal digts each for Major, minor, and patch version values (eg. MSL 1.2 would appear as 010200). */
+	VkBool32 indirectDrawing;                   	/**< If true, draw calls support parameters held in a GPU buffer. */
+	VkBool32 baseVertexInstanceDrawing;         	/**< If true, draw calls support specifiying the base vertex and instance. */
+    uint32_t dynamicMTLBufferSize;              	/**< If greater than zero, dynamic MTLBuffers for setting vertex, fragment, and compute bytes are supported, and their content must be below this value. */
+    VkBool32 shaderSpecialization;              	/**< If true, shader specialization (aka Metal function constants) is supported. */
+    VkBool32 ioSurfaces;                        	/**< If true, VkImages can be underlaid by IOSurfaces via the vkUseIOSurfaceMVK() function, to support inter-process image transfers. */
+    VkBool32 texelBuffers;                      	/**< If true, texel buffers are supported, allowing the contents of a buffer to be interpreted as an image via a VkBufferView. */
+	VkBool32 layeredRendering;                  	/**< If true, layered rendering to multiple cube or texture array layers is supported. */
+	VkBool32 presentModeImmediate;              	/**< If true, immediate surface present mode (VK_PRESENT_MODE_IMMEDIATE_KHR), allowing a swapchain image to be presented immediately, without waiting for the vertical sync period of the display, is supported. */
+	VkBool32 stencilViews;                      	/**< If true, stencil aspect views are supported through the MTLPixelFormatX24_Stencil8 and MTLPixelFormatX32_Stencil8 formats. */
+	VkBool32 multisampleArrayTextures;          	/**< If true, MTLTextureType2DMultisampleArray is supported. */
+	VkBool32 samplerClampToBorder;              	/**< If true, the border color set when creating a sampler will be respected. */
+	uint32_t maxTextureDimension; 	     	  		/**< The maximum size of each texture dimension (width, height, or depth). */
+	uint32_t maxPerStageBufferCount;            	/**< The total number of per-stage Metal buffers available for shader uniform content and attributes. */
+    uint32_t maxPerStageTextureCount;           	/**< The total number of per-stage Metal textures available for shader uniform content. */
+    uint32_t maxPerStageSamplerCount;           	/**< The total number of per-stage Metal samplers available for shader uniform content. */
+    VkDeviceSize maxMTLBufferSize;              	/**< The max size of a MTLBuffer (in bytes). */
+    VkDeviceSize mtlBufferAlignment;            	/**< The alignment used when allocating memory for MTLBuffers. Must be PoT. */
+    VkDeviceSize maxQueryBufferSize;            	/**< The maximum size of an occlusion query buffer (in bytes). */
+	VkDeviceSize mtlCopyBufferAlignment;        	/**< The alignment required during buffer copy operations (in bytes). */
+    VkSampleCountFlags supportedSampleCounts;   	/**< A bitmask identifying the sample counts supported by the device. */
+	uint32_t minSwapchainImageCount;	 	  		/**< The minimum number of swapchain images that can be supported by a surface. */
+	uint32_t maxSwapchainImageCount;	 	  		/**< The maximum number of swapchain images that can be supported by a surface. */
+	VkBool32 combinedStoreResolveAction;			/**< If true, the device supports VK_ATTACHMENT_STORE_OP_STORE with a simultaneous resolve attachment. */
+	VkBool32 arrayOfTextures;			 	  		/**< If true, arrays of textures is supported. */
+	VkBool32 arrayOfSamplers;			 	  		/**< If true, arrays of texture samplers is supported. */
+	MTLLanguageVersion mslVersionEnum;				/**< The version of the Metal Shading Language available on this device, as a Metal enumeration. */
+	VkBool32 depthSampleCompare;					/**< If true, depth texture samplers support the comparison of the pixel value against a reference value. */
+	VkBool32 events;								/**< If true, Metal synchronization events (MTLEvent) are supported. */
+	VkBool32 memoryBarriers;						/**< If true, full memory barriers within Metal render passes are supported. */
+	VkBool32 multisampleLayeredRendering;       	/**< If true, layered rendering to multiple multi-sampled cube or texture array layers is supported. */
+	VkBool32 stencilFeedback;						/**< If true, fragment shaders that write to [[stencil]] outputs are supported. */
+	VkBool32 textureBuffers;						/**< If true, textures of type MTLTextureTypeBuffer are supported. */
+	VkBool32 postDepthCoverage;						/**< If true, coverage masks in fragment shaders post-depth-test are supported. */
+	VkBool32 fences;								/**< If true, Metal synchronization fences (MTLFence) are supported. */
+	VkBool32 rasterOrderGroups;						/**< If true, Raster order groups in fragment shaders are supported. */
+	VkBool32 native3DCompressedTextures;			/**< If true, 3D compressed images are supported natively, without manual decompression. */
+	VkBool32 nativeTextureSwizzle;					/**< If true, component swizzle is supported natively, without manual swizzling in shaders. */
+	VkBool32 placementHeaps;						/**< If true, MTLHeap objects support placement of resources. */
+	VkDeviceSize pushConstantSizeAlignment;			/**< The alignment used internally when allocating memory for push constants. Must be PoT. */
+	uint32_t maxTextureLayers;						/**< The maximum number of layers in an array texture. */
+    uint32_t maxSubgroupSize;			        	/**< The maximum number of threads in a SIMD-group. */
+	VkDeviceSize vertexStrideAlignment;         	/**< The alignment used for the stride of vertex attribute bindings. */
+	VkBool32 indirectTessellationDrawing;			/**< If true, tessellation draw calls support parameters held in a GPU buffer. */
+	VkBool32 nonUniformThreadgroups;				/**< If true, the device supports arbitrary-sized grids in compute workloads. */
+	VkBool32 renderWithoutAttachments;          	/**< If true, we don't have to create a dummy attachment for a render pass if there isn't one. */
+	VkBool32 deferredStoreActions;					/**< If true, render pass store actions can be specified after the render encoder is created. */
+	VkBool32 sharedLinearTextures;					/**< If true, linear textures and texture buffers can be created from buffers in Shared storage. */
+	VkBool32 depthResolve;							/**< If true, resolving depth textures with filters other than Sample0 is supported. */
+	VkBool32 stencilResolve;						/**< If true, resolving stencil textures with filters other than Sample0 is supported. */
+	uint32_t maxPerStageDynamicMTLBufferCount;		/**< The maximum number of inline buffers that can be set on a command buffer. */
+	uint32_t maxPerStageStorageTextureCount;    	/**< The total number of per-stage Metal textures with read-write access available for writing to from a shader. */
+	VkBool32 astcHDRTextures;						/**< If true, ASTC HDR pixel formats are supported. */
+	VkBool32 renderLinearTextures;					/**< If true, linear textures are renderable. */
+	VkBool32 pullModelInterpolation;				/**< If true, explicit interpolation functions are supported. */
+	VkBool32 samplerMirrorClampToEdge;				/**< If true, the mirrored clamp to edge address mode is supported in samplers. */
+	VkBool32 quadPermute;							/**< If true, quadgroup permutation functions (vote, ballot, shuffle) are supported in shaders. */
+	VkBool32 simdPermute;							/**< If true, SIMD-group permutation functions (vote, ballot, shuffle) are supported in shaders. */
+	VkBool32 simdReduction;							/**< If true, SIMD-group reduction functions (arithmetic) are supported in shaders. */
+    uint32_t minSubgroupSize;			        	/**< The minimum number of threads in a SIMD-group. */
+    VkBool32 textureBarriers;                   	/**< If true, texture barriers are supported within Metal render passes. */
+    VkBool32 tileBasedDeferredRendering;        	/**< If true, this device uses tile-based deferred rendering. */
+	VkBool32 argumentBuffers;						/**< If true, Metal argument buffers are supported. */
+	VkBool32 descriptorSetArgumentBuffers;			/**< If true, a Metal argument buffer can be assigned to a descriptor set, and used on any pipeline and pipeline stage. If false, a different Metal argument buffer must be used for each pipeline-stage/descriptor-set combination. */
+	MVKFloatRounding clearColorFloatRounding;		/**< Identifies the type of rounding Metal uses for MTLClearColor float to integer conversions. */
+	MVKCounterSamplingFlags counterSamplingPoints;	/**< Identifies the points where pipeline GPU counter sampling may occur. */
 } MVKPhysicalDeviceMetalFeatures;
 
 /** MoltenVK performance of a particular type of activity. */

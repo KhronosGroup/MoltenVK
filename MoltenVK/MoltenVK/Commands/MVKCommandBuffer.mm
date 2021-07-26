@@ -614,6 +614,8 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	[_mtlBlitEncoder endEncoding];
 	_mtlBlitEncoder = nil;          // not retained
     _mtlBlitEncoderUse = kMVKCommandUseNone;
+
+	encodeTimestampStageCounterSamples();
 }
 
 id<MTLComputeCommandEncoder> MVKCommandEncoder::getMTLComputeEncoder(MVKCommandUse cmdUse) {
@@ -720,6 +722,23 @@ const MVKMTLBufferAllocation* MVKCommandEncoder::copyToTempMTLBufferAllocation(c
 
 #pragma mark Queries
 
+// Only executes on immediate-mode GPUs. Encode a GPU counter sample command on whichever Metal
+// encoder is currently in use, creating a temporary BLIT encoder if no encoder is currently active.
+// We only encode the GPU sample if the platform allows encoding at the associated pipeline point.
+void MVKCommandEncoder::encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints){
+	if (_mtlRenderEncoder) {
+		if (mvkIsAnyFlagEnabled(samplingPoints, MVK_COUNTER_SAMPLING_AT_DRAW)) {
+			[_mtlRenderEncoder sampleCountersInBuffer: mvkQryPool->getMTLCounterBuffer() atSampleIndex: sampleIndex withBarrier: NO];
+		}
+	} else if (_mtlComputeEncoder) {
+		if (mvkIsAnyFlagEnabled(samplingPoints, MVK_COUNTER_SAMPLING_AT_DISPATCH)) {
+			[_mtlComputeEncoder sampleCountersInBuffer: mvkQryPool->getMTLCounterBuffer() atSampleIndex: sampleIndex withBarrier: NO];
+		}
+	} else if (mvkIsAnyFlagEnabled(samplingPoints, MVK_COUNTER_SAMPLING_AT_BLIT)) {
+		[getMTLBlitEncoder(kMVKCommandUseRecordGPUCounterSample) sampleCountersInBuffer: mvkQryPool->getMTLCounterBuffer() atSampleIndex: sampleIndex withBarrier: NO];
+	}
+}
+
 void MVKCommandEncoder::beginOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uint32_t query, VkQueryControlFlags flags) {
     _occlusionQueryState.beginOcclusionQuery(pQueryPool, query, flags);
     uint32_t queryCount = 1;
@@ -733,13 +752,66 @@ void MVKCommandEncoder::endOcclusionQuery(MVKOcclusionQueryPool* pQueryPool, uin
     _occlusionQueryState.endOcclusionQuery(pQueryPool, query);
 }
 
-void MVKCommandEncoder::markTimestamp(MVKQueryPool* pQueryPool, uint32_t query) {
+void MVKCommandEncoder::markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_t query) {
     uint32_t queryCount = 1;
     if (_renderPass && getSubpass()->isMultiview()) {
         queryCount = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
     }
-    addActivatedQueries(pQueryPool, query, queryCount);
+	addActivatedQueries(pQueryPool, query, queryCount);
+
+	MVKCounterSamplingFlags sampPts = _device->_pMetalFeatures->counterSamplingPoints;
+	if (sampPts) {
+		for (uint32_t qOfst = 0; qOfst < queryCount; qOfst++) {
+			if (mvkIsAnyFlagEnabled(sampPts, MVK_COUNTER_SAMPLING_AT_PIPELINE_STAGE)) {
+				_timestampStageCounterQueries.push_back({ pQueryPool, query + qOfst });
+			} else {
+				encodeGPUCounterSample(pQueryPool, query + qOfst, sampPts);
+			}
+		}
+	}
 }
+
+#if MVK_XCODE_12
+// Metal stage GPU counters need to be configured in a Metal render, compute, or BLIT encoder, meaning that the
+// Metal encoder needs to know about any Vulkan timestamp commands that will be executed during the execution
+// of a renderpass, or set of Vulkan dispatch or BLIT commands. In addition, there are a very small number of
+// staged timestamps (4) that can be tracked in any single render, compute, or BLIT pass, meaning a renderpass
+// that timestamped after each of many draw calls, would not be trackable. Finally, stage counters are only
+// available on tile-based GPU's, which means draw or dispatch calls cannot be individually timestamped.
+// We avoid dealing with all this complexity and mismatch between how Vulkan and Metal stage counters operate
+// by deferring all timestamps to the end of any batch of Metal encoding, and add a lightweight Metal encoder
+// that does minimal work (it won't timestamp if completely empty), and timestamps that work into all of the
+// Vulkan timestamp queries that have been executed during the execution of the previous Metal encoder.
+void MVKCommandEncoder::encodeTimestampStageCounterSamples() {
+	size_t qCnt = _timestampStageCounterQueries.size();
+	uint32_t qIdx = 0;
+	while (qIdx < qCnt) {
+
+		// With each BLIT pass, consume as many outstanding timestamp queries as possible.
+		// Attach an query result to each of the available sample buffer attachments in the BLIT pass descriptor.
+		auto* bpDesc = [[[MTLBlitPassDescriptor alloc] init] autorelease];
+		for (uint32_t attIdx = 0; attIdx < MTLMaxBlitPassSampleBuffers && qIdx < qCnt; attIdx++, qIdx++) {
+			auto* sbAttDesc = bpDesc.sampleBufferAttachments[attIdx];
+			auto& tsQry = _timestampStageCounterQueries[qIdx];
+
+			// We actually only need to use startOfEncoderSampleIndex, but apparently,
+			// and contradicting docs, Metal hits an unexpected validation error if
+			// endOfEncoderSampleIndex is left at MTLCounterDontSample.
+			sbAttDesc.startOfEncoderSampleIndex = tsQry.query;
+			sbAttDesc.endOfEncoderSampleIndex = tsQry.query;
+			sbAttDesc.sampleBuffer = tsQry.queryPool->getMTLCounterBuffer();
+		}
+
+		auto* mtlEnc = [_mtlCmdBuffer blitCommandEncoderWithDescriptor: bpDesc];
+		setLabelIfNotNil(mtlEnc, mvkMTLBlitCommandEncoderLabel(kMVKCommandUseRecordGPUCounterSample));
+		[mtlEnc fillBuffer: _device->getDummyBlitMTLBuffer() range: NSMakeRange(0, 1) value: 0];
+		[mtlEnc endEncoding];
+	}
+	_timestampStageCounterQueries.clear();
+}
+#else
+void MVKCommandEncoder::encodeTimestampStageCounterSamples() {}
+#endif
 
 void MVKCommandEncoder::resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount) {
     addActivatedQueries(pQueryPool, firstQuery, queryCount);
@@ -847,6 +919,7 @@ NSString* mvkMTLBlitCommandEncoderLabel(MVKCommandUse cmdUse) {
         case kMVKCommandUseUpdateBuffer:                    return @"vkCmdUpdateBuffer BlitEncoder";
         case kMVKCommandUseResetQueryPool:                  return @"vkCmdResetQueryPool BlitEncoder";
         case kMVKCommandUseCopyQueryPoolResults:            return @"vkCmdCopyQueryPoolResults BlitEncoder";
+		case kMVKCommandUseRecordGPUCounterSample:          return @"Record GPU Counter Sample BlitEncoder";
         default:                                            return @"Unknown Use BlitEncoder";
     }
 }

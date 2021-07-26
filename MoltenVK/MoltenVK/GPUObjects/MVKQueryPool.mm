@@ -89,10 +89,13 @@ VkResult MVKQueryPool::getResults(uint32_t firstQuery,
 	}
 
 	VkResult rqstRslt = VK_SUCCESS;
-	uintptr_t pQryData = (uintptr_t)pData;
-	for (uint32_t query = firstQuery; query < endQuery; query++, pQryData += stride) {
-		VkResult qryRslt = getResult(query, (void*)pQryData, flags);
-		if (rqstRslt == VK_SUCCESS) { rqstRslt = qryRslt; }
+	@autoreleasepool {
+		NSData* srcData = getQuerySourceData(firstQuery, queryCount);
+		uintptr_t pDstData = (uintptr_t)pData;
+		for (uint32_t query = firstQuery; query < endQuery; query++, pDstData += stride) {
+			VkResult qryRslt = getResult(query, srcData, firstQuery, (void*)pDstData, flags);
+			if (rqstRslt == VK_SUCCESS) { rqstRslt = qryRslt; }
+		}
 	}
 	return rqstRslt;
 }
@@ -114,7 +117,7 @@ bool MVKQueryPool::areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuer
     return true;
 }
 
-VkResult MVKQueryPool::getResult(uint32_t query, void* pQryData, VkQueryResultFlags flags) {
+VkResult MVKQueryPool::getResult(uint32_t query, NSData* srcData, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags) {
 
 	if (_device->getConfigurationResult() != VK_SUCCESS) { return _device->getConfigurationResult(); }
 
@@ -123,15 +126,22 @@ VkResult MVKQueryPool::getResult(uint32_t query, void* pQryData, VkQueryResultFl
 	bool shouldOutput64Bit = mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_64_BIT);
 
 	// Output the results of this query
-	if (shouldOutput) { getResult(query, pQryData, shouldOutput64Bit); }
+	if (shouldOutput) {
+		uint64_t rsltVal = ((uint64_t*)srcData.bytes)[query - srcDataQueryOffset];
+		if (shouldOutput64Bit) {
+			*(uint64_t*)pDstData = rsltVal;
+		} else {
+			*(uint32_t*)pDstData = (uint32_t)rsltVal;
+		}
+	}
 
 	// If requested, output the availability bit
 	if (mvkAreAllFlagsEnabled(flags, VK_QUERY_RESULT_WITH_AVAILABILITY_BIT)) {
 		if (shouldOutput64Bit) {
-			uintptr_t pAvailability = (uintptr_t)pQryData + (_queryElementCount * sizeof(uint64_t));
+			uintptr_t pAvailability = (uintptr_t)pDstData + (_queryElementCount * sizeof(uint64_t));
 			*(uint64_t*)pAvailability = isAvailable;
 		} else {
-			uintptr_t pAvailability = (uintptr_t)pQryData + (_queryElementCount * sizeof(uint32_t));
+			uintptr_t pAvailability = (uintptr_t)pDstData + (_queryElementCount * sizeof(uint32_t));
 			*(uint32_t*)pAvailability = isAvailable;
 		}
 	}
@@ -154,20 +164,12 @@ void MVKQueryPool::encodeCopyResults(MVKCommandEncoder* cmdEncoder,
 		stride == _queryElementCount * sizeof(uint64_t) &&
 		areQueriesDeviceAvailable(firstQuery, queryCount)) {
 
-		id<MTLBlitCommandEncoder> mtlBlitCmdEnc = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyQueryPoolResults);
-		NSUInteger srcOffset;
-		id<MTLBuffer> srcBuff = getResultBuffer(cmdEncoder, firstQuery, queryCount, srcOffset);
-		[mtlBlitCmdEnc copyFromBuffer: srcBuff
-						 sourceOffset: srcOffset
-							 toBuffer: destBuffer->getMTLBuffer()
-					destinationOffset: destBuffer->getMTLBufferOffset() + destOffset
-								 size: stride * queryCount];
+		encodeDirectCopyResults(cmdEncoder, firstQuery, queryCount, destBuffer, destOffset, stride);
 		// TODO: In the case where none of the queries is ready, we can fill with 0.
 	} else {
-		id<MTLComputeCommandEncoder> mtlComputeCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
 		id<MTLComputePipelineState> mtlCopyResultsState = cmdEncoder->getCommandEncodingPool()->getCmdCopyQueryPoolResultsMTLComputePipelineState();
+		id<MTLComputeCommandEncoder> mtlComputeCmdEnc = encodeComputeCopyResults(cmdEncoder, firstQuery, queryCount, 0);
 		[mtlComputeCmdEnc setComputePipelineState: mtlCopyResultsState];
-		encodeSetResultBuffer(cmdEncoder, firstQuery, queryCount, 0);
 		[mtlComputeCmdEnc setBuffer: destBuffer->getMTLBuffer()
 							 offset: destBuffer->getMTLBufferOffset() + destOffset
 							atIndex: 1];
@@ -183,6 +185,24 @@ void MVKQueryPool::encodeCopyResults(MVKCommandEncoder* cmdEncoder,
 	}
 }
 
+// If this asked for 64-bit results with no availability and packed stride, then we can do a straight copy.
+void MVKQueryPool::encodeDirectCopyResults(MVKCommandEncoder* cmdEncoder,
+									 uint32_t firstQuery,
+									 uint32_t queryCount,
+									 MVKBuffer* destBuffer,
+									 VkDeviceSize destOffset,
+									 VkDeviceSize stride) {
+
+	id<MTLBlitCommandEncoder> mtlBlitCmdEnc = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyQueryPoolResults);
+	NSUInteger srcOffset;
+	id<MTLBuffer> srcBuff = getResultBuffer(cmdEncoder, firstQuery, queryCount, srcOffset);
+	[mtlBlitCmdEnc copyFromBuffer: srcBuff
+					 sourceOffset: srcOffset
+						 toBuffer: destBuffer->getMTLBuffer()
+				destinationOffset: destBuffer->getMTLBufferOffset() + destOffset
+							 size: stride * queryCount];
+}
+
 void MVKQueryPool::deferCopyResults(uint32_t firstQuery,
 									uint32_t queryCount,
 									MVKBuffer* destBuffer,
@@ -192,53 +212,6 @@ void MVKQueryPool::deferCopyResults(uint32_t firstQuery,
 
 	lock_guard<mutex> lock(_deferredCopiesLock);
 	_deferredCopies.push_back({firstQuery, queryCount, destBuffer, destOffset, stride, flags});
-}
-
-
-#pragma mark -
-#pragma mark MVKTimestampQueryPool
-
-void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
-    cmdEncoder->markTimestamp(this, query);
-    MVKQueryPool::endQuery(query, cmdEncoder);
-}
-
-// Update timestamp values, then mark queries as available
-void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries) {
-    uint64_t ts = mvkGetTimestamp();
-    for (uint32_t qry : queries) { _timestamps[qry] = ts; }
-
-    MVKQueryPool::finishQueries(queries);
-}
-
-void MVKTimestampQueryPool::getResult(uint32_t query, void* pQryData, bool shouldOutput64Bit) {
-	if (shouldOutput64Bit) {
-		*(uint64_t*)pQryData = _timestamps[query];
-	} else {
-		*(uint32_t*)pQryData = (uint32_t)_timestamps[query];
-	}
-}
-
-id<MTLBuffer> MVKTimestampQueryPool::getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) {
-	const MVKMTLBufferAllocation* tempBuff = cmdEncoder->getTempMTLBuffer(queryCount * _queryElementCount * sizeof(uint64_t));
-	void* pBuffData = tempBuff->getContents();
-	size_t size = queryCount * _queryElementCount * sizeof(uint64_t);
-	memcpy(pBuffData, &_timestamps[firstQuery], size);
-	offset = tempBuff->_offset;
-	return tempBuff->_mtlBuffer;
-}
-
-void MVKTimestampQueryPool::encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) {
-	// No need to create a temp buffer here.
-	cmdEncoder->setComputeBytes(cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults), &_timestamps[firstQuery], queryCount * _queryElementCount * sizeof(uint64_t), index);
-}
-
-
-#pragma mark Construction
-
-MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device,
-											 const VkQueryPoolCreateInfo* pCreateInfo) :
-	MVKQueryPool(device, pCreateInfo, 1), _timestamps(pCreateInfo->queryCount, 0) {
 }
 
 
@@ -285,15 +258,11 @@ void MVKOcclusionQueryPool::resetResults(uint32_t firstQuery, uint32_t queryCoun
     }
 }
 
-void MVKOcclusionQueryPool::getResult(uint32_t query, void* pQryData, bool shouldOutput64Bit) {
-    NSUInteger mtlBuffOffset = getVisibilityResultOffset(query);
-    uint64_t* pData = (uint64_t*)((uintptr_t)getVisibilityResultMTLBuffer().contents + mtlBuffOffset);
-
-    if (shouldOutput64Bit) {
-        *(uint64_t*)pQryData = *pData;
-    } else {
-        *(uint32_t*)pQryData = (uint32_t)(*pData);
-    }
+NSData* MVKOcclusionQueryPool::getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) {
+	id<MTLBuffer> vizBuff = getVisibilityResultMTLBuffer();
+	return [NSData dataWithBytesNoCopy: (void*)((uintptr_t)vizBuff.contents + getVisibilityResultOffset(firstQuery))
+								length: queryCount * kMVKQuerySlotSizeInBytes
+						  freeWhenDone: false];
 }
 
 id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_t firstQuery, uint32_t, NSUInteger& offset) {
@@ -301,10 +270,10 @@ id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_
 	return getVisibilityResultMTLBuffer();
 }
 
-void MVKOcclusionQueryPool::encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t, uint32_t index) {
-	[cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults) setBuffer: getVisibilityResultMTLBuffer()
-																			 offset: getVisibilityResultOffset(firstQuery)
-																			atIndex: index];
+id<MTLComputeCommandEncoder> MVKOcclusionQueryPool::encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t, uint32_t index) {
+	id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+	[mtlCmdEnc setBuffer: getVisibilityResultMTLBuffer() offset: getVisibilityResultOffset(firstQuery) atIndex: index];
+	return mtlCmdEnc;
 }
 
 void MVKOcclusionQueryPool::beginQueryAddedTo(uint32_t query, MVKCommandBuffer* cmdBuffer) {
@@ -332,14 +301,12 @@ MVKOcclusionQueryPool::MVKOcclusionQueryPool(MVKDevice* device,
         _queryIndexOffset = 0;
 
         // Ensure we don't overflow the maximum number of queries
-        uint32_t queryCount = pCreateInfo->queryCount;
-        VkDeviceSize reqBuffLen = (VkDeviceSize)queryCount * kMVKQuerySlotSizeInBytes;
+        VkDeviceSize reqBuffLen = (VkDeviceSize)pCreateInfo->queryCount * kMVKQuerySlotSizeInBytes;
         VkDeviceSize maxBuffLen = _device->_pMetalFeatures->maxQueryBufferSize;
         VkDeviceSize newBuffLen = min(reqBuffLen, maxBuffLen);
-        queryCount = uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes);
 
         if (reqBuffLen > maxBuffLen) {
-            reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): Each query pool can support a maximum of %d queries.", queryCount);
+            reportError(VK_ERROR_OUT_OF_DEVICE_MEMORY, "vkCreateQueryPool(): Each query pool can support a maximum of %d queries.", uint32_t(newBuffLen / kMVKQuerySlotSizeInBytes));
         }
 
         NSUInteger mtlBuffLen = mvkAlignByteCount(newBuffLen, _device->_pMetalFeatures->mtlBufferAlignment);
@@ -358,10 +325,132 @@ MVKOcclusionQueryPool::~MVKOcclusionQueryPool() {
 
 
 #pragma mark -
+#pragma mark MVKGPUCounterQueryPool
+
+MVKGPUCounterQueryPool::MVKGPUCounterQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo) :
+	MVKQueryPool(device, pCreateInfo, 1), _mtlCounterBuffer(nil) {}
+
+// To establish the Metal counter sample buffer, this must be called from the construtors
+// of subclasses, because the type of MTLCounterSet is determined by the subclass.
+void MVKGPUCounterQueryPool::initMTLCounterSampleBuffer(const VkQueryPoolCreateInfo* pCreateInfo,
+														id<MTLCounterSet> mtlCounterSet,
+														const char* queryTypeName) {
+	if ( !_device->_pMetalFeatures->counterSamplingPoints ) { return; }
+
+	@autoreleasepool {
+		MTLCounterSampleBufferDescriptor* tsDesc = [[[MTLCounterSampleBufferDescriptor alloc] init] autorelease];
+		tsDesc.counterSet = mtlCounterSet;
+		tsDesc.storageMode = MTLStorageModeShared;
+		tsDesc.sampleCount = pCreateInfo->queryCount;
+
+		NSError* err = nil;
+		_mtlCounterBuffer = [getMTLDevice() newCounterSampleBufferWithDescriptor: tsDesc error: &err];
+		if (err) {
+			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
+											   "Could not create MTLCounterSampleBuffer for query pool of type %s. Reverting to emulated behavior. (Error code %li): %s",
+											   queryTypeName, (long)err.code, err.localizedDescription.UTF8String));
+		}
+	}
+};
+
+MVKGPUCounterQueryPool::~MVKGPUCounterQueryPool() {
+	[_mtlCounterBuffer release];
+}
+
+
+#pragma mark -
+#pragma mark MVKTimestampQueryPool
+
+void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
+	cmdEncoder->markTimestamp(this, query);
+	MVKQueryPool::endQuery(query, cmdEncoder);
+}
+
+// If not using MTLCounterSampleBuffer, update timestamp values, then mark queries as available
+void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries) {
+	if ( !_mtlCounterBuffer ) {
+		uint64_t ts = mvkGetTimestamp();
+		for (uint32_t qry : queries) { _timestamps[qry] = ts; }
+	}
+	MVKQueryPool::finishQueries(queries);
+}
+
+NSData* MVKTimestampQueryPool::getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) {
+	if (_mtlCounterBuffer) {
+		return [_mtlCounterBuffer resolveCounterRange: NSMakeRange(firstQuery, queryCount)];
+	} else {
+		return [NSData dataWithBytesNoCopy: (void*)&_timestamps[firstQuery]
+									length: queryCount * kMVKQuerySlotSizeInBytes
+							  freeWhenDone: false];
+	}
+}
+
+void MVKTimestampQueryPool::encodeDirectCopyResults(MVKCommandEncoder* cmdEncoder,
+													uint32_t firstQuery,
+													uint32_t queryCount,
+													MVKBuffer* destBuffer,
+													VkDeviceSize destOffset,
+													VkDeviceSize stride) {
+	if (_mtlCounterBuffer) {
+		id<MTLBlitCommandEncoder> mtlBlitCmdEnc = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyQueryPoolResults);
+		[mtlBlitCmdEnc resolveCounters: _mtlCounterBuffer
+							   inRange: NSMakeRange(firstQuery,  queryCount)
+					 destinationBuffer: destBuffer->getMTLBuffer()
+					 destinationOffset: destBuffer->getMTLBufferOffset() + destOffset];
+	} else {
+		MVKQueryPool::encodeDirectCopyResults(cmdEncoder, firstQuery, queryCount, destBuffer, destOffset, stride);
+	}
+}
+
+id<MTLBuffer> MVKTimestampQueryPool::getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) {
+	const MVKMTLBufferAllocation* tempBuff = cmdEncoder->getTempMTLBuffer(queryCount * _queryElementCount * sizeof(uint64_t));
+	void* pBuffData = tempBuff->getContents();
+	size_t size = queryCount * _queryElementCount * sizeof(uint64_t);
+	memcpy(pBuffData, &_timestamps[firstQuery], size);
+	offset = tempBuff->_offset;
+	return tempBuff->_mtlBuffer;
+}
+
+id<MTLComputeCommandEncoder> MVKTimestampQueryPool::encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) {
+	if (_mtlCounterBuffer) {
+		// We first need to resolve from the MTLCounterSampleBuffer into a temp buffer using a
+		// MTLBlitCommandEncoder, before creating the compute encoder and set that temp buffer into it.
+		const MVKMTLBufferAllocation* tempBuff = cmdEncoder->getTempMTLBuffer(queryCount * _queryElementCount * sizeof(uint64_t));
+		id<MTLBlitCommandEncoder> mtlBlitCmdEnc = cmdEncoder->getMTLBlitEncoder(kMVKCommandUseCopyQueryPoolResults);
+		[mtlBlitCmdEnc resolveCounters: _mtlCounterBuffer
+							   inRange: NSMakeRange(firstQuery,  queryCount)
+					 destinationBuffer: tempBuff->_mtlBuffer
+					 destinationOffset: tempBuff->_offset];
+
+		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+		[mtlCmdEnc setBuffer: tempBuff->_mtlBuffer offset: tempBuff->_offset atIndex: index];
+		return mtlCmdEnc;
+	} else {
+		// We can set the timestamp bytes into the compute encoder.
+		id<MTLComputeCommandEncoder> mtlCmdEnc = cmdEncoder->getMTLComputeEncoder(kMVKCommandUseCopyQueryPoolResults);
+		cmdEncoder->setComputeBytes(mtlCmdEnc, &_timestamps[firstQuery], queryCount * _queryElementCount * sizeof(uint64_t), index);
+		return mtlCmdEnc;
+	}
+}
+
+
+#pragma mark Construction
+
+MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo) :
+	MVKGPUCounterQueryPool(device, pCreateInfo) {
+
+		initMTLCounterSampleBuffer(pCreateInfo, _device->getTimestampMTLCounterSet(), "VK_QUERY_TYPE_TIMESTAMP");
+
+		// If we don't use a MTLCounterSampleBuffer, allocate memory to hold the timestamps.
+		if ( !_mtlCounterBuffer ) { _timestamps.resize(pCreateInfo->queryCount, 0); }
+}
+
+
+#pragma mark -
 #pragma mark MVKPipelineStatisticsQueryPool
 
 MVKPipelineStatisticsQueryPool::MVKPipelineStatisticsQueryPool(MVKDevice* device,
-															   const VkQueryPoolCreateInfo* pCreateInfo) : MVKQueryPool(device, pCreateInfo, 1) {
+															   const VkQueryPoolCreateInfo* pCreateInfo) : MVKGPUCounterQueryPool(device, pCreateInfo) {
 	if ( !_device->_enabledFeatures.pipelineStatisticsQuery ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateQueryPool: VK_QUERY_TYPE_PIPELINE_STATISTICS is not supported."));
 	}

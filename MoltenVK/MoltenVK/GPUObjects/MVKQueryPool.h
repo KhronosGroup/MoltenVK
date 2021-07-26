@@ -38,7 +38,6 @@ class MVKCommandEncoder;
 /** 
  * Abstract class representing a Vulkan query pool.
  * Subclasses are specialized for specific query types.
- * Subclasses will generally override the beginQuery(), endQuery(), and getResult(uint32_t, void*, bool) member functions.
  */
 class MVKQueryPool : public MVKVulkanAPIDeviceObject {
 
@@ -106,10 +105,12 @@ public:
 
 protected:
 	bool areQueriesHostAvailable(uint32_t firstQuery, uint32_t endQuery);
-    VkResult getResult(uint32_t query, void* pQryData, VkQueryResultFlags flags);
-	virtual void getResult(uint32_t query, void* pQryData, bool shouldOutput64Bit) {}
+	virtual NSData* getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) { return nil; }
+    VkResult getResult(uint32_t query, NSData* srcData, uint32_t srcDataQueryOffset, void* pDstData, VkQueryResultFlags flags);
 	virtual id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) { return nil; }
-	virtual void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) {}
+	virtual id<MTLComputeCommandEncoder> encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) { return nil; }
+	virtual void encodeDirectCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount,
+										 MVKBuffer* destBuffer, VkDeviceSize destOffset, VkDeviceSize stride);
 
 	struct DeferredCopy {
 		uint32_t firstQuery;
@@ -133,31 +134,6 @@ protected:
 	std::mutex _availabilityLock;
 	std::condition_variable _availabilityBlocker;
 	std::mutex _deferredCopiesLock;
-};
-
-
-#pragma mark -
-#pragma mark MVKTimestampQueryPool
-
-/** A Vulkan query pool for timestamp queries. */
-class MVKTimestampQueryPool : public MVKQueryPool {
-
-public:
-    void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
-    void finishQueries(const MVKArrayRef<uint32_t>& queries) override;
-
-
-#pragma mark Construction
-
-	MVKTimestampQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
-
-protected:
-	void propagateDebugName() override {}
-	void getResult(uint32_t query, void* pQryData, bool shouldOutput64Bit) override;
-	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
-	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
-
-	MVKSmallVector<uint64_t, kMVKDefaultQueryCount> _timestamps;
 };
 
 
@@ -189,9 +165,9 @@ public:
 
 protected:
 	void propagateDebugName() override;
-    void getResult(uint32_t query, void* pQryData, bool shouldOutput64Bit) override;
+	NSData* getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) override;
 	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
-	void encodeSetResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
+	id<MTLComputeCommandEncoder> encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
 
     id<MTLBuffer> _visibilityResultMTLBuffer;
     uint32_t _queryIndexOffset;
@@ -199,10 +175,63 @@ protected:
 
 
 #pragma mark -
+#pragma mark MVKGPUCounterQueryPool
+
+/** An abstract parent class for query pools that use Metal GPU counters if they are supported on the platform. */
+class MVKGPUCounterQueryPool : public MVKQueryPool {
+
+public:
+
+	/**
+	 * Returns the MTLCounterBuffer being used by this query pool,
+	 * or returns nil if GPU counters are not supported.
+	 * */
+	id<MTLCounterSampleBuffer> getMTLCounterBuffer() { return _mtlCounterBuffer; }
+
+	MVKGPUCounterQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
+
+	~MVKGPUCounterQueryPool() override;
+
+protected:
+	void initMTLCounterSampleBuffer(const VkQueryPoolCreateInfo* pCreateInfo,
+									id<MTLCounterSet> mtlCounterSet,
+									const char* queryTypeName);
+
+	id<MTLCounterSampleBuffer> _mtlCounterBuffer;
+};
+
+
+#pragma mark -
+#pragma mark MVKTimestampQueryPool
+
+/** A Vulkan query pool for timestamp queries. */
+class MVKTimestampQueryPool : public MVKGPUCounterQueryPool {
+
+public:
+	void endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) override;
+	void finishQueries(const MVKArrayRef<uint32_t>& queries) override;
+
+#pragma mark Construction
+
+	MVKTimestampQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
+
+protected:
+	void propagateDebugName() override {}
+	NSData* getQuerySourceData(uint32_t firstQuery, uint32_t queryCount) override;
+	id<MTLBuffer> getResultBuffer(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, NSUInteger& offset) override;
+	id<MTLComputeCommandEncoder> encodeComputeCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount, uint32_t index) override;
+	void encodeDirectCopyResults(MVKCommandEncoder* cmdEncoder, uint32_t firstQuery, uint32_t queryCount,
+								 MVKBuffer* destBuffer, VkDeviceSize destOffset, VkDeviceSize stride) override;
+
+	MVKSmallVector<uint64_t> _timestamps;
+};
+
+
+#pragma mark -
 #pragma mark MVKPipelineStatisticsQueryPool
 
 /** A Vulkan query pool for a query pool type that tracks pipeline statistics. */
-class MVKPipelineStatisticsQueryPool : public MVKQueryPool {
+class MVKPipelineStatisticsQueryPool : public MVKGPUCounterQueryPool {
 
 public:
     MVKPipelineStatisticsQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo);
