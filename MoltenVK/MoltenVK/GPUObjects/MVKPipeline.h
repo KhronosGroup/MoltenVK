@@ -398,6 +398,9 @@ protected:
 	bool _needsFragmentBufferSizeBuffer = false;
 	bool _needsFragmentDynamicOffsetBuffer = false;
 	bool _needsFragmentViewRangeBuffer = false;
+	bool _isRasterizing = false;
+	bool _isRasterizingColor = false;
+	bool _isRasterizingDepthStencil = false;
 };
 
 

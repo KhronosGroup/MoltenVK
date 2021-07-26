@@ -35,6 +35,13 @@ using namespace std;
 
 MVKVulkanAPIObject* MVKRenderSubpass::getVulkanAPIObject() { return _renderPass->getVulkanAPIObject(); };
 
+bool MVKRenderSubpass::hasColorAttachments() {
+	for (auto& ca : _colorAttachments) {
+		if (ca.attachment != VK_ATTACHMENT_UNUSED) { return true; }
+	}
+	return false;
+}
+
 VkFormat MVKRenderSubpass::getColorAttachmentFormat(uint32_t colorAttIdx) {
 	if (colorAttIdx < _colorAttachments.size()) {
 		uint32_t rpAttIdx = _colorAttachments[colorAttIdx].attachment;
