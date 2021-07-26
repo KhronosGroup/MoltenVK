@@ -56,7 +56,7 @@ public:
 	bool hasColorAttachments();
 
 	/** Returns whether this subpass has a depth/stencil attachment. */
-	bool hasDepthStencilAttachment();
+	bool hasDepthStencilAttachment() { return _depthStencilAttachment.attachment != VK_ATTACHMENT_UNUSED; }
 
 	/** Returns the number of color attachments, which may be zero for depth-only rendering. */
 	uint32_t getColorAttachmentCount() { return uint32_t(_colorAttachments.size()); }

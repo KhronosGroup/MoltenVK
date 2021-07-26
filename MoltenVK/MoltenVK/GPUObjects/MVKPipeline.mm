@@ -1452,7 +1452,7 @@ void MVKGraphicsPipeline::addFragmentOutputToPipeline(MTLRenderPipelineDescripto
 												: mvkMTLPrimitiveTopologyClassFromVkPrimitiveTopology(pCreateInfo->pInputAssemblyState->topology);
 	}
 
-    // Color attachments - must ignore bad pColorBlendState pointer if rasterization is disable or subpass has not color attachments
+    // Color attachments - must ignore bad pColorBlendState pointer if rasterization is disabled or subpass has no color attachments
     uint32_t caCnt = 0;
     if (_isRasterizingColor && pCreateInfo->pColorBlendState) {
         for (uint32_t caIdx = 0; caIdx < pCreateInfo->pColorBlendState->attachmentCount; caIdx++) {
