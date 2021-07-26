@@ -193,7 +193,9 @@ public:
 	~MVKGPUCounterQueryPool() override;
 
 protected:
-	void initMTLCounterSampleBuffer(const VkQueryPoolCreateInfo* pCreateInfo, id<MTLCounterSet> mtlCounterSet);
+	void initMTLCounterSampleBuffer(const VkQueryPoolCreateInfo* pCreateInfo,
+									id<MTLCounterSet> mtlCounterSet,
+									const char* queryTypeName);
 
 	id<MTLCounterSampleBuffer> _mtlCounterBuffer;
 };

@@ -263,9 +263,6 @@ NSData* MVKOcclusionQueryPool::getQuerySourceData(uint32_t firstQuery, uint32_t 
 	return [NSData dataWithBytesNoCopy: (void*)((uintptr_t)vizBuff.contents + getVisibilityResultOffset(firstQuery))
 								length: queryCount * kMVKQuerySlotSizeInBytes
 						  freeWhenDone: false];
-
-
-	return [NSData dataWithBytesNoCopy: vizBuff.contents length: vizBuff.length freeWhenDone: false];
 }
 
 id<MTLBuffer> MVKOcclusionQueryPool::getResultBuffer(MVKCommandEncoder*, uint32_t firstQuery, uint32_t, NSUInteger& offset) {
@@ -335,7 +332,9 @@ MVKGPUCounterQueryPool::MVKGPUCounterQueryPool(MVKDevice* device, const VkQueryP
 
 // To establish the Metal counter sample buffer, this must be called from the construtors
 // of subclasses, because the type of MTLCounterSet is determined by the subclass.
-void MVKGPUCounterQueryPool::initMTLCounterSampleBuffer(const VkQueryPoolCreateInfo* pCreateInfo, id<MTLCounterSet> mtlCounterSet) {
+void MVKGPUCounterQueryPool::initMTLCounterSampleBuffer(const VkQueryPoolCreateInfo* pCreateInfo,
+														id<MTLCounterSet> mtlCounterSet,
+														const char* queryTypeName) {
 	if ( !_device->_pMetalFeatures->counterSamplingPoints ) { return; }
 
 	@autoreleasepool {
@@ -348,8 +347,8 @@ void MVKGPUCounterQueryPool::initMTLCounterSampleBuffer(const VkQueryPoolCreateI
 		_mtlCounterBuffer = [getMTLDevice() newCounterSampleBufferWithDescriptor: tsDesc error: &err];
 		if (err) {
 			setConfigurationResult(reportError(VK_ERROR_INITIALIZATION_FAILED,
-											   "Could not create MTLCounterSampleBuffer for query pool of type VK_QUERY_TYPE_TIMESTAMP. Reverting to emulated GPU timestamps. (Error code %li): %s",
-											   (long)err.code, err.localizedDescription.UTF8String));
+											   "Could not create MTLCounterSampleBuffer for query pool of type %s. Reverting to emulated behavior. (Error code %li): %s",
+											   queryTypeName, (long)err.code, err.localizedDescription.UTF8String));
 		}
 	}
 };
@@ -440,7 +439,7 @@ id<MTLComputeCommandEncoder> MVKTimestampQueryPool::encodeComputeCopyResults(MVK
 MVKTimestampQueryPool::MVKTimestampQueryPool(MVKDevice* device, const VkQueryPoolCreateInfo* pCreateInfo) :
 	MVKGPUCounterQueryPool(device, pCreateInfo) {
 
-		initMTLCounterSampleBuffer(pCreateInfo, _device->getTimestampMTLCounterSet());
+		initMTLCounterSampleBuffer(pCreateInfo, _device->getTimestampMTLCounterSet(), "VK_QUERY_TYPE_TIMESTAMP");
 
 		// If we don't use a MTLCounterSampleBuffer, allocate memory to hold the timestamps.
 		if ( !_mtlCounterBuffer ) { _timestamps.resize(pCreateInfo->queryCount, 0); }
