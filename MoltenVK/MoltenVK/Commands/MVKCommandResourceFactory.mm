@@ -361,15 +361,16 @@ id<MTLFunction> MVKCommandResourceFactory::newClearFragFunction(MVKRPSKeyClearAt
 
 NSString* MVKCommandResourceFactory::getMTLFormatTypeString(MTLPixelFormat mtlPixFmt) {
 	switch (getPixelFormats()->getFormatType(mtlPixFmt)) {
-		case kMVKFormatColorHalf:		return @"half";
-		case kMVKFormatColorFloat:		return @"float";
 		case kMVKFormatColorInt8:
 		case kMVKFormatColorInt16:		return @"short";
 		case kMVKFormatColorUInt8:
 		case kMVKFormatColorUInt16:		return @"ushort";
 		case kMVKFormatColorInt32:		return @"int";
 		case kMVKFormatColorUInt32:		return @"uint";
-		case kMVKFormatDepthStencil:	return @"float";
+		case kMVKFormatColorHalf:		return @"half";
+		case kMVKFormatColorFloat:
+		case kMVKFormatDepthStencil:
+		case kMVKFormatCompressed:		return @"float";
 		default:						return @"unexpected_type";
 	}
 }
