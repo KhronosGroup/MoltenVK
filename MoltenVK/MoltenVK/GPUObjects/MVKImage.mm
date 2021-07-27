@@ -1185,18 +1185,17 @@ MVKSwapchainImageAvailability MVKPresentableSwapchainImage::getAvailability() {
 void MVKPresentableSwapchainImage::makeAvailable(const MVKSwapchainSignaler& signaler) {
 	lock_guard<mutex> lock(_availabilityLock);
 
-	// Mark when this event happened, relative to that of other images
-	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
-
 	// Signal the semaphore and fence, and let them know they are no longer being tracked.
 	signal(signaler, nil);
 	unmarkAsTracked(signaler);
-
-//	MVKLogDebug("Signaling%s swapchain image %p semaphore %p from present, with %lu remaining semaphores.", (_availability.isAvailable ? " pre-signaled" : ""), this, signaler.first, _availabilitySignalers.size());
 }
 
 void MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* semaphore, MVKFence* fence) {
 	lock_guard<mutex> lock(_availabilityLock);
+
+	// Upon acquisition, update acquisition ID immediately, to move it to the back of the chain,
+	// so other images will be preferred if either all images are available or no images are available.
+	_availability.acquisitionID = _swapchain->getNextAcquisitionID();
 
 	// Now that this image is being acquired, release the existing drawable and its texture.
 	// This is not done earlier so the texture is retained for any post-processing such as screen captures, etc.
@@ -1223,8 +1222,6 @@ void MVKPresentableSwapchainImage::acquireAndSignalWhenAvailable(MVKSemaphore* s
 		_availabilitySignalers.push_back(signaler);
 	}
 	markAsTracked(signaler);
-
-//	MVKLogDebug("%s swapchain image %p semaphore %p in acquire with %lu other semaphores.", (_availability.isAvailable ? "Signaling" : "Tracking"), this, semaphore, _availabilitySignalers.size());
 }
 
 // If present, signal the semaphore for the first waiter for the given image.

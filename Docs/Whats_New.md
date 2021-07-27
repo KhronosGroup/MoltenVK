@@ -19,6 +19,7 @@ MoltenVK 1.1.5
 Released TBD
 
 - Vulkan timestamp query pools use Metal GPU counters when available.
+- Fix issue where swapchain images were acquired out of order under heavy load.
 - Fix incorrect translation of clear color values on Apple Silicon.
 - Fix swizzle of depth and stencil values into RGBA (`float4`) variable in shaders.
 - Disable `VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT` for 
