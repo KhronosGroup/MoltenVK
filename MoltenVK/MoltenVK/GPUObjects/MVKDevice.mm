@@ -1465,10 +1465,6 @@ void MVKPhysicalDevice::initMetalFeatures() {
 			if (supportsMTLGPUFamily(Apple7)) {
 				_metalFeatures.maxQueryBufferSize = (256 * KIBI);
 			}
-		} else {
-			// Apple devices don't like barriers in render passes.
-			_metalFeatures.memoryBarriers = true;
-			_metalFeatures.textureBarriers = true;
 		}
 	} else
 #endif
