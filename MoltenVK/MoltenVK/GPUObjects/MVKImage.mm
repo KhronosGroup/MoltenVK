@@ -846,7 +846,7 @@ MTLTextureUsage MVKImage::getMTLTextureUsage(MTLPixelFormat mtlPixFmt) {
 		needsReinterpretation = needsReinterpretation || !pixFmts->compatibleAsLinearOrSRGB(mtlPixFmt, viewFmt);
 	}
 
-	MTLTextureUsage mtlUsage = pixFmts->getMTLTextureUsage(_usage, mtlPixFmt, _isLinear, needsReinterpretation, _hasExtendedUsage);
+	MTLTextureUsage mtlUsage = pixFmts->getMTLTextureUsage(_usage, mtlPixFmt, _samples, _isLinear, needsReinterpretation, _hasExtendedUsage);
 
 	// Metal before 3.0 doesn't support 3D compressed textures, so we'll
 	// decompress the texture ourselves, and we need to be able to write to it.
@@ -1731,9 +1731,7 @@ void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPas
 
 #pragma mark Construction
 
-MVKImageView::MVKImageView(MVKDevice* device,
-						   const VkImageViewCreateInfo* pCreateInfo,
-						   const MVKConfiguration* pAltMVKConfig) : MVKVulkanAPIDeviceObject(device) {
+MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
 	_image = (MVKImage*)pCreateInfo->image;
 	// Transfer commands don't use image views.
 	_usage = _image->_usage;

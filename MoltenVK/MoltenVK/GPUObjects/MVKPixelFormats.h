@@ -369,6 +369,7 @@ public:
 	 */
 	MTLTextureUsage getMTLTextureUsage(VkImageUsageFlags vkImageUsageFlags,
 									   MTLPixelFormat mtlFormat,
+									   VkSampleCountFlagBits samples = VK_SAMPLE_COUNT_1_BIT,
                                        bool isLinear = false,
                                        bool needsReinterpretation = true,
                                        bool isExtended = false);
@@ -421,11 +422,6 @@ protected:
 										MVKOSVersion minOSVer,
 										MTLVertexFormat mtlVtxFmt,
 										MVKMTLFmtCaps mtlFmtCaps);
-
-	template<typename T>
-	void testFmt(const T v1, const T v2, const char* fmtName, const char* funcName);
-	void testProps(const VkFormatProperties p1, const VkFormatProperties p2, const char* fmtName);
-	void test();
 
 	MVKPhysicalDevice* _physicalDevice;
 	MVKVkFormatDesc _vkFormatDescriptions[_vkFormatCount];

@@ -190,29 +190,20 @@ public:
 	/** Returns whether this image is allowed to alias another image. */
 	bool getIsAliasable() { return _isAliasable; }
 
-	/** 
-	 * Returns the 3D extent of this image at the base mipmap level.
-	 * For 2D or cube images, the Z component will be 1.  
-	 */
-	inline VkExtent3D getExtent3D() { return _extent; }
-
-	/** 
-	 * Returns the 3D extent of this image at the specified mipmap level. 
-	 * For 2D or cube images, the Z component will be 1.
-	 */
-	VkExtent3D getExtent3D(uint8_t planeIndex, uint32_t mipLevel);
+	/**  Returns the 3D extent of this image at the specified mipmap level. */
+	VkExtent3D getExtent3D(uint8_t planeIndex = 0, uint32_t mipLevel = 0);
 
 	/** Returns the number of mipmap levels in this image. */
-	inline uint32_t getMipLevelCount() { return _mipLevels; }
+	uint32_t getMipLevelCount() { return _mipLevels; }
 
 	/**
 	 * Returns the number of layers at each mipmap level. For an array image type, this is
 	 * the number of elements in the array. For cube image type, this is a multiple of 6.
 	 */
-	inline uint32_t getLayerCount() { return _arrayLayers; }
+	uint32_t getLayerCount() { return _arrayLayers; }
 
     /** Returns the number of samples for each pixel of this image. */
-    inline VkSampleCountFlagBits getSampleCount() { return _samples; }
+    VkSampleCountFlagBits getSampleCount() { return _samples; }
 
 	 /** 
 	  * Returns the number of bytes per image row at the specified zero-based mip level.
@@ -231,7 +222,7 @@ public:
 	VkDeviceSize getBytesPerLayer(uint8_t planeIndex, uint32_t mipLevel);
     
     /** Returns the number of planes of this image view. */
-    inline uint8_t getPlaneCount() { return _planes.size(); }
+    uint8_t getPlaneCount() { return _planes.size(); }
 
 	/** Populates the specified layout for the specified sub-resource. */
 	VkResult getSubresourceLayout(const VkImageSubresource* pSubresource,
@@ -268,7 +259,7 @@ public:
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image. */
-	virtual id<MTLTexture> getMTLTexture(uint8_t planeIndex);
+	virtual id<MTLTexture> getMTLTexture(uint8_t planeIndex = 0);
 
 	/** Returns a Metal texture that interprets the pixels in the specified format. */
 	id<MTLTexture> getMTLTexture(uint8_t planeIndex, MTLPixelFormat mtlPixFmt);
@@ -307,7 +298,7 @@ public:
     IOSurfaceRef getIOSurface();
 
 	/** Returns the Metal pixel format of this image. */
-	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _planes[planeIndex]->_mtlPixFmt; }
+	inline MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex = 0) { return _planes[planeIndex]->_mtlPixFmt; }
 
 	/** Returns the Metal texture type of this image. */
 	inline MTLTextureType getMTLTextureType() { return _mtlTextureType; }
@@ -570,13 +561,16 @@ public:
 	/** Returns the debug report object type of this object. */
 	VkDebugReportObjectTypeEXT getVkDebugReportObjectType() override { return VK_DEBUG_REPORT_OBJECT_TYPE_IMAGE_VIEW_EXT; }
 
+	/**  Returns the 3D extent of this image at the specified mipmap level. */
+	VkExtent3D getExtent3D(uint8_t planeIndex = 0, uint32_t mipLevel = 0) { return _image->getExtent3D(planeIndex, mipLevel); }
+
 #pragma mark Metal
 
 	/** Returns the Metal texture underlying this image view. */
-	id<MTLTexture> getMTLTexture(uint8_t planeIndex) { return _planes[planeIndex]->getMTLTexture(); }
+	id<MTLTexture> getMTLTexture(uint8_t planeIndex = 0) { return _planes[planeIndex]->getMTLTexture(); }
 
 	/** Returns the Metal pixel format of this image view. */
-	MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex) { return _planes[planeIndex]->_mtlPixFmt; }
+	MTLPixelFormat getMTLPixelFormat(uint8_t planeIndex = 0) { return _planes[planeIndex]->_mtlPixFmt; }
     
     /** Returns the packed component swizzle of this image view. */
     uint32_t getPackedSwizzle() { return _planes[0]->getPackedSwizzle(); }
@@ -602,9 +596,7 @@ public:
 
 #pragma mark Construction
 
-	MVKImageView(MVKDevice* device,
-				 const VkImageViewCreateInfo* pCreateInfo,
-				 const MVKConfiguration* pAltMVKConfig = nullptr);
+	MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCreateInfo);
 
 	~MVKImageView();
 

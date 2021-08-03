@@ -495,7 +495,6 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdFillBufferMTLComput
 	return newMTLComputePipelineState("cmdFillBuffer", owner);
 }
 
-#if MVK_MACOS
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLComputePipelineState(MVKFormatType type,
 					MVKVulkanAPIDeviceObject* owner) {
 	const char* funcName;
@@ -515,13 +514,36 @@ id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdClearColorImageMTLC
 			funcName = "cmdClearColorImage2DUInt";
 			break;
 		default:
-			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED,
-							   "Format type %u is not supported for clearing with a compute shader.", type);
+			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Format type %u is not supported for clearing with a compute shader.", type);
 			return nil;
 	}
 	return newMTLComputePipelineState(funcName, owner);
 }
-#endif
+
+id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdResolveColorImageMTLComputePipelineState(MVKFormatType type,
+																									  MVKVulkanAPIDeviceObject* owner) {
+	const char* funcName;
+	switch (type) {
+		case kMVKFormatColorHalf:
+		case kMVKFormatColorFloat:
+			funcName = "cmdResolveColorImage2DFloat";
+			break;
+		case kMVKFormatColorInt8:
+		case kMVKFormatColorInt16:
+		case kMVKFormatColorInt32:
+			funcName = "cmdResolveColorImage2DInt";
+			break;
+		case kMVKFormatColorUInt8:
+		case kMVKFormatColorUInt16:
+		case kMVKFormatColorUInt32:
+			funcName = "cmdResolveColorImage2DUInt";
+			break;
+		default:
+			owner->reportError(VK_ERROR_FORMAT_NOT_SUPPORTED, "Format type %u is not supported for resolving with a compute shader.", type);
+			return nil;
+	}
+	return newMTLComputePipelineState(funcName, owner);
+}
 
 id<MTLComputePipelineState> MVKCommandResourceFactory::newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needTempBuf,
 																												  MVKVulkanAPIDeviceObject* owner) {

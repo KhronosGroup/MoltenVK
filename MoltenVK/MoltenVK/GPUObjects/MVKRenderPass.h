@@ -130,12 +130,13 @@ public:
 							const MVKArrayRef<MVKImageView*>& attachments,
 							bool storeOverride = false);
 
-	/** Constructs an instance for the specified parent renderpass. */
+	/** Resolves any resolve attachments that cannot be handled by native Metal subpass resolve behavior. */
+	void resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, const MVKArrayRef<MVKImageView*>& attachments);
+
 	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription* pCreateInfo,
 					 const VkRenderPassInputAttachmentAspectCreateInfo* pInputAspects,
 					 uint32_t viewMask);
 
-	/** Constructs an instance for the specified parent renderpass. */
 	MVKRenderSubpass(MVKRenderPass* renderPass, const VkSubpassDescription2* pCreateInfo);
 
 private:
@@ -187,7 +188,8 @@ public:
                                                    MVKRenderSubpass* subpass,
                                                    bool isRenderingEntireAttachment,
 												   bool isMemorylessAttachment,
-                                                   bool hasResolveAttachment,
+												   bool hasResolveAttachment,
+												   bool canResolveFormat,
                                                    bool isStencil,
                                                    bool loadOverride = false);
 
@@ -197,6 +199,7 @@ public:
 						   bool isRenderingEntireAttachment,
 						   bool isMemorylessAttachment,
 						   bool hasResolveAttachment,
+						   bool canResolveFormat,
 						   uint32_t caIdx,
 					   	   bool isStencil,
 						   bool storeOverride = false);
@@ -225,6 +228,7 @@ protected:
 									 bool isRenderingEntireAttachment,
 									 bool isMemorylessAttachment,
 									 bool hasResolveAttachment,
+									 bool canResolveFormat,
 									 bool isStencil,
 									 bool storeOverride);
 	void validateFormat();

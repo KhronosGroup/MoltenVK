@@ -109,8 +109,7 @@ id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdFillBufferMTLComputePi
 	MVK_ENC_REZ_ACCESS(_mtlFillBufferComputePipelineState, newCmdFillBufferMTLComputePipelineState(_commandPool));
 }
 
-#if MVK_MACOS
-static inline uint32_t getClearStateIndex(MVKFormatType type) {
+static inline uint32_t getRenderpassLoadStoreStateIndex(MVKFormatType type) {
 	switch (type) {
 		case kMVKFormatColorHalf:
 		case kMVKFormatColorFloat:
@@ -129,9 +128,12 @@ static inline uint32_t getClearStateIndex(MVKFormatType type) {
 }
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdClearColorImageMTLComputePipelineState(MVKFormatType type) {
-	MVK_ENC_REZ_ACCESS(_mtlClearColorImageComputePipelineState[getClearStateIndex(type)], newCmdClearColorImageMTLComputePipelineState(type, _commandPool));
+	MVK_ENC_REZ_ACCESS(_mtlClearColorImageComputePipelineState[getRenderpassLoadStoreStateIndex(type)], newCmdClearColorImageMTLComputePipelineState(type, _commandPool));
 }
-#endif
+
+id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdResolveColorImageMTLComputePipelineState(MVKFormatType type) {
+	MVK_ENC_REZ_ACCESS(_mtlResolveColorImageComputePipelineState[getRenderpassLoadStoreStateIndex(type)], newCmdResolveColorImageMTLComputePipelineState(type, _commandPool));
+}
 
 id<MTLComputePipelineState> MVKCommandEncodingPool::getCmdCopyBufferToImage3DDecompressMTLComputePipelineState(bool needsTempBuff) {
 	MVK_ENC_REZ_ACCESS(_mtlCopyBufferToImage3DDecompressComputePipelineState[needsTempBuff ? 1 : 0], newCmdCopyBufferToImage3DDecompressMTLComputePipelineState(needsTempBuff, _commandPool));
@@ -215,14 +217,19 @@ void MVKCommandEncodingPool::destroyMetalResources() {
     [_mtlFillBufferComputePipelineState release];
     _mtlFillBufferComputePipelineState = nil;
 
-#if MVK_MACOS
     [_mtlClearColorImageComputePipelineState[0] release];
     [_mtlClearColorImageComputePipelineState[1] release];
     [_mtlClearColorImageComputePipelineState[2] release];
     _mtlClearColorImageComputePipelineState[0] = nil;
     _mtlClearColorImageComputePipelineState[1] = nil;
     _mtlClearColorImageComputePipelineState[2] = nil;
-#endif
+
+	[_mtlResolveColorImageComputePipelineState[0] release];
+	[_mtlResolveColorImageComputePipelineState[1] release];
+	[_mtlResolveColorImageComputePipelineState[2] release];
+	_mtlResolveColorImageComputePipelineState[0] = nil;
+	_mtlResolveColorImageComputePipelineState[1] = nil;
+	_mtlResolveColorImageComputePipelineState[2] = nil;
 
     [_mtlCopyBufferToImage3DDecompressComputePipelineState[0] release];
     [_mtlCopyBufferToImage3DDecompressComputePipelineState[1] release];
