@@ -310,10 +310,12 @@ void MVKCommandEncoder::beginNextSubpass(MVKCommand* subpassCmd, VkSubpassConten
 }
 
 // Sets the current render subpass to the subpass with the specified index.
+// End current Metal renderpass before udpating subpass index.
 void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
 								   VkSubpassContents subpassContents,
 								   uint32_t subpassIndex) {
 	encodeStoreActions();
+	endMetalRenderEncoding();
 
 	_lastMultiviewPassCmd = subpassCmd;
 	_subpassContents = subpassContents;
@@ -579,11 +581,12 @@ void MVKCommandEncoder::endRenderpass() {
 }
 
 void MVKCommandEncoder::endMetalRenderEncoding() {
-//    MVKLogDebugIf(_mtlRenderEncoder, "Render subpass end MTLRenderCommandEncoder.");
     if (_mtlRenderEncoder == nil) { return; }
 
     [_mtlRenderEncoder endEncoding];
 	_mtlRenderEncoder = nil;    // not retained
+
+	getSubpass()->resolveUnresolvableAttachments(this, _attachments.contents());
 
     _graphicsPipelineState.endMetalRenderPass();
     _graphicsResourcesState.endMetalRenderPass();
@@ -932,6 +935,7 @@ NSString* mvkMTLComputeCommandEncoderLabel(MVKCommandUse cmdUse) {
         case kMVKCommandUseCopyImageToBuffer:               return @"vkCmdCopyImageToBuffer ComputeEncoder";
         case kMVKCommandUseFillBuffer:                      return @"vkCmdFillBuffer ComputeEncoder";
         case kMVKCommandUseClearColorImage:                 return @"vkCmdClearColorImage ComputeEncoder";
+		case kMVKCommandUseResolveImage:                    return @"Resolve Subpass Attachment ComputeEncoder";
         case kMVKCommandUseTessellationVertexTessCtl:       return @"vkCmdDraw (vertex and tess control stages) ComputeEncoder";
         case kMVKCommandUseMultiviewInstanceCountAdjust:    return @"vkCmdDraw (multiview instance count adjustment) ComputeEncoder";
         case kMVKCommandUseCopyQueryPoolResults:            return @"vkCmdCopyQueryPoolResults ComputeEncoder";

@@ -99,7 +99,7 @@ export METAL_ERROR_MODE=3
 export METAL_DEBUG_ERROR_MODE=3
 
 # ----- MoltenVK config settings ------
-export MVK_CONFIG_LOG_LEVEL=0
+export MVK_CONFIG_LOG_LEVEL=1
 export MVK_DEBUG=0
 
 # Additional MoltenVK configuration can be set here by 

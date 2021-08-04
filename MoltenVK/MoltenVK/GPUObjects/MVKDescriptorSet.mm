@@ -91,7 +91,7 @@ static const void* getWriteParameters(VkDescriptorType type, const VkDescriptorI
 
 // A null cmdEncoder can be passed to perform a validation pass
 void MVKDescriptorSetLayout::pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-                                               MVKArrayRef<VkWriteDescriptorSet>& descriptorWrites,
+                                               MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
                                                MVKShaderResourceBinding& dslMTLRezIdxOffsets) {
 
     if (!_isPushDescriptorLayout) return;

@@ -19,6 +19,7 @@ MoltenVK 1.1.5
 Released TBD
 
 - Vulkan timestamp query pools use Metal GPU counters when available.
+- Support resolving attachments with formats that Metal does not natively resolve.
 - Fix issue where swapchain images were acquired out of order under heavy load.
 - Fix issue with `vkCmdBlitImage()` from compressed textures.
 - Fix incorrect translation of clear color values on Apple Silicon.

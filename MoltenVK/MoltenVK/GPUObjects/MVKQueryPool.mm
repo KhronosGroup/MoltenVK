@@ -52,7 +52,7 @@ void MVKQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncoder) {
 }
 
 // Mark queries as available
-void MVKQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries) {
+void MVKQueryPool::finishQueries(const MVKArrayRef<uint32_t> queries) {
     lock_guard<mutex> lock(_availabilityLock);
     for (uint32_t qry : queries) {
         if (_availability[qry] == DeviceAvailable) {
@@ -367,7 +367,7 @@ void MVKTimestampQueryPool::endQuery(uint32_t query, MVKCommandEncoder* cmdEncod
 }
 
 // If not using MTLCounterSampleBuffer, update timestamp values, then mark queries as available
-void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t>& queries) {
+void MVKTimestampQueryPool::finishQueries(const MVKArrayRef<uint32_t> queries) {
 	if ( !_mtlCounterBuffer ) {
 		uint64_t ts = mvkGetTimestamp();
 		for (uint32_t qry : queries) { _timestamps[qry] = ts; }

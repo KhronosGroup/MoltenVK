@@ -81,7 +81,7 @@ public:
 
 	/** Encodes this descriptor set layout and the specified descriptor updates on the specified command encoder immediately. */
 	void pushDescriptorSet(MVKCommandEncoder* cmdEncoder,
-						   MVKArrayRef<VkWriteDescriptorSet>& descriptorWrites,
+						   MVKArrayRef<VkWriteDescriptorSet> descriptorWrites,
 						   MVKShaderResourceBinding& dslMTLRezIdxOffsets);
 
 
