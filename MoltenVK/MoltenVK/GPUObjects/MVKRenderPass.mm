@@ -185,8 +185,8 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 													   uint32_t passIdx,
 													   VkExtent2D framebufferExtent,
 													   uint32_t framebufferLayerCount,
-													   const MVKArrayRef<MVKImageView*>& attachments,
-													   const MVKArrayRef<VkClearValue>& clearValues,
+													   const MVKArrayRef<MVKImageView*> attachments,
+													   const MVKArrayRef<VkClearValue> clearValues,
 													   bool isRenderingEntireAttachment,
 													   bool loadOverride) {
 	MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
@@ -381,7 +381,7 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 
 void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
                                           bool isRenderingEntireAttachment,
-										  const MVKArrayRef<MVKImageView*>& attachments,
+										  const MVKArrayRef<MVKImageView*> attachments,
                                           bool storeOverride) {
     if (!cmdEncoder->_mtlRenderEncoder) { return; }
 	if (!_renderPass->getDevice()->_pMetalFeatures->deferredStoreActions) { return; }
@@ -417,7 +417,7 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
 }
 
 void MVKRenderSubpass::populateClearAttachments(MVKClearAttachments& clearAtts,
-												const MVKArrayRef<VkClearValue>& clearValues) {
+												const MVKArrayRef<VkClearValue> clearValues) {
 	VkClearAttachment cAtt;
 
 	uint32_t attIdx;
@@ -498,7 +498,7 @@ MVKMTLFmtCaps MVKRenderSubpass::getRequiredFormatCapabilitiesForAttachmentAt(uin
 	return caps;
 }
 
-void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, const MVKArrayRef<MVKImageView*>& attachments) {
+void MVKRenderSubpass::resolveUnresolvableAttachments(MVKCommandEncoder* cmdEncoder, const MVKArrayRef<MVKImageView*> attachments) {
 	MVKPixelFormats* pixFmts = cmdEncoder->getPixelFormats();
 	size_t raCnt = _resolveAttachments.size();
 	for (uint32_t raIdx = 0; raIdx < raCnt; raIdx++) {

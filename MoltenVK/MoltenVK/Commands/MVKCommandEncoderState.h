@@ -428,7 +428,7 @@ protected:
 		contents[index] = value;
 	}
 
-	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding>& texBindings);
+	void assertMissingSwizzles(bool needsSwizzle, const char* stageName, const MVKArrayRef<MVKMTLTextureBinding> texBindings);
 	void encodeMetalArgumentBuffer(MVKShaderStage stage);
 	virtual void bindMetalArgumentBuffer(MVKShaderStage stage, MVKMTLBufferBinding& buffBind) = 0;
 
@@ -518,7 +518,7 @@ public:
                         const char* pStageName,
                         bool fullImageViewSwizzle,
                         std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&)> bindBuffer,
-                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>&)> bindImplicitBuffer,
+                        std::function<void(MVKCommandEncoder*, MVKMTLBufferBinding&, const MVKArrayRef<uint32_t>)> bindImplicitBuffer,
                         std::function<void(MVKCommandEncoder*, MVKMTLTextureBinding&)> bindTexture,
                         std::function<void(MVKCommandEncoder*, MVKMTLSamplerStateBinding&)> bindSampler);
 
