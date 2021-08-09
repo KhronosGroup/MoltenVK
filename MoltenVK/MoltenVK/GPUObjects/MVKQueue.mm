@@ -167,8 +167,27 @@ id<MTLCommandBuffer> MVKQueue::getMTLCommandBuffer(MVKCommandUse cmdUse, bool re
 	} else {
 		mtlCmdBuff = [_mtlQueue commandBufferWithUnretainedReferences];
 	}
-	setLabelIfNotNil(mtlCmdBuff, mvkMTLCommandBufferLabel(cmdUse));
+	setLabelIfNotNil(mtlCmdBuff, getMTLCommandBufferLabel(cmdUse));
 	return mtlCmdBuff;
+}
+
+NSString* MVKQueue::getMTLCommandBufferLabel(MVKCommandUse cmdUse) {
+#define CASE_GET_LABEL(cmdUse)  \
+	case kMVKCommandUse ##cmdUse:  \
+		if ( !_mtlCmdBuffLabel ##cmdUse ) { _mtlCmdBuffLabel ##cmdUse = [[NSString stringWithFormat: @"%@ on Queue %d-%d", mvkMTLCommandBufferLabel(kMVKCommandUse ##cmdUse), _queueFamily->getIndex(), _index] retain]; }  \
+		return _mtlCmdBuffLabel ##cmdUse
+
+	switch (cmdUse) {
+		CASE_GET_LABEL(EndCommandBuffer);
+		CASE_GET_LABEL(QueueSubmit);
+		CASE_GET_LABEL(QueuePresent);
+		CASE_GET_LABEL(QueueWaitIdle);
+		CASE_GET_LABEL(DeviceWaitIdle);
+		CASE_GET_LABEL(AcquireNextImage);
+		CASE_GET_LABEL(InvalidateMappedMemoryRanges);
+		default: return mvkMTLCommandBufferLabel(cmdUse);
+	}
+#undef CASE_GET_LABEL
 }
 
 
@@ -182,6 +201,14 @@ MVKQueue::MVKQueue(MVKDevice* device, MVKQueueFamily* queueFamily, uint32_t inde
 	_queueFamily = queueFamily;
 	_index = index;
 	_priority = priority;
+
+	_mtlCmdBuffLabelEndCommandBuffer = nil;
+	_mtlCmdBuffLabelQueueSubmit = nil;
+	_mtlCmdBuffLabelQueuePresent = nil;
+	_mtlCmdBuffLabelDeviceWaitIdle = nil;
+	_mtlCmdBuffLabelQueueWaitIdle = nil;
+	_mtlCmdBuffLabelAcquireNextImage = nil;
+	_mtlCmdBuffLabelInvalidateMappedMemoryRanges = nil;
 
 	initName();
 	initExecQueue();
@@ -233,6 +260,14 @@ void MVKQueue::initGPUCaptureScopes() {
 MVKQueue::~MVKQueue() {
 	destroyExecQueue();
 	_submissionCaptureScope->destroy();
+
+	[_mtlCmdBuffLabelEndCommandBuffer release];
+	[_mtlCmdBuffLabelQueueSubmit release];
+	[_mtlCmdBuffLabelQueuePresent release];
+	[_mtlCmdBuffLabelDeviceWaitIdle release];
+	[_mtlCmdBuffLabelQueueWaitIdle release];
+	[_mtlCmdBuffLabelAcquireNextImage release];
+	[_mtlCmdBuffLabelInvalidateMappedMemoryRanges release];
 }
 
 // Destroys the execution dispatch queue.
