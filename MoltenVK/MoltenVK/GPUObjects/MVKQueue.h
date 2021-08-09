@@ -143,6 +143,7 @@ protected:
 	void initGPUCaptureScopes();
 	void destroyExecQueue();
 	VkResult submit(MVKQueueSubmission* qSubmit);
+	NSString* getMTLCommandBufferLabel(MVKCommandUse cmdUse);
 
 	MVKQueueFamily* _queueFamily;
 	uint32_t _index;
@@ -150,6 +151,13 @@ protected:
 	dispatch_queue_t _execQueue;
 	id<MTLCommandQueue> _mtlQueue;
 	std::string _name;
+	NSString* _mtlCmdBuffLabelEndCommandBuffer;
+	NSString* _mtlCmdBuffLabelQueueSubmit;
+	NSString* _mtlCmdBuffLabelQueuePresent;
+	NSString* _mtlCmdBuffLabelDeviceWaitIdle;
+	NSString* _mtlCmdBuffLabelQueueWaitIdle;
+	NSString* _mtlCmdBuffLabelAcquireNextImage;
+	NSString* _mtlCmdBuffLabelInvalidateMappedMemoryRanges;
 	MVKGPUCaptureScope* _submissionCaptureScope;
 };
 
