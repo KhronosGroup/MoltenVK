@@ -832,11 +832,17 @@ protected:
 	id<MTLBuffer> _dummyBlitMTLBuffer;
     uint32_t _globalVisibilityQueryCount;
     std::mutex _vizLock;
-	bool _useMTLFenceForSemaphores;
-	bool _useMTLEventForSemaphores;
 	bool _logActivityPerformanceInline;
 	bool _isPerformanceTracking;
 	bool _isCurrentlyAutoGPUCapturing;
+
+	typedef enum {
+		VkSemaphoreStyleUseMTLEvent,
+		VkSemaphoreStyleUseMTLFence,
+		VkSemaphoreStyleUseEmulation
+	} VkSemaphoreStyle;
+	VkSemaphoreStyle _vkSemaphoreStyle;
+
 };
 
 

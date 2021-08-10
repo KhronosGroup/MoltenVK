@@ -18,6 +18,7 @@ MoltenVK 1.1.5
 
 Released TBD
 
+- Revert to prefer `MTLEvent` over `MTLFence` for `VkSemaphore`, except on NVIDIA.
 - Vulkan timestamp query pools use Metal GPU counters when available.
 - Support resolving attachments with formats that Metal does not natively resolve.
 - Fix issue where swapchain images were acquired out of order under heavy load.

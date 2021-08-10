@@ -3263,12 +3263,10 @@ MVKSemaphore* MVKDevice::createSemaphore(const VkSemaphoreCreateInfo* pCreateInf
 			return new MVKTimelineSemaphoreEmulated(this, pCreateInfo, pTypeCreateInfo);
 		}
 	} else {
-		if (_useMTLFenceForSemaphores) {
-			return new MVKSemaphoreMTLFence(this, pCreateInfo);
-		} else if (_useMTLEventForSemaphores) {
-			return new MVKSemaphoreMTLEvent(this, pCreateInfo);
-		} else {
-			return new MVKSemaphoreEmulated(this, pCreateInfo);
+		switch (_vkSemaphoreStyle) {
+			case VkSemaphoreStyleUseMTLEvent:  return new MVKSemaphoreMTLEvent(this, pCreateInfo);
+			case VkSemaphoreStyleUseMTLFence:  return new MVKSemaphoreMTLFence(this, pCreateInfo);
+			case VkSemaphoreStyleUseEmulation: return new MVKSemaphoreEmulated(this, pCreateInfo);
 		}
 	}
 }
@@ -3953,11 +3951,33 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 
-	// Indicate whether semaphores should use a MTLFence or MTLEvent if they are available.
-	_useMTLFenceForSemaphores = _pMetalFeatures->fences && mvkConfig().semaphoreUseMTLFence;
-	_useMTLEventForSemaphores = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent;
-
-	MVKLogInfo("Using %s for Vulkan semaphores.", _useMTLFenceForSemaphores ? "MTLFence" : (_useMTLEventForSemaphores ? "MTLEvent" : "emulation"));
+	// Decide whether semaphores should use a MTLFence or MTLEvent if they are available.
+	// Prefer MTLEvent over MTLFence, because MTLEvent handles sync across MTLCommandBuffers and MTLCommandQueues,
+	// except on NVIDIA GPUs, which have demonstrated trouble with MTLEvents, prefer MTLFence.
+	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent;
+	bool canUseMTLFenceForSem4 = _pMetalFeatures->fences && mvkConfig().semaphoreUseMTLFence;
+	switch (_pProperties->vendorID) {
+		case kNVVendorId:
+			_vkSemaphoreStyle = canUseMTLFenceForSem4 ? VkSemaphoreStyleUseMTLFence : (canUseMTLEventForSem4 ? VkSemaphoreStyleUseMTLEvent : VkSemaphoreStyleUseEmulation);
+			break;
+		case kAppleVendorId:
+		case kIntelVendorId:
+		case kAMDVendorId:
+		default:
+			_vkSemaphoreStyle = canUseMTLEventForSem4 ? VkSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? VkSemaphoreStyleUseMTLFence : VkSemaphoreStyleUseEmulation);
+			break;
+	}
+	switch (_vkSemaphoreStyle) {
+		case VkSemaphoreStyleUseMTLEvent:
+			MVKLogInfo("Using MTLEvent for Vulkan semaphores.");
+			break;
+		case VkSemaphoreStyleUseMTLFence:
+			MVKLogInfo("Using MTLFence for Vulkan semaphores.");
+			break;
+		case VkSemaphoreStyleUseEmulation:
+			MVKLogInfo("Using emulation for Vulkan semaphores.");
+			break;
+	}
 }
 
 void MVKDevice::enableFeatures(const VkDeviceCreateInfo* pCreateInfo) {
