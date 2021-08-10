@@ -559,9 +559,9 @@ typedef struct {
 	 *
 	 * This parameter interacts with semaphoreUseMTLEvent. If both are enabled, on GPUs other than
 	 * NVIDIA, semaphoreUseMTLEvent takes priority and MTLEvent will be used if it is available,
-	 * otherwise MTLFence will be used if it is available. On NVIDIA GPUs, the opposite priority
-	 * applies. If neither semaphoreUseMTLFence nor semaphoreUseMTLEvent are enabled, or if neither
-	 * MTLEvent nor MTLFence are available, CPU-based synchoronization will be used.
+	 * otherwise MTLFence will be used if it is available. On NVIDIA GPUs, MTLEvent is disabled
+	 * for VkSemaphores, so CPU-based synchronization will be used unless semaphoreUseMTLFence
+	 * is enabled and MTLFence is available.
 	 *
 	 * In the special case of VK_SEMAPHORE_TYPE_TIMELINE semaphores, MoltenVK will always
 	 * use MTLSharedEvent if it is available on the platform, regardless of the values of
@@ -573,8 +573,7 @@ typedef struct {
 	 * The initial value or this parameter is set by the
 	 * MVK_ALLOW_METAL_FENCES
 	 * runtime environment variable or MoltenVK compile-time build setting.
-	 * If neither is set, this setting is enabled by default, and VkSemaphore will use MTLFence,
-	 * if it is available, unless MTLEvent is available and semaphoreUseMTLEvent is enabled.
+	 * If neither is set, this setting is disabled by default, and VkSemaphore will not use MTLFence.
 	 */
 	VkBool32 semaphoreUseMTLFence;
 
@@ -583,9 +582,9 @@ typedef struct {
 	 *
 	 * This parameter interacts with semaphoreUseMTLFence. If both are enabled, on GPUs other than
 	 * NVIDIA, semaphoreUseMTLEvent takes priority and MTLEvent will be used if it is available,
-	 * otherwise MTLFence will be used if it is available. On NVIDIA GPUs, the opposite priority
-	 * applies. If neither semaphoreUseMTLFence nor semaphoreUseMTLEvent are enabled, or if neither
-	 * MTLEvent nor MTLFence are available, CPU-based synchoronization will be used.
+	 * otherwise MTLFence will be used if it is available. On NVIDIA GPUs, MTLEvent is disabled
+	 * for VkSemaphores, so CPU-based synchronization will be used unless semaphoreUseMTLFence
+	 * is enabled and MTLFence is available.
 	 *
 	 * In the special case of VK_SEMAPHORE_TYPE_TIMELINE semaphores, MoltenVK will always
 	 * use MTLSharedEvent if it is available on the platform, regardless of the values of
@@ -598,7 +597,7 @@ typedef struct {
 	 * MVK_ALLOW_METAL_EVENTS
 	 * runtime environment variable or MoltenVK compile-time build setting.
 	 * If neither is set, this setting is enabled by default, and VkSemaphore will use MTLEvent,
-	 * if it is available.
+	 * if it is available, except on NVIDIA GPUs.
 	 */
 	VkBool32 semaphoreUseMTLEvent;
 

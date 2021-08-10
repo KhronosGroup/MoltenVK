@@ -3951,22 +3951,13 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 	_pProperties = &_physicalDevice->_properties;
 	_pMemoryProperties = &_physicalDevice->_memoryProperties;
 
-	// Decide whether semaphores should use a MTLFence or MTLEvent if they are available.
-	// Prefer MTLEvent over MTLFence, because MTLEvent handles sync across MTLCommandBuffers and MTLCommandQueues,
-	// except on NVIDIA GPUs, which have demonstrated trouble with MTLEvents, prefer MTLFence.
-	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent;
+	// Decide whether Vulkan semaphores should use a MTLEvent or MTLFence if they are available.
+	// Prefer MTLEvent, because MTLEvent handles sync across MTLCommandBuffers and MTLCommandQueues.
+	// However, do not allow use of MTLEvents on NVIDIA GPUs, which have demonstrated trouble with MTLEvents.
+	// Since MTLFence config is disabled by default, emulation will be used on NVIDIA unless MTLFence is enabled.
+	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent && (_pProperties->vendorID != kNVVendorId);
 	bool canUseMTLFenceForSem4 = _pMetalFeatures->fences && mvkConfig().semaphoreUseMTLFence;
-	switch (_pProperties->vendorID) {
-		case kNVVendorId:
-			_vkSemaphoreStyle = canUseMTLFenceForSem4 ? VkSemaphoreStyleUseMTLFence : (canUseMTLEventForSem4 ? VkSemaphoreStyleUseMTLEvent : VkSemaphoreStyleUseEmulation);
-			break;
-		case kAppleVendorId:
-		case kIntelVendorId:
-		case kAMDVendorId:
-		default:
-			_vkSemaphoreStyle = canUseMTLEventForSem4 ? VkSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? VkSemaphoreStyleUseMTLFence : VkSemaphoreStyleUseEmulation);
-			break;
-	}
+	_vkSemaphoreStyle = canUseMTLEventForSem4 ? VkSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? VkSemaphoreStyleUseMTLFence : VkSemaphoreStyleUseEmulation);
 	switch (_vkSemaphoreStyle) {
 		case VkSemaphoreStyleUseMTLEvent:
 			MVKLogInfo("Using MTLEvent for Vulkan semaphores.");
