@@ -418,34 +418,30 @@ void MVKRenderSubpass::encodeStoreActions(MVKCommandEncoder* cmdEncoder,
 
 void MVKRenderSubpass::populateClearAttachments(MVKClearAttachments& clearAtts,
 												const MVKArrayRef<VkClearValue> clearValues) {
-	VkClearAttachment cAtt;
-
 	uint32_t attIdx;
 	uint32_t caCnt = getColorAttachmentCount();
 	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
 		attIdx = _colorAttachments[caIdx].attachment;
-		if ((attIdx != VK_ATTACHMENT_UNUSED) && _renderPass->_attachments[attIdx].shouldUseClearAttachment(this)) {
-			cAtt.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-			cAtt.colorAttachment = caIdx;
-			cAtt.clearValue = clearValues[attIdx];
-			clearAtts.push_back(cAtt);
+		if ((attIdx != VK_ATTACHMENT_UNUSED) && _renderPass->_attachments[attIdx].shouldClearAttachment(this, false)) {
+			clearAtts.push_back( { VK_IMAGE_ASPECT_COLOR_BIT, caIdx, clearValues[attIdx] } );
 		}
 	}
 
 	attIdx = _depthStencilAttachment.attachment;
-	if ((attIdx != VK_ATTACHMENT_UNUSED) && _renderPass->_attachments[attIdx].shouldUseClearAttachment(this)) {
-		cAtt.aspectMask = 0;
-		cAtt.colorAttachment = 0;
-		cAtt.clearValue = clearValues[attIdx];
-
+	if (attIdx != VK_ATTACHMENT_UNUSED) {
 		MVKPixelFormats* pixFmts = _renderPass->getPixelFormats();
-		MTLPixelFormat mtlDSFmt = _renderPass->getPixelFormats()->getMTLPixelFormat(getDepthStencilFormat());
-		if (pixFmts->isDepthFormat(mtlDSFmt)) { cAtt.aspectMask |= VK_IMAGE_ASPECT_DEPTH_BIT; }
-		if (pixFmts->isStencilFormat(mtlDSFmt) &&
-			_renderPass->_attachments[attIdx].getAttachmentStencilLoadOp() == VK_ATTACHMENT_LOAD_OP_CLEAR) {
-			cAtt.aspectMask |= VK_IMAGE_ASPECT_STENCIL_BIT;
+		MTLPixelFormat mtlDSFmt = pixFmts->getMTLPixelFormat(getDepthStencilFormat());
+		auto& rpAtt = _renderPass->_attachments[attIdx];
+		VkImageAspectFlags aspectMask = 0;
+		if (rpAtt.shouldClearAttachment(this, false) && pixFmts->isDepthFormat(mtlDSFmt)) {
+			mvkEnableFlags(aspectMask, VK_IMAGE_ASPECT_DEPTH_BIT);
 		}
-		if (cAtt.aspectMask) { clearAtts.push_back(cAtt); }
+		if (rpAtt.shouldClearAttachment(this, true) && pixFmts->isStencilFormat(mtlDSFmt)) {
+			mvkEnableFlags(aspectMask, VK_IMAGE_ASPECT_STENCIL_BIT);
+		}
+		if (aspectMask) {
+			clearAtts.push_back( { aspectMask, 0, clearValues[attIdx] } );
+		}
 	}
 }
 
@@ -761,20 +757,16 @@ MTLStoreAction MVKRenderPassAttachment::getMTLStoreAction(MVKRenderSubpass* subp
 	return mvkMTLStoreActionFromVkAttachmentStoreOp(storeOp, hasResolveAttachment, canResolveFormat);
 }
 
-bool MVKRenderPassAttachment::shouldUseClearAttachment(MVKRenderSubpass* subpass) {
-
-	// If the subpass is not the first subpass to use this attachment, don't clear this attachment
+// If the subpass is not the first subpass to use this attachment,
+// don't clear this attachment, otherwise, clear if requested.
+bool MVKRenderPassAttachment::shouldClearAttachment(MVKRenderSubpass* subpass, bool isStencil) {
 	if (subpass->isMultiview()) {
 		if (_firstUseViewMasks[subpass->_subpassIndex] == 0) { return false; }
 	} else {
 		if (subpass->_subpassIndex != _firstUseSubpassIdx) { return false; }
 	}
-
-	return (_info.loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR);
-}
-
-VkAttachmentLoadOp MVKRenderPassAttachment::getAttachmentStencilLoadOp() const {
-	return _info.stencilLoadOp;
+	VkAttachmentLoadOp loadOp = isStencil ? _info.stencilLoadOp : _info.loadOp;
+	return loadOp == VK_ATTACHMENT_LOAD_OP_CLEAR;
 }
 
 void MVKRenderPassAttachment::validateFormat() {

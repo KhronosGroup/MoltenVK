@@ -23,6 +23,7 @@ Released TBD
 	- Set default value of the `MVK_ALLOW_METAL_FENCES` environment variable to `0 (false)`,
 - Vulkan timestamp query pools use Metal GPU counters when available.
 - Support resolving attachments with formats that Metal does not natively resolve.
+- Support stencil-only partial attachment clearing.
 - Fix issue where swapchain images were acquired out of order under heavy load.
 - Fix issue with `vkCmdBlitImage()` from compressed textures.
 - Fix incorrect translation of clear color values on Apple Silicon.

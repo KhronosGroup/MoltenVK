@@ -208,10 +208,7 @@ public:
 	void populateMultiviewClearRects(MVKSmallVector<VkClearRect, 1>& clearRects, MVKCommandEncoder* cmdEncoder);
 
     /** Returns whether this attachment should be cleared in the subpass. */
-    bool shouldUseClearAttachment(MVKRenderSubpass* subpass);
-
-    /** If this is a depth attachment, the stencil load op may be different than the depth load op. */
-	VkAttachmentLoadOp getAttachmentStencilLoadOp() const;
+    bool shouldClearAttachment(MVKRenderSubpass* subpass, bool isStencil);
 
 	/** Constructs an instance for the specified parent renderpass. */
 	MVKRenderPassAttachment(MVKRenderPass* renderPass,
