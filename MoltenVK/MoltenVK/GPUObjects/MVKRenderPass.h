@@ -191,7 +191,7 @@ public:
 												   bool hasResolveAttachment,
 												   bool canResolveFormat,
                                                    bool isStencil,
-                                                   bool loadOverride = false);
+                                                   bool loadOverride);
 
 	/** If a render encoder is active, sets the store action for this attachment to it. */
 	void encodeStoreAction(MVKCommandEncoder* cmdEncoder,

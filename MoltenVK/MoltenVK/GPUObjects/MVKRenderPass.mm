@@ -275,10 +275,9 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			isMemorylessAttachment = dsImage->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 #endif
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlDepthAttDesc, this,
-                                                                      isRenderingEntireAttachment,
-																	  isMemorylessAttachment,
-                                                                      hasResolveAttachment, false,
-                                                                      loadOverride)) {
+                                                                      isRenderingEntireAttachment, isMemorylessAttachment,
+                                                                      hasResolveAttachment, true,
+																	  false, loadOverride)) {
                 mtlDepthAttDesc.clearDepth = pixFmts->getMTLClearDepthValue(clearValues[dsRPAttIdx]);
 			}
 			if (isMultiview()) {
@@ -303,10 +302,9 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 			isMemorylessAttachment = dsImage->getMTLTexture(0).storageMode == MTLStorageModeMemoryless;
 #endif
 			if (dsMVKRPAtt->populateMTLRenderPassAttachmentDescriptor(mtlStencilAttDesc, this,
-                                                                      isRenderingEntireAttachment,
-																	  isMemorylessAttachment,
+                                                                      isRenderingEntireAttachment, isMemorylessAttachment,
                                                                       hasResolveAttachment, true,
-                                                                      loadOverride)) {
+																	  true, loadOverride)) {
 				mtlStencilAttDesc.clearStencil = pixFmts->getMTLClearStencilValue(clearValues[dsRPAttIdx]);
 			}
 			if (isMultiview()) {
