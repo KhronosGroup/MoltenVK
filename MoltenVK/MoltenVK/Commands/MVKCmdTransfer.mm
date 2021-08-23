@@ -1310,6 +1310,23 @@ void MVKCmdClearAttachments<N>::encode(MVKCommandEncoder* cmdEncoder) {
     [mtlRendEnc drawPrimitives: MTLPrimitiveTypeTriangle vertexStart: 0 vertexCount: vtxCnt];
     [mtlRendEnc popDebugGroup];
 
+#if MVK_APPLE_SILICON
+	// Apple GPUs do not support rendering/writing to an attachment and then reading from
+	// that attachment within a single Metal renderpass. So, if any of the attachments just
+	// cleared is an input attachment, we need to restart into separate Metal renderpasses.
+	bool needsRenderpassRestart = false;
+	for (uint32_t caIdx = 0; caIdx < caCnt; caIdx++) {
+		if (_rpsKey.isAttachmentEnabled(caIdx) && subpass->isColorAttachmentAlsoInputAttachment(caIdx)) {
+			needsRenderpassRestart = true;
+			break;
+		}
+	}
+	if (needsRenderpassRestart) {
+		cmdEncoder->encodeStoreActions(true);
+		cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
+	}
+#endif
+
 	// Return to the previous rendering state on the next render activity
 	cmdEncoder->_graphicsPipelineState.markDirty();
 	cmdEncoder->_depthStencilState.markDirty();

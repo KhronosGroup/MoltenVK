@@ -29,6 +29,7 @@ Released TBD
 - Fix incorrect translation of clear color values on Apple Silicon.
 - Fix swizzle of depth and stencil values into RGBA (`float4`) variable in shaders.
 - Fix pipeline barriers not working inside self-dependent subpasses on Apple GPUs.
+- Fix GPU race condition when clearing a renderpass input attachment on Apple GPUs.
 - Disable `VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT` for 
   `VK_FORMAT_E5B9G9R9_UFLOAT_PACK32` on macOS Apple Silicon.
 - Support alpha-to-coverage without a color attachment.

@@ -59,6 +59,19 @@ bool MVKRenderSubpass::isColorAttachmentUsed(uint32_t colorAttIdx) {
 	return _colorAttachments[colorAttIdx].attachment != VK_ATTACHMENT_UNUSED;
 }
 
+
+bool MVKRenderSubpass::isColorAttachmentAlsoInputAttachment(uint32_t colorAttIdx) {
+	if (colorAttIdx >= _colorAttachments.size()) { return false; }
+
+	uint32_t rspAttIdx = _colorAttachments[colorAttIdx].attachment;
+	if (rspAttIdx == VK_ATTACHMENT_UNUSED) { return false; }
+
+	for (auto& inAtt : _inputAttachments) {
+		if (inAtt.attachment == rspAttIdx) { return true; }
+	}
+	return false;
+}
+
 VkFormat MVKRenderSubpass::getDepthStencilFormat() {
 	uint32_t rpAttIdx = _depthStencilAttachment.attachment;
 	if (rpAttIdx == VK_ATTACHMENT_UNUSED) { return VK_FORMAT_UNDEFINED; }

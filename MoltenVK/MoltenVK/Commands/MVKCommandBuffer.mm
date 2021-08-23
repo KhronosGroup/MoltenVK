@@ -326,22 +326,23 @@ void MVKCommandEncoder::setSubpass(MVKCommand* subpassCmd,
 							   (_device->_pMetalFeatures->multisampleLayeredRendering ||
 							    (getSubpass()->getSampleCount() == VK_SAMPLE_COUNT_1_BIT)));
 
-	beginMetalRenderPass();
+	beginMetalRenderPass(_renderSubpassIndex == 0 ? kMVKCommandUseBeginRenderPass : kMVKCommandUseNextSubpass);
 }
 
 void MVKCommandEncoder::beginNextMultiviewPass() {
 	encodeStoreActions();
 	_multiviewPassIndex++;
-	beginMetalRenderPass();
+	beginMetalRenderPass(kMVKCommandUseNextSubpass);
 }
 
 uint32_t MVKCommandEncoder::getMultiviewPassIndex() { return _multiviewPassIndex; }
 
 // Creates _mtlRenderEncoder and marks cached render state as dirty so it will be set into the _mtlRenderEncoder.
-void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
+void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 
     endCurrentMetalEncoding();
 
+	bool isRestart = cmdUse == kMVKCommandUseRestartSubpass;
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
 	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc,
 												  _multiviewPassIndex,
@@ -350,7 +351,7 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
 												  _attachments.contents(),
 												  _clearValues.contents(),
 												  _isRenderingEntireAttachment,
-												  loadOverride);
+												  isRestart);
 	if (_cmdBuffer->_needsVisibilityResultMTLBuffer) {
 		if ( !_pEncodingContext->visibilityResultBuffer ) {
 			_pEncodingContext->visibilityResultBuffer = getTempMTLBuffer(_pDeviceMetalFeatures->maxQueryBufferSize, true, true);
@@ -389,9 +390,12 @@ void MVKCommandEncoder::beginMetalRenderPass(bool loadOverride) {
     }
 
     _mtlRenderEncoder = [_mtlCmdBuffer renderCommandEncoderWithDescriptor: mtlRPDesc];     // not retained
-	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName());
+	setLabelIfNotNil(_mtlRenderEncoder, getMTLRenderCommandEncoderName(cmdUse));
 
-    if ( !_isRenderingEntireAttachment ) { clearRenderArea(); }
+	// We shouldn't clear the render area if we are restarting the Metal renderpass
+	// separately from a Vulkan subpass, and we otherwise only need to clear render
+	// area if we're not rendering to the entire attachment.
+    if ( !isRestart && !_isRenderingEntireAttachment ) { clearRenderArea(); }
 
     _graphicsPipelineState.beginMetalRenderPass();
     _graphicsResourcesState.beginMetalRenderPass();
@@ -418,7 +422,7 @@ void MVKCommandEncoder::encodeStoreActions(bool storeOverride) {
 MVKRenderSubpass* MVKCommandEncoder::getSubpass() { return _renderPass->getSubpass(_renderSubpassIndex); }
 
 // Returns a name for use as a MTLRenderCommandEncoder label
-NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName() {
+NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName(MVKCommandUse cmdUse) {
 	NSString* rpName;
 
 	rpName = _renderPass->getDebugName();
@@ -427,7 +431,6 @@ NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName() {
 	rpName = _cmdBuffer->getDebugName();
 	if (rpName) { return rpName; }
 
-	MVKCommandUse cmdUse = (_renderSubpassIndex == 0) ? kMVKCommandUseBeginRenderPass : kMVKCommandUseNextSubpass;
 	return mvkMTLRenderCommandEncoderLabel(cmdUse);
 }
 
@@ -901,6 +904,7 @@ NSString* mvkMTLRenderCommandEncoderLabel(MVKCommandUse cmdUse) {
     switch (cmdUse) {
         case kMVKCommandUseBeginRenderPass:                 return @"vkCmdBeginRenderPass RenderEncoder";
         case kMVKCommandUseNextSubpass:                     return @"vkCmdNextSubpass RenderEncoder";
+		case kMVKCommandUseRestartSubpass:                  return @"Metal renderpass restart RenderEncoder";
         case kMVKCommandUseBlitImage:                       return @"vkCmdBlitImage RenderEncoder";
         case kMVKCommandUseResolveImage:                    return @"vkCmdResolveImage (resolve stage) RenderEncoder";
         case kMVKCommandUseResolveExpandImage:              return @"vkCmdResolveImage (expand stage) RenderEncoder";

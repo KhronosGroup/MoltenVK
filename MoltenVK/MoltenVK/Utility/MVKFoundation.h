@@ -63,7 +63,7 @@ typedef struct {
 
 /** Tracks the Vulkan command currently being used. */
 typedef enum : uint8_t {
-    kMVKCommandUseNone,                         /**< No use defined. */
+    kMVKCommandUseNone = 0,                     /**< No use defined. */
 	kMVKCommandUseEndCommandBuffer,             /**< vkEndCommandBuffer (prefilled VkCommandBuffer). */
     kMVKCommandUseQueueSubmit,                  /**< vkQueueSubmit. */
 	kMVKCommandUseAcquireNextImage,             /**< vkAcquireNextImageKHR. */
@@ -73,6 +73,8 @@ typedef enum : uint8_t {
 	kMVKCommandUseInvalidateMappedMemoryRanges, /**< vkInvalidateMappedMemoryRanges. */
     kMVKCommandUseBeginRenderPass,              /**< vkCmdBeginRenderPass. */
     kMVKCommandUseNextSubpass,                  /**< vkCmdNextSubpass. */
+	kMVKCommandUseBeginMultiViewPass,           /**< vkCmdBeginRenderPass. */
+	kMVKCommandUseRestartSubpass,               /**< Restart a subpass because of explicit or implicit barrier. */
     kMVKCommandUsePipelineBarrier,              /**< vkCmdPipelineBarrier. */
     kMVKCommandUseBlitImage,                    /**< vkCmdBlitImage. */
     kMVKCommandUseCopyImage,                    /**< vkCmdCopyImage. */

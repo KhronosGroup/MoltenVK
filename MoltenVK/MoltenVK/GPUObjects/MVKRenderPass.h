@@ -67,6 +67,9 @@ public:
 	/** Returns whether or not the color attachment at the specified index is being used. */
 	bool isColorAttachmentUsed(uint32_t colorAttIdx);
 
+	/** Returns whether or not the color attachment is used as both a color attachment and an input attachment. */
+	bool isColorAttachmentAlsoInputAttachment(uint32_t colorAttIdx);
+
 	/** Returns the format of the depth/stencil attachment. */
 	VkFormat getDepthStencilFormat();
 

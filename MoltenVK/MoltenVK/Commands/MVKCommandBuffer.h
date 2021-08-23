@@ -296,7 +296,7 @@ public:
 	void beginNextMultiviewPass();
 
 	/** Begins a Metal render pass for the current render subpass. */
-	void beginMetalRenderPass(bool loadOverride = false);
+	void beginMetalRenderPass(MVKCommandUse cmdUse);
 
 	/** If a render encoder is active, encodes store actions for all attachments to it. */
 	void encodeStoreActions(bool storeOverride = false);
@@ -498,7 +498,7 @@ protected:
     void finishQueries();
 	void setSubpass(MVKCommand* passCmd, VkSubpassContents subpassContents, uint32_t subpassIndex);
 	void clearRenderArea();
-    NSString* getMTLRenderCommandEncoderName();
+    NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
 	void encodeTimestampStageCounterSamples();
 
