@@ -16,7 +16,7 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.1.5
 --------------
 
-Released TBD
+Released 2021/08/30
 
 - Changes to how `VkSemaphore` is supported:
 	- Revert to prefer `MTLEvent` for `VkSemaphore`, except on NVIDIA, where emulation on CPU is preferred.
@@ -35,6 +35,9 @@ Released TBD
 - Update to latest SPIRV-Cross version:
 	- MSL: Adjust `gl_SampleMaskIn` for sample-shading and/or fixed sample mask.
 	- MSL: Fix setting `SPIRVCrossDecorationInterpolantComponentExpr` decoration.
+	- MSL: Support row-major transpose when storing matrix from constant RHS matrix.
+	- MSL: Fix casting in constant expressions with different sizes.
+	- MSL: Fix duplicate `gl_Position` outputs when `gl_Position` defined but unused.
 	- MSL: Simplify `spvSubgroupBallot()`.
 
 
