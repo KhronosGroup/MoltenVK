@@ -23,11 +23,13 @@ Released 2021/08/30
 	- Set default value of the `MVK_ALLOW_METAL_FENCES` environment variable to `0 (false)`,
 - Vulkan timestamp query pools use Metal GPU counters when available.
 - Support resolving attachments with formats that Metal does not natively resolve.
+- Support stencil-only partial attachment clearing.
 - Fix issue where swapchain images were acquired out of order under heavy load.
 - Fix issue with `vkCmdBlitImage()` from compressed textures.
 - Fix incorrect translation of clear color values on Apple Silicon.
 - Fix swizzle of depth and stencil values into RGBA (`float4`) variable in shaders.
 - Fix pipeline barriers not working inside self-dependent subpasses on Apple GPUs.
+- Fix GPU race condition when clearing a renderpass input attachment on Apple GPUs.
 - Disable `VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT` for 
   `VK_FORMAT_E5B9G9R9_UFLOAT_PACK32` on macOS Apple Silicon.
 - Support alpha-to-coverage without a color attachment.

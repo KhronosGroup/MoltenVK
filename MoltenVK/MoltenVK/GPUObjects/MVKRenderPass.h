@@ -67,6 +67,9 @@ public:
 	/** Returns whether or not the color attachment at the specified index is being used. */
 	bool isColorAttachmentUsed(uint32_t colorAttIdx);
 
+	/** Returns whether or not the color attachment is used as both a color attachment and an input attachment. */
+	bool isColorAttachmentAlsoInputAttachment(uint32_t colorAttIdx);
+
 	/** Returns the format of the depth/stencil attachment. */
 	VkFormat getDepthStencilFormat();
 
@@ -191,7 +194,7 @@ public:
 												   bool hasResolveAttachment,
 												   bool canResolveFormat,
                                                    bool isStencil,
-                                                   bool loadOverride = false);
+                                                   bool loadOverride);
 
 	/** If a render encoder is active, sets the store action for this attachment to it. */
 	void encodeStoreAction(MVKCommandEncoder* cmdEncoder,
@@ -208,10 +211,7 @@ public:
 	void populateMultiviewClearRects(MVKSmallVector<VkClearRect, 1>& clearRects, MVKCommandEncoder* cmdEncoder);
 
     /** Returns whether this attachment should be cleared in the subpass. */
-    bool shouldUseClearAttachment(MVKRenderSubpass* subpass);
-
-    /** If this is a depth attachment, the stencil load op may be different than the depth load op. */
-	VkAttachmentLoadOp getAttachmentStencilLoadOp() const;
+    bool shouldClearAttachment(MVKRenderSubpass* subpass, bool isStencil);
 
 	/** Constructs an instance for the specified parent renderpass. */
 	MVKRenderPassAttachment(MVKRenderPass* renderPass,

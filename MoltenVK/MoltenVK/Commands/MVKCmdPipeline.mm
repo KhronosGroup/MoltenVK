@@ -130,7 +130,7 @@ void MVKCmdPipelineBarrier<N>::encode(MVKCommandEncoder* cmdEncoder) {
 		}
 		if (needsRenderpassRestart) {
 			cmdEncoder->encodeStoreActions(true);
-			cmdEncoder->beginMetalRenderPass(true);
+			cmdEncoder->beginMetalRenderPass(kMVKCommandUseRestartSubpass);
 		}
 	}
 #endif
