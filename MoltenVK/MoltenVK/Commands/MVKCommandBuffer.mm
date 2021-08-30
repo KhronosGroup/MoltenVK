@@ -781,7 +781,7 @@ void MVKCommandEncoder::markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_
 // Metal stage GPU counters need to be configured in a Metal render, compute, or BLIT encoder, meaning that the
 // Metal encoder needs to know about any Vulkan timestamp commands that will be executed during the execution
 // of a renderpass, or set of Vulkan dispatch or BLIT commands. In addition, there are a very small number of
-// staged timestamps (4) that can be tracked in any single render, compute, or BLIT pass, meaning a renderpass
+// staged timestamps that can be tracked in any single render, compute, or BLIT pass, meaning a renderpass
 // that timestamped after each of many draw calls, would not be trackable. Finally, stage counters are only
 // available on tile-based GPU's, which means draw or dispatch calls cannot be individually timestamped.
 // We avoid dealing with all this complexity and mismatch between how Vulkan and Metal stage counters operate
@@ -795,8 +795,12 @@ void MVKCommandEncoder::encodeTimestampStageCounterSamples() {
 
 		// With each BLIT pass, consume as many outstanding timestamp queries as possible.
 		// Attach an query result to each of the available sample buffer attachments in the BLIT pass descriptor.
+		// MTLMaxBlitPassSampleBuffers was defined in the Metal API as 4, but according to Apple, will be removed
+		// in Xcode 13 as inaccurate for all platforms. Leave this value at 1 until we can figure out how to
+		// accurately determine the length of sampleBufferAttachments on each platform.
+		uint32_t maxMTLBlitPassSampleBuffers = 1;		// Was MTLMaxBlitPassSampleBuffers API definition
 		auto* bpDesc = [[[MTLBlitPassDescriptor alloc] init] autorelease];
-		for (uint32_t attIdx = 0; attIdx < MTLMaxBlitPassSampleBuffers && qIdx < qCnt; attIdx++, qIdx++) {
+		for (uint32_t attIdx = 0; attIdx < maxMTLBlitPassSampleBuffers && qIdx < qCnt; attIdx++, qIdx++) {
 			auto* sbAttDesc = bpDesc.sampleBufferAttachments[attIdx];
 			auto& tsQry = _timestampStageCounterQueries[qIdx];
 
