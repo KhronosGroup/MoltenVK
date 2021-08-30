@@ -24,23 +24,30 @@ Released 2021/08/30
 - Vulkan timestamp query pools use Metal GPU counters when available.
 - Support resolving attachments with formats that Metal does not natively resolve.
 - Support stencil-only partial attachment clearing.
+- Support alpha-to-coverage without a color attachment.
 - Fix issue where swapchain images were acquired out of order under heavy load.
 - Fix issue with `vkCmdBlitImage()` from compressed textures.
 - Fix incorrect translation of clear color values on Apple Silicon.
 - Fix swizzle of depth and stencil values into RGBA (`float4`) variable in shaders.
+- Fix occasional crash when swizzling used but shader swizzling not enabled.
 - Fix pipeline barriers not working inside self-dependent subpasses on Apple GPUs.
 - Fix GPU race condition when clearing a renderpass input attachment on Apple GPUs.
 - Disable `VK_FORMAT_FEATURE_COLOR_ATTACHMENT_BLEND_BIT` for 
   `VK_FORMAT_E5B9G9R9_UFLOAT_PACK32` on macOS Apple Silicon.
-- Support alpha-to-coverage without a color attachment.
+- Fix execution order of `encodeBindings` for `bufferBindings`.
+- Properly ignore non-null pipeline creation pointers that should be ignored.
+- Add queue and queue family indices to `MTLCommandBuffer` label.
 - Update `VK_MVK_MOLTENVK_SPEC_VERSION` to `32`.
 - Update to latest SPIRV-Cross version:
 	- MSL: Adjust `gl_SampleMaskIn` for sample-shading and/or fixed sample mask.
+	- MSL: Remove redundant path for `SampleMask`.
 	- MSL: Fix setting `SPIRVCrossDecorationInterpolantComponentExpr` decoration.
 	- MSL: Support row-major transpose when storing matrix from constant RHS matrix.
 	- MSL: Fix casting in constant expressions with different sizes.
 	- MSL: Fix duplicate `gl_Position` outputs when `gl_Position` defined but unused.
 	- MSL: Simplify `spvSubgroupBallot()`.
+	- MSL: Consider that function/private variables can be block-like.
+	- Track temporary access for `OpArrayLength` result.
 
 
 
