@@ -2065,7 +2065,20 @@ void MVKPhysicalDevice::initLimits() {
 	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();
 
     _properties.limits.pointSizeRange[0] = 1;
-    _properties.limits.pointSizeRange[1] = 511;
+	switch (_properties.vendorID) {
+		case kAppleVendorId:
+			_properties.limits.pointSizeRange[1] = 511;
+			break;
+		case kIntelVendorId:
+			_properties.limits.pointSizeRange[1] = 256;
+			break;
+		case kAMDVendorId:
+		case kNVVendorId:
+		default:
+			_properties.limits.pointSizeRange[1] = 64;
+			break;
+	}
+
     _properties.limits.pointSizeGranularity = 1;
     _properties.limits.lineWidthRange[0] = 1;
     _properties.limits.lineWidthRange[1] = 1;
