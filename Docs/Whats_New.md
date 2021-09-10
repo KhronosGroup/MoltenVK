@@ -13,6 +13,17 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.1.6
+--------------
+
+Released TBD
+
+- Support maximum point primitive size of 511.
+- Update to latest SPIRV-Cross version:
+	- Add support for `OpSpecConstantOp` ops `OpQuantizeToF16` and `OpSRem`.
+
+
+
 MoltenVK 1.1.5
 --------------
 
