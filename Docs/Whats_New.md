@@ -19,6 +19,7 @@ MoltenVK 1.1.6
 Released TBD
 
 - Support maximum point primitive size of 511.
+- Improved checks for timestamp GPU counter support on older devices.
 - Update to latest SPIRV-Cross version:
 	- Add support for `OpSpecConstantOp` ops `OpQuantizeToF16` and `OpSRem`.
 
