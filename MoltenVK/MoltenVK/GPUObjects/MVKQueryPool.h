@@ -182,6 +182,9 @@ class MVKGPUCounterQueryPool : public MVKQueryPool {
 
 public:
 
+	/** Returns whether a MTLCounterBuffer is being used by this query pool. */
+	bool hasMTLCounterBuffer() { return _mtlCounterBuffer != nil; }
+
 	/**
 	 * Returns the MTLCounterBuffer being used by this query pool,
 	 * or returns nil if GPU counters are not supported.

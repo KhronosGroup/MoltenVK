@@ -768,8 +768,8 @@ void MVKCommandEncoder::markTimestamp(MVKTimestampQueryPool* pQueryPool, uint32_
     }
 	addActivatedQueries(pQueryPool, query, queryCount);
 
-	MVKCounterSamplingFlags sampPts = _device->_pMetalFeatures->counterSamplingPoints;
-	if (sampPts) {
+	if (pQueryPool->hasMTLCounterBuffer()) {
+		MVKCounterSamplingFlags sampPts = _device->_pMetalFeatures->counterSamplingPoints;
 		for (uint32_t qOfst = 0; qOfst < queryCount; qOfst++) {
 			if (mvkIsAnyFlagEnabled(sampPts, MVK_COUNTER_SAMPLING_AT_PIPELINE_STAGE)) {
 				_timestampStageCounterQueries.push_back({ pQueryPool, query + qOfst });

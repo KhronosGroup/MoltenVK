@@ -335,7 +335,7 @@ MVKGPUCounterQueryPool::MVKGPUCounterQueryPool(MVKDevice* device, const VkQueryP
 void MVKGPUCounterQueryPool::initMTLCounterSampleBuffer(const VkQueryPoolCreateInfo* pCreateInfo,
 														id<MTLCounterSet> mtlCounterSet,
 														const char* queryTypeName) {
-	if ( !_device->_pMetalFeatures->counterSamplingPoints ) { return; }
+	if ( !mtlCounterSet ) { return; }
 
 	@autoreleasepool {
 		MTLCounterSampleBufferDescriptor* tsDesc = [[[MTLCounterSampleBufferDescriptor alloc] init] autorelease];
