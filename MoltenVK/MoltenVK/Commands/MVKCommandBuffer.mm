@@ -586,6 +586,7 @@ void MVKCommandEncoder::endRenderpass() {
 void MVKCommandEncoder::endMetalRenderEncoding() {
     if (_mtlRenderEncoder == nil) { return; }
 
+	if (hasTimestampStageCounterQueries() ) { [_mtlRenderEncoder updateFence: getStageCountersMTLFence() afterStages: MTLRenderStageFragment]; }
     [_mtlRenderEncoder endEncoding];
 	_mtlRenderEncoder = nil;    // not retained
 
@@ -613,10 +614,12 @@ void MVKCommandEncoder::endCurrentMetalEncoding() {
 	_computeResourcesState.markDirty();
 	_computePushConstants.markDirty();
 
+	if (_mtlComputeEncoder && hasTimestampStageCounterQueries() ) { [_mtlComputeEncoder updateFence: getStageCountersMTLFence()]; }
 	[_mtlComputeEncoder endEncoding];
 	_mtlComputeEncoder = nil;       // not retained
 	_mtlComputeEncoderUse = kMVKCommandUseNone;
 
+	if (_mtlBlitEncoder && hasTimestampStageCounterQueries() ) { [_mtlBlitEncoder updateFence: getStageCountersMTLFence()]; }
 	[_mtlBlitEncoder endEncoding];
 	_mtlBlitEncoder = nil;          // not retained
     _mtlBlitEncoderUse = kMVKCommandUseNone;
@@ -814,6 +817,7 @@ void MVKCommandEncoder::encodeTimestampStageCounterSamples() {
 
 		auto* mtlEnc = [_mtlCmdBuffer blitCommandEncoderWithDescriptor: bpDesc];
 		setLabelIfNotNil(mtlEnc, mvkMTLBlitCommandEncoderLabel(kMVKCommandUseRecordGPUCounterSample));
+		[mtlEnc waitForFence: getStageCountersMTLFence()];
 		[mtlEnc fillBuffer: _device->getDummyBlitMTLBuffer() range: NSMakeRange(0, 1) value: 0];
 		[mtlEnc endEncoding];
 	}
@@ -822,6 +826,11 @@ void MVKCommandEncoder::encodeTimestampStageCounterSamples() {
 #else
 void MVKCommandEncoder::encodeTimestampStageCounterSamples() {}
 #endif
+
+id<MTLFence> MVKCommandEncoder::getStageCountersMTLFence() {
+	if ( !_stageCountersMTLFence ) { _stageCountersMTLFence = [getMTLDevice() newFence]; }		//retained
+	return _stageCountersMTLFence;
+}
 
 void MVKCommandEncoder::resetQueries(MVKQueryPool* pQueryPool, uint32_t firstQuery, uint32_t queryCount) {
     addActivatedQueries(pQueryPool, firstQuery, queryCount);
@@ -885,6 +894,11 @@ MVKCommandEncoder::MVKCommandEncoder(MVKCommandBuffer* cmdBuffer) : MVKBaseDevic
             _mtlBlitEncoder = nil;
             _mtlBlitEncoderUse = kMVKCommandUseNone;
 			_pEncodingContext = nullptr;
+			_stageCountersMTLFence = nil;
+}
+
+MVKCommandEncoder::~MVKCommandEncoder() {
+	[_stageCountersMTLFence release];
 }
 
 

@@ -493,6 +493,8 @@ public:
 
 	MVKCommandEncoder(MVKCommandBuffer* cmdBuffer);
 
+	~MVKCommandEncoder() override;
+
 protected:
     void addActivatedQueries(MVKQueryPool* pQueryPool, uint32_t query, uint32_t queryCount);
     void finishQueries();
@@ -501,6 +503,8 @@ protected:
     NSString* getMTLRenderCommandEncoderName(MVKCommandUse cmdUse);
 	void encodeGPUCounterSample(MVKGPUCounterQueryPool* mvkQryPool, uint32_t sampleIndex, MVKCounterSamplingFlags samplingPoints);
 	void encodeTimestampStageCounterSamples();
+	bool hasTimestampStageCounterQueries() { return !_timestampStageCounterQueries.empty(); }
+	id<MTLFence> getStageCountersMTLFence();
 
 	typedef struct GPUCounterQuery {
 		MVKGPUCounterQueryPool* queryPool = nullptr;
@@ -520,6 +524,7 @@ protected:
 	id<MTLComputeCommandEncoder> _mtlComputeEncoder;
 	MVKCommandUse _mtlComputeEncoderUse;
 	id<MTLBlitCommandEncoder> _mtlBlitEncoder;
+	id<MTLFence> _stageCountersMTLFence;
     MVKCommandUse _mtlBlitEncoderUse;
 	MVKPushConstantsCommandEncoderState _vertexPushConstants;
 	MVKPushConstantsCommandEncoderState _tessCtlPushConstants;
