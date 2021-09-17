@@ -25,6 +25,7 @@
 #include "MVKBuffer.h"
 #include "MVKFoundation.h"
 #include "MVKShaderModule.h"
+#include "MVKQueue.h"
 #include <string>
 
 using namespace std;
@@ -134,6 +135,14 @@ MVK_PUBLIC_SYMBOL void vkGetMTLBufferMVK(
 
     MVKBuffer* mvkBuffer = (MVKBuffer*)buffer;
     *pMTLBuffer = mvkBuffer->getMTLBuffer();
+}
+
+MVK_PUBLIC_SYMBOL void vkGetMTLCommandQueueMVK(
+    VkQueue                                     queue,
+    id<MTLCommandQueue>*                        pMTLCommandQueue) {
+
+    MVKQueue* mvkQueue = (MVKQueue*)queue;
+    *pMTLCommandQueue = mvkQueue->getMTLCommandQueue();
 }
 
 MVK_PUBLIC_SYMBOL VkResult vkUseIOSurfaceMVK(
