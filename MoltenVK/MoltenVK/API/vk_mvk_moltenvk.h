@@ -1003,6 +1003,7 @@ typedef void (VKAPI_PTR *PFN_vkGetMTLDeviceMVK)(VkPhysicalDevice physicalDevice,
 typedef VkResult (VKAPI_PTR *PFN_vkSetMTLTextureMVK)(VkImage image, id<MTLTexture> mtlTexture);
 typedef void (VKAPI_PTR *PFN_vkGetMTLTextureMVK)(VkImage image, id<MTLTexture>* pMTLTexture);
 typedef void (VKAPI_PTR *PFN_vkGetMTLBufferMVK)(VkBuffer buffer, id<MTLBuffer>* pMTLBuffer);
+typedef void (VKAPI_PTR *PFN_vkGetMTLCommandQueueMVK)(VkQueue queue, id<MTLCommandQueue>* pMTLCommandQueue);
 #endif // __OBJC__
 
 
@@ -1246,6 +1247,19 @@ VKAPI_ATTR void VKAPI_CALL vkGetMTLTextureMVK(
 VKAPI_ATTR void VKAPI_CALL vkGetMTLBufferMVK(
     VkBuffer                                    buffer,
     id<MTLBuffer>*                              pMTLBuffer);
+
+/**
+* Returns, in the pMTLCommandQueue pointer, the MTLCommandQueue currently underlaying the VkQueue.
+*
+* This function is not supported by the Vulkan SDK Loader and Layers framework.
+* The VkQueue object you provide here must have been retrieved directly from
+* MoltenVK, and not through the Vulkan SDK Loader and Layers framework. Opaque Vulkan
+* objects are often changed by layers, and passing them from one layer to another,
+* or from a layer directly to MoltenVK, will result in undefined behaviour.
+*/
+VKAPI_ATTR void VKAPI_CALL vkGetMTLCommandQueueMVK(
+    VkQueue                                     queue,
+    id<MTLCommandQueue>*                        pMTLCommandQueue);
 
 #endif // __OBJC__
 
