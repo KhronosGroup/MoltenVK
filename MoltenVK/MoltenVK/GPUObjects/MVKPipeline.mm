@@ -1655,6 +1655,7 @@ void MVKGraphicsPipeline::addPrevStageOutputToShaderConversionConfig(SPIRVToMSLC
 
         mvk::MSLShaderInput si;
         si.shaderInput.location = shaderOutputs[siIdx].location;
+		si.shaderInput.component = shaderOutputs[siIdx].component;
         si.shaderInput.builtin = shaderOutputs[siIdx].builtin;
         si.shaderInput.vecsize = shaderOutputs[siIdx].vecWidth;
 
@@ -2129,6 +2130,7 @@ namespace SPIRV_CROSS_NAMESPACE {
 	template<class Archive>
 	void serialize(Archive & archive, MSLShaderInput& si) {
 		archive(si.location,
+				si.component,
 				si.format,
 				si.builtin,
 				si.vecsize);
