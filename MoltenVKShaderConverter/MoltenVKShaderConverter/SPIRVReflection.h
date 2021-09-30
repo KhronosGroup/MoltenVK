@@ -64,6 +64,9 @@ namespace mvk {
 		/** The location number of the output. */
 		uint32_t location;
 
+		/** The component index of the output. */
+		uint32_t component;
+
 		/** If this is a builtin, the kind of builtin this is. */
 		spv::BuiltIn builtin;
 
@@ -202,8 +205,12 @@ namespace mvk {
 					isUsed = reflect.has_active_builtin(biType, storage);
 				}
 				uint32_t loc = -1;
+				uint32_t cmp = 0;
 				if (reflect.has_decoration(varID, spv::DecorationLocation)) {
 					loc = reflect.get_decoration(varID, spv::DecorationLocation);
+				}
+				if (reflect.has_decoration(varID, spv::DecorationComponent)) {
+					cmp = reflect.get_decoration(varID, spv::DecorationComponent);
 				}
 				if (model == spv::ExecutionModelTessellationControl && !patch)
 					type = &reflect.get_type(type->parent_type);
@@ -213,8 +220,10 @@ namespace mvk {
 						// Each member may have a location decoration. If not, each member
 						// gets an incrementing location.
 						uint32_t memberLoc = addSat(loc, idx);
+						uint32_t memberCmp = 0;
 						if (reflect.has_member_decoration(type->self, idx, spv::DecorationLocation)) {
 							memberLoc = reflect.get_member_decoration(type->self, idx, spv::DecorationLocation);
+							memberCmp = reflect.get_member_decoration(type->self, idx, spv::DecorationComponent);
 						}
 						patch = patch || reflect.has_member_decoration(type->self, idx, spv::DecorationPatch);
 						if (reflect.has_member_decoration(type->self, idx, spv::DecorationBuiltIn)) {
@@ -224,26 +233,26 @@ namespace mvk {
 						const SPIRV_CROSS_NAMESPACE::SPIRType& memberType = reflect.get_type(type->member_types[idx]);
 						if (memberType.columns > 1) {
 							for (uint32_t i = 0; i < memberType.columns; i++) {
-								outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), biType, patch, isUsed});
+								outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), memberCmp, biType, patch, isUsed});
 							}
 						} else if (!memberType.array.empty()) {
 							for (uint32_t i = 0; i < memberType.array[0]; i++) {
-								outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), biType, patch, isUsed});
+								outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), memberCmp, biType, patch, isUsed});
 							}
 						} else {
-							outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, biType, patch, isUsed});
+							outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, memberCmp, biType, patch, isUsed});
 						}
 					}
 				} else if (type->columns > 1) {
 					for (uint32_t i = 0; i < type->columns; i++) {
-						outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), biType, patch, isUsed});
+						outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), cmp, biType, patch, isUsed});
 					}
 				} else if (!type->array.empty()) {
 					for (uint32_t i = 0; i < type->array[0]; i++) {
-						outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), biType, patch, isUsed});
+						outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), cmp, biType, patch, isUsed});
 					}
 				} else {
-					outputs.push_back({type->basetype, type->vecsize, loc, biType, patch, isUsed});
+					outputs.push_back({type->basetype, type->vecsize, loc, cmp, biType, patch, isUsed});
 				}
 			}
 			// Sort outputs by ascending location.

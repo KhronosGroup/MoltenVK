@@ -124,8 +124,11 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Cross* l
 		spirv_cfg.cpp
 		spirv_cfg.hpp
 		spirv_common.hpp
+		spirv_cross_containers.hpp
+		spirv_cross_error_handling.hpp
 		spirv_cross_parsed_ir.cpp
 		spirv_cross_parsed_ir.hpp
+		spirv_cross_util.hpp
 		spirv_cross.cpp
 		spirv_cross.hpp
 		spirv_glsl.cpp
@@ -134,6 +137,9 @@ if you encounter any building errors, you may need to re-add the *SPIRV-Cross* l
 		spirv_msl.hpp
 		spirv_parser.cpp
 		spirv_parser.hpp
+		spirv_reflect.cpp
+		spirv_reflect.hpp
+		spirv.hpp
 
    In the ***Choose options for adding these files*** dialog that opens, select the ***Create groups*** option, 
    add the files to *all* of the `SPIRV-Cross-macOS`, `SPIRV-Cross-iOS`, and `SPIRV-Cross-tvOS` targets, 

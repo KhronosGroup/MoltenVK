@@ -21,7 +21,15 @@ Released TBD
 - Support maximum point primitive size of 511.
 - Improved checks for timestamp GPU counter support on older devices.
 - Update to latest SPIRV-Cross version:
-	- Add support for `OpSpecConstantOp` ops `OpQuantizeToF16` and `OpSRem`.
+	- MSL: Add support for `OpSpecConstantOp` ops `OpQuantizeToF16` and `OpSRem`.
+	- MSL: Return fragment function value even when last SPIR-V Op is discard (`OpKill`).
+	- MSL: Fix location and component variable matching between shader stages.
+	- MSL: Track location component to match vecsize between shader stages.
+	- MSL: Selectively enable `fast-math` in MSL code to match Vulkan CTS results.
+	- MSL: Honor `DecorationNoContraction` when compiling using `fast-math`.
+	- MSL: Honor infinities in `OpQuantizeToF16` when compiling using `fast-math`.
+	- MSL: Support synthetic functions in function constants.
+	- MSL: Improve handling of `INT_MIN/INT64_MIN` literals.
 
 
 
