@@ -20,6 +20,8 @@ Released TBD
 
 - Support maximum point primitive size of 511.
 - Improved checks for timestamp GPU counter support on older devices.
+- Fix incorrect validation error on multilayer `VkImage` marked for rendering, when multilayered-rendering 
+  is not supported on platform, but app doesn't actually attempt to render to multiple layers.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for `OpSpecConstantOp` ops `OpQuantizeToF16` and `OpSRem`.
 	- MSL: Return fragment function value even when last SPIR-V Op is discard (`OpKill`).

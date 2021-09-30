@@ -1000,15 +1000,9 @@ VkSampleCountFlagBits MVKImage::validateSamples(const VkImageCreateInfo* pCreate
 		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
 
-	if (pCreateInfo->arrayLayers > 1) {
-		if ( !_device->_pMetalFeatures->multisampleArrayTextures ) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support multisampled array textures. Setting sample count to 1."));
-			validSamples = VK_SAMPLE_COUNT_1_BIT;
-		}
-		if (isAttachment && !_device->_pMetalFeatures->multisampleLayeredRendering) {
-			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to multisampled array (layered) attachments. Setting sample count to 1."));
-			validSamples = VK_SAMPLE_COUNT_1_BIT;
-		}
+	if (pCreateInfo->arrayLayers > 1 && !_device->_pMetalFeatures->multisampleArrayTextures ) {
+		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support multisampled array textures. Setting sample count to 1."));
+		validSamples = VK_SAMPLE_COUNT_1_BIT;
 	}
 
 	return validSamples;
@@ -1029,12 +1023,8 @@ void MVKImage::validateConfig(const VkImageCreateInfo* pCreateInfo, bool isAttac
 	if (isChromaSubsampled && (pCreateInfo->arrayLayers > 1)) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Chroma-subsampled formats may only have one array layer."));
 	}
-
 	if ((pixFmts->getFormatType(pCreateInfo->format) == kMVKFormatDepthStencil) && !is2D ) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Under Metal, depth/stencil formats may only be used with 2D images."));
-	}
-	if (isAttachment && (pCreateInfo->arrayLayers > 1) && !_device->_pMetalFeatures->layeredRendering) {
-		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : This device does not support rendering to array (layered) attachments."));
 	}
 	if (isAttachment && (getImageType() == VK_IMAGE_TYPE_1D)) {
 		setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImage() : Metal does not support rendering to native 1D attachments. Consider enabling MVK_CONFIG_TEXTURE_1D_AS_2D."));
@@ -1796,6 +1786,19 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
 		_subresourceRange.layerCount = _image->getLayerCount() - _subresourceRange.baseArrayLayer;
 	}
 
+	bool isAttachment = mvkIsAnyFlagEnabled(_usage, (VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT |
+													 VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT |
+													 VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT |
+													 VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT));
+	if (isAttachment && _subresourceRange.layerCount > 1) {
+		if ( !_device->_pMetalFeatures->layeredRendering ) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView() : This device does not support rendering to array (layered) attachments."));
+		}
+		if (_image->getSampleCount() != VK_SAMPLE_COUNT_1_BIT && !_device->_pMetalFeatures->multisampleLayeredRendering ) {
+			setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView() : This device does not support rendering to multisampled array (layered) attachments."));
+		}
+	}
+
     VkExtent2D blockTexelSizeOfPlane[3];
     uint32_t bytesPerBlockOfPlane[3];
     MTLPixelFormat mtlPixFmtOfPlane[3];
@@ -1810,7 +1813,7 @@ MVKImageView::MVKImageView(MVKDevice* device, const VkImageViewCreateInfo* pCrea
         mtlPixFmtOfPlane[beginPlaneIndex] = getPixelFormats()->getMTLPixelFormat(pCreateInfo->format);
     } else {
         if (!mvkVkComponentMappingsMatch(pCreateInfo->components, {VK_COMPONENT_SWIZZLE_R, VK_COMPONENT_SWIZZLE_G, VK_COMPONENT_SWIZZLE_B, VK_COMPONENT_SWIZZLE_A})) {
-            setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "Image view swizzling for multi planar formats is not supported."));
+            setConfigurationResult(reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkCreateImageView() : Image view swizzling for multi planar formats is not supported."));
         }
     }
     for (uint8_t planeIndex = beginPlaneIndex; planeIndex < endPlaneIndex; planeIndex++) {
