@@ -22,6 +22,8 @@ Released TBD
 - Improved checks for timestamp GPU counter support on older devices.
 - Fix incorrect validation error on multilayer `VkImage` marked for rendering, when multilayered-rendering 
   is not supported on platform, but app doesn't actually attempt to render to multiple layers.
+- Fix dynamic pipeline state such as `vkCmdSetDepthBias()` sometimes ignoring pipeline dyamic 
+  state flags when called before `vkCmdBindPipeline()`.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for `OpSpecConstantOp` ops `OpQuantizeToF16` and `OpSRem`.
 	- MSL: Return fragment function value even when last SPIR-V Op is discard (`OpKill`).

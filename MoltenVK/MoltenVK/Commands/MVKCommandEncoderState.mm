@@ -276,20 +276,18 @@ void MVKDepthStencilCommandEncoderState::setStencilState(MVKMTLStencilDescriptor
     stencilInfo.depthFailureOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.depthFailOp);
     stencilInfo.depthStencilPassOperation = mvkMTLStencilOperationFromVkStencilOp(vkStencil.passOp);
 
-    bool useCompareMask = !_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
-    if (useCompareMask) { stencilInfo.readMask = vkStencil.compareMask; }
-
-    bool useWriteMask = !_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK);
-    if (useWriteMask) { stencilInfo.writeMask = vkStencil.writeMask; }
+    if ( !_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK) ) {
+		stencilInfo.readMask = vkStencil.compareMask;
+	}
+    if ( !_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK) ) {
+		stencilInfo.writeMask = vkStencil.writeMask;
+	}
 }
 
+// We don't check for dynamic state here, because if this is called before pipeline is set,
+// it may not be accurate, and if not dynamic, pipeline will override when it is encoded anyway.
 void MVKDepthStencilCommandEncoderState::setStencilCompareMask(VkStencilFaceFlags faceMask,
                                                                uint32_t stencilCompareMask) {
-
-    // If we can't set the state, or nothing is being set, just leave
-    if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK) &&
-           mvkIsAnyFlagEnabled(faceMask, VK_STENCIL_FRONT_AND_BACK)) ) { return; }
-
     if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
         _depthStencilData.frontFaceStencilData.readMask = stencilCompareMask;
     }
@@ -300,13 +298,10 @@ void MVKDepthStencilCommandEncoderState::setStencilCompareMask(VkStencilFaceFlag
     markDirty();
 }
 
+// We don't check for dynamic state here, because if this is called before pipeline is set,
+// it may not be accurate, and if not dynamic, pipeline will override when it is encoded anyway.
 void MVKDepthStencilCommandEncoderState::setStencilWriteMask(VkStencilFaceFlags faceMask,
                                                              uint32_t stencilWriteMask) {
-
-    // If we can't set the state, or nothing is being set, just leave
-    if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_WRITE_MASK) &&
-           mvkIsAnyFlagEnabled(faceMask, VK_STENCIL_FRONT_AND_BACK)) ) { return; }
-
     if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
         _depthStencilData.frontFaceStencilData.writeMask = stencilWriteMask;
     }
@@ -360,20 +355,16 @@ void MVKStencilReferenceValueCommandEncoderState:: setReferenceValues(const VkPi
     markDirty();
 }
 
+// We don't check for dynamic state here, because if this is called before pipeline is set,
+// it may not be accurate, and if not dynamic, pipeline will override when it is encoded anyway.
 void MVKStencilReferenceValueCommandEncoderState::setReferenceValues(VkStencilFaceFlags faceMask,
                                                                      uint32_t stencilReference) {
-
-    // If we can't set the state, or nothing is being set, just leave
-    if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_STENCIL_REFERENCE) &&
-           mvkIsAnyFlagEnabled(faceMask, VK_STENCIL_FRONT_AND_BACK)) ) { return; }
-
     if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_FRONT_BIT)) {
         _frontFaceValue = stencilReference;
     }
     if (mvkAreAllFlagsEnabled(faceMask, VK_STENCIL_FACE_BACK_BIT)) {
         _backFaceValue = stencilReference;
     }
-
     markDirty();
 }
 
@@ -401,12 +392,11 @@ void MVKDepthBiasCommandEncoderState::setDepthBias(const VkPipelineRasterization
     markDirty();
 }
 
+// We don't check for dynamic state here, because if this is called before pipeline is set,
+// it may not be accurate, and if not dynamic, pipeline will override when it is encoded anyway.
 void MVKDepthBiasCommandEncoderState::setDepthBias(float depthBiasConstantFactor,
                                                    float depthBiasSlopeFactor,
                                                    float depthBiasClamp) {
-
-    if ( !_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_DEPTH_BIAS) ) { return; }
-
     _depthBiasConstantFactor = depthBiasConstantFactor;
     _depthBiasSlopeFactor = depthBiasSlopeFactor;
     _depthBiasClamp = depthBiasClamp;
@@ -432,9 +422,8 @@ void MVKDepthBiasCommandEncoderState::encodeImpl(uint32_t stage) {
 void MVKBlendColorCommandEncoderState::setBlendColor(float red, float green,
                                                      float blue, float alpha,
                                                      bool isDynamic) {
-
-    // Abort if dynamic allowed but call is not dynamic, or vice-versa
-    if ( !(_cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_BLEND_CONSTANTS) == isDynamic) ) { return; }
+    // Abort if we are using dynamic, but call is not dynamic.
+	if ( !isDynamic && _cmdEncoder->supportsDynamicState(VK_DYNAMIC_STATE_BLEND_CONSTANTS) ) { return; }
 
     _red = red;
     _green = green;
