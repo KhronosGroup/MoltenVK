@@ -334,7 +334,17 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 	initDebugCallbacks(pCreateInfo);	// Do before any creation activities
 
 	mvkSetOrClear(&_appInfo, pCreateInfo->pApplicationInfo);
-	if (_appInfo.apiVersion == 0) { _appInfo.apiVersion = VK_API_VERSION_1_0; }	// Default
+    
+    if (_appInfo.apiVersion == 0) {
+        _appInfo.apiVersion = VK_API_VERSION_1_0;   // Default
+        
+    }
+    else if (VK_API_VERSION_MAJOR(_appInfo.apiVersion) > MVK_VERSION_MAJOR ||
+             VK_API_VERSION_MINOR(_appInfo.apiVersion) > MVK_VERSION_MINOR) {
+        reportMessage(ASL_LEVEL_WARNING, "Unsupported MoltenVK API version. Assuming VK_API_VERSION_1_1.");
+        _appInfo.apiVersion = MVK_VULKAN_API_VERSION;
+    }
+
 
 	initProcAddrs();		// Init function pointers
 
