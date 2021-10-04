@@ -335,16 +335,12 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 
 	mvkSetOrClear(&_appInfo, pCreateInfo->pApplicationInfo);
     
-    if (_appInfo.apiVersion == 0) {
-        _appInfo.apiVersion = VK_API_VERSION_1_0;   // Default
+    if (_appInfo.apiVersion > MVK_VULKAN_API_VERSION) {
+        MVKLogWarning("Unrecognized CreateInstance->pCreateInfo->pApplicationInfo->apiVersion number (0x%08x). Assuming MoltenVK %d.%d version.",
+                      _appInfo.apiVersion, MVK_VERSION_MAJOR, MVK_VERSION_MINOR);
     }
-    else if (VK_API_VERSION_MAJOR(_appInfo.apiVersion) > MVK_VERSION_MAJOR ||
-             VK_API_VERSION_MINOR(_appInfo.apiVersion) > MVK_VERSION_MINOR) {
-        reportMessage(ASL_LEVEL_WARNING,
-            "Unsupported MoltenVK API version. Assuming VK_API_VERSION_1_1.");
-        _appInfo.apiVersion = MVK_VULKAN_API_VERSION;
-    }
-
+    
+    if (_appInfo.apiVersion == 0) { _appInfo.apiVersion = VK_API_VERSION_1_0; }    // Default
 
 	initProcAddrs();		// Init function pointers
 
@@ -365,7 +361,7 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 			_physicalDevices.push_back(new MVKPhysicalDevice(this, mtlDev));
 		}
 	}
-
+    
 	if (_physicalDevices.empty()) {
 		setConfigurationResult(reportError(VK_ERROR_INCOMPATIBLE_DRIVER, "Vulkan is not supported on this device. MoltenVK requires Metal, which is not available on this device."));
 	}

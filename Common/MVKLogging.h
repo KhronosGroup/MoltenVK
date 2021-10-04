@@ -35,9 +35,9 @@ extern "C" {
  * This library adds flexible, non-intrusive logging and assertion capabilities
  * that can be efficiently enabled or disabled via compiler switches.
  *
- * There are four levels of logging: Trace, Info, Error and Debug, and each can be enabled
- * independently via the MVK_LOG_LEVEL_TRACE, MVK_LOG_LEVEL_INFO, MVK_LOG_LEVEL_ERROR and
- * MVK_LOG_LEVEL_DEBUG switches, respectively.
+ * There are five levels of logging: Trace, Info, Warning, Error and Debug, and each can be enabled
+ * independently via the MVK_LOG_LEVEL_TRACE, MVK_LOG_LEVEL_INFO, MVK_LOG_LEVEL_WARNING,
+ * MVK_LOG_LEVEL_ERROR and MVK_LOG_LEVEL_DEBUG switches, respectively.
  *
  * ALL logging can be enabled or disabled via the MVK_LOGGING_ENABLED switch.
  *
@@ -59,12 +59,17 @@ extern "C" {
  *		MVKLogErrorIf(cond, fmt, ...)	- same as MVKLogError if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
  *
+ *      MVKLogWarning(fmt, ...)              - recommended for not immediately harmful errors
+ *                                      - will print if MVK_LOG_LEVEL_WARNING is set on.
+ *      MVKLogWarningIf(cond, fmt, ...)  - same as MVKLogWarning if boolean "cond" condition expression evaluates to YES,
+ *                                        otherwise logs nothing.
+ *
  *		MVKLogInfo(fmt, ...)			- recommended for general, infrequent, information messages
  *										- will print if MVK_LOG_LEVEL_INFO is set on.
  *		MVKLogInfoIf(cond, fmt, ...)	- same as MVKLogInfo if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
  *
- *		MVKLogDebug(fmt, ...)			- recommended for temporary use during debugging
+ *		MVKLogDebug(fmt, ...)		- recommended for temporary use during debugging
  *										- will print if MVK_LOG_LEVEL_DEBUG is set on.
  *		MVKLogDebugIf(cond, fmt, ...)	- same as MVKLogDebug if boolean "cond" condition expression evaluates to YES,
  *										  otherwise logs nothing.
@@ -118,6 +123,9 @@ extern "C" {
 #ifndef MVK_LOG_LEVEL_ERROR
 #	define MVK_LOG_LEVEL_ERROR		MVK_LOGGING_ENABLED
 #endif
+#ifndef MVK_LOG_LEVEL_WARNING
+#   define MVK_LOG_LEVEL_WARNING    MVK_LOGGING_ENABLED
+#endif
 #ifndef MVK_LOG_LEVEL_INFO
 #	define MVK_LOG_LEVEL_INFO		MVK_LOGGING_ENABLED
 #endif
@@ -138,6 +146,15 @@ extern "C" {
 #else
 #	define MVKLogError(...)
 #	define MVKLogErrorIf(cond, fmt, ...)
+#endif
+
+// Warning logging - for not immediately harmful errors
+#if MVK_LOG_LEVEL_WARNING
+#    define MVKLogWarning(fmt, ...)         MVKLogWarningImpl(fmt, ##__VA_ARGS__)
+#    define MVKLogWarningIf(cond, fmt, ...) if(cond) { MVKLogWarningImpl(fmt, ##__VA_ARGS__); }
+#else
+#    define MVKLogWarning(...)
+#    define MVKLogWarningIf(cond, fmt, ...)
 #endif
 
 // Info logging - for general, non-performance affecting information messages
@@ -168,6 +185,7 @@ extern "C" {
 #endif
 
 #define MVKLogErrorImpl(fmt, ...)		reportMessage(ASL_LEVEL_ERR, fmt, ##__VA_ARGS__)
+#define MVKLogWarningImpl(fmt, ...)     reportMessage(ASL_LEVEL_WARNING, fmt, ##__VA_ARGS__)
 #define MVKLogInfoImpl(fmt, ...)		reportMessage(ASL_LEVEL_NOTICE, fmt, ##__VA_ARGS__)
 #define MVKLogTraceImpl(fmt, ...)		reportMessage(ASL_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
 #define MVKLogDebugImpl(fmt, ...)		reportMessage(ASL_LEVEL_DEBUG, fmt, ##__VA_ARGS__)
