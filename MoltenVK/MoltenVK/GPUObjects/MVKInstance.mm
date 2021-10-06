@@ -335,13 +335,15 @@ MVKInstance::MVKInstance(const VkInstanceCreateInfo* pCreateInfo) : _enabledExte
 
 	mvkSetOrClear(&_appInfo, pCreateInfo->pApplicationInfo);
     
-    if (_appInfo.apiVersion > MVK_VULKAN_API_VERSION) {
+    if (_appInfo.apiVersion == 0) {
+        _appInfo.apiVersion = VK_API_VERSION_1_0;   // Default
+    }
+    else if (MVK_VULKAN_API_VERSION_CONFORM(_appInfo.apiVersion) > MVK_VULKAN_API_VERSION_CONFORM(MVK_VULKAN_API_VERSION)) {
         MVKLogWarning("Unrecognized CreateInstance->pCreateInfo->pApplicationInfo->apiVersion number (0x%08x). Assuming MoltenVK %d.%d version.",
                       _appInfo.apiVersion, MVK_VERSION_MAJOR, MVK_VERSION_MINOR);
+        _appInfo.apiVersion = MVK_VULKAN_API_VERSION;
     }
     
-    if (_appInfo.apiVersion == 0) { _appInfo.apiVersion = VK_API_VERSION_1_0; }    // Default
-
 	initProcAddrs();		// Init function pointers
 
 	setConfigurationResult(verifyLayers(pCreateInfo->enabledLayerCount, pCreateInfo->ppEnabledLayerNames));
