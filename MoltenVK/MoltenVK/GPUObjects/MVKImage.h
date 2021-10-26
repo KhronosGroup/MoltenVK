@@ -530,7 +530,6 @@ public:
 protected:
     void propagateDebugName();
     id<MTLTexture> newMTLTexture();
-	id<MTLTexture> getUnswizzledMTLTexture();
 	VkResult initSwizzledMTLPixelFormat(const VkImageViewCreateInfo* pCreateInfo);
 	bool enableSwizzling();
     MVKImageViewPlane(MVKImageView* imageView, uint8_t planeIndex, MTLPixelFormat mtlPixFmt, const VkImageViewCreateInfo* pCreateInfo);

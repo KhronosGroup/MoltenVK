@@ -1449,13 +1449,6 @@ id<MTLTexture> MVKImageViewPlane::newMTLTexture() {
     }
 }
 
-// If a swizzle is being applied, returns the unswizzled parent texture.
-// This is relevant for depth/stencil attachments that are also sampled and might have forced swizzles.
-id<MTLTexture> MVKImageViewPlane::getUnswizzledMTLTexture() {
-	id<MTLTexture> mtlTex = getMTLTexture();
-	return _useNativeSwizzle && mtlTex.parentTexture ? mtlTex.parentTexture : mtlTex;
-}
-
 
 #pragma mark Construction
 
@@ -1694,26 +1687,40 @@ void MVKImageView::propagateDebugName() {
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptor(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     MVKImageViewPlane* plane = _planes[0];
-    mtlAttDesc.texture = plane->getUnswizzledMTLTexture();
-    mtlAttDesc.level = plane->_useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
+    bool useView = plane->_useMTLTextureView;
+    mtlAttDesc.texture = plane->getMTLTexture();
+    // If a native swizzle is being applied, use the unswizzled parent texture.
+    // This is relevant for depth/stencil attachments that are also sampled and might have forced swizzles.
+    if (plane->_useNativeSwizzle && mtlAttDesc.texture.parentTexture) {
+        useView = false;
+        mtlAttDesc.texture = mtlAttDesc.texture.parentTexture;
+    }
+    mtlAttDesc.level = useView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.texture.textureType == MTLTextureType3D) {
         mtlAttDesc.slice = 0;
         mtlAttDesc.depthPlane = _subresourceRange.baseArrayLayer;
     } else {
-        mtlAttDesc.slice = plane->_useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
+        mtlAttDesc.slice = useView ? 0 : _subresourceRange.baseArrayLayer;
         mtlAttDesc.depthPlane = 0;
     }
 }
 
 void MVKImageView::populateMTLRenderPassAttachmentDescriptorResolve(MTLRenderPassAttachmentDescriptor* mtlAttDesc) {
     MVKImageViewPlane* plane = _planes[0];
-    mtlAttDesc.resolveTexture = plane->getUnswizzledMTLTexture();
-    mtlAttDesc.resolveLevel = plane->_useMTLTextureView ? 0 : _subresourceRange.baseMipLevel;
+    bool useView = plane->_useMTLTextureView;
+    mtlAttDesc.resolveTexture = plane->getMTLTexture();
+    // If a native swizzle is being applied, use the unswizzled parent texture.
+    // This is relevant for depth/stencil attachments that are also sampled and might have forced swizzles.
+    if (plane->_useNativeSwizzle && mtlAttDesc.resolveTexture.parentTexture) {
+        useView = false;
+        mtlAttDesc.resolveTexture = mtlAttDesc.resolveTexture.parentTexture;
+    }
+    mtlAttDesc.resolveLevel = useView ? 0 : _subresourceRange.baseMipLevel;
     if (mtlAttDesc.resolveTexture.textureType == MTLTextureType3D) {
         mtlAttDesc.resolveSlice = 0;
-        mtlAttDesc.resolveDepthPlane = plane->_useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
+        mtlAttDesc.resolveDepthPlane = useView ? 0 : _subresourceRange.baseArrayLayer;
     } else {
-        mtlAttDesc.resolveSlice = plane->_useMTLTextureView ? 0 : _subresourceRange.baseArrayLayer;
+        mtlAttDesc.resolveSlice = useView ? 0 : _subresourceRange.baseArrayLayer;
         mtlAttDesc.resolveDepthPlane = 0;
     }
 }
