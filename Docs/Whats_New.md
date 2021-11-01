@@ -24,6 +24,8 @@ Released TBD
   is not supported on platform, but app doesn't actually attempt to render to multiple layers.
 - Fix dynamic pipeline state such as `vkCmdSetDepthBias()` sometimes ignoring pipeline dyamic 
   state flags when called before `vkCmdBindPipeline()`.
+- Remove advertising support for pixel formats `VK_FORMAT_BC1_RGB_UNORM_BLOCK` and `VK_FORMAT_BC1_RGB_SRGB_BLOCK`, 
+  as these can cause rare compatibility problems with transparency encoding.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for `OpSpecConstantOp` ops `OpQuantizeToF16` and `OpSRem`.
 	- MSL: Return fragment function value even when last SPIR-V Op is discard (`OpKill`).
