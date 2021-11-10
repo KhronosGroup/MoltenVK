@@ -935,8 +935,8 @@ void MVKPixelFormats::initVkFormatCapabilities() {
 
 	addVkFormatDesc( X8_D24_UNORM_PACK32, Invalid, Depth24Unorm_Stencil8, Invalid, Invalid, 1, 1, 4, DepthStencil );
 
-	addVkFormatDesc( BC1_RGB_UNORM_BLOCK, Invalid, BC1_RGBA, Invalid, Invalid, 4, 4, 8, Compressed );
-	addVkFormatDesc( BC1_RGB_SRGB_BLOCK, Invalid, BC1_RGBA_sRGB, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( BC1_RGB_UNORM_BLOCK, BC1_RGBA, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
+	addVkFormatDesc( BC1_RGB_SRGB_BLOCK, BC1_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
 	addVkFormatDesc( BC1_RGBA_UNORM_BLOCK, BC1_RGBA, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
 	addVkFormatDesc( BC1_RGBA_SRGB_BLOCK, BC1_RGBA_sRGB, Invalid, Invalid, Invalid, 4, 4, 8, Compressed );
 
