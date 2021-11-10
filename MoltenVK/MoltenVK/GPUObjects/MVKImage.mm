@@ -1489,13 +1489,19 @@ VkResult MVKImageViewPlane::initSwizzledMTLPixelFormat(const VkImageViewCreateIn
 	_componentSwizzle = pCreateInfo->components;
 	VkImageAspectFlags aspectMask = pCreateInfo->subresourceRange.aspectMask;
 
+#define adjustComponentSwizzleValue(comp, currVal, newVal)    if (_componentSwizzle.comp == VK_COMPONENT_SWIZZLE_ ##currVal) { _componentSwizzle.comp = VK_COMPONENT_SWIZZLE_ ##newVal; }
+
 	// Use swizzle adjustment to bridge some differences between Vulkan and Metal pixel formats.
 	// Do this ahead of other tests and adjustments so that swizzling will be enabled by tests below.
 	switch (pCreateInfo->format) {
 		case VK_FORMAT_BC1_RGB_UNORM_BLOCK:
 		case VK_FORMAT_BC1_RGB_SRGB_BLOCK:
-			// Metal doesn't support BC1_RGB, so force substituted BC1_RGBA alpha to 1.0.
-			_componentSwizzle.a = VK_COMPONENT_SWIZZLE_ONE;
+			// Metal doesn't support BC1_RGB, so force references to substituted BC1_RGBA alpha to 1.0.
+			adjustComponentSwizzleValue(r, A, ONE);
+			adjustComponentSwizzleValue(g, A, ONE);
+			adjustComponentSwizzleValue(b, A, ONE);
+			adjustComponentSwizzleValue(a, A, ONE);
+			adjustComponentSwizzleValue(a, IDENTITY, ONE);
 			break;
 
 		default:
