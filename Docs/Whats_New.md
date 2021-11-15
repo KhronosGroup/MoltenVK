@@ -16,24 +16,47 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 MoltenVK 1.1.6
 --------------
 
-Released TBD
+Released 2021/11/15
 
-- Support maximum point primitive size of 511.
+- Set maximum point primitive size based on GPU vendor ID, which can now be as large as `511`.
 - Improved checks for timestamp GPU counter support on older devices.
 - Fix incorrect validation error on multilayer `VkImage` marked for rendering, when multilayered-rendering 
   is not supported on platform, but app doesn't actually attempt to render to multiple layers.
-- Fix dynamic pipeline state such as `vkCmdSetDepthBias()` sometimes ignoring pipeline dyamic 
+- Fix dynamic pipeline state such as `vkCmdSetDepthBias()` sometimes ignoring pipeline dynamic 
   state flags when called before `vkCmdBindPipeline()`.
+- Fix incorrect validation of multilayer-rendering validation when `MVKImageView` 
+  does not actually perform multilayer-rendering.
+- Fix issue where dynamic pipeline flags were sometimes read from previously bound pipeline.
+- Fix issue where correct base layer and mipmap for attachment was sometimes not being used.
+- Add `MTLFence` between Metal encoders and timestamp stage counter BLIT encoder 
+  to ensure previous work is finished before being timestamped.
+- Fix issue with `BC1_RGB` compressed format where incorrect alpha value returned.
+- Add `vkGetMTLCommandQueueMVK()` function to expose underlying `MTLCommandQueue` object.
+- Add `vkSetWorkgroupSizeMVK()` function.
+- Add unsupported `VkApplicationInfo::apiVersion` warning.
 - Update to latest SPIRV-Cross version:
 	- MSL: Add support for `OpSpecConstantOp` ops `OpQuantizeToF16` and `OpSRem`.
 	- MSL: Return fragment function value even when last SPIR-V Op is discard (`OpKill`).
 	- MSL: Fix location and component variable matching between shader stages.
-	- MSL: Track location component to match vecsize between shader stages.
+	- MSL: Fix type redirection when struct members are reordered to align with offsets.
+	- MSL: Remove over-zealous check for struct packing compatibility.
+	- MSL: Correctly emit user(`clip/cullN`) for clip/cull builtins in tess output struct.
+	- MSL: Don't output depth and stencil values with explicit early fragment tests.
+	- MSL: Track location component to match `vecsize` between shader stages.
 	- MSL: Selectively enable `fast-math` in MSL code to match Vulkan CTS results.
 	- MSL: Honor `DecorationNoContraction` when compiling using `fast-math`.
 	- MSL: Honor infinities in `OpQuantizeToF16` when compiling using `fast-math`.
 	- MSL: Support synthetic functions in function constants.
 	- MSL: Improve handling of `INT_MIN/INT64_MIN` literals.
+	- MSL: Consolidate `spvQuantizeToF16()` functions into a single template function.
+	- MSL: Use `vec<T, n>` in template `SpvHalfTypeSelector` for function `spvQuantizeToF16()`.
+	- MSL: Support more usecases for unpacked vectors.
+	- MSL: Workaround compiler crashes when using `threadgroup bool`.
+	- MSL: Handle non-thread storage class in `Modf/Frexp` pointer versions.
+	- Improve handling of `INT_MIN/INT64_MIN` literals.
+	- Per spec, support undefined behavior for out-of-bounds swizzles.
+	- Correctly reflect declared buffer size for out of order members.
+	- Separate (partially) the tracking of depth images from depth compare ops.
 
 
 

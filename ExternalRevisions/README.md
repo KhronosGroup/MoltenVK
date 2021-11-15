@@ -203,7 +203,9 @@ the *SPIRV-Tools* library to the `ExternalDependencies` *Xcode* project as follo
    that opens, select the _**Create groups**_ option, add the files to *all* of the `SPIRV-Tools-macOS`, 
    `SPIRV-Tools-iOS`, and `SPIRV-Tools-tvOS` targets, and click the ***Finish*** button.
 
-5. Remove the *Group* named `fuzz` from under the *Group* named `External/SPIRV-Tools/source`.
+5. Remove the following *Groups* from under the *Group* named `External/SPIRV-Tools/source`:
+   - `fuzz`
+   - `wasm`
 
 6. In the `Scripts` folder, run `./packagePregenSpirvToolsHeaders`, which will fetch and build the 
    full `SPIRV-Tools` library and will update `Templates/spirv-tools/build.zip` from the `*.h` and 
