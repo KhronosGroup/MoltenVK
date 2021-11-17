@@ -50,7 +50,7 @@ typedef unsigned long MTLLanguageVersion;
  */
 #define MVK_VERSION_MAJOR   1
 #define MVK_VERSION_MINOR   1
-#define MVK_VERSION_PATCH   6
+#define MVK_VERSION_PATCH   7
 
 #define MVK_MAKE_VERSION(major, minor, patch)    (((major) * 10000) + ((minor) * 100) + (patch))
 #define MVK_VERSION     MVK_MAKE_VERSION(MVK_VERSION_MAJOR, MVK_VERSION_MINOR, MVK_VERSION_PATCH)

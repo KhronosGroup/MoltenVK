@@ -241,6 +241,20 @@ Building from the command line creates the same `Package` folder structure descr
 building from within *Xcode*.
 
 
+### Hiding Vulkan API Symbols
+
+You can optionally build MoltenVK with the Vulkan API static call symbols (`vk*`) hidden,
+to avoid library linking conflicts when bound to a Vulkan Loader that also exports identical symbols.
+
+To do so, when building MoltenVK, set the build setting or environment varible `MVK_HIDE_VULKAN_SYMBOLS=1`.
+This build setting can be changed in the `MoltenVK.xcodeproj` *Xcode* project, or it can be included in
+any of the `make` build commands. For example:
+
+	make MVK_HIDE_VULKAN_SYMBOLS=1
+	...
+	make macos-debug MVK_HIDE_VULKAN_SYMBOLS=1
+	...etc.
+
 
 <a name="demos"></a>
 Running **MoltenVK** Demo Applications

@@ -168,7 +168,7 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 #pragma mark -
 #pragma mark Vulkan 1.0 calls
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateInstance(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateInstance(
     const VkInstanceCreateInfo*                 pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
     VkInstance*                                 pInstance) {
@@ -182,7 +182,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateInstance(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyInstance(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyInstance(
     VkInstance                                  instance,
 	const VkAllocationCallbacks*                pAllocator) {
 
@@ -191,7 +191,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyInstance(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDevices(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkEnumeratePhysicalDevices(
     VkInstance                                  instance,
     uint32_t*                                   pPhysicalDeviceCount,
     VkPhysicalDevice*                           pPhysicalDevices) {
@@ -203,7 +203,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDevices(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceFeatures(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceFeatures*                   pFeatures) {
 	
@@ -213,7 +213,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFormatProperties(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceFormatProperties(
     VkPhysicalDevice                            physicalDevice,
     VkFormat                                    format,
     VkFormatProperties*                         pFormatProperties) {
@@ -224,7 +224,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFormatProperties(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties(
     VkPhysicalDevice                            physicalDevice,
     VkFormat                                    format,
     VkImageType                                 type,
@@ -240,7 +240,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceProperties(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceProperties*                 pProperties) {
 
@@ -250,7 +250,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties(
 	VkPhysicalDevice                            physicalDevice,
 	uint32_t*                                   pQueueFamilyPropertyCount,
 	VkQueueFamilyProperties*                    pQueueFamilyProperties) {
@@ -261,7 +261,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceMemoryProperties(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceMemoryProperties*           pMemoryProperties) {
 
@@ -271,7 +271,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
+MVK_PUBLIC_VULKAN_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
     VkInstance                                  instance,
     const char*                                 pName) {
 
@@ -295,7 +295,7 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetInstanceProcAddr(
 	return func;
 }
 
-MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetDeviceProcAddr(
+MVK_PUBLIC_VULKAN_SYMBOL PFN_vkVoidFunction vkGetDeviceProcAddr(
     VkDevice                                    device,
     const char*                                 pName) {
 	
@@ -306,7 +306,7 @@ MVK_PUBLIC_SYMBOL PFN_vkVoidFunction vkGetDeviceProcAddr(
 	return func;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateDevice(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDevice(
     VkPhysicalDevice                            physicalDevice,
     const VkDeviceCreateInfo*                   pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -322,7 +322,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDevice(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyDevice(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDevice(
 	VkDevice                                    device,
 	const VkAllocationCallbacks*                pAllocator) {
 
@@ -331,7 +331,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDevice(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceExtensionProperties(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkEnumerateInstanceExtensionProperties(
     const char*                                 pLayerName,
     uint32_t*                                   pCount,
     VkExtensionProperties*                      pProperties) {
@@ -342,7 +342,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceExtensionProperties(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkEnumerateDeviceExtensionProperties(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkEnumerateDeviceExtensionProperties(
     VkPhysicalDevice                            physicalDevice,
     const char*                                 pLayerName,
     uint32_t*                                   pCount,
@@ -355,7 +355,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateDeviceExtensionProperties(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceLayerProperties(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkEnumerateInstanceLayerProperties(
     uint32_t*                                   pCount,
     VkLayerProperties*                          pProperties) {
 
@@ -365,7 +365,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceLayerProperties(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkEnumerateDeviceLayerProperties(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkEnumerateDeviceLayerProperties(
     VkPhysicalDevice                            physicalDevice,
     uint32_t*                                   pCount,
     VkLayerProperties*                          pProperties) {
@@ -377,7 +377,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateDeviceLayerProperties(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetDeviceQueue(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceQueue(
     VkDevice                                    device,
     uint32_t                                    queueFamilyIndex,
     uint32_t                                    queueIndex,
@@ -389,7 +389,7 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceQueue(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkQueueSubmit(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkQueueSubmit(
 	VkQueue                                     queue,
 	uint32_t                                    submitCount,
 	const VkSubmitInfo*                         pSubmits,
@@ -402,7 +402,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueueSubmit(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkQueueWaitIdle(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkQueueWaitIdle(
     VkQueue                                     queue) {
 	
 	MVKTraceVulkanCallStart();
@@ -412,7 +412,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueueWaitIdle(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkDeviceWaitIdle(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkDeviceWaitIdle(
     VkDevice                                    device) {
 	
 	MVKTraceVulkanCallStart();
@@ -422,7 +422,7 @@ MVK_PUBLIC_SYMBOL VkResult vkDeviceWaitIdle(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkAllocateMemory(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAllocateMemory(
     VkDevice                                    device,
     const VkMemoryAllocateInfo*                 pAllocateInfo,
     const VkAllocationCallbacks*                pAllocator,
@@ -438,7 +438,7 @@ MVK_PUBLIC_SYMBOL VkResult vkAllocateMemory(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkFreeMemory(
+MVK_PUBLIC_VULKAN_SYMBOL void vkFreeMemory(
     VkDevice                                    device,
 	VkDeviceMemory                              mem,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -449,7 +449,7 @@ MVK_PUBLIC_SYMBOL void vkFreeMemory(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkMapMemory(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMapMemory(
    VkDevice                                    device,
    VkDeviceMemory                              mem,
    VkDeviceSize                                offset,
@@ -464,7 +464,7 @@ MVK_PUBLIC_SYMBOL VkResult vkMapMemory(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkUnmapMemory(
+MVK_PUBLIC_VULKAN_SYMBOL void vkUnmapMemory(
     VkDevice                                    device,
     VkDeviceMemory                              mem) {
 	
@@ -474,7 +474,7 @@ MVK_PUBLIC_SYMBOL void vkUnmapMemory(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkFlushMappedMemoryRanges(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkFlushMappedMemoryRanges(
     VkDevice                                    device,
     uint32_t                                    memRangeCount,
     const VkMappedMemoryRange*                  pMemRanges) {
@@ -491,7 +491,7 @@ MVK_PUBLIC_SYMBOL VkResult vkFlushMappedMemoryRanges(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkInvalidateMappedMemoryRanges(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkInvalidateMappedMemoryRanges(
     VkDevice                                    device,
     uint32_t                                    memRangeCount,
     const VkMappedMemoryRange*                  pMemRanges) {
@@ -503,7 +503,7 @@ MVK_PUBLIC_SYMBOL VkResult vkInvalidateMappedMemoryRanges(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetDeviceMemoryCommitment(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceMemoryCommitment(
     VkDevice                                    device,
     VkDeviceMemory                              memory,
     VkDeviceSize*                               pCommittedMemoryInBytes) {
@@ -514,7 +514,7 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceMemoryCommitment(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkBindBufferMemory(
     VkDevice                                    device,
     VkBuffer                                    buffer,
     VkDeviceMemory                              mem,
@@ -528,7 +528,7 @@ MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkBindImageMemory(
     VkDevice                                    device,
     VkImage                                     image,
     VkDeviceMemory                              mem,
@@ -542,7 +542,7 @@ MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetBufferMemoryRequirements(
     VkDevice                                    device,
     VkBuffer                                    buffer,
     VkMemoryRequirements*                       pMemoryRequirements) {
@@ -553,7 +553,7 @@ MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetImageMemoryRequirements(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetImageMemoryRequirements(
     VkDevice                                    device,
     VkImage                                     image,
     VkMemoryRequirements*                       pMemoryRequirements) {
@@ -564,7 +564,7 @@ MVK_PUBLIC_SYMBOL void vkGetImageMemoryRequirements(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetImageSparseMemoryRequirements(
     VkDevice                                    device,
     VkImage                                     image,
     uint32_t*                                   pNumRequirements,
@@ -580,7 +580,7 @@ MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties(
 	VkPhysicalDevice                            physicalDevice,
 	VkFormat                                    format,
 	VkImageType                                 type,
@@ -600,7 +600,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkQueueBindSparse(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkQueueBindSparse(
 	VkQueue                                     queue,
 	uint32_t                                    bindInfoCount,
 	const VkBindSparseInfo*                     pBindInfo,
@@ -613,7 +613,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueueBindSparse(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateFence(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateFence(
     VkDevice                                    device,
     const VkFenceCreateInfo*                    pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -629,7 +629,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateFence(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyFence(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyFence(
     VkDevice                                    device,
 	VkFence                                     fence,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -640,7 +640,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyFence(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkResetFences(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkResetFences(
     VkDevice                                    device,
     uint32_t                                    fenceCount,
     const VkFence*                              pFences) {
@@ -651,7 +651,7 @@ MVK_PUBLIC_SYMBOL VkResult vkResetFences(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetFenceStatus(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetFenceStatus(
     VkDevice                                    device,
     VkFence                                     fence) {
 	
@@ -665,7 +665,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetFenceStatus(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkWaitForFences(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitForFences(
     VkDevice                                    device,
     uint32_t                                    fenceCount,
     const VkFence*                              pFences,
@@ -679,7 +679,7 @@ MVK_PUBLIC_SYMBOL VkResult vkWaitForFences(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateSemaphore(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateSemaphore(
     VkDevice                                    device,
     const VkSemaphoreCreateInfo*                pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -695,7 +695,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSemaphore(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroySemaphore(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroySemaphore(
     VkDevice                                    device,
 	VkSemaphore                                 semaphore,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -706,7 +706,7 @@ MVK_PUBLIC_SYMBOL void vkDestroySemaphore(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateEvent(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateEvent(
     VkDevice                                    device,
     const VkEventCreateInfo*                    pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -722,7 +722,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateEvent(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyEvent(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyEvent(
     VkDevice                                    device,
 	VkEvent                                     event,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -733,7 +733,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyEvent(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetEventStatus(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetEventStatus(
     VkDevice                                    device,
     VkEvent                                     event) {
 	
@@ -747,7 +747,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetEventStatus(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkSetEvent(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetEvent(
     VkDevice                                    device,
     VkEvent                                     event) {
 	
@@ -758,7 +758,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetEvent(
 	return VK_SUCCESS;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkResetEvent(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkResetEvent(
     VkDevice                                    device,
     VkEvent                                     event) {
 	
@@ -769,7 +769,7 @@ MVK_PUBLIC_SYMBOL VkResult vkResetEvent(
 	return VK_SUCCESS;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateQueryPool(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateQueryPool(
     VkDevice                                    device,
     const VkQueryPoolCreateInfo*                pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -785,7 +785,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateQueryPool(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyQueryPool(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyQueryPool(
     VkDevice                                    device,
 	VkQueryPool                                 queryPool,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -796,7 +796,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyQueryPool(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetQueryPoolResults(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetQueryPoolResults(
 	VkDevice                                    device,
 	VkQueryPool                                 queryPool,
 	uint32_t                                    firstQuery,
@@ -813,7 +813,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetQueryPoolResults(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateBuffer(
     VkDevice                                    device,
     const VkBufferCreateInfo*                   pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -829,7 +829,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateBuffer(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyBuffer(
     VkDevice                                    device,
 	VkBuffer                                    buffer,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -840,7 +840,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyBuffer(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateBufferView(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateBufferView(
     VkDevice                                    device,
     const VkBufferViewCreateInfo*               pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -856,7 +856,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateBufferView(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyBufferView(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyBufferView(
     VkDevice                                    device,
 	VkBufferView                                bufferView,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -867,7 +867,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyBufferView(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateImage(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateImage(
     VkDevice                                    device,
     const VkImageCreateInfo*                    pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -883,7 +883,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateImage(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyImage(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyImage(
     VkDevice                                    device,
 	VkImage                                     image,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -894,7 +894,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyImage(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetImageSubresourceLayout(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetImageSubresourceLayout(
     VkDevice                                    device,
     VkImage                                     image,
     const VkImageSubresource*                   pSubresource,
@@ -906,7 +906,7 @@ MVK_PUBLIC_SYMBOL void vkGetImageSubresourceLayout(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateImageView(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateImageView(
     VkDevice                                    device,
     const VkImageViewCreateInfo*                pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -922,7 +922,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateImageView(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyImageView(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyImageView(
     VkDevice                                    device,
 	VkImageView                                 imageView,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -933,7 +933,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyImageView(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateShaderModule(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateShaderModule(
     VkDevice                                    device,
     const VkShaderModuleCreateInfo*             pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -949,7 +949,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateShaderModule(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyShaderModule(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyShaderModule(
     VkDevice                                    device,
 	VkShaderModule                              shaderModule,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -960,7 +960,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyShaderModule(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreatePipelineCache(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePipelineCache(
     VkDevice                                    device,
     const VkPipelineCacheCreateInfo*            pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -976,7 +976,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreatePipelineCache(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyPipelineCache(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPipelineCache(
     VkDevice                                    device,
 	VkPipelineCache                             pipelineCache,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -987,7 +987,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipelineCache(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPipelineCacheData(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPipelineCacheData(
 	VkDevice                                    device,
 	VkPipelineCache                             pipelineCache,
 	size_t*                                     pDataSize,
@@ -1000,7 +1000,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPipelineCacheData(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkMergePipelineCaches(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkMergePipelineCaches(
     VkDevice                                    device,
     VkPipelineCache                             destCache,
     uint32_t                                    srcCacheCount,
@@ -1013,7 +1013,7 @@ MVK_PUBLIC_SYMBOL VkResult vkMergePipelineCaches(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateGraphicsPipelines(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateGraphicsPipelines(
     VkDevice                                    device,
     VkPipelineCache                             pipelineCache,
     uint32_t                                    count,
@@ -1028,7 +1028,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateGraphicsPipelines(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateComputePipelines(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateComputePipelines(
     VkDevice                                    device,
     VkPipelineCache                             pipelineCache,
     uint32_t                                    count,
@@ -1043,7 +1043,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateComputePipelines(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyPipeline(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPipeline(
     VkDevice                                    device,
 	VkPipeline                                  pipeline,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -1054,7 +1054,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipeline(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreatePipelineLayout(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePipelineLayout(
     VkDevice                                    device,
     const VkPipelineLayoutCreateInfo*           pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -1070,7 +1070,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreatePipelineLayout(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyPipelineLayout(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPipelineLayout(
     VkDevice                                    device,
 	VkPipelineLayout                            pipelineLayout,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -1081,7 +1081,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyPipelineLayout(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateSampler(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateSampler(
     VkDevice                                    device,
     const VkSamplerCreateInfo*                  pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -1097,7 +1097,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSampler(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroySampler(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroySampler(
     VkDevice                                    device,
 	VkSampler                                   sampler,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -1108,7 +1108,7 @@ MVK_PUBLIC_SYMBOL void vkDestroySampler(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorSetLayout(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDescriptorSetLayout(
     VkDevice                                    device,
     const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -1124,7 +1124,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorSetLayout(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyDescriptorSetLayout(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDescriptorSetLayout(
     VkDevice                                    device,
 	VkDescriptorSetLayout                       descriptorSetLayout,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -1135,7 +1135,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorSetLayout(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorPool(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDescriptorPool(
     VkDevice                                    device,
     const VkDescriptorPoolCreateInfo*           pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -1151,7 +1151,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorPool(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyDescriptorPool(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDescriptorPool(
     VkDevice                                    device,
 	VkDescriptorPool                            descriptorPool,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -1162,7 +1162,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorPool(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkResetDescriptorPool(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkResetDescriptorPool(
 	VkDevice                                    device,
 	VkDescriptorPool                            descriptorPool,
 	VkDescriptorPoolResetFlags                  flags) {
@@ -1174,7 +1174,7 @@ MVK_PUBLIC_SYMBOL VkResult vkResetDescriptorPool(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkAllocateDescriptorSets(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAllocateDescriptorSets(
 	VkDevice                                    device,
 	const VkDescriptorSetAllocateInfo*          pAllocateInfo,
 	VkDescriptorSet*                            pDescriptorSets) {
@@ -1186,7 +1186,7 @@ MVK_PUBLIC_SYMBOL VkResult vkAllocateDescriptorSets(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkFreeDescriptorSets(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkFreeDescriptorSets(
     VkDevice                                    device,
     VkDescriptorPool                            descriptorPool,
     uint32_t                                    count,
@@ -1199,7 +1199,7 @@ MVK_PUBLIC_SYMBOL VkResult vkFreeDescriptorSets(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSets(
+MVK_PUBLIC_VULKAN_SYMBOL void vkUpdateDescriptorSets(
     VkDevice                                    device,
     uint32_t                                    writeCount,
     const VkWriteDescriptorSet*                 pDescriptorWrites,
@@ -1211,7 +1211,7 @@ MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSets(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateFramebuffer(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateFramebuffer(
     VkDevice                                    device,
     const VkFramebufferCreateInfo*              pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -1227,7 +1227,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateFramebuffer(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyFramebuffer(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyFramebuffer(
     VkDevice                                    device,
 	VkFramebuffer                               framebuffer,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -1238,7 +1238,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyFramebuffer(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateRenderPass(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateRenderPass(
     VkDevice                                    device,
     const VkRenderPassCreateInfo*               pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -1254,7 +1254,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateRenderPass(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyRenderPass(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyRenderPass(
     VkDevice                                    device,
 	VkRenderPass                                renderPass,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -1265,7 +1265,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyRenderPass(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetRenderAreaGranularity(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetRenderAreaGranularity(
     VkDevice                                    device,
     VkRenderPass                                renderPass,
     VkExtent2D*                                 pGranularity) {
@@ -1276,7 +1276,7 @@ MVK_PUBLIC_SYMBOL void vkGetRenderAreaGranularity(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateCommandPool(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateCommandPool(
     VkDevice                                    device,
     const VkCommandPoolCreateInfo*              pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -1292,7 +1292,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateCommandPool(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyCommandPool(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyCommandPool(
     VkDevice                                    device,
 	VkCommandPool                               commandPool,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -1303,7 +1303,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyCommandPool(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkResetCommandPool(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkResetCommandPool(
 	VkDevice                                    device,
 	VkCommandPool                               commandPool,
 	VkCommandPoolResetFlags                     flags) {
@@ -1315,7 +1315,7 @@ MVK_PUBLIC_SYMBOL VkResult vkResetCommandPool(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkAllocateCommandBuffers(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAllocateCommandBuffers(
 	VkDevice                                    device,
 	const VkCommandBufferAllocateInfo*          pAllocateInfo,
 	VkCommandBuffer*                            pCmdBuffer) {
@@ -1327,7 +1327,7 @@ MVK_PUBLIC_SYMBOL VkResult vkAllocateCommandBuffers(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkFreeCommandBuffers(
+MVK_PUBLIC_VULKAN_SYMBOL void vkFreeCommandBuffers(
     VkDevice                                    device,
 	VkCommandPool                               commandPool,
 	uint32_t                                    commandBufferCount,
@@ -1339,7 +1339,7 @@ MVK_PUBLIC_SYMBOL void vkFreeCommandBuffers(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkBeginCommandBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkBeginCommandBuffer(
     VkCommandBuffer                             commandBuffer,
     const VkCommandBufferBeginInfo*             pBeginInfo) {
 	
@@ -1350,7 +1350,7 @@ MVK_PUBLIC_SYMBOL VkResult vkBeginCommandBuffer(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkEndCommandBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkEndCommandBuffer(
     VkCommandBuffer                             commandBuffer) {
 	
 	MVKTraceVulkanCallStart();
@@ -1360,7 +1360,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEndCommandBuffer(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkResetCommandBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkResetCommandBuffer(
     VkCommandBuffer                             commandBuffer,
     VkCommandBufferResetFlags                   flags) {
 
@@ -1371,7 +1371,7 @@ MVK_PUBLIC_SYMBOL VkResult vkResetCommandBuffer(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBindPipeline(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindPipeline(
     VkCommandBuffer                             commandBuffer,
     VkPipelineBindPoint                         pipelineBindPoint,
     VkPipeline                                  pipeline) {
@@ -1392,7 +1392,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindPipeline(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetViewport(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetViewport(
 	VkCommandBuffer                             commandBuffer,
 	uint32_t                                    firstViewport,
 	uint32_t                                    viewportCount,
@@ -1403,7 +1403,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetViewport(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetScissor(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetScissor(
 	VkCommandBuffer                             commandBuffer,
 	uint32_t                                    firstScissor,
 	uint32_t                                    scissorCount,
@@ -1414,7 +1414,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetScissor(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetLineWidth(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetLineWidth(
 	VkCommandBuffer                             commandBuffer,
 	float                                       lineWidth) {
 
@@ -1423,7 +1423,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetLineWidth(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetDepthBias(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBias(
 	VkCommandBuffer                             commandBuffer,
 	float                                       depthBiasConstantFactor,
 	float                                       depthBiasClamp,
@@ -1434,7 +1434,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetDepthBias(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetBlendConstants(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetBlendConstants(
 	VkCommandBuffer                             commandBuffer,
 	const float                                 blendConst[4]) {
 
@@ -1443,7 +1443,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetBlendConstants(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetDepthBounds(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDepthBounds(
 	VkCommandBuffer                             commandBuffer,
 	float                                       minDepthBounds,
 	float                                       maxDepthBounds) {
@@ -1453,7 +1453,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetDepthBounds(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetStencilCompareMask(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetStencilCompareMask(
 	VkCommandBuffer                             commandBuffer,
 	VkStencilFaceFlags                          faceMask,
 	uint32_t                                    stencilCompareMask) {
@@ -1463,7 +1463,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetStencilCompareMask(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetStencilWriteMask(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetStencilWriteMask(
 	VkCommandBuffer                             commandBuffer,
 	VkStencilFaceFlags                          faceMask,
 	uint32_t                                    stencilWriteMask) {
@@ -1473,7 +1473,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetStencilWriteMask(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetStencilReference(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetStencilReference(
 	VkCommandBuffer                             commandBuffer,
 	VkStencilFaceFlags                          faceMask,
 	uint32_t                                    stencilReference) {
@@ -1483,7 +1483,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetStencilReference(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBindDescriptorSets(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindDescriptorSets(
     VkCommandBuffer                             commandBuffer,
     VkPipelineBindPoint                         pipelineBindPoint,
     VkPipelineLayout                            layout,
@@ -1504,7 +1504,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindDescriptorSets(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBindIndexBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindIndexBuffer(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset,
@@ -1515,7 +1515,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindIndexBuffer(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBindVertexBuffers(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBindVertexBuffers(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    startBinding,
     uint32_t                                    bindingCount,
@@ -1527,7 +1527,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBindVertexBuffers(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDraw(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDraw(
 	VkCommandBuffer                             commandBuffer,
 	uint32_t                                    vertexCount,
 	uint32_t                                    instanceCount,
@@ -1539,7 +1539,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDraw(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDrawIndexed(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawIndexed(
 	VkCommandBuffer                             commandBuffer,
 	uint32_t                                    indexCount,
 	uint32_t                                    instanceCount,
@@ -1552,7 +1552,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndexed(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDrawIndirect(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawIndirect(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset,
@@ -1564,7 +1564,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndirect(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDrawIndexedIndirect(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDrawIndexedIndirect(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset,
@@ -1576,7 +1576,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDrawIndexedIndirect(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDispatch(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDispatch(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    x,
     uint32_t                                    y,
@@ -1587,7 +1587,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDispatch(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDispatchIndirect(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDispatchIndirect(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    buffer,
     VkDeviceSize                                offset) {
@@ -1597,7 +1597,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDispatchIndirect(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdCopyBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyBuffer(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    srcBuffer,
     VkBuffer                                    destBuffer,
@@ -1609,7 +1609,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBuffer(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdCopyImage(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyImage(
     VkCommandBuffer                             commandBuffer,
     VkImage                                     srcImage,
     VkImageLayout                               srcImageLayout,
@@ -1624,7 +1624,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImage(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBlitImage(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBlitImage(
     VkCommandBuffer                             commandBuffer,
     VkImage                                     srcImage,
     VkImageLayout                               srcImageLayout,
@@ -1640,7 +1640,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBlitImage(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdCopyBufferToImage(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyBufferToImage(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    srcBuffer,
     VkImage                                     dstImage,
@@ -1654,7 +1654,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyBufferToImage(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdCopyImageToBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyImageToBuffer(
     VkCommandBuffer                             commandBuffer,
     VkImage                                     srcImage,
     VkImageLayout                               srcImageLayout,
@@ -1668,7 +1668,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyImageToBuffer(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdUpdateBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdUpdateBuffer(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    dstBuffer,
     VkDeviceSize                                dstOffset,
@@ -1680,7 +1680,7 @@ MVK_PUBLIC_SYMBOL void vkCmdUpdateBuffer(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdFillBuffer(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdFillBuffer(
     VkCommandBuffer                             commandBuffer,
     VkBuffer                                    dstBuffer,
     VkDeviceSize                                dstOffset,
@@ -1692,7 +1692,7 @@ MVK_PUBLIC_SYMBOL void vkCmdFillBuffer(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdClearColorImage(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdClearColorImage(
     VkCommandBuffer                             commandBuffer,
     VkImage                                     image,
     VkImageLayout                               imageLayout,
@@ -1708,7 +1708,7 @@ MVK_PUBLIC_SYMBOL void vkCmdClearColorImage(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdClearDepthStencilImage(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdClearDepthStencilImage(
     VkCommandBuffer                             commandBuffer,
     VkImage                                     image,
     VkImageLayout                               imageLayout,
@@ -1724,7 +1724,7 @@ MVK_PUBLIC_SYMBOL void vkCmdClearDepthStencilImage(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdClearAttachments(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdClearAttachments(
 	VkCommandBuffer                             commandBuffer,
 	uint32_t                                    attachmentCount,
 	const VkClearAttachment*                    pAttachments,
@@ -1742,7 +1742,7 @@ MVK_PUBLIC_SYMBOL void vkCmdClearAttachments(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdResolveImage(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdResolveImage(
     VkCommandBuffer                             commandBuffer,
     VkImage                                     srcImage,
     VkImageLayout                               srcImageLayout,
@@ -1757,7 +1757,7 @@ MVK_PUBLIC_SYMBOL void vkCmdResolveImage(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetEvent(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetEvent(
     VkCommandBuffer                             commandBuffer,
     VkEvent                                     event,
     VkPipelineStageFlags                        stageMask) {
@@ -1767,7 +1767,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetEvent(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdResetEvent(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdResetEvent(
     VkCommandBuffer                             commandBuffer,
     VkEvent                                     event,
     VkPipelineStageFlags                        stageMask) {
@@ -1777,7 +1777,7 @@ MVK_PUBLIC_SYMBOL void vkCmdResetEvent(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdWaitEvents(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdWaitEvents(
 	VkCommandBuffer                             commandBuffer,
 	uint32_t                                    eventCount,
 	const VkEvent*                              pEvents,
@@ -1799,7 +1799,7 @@ MVK_PUBLIC_SYMBOL void vkCmdWaitEvents(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdPipelineBarrier(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPipelineBarrier(
 	VkCommandBuffer                             commandBuffer,
 	VkPipelineStageFlags                        srcStageMask,
 	VkPipelineStageFlags                        dstStageMask,
@@ -1821,7 +1821,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPipelineBarrier(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBeginQuery(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginQuery(
     VkCommandBuffer                             commandBuffer,
     VkQueryPool                                 queryPool,
     uint32_t                                    query,
@@ -1832,7 +1832,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginQuery(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdEndQuery(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndQuery(
     VkCommandBuffer                             commandBuffer,
     VkQueryPool                                 queryPool,
     uint32_t                                    query) {
@@ -1842,7 +1842,7 @@ MVK_PUBLIC_SYMBOL void vkCmdEndQuery(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdResetQueryPool(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdResetQueryPool(
     VkCommandBuffer                             commandBuffer,
     VkQueryPool                                 queryPool,
     uint32_t                                    firstQuery,
@@ -1853,7 +1853,7 @@ MVK_PUBLIC_SYMBOL void vkCmdResetQueryPool(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdWriteTimestamp(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdWriteTimestamp(
 	VkCommandBuffer                             commandBuffer,
 	VkPipelineStageFlagBits                     pipelineStage,
 	VkQueryPool                                 queryPool,
@@ -1864,7 +1864,7 @@ MVK_PUBLIC_SYMBOL void vkCmdWriteTimestamp(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdCopyQueryPoolResults(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdCopyQueryPoolResults(
     VkCommandBuffer                             commandBuffer,
     VkQueryPool                                 queryPool,
     uint32_t                                    firstQuery,
@@ -1880,7 +1880,7 @@ MVK_PUBLIC_SYMBOL void vkCmdCopyQueryPoolResults(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdPushConstants(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushConstants(
     VkCommandBuffer                             commandBuffer,
     VkPipelineLayout                            layout,
     VkShaderStageFlags                          stageFlags,
@@ -1924,7 +1924,7 @@ static void mvkCmdBeginRenderPass(
 							 attachments);
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginRenderPass(
     VkCommandBuffer                             commandBuffer,
     const VkRenderPassBeginInfo*                pRenderPassBegin,
     VkSubpassContents							contents) {
@@ -1940,7 +1940,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdNextSubpass(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdNextSubpass(
     VkCommandBuffer                             commandBuffer,
     VkSubpassContents							contents) {
 	
@@ -1949,7 +1949,7 @@ MVK_PUBLIC_SYMBOL void vkCmdNextSubpass(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdEndRenderPass(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRenderPass(
     VkCommandBuffer                             commandBuffer) {
 	
 	MVKTraceVulkanCallStart();
@@ -1957,7 +1957,7 @@ MVK_PUBLIC_SYMBOL void vkCmdEndRenderPass(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdExecuteCommands(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    cmdBuffersCount,
     const VkCommandBuffer*						pCommandBuffers) {
@@ -1971,7 +1971,7 @@ MVK_PUBLIC_SYMBOL void vkCmdExecuteCommands(
 #pragma mark -
 #pragma mark Vulkan 1.1 calls
 
-MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceVersion(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkEnumerateInstanceVersion(
     uint32_t*                                   pApiVersion) {
 
     MVKTraceVulkanCallStart();
@@ -1980,7 +1980,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumerateInstanceVersion(
     return VK_SUCCESS;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDeviceGroups(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkEnumeratePhysicalDeviceGroups(
     VkInstance                                  instance,
     uint32_t*                                   pPhysicalDeviceGroupCount,
     VkPhysicalDeviceGroupProperties*            pPhysicalDeviceGroupProperties) {
@@ -1991,7 +1991,7 @@ MVK_PUBLIC_SYMBOL VkResult vkEnumeratePhysicalDeviceGroups(
     return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceFeatures2(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceFeatures2*                  pFeatures) {
     
@@ -2001,7 +2001,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFeatures2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceProperties2(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceProperties2*                pProperties) {
 
@@ -2011,7 +2011,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceProperties2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFormatProperties2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceFormatProperties2(
     VkPhysicalDevice                            physicalDevice,
     VkFormat                                    format,
     VkFormatProperties2*                        pFormatProperties) {
@@ -2022,7 +2022,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceFormatProperties2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties2(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties2(
     VkPhysicalDevice                            physicalDevice,
     const VkPhysicalDeviceImageFormatInfo2*     pImageFormatInfo,
     VkImageFormatProperties2*                   pImageFormatProperties) {
@@ -2034,7 +2034,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceImageFormatProperties2(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties2(
     VkPhysicalDevice                            physicalDevice,
     uint32_t*                                   pQueueFamilyPropertyCount,
     VkQueueFamilyProperties2*                   pQueueFamilyProperties) {
@@ -2045,7 +2045,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceQueueFamilyProperties2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceMemoryProperties2(
     VkPhysicalDevice                            physicalDevice,
     VkPhysicalDeviceMemoryProperties2*          pMemoryProperties) {
 
@@ -2055,7 +2055,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceMemoryProperties2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2(
     VkPhysicalDevice                              physicalDevice,
     const VkPhysicalDeviceSparseImageFormatInfo2* pFormatInfo,
     uint32_t*                                     pPropertyCount,
@@ -2071,7 +2071,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceSparseImageFormatProperties2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalFenceProperties(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceExternalFenceProperties(
 	VkPhysicalDevice                            physicalDevice,
 	const VkPhysicalDeviceExternalFenceInfo*    pExternalFenceInfo,
 	VkExternalFenceProperties*                  pExternalFenceProperties) {
@@ -2082,7 +2082,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalFenceProperties(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalBufferProperties(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceExternalBufferProperties(
 	VkPhysicalDevice                            physicalDevice,
 	const VkPhysicalDeviceExternalBufferInfo*   pExternalBufferInfo,
 	VkExternalBufferProperties*                 pExternalBufferProperties) {
@@ -2093,7 +2093,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalBufferProperties(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalSemaphoreProperties(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPhysicalDeviceExternalSemaphoreProperties(
 	VkPhysicalDevice                             physicalDevice,
 	const VkPhysicalDeviceExternalSemaphoreInfo* pExternalSemaphoreInfo,
 	VkExternalSemaphoreProperties*               pExternalSemaphoreProperties) {
@@ -2104,7 +2104,7 @@ MVK_PUBLIC_SYMBOL void vkGetPhysicalDeviceExternalSemaphoreProperties(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetDeviceQueue2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceQueue2(
     VkDevice                                    device,
     const VkDeviceQueueInfo2*                   pQueueInfo,
     VkQueue*                                    pQueue) {
@@ -2115,7 +2115,7 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceQueue2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory2(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkBindBufferMemory2(
 	VkDevice									device,
 	uint32_t									bindInfoCount,
 	const VkBindBufferMemoryInfo*				pBindInfos) {
@@ -2131,7 +2131,7 @@ MVK_PUBLIC_SYMBOL VkResult vkBindBufferMemory2(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory2(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkBindImageMemory2(
 	VkDevice									device,
 	uint32_t									bindInfoCount,
 	const VkBindImageMemoryInfo*				pBindInfos) {
@@ -2147,7 +2147,7 @@ MVK_PUBLIC_SYMBOL VkResult vkBindImageMemory2(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetBufferMemoryRequirements2(
     VkDevice                                    device,
     const VkBufferMemoryRequirementsInfo2*      pInfo,
     VkMemoryRequirements2*                      pMemoryRequirements) {
@@ -2158,7 +2158,7 @@ MVK_PUBLIC_SYMBOL void vkGetBufferMemoryRequirements2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetImageMemoryRequirements2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetImageMemoryRequirements2(
     VkDevice                                    device,
     const VkImageMemoryRequirementsInfo2*       pInfo,
     VkMemoryRequirements2*                      pMemoryRequirements) {
@@ -2169,7 +2169,7 @@ MVK_PUBLIC_SYMBOL void vkGetImageMemoryRequirements2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements2(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetImageSparseMemoryRequirements2(
     VkDevice                                        device,
     const VkImageSparseMemoryRequirementsInfo2*     pInfo,
     uint32_t*                                       pSparseMemoryRequirementCount,
@@ -2185,7 +2185,7 @@ MVK_PUBLIC_SYMBOL void vkGetImageSparseMemoryRequirements2(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetDeviceGroupPeerMemoryFeatures(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDeviceGroupPeerMemoryFeatures(
     VkDevice                                    device,
     uint32_t                                    heapIndex,
     uint32_t                                    localDeviceIndex,
@@ -2198,7 +2198,7 @@ MVK_PUBLIC_SYMBOL void vkGetDeviceGroupPeerMemoryFeatures(
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorUpdateTemplate(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDescriptorUpdateTemplate(
     VkDevice                                       device,
     const VkDescriptorUpdateTemplateCreateInfo*    pCreateInfo,
     const VkAllocationCallbacks*                   pAllocator,
@@ -2218,7 +2218,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDescriptorUpdateTemplate(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyDescriptorUpdateTemplate(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDescriptorUpdateTemplate(
     VkDevice                                    device,
     VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
     const VkAllocationCallbacks*                pAllocator) {
@@ -2229,7 +2229,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDescriptorUpdateTemplate(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplate(
+MVK_PUBLIC_VULKAN_SYMBOL void vkUpdateDescriptorSetWithTemplate(
     VkDevice                                    device,
     VkDescriptorSet                             descriptorSet,
     VkDescriptorUpdateTemplate                  descriptorUpdateTemplate,
@@ -2240,7 +2240,7 @@ MVK_PUBLIC_SYMBOL void vkUpdateDescriptorSetWithTemplate(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkGetDescriptorSetLayoutSupport(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetDescriptorSetLayoutSupport(
     VkDevice                                    device,
     const VkDescriptorSetLayoutCreateInfo*      pCreateInfo,
     VkDescriptorSetLayoutSupport*               pSupport) {
@@ -2251,7 +2251,7 @@ MVK_PUBLIC_SYMBOL void vkGetDescriptorSetLayoutSupport(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateSamplerYcbcrConversion(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateSamplerYcbcrConversion(
     VkDevice                                    device,
     const VkSamplerYcbcrConversionCreateInfo*   pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
@@ -2270,7 +2270,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSamplerYcbcrConversion(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroySamplerYcbcrConversion(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroySamplerYcbcrConversion(
     VkDevice                                    device,
     VkSamplerYcbcrConversion                    ycbcrConversion,
     const VkAllocationCallbacks*                pAllocator) {
@@ -2282,7 +2282,7 @@ MVK_PUBLIC_SYMBOL void vkDestroySamplerYcbcrConversion(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkTrimCommandPool(
+MVK_PUBLIC_VULKAN_SYMBOL void vkTrimCommandPool(
     VkDevice                                    device,
     VkCommandPool                               commandPool,
     VkCommandPoolTrimFlags                      flags) {
@@ -2293,7 +2293,7 @@ MVK_PUBLIC_SYMBOL void vkTrimCommandPool(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdSetDeviceMask(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdSetDeviceMask(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    deviceMask) {
 
@@ -2303,7 +2303,7 @@ MVK_PUBLIC_SYMBOL void vkCmdSetDeviceMask(
     MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDispatchBase(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDispatchBase(
     VkCommandBuffer                             commandBuffer,
     uint32_t                                    baseGroupX,
     uint32_t                                    baseGroupY,
@@ -2328,7 +2328,7 @@ MVK_PUBLIC_CORE_ALIAS(vkBindImageMemory2);
 #pragma mark -
 #pragma mark VK_KHR_create_renderpass2 extension
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateRenderPass2KHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateRenderPass2KHR(
 	VkDevice									device,
 	const VkRenderPassCreateInfo2*				pCreateInfo,
 	const VkAllocationCallbacks*				pAllocator,
@@ -2344,7 +2344,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateRenderPass2KHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass2KHR(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginRenderPass2KHR(
 	VkCommandBuffer								commandBuffer,
 	const VkRenderPassBeginInfo*				pRenderPassBegin,
 	const VkSubpassBeginInfo*					pSubpassBeginInfo) {
@@ -2354,7 +2354,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginRenderPass2KHR(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdNextSubpass2KHR(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdNextSubpass2KHR(
 	VkCommandBuffer								commandBuffer,
 	const VkSubpassBeginInfo*					pSubpassBeginInfo,
 	const VkSubpassEndInfo*						pSubpassEndInfo) {
@@ -2364,7 +2364,7 @@ MVK_PUBLIC_SYMBOL void vkCmdNextSubpass2KHR(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdEndRenderPass2KHR(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRenderPass2KHR(
 	VkCommandBuffer								commandBuffer,
 	const VkSubpassEndInfo*						pSubpassEndInfo) {
 
@@ -2449,7 +2449,7 @@ MVK_PUBLIC_CORE_ALIAS(vkGetDescriptorSetLayoutSupport);
 #pragma mark -
 #pragma mark VK_KHR_push_descriptor extension
 
-MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetKHR(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetKHR(
     VkCommandBuffer                             commandBuffer,
     VkPipelineBindPoint                         pipelineBindPoint,
     VkPipelineLayout                            layout,
@@ -2462,7 +2462,7 @@ MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetKHR(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
     VkCommandBuffer                            commandBuffer,
     VkDescriptorUpdateTemplateKHR              descriptorUpdateTemplate,
     VkPipelineLayout                           layout,
@@ -2485,7 +2485,7 @@ MVK_PUBLIC_CORE_ALIAS(vkDestroySamplerYcbcrConversion);
 #pragma mark -
 #pragma mark VK_KHR_swapchain extension
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateSwapchainKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateSwapchainKHR(
     VkDevice                                 device,
     const VkSwapchainCreateInfoKHR*          pCreateInfo,
     const VkAllocationCallbacks*             pAllocator,
@@ -2504,7 +2504,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateSwapchainKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroySwapchainKHR(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroySwapchainKHR(
     VkDevice                                 device,
     VkSwapchainKHR                           swapchain,
     const VkAllocationCallbacks*             pAllocator) {
@@ -2515,7 +2515,7 @@ MVK_PUBLIC_SYMBOL void vkDestroySwapchainKHR(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetSwapchainImagesKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetSwapchainImagesKHR(
     VkDevice                                 device,
     VkSwapchainKHR                           swapchain,
     uint32_t*                                pCount,
@@ -2528,7 +2528,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetSwapchainImagesKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkAcquireNextImageKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAcquireNextImageKHR(
     VkDevice                                     device,
     VkSwapchainKHR                               swapchain,
     uint64_t                                     timeout,
@@ -2543,7 +2543,7 @@ MVK_PUBLIC_SYMBOL VkResult vkAcquireNextImageKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkQueuePresentKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkQueuePresentKHR(
     VkQueue                                      queue,
     const VkPresentInfoKHR*                      pPresentInfo) {
 
@@ -2554,7 +2554,7 @@ MVK_PUBLIC_SYMBOL VkResult vkQueuePresentKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetDeviceGroupPresentCapabilitiesKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetDeviceGroupPresentCapabilitiesKHR(
 	VkDevice                                    device,
 	VkDeviceGroupPresentCapabilitiesKHR*        pDeviceGroupPresentCapabilities) {
 
@@ -2565,7 +2565,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetDeviceGroupPresentCapabilitiesKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetDeviceGroupSurfacePresentModesKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetDeviceGroupSurfacePresentModesKHR(
 	VkDevice                                    device,
 	VkSurfaceKHR                                surface,
 	VkDeviceGroupPresentModeFlagsKHR*           pModes) {
@@ -2578,7 +2578,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetDeviceGroupSurfacePresentModesKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDevicePresentRectanglesKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDevicePresentRectanglesKHR(
 	VkPhysicalDevice                            physicalDevice,
 	VkSurfaceKHR                                surface,
 	uint32_t*                                   pRectCount,
@@ -2592,7 +2592,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDevicePresentRectanglesKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkAcquireNextImage2KHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkAcquireNextImage2KHR(
 	VkDevice                                    device,
 	const VkAcquireNextImageInfoKHR*            pAcquireInfo,
 	uint32_t*                                   pImageIndex) {
@@ -2612,7 +2612,7 @@ MVK_PUBLIC_SYMBOL VkResult vkAcquireNextImage2KHR(
 #pragma mark -
 #pragma mark VK_KHR_surface extension
 
-MVK_PUBLIC_SYMBOL void vkDestroySurfaceKHR(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroySurfaceKHR(
     VkInstance                                   instance,
     VkSurfaceKHR                                 surface,
     const VkAllocationCallbacks*                 pAllocator) {
@@ -2623,7 +2623,7 @@ MVK_PUBLIC_SYMBOL void vkDestroySurfaceKHR(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceSupportKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceSupportKHR(
     VkPhysicalDevice                            physicalDevice,
     uint32_t                                    queueFamilyIndex,
     VkSurfaceKHR                                surface,
@@ -2637,7 +2637,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceSupportKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
     VkPhysicalDevice                            physicalDevice,
     VkSurfaceKHR                                surface,
     VkSurfaceCapabilitiesKHR*                   pSurfaceCapabilities) {
@@ -2650,7 +2650,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilitiesKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
     VkPhysicalDevice                            physicalDevice,
     VkSurfaceKHR                                surface,
     uint32_t*                                   pSurfaceFormatCount,
@@ -2664,7 +2664,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormatsKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
     VkPhysicalDevice                            physicalDevice,
     VkSurfaceKHR                                surface,
     uint32_t*                                   pPresentModeCount,
@@ -2682,7 +2682,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfacePresentModesKHR(
 #pragma mark -
 #pragma mark VK_KHR_get_surface_capabilities2 extension
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
 	VkPhysicalDevice                            physicalDevice,
 	const VkPhysicalDeviceSurfaceInfo2KHR*      pSurfaceInfo,
 	VkSurfaceCapabilities2KHR*                  pSurfaceCapabilities) {
@@ -2695,7 +2695,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceCapabilities2KHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
 	VkPhysicalDevice                            physicalDevice,
 	const VkPhysicalDeviceSurfaceInfo2KHR*      pSurfaceInfo,
 	uint32_t*                                   pSurfaceFormatCount,
@@ -2713,7 +2713,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPhysicalDeviceSurfaceFormats2KHR(
 #pragma mark -
 #pragma mark VK_KHR_timeline_semaphore
 
-MVK_PUBLIC_SYMBOL VkResult vkGetSemaphoreCounterValueKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetSemaphoreCounterValueKHR(
 	VkDevice									device,
 	VkSemaphore									semaphore,
 	uint64_t*									pValue) {
@@ -2728,7 +2728,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetSemaphoreCounterValueKHR(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkSignalSemaphoreKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSignalSemaphoreKHR(
 	VkDevice									device,
 	const VkSemaphoreSignalInfoKHR*				pSignalInfo) {
 
@@ -2739,7 +2739,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSignalSemaphoreKHR(
 	return VK_SUCCESS;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkWaitSemaphoresKHR(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkWaitSemaphoresKHR(
 	VkDevice									device,
 	const VkSemaphoreWaitInfoKHR*				pWaitInfo,
 	uint64_t									timeout) {
@@ -2755,7 +2755,7 @@ MVK_PUBLIC_SYMBOL VkResult vkWaitSemaphoresKHR(
 #pragma mark -
 #pragma mark VK_EXT_debug_report extension
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateDebugReportCallbackEXT(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDebugReportCallbackEXT(
 	VkInstance                                  instance,
 	const VkDebugReportCallbackCreateInfoEXT*   pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -2771,7 +2771,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDebugReportCallbackEXT(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyDebugReportCallbackEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDebugReportCallbackEXT(
 	VkInstance                                  instance,
 	VkDebugReportCallbackEXT                    callback,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -2782,7 +2782,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDebugReportCallbackEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkDebugReportMessageEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDebugReportMessageEXT(
 	VkInstance                                  instance,
 	VkDebugReportFlagsEXT                       flags,
 	VkDebugReportObjectTypeEXT                  objectType,
@@ -2802,7 +2802,7 @@ MVK_PUBLIC_SYMBOL void vkDebugReportMessageEXT(
 #pragma mark -
 #pragma mark VK_EXT_debug_marker extension
 
-MVK_PUBLIC_SYMBOL VkResult vkDebugMarkerSetObjectTagEXT(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkDebugMarkerSetObjectTagEXT(
 	VkDevice                                    device,
 	const VkDebugMarkerObjectTagInfoEXT*        pTagInfo) {
 
@@ -2812,7 +2812,7 @@ MVK_PUBLIC_SYMBOL VkResult vkDebugMarkerSetObjectTagEXT(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkDebugMarkerSetObjectNameEXT(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkDebugMarkerSetObjectNameEXT(
 	VkDevice                                    device,
 	const VkDebugMarkerObjectNameInfoEXT*       pNameInfo) {
 
@@ -2823,7 +2823,7 @@ MVK_PUBLIC_SYMBOL VkResult vkDebugMarkerSetObjectNameEXT(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerBeginEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDebugMarkerBeginEXT(
 	VkCommandBuffer                             commandBuffer,
 	const VkDebugMarkerMarkerInfoEXT*           pMarkerInfo) {
 
@@ -2832,7 +2832,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerBeginEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerEndEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDebugMarkerEndEXT(
 	VkCommandBuffer                             commandBuffer) {
 
 	MVKTraceVulkanCallStart();
@@ -2840,7 +2840,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerEndEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerInsertEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDebugMarkerInsertEXT(
 	VkCommandBuffer                             commandBuffer,
 	const VkDebugMarkerMarkerInfoEXT*           pMarkerInfo) {
 
@@ -2853,7 +2853,7 @@ MVK_PUBLIC_SYMBOL void vkCmdDebugMarkerInsertEXT(
 #pragma mark -
 #pragma mark VK_EXT_debug_utils extension
 
-MVK_PUBLIC_SYMBOL VkResult vkSetDebugUtilsObjectNameEXT(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetDebugUtilsObjectNameEXT(
 	VkDevice                                    device,
 	const VkDebugUtilsObjectNameInfoEXT*        pNameInfo) {
 
@@ -2864,7 +2864,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetDebugUtilsObjectNameEXT(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkSetDebugUtilsObjectTagEXT(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetDebugUtilsObjectTagEXT(
 	VkDevice                                    device,
 	const VkDebugUtilsObjectTagInfoEXT*         pTagInfo) {
 
@@ -2874,7 +2874,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetDebugUtilsObjectTagEXT(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkQueueBeginDebugUtilsLabelEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkQueueBeginDebugUtilsLabelEXT(
 	VkQueue                                     queue,
 	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
 
@@ -2882,14 +2882,14 @@ MVK_PUBLIC_SYMBOL void vkQueueBeginDebugUtilsLabelEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkQueueEndDebugUtilsLabelEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkQueueEndDebugUtilsLabelEXT(
 	VkQueue                                     queue) {
 
 	MVKTraceVulkanCallStart();
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkQueueInsertDebugUtilsLabelEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkQueueInsertDebugUtilsLabelEXT(
 	VkQueue                                     queue,
 	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
 
@@ -2897,7 +2897,7 @@ MVK_PUBLIC_SYMBOL void vkQueueInsertDebugUtilsLabelEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdBeginDebugUtilsLabelEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdBeginDebugUtilsLabelEXT(
 	VkCommandBuffer                             commandBuffer,
 	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
 
@@ -2906,7 +2906,7 @@ MVK_PUBLIC_SYMBOL void vkCmdBeginDebugUtilsLabelEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdEndDebugUtilsLabelEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndDebugUtilsLabelEXT(
 	VkCommandBuffer                             commandBuffer) {
 
 	MVKTraceVulkanCallStart();
@@ -2914,7 +2914,7 @@ MVK_PUBLIC_SYMBOL void vkCmdEndDebugUtilsLabelEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkCmdInsertDebugUtilsLabelEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkCmdInsertDebugUtilsLabelEXT(
 	VkCommandBuffer                             commandBuffer,
 	const VkDebugUtilsLabelEXT*                 pLabelInfo) {
 
@@ -2923,7 +2923,7 @@ MVK_PUBLIC_SYMBOL void vkCmdInsertDebugUtilsLabelEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateDebugUtilsMessengerEXT(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateDebugUtilsMessengerEXT(
 	VkInstance                                  instance,
 	const VkDebugUtilsMessengerCreateInfoEXT*   pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -2939,7 +2939,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateDebugUtilsMessengerEXT(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyDebugUtilsMessengerEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyDebugUtilsMessengerEXT(
 	VkInstance                                  instance,
 	VkDebugUtilsMessengerEXT                    messenger,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -2950,7 +2950,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyDebugUtilsMessengerEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL void vkSubmitDebugUtilsMessageEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkSubmitDebugUtilsMessageEXT(
 	VkInstance                                  instance,
 	VkDebugUtilsMessageSeverityFlagBitsEXT      messageSeverity,
 	VkDebugUtilsMessageTypeFlagsEXT             messageTypes,
@@ -2966,7 +2966,7 @@ MVK_PUBLIC_SYMBOL void vkSubmitDebugUtilsMessageEXT(
 #pragma mark -
 #pragma mark VK_EXT_hdr_metadata extension
 
-MVK_PUBLIC_SYMBOL void vkSetHdrMetadataEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkSetHdrMetadataEXT(
 	VkDevice                                    device,
 	uint32_t                                    swapchainCount,
 	const VkSwapchainKHR*                       pSwapchains,
@@ -2984,7 +2984,7 @@ MVK_PUBLIC_SYMBOL void vkSetHdrMetadataEXT(
 #pragma mark -
 #pragma mark VK_EXT_host_query_reset extension
 
-MVK_PUBLIC_SYMBOL void vkResetQueryPoolEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkResetQueryPoolEXT(
     VkDevice                                    device,
     VkQueryPool                                 queryPool,
     uint32_t                                    firstQuery,
@@ -3000,7 +3000,7 @@ MVK_PUBLIC_SYMBOL void vkResetQueryPoolEXT(
 #pragma mark -
 #pragma mark VK_EXT_metal_surface extension
 
-MVK_PUBLIC_SYMBOL VkResult vkCreateMetalSurfaceEXT(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreateMetalSurfaceEXT(
 	VkInstance                                  instance,
 	const VkMetalSurfaceCreateInfoEXT*          pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -3019,7 +3019,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreateMetalSurfaceEXT(
 #pragma mark -
 #pragma mark VK_EXT_private_data extension
 
-MVK_PUBLIC_SYMBOL VkResult vkCreatePrivateDataSlotEXT(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreatePrivateDataSlotEXT(
 	VkDevice                                    device,
 	const VkPrivateDataSlotCreateInfoEXT*       pCreateInfo,
 	const VkAllocationCallbacks*                pAllocator,
@@ -3032,7 +3032,7 @@ MVK_PUBLIC_SYMBOL VkResult vkCreatePrivateDataSlotEXT(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL void vkDestroyPrivateDataSlotEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkDestroyPrivateDataSlotEXT(
 	VkDevice                                    device,
 	VkPrivateDataSlotEXT                        privateDataSlot,
 	const VkAllocationCallbacks*                pAllocator) {
@@ -3043,7 +3043,7 @@ MVK_PUBLIC_SYMBOL void vkDestroyPrivateDataSlotEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkSetPrivateDataEXT(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetPrivateDataEXT(
 	VkDevice                                    device,
 	VkObjectType                                objectType,
 	uint64_t                                    objectHandle,
@@ -3057,7 +3057,7 @@ MVK_PUBLIC_SYMBOL VkResult vkSetPrivateDataEXT(
 	return VK_SUCCESS;
 }
 
-MVK_PUBLIC_SYMBOL void vkGetPrivateDataEXT(
+MVK_PUBLIC_VULKAN_SYMBOL void vkGetPrivateDataEXT(
 	VkDevice                                    device,
 	VkObjectType                                objectType,
 	uint64_t                                    objectHandle,
@@ -3073,7 +3073,7 @@ MVK_PUBLIC_SYMBOL void vkGetPrivateDataEXT(
 #pragma mark -
 #pragma mark VK_GOOGLE_display_timing extension
 
-MVK_PUBLIC_SYMBOL VkResult vkGetRefreshCycleDurationGOOGLE(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetRefreshCycleDurationGOOGLE(
 	VkDevice                                    device,
 	VkSwapchainKHR                              swapchain,
 	VkRefreshCycleDurationGOOGLE*               pDisplayTimingProperties) {
@@ -3085,7 +3085,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetRefreshCycleDurationGOOGLE(
 	return rslt;
 }
 
-MVK_PUBLIC_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
 	VkDevice                                    device,
 	VkSwapchainKHR                              swapchain,
 	uint32_t*                                   pPresentationTimingCount,
@@ -3101,7 +3101,7 @@ MVK_PUBLIC_SYMBOL VkResult vkGetPastPresentationTimingGOOGLE(
 #pragma mark -
 #pragma mark iOS & macOS surface extensions
 
-MVK_PUBLIC_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(
+MVK_PUBLIC_VULKAN_SYMBOL VkResult vkCreate_PLATFORM_SurfaceMVK(
     VkInstance                                  instance,
     const Vk_PLATFORM_SurfaceCreateInfoMVK*		pCreateInfo,
     const VkAllocationCallbacks*                pAllocator,
