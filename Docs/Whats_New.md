@@ -13,6 +13,15 @@ Copyright (c) 2015-2021 [The Brenwill Workshop Ltd.](http://www.brenwill.com)
 
 
 
+MoltenVK 1.1.7
+--------------
+
+Released TBD
+
+- Support building MoltenVK with static Vulkan linkage symbols hidden. 
+
+
+
 MoltenVK 1.1.6
 --------------
 

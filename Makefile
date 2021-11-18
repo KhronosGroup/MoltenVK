@@ -14,6 +14,13 @@ else
 	OUTPUT_FMT_CMD = -quiet
 endif
 
+# Use 'make MVK_HIDE_VULKAN_SYMBOLS=1' (or set it as env var) to hide Vulkan API symbols
+# in the resulting MoltenVK library, to avoid library linking conflicts when bound to a
+# Vulkan Loader that also exports identical symbols.
+ifndef MVK_HIDE_VULKAN_SYMBOLS
+	MVK_HIDE_VULKAN_SYMBOLS=0
+endif
+
 # Specify individually (not as dependencies) so the sub-targets don't run in parallel
 .PHONY: all
 all:
@@ -35,51 +42,51 @@ all-debug:
 
 .PHONY: macos
 macos:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -destination "generic/platform=macOS" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -destination "generic/platform=macOS" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: macos-debug
 macos-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -destination "generic/platform=macOS" -configuration "Debug" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (macOS only)" -destination "generic/platform=macOS" -configuration "Debug" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: ios
 ios:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: ios-debug
 ios-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS" -configuration "Debug" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS" -configuration "Debug" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: iossim
 iossim:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: iossim-debug
 iossim-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator" -configuration "Debug" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=iOS Simulator" -configuration "Debug" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: maccat
 maccat:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: maccat-debug
 maccat-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" -configuration "Debug" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (iOS only)" -destination "generic/platform=macOS,variant=Mac Catalyst" -configuration "Debug" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: tvos
 tvos:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: tvos-debug
 tvos-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS" -configuration "Debug" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS" -configuration "Debug" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: tvossim
 tvossim:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: tvossim-debug
 tvossim-debug:
-	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator" -configuration "Debug" $(OUTPUT_FMT_CMD)
+	$(XCODEBUILD) build -project "$(XC_PROJ)" -scheme "$(XC_SCHEME) (tvOS only)" -destination "generic/platform=tvOS Simulator" -configuration "Debug" MVK_HIDE_VULKAN_SYMBOLS=$(MVK_HIDE_VULKAN_SYMBOLS) $(OUTPUT_FMT_CMD)
 
 .PHONY: clean
 clean:

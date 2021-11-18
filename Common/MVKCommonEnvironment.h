@@ -98,7 +98,20 @@ extern "C" {
 #endif
 
 /** Directive to identify public symbols. */
-#define MVK_PUBLIC_SYMBOL        __attribute__((visibility("default")))
+#define MVK_PUBLIC_SYMBOL        	__attribute__((visibility("default")))
+
+/**
+ * Directives to hide public symbols from the Vulkan API, to avoid library linking
+ * conflicts when bound to a Vulkan Loader that also exports identical symbols.
+ */
+#ifndef MVK_HIDE_VULKAN_SYMBOLS
+#	define MVK_HIDE_VULKAN_SYMBOLS		0
+#endif
+#if MVK_HIDE_VULKAN_SYMBOLS
+#	define MVK_PUBLIC_VULKAN_SYMBOL
+#else
+#	define MVK_PUBLIC_VULKAN_SYMBOL		MVK_PUBLIC_SYMBOL
+#endif
 
 /** Directive to make a public alias of another symbol. */
 #define MVK_PUBLIC_ALIAS(ALIAS, TARGET)   asm(".globl _" #ALIAS "\n\t_" #ALIAS " = _" #TARGET)
