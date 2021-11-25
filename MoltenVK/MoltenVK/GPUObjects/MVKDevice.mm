@@ -3876,6 +3876,7 @@ void MVKDevice::getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
 				VkMetalBufferInfoEXT* pBuffInfo = (VkMetalBufferInfoEXT*)next;
 				auto* mvkBuff = (MVKBuffer*)pBuffInfo->buffer;
 				*(pBuffInfo->pMTLBuffer) = mvkBuff->getMTLBuffer();
+				*(pBuffInfo->pMTLBufferOffset) = mvkBuff->getMTLBufferOffset();
 				break;
 			}
 			case VK_STRUCTURE_TYPE_METAL_TEXTURE_INFO_EXT: {
