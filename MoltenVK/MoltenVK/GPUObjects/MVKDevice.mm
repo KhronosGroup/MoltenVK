@@ -3858,6 +3858,77 @@ void MVKDevice::stopAutoGPUCapture(MVKConfigAutoGPUCaptureScope autoGPUCaptureSc
 	}
 }
 
+void MVKDevice::getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
+	for (auto* next = (VkBaseOutStructure*)pMetalObjectsInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_METAL_DEVICE_INFO_EXT: {
+				VkMetalDeviceInfoEXT* pDvcInfo = (VkMetalDeviceInfoEXT*)next;
+				*(pDvcInfo->pMTLDevice) = getMTLDevice();
+				break;
+			}
+			case VK_STRUCTURE_TYPE_METAL_COMMAND_QUEUE_INFO_EXT: {
+				VkMetalCommandQueueInfoEXT* pQInfo = (VkMetalCommandQueueInfoEXT*)next;
+				MVKQueue* mvkQ = MVKQueue::getMVKQueue(pQInfo->queue);
+				*(pQInfo->pMTLCommandQueue) = mvkQ->getMTLCommandQueue();
+				break;
+			}
+			case VK_STRUCTURE_TYPE_METAL_BUFFER_INFO_EXT: {
+				VkMetalBufferInfoEXT* pBuffInfo = (VkMetalBufferInfoEXT*)next;
+				auto* mvkBuff = (MVKBuffer*)pBuffInfo->buffer;
+				*(pBuffInfo->pMTLBuffer) = mvkBuff->getMTLBuffer();
+				break;
+			}
+			case VK_STRUCTURE_TYPE_METAL_TEXTURE_INFO_EXT: {
+				VkMetalTextureInfoEXT* pImgInfo = (VkMetalTextureInfoEXT*)next;
+				auto* mvkImg = (MVKImage*)pImgInfo->image;
+				uint8_t planeIndex = mvkImg->getPlaneFromVkImageAspectFlags(pImgInfo->aspectMask);
+				*(pImgInfo->pMTLTexture) = mvkImg->getMTLTexture(planeIndex);
+				break;
+			}
+			case VK_STRUCTURE_TYPE_METAL_IOSURFACE_INFO_EXT: {
+				VkMetalIOSurfaceInfoEXT* pIOSurfInfo = (VkMetalIOSurfaceInfoEXT*)next;
+				auto* mvkImg = (MVKImage*)pIOSurfInfo->image;
+				*(pIOSurfInfo->pIOSurface) = mvkImg->getIOSurface();
+				break;
+			}
+			case VK_STRUCTURE_TYPE_METAL_EVENT_INFO_EXT: {
+				VkMetalEventInfoEXT* pEvtInfo = (VkMetalEventInfoEXT*)next;
+				auto* mvkEvt = (MVKEvent*)pEvtInfo->event;
+				*(pEvtInfo->pMTLSharedEvent) = mvkEvt->getMTLEvent();
+				break;
+			}
+			default:
+				break;
+		}
+	}
+}
+
+VkResult MVKDevice::setMetalObjects(const VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
+	VkResult rslt = VK_SUCCESS;
+	for (const auto* next = (VkBaseInStructure*)pMetalObjectsInfo->pNext; next; next = next->pNext) {
+		VkResult iterRslt = VK_SUCCESS;
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_METAL_TEXTURE_INFO_EXT: {
+				const VkMetalTextureInfoEXT* pImgInfo = (VkMetalTextureInfoEXT*)next;
+				auto* mvkImg = (MVKImage*)pImgInfo->image;
+				uint8_t planeIndex = mvkImg->getPlaneFromVkImageAspectFlags(pImgInfo->aspectMask);
+				iterRslt = mvkImg->setMTLTexture(planeIndex, *(pImgInfo->pMTLTexture));
+				break;
+			}
+			case VK_STRUCTURE_TYPE_METAL_IOSURFACE_INFO_EXT: {
+				VkMetalIOSurfaceInfoEXT* pIOSurfInfo = (VkMetalIOSurfaceInfoEXT*)next;
+				auto* mvkImg = (MVKImage*)pIOSurfInfo->image;
+				iterRslt = mvkImg->useIOSurface(*(pIOSurfInfo->pIOSurface));
+				break;
+			}
+			default:
+				break;
+		}
+		if (rslt == VK_SUCCESS) { rslt = iterRslt; }
+	}
+	return rslt;
+}
+
 
 #pragma mark Construction
 

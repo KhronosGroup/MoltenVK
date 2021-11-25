@@ -475,6 +475,9 @@ public:
 	/** Encodes an operation to block command buffer operation until this event is signaled. */
 	virtual void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) = 0;
 
+	/** Returns the MTLSharedEvent underlying this Vulkan event. */
+	virtual id<MTLSharedEvent> getMTLEvent() = 0;
+
 
 #pragma mark Construction
 
@@ -497,6 +500,7 @@ public:
 	void signal(bool status) override;
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) override;
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
+	id<MTLSharedEvent> getMTLEvent() override { return _mtlEvent; };
 
 	MVKEventNative(MVKDevice* device, const VkEventCreateInfo* pCreateInfo);
 
@@ -518,6 +522,7 @@ public:
 	void signal(bool status) override;
 	void encodeSignal(id<MTLCommandBuffer> mtlCmdBuff, bool status) override;
 	void encodeWait(id<MTLCommandBuffer> mtlCmdBuff) override;
+	id<MTLSharedEvent> getMTLEvent() override { return nil; };
 
 	MVKEventEmulated(MVKDevice* device, const VkEventCreateInfo* pCreateInfo);
 

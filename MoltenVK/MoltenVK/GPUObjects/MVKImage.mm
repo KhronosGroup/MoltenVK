@@ -712,6 +712,8 @@ id<MTLTexture> MVKImage::getMTLTexture(uint8_t planeIndex, MTLPixelFormat mtlPix
 VkResult MVKImage::setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture) {
 	lock_guard<mutex> lock(_lock);
 
+	if (_planes[planeIndex]->_mtlTexture == mtlTexture) { return VK_SUCCESS; }
+
 	releaseIOSurface();
     _planes[planeIndex]->releaseMTLTexture();
 	_planes[planeIndex]->_mtlTexture = [mtlTexture retain];		// retained
@@ -745,6 +747,8 @@ IOSurfaceRef MVKImage::getIOSurface() { return _ioSurface; }
 
 VkResult MVKImage::useIOSurface(IOSurfaceRef ioSurface) {
 	lock_guard<mutex> lock(_lock);
+
+	if (_ioSurface == ioSurface) { return VK_SUCCESS; }
 
     if (!_device->_pMetalFeatures->ioSurfaces) { return reportError(VK_ERROR_FEATURE_NOT_PRESENT, "vkUseIOSurfaceMVK() : IOSurfaces are not supported on this platform."); }
 
