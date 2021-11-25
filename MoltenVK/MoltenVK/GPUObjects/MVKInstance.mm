@@ -198,17 +198,17 @@ void MVKInstance::debugUtilsMessage(VkDebugUtilsMessageSeverityFlagBitsEXT messa
 	}
 }
 
-void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, int aslLvl, const char* pMessage) {
+void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, MVKConfigLogLevel logLevel, const char* pMessage) {
 
 	if (_hasDebugReportCallbacks) {
-		VkDebugReportFlagsEXT flags = getVkDebugReportFlagsFromASLLevel(aslLvl);
+		VkDebugReportFlagsEXT flags = getVkDebugReportFlagsFromLogLevel(logLevel);
 		uint64_t object = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr);
 		VkDebugReportObjectTypeEXT objectType = mvkAPIObj ? mvkAPIObj->getVkDebugReportObjectType() : VK_DEBUG_REPORT_OBJECT_TYPE_UNKNOWN_EXT;
 		debugReportMessage(flags, objectType, object, 0, 0, _debugReportCallbackLayerPrefix, pMessage);
 	}
 
 	if (_hasDebugUtilsMessengers) {
-		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity = getVkDebugUtilsMessageSeverityFlagBitsFromASLLevel(aslLvl);
+		VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity = getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(logLevel);
 		uint64_t objectHandle = (uint64_t)(mvkAPIObj ? mvkAPIObj->getVkHandle() : nullptr);
 		VkObjectType objectType = mvkAPIObj ? mvkAPIObj->getVkObjectType() : VK_OBJECT_TYPE_UNKNOWN;
 
@@ -237,43 +237,29 @@ void MVKInstance::debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, int aslLvl, 
 	}
 }
 
-VkDebugReportFlagsEXT MVKInstance::getVkDebugReportFlagsFromASLLevel(int aslLvl) {
-	switch (aslLvl) {
-		case ASL_LEVEL_DEBUG:
+VkDebugReportFlagsEXT MVKInstance::getVkDebugReportFlagsFromLogLevel(MVKConfigLogLevel logLevel) {
+	switch (logLevel) {
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:
 			return VK_DEBUG_REPORT_DEBUG_BIT_EXT;
-
-		case ASL_LEVEL_INFO:
-		case ASL_LEVEL_NOTICE:
+		case MVK_CONFIG_LOG_LEVEL_INFO:
 			return VK_DEBUG_REPORT_INFORMATION_BIT_EXT;
-
-		case ASL_LEVEL_WARNING:
+		case MVK_CONFIG_LOG_LEVEL_WARNING:
 			return VK_DEBUG_REPORT_WARNING_BIT_EXT;
-
-		case ASL_LEVEL_ERR:
-		case ASL_LEVEL_CRIT:
-		case ASL_LEVEL_ALERT:
-		case ASL_LEVEL_EMERG:
+		case MVK_CONFIG_LOG_LEVEL_ERROR:
 		default:
 			return VK_DEBUG_REPORT_ERROR_BIT_EXT;
 	}
 }
 
-VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeverityFlagBitsFromASLLevel(int aslLvl) {
-	switch (aslLvl) {
-		case ASL_LEVEL_DEBUG:
+VkDebugUtilsMessageSeverityFlagBitsEXT MVKInstance::getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(MVKConfigLogLevel logLevel) {
+	switch (logLevel) {
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:
 			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT;
-
-		case ASL_LEVEL_INFO:
-		case ASL_LEVEL_NOTICE:
+		case MVK_CONFIG_LOG_LEVEL_INFO:
 			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT;
-
-		case ASL_LEVEL_WARNING:
+		case MVK_CONFIG_LOG_LEVEL_WARNING:
 			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT;
-
-		case ASL_LEVEL_ERR:
-		case ASL_LEVEL_CRIT:
-		case ASL_LEVEL_ALERT:
-		case ASL_LEVEL_EMERG:
+		case MVK_CONFIG_LOG_LEVEL_ERROR:
 		default:
 			return VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT;
 	}

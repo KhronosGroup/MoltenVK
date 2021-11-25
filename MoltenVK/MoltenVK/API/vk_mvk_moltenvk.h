@@ -62,7 +62,9 @@ typedef unsigned long MTLLanguageVersion;
 typedef enum MVKConfigLogLevel {
 	MVK_CONFIG_LOG_LEVEL_NONE     = 0,	/**< No logging. */
 	MVK_CONFIG_LOG_LEVEL_ERROR    = 1,	/**< Log errors only. */
-	MVK_CONFIG_LOG_LEVEL_INFO     = 2,	/**< Log errors and informational messages. */
+	MVK_CONFIG_LOG_LEVEL_WARNING  = 2,	/**< Log errors and warning messages. */
+	MVK_CONFIG_LOG_LEVEL_INFO     = 3,	/**< Log errors, warnings and informational messages. */
+	MVK_CONFIG_LOG_LEVEL_DEBUG    = 4,	/**< Log errors, warnings, infos and debug messages. */
 	MVK_CONFIG_LOG_LEVEL_MAX_ENUM = 0x7FFFFFFF
 } MVKConfigLogLevel;
 

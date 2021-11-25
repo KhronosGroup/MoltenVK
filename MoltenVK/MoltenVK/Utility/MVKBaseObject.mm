@@ -26,22 +26,15 @@
 using namespace std;
 
 
-static const char* getReportingLevelString(int aslLvl) {
-	switch (aslLvl) {
-		case ASL_LEVEL_DEBUG:
+static const char* getReportingLevelString(MVKConfigLogLevel logLevel) {
+	switch (logLevel) {
+		case MVK_CONFIG_LOG_LEVEL_DEBUG:
 			return "mvk-debug";
-
-		case ASL_LEVEL_INFO:
-		case ASL_LEVEL_NOTICE:
+		case MVK_CONFIG_LOG_LEVEL_INFO:
 			return "mvk-info";
-
-		case ASL_LEVEL_WARNING:
+		case MVK_CONFIG_LOG_LEVEL_WARNING:
 			return "mvk-warn";
-
-		case ASL_LEVEL_ERR:
-		case ASL_LEVEL_CRIT:
-		case ASL_LEVEL_ALERT:
-		case ASL_LEVEL_EMERG:
+		case MVK_CONFIG_LOG_LEVEL_ERROR:
 		default:
 			return "mvk-error";
 	}
@@ -59,27 +52,27 @@ string MVKBaseObject::getClassName() {
     return clzName;
 }
 
-void MVKBaseObject::reportMessage(int aslLvl, const char* format, ...) {
+void MVKBaseObject::reportMessage(MVKConfigLogLevel logLevel, const char* format, ...) {
 	va_list args;
 	va_start(args, format);
-	reportMessage(this, aslLvl, format, args);
+	reportMessage(this, logLevel, format, args);
 	va_end(args);
 }
 
-void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char* format, ...) {
+void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, ...) {
 	va_list args;
 	va_start(args, format);
-	reportMessage(mvkObj, aslLvl, format, args);
+	reportMessage(mvkObj, logLevel, format, args);
 	va_end(args);
 }
 
 // This is the core reporting implementation. Other similar functions delegate here.
-void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char* format, va_list args) {
+void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, MVKConfigLogLevel logLevel, const char* format, va_list args) {
 
 	MVKVulkanAPIObject* mvkAPIObj = mvkObj ? mvkObj->getVulkanAPIObject() : nullptr;
 	MVKInstance* mvkInst = mvkAPIObj ? mvkAPIObj->getInstance() : nullptr;
 	bool hasDebugCallbacks = mvkInst && mvkInst->hasDebugCallbacks();
-	bool shouldLog = (aslLvl < (mvkConfig().logLevel << 2));
+	bool shouldLog = logLevel <= mvkConfig().logLevel;
 
 	// Fail fast to avoid further unnecessary processing.
 	if ( !(shouldLog || hasDebugCallbacks) ) { return; }
@@ -107,10 +100,10 @@ void MVKBaseObject::reportMessage(MVKBaseObject* mvkObj, int aslLvl, const char*
 	va_end(origArgs);
 
 	// Log the message to the standard error stream
-	if (shouldLog) { fprintf(stderr, "[%s] %s\n", getReportingLevelString(aslLvl), pMessage); }
+	if (shouldLog) { fprintf(stderr, "[%s] %s\n", getReportingLevelString(logLevel), pMessage); }
 
 	// Broadcast the message to any Vulkan debug report callbacks
-	if (hasDebugCallbacks) { mvkInst->debugReportMessage(mvkAPIObj, aslLvl, pMessage); }
+	if (hasDebugCallbacks) { mvkInst->debugReportMessage(mvkAPIObj, logLevel, pMessage); }
 
 	free(redoBuff);
 }
@@ -138,11 +131,11 @@ VkResult MVKBaseObject::reportError(MVKBaseObject* mvkObj, VkResult vkErr, const
 	const char* vkRsltName = mvkVkResultName(vkErr);
 	char fmtStr[strlen(vkRsltName) + strlen(format) + 4];
 	sprintf(fmtStr, "%s: %s", vkRsltName, format);
-
+    
 	// Report the error
 	va_list lclArgs;
 	va_copy(lclArgs, args);
-	reportMessage(mvkObj, ASL_LEVEL_ERR, fmtStr, lclArgs);
+	reportMessage(mvkObj, MVK_CONFIG_LOG_LEVEL_ERROR, fmtStr, lclArgs);
 	va_end(lclArgs);
 
 	return vkErr;
