@@ -18,7 +18,6 @@
 
 #pragma once
 
-#include "mvk_vulkan.h"
 #include "vk_mvk_moltenvk.h"
 #include <string>
 #include <atomic>

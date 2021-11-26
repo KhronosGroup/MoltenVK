@@ -34,9 +34,8 @@ extern "C" {
  * This library adds flexible, non-intrusive logging and assertion capabilities
  * that can be efficiently enabled or disabled via compiler switches.
  *
- * There are five levels of logging: Trace, Info, Warning, Error and Debug, and each can be enabled
- * independently via the MVK_LOG_LEVEL_TRACE, MVK_LOG_LEVEL_DEBUG, MVK_LOG_LEVEL_INFO,
- * MVK_LOG_LEVEL_WARNING анд MVK_LOG_LEVEL_ERROR switches, respectively.
+ * There are five levels of logging, controlled by the MVK_LOG_LEVEL_TRACE, MVK_LOG_LEVEL_DEBUG,
+ * MVK_LOG_LEVEL_INFO, MVK_LOG_LEVEL_WARNING аnd MVK_LOG_LEVEL_ERROR switches.
  *
  * ALL logging can be enabled or disabled via the MVK_LOGGING_ENABLED switch.
  *
