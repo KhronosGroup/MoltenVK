@@ -144,7 +144,7 @@ public:
 						   VkDebugUtilsMessageTypeFlagsEXT messageTypes,
 						   const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData);
 
-	void debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, int aslLvl, const char* pMessage);
+	void debugReportMessage(MVKVulkanAPIObject* mvkAPIObj, MVKConfigLogLevel logLevel, const char* pMessage);
 
 	/** Returns whether debug callbacks are being used. */
 	bool hasDebugCallbacks() { return _hasDebugReportCallbacks || _hasDebugUtilsMessengers; }
@@ -181,8 +181,8 @@ protected:
 	void initProcAddrs();
 	void initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo);
 	NSArray<id<MTLDevice>>* getAvailableMTLDevicesArray();
-	VkDebugReportFlagsEXT getVkDebugReportFlagsFromASLLevel(int aslLvl);
-	VkDebugUtilsMessageSeverityFlagBitsEXT getVkDebugUtilsMessageSeverityFlagBitsFromASLLevel(int aslLvl);
+	VkDebugReportFlagsEXT getVkDebugReportFlagsFromLogLevel(MVKConfigLogLevel logLevel);
+	VkDebugUtilsMessageSeverityFlagBitsEXT getVkDebugUtilsMessageSeverityFlagBitsFromLogLevel(MVKConfigLogLevel logLevel);
 	MVKEntryPoint* getEntryPoint(const char* pName);
     void logVersions();
 	VkResult verifyLayers(uint32_t count, const char* const* names);
