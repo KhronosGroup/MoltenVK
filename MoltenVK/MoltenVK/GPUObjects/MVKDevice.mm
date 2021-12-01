@@ -1273,6 +1273,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
 	}
 #endif
+#if MVK_XCODE_13
+	if ( mvkOSVersionIsAtLeast(15.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
+	}
+#endif
 
 #endif
 
@@ -1377,6 +1382,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		}
 	}
 #endif
+#if MVK_XCODE_13
+	if ( mvkOSVersionIsAtLeast(15.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
+	}
+#endif
 
 #endif
 
@@ -1447,7 +1457,7 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		}
 	}
 
-#if MVK_MACOS_APPLE_SILICON
+#if MVK_XCODE_12
 	if ( mvkOSVersionIsAtLeast(10.16) ) {
 		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_3;
 		if (supportsMTLGPUFamily(Apple5)) {
@@ -1475,6 +1485,11 @@ void MVKPhysicalDevice::initMetalFeatures() {
 		_metalFeatures.textureBarriers = true;
 	}
 
+#if MVK_XCODE_13
+	if ( mvkOSVersionIsAtLeast(12.0) ) {
+		_metalFeatures.mslVersionEnum = MTLLanguageVersion2_4;
+	}
+#endif
 #endif
 
     // Note the selector name, which is different from the property name.
@@ -2200,21 +2215,10 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	_properties.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 
-	if (supportsMTLGPUFamily(Apple5)) {
-		// This is an Apple GPU. It won't have a 'device-id' property, so fill it in
-		// like on iOS/tvOS.
+	if (supportsMTLGPUFamily(Apple7)) {
+		// This is an Apple GPU. It won't have a 'device-id' property, so fill it in like on iOS/tvOS.
 		_properties.vendorID = kAppleVendorId;
-#if MVK_MACOS_APPLE_SILICON
-		if (supportsMTLGPUFamily(Apple7)) {
-			_properties.deviceID = 0xa140;
-		} else if (supportsMTLGPUFamily(Apple6)) {
-			_properties.deviceID = 0xa130;
-		} else {
-			_properties.deviceID = 0xa120;
-		}
-#else
-		_properties.deviceID = 0xa120;
-#endif
+		_properties.deviceID = 0xa140;
 		return;
 	}
 
@@ -2480,10 +2484,8 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	if (supportsMTLGPUFamily(Apple3)) { mtlFam = MTLGPUFamilyApple3; }
 	if (supportsMTLGPUFamily(Apple4)) { mtlFam = MTLGPUFamilyApple4; }
 	if (supportsMTLGPUFamily(Apple5)) { mtlFam = MTLGPUFamilyApple5; }
-#if MVK_IOS || MVK_MACOS_APPLE_SILICON
 	if (supportsMTLGPUFamily(Apple6)) { mtlFam = MTLGPUFamilyApple6; }
 	if (supportsMTLGPUFamily(Apple7)) { mtlFam = MTLGPUFamilyApple7; }
-#endif
 
 	// Not explicitly guaranteed to be unique...but close enough without spilling over
 	uint32_t mtlFS = (mtlVer << 8) + (uint32_t)mtlFam;
@@ -2622,7 +2624,7 @@ void MVKPhysicalDevice::initMemoryProperties() {
 
 	// Memoryless storage
 	uint32_t memlessBit = 0;
-#if MVK_MACOS_APPLE_SILICON
+#if MVK_MACOS
 	if (supportsMTLGPUFamily(Apple5)) {
 		memlessBit = 1 << typeIdx;
 		setMemoryType(typeIdx, mainHeapIdx, MVK_VK_MEMORY_TYPE_METAL_MEMORYLESS);
@@ -2808,10 +2810,8 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
-#if MVK_IOS || MVK_MACOS_APPLE_SILICON
 	if (supportsMTLGPUFamily(Apple7)) { logMsg += "\n\t\tGPU Family Apple 7"; }
 	if (supportsMTLGPUFamily(Apple6)) { logMsg += "\n\t\tGPU Family Apple 6"; }
-#endif
 	if (supportsMTLGPUFamily(Apple5)) { logMsg += "\n\t\tGPU Family Apple 5"; }
 	if (supportsMTLGPUFamily(Apple4)) { logMsg += "\n\t\tGPU Family Apple 4"; }
 	if (supportsMTLGPUFamily(Apple3)) { logMsg += "\n\t\tGPU Family Apple 3"; }
@@ -3966,9 +3966,12 @@ void MVKDevice::initPhysicalDevice(MVKPhysicalDevice* physicalDevice, const VkDe
 
 	// Decide whether Vulkan semaphores should use a MTLEvent or MTLFence if they are available.
 	// Prefer MTLEvent, because MTLEvent handles sync across MTLCommandBuffers and MTLCommandQueues.
-	// However, do not allow use of MTLEvents on NVIDIA GPUs, which have demonstrated trouble with MTLEvents.
-	// Since MTLFence config is disabled by default, emulation will be used on NVIDIA unless MTLFence is enabled.
-	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent && (_pProperties->vendorID != kNVVendorId);
+	// However, do not allow use of MTLEvents on Rosetta2 (x86 build on M1 runtime) or NVIDIA GPUs,
+	// which have demonstrated trouble with MTLEvents. In that case, since MTLFence use is disabled
+	// by default, unless MTLFence is deliberately enabled, CPU emulation will be used.
+	bool isNVIDIA = _pProperties->vendorID == kNVVendorId;
+	bool isRosetta2 = _pProperties->vendorID == kAppleVendorId && !MVK_APPLE_SILICON;
+	bool canUseMTLEventForSem4 = _pMetalFeatures->events && mvkConfig().semaphoreUseMTLEvent && !(isRosetta2 || isNVIDIA);
 	bool canUseMTLFenceForSem4 = _pMetalFeatures->fences && mvkConfig().semaphoreUseMTLFence;
 	_vkSemaphoreStyle = canUseMTLEventForSem4 ? VkSemaphoreStyleUseMTLEvent : (canUseMTLFenceForSem4 ? VkSemaphoreStyleUseMTLFence : VkSemaphoreStyleUseEmulation);
 	switch (_vkSemaphoreStyle) {
