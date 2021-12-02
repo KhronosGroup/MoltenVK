@@ -2215,10 +2215,20 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 	_properties.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 
-	if (supportsMTLGPUFamily(Apple7)) {
+	if (supportsMTLGPUFamily(Apple5)) {
 		// This is an Apple GPU. It won't have a 'device-id' property, so fill it in like on iOS/tvOS.
+		// Test for Apple5 first instead of Apple7 to support Xcode 11.7 builds.
 		_properties.vendorID = kAppleVendorId;
-		_properties.deviceID = 0xa140;
+#if MVK_XCODE_12
+		if (supportsMTLGPUFamily(Apple7)) {
+			_properties.deviceID = 0xa140;
+		} else if (supportsMTLGPUFamily(Apple6)) {
+			_properties.deviceID = 0xa130;
+		} else
+#endif
+		{
+			_properties.deviceID = 0xa120;
+		}
 		return;
 	}
 
@@ -2484,8 +2494,10 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	if (supportsMTLGPUFamily(Apple3)) { mtlFam = MTLGPUFamilyApple3; }
 	if (supportsMTLGPUFamily(Apple4)) { mtlFam = MTLGPUFamilyApple4; }
 	if (supportsMTLGPUFamily(Apple5)) { mtlFam = MTLGPUFamilyApple5; }
+#if MVK_XCODE_12
 	if (supportsMTLGPUFamily(Apple6)) { mtlFam = MTLGPUFamilyApple6; }
 	if (supportsMTLGPUFamily(Apple7)) { mtlFam = MTLGPUFamilyApple7; }
+#endif
 
 	// Not explicitly guaranteed to be unique...but close enough without spilling over
 	uint32_t mtlFS = (mtlVer << 8) + (uint32_t)mtlFam;
@@ -2810,8 +2822,10 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
+#if MVK_XCODE_12
 	if (supportsMTLGPUFamily(Apple7)) { logMsg += "\n\t\tGPU Family Apple 7"; }
 	if (supportsMTLGPUFamily(Apple6)) { logMsg += "\n\t\tGPU Family Apple 6"; }
+#endif
 	if (supportsMTLGPUFamily(Apple5)) { logMsg += "\n\t\tGPU Family Apple 5"; }
 	if (supportsMTLGPUFamily(Apple4)) { logMsg += "\n\t\tGPU Family Apple 4"; }
 	if (supportsMTLGPUFamily(Apple3)) { logMsg += "\n\t\tGPU Family Apple 3"; }
