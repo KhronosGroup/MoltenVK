@@ -2282,6 +2282,11 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 void MVKPhysicalDevice::initGPUInfoProperties() {
 	NSUInteger coreCnt = NSProcessInfo.processInfo.processorCount;
 	uint32_t devID = 0xa070;
+#if MVK_XCODE_13
+	if (supportsMTLGPUFamily(Apple8)) {
+		devID = 0xa150;
+	} else
+#endif
 #if MVK_XCODE_12
 	if (supportsMTLGPUFamily(Apple7)) {
 		devID = 0xa140;
@@ -2494,9 +2499,14 @@ uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
 	if (supportsMTLGPUFamily(Apple3)) { mtlFam = MTLGPUFamilyApple3; }
 	if (supportsMTLGPUFamily(Apple4)) { mtlFam = MTLGPUFamilyApple4; }
 	if (supportsMTLGPUFamily(Apple5)) { mtlFam = MTLGPUFamilyApple5; }
-#if MVK_XCODE_12
+#if MVK_IOS || (MVK_MACOS && MVK_XCODE_12)
 	if (supportsMTLGPUFamily(Apple6)) { mtlFam = MTLGPUFamilyApple6; }
+#endif
+#if (MVK_IOS || MVK_MACOS) && MVK_XCODE_12
 	if (supportsMTLGPUFamily(Apple7)) { mtlFam = MTLGPUFamilyApple7; }
+#endif
+#if MVK_IOS && MVK_XCODE_13
+	if (supportsMTLGPUFamily(Apple8)) { mtlFam = MTLGPUFamilyApple8; }
 #endif
 
 	// Not explicitly guaranteed to be unique...but close enough without spilling over
@@ -2822,8 +2832,13 @@ void MVKPhysicalDevice::logGPUInfo() {
 	logMsg += "\n\tsupports the following Metal Versions, GPU's and Feature Sets:";
 	logMsg += "\n\t\tMetal Shading Language %s";
 
-#if MVK_XCODE_12
+#if MVK_IOS && MVK_XCODE_13
+	if (supportsMTLGPUFamily(Apple8)) { logMsg += "\n\t\tGPU Family Apple 8"; }
+#endif
+#if (MVK_IOS || MVK_MACOS) && MVK_XCODE_12
 	if (supportsMTLGPUFamily(Apple7)) { logMsg += "\n\t\tGPU Family Apple 7"; }
+#endif
+#if MVK_IOS || (MVK_MACOS && MVK_XCODE_12)
 	if (supportsMTLGPUFamily(Apple6)) { logMsg += "\n\t\tGPU Family Apple 6"; }
 #endif
 	if (supportsMTLGPUFamily(Apple5)) { logMsg += "\n\t\tGPU Family Apple 5"; }
