@@ -18,7 +18,13 @@ MoltenVK 1.1.7
 
 Released TBD
 
-- Support building MoltenVK with static Vulkan linkage symbols hidden. 
+- Support building MoltenVK with static Vulkan linkage symbols hidden.
+- Do not use `MTLEvent` for `VkSemaphore` under *Rosetta2*.
+- Support compiling *MSL 2.4* in runtime pipelines and `MoltenVKShaderConverterTool`.
+- Fix issue where *MSL 2.3* only available on *Apple Silicon*, even on *macOS*.
+- Update to latest SPIRV-Cross:
+	- MSL: Add 64 bit support for `OpSwitch`.
+	- MSL: Don't output depth and stencil values with explicit early fragment tests.
 
 
 
