@@ -3881,9 +3881,17 @@ void MVKDevice::getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
 			}
 			case VK_STRUCTURE_TYPE_METAL_TEXTURE_INFO_EXT: {
 				VkMetalTextureInfoEXT* pImgInfo = (VkMetalTextureInfoEXT*)next;
+				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pImgInfo->aspectMask);
 				auto* mvkImg = (MVKImage*)pImgInfo->image;
-				uint8_t planeIndex = mvkImg->getPlaneFromVkImageAspectFlags(pImgInfo->aspectMask);
-				*(pImgInfo->pMTLTexture) = mvkImg->getMTLTexture(planeIndex);
+				auto* mvkImgView = (MVKImageView*)pImgInfo->imageView;
+				auto* mvkBuffView = (MVKBufferView*)pImgInfo->bufferView;
+				if (mvkImg) {
+					*(pImgInfo->pMTLTexture) = mvkImg->getMTLTexture(planeIndex);
+				} else if (mvkImgView) {
+					*(pImgInfo->pMTLTexture) = mvkImgView->getMTLTexture(planeIndex);
+				} else {
+					*(pImgInfo->pMTLTexture) = mvkBuffView->getMTLTexture();
+				}
 				break;
 			}
 			case VK_STRUCTURE_TYPE_METAL_IOSURFACE_INFO_EXT: {
@@ -3911,9 +3919,11 @@ VkResult MVKDevice::setMetalObjects(const VkMetalObjectsInfoEXT* pMetalObjectsIn
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_METAL_TEXTURE_INFO_EXT: {
 				const VkMetalTextureInfoEXT* pImgInfo = (VkMetalTextureInfoEXT*)next;
+				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pImgInfo->aspectMask);
 				auto* mvkImg = (MVKImage*)pImgInfo->image;
-				uint8_t planeIndex = mvkImg->getPlaneFromVkImageAspectFlags(pImgInfo->aspectMask);
-				iterRslt = mvkImg->setMTLTexture(planeIndex, *(pImgInfo->pMTLTexture));
+				if (mvkImg) {
+					iterRslt = mvkImg->setMTLTexture(planeIndex, *(pImgInfo->pMTLTexture));
+				}
 				break;
 			}
 			case VK_STRUCTURE_TYPE_METAL_IOSURFACE_INFO_EXT: {
