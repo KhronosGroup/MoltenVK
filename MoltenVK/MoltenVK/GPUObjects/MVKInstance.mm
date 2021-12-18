@@ -386,7 +386,10 @@ void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 	}
 }
 
-#define ADD_ENTRY_POINT(func, api, ext1, ext2, isDev)	_entryPoints[""#func] = { (PFN_vkVoidFunction)&func, api, ext1,  ext2,  isDev }
+#define ADD_ENTRY_POINT_MAP(name, func, api, ext1, ext2, isDev)	\
+	_entryPoints[""#name] = { (PFN_vkVoidFunction)&func, api, ext1,  ext2,  isDev }
+
+#define ADD_ENTRY_POINT(func, api, ext1, ext2, isDev)	ADD_ENTRY_POINT_MAP(func, func, api, ext1, ext2, isDev)
 
 #define ADD_INST_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, nullptr, false)
 #define ADD_DVC_ENTRY_POINT(func)						ADD_ENTRY_POINT(func, VK_API_VERSION_1_0, nullptr, nullptr, true)
@@ -394,11 +397,21 @@ void MVKInstance::initDebugCallbacks(const VkInstanceCreateInfo* pCreateInfo) {
 #define ADD_INST_1_1_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, nullptr, false)
 #define ADD_DVC_1_1_ENTRY_POINT(func)					ADD_ENTRY_POINT(func, VK_API_VERSION_1_1, nullptr, nullptr, true)
 
-#define ADD_INST_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, 0, VK_ ##EXT ##_EXTENSION_NAME, nullptr, false)
-#define ADD_DVC_EXT_ENTRY_POINT(func, EXT)			ADD_ENTRY_POINT(func, 0, VK_ ##EXT ##_EXTENSION_NAME, nullptr, true)
+// Adds both the 1.1 function and the promoted extension function.
+#define ADD_INST_1_1_PROMOTED_ENTRY_POINT(func, EXT)	\
+	ADD_INST_1_1_ENTRY_POINT(func);	\
+	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, false)
 
-#define ADD_INST_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, 0, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, false)
-#define ADD_DVC_EXT2_ENTRY_POINT(func, EXT1, EXT2)	ADD_ENTRY_POINT(func, 0, VK_ ##EXT1 ##_EXTENSION_NAME, VK_ ##EXT2 ##_EXTENSION_NAME, true)
+// Adds both the 1.1 function and the promoted extension function.
+#define ADD_DVC_1_1_PROMOTED_ENTRY_POINT(func, EXT)	\
+	ADD_DVC_1_1_ENTRY_POINT(func);	\
+	ADD_ENTRY_POINT_MAP(func##KHR, func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
+
+#define ADD_INST_EXT_ENTRY_POINT(func, EXT)				ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, false)
+#define ADD_DVC_EXT_ENTRY_POINT(func, EXT)				ADD_ENTRY_POINT(func, 0, VK_##EXT##_EXTENSION_NAME, nullptr, true)
+
+#define ADD_INST_EXT2_ENTRY_POINT(func, EXT1, EXT2)		ADD_ENTRY_POINT(func, 0, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, false)
+#define ADD_DVC_EXT2_ENTRY_POINT(func, EXT1, EXT2)		ADD_ENTRY_POINT(func, 0, VK_##EXT1##_EXTENSION_NAME, VK_##EXT2##_EXTENSION_NAME, true)
 
 // Initializes the function pointer map.
 void MVKInstance::initProcAddrs() {
@@ -418,17 +431,17 @@ void MVKInstance::initProcAddrs() {
 	ADD_INST_ENTRY_POINT(vkEnumerateDeviceLayerProperties);
 	ADD_INST_ENTRY_POINT(vkGetPhysicalDeviceSparseImageFormatProperties);
 
-	ADD_INST_1_1_ENTRY_POINT(vkEnumeratePhysicalDeviceGroups);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceFeatures2);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceProperties2);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceFormatProperties2);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceImageFormatProperties2);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceQueueFamilyProperties2);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceMemoryProperties2);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceSparseImageFormatProperties2);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceExternalFenceProperties);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceExternalBufferProperties);
-	ADD_INST_1_1_ENTRY_POINT(vkGetPhysicalDeviceExternalSemaphoreProperties);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkEnumeratePhysicalDeviceGroups, KHR_DEVICE_GROUP_CREATION);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceFeatures2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceProperties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceFormatProperties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceImageFormatProperties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceQueueFamilyProperties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceMemoryProperties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceSparseImageFormatProperties2, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceExternalFenceProperties, KHR_EXTERNAL_FENCE_CAPABILITIES);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceExternalBufferProperties, KHR_EXTERNAL_MEMORY_CAPABILITIES);
+	ADD_INST_1_1_PROMOTED_ENTRY_POINT(vkGetPhysicalDeviceExternalSemaphoreProperties, KHR_EXTERNAL_SEMAPHORE_CAPABILITIES);
 
 	// Device functions:
 	ADD_DVC_ENTRY_POINT(vkGetDeviceProcAddr);
@@ -554,34 +567,23 @@ void MVKInstance::initProcAddrs() {
 	ADD_DVC_ENTRY_POINT(vkCmdExecuteCommands);
 
 	ADD_DVC_1_1_ENTRY_POINT(vkGetDeviceQueue2);
-	ADD_DVC_1_1_ENTRY_POINT(vkBindBufferMemory2);
-	ADD_DVC_1_1_ENTRY_POINT(vkBindImageMemory2);
-	ADD_DVC_1_1_ENTRY_POINT(vkGetBufferMemoryRequirements2);
-	ADD_DVC_1_1_ENTRY_POINT(vkGetImageMemoryRequirements2);
-	ADD_DVC_1_1_ENTRY_POINT(vkGetImageSparseMemoryRequirements2);
-	ADD_DVC_1_1_ENTRY_POINT(vkGetDeviceGroupPeerMemoryFeatures);
-	ADD_DVC_1_1_ENTRY_POINT(vkCreateDescriptorUpdateTemplate);
-	ADD_DVC_1_1_ENTRY_POINT(vkDestroyDescriptorUpdateTemplate);
-	ADD_DVC_1_1_ENTRY_POINT(vkUpdateDescriptorSetWithTemplate);
-	ADD_DVC_1_1_ENTRY_POINT(vkGetDescriptorSetLayoutSupport);
-	ADD_DVC_1_1_ENTRY_POINT(vkCreateSamplerYcbcrConversion);
-	ADD_DVC_1_1_ENTRY_POINT(vkDestroySamplerYcbcrConversion);
-	ADD_DVC_1_1_ENTRY_POINT(vkTrimCommandPool);
-	ADD_DVC_1_1_ENTRY_POINT(vkCmdSetDeviceMask);
-	ADD_DVC_1_1_ENTRY_POINT(vkCmdDispatchBase);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkBindBufferMemory2, KHR_BIND_MEMORY_2);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkBindImageMemory2, KHR_BIND_MEMORY_2);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkGetBufferMemoryRequirements2, KHR_GET_MEMORY_REQUIREMENTS_2);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkGetImageMemoryRequirements2, KHR_GET_MEMORY_REQUIREMENTS_2);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkGetImageSparseMemoryRequirements2, KHR_GET_MEMORY_REQUIREMENTS_2);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkGetDeviceGroupPeerMemoryFeatures, KHR_DEVICE_GROUP);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkCreateDescriptorUpdateTemplate, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkDestroyDescriptorUpdateTemplate, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkUpdateDescriptorSetWithTemplate, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkGetDescriptorSetLayoutSupport, KHR_MAINTENANCE3);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkCreateSamplerYcbcrConversion, KHR_SAMPLER_YCBCR_CONVERSION);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkDestroySamplerYcbcrConversion, KHR_SAMPLER_YCBCR_CONVERSION);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkTrimCommandPool, KHR_MAINTENANCE1);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkCmdSetDeviceMask, KHR_DEVICE_GROUP);
+	ADD_DVC_1_1_PROMOTED_ENTRY_POINT(vkCmdDispatchBase, KHR_DEVICE_GROUP);
 
 	// Instance extension functions:
-	ADD_INST_EXT_ENTRY_POINT(vkEnumeratePhysicalDeviceGroupsKHR, KHR_DEVICE_GROUP_CREATION);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceExternalFencePropertiesKHR, KHR_EXTERNAL_FENCE_CAPABILITIES);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceExternalBufferPropertiesKHR, KHR_EXTERNAL_MEMORY_CAPABILITIES);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceExternalSemaphorePropertiesKHR, KHR_EXTERNAL_SEMAPHORE_CAPABILITIES);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceFeatures2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceFormatProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceImageFormatProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceQueueFamilyProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceMemoryProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
-	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSparseImageFormatProperties2KHR, KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2);
 	ADD_INST_EXT_ENTRY_POINT(vkDestroySurfaceKHR, KHR_SURFACE);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceSupportKHR, KHR_SURFACE);
 	ADD_INST_EXT_ENTRY_POINT(vkGetPhysicalDeviceSurfaceCapabilitiesKHR, KHR_SURFACE);
@@ -626,27 +628,12 @@ void MVKInstance::initProcAddrs() {
     ADD_INST_EXT_ENTRY_POINT(vkGetMTLCommandQueueMVK, MVK_MOLTENVK);
 
 	// Device extension functions:
-	ADD_DVC_EXT_ENTRY_POINT(vkBindBufferMemory2KHR, KHR_BIND_MEMORY_2);
-	ADD_DVC_EXT_ENTRY_POINT(vkBindImageMemory2KHR, KHR_BIND_MEMORY_2);
 	ADD_DVC_EXT_ENTRY_POINT(vkCreateRenderPass2KHR, KHR_CREATE_RENDERPASS_2);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdBeginRenderPass2KHR, KHR_CREATE_RENDERPASS_2);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdNextSubpass2KHR, KHR_CREATE_RENDERPASS_2);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdEndRenderPass2KHR, KHR_CREATE_RENDERPASS_2);
-	ADD_DVC_EXT_ENTRY_POINT(vkCreateDescriptorUpdateTemplateKHR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
-	ADD_DVC_EXT_ENTRY_POINT(vkDestroyDescriptorUpdateTemplateKHR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
-	ADD_DVC_EXT_ENTRY_POINT(vkUpdateDescriptorSetWithTemplateKHR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
-	ADD_DVC_EXT_ENTRY_POINT(vkGetDeviceGroupPeerMemoryFeaturesKHR, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT_ENTRY_POINT(vkCmdSetDeviceMaskKHR, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT_ENTRY_POINT(vkCmdDispatchBaseKHR, KHR_DEVICE_GROUP);
-	ADD_DVC_EXT_ENTRY_POINT(vkGetBufferMemoryRequirements2KHR, KHR_GET_MEMORY_REQUIREMENTS_2);
-	ADD_DVC_EXT_ENTRY_POINT(vkGetImageMemoryRequirements2KHR, KHR_GET_MEMORY_REQUIREMENTS_2);
-	ADD_DVC_EXT_ENTRY_POINT(vkGetImageSparseMemoryRequirements2KHR, KHR_GET_MEMORY_REQUIREMENTS_2);
-	ADD_DVC_EXT_ENTRY_POINT(vkTrimCommandPoolKHR, KHR_MAINTENANCE1);
-	ADD_DVC_EXT_ENTRY_POINT(vkGetDescriptorSetLayoutSupportKHR, KHR_MAINTENANCE3);
 	ADD_DVC_EXT_ENTRY_POINT(vkCmdPushDescriptorSetKHR, KHR_PUSH_DESCRIPTOR);
 	ADD_DVC_EXT2_ENTRY_POINT(vkCmdPushDescriptorSetWithTemplateKHR, KHR_PUSH_DESCRIPTOR, KHR_DESCRIPTOR_UPDATE_TEMPLATE);
-	ADD_DVC_EXT_ENTRY_POINT(vkCreateSamplerYcbcrConversionKHR, KHR_SAMPLER_YCBCR_CONVERSION);
-	ADD_DVC_EXT_ENTRY_POINT(vkDestroySamplerYcbcrConversionKHR, KHR_SAMPLER_YCBCR_CONVERSION);
 	ADD_DVC_EXT_ENTRY_POINT(vkCreateSwapchainKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkDestroySwapchainKHR, KHR_SWAPCHAIN);
 	ADD_DVC_EXT_ENTRY_POINT(vkGetSwapchainImagesKHR, KHR_SWAPCHAIN);
