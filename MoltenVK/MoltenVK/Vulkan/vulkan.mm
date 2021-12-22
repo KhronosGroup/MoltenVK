@@ -3030,17 +3030,6 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkGetMetalObjectsEXT(
 	MVKTraceVulkanCallEnd();
 }
 
-MVK_PUBLIC_VULKAN_SYMBOL VkResult vkSetMetalObjectsEXT(
-	VkDevice                                    device,
-	const VkMetalObjectsInfoEXT*                pMetalObjectsInfo) {
-
-	MVKTraceVulkanCallStart();
-	MVKDevice* mvkDvc = MVKDevice::getMVKDevice(device);
-	VkResult rslt = mvkDvc->setMetalObjects(pMetalObjectsInfo);
-	MVKTraceVulkanCallEnd();
-	return rslt;
-}
-
 
 #pragma mark -
 #pragma mark VK_EXT_private_data extension

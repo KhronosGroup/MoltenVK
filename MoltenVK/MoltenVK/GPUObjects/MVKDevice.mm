@@ -3912,34 +3912,6 @@ void MVKDevice::getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
 	}
 }
 
-VkResult MVKDevice::setMetalObjects(const VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
-	VkResult rslt = VK_SUCCESS;
-	for (const auto* next = (VkBaseInStructure*)pMetalObjectsInfo->pNext; next; next = next->pNext) {
-		VkResult iterRslt = VK_SUCCESS;
-		switch (next->sType) {
-			case VK_STRUCTURE_TYPE_METAL_TEXTURE_INFO_EXT: {
-				const VkMetalTextureInfoEXT* pImgInfo = (VkMetalTextureInfoEXT*)next;
-				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pImgInfo->aspectMask);
-				auto* mvkImg = (MVKImage*)pImgInfo->image;
-				if (mvkImg) {
-					iterRslt = mvkImg->setMTLTexture(planeIndex, *(pImgInfo->pMTLTexture));
-				}
-				break;
-			}
-			case VK_STRUCTURE_TYPE_METAL_IOSURFACE_INFO_EXT: {
-				VkMetalIOSurfaceInfoEXT* pIOSurfInfo = (VkMetalIOSurfaceInfoEXT*)next;
-				auto* mvkImg = (MVKImage*)pIOSurfInfo->image;
-				iterRslt = mvkImg->useIOSurface(*(pIOSurfInfo->pIOSurface));
-				break;
-			}
-			default:
-				break;
-		}
-		if (rslt == VK_SUCCESS) { rslt = iterRslt; }
-	}
-	return rslt;
-}
-
 
 #pragma mark Construction
 

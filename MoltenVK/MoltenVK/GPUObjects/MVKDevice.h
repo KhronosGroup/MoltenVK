@@ -732,9 +732,6 @@ public:
 	/** Returns the Metal objects underpinning the Vulkan objects indicated in the pNext chain of pMetalObjectsInfo. */
 	void getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo);
 
-	/** Sets the Metal objects underpinning the Vulkan objects indicated in the pNext chain of pMetalObjectsInfo. */
-	VkResult setMetalObjects(const VkMetalObjectsInfoEXT* pMetalObjectsInfo);
-
 
 #pragma mark Properties directly accessible
 

@@ -712,6 +712,8 @@ id<MTLTexture> MVKImage::getMTLTexture(uint8_t planeIndex, MTLPixelFormat mtlPix
 VkResult MVKImage::setMTLTexture(uint8_t planeIndex, id<MTLTexture> mtlTexture) {
 	lock_guard<mutex> lock(_lock);
 
+	if (planeIndex >= _planes.size()) { return reportError(VK_ERROR_INITIALIZATION_FAILED, "Plane index is out of bounds. Attempted to set MTLTexture at plane index %d in VkImage that has %zu planes.", planeIndex, _planes.size()); }
+
 	if (_planes[planeIndex]->_mtlTexture == mtlTexture) { return VK_SUCCESS; }
 
 	releaseIOSurface();
@@ -980,6 +982,26 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
     _hasExpectedTexelSize = _hasChromaSubsampling || (pixFmts->getBytesPerBlock(_planes[0]->_mtlPixFmt) == pixFmts->getBytesPerBlock(_vkFormat));
 
 	if (pExtMemInfo) { initExternalMemory(pExtMemInfo->handleTypes); }
+
+	// Setting Metal objects directly will override Vulkan settings.
+	// It is responsibility of app to ensure these are consistent. Not doing so results in undefined behavior.
+	for (const auto* next = (const VkBaseInStructure*)pCreateInfo->pNext; next; next = next->pNext) {
+		switch (next->sType) {
+			case VK_STRUCTURE_TYPE_IMAGE_CREATE_METAL_TEXTURE_INFO_EXT: {
+				const VkImageCreateMetalTextureInfoEXT* pMTLTexInfo = (VkImageCreateMetalTextureInfoEXT*)next;
+				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pMTLTexInfo->aspectMask);
+				setConfigurationResult(setMTLTexture(planeIndex, pMTLTexInfo->pMTLTexture));
+				break;
+			}
+			case VK_STRUCTURE_TYPE_IMAGE_CREATE_METAL_IOSURFACE_INFO_EXT: {
+				VkImageCreateMetalIOSurfaceInfoEXT* pIOSurfInfo = (VkImageCreateMetalIOSurfaceInfoEXT*)next;
+				setConfigurationResult(useIOSurface(pIOSurfInfo->pIOSurface));
+				break;
+			}
+			default:
+				break;
+		}
+	}
 
 }
 
