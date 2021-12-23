@@ -990,12 +990,12 @@ MVKImage::MVKImage(MVKDevice* device, const VkImageCreateInfo* pCreateInfo) : MV
 			case VK_STRUCTURE_TYPE_IMAGE_CREATE_METAL_TEXTURE_INFO_EXT: {
 				const VkImageCreateMetalTextureInfoEXT* pMTLTexInfo = (VkImageCreateMetalTextureInfoEXT*)next;
 				uint8_t planeIndex = MVKImage::getPlaneFromVkImageAspectFlags(pMTLTexInfo->aspectMask);
-				setConfigurationResult(setMTLTexture(planeIndex, pMTLTexInfo->pMTLTexture));
+				setConfigurationResult(setMTLTexture(planeIndex, pMTLTexInfo->mtlTexture));
 				break;
 			}
 			case VK_STRUCTURE_TYPE_IMAGE_CREATE_METAL_IOSURFACE_INFO_EXT: {
 				VkImageCreateMetalIOSurfaceInfoEXT* pIOSurfInfo = (VkImageCreateMetalIOSurfaceInfoEXT*)next;
-				setConfigurationResult(useIOSurface(pIOSurfInfo->pIOSurface));
+				setConfigurationResult(useIOSurface(pIOSurfInfo->ioSurface));
 				break;
 			}
 			default:
