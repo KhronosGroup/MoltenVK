@@ -3863,20 +3863,20 @@ void MVKDevice::getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
 		switch (next->sType) {
 			case VK_STRUCTURE_TYPE_METAL_DEVICE_INFO_EXT: {
 				VkMetalDeviceInfoEXT* pDvcInfo = (VkMetalDeviceInfoEXT*)next;
-				*(pDvcInfo->pMTLDevice) = getMTLDevice();
+				pDvcInfo->mtlDevice = getMTLDevice();
 				break;
 			}
 			case VK_STRUCTURE_TYPE_METAL_COMMAND_QUEUE_INFO_EXT: {
 				VkMetalCommandQueueInfoEXT* pQInfo = (VkMetalCommandQueueInfoEXT*)next;
 				MVKQueue* mvkQ = MVKQueue::getMVKQueue(pQInfo->queue);
-				*(pQInfo->pMTLCommandQueue) = mvkQ->getMTLCommandQueue();
+				pQInfo->mtlCommandQueue = mvkQ->getMTLCommandQueue();
 				break;
 			}
 			case VK_STRUCTURE_TYPE_METAL_BUFFER_INFO_EXT: {
 				VkMetalBufferInfoEXT* pBuffInfo = (VkMetalBufferInfoEXT*)next;
 				auto* mvkBuff = (MVKBuffer*)pBuffInfo->buffer;
-				*(pBuffInfo->pMTLBuffer) = mvkBuff->getMTLBuffer();
-				*(pBuffInfo->pMTLBufferOffset) = mvkBuff->getMTLBufferOffset();
+				pBuffInfo->mtlBuffer = mvkBuff->getMTLBuffer();
+				pBuffInfo->mtlBufferOffset = mvkBuff->getMTLBufferOffset();
 				break;
 			}
 			case VK_STRUCTURE_TYPE_METAL_TEXTURE_INFO_EXT: {
@@ -3886,24 +3886,24 @@ void MVKDevice::getMetalObjects(VkMetalObjectsInfoEXT* pMetalObjectsInfo) {
 				auto* mvkImgView = (MVKImageView*)pImgInfo->imageView;
 				auto* mvkBuffView = (MVKBufferView*)pImgInfo->bufferView;
 				if (mvkImg) {
-					*(pImgInfo->pMTLTexture) = mvkImg->getMTLTexture(planeIndex);
+					pImgInfo->mtlTexture = mvkImg->getMTLTexture(planeIndex);
 				} else if (mvkImgView) {
-					*(pImgInfo->pMTLTexture) = mvkImgView->getMTLTexture(planeIndex);
+					pImgInfo->mtlTexture = mvkImgView->getMTLTexture(planeIndex);
 				} else {
-					*(pImgInfo->pMTLTexture) = mvkBuffView->getMTLTexture();
+					pImgInfo->mtlTexture = mvkBuffView->getMTLTexture();
 				}
 				break;
 			}
 			case VK_STRUCTURE_TYPE_METAL_IOSURFACE_INFO_EXT: {
 				VkMetalIOSurfaceInfoEXT* pIOSurfInfo = (VkMetalIOSurfaceInfoEXT*)next;
 				auto* mvkImg = (MVKImage*)pIOSurfInfo->image;
-				*(pIOSurfInfo->pIOSurface) = mvkImg->getIOSurface();
+				pIOSurfInfo->ioSurface = mvkImg->getIOSurface();
 				break;
 			}
 			case VK_STRUCTURE_TYPE_METAL_EVENT_INFO_EXT: {
 				VkMetalEventInfoEXT* pEvtInfo = (VkMetalEventInfoEXT*)next;
 				auto* mvkEvt = (MVKEvent*)pEvtInfo->event;
-				*(pEvtInfo->pMTLSharedEvent) = mvkEvt->getMTLEvent();
+				pEvtInfo->mtlSharedEvent = mvkEvt->getMTLEvent();
 				break;
 			}
 			default:
