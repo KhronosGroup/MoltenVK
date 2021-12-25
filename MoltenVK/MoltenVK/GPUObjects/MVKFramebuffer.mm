@@ -17,11 +17,68 @@
  */
 
 #include "MVKFramebuffer.h"
+#include "MVKRenderPass.h"
+
+using namespace std;
 
 
 #pragma mark MVKFramebuffer
 
-#pragma mark Construction
+id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* subpass, uint32_t passIdx) {
+	if (_mtlDummyTex) { return _mtlDummyTex; }
+
+	// Lock and check again in case another thread has created the texture.
+	lock_guard<mutex> lock(_lock);
+	if (_mtlDummyTex) { return _mtlDummyTex; }
+
+	VkExtent2D fbExtent = getExtent2D();
+	uint32_t fbLayerCount = getLayerCount();
+	uint32_t sampleCount = mvkSampleCountFromVkSampleCountFlagBits(subpass->getDefaultSampleCount());
+	MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
+	if (subpass->isMultiview()) {
+#if MVK_MACOS_OR_IOS
+		if (sampleCount > 1 && getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+			mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
+			mtlTexDesc.sampleCount = sampleCount;
+		} else {
+			mtlTexDesc.textureType = MTLTextureType2DArray;
+		}
+#else
+		mtlTexDesc.textureType = MTLTextureType2DArray;
+#endif
+		mtlTexDesc.arrayLength = subpass->getViewCountInMetalPass(passIdx);
+	} else if (fbLayerCount > 1) {
+#if MVK_MACOS
+		if (sampleCount > 1 && getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
+			mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
+			mtlTexDesc.sampleCount = sampleCount;
+		} else {
+			mtlTexDesc.textureType = MTLTextureType2DArray;
+		}
+#else
+		mtlTexDesc.textureType = MTLTextureType2DArray;
+#endif
+		mtlTexDesc.arrayLength = fbLayerCount;
+	} else if (sampleCount > 1) {
+		mtlTexDesc.textureType = MTLTextureType2DMultisample;
+		mtlTexDesc.sampleCount = sampleCount;
+	}
+#if MVK_IOS
+	if ([_renderPass->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
+		mtlTexDesc.storageMode = MTLStorageModeMemoryless;
+	} else {
+		mtlTexDesc.storageMode = MTLStorageModePrivate;
+	}
+#else
+	mtlTexDesc.storageMode = MTLStorageModePrivate;
+#endif
+	mtlTexDesc.usage = MTLTextureUsageRenderTarget;
+
+	_mtlDummyTex = [getMTLDevice() newTextureWithDescriptor: mtlTexDesc];	// retained
+	[_mtlDummyTex setPurgeableState: MTLPurgeableStateVolatile];
+
+	return _mtlDummyTex;
+}
 
 MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
 							   const VkFramebufferCreateInfo* pCreateInfo) : MVKVulkanAPIDeviceObject(device) {
@@ -36,3 +93,8 @@ MVKFramebuffer::MVKFramebuffer(MVKDevice* device,
 		}
 	}
 }
+
+MVKFramebuffer::~MVKFramebuffer() {
+	[_mtlDummyTex release];
+}
+

@@ -17,6 +17,7 @@
  */
 
 #include "MVKCommandBuffer.h"
+#include "MVKFramebuffer.h"
 #include "MVKCommandPool.h"
 #include "MVKQueue.h"
 #include "MVKPipeline.h"
@@ -250,6 +251,7 @@ MVKRenderSubpass* MVKCommandBuffer::getLastMultiviewSubpass() {
 
 void MVKCommandEncoder::encode(id<MTLCommandBuffer> mtlCmdBuff,
 							   MVKCommandEncodingContext* pEncodingContext) {
+	_framebuffer = nullptr;
 	_renderPass = nullptr;
 	_subpassContents = VK_SUBPASS_CONTENTS_INLINE;
 	_renderSubpassIndex = 0;
@@ -289,17 +291,15 @@ void MVKCommandEncoder::encodeSecondary(MVKCommandBuffer* secondaryCmdBuffer) {
 void MVKCommandEncoder::beginRenderpass(MVKCommand* passCmd,
 										VkSubpassContents subpassContents,
 										MVKRenderPass* renderPass,
-										VkExtent2D framebufferExtent,
-										uint32_t framebufferLayerCount,
+										MVKFramebuffer* framebuffer,
 										VkRect2D& renderArea,
 										MVKArrayRef<VkClearValue> clearValues,
 										MVKArrayRef<MVKImageView*> attachments) {
 	_renderPass = renderPass;
-	_framebufferExtent = framebufferExtent;
-	_framebufferLayerCount = framebufferLayerCount;
+	_framebuffer = framebuffer;
 	_renderArea = renderArea;
 	_isRenderingEntireAttachment = (mvkVkOffset2DsAreEqual(_renderArea.offset, {0,0}) &&
-									mvkVkExtent2DsAreEqual(_renderArea.extent, _framebufferExtent));
+									mvkVkExtent2DsAreEqual(_renderArea.extent, getFramebufferExtent()));
 	_clearValues.assign(clearValues.begin(), clearValues.end());
 	_attachments.assign(attachments.begin(), attachments.end());
 	setSubpass(passCmd, subpassContents, 0);
@@ -346,8 +346,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
     MTLRenderPassDescriptor* mtlRPDesc = [MTLRenderPassDescriptor renderPassDescriptor];
 	getSubpass()->populateMTLRenderPassDescriptor(mtlRPDesc,
 												  _multiviewPassIndex,
-												  _framebufferExtent,
-												  _framebufferLayerCount,
+												  _framebuffer,
 												  _attachments.contents(),
 												  _clearValues.contents(),
 												  _isRenderingEntireAttachment,
@@ -359,7 +358,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
 		mtlRPDesc.visibilityResultBuffer = _pEncodingContext->visibilityResultBuffer->_mtlBuffer;
 	}
 
-	VkExtent2D fbExtent = _framebufferExtent;
+	VkExtent2D fbExtent = getFramebufferExtent();
     mtlRPDesc.renderTargetWidthMVK = max(min(_renderArea.offset.x + _renderArea.extent.width, fbExtent.width), 1u);
     mtlRPDesc.renderTargetHeightMVK = max(min(_renderArea.offset.y + _renderArea.extent.height, fbExtent.height), 1u);
     if (_canUseLayeredRendering) {
@@ -381,7 +380,7 @@ void MVKCommandEncoder::beginMetalRenderPass(MVKCommandUse cmdUse) {
             // We need to use the view count for this multiview pass.
 			renderTargetArrayLength = getSubpass()->getViewCountInMetalPass(_multiviewPassIndex);
         } else {
-			renderTargetArrayLength = _framebufferLayerCount;
+			renderTargetArrayLength = getFramebufferLayerCount();
         }
         // Metal does not allow layered render passes where some RTs are 3D and others are 2D.
         if (!(found3D && found2D) || renderTargetArrayLength > 1) {
@@ -433,6 +432,10 @@ NSString* MVKCommandEncoder::getMTLRenderCommandEncoderName(MVKCommandUse cmdUse
 
 	return mvkMTLRenderCommandEncoderLabel(cmdUse);
 }
+
+VkExtent2D MVKCommandEncoder::getFramebufferExtent() { return _framebuffer ? _framebuffer->getExtent2D() : VkExtent2D{0,0}; }
+
+uint32_t MVKCommandEncoder::getFramebufferLayerCount() { return _framebuffer ? _framebuffer->getLayerCount() : 0; }
 
 void MVKCommandEncoder::bindPipeline(VkPipelineBindPoint pipelineBindPoint, MVKPipeline* pipeline) {
     switch (pipelineBindPoint) {
@@ -530,7 +533,7 @@ void MVKCommandEncoder::clearRenderArea() {
 		VkClearRect clearRect;
 		clearRect.rect = _renderArea;
 		clearRect.baseArrayLayer = 0;
-		clearRect.layerCount = _framebufferLayerCount;
+		clearRect.layerCount = getFramebufferLayerCount();
 
 		// Create and execute a temporary clear attachments command.
 		// To be threadsafe...do NOT acquire and return the command from the pool.
@@ -577,8 +580,7 @@ void MVKCommandEncoder::endRenderpass() {
 	endMetalRenderEncoding();
 
 	_renderPass = nullptr;
-	_framebufferExtent = {};
-	_framebufferLayerCount = 0;
+	_framebuffer = nullptr;
 	_attachments.clear();
 	_renderSubpassIndex = 0;
 }

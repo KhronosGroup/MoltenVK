@@ -76,6 +76,9 @@ public:
 	/** Returns the Vulkan sample count of the attachments used in this subpass. */
 	VkSampleCountFlagBits getSampleCount();
 
+	/** Returns the default sample count for when there are no attachments used in this subpass. */
+	VkSampleCountFlagBits getDefaultSampleCount() { return _defaultSampleCount; }
+
 	/** Sets the default sample count for when there are no attachments used in this subpass. */
 	void setDefaultSampleCount(VkSampleCountFlagBits count) { _defaultSampleCount = count; }
 
@@ -104,8 +107,7 @@ public:
 	 */
 	void populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 										 uint32_t passIdx,
-										 VkExtent2D framebufferExtent,
-										 uint32_t framebufferLayerCount,
+										 MVKFramebuffer* framebuffer,
 										 const MVKArrayRef<MVKImageView*> attachments,
 										 const MVKArrayRef<VkClearValue> clearValues,
 										 bool isRenderingEntireAttachment,
@@ -161,7 +163,6 @@ private:
 	VkAttachmentReference2 _depthStencilResolveAttachment;
 	VkResolveModeFlagBits _depthResolveMode = VK_RESOLVE_MODE_NONE;
 	VkResolveModeFlagBits _stencilResolveMode = VK_RESOLVE_MODE_NONE;
-	id<MTLTexture> _mtlDummyTex = nil;
 	VkSampleCountFlagBits _defaultSampleCount = VK_SAMPLE_COUNT_1_BIT;
 };
 
