@@ -37,8 +37,10 @@ MVKMTLFunction::MVKMTLFunction(const MVKMTLFunction& other) {
 }
 
 MVKMTLFunction& MVKMTLFunction::operator=(const MVKMTLFunction& other) {
-	[_mtlFunction release];
-	_mtlFunction = [other._mtlFunction retain];		// retained
+	if (_mtlFunction != other._mtlFunction) {
+		[_mtlFunction release];
+		_mtlFunction = [other._mtlFunction retain];		// retained
+	}
 	shaderConversionResults = other.shaderConversionResults;
 	threadGroupSize = other.threadGroupSize;
 	return *this;
@@ -179,9 +181,11 @@ MVKShaderLibrary::MVKShaderLibrary(const MVKShaderLibrary& other) {
 }
 
 MVKShaderLibrary& MVKShaderLibrary::operator=(const MVKShaderLibrary& other) {
-	[_mtlLibrary release];
+	if (_mtlLibrary != other._mtlLibrary) {
+		[_mtlLibrary release];
+		_mtlLibrary = [other._mtlLibrary retain];
+	}
 	_owner = other._owner;
-	_mtlLibrary = [other._mtlLibrary retain];
 	_shaderConversionResults = other._shaderConversionResults;
 	_msl = other._msl;
 	return *this;
