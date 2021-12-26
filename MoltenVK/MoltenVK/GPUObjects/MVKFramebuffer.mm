@@ -64,7 +64,7 @@ id<MTLTexture> MVKFramebuffer::getDummyAttachmentMTLTexture(MVKRenderSubpass* su
 		mtlTexDesc.sampleCount = sampleCount;
 	}
 #if MVK_IOS
-	if ([_renderPass->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
+	if ([getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
 		mtlTexDesc.storageMode = MTLStorageModeMemoryless;
 	} else {
 		mtlTexDesc.storageMode = MTLStorageModePrivate;
