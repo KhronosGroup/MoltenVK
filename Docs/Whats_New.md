@@ -22,6 +22,7 @@ Released TBD
 - Do not use `MTLEvent` for `VkSemaphore` under *Rosetta2*.
 - Support compiling *MSL 2.4* in runtime pipelines and `MoltenVKShaderConverterTool`.
 - Fix issue where *MSL 2.3* only available on *Apple Silicon*, even on *macOS*.
+- Fix Metal object retain-release errors in assignment operators.
 - Update to latest SPIRV-Cross:
 	- MSL: Add 64 bit support for `OpSwitch`.
 	- MSL: Don't output depth and stencil values with explicit early fragment tests.

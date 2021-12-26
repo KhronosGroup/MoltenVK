@@ -66,8 +66,10 @@ MVKVulkanAPIObject::MVKVulkanAPIObject(const MVKVulkanAPIObject& other) {
 }
 
 MVKVulkanAPIObject& MVKVulkanAPIObject::operator=(const MVKVulkanAPIObject& other) {
-	[_debugName release];
-	_debugName = [other._debugName retain];
+	if (_debugName != other._debugName) {
+		[_debugName release];
+		_debugName = [other._debugName retain];
+	}
 	return *this;
 }
 
