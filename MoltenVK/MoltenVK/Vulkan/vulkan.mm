@@ -162,7 +162,7 @@ static inline void MVKTraceVulkanCallEndImpl(const char* funcName, uint64_t star
 	}
 
 // Define an extension call as an alias of a core call
-#define MVK_PUBLIC_CORE_ALIAS(vkf)	MVK_PUBLIC_ALIAS(vkf##KHR, vkf)
+#define MVK_PUBLIC_VULKAN_CORE_ALIAS(vkf)	MVK_PUBLIC_VULKAN_ALIAS(vkf##KHR, vkf)
 
 
 #pragma mark -
@@ -2321,8 +2321,8 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdDispatchBase(
 #pragma mark -
 #pragma mark VK_KHR_bind_memory2 extension
 
-MVK_PUBLIC_CORE_ALIAS(vkBindBufferMemory2);
-MVK_PUBLIC_CORE_ALIAS(vkBindImageMemory2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkBindBufferMemory2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkBindImageMemory2);
 
 
 #pragma mark -
@@ -2377,73 +2377,73 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdEndRenderPass2KHR(
 #pragma mark -
 #pragma mark VK_KHR_descriptor_update_template extension
 
-MVK_PUBLIC_CORE_ALIAS(vkCreateDescriptorUpdateTemplate);
-MVK_PUBLIC_CORE_ALIAS(vkDestroyDescriptorUpdateTemplate);
-MVK_PUBLIC_CORE_ALIAS(vkUpdateDescriptorSetWithTemplate);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreateDescriptorUpdateTemplate);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkDestroyDescriptorUpdateTemplate);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkUpdateDescriptorSetWithTemplate);
 
 
 #pragma mark -
 #pragma mark VK_KHR_device_group extension
 
-MVK_PUBLIC_CORE_ALIAS(vkGetDeviceGroupPeerMemoryFeatures);
-MVK_PUBLIC_CORE_ALIAS(vkCmdSetDeviceMask);
-MVK_PUBLIC_CORE_ALIAS(vkCmdDispatchBase);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDeviceGroupPeerMemoryFeatures);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdSetDeviceMask);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCmdDispatchBase);
 
 
 #pragma mark -
 #pragma mark VK_KHR_device_group_creation extension
 
-MVK_PUBLIC_CORE_ALIAS(vkEnumeratePhysicalDeviceGroups);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkEnumeratePhysicalDeviceGroups);
 
 
 #pragma mark -
 #pragma mark VK_KHR_external_fence_capabilities extension
 
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceExternalFenceProperties);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalFenceProperties);
 
 
 #pragma mark -
 #pragma mark VK_KHR_external_memory_capabilities extension
 
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceExternalBufferProperties);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalBufferProperties);
 
 
 #pragma mark -
 #pragma mark VK_KHR_external_semaphore_capabilities extension
 
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceExternalSemaphoreProperties);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceExternalSemaphoreProperties);
 
 
 #pragma mark -
 #pragma mark VK_KHR_get_memory_requirements2 extension
 
-MVK_PUBLIC_CORE_ALIAS(vkGetBufferMemoryRequirements2);
-MVK_PUBLIC_CORE_ALIAS(vkGetImageMemoryRequirements2);
-MVK_PUBLIC_CORE_ALIAS(vkGetImageSparseMemoryRequirements2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetBufferMemoryRequirements2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetImageMemoryRequirements2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetImageSparseMemoryRequirements2);
 
 
 #pragma mark -
 #pragma mark VK_KHR_get_physical_device_properties2 extension
 
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceFeatures2);
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceProperties2);
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceFormatProperties2);
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceImageFormatProperties2);
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceQueueFamilyProperties2);
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceMemoryProperties2);
-MVK_PUBLIC_CORE_ALIAS(vkGetPhysicalDeviceSparseImageFormatProperties2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceFeatures2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceProperties2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceFormatProperties2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceImageFormatProperties2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceQueueFamilyProperties2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceMemoryProperties2);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetPhysicalDeviceSparseImageFormatProperties2);
 
 
 #pragma mark -
 #pragma mark VK_KHR_maintenance1 extension
 
-MVK_PUBLIC_CORE_ALIAS(vkTrimCommandPool);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkTrimCommandPool);
 
 
 #pragma mark -
 #pragma mark VK_KHR_maintenance3 extension
 
-MVK_PUBLIC_CORE_ALIAS(vkGetDescriptorSetLayoutSupport);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkGetDescriptorSetLayoutSupport);
 
 
 #pragma mark -
@@ -2478,8 +2478,8 @@ MVK_PUBLIC_VULKAN_SYMBOL void vkCmdPushDescriptorSetWithTemplateKHR(
 #pragma mark -
 #pragma mark VK_KHR_sampler_ycbcr_conversion extension
 
-MVK_PUBLIC_CORE_ALIAS(vkCreateSamplerYcbcrConversion);
-MVK_PUBLIC_CORE_ALIAS(vkDestroySamplerYcbcrConversion);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkCreateSamplerYcbcrConversion);
+MVK_PUBLIC_VULKAN_CORE_ALIAS(vkDestroySamplerYcbcrConversion);
 
 
 #pragma mark -
