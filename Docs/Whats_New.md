@@ -20,6 +20,7 @@ Released TBD
 
 - Support building MoltenVK with static Vulkan linkage symbols hidden.
 - Do not use `MTLEvent` for `VkSemaphore` under *Rosetta2*.
+- On *Apple Silicon (iOS, tvOS & macOS)*, set `VkPhysicalDeviceProperties::deviceID` from GPU capabilities.
 - Support compiling *MSL 2.4* in runtime pipelines and `MoltenVKShaderConverterTool`.
 - Fix issue where *MSL 2.3* only available on *Apple Silicon*, even on *macOS*.
 - Fix memory leak of dummy `MTLTexture` in render subpasses that use no attachments.
