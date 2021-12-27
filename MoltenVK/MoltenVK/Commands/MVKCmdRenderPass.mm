@@ -64,8 +64,7 @@ void MVKCmdBeginRenderPass<N_CV, N_A>::encode(MVKCommandEncoder* cmdEncoder) {
 	cmdEncoder->beginRenderpass(this,
 								_contents,
 								_renderPass,
-								_framebuffer->getExtent2D(),
-								_framebuffer->getLayerCount(),
+								_framebuffer,
 								_renderArea,
 								_clearValues.contents(),
 								_attachments.contents());

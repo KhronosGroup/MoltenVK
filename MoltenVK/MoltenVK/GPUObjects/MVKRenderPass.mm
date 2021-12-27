@@ -196,8 +196,7 @@ uint32_t MVKRenderSubpass::getViewCountUpToMetalPass(uint32_t passIdx) const {
 
 void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* mtlRPDesc,
 													   uint32_t passIdx,
-													   VkExtent2D framebufferExtent,
-													   uint32_t framebufferLayerCount,
+													   MVKFramebuffer* framebuffer,
 													   const MVKArrayRef<MVKImageView*> attachments,
 													   const MVKArrayRef<VkClearValue> clearValues,
 													   bool isRenderingEntireAttachment,
@@ -326,67 +325,22 @@ void MVKRenderSubpass::populateMTLRenderPassDescriptor(MTLRenderPassDescriptor* 
 		}
 	}
 
-	_mtlDummyTex = nil;
+	// Vulkan supports rendering without attachments, but older Metal does not.
+	// If Metal does not support rendering without attachments, create a dummy attachment to pass Metal validation.
 	if (caUsedCnt == 0 && dsRPAttIdx == VK_ATTACHMENT_UNUSED) {
-		uint32_t sampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
         if (_renderPass->getDevice()->_pMetalFeatures->renderWithoutAttachments) {
-            // We support having no attachments.
 #if MVK_MACOS_OR_IOS
-            mtlRPDesc.defaultRasterSampleCount = sampleCount;
+            mtlRPDesc.defaultRasterSampleCount = mvkSampleCountFromVkSampleCountFlagBits(_defaultSampleCount);
 #endif
-            return;
-        }
-
-		// Add a dummy attachment so this passes validation.
-		VkExtent2D fbExtent = framebufferExtent;
-		MTLTextureDescriptor* mtlTexDesc = [MTLTextureDescriptor texture2DDescriptorWithPixelFormat: MTLPixelFormatR8Unorm width: fbExtent.width height: fbExtent.height mipmapped: NO];
-		if (isMultiview()) {
-#if MVK_MACOS_OR_IOS
-			if (sampleCount > 1 && _renderPass->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
-				mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
-				mtlTexDesc.sampleCount = sampleCount;
-			} else {
-				mtlTexDesc.textureType = MTLTextureType2DArray;
-			}
-#else
-			mtlTexDesc.textureType = MTLTextureType2DArray;
-#endif
-			mtlTexDesc.arrayLength = getViewCountInMetalPass(passIdx);
-		} else if (framebufferLayerCount > 1) {
-#if MVK_MACOS
-			if (sampleCount > 1 && _renderPass->getDevice()->_pMetalFeatures->multisampleLayeredRendering) {
-				mtlTexDesc.textureType = MTLTextureType2DMultisampleArray;
-				mtlTexDesc.sampleCount = sampleCount;
-			} else {
-				mtlTexDesc.textureType = MTLTextureType2DArray;
-			}
-#else
-			mtlTexDesc.textureType = MTLTextureType2DArray;
-#endif
-			mtlTexDesc.arrayLength = framebufferLayerCount;
-		} else if (sampleCount > 1) {
-			mtlTexDesc.textureType = MTLTextureType2DMultisample;
-			mtlTexDesc.sampleCount = sampleCount;
-		}
-#if MVK_IOS
-		if ([_renderPass->getMTLDevice() supportsFeatureSet: MTLFeatureSet_iOS_GPUFamily1_v3]) {
-			mtlTexDesc.storageMode = MTLStorageModeMemoryless;
 		} else {
-			mtlTexDesc.storageMode = MTLStorageModePrivate;
+			MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
+			mtlColorAttDesc.texture = framebuffer->getDummyAttachmentMTLTexture(this, passIdx);
+			mtlColorAttDesc.level = 0;
+			mtlColorAttDesc.slice = 0;
+			mtlColorAttDesc.depthPlane = 0;
+			mtlColorAttDesc.loadAction = MTLLoadActionDontCare;
+			mtlColorAttDesc.storeAction = MTLStoreActionDontCare;
 		}
-#else
-		mtlTexDesc.storageMode = MTLStorageModePrivate;
-#endif
-		mtlTexDesc.usage = MTLTextureUsageRenderTarget;
-		_mtlDummyTex = [_renderPass->getMTLDevice() newTextureWithDescriptor: mtlTexDesc];  // not retained
-		[_mtlDummyTex setPurgeableState: MTLPurgeableStateVolatile];
-		MTLRenderPassColorAttachmentDescriptor* mtlColorAttDesc = mtlRPDesc.colorAttachments[0];
-		mtlColorAttDesc.texture = _mtlDummyTex;
-		mtlColorAttDesc.level = 0;
-		mtlColorAttDesc.slice = 0;
-		mtlColorAttDesc.depthPlane = 0;
-		mtlColorAttDesc.loadAction = MTLLoadActionDontCare;
-		mtlColorAttDesc.storeAction = MTLStoreActionDontCare;
 	}
 }
 
