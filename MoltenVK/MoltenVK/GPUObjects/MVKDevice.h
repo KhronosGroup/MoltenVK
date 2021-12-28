@@ -329,6 +329,20 @@ public:
 	/** Returns whether this device is using Metal argument buffers. */
 	bool isUsingMetalArgumentBuffers() const  { return _metalFeatures.argumentBuffers && mvkConfig().useMetalArgumentBuffers; };
 
+	/**
+	 * Returns the start timestamps of a timestamp correlation.
+	 * The returned values should be later passed back to updateTimestampPeriod().
+	 */
+	void startTimestampCorrelation(MTLTimestamp& cpuStart, MTLTimestamp& gpuStart);
+
+	/**
+	 * Updates the current value of VkPhysicalDeviceLimits::timestampPeriod, based on the
+	 * correlation between the CPU time tickes and GPU time ticks, from the specified start
+	 * values, to the current values. The cpuStart and gpuStart values should have been
+	 * retrieved from a prior call to startTimestampCorrelation().
+	 */
+	void updateTimestampPeriod(MTLTimestamp cpuStart, MTLTimestamp gpuStart);
+
 
 #pragma mark Construction
 

@@ -213,7 +213,7 @@ protected:
 	id<MTLCommandBuffer> getActiveMTLCommandBuffer();
 	void setActiveMTLCommandBuffer(id<MTLCommandBuffer> mtlCmdBuff);
 	void commitActiveMTLCommandBuffer(bool signalCompletion = false);
-	void finish();
+	virtual void finish();
 	virtual void submitCommandBuffers() {}
 
 	MVKSmallVector<std::pair<MVKSemaphore*, uint64_t>> _signalSemaphores;
@@ -248,8 +248,11 @@ public:
 
 protected:
 	void submitCommandBuffers() override;
+	void finish() override;
 
 	MVKSmallVector<MVKCommandBuffer*, N> _cmdBuffers;
+	MTLTimestamp _cpuStart = 0;
+	MTLTimestamp _gpuStart = 0;
 };
 
 

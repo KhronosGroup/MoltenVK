@@ -24,6 +24,7 @@ Released TBD
 - Fix issue where *MSL 2.3* only available on *Apple Silicon*, even on *macOS*.
 - Fix memory leak of dummy `MTLTexture` in render subpasses that use no attachments.
 - Fix Metal object retain-release errors in assignment operators.
+- Improve accuracy of `VkPhysicalDeviceLimits::timestampPeriod`.
 - Update to latest SPIRV-Cross:
 	- MSL: Add 64 bit support for `OpSwitch`.
 	- MSL: Don't output depth and stencil values with explicit early fragment tests.

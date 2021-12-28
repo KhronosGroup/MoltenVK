@@ -1101,6 +1101,25 @@ VkResult MVKPhysicalDevice::getQueueFamilyProperties(uint32_t* pCount,
 	return rslt;
 }
 
+// Don't need to do this for Apple GPUs, where the GPU and CPU timestamps
+// are the same, or if we're not using GPU timestamp counters.
+void MVKPhysicalDevice::startTimestampCorrelation(MTLTimestamp& cpuStart, MTLTimestamp& gpuStart) {
+	if (_properties.vendorID == kAppleVendorId || !_timestampMTLCounterSet) { return; }
+	[_mtlDevice sampleTimestamps: &cpuStart gpuTimestamp: &gpuStart];
+}
+
+// Don't need to do this for Apple GPUs, where the GPU and CPU timestamps
+// are the same, or if we're not using GPU timestamp counters.
+void MVKPhysicalDevice::updateTimestampPeriod(MTLTimestamp cpuStart, MTLTimestamp gpuStart) {
+	if (_properties.vendorID == kAppleVendorId || !_timestampMTLCounterSet) { return; }
+
+	MTLTimestamp cpuEnd;
+	MTLTimestamp gpuEnd;
+	[_mtlDevice sampleTimestamps: &cpuEnd gpuTimestamp: &gpuEnd];
+
+	_properties.limits.timestampPeriod = (double)(cpuEnd - cpuStart) / (double)(gpuEnd - gpuStart);
+}
+
 
 #pragma mark Memory models
 
@@ -2077,7 +2096,7 @@ void MVKPhysicalDevice::initLimits() {
     _properties.limits.optimalBufferCopyRowPitchAlignment = 1;
 
 	_properties.limits.timestampComputeAndGraphics = VK_TRUE;
-	_properties.limits.timestampPeriod = mvkGetTimestampPeriod();
+	_properties.limits.timestampPeriod = _metalFeatures.counterSamplingPoints ? 1.0 : mvkGetTimestampPeriod();
 
     _properties.limits.pointSizeRange[0] = 1;
 	switch (_properties.vendorID) {
