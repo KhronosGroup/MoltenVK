@@ -83,6 +83,9 @@ const static uint32_t kMVKCachedViewportScissorCount = 16;
 const static uint32_t kMVKCachedColorAttachmentCount = 8;
 const static uint32_t kMVKMaxDescriptorSetCount = SPIRV_CROSS_NAMESPACE::kMaxArgumentBuffers;
 
+#if !MVK_XCODE_12
+typedef NSUInteger MTLTimestamp;
+#endif
 
 #pragma mark -
 #pragma mark MVKPhysicalDevice
