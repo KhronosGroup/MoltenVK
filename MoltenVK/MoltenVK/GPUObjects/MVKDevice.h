@@ -391,7 +391,7 @@ protected:
 	void initCounterSets();
 	MVKArrayRef<MVKQueueFamily*> getQueueFamilies();
 	void initPipelineCacheUUID();
-	uint32_t getHighestMTLFeatureSet();
+	uint32_t getHighestGPUCapability();
 	uint32_t getMoltenVKGitRevision();
 	void populate(VkPhysicalDeviceIDProperties* pDevIdProps);
 	void logGPUInfo();

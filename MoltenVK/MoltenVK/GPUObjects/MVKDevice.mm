@@ -37,6 +37,8 @@
 
 #import "CAMetalLayer+MoltenVK.h"
 
+#include <cmath>
+
 using namespace std;
 
 
@@ -504,11 +506,10 @@ void MVKPhysicalDevice::populate(VkPhysicalDeviceIDProperties* pDevIdProps) {
 	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(mvkVersion);
 	uuidComponentOffset += sizeof(mvkVersion);
 
-	// Next 4 bytes contains highest Metal feature set supported by this device
-	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
-	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
-	uuidComponentOffset += sizeof(mtlFeatSet);
-
+	// Next 4 bytes contains highest GPU capability supported by this device
+	uint32_t gpuCap = getHighestGPUCapability();
+	*(uint32_t*)&uuid[uuidComponentOffset] = NSSwapHostIntToBig(gpuCap);
+	uuidComponentOffset += sizeof(gpuCap);
 
 	// ---- LUID ignored for Metal devices ------------------------
 	mvkClear(pDevIdProps->deviceLUID, VK_LUID_SIZE);
@@ -2228,31 +2229,23 @@ static uint32_t mvkGetEntryProperty(io_registry_entry_t entry, CFStringRef prope
 
 void MVKPhysicalDevice::initGPUInfoProperties() {
 
-	bool isFound = false;
-
 	bool isIntegrated = getHasUnifiedMemory();
 	_properties.deviceType = isIntegrated ? VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU : VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 
-	if (supportsMTLGPUFamily(Apple5)) {
-		// This is an Apple GPU. It won't have a 'device-id' property, so fill it in like on iOS/tvOS.
-		// Test for Apple5 first instead of Apple7 to support Xcode 11.7 builds.
+	// For Apple Silicon, the Device ID is determined by the highest
+	// GPU capability, which is a combination of OS version and GPU type.
+	// We determine Apple Silicon directly from the GPU, instead
+	// of from the build, in case we are running Rosetta2.
+	if (supportsMTLGPUFamily(Apple1)) {
 		_properties.vendorID = kAppleVendorId;
-#if MVK_XCODE_12
-		if (supportsMTLGPUFamily(Apple7)) {
-			_properties.deviceID = 0xa140;
-		} else if (supportsMTLGPUFamily(Apple6)) {
-			_properties.deviceID = 0xa130;
-		} else
-#endif
-		{
-			_properties.deviceID = 0xa120;
-		}
+		_properties.deviceID = getHighestGPUCapability();
 		return;
 	}
 
 	// If the device has an associated registry ID, we can use that to get the associated IOKit node.
 	// The match dictionary is consumed by IOServiceGetMatchingServices and does not need to be released.
+	bool isFound = false;
 	io_registry_entry_t entry;
 	uint64_t regID = mvkGetRegistryID(_mtlDevice);
 	if (regID) {
@@ -2294,58 +2287,16 @@ void MVKPhysicalDevice::initGPUInfoProperties() {
 
 #endif	//MVK_MACOS
 
-#if MVK_IOS
-
-// For iOS devices, the Device ID is the SoC model (A8, A10X...), in the hex form 0xaMMX, where
-//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
+#if MVK_IOS_OR_TVOS
+// For Apple Silicon, the Device ID is determined by the highest
+// GPU capability, which is a combination of OS version and GPU type.
 void MVKPhysicalDevice::initGPUInfoProperties() {
-	NSUInteger coreCnt = NSProcessInfo.processInfo.processorCount;
-	uint32_t devID = 0xa070;
-#if MVK_XCODE_13
-	if (supportsMTLGPUFamily(Apple8)) {
-		devID = 0xa150;
-	} else
-#endif
-#if MVK_XCODE_12
-	if (supportsMTLGPUFamily(Apple7)) {
-		devID = 0xa140;
-	} else
-#endif
-	if (supportsMTLGPUFamily(Apple6)) {
-		devID = 0xa130;
-	} else if (supportsMTLFeatureSet(iOS_GPUFamily5_v1)) {
-		devID = 0xa120;
-	} else if (supportsMTLFeatureSet(iOS_GPUFamily4_v1)) {
-		devID = 0xa110;
-	} else if (supportsMTLFeatureSet(iOS_GPUFamily3_v1)) {
-		devID = coreCnt > 2 ? 0xa101 : 0xa100;
-	} else if (supportsMTLFeatureSet(iOS_GPUFamily2_v1)) {
-		devID = coreCnt > 2 ? 0xa081 : 0xa080;
-	}
-
 	_properties.vendorID = kAppleVendorId;
-	_properties.deviceID = devID;
+	_properties.deviceID = getHighestGPUCapability();
 	_properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
 	strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
 }
-#endif	//MVK_IOS
-
-#if MVK_TVOS
-
-// For tvOS devices, the Device ID is the SoC model (A8, A10X...), in the hex form 0xaMMX, where
-//"a" is the Apple brand, MM is the SoC model number (8, 10...) and X is 1 for X version, 0 for other.
-void MVKPhysicalDevice::initGPUInfoProperties() {
-	uint32_t devID = 0xa080;
-	if (supportsMTLFeatureSet(tvOS_GPUFamily2_v1)) {
-		devID = 0xa101;
-	}
-
-  _properties.vendorID = kAppleVendorId;
-  _properties.deviceID = devID;
-  _properties.deviceType = VK_PHYSICAL_DEVICE_TYPE_INTEGRATED_GPU;
-  strlcpy(_properties.deviceName, _mtlDevice.name.UTF8String, VK_MAX_PHYSICAL_DEVICE_NAME_SIZE);
-}
-#endif
+#endif	//MVK_IOS_OR_TVOS
 
 #pragma mark VkPhysicalDeviceLimits - List of feature limits available on the device
 
@@ -2482,10 +2433,10 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mvkRev);
 	uuidComponentOffset += sizeof(mvkRev);
 
-	// Next 4 bytes contains highest Metal feature set supported by this device
-	uint32_t mtlFeatSet = getHighestMTLFeatureSet();
-	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(mtlFeatSet);
-	uuidComponentOffset += sizeof(mtlFeatSet);
+	// Next 4 bytes contains highest GPU capability supported by this device
+	uint32_t gpuCap = getHighestGPUCapability();
+	*(uint32_t*)&_properties.pipelineCacheUUID[uuidComponentOffset] = NSSwapHostIntToBig(gpuCap);
+	uuidComponentOffset += sizeof(gpuCap);
 
 	// Next 4 bytes contains flags based on enabled Metal features that
 	// might affect the contents of the pipeline cache (mostly MSL content).
@@ -2495,42 +2446,38 @@ void MVKPhysicalDevice::initPipelineCacheUUID() {
 	uuidComponentOffset += sizeof(mtlFeatures);
 }
 
-uint32_t MVKPhysicalDevice::getHighestMTLFeatureSet() {
+uint32_t MVKPhysicalDevice::getHighestGPUCapability() {
 
-	// On newer OS's, combine highest Metal version with highest GPU family
-	// (Mac & Apple GPU lists should be mutex on platform)
-	uint32_t mtlVer = 0;
-#if MVK_IOS_OR_TVOS
-	if (mvkOSVersionIsAtLeast(13.0)) { mtlVer = 0x30000; }
-	if (mvkOSVersionIsAtLeast(14.0)) { mtlVer = 0x40000; }
-#endif
-#if MVK_MACOS
-	if (mvkOSVersionIsAtLeast(10.15)) { mtlVer = 0x30000; }
-	if (mvkOSVersionIsAtLeast(10.16)) { mtlVer = 0x40000; }
-#endif
+	// On newer OS's, combine OS version with highest GPU family.
+	// On macOS, Apple GPU fam takes precedence over others.
+	MTLGPUFamily gpuFam = MTLGPUFamily(0);
+	if (supportsMTLGPUFamily(Mac1)) { gpuFam = MTLGPUFamilyMac1; }
+	if (supportsMTLGPUFamily(Mac2)) { gpuFam = MTLGPUFamilyMac2; }
 
-	MTLGPUFamily mtlFam = MTLGPUFamily(0);
-	if (supportsMTLGPUFamily(Mac1)) { mtlFam = MTLGPUFamilyMac1; }
-	if (supportsMTLGPUFamily(Mac2)) { mtlFam = MTLGPUFamilyMac2; }
-
-	if (supportsMTLGPUFamily(Apple1)) { mtlFam = MTLGPUFamilyApple1; }
-	if (supportsMTLGPUFamily(Apple2)) { mtlFam = MTLGPUFamilyApple2; }
-	if (supportsMTLGPUFamily(Apple3)) { mtlFam = MTLGPUFamilyApple3; }
-	if (supportsMTLGPUFamily(Apple4)) { mtlFam = MTLGPUFamilyApple4; }
-	if (supportsMTLGPUFamily(Apple5)) { mtlFam = MTLGPUFamilyApple5; }
+	if (supportsMTLGPUFamily(Apple1)) { gpuFam = MTLGPUFamilyApple1; }
+	if (supportsMTLGPUFamily(Apple2)) { gpuFam = MTLGPUFamilyApple2; }
+	if (supportsMTLGPUFamily(Apple3)) { gpuFam = MTLGPUFamilyApple3; }
+	if (supportsMTLGPUFamily(Apple4)) { gpuFam = MTLGPUFamilyApple4; }
+	if (supportsMTLGPUFamily(Apple5)) { gpuFam = MTLGPUFamilyApple5; }
 #if MVK_IOS || (MVK_MACOS && MVK_XCODE_12)
-	if (supportsMTLGPUFamily(Apple6)) { mtlFam = MTLGPUFamilyApple6; }
+	if (supportsMTLGPUFamily(Apple6)) { gpuFam = MTLGPUFamilyApple6; }
 #endif
 #if (MVK_IOS || MVK_MACOS) && MVK_XCODE_12
-	if (supportsMTLGPUFamily(Apple7)) { mtlFam = MTLGPUFamilyApple7; }
+	if (supportsMTLGPUFamily(Apple7)) { gpuFam = MTLGPUFamilyApple7; }
 #endif
 #if MVK_IOS && MVK_XCODE_13
-	if (supportsMTLGPUFamily(Apple8)) { mtlFam = MTLGPUFamilyApple8; }
+	if (supportsMTLGPUFamily(Apple8)) { gpuFam = MTLGPUFamilyApple8; }
 #endif
 
-	// Not explicitly guaranteed to be unique...but close enough without spilling over
-	uint32_t mtlFS = (mtlVer << 8) + (uint32_t)mtlFam;
-	if (mtlFS) { return mtlFS; }
+	// Combine OS major (8 bits), OS minor (8 bits), and GPU family (16 bits)
+	// into one 32-bit value summarizing highest GPU capability.
+	if (gpuFam) {
+		float fosMaj, fosMin;
+		fosMin = modf(mvkOSVersion(), &fosMaj);
+		uint8_t osMaj = (uint8_t)fosMaj;
+		uint8_t osMin = (uint8_t)(fosMin * 100);
+		return (osMaj << 24) + (osMin << 16) + (uint16_t)gpuFam;
+	}
 
 	// Fall back to legacy feature sets on older OS's
 #if MVK_IOS
