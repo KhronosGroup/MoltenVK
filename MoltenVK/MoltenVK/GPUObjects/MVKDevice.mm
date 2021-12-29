@@ -2456,7 +2456,7 @@ uint32_t MVKPhysicalDevice::getHighestGPUCapability() {
 		float fosMaj, fosMin;
 		fosMin = modf(mvkOSVersion(), &fosMaj);
 		uint8_t osMaj = (uint8_t)fosMaj;
-		uint8_t osMin = (uint8_t)(fosMin * 255);
+		uint8_t osMin = (uint8_t)(fosMin * 100);
 		return (osMaj << 24) + (osMin << 16) + (uint16_t)gpuFam;
 	}
 
