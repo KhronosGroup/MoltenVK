@@ -216,10 +216,10 @@ namespace mvk {
 					type = &reflect.get_type(type->parent_type);
 
 				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
+					uint32_t memberLoc = loc;
 					for (uint32_t idx = 0; idx < type->member_types.size(); idx++) {
 						// Each member may have a location decoration. If not, each member
-						// gets an incrementing location.
-						uint32_t memberLoc = addSat(loc, idx);
+						// gets an incrementing location based the base location for the struct.
 						uint32_t memberCmp = 0;
 						if (reflect.has_member_decoration(type->self, idx, spv::DecorationLocation)) {
 							memberLoc = reflect.get_member_decoration(type->self, idx, spv::DecorationLocation);
@@ -233,14 +233,17 @@ namespace mvk {
 						const SPIRV_CROSS_NAMESPACE::SPIRType& memberType = reflect.get_type(type->member_types[idx]);
 						if (memberType.columns > 1) {
 							for (uint32_t i = 0; i < memberType.columns; i++) {
-								outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), memberCmp, biType, patch, isUsed});
+								outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, memberCmp, biType, patch, isUsed});
+								memberLoc = addSat(memberLoc, 1);
 							}
 						} else if (!memberType.array.empty()) {
 							for (uint32_t i = 0; i < memberType.array[0]; i++) {
-								outputs.push_back({memberType.basetype, memberType.vecsize, addSat(memberLoc, i), memberCmp, biType, patch, isUsed});
+								outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, memberCmp, biType, patch, isUsed});
+								memberLoc = addSat(memberLoc, 1);
 							}
 						} else {
 							outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, memberCmp, biType, patch, isUsed});
+							memberLoc = addSat(memberLoc, 1);
 						}
 					}
 				} else if (type->columns > 1) {
