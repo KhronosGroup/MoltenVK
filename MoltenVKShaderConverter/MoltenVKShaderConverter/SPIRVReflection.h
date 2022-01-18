@@ -173,6 +173,42 @@ namespace mvk {
 #endif
 	}
 
+	auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
+
+	template<typename Vo>
+	static inline uint32_t getShaderOutputStructMembers(const SPIRV_CROSS_NAMESPACE::CompilerReflection& reflect, Vo& outputs,
+														const SPIRV_CROSS_NAMESPACE::SPIRType* structType, spv::StorageClass storage,
+														bool patch, uint32_t loc) {
+		bool isUsed = true;
+		auto biType = spv::BuiltInMax;
+		size_t mbrCnt = structType->member_types.size();
+		for (uint32_t mbrIdx = 0; mbrIdx < mbrCnt; mbrIdx++) {
+			// Each member may have a location decoration. If not, each member
+			// gets an incrementing location based on the base location for the struct.
+			uint32_t cmp = 0;
+			if (reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationLocation)) {
+				loc = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationLocation);
+				cmp = reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationComponent);
+			}
+			patch = patch || reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationPatch);
+			if (reflect.has_member_decoration(structType->self, mbrIdx, spv::DecorationBuiltIn)) {
+				biType = (spv::BuiltIn)reflect.get_member_decoration(structType->self, mbrIdx, spv::DecorationBuiltIn);
+				isUsed = reflect.has_active_builtin(biType, storage);
+			}
+			const SPIRV_CROSS_NAMESPACE::SPIRType* type = &reflect.get_type(structType->member_types[mbrIdx]);
+			uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+			for (uint32_t i = 0; i < elemCnt; i++) {
+				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
+					loc = getShaderOutputStructMembers(reflect, outputs, type, storage, patch, loc);
+				else {
+					outputs.push_back({type->basetype, type->vecsize, loc, cmp, biType, patch, isUsed});
+					loc = addSat(loc, 1);
+				}
+			}
+		}
+		return loc;
+	}
+
 	/** Given a shader in SPIR-V format, returns output reflection data. */
 	template<typename Vs, typename Vo>
 	static inline bool getShaderOutputs(const Vs& spirv, spv::ExecutionModel model, const std::string& entryName,
@@ -191,7 +227,6 @@ namespace mvk {
 
 			outputs.clear();
 
-			auto addSat = [](uint32_t a, uint32_t b) { return a == uint32_t(-1) ? a : a + b; };
 			for (auto varID : reflect.get_active_interface_variables()) {
 				spv::StorageClass storage = reflect.get_storage_class(varID);
 				if (storage != spv::StorageClassOutput) { continue; }
@@ -215,47 +250,14 @@ namespace mvk {
 				if (model == spv::ExecutionModelTessellationControl && !patch)
 					type = &reflect.get_type(type->parent_type);
 
-				if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct) {
-					uint32_t memberLoc = loc;
-					for (uint32_t idx = 0; idx < type->member_types.size(); idx++) {
-						// Each member may have a location decoration. If not, each member
-						// gets an incrementing location based the base location for the struct.
-						uint32_t memberCmp = 0;
-						if (reflect.has_member_decoration(type->self, idx, spv::DecorationLocation)) {
-							memberLoc = reflect.get_member_decoration(type->self, idx, spv::DecorationLocation);
-							memberCmp = reflect.get_member_decoration(type->self, idx, spv::DecorationComponent);
-						}
-						patch = patch || reflect.has_member_decoration(type->self, idx, spv::DecorationPatch);
-						if (reflect.has_member_decoration(type->self, idx, spv::DecorationBuiltIn)) {
-							biType = (spv::BuiltIn)reflect.get_member_decoration(type->self, idx, spv::DecorationBuiltIn);
-							isUsed = reflect.has_active_builtin(biType, storage);
-						}
-						const SPIRV_CROSS_NAMESPACE::SPIRType& memberType = reflect.get_type(type->member_types[idx]);
-						if (memberType.columns > 1) {
-							for (uint32_t i = 0; i < memberType.columns; i++) {
-								outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, memberCmp, biType, patch, isUsed});
-								memberLoc = addSat(memberLoc, 1);
-							}
-						} else if (!memberType.array.empty()) {
-							for (uint32_t i = 0; i < memberType.array[0]; i++) {
-								outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, memberCmp, biType, patch, isUsed});
-								memberLoc = addSat(memberLoc, 1);
-							}
-						} else {
-							outputs.push_back({memberType.basetype, memberType.vecsize, memberLoc, memberCmp, biType, patch, isUsed});
-							memberLoc = addSat(memberLoc, 1);
-						}
+				uint32_t elemCnt = (type->array.empty() ? 1 : type->array[0]) * type->columns;
+				for (uint32_t i = 0; i < elemCnt; i++) {
+					if (type->basetype == SPIRV_CROSS_NAMESPACE::SPIRType::Struct)
+						loc = getShaderOutputStructMembers(reflect, outputs, type, storage, patch, loc);
+					else {
+						outputs.push_back({type->basetype, type->vecsize, loc, cmp, biType, patch, isUsed});
+						loc = addSat(loc, 1);
 					}
-				} else if (type->columns > 1) {
-					for (uint32_t i = 0; i < type->columns; i++) {
-						outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), cmp, biType, patch, isUsed});
-					}
-				} else if (!type->array.empty()) {
-					for (uint32_t i = 0; i < type->array[0]; i++) {
-						outputs.push_back({type->basetype, type->vecsize, addSat(loc, i), cmp, biType, patch, isUsed});
-					}
-				} else {
-					outputs.push_back({type->basetype, type->vecsize, loc, cmp, biType, patch, isUsed});
 				}
 			}
 			// Sort outputs by ascending location.
