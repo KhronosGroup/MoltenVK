@@ -100,12 +100,18 @@ bool mvk::compile(const string& mslSourceCode,
 	}
 
 	@autoreleasepool {
+		NSArray* mtlDevs = [MTLCopyAllDevices() autorelease];
+		if (mtlDevs.count == 0) {
+			errMsg = "Could not retrieve MTLDevice to compile shader.";
+			return false;
+		}
+
 		MTLCompileOptions* mtlCompileOptions  = [[MTLCompileOptions new] autorelease];
 		mtlCompileOptions.languageVersion = mslVerEnum;
 		NSError* err = nil;
-		id<MTLLibrary> mtlLib = [[MTLCreateSystemDefaultDevice() newLibraryWithSource: @(mslSourceCode.c_str())
-																			  options: mtlCompileOptions
-																				error: &err] autorelease];
+		id<MTLLibrary> mtlLib = [[mtlDevs[0] newLibraryWithSource: @(mslSourceCode.c_str())
+														  options: mtlCompileOptions
+															error: &err] autorelease];
 		errMsg = err ? [NSString stringWithFormat: @"(Error code %li):\n%@", (long)err.code, err.localizedDescription].UTF8String : "";
 		return !!mtlLib;
 	}

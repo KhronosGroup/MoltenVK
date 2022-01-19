@@ -98,6 +98,8 @@ namespace mvk {
 		std::string _hdrOutVarName;
 		std::string _origPathExtnSep;
 		std::vector<std::string> _glslVtxFileExtns;
+		std::vector<std::string> _glslTescFileExtns;
+		std::vector<std::string> _glslTeseFileExtns;
 		std::vector<std::string> _glslFragFileExtns;
         std::vector<std::string> _glslCompFileExtns;
 		std::vector<std::string> _spvFileExtns;
